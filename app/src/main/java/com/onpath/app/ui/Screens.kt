@@ -99,7 +99,7 @@ import java.util.Date
 import java.util.Locale
 import com.onpath.app.domain.plan.LivePlan
 import com.onpath.app.domain.plan.LivePlanRows
-import com.onpath.app.domain.plan.LiveRows
+import com.onpath.app.domain.plan.RecentRow
 import com.onpath.app.domain.tour.TrackLine
 
 // ------------------------------------------------------------------ missing data
@@ -379,10 +379,13 @@ fun RoutesScreen(
     onDeleteDraft: (Tour) -> Unit = {},
     /** The plan just saved from Zuletzt: "✓ Gerade gespeichert" on it. */
     justSavedId: Long = -1L,
-    /** All plans under Zuletzt shown at the start (screenshots); else the newest [RECENT_SHOWN]. */
-    initialAllRecent: Boolean = false,
-    /** The plan on the map (owner 2026-11-06 23:00): first under Zuletzt with "In Bearbeitung"; null = empty map. */
+    /** The plan on the map (owner 2026-11-06 23:00): the one row under Zuletzt, "In Bearbeitung"; null = empty map. */
     live: LivePlan? = null,
+    /**
+     * The tour under Zuletzt while the map is empty (owner 2026-11-12: exactly one plan there – the one worked on last,
+     * a draft or a saved route; RoutesState.recentId); -1 = the newest draft, if any.
+     */
+    recentId: Long = -1L,
     /** Its row tapped: back to the plan on the map, nothing reloaded. */
     onLiveOpen: () -> Unit = {},
     /** Its Speichern: the same as ☰ Plan speichern. */
@@ -426,7 +429,6 @@ fun RoutesScreen(
     val listState = androidx.compose.foundation.lazy.rememberLazyListState()
     val listFirstKey = remember { arrayOfNulls<Any>(1) }
     var rename by remember { mutableStateOf(initialRename) }
-    var allRecent by remember { mutableStateOf(initialAllRecent) }
     Box(Modifier.fillMaxSize()) {
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
@@ -471,31 +473,50 @@ fun RoutesScreen(
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
-            // the plan on the map (owner 2026-11-06 23:00, [LivePlanRows]): first under Zuletzt with "In Bearbeitung", or the
-            // tag on the saved route it is – never twice (a Zuletzt plan with its points is hidden)
+            // "Zuletzt" = exactly one row (owner 2026-11-12, [LivePlanRows]): the plan on the map ("In Bearbeitung"), else
+            // the draft or saved route worked on last – a saved one with the "Gespeichert" tag, and under Gespeichert too
             val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
-            val liveRows = if (tab == RoutesTab.PLANNED) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft })
-                else LiveRows.NONE
+            val recent = if (tab == RoutesTab.PLANNED) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
+                else RecentRow.NONE
             val liveName = live?.name ?: str(Res.string.routes_live_name)
-            val liveTour = if (liveRows.onTop && live != null) Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, liveName,
+            // the row goes through the search like every other
+            val liveTour = if (recent.live && live != null) Tour(LivePlanRows.LIVE_ID, TourKind.PLANNED, liveName,
                 liveNowMs, null, 0, live.distanceM, live.ascentM, 0.0, live.durationS, "done", emptyList())
                 .takeIf { RoutesTab.search(listOf(it), query).isNotEmpty() } else null
-            if (shown.isEmpty() && liveTour == null) {
+            val recentTour = if (recent.live) null else shown.firstOrNull { it.id == recent.tourId }
+            val hasRecent = liveTour != null || recentTour != null
+            // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
+            val saved = remember(shown, sort) { RouteSort.sort(shown.filter { !it.draft }, sort) }
+            if (saved.isEmpty() && !hasRecent) {
                 Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                     Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
                         else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                 }
             } else {
-                // Planned (owner 2026-11-06, "Zuletzt"): the plan on the map first ("In Bearbeitung"), then the plans kept
-                // by themselves – the newest three, the rest on demand – then the saved ones; a draft is saved / deleted
-                // right on its card
-                val drafts = shown.filter { it.draft && it.id !in liveRows.hiddenDraftIds }
-                // the chosen order (RouteSort) for the saved routes / done tours; Zuletzt stays newest first
-                val saved = remember(shown, sort) { RouteSort.sort(shown.filter { !it.draft }, sort) }
+                // Gespeichert / Gemacht (owner 2026-11-07 09:40, variant A): tile + name + facts + ›, every action in ⋮ –
+                // the same card for a saved route under Zuletzt ([tag] "Gespeichert"), where the ✓ mark is left to Gespeichert
+                val savedCard: @Composable (Tour, RouteTag?, Boolean) -> Unit = { t, tag, justSaved ->
+                    val row = RouteRowActions.of(RouteRowActions.Section.SAVED, t.kind, recording = t.id == recordingId,
+                        hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
+                        waypoints = t.waypoints.size, touring = touring, hasPlan = t.hasPlan)
+                    fun has(a: RouteRowActions.Action) = a in row.menu
+                    TourCard(t, tag = tag, row = row, onOpen = { overview = t }, justSaved = justSaved, line = line(t),
+                        recording = t.id == recordingId,
+                        onRename = { rename = t }, onExport = { onExport(t) },
+                        onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
+                        onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
+                        // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
+                        onDelete = if (has(RouteRowActions.Action.DELETE)) ({ onDelete(t) }) else null,
+                        onEditRides = if (has(RouteRowActions.Action.EDIT_RIDES)) ({ onEditRides(t) }) else null,
+                        onPlanFrom = if (has(RouteRowActions.Action.PLAN_FROM)) ({ onPlanFrom(t) }) else null,
+                        // a recorded tour's Planen / Los geht's load the plan it followed (owner 2026-11-07)
+                        onPlan = if (has(RouteRowActions.Action.PLAN)) ({ if (t.kind == TourKind.RECORDED) onPlanFollowed(t) else onOpen(t) }) else null,
+                        onGo = if (has(RouteRowActions.Action.GO)) ({ if (t.kind == TourKind.RECORDED) onGoFollowed(t) else onGo(t) }) else null)
+                }
                 // a route saved / synced / read fresh lands on top: a LazyColumn would keep the old first row at the top
                 // and the new one above the screen (E2E 2026-11-07) – at the top, the list shows it; scrolled, it stays
-                val firstKey: Any? = if (drafts.isNotEmpty() || liveTour != null) "h-recent" else saved.firstOrNull()?.id
+                val firstKey: Any? = if (hasRecent) "h-recent" else saved.firstOrNull()?.id
                 val scrollTop = remember(firstKey) {
                     val before = listFirstKey[0]
                     listFirstKey[0] = firstKey
@@ -508,54 +529,33 @@ fun RoutesScreen(
                 androidx.compose.runtime.LaunchedEffect(firstKey) { scrollTop?.let { listState.scrollToItem(it) } }
                 LazyColumn(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    if (drafts.isNotEmpty() || liveTour != null) {
+                    if (hasRecent) {
                         item(key = "h-recent") { SectionHeader(str(Res.string.routes_section_recent)) }
                         liveTour?.let { lt -> item(key = "live") {
-                            val row = RouteRowActions.of(RouteRowActions.Section.LIVE, lt.kind, canSaveLive = live?.canSave == true)
-                            TourCard(lt, tag = RouteTag.LIVE, row = row, onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = null,
+                            // the plan on the map: a tap goes back to it; Speichern while it can be saved; a saved route
+                            // as it is carries "Gespeichert" beside "In Bearbeitung" (owner 2026-11-12)
+                            val row = RouteRowActions.of(RouteRowActions.Section.LIVE, lt.kind,
+                                canSaveLive = live?.canSave == true && live.unsaved)
+                            TourCard(lt, tag = RouteTag.LIVE, tag2 = if (recent.saved) RouteTag.SAVED else null, row = row,
+                                onOpen = onLiveOpen, onRename = {}, onExport = {}, onDelete = null,
                                 menu = false, footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
                                 line = line(lt))
                         } }
-                        items(if (allRecent) drafts else drafts.take(RECENT_SHOWN), key = { it.id }) { t ->
-                            // Zuletzt (owner 2026-11-07 09:40): Speichern · Löschen on the row for a fast clean-up – not again in ⋮
-                            // and "Planen" first (owner 2026-11-07: "es muss klar sein, dass man diese Routen bearbeiten kann"),
-                            // "Los geht's" in ⋮
-                            val row = RouteRowActions.of(RouteRowActions.Section.DRAFT, t.kind, waypoints = t.waypoints.size, touring = touring)
-                            TourCard(t, tag = null, row = row, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
-                                onDelete = null, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) },
-                                    onPlan = if (RouteRowActions.Action.PLAN in row.inline) ({ onOpen(t) }) else null) },
-                                line = line(t), onGo = if (RouteRowActions.Action.GO in row.menu) ({ onGo(t) }) else null)
-                        }
-                        if (!allRecent && drafts.size > RECENT_SHOWN) item(key = "all-recent") {
-                            TextButton({ allRecent = true }, modifier = Modifier.heightIn(min = 48.dp)) {
-                                Text(str(Res.string.routes_recent_all, drafts.size))
-                            }
-                        }
+                        recentTour?.let { t -> item(key = "recent-${t.id}") {
+                            if (t.draft) {
+                                // Zuletzt (owner 2026-11-07 09:40): Speichern · Löschen on the row for a fast clean-up – not again in ⋮
+                                // and "Planen" first (owner 2026-11-07: "es muss klar sein, dass man diese Routen bearbeiten kann"),
+                                // "Los geht's" in ⋮
+                                val row = RouteRowActions.of(RouteRowActions.Section.DRAFT, t.kind, waypoints = t.waypoints.size, touring = touring)
+                                TourCard(t, tag = null, row = row, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
+                                    onDelete = null, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) },
+                                        onPlan = if (RouteRowActions.Action.PLAN in row.inline) ({ onOpen(t) }) else null) },
+                                    line = line(t), onGo = if (RouteRowActions.Action.GO in row.menu) ({ onGo(t) }) else null)
+                            } else savedCard(t, RouteTag.SAVED, false)
+                        } }
                         if (saved.isNotEmpty()) item(key = "h-saved") { SectionHeader(str(Res.string.routes_section_saved)) }
                     }
-                    items(saved, key = { it.id }) { t ->
-                        val isLive = t.id == liveRows.markedSavedId
-                        // Gespeichert / Gemacht (owner 2026-11-07 09:40, variant A): tile + name + facts + ›, every action in ⋮
-                        val row = RouteRowActions.of(RouteRowActions.Section.SAVED, t.kind, recording = t.id == recordingId,
-                            hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
-                            waypoints = t.waypoints.size, liveMarked = isLive, canSaveLive = live?.unsaved == true && live.canSave,
-                            touring = touring, hasPlan = t.hasPlan)
-                        fun has(a: RouteRowActions.Action) = a in row.menu
-                        TourCard(t, tag = if (isLive) RouteTag.LIVE else RouteTag.of(t, marks), row = row,
-                            onOpen = if (isLive) onLiveOpen else ({ overview = t }), justSaved = t.id == justSavedId, line = line(t),
-                            footer = if (RouteRowActions.Action.SAVE in row.inline) ({ DraftActions(onLiveSave, null) }) else null,
-                            recording = t.id == recordingId,
-                            onRename = { rename = t }, onExport = { onExport(t) },
-                            onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
-                            onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
-                            // straight to the recycle bin, no question (owner 2026-11-06: the bin is the net)
-                            onDelete = if (has(RouteRowActions.Action.DELETE)) ({ onDelete(t) }) else null,
-                            onEditRides = if (has(RouteRowActions.Action.EDIT_RIDES)) ({ onEditRides(t) }) else null,
-                            onPlanFrom = if (has(RouteRowActions.Action.PLAN_FROM)) ({ onPlanFrom(t) }) else null,
-                            // a recorded tour's Planen / Los geht's load the plan it followed (owner 2026-11-07)
-                            onPlan = if (has(RouteRowActions.Action.PLAN)) ({ if (t.kind == TourKind.RECORDED) onPlanFollowed(t) else onOpen(t) }) else null,
-                            onGo = if (has(RouteRowActions.Action.GO)) ({ if (t.kind == TourKind.RECORDED) onGoFollowed(t) else onGo(t) }) else null)
-                    }
+                    items(saved, key = { it.id }) { t -> savedCard(t, RouteTag.of(t, marks), t.id == justSavedId) }
                 }
             }
         }
@@ -609,6 +609,8 @@ private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier
 @Composable
 private fun TourCard(
     t: Tour, tag: RouteTag?, row: RouteRowActions.Row, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit,
+    /** A second tag after [tag] (the plan on the map that is a saved route as it is: "Gespeichert"). */
+    tag2: RouteTag? = null,
     /** ⋮ → Löschen; null = not in ⋮ (a draft deletes on its row, the tour being recorded never). */
     onDelete: (() -> Unit)?,
     onEditRides: (() -> Unit)? = null, onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null,
@@ -649,7 +651,7 @@ private fun TourCard(
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
-                RouteTitle(t.name, tag)
+                RouteTitle(t.name, tag, tag2)
                 Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)).replace(' ', '\u00A0'),
                     style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
@@ -668,9 +670,6 @@ private fun TourCard(
         }
     }
 }
-
-/** How many plans Zuletzt shows before "Alle N anzeigen ›". */
-const val RECENT_SHOWN = 3
 
 /** A draft's route sign: pale (owner 2026-11-06 "damit man sieht, dass es nur ein Draft ist"); a saved one as always. */
 data class DraftLook(val icon: Float, val circle: Float) {

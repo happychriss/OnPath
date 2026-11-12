@@ -20,9 +20,10 @@ import com.onpath.app.ui.RoutesTab
  */
 interface RoutesStore {
     fun listTours(): List<Tour>
+    /** The recycle bin (deleted_at set), newest deletion first. */
+    fun listDeleted(): List<Tour>
     fun setDraft(id: Long, draft: Boolean): Boolean
     fun setDeleted(id: Long, deletedMs: Long?): Boolean
-    fun pruneDrafts(max: Int): Int
     fun loadSegments(id: Long): List<List<TrackPoint>>
     /** Removes a tour for good (only drafts a saved route replaced – never a saved route, never the recycle bin). */
     fun deleteForGood(id: Long)
@@ -32,15 +33,21 @@ interface RoutesStore {
 /**
  * My routes' state and decisions (audit package 4, stage 3 – out of AppViewModel, Google's "state holder"): whether the
  * list is open ([open]), its tab ([tab]), the tours shown ([tours]), the "✓ Gerade gespeichert" mark ([justSavedId]),
- * "Zuletzt" (keep / save / delete a draft – owner 2026-11-06), the target of the saved box's "In Meine Touren ›" and
+ * "Zuletzt" (one plan – the one worked on last – kept, saved or deleted; owner 2026-11-06 / 2026-11-12), the target of
+ * the saved box's "In Meine Touren ›" and
  * what a row tap does ([openAsk]). Android-free: the database sits behind [RoutesStore], so the flows are testable on
  * the JVM (RoutesFlowPropertyTest). The store calls block – the view model runs them on its IO dispatcher and keeps
  * every side effect (backup, browser sync, messages) and the plan itself; it forwards its public names here.
  */
-class RoutesState(private val store: RoutesStore, private val clock: () -> Long = System::currentTimeMillis) {
+class RoutesState(private val store: RoutesStore, private val clock: () -> Long = System::currentTimeMillis,
+                  /** The tour under Zuletzt from the last run ([recentId]; the view model reads it from the prefs). */
+                  recent: Long = -1L) {
 
     /** Called when My routes closes (the view model drops its line at the top). */
     var onClosed: () -> Unit = {}
+
+    /** The Zuletzt place changed hands ([recentId]): the view model writes it to the prefs. */
+    var onRecent: (Long) -> Unit = {}
 
     private var shown by mutableStateOf(false)
     /** My routes list (☰ → My routes) is open; closing drops the line at the top and the "✓ Gerade gespeichert" mark. */
@@ -86,24 +93,52 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     // ---------------- Zuletzt ----------------
 
     /**
-     * A plan with the points [key] leaves the map unsaved ([unsaved]): is it worth a row under Zuletzt? Two points at
-     * least ([Drafts.keeps]) and not already there – neither as a draft with the same points (Undo, clear again) nor as a
-     * saved route with the same points (blocking – reads the store).
+     * The tour under "Zuletzt" while the map is empty (owner 2026-11-12: exactly one plan there – the one worked on last,
+     * saved or not; [com.onpath.app.domain.plan.LivePlanRows]): the one draft, or the saved route last left, saved or
+     * loaded; -1 = none known (the newest draft shows, if any). Kept across app starts ([onRecent]).
      */
-    fun keepsDraft(key: List<Pair<Double, Double>>, unsaved: Boolean): Boolean {
-        if (!Drafts.keeps(key.size, unsaved)) return false
-        return store.listTours().none { it.kind == TourKind.PLANNED && keyOf(it) == key }
+    var recentId by mutableStateOf(recent)
+        private set
+
+    /**
+     * The plan [id] (a draft or a saved route) takes the Zuletzt place: every other draft goes to the recycle bin – the
+     * replaced plan stays recoverable, never gone for good (owner 2026-11-12); a saved route is never touched. A draft
+     * that waits in the bin because another plan took the place meanwhile (loaded from Zuletzt, then left unchanged)
+     * comes back out. Returns how many drafts went (blocking).
+     */
+    private fun takePlace(id: Long): Int {
+        if (id < 0) return 0
+        val gone = store.listTours().filter { it.draft && it.id != id }
+        gone.forEach { store.setDeleted(it.id, clock()) }
+        if (gone.isNotEmpty()) Problems.trace("routes", "Zuletzt: ${gone.size} plan(s) replaced by $id – into the recycle bin")
+        recentId = id
+        onRecent(id)
+        return gone.size
     }
 
     /**
-     * Keeps a plan under Zuletzt: [insert] writes it (the view model knows name, route and times) when [keepsDraft] still
-     * holds; then only the newest [Drafts.MAX] drafts stay. Returns the new id, null = not kept (blocking).
+     * A plan with the points [key] leaves the map (cleared, replaced by a loaded route / link / track): what stays under
+     * Zuletzt? One point is no plan – nothing. Saved as it is ([unsaved] false; [savedId] = the saved route or the draft
+     * it was loaded from): that tour takes the place (a draft back out of the bin when needed; gone for good → kept
+     * anew below). Else a draft with these points – unless one is there already, or a saved route with the same points
+     * (never a second entry): that one takes the place. [insert] writes the new draft (the view model knows name, route
+     * and times); the one draft before it goes to the recycle bin ([takePlace]). Returns the new id, null = no new
+     * draft (blocking).
      */
-    fun keepDraft(key: List<Pair<Double, Double>>, unsaved: Boolean, insert: () -> Long): Long? {
-        if (!keepsDraft(key, unsaved)) return null
+    fun keepDraft(key: List<Pair<Double, Double>>, unsaved: Boolean, savedId: Long = -1L, insert: () -> Long): Long? {
+        if (key.size < 2) return null
+        if (!unsaved) {
+            if (savedId < 0) return null // saved as it is, nowhere known: nothing to keep (as before)
+            val own = store.listTours().firstOrNull { it.id == savedId }
+                ?: store.listDeleted().firstOrNull { it.id == savedId && it.draft }?.also { store.setDeleted(it.id, null) }
+            if (own != null) { takePlace(own.id); return null }
+            Problems.trace("routes", "Zuletzt: the plan's tour $savedId is gone for good – kept as a new plan")
+        }
+        val same = store.listTours().firstOrNull { it.kind == TourKind.PLANNED && keyOf(it) == key }
+        if (same != null) { takePlace(same.id); return null }
+        if (!Drafts.keeps(key.size, unsaved = true)) return null
         val id = insert()
-        val gone = store.pruneDrafts(Drafts.MAX)
-        if (gone > 0) Problems.trace("routes", "Zuletzt: $gone oldest plan(s) over ${Drafts.MAX} removed")
+        takePlace(id)
         return id
     }
 
@@ -124,24 +159,43 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
      * points [oldKey], is kept under Zuletzt so nothing is lost. Call it AFTER the update – before it, [oldKey] is still
      * the route's own points and the draft rules refuse it (never a draft with a saved route's points). Blocking.
      */
-    fun keepReplaced(oldKey: List<Pair<Double, Double>>, insert: () -> Long): Long? = keepDraft(oldKey, unsaved = true, insert)
+    fun keepReplaced(oldKey: List<Pair<Double, Double>>, insert: () -> Long): Long? = keepDraft(oldKey, unsaved = true, insert = insert)
 
     /**
-     * A plan was saved as a new route with the points [key]: it takes the place of the draft it came from
-     * ([fromDraftId], -1 = none) and of any draft with the same points – never a second entry (blocking). Returns how
-     * many drafts went.
+     * A plan was saved as the route [savedId] (new, or updated in place) with the points [key]: it takes the place of
+     * the draft it came from ([fromDraftId], -1 = none) and of any draft with the same points – never a second entry –
+     * and the Zuletzt place (blocking). Returns how many drafts went.
      */
-    fun afterSaved(fromDraftId: Long, key: List<Pair<Double, Double>>): Int {
+    fun afterSaved(savedId: Long, fromDraftId: Long, key: List<Pair<Double, Double>>): Int {
         val same = store.listTours().filter { it.draft && (it.id == fromDraftId || keyOf(it) == key) }
         same.forEach { store.deleteForGood(it.id) }
+        takePlace(savedId)
         return same.size
     }
 
-    /** Zuletzt → Speichern: the draft becomes a saved route (blocking). False when it is gone. */
-    fun saveDraft(id: Long): Boolean = store.setDraft(id, false)
+    /**
+     * Zuletzt → Speichern: the draft becomes a saved route and stays the Zuletzt row, now with the "Gespeichert" mark
+     * (blocking). False when it is gone.
+     */
+    fun saveDraft(id: Long): Boolean {
+        if (!store.setDraft(id, false)) return false
+        takePlace(id)
+        return true
+    }
 
     /** Zuletzt → Löschen, or ⋮ → Löschen on any tour: into the recycle bin at once, no question (blocking). */
     fun toBin(id: Long): Boolean = store.setDeleted(id, clock())
+
+    /**
+     * Once at the first start with the one-plan rule (owner 2026-11-12; the view model guards it with a pref): the
+     * drafts an older version collected beyond the newest [Drafts.MAX] go to the recycle bin – nothing is lost for good.
+     * Idempotent; returns how many went (blocking).
+     */
+    fun trimDrafts(): Int {
+        val gone = store.listTours().filter { it.draft }.drop(Drafts.MAX)
+        gone.forEach { store.setDeleted(it.id, clock()) }
+        return gone.size
+    }
 
     /** After [saveDraft] succeeded: the mark on the row (main thread). */
     fun markSaved(id: Long) { justSavedId = id }

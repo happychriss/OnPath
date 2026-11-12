@@ -214,6 +214,7 @@ class MainActivity : ComponentActivity() {
                                 onDeleteDraft = { vm.deleteDraft(it) },
                                 justSavedId = vm.justSavedId,
                                 live = vm.livePlan,
+                                recentId = vm.zuletztId,
                                 onLiveOpen = { vm.backToLivePlan() },
                                 onLiveSave = { vm.saveLivePlan() },
                                 loadLine = { vm.tourLine(it) },

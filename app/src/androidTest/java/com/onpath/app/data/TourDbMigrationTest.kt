@@ -71,7 +71,6 @@ class TourDbMigrationTest {
             tdb.deleteTour(rated)
             assertTrue(tdb.setDraft(2, true))
             assertTrue(tdb.getTour(2)!!.draft)
-            assertEquals(0, tdb.pruneDrafts(25))
             assertEquals("a new draft row inserts on the upgraded schema", true,
                 tdb.getTour(tdb.insertTour(TourKind.PLANNED, "Draft", "HIKE", 2, 1.0, 0.0, 0.0, 1.0, emptyList(), draft = true))!!.draft)
             // 6: the followed plan – an old tour has none; a copy is stored, replaced by a newer version, outlives the planned

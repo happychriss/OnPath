@@ -40,6 +40,19 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         }
         set(v) = sp.edit().putString("routesSort", v).apply()
 
+    /**
+     * The tour under My routes → Zuletzt while the map is empty (owner 2026-11-12: exactly one plan there – the one
+     * worked on last; RoutesState.recentId); -1 = none known.
+     */
+    var zuletztId: Long
+        get() = sp.getLong("zuletztId", -1L)
+        set(v) = sp.edit().putLong("zuletztId", v).apply()
+
+    /** The one-time clean-up of older Zuletzt plans ran (RoutesState.trimDrafts): never again. */
+    var zuletztTrimmed: Boolean
+        get() = sp.getBoolean("zuletztTrimmed", false)
+        set(v) = sp.edit().putBoolean("zuletztTrimmed", v).apply()
+
     var lastIncomingIntent: String?
         get() = sp.getString("lastIncomingIntent", null)
         set(v) = sp.edit().putString("lastIncomingIntent", v).apply()
