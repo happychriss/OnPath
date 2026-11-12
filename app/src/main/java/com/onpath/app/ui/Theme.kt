@@ -61,6 +61,14 @@ object OnPathColors {
      * theme's surfaceVariant.
      */
     val PaperDim = Color(0xFFEEF0E8)
+    /**
+     * The ground of what floats over the map in Plan and Navigate (owner 2026-11-12 on the Pixel: "nimm das leichte Grün
+     * auch für die Planseite"): Plan's top band, search pill and ☰, the map control column + undo, the plan sheet (all its
+     * steps), the activity chip, Navigate's status card – the website's light sage, the same tone as the page [PaperDim].
+     * Inside it the pill row and filled fields stay one step deeper ([PaperDeep]), cards stay [Paper] so they lift; menus,
+     * dialogs and message boxes stay [Paper]. Ink 10.3:1, plan blue 6.2:1, amber 4.7:1 on it.
+     */
+    val MapGround = PaperDim
     val Route = Color(0xFF1E3FAE)
     /**
      * The plan's numbered points, on the map and in the Points list (owner 2026-11-01, like Komoot): the start in the
@@ -75,7 +83,8 @@ object OnPathColors {
     val Good = Color(0xFF2E7D32)
     /** GPS "weak" dot only (map furniture): bright, never for text. */
     val Weak = Color(0xFFF9A825)
-    val Grey = Color(0xFF6B6F6A)
+    /** Grey info / a paused sign: ≥ 4.5:1 on paper and on the sage over the map ([MapGround], 4.7:1; owner 2026-11-12). */
+    val Grey = Color(0xFF676B66)
     /** Own position / "where I face" arrow on the map (map furniture, like the location puck). */
     val Position = Color(0xFF1A73E8)
     /**
@@ -134,8 +143,11 @@ object OnPathColors {
     // screen (they made the warm paper app look cool and playful) ----
     /** Plan's accent: search glass, ☰, map-button icons, the sheet's handle + top edge, the mode label – [ActionEdit]. */
     val PlanAccent = ActionEdit
-    /** Plan's surfaces (sheet, search pill, ☰, map buttons): paper like every surface – no blue tint any more (variant C). */
-    val PlanTint = Paper
+    /**
+     * Plan's surfaces (sheet, search pill, ☰, map buttons): no blue tint (variant C); since 2026-11-12 the light sage of
+     * everything over the map ([MapGround]).
+     */
+    val PlanTint = MapGround
     /** The "Ohne Netz ✓" sign on the plan's mode pill ([PlanAccent]): a light green, ≥ 4.5:1 on it (OfflineReady). */
     val OnPlanGood = Color(0xFFB9F6CA)
     /** The "Ohne Netz ⚠" sign on the plan's mode pill: a light amber, ≥ 4.5:1 on [PlanAccent]. */

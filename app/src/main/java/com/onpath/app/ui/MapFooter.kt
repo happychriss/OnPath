@@ -170,7 +170,8 @@ fun MapControls(
 ) {
     val size = MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
-    val bg = if (plan) OnPathColors.PlanTint else OnPathColors.Paper // Navigate: paper over the map (owner 2026-11-06)
+    // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
+    val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }

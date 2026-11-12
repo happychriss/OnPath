@@ -596,9 +596,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         .semantics {
             stateDescription = Txt.s(if (profileOpen) Res.string.nav_card_open else Res.string.nav_card_closed)
         }
-    // over the map: paper like every surface (owner 2026-11-06), the shadow lifts it off the map
+    // over the map: the light sage like Plan's sheet (owner 2026-11-12, [OnPathColors.MapGround]), the shadow lifts it
     // only the activity icon and the chevron are own buttons; the whole card toggles by tap and drag (owner 23:42)
-    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.Paper,
+    Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.MapGround,
         modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, MaterialTheme.shapes.large).then(cardTouch)) {
       androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
       // a large font (owner 2026-11-08, v7): the arrival would squeeze the numbers – it goes under them ([CardFit])
