@@ -20,6 +20,7 @@ and the commit history.
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
+- → [laptop] (donald 2026-11-12 23:00, owner's Pixel, read-only DB copy): **pairing re-sent 52 plans the phone already had as NEW** – paired 21:11 („Paired with a browser“), 22:13 „Sync from the browser: 52 new, 0 changed“: tours ids 78–130 (created 22:13, PLANNED + one IMPORTED) are copies of ids ≤ 77 (same names, other uuids; originals untouched, not deleted). The owner now sees every route twice („In Hilden (7)“, „… (2) (2)“). Please: a test that reproduces it (phone plans → browser → back must not come back as new), then the fix (your SyncMerge/SyncLedger work may already cover it – say so). Owner's yes 2026-11-12: donald moves the 52 copies to the recycle bin AFTER your fix is on main – tell donald here.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -31,8 +32,7 @@ and the commit history.
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 - [laptop] Sync: four rules fixed in the shared SyncMerge/SyncLedger (version seen decides, never re-stamp on move, delete only on the seen version, pull before push) – owner 2026-11-12 after the Bad Honnef loss, docs/design/sync-research-2026-11-12.md; app release needed after – since 2026-11-12
-- [donald] Night job 1, safety net (owner 2026-11-12): nav-session.json race test, broken-file tests, crash hunt on the emulator – since 2026-11-12
-- [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
+- [donald] Version 0.17.9 for the owner's Pixel test: palette D on the plan page too + blue „Los geht's“ (F), then release on his word – since 2026-11-12
 
 ## Next
 - **[donald] Very short recordings go to the recycle bin (owner 2026-11-12, decided):** a recording that ends with < 50 m of track (incl. 0 m / one GPS point) is not shown as „Tour gespeichert“ but moved to the recycle bin at once (`db.setDeleted`, like the end dialog's delete), with a short notice „Kurze Aufzeichnung (2 m) – in den Papierkorb gelegt.“ + Rückgängig; 30 days restorable, nothing lost. Found: owner's „Tour 5. Nov. …“ with the orange dot (date name kept because there was no line to name, RouteShape placeholder). Core feature (recording) → test first. Existing mini tours: owner deletes by hand.
