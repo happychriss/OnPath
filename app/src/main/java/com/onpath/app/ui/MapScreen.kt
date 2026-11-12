@@ -623,7 +623,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     // names for the Points section (offline place index, off the main thread) whenever the points change – ready before
     // the sheet is pulled up (names arriving mid-pull would rebuild the list)
-    LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames() }
+    LaunchedEffect(vm.waypoints.toList()) { vm.refreshPointNames(); vm.refreshPinnedKinds() }
 }
 
 /** Keeps the map layers in step with the app state. */
@@ -656,7 +656,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.mode == AppMode.NAVIGATE && vm.planGuides)
-            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed)
+            PlanDrawing(vm.route, line, markers, vm.waypoints.toList(), vm.planGaps, passed, vm.pinnedPoiKinds())
         }
             .collect { d ->
                 val r = if (d.showLine) d.route else null
@@ -673,7 +673,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
                 val gaps = if (d.showLine && d.showMarkers) d.gaps else emptyList()
                 c.setPlanGaps(gaps)
                 c.setWaypoints(if (d.showMarkers) d.points else emptyList(), vm.pinnedIndices(), gaps.map { it.index }.toSet(),
-                    if (d.showMarkers) d.passed else emptySet())
+                    if (d.showMarkers) d.passed else emptySet(), d.poiKinds)
             }
     }
     // Navigate draws the followed line, never a track only shown (field bug 2026-11-07: a 0 m done tour opened during the
@@ -871,4 +871,6 @@ private data class PlanDrawing(
     val points: List<com.onpath.app.routing.GeoPoint>,
     val gaps: List<PlanGap> = emptyList(),
     val passed: Set<Int> = emptySet(),
+    /** Pinned points on a POI: their kind by index (the POI symbol with a blue ring, owner 2026-11-10). */
+    val poiKinds: Map<Int, String> = emptyMap(),
 )
