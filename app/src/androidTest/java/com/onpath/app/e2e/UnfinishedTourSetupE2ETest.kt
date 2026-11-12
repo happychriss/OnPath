@@ -15,12 +15,13 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.routes_unfinished_continue
 import com.onpath.strings.routes_unfinished_title
+import com.onpath.strings.setup_continue
+import com.onpath.strings.setup_later
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 
@@ -54,15 +55,15 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
         })
         val title = Txt.s(Res.string.routes_unfinished_title)
         assertNotNull("the interrupted tour is asked about", findFresh(By.text(title), 15_000))
-        var hasVibrator = true
-        scenario.onActivity { hasVibrator = vm(it).phone.hasVibrator }
-        assumeTrue("no vibrator: no setup step before the tour on this device", hasVibrator)
 
-        // Continue → the guide opens; the question must not stay in front of it
+        // Continue → the guide opens (the vibration step; a phone without a vibrator asks about the voice instead –
+        // GitHub's emulator has one, PhoneSetupE2ETest 2026-11-07: "VIBRATION, VOICE"); the question must not stay in
+        // front of it
         findFresh(By.text(Txt.s(Res.string.routes_unfinished_continue)), 5_000)!!.click()
         waitUntil("the phone setup guide opens", 10_000) { guideStep() != null }
-        assertEquals(CheckId.VIBRATION, guideStep())
+        assertTrue("a setup step before the tour: ${guideStep()}", guideStep() == CheckId.VIBRATION || guideStep() == CheckId.VOICE)
         assertTrue("the question steps aside while the guide is open", goneFresh(By.text(title), 5_000))
+        assertNotNull("the guide takes touches: its Later button is there", findFresh(By.text(Txt.s(Res.string.setup_later)), 5_000))
 
         // Back closes the guide without finishing: the question is back, the tour still waits, nothing recorded
         device.pressBack()
@@ -70,13 +71,22 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
         assertNotNull("the question is back after Back", findFresh(By.text(title), 5_000))
         assertTrue("the tour still waits", read { it.unfinished?.id == tourId })
         assertNull("no recording started by Back", RecordingService.state.value)
+        // a new tour must not start beside the interrupted one while its question waits (checked at the end: the
+        // active recording is still the interrupted tour)
+        scenario.onActivity { vm(it).startNavigation(recordOnly = true) }
+        assertNull("the start is held while the question waits", RecordingService.state.value)
 
-        // Continue again, the guide finished: the recording goes on in the same tour
+        // Continue again, the guide finished with real taps (Later on every recommended step – the bug was that the
+        // guide got no touch): the recording goes on in the same tour
         findFresh(By.text(Txt.s(Res.string.routes_unfinished_continue)), 5_000)!!.click()
         waitUntil("the phone setup guide opens again", 10_000) { guideStep() != null }
+        val later = java.util.regex.Pattern.compile(Txt.s(Res.string.setup_later) + "|" + Txt.s(Res.string.setup_continue))
         repeat(8) {
             val step = guideStep() ?: return@repeat
-            scenario.onActivity { if (step == CheckId.VIBRATION) vm(it).setupVibrationAnswer(Felt.YES) else vm(it).setupLater() }
+            val b = findFresh(By.text(later), 5_000)
+            assertNotNull("the step $step offers Later", b)
+            b!!.click()
+            waitUntil("the step $step is answered", 10_000) { guideStep() != step }
         }
         waitUntil("the recording continues in the interrupted tour", 20_000) {
             RecordingService.state.value?.tourId == tourId && read { it.unfinished == null && it.setupGuide == null }
