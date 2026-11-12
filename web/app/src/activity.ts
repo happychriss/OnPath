@@ -89,14 +89,23 @@ export class ActivityPicker {
     this.box.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
   }
 
-  /** Under the chip; on a phone (sheet at the bottom) above it when there is no room below; never past the window. */
+  /**
+   * Under the chip; on a phone (sheet at the bottom) above it when there is more room there. The list never covers the
+   * chip: when it is taller than the room on its side (the pace section arrives a moment later and makes it taller –
+   * it pushed the list up over the chip on an 800 px window), it scrolls inside instead of moving.
+   */
   private place() {
     const anchor = this.anchor;
     if (!anchor) return;
-    const r = anchor.getBoundingClientRect(), h = Math.min(this.box.offsetHeight, innerHeight - 16);
-    const below = innerHeight - r.bottom - 8 >= h || r.top < h + 8;
-    this.box.style.left = Math.max(8, Math.min(r.left, innerWidth - this.box.offsetWidth - 8)) + 'px';
-    this.box.style.top = below ? Math.max(8, Math.min(r.bottom + 6, innerHeight - h - 8)) + 'px' : Math.max(8, r.top - h - 6) + 'px';
+    const r = anchor.getBoundingClientRect(), gap = 6, edge = 8;
+    this.box.style.maxHeight = '';
+    const h = this.box.scrollHeight;
+    const roomBelow = innerHeight - r.bottom - gap - edge, roomAbove = r.top - gap - edge;
+    const below = h <= roomBelow || roomBelow >= roomAbove;
+    const room = Math.max(0, below ? roomBelow : roomAbove);
+    this.box.style.maxHeight = room + 'px';
+    this.box.style.left = Math.max(edge, Math.min(r.left, innerWidth - this.box.offsetWidth - edge)) + 'px';
+    this.box.style.top = (below ? r.bottom + gap : r.top - gap - Math.min(h, room)) + 'px';
   }
 
   close() {

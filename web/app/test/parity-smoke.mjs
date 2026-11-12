@@ -155,6 +155,10 @@ check(dl.suggestedFilename().endsWith('.gpx') && gpx.includes('<trkpt') && gpx.i
 
 // 6b. activity drop-down at the chip: one click picks and closes; Hike's T level in the same list
 await page.click('#activityChip');
+// measured once the pace section is in: it arrives a moment later and makes the list taller - it must still sit
+// under the chip (it was pushed up over the chip on an 800 px window, red in CI since 2026-11-08)
+await page.waitForSelector('#activityMenu #paceRow');
+await page.waitForTimeout(100);
 const am = await page.locator('#activityMenu').boundingBox(), chip = await page.locator('#activityChip').boundingBox();
 check(await page.isVisible('#activityMenu') && Math.abs(am.y - (chip.y + chip.height)) < 12 && Math.abs(am.x - chip.x) < 12, 'activity list opens under the chip (no dialog)');
 await page.click('#activityMenu [data-act=BIKE_TOURING]');
