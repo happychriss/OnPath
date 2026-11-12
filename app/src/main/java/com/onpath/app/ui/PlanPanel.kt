@@ -279,7 +279,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         barFrom = PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
-        // the ONE button in the sheet's foot (blue start, green back to Navigate), full width, in every step – also rolled up (owner 2026-11-07, A: "Los
+        // the ONE plan-blue button in the sheet's foot (start / back to Navigate), full width, in every step – also rolled up (owner 2026-11-07, A: "Los
         // geht's" was small at the edge): "▶ Los geht's" from two points, during a tour "▲ Weiter geht's" (2026-11-06, C)
         foot = when (PlanFoot.of(ui)) {
             PlanFoot.Kind.BACK -> ({ BackToNavigationButton({ goClick(ui, cb) }) })
@@ -634,7 +634,7 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 
 /**
  * The one full-width start button "▶ Los geht's" – in the plan ink blue [PlanFoot.GO_FILL], white words (owner 2026-11-12,
- * variant F: "blue = planning, green = on the way"; Navigate's green and the green "Weiter geht's" back to it stay);
+ * variant F: "blue = planning, green = on the way"; like "Weiter geht's" back to Navigate, Navigate's own green stays);
  * TalkBack hears the full label with the activity.
  */
 @Composable
@@ -699,8 +699,8 @@ object PlanFoot {
     val HEIGHT = 56.dp
 
     /**
-     * "▶ Los geht's"'s fill: the plan ink blue (owner 2026-11-12, variant F – one still plans; green = on the way), white
-     * words 7.1:1 – the same as [ActionButtons.edit].
+     * The foot button's fill – "▶ Los geht's" and "▲ Weiter geht's" ([BackToNavigationButton]): the plan ink blue (owner
+     * 2026-11-12, variant F + "Der ist dann auch blau"), white words 7.1:1 – the same as [ActionButtons.edit].
      */
     val GO_FILL = OnPathColors.ActionEdit
 }

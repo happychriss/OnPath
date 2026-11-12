@@ -5,7 +5,7 @@ import org.junit.Test
 
 /**
  * Core feature (owner 2026-11-06, C – replaces the round "←" of 2026-11-05, R1): during a tour the way from the plan back
- * to Navigate is a green full-width button "▲ Weiter geht's" (plain: no red dot, no numbers – owner 2026-11-06) at the bottom, where "▶ Los geht's" is
+ * to Navigate is a plan-blue (owner 2026-11-12) full-width button "▲ Weiter geht's" (plain: no red dot, no numbers – owner 2026-11-06) at the bottom, where "▶ Los geht's" is
  * without a tour – in every step of the plan sheet (its foot), under a shown tour and under a place card; Android's Back
  * does the same. The tour goes on, the plan's points stay, a paused recording goes on.
  */
