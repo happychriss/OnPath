@@ -14,6 +14,9 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
 
 ## Colours (`ui/Theme.kt` → `OnPathColors`)
 Colours come only from `OnPathColors` (and the Material scheme built from it in `Theme.kt`); no hex values in screens.
+Shadow (owner 2026-11-12 „leicht“): everything over the map floats on one light shadow, the ☰ menu's family –
+`FloatShadow` in `Theme.kt` (3 dp warm `floatShadow` for pills, ☰, map column, activity chip, Navigate's card and bar
+buttons; a 10 dp walnut `edgeShadow` under Plan's top band and above the sheet). Change the level there, nowhere else.
 
 | Token | For |
 | --- | --- |

@@ -603,13 +603,13 @@ fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifie
     Column(modifier.semantics(mergeDescendants = true) { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) },
         horizontalAlignment = Alignment.CenterHorizontally) {
         Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.size(48.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
+            modifier = Modifier.size(48.dp).floatShadow(CircleShape)) {
             Box(contentAlignment = Alignment.Center) {
                 Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(26.dp))
             }
         }
         if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.padding(top = 3.dp).warmShadow(OnPathShadow.LOW, CircleShape)) {
+            modifier = Modifier.padding(top = 3.dp).floatShadow(CircleShape)) {
             // the T level reads at a glance (owner 2026-11-07: ≈ 1.5×, bold) – it decides which ways the route may take
             Text("T$sac", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp))
