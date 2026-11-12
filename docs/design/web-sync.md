@@ -176,16 +176,30 @@ always reads current rd5 files (proxy, cached ≤ 1 day), so it has no refresh t
 
 ## 6. Conflict rule (`SyncMerge`)
 
-- **Newer wins** – total order: `updatedAt`, then device id, then the item bytes. Every device picks the same
-  winner whatever order changes arrive in (`merge(a, b) == merge(b, a)`, `merge(a, a) = a`).
-- **The older stays as a copy** when it is a live plan with other content: id derived from the older version
-  (SHA-256 of "OnPath copy " + id + updatedAt + device – every device derives the same copy, so it never doubles),
-  title "… (copy)". Tombstones and device hellos are never copied.
-- **A delete newer than an edit** still keeps the edit as a copy – a plan is never lost. A delete older than an edit
-  loses quietly.
+Owner 2026-11-12, after the „Bad Honnef“ field bug (an old browser change pushed a phone tour away; research and the
+four rules: `sync-research-2026-11-12.md`): **the version seen decides, not the clock.**
+
 - **Not a conflict:** a remote change on an item not edited here since its base revision – the mailbox's
-  compare-and-set proves the writer saw this version first.
-- Local edits get `updatedAt = max(now, previous + 1)`, so a device with a slow clock still moves its own plan forward.
+  compare-and-set proves the writer saw this version first. Plain update.
+- **Conflict = a change made here meets a newer mailbox revision** (the mailbox moved past our base, the other side
+  never saw our change). For saved plans and tracks: **the mailbox version keeps the id**; ours stays as a **copy**
+  when it is a live plan / track with other content – id derived from our version (SHA-256 of "OnPath copy " + id +
+  updatedAt + device – every device derives the same copy, it never doubles), title "… (copy)". The clock plays no part:
+  a device whose clock runs ahead wins nothing.
+- **A delete applies only to the version it saw:** a delete made here whose base is no longer current is dropped – the
+  edit the deleter never saw stays (rule 3). A delete from the other side that reached the mailbox first keeps the id;
+  an edit made here meanwhile stays as a copy. Nothing is lost either way; deletes from outside still go to the phone's
+  recycle bin (§14.1).
+- **Moving is not an edit** (rule 5): tours moved between the browser's folders (`SyncLedger.take`, web `syncTake` –
+  Without phone, the folder "Neu verbinden" closed) and a ledger read again from the start (`restart`, web
+  `syncRebase`, the phone's `forget`) keep updatedAt, device and routing fields – never stamped newer. A moved tour
+  already in the target with other content leaves that one alone and comes as a copy.
+- `updatedAt` orders lists and breaks exact ties; local edits still get `max(now, previous + 1)`.
+- Device hellos and JOIN items (one writer each) keep the old rule: newer `updatedAt` wins (`SyncMerge.merge`).
+- Tested: `CorePlanSyncTest` (the incident: an old browser delete / rename, clock ahead, four quiet days, Save),
+  `PlanSyncTest.takingAToursFolderNeverMakesOldDataNewer`, `SyncRulesRandomTest` (400 seeded random sequences: edits,
+  deletes, skewed clocks, offline, late pushes, restart, take – both sides agree, no last-saved version lost unless a
+  user replaced or deleted it knowingly).
 
 ## 7. One device's side (`SyncLedger`) and a sync round
 
@@ -199,6 +213,9 @@ A round (the same on phone and browser):
    404 = mailbox not claimed yet or expired → `POST` (claim, any key holder may) and read again.
 3. **Push:** for each dirty item `PUT /sync/v1/<mailbox>/<id>` with `x-onpath-base: <rev>` → `acked(item, rev)`.
    409 = someone wrote first → back to 1 (the merge keeps both). At most 4 passes per round.
+   **Pull before every push** (rule 4, owner 2026-11-12): every round – the browser's Save, the round right after a
+   pairing, the phone's pass – reads first, so each waiting change is checked against the newest state (§6) before
+   it goes out; a change that is old by then becomes a copy or (a stale delete) is dropped.
 4. 410 / 403 = the pairing was ended → the phone: `forget()` (plans stay, marked to upload again on a new pairing);
    the browser (A-017): the folder closes, nothing is marked to upload. Network error → "Offline – your plans sync
    when the connection is back." (INFO).
@@ -355,11 +372,11 @@ pairing uploaded everything that was in the browser – a friend's PC mixed its 
 | Phone → browser by itself | pull triggers §7 |
 | Browser → phone only with Save | `round(pair, all)`: without Save only the own hello is pushed (`syncOutboxOf` with one id); Save → `sendAll` pushes the folder's outbox. Rename, delete, GPX import, saving a route only make the ledger dirty |
 | Save dark (§14.6) | `status.pending` = the folder's dirty plans / tracks / tombstones (`syncState.unsaved`) > 0, or the shown route new / changed (`saveState`) |
-| Planned without a phone → the next paired phone, waiting (§14.6 rule 2) | `adoptNone(key)` when a folder opens by pairing (and once on load for a store paired before §14.6): every route / track of Without phone goes into the phone's folder with the same id, unsent (`syncSave` / `syncSaveTrack`), Without phone is emptied; its open route stays open (the draft moves along). Sent with the pairing's first round (owner 2026-11-12, §7 triggers) – no Save needed. (The A-017 "Copy to ‹phone›" is gone.) |
+| Planned without a phone → the next paired phone, waiting (§14.6 rule 2) | `adoptNone(key)` when a folder opens by pairing (and once on load for a store paired before §14.6): every route / track of Without phone goes into the phone's folder with the same id, unsent (`syncTake` – never stamped newer, a route already there with other content stays and the moved one is a copy; owner 2026-11-12), Without phone is emptied; its open route stays open (the draft moves along). Sent with the pairing's first round (owner 2026-11-12, §7 triggers) – no Save needed. (The A-017 "Copy to ‹phone›" is gone.) |
 | A friend's PC | Pair phone always makes a new code; another phone opens its folder, the open one closes untouched (no DELETE); the friend's phone redirects (JOIN) or pairs directly later and its folder is back |
 | Laptop + desktop | each pairs itself; the phone redirects the second (JOIN); each has its own copy of the folder |
 | Marks | an item new or changed by a pull (not changed last by this browser – the phone's own and another browser's saves) → "New from the phone" / "Changed on the phone" until opened; the first fill of a folder (since = 0) is not marked |
-| Conflict | `SyncMerge` as before: both stay, the older "… (copy)" – shown "… (Kopie)" in German (display only; a rename typed with "(Kopie)" stores " (copy)" again, like `SyncMerge.storedTitle`) |
+| Conflict | `SyncMerge` (§6, owner 2026-11-12): both stay – the version in the mailbox keeps the route, the change the other side never saw is "… (copy)"; a stale delete is dropped – shown "… (Kopie)" in German (display only; a rename typed with "(Kopie)" stores " (copy)" again, like `SyncMerge.storedTitle`) |
 | Delete | browser + Save → the phone's recycle bin (app); phone → gone here |
 | Imported GPX | kept as a TRACK item (`TrackCode.fit`, the shared code) in the open folder, sent with Save; opened from My routes it shows like an imported file (`syncTrackGpx` → the app's GpxWriter → the import) |
 | 410 / 403 (Unpair on the phone) | the folder closes like Unpair, quiet line "The connection was ended on the phone." / "Die Verbindung wurde am Handy getrennt." |

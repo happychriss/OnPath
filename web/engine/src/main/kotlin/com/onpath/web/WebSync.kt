@@ -91,6 +91,19 @@ object WebSync {
             routing.ifEmpty { null }, routingData.ifEmpty { null }) }.write()
 
     /**
+     * The live routes and tracks of folder [from] moved into folder [into] (the web's Without phone, the folder
+     * "Neu verbinden" closed – sync.ts adopt): moving is not an edit (owner 2026-11-12, the shared [SyncLedger.take]) –
+     * nothing is stamped newer, a route already in [into] with other content stays and the moved one comes as a copy.
+     * Returns [into]'s new ledger text.
+     */
+    fun take(into: String, from: String): String {
+        val target = SyncLedger.read(into)
+        val src = SyncLedger.read(from)
+        for (it in src.plans() + src.tracks()) target.take(it)
+        return target.write()
+    }
+
+    /**
      * The page's Save (Speichern) of the plan it shows – the route the user saw is this engine's: field 7 = its routing
      * fingerprint, field 8 = the creation days of the rd5 it routed with under the plan's points (web-sync.md §5.2, as
      * the app writes them). Unknown stays unknown (no field), never a guess.
@@ -159,8 +172,9 @@ object WebSync {
      * folder's phone has a new mailbox now): the hellos and tombstones of the old mailbox go; every route and track
      * stays, as not sent yet with base 0 – like the phone's [SyncLedger.forget]. The phone may never have pulled a route
      * this browser sent (review 2026-11-01, sync H1: unpaired / reinstalled before its next pass), so "it comes back
-     * from the phone" is not safe. They still go only with Save (A-017 rule 8); the merge keeps one route per id
-     * (the same content → no copy).
+     * from the phone" is not safe. Nothing is stamped (owner 2026-11-12): the next pull meets the phone's versions –
+     * where the mailbox has the route already, its version keeps the id and this browser's only stays as a copy when
+     * it differs (the same content → nothing to send).
      */
     fun rebase(ledger: String, sameMailbox: Boolean): String {
         val l = SyncLedger.read(ledger)

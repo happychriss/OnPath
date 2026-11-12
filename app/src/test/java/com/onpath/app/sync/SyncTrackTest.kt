@@ -147,15 +147,16 @@ class SyncTrackTest {
         assertEquals(6, second.pulled) // three pages of two
         assertEquals(5, b.plans().size)
         assertEquals("Chrome on Linux", b.devices(phone).single().name)
-        // both rename plan 1 offline; the browser is first, the phone gets a 409, reads again and keeps both
+        // both rename plan 1 offline; the browser is first (its version keeps the id – owner 2026-11-12: the version
+        // seen decides, not the later clock), the phone reads it and keeps its own as a copy
         a.rename(id(1), "Browser", 100, web); b.rename(id(1), "Phone", 200, phone)
         ra.run(a)
         val third = rb.run(b) as SyncRound.Outcome.Done
         assertEquals(0, third.left)
         ra.run(a)
-        assertEquals(setOf("Phone", "Browser (copy)"), a.plans().filter { it.title?.let { t -> "Plan" !in t } == true }.map { it.title }.toSet())
+        assertEquals(setOf("Browser", "Phone (copy)"), a.plans().filter { it.title?.let { t -> "Plan" !in t } == true }.map { it.title }.toSet())
         assertEquals(a.plans().map { it.title }.toSet(), b.plans().map { it.title }.toSet())
-        assertFalse(server.stored(keys).contains("Browser"))
+        assertFalse(server.stored(keys).contains("Phone"))
     }
 
     /**

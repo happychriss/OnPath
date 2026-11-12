@@ -802,6 +802,8 @@ external fun planProgress(text: String)
     WebSync.joinBlob(pair, device, phoneCode, now, nonce)
 @JSExport fun syncHelloId(device: String): String = WebSync.helloId(device)
 @JSExport fun syncRebase(ledger: String, sameMailbox: Int): String = WebSync.rebase(ledger, sameMailbox != 0)
+/** Tours of folder [from] moved into folder [into] – never stamped newer, nothing in [into] pushed away (owner 2026-11-12). */
+@JSExport fun syncTake(into: String, from: String): String = WebSync.take(into, from)
 @JSExport fun syncSaveTrack(ledger: String, id: String, track: String, title: String, now: Double, device: String): String =
     WebSync.saveTrack(ledger, id, track, title, now, device)
 @JSExport fun syncTrackFit(segments: String, marks: String, activity: String, sac: Int): String = WebSync.trackFit(segments, marks, activity, sac)

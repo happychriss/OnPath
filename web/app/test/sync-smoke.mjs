@@ -402,15 +402,15 @@ const note = await A.evaluate(() => { const n = document.getElementById('routing
 check(note === 'Planned on the phone with other routing – the route may differ slightly',
   `a plan from the phone with another fingerprint: one grey line ("${note}")`);
 
-// ---- 6. conflict: both kept, the older as "(copy)" ----
+// ---- 6. conflict: both kept – the version that reached the mailbox first keeps the route, the other is a "(copy)" ----
 const wid = await phone.idOf('Waalweg');
 await phone.rename(wid, 'Phone name');
 await phone.round();
 await A.waitForTimeout(20);
 await A.evaluate((i) => window.__sync.rename(i, 'Browser name'), wid);
 await syncNow(A);
-const want = '["Browser name","Handweg hier","Phone name (copy)","Vom Handy","Zweitroute"]';
-check(JSON.stringify(await titles(A)) === want, 'conflict: the newer wins, the older stays as a copy ' + JSON.stringify(await titles(A)));
+const want = '["Browser name (copy)","Handweg hier","Phone name","Vom Handy","Zweitroute"]';
+check(JSON.stringify(await titles(A)) === want, 'conflict (owner 2026-11-12: the version seen decides, not the clock): the phone reached the mailbox first and keeps the route, the browser’s rename it never saw stays as a copy ' + JSON.stringify(await titles(A)));
 await sendMark(A);
 await A.click('#menuSavePlan');
 await sent(A);
@@ -418,25 +418,25 @@ await phone.round();
 check(JSON.stringify(await phone.titles()) === want, 'after Save the phone has the same two ' + JSON.stringify(await phone.titles()));
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-check(/^Plan · /.test((await listRow(A, 'Phone name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
+check(/^Plan · /.test((await listRow(A, 'Browser name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
 await A.click('#closePlans');
 
 // ---- 7. delete both ways ----
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-await rowMenu(A, 'Phone name (copy)', 'del'); // ⋮ → Delete (no 🗑 in the row)
+await rowMenu(A, 'Browser name (copy)', 'del'); // ⋮ → Delete (no 🗑 in the row)
 // in the phone's folder no question any more (the app, owner 2026-11-06: the phone's recycle bin is the net)
-await A.waitForFunction(() => ![...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Phone name (copy)'), null, { timeout: 10_000 }).catch(() => {});
-check(await A.locator('dialog.plans .confirm').count() === 0 && !(await A.evaluate(() => [...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Phone name (copy)'))),
+await A.waitForFunction(() => ![...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Browser name (copy)'), null, { timeout: 10_000 }).catch(() => {});
+check(await A.locator('dialog.plans .confirm').count() === 0 && !(await A.evaluate(() => [...document.querySelectorAll('#planList .name')].some((n) => n.textContent === 'Browser name (copy)'))),
   'delete in the phone\'s folder: no question, the row goes (the phone\'s recycle bin is the net)');
 await A.click('#closePlans');
 await phone.round();
-check((await phone.titles()).includes('Phone name (copy)'), 'deleted in the browser, not saved yet: still on the phone');
+check((await phone.titles()).includes('Browser name (copy)'), 'deleted in the browser, not saved yet: still on the phone');
 await sendMark(A);
 await A.click('#menuSavePlan');
 await sent(A);
 await phone.round();
-check(!(await phone.titles()).includes('Phone name (copy)'), 'deleted + Save → gone on the phone (its app moves it to the recycle bin)');
+check(!(await phone.titles()).includes('Browser name (copy)'), 'deleted + Save → gone on the phone (its app moves it to the recycle bin)');
 await phone.remove(await phone.idOf('Vom Handy'));
 await phone.round();
 await syncNow(A);

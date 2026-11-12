@@ -373,13 +373,26 @@ class PlanSyncTest {
         assertEquals(base, SyncMerge.reconcile(base, listOf(RemoteItem(item(1, 999, web, "Old"), 3))))
         // new item
         assertEquals(2, SyncMerge.reconcile(base, listOf(RemoteItem(item(2, 1, web), 6))).size)
-        // edited here and there: newer wins, older is a copy to upload
+        // edited here and there (owner 2026-11-12: the version seen decides, not the clock): the mailbox moved past our
+        // base, so its version keeps the id – even though ours has the later clock – and ours is a copy to upload
         val mine = mapOf(id(1) to SyncEntry(item(1, 300, phone, "Mine"), rev = 3, dirty = true))
         val out = SyncMerge.reconcile(mine, listOf(RemoteItem(item(1, 200, web, "Theirs"), 5)))
-        assertEquals(SyncEntry(item(1, 300, phone, "Mine"), 5, true), out[id(1)])
+        assertEquals(SyncEntry(item(1, 200, web, "Theirs"), 5, false), out[id(1)])
         val copy = out.values.single { it.item.id != id(1) }
-        assertEquals("Theirs (copy)", copy.item.title)
+        assertEquals("Mine (copy)", copy.item.title)
         assertTrue(copy.dirty)
+        // a delete made here on a version that is no longer current is dropped – the edit it never saw stays
+        val myDelete = mapOf(id(1) to SyncEntry(SyncItem(id(1), 900, phone, deleted = true), rev = 3, dirty = true))
+        assertEquals(mapOf(id(1) to SyncEntry(item(1, 200, web, "Theirs"), 5, false)),
+            SyncMerge.reconcile(myDelete, listOf(RemoteItem(item(1, 200, web, "Theirs"), 5))))
+        // the other side deleted what was edited here: the delete keeps the id, the edit stays as a copy
+        val theirDelete = SyncMerge.reconcile(mine, listOf(RemoteItem(SyncItem(id(1), 100, web, deleted = true), 5)))
+        assertTrue(theirDelete[id(1)]!!.item.deleted)
+        assertEquals(listOf("Mine (copy)"), theirDelete.values.filter { !it.item.deleted }.map { it.item.title })
+        // the same content on both sides: no copy, nothing to upload
+        val same = SyncMerge.reconcile(mapOf(id(1) to SyncEntry(item(1, 900, phone, "Same"), 0, true)), listOf(RemoteItem(item(1, 5, web, "Same"), 5)))
+        assertEquals(1, same.size)
+        assertFalse(same[id(1)]!!.dirty)
         // the same page again changes nothing
         assertEquals(out, SyncMerge.reconcile(out, listOf(RemoteItem(item(1, 200, web, "Theirs"), 5))))
     }
@@ -404,6 +417,36 @@ class PlanSyncTest {
         assertEquals(SyncEntry(sent, 7, false), SyncMerge.acked(SyncEntry(sent, 0, true), sent, 7))
         val later = item(1, 101, title = "Later")
         assertEquals(SyncEntry(later, 7, true), SyncMerge.acked(SyncEntry(later, 0, true), sent, 7))
+    }
+
+    /**
+     * Field bug 2026-11-12: moving the tours of another folder in (the web's Without phone, the folder "Neu verbinden"
+     * closed) saved them again with a stamp newer than the phone's – an old browser version replaced the phone's tour.
+     * Moving is not an edit: nothing is stamped newer, nothing here is pushed away.
+     */
+    @Test fun takingAToursFolderNeverMakesOldDataNewer() {
+        val phoneVersion = item(1, 500, phone, "Bad Honnef → Bonn")
+        val l = SyncLedger.read(SyncLedger.empty().write())
+        l.apply(keys, listOf(Triple(id(1), 7L, SyncFormat.seal(keys, phoneVersion, ByteArray(12)))), 7)
+        // the old folder's version: older content, a clock far ahead
+        val old = item(1, 9_999_999, web, "Bonn")
+        assertTrue(l.take(old))
+        assertEquals(SyncEntry(phoneVersion, 7, dirty = false), l.entries[id(1)]) // the phone's tour stays, not to upload
+        val copy = l.entries.values.single { it.item.id != id(1) }
+        assertEquals("Bonn (copy)", copy.item.title)
+        assertEquals(9_999_999, copy.item.updatedAt) // never stamped
+        assertEquals(web, copy.item.device)
+        assertTrue(copy.dirty)
+        // the same content again: nothing new, nothing to upload
+        assertTrue(l.take(item(1, 1, web, "Bad Honnef → Bonn")))
+        assertEquals(2, l.entries.size)
+        // a tour not here yet comes as it is (its time, its device, routing fields), to upload with base 0
+        val fresh = item(2, 123, web, "Ifinger").copy(routing = "r1-0123456789ab")
+        assertTrue(l.take(fresh))
+        assertEquals(SyncEntry(fresh, 0, dirty = true), l.entries[id(2)])
+        // only live plans and tracks move
+        assertFalse(l.take(SyncItem(id(3), 1, web, deleted = true)))
+        assertFalse(l.take(SyncItem(SyncFormat.deviceItemId(web), 1, web, kind = SyncItem.DEVICE, name = "x")))
     }
 
     // ---- ledger ----
@@ -451,20 +494,21 @@ class PlanSyncTest {
         assertEquals(listOf("Waalweg"), b.plans().map { it.title })
         assertEquals("Pixel", a.devices(web).single().name)
         assertEquals("Browser", b.devices(phone).single().name)
-        // both edit offline; the phone is newer
+        // both edit offline; the phone's clock is later, but the browser reaches the mailbox first – that version keeps
+        // the id, the phone's edit stays as a copy (owner 2026-11-12: the version seen decides, not the clock)
         a.rename(id(1), "Browser name", 200, web)
         b.rename(id(1), "Phone name", 300, phone)
         box.round(a) // browser first
-        box.round(b) // phone: 409, merges, uploads winner + copy
+        box.round(b) // phone: reads the browser's version, keeps its own as a copy and uploads it
         box.round(a)
-        val want = setOf("Phone name", "Browser name (copy)")
+        val want = setOf("Browser name", "Phone name (copy)")
         assertEquals(want, a.plans().map { it.title }.toSet())
         assertEquals(want, b.plans().map { it.title }.toSet())
         assertTrue(a.outbox().isEmpty() && b.outbox().isEmpty())
         // delete reaches the other side
         b.delete(id(1), 400, phone)
         box.round(b); box.round(a)
-        assertEquals(listOf("Browser name (copy)"), a.plans().map { it.title })
+        assertEquals(listOf("Phone name (copy)"), a.plans().map { it.title })
         // unpair: plans stay, all to upload again
         a.forget()
         assertEquals(0, a.since)
