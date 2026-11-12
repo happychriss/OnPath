@@ -296,7 +296,10 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
     }
 }
 
-/** The plan row's pills: one paper shade darker, ink blue words (owner 2026-11-06 variant C – no light blue; ≥ 7:1). */
+/**
+ * The plan row's pills: the deeper sage [OnPathColors.PaperDeep] (palette D, owner 2026-11-12), ink blue words (owner
+ * 2026-11-06 variant C – no light blue; 5.7:1).
+ */
 internal val PillBlueLight = OnPathColors.PaperDeep
 internal val PillBlueInk = OnPathColors.ActionEdit
 
