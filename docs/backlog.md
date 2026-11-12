@@ -16,10 +16,9 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-03): pairing-help pictures app part done – `onpath.private/marketing/bilder/2026-11-03-donald/`
   (`app-a1…a4-de|en.png` + `Ergebnis.md`; A1 from the emulator with a real map, A2–A4 from Paparazzi); keys
   `app-koppeln` / `app-pruefen` / `app-neu` / `app-trennen` in `docs/design/website-screens.md`.
-- → [donald|cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
+- → [cloud-web] (captain 2026-11-07, owner's word): no more question issues – ask the owner in your chat;
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
-- → [donald] (cloud-web 2026-11-08, owner narrowed the scope): **concise Samsung help is live** (onpath.earth `6d827f1`): `https://onpath.earth/de/hilfe/akku-sicherung/#samsung` and `https://onpath.earth/help/battery-backup/#samsung`. Samsung has two short, app-specific battery/standby steps; other makers link to dontkillmyapp.com instead of duplicating guides. Existing `#xiaomi`, `#huawei`, `#oneplus` anchors still land on their manufacturer links; `#hintergrund` / `#background` remain valid. `OnPathLinks.phoneSetupHelp()` can keep using those destinations. Sources: Samsung Support and dontkillmyapp.com (linked).
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -31,7 +30,6 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [donald] MERGE the six branches of 2026-11-06 evening → Pixel → GitHub E2E → main, then the open items – all in `docs/history/handoff-donald-2026-11-06.md` – since 2026-11-06
 
 ## Next
 - **[donald] Beta bug button (owner 2026-11-10, chat) – step 1 only, for the owner's own phone:** a small round button
@@ -56,8 +54,8 @@ and the commit history.
   app took them out of the map column: two round buttons under it, only while something can be undone / redone. The planner
   keeps ↶ ↷ in its top toolbar (always, greyed, tooltips „Rückgängig“ / „Wiederholen“) – decide with the owner whether the
   web follows (e.g. words beside the signs on wide screens, shown only when possible). Parity recorded (2026-11-08).
-- **[donald] Father's first feedback (owner 2026-11-08 evening, Samsung, Play 0.17.x) – brainstorm given in chat, nothing built; sketch first:** (1) the Samsung energy-saving page pops up at „Los geht's“; (2) small phone: the activity sheet shows only T1…T6 without words, and a tap on a T shows no description; (3) a Help entry (?) in ☰ → onpath.earth help; (4) ↶ ↷ read as „turn the map“; (5) nobody finds that the plan sheet pulls up – start it at the middle position with „Neu planen · Umkehren · Rundtour“? **Owner decisions 2026-11-08:** (4) ↶ ↷ go into their own pill, shown only when there is something to undo/redo; (1) the Samsung page keeps „Erledigt“ / „Später“, but says one short sentence + „Mehr Infos ›“ → a detailed help page on onpath.earth (→ cloud-web writes it); (2) the owner's S10 shows the same – no number/word behind the T; (5) proposal: when the first route is ready the sheet rises by itself to the middle position (the move shows it can move) + a tap on the handle steps it up; (6) „Handy einrichten“ moves to the top of Settings while steps are open.
-- **[donald] PAUSED until Wednesday 2026-11-11 (owner 2026-11-08: „helper pausieren … ab Mittwoch habe ich wieder mehr“)** – (1) ~~Release 0.17.7~~ RELEASED 2026-11-08 18:40 (Rundgang 17/17, 12 E2E green, AAB 1707) – only the setup website pictures remain; was prepared on `wip/donald-2026-11-08-release-0177` (d3366c64: version 0.17.7, notes – setup never waits for the map, first-map card, shorter + bigger setup texts); the 12 `ci/donald-r177-*` E2E runs were dispatched on 2026-11-08 – read their results, then gate --full, Rundgang, push, `play_bundle.sh` → `dist/onpath-0.17.7.aab` (1707), German Play text; afterwards the setup website pictures (A-steps). (2) **Map smoother when panning/zooming** (owner: „wackelt, selbst auf dem Pixel“; Pixel gfxinfo 3.6 % janky, p99 48 ms): WIP on `wip/donald-2026-11-08-smooth-map` (211fe6a8, be609d8d), not checked – finish, measure on the emulator, then a 30 s pan session on the Pixel with the owner.
+- **[donald] Father's first feedback (owner 2026-11-08)** – built and released in v0.17.8 (Samsung page once + „Mehr Infos ›“ → onpath.earth `#samsung` – live; T levels with their line; undo / redo as round buttons under the map column; Help first in ☰; „Handy einrichten“ on top; the sheet rises by itself). Open only: the owner's / father's word on how it feels on the S10.
+- **[donald] Map smoother when panning/zooming** (owner 2026-11-08: „wackelt, selbst auf dem Pixel“; Pixel gfxinfo 3.6 % janky, p99 48 ms): WIP on `wip/donald-2026-11-08-smooth-map` (211fe6a8, be609d8d), not checked – finish, measure on the emulator, then a 30 s pan session on the Pixel with the owner. (The pause until 2026-11-11 is over; 0.17.7 + 0.17.8 released 2026-11-08.)
 - **[donald] Off route with a stop: the new route may leave the stop out without saying so (found 2026-11-08 while taking G04, emulator, 0.17.6)** – A-019 + Gasthof Hochmuth as stop, 80 m off ~150 m after Vellau: the question says only „Neue Route bis zum Ziel: 4,3 km (4,3 km kürzer)“ (via Hochmuth it is 8,7 km), no „Über ② / ② auslassen“. Suspects: `Rerouter.kt:171` passes `deliberate = false` to `StopSkip.decide`, or `keepsTheTour` / `MIN_KEEP_SHARE`. First a test that reproduces it (core feature), then check whether „Neue Route“ really drops the stop, then the fix.
 - **[donald] Local Rundgang emulator: `CorePointsListE2ETest#swipeTheSheetHalfFullHalf` times out after the sheet
   swipe (very janky first drag), twice on 2026-11-08; green on GitHub. Look at the local AVD speed / the swipe timing.

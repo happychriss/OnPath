@@ -58,8 +58,7 @@ object OnPathLinks {
 
     /**
      * The phone-setup help for the brand page's „Mehr Infos ›“ (owner 2026-11-08): the help topic "Akku und Sicherung"
-     * / "Battery and backup" at its Samsung & co section (anchor `#samsung`, asked of cloud-web 2026-11-08; until the
-     * section is live the page opens at its top).
+     * / "Battery and backup" at its Samsung section (anchor `#samsung`, live since 2026-11-08, onpath.earth 6d827f1).
      */
     fun phoneSetupHelp(lang: String = Txt.language()) =
         if (de(lang)) "$SITE/de/hilfe/akku-sicherung/#samsung" else "$SITE/help/battery-backup/#samsung"
