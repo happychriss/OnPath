@@ -30,6 +30,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [donald] Night job 1, safety net (owner 2026-11-12): nav-session.json race test, broken-file tests, crash hunt on the emulator – since 2026-11-12
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
