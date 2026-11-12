@@ -1309,19 +1309,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // Set directly (enter() touches properties declared below); the check after the DB read
         // calls enter() and so also tells a running service which mode we are in.
         if (RecordingService.state.value != null) mode = AppMode.NAVIGATE
+        // no new tour until this check has decided (TourController.canStartNew); cleared whatever happens – a stuck
+        // flag would refuse every tour for good
+        tour.unfinishedPending = true
         viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) {
-            val active = db.findActiveRecording()
-            val start = AppMode.onStart(RecordingService.state.value != null, active != null)
-            withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
-            if (active != null && RecordingService.state.value == null) {
-                delay(1500) // the service may be restarting by itself (sticky)
-                if (RecordingService.state.value == null) {
-                    // drawn behind the question, so the user sees which tour it is (field bug 2026-10-31: empty map)
-                    val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
-                        .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
-                        .getOrDefault(emptyList())
-                    withContext(Dispatchers.Main) { tour.showUnfinished(active, line) }
+            try {
+                val active = db.findActiveRecording()
+                val start = AppMode.onStart(RecordingService.state.value != null, active != null)
+                withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
+                if (active != null && RecordingService.state.value == null) {
+                    delay(1500) // the service may be restarting by itself (sticky)
+                    if (RecordingService.state.value == null) {
+                        // drawn behind the question, so the user sees which tour it is (field bug 2026-10-31: empty map)
+                        val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
+                            .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
+                            .getOrDefault(emptyList())
+                        withContext(Dispatchers.Main) { tour.showUnfinished(active, line) }
+                    }
                 }
+            } finally {
+                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { tour.unfinishedPending = false }
             }
         }
         // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
@@ -3564,6 +3571,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) {
         if (recState.value != null) { continueNavigation(force); return }
+        // an interrupted tour still checked / asked about: its question decides first (TourController.canStartNew) –
+        // nothing started, the plan untouched; the question shows or is already there
+        if (!tour.canStartNew) { Problems.trace("tour", "Tour start held: an interrupted tour is still checked / asked about"); return }
         val s = shown
         if (!recordOnly && s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here

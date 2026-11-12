@@ -48,6 +48,17 @@ class TourController(private val recorder: TourRecorder) {
     /** "Unfinished tour" → Save with a bus / car / lift found: the ride summary for it (null = none). */
     var unfinishedRides by mutableStateOf<Pair<Tour, RideView.Summary>?>(null)
     /**
+     * The start-up check for a tour still marked as recording has not decided yet (the database read, then ~1.5 s for
+     * a sticky service to come back). Set by the view model at start, cleared when the check ends.
+     */
+    var unfinishedPending by mutableStateOf(false)
+    /**
+     * A new recording may start now: the start-up check has run and no interrupted tour waits for its answer (review
+     * 2026-11-12: ☰ → start recording in that window, the phone setup guide open, the question arriving behind it –
+     * a new tour would have started beside the old one still marked active). Continue ([continueTour]) is never held.
+     */
+    val canStartNew: Boolean get() = !unfinishedPending && unfinished == null && unfinishedRides == null
+    /**
      * A plan or a done tour was tapped in My routes during a tour and is followed now – no question (owner 2026-11-06
      * 22:05): "Neuer Plan – deine Aufnahme läuft weiter" with "Rückgängig" when a plan was replaced. Null = no line.
      */
@@ -61,7 +72,11 @@ class TourController(private val recorder: TourRecorder) {
 
     // ---- the service ----
 
-    fun start(activity: String, sac: Int) = recorder.start(activity, sac)
+    /** Starts a new recording – not while an interrupted tour is still checked or asked about ([canStartNew]). */
+    fun start(activity: String, sac: Int) {
+        if (!canStartNew) { Problems.trace("tour", "Tour start held: an interrupted tour is still checked / asked about"); return }
+        recorder.start(activity, sac)
+    }
     fun pause(pause: Boolean) = recorder.pause(pause)
     fun stop() = recorder.stop()
 
