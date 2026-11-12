@@ -233,7 +233,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
     Surface(
         onClick = onSearch,
         modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
-            .warmShadow(OnPathShadow.LOW, CircleShape),
+            .floatShadow(CircleShape),
         shape = CircleShape,
         // sage on the sage band (owner 2026-11-12): the warm shadow and a fine line keep it reading as a field
         color = OnPathColors.MapGround,
@@ -252,7 +252,7 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.MapGround, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.warmShadow(OnPathShadow.LOW, CircleShape)) {
+        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.MapGround, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.floatShadow(CircleShape)) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
         // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have

@@ -13,6 +13,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.addOutline
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.graphics.Color
@@ -414,3 +417,39 @@ fun androidx.compose.ui.Modifier.warmShadow(elevation: androidx.compose.ui.unit.
     if (elevation <= 0.dp) this
     else this.then(androidx.compose.ui.Modifier.shadow(elevation, shape, clip = false,
         ambientColor = OnPathShadow.Tone, spotColor = OnPathShadow.Tone))
+
+/**
+ * The light shadow of everything that floats over the map (owner 2026-11-12: „leicht" – „ein leichter Schatten im Plan,
+ * oben und unten, so wie im Menü"; the same family as the ☰ menu's 3 dp): the top band casting down, the sheet casting
+ * up, the map columns, the activity chip, the search pill and ☰, Navigate's status card and its bottom bar buttons.
+ * One level for all of them – change it here, nowhere else.
+ */
+object FloatShadow {
+    /** The warm elevation shadow ([warmShadow]) of the floating pieces – the ☰ menu's Material 3 dp. */
+    val ELEVATION = 3.dp
+    /** How far the band's / sheet's edge shadow ([edgeShadow]) reaches (its "blur"). */
+    val EDGE = 10.dp
+    /** The edge shadow's walnut alpha right at the edge, fading to 0 over [EDGE] (quadratic, a soft tail). */
+    const val EDGE_ALPHA = 0.16f
+}
+
+/** [warmShadow] at the one floating level, [FloatShadow.ELEVATION]. */
+fun androidx.compose.ui.Modifier.floatShadow(shape: androidx.compose.ui.graphics.Shape): androidx.compose.ui.Modifier =
+    warmShadow(FloatShadow.ELEVATION, shape)
+
+/**
+ * The edge shadow ([FloatShadow]) of a full-width surface, drawn behind it: the [shape]'s outline shifted outwards
+ * ([up] = above the top edge, else below the bottom edge) in walnut, fading off over [FloatShadow.EDGE].
+ */
+fun androidx.compose.ui.Modifier.edgeShadow(shape: androidx.compose.ui.graphics.Shape, up: Boolean): androidx.compose.ui.Modifier =
+    this.then(androidx.compose.ui.Modifier.drawBehind {
+        val path = androidx.compose.ui.graphics.Path().apply { addOutline(shape.createOutline(size, layoutDirection, this@drawBehind)) }
+        val steps = FloatShadow.EDGE.toPx().toInt().coerceAtLeast(1)
+        // copy k (shifted k px) weighs (steps − k + 1): a pixel d px out is covered by the copies k ≥ d → ∝ (steps − d)²
+        val total = (1..steps).sumOf { (steps - it + 1).toDouble() }.toFloat()
+        for (k in 1..steps) {
+            translate(top = if (up) -k.toFloat() else k.toFloat()) {
+                drawPath(path, OnPathShadow.Tone.copy(alpha = FloatShadow.EDGE_ALPHA * (steps - k + 1) / total))
+            }
+        }
+    })
