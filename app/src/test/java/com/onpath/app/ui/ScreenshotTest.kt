@@ -258,7 +258,7 @@ class ScreenshotTest {
     fun planLocateFar() = paparazzi.snapshot {
         Frame(controls = {
             MapControls(CompassSpec(null, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD, following = false, onLocate = {},
-                onFitRoute = {}, plan = true, locateLabel = "790 km")
+                onFitRoute = {}, plan = true, locateLabel = LocateDistance.text(59_200.0))
             UndoPill(onUndo = {}, onRedo = null)
         }) { PlanPanel(planUi(), PlanCallbacks()) }
     }
