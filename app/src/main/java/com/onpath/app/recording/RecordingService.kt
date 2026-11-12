@@ -994,7 +994,7 @@ class RecordingService : Service() {
         step.job?.let { startReroute(it) }
         // the app chose a new line meanwhile (its FOLLOW_CHANGED is on the way): this result belongs to the old session
         if ((step.lineChanged || step.sessionChanged) &&
-            !NavSession.mayOverwrite(sessionStore.load()?.token, nav.session.token)) {
+            !NavSession.mayOverwrite(sessionStore.tokenOnDisk(nav.session.token), nav.session.token)) {
             Problems.trace("navigation", "Re-route result of an older line dropped: the app follows a new line")
             loadFollow()
             publish(force = true)

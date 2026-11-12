@@ -382,7 +382,8 @@ class NavigatorTest {
     @Test fun aReRouteOfAnOlderSessionNeverOverwritesTheAppsNewOne() {
         val old = session().copy(token = 100)
         assertTrue(NavSession.mayOverwrite(onDisk = 100, mine = old.token))
-        assertTrue(NavSession.mayOverwrite(onDisk = null, mine = old.token))
+        assertTrue("the service's own session without a file", NavSession.mayOverwrite(onDisk = null, mine = 0L))
+        assertFalse("the app ended the guidance meanwhile (deleted the file)", NavSession.mayOverwrite(onDisk = null, mine = old.token))
         assertFalse("the app wrote a new session meanwhile", NavSession.mayOverwrite(onDisk = 200, mine = old.token))
         // the token survives the file and a taken re-route
         val back = NavSessionStore.fromJson(JSONObject(NavSessionStore.toJson(old).toString()))!!
