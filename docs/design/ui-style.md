@@ -18,10 +18,13 @@ Colours come only from `OnPathColors` (and the Material scheme built from it in 
 | Token | For |
 | --- | --- |
 | `Green` | primary buttons (filled, white text), text buttons, selected things; the brand colour of onpath.earth |
-| `GreenLight` | light olive container: selected picker row, "easy" badge |
+| `GreenLight` | light olive container `#E1EAD5`, `Ink` words: every selection (chips, segments, picker rows, the activity chip – since 2026-11-12, was walnut), "easy" badge |
 | `Ink` | text on light surfaces; message titles |
 | `InkMuted` | secondary text: detail lines, explanations (Material `onSurfaceVariant`) |
-| `Paper` | page background (My routes, Settings) |
+| `Paper`, `CardPaper` | the website's paper `#FAFAF6` (palette D "wie die Webseite", owner 2026-11-12): sheets, menus, dialogs, what floats over the map, list cards |
+| `PaperDim` | the website's sage `#EEF0E8`: the page behind cards (My routes, Settings), boxes inside a paper surface |
+| `PaperDeep` | a deeper sage `#E4E8DD`: the plan sheet's pill row, filled fields, a lifted row |
+| `Line` | fine lines `#D2DACD` (outlineVariant) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
 | `InfoBlue` | the left edge of a **FRAGE** box (a question) – never a status or a failure |
 | `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes; the same look for the background-download chip |

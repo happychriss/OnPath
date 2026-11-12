@@ -32,8 +32,8 @@ class PlanColourTest {
     @Test fun readable() {
         assertTrue("white on the ink blue", contrast(OnPathColors.CardWhite, OnPathColors.ActionEdit) >= 7.0)
         // owner 2026-11-07 chose #335A85 (6.8:1) over the 8.5:1 that looked almost black on the phone – still well above 4.5
-        assertTrue("ink blue on paper", contrast(OnPathColors.ActionEdit, OnPathColors.Paper) >= 6.0) // 6.4:1 on paper B
-        assertTrue("pill words", contrast(PillBlueInk, PillBlueLight) >= 5.5) // 5.9:1 with #335A85 on PaperDeep
+        assertTrue("ink blue on paper", contrast(OnPathColors.ActionEdit, OnPathColors.Paper) >= 6.0) // 6.8:1 on #FAFAF6
+        assertTrue("pill words", contrast(PillBlueInk, PillBlueLight) >= 5.5) // 5.7:1 with #335A85 on PaperDeep #E4E8DD
         assertTrue("tonal plan button", contrast(OnPathColors.OnEditTonal, OnPathColors.EditTonal) >= 7.0)
         assertTrue("tags", contrast(OnPathColors.TagInk, OnPathColors.TagContainer) >= 7.0)
         assertTrue("Ohne Netz ✓ on the pill", contrast(OnPathColors.OnPlanGood, OnPathColors.PlanAccent) >= 4.5)
@@ -46,9 +46,35 @@ class PlanColourTest {
         assertTrue(edit.blue - edit.green > 0.1f && go.green - go.blue > 0.05f)
     }
 
-    /** Selected chips / segments are neutral (owner 2026-11-06: neutral = walnut), readable. */
-    @Test fun selectedChipsAreWalnut() {
-        assertEquals(OnPathColors.WalnutLight, OnPathThemeValues.colors.secondaryContainer)
-        assertTrue(contrast(OnPathThemeValues.colors.onSecondaryContainer, OnPathThemeValues.colors.secondaryContainer) >= 7.0)
+    /** Selected chips / segments are the website's light green with Ink words (owner 2026-11-12, palette D), readable. */
+    @Test fun selectedChipsAreLightGreen() {
+        val c = OnPathThemeValues.colors
+        assertEquals(OnPathColors.GreenLight, c.secondaryContainer)
+        assertEquals(OnPathColors.GreenLight, c.primaryContainer)
+        assertEquals(OnPathColors.Ink, c.onSecondaryContainer)
+        assertTrue(contrast(c.onSecondaryContainer, c.secondaryContainer) >= 7.0) // 9.6:1
+        assertTrue(contrast(c.onPrimaryContainer, c.primaryContainer) >= 7.0)
+    }
+
+    /**
+     * The website's grounds (owner 2026-11-12, palette D "wie die Webseite"): sage page, paper surfaces and cards, a deeper
+     * sage for pills and fields. On every one Ink ≥ 7:1, the muted lines and the plan blue ≥ 4.5:1; cards still lift.
+     */
+    @Test fun websiteGroundsAreReadable() {
+        assertEquals(Color(0xFFEEF0E8), OnPathColors.PaperDim)
+        assertEquals(Color(0xFFFAFAF6), OnPathColors.Paper)
+        assertEquals(Color(0xFFFAFAF6), OnPathColors.CardPaper)
+        assertEquals(Color(0xFFE4E8DD), OnPathColors.PaperDeep)
+        val c = OnPathThemeValues.colors
+        assertEquals(OnPathColors.PaperDim, c.background)
+        assertEquals(OnPathColors.PaperDim, c.surfaceVariant)
+        assertEquals(OnPathColors.PaperDeep, c.surfaceContainerHighest)
+        for ((name, ground) in listOf("paper" to OnPathColors.Paper, "sage page" to OnPathColors.PaperDim,
+                "deep sage" to OnPathColors.PaperDeep, "selection" to OnPathColors.GreenLight)) {
+            assertTrue("ink on $name", contrast(OnPathColors.Ink, ground) >= 7.0)
+            assertTrue("muted on $name", contrast(OnPathColors.InkMuted, ground) >= 4.5)
+            assertTrue("plan blue on $name", contrast(OnPathColors.ActionEdit, ground) >= 4.5)
+        }
+        assertTrue("cards lift off the page", contrast(OnPathColors.CardPaper, OnPathColors.PaperDim) >= 1.05)
     }
 }

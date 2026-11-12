@@ -26,30 +26,41 @@ object OnPathColors {
      */
     val Green = Color(0xFF245F46)
     /**
-     * Light olive container (selected picker row, "easy" badge): two shades stronger than the website's `#EDF1E3`, so
-     * it still stands out on the grey-green dialogs in sunlight.
+     * Light olive container: the selection – selected chips / segments / picker rows, the activity chip (the theme's
+     * secondary + primary container, owner 2026-11-12 palette D "wie die Webseite"; was walnut) and the "easy" badge.
+     * Two shades stronger than the website's `#EDF1E3`, so it still stands out in sunlight; [Ink] on it 9.6:1.
      */
     val GreenLight = Color(0xFFE1EAD5)
-    /** Text on light surfaces: the website's dark green-grey (11.4:1 on the background). */
+    /** Text on light surfaces: the website's dark green-grey (11.4:1 on [Paper], 10.3:1 on the sage page [PaperDim]). */
     val Ink = Color(0xFF243C31)
-    /** Secondary text: detail lines, explanations (Material `onSurfaceVariant`). */
+    /** Secondary text: detail lines, explanations (Material `onSurfaceVariant`); ≥ 6.7:1 on every ground. */
     val InkMuted = Color(0xFF4A4F4A)
     /** White: fields one types into, rings around point signs and text / icons on a coloured button – no surfaces. */
     val CardWhite = Color(0xFFFFFFFF)
+
+    // ---- Grounds: the website's palette (owner 2026-11-12, palette D "wie die Webseite" – app and onpath.earth "aus
+    // einem Guss"): a sage page, the site's paper for everything that lies on it or floats over the map ----
     /**
-     * The paper of every surface – menus, dialogs, sheets and what floats over the map (owner 2026-11-07 11:20, tone B of
-     * the paper page: a touch warmer than the website's #FAFAF6, so a menu or sheet reads as paper and not as white).
+     * The paper of every surface – menus, dialogs, sheets, what floats over the map (search pill, message boxes,
+     * Navigate's cards): the website's `#FAFAF6`.
      */
-    val Paper = Color(0xFFF5F3EB)
-    /** Cards in lists (Settings, Meine Touren): one step lighter than [Paper] (the website's #FAFAF6), so they still lift. */
+    val Paper = Color(0xFFFAFAF6)
+    /**
+     * Cards in lists (Settings, Meine Touren): the same paper as [Paper] – they lift off the sage page ([PaperDim], 1.1:1)
+     * with the warm low shadow.
+     */
     val CardPaper = Color(0xFFFAFAF6)
-    /** One step below [Paper] for groups inside a paper surface (the plan sheet's pill row): 1.1:1 against it. */
-    val PaperDeep = Color(0xFFEAE9E1)
     /**
-     * Paper one shade darker (owner 2026-11-06: "überall den Papierton"): the page behind paper cards (Settings, My
-     * routes) and boxes inside a paper surface – so the cards and the facts box still stand out without any white.
+     * A deeper sage for groups inside a paper surface: the plan sheet's pill row, filled fields, a lifted row (the theme's
+     * surfaceContainerHighest), 1.2:1 against [Paper]; plan blue on it 5.7:1.
      */
-    val PaperDim = Color(0xFFF1F0E9)
+    val PaperDeep = Color(0xFFE4E8DD)
+    /**
+     * The page: the website's soft sage `#EEF0E8` (its `--site-soft`) behind paper cards (Settings, My routes) and the
+     * boxes inside a paper surface (the facts box, preview tiles) – the cards stand out without any white. Also the
+     * theme's surfaceVariant.
+     */
+    val PaperDim = Color(0xFFEEF0E8)
     val Route = Color(0xFF1E3FAE)
     /**
      * The plan's numbered points, on the map and in the Points list (owner 2026-11-01, like Komoot): the start in the
@@ -115,8 +126,8 @@ object OnPathColors {
      */
     val CompassNorth = ActionEdit
     val CompassSouth = Color(0xFF8C827A)
-    /** Light walnut container (selected rows, chips): [Walnut] ink on it ≥ 8:1. */
-    val WalnutLight = Color(0xFFEDE6DF)
+    /** Fine lines on paper and sage (dividers, a card's edge – the theme's outlineVariant): the website's line tone. */
+    val Line = Color(0xFFD2DACD)
 
     // ---- Plan mode (owner 2026-11-06 23:00, variant C): recognised by signs, not by tinted surfaces – the PLANEN pill,
     // the sheet's blue top edge and handle, blue icons and blue buttons; no light blue surfaces, no blue glow round the
@@ -172,19 +183,22 @@ private val scheme = lightColorScheme(
     // neutral walnut (#36) – navigation green and plan blue are set where a button means one of them ([ActionButtons])
     primary = OnPathColors.Walnut,
     onPrimary = Color.White,
-    primaryContainer = OnPathColors.WalnutLight,
-    onPrimaryContainer = Color(0xFF2B231D),
+    // the selection (a selected row, a pressed map button, the setup's icon circle): the website's light green, Ink words
+    // (owner 2026-11-12, palette D "wie die Webseite"; was light walnut)
+    primaryContainer = OnPathColors.GreenLight,
+    onPrimaryContainer = OnPathColors.Ink,
     secondary = OnPathColors.Route,
     onSecondary = Color.White,
-    // selected chips / segments (FilterChip, SegmentedButton, the activity chip) are neutral walnut, not light blue
-    // (owner 2026-11-06: neutral = walnut; the light blue made every choice look like "plan")
-    secondaryContainer = OnPathColors.WalnutLight,
-    onSecondaryContainer = Color(0xFF2B231D),
+    // selected chips / segments (FilterChip, SegmentedButton, the activity chip): light green with Ink, like the website
+    // (owner 2026-11-12, palette D; before walnut – never light blue, that would make every choice look like "plan")
+    secondaryContainer = OnPathColors.GreenLight,
+    onSecondaryContainer = OnPathColors.Ink,
     // paper is the ground of every surface (owner 2026-11-06), also what floats over the map (search pill, pin card,
-    // message boxes, Navigate's cards – the shadow lifts them off the map); white only for fields one types into
+    // message boxes, Navigate's cards – the shadow lifts them off the map); white only for fields one types into.
+    // Since 2026-11-12 the website's palette (palette D): paper #FAFAF6 on a sage page #EEF0E8
     surface = OnPathColors.Paper,
     onSurface = OnPathColors.Ink,
-    surfaceVariant = Color(0xFFEFEEE7),
+    surfaceVariant = OnPathColors.PaperDim,
     onSurfaceVariant = OnPathColors.InkMuted,
     background = OnPathColors.PaperDim,
     onBackground = OnPathColors.Ink,
@@ -197,7 +211,7 @@ private val scheme = lightColorScheme(
     onErrorContainer = OnPathColors.OnErrorContainer,
     inversePrimary = Color(0xFFD9C8BA),
     outline = Color(0xFF737970),
-    outlineVariant = Color(0xFFC3C8C0),
+    outlineVariant = OnPathColors.Line,
     // Neutral (slightly green) containers instead of Material's default purple tint:
     // menus, sheets, cards and chips all take these.
     surfaceTint = OnPathColors.Walnut,
@@ -207,7 +221,7 @@ private val scheme = lightColorScheme(
     surfaceContainerLow = OnPathColors.Paper,
     surfaceContainer = OnPathColors.Paper,       // menus
     surfaceContainerHigh = OnPathColors.Paper,   // dialogs
-    surfaceContainerHighest = Color(0xFFEAE9E1), // filled fields, a lifted row – one step darker than paper
+    surfaceContainerHighest = OnPathColors.PaperDeep, // filled fields, a lifted row – the deeper sage
 )
 
 /**
