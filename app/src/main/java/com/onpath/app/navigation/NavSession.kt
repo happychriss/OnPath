@@ -82,10 +82,13 @@ data class NavSession(
 
         /**
          * The service may write its (re-routed) session over the file only when the file still holds the same
-         * session ([onDisk] = the file's token, null = no file): a re-route that finished just after the app chose a new
-         * line (plan edited during the tour) must not bring the old line back.
+         * session ([onDisk] = the file's token, see [NavSessionStore.tokenOnDisk]): a re-route that finished just after
+         * the app chose a new line (plan edited during the tour) must not bring the old line back. No file and a token
+         * the app gave ([mine] != 0): the app ended the guidance meanwhile (`clearFollow` deletes the file, its
+         * FOLLOW_CHANGED comes a moment later) – the result is dropped as well, else "Guide me" wrote the removed route
+         * back (NavSessionStoreTest). Only the service's own session without a file (token 0) writes freely.
          */
-        fun mayOverwrite(onDisk: Long?, mine: Long): Boolean = onDisk == null || onDisk == mine
+        fun mayOverwrite(onDisk: Long?, mine: Long): Boolean = onDisk == mine || (onDisk == null && mine == 0L)
 
         /** A new session for [line]; plan stops are placed along it in order. */
         fun start(kind: NavKind, name: String, activity: Activity, sac: Int, line: List<GeoPoint>,
@@ -137,6 +140,12 @@ class NavSessionStore(private val file: File) {
         Problems.warn("navigation", "Navigation session file unreadable; no session restored", e)
         null
     }
+
+    /**
+     * The file's token for [NavSession.mayOverwrite]: null = no file (the app deleted it, or there never was one); a
+     * file that is there but unreadable counts as [mine] – nobody's newer session, the writer's complete one replaces it.
+     */
+    fun tokenOnDisk(mine: Long): Long? = if (!file.isFile) null else load()?.token ?: mine
 
     companion object {
         fun toJson(s: NavSession): JSONObject = JSONObject()
