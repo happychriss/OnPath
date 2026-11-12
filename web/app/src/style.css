@@ -202,6 +202,14 @@ dialog.share #exportGpx { margin-top: 8px; }
 .pin { width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 12px/26px system-ui, sans-serif; text-align: center; cursor: pointer;
   /* no white ring (app MapController.marker, owner 2026-11-01) – the colour sets the point apart from the blue route */
   box-shadow: 0 1px 4px rgba(0,0,0,.35); background: var(--route); }
+/* a stop pinned on a POI (app MapController.poiMarker, owner 2026-11-10 variant A): the POI's symbol stays, bigger, in
+   a route-blue ring; the number (or flag / ↺) on a small badge top right */
+.pin.poipin { position: relative; width: 42px; height: 42px; box-sizing: border-box; border: 4px solid var(--route); background: #fff;
+  box-shadow: 0 1px 4px rgba(0,0,0,.35); line-height: normal; }
+.pin.poipin img { position: absolute; left: 50%; top: 50%; width: 39px; height: 39px; transform: translate(-50%, -50%); pointer-events: none; }
+.pin.poipin .badge { position: absolute; left: 23px; top: -11px; width: 18px; height: 18px; border-radius: 50%; border: 2px solid #fff;
+  color: #fff; font: 700 12px/18px system-ui, sans-serif; text-align: center; display: flex; align-items: center; justify-content: center; }
+.pin.poipin .badge svg { width: 11px; height: 11px; }
 
 /* ---- hold menus (ui/MapOverlays) ---- */
 .holdpopup .maplibregl-popup-content { padding: 0; border-radius: var(--r-card); background: var(--bg); color: var(--fg); box-shadow: 0 6px 20px var(--shadow); overflow: hidden; }

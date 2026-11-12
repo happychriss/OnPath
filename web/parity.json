@@ -87,12 +87,22 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/MapController.kt",
-      "what": "addDirectionArrows / arrowBitmap; app layer order",
+      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge)",
       "web": [
         "web/app/src/main.ts",
-        "web/app/src/gpximport.ts"
+        "web/app/src/gpximport.ts",
+        "web/app/src/poipin.ts"
       ],
-      "blob": "e0dfdf210f56502f23543463c6066ef0f00ce72c"
+      "blob": "b15948c0c8f2835fa30ce6ad80e07f223acbb7b6"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/poi/PinnedPoiKinds.kt",
+      "what": "which POI kind a pinned point shows: SAME_SPOT_M, isPoiKind, lookup, byIndex",
+      "web": [
+        "web/app/src/poipin.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "9674709c5f64d0e0385b4ccc665d5effde3ba38c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/SettingsScreen.kt",
@@ -145,16 +155,17 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; requestSave; suggestName",
+      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; requestSave; suggestName; pinnedPoiKinds / refreshPinnedKinds",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
         "web/app/src/gpximport.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebImport.kt",
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
-        "web/app/src/plans.ts"
+        "web/app/src/plans.ts",
+        "web/app/src/poipin.ts"
       ],
-      "blob": "fc44ecc2e62ac824b98faf4761f6b80ff77ec77b"
+      "blob": "15ae5774e446842085081de1ddbd8c80a4f89e49"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
