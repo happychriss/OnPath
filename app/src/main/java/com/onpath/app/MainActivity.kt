@@ -40,6 +40,8 @@ import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.ui.AppMode
 import com.onpath.app.ui.ScreenMessageHost
 import com.onpath.app.ui.OnPathTheme
+import com.onpath.app.ui.PageFade
+import com.onpath.app.ui.PageFadeOf
 import com.onpath.app.ui.SettingsScreen
 import com.onpath.app.ui.RouteDialogs
 import com.onpath.app.ui.RoutesScreen
@@ -172,8 +174,9 @@ class MainActivity : ComponentActivity() {
                             },
                             pairCamera = ::startPairCamera,
                         )
-                        if (vm.routesOpen) {
-                            BackHandler { vm.routesOpen = false }
+                        // full pages fade in and out (PageFade, owner 2026-11-12); Back only while the page is open
+                        if (vm.routesOpen) BackHandler { vm.routesOpen = false }
+                        PageFade(vm.routesOpen) {
                             val recNow = vm.recState.collectAsState().value
                             RoutesScreen(
                                 tours = vm.tours,
@@ -232,8 +235,8 @@ class MainActivity : ComponentActivity() {
                             com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.applyEditRides(t, it) }, onDelete = null,
                                 onDismiss = { vm.editRides = null }, title = str(Res.string.msg_rides_title, t.name), initial = t.rides?.choice)
                         }
-                        vm.recycleBin?.let { bin ->
-                            BackHandler { vm.recycleBin = null }
+                        if (vm.recycleBin != null) BackHandler { vm.recycleBin = null }
+                        PageFadeOf(vm.recycleBin) { bin ->
                             com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recycleBin = null },
                                 onRestore = { vm.restoreFromBin(it) }, onDeleteForever = { vm.deleteForever(it) })
                         }
@@ -245,12 +248,13 @@ class MainActivity : ComponentActivity() {
                                 onNotNow = { vm.restoreOfferAnswered() })
                         }
                     }
-                    vm.route?.takeIf { vm.routeDetailsOpen }?.let { r ->
-                        BackHandler { vm.routeDetailsOpen = false }
+                    val detailsRoute = vm.route?.takeIf { vm.routeDetailsOpen }
+                    if (detailsRoute != null) BackHandler { vm.routeDetailsOpen = false }
+                    PageFadeOf(detailsRoute) { r ->
                         com.onpath.app.ui.RouteDetailsScreen(r, vm.activity, onBack = { vm.routeDetailsOpen = false })
                     }
-                    if (vm.showSettings) {
-                        BackHandler { vm.settingsBack() }
+                    if (vm.showSettings) BackHandler { vm.settingsBack() }
+                    PageFade(vm.showSettings) {
                         SettingsScreen(
                             page = vm.settingsPage,
                             onPage = { vm.settingsPage = it },
@@ -363,8 +367,8 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     // over Settings too: Diagnostics → Developer tools opens the technical view
-                    vm.timeDetails?.let { td ->
-                        BackHandler { vm.timeDetails = null }
+                    if (vm.timeDetails != null) BackHandler { vm.timeDetails = null }
+                    PageFadeOf(vm.timeDetails) { td ->
                         com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
                     }
                     // Back in Plan during a tour (owner 2026-11-05): the same as "‹ Zur Tour" – back to Navigate. Composed
@@ -386,8 +390,8 @@ class MainActivity : ComponentActivity() {
                 }
 
                 RouteDialogs(vm)
-                if (vm.setupOpen) {
-                    BackHandler { vm.closeSetup() }
+                if (vm.setupOpen) BackHandler { vm.closeSetup() }
+                PageFade(vm.setupOpen) {
                     com.onpath.app.ui.setup.SetupGuideScreen(vm.setupGuide, vm.setupWelcome, vm.phone, vm.phoneTaken, setupCallbacks(), vm.voiceTest)
                 }
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
