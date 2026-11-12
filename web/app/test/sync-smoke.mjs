@@ -288,13 +288,57 @@ await A.click('#howToggle');
 check(await A.isVisible('#howBox') && /End-to-end encrypted/.test(await A.textContent('#howBox')) && await A.getAttribute('#howToggle', 'aria-expanded') === 'true',
   '"How does it work?" opens the explanation and the privacy line in place');
 await A.click('#closePhone');
-await box('GET', (await phone.keys()).mailbox, (await phone.keys()).token, { since: 0 }, Date.now() - 3 * 86_400_000);
+// field 2026-11-12 (owner): the phone had lost its pairing (it showed "Pair with browser"), the browser still said
+// "Paired · phone last 4 days ago" – and "Sync now" showed nothing. Owner's rule ("like WhatsApp Web"): a click on
+// Sync now answers in a short line; silent for 3 days and more the phone turns yellow, and its window says it in one
+// sentence with one button "Pair again" (unpair + a new code in one step; the plans stay in the browser).
+const byHand = async (P) => {
+  await phoneWin(P);
+  await P.waitForSelector('dialog.phone[open] #syncNow:not([hidden])');
+  await P.evaluate(() => { document.getElementById('phoneStatus').textContent = ''; });
+  await P.click('#syncNow');
+  await P.waitForFunction(() => !!document.getElementById('phoneStatus')?.textContent, null, { timeout: 15_000 }).catch(() => {});
+  const text = await P.textContent('#phoneStatus');
+  await P.click('#closePhone');
+  return text;
+};
+const keysP = await phone.keys();
+await box('GET', keysP.mailbox, keysP.token, { since: 0 }, Date.now() - 2 * 86_400_000);
 await syncNow(A);
 e = await entry(A);
-check(e.kind === 'stale' && e.sub === 'last 3 days ago' && e.phone === 'Pixel 8', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
+check(e.kind === 'fresh' && e.sub === 'synced 2 days ago', `phone away 2 days: still green (${JSON.stringify(e)})`);
+let said = await byHand(A);
+check(said === 'Synced – nothing new from the phone.', `Sync now with the phone away a while: a short "nothing new" line (${JSON.stringify(said)})`);
+await box('GET', keysP.mailbox, keysP.token, { since: 0 }, Date.now() - 4 * 86_400_000);
+await syncNow(A);
+e = await entry(A);
+check(e.kind === 'stale' && e.sub === 'not connected for 4 days' && e.phone === 'Pixel 8', `phone silent 4 days: yellow, "not connected for 4 days" (${JSON.stringify(e)})`);
+const before4 = JSON.stringify(await titles(A));
+await phoneWin(A);
+await A.waitForSelector('dialog.phone[open] #pairAgain:not([hidden])', { timeout: 10_000 }).catch(() => {});
+const away = await A.evaluate(() => ({ head: document.getElementById('phoneHead').textContent, why: document.getElementById('phoneWhy').textContent,
+  buttons: [...document.querySelectorAll('#phoneRow button')].filter((b) => !b.hidden).map((b) => b.textContent),
+  other: !document.getElementById('pairOther').hidden, removes: document.querySelectorAll('dialog.phone .removefolder').length,
+  kind: document.getElementById('phoneState').dataset.kind }));
+check(away.kind === 'stale' && away.head === 'Your phone has not connected for 4 days. Not syncing any more? Then just pair again.' && !away.why
+  && JSON.stringify(away.buttons) === '["Pair again"]' && !away.other && away.removes === 0,
+  `the Phone window, phone silent: one sentence, one button "Pair again" (${JSON.stringify(away)})`);
+if (process.env.SHOT) await A.screenshot({ path: process.env.SHOT });
+await A.click('dialog.phone #pairAgain');
+await A.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 }).catch(() => {});
+const again = await A.evaluate(() => ({ link: document.getElementById('pairLink')?.value ?? '', paired: window.__sync.status.paired }));
+check(/#pair=[A-Za-z0-9_-]{44}$/.test(again.link) && !again.paired, `"Pair again": unpaired and a new code shown in one step (${JSON.stringify(again)})`);
+await phone.pairDirect(again.link.split('#pair=')[1]);
+await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
+await A.click('#closePair').catch(() => {});
+st = await status(A);
+check(st.paired && st.folder.key === phone.device && JSON.stringify(await titles(A)) === before4,
+  `paired again: the phone's folder is back with its plans (${JSON.stringify([st.folder, await titles(A), before4])})`);
 await phone.round();
 await syncNow(A);
 check((await entry(A)).kind === 'fresh', 'the phone syncs again → green');
+said = await byHand(A);
+check(said === 'Synced – everything is up to date.', `Sync now with the phone near: a short "synced" line (${JSON.stringify(said)})`);
 
 // ---- 4. an unsaved change (⋮ Rename) stays over a reload and is NOT sent; Save sends it at once (no field) ----
 await menu(A, '#menuPlans');
@@ -482,33 +526,14 @@ check(st.closed.length === 1 && /^Pixel 8 · paired /.test(st.closed[0].name) &&
 // unpair in the browser: no question, the folder closes, the quiet "Remove routes of …" lines
 await phoneWin(L);
 await L.click('dialog.phone #unpair');
-await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.querySelectorAll('dialog.phone .removefolder').length === 2, null, { timeout: 30_000 }).catch(() => {});
+await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.getElementById('unpair')?.hidden, null, { timeout: 30_000 }).catch(() => {});
 check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).folder.key === 'none', 'Unpair: no question, the folder closes (Without phone)');
 await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Unpaired. The plans of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
 const quiet = await L.textContent('#phoneStatus');
 check(quiet.startsWith('Unpaired. The plans of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
-const removes = await L.evaluate(() => [...document.querySelectorAll('dialog.phone .removefolder')].map((b) => b.textContent));
-check(removes.length === 2 && removes.every((r) => r.startsWith('Remove plans of Pixel 8 · paired')), 'the Phone window offers removing each closed folder ' + JSON.stringify(removes));
-// the first phone's folder holds a route never sent to it ("Laptop unsaved"): Remove asks first (owner 2026-11-02),
-// Cancel keeps the folder
-await L.click(`dialog.phone .removefolder[data-folder="${phone.device}"]`);
-await L.waitForSelector('dialog.phone .phonemore .confirm', { timeout: 10_000 }).catch(() => {});
-const askR = await L.evaluate(() => { const c = document.querySelector('dialog.phone .confirm');
-  return c ? { text: c.querySelector('p').textContent, buttons: [...c.querySelectorAll('button')].map((b) => b.textContent) } : null; });
-check(askR?.text?.startsWith('Remove the plans of Pixel 8 · paired') && askR.text.includes('1 plan was never sent to that phone – it would be lost')
-  && JSON.stringify(askR.buttons) === '["Cancel","Remove"]', 'unsent routes in the folder: Remove asks, says how many would be lost, Cancel · Remove ' + JSON.stringify(askR));
-await L.click('dialog.phone .confirm .keep');
-await L.waitForTimeout(300);
-check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).closed.length === 2 && (await titles(L, phone.device)).includes('Laptop unsaved')
-  && await L.isVisible(`dialog.phone .removefolder[data-folder="${phone.device}"]`), 'Cancel: the question goes, the folder and its unsent route stay');
-// the friend's folder has nothing unsent: removed at once, no question (as before)
-await L.click(`dialog.phone .removefolder[data-folder="${friend.device}"]`);
-await L.waitForTimeout(300);
-check(await L.locator('dialog.phone .confirm').count() === 0, 'nothing unsent in the folder: Remove asks nothing');
-await L.waitForFunction(() => window.__sync.status.closed.length === 1, null, { timeout: 10_000 }).catch(() => {});
-check((await status(L)).closed.length === 1 && (await titles(L, friend.device)).length === 0, 'removed: only the local copy of the friend\'s folder');
-await friend.round();
-check((await friend.titles()).includes('Freundesweg'), 'nothing on the friend\'s phone or mailbox was touched');
+// old phones' folders stay quietly in this browser (owner 2026-11-12, "like WhatsApp Web"): no "Remove plans of …" lines
+check(await L.locator('dialog.phone .removefolder').count() === 0 && (await status(L)).closed.length === 2
+  && (await titles(L, phone.device)).includes('Laptop unsaved'), 'no remove lines for old phones; their folders and plans stay');
 await L.click('#closePhone');
 // the same phone again (it is still paired, so it redirects): its folder is back with the unsaved change
 const pL2 = await showCode(L);
@@ -602,8 +627,7 @@ check(!hs.paired && hs.folder.key === 'none' && hs.message === 'The connection w
   `the phone's hello deleted: the folder closes, "The connection was ended on the phone.", no phone dot (${hs.message})`);
 await ctxH.close();
 
-// ---- 14d. after Unpair (owner 2026-11-02): My routes says the old phone's routes are still here (way: the Phone window);
-// Remove asks because a route was never sent, the answer Remove takes the folder from this browser ----
+// ---- 14d. after Unpair: the old phone's folder stays quietly in this browser (owner 2026-11-12, no remove lines) ----
 const ctxR = await browser.newContext({ viewport: { width: 1280, height: 800 } });
 const R = await open(ctxR);
 const restPhone = await new Phone('Rest phone').init();
@@ -619,25 +643,57 @@ await R.click('dialog.phone #unpair');
 await R.waitForFunction(() => window.__sync.status.folder.key === 'none' && window.__sync.status.closed.length === 1, null, { timeout: 30_000 }).catch(() => {});
 await R.click('#closePhone');
 await menu(R, '#menuPlans');
-await R.waitForSelector('#planList li.oldphone', { timeout: 10_000 }).catch(() => {});
-const oldLine = await R.evaluate(() => document.querySelector('#planList li.oldphone')?.textContent.replace(/\s+/g, ' ').trim() ?? '');
-check(oldLine.startsWith('The plans of Rest phone are still in this browser') && !oldLine.includes('No saved plans yet'),
-  `My routes after Unpair: the old phone's routes are still here, not only "No saved routes yet" (${oldLine})`);
-await R.click('#planList li.oldphone .openphone');
-await R.waitForSelector(`dialog.phone[open] .removefolder[data-folder="${restPhone.device}"]`, { timeout: 10_000 });
-check(!(await R.locator('dialog.plans[open]').count()), 'its button opens the Phone window (it lists the old phone\'s folder)');
-await R.click(`dialog.phone .removefolder[data-folder="${restPhone.device}"]`);
-await R.waitForSelector('dialog.phone .confirm', { timeout: 10_000 }).catch(() => {});
-check(((await R.textContent('dialog.phone .confirm p').catch(() => '')) ?? '').includes('1 plan was never sent'), 'Remove asks (one plan never sent)');
-await R.click('dialog.phone .confirm .danger');
-await R.waitForFunction(() => window.__sync.status.closed.length === 0, null, { timeout: 10_000 }).catch(() => {});
-check((await status(R)).closed.length === 0 && (await titles(R, restPhone.device)).length === 0 && !(await R.locator('dialog.phone .removefolder').count()),
-  'the answer Remove: the folder and its routes leave this browser');
-await R.click('#closePhone');
-await menu(R, '#menuPlans');
 await R.waitForSelector('#planList li', { timeout: 10_000 });
-check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved plans yet'), 'no closed folder left: My routes says only "No saved routes yet"');
+check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved plans yet'),
+  'after Unpair My tours is plain: no line about the old phone (owner 2026-11-12: old folders stay quietly)');
+check((await status(R)).closed.length === 1 && (await titles(R, restPhone.device)).includes('Nie gesendet'), 'the old phone\'s folder and its plans stay in this browser');
+await R.click('#closePlans');
 await ctxR.close();
+
+// ---- 14e. "Pair again" with a reinstalled phone (owner field 2026-11-12, robust first): the phone comes back with a NEW
+// device id (no backup of device.txt) – the tours of the folder that "Pair again" closed come along into the new
+// pairing as waiting (like Without phone's), Save sends them; an older closed folder stays where it is ----
+const ctxW = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const W = await open(ctxW);
+const older = await new Phone('Old S10').init();
+const pO = await showCode(W);
+await older.pairDirect(pO.code);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, older.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+await W.evaluate((c) => window.__sync.save(c, 'S10-Weg'), CODE);
+const firstPixel = await new Phone('Pixel 8').init();
+await firstPixel.save('Handytour');
+const pB = await showCode(W, true);
+await firstPixel.pairDirect(pB.code);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, firstPixel.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+await until(W, async () => (await window.__sync.list()).some((p) => p.title === 'Handytour'));
+await W.evaluate((c) => window.__sync.save(c, 'Browsertour'), CODE);
+await W.evaluate(() => window.__sync.sendAll());
+await firstPixel.round();
+check(JSON.stringify(await firstPixel.titles()) === '["Browsertour","Handytour"]', 'set-up: two tours on the first Pixel ' + JSON.stringify(await firstPixel.titles()));
+const kB = await firstPixel.keys();
+await box('GET', kB.mailbox, kB.token, { since: 0 }, Date.now() - 4 * 86_400_000);
+await W.evaluate(() => window.__sync.syncNow());
+await phoneWin(W);
+await W.waitForSelector('dialog.phone[open] #pairAgain:not([hidden])', { timeout: 10_000 }).catch(() => {});
+await W.click('dialog.phone #pairAgain');
+await W.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 }).catch(() => {});
+const reinstalled = await new Phone('Pixel 8').init(); // the same phone after a reinstall: a new device id, no tours
+check(reinstalled.device !== firstPixel.device, 'the reinstalled phone has a new device id');
+await reinstalled.pairDirect((await W.inputValue('#pairLink')).split('#pair=')[1]);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, reinstalled.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+const carried = await W.evaluate(async () => (await window.__sync.list()).map((p) => [p.title, p.dirty]).sort());
+check((await status(W)).folder.key === reinstalled.device && JSON.stringify(carried) === '[["Browsertour",true],["Handytour",true]]',
+  `"Pair again" + a new device id: the closed folder's tours came along, waiting for Save (${JSON.stringify(carried)})`);
+const leftW = await W.evaluate(() => window.__sync.status.closed.map((f) => f.name));
+check((await titles(W, firstPixel.device)).length === 0 && (await titles(W, older.device)).includes('S10-Weg') && !(await titles(W)).includes('S10-Weg'),
+  `only the folder "Pair again" closed came along; the older S10 folder stays as it was (${JSON.stringify(leftW)})`);
+await W.evaluate(() => window.__sync.sendAll());
+await reinstalled.round();
+check(JSON.stringify(await reinstalled.titles()) === '["Browsertour","Handytour"]', 'Save sends them to the reinstalled phone ' + JSON.stringify(await reinstalled.titles()));
+await ctxW.close();
 
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';

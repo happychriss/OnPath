@@ -41,7 +41,7 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   const fake = (st, pending = 0) => page.evaluate(([st, pending]) => { const s = window.__sync, now = Date.now();
     s.status = st === 'none' ? { ...s.status, paired: false, devices: [], phone: null, phoneSeen: null, lastSync: null, message: '', pending: 0, closed: [] }
       : { ...s.status, paired: true, devices: [{ name: 'Pixel 8', updatedAt: now }], phone: 'Pixel 8', lastSync: now, message: '', pending,
-        closed: [{ key: 'x', name: 'Pixel 6a' }], phoneSeen: st === 'fresh' ? now - 2 * 60_000 : now - 3 * 86_400_000 };
+        closed: [{ key: 'x', name: 'Pixel 6a' }], phoneSeen: st === 'fresh' ? now - 2 * 60_000 : now - 4 * 86_400_000 };
     s.changed(); }, [st, pending]);
   const clip = { x: 0, y: 0, width: vp.width, height: 56 };
   const header = async (file) => { await page.waitForTimeout(200); await page.screenshot({ path: path.join(out, `${name}-header-${file}.png`), clip }); };

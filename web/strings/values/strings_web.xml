@@ -197,7 +197,6 @@
     <string name="web_phone_title">Phone</string>
     <string name="web_phone_why">Your plans appear on the phone and here.</string>
     <string name="web_phone_fresh">Paired · synced %1$s</string>
-    <string name="web_phone_stale">Paired · phone last %1$s</string>
     <string name="web_phone_stale_why">Open OnPath on the phone, then the plans sync. Changes from here wait until then.</string>
     <string name="web_phone_browser_synced">Paired · this browser synced %1$s</string>
     <string name="web_ago_now">just now</string>
@@ -209,14 +208,8 @@
     <string name="web_folder_none">Without phone</string>
     <string name="web_folder_phone">Phone</string>
     <string name="web_folder_paired_on">%1$s · paired %2$s</string>
-    <string name="web_remove_folder">Remove plans of %1$s from this browser</string>
     <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
-    <string name="web_remove_folder_q_one">Remove the plans of %1$s from this browser? 1 plan was never sent to that phone – it would be lost.</string>
-    <string name="web_remove_folder_q">Remove the plans of %1$s from this browser? %2$d plans were never sent to that phone – they would be lost.</string>
-    <string name="web_remove_folder_q_unknown">Remove the plans of %1$s from this browser? Plans never sent to that phone would be lost.</string>
     <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
-    <string name="web_plans_old_phone">The plans of %1$s are still in this browser – the Phone window lists them.</string>
-    <string name="web_plans_old_phone_open">Open Phone window</string>
     <string name="web_copy_suffix">(copy)</string>
     <string name="web_save_also_phone">Save – to the phone too (%1$s)</string>
     <string name="web_save_title_local">Save the plan in this browser</string>
@@ -229,7 +222,17 @@
     <string name="web_saved_title_here">Everything is saved in this browser</string>
     <string name="web_saved_title_phone">Everything is on %1$s</string>
     <string name="web_phone_synced_ago">synced %1$s</string>
-    <string name="web_phone_last_ago">last %1$s</string>
+    <string name="web_sync_now_done">Synced – everything is up to date.</string>
+    <string name="web_sync_now_nothing">Synced – nothing new from the phone.</string>
+    <string name="web_pair_again">Pair again</string>
+    <plurals name="web_phone_away">
+        <item quantity="one">not connected for %1$d day</item>
+        <item quantity="other">not connected for %1$d days</item>
+    </plurals>
+    <plurals name="web_phone_away_text">
+        <item quantity="one">Your phone has not connected for %1$d day. Not syncing any more? Then just pair again.</item>
+        <item quantity="other">Your phone has not connected for %1$d days. Not syncing any more? Then just pair again.</item>
+    </plurals>
     <string name="web_where_browser">In this browser</string>
     <string name="web_where_phone">On the phone</string>
     <string name="web_kind_gpx">GPX</string>

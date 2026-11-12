@@ -4,7 +4,7 @@
 import qrcode from 'qrcode-generator';
 import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from './sync';
 import { icon } from './icons';
-import { t, locale } from './i18n';
+import { t, tp, locale } from './i18n';
 import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
@@ -125,13 +125,16 @@ export function ago(ms: number, now = Date.now()): string {
 }
 
 /**
- * Green while the phone synced within this time, amber after it (owner 2026-10-30). 24 h: the app syncs when it starts,
- * when it comes back and every minute while open – but never in the background (PlanSync.kt) – so a phone in use
- * syncs many times a day, and a day without any access means OnPath was not opened on it today. Shorter (the app's own
- * 6 h "not synced" warning) would turn amber every night in normal use; longer would hide that a route planned here
- * yesterday is not on the phone yet.
+ * Green while the phone synced within this time, yellow after it (owner 2026-11-12, "like WhatsApp Web – yellow = just
+ * pair again, done"). The app syncs only while it is open (start, coming back, every minute in My tours – never in the
+ * background, PlanSync.kt), so a day or two without OnPath is normal; 3 days of silence on a phone that is used means
+ * the pairing is likely gone there (field 2026-11-12: a reinstall keeps no pairing, web-sync.md §11.2) – the window
+ * then says so in one sentence with one button, "Pair again".
  */
-export const PHONE_FRESH_MS = 24 * 3_600_000;
+export const PHONE_FRESH_MS = 3 * 86_400_000;
+/** "Nothing new from the phone" after a click on Sync now: the phone not seen for this long. */
+const NOTHING_NEW_MS = 24 * 3_600_000;
+const days = (seen: number, now: number) => Math.max(1, Math.floor((now - seen) / 86_400_000));
 
 export interface PhoneState { kind: 'none' | 'fresh' | 'stale'; head: string; why: string }
 /**
@@ -146,9 +149,19 @@ export function phoneState(s: SyncStatus, now = Date.now()): PhoneState {
   if (s.phoneSeen != null) {
     return now - s.phoneSeen <= PHONE_FRESH_MS
       ? { kind: 'fresh', head: t('web_phone_fresh', ago(s.phoneSeen, now)), why: t('web_sync_paired_with', who) }
-      : { kind: 'stale', head: t('web_phone_stale', ago(s.phoneSeen, now)), why: t('web_phone_stale_why') };
+      : { kind: 'stale', head: tp('web_phone_away_text', days(s.phoneSeen, now), days(s.phoneSeen, now)), why: '' };
   }
   return { kind: 'fresh', head: s.lastSync ? t('web_phone_browser_synced', ago(s.lastSync, now)) : t('web_sync_paired'), why: t('web_sync_paired_with', who) };
+}
+
+/**
+ * The short line after a click on "Sync now" (field 2026-11-12: it showed nothing): "Synced – everything is up to
+ * date", or "nothing new from the phone" when the phone has not been there for a day. Empty when the round itself said
+ * something (offline, failed, gone: [SyncStatus.message]). A phone silent for long says it in the window's head (yellow).
+ */
+export function syncNowNote(s: SyncStatus, now = Date.now()): string {
+  if (!s.paired || s.message) return '';
+  return s.phoneSeen != null && now - s.phoneSeen > NOTHING_NEW_MS ? t('web_sync_now_nothing') : t('web_sync_now_done');
 }
 
 /**
@@ -160,7 +173,7 @@ export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['
   if (!s.paired) return { kind, name: t('web_pair_phone'), sub: '' };
   const name = s.phone ?? (s.devices.map((d) => d.name).join(', ') || t('web_folder_phone'));
   const seen = s.phoneSeen ?? s.lastSync;
-  const sub = seen == null ? '' : kind === 'stale' ? t('web_phone_last_ago', ago(seen, now)) : t('web_phone_synced_ago', ago(seen, now));
+  const sub = seen == null ? '' : kind === 'stale' ? tp('web_phone_away', days(seen, now), days(seen, now)) : t('web_phone_synced_ago', ago(seen, now));
   return { kind, name, sub };
 }
 
@@ -403,7 +416,6 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     search.closest<HTMLElement>('.plansearch')!.hidden = !all.length && !recentAll.length;
     const top = ul.scrollTop;
     ul.innerHTML = plans.length || recent.length || liveItem ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
-    if (!all.length && !recentAll.length && !liveItem) await oldPhoneLine(ul);
     if (recent.length || liveItem) {
       ul.append(sectionHead(t('routes_section_recent')));
       if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired, false));
@@ -433,18 +445,6 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     firstId = first;
     if (justSaved) ul.querySelector<HTMLElement>(`li[data-id="${CSS.escape(justSaved)}"]`)?.scrollIntoView({ block: 'nearest' });
   };
-  /**
-   * The open folder is empty but closed folders still hold routes (after Unpair / pairing another phone, owner
-   * 2026-11-02): a calm line instead of only "No saved routes yet" – they are still here, the Phone window lists them.
-   */
-  const oldPhoneLine = async (ul: HTMLElement) => {
-    const names: string[] = [];
-    for (const f of sync.status.closed) if (f.key !== sync.open && (await sync.count(f.key)) > 0) names.push(f.name);
-    if (!names.length) return;
-    ul.innerHTML = `<li class="muted oldphone"><span>${esc(t('web_plans_old_phone', names.join(', ')))}</span>
-      <button class="textbtn openphone">${esc(t('web_plans_old_phone_open'))}</button></li>`;
-    ul.querySelector<HTMLButtonElement>('.openphone')!.onclick = () => { d.close(); phoneDialog(sync, location.href); };
-  };
   const off = sync.onChange(() => { if (d.open && !d.querySelector('.rowmenu:not([hidden])')) render(); });
   d.addEventListener('close', () => off());
   $('closePlans').onclick = () => d.close();
@@ -452,36 +452,11 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
 }
 
 /**
- * The quiet lines "Remove routes of ‹phone› from this browser" for the closed folders (A-017 rule 16). No question –
- * unless the folder holds routes never sent to that phone (owner 2026-11-02): they would be lost, so a FRAGE in place
- * says how many, with Cancel and a red Remove.
- */
-function removeLines(box: HTMLElement, sync: PlanSync) {
-  if (box.querySelector('.confirm')) return; // a remove question is open: keep its line as it is
-  box.querySelectorAll('.removefolder').forEach((b) => b.remove());
-  for (const f of sync.status.closed) {
-    const b = document.createElement('button');
-    b.className = 'textbtn quiet removefolder';
-    b.dataset.folder = f.key;
-    b.textContent = t('web_remove_folder', f.name);
-    b.onclick = async () => {
-      let n = 0;
-      try { n = await sync.unsent(f.key); }
-      catch (e) { problem('sync', 'unsent routes of a closed folder not counted – asking anyway', e); n = -1; }
-      if (n === 0) { await sync.removeFolder(f.key); return; }
-      const text = n === 1 ? t('web_remove_folder_q_one', f.name) : n > 1 ? t('web_remove_folder_q', f.name, n) : t('web_remove_folder_q_unknown', f.name);
-      askInPlace(b, text, t('common_remove'), () => box.querySelector<HTMLElement>(`.removefolder[data-folder="${CSS.escape(f.key)}"]`),
-        () => { sync.removeFolder(f.key); });
-    };
-    box.append(b);
-  }
-}
-
-/**
  * The Phone window – small (web-sync.md §14.6): the state with its dot and one sentence ([phoneState]); not paired
  * "Pair phone" (→ the pairing dialog: QR code, the steps, the check number), paired "Sync now" and "Unpair" (no
  * question – the routes stay here, A-017); "How does it work?" opens the explanation and the privacy line in place;
- * at the bottom, small: "Pair another phone" and the closed folders' "Remove routes of …"; Close. Follows the sync
+ * at the bottom, small: "Pair another phone"; Close. Silent for [PHONE_FRESH_MS] (yellow): one sentence and one button
+ * "Pair again" (unpair + the pairing dialog in one step). Old phones' folders stay quietly (owner 2026-11-12, no lines). Follows the sync
  * live; the "… ago" text moves on every 30 s.
  */
 export function phoneDialog(sync: PlanSync, page: string) {
@@ -491,7 +466,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
       <div><b id="phoneHead"></b><p id="phoneWhy" class="muted small"></p></div></div>
     <div id="phoneFill" class="phonefill" hidden><span class="filltext small"></span><span class="fillbar" aria-hidden="true"><i></i></span></div>
     <div id="phoneStatus" class="status" role="status"></div>
-    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button></div>
+    <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="pairAgain" class="primary" hidden>${esc(t('web_pair_again'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button></div>
     <button id="howToggle" class="textbtn quiet howtoggle" aria-expanded="false" aria-controls="howBox">${esc(t('web_phone_how_link'))}</button>
     <div id="howBox" class="howbox" hidden>
       <ul class="how"><li>${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
@@ -503,12 +478,16 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <div class="unpairline"><button id="unpair" class="textbtn danger" hidden>${esc(t('web_unpair'))}</button></div>
     <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
+  // the answer to a click on "Sync now" (field 2026-11-12: it showed nothing): kept until the next click or a sync message
+  let note = '';
   const render = () => {
     const s = sync.status, st = phoneState(s);
     $('phoneState').dataset.kind = st.kind;
     $('phoneHead').textContent = st.head;
     $('phoneWhy').textContent = st.why;
-    $('phoneStatus').textContent = s.message;
+    $('phoneWhy').hidden = !st.why;
+    const away = s.paired && st.kind === 'stale';
+    $('phoneStatus').textContent = s.message || (s.paired ? note : '');
     $('phoneStatus').classList.toggle('error', s.kind === 'error' && !!s.message);
     $('phoneStatus').classList.toggle('warning', s.kind === 'warning' && !!s.message);
     $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
@@ -521,12 +500,12 @@ export function phoneDialog(sync: PlanSync, page: string) {
       fill.dataset.kind = s.tours >= s.maxTours ? 'full' : s.tours >= s.warnTours ? 'warn' : 'ok';
       fill.title = s.use ? t('web_phone_fill_use', s.use.items, s.use.maxItems) : '';
     }
-    $('syncNow').hidden = !s.paired;
+    $('syncNow').hidden = !s.paired || away;
+    $('pairAgain').hidden = !away;
     $('unpair').hidden = !s.paired;
     $('pairPhone').hidden = s.paired;
-    $('pairOther').hidden = !s.paired;
-    removeLines($('phoneWinMore'), sync);
-    $('phoneWinMore').hidden = !s.paired && !s.closed.length;
+    $('pairOther').hidden = !s.paired || away;
+    $('phoneWinMore').hidden = !s.paired || away;
   };
   const off = sync.onChange(() => { if (d.open) render(); });
   const tick = window.setInterval(render, 30_000);
@@ -538,7 +517,17 @@ export function phoneDialog(sync: PlanSync, page: string) {
   };
   $('pairPhone').onclick = () => pairDialog(sync, page); // the pairing dialog takes this one's place
   $('pairOther').onclick = () => pairDialog(sync, page); // a new code; this phone's folder closes once the other phone answers
-  $('syncNow').onclick = () => sync.syncNow();
+  // the phone silent for long (yellow): unpair and a new code in one step – the plans stay in this browser, and the same
+  // phone paired again brings its folder back (owner 2026-11-12)
+  $('pairAgain').onclick = async () => { await sync.pairAgain(); pairDialog(sync, page); };
+  $('syncNow').onclick = async () => {
+    const b = $<HTMLButtonElement>('syncNow');
+    if (b.disabled) return;
+    b.disabled = true; note = ''; render();
+    try { await sync.syncNow(); } finally { b.disabled = false; }
+    note = syncNowNote(sync.status);
+    if (d.open) render();
+  };
   // A-017 rule 3 / point 8: Unpair without a question – the folder closes, its routes stay in this browser
   $('unpair').onclick = async () => {
     await sync.unpair();
