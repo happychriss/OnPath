@@ -562,6 +562,51 @@ class CorePlanSyncTest {
         assertEquals(want, browser.plans().map { it.title }.toSet())
     }
 
+    // ---- field bug 2026-11-12 (donald, owner's Pixel): a re-pairing brought 52 routes the phone already had back as NEW ----
+    // The phone was reinstalled: its tours came back from Android's backup, its sync files (links, ledger) did not. Its
+    // first pass gave every tour a new item id, while the browser's folder still held the same tours under the old ids
+    // and sent them after the pairing – the phone added each of them as a new route (same name, other uuid).
+
+    @Test fun aReinstalledPhoneNeverGetsItsOwnRoutesBackAsNew() {
+        store.savePlanned("Waalweg", listOf(a, b), names = mapOf(1 to "Leiter Alm"))
+        store.savePlanned("Bad Honnef → Bonn", listOf(a, c))
+        store.saveImported("Ritten.gpx", listOf(listOf(TrackPoint(a.lat, a.lon, 500.0), TrackPoint(b.lat, b.lon, 520.0))))
+        phoneSync(); browserSync()
+        val oldIds = (browser.plans() + browser.tracks()).filter { it.isUserItem && !it.deleted }.map { it.id }.toSet()
+        assertEquals(3, oldIds.size)
+        // reinstall: the tours stay (backup), the sync files are gone; a new pairing (new mailbox) – the browser's folder
+        // comes along with its old ids, waiting, and the browser sends them right after the pairing
+        val second = ByteArray(32) { 51 }
+        val keys2 = SyncKeys(second)
+        val files2 = SyncFiles(tmp.newFolder("sync-reinstalled")).also { it.savePairing(second, clock) }
+        val phone2 = PlanSyncPass(files2, store, { server.box(it) }, { n -> rnd.nextBytes(n) }, { clock }, "Pixel 8",
+            { if (it == SyncItem.TRACK) "Track" else "Route" }, AesGcm)
+        fun phone2Sync() = phone2.run { false }!!.also { clock += 1000 }
+        browser.restart()
+        val browser2 = SyncRound(keys2, server.box(keys2), { ByteArray(12) { (n++).toByte() } })
+        fun browser2Sync() = browser2.run(browser).also { clock += 1000 }
+        browser2Sync()
+        phone2Sync(); browser2Sync(); phone2Sync(); browser2Sync(); phone2Sync()
+        assertEquals("each route once on the phone", listOf("Bad Honnef → Bonn", "Ritten.gpx", "Waalweg"),
+            store.live().map { it.name }.sorted())
+        val inBrowser = (browser.plans() + browser.tracks()).filter { it.isUserItem && !it.deleted }
+        assertEquals("each route once in the browser", listOf("Bad Honnef → Bonn", "Ritten.gpx", "Waalweg"),
+            inBrowser.map { it.title.orEmpty() }.sorted())
+        assertEquals("the browser's ids are kept", oldIds, inBrowser.map { it.id }.toSet())
+        // and it stays so: more passes add nothing
+        phone2Sync(); browser2Sync(); phone2Sync()
+        assertEquals(3, store.live().size)
+    }
+
+    @Test fun twoDifferentRoutesWithTheSameNameStayTwo() {
+        store.savePlanned("Runde", listOf(a, b))
+        phoneSync(); browserSync()
+        // the browser saves another route with the same name but other points: a new route on the phone
+        browser.save(id(7), plan(listOf(b, c)), "Runde", clock, web)
+        browserSync(); phoneSync()
+        assertEquals(2, store.live().count { it.name == "Runde" })
+    }
+
     private fun id(k: Int) = SyncFormat.newId(ByteArray(16) { k.toByte() })
     private fun plan(points: List<GeoPoint>, act: Activity = Activity.HIKE, names: Map<Int, String> = emptyMap()) =
         PlanCode.encode(SharedPlan(points, act, 2, names = names))

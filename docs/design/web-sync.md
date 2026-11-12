@@ -337,6 +337,15 @@ the camera; the `#pair=` link reaches the app's plan-link filter (`#p=` stays a 
 Cancel. Settings → Browser sync: state, Sync now, Unpair. Tests: `CorePlanSyncTest`, `SyncFilesTest`, `SyncTrackTest`,
 and against the real `sync.js` in Node (`tools/sync/e2e.sh`).
 
+**A route the phone already has comes back under another id (field bug 2026-11-12, 52 copies):** a reinstalled phone
+keeps its tours (backup) but not `files/sync`, so its first pass gives every tour a new item id while the browser's
+folder still holds them under the old ids. On import, a new item whose kind, title and content (plan code / track text,
+exactly) equal a live route here – one linked to nothing or only to a fresh item this phone made with the same content –
+is **linked** to that route instead of added; the phone's fresh duplicate item gets a tombstone, sent in a second round
+of the same pass, so both sides show each route once and keep the browser's id (`PlanSyncPass.twin`; tests
+`CorePlanSyncTest.aReinstalledPhoneNeverGetsItsOwnRoutesBackAsNew`, `twoDifferentRoutesWithTheSameNameStayTwo`).
+Copies made before this fix stay (they are linked routes) – they are binned by hand.
+
 ## 12. Privacy text (proposal, for Settings → Privacy and the website)
 
 > **Plan sync with the web planner (only when you pair).** Your saved plans are encrypted on your phone and in your

@@ -93,6 +93,11 @@ class PlanSyncPass(
          * (field 8): check them for newer data now (AppViewModel, Rd5PartStore.refreshIfNewer) – not after 35 days.
          */
         val newerData: List<String> = emptyList(),
+        /**
+         * Routes the other side sent under its own id that this phone already had unlinked or under a fresh id of its own
+         * (a reinstalled phone, field bug 2026-11-12): linked to the route instead of added again.
+         */
+        val relinked: Int = 0,
     )
 
     /** Runs one pass; null when not paired. Throws only when the sync files cannot be written (reported by the caller). */
@@ -119,8 +124,17 @@ class PlanSyncPass(
             Problems.info("sync", "Sync: ${links.pending.size} changes from the browser wait until the tour has ended")
             return Result(outcome, peer, skippedForRecording = true)
         }
-        val r = import(ledger, links, before)
+        val r = import(ledger, links, before, now, device)
         files.saveLinks(links)
+        if (r.relinked > 0) {
+            // the phone's own fresh items for routes the other side already had are tombstoned (import): send that now,
+            // so the other side shows each route once without waiting for the next pass
+            files.saveLedger(ledger)
+            SyncRound(keys, mailbox(keys), { random(12) }, aead).run(ledger)
+            for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id] && links.tourOf(id) == null && !e.item.deleted) links.markPending(id)
+            files.saveLinks(links)
+            files.saveLedger(ledger)
+        }
         if (outcome is SyncRound.Outcome.Done) files.saveLastOk(now)
         return r.copy(outcome = outcome, peer = peer, unreadable = r.unreadable + ((outcome as? SyncRound.Outcome.Done)?.unreadable ?: 0) +
             ledger.entries.values.count { !it.item.deleted && it.item.kind != SyncItem.DEVICE && it.item.kind != SyncItem.JOIN && !it.item.isUserItem })
@@ -205,10 +219,11 @@ class PlanSyncPass(
     }
 
     /** Ledger → local tours for every pending item. */
-    private fun import(ledger: SyncLedger, links: SyncLinks, before: Map<String, SyncItem>): Result {
+    private fun import(ledger: SyncLedger, links: SyncLinks, before: Map<String, SyncItem>, now: Long, device: String): Result {
         if (links.pending.isEmpty()) return Result(null)
         val tours = store.tours().filter(RouteItems::synced).associateBy { it.uuid }
-        var added = 0; var updated = 0; var binned = 0; var failed = 0; var unreadable = 0
+        var added = 0; var updated = 0; var binned = 0; var failed = 0; var unreadable = 0; var relinked = 0
+        val claimed = HashSet<String>()
         val toRoute = ArrayList<Long>()
         val newer = sortedSetOf<String>()
         fun routedWith(item: SyncItem) {
@@ -222,6 +237,13 @@ class PlanSyncPass(
                 val name = SyncMerge.shownTitle(item.title, copyLabel) ?: untitled(item.kind)
                 when {
                     item.deleted -> if (tour != null && tour.deletedMs == null) { store.toBin(tour); binned++; files.marks.remove(tour.uuid) }
+                    tour == null && twin(item, id, tours.values, links, ledger, device, claimed) != null -> {
+                        // the same route is here already (same content and name): link it, never a second one
+                        val t = twin(item, id, tours.values, links, ledger, device, claimed)!!
+                        val own = links.itemOf(t.uuid)
+                        links.link(id, t.uuid); claimed += t.uuid; relinked++
+                        if (own != null && own != id) ledger.delete(own, now, device) // our fresh duplicate item goes
+                    }
                     tour == null || RouteItems.kindOf(tour) != item.kind -> {
                         val t = if (item.kind == SyncItem.PLAN) RouteItems.planContent(item)?.let { store.addPlan(name, it) }
                             else RouteItems.trackContent(item)?.let { store.addTrack(name, it) }
@@ -256,10 +278,38 @@ class PlanSyncPass(
             }
         }
         if (added + updated + binned > 0) Problems.info("sync", "Sync from the browser: $added new, $updated changed, $binned to the recycle bin")
+        if (relinked > 0) Problems.info("sync", "Sync: $relinked routes from the browser were already on the phone – linked, not added again")
         if (newer.isNotEmpty()) Problems.info("sync", "Sync: a plan from the browser was routed with newer routing data " +
             "(${newer.joinToString()}) – checking for it now")
         return Result(null, added = added, updated = updated, binned = binned, failed = failed, unreadable = unreadable,
-            toRoute = toRoute, toursChanged = added + updated + binned > 0, newerData = newer.toList())
+            toRoute = toRoute, toursChanged = added + updated + binned > 0, newerData = newer.toList(), relinked = relinked)
+    }
+
+    /**
+     * A live route here that IS the incoming new item [item] (field bug 2026-11-12, a reinstalled phone): the same kind,
+     * name and content (plan code / track text exactly – two different routes with one name never meet), not taken by
+     * another incoming item this pass, and either linked to nothing or only to an item this phone made itself with the
+     * same content (its fresh id from this or an earlier pass, not changed by anyone since). Null = none: add it.
+     */
+    private fun twin(item: SyncItem, id: String, tours: Collection<Tour>, links: SyncLinks, ledger: SyncLedger, device: String,
+                     claimed: Set<String>): Tour? {
+        if (item.deleted || (item.kind != SyncItem.PLAN && item.kind != SyncItem.TRACK)) return null
+        return tours.firstOrNull { t ->
+            t.deletedMs == null && t.uuid.isNotEmpty() && t.uuid !in claimed && RouteItems.kindOf(t) == item.kind &&
+                title(t) == item.title && sameContent(t, item) && links.itemOf(t.uuid).let { own ->
+                    own == null || (own != id && !links.isPending(own) && ledger.get(own)?.let { o ->
+                        !o.deleted && o.device == device && o.kind == item.kind &&
+                            (if (o.kind == SyncItem.PLAN) RouteItems.samePlan(o.plan, item.plan) else o.track == item.track)
+                    } == true)
+                }
+        }
+    }
+
+    private fun sameContent(t: Tour, item: SyncItem): Boolean = try {
+        if (item.kind == SyncItem.PLAN) item.plan != null && RouteItems.samePlan(RouteItems.planOf(t), item.plan)
+        else item.track != null && RouteItems.trackOf(t, store.segments(t.id)) == item.track
+    } catch (e: Exception) {
+        Problems.warn("sync", "Sync: a saved route could not be compared with one from the browser; it is added as new", e); false
     }
 
     /**
