@@ -45,6 +45,7 @@ import { watchVersion, BUILD } from './version';
 import { keepStats, planKey, trackKey } from './planstats';
 import { keepShape } from './routeshape';
 import { RouteReveal } from './routereveal';
+import { isPoiKind, poiKindAt, poiPin } from './poipin';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import './fonts/manrope.css';
@@ -66,7 +67,8 @@ const lastView = (() => {
 })();
 const startAt = (params.get('at') ?? lastView ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
 
-type Meta = { pinned: boolean; name?: string };
+/** [kind]: the POI a pinned point sits on (poipin.ts – its symbol in a blue ring); not stored, looked up again on load. */
+type Meta = { pinned: boolean; name?: string; kind?: string };
 type LatLon = [number, number];
 const state = {
   points: [] as LatLon[],
@@ -550,6 +552,24 @@ const FLAG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
 const stopSign = (i: number, count: number, loop: boolean) => (loop ? '↺' : count > 1 && i === count - 1 ? FLAG : String(i + 1));
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
+/**
+ * The POI kind of pinned point [i] (the app's PinnedPoiKinds): the tap's or search hit's kind, else the map's POI within
+ * 5 m (a plan from Meine Touren, a link, the phone) – remembered on the point once found. Null = the plain point.
+ */
+function pinnedKind(i: number): string | null {
+  const m = state.meta[i], p = state.points[i];
+  if (!m?.pinned || !p) return null;
+  if (isPoiKind(map, m.kind)) return m.kind;
+  const k = poiKindAt(map, p[0], p[1]);
+  if (k) m.kind = k;
+  return k;
+}
+// a pinned point whose POI was not loaded yet when it was drawn: draw again once the map has it
+map.on('idle', () => {
+  const late = state.meta.some((m, i) => m.pinned && !isPoiKind(map, m.kind) && state.points[i] && poiKindAt(map, state.points[i][0], state.points[i][1]));
+  if (late) void drawPoints();
+});
+
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
 async function drawPoints() {
   // no points: nothing to ask the engine (it may still be busy with a plan that was just cleared)
@@ -559,10 +579,15 @@ async function drawPoints() {
   const n = state.points.length, last = n - 1;
   state.points.forEach(([lat, lon], i) => {
     if (state.roundTrip && i === last) return; // the closing point sits on the start
-    const el = document.createElement('div');
-    el.className = 'pin';
-    el.style.background = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
-    el.innerHTML = stopSign(i, n, state.roundTrip && i === 0);
+    const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
+    // pinned on a POI: its symbol in a blue ring with the sign on a badge (owner 2026-11-10, variant A), else the dot
+    const kind = pinnedKind(i);
+    const el = (kind ? poiPin(map, kind, sign, color) : null) ?? document.createElement('div');
+    if (!el.classList.contains('poipin')) {
+      el.className = 'pin';
+      el.style.background = color;
+      el.innerHTML = sign;
+    }
     el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
     el.style.visibility = hidden ? 'hidden' : '';
     const m = new maplibregl.Marker({ element: el, draggable: !terrain3d.on }).setLngLat([lon, lat]).addTo(map); // 3D: view only
@@ -792,14 +817,14 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const pr = f.properties ?? {};
   const info = JSON.parse(await engine.call('poiMenu', String(pr.kind ?? ''), String(pr.name ?? ''), pr.ele != null ? String(pr.ele) : '', lat, lon));
   if (!info) return;
-  const hit = { title: info.title, name: pr.name ? String(pr.name) : null, lat, lon } as Hit;
+  const hit = { title: info.title, name: pr.name ? String(pr.name) : null, kind: String(pr.kind ?? ''), lat, lon } as Hit;
   // the add entries – the app's PlaceAddMenu (owner 2026-11-07): with 2+ points „Als Zwischenstopp“ and/or „Als neues
   // Ziel“ by how clear the case is; a clear case's alternative waits behind „⋯ Mehr“
   const pm = JSON.parse(await engine.call('placeMenu', enc(state.points), lat, lon, state.roundTrip)) as { main: string[]; more: string[]; stop: number };
   const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
   const row = async (item: string): Promise<MenuItem> => {
     if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') };
-    if (item === 'GO_HERE') return goHereItem(() => fromMe(p, { pinned: true, name: info.title }));
+    if (item === 'GO_HERE') return goHereItem(() => fromMe(p, { pinned: true, name: info.title, kind: hit.kind }));
     if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => addPlaceAt(hit, pm.stop) };
     if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => placeAsNewDestination(hit) };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
@@ -825,7 +850,7 @@ async function addPlaceAt(h: Hit, index: number) {
       : (JSON.parse(await engine.call('placeMenu', enc(state.points), p[0], p[1], state.roundTrip)) as { stop: number }).stop;
     const pts = state.points.slice(), meta = state.meta.slice();
     const at = Math.max(0, Math.min(stop, pts.length));
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title });
+    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
     return { planned: commit(pts, meta) };
   });
 }
@@ -835,8 +860,8 @@ async function placeAsNewDestination(h: Hit) {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   await queueEdit(async () => {
     const pts = state.points.slice(), meta = state.meta.slice();
-    if (!pts.length) { pts.push(p); meta.push({ pinned: true, name: h.title }); }
-    else { pts[pts.length - 1] = p; meta[meta.length - 1] = { pinned: true, name: h.title }; }
+    if (!pts.length) { pts.push(p); meta.push({ pinned: true, name: h.title, kind: h.kind }); }
+    else { pts[pts.length - 1] = p; meta[meta.length - 1] = { pinned: true, name: h.title, kind: h.kind }; }
     return { planned: commit(pts, meta) };
   });
 }
@@ -1608,7 +1633,7 @@ placeCard = setupSearch({
     placeFit = true;
     const at: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
     pinTaken = { hit: h, at, plan: null };
-    void fromMe(at, { pinned: true, name: h.title });
+    void fromMe(at, { pinned: true, name: h.title, kind: h.kind });
   },
   google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
   cardShown: (open) => document.body.classList.toggle('card-open', open),
@@ -1640,7 +1665,7 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
     if (now.existing != null) return null; // planned meanwhile
     const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : now.index ?? state.points.length;
     const pts = state.points.slice(), meta = state.meta.slice();
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title });
+    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
     return { planned: commit(pts, meta) };
   });
 }

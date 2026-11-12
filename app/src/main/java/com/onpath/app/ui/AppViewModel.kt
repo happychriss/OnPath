@@ -738,6 +738,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Pinned (POI) points, kept by value ([PlanSession.pinned]). */
     private val pinned: MutableSet<GeoPoint> get() = plan.pinned
     fun pinnedIndices(): Set<Int> = plan.pinnedIndices()
+    /**
+     * POI kinds of pinned points (owner 2026-11-10, variant A: the POI symbol stays, a blue ring + badge around it):
+     * [poiKindsKnown] from the tap that pinned it, [poiKindsFound] from the offline index for the others (a plan loaded
+     * from My routes, a link, a backup) – [refreshPinnedKinds]. Not stored: looked up again after a restart.
+     */
+    private var poiKindsKnown by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
+    private var poiKindsFound by mutableStateOf<Map<GeoPoint, String>>(emptyMap())
+    private val poiKindsLookedUp = HashSet<GeoPoint>()
+    private var poiKindsJob: Job? = null
+    /** Kind by point index for the pinned points that sit on a POI the map draws (map/MapController poi markers). */
+    fun pinnedPoiKinds(): Map<Int, String> =
+        com.onpath.app.poi.PinnedPoiKinds.byIndex(waypoints.toList(), pinnedIndices(), poiKindsKnown, poiKindsFound)
+    private fun rememberPoiKind(p: GeoPoint, kind: String?) {
+        if (com.onpath.app.poi.PinnedPoiKinds.isPoiKind(kind)) poiKindsKnown = poiKindsKnown + (p to kind!!)
+    }
+
+    /** Looks up the POI under each pinned point without a known kind (once per point, off the main thread). */
+    fun refreshPinnedKinds() {
+        val todo = pinnedIndices().mapNotNull { waypoints.getOrNull(it) }
+            .filter { it !in poiKindsKnown && it !in poiKindsLookedUp }.distinct()
+        if (todo.isEmpty() || poiKindsJob?.isActive == true) return
+        poiKindsJob = viewModelScope.launchSafe("app", "refreshPinnedKinds") {
+            val index = try { search.offlineIndex() }
+                catch (e: kotlinx.coroutines.CancellationException) { throw e }
+                catch (e: Exception) { Problems.info("plan", "No place index for pinned POI symbols; plain points shown", e); return@launchSafe }
+            val pad = com.onpath.app.data.Geo.degLat(3 * com.onpath.app.poi.PinnedPoiKinds.SAME_SPOT_M)
+            val kinds = com.onpath.app.poi.PinnedPoiKinds.indexKinds
+            val found = withContext(Dispatchers.IO) {
+                todo.mapNotNull { p ->
+                    val padLon = com.onpath.app.data.Geo.degLon(3 * com.onpath.app.poi.PinnedPoiKinds.SAME_SPOT_M, p.lat)
+                    val near = index.placesIn(p.lat - pad, p.lon - padLon, p.lat + pad, p.lon + padLon, kinds)
+                    com.onpath.app.poi.PinnedPoiKinds.lookup(p, near)?.let { p to it }
+                }.toMap()
+            }
+            poiKindsLookedUp += todo
+            if (found.isNotEmpty()) poiKindsFound = poiKindsFound + found
+        }
+    }
     /** Followed routes replaced by plan edits during the tour (Undo takes them back exactly, Bug 02). */
     private val followHistory = FollowHistory()
     var canUndo by mutableStateOf(false)
@@ -1819,6 +1857,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (idx >= 0) { openPointMenu(idx, via = "POI that is a stop"); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        rememberPoiKind(p, poi.kind)
         val pin = takePin(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
         val before = waypoints.size
@@ -1929,6 +1968,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (waypoints.isNotEmpty()) { addPoiPoint(poi); return }
         val p = GeoPoint(poi.lat, poi.lon)
         rememberPlaceName(p, com.onpath.app.search.Place.fromPoi(poi).title())
+        rememberPoiKind(p, poi.kind)
         val pin = takePin(poi.lat, poi.lon)
         pinned += p; prefs.planPinned = pinned
         change { add(GeoPoint(loc.latitude, loc.longitude)); add(p) }
@@ -2174,6 +2214,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val idx = routeIndexOf(place)
         closePlaceCard()
         rememberPlaceName(p, name)
+        rememberPoiKind(p, place.poi?.kind ?: place.kind)
         // taken: the candidate marker goes (the numbered route point shows the place now)
         val pin = takePin(place.lat, place.lon)
         if (idx != null) {

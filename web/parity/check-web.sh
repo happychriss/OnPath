@@ -22,6 +22,7 @@ for t in browser-compare ui-smoke share-smoke edit-smoke snap-smoke version-smok
   ( cd web/app && run node "test/$t.mjs" "$SEG" )
 done
 ( cd web/app && run node test/search-smoke.mjs "$SEG" "$CELLS" )
+( cd web/app && run node test/poipin-smoke.mjs "$SEG" "$CELLS" )
 ( cd web/host && run node --test )
 # the app leads (web-planner.md §14.2): adopt each change in the web, re-run this script, push – do not wait for a person
 if [ "$PARITY" != 0 ]; then echo "mirrored app files changed – see $REPORT; adopt them in the web (the app leads), then node web/parity/check.mjs --update"; exit 4; fi

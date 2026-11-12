@@ -209,7 +209,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             PF.lineCap(Property.LINE_CAP_ROUND),
         ))
         style.addSource(GeoJsonSource(SRC_WPT))
-        // No ring for POI-pinned stops (owner): the only ring is the candidate marker (search mark).
+        // A stop pinned on a POI shows the POI's own symbol in a route-blue ring with a small numbered badge (owner
+        // 2026-11-10, variant A – [poiMarker]); every other point is the plain numbered dot.
         addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
             PF.iconImage(Expression.get("icon")),
             PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
@@ -850,13 +851,15 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
      * the user in a running tour (navigation/TourSplit): grey with a ✓, numbers kept.
      */
     fun setWaypoints(points: List<GeoPoint>, pinned: Set<Int> = emptySet(), unreached: Set<Int> = emptySet(),
-                     passed: Set<Int> = emptySet()) = guarded("waypoints") {
+                     passed: Set<Int> = emptySet(), poiKinds: Map<Int, String> = emptyMap()) = guarded("waypoints") {
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
         val features = points.mapIndexed { i, p ->
             val kind = when { i in unreached -> "g"; i in passed -> "p"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
+            // an unreached point stays the grey hollow dot (it says "not reached" first); no POI symbol → the plain dot
+            val icon = poiKinds[i]?.takeIf { kind != "g" }?.let { ensurePoiMarker(it, kind, i + 1) } ?: "wp-$kind-${i + 1}"
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
-                addStringProperty("icon", "wp-$kind-${i + 1}")
+                addStringProperty("icon", icon)
                 addNumberProperty("idx", i)
                 addBooleanProperty("pinned", i in pinned)
             }
@@ -1059,6 +1062,65 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             style.addImage("wp-p-$n", marker(n, NAV_ORIGINAL_COLOR)) // passed: grey, no tick (owner 2026-11-01)
             markerImages++
         }
+    }
+
+    /**
+     * The image of route point [n] pinned on a POI of [poiKind] in state [state] (s / v / e / p as in [setWaypoints]),
+     * added once per style; null when the style has no symbol for the kind (sprite not loaded) – the plain dot then.
+     */
+    private fun ensurePoiMarker(poiKind: String, state: String, n: Int): String? {
+        val id = "wpoi-$poiKind-$state-$n"
+        if (style.getImage(id) != null) return id
+        val symbol = style.getImage("poi-$poiKind") ?: return null
+        val badge = when (state) { "s" -> POINT_START_COLOR; "e" -> POINT_GOAL_COLOR; "p" -> NAV_ORIGINAL_COLOR; else -> POINT_STOP_COLOR }
+        val ring = if (state == "p") NAV_ORIGINAL_COLOR else ROUTE_COLOR
+        style.addImage(id, poiMarker(symbol, n, ring, badge, flag = state == "e"))
+        return id
+    }
+
+    /**
+     * Variant A of the owner's sketch (2026-11-10, "Restaurant als Routenpunkt"): the POI's sprite badge (coloured disc,
+     * white pictogram, white edge) drawn bigger, a [ring] around it, and a small badge top right in [badgeColor] with the
+     * number [n] (the goal: its flag). Centred on the point like the plain dot; sizes in dp from the sketch.
+     */
+    private fun poiMarker(symbol: Bitmap, n: Int, ring: String, badgeColor: String, flag: Boolean): Bitmap {
+        val d = density
+        val px = (58 * d).toInt()
+        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
+        bmp.density = context.resources.displayMetrics.densityDpi
+        val c = Canvas(bmp)
+        val p = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG)
+        val cx = px / 2f; val cy = px / 2f
+        p.color = android.graphics.Color.parseColor(ring)
+        c.drawCircle(cx, cy, 21 * d, p)
+        p.color = android.graphics.Color.WHITE
+        c.drawCircle(cx, cy, 17 * d, p)
+        // the sprite badge: 24 units, its white edge at 10.5 → scaled so the edge meets the ring (17 dp)
+        val half = 12f * (17f / 10.5f) * d
+        c.drawBitmap(symbol, null, android.graphics.RectF(cx - half, cy - half, cx + half, cy + half), p)
+        val bx = cx + 17 * d; val by = cy - 17 * d
+        p.color = android.graphics.Color.WHITE
+        c.drawCircle(bx, by, 11 * d, p)
+        p.color = android.graphics.Color.parseColor(badgeColor)
+        c.drawCircle(bx, by, 9 * d, p)
+        p.color = android.graphics.Color.WHITE
+        if (flag) {
+            val o = com.onpath.app.ui.GoalFlag.OUTLINE
+            val k = 11 * d / 17f
+            val path = android.graphics.Path()
+            for (i in o.indices step 2) {
+                val x = bx - 12.5f * k + o[i] * k; val y = by - 12.5f * k + o[i + 1] * k
+                if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+            }
+            path.close()
+            c.drawPath(path, p)
+        } else {
+            p.textSize = (if (n >= 10) 10 else 12) * d
+            p.typeface = Typeface.DEFAULT_BOLD
+            p.textAlign = Paint.Align.CENTER
+            c.drawText(n.toString(), bx, by - (p.descent() + p.ascent()) / 2, p)
+        }
+        return bmp
     }
 
     /**
