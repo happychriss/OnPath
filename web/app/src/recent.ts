@@ -1,15 +1,16 @@
 // "Zuletzt" in Meine Touren – the app's drafts (owner 2026-11-06: "Nicht gespeichert" and every "Plan speichern?" /
 // "Plan ersetzen?" question go, like Komoot's recent plans; app ui/RouteRules.kt Drafts, AppViewModel.keepAsDraft,
-// Screens.kt RECENT_SHOWN / DraftActions). A plan worth keeping (≥ 2 points) that leaves the map while not saved as it
-// is (Neu, another plan / link / GPX opened) is kept here – no question. The same points twice make no second entry;
-// the newest [MAX] stay. Like the app's drafts they are never synced (this browser only) and get no backup.
+// Screens.kt DraftActions). A plan worth keeping (≥ 2 points) that leaves the map while not saved as it
+// is (Neu, another plan / link / GPX opened) is kept here – no question. The same points twice make no second entry
+// (the entry with them becomes the newest). Meine Touren shows exactly one plan under Zuletzt (app 2923a3e7, owner
+// 2026-11-12): the plan on the map, else the newest entry. The app moves the drafts it replaces to its recycle bin; the
+// web has none yet, so the older entries stay stored here (the newest [MAX]) and come back when the one shown is saved
+// or deleted – nothing is lost. Like the app's drafts they are never synced (this browser only) and get no backup.
 // A plan opened from Zuletzt still belongs to its entry: leaving it again updates that entry; saving it moves it to the
 // saved plans (the entry goes, "✓ Gerade gespeichert" on the new row).
 
-/** The app's Drafts.MAX. */
+/** How many entries this browser keeps (the app keeps one, its recycle bin holds the rest – the web has no bin yet). */
 export const MAX = 25;
-/** The app's RECENT_SHOWN: Zuletzt shows the newest three, the rest behind „Alle N anzeigen ›“. */
-export const SHOWN = 3;
 
 export interface RecentPlan {
   id: string;
@@ -43,11 +44,16 @@ export function recentPlans(): RecentPlan[] { return read().sort((a, b) => b.at 
 
 /**
  * Keeps a plan under Zuletzt ([replaces]: the entry it was opened from – it is updated, not doubled). Returns the
- * entry's id, or null when the same points are kept already.
+ * entry's id, or null when the same points are kept already – that entry then becomes the newest (the one Meine Touren
+ * shows), name and all as it was.
  */
 export function keepRecent(code: string, title: string, points: string, replaces: string | null = null): string | null {
   const list = read();
-  if (list.some((r) => r.points === points && r.id !== replaces)) return null;
+  const same = list.find((r) => r.points === points && r.id !== replaces);
+  if (same) {
+    write([{ ...same, at: Date.now() }, ...list.filter((r) => r.id !== same.id)]);
+    return null;
+  }
   const id = replaces && list.some((r) => r.id === replaces) ? replaces : 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
   write([{ id, code, title, points, at: Date.now() }, ...list.filter((r) => r.id !== id)].sort((a, b) => b.at - a.at));
   return id;

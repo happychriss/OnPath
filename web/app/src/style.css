@@ -19,6 +19,9 @@
   --shadow-low: 0 1px 3px rgba(59,42,30,.24); --shadow-high: 0 4px 14px rgba(59,42,30,.22);
   --r-card: 20px; --r-small: 12px; /* OnPathShapes: pills round, cards 20, small 12, sheets 28 */
   --sheet-w: 384px; --sheet-h: 0px; --current: #EEF4E8; --gpx: #8E24AA;
+  /* the app's MapGround (owner 2026-11-12: the website's light sage for what floats over the map – the map controls and
+     the undo pill, app MapFooter) + its FloatShadow (one light 3 dp warm level) and PaperDeep (a pressed / lifted spot on it) */
+  --map-ground: #EEF0E8; --paper-deep: #E4E8DD; --float-shadow: 0 1px 4px rgba(59,42,30,.22); --edge-line: #D2DACD;
   --site-bg: #fafaf6; --site-fg: #243c31; --site-line: #dce1d6; --site-soft: #eef0e8;
 }
 /* Always light, like the app (owner 2026-10-30: the app has no dark mode; the map is light) – no dark scheme. */
@@ -58,13 +61,14 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 
 /* ---- top bar: ONE unit – search field (flexible) | eye compass locate | Map content; undo / redo a pill below it ---- */
 .topbar { position: absolute; z-index: 5; top: 12px; left: 12px; width: min(860px, calc(100% - 24px)); height: 52px; box-sizing: border-box;
-  display: flex; align-items: center; background: var(--card); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); }
+  display: flex; align-items: center; background: var(--map-ground); border-radius: 26px; box-shadow: var(--float-shadow), inset 0 0 0 1px var(--edge-line); }
+.topbar .tool:hover:not(:disabled), .undopill .tool:hover:not(:disabled) { background: var(--paper-deep); }
 #searchbox { flex: 1; min-width: 220px; position: relative; align-self: stretch; }
 .barsep { flex: none; width: 1px; height: 28px; background: var(--line); }
 .searchrow { display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 6px 0 16px; box-sizing: border-box; color: var(--muted); }
 .searchrow input { flex: 1; min-width: 0; border: none; outline: none; background: transparent; color: var(--fg); font: inherit; font-size: 16px; }
 .searchrow input::-webkit-search-cancel-button { display: none; }
-.round { flex: none; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--card); box-shadow: 0 2px 8px var(--shadow);
+.round { flex: none; width: 52px; height: 52px; border-radius: 50%; border: none; background: var(--map-ground); box-shadow: var(--float-shadow);
   display: grid; place-items: center; color: var(--fg); }
 #results { position: absolute; z-index: 2; left: 0; right: 0; top: calc(100% + 8px); min-width: min(360px, calc(100vw - 24px)); background: var(--card); border-radius: var(--r-card); box-shadow: 0 4px 16px var(--shadow); padding: 8px 12px; max-height: 60vh; overflow: auto; }
 /* the place card: a callout at its point (wide screen, .anchored below), a bottom card in place of the sheet (phone) */
@@ -121,16 +125,16 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .tool:hover:not(:disabled) { background: var(--surface2); }
 .tool:disabled { opacity: .32; }
 .toolbar .sep { width: 1px; height: 26px; background: var(--line); margin: 0 4px; }
-/* the app's UndoPill (owner 2026-11-08): two round buttons stacked, under the bar's right end, plan blue on paper;
+/* the app's UndoPill (owner 2026-11-08): two round buttons stacked, under the bar's right end, plan blue on the map's sage (MapGround, owner 2026-11-12);
    only while something can be undone or redone ([hidden] otherwise); not in the 3D view (it only shows the plan) */
 .undopill { position: absolute; top: calc(100% + 12px); right: 0; width: 52px; display: flex; flex-direction: column; align-items: center;
-  background: var(--card); border-radius: 26px; box-shadow: 0 2px 8px var(--shadow); }
+  background: var(--map-ground); border-radius: 26px; box-shadow: var(--float-shadow); }
 .undopill[hidden], body.three-d .undopill { display: none; }
 /* phone: a sheet pulled up past the pill – the pill steps back, like the app's column in the points step (placeUndoPill) */
 body.undo-crowded .undopill { display: none; }
 .undopill .tool { width: 52px; height: 52px; border-radius: 26px; color: var(--plan); }
 .tool.on { color: var(--route); } #eye.on { background: var(--green-light); color: var(--fg); }
-.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 12px; box-shadow: 0 2px 8px var(--shadow); margin: 0 16px 16px 0; }
+.maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 12px; box-shadow: var(--float-shadow); margin: 0 16px 16px 0; }
 .needle { transition: transform .15s; color: var(--fg); }
 .tool.greyed > svg { opacity: .42; }
 .gpsdot { position: absolute; top: 6px; right: 6px; width: 9px; height: 9px; border-radius: 50%; border: 2px solid var(--bg); }
@@ -685,7 +689,6 @@ dialog.plans > .row.spread { margin-top: 16px; }
    pale, its Speichern (plan blue, tonal) · Löschen (red) on the card, „✓ Gerade gespeichert“ under a plan just saved */
 .planlist li.sectionhead { display: block; border-top: none; padding: 10px 8px 2px; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .planlist li.sectionhead + li { border-top: none; }
-.planlist li.allrecent { border-top: none; padding: 0 0 4px 4px; }
 .planlist .justsavedline { color: var(--plan); font-weight: 600; font-size: 13px; }
 
 /* ---- plan sheet A (owner 2026-11-07, „Punkte zuerst“): the points list on top, + Ziel hinzufügen, the facts in one row ---- */

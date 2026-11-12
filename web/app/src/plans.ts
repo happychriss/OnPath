@@ -8,7 +8,7 @@ import { t, tp, locale } from './i18n';
 import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
-import { recentPlans, dropRecent, renameRecent, SHOWN as RECENT_SHOWN, type RecentPlan } from './recent';
+import { recentPlans, dropRecent, renameRecent, type RecentPlan } from './recent';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -278,7 +278,6 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   search.addEventListener('input', () => { query = search.value; $('planSearchClear').hidden = !query; render(); });
   $('planSearchClear').onclick = (e) => { e.preventDefault(); search.value = ''; query = ''; $('planSearchClear').hidden = true; search.focus(); render(); };
   $('plansImportGpx').onclick = () => { d.close(); host.importGpx(); };
-  let allRecent = false;
   const justSaved = host.justSaved();
   /** The first row's id at the last render: a route added on top is scrolled into view (the app's ListTop, 4cf68bd7). */
   let firstId: string | null = null;
@@ -407,7 +406,8 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     const liveMarkedId = live && live.savedId && all.some((p) => p.id === live.savedId) ? live.savedId : null;
     const plans = searchPlans(all, query);
     const recentAll = recentPlans().filter((r) => !live || (r.id !== live.recentId && r.points !== live.pointsKey));
-    const recent = searchPlans(recentAll, query);
+    // exactly one row under Zuletzt (app 2923a3e7, owner 2026-11-12): the plan on the map, else the newest entry – searched like every row
+    const recent = live ? [] : searchPlans(recentAll.slice(0, 1), query);
     const liveItem: Item | null = live && !liveMarkedId && searchPlans([{ title: live.title ?? t('routes_live_name') }], query).length
       ? { section: 'live', id: 'live', kind: 'plan', title: live.title ?? t('routes_live_name'), at: Date.now(), stats: live.stats, segs: live.segs, code: null }
       : null;
@@ -419,15 +419,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     if (recent.length || liveItem) {
       ul.append(sectionHead(t('routes_section_recent')));
       if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired, false));
-      for (const r of allRecent ? recent : recent.slice(0, RECENT_SHOWN)) {
+      for (const r of recent) {
         const it: Item = { section: 'draft', id: r.id, kind: 'plan', title: r.title, at: r.at, stats: statsOf(planKey(r.code)), segs: shapeOf(planKey(r.code)), code: r.code, recent: r };
         ul.append(row(it, rowActions('draft', 'plan'), folder, paired, false));
-      }
-      if (!allRecent && recent.length > RECENT_SHOWN) {
-        const li = document.createElement('li'); li.className = 'allrecent';
-        li.innerHTML = `<button class="textbtn">${esc(t('routes_recent_all', recent.length))}</button>`;
-        li.querySelector('button')!.onclick = () => { allRecent = true; render(); };
-        ul.append(li);
       }
       if (plans.length) ul.append(sectionHead(t('routes_section_saved')));
     }
