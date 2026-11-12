@@ -19,21 +19,23 @@ import com.onpath.app.ui.AppViewModel
 /** Full-screen search view while [AppViewModel.searchOpen] (Plan mode). Back closes it. */
 @Composable
 fun SearchHost(vm: AppViewModel) {
-    if (!vm.searchOpen) return
-    val ctx = LocalContext.current
-    val s = vm.search
-    BackHandler { vm.closeSearch() }
-    SearchScreen(
-        s.ui,
-        SearchActions(
-            // a plan link pasted into the box opens the plan (A-005); anything else is searched
-            onQuery = { q -> if (!vm.pastedPlanLink(q)) s.onQuery(q) }, onCategory = s::onCategory, onClear = s::clear,
-            onBack = vm::closeSearch, onPick = vm::pickSearchResult,
-            onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
-            onClearRecent = s::clearRecent,
-        ),
-        modifier = Modifier.statusBarsPadding(),
-    )
+    if (vm.searchOpen) BackHandler { vm.closeSearch() }
+    // fades in and out like the other full pages (PageFade, owner 2026-11-12)
+    com.onpath.app.ui.PageFade(vm.searchOpen) {
+        val ctx = LocalContext.current
+        val s = vm.search
+        SearchScreen(
+            s.ui,
+            SearchActions(
+                // a plan link pasted into the box opens the plan (A-005); anything else is searched
+                onQuery = { q -> if (!vm.pastedPlanLink(q)) s.onQuery(q) }, onCategory = s::onCategory, onClear = s::clear,
+                onBack = vm::closeSearch, onPick = vm::pickSearchResult,
+                onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
+                onClearRecent = s::clearRecent,
+            ),
+            modifier = Modifier.statusBarsPadding(),
+        )
+    }
 }
 
 /** The place card for the POI / search result in [AppViewModel.planPoi] (Plan mode). */
