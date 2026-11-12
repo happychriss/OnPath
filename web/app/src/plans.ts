@@ -152,6 +152,17 @@ export function phoneState(s: SyncStatus, now = Date.now()): PhoneState {
 }
 
 /**
+ * The line after a click on "Sync now" (field 2026-11-12: the phone had lost its pairing – a reinstall keeps no
+ * pairing, web-sync.md §11.2 – and the click showed nothing). Empty when the round itself said something (offline,
+ * failed, gone: [SyncStatus.message]). The phone away longer than [PHONE_FRESH_MS]: nothing came, when it was last
+ * here, and the way back when the phone shows "Pair with browser" (the browser cannot know: nobody ended the mailbox).
+ */
+export function syncNowNote(s: SyncStatus, now = Date.now()): string {
+  if (!s.paired || s.message) return '';
+  return s.phoneSeen != null && now - s.phoneSeen > PHONE_FRESH_MS ? t('web_sync_now_stale', ago(s.phoneSeen, now), t('sync_menu_pair'), t('web_unpair')) : t('web_sync_now_done');
+}
+
+/**
  * The header's Phone button (§14.6): not paired "Pair phone"; paired the phone's name with the dot of [phoneState]
  * and a small second line "synced 2 min. ago" (green) / "last 3 days ago" (amber, the phone away for a day).
  */
@@ -503,12 +514,14 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <div class="unpairline"><button id="unpair" class="textbtn danger" hidden>${esc(t('web_unpair'))}</button></div>
     <div class="row end"><button id="closePhone">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
+  // the answer to a click on "Sync now" (field 2026-11-12: it showed nothing): kept until the next click or a sync message
+  let note = '';
   const render = () => {
     const s = sync.status, st = phoneState(s);
     $('phoneState').dataset.kind = st.kind;
     $('phoneHead').textContent = st.head;
     $('phoneWhy').textContent = st.why;
-    $('phoneStatus').textContent = s.message;
+    $('phoneStatus').textContent = s.message || (s.paired ? note : '');
     $('phoneStatus').classList.toggle('error', s.kind === 'error' && !!s.message);
     $('phoneStatus').classList.toggle('warning', s.kind === 'warning' && !!s.message);
     $('phoneStatus').classList.toggle('muted', !s.message || s.kind === 'info');
@@ -538,7 +551,14 @@ export function phoneDialog(sync: PlanSync, page: string) {
   };
   $('pairPhone').onclick = () => pairDialog(sync, page); // the pairing dialog takes this one's place
   $('pairOther').onclick = () => pairDialog(sync, page); // a new code; this phone's folder closes once the other phone answers
-  $('syncNow').onclick = () => sync.syncNow();
+  $('syncNow').onclick = async () => {
+    const b = $<HTMLButtonElement>('syncNow');
+    if (b.disabled) return;
+    b.disabled = true; note = ''; render();
+    try { await sync.syncNow(); } finally { b.disabled = false; }
+    note = syncNowNote(sync.status);
+    if (d.open) render();
+  };
   // A-017 rule 3 / point 8: Unpair without a question – the folder closes, its routes stay in this browser
   $('unpair').onclick = async () => {
     await sync.unpair();

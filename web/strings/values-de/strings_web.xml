@@ -214,6 +214,8 @@
     <string name="web_saved_title_phone">Alles ist auf %1$s gesichert</string>
     <string name="web_phone_synced_ago">abgeglichen %1$s</string>
     <string name="web_phone_last_ago">zuletzt %1$s</string>
+    <string name="web_sync_now_done">Abgeglichen – alles ist auf dem neuesten Stand.</string>
+    <string name="web_sync_now_stale">Abgeglichen – vom Handy kam nichts Neues, es war zuletzt %1$s hier. Zeigt OnPath auf dem Handy „%2$s“? Dann ist die Verbindung dort weg: hier „%3$s“ und neu verbinden.</string>
     <string name="web_where_browser">In diesem Browser</string>
     <string name="web_where_phone">Auf dem Handy</string>
     <string name="web_kind_gpx">GPX</string>

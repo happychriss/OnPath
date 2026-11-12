@@ -292,9 +292,27 @@ await box('GET', (await phone.keys()).mailbox, (await phone.keys()).token, { sin
 await syncNow(A);
 e = await entry(A);
 check(e.kind === 'stale' && e.sub === 'last 3 days ago' && e.phone === 'Pixel 8', `phone last seen 3 days ago: amber dot, "last 3 days ago" (${JSON.stringify(e)})`);
+// field 2026-11-12 (owner): the phone had lost its pairing (it showed "Pair with browser"), the browser still said
+// "Paired · phone last 4 days ago" – and "Sync now" showed nothing. A click says what happened, and with a phone away
+// for long, what to do when the phone no longer shows the pairing.
+const byHand = async (P) => {
+  await phoneWin(P);
+  await P.waitForSelector('dialog.phone[open] #syncNow:not([hidden])');
+  await P.evaluate(() => { document.getElementById('phoneStatus').textContent = ''; });
+  await P.click('#syncNow');
+  await P.waitForFunction(() => !!document.getElementById('phoneStatus')?.textContent, null, { timeout: 15_000 }).catch(() => {});
+  const text = await P.textContent('#phoneStatus');
+  await P.click('#closePhone');
+  return text;
+};
+let said = await byHand(A);
+check(/^Synced – nothing new from the phone, it was last here 3 days ago\./.test(said) && said.includes('Pair with browser') && said.includes('Unpair'),
+  `Sync now with the phone away: says so and how to pair again (${JSON.stringify(said)})`);
 await phone.round();
 await syncNow(A);
 check((await entry(A)).kind === 'fresh', 'the phone syncs again → green');
+said = await byHand(A);
+check(said === 'Synced – everything is up to date.', `Sync now with the phone near: a short "synced" line (${JSON.stringify(said)})`);
 
 // ---- 4. an unsaved change (⋮ Rename) stays over a reload and is NOT sent; Save sends it at once (no field) ----
 await menu(A, '#menuPlans');

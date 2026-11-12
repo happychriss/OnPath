@@ -230,6 +230,8 @@
     <string name="web_saved_title_phone">Everything is on %1$s</string>
     <string name="web_phone_synced_ago">synced %1$s</string>
     <string name="web_phone_last_ago">last %1$s</string>
+    <string name="web_sync_now_done">Synced – everything is up to date.</string>
+    <string name="web_sync_now_stale">Synced – nothing new from the phone, it was last here %1$s. Does OnPath on the phone show “%2$s”? Then the pairing is gone there: “%3$s” here and pair again.</string>
     <string name="web_where_browser">In this browser</string>
     <string name="web_where_phone">On the phone</string>
     <string name="web_kind_gpx">GPX</string>
