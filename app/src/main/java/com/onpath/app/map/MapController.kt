@@ -115,6 +115,17 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         /** The position sign while the route is changed during a tour ([setPlanPuck]) and an empty image (hides parts). */
         private const val IMG_PLAN_PUCK = "onpath-plan-puck"
         private const val IMG_NONE = "onpath-none"
+        /**
+         * MapLibre's one native location layer (LocationIndicatorLayer) instead of its symbol / circle layers fed by a
+         * GeoJSON source: the dot moves by layer properties, not by `GeoJsonSource.setGeoJson` on every animator tick
+         * (measured on the Pixel 2026-11-12: 6.6 % of the main thread + 4.5 % of the render thread). Same images, same
+         * sizes; it ignores custom image names, so the plan sign goes under MapLibre's own names ([showPlanPuckImages]).
+         */
+        private const val SPECIALIZED_LOCATION_LAYER = true
+        /** The image names the native location layer reads (MapLibre's IndicatorLocationLayerRenderer). */
+        private val INDICATOR_TOP_IMAGES = listOf("mapbox-location-icon", "mapbox-location-stale-icon")
+        private val INDICATOR_OTHER_IMAGES = listOf("mapbox-location-bearing-icon", "mapbox-location-bearing-stale-icon",
+            "mapbox-location-stroke-icon", "mapbox-location-background-stale-icon", "mapbox-location-shadow-icon")
     }
 
     /** Settings page → base style layers (POI filter, contours, hillshade). */
@@ -373,7 +384,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                 if (style.getImage(IMG_NONE) == null)
                     style.addImage(IMG_NONE, android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888))
             }
-            map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+            applyPuck(heading.arrowGrey)
         } catch (e: Exception) {
             Problems.warn("map", "Position sign (plan / navigate) not changed", e)
         }
@@ -388,7 +399,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         if (navigate == navigateMode) return
         navigateMode = navigate
         try {
-            if (live() && locationReady) map.locationComponent.applyStyle(puckOptions(heading.arrowGrey))
+            if (live() && locationReady) applyPuck(heading.arrowGrey)
         } catch (e: Exception) {
             Problems.warn("map", "Position dot look (accuracy circle) not changed for the mode", e)
         }
@@ -414,6 +425,26 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         }
         .build()
 
+    /** Applies the dot's look ([puckOptions]); may throw (callers report). */
+    private fun applyPuck(grey: Boolean) {
+        map.locationComponent.applyStyle(puckOptions(grey))
+        showPlanPuckImages()
+    }
+
+    /**
+     * The native location layer ([SPECIALIZED_LOCATION_LAYER]) draws only MapLibre's own image names and writes them
+     * again on every [applyPuck]: while the route is changed during a tour the plan sign goes under the dot's names and
+     * every other part (direction triangle, ring, shadow) becomes an empty image – the same picture the names in
+     * [puckOptions] give the symbol layers. May throw (callers report).
+     */
+    private fun showPlanPuckImages() {
+        val badge = planBadge
+        if (!SPECIALIZED_LOCATION_LAYER || badge == null) return
+        val none = android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888)
+        INDICATOR_TOP_IMAGES.forEach { style.addImage(it, badge) }
+        INDICATOR_OTHER_IMAGES.forEach { style.addImage(it, none) }
+    }
+
     @SuppressLint("MissingPermission")
     private fun activateLocation() {
         try {
@@ -421,16 +452,19 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             lc.activateLocationComponent(
                 LocationComponentActivationOptions.builder(context, style)
                     .useDefaultLocationEngine(false)
+                    .useSpecializedLocationLayer(SPECIALIZED_LOCATION_LAYER)
                     .locationComponentOptions(puckOptions(heading.arrowGrey))
                     .build()
             )
+            // the plan sign may have been asked for before the dot existed
+            try { showPlanPuckImages() } catch (e: Exception) { Problems.warn("map", "Plan sign on the position not shown", e) }
             lc.setCompassEngine(heading)
             heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
             facing.unsure = heading.arrowGrey
             // compass unsure → the arrow grey, never hidden (owner); in north-up / Plan it is MapLibre's bearing image
             heading.onArrowGrey = { grey ->
                 facing.unsure = grey
-                try { if (live()) map.locationComponent.applyStyle(puckOptions(grey)) } catch (e: Exception) {
+                try { if (live()) applyPuck(grey) } catch (e: Exception) {
                     Problems.warn("map", "Facing arrow colour on the position dot not changed", e)
                 }
             }
