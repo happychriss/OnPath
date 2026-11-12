@@ -51,6 +51,9 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     /** The last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var tab by mutableStateOf(RoutesTab.PLANNED)
 
+    /** The order of the saved routes / done tours ([RouteSort]); the view model reads it from and writes it to the prefs. */
+    var sort by mutableStateOf(RouteSort.DEFAULT)
+
     /** The tours My routes shows (state "done", not in the recycle bin), newest first. */
     var tours by mutableStateOf<List<Tour>>(emptyList())
         private set

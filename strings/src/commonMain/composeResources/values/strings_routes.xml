@@ -75,4 +75,17 @@
     <string name="routes_overview_loading">Drawing the map …</string>
     <string name="routes_followed_plan_missing">The plan of this tour could not be read.</string>
     <string name="routes_sac_line">T%1$d · %2$s: %3$s</string>
+    <!-- My routes: the sort chips (owner 2026-11-12, variant C) -->
+    <string name="routes_sort_newest">Newest first</string>
+    <string name="routes_sort_oldest">Oldest first</string>
+    <string name="routes_sort_length">Length</string>
+    <string name="routes_sort_duration">Duration</string>
+    <string name="routes_sort_ascent">Ascent</string>
+    <string name="routes_sort_longest">longest first</string>
+    <string name="routes_sort_shortest">shortest first</string>
+    <string name="routes_sort_most">most first</string>
+    <string name="routes_sort_least">least first</string>
+    <string name="routes_sort_chip">Sort: %1$s</string>
+    <string name="routes_sort_chip_on">Sorted: %1$s</string>
+    <string name="routes_sort_chip_flip">Sorted: %1$s, %2$s. Tap to reverse the order.</string>
 </resources>

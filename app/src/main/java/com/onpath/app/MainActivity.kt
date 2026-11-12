@@ -207,6 +207,8 @@ class MainActivity : ComponentActivity() {
                                 onPlanFrom = { vm.planFromTour(it) },
                                 initialTab = vm.routesTab,
                                 onTab = { vm.routesTab = it },
+                                initialSort = vm.routesSort,
+                                onSort = { vm.routesSort = it },
                                 marks = vm.syncMarks.collectAsState().value,
                                 onSaveDraft = { vm.saveDraft(it) },
                                 onDeleteDraft = { vm.deleteDraft(it) },

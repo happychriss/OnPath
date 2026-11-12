@@ -33,6 +33,13 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         set(v) = sp.edit().putString("appLanguage", v).apply()
 
     /** Fingerprint of the last share / open intent handled (IncomingIntent: not handled twice after a restart). */
+    /** My routes' order as `RouteSort.encode` wrote it (owner 2026-11-12); null = never chosen (newest first). */
+    var routesSort: String?
+        get() = try { sp.getString("routesSort", null) } catch (e: Exception) {
+            Problems.warn("settings", "Setting routesSort unreadable, newest first", e); null
+        }
+        set(v) = sp.edit().putString("routesSort", v).apply()
+
     var lastIncomingIntent: String?
         get() = sp.getString("lastIncomingIntent", null)
         set(v) = sp.edit().putString("lastIncomingIntent", v).apply()

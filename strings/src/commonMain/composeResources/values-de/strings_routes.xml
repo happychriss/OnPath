@@ -74,4 +74,17 @@
     <string name="routes_overview_loading">Karte wird gezeichnet …</string>
     <string name="routes_followed_plan_missing">Der Plan dieser Tour konnte nicht gelesen werden.</string>
     <string name="routes_sac_line">T%1$d · %2$s: %3$s</string>
+    <!-- Meine Touren: die Sortier-Chips (Owner 2026-11-12, Variante C) -->
+    <string name="routes_sort_newest">Neueste zuerst</string>
+    <string name="routes_sort_oldest">Älteste zuerst</string>
+    <string name="routes_sort_length">Länge</string>
+    <string name="routes_sort_duration">Dauer</string>
+    <string name="routes_sort_ascent">Anstieg</string>
+    <string name="routes_sort_longest">längste zuerst</string>
+    <string name="routes_sort_shortest">kürzeste zuerst</string>
+    <string name="routes_sort_most">meiste zuerst</string>
+    <string name="routes_sort_least">wenigste zuerst</string>
+    <string name="routes_sort_chip">Sortieren: %1$s</string>
+    <string name="routes_sort_chip_on">Sortiert: %1$s</string>
+    <string name="routes_sort_chip_flip">Sortiert: %1$s, %2$s. Tippen dreht die Reihenfolge um.</string>
 </resources>

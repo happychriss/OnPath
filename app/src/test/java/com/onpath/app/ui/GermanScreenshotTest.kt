@@ -125,6 +125,8 @@ class GermanScreenshotTest {
     @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
     @Test fun tours() = shots.tours()
+    @Test fun routesSortedByLength() = shots.routesSortedByLength()
+    @Test fun routesSortedShortestFirst() = shots.routesSortedShortestFirst()
     @Test fun toursRecent() = shots.toursRecent()
     @Test fun routesOverview() = shots.routesOverview()
     /** Gemacht: a recorded tour's followed plan (owner 2026-11-07) – its overview and its ⋮. */

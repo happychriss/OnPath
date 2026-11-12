@@ -210,7 +210,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun loadSegments(id: Long) = db.loadSegments(id)
         override fun deleteForGood(id: Long) { db.deleteTour(id) }
         override fun rename(id: Long, name: String) = db.rename(id, name)
-    }).also { it.onClosed = { routesNote = null } } // the line at the top lasts until My routes is left
+    }).also {
+        it.onClosed = { routesNote = null } // the line at the top lasts until My routes is left
+        it.sort = com.onpath.app.ui.routes.RouteSort.decode(prefs.routesSort) // the order chosen last, across app starts
+    }
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routes.open
@@ -219,6 +222,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routesTab: RoutesTab
         get() = routes.tab
         set(v) { routes.tab = v }
+    /** My routes' order (owner 2026-11-12, [com.onpath.app.ui.routes.RouteSort]): one for both tabs, kept across app starts. */
+    var routesSort: com.onpath.app.ui.routes.RouteSort.Choice
+        get() = routes.sort
+        set(v) { routes.sort = v; prefs.routesSort = com.onpath.app.ui.routes.RouteSort.encode(v) }
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set

@@ -1,6 +1,9 @@
 package com.onpath.app.ui
 
 import com.onpath.app.ui.routes.RouteRowActions
+import com.onpath.app.ui.routes.RouteSort
+import com.onpath.app.ui.routes.RouteSortChips
+import kotlinx.coroutines.launch
 
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
@@ -407,8 +410,12 @@ fun RoutesScreen(
     onGoFollowed: (Tour) -> Unit = {},
     /** The line of the plan a recorded tour followed, drawn thin under its track in the overview; empty = none. */
     loadPlanLine: suspend (Tour) -> List<com.onpath.app.routing.GeoPoint> = { emptyList() },
+    /** The order of the saved routes / done tours (owner 2026-11-12, [RouteSort]); one for both tabs, kept by the app. */
+    initialSort: RouteSort.Choice = RouteSort.DEFAULT,
+    onSort: (RouteSort.Choice) -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(initialTab) }
+    var sort by remember { mutableStateOf(initialSort) }
     // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
     var overview by remember { mutableStateOf(initialOverview) }
     val line: @Composable (Tour) -> List<List<com.onpath.app.routing.GeoPoint>>? = { t -> rememberRouteLine(t, loadLine) }
@@ -454,7 +461,13 @@ fun RoutesScreen(
                     ) { Text(str(if (t == RoutesTab.PLANNED) Res.string.routes_tab_planned else Res.string.routes_tab_done)) }
                 }
             }
-            if (tours.isNotEmpty()) RoutesSearchField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+            if (tours.isNotEmpty()) {
+                RoutesSearchField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+                // the sort chips (owner 2026-11-12, variant C): a new order starts at the top of the list
+                val scope = androidx.compose.runtime.rememberCoroutineScope()
+                RouteSortChips(sort, { sort = it; onSort(it); scope.launch { listState.scrollToItem(0) } },
+                    Modifier.padding(bottom = 8.dp))
+            }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 20.dp)) }
@@ -478,7 +491,8 @@ fun RoutesScreen(
                 // by themselves – the newest three, the rest on demand – then the saved ones; a draft is saved / deleted
                 // right on its card
                 val drafts = shown.filter { it.draft && it.id !in liveRows.hiddenDraftIds }
-                val saved = shown.filter { !it.draft }
+                // the chosen order (RouteSort) for the saved routes / done tours; Zuletzt stays newest first
+                val saved = remember(shown, sort) { RouteSort.sort(shown.filter { !it.draft }, sort) }
                 // a route saved / synced / read fresh lands on top: a LazyColumn would keep the old first row at the top
                 // and the new one above the screen (E2E 2026-11-07) – at the top, the list shows it; scrolled, it stays
                 val firstKey: Any? = if (drafts.isNotEmpty() || liveTour != null) "h-recent" else saved.firstOrNull()?.id

@@ -1284,6 +1284,32 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
     }
 
+    /** Five saved routes that come in a different order for every sort key (RouteSort). */
+    private val sortList = listOf(
+        Tour(11, TourKind.PLANNED, "Hirzer über Klammeben", 1_760_000_000_000, "HIKE", 3, 14_200.0, 1210.0, 1210.0, 6.1 * 3600, "done", viaPts),
+        Tour(12, TourKind.PLANNED, "Ifinger Steig", 1_781_400_000_000, "HIKE", 4, 9_600.0, 1350.0, 1350.0, 5.2 * 3600, "done", viaPts),
+        Tour(13, TourKind.PLANNED, "Etschradweg Meran – Bozen", 1_787_200_000_000, "BIKE_TOURING", 2, 31_500.0, 120.0, 330.0, 2.0 * 3600, "done", viaPts),
+        Tour(14, TourKind.IMPORTED, "Waalweg Algund", 1_789_800_000_000, "HIKE", 1, 8_100.0, 210.0, 190.0, 2.1 * 3600, "done", emptyList()),
+        Tour(15, TourKind.PLANNED, "Vigiljoch MTB-Runde", 1_794_000_000_000, "MTB", 2, 22_400.0, 980.0, 980.0, 3.4 * 3600, "done", viaPts),
+    )
+
+    /**
+     * My routes sorted (owner 2026-11-12, variant C): the chip row under the search, "Länge ↓" chosen and scrolled into
+     * view with "Älteste zuerst" peeking in, the longest route first.
+     */
+    @Test fun routesSortedByLength() = paparazzi.snapshot {
+        previewLines(sortList)
+        OnPathTheme { RoutesScreen(sortList, {}, {}, {}, {}, {},
+            initialSort = com.onpath.app.ui.routes.RouteSort.Choice(com.onpath.app.ui.routes.RouteSort.Key.LENGTH)) }
+    }
+
+    /** The same turned round (a second tap on "Länge"): the shortest first, the arrow up. */
+    fun routesSortedShortestFirst() = paparazzi.snapshot {
+        previewLines(sortList)
+        OnPathTheme { RoutesScreen(sortList, {}, {}, {}, {}, {},
+            initialSort = com.onpath.app.ui.routes.RouteSort.Choice(com.onpath.app.ui.routes.RouteSort.Key.LENGTH, biggestFirst = false)) }
+    }
+
     /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
      * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
@@ -1446,7 +1472,7 @@ class ScreenshotTest {
         Box(Modifier.fillMaxSize()) {
             previewLines(tourList)
         OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}) }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 256.dp, end = 12.dp)) { // under the sort chips
                 TourMenuItems(tourList.first { it.kind == com.onpath.app.data.TourKind.PLANNED }, {}, {}, {}, null, {}, {},
                     onPlan = {}, onGo = {}) {}
             } }
@@ -1461,7 +1487,7 @@ class ScreenshotTest {
         Box(Modifier.fillMaxSize()) {
             previewLines(tourList)
             OnPathTheme { RoutesScreen(tourList, {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
-            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 200.dp, end = 12.dp)) {
+            OnPathTheme { MenuCard(Modifier.align(Alignment.TopEnd).padding(top = 256.dp, end = 12.dp)) { // under the sort chips
                 TourMenuItems(tourList[1].copy(hasPlan = true), {}, {}, {}, onEditRides = {}, onCopy = null, onShare = null,
                     onPlan = {}, onGo = {}) {}
             } }
