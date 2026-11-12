@@ -405,7 +405,11 @@ class MainActivity : ComponentActivity() {
                         dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text(str(Res.string.msg_update_install_now)) } },
                     )
                 }
-                vm.unfinished?.let { t ->
+                // Continue may open the phone setup guide (a required step missing): the modal dialog steps aside while
+                // the guide is open – in front of it, it swallowed every touch (crash hunt 2026-11-12: a dead end). Back
+                // from the guide closes it and the question is back (vm.unfinished stays); finishing the guide
+                // continues the recording (openSetup's "then"), which clears the question.
+                if (!vm.setupOpen) vm.unfinished?.let { t ->
                     UnfinishedDialog(t, onContinue = { vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
                         onDelete = { vm.deleteUnfinished(t) })
                 }
