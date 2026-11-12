@@ -10,16 +10,18 @@ data class SyncEntry(val item: SyncItem, val rev: Long = 0, val dirty: Boolean =
 data class RemoteItem(val item: SyncItem, val rev: Long)
 
 /**
- * The conflict rule (owner 2026-10-26): **the newer version wins, the older stays as a copy**. Pure, shared by app and
- * web planner (docs/design/web-sync.md §6).
+ * The conflict rule. Pure, shared by app and web planner (docs/design/web-sync.md §6).
  *
- * - "Newer" is a total order: updatedAt, then device id, then the item bytes – so every device picks the same winner,
- *   whatever order changes arrive in ([merge] is commutative and idempotent).
- * - The older version, when it is a live plan with other content, becomes a copy: id derived from the older version
- *   (every device derives the same copy, so it never doubles), title "… (copy)". Only plans and tracks are copied –
- *   never device hellos, tombstones or kinds this app does not know. A delete that is newer than an edit still keeps the edit as a copy – a plan is never lost.
- * - A remote change on an entry not edited here is a plain update (the mailbox's compare-and-set guarantees the other
- *   device saw this version before writing).
+ * **Saved plans and tracks (owner 2026-11-12, after the „Bad Honnef“ field bug – docs/design/sync-research-2026-11-12.md):
+ * the version seen decides, not the clock.** A change made here meets a newer mailbox version of the same item only
+ * when the other side wrote it without having seen ours (the mailbox's compare-and-set). Then the mailbox version keeps
+ * the id; ours stays as a copy ("… (copy)") when it is a live plan or track with other content; a delete made here on a
+ * version that is no longer current is dropped – an edit the deleter never saw beats the delete ([reconcile]).
+ * `updatedAt` only orders lists and breaks ties – a clock running ahead decides nothing.
+ * - A remote change on an entry not edited here is a plain update (the other device saw this version before writing).
+ * - Device hellos and JOIN items (one writer each) keep the older rule [merge]: the newer by updatedAt wins.
+ * - A copy's id is derived from the losing version (every device derives the same copy, so it never doubles), title
+ *   "… (copy)". Only plans and tracks are copied – never hellos, tombstones or kinds this app does not know.
  */
 object SyncMerge {
     /**
@@ -73,9 +75,10 @@ object SyncMerge {
 
     /**
      * [local] (by id) after reading [remote] from the mailbox. New entries come in as they are; a remote revision
-     * not newer than the entry's is ignored (already seen); an entry not edited here takes the remote version; an
-     * entry edited here meets the remote version in [merge] – the winner stays (to upload unless it is the remote
-     * one), a copy of the loser is added (to upload). Repeating the same remote list changes nothing.
+     * not newer than the entry's is ignored (already seen); an entry not edited here takes the remote version; a plan
+     * or track edited here takes it too (the mailbox moved past our base: the other side never saw our change), our
+     * version is added as a copy to upload (not a delete, not the same content); hellos edited here meet the remote
+     * version in [merge]. Repeating the same remote list changes nothing.
      */
     fun reconcile(local: Map<String, SyncEntry>, remote: List<RemoteItem>): Map<String, SyncEntry> {
         val out = LinkedHashMap(local)
@@ -85,6 +88,16 @@ object SyncMerge {
                 e == null -> out[r.item.id] = SyncEntry(r.item, r.rev, dirty = false)
                 r.rev <= e.rev -> Unit
                 !e.dirty -> out[r.item.id] = SyncEntry(r.item, r.rev, dirty = false)
+                // the version seen decides (owner 2026-11-12): the mailbox moved past what our change was based on –
+                // its version keeps the id, ours becomes a copy (a live tour with other content); a stale delete is dropped
+                e.item.isUserItem || r.item.isUserItem -> {
+                    out[r.item.id] = SyncEntry(r.item, r.rev, dirty = false)
+                    val mine = e.item
+                    if (!mine.deleted && mine.isUserItem && !mine.sameContent(r.item)) {
+                        val c = copyOf(mine)
+                        if (c.id !in out) out[c.id] = SyncEntry(c, 0, dirty = true)
+                    }
+                }
                 else -> {
                     val m = merge(e.item, r.item)
                     out[r.item.id] = SyncEntry(m.winner, r.rev, dirty = m.winner != r.item)

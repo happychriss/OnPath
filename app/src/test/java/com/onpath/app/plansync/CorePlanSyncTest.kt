@@ -521,6 +521,47 @@ class CorePlanSyncTest {
         assertEquals(listOf("Offline"), browser.plans().map { it.title })
     }
 
+    // ---- field bug 2026-11-12 („Bad Honnef → Bonn“): one browser Save after 4 quiet days made a phone tour vanish ----
+    // The rules (docs/design/sync-research-2026-11-12.md, owner 2026-11-12): the version seen decides, not the clock;
+    // an old pending change from the browser never pushes away what the phone saved since.
+    private val days = 24 * 3600_000L
+
+    @Test fun anOldBrowserDeleteNeverBinsATourThePhoneSavedSince() {
+        val t = store.savePlanned("Bonn", listOf(a, b))
+        phoneSync(); browserSync()
+        val id = browser.plans().single().id
+        // the browser deleted it long ago (its clock even runs ahead) – waiting, never sent (Save sends it later)
+        browser.delete(id, clock + 10 * days, web)
+        // four quiet days; the phone saves the tour anew (Bad Honnef → Bonn)
+        clock += 4 * days
+        store.update(t) { it.copy(name = "Bad Honnef → Bonn", waypoints = listOf(a, c).map { p -> GpxWaypoint(p.lat, p.lon, null) }) }
+        phoneSync()
+        browserSync() // the browser's Save: everything waiting goes
+        phoneSync(); browserSync()
+        val live = store.list.single { it.id == t.id }
+        assertNull("never to the recycle bin – the phone saved it after the browser's delete", live.deletedMs)
+        assertEquals("Bad Honnef → Bonn", live.name)
+        assertEquals(listOf(a, c), live.waypoints.map { GeoPoint(it.lat, it.lon) })
+        assertEquals(listOf("Bad Honnef → Bonn"), browser.plans().map { it.title })
+    }
+
+    @Test fun anOldBrowserEditNeverOverwritesATourThePhoneSavedSince() {
+        val t = store.savePlanned("Bonn", listOf(a, b))
+        phoneSync(); browserSync()
+        val id = browser.plans().single().id
+        browser.rename(id, "Old browser name", clock + 10 * days, web) // waiting, clock ahead
+        clock += 4 * days
+        store.update(t) { it.copy(name = "Bad Honnef → Bonn") }
+        phoneSync()
+        browserSync(); phoneSync(); browserSync()
+        val live = store.list.single { it.id == t.id }
+        assertNull(live.deletedMs)
+        assertEquals("the phone's tour keeps its name and points", "Bad Honnef → Bonn", live.name)
+        val want = setOf("Bad Honnef → Bonn", "Old browser name (copy)") // the browser's old edit at most as a copy
+        assertEquals(want, store.live().map { it.name }.toSet())
+        assertEquals(want, browser.plans().map { it.title }.toSet())
+    }
+
     private fun id(k: Int) = SyncFormat.newId(ByteArray(16) { k.toByte() })
     private fun plan(points: List<GeoPoint>, act: Activity = Activity.HIKE, names: Map<Int, String> = emptyMap()) =
         PlanCode.encode(SharedPlan(points, act, 2, names = names))

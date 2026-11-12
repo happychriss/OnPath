@@ -71,6 +71,28 @@ class SyncLedger private constructor(
         return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.TRACK, title = title, track = track), old)
     }
 
+    /**
+     * A tour moved in from another folder (the web's Without phone, the folder "Neu verbinden" closed): moving is not an
+     * edit (owner 2026-11-12, docs/design/sync-research-2026-11-12.md rule 5) – the item keeps its updatedAt, device and
+     * routing fields, it is never stamped newer. Not here yet → added as it is, to upload (base 0). Here with the same
+     * content → nothing changes (not to upload). Here with other content → what is here stays; the moved version is
+     * kept as a copy to upload, so nothing is lost and nothing here is pushed away. Only live plans and tracks move;
+     * returns false for anything else.
+     */
+    fun take(item: SyncItem): Boolean {
+        if (!item.isUserItem || item.deleted || !SyncFormat.isId(item.id)) return false
+        val here = entries[item.id]
+        when {
+            here == null -> entries = entries + (item.id to SyncEntry(item, 0, dirty = true))
+            here.item.sameContent(item) -> Unit
+            else -> {
+                val c = SyncMerge.copyOf(item)
+                if (c.id !in entries) entries = entries + (c.id to SyncEntry(c, 0, dirty = true))
+            }
+        }
+        return true
+    }
+
     /** Renames a saved plan or track; false when there is none under [id]. */
     fun rename(id: String, title: String?, now: Long, device: String): Boolean {
         val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
