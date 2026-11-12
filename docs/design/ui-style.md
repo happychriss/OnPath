@@ -65,9 +65,10 @@ very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a to
 screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
 pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
 (`ui/PlanPuck`). Kept: the blue route line, red for stop /
-errors. Since 2026-11-12 (owner, variant F) Plan's start button "▶ Los geht's" is plan ink blue with white words
-(`PlanFoot.GO_FILL`, 7.1:1) – blue = planning, green = on the way; during a tour "▲ Weiter geht's" back to Navigate is
-the same blue (owner on the Pixel: "Der ist dann auch blau"); Navigate's own buttons stay green. `PlanColourTest` keeps the plan tokens out of Navigate.
+errors. Since 2026-11-12 (owner, variant F + "one rule"): **in Plan every big go button is plan ink blue with white
+words** (`OnPathColors.PlanGo` via `ActionButtons.planGo()`, 7.1:1) – "▶ Los geht's", "▲ Weiter geht's" back to
+Navigate, "Tour nachfahren" under a shown tour, the route overview's "Los geht's" / "Folgen"; **in Navigate everything
+stays green** (`ActionButtons.go()`, the bottom bar, the arrival and end sheets). `PlanColourTest` keeps the plan tokens out of Navigate.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).

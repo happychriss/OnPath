@@ -23,14 +23,14 @@ import androidx.compose.ui.unit.dp
  * The way back to Navigate while a tour records and the plan is open (owner 2026-11-06, C): a button in the form of
  * "▶ Los geht's", at the same place, in every step of the sheet, also over a shown tour or a place card – plain
  * "▲ Weiter geht's" in the middle (owner: no red dot, no figures – "ein einfaches, cooles Wort"), the same while paused
- * and on a free tour. Plan ink blue like "Los geht's" ([PlanFoot.GO_FILL], owner 2026-11-12 on the Pixel: "Der ist dann
+ * and on a free tour. Plan ink blue like "Los geht's" ([OnPathColors.PlanGo], owner 2026-11-12 on the Pixel: "Der ist dann
  * auch blau" – the big button in Plan's foot is blue; Navigate's own buttons stay green). Replaces the round "←" of the
  * top band; Android's Back does the same (MainActivity).
  */
 @Composable
 fun BackToNavigationButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
     val desc = Txt.s(Res.string.plan_back_nav_desc)
-    Button(colors = ActionButtons.edit(), onClick = onClick,
+    Button(colors = ActionButtons.planGo(), onClick = onClick,
         modifier = modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = desc }) {
         Icon(Icons.Filled.Navigation, null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))

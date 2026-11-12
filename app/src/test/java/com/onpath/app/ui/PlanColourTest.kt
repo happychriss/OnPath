@@ -29,10 +29,10 @@ class PlanColourTest {
         assertEquals(OnPathColors.PaperDeep, PillBlueLight)
     }
 
-    /** "▶ Los geht's" is plan blue while one plans (owner 2026-11-12, variant F), white on it ≥ 7:1 (7.1:1). */
-    @Test fun startButtonIsPlanBlue() {
-        assertEquals(OnPathColors.ActionEdit, PlanFoot.GO_FILL)
-        assertTrue(contrast(OnPathColors.CardWhite, PlanFoot.GO_FILL) >= 7.0)
+    /** Every big go button in Plan is plan blue (owner 2026-11-12, variant F + one rule), white on it ≥ 7:1 (7.1:1). */
+    @Test fun goButtonsInPlanArePlanBlue() {
+        assertEquals(OnPathColors.ActionEdit, OnPathColors.PlanGo)
+        assertTrue(contrast(OnPathColors.CardWhite, OnPathColors.PlanGo) >= 7.0)
     }
 
     /**

@@ -148,6 +148,12 @@ object OnPathColors {
      * everything over the map ([MapGround]).
      */
     val PlanTint = MapGround
+    /**
+     * Every big go / start button shown in Plan ("▶ Los geht's", "▲ Weiter geht's" back to Navigate, "Tour nachfahren",
+     * the route overview's "Los geht's" / "Folgen"): the plan ink blue, white words 7.1:1 – owner 2026-11-12 ("Der ist
+     * dann auch blau"; one rule: in Plan every go button blue, in Navigate everything green). [ActionButtons.planGo].
+     */
+    val PlanGo = ActionEdit
     /** The "Ohne Netz ✓" sign on the plan's mode pill ([PlanAccent]): a light green, ≥ 4.5:1 on it (OfflineReady). */
     val OnPlanGood = Color(0xFFB9F6CA)
     /** The "Ohne Netz ⚠" sign on the plan's mode pill: a light amber, ≥ 4.5:1 on [PlanAccent]. */
@@ -182,6 +188,8 @@ object OnPathColors {
  */
 object ActionButtons {
     @Composable fun go() = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = Color.White)
+    /** A big go / start button shown in Plan: plan blue ([OnPathColors.PlanGo], owner 2026-11-12) – Navigate keeps [go]. */
+    @Composable fun planGo() = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.PlanGo, contentColor = Color.White)
     @Composable fun edit() = androidx.compose.material3.ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = Color.White)
     @Composable fun goText() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionGo)
     @Composable fun editText() = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)

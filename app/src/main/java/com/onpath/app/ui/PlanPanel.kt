@@ -633,14 +633,14 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
 }
 
 /**
- * The one full-width start button "▶ Los geht's" – in the plan ink blue [PlanFoot.GO_FILL], white words (owner 2026-11-12,
+ * The one full-width start button "▶ Los geht's" – in the plan ink blue [OnPathColors.PlanGo], white words (owner 2026-11-12,
  * variant F: "blue = planning, green = on the way"; like "Weiter geht's" back to Navigate, Navigate's own green stays);
  * TalkBack hears the full label with the activity.
  */
 @Composable
 private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
     val full = primaryLabel(ui)
-    Button(colors = ActionButtons.edit(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+    Button(colors = ActionButtons.planGo(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = full }) {
         Icon(goIcon(ui), null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
@@ -697,12 +697,6 @@ object PlanFoot {
 
     /** The button's height – the one primary action of the sheet. */
     val HEIGHT = 56.dp
-
-    /**
-     * The foot button's fill – "▶ Los geht's" and "▲ Weiter geht's" ([BackToNavigationButton]): the plan ink blue (owner
-     * 2026-11-12, variant F + "Der ist dann auch blau"), white words 7.1:1 – the same as [ActionButtons.edit].
-     */
-    val GO_FILL = OnPathColors.ActionEdit
 }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
