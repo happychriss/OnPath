@@ -5,9 +5,11 @@
 //
 // Folders (owner order A-017, web-sync.md §14): one folder per phone (key = the phone's device id) plus "Without phone".
 // Pairing opens the phone's folder; Unpair closes it (no question, the routes stay here). Phone → browser comes by
-// itself (pull on load, when the tab is visible again, online, every 60 s); browser → phone only with Save (push).
+// itself (pull on load, when the tab is visible again, online, every 60 s); browser → phone with Save (push) – and once
+// right after a pairing (owner field 2026-11-12: "erst Speichern drücken ist keine gute Idee"): everything waiting in
+// the folder that opened goes up at once, retried every tick until it is there (offline loses nothing).
 // Routes planned while no phone was paired belong to the next phone that is paired (§14.6 rule 2): they join its folder
-// as waiting (unsent) – nothing goes without a click on Save.
+// and go up with that first round.
 import type { EngineClient } from './engine/client';
 import { t, locale } from './i18n';
 import { problem } from './diag';
@@ -58,6 +60,8 @@ export interface Draft { code: string; savedId: string | null; savedTitle: strin
 /** The folder for planning without a phone (A-017 rule 1). */
 export const NONE = 'none';
 const EVERY_MS = 60_000;
+/** Store key: the pairing that just opened a folder still has to send what waits there (owner 2026-11-12). */
+const SEND_AFTER_PAIR = 'sendAfterPair';
 const TIMEOUT_MS = 15_000;
 /** Device roles in a hello (web-sync.md §5.1). */
 const ROLE_PHONE = 1, ROLE_BROWSER = 2;
@@ -342,7 +346,7 @@ export class PlanSync {
   /**
    * "Pair again" (the phone silent for long, owner 2026-11-12): unpair, and remember the folder that closes – when the
    * next pairing answers with ANOTHER device id (a reinstalled phone: no backup of its device id), that folder's tours
-   * come along into the new one, waiting for Save like Without phone's (robust first: never hide a tour). The same
+   * come along into the new one and go up with the pairing's first round (robust first: never hide a tour). The same
    * phone brings its own folder back as before; older closed folders are never touched.
    */
   async pairAgain(): Promise<void> {
@@ -383,7 +387,17 @@ export class PlanSync {
         if (p) await this.pendingRound(p);
         const pair = await this.store.get('pair');
         if (!pair) return;
-        await this.round(pair, all);
+        // right after a pairing (openFolder) the round sends everything waiting, as Save does; the mark goes only once
+        // nothing waits any more – offline / a full mailbox keeps it, so the next tick tries again (nothing lost)
+        const afterPair = (await this.store.get(SEND_AFTER_PAIR)) === '1';
+        const before = afterPair ? await this.unsent(this.dir.open) : 0;
+        await this.round(pair, all || afterPair);
+        if (afterPair) {
+          // done when nothing waits; also when a good round moved nothing (e.g. the 250-tour cap) – Save is still there
+          const left = this.dir.open === NONE ? 0 : await this.unsent(this.dir.open);
+          if (left === 0 || left >= before) await this.store.set(SEND_AFTER_PAIR, null);
+          if (left > 0 && left < before) problem('sync', `after pairing: ${left} still to send – the next round goes on`);
+        }
         // the phone unpaired itself – its hello came back deleted (the app's guard, b585cbc): the folder closes as when
         // the phone ended the mailbox; its routes stay here, the header says "Pair phone"
         if (this.dir.open !== NONE && (await this.call('syncPhoneGone', await this.ledger(), this.dir.open)) === 'true') {
@@ -552,6 +566,8 @@ export class PlanSync {
         problem('sync', 'pair again: another device id answered – the closed folder\'s tours came along as waiting');
       }
     }
+    // the first round of this pairing sends everything waiting (owner 2026-11-12) – [sync] runs it, a failed one retries
+    await this.store.set(SEND_AFTER_PAIR, '1');
     this.status.phoneSeen = null;
     await this.refresh();
     if (from !== key) for (const l of this.folderListeners) l(from, key);

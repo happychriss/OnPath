@@ -204,7 +204,11 @@ A round (the same on phone and browser):
    when the connection is back." (INFO).
 
 Triggers (browser, A-017 §14): **pull** at load, when the tab becomes visible, on `online`, every 60 s while visible,
-every 3 s while the pairing dialog waits for the phone; **push** only on Save (the own hello also without).
+every 3 s while the pairing dialog waits for the phone; **push** on Save (the own hello also without) – and **once right
+after a pairing** (owner field 2026-11-12: „erst Speichern drücken ist keine gute Idee“): the first round after
+`openFolder` (first pairing, Without phone joining, the same phone again, "Neu verbinden" with a reinstalled phone)
+sends everything waiting in that folder, as Save does. The mark (`sendAfterPair` in the store) stays until nothing waits,
+so offline / a full mailbox is retried every tick; a good round that moves nothing (e.g. the tour cap) ends it.
 
 ## 8. Mailbox API (`web/host/src/sync.js`)
 
@@ -351,7 +355,7 @@ pairing uploaded everything that was in the browser – a friend's PC mixed its 
 | Phone → browser by itself | pull triggers §7 |
 | Browser → phone only with Save | `round(pair, all)`: without Save only the own hello is pushed (`syncOutboxOf` with one id); Save → `sendAll` pushes the folder's outbox. Rename, delete, GPX import, saving a route only make the ledger dirty |
 | Save dark (§14.6) | `status.pending` = the folder's dirty plans / tracks / tombstones (`syncState.unsaved`) > 0, or the shown route new / changed (`saveState`) |
-| Planned without a phone → the next paired phone, waiting (§14.6 rule 2) | `adoptNone(key)` when a folder opens by pairing (and once on load for a store paired before §14.6): every route / track of Without phone goes into the phone's folder with the same id, unsent (`syncSave` / `syncSaveTrack`), Without phone is emptied; its open route stays open (the draft moves along). Never uploaded by itself – Save sends it. (The A-017 "Copy to ‹phone›" is gone.) |
+| Planned without a phone → the next paired phone, waiting (§14.6 rule 2) | `adoptNone(key)` when a folder opens by pairing (and once on load for a store paired before §14.6): every route / track of Without phone goes into the phone's folder with the same id, unsent (`syncSave` / `syncSaveTrack`), Without phone is emptied; its open route stays open (the draft moves along). Sent with the pairing's first round (owner 2026-11-12, §7 triggers) – no Save needed. (The A-017 "Copy to ‹phone›" is gone.) |
 | A friend's PC | Pair phone always makes a new code; another phone opens its folder, the open one closes untouched (no DELETE); the friend's phone redirects (JOIN) or pairs directly later and its folder is back |
 | Laptop + desktop | each pairs itself; the phone redirects the second (JOIN); each has its own copy of the folder |
 | Marks | an item new or changed by a pull (not changed last by this browser – the phone's own and another browser's saves) → "New from the phone" / "Changed on the phone" until opened; the first fill of a folder (since = 0) is not marked |
@@ -451,11 +455,11 @@ phone sit in ONE group on the left with + Neu and Meine Touren; at phone width a
 **Saving rules**
 1. A route from the phone shows 📱; change it and "Aufs Handy sichern" sends the change back → 🖥 📱.
 2. **Routes planned while no phone was paired belong to the next phone that is paired:** they join its folder as
-   *waiting* (bold, Save dark); one click on "Aufs Handy sichern" sends them all. Nothing goes without that click
-   (this is how A-017 rule 8 "not uploaded on pairing" now reads). A browser that never paired: all its routes. A
+   *waiting* and go up with the pairing's first round – no click (owner field 2026-11-12, replaces "nothing goes
+   without that click" and A-017 rule 8 "not uploaded on pairing"). A browser that never paired: all its routes. A
    friend's PC that was paired before: his routes are in his phone's folder and **not visible at all** for my phone –
    a new pairing shows only my phone's folder; his folder comes back when he pairs again. (Rare edge: routes he
-   planned after unpairing join my phone as waiting – nothing goes without my click.)
+   planned after unpairing join my phone and go up with the pairing.)
 3. Delete of a route with 📱 → on the next save it goes to the phone's recycle bin.
 4. Reload / closing the tab never loses anything unsaved.
 5. **Save at once** (owner 2026-10-31, the app's Save – replaces the field of 2026-10-30 below): a click on Save / "Aufs
