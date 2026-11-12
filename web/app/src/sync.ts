@@ -583,15 +583,13 @@ export class PlanSync {
   /** The tours of folder [from] join folder [key] as waiting (unsent); [from] is emptied – [adoptNone], [pairAgain]. */
   private async adopt(from: string, key: string, takeDraft: boolean) {
     if (key === NONE || key === from) return;
-    const dev = await this.device();
-    const items = JSON.parse(await this.call('syncList', await this.ledgerOf(from), dev)) as SavedPlan[];
+    const src = await this.ledgerOf(from);
+    const items = JSON.parse(await this.call('syncList', src, await this.device())) as SavedPlan[];
     if (items.length) {
-      let l = await this.ledgerOf(key);
-      for (const p of items) {
-        l = p.kind === 'track' ? await this.call('syncSaveTrack', l, p.id, p.track, p.title ?? '', p.updatedAt, dev)
-          : await this.call('syncSave', l, p.id, p.plan, p.title ?? '', p.updatedAt, dev, p.routing ?? '', p.routingData ?? '');
-      }
-      await this.setLedgerOf(key, l);
+      // moving is not an edit (owner 2026-11-12, after the „Bad Honnef“ field bug): the shared SyncLedger.take keeps
+      // each tour's time and device – never stamped newer – and a tour already here with other content stays; the
+      // moved one comes as a copy. (It used to save them again: an old version then replaced the phone's tour.)
+      await this.setLedgerOf(key, await this.call('syncTake', await this.ledgerOf(key), src));
       for (const x of ['ledger', 'marks']) await this.store.set(`fach:${from}:${x}`, null);
     }
     const moved = (d: Draft): Draft => ({ ...d, savedFolder: d.savedFolder === from ? key : d.savedFolder ?? null });

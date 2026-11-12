@@ -72,6 +72,8 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   'syncRename', 'syncDelete', 'syncHello', 'syncForget', 'syncApply', 'syncOutbox', 'syncAcked',
   // A-017 folders (web-sync.md §5.1): JOIN, role, tracks, push only on Save
   'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx',
+  // moving tours between folders is not an edit (owner 2026-11-12): never stamped newer
+  'syncTake',
   // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
   'syncSaveRouted', 'routingInfo',
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
