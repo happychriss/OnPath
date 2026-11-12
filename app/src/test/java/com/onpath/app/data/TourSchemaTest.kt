@@ -61,6 +61,12 @@ class TourSchemaTest {
         // 5 → 6: the table of the followed plans; the old tour has none
         assertTrue("tour_plan" in tables())
         assertEquals(0, count("SELECT ${TourSchema.HAS_PLAN} FROM tours WHERE id=1"))
+        // 6 → 7: the difficulty at saving – an old tour has none (null = not known), a new one can store it
+        assertTrue("difficulty" in columns("tours"))
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE id=1 AND difficulty IS NULL"))
+        exec("INSERT INTO tours(kind, name, created, difficulty) VALUES ('PLANNED', 'Neu', 2, 'MODERATE')")
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE name='Neu' AND difficulty='MODERATE'"))
+        exec("DELETE FROM tours WHERE name='Neu'")
         exec("UPDATE tours SET rides='{}' WHERE id=1")
         exec("INSERT INTO points VALUES (1, 50, 0, 46.6, 11.1, 600, 50000, 12.5)")
         assertEquals(1, count("SELECT COUNT(*) FROM points WHERE acc=12.5"))
@@ -89,6 +95,21 @@ class TourSchemaTest {
         db().use { c ->
             c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.upgrade(5); c.assertUpgraded()
             c.upgrade(5) // twice (a half-done upgrade): nothing breaks
+        }
+    }
+
+    /**
+     * A version 6 database (the followed plans) gets `tours.difficulty` (owner 2026-11-12); every tour, point and plan copy
+     * stays, the old rows read null; twice (a half-done upgrade) breaks nothing.
+     */
+    @Test fun upgradeFrom6AddsDifficulty() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.exec(TourSchema.CREATE_PLAN)
+            c.setPlan(7, plan) // a plan copy of another tour: it stays
+            assertTrue("difficulty" !in c.columns("tours"))
+            c.upgrade(6); c.assertUpgraded()
+            c.upgrade(6)
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=7"))
         }
     }
 
@@ -125,7 +146,8 @@ class TourSchemaTest {
             assertTrue("acc" in c.columns("points"))
             assertTrue("draft" in c.columns("tours"))
             assertTrue("tour_plan" in c.tables())
-            assertEquals(6, TourSchema.VERSION)
+            assertTrue("difficulty" in c.columns("tours"))
+            assertEquals(7, TourSchema.VERSION)
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

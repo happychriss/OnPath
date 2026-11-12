@@ -14,8 +14,9 @@ import org.junit.runner.RunWith
 
 /**
  * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`, 5 = `tours.draft` (Zuletzt, 2026-11-06),
- * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07). An existing version-2 … -5 database keeps every tour and point; old points read back as unknown accuracy, new
- * ones store it, the tour has no rides and is no draft (a saved route stays saved), and a draft can be marked.
+ * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07), 7 = `tours.difficulty` (2026-11-12). An existing version-2 … -6
+ * database keeps every tour and point; old points read back as unknown accuracy, new ones store it, the tour has no rides,
+ * is no draft (a saved route stays saved) and has no difficulty (null), a draft can be marked and a difficulty stored.
  */
 @RunWith(AndroidJUnit4::class)
 class TourDbMigrationTest {
@@ -52,7 +53,7 @@ class TourDbMigrationTest {
             assertEquals(12.5, acc[1]!!, 0.01)
             assertNull(acc[2])
             assertEquals(TourSchema.VERSION, tdb.readableDatabase.version)
-            assertEquals(6, TourSchema.VERSION) // a new schema version gets its own case here
+            assertEquals(7, TourSchema.VERSION) // a new schema version gets its own case here
             val t = tdb.getTour(1)!!
             assertEquals("u1", t.uuid)
             assertNull(t.rides)
@@ -61,6 +62,13 @@ class TourDbMigrationTest {
             val saved = tdb.listTours().single { it.id == 2L }
             assertEquals("Saved route", saved.name)
             assertFalse("an old saved route stays saved", saved.draft)
+            // 7: tours.difficulty – an old route has none; a new one stores it, an overwrite replaces it
+            assertNull(saved.difficulty)
+            val rated = tdb.insertTour(TourKind.PLANNED, "Rated", "HIKE", 3, 9600.0, 1350.0, 1350.0, 5.0, emptyList(), difficulty = "DIFFICULT")
+            assertEquals("DIFFICULT", tdb.getTour(rated)!!.difficulty)
+            assertTrue(tdb.replacePlanned(rated, "HIKE", 3, 4000.0, 200.0, 200.0, 1.0, emptyList(), emptyList(), difficulty = "EASY"))
+            assertEquals("EASY", tdb.getTour(rated)!!.difficulty)
+            tdb.deleteTour(rated)
             assertTrue(tdb.setDraft(2, true))
             assertTrue(tdb.getTour(2)!!.draft)
             assertEquals(0, tdb.pruneDrafts(25))
@@ -93,4 +101,6 @@ class TourDbMigrationTest {
     @Test fun version4DatabaseGetsDraftsAndKeepsToursAndPoints() { writeOld(4); checkUpgraded() }
 
     @Test fun version5DatabaseGetsTheFollowedPlansAndKeepsToursAndPoints() { writeOld(5); checkUpgraded() }
+
+    @Test fun version6DatabaseGetsDifficultyAndKeepsToursAndPoints() { writeOld(6); checkUpgraded() }
 }

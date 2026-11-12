@@ -2646,6 +2646,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute =
         com.onpath.app.routing.PlanResult.withModelTime(r, a, f)
 
+    /**
+     * The level of the plan sheet's difficulty badge for [r] ([com.onpath.app.routing.RouteSummary.rating] – the same call
+     * as RouteBreakdown), stored with a saved route ([Tour.difficulty], owner 2026-11-12: for sorting by difficulty later).
+     * Only here, while the line still has its way details; null without a line or when it cannot be computed.
+     */
+    private fun difficultyOf(r: PlannedRoute?, a: Activity): String? = r?.let {
+        runCatching { com.onpath.app.routing.RouteSummary.rating(a, it.distanceM, it.ascentM, it.points).level.name }
+            .onFailure { e -> Problems.warn("plan", "Difficulty of a saved route not computed; stored as not known", e) }
+            .getOrNull()
+    }
+
     /** Times of a finished tour: the service's live summary, else recomputed from the stored points. */
     private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = try {
         // rides taken out (vehicle detection): moving time / breaks of what is left, not the service's live summary
@@ -3013,7 +3024,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     runCatching {
                         val t = db.getTour(id) ?: return@runCatching null
                         db.insertTour(TourKind.PLANNED, name, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM, t.durationS,
-                            db.loadSegments(id), t.waypoints, pinned = t.pinned)
+                            db.loadSegments(id), t.waypoints, pinned = t.pinned, difficulty = t.difficulty)
                             .also { n -> planTimes.get(id, t.distanceM)?.let { planTimes.put(n, t.distanceM, it) } }
                     }.onFailure { Problems.error("db", "Copying a planned route failed", it) }.getOrNull()
                 }
@@ -3062,6 +3073,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 db.insertTour(TourKind.PLANNED, dated, act.name, level,
                     r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                     listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), stops, pinned = pins, draft = true,
+                    difficulty = difficultyOf(r, act),
                 )
             }
         }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull() ?: return
@@ -3193,7 +3205,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     TourKind.PLANNED, title, act.name, level,
                     r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                     listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                    stops, pinned = pins,
+                    stops, pinned = pins, difficulty = difficultyOf(r, act),
                 ).also { storePlanTimes(it, r, act) }
             }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
         }
@@ -3248,7 +3260,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                             id, act.name, level,
                             r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                             listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                            stops, pins,
+                            stops, pins, difficulty = difficultyOf(r, act),
                         ).also {
                             if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
                             if (it && name != old) db.rename(id, name)
@@ -3630,7 +3642,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 runCatching {
                     routes.keepReplaced(key) {
                         db.insertTour(TourKind.PLANNED, old.name, old.activity, old.sac, old.distanceM, old.ascentM, old.descentM,
-                            old.durationS, segments, old.waypoints, pinned = old.pinned, draft = true)
+                            old.durationS, segments, old.waypoints, pinned = old.pinned, draft = true, difficulty = old.difficulty)
                     }
                 }.onFailure { Problems.error("db", "The saved route's version before the tour start could not be kept under Zuletzt", it) }
                     .getOrNull()
@@ -4725,7 +4737,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                         // changed again meanwhile (a newer sync): leave it to that one's routing
                         val now = db.getTour(id)
                         now != null && now.waypoints == t.waypoints && db.replacePlanned(id, act.name, t.sac, r.distanceM, r.ascentM, r.descentM,
-                            r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned)
+                            r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned,
+                            difficultyOf(r, act))
                             .also { if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) } }
                     } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
                 }

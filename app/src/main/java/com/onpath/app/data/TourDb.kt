@@ -51,6 +51,13 @@ data class Tour(
     val draft: Boolean = false,
     /** Recorded: a copy of the plan it followed is stored ([TourPlan], `tour_plan`) – Gemacht offers Planen / Los geht's. */
     val hasPlan: Boolean = false,
+    /**
+     * Planned: the difficulty badge's level when it was saved (`RouteSummary.Difficulty` name: EASY / MODERATE /
+     * DIFFICULT – distance + ascent raised by the trail technique, which needs the way details only the plan has); null =
+     * not known (saved before schema 7, imported, recorded, restored from a backup). A hike's T level is [sac]. Kept for
+     * sorting by difficulty later (owner 2026-11-12: "erst ohne, später dazu").
+     */
+    val difficulty: String? = null,
 )
 
 /**
@@ -101,6 +108,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 4 → 5 (owner 2026-11-06, "Zuletzt"): `tours.draft` – 1 = a plan kept automatically when it left the map (My routes →
      * Zuletzt), 0 = saved; every existing tour stays saved.
      * 5 → 6 (owner 2026-11-07): the table `tour_plan` – the frozen copy of the plan a recorded tour followed ([TourPlan]).
+     * 6 → 7 (owner 2026-11-12): `tours.difficulty` – a planned route's difficulty level at saving ([Tour.difficulty]);
+     * every existing tour reads null (not known).
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -153,6 +162,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         rides: com.onpath.app.rides.RideRecord? = null,
         /** A plan kept under "Zuletzt" (not saved by the user; no backup, no browser sync). */
         draft: Boolean = false,
+        /** [Tour.difficulty]; null = not known. */
+        difficulty: String? = null,
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
@@ -165,6 +176,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("descent", descent); put("duration", duration); put("state", state)
                 put("waypoints", waypointsToJson(waypoints))
                 put("draft", if (draft) 1 else 0)
+                put("difficulty", difficulty)
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -248,6 +260,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         id: Long, activity: String?, sac: Int,
         distance: Double, ascent: Double, descent: Double, duration: Double,
         segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>, pinned: Set<Int> = emptySet(),
+        /** [Tour.difficulty] of the new version; null = not known (the old level would describe the old line). */
+        difficulty: String? = null,
     ): Boolean {
         val db = writableDatabase
         db.beginTransaction()
@@ -255,7 +269,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             val n = db.update("tours", ContentValues().apply {
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
-                put("pinned", pinnedToJson(pinned))
+                put("pinned", pinnedToJson(pinned)); put("difficulty", difficulty)
             }, "id=? AND kind=? AND deleted_at IS NULL", arrayOf(id.toString(), TourKind.PLANNED.name))
             if (n == 0) return false
             db.delete("points", "tour_id=?", arrayOf(id.toString()))
@@ -461,6 +475,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             rides = opt(c, "rides")?.let { com.onpath.app.rides.RideRecord.fromJson(c.getString(it)) },
             draft = opt(c, "draft")?.let { c.getInt(it) == 1 } ?: false,
             hasPlan = opt(c, "has_plan")?.let { c.getInt(it) == 1 } ?: false,
+            difficulty = opt(c, "difficulty")?.let { c.getString(it) },
         )
     }
 
@@ -515,9 +530,10 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
 object TourSchema {
     /**
      * 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft`
-     * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]).
+     * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]); 7 = `tours.difficulty`
+     * ([Tour.difficulty]).
      */
-    const val VERSION = 6
+    const val VERSION = 7
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -527,7 +543,7 @@ object TourSchema {
             distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
             descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
             state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
-            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0)""",
+            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0, difficulty TEXT)""",
         "CREATE INDEX tours_uuid ON tours(uuid)",
         """CREATE TABLE points(
             tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
@@ -544,6 +560,9 @@ object TourSchema {
 
     /** 4 → 5: plans kept under "Zuletzt" (owner 2026-11-06); every existing tour is saved (0). */
     const val ADD_DRAFT = "ALTER TABLE tours ADD COLUMN draft INTEGER NOT NULL DEFAULT 0"
+
+    /** 6 → 7 (owner 2026-11-12): a planned route's difficulty at saving ([Tour.difficulty]); existing tours null. */
+    const val ADD_DIFFICULTY = "ALTER TABLE tours ADD COLUMN difficulty TEXT"
 
     /**
      * 5 → 6 (owner 2026-11-07): the plan a recorded tour followed, one row per tour – a table of its own, because the line
@@ -584,5 +603,6 @@ object TourSchema {
         if (old < 4) add(Step("points", "acc", ADD_ACC))
         if (old < 4) add(Step("tours", "rides", ADD_RIDES))
         if (old < 5) add(Step("tours", "draft", ADD_DRAFT))
+        if (old < 7) add(Step("tours", "difficulty", ADD_DIFFICULTY))
     }
 }
