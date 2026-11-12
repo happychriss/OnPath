@@ -1,5 +1,5 @@
 // OnPath web planner (docs/design/web-planner.md §6–§13). The page mirrors the phone's Plan screen in a web layout: a
-// header line (logo, My routes, Import GPX, …; on the right Save and the Phone button), the search pill with the map toolbar beside it (undo / redo, eye,
+// header line (logo, My routes, Import GPX, …; on the right Save and the Phone button), the search pill with the map toolbar beside it (eye,
 // compass, locate, Map content), the plan sheet (activity chip, time,
 // distance, climb + badge, profile, Points, one primary button) – a bottom sheet on a phone, a side panel on a wide
 // screen. The app's own code decides and plans (compiled to Wasm, in a Web Worker): Planner + BRouter, RouteTimes,
@@ -170,9 +170,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="searchbox"></div>
   <span class="barsep" aria-hidden="true"></span>
   <div id="toolbar" class="toolbar" role="toolbar" aria-label="${escapeHtml(t('web_map_tools'))}">
-    <button id="undo" class="tool" aria-label="${escapeHtml(t('plan_undo'))}" title="${escapeHtml(t('web_undo_title'))}" disabled>${icon('undo')}</button>
-    <button id="redo" class="tool" aria-label="${escapeHtml(t('plan_redo'))}" title="${escapeHtml(t('web_redo_title'))}" disabled>${icon('redo')}</button>
-    <span class="sep"></span>
     <button id="eye" class="tool" aria-label="${escapeHtml(t('plan_hold_hide_route'))}" title="${escapeHtml(t('plan_hold_hide_route'))}" disabled>${icon('eye')}</button>
     <button id="compass" class="tool"></button>
     <button id="locate" class="tool"></button>
@@ -180,6 +177,12 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="terrain3d" class="tool three" aria-pressed="false" disabled>${escapeHtml(t('web_terrain_3d'))}</button>
     <span class="sep"></span>
     <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="${escapeHtml(t('web_map_content_title'))}">${icon('layers')}<span>${escapeHtml(t('web_map_content'))}</span>${icon('dropDown', 18)}</button>
+  </div>
+  <!-- undo / redo in their own pill under the bar's right end (the app's UndoPill, owner 2026-11-08: ↶ ↷ in the tool row read
+       as „turn the map“) – two round buttons, shown only while something can be undone or redone, the other one greyed -->
+  <div id="undoPill" class="undopill" role="group" hidden>
+    <button id="undo" class="tool" aria-label="${escapeHtml(t('plan_undo'))}" title="${escapeHtml(t('web_undo_title'))}" disabled>${icon('undo')}</button>
+    <button id="redo" class="tool" aria-label="${escapeHtml(t('plan_redo'))}" title="${escapeHtml(t('web_redo_title'))}" disabled>${icon('redo')}</button>
   </div>
   </div>
   <div id="placecard" class="placecard" hidden></div>
@@ -1499,7 +1502,7 @@ async function applyActivityLook() {
 }
 $('activityChip').onclick = (e) => { e.stopPropagation(); closeMenus(); picker.toggle($('activityChip'), state.activity, state.sac); };
 
-// ---- map toolbar (the app's MapControls: undo, redo, eye, compass, locate – always there, greyed when not possible) ----
+// ---- map toolbar (the app's MapControls: eye, compass, locate – always there, greyed when not possible; undo / redo their own pill) ----
 function renderFabs() {
   const b = map.getBearing();
   const c = $('compass');
@@ -1509,6 +1512,10 @@ function renderFabs() {
   $<HTMLButtonElement>('eye').disabled = !state.plan || state.points.length < 2;
   $<HTMLButtonElement>('undo').disabled = !state.canUndo;
   $<HTMLButtonElement>('redo').disabled = !state.canRedo;
+  // the app's MapControlsEnabled.undoPill: the pill only while one of them can act (owner 2026-11-08)
+  const undoPill = state.canUndo || state.canRedo;
+  $('undoPill').hidden = !undoPill;
+  document.body.classList.toggle('undo-shown', undoPill);
   const l = $('locate');
   // Plan is quiet about GPS (the app's PlanGps, owner 2026-11-06 23:35): no colour dot; greyed without a position, still
   // clickable – it follows the position when one comes
@@ -2042,7 +2049,17 @@ $('langSwitch').addEventListener('click', (e) => {
 });
 
 // phone layout: the map controls and the footer sit above the sheet
-new ResizeObserver(() => document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px')).observe($('sheet'));
+/** Phone: the bottom sheet pulled up past the undo pill hides the pill (the app's column steps back in the points step). */
+function placeUndoPill() {
+  const bar = $('topbar').getBoundingClientRect(), sheet = $('sheet').getBoundingClientRect();
+  const crowded = matchMedia('(max-width: 700px)').matches && sheet.height > 0 && sheet.top < bar.bottom + 12 + 104 + 8;
+  document.body.classList.toggle('undo-crowded', crowded);
+}
+new ResizeObserver(() => {
+  document.documentElement.style.setProperty('--sheet-h', $('sheet').offsetHeight + 'px');
+  placeUndoPill();
+}).observe($('sheet'));
+addEventListener('resize', placeUndoPill);
 changed();
 
 /** The sheet's status line; 'busy' = a wait the user started (spinner, CLAUDE.md "Messages"). */
