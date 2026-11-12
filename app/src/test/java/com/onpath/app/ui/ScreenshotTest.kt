@@ -812,9 +812,12 @@ class ScreenshotTest {
     /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
-    /** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder geh ‹ Zur Tour." */
-    fun planEmptyDuringTour() = paparazzi.snapshot {
-        Frame(editing = true) {
+    /**
+     * The empty plan during a tour (owner 2026-11-12, "Tour läuft noch – neues Ziel festlegen"): the title "● Tour läuft
+     * noch", the row "Neues Ziel festlegen ›" (search or hold → Hierhin) and "Weiter geht's" back to the tour.
+     */
+    @Test fun planEmptyDuringTour() = paparazzi.snapshot {
+        Frame(editing = true, route = false) {
             PlanPanel(PlanUi(0, null, false, null, canUndo = true, canRedo = false, activity = Activity.HIKE, tourRunning = true,
                 tour = TourState(1_700.0, 878, paused = false), size = PlanSize.MINI), PlanCallbacks())
         }

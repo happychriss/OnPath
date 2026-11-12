@@ -349,8 +349,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht"; 2026-11-07: the 3-step guide, EmptyGuide)
     val guide = EmptyGuide.shows(ui.pointCount, ui.tour != null || ui.tourRunning)
     if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) {
-        // during a tour (owner 2026-11-05): the tour goes on – new points, or back to it
-        if (guide) EmptyGuideFirst(cb.onSearch) else TourGoesOnHint()
+        // during a tour (owner 2026-11-12, TourStillRunning): only a new destination – the search, or hold the map →
+        // Hierhin (every route during a tour starts where you are); "Weiter geht's" below goes back to the tour
+        if (guide) EmptyGuideFirst(cb.onSearch) else TourNewTargetRow(cb.onSearch)
     }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
@@ -789,6 +790,10 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
+        // an empty plan during a tour: "● Tour läuft noch" instead of "Neuer Plan" (owner 2026-11-12, TourStillRunning)
+        if (TourStillRunning.shows(ui.pointCount, ui.tour != null || ui.tourRunning)) {
+            TourStillRunningTitle(paused = ui.tour?.paused == true); return
+        }
         Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
@@ -813,16 +818,6 @@ internal object EmptyPlanTitle {
     fun asks(pointCount: Int, touring: Boolean): Boolean = pointCount == 0 && !touring
     fun of(ui: PlanUi) = if (asks(ui.pointCount, ui.tour != null || ui.tourRunning)) Res.string.plan_hint_first_point_question
         else Res.string.plan_plan_a_route
-}
-
-/** The empty plan during a tour: "Tour läuft weiter – setz neue Punkte oder tippe unten auf Weiter geht’s." */
-@Composable
-private fun TourGoesOnHint() {
-    Row(verticalAlignment = Alignment.Top) {
-        Icon(Icons.Filled.TouchApp, null, tint = OnPathColors.PlanAccent, modifier = Modifier.padding(top = 1.dp).size(24.dp))
-        Spacer(Modifier.width(10.dp))
-        Text(str(Res.string.plan_hint_tour_goes_on), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    }
 }
 
 /**
