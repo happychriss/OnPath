@@ -996,9 +996,12 @@ async function openDraft(folder: string) {
   const d = await sync.draft(folder);
   const shared = d?.code ? await engine.parse('p=' + d.code) : null;
   forgetSaved();
+  // which saved route it is goes in before the plan loads (as plansHost.open does): loading routes it, which takes
+  // seconds, and a Save meanwhile – the pairing's OK saves the open plan – saw "never saved" and asked for a name
+  // again (sync-smoke scenario 1, CI 2026-11-13)
+  if (shared && d) { state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; state.storedCode = d.storedCode ?? null; }
   if (shared) await loadShared(shared);
   else if (state.points.length) { state.title = null; await commit([], []); }
-  if (shared && d) { state.savedId = d.savedId; state.savedTitle = d.savedTitle; state.savedCode = d.savedCode; state.savedFolder = d.savedFolder ?? null; state.storedCode = d.storedCode ?? null; }
   draftsOn = true;
   render();
   rememberInAddress();

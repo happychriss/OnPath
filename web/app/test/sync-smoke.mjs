@@ -722,13 +722,21 @@ check(!!(await listRow(O, 'Meine Runde')) && await O.isVisible('#planSearch') &&
 await O.click('#closePlans');
 await O.click('#syncBadge'); // not paired: the pairing window at once
 await O.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
+// while the pairing moves the open route into the phone's folder (openDraft) the page must keep knowing it is the saved
+// "Meine Runde" (its "Saved as" line stays): a moment without it let OK (Save follows the pairing) ask for a name
+// again – CI 2026-11-13, "no extra question" red
+await O.evaluate(() => { const l = document.getElementById('savedLine'); window.__savedLine = [l.hidden ? 'hidden' : l.textContent];
+  new MutationObserver(() => window.__savedLine.push(l.hidden ? 'hidden' : l.textContent)).observe(l, { attributes: true, childList: true, subtree: true, characterData: true }); });
 await ownerPhone.pairDirect((await O.inputValue('#pairLink')).split('#pair=')[1]);
 await O.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Owner phone'), null, { timeout: 30_000 }).catch(() => {});
 await sendMark(O);
 await O.click('#closePair'); // OK: the plan follows the pairing (Save sends what waits)
 await sent(O);
 await ownerPhone.round();
-check((await ownerPhone.titles()).includes('Meine Runde') && await O.locator('dialog[open]').count() === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()));
+const savedLine = await O.evaluate(() => window.__savedLine);
+check(savedLine.every((x) => x.includes('Meine Runde')), `scenario 1: the pairing keeps the open route saved as "Meine Runde" throughout (${JSON.stringify([...new Set(savedLine)])})`);
+const openDialogs = () => O.evaluate(() => [...document.querySelectorAll('dialog[open]')].map((d) => d.className + ': ' + d.textContent.replace(/\s+/g, ' ').trim().slice(0, 120)));
+check((await ownerPhone.titles()).includes('Meine Runde') && (await openDialogs()).length === 0, 'scenario 1: To phone paired the phone and "Meine Runde" arrived on it, no extra question ' + JSON.stringify(await ownerPhone.titles()) + ' ' + JSON.stringify(await openDialogs()));
 const e2 = await entry(O);
 check(e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the dot and the phone's name (${JSON.stringify(e2)})`);
 // the saved, unchanged plan on the map is its own saved row („In Bearbeitung“) – no extra „Current plan“ row and no
