@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "29a0beae9cc8253257ef66fdd005e5b5df03aa4a"
+      "blob": "a440b405095aa2c102c9f5f3d409c5e8d4eec4f8"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -57,7 +57,7 @@
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "b517fe93c91ee4855569673b38e1c0ba7e25d9e7"
+      "blob": "a91224b99dddc09ceb44c9fbbeb491078dd639d3"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -66,7 +66,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "c73a5ec6463e4ef77d62aa2679b4c95e077c4d3a"
+      "blob": "4be358bb93dc974ba7016285e0149a9041afbabd"
     },
     {
       "app": "app/src/main/java/com/onpath/app/recording/LocationTracker.kt",
@@ -165,7 +165,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "551b0c8bad86f2b4b024aa280d7143b7fb12b3df"
+      "blob": "97948202f3e49fd9b8b2387102b2fe509a24d45c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -173,7 +173,7 @@
       "web": [
         "web/app/src/gpximport.ts"
       ],
-      "blob": "eda497bf7ab24ee345b0f87d6c5e26b08c20ff86"
+      "blob": "8219e1776dbbb5864fcd2b5e9698b4f2c1366904"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsSection.kt",
@@ -240,7 +240,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "c825800fec63a639659e559588b97df68cd871a7"
+      "blob": "3c0ad4e909c81005734a3ec77d235a8d2a16efa2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
