@@ -30,9 +30,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] POI as route point keeps its symbol + blue ring (variant A) – app AND planner, owner 2026-11-12: laptop builds the app part too – since 2026-11-12
-- [laptop] Planner undo / redo follows the app (owner 2026-11-12: yes – own pill, only when something can be undone) – since 2026-11-12
-- [laptop] Planner profile calmer – sketch first (owner 2026-11-12: „mit Zeichnung“), build after his pick – since 2026-11-12
+- [laptop] Planner: phone silent ≥ 3 days → chip yellow + „Neu koppeln“ in one step, old-phone line gone (owner field 2026-11-12: Pixel lost its pairing, browser kept it; owner: „wie WhatsApp Web“) – since 2026-11-12
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
@@ -71,28 +69,11 @@ and the commit history.
   permission – new; Android's speech-to-text usually goes through Google, so no transcription on the phone –
   transcribe on the computer later); the button only in beta / debug builds or behind a Settings switch – sketch +
   the owner's word before building. **Later, not now:** users export a report and send it by e-mail.
-- **[laptop] A POI that becomes a route point stays visible (owner 2026-11-10, chat; for when the laptop is back)** –
-  today marking a POI (e.g. a restaurant) as a point in Plan or Navigate puts the blue point on top and the POI symbol
-  is gone. Wanted: the POI keeps its coloured symbol and gets a blue ring around it – you see it belongs to the route
-  and still see what kind of POI it is (owner: a ring in the POI's own colour or another look is fine too). App first,
-  the planner follows (parity). Captain's sketches – today + A blue ring · B ring in POI colour · C point with a name
-  tag: https://claude.ai/artifact/JYTg9Dqw9WvboLF2QEeveE – **owner chose A (2026-11-10):** POI symbol stays, ring in
-  route blue, small numbered badge top right. Ready to build.
-- **[laptop] Planner: undo / redo like the app's (app MapFooter 2026-11-08, father's feedback: ↶ ↷ read as „turn the map“)** – the
-  app took them out of the map column: two round buttons under it, only while something can be undone / redone. The planner
-  keeps ↶ ↷ in its top toolbar (always, greyed, tooltips „Rückgängig“ / „Wiederholen“) – decide with the owner whether the
-  web follows (e.g. words beside the signs on wide screens, shown only when possible). Parity recorded (2026-11-08).
 - **[donald] Father's first feedback (owner 2026-11-08)** – built and released in v0.17.8 (Samsung page once + „Mehr Infos ›“ → onpath.earth `#samsung` – live; T levels with their line; undo / redo as round buttons under the map column; Help first in ☰; „Handy einrichten“ on top; the sheet rises by itself). Open only: the owner's / father's word on how it feels on the S10.
 - **[donald] Map smoother when panning/zooming** (owner 2026-11-08: „wackelt, selbst auf dem Pixel“; Pixel gfxinfo 3.6 % janky, p99 48 ms): WIP on `wip/donald-2026-11-08-smooth-map` (211fe6a8, be609d8d), not checked – finish, measure on the emulator, then a 30 s pan session on the Pixel with the owner. (The pause until 2026-11-11 is over; 0.17.7 + 0.17.8 released 2026-11-08.)
 - **[donald] Off route with a stop: the new route may leave the stop out without saying so (found 2026-11-08 while taking G04, emulator, 0.17.6)** – A-019 + Gasthof Hochmuth as stop, 80 m off ~150 m after Vellau: the question says only „Neue Route bis zum Ziel: 4,3 km (4,3 km kürzer)“ (via Hochmuth it is 8,7 km), no „Über ② / ② auslassen“. Suspects: `Rerouter.kt:171` passes `deliberate = false` to `StopSkip.decide`, or `keepsTheTour` / `MIN_KEEP_SHARE`. First a test that reproduces it (core feature), then check whether „Neue Route“ really drops the stop, then the fix.
 - **[donald] Local Rundgang emulator: `CorePointsListE2ETest#swipeTheSheetHalfFullHalf` times out after the sheet
   swipe (very janky first drag), twice on 2026-11-08; green on GitHub. Look at the local AVD speed / the swipe timing.
-- **[laptop] Planner profile calmer, like the app's (owner 2026-11-07: „mehr wie in der App, nicht ganz so bunt“ – with the next
-  planner change)** – the app (`ui/ElevationProfile.kt`, ProfileFill, owner polish 2026-11-06): the area is filled in the
-  ROUTE colour fading to nothing, steeper stretches only a bit stronger in the same colour (shading, no stripes); steepness
-  colours (amber / orange / red, < 5 % = route colour) only on the thin line; stop signs on the line. The planner's profiles
-  (small, big, bottom) fill the area in green / yellow / orange / red – switch to the app's look, keep the legend only for
-  the line colours (or drop it), the map's steepness line while the big profile is open stays.
 - **[donald] Design round after 0.17.4 (owner 2026-11-07, from an outside design review of the Meran pictures)** – owner
   picked three: (1) G02 off route = three stacked cards with two distances (70 m air line vs 60 m) and a half-empty
   status card → one card, one distance, step 1 as its head and the question under it; (2) the right tool column: six
