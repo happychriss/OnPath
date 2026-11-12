@@ -52,7 +52,12 @@ fun MapHost(
     val context = LocalContext.current
     val density = LocalDensity.current.density
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    val mapView = remember { MapView(context).apply { onCreate(null) } }
+    val mapView = remember {
+        MapView(context).apply {
+            onCreate(null)
+            com.onpath.app.debug.MapFpsTrial.limit(context)?.let { setMaximumFps(it) }
+        }
+    }
     /** This host's own map state: what it shows, its reload (another activity's host may live at the same time). */
     val host = remember { MapHostView() }
     /** This host's controller (touch handling never uses another host's). */
