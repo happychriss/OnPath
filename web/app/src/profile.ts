@@ -1,32 +1,131 @@
 // Elevation profile as an SVG. Distances and gradient classes come from the engine – the app's own
-// profile data + RouteSummary.steepness (100 m window) – so the colours match the phone (ui/ElevationProfile).
+// profile data + RouteSummary.steepness (100 m window) – drawn like the phone's (ui/ElevationProfile, variant A
+// owner 2026-11-12): the area in the route colour fading out, steeper a bit stronger, steepness colours only on the line.
 // [mountProfile] adds the app's cursor (ElevationProfile: touch / slide → a line, "954 m · 3.2 km" and a dot on the map)
 // plus the gradient there; the big profile below the map (owner 2026-11-05, terrain view A) is the same drawing, wider.
 import type { PlanResult } from './engine/types';
 import { t, number, distance } from './i18n';
 
 export type Profile = NonNullable<PlanResult['profile']>;
-export const STEEP_COLOURS = ['#7fb77e', '#e3b23c', '#e07b39', '#c0392b']; // flat, moderate, steep, very steep
+/** The route's colour (OnPathColors.Route): the profile's fill and the line where it is flatter than 5 %. */
+export const ROUTE_COLOUR = '#1E3FAE';
+/** The line's colours per gradient class – the app's steepColor: < 5 % the route colour, then amber, orange, red. */
+export const STEEP_COLOURS = [ROUTE_COLOUR, '#F2B33D', '#EF7C1A', '#D32F2F']; // flat, moderate, steep, very steep
 
-function bars(p: Profile, W: number, H: number): string {
+/**
+ * The app's ProfileFill (owner 2026-11-06, polish 8; variant A for the planner, owner 2026-11-12): the fill is
+ * BASE_ALPHA of the line's colour at the top fading to nothing, and where the way is steep up to MAX_EXTRA_ALPHA
+ * more – the slope over WINDOW_M around each point in LEVELS fine steps from 5 % (nothing) to 15 % (all).
+ */
+export const ProfileFill = {
+  BASE_ALPHA: 0.30, MAX_EXTRA_ALPHA: 0.22, LEVELS: 8, WINDOW_M: 300, FROM_PCT: 5, TO_PCT: 15,
+  alpha(level: number): number { return ProfileFill.MAX_EXTRA_ALPHA * level / (ProfileFill.LEVELS - 1); },
+  /** Per point its level 0..LEVELS-1 (the app's ProfileFill.levels, line for line). */
+  levels(dist: number[], ele: number[]): number[] {
+    const W = ProfileFill.WINDOW_M;
+    const n = Math.min(dist.length, ele.length), out = new Array<number>(n).fill(0);
+    if (n < 2) return out;
+    let a = 0, b = 0;
+    for (let i = 0; i < n; i++) {
+      while (dist[a] < dist[i] - W / 2 && a < i) a++;
+      while (b + 1 < n && dist[b + 1] <= dist[i] + W / 2) b++;
+      if (b < i) b = i;
+      let lo = a, hi = b;
+      // at the ends the window is too short: widen it to the full width where the profile allows
+      while (dist[hi] - dist[lo] < W && (lo > 0 || hi < n - 1)) { if (lo > 0) lo--; if (hi < n - 1) hi++; }
+      const run = dist[hi] - dist[lo];
+      if (run <= 0) continue;
+      const pct = Math.abs(ele[hi] - ele[lo]) / run * 100;
+      const share = Math.min(1, Math.max(0, (pct - ProfileFill.FROM_PCT) / (ProfileFill.TO_PCT - ProfileFill.FROM_PCT)));
+      out[i] = Math.round(share * (ProfileFill.LEVELS - 1));
+    }
+    return out;
+  },
+};
+
+/** The app's columnIndices: per pixel column the first, lowest, highest and last point (a long route stays light). */
+export function columnIndices(dist: number[], ele: number[], total: number, columns: number): number[] {
+  const n = dist.length;
+  if (n <= 4 * columns || total <= 0) return dist.map((_, i) => i);
+  const col = (m: number) => Math.min(columns - 1, Math.max(0, Math.floor(m / total * columns)));
+  const out: number[] = [];
+  let i = 0;
+  while (i < n) {
+    const c = col(dist[i]);
+    let lo = i, hi = i, j = i;
+    while (j + 1 < n && col(dist[j + 1]) === c) { j++; if (ele[j] < ele[lo]) lo = j; if (ele[j] > ele[hi]) hi = j; }
+    for (const k of [i, Math.min(lo, hi), Math.max(lo, hi), j]) if (!out.length || out[out.length - 1] < k) out.push(k);
+    i = j + 1;
+  }
+  return out;
+}
+
+let gradIds = 0;
+
+/**
+ * The drawing, as the app's ElevationProfile: the area in [colour] fading to nothing, steeper stretches a bit stronger
+ * in the same colour (layered, so it shades without seams), and on top the thin line – with [gradient] coloured by
+ * steepness (STEEP_COLOURS), else in [colour].
+ */
+function drawing(p: Profile, W: number, H: number, colour: string, gradient: boolean): string {
   const { dist: d, ele, steep } = p;
   const total = d[d.length - 1] || 1;
-  const lo = Math.min(...ele), hi = Math.max(...ele), span = Math.max(hi - lo, 50);
-  const x = (m: number) => ((m / total) * W).toFixed(1), y = (e: number) => (H - 6 - ((e - lo) / span) * (H - 16)).toFixed(1);
-  let s = '';
-  for (let i = 1; i < d.length; i++) {
-    if (d[i] <= d[i - 1]) continue;
-    const c = STEEP_COLOURS[steep[i - 1]] ?? STEEP_COLOURS[0];
-    s += `<path d="M${x(d[i - 1])},${H} L${x(d[i - 1])},${y(ele[i - 1])} L${x(d[i])},${y(ele[i])} L${x(d[i])},${H} Z" fill="${c}" stroke="${c}" stroke-width="0.4"/>`;
+  const lo = Math.min(...ele), hi = Math.max(...ele);
+  const range = Math.max(hi - lo, 20), minE = lo - range * 0.08, maxE = hi + range * 0.08;
+  const top = 3, bottom = H;
+  const x = (m: number) => (m / total) * W, y = (e: number) => bottom - ((e - minE) / (maxE - minE)) * (bottom - top);
+  const f = (v: number) => v.toFixed(1);
+  const keep = columnIndices(d, ele, total, Math.max(1, Math.round(W)));
+  const pt = (i: number) => `${f(x(d[i]))},${f(y(ele[i]))}`;
+  const id = `pf${++gradIds}`;
+  const grad = (name: string, a: number, b: number) =>
+    `<linearGradient id="${name}" x1="0" y1="${top}" x2="0" y2="${bottom}" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="${colour}" stop-opacity="${a.toFixed(3)}"/><stop offset="1" stop-color="${colour}" stop-opacity="${b.toFixed(3)}"/></linearGradient>`;
+  let defs = grad(`${id}a`, ProfileFill.BASE_ALPHA, 0);
+  let s = `<path class="pfarea" d="M${keep.map(pt).join(' L')} L${f(W)},${bottom} L0,${bottom} Z" fill="url(#${id}a)"/>`;
+  if (gradient) {
+    // the steeper shading: layer k covers every span of level >= k, so neighbouring steps share the lower layers and
+    // meet without a seam; each layer's strength makes the stack add up to the app's ProfileFill.alpha(level)
+    const level = ProfileFill.levels(d, ele);
+    const span = (q: number) => Math.max(level[keep[q]], level[keep[q + 1]]);
+    for (let k = 1; k < ProfileFill.LEVELS; k++) {
+      const a = 1 - (1 - ProfileFill.alpha(k)) / (1 - ProfileFill.alpha(k - 1));
+      let path = '';
+      let j = 0;
+      while (j < keep.length - 1) {
+        if (span(j) < k) { j++; continue; }
+        let e = j + 1;
+        while (e < keep.length - 1 && span(e) >= k) e++;
+        path += `M${f(x(d[keep[j]]))},${bottom} L${keep.slice(j, e + 1).map(pt).join(' L')} L${f(x(d[keep[e]]))},${bottom} Z`;
+        j = e;
+      }
+      if (!path) continue;
+      defs += grad(`${id}s${k}`, a, a * 0.4);
+      s += `<path class="pfsteep" d="${path}" fill="url(#${id}s${k})"/>`;
+    }
   }
-  return s;
+  // the line: per kept span the steepest class of the segments in it (short steep bits stay visible), one path per class
+  const byClass: string[] = STEEP_COLOURS.map(() => '');
+  const lastEnd: number[] = STEEP_COLOURS.map(() => -1);
+  for (let j = 0; j < keep.length - 1; j++) {
+    const a = keep[j], b = keep[j + 1];
+    let k = 0;
+    if (gradient) for (let i = a; i < Math.min(b, steep.length); i++) if (steep[i] > k) k = steep[i];
+    k = Math.min(k, STEEP_COLOURS.length - 1);
+    if (lastEnd[k] !== a) byClass[k] += `M${pt(a)}`;
+    byClass[k] += ` L${pt(b)}`;
+    lastEnd[k] = b;
+  }
+  byClass.forEach((path, k) => {
+    if (path) s += `<path class="pfline" d="${path}" fill="none" stroke="${gradient ? STEEP_COLOURS[k] : colour}" stroke-width="${gradient ? 2.5 : 2}" stroke-linecap="round" stroke-linejoin="round" vector-effect="non-scaling-stroke"/>`;
+  });
+  return `<defs>${defs}</defs>${s}`;
 }
 
 /**
  * The profile: heights above it ("300 – 578 m", [extra] beside them – the sheet's ⤢), the drawing, below it the
  * distance axis "0" … total at the right end (owner review 2026-11-05: the total sat in the middle).
  */
-export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = ''): string {
+export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = '', colour = ROUTE_COLOUR, gradient = true): string {
   const { dist: d, ele } = p;
   if (d.length < 2) return '';
   const total = d[d.length - 1] || 1;
@@ -34,7 +133,7 @@ export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = '')
   // the app's ProfileAxis.labels (owner's Pixel 2026-11-06, "47 m" over "46 m"): heights that read the same → only the top
   const range = Math.round(lo) === Math.round(hi) ? `${Math.round(hi)} m` : `${Math.round(lo)} – ${Math.round(hi)} m`;
   return `<div class="profhead muted"><span>${range}</span>${extra}</div>
-    <div class="profplot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('plan_elevation_profile')}">${bars(p, W, H)}</svg>${inPlot}</div>
+    <div class="profplot"><svg viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" role="img" aria-label="${t('plan_elevation_profile')}">${drawing(p, W, H, colour, gradient)}</svg>${inPlot}</div>
     <div class="axis muted"><span>0</span><span>${number(total / 1000, 1)} km</span></div>`;
 }
 
