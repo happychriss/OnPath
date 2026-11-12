@@ -64,7 +64,6 @@
     <string name="routes_saved_open">In Meine Touren ›</string>
     <string name="routes_section_recent">Zuletzt</string>
     <string name="routes_section_saved">Gespeichert</string>
-    <string name="routes_recent_all">Alle %1$d anzeigen ›</string>
     <string name="routes_just_saved">✓ Gerade gespeichert</string>
     <string name="routes_overview_show">Übersicht anzeigen</string>
     <string name="routes_overview_enlarge">Übersicht vergrößern</string>

@@ -831,7 +831,7 @@ class CoreFieldE2ETest : E2EBase() {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
             // each plan gets an own third point: a plan with the points of a saved route (another test saved these two
-            // at "Los geht's", and the first plan below is saved too) is no draft – RoutesState.keepsDraft
+            // at "Los geht's", and the first plan below is saved too) is no draft – RoutesState.keepDraft
             val (w, h) = mapSize()
             startPlanWithTwoPoints()
             hold(w * 0.50f, h * 0.30f)

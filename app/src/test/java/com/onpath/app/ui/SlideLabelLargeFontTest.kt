@@ -45,8 +45,8 @@ open class SlideLabelLargeFontTest {
     /** The next stops at a large font: numbers never cut, a long name ends with an ellipsis. */
     @Test fun navigateProfileStops() = shots.navigateProfileStops()
     /** Save plan? at a large font: the stacked full-width buttons. */
-    /** My routes with Zuletzt: the draft's Speichern · Löschen stay whole with a large font. */
-    @Test fun toursRecent() = shots.toursRecent()
+    /** My routes with Zuletzt: the draft's Planen · Speichern · Löschen stay whole with a large font. */
+    @Test fun toursRecentDraft() = shots.toursRecentDraft()
     @Test fun routesOverview() = shots.routesOverview()
     @Test fun routesItemMenuPlanned() = shots.routesItemMenuPlanned()
     /** Gemacht: a recorded tour's followed plan (owner 2026-11-07) – the overview's foot and the ⋮ at a large font. */

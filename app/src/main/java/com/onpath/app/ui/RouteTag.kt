@@ -1,6 +1,8 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
@@ -17,6 +19,7 @@ import com.onpath.app.plansync.SyncMark
 import com.onpath.strings.Res
 import com.onpath.strings.routes_tag_changed
 import com.onpath.strings.routes_tag_live
+import com.onpath.strings.routes_section_saved
 import com.onpath.strings.routes_tag_new
 import com.onpath.strings.str
 import org.jetbrains.compose.resources.StringResource
@@ -31,7 +34,9 @@ enum class RouteTag(val text: StringResource) {
     NEW(Res.string.routes_tag_new),
     CHANGED(Res.string.routes_tag_changed),
     /** The plan on the map right now (owner 2026-11-06 23:00, [LivePlanRows]) – not a sync mark. */
-    LIVE(Res.string.routes_tag_live);
+    LIVE(Res.string.routes_tag_live),
+    /** The Zuletzt row is a saved route as it is (owner 2026-11-12): it stays under "Gespeichert" too – not a sync mark. */
+    SAVED(Res.string.routes_section_saved);
 
     companion object {
         fun of(mark: SyncMark?): RouteTag? = when (mark) {
@@ -100,12 +105,18 @@ object TagRow {
     }
 }
 
-/** A route's name with its [RouteTag] (My routes): the name ellipsizes before the tag is cut. */
+/**
+ * A route's name with its [RouteTag] (My routes): the name ellipsizes before the tag is cut. [tag2] = a second tag after
+ * the first (the plan on the map that is a saved route as it is: "In Bearbeitung" and "Gespeichert", owner 2026-11-12).
+ */
 @Composable
-fun RouteTitle(name: String, tag: RouteTag?, modifier: Modifier = Modifier) {
+fun RouteTitle(name: String, tag: RouteTag?, tag2: RouteTag? = null, modifier: Modifier = Modifier) {
+    val tags = listOfNotNull(tag, tag2)
     TitleWithTag(
         title = { Text(name, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis) },
-        tag = tag?.let { { Tag(str(it.text)) } },
+        tag = if (tags.isEmpty()) null else ({
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) { tags.forEach { Tag(str(it.text)) } }
+        }),
         modifier = modifier,
     )
 }

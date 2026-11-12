@@ -404,13 +404,7 @@
   },
   "routes_section_saved": {
     "area": "My routes",
-    "context": "Section header in My routes → Planned: plans the user saved (or rode); shown in capitals",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "routes_recent_all": {
-    "area": "My routes",
-    "context": "Under the first three recent plans: shows the whole list (%1$d = how many)",
+    "context": "Section header in My routes → Planned: plans the user saved (or rode); shown in capitals. Also the small tag on the Zuletzt row when that plan is a saved route (owner 2026-11-12)",
     "priority": 2,
     "confidence": "sicher"
   },
