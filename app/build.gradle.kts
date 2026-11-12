@@ -228,7 +228,10 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.8.7")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
-    implementation("org.maplibre.gl:android-sdk:13.7.1")
+    // The OpenGL ES build of MapLibre, not the default Vulkan one: measured on the Pixel 2026-11-12, the Vulkan backend
+    // created buffers every frame (BufferResource → memcmp, 15–20 % of the render thread) and compiled pipelines on
+    // the render thread (vkCreateGraphicsPipelines) – the long map frames. Same API, same version.
+    implementation("org.maplibre.gl:android-sdk-opengl:13.7.1")
     // Gson's streaming reader (offline search index, map cell GeoJSON, Photon answers) – declared, not only through
     // MapLibre (review Arch 13: a MapLibre upgrade dropping it would break the build); the same version MapLibre brings
     implementation("com.google.code.gson:gson:2.10.1")
