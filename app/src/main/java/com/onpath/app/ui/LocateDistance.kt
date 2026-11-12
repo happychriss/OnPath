@@ -32,8 +32,15 @@ object LocateDistance {
         return Geo.distance(me, view.centre)
     }
 
-    /** "850 m" (to 10 m), "3,2 km", "790 km" – calm: no metre jitter under a kilometre. */
-    fun text(m: Double): String = Format.distance(if (m < 1000) (m / 10).roundToLong() * 10.0 else m)
+    /**
+     * "850 m" (to 10 m), "3,2 km", "59 km", "790 km" – calm: no metre jitter under a kilometre; whole kilometres from
+     * 10 km, so the label fits inside the round locate button (owner 2026-11-12: „59,2 km“ was cut off by the circle).
+     */
+    fun text(m: Double): String = when {
+        m < 1000 -> Format.distance((m / 10).roundToLong() * 10.0)
+        m < 9_950 -> Format.distance(m) // from 9,95 km it would read "10,0 km"
+        else -> "${(m / 1000).roundToLong()} km"
+    }
 
     /** The label under the locate icon; null = none. */
     fun label(plan: Boolean, located: Boolean, me: GeoPoint?, view: View?): String? =

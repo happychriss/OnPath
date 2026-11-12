@@ -35,6 +35,8 @@ class LocateDistanceTest {
         assertEquals("50 m", LocateDistance.text(54.0))
         assertTrue(LocateDistance.text(3_240.0).let { it == "3,2 km" || it == "3.2 km" })
         assertEquals("790 km", LocateDistance.text(790_400.0))
+        assertEquals("whole km from 10 km – fits in the round button", "59 km", LocateDistance.text(59_200.0))
+        assertEquals("10 km", LocateDistance.text(9_960.0))
     }
 
     @Test fun throttleNeeds50mOr5Percent() {
