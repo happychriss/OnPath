@@ -34,7 +34,7 @@ and the commit history.
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
-- **[donald] Code audit 2026-11-12 (owner asked: clean structure, low cost of change?) – verdict: good, one hotspot.** `ui/AppViewModel.kt` 5,356 lines
+- **[donald] Code audit 2026-11-12 (owner asked: clean structure, low cost of change?) – verdict: good, one hotspot. Owner 2026-11-12: yes, after the smooth map – robustness first (the `nav-session.json` race as a JVM test, GPS handling during recording measured; fix only what is confirmed), then slice AppViewModel one piece per round.** `ui/AppViewModel.kt` 5,356 lines
   (4,645 on 11-07), 246 public functions, 87 `mutableStateOf`, not JVM-testable; 29 test files pin its source text. Plan, one
   slice per round, forwarders stay, core features green each step: (1) slices after the `TourController` pattern (small
   interface, fake in tests): Zuletzt, activity check, follow / record, plan sync + plan links, shared places – plus a size
@@ -410,10 +410,6 @@ and the commit history.
 
 ## Waiting for the owner
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
-- **[donald] Start slicing the big control file (AppViewModel)? (donald 2026-11-12)** – asked in the chat after the code
-  audit, the answer came empty. Recommendation: after the smooth map, one slice per round with real tests and a size
-  lock; new features go into their own files at once. Other options: only in passing when a place is touched anyway;
-  later, on the owner's word. Until then: nothing built, new code already goes into own files.
 - **[donald] "Aufzeichnung und Navigation ruhen" hardly ever shows (donald 2026-11-08)** – in 0.17.5 the stopped card's
   calm line shows only where it fits on one line beside the activity icon and the arrival time; on a 1080 px phone it
   does not (the approved v5 picture had it). The head "⏸ Angehalten seit …" and the buttons are there. Recommendation:
