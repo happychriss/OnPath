@@ -650,6 +650,51 @@ check((await status(R)).closed.length === 1 && (await titles(R, restPhone.device
 await R.click('#closePlans');
 await ctxR.close();
 
+// ---- 14e. "Pair again" with a reinstalled phone (owner field 2026-11-12, robust first): the phone comes back with a NEW
+// device id (no backup of device.txt) – the tours of the folder that "Pair again" closed come along into the new
+// pairing as waiting (like Without phone's), Save sends them; an older closed folder stays where it is ----
+const ctxW = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+const W = await open(ctxW);
+const older = await new Phone('Old S10').init();
+const pO = await showCode(W);
+await older.pairDirect(pO.code);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, older.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+await W.evaluate((c) => window.__sync.save(c, 'S10-Weg'), CODE);
+const firstPixel = await new Phone('Pixel 8').init();
+await firstPixel.save('Handytour');
+const pB = await showCode(W, true);
+await firstPixel.pairDirect(pB.code);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, firstPixel.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+await until(W, async () => (await window.__sync.list()).some((p) => p.title === 'Handytour'));
+await W.evaluate((c) => window.__sync.save(c, 'Browsertour'), CODE);
+await W.evaluate(() => window.__sync.sendAll());
+await firstPixel.round();
+check(JSON.stringify(await firstPixel.titles()) === '["Browsertour","Handytour"]', 'set-up: two tours on the first Pixel ' + JSON.stringify(await firstPixel.titles()));
+const kB = await firstPixel.keys();
+await box('GET', kB.mailbox, kB.token, { since: 0 }, Date.now() - 4 * 86_400_000);
+await W.evaluate(() => window.__sync.syncNow());
+await phoneWin(W);
+await W.waitForSelector('dialog.phone[open] #pairAgain:not([hidden])', { timeout: 10_000 }).catch(() => {});
+await W.click('dialog.phone #pairAgain');
+await W.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 }).catch(() => {});
+const reinstalled = await new Phone('Pixel 8').init(); // the same phone after a reinstall: a new device id, no tours
+check(reinstalled.device !== firstPixel.device, 'the reinstalled phone has a new device id');
+await reinstalled.pairDirect((await W.inputValue('#pairLink')).split('#pair=')[1]);
+await W.waitForFunction((d) => window.__sync.status.folder.key === d, reinstalled.device, { timeout: 30_000 }).catch(() => {});
+await W.click('#closePair').catch(() => {});
+const carried = await W.evaluate(async () => (await window.__sync.list()).map((p) => [p.title, p.dirty]).sort());
+check((await status(W)).folder.key === reinstalled.device && JSON.stringify(carried) === '[["Browsertour",true],["Handytour",true]]',
+  `"Pair again" + a new device id: the closed folder's tours came along, waiting for Save (${JSON.stringify(carried)})`);
+const leftW = await W.evaluate(() => window.__sync.status.closed.map((f) => f.name));
+check((await titles(W, firstPixel.device)).length === 0 && (await titles(W, older.device)).includes('S10-Weg') && !(await titles(W)).includes('S10-Weg'),
+  `only the folder "Pair again" closed came along; the older S10 folder stays as it was (${JSON.stringify(leftW)})`);
+await W.evaluate(() => window.__sync.sendAll());
+await reinstalled.round();
+check(JSON.stringify(await reinstalled.titles()) === '["Browsertour","Handytour"]', 'Save sends them to the reinstalled phone ' + JSON.stringify(await reinstalled.titles()));
+await ctxW.close();
+
 // ---- 15. the host's cap on new mailboxes per IP and day ----
 env.SYNC_NEW_PER_IP_DAY = '1';
 await phoneWin(A);

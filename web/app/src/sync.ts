@@ -340,6 +340,17 @@ export class PlanSync {
   }
 
   /**
+   * "Pair again" (the phone silent for long, owner 2026-11-12): unpair, and remember the folder that closes – when the
+   * next pairing answers with ANOTHER device id (a reinstalled phone: no backup of its device id), that folder's tours
+   * come along into the new one, waiting for Save like Without phone's (robust first: never hide a tour). The same
+   * phone brings its own folder back as before; older closed folders are never touched.
+   */
+  async pairAgain(): Promise<void> {
+    if (this.dir.open !== NONE) await this.store.set('carry', this.dir.open);
+    await this.unpair();
+  }
+
+  /**
    * Routes and tracks of [folder] saved here but never sent to its phone (dirty in its ledger) – Remove asks first
    * when there are any (owner 2026-11-02, changes A-017 rule 16: they exist nowhere else).
    */
@@ -529,6 +540,18 @@ export class PlanSync {
     await this.store.set('pair', pair);
     await this.writeDir();
     await this.adoptNone(key, true);
+    // "Pair again" closed [carry] and another phone (id) answered: its tours come along (pairAgain)
+    const carry = await this.store.get('carry');
+    if (carry) {
+      await this.store.set('carry', null);
+      if (carry !== key && carry !== NONE && this.dir.list.some((x) => x.key === carry)) {
+        await this.adopt(carry, key, true);
+        this.dir.list = this.dir.list.filter((x) => x.key !== carry);
+        await this.store.set(`fach:${carry}:draft`, null);
+        await this.writeDir();
+        problem('sync', 'pair again: another device id answered – the closed folder\'s tours came along as waiting');
+      }
+    }
     this.status.phoneSeen = null;
     await this.refresh();
     if (from !== key) for (const l of this.folderListeners) l(from, key);
@@ -539,10 +562,13 @@ export class PlanSync {
    * them; never uploaded by themselves), Without phone is emptied. [takeDraft] (a pairing): the route open in Without
    * phone stays open – it becomes the folder's open route. Called inside the lock.
    */
-  private async adoptNone(key: string, takeDraft: boolean) {
-    if (key === NONE) return;
+  private async adoptNone(key: string, takeDraft: boolean) { await this.adopt(NONE, key, takeDraft); }
+
+  /** The tours of folder [from] join folder [key] as waiting (unsent); [from] is emptied – [adoptNone], [pairAgain]. */
+  private async adopt(from: string, key: string, takeDraft: boolean) {
+    if (key === NONE || key === from) return;
     const dev = await this.device();
-    const items = JSON.parse(await this.call('syncList', await this.ledgerOf(NONE), dev)) as SavedPlan[];
+    const items = JSON.parse(await this.call('syncList', await this.ledgerOf(from), dev)) as SavedPlan[];
     if (items.length) {
       let l = await this.ledgerOf(key);
       for (const p of items) {
@@ -550,17 +576,15 @@ export class PlanSync {
           : await this.call('syncSave', l, p.id, p.plan, p.title ?? '', p.updatedAt, dev, p.routing ?? '', p.routingData ?? '');
       }
       await this.setLedgerOf(key, l);
-      for (const x of ['ledger', 'marks']) await this.store.set(`fach:${NONE}:${x}`, null);
+      for (const x of ['ledger', 'marks']) await this.store.set(`fach:${from}:${x}`, null);
     }
-    const moved = (d: Draft): Draft => ({ ...d, savedFolder: d.savedFolder === NONE ? key : d.savedFolder ?? null });
-    const none = await this.draft(NONE);
-    if (takeDraft && none?.code) {
-      await this.setDraft(moved(none), key);
-      await this.setDraft(null, NONE);
-    } else {
-      const own = await this.draft(key);
-      if (own?.savedFolder === NONE) await this.setDraft(moved(own), key);
-    }
+    const moved = (d: Draft): Draft => ({ ...d, savedFolder: d.savedFolder === from ? key : d.savedFolder ?? null });
+    const old = await this.draft(from);
+    const own = await this.draft(key);
+    if (takeDraft && old?.code && !own?.code) {
+      await this.setDraft(moved(old), key);
+      await this.setDraft(null, from);
+    } else if (own?.savedFolder === from) await this.setDraft(moved(own), key);
   }
 
   /** The open folder closes (Unpair, or the phone ended the pairing): Without phone opens; nothing is deleted. */

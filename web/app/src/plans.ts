@@ -519,7 +519,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
   $('pairOther').onclick = () => pairDialog(sync, page); // a new code; this phone's folder closes once the other phone answers
   // the phone silent for long (yellow): unpair and a new code in one step – the plans stay in this browser, and the same
   // phone paired again brings its folder back (owner 2026-11-12)
-  $('pairAgain').onclick = async () => { await sync.unpair(); pairDialog(sync, page); };
+  $('pairAgain').onclick = async () => { await sync.pairAgain(); pairDialog(sync, page); };
   $('syncNow').onclick = async () => {
     const b = $<HTMLButtonElement>('syncNow');
     if (b.disabled) return;
