@@ -218,12 +218,20 @@ class CorePlanE2ETest : E2EBase() {
         val name = "E2E overview route"
         val id = db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 420.0, 0.0, 0.0,
             300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts)
+        // a plan under Zuletzt with its own "Planen" on the row (owner 2026-11-07) – as a full run leaves them behind: the
+        // overview's "Planen" and "Abbrechen" must be told apart from it (main red 2026-11-08 … 11-12 on exactly this)
+        val draftPts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude - 0.002, centre.longitude, "E2E Z1"),
+            com.onpath.app.gpx.GpxWaypoint(centre.latitude - 0.004, centre.longitude + 0.002, "E2E Z2"))
+        val draft = db.insertTour(com.onpath.app.data.TourKind.PLANNED, "E2E Zuletzt draft", com.onpath.app.routing.Activity.HIKE.name, 2,
+            200.0, 0.0, 0.0, 150.0, listOf(draftPts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), draftPts, draft = true)
         try {
             scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
             val row = findFresh(By.text(name), 8_000)
             assertNotNull("the saved route in My routes", row)
             assertTrue("rows show their route preview",
                 device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_show))), 5_000))
+            assertNotNull("the Zuletzt row shows its own \"Planen\" (the trap this test guards against)",
+                findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 3_000))
             shot("1-routes-with-previews")
             row!!.click()
             val plan = overviewPlan(8_000)
@@ -248,7 +256,7 @@ class CorePlanE2ETest : E2EBase() {
                 var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).waypoints.toList() }; w == loaded
             }
         } finally {
-            db.deleteTour(id)
+            db.deleteTour(id); db.deleteTour(draft)
         }
     }
 
