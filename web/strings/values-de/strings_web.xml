@@ -180,7 +180,6 @@
     <string name="web_phone_title">Handy</string>
     <string name="web_phone_why">Deine Pläne erscheinen auf dem Handy und hier.</string>
     <string name="web_phone_fresh">Verbunden · abgeglichen %1$s</string>
-    <string name="web_phone_stale">Verbunden · Handy zuletzt %1$s</string>
     <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Pläne abgeglichen. Änderungen von hier warten so lange.</string>
     <string name="web_phone_browser_synced">Verbunden · dieser Browser abgeglichen %1$s</string>
     <string name="web_ago_now">gerade eben</string>
@@ -193,14 +192,8 @@
     <string name="web_folder_none">Ohne Handy</string>
     <string name="web_folder_phone">Handy</string>
     <string name="web_folder_paired_on">%1$s · verbunden %2$s</string>
-    <string name="web_remove_folder">Pläne von %1$s aus diesem Browser entfernen</string>
     <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
-    <string name="web_remove_folder_q_one">Pläne von %1$s aus diesem Browser entfernen? 1 Plan ist nie an dieses Handy gegangen – er ginge verloren.</string>
-    <string name="web_remove_folder_q">Pläne von %1$s aus diesem Browser entfernen? %2$d Pläne sind nie an dieses Handy gegangen – sie gingen verloren.</string>
-    <string name="web_remove_folder_q_unknown">Pläne von %1$s aus diesem Browser entfernen? Pläne, die nie an dieses Handy gegangen sind, gingen verloren.</string>
     <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
-    <string name="web_plans_old_phone">Die Pläne von %1$s sind noch in diesem Browser – das Fenster „Handy“ zeigt sie.</string>
-    <string name="web_plans_old_phone_open">„Handy“ öffnen</string>
     <string name="web_copy_suffix">(Kopie)</string>
     <string name="web_save_also_phone">Speichern – auch aufs Handy (%1$s)</string>
     <string name="web_save_title_local">Plan in diesem Browser speichern</string>
@@ -213,9 +206,17 @@
     <string name="web_saved_title_here">Alles ist in diesem Browser gespeichert</string>
     <string name="web_saved_title_phone">Alles ist auf %1$s gesichert</string>
     <string name="web_phone_synced_ago">abgeglichen %1$s</string>
-    <string name="web_phone_last_ago">zuletzt %1$s</string>
     <string name="web_sync_now_done">Abgeglichen – alles ist auf dem neuesten Stand.</string>
-    <string name="web_sync_now_stale">Abgeglichen – vom Handy kam nichts Neues, es war zuletzt %1$s hier. Zeigt OnPath auf dem Handy „%2$s“? Dann ist die Verbindung dort weg: hier „%3$s“ und neu verbinden.</string>
+    <string name="web_sync_now_nothing">Abgeglichen – vom Handy kam nichts Neues.</string>
+    <string name="web_pair_again">Neu verbinden</string>
+    <plurals name="web_phone_away">
+        <item quantity="one">seit %1$d Tag nicht verbunden</item>
+        <item quantity="other">seit %1$d Tagen nicht verbunden</item>
+    </plurals>
+    <plurals name="web_phone_away_text">
+        <item quantity="one">Dein Handy war %1$d Tag nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu verbinden.</item>
+        <item quantity="other">Dein Handy war %1$d Tage nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu verbinden.</item>
+    </plurals>
     <string name="web_where_browser">In diesem Browser</string>
     <string name="web_where_phone">Auf dem Handy</string>
     <string name="web_kind_gpx">GPX</string>

@@ -343,8 +343,6 @@ dialog .confirm p { margin: 0 0 8px; }
 dialog .row + .confirm { margin-top: 12px; }
 .planlist li.confirm { display: block; border-top: none; margin: 4px 0; }
 .planlist li.confirm + li { border-top: none; }
-.planlist li.oldphone { display: block; padding: 8px 0; }
-.planlist li.oldphone .textbtn { display: block; padding-left: 0; margin-top: 4px; }
 dialog.share .row button.danger { color: var(--error); }
 dialog.share .row button.danger.primary { color: #fff; background: var(--error); border: none; }
 dialog.pair .check { font-size: 16px; }
