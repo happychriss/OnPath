@@ -106,7 +106,7 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
      * that waits in the bin because another plan took the place meanwhile (loaded from Zuletzt, then left unchanged)
      * comes back out. Returns how many drafts went (blocking).
      */
-    private fun takePlace(id: Long): Int {
+    fun takePlace(id: Long): Int {
         if (id < 0) return 0
         val gone = store.listTours().filter { it.draft && it.id != id }
         gone.forEach { store.setDeleted(it.id, clock()) }
@@ -130,7 +130,12 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
         if (!unsaved) {
             if (savedId < 0) return null // saved as it is, nowhere known: nothing to keep (as before)
             val own = store.listTours().firstOrNull { it.id == savedId }
-                ?: store.listDeleted().firstOrNull { it.id == savedId && it.draft }?.also { store.setDeleted(it.id, null) }
+                ?: store.listDeleted().firstOrNull { it.id == savedId }?.let { binned ->
+                    // a draft waits in the bin only because another plan took the place meanwhile: back out. A saved
+                    // route is there because the user deleted it: it stays there, the plan is in it – nothing twice
+                    if (binned.draft) { store.setDeleted(binned.id, null); binned }
+                    else { Problems.trace("routes", "Zuletzt: the plan is the route \"${binned.name}\" in the recycle bin – nothing kept twice"); return null }
+                }
             if (own != null) { takePlace(own.id); return null }
             Problems.trace("routes", "Zuletzt: the plan's tour $savedId is gone for good – kept as a new plan")
         }
@@ -185,6 +190,23 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
 
     /** Zuletzt → Löschen, or ⋮ → Löschen on any tour: into the recycle bin at once, no question (blocking). */
     fun toBin(id: Long): Boolean = store.setDeleted(id, clock())
+
+    /**
+     * Recycle bin → Restore: back into My routes. A draft shows only under Zuletzt, so it takes the place (the draft
+     * there goes to the bin, a saved route there stays); a saved route goes back under Gespeichert as it was – a draft
+     * with its points (planned again while it was in the bin) goes to the bin, never a draft beside a saved route with
+     * the same points, and the saved route takes the place when that draft held it. False when the tour is gone
+     * (blocking).
+     */
+    fun restore(id: Long): Boolean {
+        if (!store.setDeleted(id, null)) return false
+        val t = store.listTours().firstOrNull { it.id == id } ?: return true
+        if (t.draft) { takePlace(id); return true }
+        val twins = store.listTours().filter { it.draft && keyOf(it) == keyOf(t) }
+        twins.forEach { store.setDeleted(it.id, clock()) }
+        if (twins.any { it.id == recentId }) takePlace(id)
+        return true
+    }
 
     /**
      * Once at the first start with the one-plan rule (owner 2026-11-12; the view model guards it with a pref): the

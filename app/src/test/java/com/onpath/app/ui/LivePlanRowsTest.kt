@@ -21,7 +21,8 @@ class LivePlanRowsTest {
     private val b = 51.18 to 6.95
     private val c = 51.19 to 6.96
 
-    private fun tour(id: Long, draft: Boolean, vararg pts: Pair<Double, Double>) = Tour(id, TourKind.PLANNED, "T$id", 0L, null, 0,
+    /** [id] doubles as the creation time: a higher id is the newer tour. */
+    private fun tour(id: Long, draft: Boolean, vararg pts: Pair<Double, Double>) = Tour(id, TourKind.PLANNED, "T$id", id, null, 0,
         1000.0, 10.0, 10.0, 600.0, "done", pts.map { GpxWaypoint(it.first, it.second, null) }, draft = draft)
 
     private fun live(linked: Long = -1L, vararg pts: Pair<Double, Double>, unsaved: Boolean = true) =
@@ -80,8 +81,25 @@ class LivePlanRowsTest {
     }
 
     @Test fun anEmptyMapShowsTheSavedRouteThatTookThePlaceLastWithTheSavedMark() {
-        val r = LivePlanRows.of(null, listOf(tour(1, true, a, b)), listOf(tour(2, false, b, c)), recentId = 2L)
+        // (the draft before it is in the bin by then – RoutesState.takePlace)
+        val r = LivePlanRows.of(null, emptyList(), listOf(tour(2, false, b, c)), recentId = 2L)
         assertEquals(RecentRow(live = false, tourId = 2L, saved = true), r)
+    }
+
+    /**
+     * A draft never hides (review 2026-11-12): the app died between a draft's insert and its taking the place, or a
+     * draft came back from the bin – a draft outside the bin newer than the pointed one is the row; a saved route
+     * holding the place gives way to any draft; an older draft beside the pointed draft does not.
+     */
+    @Test fun aDraftNewerThanThePointedPlanIsTheRow() {
+        val d1 = tour(1, true, a, b); val d2 = tour(2, true, a, c); val x = tour(3, false, b, c)
+        assertEquals(RecentRow(live = false, tourId = 2L, saved = false), LivePlanRows.of(null, listOf(d2, d1), listOf(x), recentId = 1L))
+        assertEquals("the pointed draft is the newest: it", RecentRow(live = false, tourId = 2L, saved = false),
+            LivePlanRows.of(null, listOf(d2, d1), listOf(x), recentId = 2L))
+        assertEquals("a saved route holds the place, a draft exists: the draft", RecentRow(live = false, tourId = 2L, saved = false),
+            LivePlanRows.of(null, listOf(d2), listOf(x), recentId = 3L))
+        assertEquals("no draft: the saved route", RecentRow(live = false, tourId = 3L, saved = true),
+            LivePlanRows.of(null, emptyList(), listOf(x), recentId = 3L))
     }
 
     /** Older installs (no place known yet) and a saved route deleted since: the newest draft is the row. */
