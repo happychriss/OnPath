@@ -49,7 +49,7 @@ console.log('Waalweg →', hits.slice(0, 5));
 check(hits.length > 0, 'trail names (Waalweg)');
 
 // pick → card → its button says what adding does, like the app's (0.13: "Set as start" / "Set as destination" /
-// "Add as stop 2" / "Add as new destination"); a small button doing the same as the main one is left out
+// "Add as a stop on the way" / "Add as new destination", app strings since 2026-11-07); a small button doing the same as the main one is left out
 await searchFor('Vellau');
 await page.click('#results .hit');
 await page.waitForSelector('#placecard:not([hidden]) #cadd');
@@ -85,7 +85,7 @@ await page.click('#results .hit');
 await page.waitForSelector('#placecard:not([hidden]) #cadd');
 const add3 = (await page.textContent('#cadd')).trim();
 console.log('third place:', add3.replace(/\s+/g, ' '));
-check(/^(Add as stop 2|Add as new destination)/.test(add3), `two points: "Add as stop 2" or "Add as new destination" (${add3})`);
+check(/^(Add as a stop|Add as new destination)/.test(add3), `two points: "Add as a stop…" or "Add as new destination" (${add3})`);
 check(await page.locator('#placecard #cstart').count() === 1 && await page.locator('#placecard #cdest').count() === 1,
   'two points: As start and As destination both shown');
 await page.keyboard.press('Escape');
