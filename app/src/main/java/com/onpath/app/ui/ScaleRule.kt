@@ -15,7 +15,11 @@ import kotlin.math.pow
 internal object ScaleRule {
     const val MAX_DP = 100.0
 
-    /** Label ("200 m", "1 km" – only 1 / 2 / 5 steps) and bar width in dp; null for a broken scale. */
+    /**
+     * Label ("200 m", "1 km" – only 1 / 2 / 5 steps) and bar width in whole dp; null for a broken scale. Whole dp: the
+     * metres per dp change with the latitude, so an unrounded width changed on every frame of a north–south pan and
+     * redrew the screen's controls with it (smooth map 2026-11-12); a bar a fraction of a dp off is not visible.
+     */
     fun of(metersPerDp: Double): Pair<String, Double>? {
         if (!(metersPerDp > 0.0) || metersPerDp.isInfinite()) return null
         val maxM = metersPerDp * MAX_DP
@@ -23,7 +27,7 @@ internal object ScaleRule {
         val nice = listOf(5.0, 2.0, 1.0).map { it * pow10 }.first { it <= maxM }
         val label = if (nice >= 1000) "${(nice / 1000).let { if (it % 1.0 == 0.0) it.toInt().toString() else it.toString() }} km"
             else "${nice.toInt()} m"
-        return label to nice / metersPerDp
+        return label to kotlin.math.round(nice / metersPerDp)
     }
 
     /** Metres per dp at [lat] and [zoom] (MapLibre: 512 dp tiles) – what the projection returns; for tests. */

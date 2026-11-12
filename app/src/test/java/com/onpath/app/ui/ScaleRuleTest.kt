@@ -44,4 +44,11 @@ class ScaleRuleTest {
         assertNull(ScaleRule.of(Double.POSITIVE_INFINITY))
     }
 
+    @Test fun `a north-south pan keeps the bar's width - no redraw per camera frame`() {
+        // smooth map 2026-11-12: ~600 m north changes the metres per dp in the 5th digit; the width stays a whole dp
+        val a = ScaleRule.of(ScaleRule.metersPerDp(meran, 15.0))!!
+        val b = ScaleRule.of(ScaleRule.metersPerDp(meran + 0.0054, 15.0))!!
+        assertEquals(a, b)
+        assertEquals(a.second, kotlin.math.round(a.second), 0.0)
+    }
 }
