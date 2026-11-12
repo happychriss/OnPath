@@ -36,6 +36,17 @@ and the commit history.
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
+- **[donald] Code audit 2026-11-12 (owner asked: clean structure, low cost of change?) – verdict: good, one hotspot.** `ui/AppViewModel.kt` 5,356 lines
+  (4,645 on 11-07), 246 public functions, 87 `mutableStateOf`, not JVM-testable; 29 test files pin its source text. Plan, one
+  slice per round, forwarders stay, core features green each step: (1) slices after the `TourController` pattern (small
+  interface, fake in tests): Zuletzt, activity check, follow / record, plan sync + plan links, shared places – plus a size
+  test that fails above the current line count and is lowered after each slice; (2) the source-text pins of a moved slice
+  become behaviour tests; (3) the 32 Android-free files in `ui/` (RouteWarnings, PlanGaps, PlanGuidance, RouteRules …) move
+  to `domain/` – breaks the `ui` ↔ `domain` / `routing` cycle, update `app/web-shared-files.txt` (tell laptop: parity);
+  (4) lint fails on new issues (baseline 105 stays) – build config, PR; R8 only after a full Rundgang on the minified build;
+  (5) per touched file: history comments out (WHY stays), `collectAsStateWithLifecycle`. Also: `RecordingService` 1,777 lines
+  (recording + navigation, companion flows). Leave: no DI framework / Room / DataStore, `mutableStateOf` holders, file
+  persistence, one app module (+ `:strings`, later maybe `:core`). **Start waits for the owner's word (Waiting for the owner).**
 - **[donald] Beta bug button (owner 2026-11-10, chat) – step 1 only, for the owner's own phone:** a small round button
   always on top (bottom left, over every screen, menu, sheet and dialog), can be dragged aside if it is in the way.
   A tap: (1) a screenshot of the current screen *without* the button; (2) the microphone starts and the owner speaks
@@ -405,6 +416,10 @@ and the commit history.
 
 ## Waiting for the owner
 <!-- Owner 2026-11-07: open questions to the owner live here (who, date, question, recommendation first); asked in the session's chat; whoever acts on the answer deletes the line. -->
+- **[donald] Start slicing the big control file (AppViewModel)? (donald 2026-11-12)** – asked in the chat after the code
+  audit, the answer came empty. Recommendation: after the smooth map, one slice per round with real tests and a size
+  lock; new features go into their own files at once. Other options: only in passing when a place is touched anyway;
+  later, on the owner's word. Until then: nothing built, new code already goes into own files.
 - **[donald] "Aufzeichnung und Navigation ruhen" hardly ever shows (donald 2026-11-08)** – in 0.17.5 the stopped card's
   calm line shows only where it fits on one line beside the activity icon and the arrival time; on a 1080 px phone it
   does not (the approved v5 picture had it). The head "⏸ Angehalten seit …" and the buttons are there. Recommendation:
