@@ -279,7 +279,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
         barFrom = PlanSize.MINI.step,
         // Plan is blue (owner 2026-11-03): a light blue sheet with a blue handle and top edge – also during a tour
         surfaceColor = OnPathColors.PlanTint, accent = OnPathColors.PlanAccent,
-        // the ONE green button in the sheet's foot, full width, in every step – also rolled up (owner 2026-11-07, A: "Los
+        // the ONE button in the sheet's foot (blue start, green back to Navigate), full width, in every step – also rolled up (owner 2026-11-07, A: "Los
         // geht's" was small at the edge): "▶ Los geht's" from two points, during a tour "▲ Weiter geht's" (2026-11-06, C)
         foot = when (PlanFoot.of(ui)) {
             PlanFoot.Kind.BACK -> ({ BackToNavigationButton({ goClick(ui, cb) }) })
@@ -632,11 +632,15 @@ private fun PlanIconPill(icon: androidx.compose.ui.graphics.vector.ImageVector, 
     }
 }
 
-/** The one full-width green button: "▶ Los geht's" / "▶ Weiter geht's"; TalkBack hears the full label with the activity. */
+/**
+ * The one full-width start button "▶ Los geht's" – in the plan ink blue [PlanFoot.GO_FILL], white words (owner 2026-11-12,
+ * variant F: "blue = planning, green = on the way"; Navigate's green and the green "Weiter geht's" back to it stay);
+ * TalkBack hears the full label with the activity.
+ */
 @Composable
 private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
     val full = primaryLabel(ui)
-    Button(colors = ActionButtons.go(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
+    Button(colors = ActionButtons.edit(), onClick = { goClick(ui, cb) }, enabled = ui.tourRunning || ui.canStart,
         modifier = Modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT).semantics { contentDescription = full }) {
         Icon(goIcon(ui), null, Modifier.size(22.dp))
         Spacer(Modifier.width(8.dp))
@@ -693,6 +697,12 @@ object PlanFoot {
 
     /** The button's height – the one primary action of the sheet. */
     val HEIGHT = 56.dp
+
+    /**
+     * "▶ Los geht's"'s fill: the plan ink blue (owner 2026-11-12, variant F – one still plans; green = on the way), white
+     * words 7.1:1 – the same as [ActionButtons.edit].
+     */
+    val GO_FILL = OnPathColors.ActionEdit
 }
 
 /** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
