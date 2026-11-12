@@ -16,4 +16,12 @@ class StuckOutboxTest {
         n = StuckOutbox.next(n, left = 0)
         assertEquals(0, n)
     }
+
+    /** Pacing (field bug 2026-11-12): 110 plans go up 30 per pass – passes that send something are not "stuck". */
+    @Test fun pacedPassesThatSendAreNotStuck() {
+        var n = 0
+        repeat(5) { n = StuckOutbox.next(n, left = 80, pushed = 30) }
+        assertFalse(StuckOutbox.stuck(n))
+        assertEquals(0, n)
+    }
 }

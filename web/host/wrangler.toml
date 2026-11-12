@@ -35,11 +35,14 @@ database_name = "onpath-sync-test"
 database_id = "__SYNC_D1_ID_TEST__"
 migrations_dir = "migrations"
 
-# 120 sync requests per minute per IP (a sync round is 2–5 requests)
+# 300 sync requests per minute per IP. Every device paces itself to ≤ ~33 a minute (30 writes a round + reads, the
+# next batch a minute later – SyncRound.WRITES_PER_ROUND, docs/design/web-sync.md §8); a household (or a mobile
+# carrier's shared address) is one IP – 120 was hit when phone and browser re-paired with ~110 plans each (field bug
+# 2026-11-12). Still a cap against a runaway client; the mailbox's own size limits stay.
 [[env.test.ratelimits]]
 name = "SYNC_RATE"
 namespace_id = "7301"
-simple = { limit = 120, period = 60 }
+simple = { limit = 300, period = 60 }
 
 # daily: delete mailboxes idle for 12 months and old map-area counters
 [env.test.triggers]

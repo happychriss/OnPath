@@ -41,6 +41,8 @@ const ID = /^[A-Za-z0-9_-]{22}$/;
 const TOKEN = /^[A-Za-z0-9_-]{43}$/;
 const DAY = 86_400_000;
 const MINUTE = 60_000;
+/** retry-after (s) of a 503 for a transient failure ([handleSync]). */
+const BUSY_RETRY_S = 30;
 
 const json = (status, body, extra = {}) => new Response(JSON.stringify(body), {
   status, headers: { "content-type": "application/json", "cache-control": "no-store", ...extra },
@@ -63,15 +65,34 @@ function b64url(bytes) {
   return btoa(s).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
 }
 
+/**
+ * The mailbox request – never an uncaught exception (field bug 2026-11-12: the phone saw "500" with no JSON when phone
+ * and browser re-paired with ~220 PUTs from one IP; a Worker that throws answers Cloudflare's bare 500). A failure here
+ * is transient (D1 overloaded / timed out under a burst, a storage hiccup): 503 with retry-after – the clients retry
+ * quietly (SyncRound.busy). Logged without IP or token.
+ */
 export async function handleSync(request, env, now = Date.now()) {
+  try {
+    return await mailbox(request, env, now);
+  } catch (e) {
+    console.error(`sync ${request.method}: ${String(e?.message ?? e).slice(0, 200)} – answered 503`);
+    return json(503, { error: "the sync server is busy – try again shortly" }, { "retry-after": String(BUSY_RETRY_S) });
+  }
+}
+
+async function mailbox(request, env, now) {
   const url = new URL(request.url);
   const m = /^\/sync\/v1\/([^/]+)(?:\/([^/]+))?$/.exec(url.pathname);
   if (!m || !ID.test(m[1]) || (m[2] !== undefined && !ID.test(m[2]))) return fail(404, "not found");
   if (!env.SYNC) return fail(503, "sync is not set up on this server");
   const ip = request.headers.get("cf-connecting-ip") ?? "?";
   if (env.SYNC_RATE) {
-    const { success } = await env.SYNC_RATE.limit({ key: ip });
-    if (!success) return fail(429, "too many requests – try again in a minute");
+    let success = true;
+    try { ({ success } = await env.SYNC_RATE.limit({ key: ip })); } catch (e) {
+      // the limiter itself failed: let the request through (the mailbox's own size limits still hold), and say so
+      console.warn(`sync: rate limiter failed (${String(e?.message ?? e).slice(0, 120)}) – request let through`);
+    }
+    if (!success) return json(429, { error: "too many requests – try again in a minute" }, { "retry-after": "60" });
   }
   const [, box, item] = m;
   const token = /^Bearer (.+)$/.exec(request.headers.get("authorization") ?? "")?.[1] ?? "";

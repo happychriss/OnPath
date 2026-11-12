@@ -140,6 +140,12 @@ class PlanSync(
 
     /** Passes in a row that ended with routes still waiting to be sent. */
     private var stuckPasses = 0
+    /** Passes in a row the server answered busy (429 / 5xx, [SyncRound.busy]) – the back-off; only the worker writes it. */
+    @Volatile private var busyPasses = 0
+    /** No pass before this time (ms): the server said busy ([SyncRound.nextRoundMs]); every trigger waits for it. */
+    @Volatile private var quietUntilMs = 0L
+    /** Counts [request] calls: a pass schedules its follow-up only when nothing was asked for while it ran. */
+    @Volatile private var asked = 0
 
     /** A pass, pairing or unpairing ended. */
     data class Report(val manual: Boolean, val result: PlanSyncPass.Result?, val ended: Boolean = false, val error: Boolean = false)
@@ -188,13 +194,17 @@ class PlanSync(
     /** [quiet]: a regular poll – it goes into the event log only when it moved something or failed (one a minute). */
     fun request(why: String, manual: Boolean = false, delayMs: Long = 0, quiet: Boolean = false) {
         if (manual) manualWaiting = true
+        asked++
         pendingRun?.cancel(false)
-        pendingRun = try { worker.schedule(exclusive { run(why, quiet) }, delayMs, TimeUnit.MILLISECONDS) } catch (e: Exception) {
+        // the server said busy: no trigger (a change, the poll, the app back) asks it again before its time is up
+        val delay = maxOf(delayMs, quietUntilMs - System.currentTimeMillis())
+        pendingRun = try { worker.schedule(exclusive { run(why, quiet) }, delay, TimeUnit.MILLISECONDS) } catch (e: Exception) {
             Problems.warn("sync", "Sync not scheduled ($why)", e); null
         }
     }
 
     private fun run(why: String, quiet: Boolean = false) {
+        val mine = asked
         val manual = manualWaiting
         manualWaiting = false
         if (files.pairing() == null) { if (manual) report(Report(true, null)); return }
@@ -225,6 +235,23 @@ class PlanSync(
         } else if (!(quiet && idle(r))) Problems.trace("sync", "Sync ($why): ${describe(r)}")
         refreshState(r)
         report(Report(manual, r, ended = ended))
+        if (!handshake) paceNext(r?.outcome, mine)
+    }
+
+    /**
+     * Pacing and back-off (field bug 2026-11-12, docs/design/web-sync.md §8): plans still waiting after a full batch →
+     * the next pass [SyncRound.NEXT_BATCH_MS] later; the server busy (429 / 5xx) → quiet, the next pass after its
+     * retry-after or the doubling back-off, and no trigger asks earlier ([quietUntilMs]). Worker thread.
+     */
+    private fun paceNext(o: SyncRound.Outcome?, mine: Int) {
+        val busy = o is SyncRound.Outcome.Refused && SyncRound.busy(o.status)
+        busyPasses = if (busy) busyPasses + 1 else 0
+        val wait = o?.let { SyncRound.nextRoundMs(it, busyPasses) } ?: run { quietUntilMs = 0; return }
+        if (busy) {
+            quietUntilMs = System.currentTimeMillis() + wait
+            Problems.info("sync", "Sync server busy (${(o as SyncRound.Outcome.Refused).status}) – next try in ${wait / 1000} s, nothing lost")
+        } else quietUntilMs = 0
+        if (asked == mine) request(if (busy) "server busy, retry" else "next batch", delayMs = wait, quiet = true)
     }
 
     /**
@@ -347,12 +374,12 @@ class PlanSync(
         val problem: Problem? = when (val o = r?.outcome) {
             null -> null
             is SyncRound.Outcome.Offline -> Problem.Offline
-            is SyncRound.Outcome.Refused -> Problem.Refused(o.status, o.error)
+            is SyncRound.Outcome.Refused -> shown(o)
             is SyncRound.Outcome.Ended -> null
             is SyncRound.Outcome.Done -> {
                 if (o.restarted) Problems.warn("sync", "The browser mailbox had lost its history (idle purge / reset) – this phone sent everything again")
                 if (o.tooLarge > 0) Problems.warn("sync", "${o.tooLarge} item(s) refused by the server as too large – they stay on the phone")
-                stuckPasses = StuckOutbox.next(stuckPasses, o.left)
+                stuckPasses = StuckOutbox.next(stuckPasses, o.left, o.pushed)
                 if (stuckPasses == StuckOutbox.PASSES) Problems.warn("sync", "${o.left} item(s) not sent for $stuckPasses passes in a row")
                 when {
                     r.failed > 0 -> Problem.NotSaved(r.failed)
@@ -434,6 +461,13 @@ class PlanSync(
 
         /** The copy suffix as shown on this phone (" (Kopie)") from the localized word ("Kopie"); the item keeps " (copy)". */
         fun copyLabel(word: String): String = word.trim().takeIf { it.isNotEmpty() }?.let { " ($it)" } ?: com.onpath.app.sync.SyncMerge.COPY
+
+        /**
+         * What Settings shows for a refusal: a busy server (429 / 5xx – the household over the per-IP limit, the host
+         * under load) is a quiet retry, not the red „nicht angenommen“ (field bug 2026-11-12); if it lasts, the
+         * no-good-pass rule (SyncSettings STALE) says so. Other refusals are said.
+         */
+        fun shown(o: SyncRound.Outcome.Refused): Problem? = if (SyncRound.busy(o.status)) null else Problem.Refused(o.status, o.error)
 
         /** A pass that reached the server and moved nothing. */
         fun idle(r: PlanSyncPass.Result?): Boolean {

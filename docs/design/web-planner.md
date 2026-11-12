@@ -671,7 +671,7 @@ Owner decision 2026-10-30: the planner goes public (no login), with a quiet path
 | Routing data `/segments/` | 30 requests / min per IP (a plan needs a few 2–10 MB parts) | `SEGMENTS_RATE` |
 | Map-area calls `/maps/` | 20 / min per IP, 120 / min all (existing) | `MAPS_RATE`, `MAPS_RATE_ALL` |
 | **New map areas** | 15 per browser per day, 60 per month; 40 per IP per day; 200 per day for everyone | `maps.js` quotas, D1 table `map_quota` in the sync database (migration 0002) |
-| Sync mailbox | 120 requests / min per IP; 32 KB per plan, 1000 items and 4 MB per mailbox; idle 12 months → deleted | `sync.js` `LIMITS`, `SYNC_RATE` (existing) |
+| Sync mailbox | 300 requests / min per IP (clients pace to ≤ ~33, web-sync.md §8); 32 KB per plan, 1000 items and 4 MB per mailbox; idle 12 months → deleted | `sync.js` `LIMITS`, `SYNC_RATE` (existing) |
 
 - **New map areas:** the page sends a random browser id (`onpath.browserId`, 16 random bytes) as `X-OnPath-Browser`
   with each build request. The host counts the cells the doorman answers as *queued / building* (new work; cells that

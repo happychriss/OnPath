@@ -191,3 +191,40 @@ test("the pull tells the mailbox's use (all items incl. tombstones, bytes, the s
   assert.ok(use.bytes >= 90, `bytes counted (${use.bytes})`);
   assert.ok(LIMITS.items > 250, "the host's cap is a safety net above the 250 tours per phone (SyncLimits.MAX_TOURS)");
 });
+
+// Field bug 2026-11-12 (re-pairing, ~220 PUTs from one home IP): the phone logged "server refused (500)" with no JSON
+// – an uncaught exception in the Worker (D1 overloaded / timed out under the burst, or the rate-limit binding failing).
+// Transient failures answer 503 with retry-after (the clients retry quietly, SyncRound.busy); the rate limit says when.
+test("the per-IP rate limit answers 429 with retry-after", async () => {
+  const env = { ...fresh(), SYNC_RATE: { limit: async () => ({ success: false }) } };
+  const r = await client(env).claim();
+  assert.equal(r.status, 429);
+  assert.equal(r.headers.get("retry-after"), "60");
+});
+
+test("a database failure under load is a 503 with retry-after, not an uncaught 500", async () => {
+  for (const where of ["prepare", "batch", "first"]) {
+    const env = fresh();
+    await client(env).claim();
+    const db = env.SYNC;
+    const busy = () => { throw new Error("D1_ERROR: Database is overloaded. Requests queued for too long."); };
+    env.SYNC = where === "batch" ? { ...db, batch: async () => busy() }
+      : where === "prepare" ? { ...db, prepare: busy }
+      : { ...db, prepare: (sql) => ({ ...db.prepare(sql), bind: () => ({ first: async () => busy() }) }) };
+    const r = await client(env).put(ITEM, 0);
+    assert.equal(r.status, 503, where);
+    assert.ok(Number(r.headers.get("retry-after")) > 0, where);
+    assert.match((await r.json()).error, /busy/, where);
+  }
+});
+
+test("a failing rate-limit binding does not stop the sync (fail open, logged)", async () => {
+  const env = { ...fresh(), SYNC_RATE: { limit: async () => { throw new Error("rate limiter unavailable"); } } };
+  assert.equal((await client(env).claim()).status, 201);
+});
+
+test("through the host's router as well: a thrown sync request is a 503", async () => {
+  const env = { SYNC: { prepare: () => { throw new Error("D1_ERROR: storage operation exceeded timeout"); } } };
+  const r = await handle(new Request(H + BOX, { method: "POST", headers: { authorization: "Bearer " + TOKEN } }), env);
+  assert.equal(r.status, 503);
+});

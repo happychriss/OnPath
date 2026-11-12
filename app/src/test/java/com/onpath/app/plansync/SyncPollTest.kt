@@ -127,4 +127,14 @@ class SyncPollTest {
         p.requested(400_000)
         assertEquals(min, p.waitMs(400_000))
     }
+
+    /**
+     * Field bug 2026-11-12 (re-pairing, 429 / 500 from one home IP): a busy server is no red „nicht angenommen“ in
+     * Settings – a quiet retry; a real refusal (401, 507 …) is still said.
+     */
+    @Test fun busyServerShowsNoRefusal() {
+        for (status in listOf(429, 500, 503)) assertNull("$status", PlanSync.shown(SyncRound.Outcome.Refused(status, "x")))
+        assertEquals(PlanSync.Problem.Refused(401, "x"), PlanSync.shown(SyncRound.Outcome.Refused(401, "x")))
+        assertEquals(PlanSync.Problem.Refused(507, null), PlanSync.shown(SyncRound.Outcome.Refused(507, null)))
+    }
 }

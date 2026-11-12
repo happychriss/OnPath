@@ -113,6 +113,11 @@ class Store {
 
 class Gone extends Error {}
 class Full extends Error {}
+/**
+ * The server is busy, not refusing (SyncRound.busy: 429 rate limit, 5xx except 507): a quiet retry after
+ * [retryAfterS] (0 = the back-off decides) – no red line (field bug 2026-11-12).
+ */
+class Busy extends Error { constructor(readonly status: number, readonly retryAfterS: number) { super(`server busy (${status})`); } }
 /** A NEW tour beyond the 250 per phone (SyncLimits.MAX_TOURS) – refused before anything is stored. */
 export class TourCap extends Error {}
 
@@ -133,6 +138,19 @@ export class PlanSync {
   private store = new Store();
   private chain: Promise<unknown> = Promise.resolve();
   private timer = 0;
+  /**
+   * Pacing and back-off (field bug 2026-11-12, web-sync.md §8 – the same numbers as the app, from the engine's
+   * SyncRound): at most [Pace.writes] PUTs a round, the rest in the next round [Pace.batchMs] later; after a busy
+   * answer (429 / 5xx) nothing is asked before [busyUntil]. Public for the browser tests (shorter times).
+   */
+  pace: Pace = { writes: 30, batchMs: 60_000, retryMs: 30_000, maxRetryMs: 600_000 };
+  private busyUntil = 0;
+  private busyCount = 0;
+  /** No next batch before this (ms) – an earlier tick / tab-back round sends only the hello. */
+  private batchAt = 0;
+  private laterTimer = 0;
+  /** The round the timer runs sends everything waiting (Save / after pairing). */
+  private laterAll = false;
   private listeners = new Set<() => void>();
   private folderListeners = new Set<(from: string, to: string) => void>();
   private dir: Dir = { open: NONE, list: [] };
@@ -171,8 +189,9 @@ export class PlanSync {
   onFolder(f: (from: string, to: string) => void) { this.folderListeners.add(f); return () => this.folderListeners.delete(f); }
 
   async init() {
-    const lim = JSON.parse(await this.call('syncLimits')) as { max: number; warn: number };
+    const lim = JSON.parse(await this.call('syncLimits')) as { max: number; warn: number } & Partial<Pace>;
     this.status.maxTours = lim.max; this.status.warnTours = lim.warn;
+    for (const k of ['writes', 'batchMs', 'retryMs', 'maxRetryMs'] as const) if (typeof lim[k] === 'number' && lim[k]! > 0) this.pace[k] = lim[k]!;
     if (!(await this.store.get('device'))) await this.store.set('device', await this.call('syncNewDevice', rand(8)));
     await this.migrate();
     this.dir = await this.readDir();
@@ -335,7 +354,7 @@ export class PlanSync {
       const dev = await this.device();
       const hello = await this.call('syncHelloId', dev);
       await this.setLedger(await this.call('syncDelete', await this.ledger(), hello, Date.now(), dev));
-      try { await this.push(await this.keys(pair), pair, hello); }
+      try { await this.push(await this.keys(pair), pair, hello, 1); }
       catch (e) { console.warn('[Problems] INFO sync: unpaired offline – the phone still names this browser', e); } // expected: offline
       await this.closeFolder();
     });
@@ -381,6 +400,11 @@ export class PlanSync {
   sendAll(): Promise<void> { return this.sync(true); }
 
   private sync(all: boolean): Promise<void> {
+    // the server said busy: nothing goes out before its time (the tick, Sync now, the tab coming back all wait) – the
+    // round at [busyUntil] runs by itself and remembers a Save meanwhile (field bug 2026-11-12: the open tab kept the
+    // household's IP over the limit)
+    const wait = this.busyUntil - Date.now();
+    if (wait > 0) { this.later(wait, all); return Promise.resolve(); }
     return this.locked(async () => {
       try {
         const p = await this.pending();
@@ -391,12 +415,18 @@ export class PlanSync {
         // nothing waits any more – offline / a full mailbox keeps it, so the next tick tries again (nothing lost)
         const afterPair = (await this.store.get(SEND_AFTER_PAIR)) === '1';
         const before = afterPair ? await this.unsent(this.dir.open) : 0;
-        await this.round(pair, all || afterPair);
-        if (afterPair) {
+        // pacing: a batch went up less than [pace.batchMs] ago – this round reads and sends only the hello; the timer
+        // ([later]) brings the next batch
+        const early = Date.now() < this.batchAt;
+        const full = await this.round(pair, (all || afterPair) && !early);
+        if (full) { this.batchAt = Date.now() + this.pace.batchMs; this.later(this.pace.batchMs, all || afterPair); }
+        else if (early && (all || afterPair)) this.later(this.batchAt - Date.now(), true);
+        this.busyCount = 0;
+        if (afterPair && !early) {
           // done when nothing waits; also when a good round moved nothing (e.g. the 250-tour cap) – Save is still there
           const left = this.dir.open === NONE ? 0 : await this.unsent(this.dir.open);
           if (left === 0 || left >= before) await this.store.set(SEND_AFTER_PAIR, null);
-          if (left > 0 && left < before) problem('sync', `after pairing: ${left} still to send – the next round goes on`);
+          if (left > 0 && left < before) console.warn(`[Problems] INFO sync: after pairing: ${left} still to send – the next batch goes on`);
         }
         // the phone unpaired itself – its hello came back deleted (the app's guard, b585cbc): the folder closes as when
         // the phone ended the mailbox; its routes stay here, the header says "Pair phone"
@@ -416,6 +446,14 @@ export class PlanSync {
         } else if (e instanceof Full) {
           this.status.full = true;
           this.say(t('web_sync_full_hint'), 'warning');
+        } else if (e instanceof Busy) {
+          // quiet: no line for the user, the next round after the server's retry-after or the doubling back-off
+          this.busyCount++;
+          const p = this.pace;
+          const ms = Math.min(e.retryAfterS > 0 ? e.retryAfterS * 1000 : p.retryMs * 2 ** Math.min(this.busyCount - 1, 10), p.maxRetryMs);
+          this.busyUntil = Date.now() + ms;
+          this.later(ms, all);
+          console.warn(`[Problems] INFO sync: server busy (${e.status}) – next try in ${Math.round(ms / 1000)} s, nothing lost`);
         } else if (e instanceof TypeError || (e as Error).name === 'TimeoutError' || !navigator.onLine) {
           this.say(t('web_sync_offline'), 'info'); // expected: no network
         } else {
@@ -426,18 +464,37 @@ export class PlanSync {
     }).then(() => this.refresh());
   }
 
-  /** One round with the open folder's mailbox: hello, pull + merge, push (only the hello unless [all] – Save). */
-  private async round(pair: string, all: boolean) {
+  /**
+   * One round with the open folder's mailbox: hello, pull + merge, push (only the hello unless [all] – Save). At most
+   * [Pace.writes] PUTs (the hello first); true = that batch was used up, more may wait (the next round [later]).
+   */
+  private async round(pair: string, all: boolean): Promise<boolean> {
     const k = await this.keys(pair);
     const device = await this.device();
     await this.setLedger(await this.call('syncHelloAs', await this.ledger(), device, deviceName(), Date.now(), ROLE_BROWSER));
     const hello = await this.call('syncHelloId', device);
+    let budget = this.pace.writes;
     for (let attempt = 0; attempt < 4; attempt++) {
       await this.pull(k, pair);
-      if (this.dir.open === NONE) return; // the folder was closed meanwhile (cannot happen inside the lock – safety)
-      const { conflict, sent } = await this.push(k, pair, all ? '' : hello);
-      if (!conflict && sent < 64) return;
+      if (this.dir.open === NONE) return false; // the folder was closed meanwhile (cannot happen inside the lock – safety)
+      const { conflict, sent } = await this.push(k, pair, all ? '' : hello, budget);
+      budget -= sent;
+      if (budget <= 0) return JSON.parse(await this.call('syncState', await this.ledger())).pending > 0;
+      if (!conflict) return false;
     }
+    return false;
+  }
+
+  /** A round by itself in [ms] (the next batch, the end of a back-off); [all] = it sends everything waiting. */
+  private later(ms: number, all: boolean) {
+    this.laterAll ||= all;
+    clearTimeout(this.laterTimer);
+    this.laterTimer = window.setTimeout(() => {
+      this.laterTimer = 0;
+      const a = this.laterAll;
+      this.laterAll = false;
+      void this.sync(a);
+    }, Math.max(0, ms));
   }
 
   /** Reads the open folder's mailbox from where it stood; the phone's hello names the folder, its changes get marks. */
@@ -470,8 +527,8 @@ export class PlanSync {
   }
 
   /** Pushes the open folder's changes ([only] = one item id, "" = all); 409 = someone wrote first → read again. */
-  private async push(k: Keys, pair: string, only: string): Promise<{ conflict: boolean; sent: number }> {
-    const lines = (await this.call('syncOutboxOf', await this.ledger(), pair, rand(12 * 64), only)).split('\n').filter(Boolean);
+  private async push(k: Keys, pair: string, only: string, max: number): Promise<{ conflict: boolean; sent: number }> {
+    const lines = (await this.call('syncOutboxOf', await this.ledger(), pair, rand(12 * Math.max(1, max)), only)).split('\n').filter(Boolean);
     let conflict = false;
     for (const line of lines) {
       const [id, base, blob, sent] = line.split(' ');
@@ -686,8 +743,12 @@ export class PlanSync {
   private async refused(r: Response): Promise<never> {
     if (r.status === 410 || r.status === 403) throw new Gone(t('web_sync_gone'));
     if (await capped(r)) throw new Error(t('web_sync_pair_cap'));
-    if (r.status === 429) throw new Error(t('web_sync_busy'));
     if (r.status === 507) throw new Full(t('web_sync_full_hint'));
+    // 429 (the household's IP over the limit) and 5xx (the host under load): busy – a quiet retry (SyncRound.busy)
+    if (r.status === 429 || (r.status >= 500 && r.status <= 599)) {
+      const after = Number(r.headers.get('retry-after') ?? 0);
+      throw new Busy(r.status, Number.isFinite(after) && after > 0 ? Math.min(after, 86_400) : 0);
+    }
     throw new Error(t('web_sync_answered', r.status));
   }
 
@@ -794,10 +855,12 @@ export class PlanSync {
     });
   }
 
-  stop() { clearInterval(this.timer); }
+  stop() { clearInterval(this.timer); clearTimeout(this.laterTimer); }
 }
 
 interface Keys { mailbox: string; token: string; check: string }
+/** Pacing (SyncRound, web-sync.md §8): PUTs per round, ms to the next batch, back-off start and cap (ms). */
+interface Pace { writes: number; batchMs: number; retryMs: number; maxRetryMs: number }
 
 /** The phone's hello among [hellos]: role 1, else (an app from before the role) one that is not a browser and not us. */
 function phoneHello(hellos: Hello[], me: string): Hello | null {
