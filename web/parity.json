@@ -61,7 +61,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
-      "what": "gpsColor; scale + short credit",
+      "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible)",
       "web": [
         "web/app/src/position.ts",
         "web/app/src/main.ts"
