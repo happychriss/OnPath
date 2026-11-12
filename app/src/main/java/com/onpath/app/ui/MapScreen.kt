@@ -538,7 +538,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     BackgroundDownloadDetails(vm, bg)
 }
 
-/** The green "Weiter geht's" (owner 2026-11-06, C): back to Navigate; a paused recording goes on (as "Weiter" did). */
+/** The plan-blue "Weiter geht's" (owner 2026-11-06, C; blue since 2026-11-12): back to Navigate; a paused recording goes on (as "Weiter" did). */
 private fun backToNavigation(vm: AppViewModel, r: RecState) {
     if (r.paused) vm.pauseRecording(false)
     vm.continueNavigation()

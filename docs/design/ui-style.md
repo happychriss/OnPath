@@ -66,8 +66,8 @@ screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`),
 pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
 (`ui/PlanPuck`). Kept: the blue route line, red for stop /
 errors. Since 2026-11-12 (owner, variant F) Plan's start button "▶ Los geht's" is plan ink blue with white words
-(`PlanFoot.GO_FILL`, 7.1:1) – blue = planning, green = on the way; the green "Weiter geht's" back to Navigate and
-Navigate's green stay. `PlanColourTest` keeps the plan tokens out of Navigate.
+(`PlanFoot.GO_FILL`, 7.1:1) – blue = planning, green = on the way; during a tour "▲ Weiter geht's" back to Navigate is
+the same blue (owner on the Pixel: "Der ist dann auch blau"); Navigate's own buttons stay green. `PlanColourTest` keeps the plan tokens out of Navigate.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).
