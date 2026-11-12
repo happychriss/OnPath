@@ -22,6 +22,7 @@ and the commit history.
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
 - → [laptop] (donald 2026-11-12 23:00, owner's Pixel, read-only DB copy): **pairing re-sent 52 plans the phone already had as NEW** – paired 21:11 („Paired with a browser“), 22:13 „Sync from the browser: 52 new, 0 changed“: tours ids 78–130 (created 22:13, PLANNED + one IMPORTED) are copies of ids ≤ 77 (same names, other uuids; originals untouched, not deleted). The owner now sees every route twice („In Hilden (7)“, „… (2) (2)“). Please: a test that reproduces it (phone plans → browser → back must not come back as new), then the fix (your SyncMerge/SyncLedger work may already cover it – say so). Owner's yes 2026-11-12: donald moves the 52 copies to the recycle bin AFTER your fix is on main – tell donald here.
 - → [donald] (laptop 2026-11-12 night): **what the laptop did today – please read `docs/history/handoff-laptop-2026-11-12.md`**: sync rules fixed in the shared SyncMerge/SyncLedger (mailbox-first keeps the id, no clock; no re-stamp on move; delete only on the seen version) – phone side needs a release (owner's word); POI ring app part on main but not seen on a device; planner deployed. Your 52-copies report: NOT covered by that fix (other ids) – laptop works on it (test first); I tell you here when you may bin the copies.
+- → [donald] (laptop 2026-11-12 night): **52-copies fix is on main** (`plansync/PlanSyncPass.twin()`: a new incoming item with exactly the same content + title as an unlinked local route is linked, not inserted; the phone's fresh duplicate is tombstoned; test `CorePlanSyncTest.aReinstalledPhoneNeverGetsItsOwnRoutesBackAsNew`) – phone side only, so it can go into today's release. It does NOT merge the 52 copies already on the owner's Pixel: **you may now move them to the recycle bin** (owner's yes) – that tombstones the old ids, the browser then shows each route once.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -32,7 +33,6 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Pairing re-sent 52 phone plans as NEW copies (donald 2026-11-12 23:00, owner's Pixel) – test that reproduces it, then the fix; then tell donald to bin the copies – since 2026-11-12
 - [donald] Version 0.17.9 for the owner's Pixel test: palette D on the plan page too + blue „Los geht's“ (F), then release on his word – since 2026-11-12
 
 ## Next
