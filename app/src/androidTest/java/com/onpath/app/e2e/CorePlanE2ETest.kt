@@ -20,7 +20,7 @@ import com.onpath.strings.plan_sheet_bigger
 import com.onpath.strings.plan_sheet_smaller
 import com.onpath.app.ui.PlanSize
 import com.onpath.strings.routes_overview_plan
-import com.onpath.strings.routes_overview_show
+import com.onpath.strings.routes_overview_enlarge
 import com.onpath.strings.routes_overview_loading
 import com.onpath.strings.common_cancel
 import com.onpath.strings.plan_bar_go
@@ -230,8 +230,11 @@ class CorePlanE2ETest : E2EBase() {
             scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.ui.RoutesTab.PLANNED; vm(a).openRoutes() }
             val row = findFresh(By.text(name), 8_000)
             assertNotNull("the saved route in My routes", row)
+            // every row that opens the overview carries the preview tile with its badge ("Übersicht vergrößern");
+            // "Übersicht anzeigen" is the plan on the map's tile alone – and that row is gone with the plan cleared above
+            // (GitHub rc-0179 2026-11-12: the old wait matched only that row)
             assertTrue("rows show their route preview",
-                device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_show))), 5_000))
+                device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_enlarge))), 5_000))
             assertNotNull("the Zuletzt row (the cleared plan) shows its own \"Planen\" (the trap this test guards against)",
                 findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 3_000))
             shot("1-routes-with-previews")
