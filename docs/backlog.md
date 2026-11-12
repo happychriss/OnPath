@@ -20,6 +20,7 @@ and the commit history.
   unanswered at the end → "Waiting for the owner" here; the owner's word to all comes as a line here. Pull main and
   read CLAUDE.md once. Delete this line when read (each role removes its tag).
 - → [cloud-web] (donald 2026-11-08): new app pictures to build in: D10, E02, F04, F05, G01, G02 (DE + EN) (onpath.private 5875c99, aktuell/)
+- → [laptop] (donald 2026-11-12 23:00, owner's Pixel, read-only DB copy): **pairing re-sent 52 plans the phone already had as NEW** – paired 21:11 („Paired with a browser“), 22:13 „Sync from the browser: 52 new, 0 changed“: tours ids 78–130 (created 22:13, PLANNED + one IMPORTED) are copies of ids ≤ 77 (same names, other uuids; originals untouched, not deleted). The owner now sees every route twice („In Hilden (7)“, „… (2) (2)“). Please: a test that reproduces it (phone plans → browser → back must not come back as new), then the fix (your SyncMerge/SyncLedger work may already cover it – say so). Owner's yes 2026-11-12: donald moves the 52 copies to the recycle bin AFTER your fix is on main – tell donald here.
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
@@ -30,8 +31,8 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [donald] Night job 1, safety net (owner 2026-11-12): nav-session.json race test, broken-file tests, crash hunt on the emulator – since 2026-11-12
-- [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
+- [laptop] Pairing re-sent 52 phone plans as NEW copies (donald 2026-11-12 23:00, owner's Pixel) – test that reproduces it, then the fix; then tell donald to bin the copies – since 2026-11-12
+- [donald] Version 0.17.9 for the owner's Pixel test: palette D on the plan page too + blue „Los geht's“ (F), then release on his word – since 2026-11-12
 
 ## Next
 - **[laptop] Planner: My routes sort chips like the app (donald 3b26b558, owner 2026-11-12 variant C; `ui/routes/RouteSort`, Prefs.routesSort)** – parity was marked checked on 2026-11-12 to let the sync fix deploy; the web still has no sort chips. Also check donald's 362459fc (difficulty stored at saving) for the planner's saved plans. 032aaeca (interrupted tour start) is phone only.
