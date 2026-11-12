@@ -47,6 +47,19 @@ and the commit history.
   (5) per touched file: history comments out (WHY stays), `collectAsStateWithLifecycle`. Also: `RecordingService` 1,777 lines
   (recording + navigation, companion flows). Leave: no DI framework / Room / DataStore, `mutableStateOf` holders, file
   persistence, one app module (+ `:strings`, later maybe `:core`). **Start waits for the owner's word (Waiting for the owner).**
+  **Second, independent audit the same day (owner: „mit frischen Augen“) – same verdict and same first three steps; it adds:**
+  (a) the real knot inside the view model is `recalc()` (~line 2410, ~230 lines): the route run as a state machine in
+  Boolean flags – „sheet rises once“ (2a54f2e4) needed a new flag at four distant places → first make the route run one
+  explicit state + pure reducer with tests, then slice; (b) a JVM harness for state holders (sqlite-jdbc `TourDb` is in the
+  tests already; fake engine + service state) comes before the slices; (c) service ↔ UI by convention: two
+  `NavSessionStore` on `nav-session.json` (AppViewModel.kt:949, RecordingService.kt:258), token check at
+  RecordingService.kt:997 not atomic (race inferred – settle with a JVM test that interleaves the view model's save and a
+  service re-route; core feature, test first), mutable companion flows, ~20 Intent actions → a typed `RecordingClient`,
+  the service the only writer; (d) every GPS fix runs on the main looper (LocationTracker.kt:188/296) and `onFix` does the
+  navigation maths and `db.appendPoint` there (`writePoints`) – measure with StrictMode in debug / gfxinfo while
+  recording, then a single-thread recording dispatcher; (e) screenshot blast radius: 409ba176 = 158 PNGs for +141 code
+  lines, `.git` 562 MB → component-level pictures where a full screen is not the point; (f) E2E: 100 sleeps, 20 commits
+  with „flak“; (g) tokens: 344 inline fully-qualified names in the view model, `docs/core-features.md` 51 KB.
 - **[donald] Beta bug button (owner 2026-11-10, chat) – step 1 only, for the owner's own phone:** a small round button
   always on top (bottom left, over every screen, menu, sheet and dialog), can be dragged aside if it is in the way.
   A tap: (1) a screenshot of the current screen *without* the button; (2) the microphone starts and the owner speaks
