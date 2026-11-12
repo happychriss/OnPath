@@ -30,6 +30,9 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [laptop] POI as route point keeps its symbol + blue ring (variant A) – app AND planner, owner 2026-11-12: laptop builds the app part too – since 2026-11-12
+- [laptop] Planner undo / redo follows the app (owner 2026-11-12: yes – own pill, only when something can be undone) – since 2026-11-12
+- [laptop] Planner profile calmer – sketch first (owner 2026-11-12: „mit Zeichnung“), build after his pick – since 2026-11-12
 
 ## Next
 - **[donald] Beta bug button (owner 2026-11-10, chat) – step 1 only, for the owner's own phone:** a small round button
