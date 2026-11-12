@@ -226,21 +226,22 @@ class CorePlanE2ETest : E2EBase() {
                 device.wait(Until.hasObject(By.descContains(Txt.s(Res.string.routes_overview_show))), 5_000))
             shot("1-routes-with-previews")
             row!!.click()
-            val plan = findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 8_000)
+            val plan = overviewPlan(8_000)
             // the map picture comes a moment later: the shot shows it (the line's width is checked by eye – 2026-11-07)
             device.wait(Until.gone(By.text(Txt.s(Res.string.routes_overview_loading))), 15_000)
             shot("2-overview")
             assertNotNull("the overview with \"Planen\" – ${state()}", plan)
             findFresh(By.text(Txt.s(Res.string.common_cancel)), 3_000)!!.click()
+            // the overview is gone when its "Abbrechen" is – a Zuletzt row's own "Planen" (owner 2026-11-07) stays in the list
             waitUntil("overview closed, still in My routes", 5_000) {
-                device.findObject(By.text(Txt.s(Res.string.routes_overview_plan))) == null &&
+                device.findObject(By.text(Txt.s(Res.string.common_cancel))) == null &&
                     run { var open = false; scenario.onActivity { a -> open = vm(a).routesOpen }; open }
             }
             var still = emptyList<com.onpath.app.routing.GeoPoint>()
             scenario.onActivity { a -> still = vm(a).waypoints.toList() }
             org.junit.Assert.assertEquals("Abbrechen changed nothing", before, still)
             findFresh(By.text(name), 5_000)!!.click()
-            findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 5_000)!!.click()
+            overviewPlan(5_000)!!.click()
             waitUntil("My routes closed", 8_000) { var open = true; scenario.onActivity { a -> open = vm(a).routesOpen }; !open }
             val loaded = pts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }
             waitUntil("the route is the plan", 10_000) {
@@ -248,6 +249,28 @@ class CorePlanE2ETest : E2EBase() {
             }
         } finally {
             db.deleteTour(id)
+        }
+    }
+
+    /**
+     * The route overview's "Planen": the one in its foot beside (large font: right above) its "Abbrechen". Not the first
+     * "Planen" on the screen – a Zuletzt row carries its own "Planen" (owner 2026-11-07), and after a full E2E run earlier
+     * tests have left such rows in My routes (a lone class run has none: green per class, red on main since 2026-11-08).
+     * Null when no overview is open within [timeoutMs].
+     */
+    private fun overviewPlan(timeoutMs: Long): androidx.test.uiautomator.UiObject2? {
+        val end = System.currentTimeMillis() + timeoutMs
+        while (true) {
+            val cancel = findFresh(By.text(Txt.s(Res.string.common_cancel)), 500)
+            val c = runCatching { cancel?.visibleBounds }.getOrNull() // expected: a stale node – looked for again below
+            if (c != null) {
+                val plan = device.findObjects(By.text(Txt.s(Res.string.routes_overview_plan)))
+                    .mapNotNull { p -> runCatching { p.visibleBounds }.getOrNull()?.let { b -> p to kotlin.math.abs(b.centerY() - c.centerY()) } } // expected: a stale node is skipped
+                    .filter { (_, dy) -> dy <= c.height() * 2 }.minByOrNull { (_, dy) -> dy }?.first
+                if (plan != null) return plan
+            }
+            if (System.currentTimeMillis() > end) return null
+            Thread.sleep(250)
         }
     }
 
@@ -271,7 +294,7 @@ class CorePlanE2ETest : E2EBase() {
             findFresh(By.text(name), 8_000)!!.click()
             val go = findFresh(By.text(Txt.s(Res.string.plan_bar_go)), 8_000)
             assertNotNull("the overview offers \"Los geht's\" – ${state()}", go)
-            assertNotNull("… beside \"Planen\"", device.findObject(By.text(Txt.s(Res.string.routes_overview_plan))))
+            assertNotNull("… beside \"Planen\"", overviewPlan(3_000))
             shot("1-overview-three-actions")
             go!!.click()
             // the normal start: the phone check may ask (Later goes on), the tiny map's straight lines ask "Navigate anyway?"
