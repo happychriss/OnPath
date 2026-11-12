@@ -129,7 +129,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ElevationProfile.kt",
-      "what": "gradient colours of the profile",
+      "what": "the profile's look: ProfileFill (route colour fading, steeper a bit stronger), line colours by steepness, columnIndices",
       "web": [
         "web/app/src/profile.ts"
       ],

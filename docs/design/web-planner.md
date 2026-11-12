@@ -33,8 +33,8 @@ Not in the browser on purpose: navigation and recording (weak GPS, stops in the 
 - `web/app/` – Vite + TypeScript + maplibre-gl 6 + pmtiles. Engine in a Web Worker; fetches profiles and the rd5
   parts the plan needs (part choice = the phone's `Rd5Parts.forCorridor`) by HTTP range (falls back to a whole file
   on hosts without ranges). Planner page: click → point (WaypointInsertion), drag / click to move / delete,
-  activity + T level, route (failed legs dashed), km / ↑ / ↓ / time / difficulty, profile coloured by
-  `RouteSummary.steepness`. Map = the app's format-2 style, fonts and sprite unchanged.
+  activity + T level, route (failed legs dashed), km / ↑ / ↓ / time / difficulty, profile drawn like the app's (route colour fading, line coloured by
+  `RouteSummary.steepness` – variant A, owner 2026-11-12). Map = the app's format-2 style, fonts and sprite unchanged.
 - Tests: `web/test/cases.json` (22 cases: Bozen–Meran × 6 activities, Algund, Meran 2000 T2/T3/T5, via Terlan,
   Ultental loop, Lana–Ulten across 11°E, ferry, 3 error cases, TU Dortmund by Bike – BRouter alone and as the plan
   sheet plans it). A case with `"plan": true` runs the app's Planner (`Engine.plan`) instead of one BRouter request;

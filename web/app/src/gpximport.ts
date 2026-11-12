@@ -153,7 +153,7 @@ export function setupGpxImport(h: GpxHost) {
       <div class="muted">${esc(t.texts.climb)}</div>
       ${t.note ? `<div class="infoline">${esc(t.note)}</div>` : ''}
       ${t.skippedNote ? `<div class="infoline">${esc(t.skippedNote)}</div>` : ''}
-      <div class="trackprofile">${!line ? `<div class="infoline">${esc(text('plan_no_track_recorded'))}</div>` : t.profile ? profileSvg(t.profile) : `<div class="muted small noele">${esc(text('plan_no_elevation'))}</div>`}</div>
+      <div class="trackprofile">${!line ? `<div class="infoline">${esc(text('plan_no_track_recorded'))}</div>` : t.profile ? profileSvg(t.profile, undefined, undefined, '', '', GPX, false) : `<div class="muted small noele">${esc(text('plan_no_elevation'))}</div>`}</div>
       <div class="trackerror" id="trackError" hidden></div>
       ${(line || t.stops) ? `<button class="primary" id="planFromTrack"><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04a1 1 0 0 0 0-1.41l-2.34-2.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>${esc(t.texts.plan)}</button>` : ''}`;
     sheet.prepend(p);
