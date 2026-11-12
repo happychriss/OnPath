@@ -256,7 +256,7 @@ Header `Authorization: Bearer <token>` on every call.
   bar's tooltip; old clients ignore it.
 - **Host limits** (a safety net above the 250 tours, room for tombstones which are never purged): item 32 KiB,
   1000 items and 4 MiB per mailbox (tombstones and copies count), pages of 200;
-  **rate limit** 120 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; a round is 2–5 requests).
+  **rate limit** 300 requests / min / IP (Workers rate-limit binding `SYNC_RATE`; a round is 2–5 requests, but the first round after pairing writes every plan one by one – owner 2026-11-12: 120 locked a home network with ~110 plans per side out).
 - **Expiry:** a daily cron (`17 3 * * *`) deletes mailboxes not used for 365 days, and ended pairings after the same
   time. `seen` is written at most once a day per mailbox.
 - **Phone last synced (`appSeen`, 2026-10-30):** the browser shows "Paired · phone last 3 days ago". Phone and browser
@@ -363,7 +363,7 @@ Copies made before this fix stay (they are linked routes) – they are binned by
    show "Show code again" in the app too? Recommended: yes, later.
 3. **Tombstone clean-up and item limit** (1000 per mailbox): fine for phase 2; revisit with real numbers.
 4. **Production mailbox:** separate D1 database and Access-free host when the planner goes public; the same code.
-5. **Rate limit numbers** (120/min/IP) and idle expiry (12 months) – defaults, adjust after the test.
+5. **Rate limit numbers** (300/min/IP since 2026-11-12, was 120) and idle expiry (12 months) – defaults, adjust after the test.
 
 ## 14. Folders – one per phone, Save sends to the phone (owner order A-017, 2026-10-30)
 

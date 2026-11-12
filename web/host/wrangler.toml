@@ -39,7 +39,7 @@ migrations_dir = "migrations"
 [[env.test.ratelimits]]
 name = "SYNC_RATE"
 namespace_id = "7301"
-simple = { limit = 120, period = 60 }
+simple = { limit = 300, period = 60 } # owner 2026-11-12: pairing pushes every plan one by one (~110 each side) – 120 locked the home IP out
 
 # daily: delete mailboxes idle for 12 months and old map-area counters
 [env.test.triggers]
