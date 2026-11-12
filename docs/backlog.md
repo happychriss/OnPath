@@ -30,7 +30,6 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
-- [laptop] Planner: phone silent ≥ 3 days → chip yellow + „Neu koppeln“ in one step, old-phone line gone (owner field 2026-11-12: Pixel lost its pairing, browser kept it; owner: „wie WhatsApp Web“) – since 2026-11-12
 - [donald] Map smoother when panning/zooming (wip/donald-2026-11-08-smooth-map → main, measured) – since 2026-11-12
 
 ## Next
