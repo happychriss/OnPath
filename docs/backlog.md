@@ -33,6 +33,7 @@ and the commit history.
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route = only the calculated way, Track = only GPX; list "Meine Touren" with tabs "Geplant | Gemacht". Every sentence written out, plus the list of texts that stay "Route": `onpath.private/auftraege/a-022-plan-tour-route.md`. No search-and-replace (der Plan / ihn). Before the release, because of the screenshots; cloud-web then does website, help and store text – 2026-11-03
 
 ## In progress
+- [laptop] Re-pairing hits the sync rate limit (429 / 500, donald 23:50): test first, pace PUTs on phone + browser, quiet back-off on 429 / 5xx, find the 500.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 - [donald] Version 0.17.9 for the owner's Pixel test: palette D on the plan page too + blue „Los geht's“ (F), then release on his word – since 2026-11-12
 
