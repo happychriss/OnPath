@@ -1888,12 +1888,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /**
-     * Place menu → "Als neues Ziel": the route goes on to the place – the old goal stays as the last stop (owner 2026-11-14:
-     * „der alte Zielpunkt soll weiter angefahren werden“; was: the old goal dropped, owner 2026-11-07). Not wanted any more →
-     * delete it or one Undo step. During a tour the guidance follows the new plan as after any edit.
+     * Place menu → "Als neues Ziel" (owner 2026-11-14): while planning (no tour) the route goes on to the place and the old
+     * goal stays as the last stop – planning forward; during a tour the place replaces the old goal (no detour back to a
+     * goal one changed one's mind about – flow map N3, owner 2026-11-07). [PlaceAddMenu.keepsOldGoal]; Undo either way.
      */
     fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = addPoiWith(poi, "as the new destination") { p ->
-        change { add(p) }
+        val keep = PlaceAddMenu.keepsOldGoal(touring = recState.value != null)
+        change { if (isEmpty() || keep) add(p) else set(lastIndex, p) }
     }
 
     /** The bookkeeping of a place taken from its menu (name, pin, candidate fit), then [edit] with its point. */

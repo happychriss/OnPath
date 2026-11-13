@@ -126,4 +126,10 @@ class PlaceAddMenuTest {
         // without stopOnly the same place is appended (today's smart add)
         assertEquals(WaypointInsertion.Kind.DESTINATION, WaypointInsertion.decide(listOf(here, goal), past, null, 30.0).kind)
     }
+
+    @Test fun aNewDestinationKeepsTheOldGoalWhilePlanningAndReplacesItOnTheWay() {
+        // owner 2026-11-14: „Beim Planen anhängen, unterwegs ersetzen“
+        org.junit.Assert.assertTrue(PlaceAddMenu.keepsOldGoal(touring = false))
+        org.junit.Assert.assertFalse(PlaceAddMenu.keepsOldGoal(touring = true))
+    }
 }

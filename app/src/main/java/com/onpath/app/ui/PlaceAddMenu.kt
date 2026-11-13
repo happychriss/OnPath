@@ -10,7 +10,7 @@ import com.onpath.app.routing.GeoPoint
  * - No point yet: "Hier starten" · "Hierhin" – during a tour only "Hierhin" (the tour already runs from here).
  * - One point (or no route ahead): today's wording, "Als Ziel setzen" (one entry).
  * - Two or more: "Als Zwischenstopp" (the best place on the route ahead, the goal stays) and/or "Als neues Ziel" (the
- *   route goes on there, the old goal stays as the last stop – owner 2026-11-14; Undo brings the plan before back) – no stop numbers ("Stopp 2" confused the owner).
+ *   route goes on there, the old goal stays as the last stop while planning; during a tour it replaces the old goal – owner 2026-11-14 [keepsOldGoal]; Undo brings the plan before back) – no stop numbers ("Stopp 2" confused the owner).
  *   Which of them, in which order, follows the geometry ([zone]): "Es gibt Sachen, wo es eindeutig ist … einen Bereich,
  *   wo es zweifelhaft ist – da kann man beides anwählen. Wenn es ganz weit weg ist, nur als Ziel." A clear case shows
  *   one entry; the other one is never lost – it waits under "⋯ Mehr" ([Menu.more]).
@@ -18,6 +18,12 @@ import com.onpath.app.routing.GeoPoint
 object PlaceAddMenu {
 
     enum class Item { START_HERE, GO_HERE, SET_DESTINATION, ADD_STOP, NEW_DESTINATION }
+
+    /**
+     * "Als neues Ziel" (owner 2026-11-14: „Beim Planen anhängen, unterwegs ersetzen“): while planning the old goal stays as
+     * the last stop (one plans forward, step by step); during a tour the new place replaces it (no detour back).
+     */
+    fun keepsOldGoal(touring: Boolean): Boolean = !touring
 
     /** How clear the case is: only stop · both, stop first · both, goal first · only goal. */
     enum class Zone { STOP, STOP_FIRST, GOAL_FIRST, GOAL }
