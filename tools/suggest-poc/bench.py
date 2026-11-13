@@ -64,7 +64,7 @@ CASES = [
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
 ]
-METHOD = "a"
+METHOD = "auto"
 AI = False
 
 
@@ -223,7 +223,7 @@ if __name__ == "__main__":
     ap.add_argument("--only", default="")
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
-    ap.add_argument("--method", default="a", choices=["a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
+    ap.add_argument("--method", default="auto", choices=["auto", "a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
     ap.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (score part 'ai' + the picks as destinations)")
     a = ap.parse_args()
     METHOD = a.method

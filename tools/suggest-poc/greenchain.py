@@ -54,12 +54,13 @@ def label_green(G, cost, mws, W, S):
         if tid not in kcache:
             t = G.tags[tid]
             kcache[tid] = (S.edge_class(t, C), int(t.get("estimated_forest_class", "0") or 0),
-                           t.get("route") == "ferry")
-        k, fc, ferry = kcache[tid]
+                           t.get("route") == "ferry", S.rail_trail(t) and GC.get("rail_value", 0.0) > 0)
+        k, fc, ferry, rail = kcache[tid]
         if k in "SG" or ferry or mws[ei] >= GC["green_max_main"]:
             continue
         mid = NS.mid_of(G, e)
-        if NA.built(mid, ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5):
+        # (a rail trail is a green line of its own, also between houses: car-free, flat, away from the streets)
+        if not rail and NA.built(mid, ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5):
             continue
         nat = NA.depth(mid, GC["green_radius_m"])
         wat = NA.water(mid, GC["bank_radius_m"]) >= GC["bank_from"]
@@ -71,6 +72,8 @@ def label_green(G, cost, mws, W, S):
         if wat:
             v = max(v, GC["bank_value"])
             bank[ei] = 1
+        if rail:
+            v = max(v, GC["rail_value"])
         green[ei] = v
     return green, bank
 
@@ -450,7 +453,7 @@ def short(name):
     return name.split(",")[0].strip()
 
 
-def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
+def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
     N = W["netsearch"]
     # a bank counts by the Wasser wish: without the theme a pond between houses is no destination
     GC = dict(W["greenchain"])
@@ -460,10 +463,11 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     t0 = time.time()
     target_m = wish["hours"] * wish["pace"] * 1000.0
     band = W["score"]["length_flat_km"] * 1000.0
-    radius = min(N["max_radius_m"], N["radius_factor"] * target_m)
-    G = NS.load_graph(wish["start"], radius, kv, W, service)
-    t_graph = time.time() - t0
-    cost, hits, mws = NS.edge_values(G, wish, W, index, S)
+    if G is None:
+        G = NS.prepare(wish, W, kv, index, S, service)
+        t0 = time.time() - G.t_graph - G.t_values
+    radius, t_graph = G.radius, G.t_graph
+    cost, hits, mws = G.cost, G.hits, G.mws
     s = G.start
     green, bank = label_green(G, cost, mws, W, S)
     npatch, epatch, patches = find_patches(G, cost, green, bank, W, s)
@@ -583,7 +587,20 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     # the home patch alone (the start lies in a patch big enough): a loop inside it
     if home_real and cap(home) + 0.0 >= target_m - band - GC["length_slack"] * target_m:
         found[frozenset([home])] = (q(home), [home], [], 0.0)
-    chains = sorted(found.values(), key=lambda x: -x[0])[:GC["realise"]]
+    # the chains to realise: the best first, each further one must differ from those taken (at most
+    # realise_max_common of its patches in common) – else the dozen best are one loop with small changes
+    chains = []
+    for ch in sorted(found.values(), key=lambda x: -x[0]):
+        ps = set(p for p in ch[1] if p < nP)
+        if not ps:
+            continue
+        if any(len(ps & o) / float(len(ps | o)) > GC.get("realise_max_common", 1.0) for o in (set(p for p in c2[1] if p < nP) for c2 in chains)):
+            continue
+        chains.append(ch)
+        if len(chains) >= GC["realise"]:
+            break
+    if not chains:
+        chains = sorted(found.values(), key=lambda x: -x[0])[:GC["realise"]]
     t_chain = time.time() - t0 - t_graph - t_patch - t_conn
 
     # ---- realise
@@ -634,9 +651,13 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
                 inner_m.setdefault("_seg", {})[i] = r[0]
             if leg:
                 ln_, le_ = leg["nodes"], leg["edges"]
-                if GC["touch_cost_share"] > 0 and any(v in touched for v in ln_[1:]):
-                    # the stored connector would touch the loop so far: search it again around what was walked
-                    avoid(leg["gp"])
+                if GC.get("connector_full_search", True) or (GC["touch_cost_share"] > 0 and any(v in touched for v in ln_[1:])):
+                    # the connector again, in the whole network: the stored one was found outside all patches – now a
+                    # green way through another patch may be taken when it is not much longer (owner 2026-11-13:
+                    # "der Rückweg durch Hassels, warum nicht durch den Hasseler Forst"; "warum durch Werne, es ist
+                    # viel Grün drum rum"); ways already walked cost extra
+                    if GC["touch_cost_share"] > 0:
+                        avoid(leg["gp"])
                     r = dij_to(G, leg["gp"], leg["gq"], cost, used, GC["used_penalty"],
                                GC["reroute_limit"] * max(leg["cost"], 1.0) + AVOID["add"])
                     AVOID["nodes"] = None
@@ -750,7 +771,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
             elif not seg:
                 nm = patch_name(G, patches[p], index, hits)
             nm = short(nm) if nm else ""
-            if nm and nm not in names:
+            if nm and nm not in names and "Grünstück" not in nm:
                 names.append(nm)
         gates = [list(G.nodes[l["gq"]][:2]) for l in legs]
         cx = sum(G.nodes[v][0] for v in nodes) / len(nodes)

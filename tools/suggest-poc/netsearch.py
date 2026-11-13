@@ -73,6 +73,134 @@ def load_graph(start, radius, kv, W, service):
     return G
 
 
+class RoadGrid:
+    """Where the roads with car traffic run (cells of ~12 m): a separate way – cycle path, pavement, shared path –
+    that runs *beside* such a road is found by geometry, not by the routing data's noise class (which is empty along a
+    country road: the owner's Nordkirchen case, "ein langes Stück an der Straße … auf einer Landstraße wandern")."""
+    CX, CY = 0.00018, 0.00011
+
+    def __init__(self, G, W, S):
+        C = W["classes"]
+        M = C["main"]
+        self.cells = {}
+        cache = {}
+        for e in G.edges:
+            tid = e[5]
+            if tid not in cache:
+                t = G.tags[tid]
+                hw = t.get("highway", "")
+                w = 0.0
+                if t.get("tunnel") != "yes":
+                    if hw in C["big_highways"] or hw in ("motorway", "motorway_link"):
+                        w = max(M["base"].get(hw.replace("_link", ""), 1.0), 0.5)
+                        if t.get("maxspeed", "") in M["calm_maxspeed"]:
+                            w *= M["calm_factor"]
+                    elif hw == "unclassified":
+                        w = M.get("unclassified_traffic", {}).get(t.get("estimated_traffic_class", ""), 0.0)
+                cache[tid] = w
+            w = cache[tid]
+            if w <= 0:
+                continue
+            pts = [G.nodes[e[0]][:2]] + geom_of(e[6]) + [G.nodes[e[1]][:2]]
+            for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
+                n = max(1, int(S.dist((x1, y1), (x2, y2)) / 10.0))
+                for k in range(n + 1):
+                    cx = int((x1 + (x2 - x1) * k / n) / self.CX)
+                    cy = int((y1 + (y2 - y1) * k / n) / self.CY)
+                    for dx in (-1, 0, 1):
+                        for dy in (-1, 0, 1):
+                            key = (cx + dx, cy + dy)
+                            if self.cells.get(key, 0.0) < w:
+                                self.cells[key] = w
+
+    def at(self, p):
+        return self.cells.get((int(p[0] / self.CX), int(p[1] / self.CY)), 0.0)
+
+    def beside(self, pts):
+        """Weight of the road a way runs beside: at least two of its points at 1/4, 1/2, 3/4 lie at a road (a way
+        that only crosses a road has one)."""
+        if len(pts) < 2:
+            return 0.0
+        seg = []
+        tot = 0.0
+        for a, b in zip(pts, pts[1:]):
+            d = math.hypot((a[0] - b[0]) * 0.63, a[1] - b[1])
+            seg.append(d)
+            tot += d
+        if tot <= 0:
+            return 0.0
+        hits = []
+        for f in (0.25, 0.5, 0.75):
+            want, acc = f * tot, 0.0
+            for (a, b), d in zip(zip(pts, pts[1:]), seg):
+                if acc + d >= want and d > 0:
+                    u = (want - acc) / d
+                    hits.append(self.at((a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u)))
+                    break
+                acc += d
+        hits.sort()
+        return hits[-2] if len(hits) >= 2 else 0.0
+
+
+def prepare(wish, W, kv, index, S, service):
+    """The way network around the start with everything the generators need – loaded and valued once, shared by the
+    search in the network (B) and the green-patch chain (C)."""
+    N = W["netsearch"]
+    t0 = time.time()
+    target_m = wish["hours"] * wish["pace"] * 1000.0
+    radius = min(N["max_radius_m"], N["radius_factor"] * target_m)
+    G = load_graph(wish["start"], radius, kv, W, service)
+    G.t_graph = time.time() - t0
+    G.radius = radius
+    G.roads = RoadGrid(G, W, S) if W["classes"]["main"].get("beside_geo", 0) > 0 else None
+    G.near = None
+    G.cost, G.hits, G.mws = edge_values(G, wish, W, index, S)
+    G.note = seat_start(G, wish, S)
+    G.t_values = time.time() - t0 - G.t_graph
+    return G
+
+
+def seat_start(G, wish, S):
+    """The start must sit on the connected way network. A point snapped onto a dead piece (steps to a private path, a
+    platform, a way the coarse bike network leaves out) reaches nothing – then no loop at all was offered (Wuppertal
+    Mirke, bike). If the start's own piece of network is tiny, the start moves to the nearest node of the big one.
+    -> a note for the run, or None."""
+    n = len(G.nodes)
+    comp = [-1] * n
+    sizes = []
+    for v0 in range(n):
+        if comp[v0] >= 0:
+            continue
+        cid = len(sizes)
+        comp[v0] = cid
+        stack, size = [v0], 0
+        while stack:
+            u = stack.pop()
+            size += 1
+            for v, ei in G.adj[u]:
+                if comp[v] < 0 and G.cost[ei] >= 0:
+                    comp[v] = cid
+                    stack.append(v)
+        sizes.append(size)
+    big = max(range(len(sizes)), key=lambda i: sizes[i])
+    if comp[G.start] == big or sizes[comp[G.start]] >= 0.2 * sizes[big]:
+        return None
+    p = G.nodes[G.start]
+    best, bd = None, 1e18
+    kx = math.cos(math.radians(p[1]))
+    for v in range(n):
+        if comp[v] == big:
+            q = G.nodes[v]
+            d = ((q[0] - p[0]) * kx) ** 2 + (q[1] - p[1]) ** 2
+            if d < bd:
+                best, bd = v, d
+    if best is None:
+        return None
+    moved = S.dist(p, G.nodes[best])
+    G.start = best
+    return "Der Startpunkt lag auf einem Wegstück ohne Anschluss – die Runden beginnen am nächsten Weg im Netz (%d m entfernt)" % moved
+
+
 def geom_of(raw):
     return [[float(x) for x in p.split(",")] for p in raw.split(";")] if raw else []
 
@@ -147,7 +275,11 @@ def edge_values(G, wish, W, index, S):
     disc = min(N.get("known_discount_max", 0.75), N.get("known_discount_per_signed", 0.8) * wish["signed"])
     per_tag = {}
     cost, hits_all, mws = [], [], []
-    for (a, b, ln, cf, cb, tid, geom) in G.edges:
+    roads = getattr(G, "roads", None)
+    beside_ways = set(C["main"].get("beside_ways", ()))
+    near_all = [0.0] * len(G.edges)
+    rail_disc = N.get("rail_discount", 0.0)
+    for ei, (a, b, ln, cf, cb, tid, geom) in enumerate(G.edges):
         if min(cf, cb) >= 9999:
             cost.append(-1.0)
             hits_all.append(())
@@ -162,10 +294,21 @@ def edge_values(G, wish, W, index, S):
             hw, surf = t.get("highway", "?"), t.get("surface", "")
             per_tag[tid] = (k, fv, 1 - C["noise_value"].get(t.get("estimated_noise_class", ""), 0.0),
                             C["river_value"].get(t.get("estimated_river_class", ""), 0.0), S.signed_rank(t, C, ranks),
-                            S.surface_class(t, C), S.main_weight(t, C), S.builtup(t, k, C))
-        k, fv, quiet, river, sr, sclass, mw, built = per_tag[tid]
+                            S.surface_class(t, C), S.main_weight(t, C), S.builtup(t, k, C),
+                            t.get("highway", "") in beside_ways, S.rail_trail(t))
+        k, fv, quiet, river, sr, sclass, mw, built, can_beside, rail = per_tag[tid]
         hits = ()
         mid = mid_of(G, (a, b, ln, cf, cb, tid, geom))
+        if roads is not None and can_beside and ln >= 25.0:
+            # a separate way beside a road with car traffic (found by geometry): counts like the road, a little milder
+            nr = roads.beside([G.nodes[a][:2]] + geom_of(geom) + [G.nodes[b][:2]])
+            if nr > 0:
+                near_all[ei] = nr
+                mw2 = S.main_weight(G.tags[tid], C, nr)
+                if mw2 > mw:
+                    mw = mw2
+                    if mw >= C["main"]["class_from"]:
+                        k = "G"
         deep = NA.value(NA.depth(mid, ND["search_radius_m"]), ND) if tw_deep else 0.0
         # through houses = inside the map's built-up land (replaces the routing data's coarse town class)
         built = NA.built(mid, ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5)
@@ -190,9 +333,14 @@ def edge_values(G, wish, W, index, S):
         c *= 1.0 + N["cf_weight"] * (min(min(cf, cb), 5.0) - 1.0)
         c *= 1.0 + k_surf * (1.0 - sv[sclass]) + (N.get("surface_avoid_factor", 3.0) if sclass in avoid else 0.0)
         c *= 1.0 - disc * sr_eff
+        if rail and rail_disc > 0 and mw <= 0:
+            # a rail trail (former railway line, car-free, flat): a first-class line for bikes (owner 2026-11-14:
+            # Nordbahntrasse, Sambatrasse, Korkenziehertrasse … "spannend zum Testen")
+            c *= 1.0 - rail_disc
         cost.append(ln * c)
         hits_all.append(hits)
         mws.append(mw)
+    G.near = near_all
     return cost, hits_all, mws
 
 
@@ -220,8 +368,9 @@ def to_candidate(G, nodes, edges, wish, W, S, extra):
             pts = pts[::-1]
         t = G.tags[tid]
         nt = {"highway": "crossing"} if t.get("footway") == "crossing" else {}
+        nr = G.near[ei] if getattr(G, "near", None) else 0.0
         for i in range(len(pts) - 1):
-            out.append([pts[i], pts[i + 1], S.dist(pts[i], pts[i + 1]), t, nt if i == 0 else {}])
+            out.append([pts[i], pts[i + 1], S.dist(pts[i], pts[i + 1]), t, nt if i == 0 else {}, nr])
         ele = G.nodes[v][2]
         if ele < -1000:  # BRouter's "no elevation here" (bridges, tunnels, gaps in the height data)
             continue
@@ -240,14 +389,15 @@ def to_candidate(G, nodes, edges, wish, W, S, extra):
     return c
 
 
-def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
+def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
     N = W["netsearch"]
     t0 = time.time()
     target_m = wish["hours"] * wish["pace"] * 1000.0
-    radius = min(N["max_radius_m"], N["radius_factor"] * target_m)
-    G = load_graph(wish["start"], radius, kv, W, service)
-    t_graph = time.time() - t0
-    cost, hits, mws = edge_values(G, wish, W, index, S)
+    if G is None:
+        G = prepare(wish, W, kv, index, S, service)
+        t0 = time.time() - G.t_graph - G.t_values
+    radius, t_graph = G.radius, G.t_graph
+    cost, hits, mws = G.cost, G.hits, G.mws
     s = G.start
     s_xy = G.nodes[s]
     d0, prev0, pe0, len0 = dijkstra(G, s, cost)
@@ -311,8 +461,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     alist = [(k[0], k[1], v, None) for k, (val, v) in sorted(anchors.items())]
     # ---- along a known route: start (short stem) → onto the route → follow it for a good part of the budget → back
     #      another way; each direction of the route is its own candidate
+    follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, target_m, s, add, info)
     if index:
-        follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, target_m, s, add, info)
         lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info)
     # ---- anchors on destinations (the most relevant first), and their rings
     rel = {"lake": 0.3 + wish["water"], "route": 0.3 + wish["signed"], "view": 0.0}
@@ -412,6 +562,25 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
             made += 1
         info["ai_targets"] = made
 
+    # ---- rail trails in reach: the far end and the near end of each piece are turning points – the way there runs
+    #      along the trail (it is cheap), the way back is another one; pairs with other turning points make loops
+    for key, sub in (info.get("_rail") or {}).items():
+        nodes_on = set()
+        for ei in sub:
+            nodes_on.add(G.edges[ei][0])
+            nodes_on.add(G.edges[ei][1])
+        reach = [v for v in nodes_on if d0[v] < INF and len0[v] <= N["target_reach"] * target_m]
+        if not reach:
+            continue
+        far = max(reach, key=lambda v: len0[v])
+        near = min(reach, key=lambda v: len0[v])
+        label = info["_rail_names"][key]
+        alist.append((int(S.bearing(s_xy, G.nodes[far]) / (360.0 / sectors)) % sectors, 9, far, label))
+        if len0[far] - len0[near] > 0.08 * target_m and len0[near] > 0.1 * target_m:
+            alist.append((int(S.bearing(s_xy, G.nodes[near]) / (360.0 / sectors)) % sectors, 9, near, label))
+    info.pop("_rail", None)
+    info.pop("_rail_names", None)
+
     # ---- one search per anchor (ways of start→A cost extra): lollipops, and the middle part of the pairs
     per_anchor = []
     for sec, band, v, tname in alist:
@@ -498,37 +667,103 @@ def router_check(c, wish, W, kv, S):
 def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, target_m, s, add, info):
     N = W["netsearch"]
     F = N.get("follow", {})
-    if not F.get("enabled", True) or wish["signed"] < F.get("from_signed", 0.3):
+    if not F.get("enabled", True):
         return
     on = {}
-    for ei, hs in enumerate(hits):
-        if cost[ei] < 0:
-            continue
-        for i in hs:
-            if index.attr[i]["kind"] == "route":
-                on.setdefault(i, set()).add(ei)
+    if index is not None and wish["signed"] >= F.get("from_signed", 0.3):
+        for ei, hs in enumerate(hits):
+            if cost[ei] < 0:
+                continue
+            for i in hs:
+                if index.attr[i]["kind"] == "route":
+                    on.setdefault(i, set()).add(ei)
     stem_max = F.get("stem_max", 0.12) * target_m
+    meta = {i: (index.attr[i]["name"], index.attr[i]["rank"]) for i in on}
+    # rail trails (former railway lines, railway=abandoned on a path / cycleway): each connected piece of at least
+    # rail_min_m is a line to ride along like a known route – with a longer way there (rail_stem_max): a loop that
+    # ignores a rail trail beside it is a miss (owner 2026-11-14: Nordbahntrasse, Sambatrasse, Niederbergbahn …)
+    rail_keys = set()
+    if F.get("rail_lines", False):
+        parent = {}
+
+        def find(a):
+            while parent.get(a, a) != a:
+                parent[a] = parent.get(parent[a], parent[a])
+                a = parent[a]
+            return a
+        rail_edges = [ei for ei, e in enumerate(G.edges) if cost[ei] >= 0 and S.rail_trail(G.tags[e[5]])]
+        for ei in rail_edges:
+            a, b = find(G.edges[ei][0]), find(G.edges[ei][1])
+            if a != b:
+                parent[a] = b
+        # a gap of up to rail_gap_m between two pieces (a road crossing, a bridge tagged otherwise) joins them
+        gap = F.get("rail_gap_m", 120)
+        rn = set()
+        for ei in rail_edges:
+            rn.add(G.edges[ei][0])
+            rn.add(G.edges[ei][1])
+        for ei, e in enumerate(G.edges):
+            if cost[ei] >= 0 and e[2] <= gap and e[0] in rn and e[1] in rn:
+                a, b = find(e[0]), find(e[1])
+                if a != b:
+                    parent[a] = b
+        comps = {}
+        for ei in rail_edges:
+            comps.setdefault(find(G.edges[ei][0]), set()).add(ei)
+        n_r = 0
+        for r_, sub_ in sorted(comps.items(), key=lambda x: -sum(G.edges[j][2] for j in x[1])):
+            ln_m = sum(G.edges[j][2] for j in sub_)
+            if ln_m < F.get("rail_min_m", 2500):
+                break
+            names = {}
+            for j in sub_:
+                for i in hits[j]:
+                    if index is not None and index.attr[i]["kind"] == "route":
+                        names[i] = names.get(i, 0.0) + G.edges[j][2]
+            nm = "Bahntrasse"
+            if names:
+                i_best, m_best = max(names.items(), key=lambda x: x[1])
+                if m_best >= 0.5 * ln_m:
+                    nm = index.attr[i_best]["name"]
+                    if "trasse" not in nm.lower() and "bahn" not in nm.lower():
+                        nm = "Bahntrasse · " + nm
+            key = ("rail", n_r)
+            on[key] = sub_
+            meta[key] = (nm, F.get("rail_rank", 1.0))
+            rail_keys.add(key)
+            info.setdefault("_rail", {})[key] = sub_
+            info.setdefault("_rail_names", {})[key] = nm
+            n_r += 1
+            if n_r >= F.get("rail_max", 3):
+                break
     cands = []
     for i, sub in on.items():
         nodes_on = set()
         for ei in sub:
             nodes_on.add(G.edges[ei][0])
             nodes_on.add(G.edges[ei][1])
-        reach = [v for v in nodes_on if d0[v] < INF and len0[v] <= stem_max]
+        is_rail = i in rail_keys
+        sm = F.get("rail_stem_max", 0.25) * target_m if is_rail else stem_max
+        reach = [v for v in nodes_on if d0[v] < INF and len0[v] <= sm]
         if not reach:
             continue
         on_m = sum(G.edges[ei][2] for ei in sub)
-        if on_m < F.get("min_on", 0.12) * target_m:
+        if on_m < (F.get("rail_min_on", 0.07) if is_rail else F.get("min_on", 0.12)) * target_m:
             continue
         entry = min(reach, key=lambda v: d0[v])
-        cands.append((index.attr[i]["rank"] * min(1.0, on_m / (0.5 * target_m)), i, entry, nodes_on))
+        rail_m = sum(G.edges[ei][2] for ei in sub if S.rail_trail(G.tags[G.edges[ei][5]]))
+        rank = meta[i][1] * (1.0 + F.get("rail_rank_bonus", 0.0) * rail_m / max(on_m, 1.0))
+        cands.append((rank * min(1.0, on_m / (0.5 * target_m)), i, entry, nodes_on))
+    # the best known routes, and beside them always the rail trails in reach
     cands.sort(key=lambda x: -x[0])
+    rails = [c for c in cands if c[1] in rail_keys]
+    cands = [c for c in cands if c[1] not in rail_keys][:F.get("max_routes", 4)] + rails
     s_xy = G.nodes[s]
     n_made = 0
     log = info.setdefault("follow", [])
-    for _, i, entry, nodes_on in cands[:F.get("max_routes", 4)]:
+    for _, i, entry, nodes_on in cands:
         sub = on[i]
-        a = index.attr[i]
+        a = {"name": meta[i][0]}
         on_cost = F.get("on_cost", 0.08)
         # on the route a way is cheap – but where the route runs on or beside a busy road it is not: there a quiet way
         # nearby wins (owner: "auch wenn das als offizieller Radweg ausgezeichnet ist")
@@ -554,8 +789,9 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
             pool = base if side == 0 or not turned else [
                 v for v in base if abs((S.bearing(e_xy, G.nodes[v]) - turned[0] + 180) % 360 - 180) > 100]
             if not pool:
-                log.append("%s: %s Richtung zu kurz (längstes Stück %.1f km)" % (
-                    a["name"], "zweite" if side else "erste", max(lF[v] for v in ok) / 1000.0))
+                log.append("%s: %s Richtung zu kurz (am Weg erreichbar bis %.1f km, davon direkt genug bis %.1f km)" % (
+                    a["name"], "zweite" if side else "erste", max(lF[v] for v in ok) / 1000.0,
+                    max([lF[v] for v in base] or [0.0]) / 1000.0))
                 continue
             back = F.get("back_factor", 1.15)
             best, T = None, None
@@ -582,7 +818,9 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
             if best is None:
                 log.append("%s: kein Rückweg gefunden" % a["name"])
                 continue
-            log.append("%s: %.1f km am Weg, Runde %.1f km" % (a["name"], lF[best[3]] / 1000.0, best[4] / 1000.0))
+            log.append("%s: %.1f km am Weg, Runde %.1f km (am Weg erreichbar bis %.1f km, direkt genug bis %.1f km)" % (
+                a["name"], lF[best[3]] / 1000.0, best[4] / 1000.0, max(lF[v] for v in ok) / 1000.0,
+                max([lF[v] for v in base] or [0.0]) / 1000.0))
             if not turned:
                 turned.append(S.bearing(e_xy, G.nodes[best[3]]))
             add(best[1], best[2], {"bearing": round(S.bearing(s_xy, G.nodes[best[3]])), "shape": "entlang",
