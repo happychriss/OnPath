@@ -45,6 +45,10 @@ export function dismiss(id: string) {
   draw();
 }
 
+/** Called after every change with the message on screen (onewait.ts: the route's wait box is a wait). */
+let listener: (m: Message | null) => void = () => {};
+export function onShown(f: (m: Message | null) => void) { listener = f; f(pick(waiting)); }
+
 /** The message on screen now (for the browser tests). */
 export function shown(): Message | null { return pick(waiting); }
 
@@ -57,6 +61,7 @@ function draw() {
   const m = pick(waiting);
   host.replaceChildren();
   host.hidden = !m;
+  listener(m);
   if (!m) return;
   // 12 px under the top element (the app's MessagePlacement): the search bar over the map, else the header
   const top = document.querySelector('.topbar') ?? document.getElementById('header');

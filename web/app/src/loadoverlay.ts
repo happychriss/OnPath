@@ -91,6 +91,11 @@ export class LoadOverlay {
     private percent: (f: number) => string) {}
 
   get shown() { return this.visible; }
+  /** The card is coming (its delay runs) – onewait.ts brings it at once when two other waits would show meanwhile. */
+  get due() { return !this.visible && !!this.showTimer; }
+  showNow() { if (!this.due) return; clearTimeout(this.showTimer); this.showTimer = 0; this.show(); }
+  /** Called when the card becomes due (the arbiter decides again). */
+  onDue: (() => void) | null = null;
 
   job(id: string, done: number, total: number, look: JobLook) {
     this.looks.set(id, look);
@@ -112,6 +117,7 @@ export class LoadOverlay {
       if (!this.showTimer) {
         this.progress.restart(); // the percent counts from the moment the wait began
         this.showTimer = window.setTimeout(() => { this.showTimer = 0; if (this.progress.openIds().some((id) => this.looks.get(id)?.opens)) this.show(); }, this.delayMs);
+        this.onDue?.();
       }
       return;
     }
