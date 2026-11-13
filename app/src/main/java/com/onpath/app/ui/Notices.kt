@@ -90,13 +90,20 @@ enum class NoticeSurface {
     LOG_ONLY,
 }
 
-/** A message for a line in a screen. */
-data class Notice(val text: String, val kind: NoticeKind)
+/** A message for a line in a screen; [action] = one text button on it (the map's "Rückgängig"), null = none. */
+data class Notice(val text: String, val kind: NoticeKind, val action: NoticeAction? = null)
+
+/** The one button on a [Notice] – a verb ("Rückgängig") and what it does. */
+class NoticeAction(val label: String, val run: () -> Unit)
 
 /** The quiet line on the map ([NoticeSurface.MAP_LINE]). */
 object MapNote {
     /** How long it stays – a short sentence, read in passing (like Plan's longer GPS notes). */
     const val MS = 8_000L
+    /** With a button (Rückgängig after a short recording went to the bin): time to read and decide. */
+    const val ACTION_MS = 15_000L
+
+    fun ms(n: Notice): Long = if (n.action != null) ACTION_MS else MS
 }
 
 /**

@@ -123,7 +123,7 @@ fun MapScreen(
     }
     LaunchedEffect(gps, hasFix) { if (PlanGps.noteGone(vm.planGpsNote, gps, hasFix)) vm.planGpsNote = null }
     // the map's quiet INFO line goes by itself (MapNote.MS), counted from when it was said
-    LaunchedEffect(vm.mapNoteTick) { vm.mapNote?.let { delay(MapNote.MS); vm.mapNote = null } }
+    LaunchedEffect(vm.mapNoteTick) { vm.mapNote?.let { delay(MapNote.ms(it)); vm.mapNote = null } }
     // One grouped control: compass (always, both modes: the session's one orientation – MapOrientation.tap), locate (always,
     // with the GPS dot), eye and whole route (always – grey without something route-like on the map, owner 2026-11-06).
     // [mode] = the layer the footer sits in (not vm.mode: the leaving layer keeps its look while it animates out)
@@ -295,7 +295,8 @@ fun MapScreen(
             QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.backgroundStripShown) vm.backgroundStripBottomDp else null).dp,
-                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = vm.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp),
+                action = note.action)
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, { cam.tick },

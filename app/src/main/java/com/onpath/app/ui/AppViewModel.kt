@@ -17,6 +17,7 @@ import com.onpath.app.debug.reported
 import com.onpath.app.cells.label
 import com.onpath.app.data.AppSettings
 import com.onpath.app.data.DataFiles
+import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.data.Prefs
 import com.onpath.app.data.Tour
@@ -1088,6 +1089,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             NoticeSurface.LOG_ONLY -> Problems.trace("ui", "${kind.name} for ${place.name.lowercase()} not shown (place closed): $text")
         }
     }
+    /** A ready [Notice] (with its button) for the Plan map – the quiet line there, else only the log. */
+    private fun say(n: Notice) {
+        when (NoticeRouting.surface(n.kind, NoticePlace.MAP, routesOpen, showSettings, mapShown = mode == AppMode.PLAN && !searchOpen)) {
+            NoticeSurface.MAP_LINE -> { mapNote = n; mapNoteTick++ }
+            else -> Problems.trace("ui", "${n.kind.name} for the map not shown (place closed): ${n.text}")
+        }
+    }
     fun sayError(text: String, place: NoticePlace) = say(text, NoticeKind.ERROR, place)
     fun sayInfo(text: String, place: NoticePlace) = say(text, NoticeKind.INFO, place)
     /** Settings → Updates, or the update banner on the map. */
@@ -1364,28 +1372,41 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             RecordingService.finished.collect { id ->
                 if (id != null) {
                     RecordingService.finished.value = null
-                    val discard = tour.takeDeleteFinished()
-                    if (discard) {
-                        val ok = withContext(Dispatchers.IO) {
-                            runCatching { db.setDeleted(id, System.currentTimeMillis()) }
-                                .onFailure { Problems.error("db", "The ended tour could not be moved to the recycle bin; it stays in My routes", it) }
-                                .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
+                    val done = withContext(Dispatchers.IO) { db.getTour(id) }
+                    // Löschen chosen → the bin; else a short recording (< 50 m, owner 2026-11-12) → the bin with
+                    // Rückgängig; else the saved box. A tour not found is never "short" – nothing to bin.
+                    var shortNote: Notice? = null
+                    when (tour.finishedOutcome(done?.distanceM ?: com.onpath.app.domain.tour.ShortRecording.MIN_M)) {
+                        com.onpath.app.ui.tour.TourController.Finished.DELETED -> {
+                            tour.closeFinished()
+                            if (!binFinishedTour(id)) sayError(Txt.s(Res.string.msg_track_delete_failed_here), NoticePlace.MAP)
                         }
-                        tour.closeFinished()
-                        if (!ok) sayError(Txt.s(Res.string.msg_track_delete_failed_here), NoticePlace.MAP)
-                    } else {
-                        val done = withContext(Dispatchers.IO) { db.getTour(id) }
-                        tour.showFinished(done, withContext(Dispatchers.IO) { done?.let { tourTimes(it) } })
-                        done?.let { nameRecordedTour(it) }
-                        // "Split into two tours": the parts after the rides get a place name too
-                        val parts = RecordingService.finishedParts; RecordingService.finishedParts = emptyList()
-                        parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }
+                        com.onpath.app.ui.tour.TourController.Finished.SHORT -> {
+                            tour.closeFinished()
+                            val m = Format.distance(done!!.distanceM)
+                            if (binFinishedTour(id)) {
+                                Problems.trace("tour", "Short recording ($m, tour $id) → recycle bin; Rückgängig offered")
+                                shortNote = Notice(Txt.s(Res.string.routes_short_recording_binned, m), NoticeKind.INFO,
+                                    NoticeAction(Txt.s(Res.string.plan_undo)) { undoShortRecording(id) })
+                            } else { // never lost: it stays a normal tour, the saved box says so
+                                tour.showFinished(done, withContext(Dispatchers.IO) { tourTimes(done) })
+                            }
+                        }
+                        com.onpath.app.ui.tour.TourController.Finished.SAVED -> {
+                            tour.showFinished(done, withContext(Dispatchers.IO) { done?.let { tourTimes(it) } })
+                            done?.let { nameRecordedTour(it) }
+                            // "Split into two tours": the parts after the rides get a place name too
+                            val parts = RecordingService.finishedParts; RecordingService.finishedParts = emptyList()
+                            parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }
+                        }
                     }
+                    RecordingService.finishedParts = emptyList()
                     refreshTours()
                     clearFollow()
                     // a demo ride ends with its tour: no "DEMO" / "Sim" left on the map (the recording is closed – no jump into it)
                     if (com.onpath.app.recording.DemoLocation.endWithTour()) navSimLine = null
                     enter(AppMode.PLAN)
+                    shortNote?.let { say(it) } // on the Plan map, where the user is now
                     tour.afterFinished() // no arrival box, no "Neuer Plan" line of the old tour
                     afterTourEnded()
                 }
@@ -4022,6 +4043,35 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("tour", "Tour ended: back to the start – the plan (${waypoints.size} points) goes the \"Neu planen\" way")
         clearPlan()
         guidanceEndedByEmptyPlan = false // nothing of the ended tour is resumed by the next plan
+    }
+
+    /** The ended tour [id] into the recycle bin (Löschen, or a short recording); false = it stays in My routes (said). */
+    private suspend fun binFinishedTour(id: Long): Boolean = withContext(Dispatchers.IO) {
+        runCatching { db.setDeleted(id, System.currentTimeMillis()) }
+            .onFailure { Problems.error("db", "The ended tour could not be moved to the recycle bin; it stays in My routes", it) }
+            .getOrDefault(false).also { if (it) Backups.tourChanged(getApplication(), id) }
+    }
+
+    /**
+     * The short-recording line → Rückgängig (owner 2026-11-12): the tour comes back from the recycle bin as a normal
+     * tour – its saved box "Tour gespeichert", a place name if there is a line – as if it had been saved at the end.
+     */
+    fun undoShortRecording(id: Long) {
+        mapNote = null
+        Problems.trace("tour", "Rückgängig: short recording $id back from the recycle bin as a tour")
+        viewModelScope.launchSafe("app", "undoShortRecording") {
+            val ok = withContext(Dispatchers.IO) {
+                runCatching { routes.restore(id) }
+                    .onFailure { Problems.error("db", "The short recording could not be brought back from the recycle bin", it) }
+                    .getOrDefault(false)
+            }
+            val done = withContext(Dispatchers.IO) { db.getTour(id) }
+            if (!ok || done == null) { sayError(Txt.s(Res.string.msg_tour_restore_failed, done?.name ?: "Tour"), NoticePlace.MAP); return@launchSafe }
+            Backups.tourChanged(getApplication(), id)
+            tour.showFinished(done, withContext(Dispatchers.IO) { tourTimes(done) })
+            nameRecordedTour(done)
+            refreshTours()
+        }
     }
 
     /** The arrival box → "Weiter aufzeichnen": the box goes, the recording goes on (the guidance stays quiet). */

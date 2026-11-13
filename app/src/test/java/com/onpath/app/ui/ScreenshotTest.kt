@@ -1724,16 +1724,29 @@ class ScreenshotTest {
     @Test fun planGpsNoteLong() =
         planNote(Res.string.msg_route_back_no_position, androidx.compose.material.icons.Icons.Outlined.LocationSearching)
 
+    /**
+     * A recording ended with less than 50 m of track (owner 2026-11-12): no "Tour gespeichert" – the quiet line on the
+     * Plan map "Kurze Aufzeichnung (12 m) – in den Papierkorb gelegt." with "Rückgängig" (MapScreen's INFO pill with its
+     * action), over the empty plan the end leaves behind.
+     */
+    @Test fun planShortRecordingNote() = planNoteText(
+        { str(Res.string.routes_short_recording_binned, com.onpath.app.data.Format.distance(12.0)) },
+        androidx.compose.material.icons.Icons.Outlined.Info, { NoticeAction(str(Res.string.plan_undo)) {} }, planUi = planUi(0))
+
     /** A quiet note on the Plan map where MapScreen puts it (PlanGps.noteTopDp / noteStartDp), over a Hike T2 plan. */
     private fun planNote(text: org.jetbrains.compose.resources.StringResource, icon: androidx.compose.ui.graphics.vector.ImageVector) =
+        planNoteText({ str(text) }, icon)
+
+    private fun planNoteText(text: @Composable () -> String, icon: androidx.compose.ui.graphics.vector.ImageVector,
+                             action: @Composable () -> NoticeAction? = { null }, planUi: PlanUi = planUi()) =
         paparazzi.snapshot {
             Box {
-                Frame { PlanPanel(planUi(), PlanCallbacks()) }
+                Frame { PlanPanel(planUi, PlanCallbacks()) }
                 OnPathTheme {
                     val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
                     Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                        QuietPill(str(text), icon, Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
-                            start = PlanGps.noteStartDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                        QuietPill(text(), icon, Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
+                            start = PlanGps.noteStartDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp), action = action())
                     }
                 }
             }

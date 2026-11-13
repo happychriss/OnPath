@@ -279,7 +279,9 @@ object OverviewPillPlace {
  * – it goes when the state goes. Anything that needs an OK is a [MessageCard] instead.
  */
 @Composable
-fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier) {
+fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVector, modifier: Modifier = Modifier,
+              /** One text button after the text (the map's "Rückgängig"); null = none. */
+              action: NoticeAction? = null) {
     // the card corners (20 dp): on one line they are clamped to half the height – a pill; a text that wraps (large
     // font, a two-sentence note) gets a rounded box instead of an oval that cut off the first and last letters
     Surface(shape = OnPathShapes.Card,
@@ -291,6 +293,14 @@ fun QuietPill(text: String, icon: androidx.compose.ui.graphics.vector.ImageVecto
             Spacer(Modifier.width(8.dp))
             Text(text, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f, fill = false))
+            action?.let { a ->
+                Spacer(Modifier.width(4.dp))
+                androidx.compose.material3.TextButton(onClick = a.run, modifier = Modifier.heightIn(min = 36.dp),
+                    contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp),
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)) {
+                    Text(a.label, style = MaterialTheme.typography.labelLarge, maxLines = 1, softWrap = false)
+                }
+            }
         }
     }
 }
