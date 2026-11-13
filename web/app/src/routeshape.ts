@@ -1,10 +1,9 @@
 // The route's shape in Meine Touren (owner 2026-11-07, the app's RoutePreview / RouteShape): a small preview tile on every
-// row and the large overview a row tap opens. The sync record holds only the plan code (points) – no line – so, like the
+// row (the planner has no large overview, owner 2026-11-13). The sync record holds only the plan code (points) – no line – so, like the
 // numbers (planstats.ts), the page keeps a route's line in this browser whenever it has it anyway: a plan routed here, an
 // imported or opened track. Kept small: at most [MAX_POINTS] points, each as 12 + 12 bits inside the line's box. Never
 // routes anything for the list: a route this browser has not routed yet shows the kind's sign instead (the app's
 // placeholder while a line loads).
-import { t } from './i18n';
 
 export type Seg = [number, number][];
 /** Fitted into a box: x/y pairs per segment, the start and the goal (pixels). */
@@ -79,10 +78,9 @@ export function shapeOf(key: string): Seg[] | null {
 
 /**
  * The app's RouteShape.of: [segs] fitted into [w] × [h] with [pad] on every side, the aspect kept (lon scaled by
- * cos(latitude)), centred. [corner] > 0: nothing drawn in the bottom-right corner of that size (the ⤢ badge) – fitted
- * beside or above it, whichever keeps it larger.
+ * cos(latitude)), centred.
  */
-export function fitShape(segs: Seg[], w: number, h: number, pad: number, corner = 0): Shape | null {
+export function fitShape(segs: Seg[], w: number, h: number, pad: number): Shape | null {
   const kept = thin(segs);
   const b = boxOf(kept);
   if (!b) return null;
@@ -97,21 +95,7 @@ export function fitShape(segs: Seg[], w: number, h: number, pad: number, corner 
     const first = kept[0][0], last = kept[kept.length - 1][kept[kept.length - 1].length - 1];
     return { lines, sx: x(first[1]), sy: y(first[0]), ex: x(last[1]), ey: y(last[0]) };
   };
-  const full = fit(pad, pad, w - pad, h - pad);
-  if (corner <= 0 || !hits(full, w - corner, h - corner)) return full;
-  const beside = fit(pad, pad, w - Math.max(pad, corner), h - pad), above = fit(pad, pad, w - pad, h - Math.max(pad, corner));
-  return span(beside) >= span(above) ? beside : above;
-}
-
-function hits(s: Shape, x0: number, y0: number): boolean {
-  if ((s.sx >= x0 && s.sy >= y0) || (s.ex >= x0 && s.ey >= y0)) return true;
-  return s.lines.some((l) => { for (let i = 0; i < l.length; i += 2) if (l[i] >= x0 && l[i + 1] >= y0) return true; return false; });
-}
-
-function span(s: Shape): number {
-  let x0 = Infinity, x1 = -Infinity, y0 = Infinity, y1 = -Infinity;
-  for (const l of s.lines) for (let i = 0; i < l.length; i += 2) { x0 = Math.min(x0, l[i]); x1 = Math.max(x1, l[i]); y0 = Math.min(y0, l[i + 1]); y1 = Math.max(y1, l[i + 1]); }
-  return Math.max(x1 - x0, y1 - y0);
+  return fit(pad, pad, w - pad, h - pad);
 }
 
 const f = (v: number) => v.toFixed(1);
@@ -119,13 +103,11 @@ const path = (l: number[]) => { let d = ''; for (let i = 0; i + 1 < l.length; i 
 
 /**
  * The shape as SVG: the line (plan blue, [pale] = a draft's paler line), the start dot on a paper ring, the goal in the
- * map's dark red ([flag] = the large overview's goal flag: a white flag on a dark red disc).
+ * map's dark red. Decoration only: the row's own button names the route.
  */
-export function shapeSvg(s: Shape, w: number, h: number, o: { width: number; dot: number; pale?: boolean; flag?: boolean }): string {
+export function shapeSvg(s: Shape, w: number, h: number, o: { width: number; dot: number; pale?: boolean }): string {
   const lines = s.lines.map((l) => `<path d="${path(l)}" fill="none" stroke="var(--plan)" stroke-width="${o.width}" stroke-linecap="round" stroke-linejoin="round"${o.pale ? ' opacity="0.45"' : ''}/>`).join('');
   const start = `<circle cx="${f(s.sx)}" cy="${f(s.sy)}" r="${f(o.dot * 1.6)}" fill="var(--paper)"/><circle cx="${f(s.sx)}" cy="${f(s.sy)}" r="${f(o.dot)}" fill="var(--plan)"/>`;
-  const goal = o.flag
-    ? `<g transform="translate(${f(s.ex - 12)},${f(s.ey - 12)})"><circle cx="12" cy="12" r="12" fill="var(--goal)"/><path transform="translate(4.5,4.5) scale(0.625)" fill="#fff" d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></g>`
-    : `<circle cx="${f(s.ex)}" cy="${f(s.ey)}" r="${f(o.dot * 1.6)}" fill="var(--paper)"/><circle cx="${f(s.ex)}" cy="${f(s.ey)}" r="${f(o.dot)}" fill="var(--goal)"/>`;
-  return `<svg class="routeshape" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" role="img" aria-label="${t('routes_overview_show')}">${lines}${start}${goal}</svg>`;
+  const goal = `<circle cx="${f(s.ex)}" cy="${f(s.ey)}" r="${f(o.dot * 1.6)}" fill="var(--paper)"/><circle cx="${f(s.ex)}" cy="${f(s.ey)}" r="${f(o.dot)}" fill="var(--goal)"/>`;
+  return `<svg class="routeshape" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" aria-hidden="true">${lines}${start}${goal}</svg>`;
 }

@@ -1,9 +1,9 @@
 // Every window the planner lays over the page sits in the middle (owner 2026-11-13: „Wenn du irgendwelche Bilder
 // anzeigst oder Warnfenster anzeigst, achte darauf, dass sie wirklich mittig stehen und nicht irgendwie auf der Seite.“):
-// each modal dialog – Share (QR), About, Keyboard shortcuts, Map content, Save's name, Meine Touren, the large overview,
+// each modal dialog – Share (QR), About, Keyboard shortcuts, Map content, Save's name, Meine Touren,
 // Phone, pairing (QR), joining, the long-route question, "Planning from the tour…" – at 1280×800, 1920×1080 and
 // 412×839 has equal margins left / right and top / bottom (±2 px; taller than the window: top = bottom), and a picture in
-// it (the overview's route shape, a QR code) sits in the middle of the dialog. Not checked: what sits beside the plan
+// it (a QR code) sits in the middle of the dialog. Not checked: what sits beside the plan
 // sheet on purpose (place card, map notes) and the app's message box under the top bar (MessagePlacement).
 // Usage: node test/center-smoke.mjs [segmentsDir] [screenshotDir]
 import fs from 'node:fs';
@@ -40,7 +40,7 @@ const measureFn = ([sel, img]) => {
     const i = d.querySelector(img);
     if (i) {
       const q = i.getBoundingClientRect();
-      const f = i.parentElement.getBoundingClientRect(); // and in the middle of its frame (the overview's picture, the QR's white)
+      const f = i.parentElement.getBoundingClientRect(); // and in the middle of its frame (the QR's white)
       out.img = { l: q.left - r.left, r: r.right - q.right, w: q.width, h: q.height, fl: q.left - f.left, fr: f.right - q.right, ft: q.top - f.top, fb: f.bottom - q.bottom };
       // a drawn route shape: its line in the middle of its picture
       const paths = [...i.querySelectorAll(':scope > path')];
@@ -84,7 +84,7 @@ for (const [W, H] of SIZES) {
   P.on('pageerror', (e) => errors.push(String(e)));
   const opened = async (sel, img = null, name = sel) => {
     await P.waitForSelector(sel, { timeout: 30_000 }).catch(() => {});
-    await P.waitForTimeout(350); // the overview draws on the next frame; fonts settle
+    await P.waitForTimeout(350); // fonts settle
     judge(`${size} ${name}`, await P.evaluate(measureFn, [sel, img]), img);
     if (shots) await P.screenshot({ path: path.join(shots, `${name.replace(/[^a-z]+/gi, '-').replace(/^-|-$/g, '')}-${W}x${H}.png`) });
   };
@@ -126,25 +126,10 @@ for (const [W, H] of SIZES) {
   }
   await opened('dialog.pair[open]:has(#pairLink)', '.qr svg', 'pair');
   await P.click('#closePair');
-  // Meine Touren and the large overview: the route on the map goes to Recent with + New, its tile opens the overview
+  // Meine Touren (no large overview in the planner, owner 2026-11-13): the route on the map goes to Recent with + New
   await menu('#newPlan');
   await menu('#menuPlans');
   await opened('dialog.plans[open]', null, 'plans');
-  if (await P.locator('dialog.plans li.draft .tile').count()) {
-    await P.click('dialog.plans li.draft .tile');
-    await P.waitForSelector('dialog.overview[open] .ovpic svg', { timeout: 10_000 }).catch(() => {});
-    await opened('dialog.overview[open]', '.ovpic svg', 'overview');
-    // the window changes while it is open (resized, zoomed, a phone turned): still in the middle, the shape drawn anew
-    const other = W > 600 ? { width: Math.round(W * 0.75), height: Math.round(H * 0.8) } : { width: H, height: W };
-    await P.setViewportSize(other);
-    await P.waitForTimeout(400);
-    judge(`${size} overview, window changed to ${other.width}×${other.height}`, await P.evaluate(measureFn, ['dialog.overview[open]', '.ovpic svg']), '.ovpic svg');
-    if (shots) await P.screenshot({ path: path.join(shots, `overview-resized-${other.width}x${other.height}.png`) });
-    await P.setViewportSize({ width: W, height: H });
-    await P.waitForTimeout(400);
-    judge(`${size} overview, window back to ${size}`, await P.evaluate(measureFn, ['dialog.overview[open]', '.ovpic svg']), '.ovpic svg');
-    await P.click('dialog.overview .ovcancel');
-  } else check(false, `${size} overview: Recent has the plan (needs routing data: ${segments})`);
   await P.keyboard.press('Escape');
   await P.waitForTimeout(300);
   // "Planning from the tour…" (the app's PlanFromTrackDialog): open only while the engine works – measured at once

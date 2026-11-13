@@ -744,25 +744,22 @@ dialog.plans > .row.spread { margin-top: 16px; }
 #locate .locdist { position: absolute; left: 0; right: 0; bottom: 3px; font-size: 10px; line-height: 1; text-align: center;
   color: var(--walnut, #4A3F37); white-space: nowrap; pointer-events: none; }
 
-/* ---- Meine Touren like the app (owner 2026-11-07; app RoutePreview / RouteRowActions / RouteOverview): cards with the
-   route's preview tile (⤢ = the overview), the name, „Plan · date“, the facts; Zuletzt's Planen · Speichern · Löschen on
-   the card, the saved ones a clean row with › and every action in ⋮; the plan on the map tagged „In Bearbeitung“ ---- */
+/* ---- Meine Touren like the app (owner 2026-11-07; app RoutePreview / RouteRowActions): cards with the route's
+   preview tile (a tap opens the plan like the row – no large overview in the browser, owner 2026-11-13), the name,
+   „Plan · date“, the facts; Zuletzt's Planen · Speichern · Löschen on the card, the saved ones a clean row with › and every action in ⋮; the plan on the map tagged „In Bearbeitung“ ---- */
 .planlist li.tourrow { display: block; border-top: none; margin: 8px 2px; padding: 8px 6px 8px 8px; background: var(--card-paper);
   border-radius: var(--r-card); box-shadow: var(--shadow-low); }
 .planlist li.tourrow.current { box-shadow: var(--shadow-low), inset 0 0 0 1.5px var(--plan-edge); background: var(--card-paper); }
 .planlist .rowmain { display: flex; align-items: center; gap: 4px; min-width: 0; }
-.planlist .tile { flex: none; position: relative; width: 58px; height: 58px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-small); }
+.planlist .tile { flex: none; position: relative; width: 52px; height: 52px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-small); }
 .planlist .tileface { position: absolute; left: 0; top: 0; width: 52px; height: 52px; border-radius: var(--r-small); background: var(--paper-dim);
   display: grid; place-items: center; overflow: hidden; }
 .planlist .tileface .kindic { width: 40px; height: 40px; }
-.planlist .enlarge { position: absolute; right: 0; bottom: 0; width: 26px; height: 26px; box-sizing: border-box; border-radius: 50%;
-  background: var(--plan); box-shadow: 0 0 0 2px var(--paper); display: grid; place-items: center; }
-.planlist .enlarge .ic { fill: var(--paper); }
 .planlist .tile:hover .tileface { box-shadow: inset 0 0 0 1.5px var(--plan-edge); }
 .planlist .chev { flex: none; display: inline-flex; color: var(--muted); }
 .planlist .chev .ic { fill: currentColor; }
 .planlist .open { padding: 4px 6px; }
-.planlist .rowacts { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 8px 0 2px 62px; }
+.planlist .rowacts { display: flex; flex-wrap: wrap; gap: 4px 8px; padding: 8px 0 2px 56px; }
 .planlist .rowacts button { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 14px; border-radius: 20px; border: 0;
   font: inherit; font-weight: 600; cursor: pointer; background: none; }
 .planlist .rowacts .ic { fill: currentColor; }
@@ -774,19 +771,6 @@ dialog.plans > .row.spread { margin-top: 16px; }
 .planlist .rowmenu .planact { color: var(--plan); font-weight: 600; }
 .planlist .tag.live { background: var(--plan-light); color: var(--plan-ink); }
 @media (max-width: 700px) { .planlist .rowacts { padding-left: 0; gap: 2px; flex-wrap: nowrap; } .planlist .rowacts button { padding: 0 10px; } }
-/* the large overview (a row tap): name, facts, the route's shape as large as the window, Abbrechen · Planen */
-dialog.share.overview[open] { display: flex; flex-direction: column; width: min(760px, calc(100vw - 32px)); height: min(760px, calc(100vh - 48px)); box-sizing: border-box; }
-dialog.overview .ovtitle { margin: 0; font-size: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; }
-dialog.overview .ovfacts { margin: 4px 0 0; color: var(--muted); font-size: 16px; font-variant-numeric: tabular-nums; }
-dialog.overview .ovpic { flex: 1; min-height: 200px; margin: 12px 0; border-radius: var(--r-card); background: var(--paper-dim);
-  display: grid; place-items: center; overflow: hidden; }
-dialog.overview .ovpic .muted { padding: 24px; text-align: center; }
-/* until it is drawn again for a new size: never wider or taller than its picture, scaled about the middle (viewBox) */
-dialog.overview .ovpic > svg { max-width: 100%; max-height: 100%; }
-dialog.overview .ovbuttons button { min-height: 48px; padding: 0 20px; border-radius: 24px; font: inherit; font-weight: 600; cursor: pointer;
-  display: inline-flex; align-items: center; gap: 8px; }
-dialog.overview .ovbuttons .tonal { border: 0; background: var(--plan-light); color: var(--plan-ink); }
-dialog.overview .ovbuttons .tonal .ic { fill: currentColor; }
 
 /* the activity list after a T chip (app 2a54f2e4): the way out „Fertig“ at its end, right */
 .actmenu .actdone { display: flex; justify-content: flex-end; padding: 6px 8px 2px; }
