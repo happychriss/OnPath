@@ -391,10 +391,10 @@ class H(BaseHTTPRequestHandler):
                     if still:
                         log("suggest %s %s preparing %d of %d areas" % (w["activity"], where, len(still), len(need["need"])))
                         return self.send({"preparing": True, "areas_needed": len(need["need"]), "areas_missing": len(still),
-                                          "message": "Die Karte für diese Gegend wird vorbereitet – in ein paar Minuten "
-                                                     "noch einmal versuchen.",
-                                          "message_en": "The map for this region is being prepared – try again in a few "
-                                                        "minutes."}, 200)
+                                          "message": "Die Karte für diese Gegend wird vorbereitet – gleich "
+                                                     "noch einmal versuchen (bei einer ganz neuen Gegend kann es ein paar Minuten dauern).",
+                                          "message_en": "The map for this region is being prepared – try again in a "
+                                                        "moment (a region never used before can take a few minutes)."}, 200)
                 r = ST.worker.call({"op": "suggest", "wish": w, "save": not ST.args.no_save}, ST.args.time_limit)
         finally:
             with ST.wlock:
