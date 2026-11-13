@@ -1069,3 +1069,31 @@ collapsed on the phone, Cancel in the card stops the plan; red before, green aft
 writes `phone-link-loading.png` / `desktop-link-loading.png`); `areas-smoke` D (the card's percent while the routing data
 comes), `robust-smoke` 7 (the card's Cancel). §17's table: „Map tiles still loading“, „Routing data for a plan“ and
 „Map area being built“ are this card now.
+
+## 28. Zuletzt = the app's one-plan rule, a Papierkorb for this browser's drafts (laptop, 2026-11-13 – app 2923a3e7 / 6f4b47d3)
+Replaces §23's „newest 25 / newest 3“ and §25's „In Bearbeitung on the saved row“.
+- **Exactly one plan under ZULETZT – the one worked on last, saved or not** (`recent.ts`; the app's `Drafts.MAX = 1`,
+  `RoutesState.keepDraft / takePlace / afterSaved / restore / trimDrafts`, `LivePlanRows.of` = `recentRow`). The plan on
+  the map is always that row („In Bearbeitung“; a saved route as it is also „Gespeichert“, no Speichern; changed or new:
+  Speichern); its saved route stays under GESPEICHERT as a plain row (›, ⋮ with Planen). An empty map: what holds the place
+  (`onpath.zuletzt`, survives a reload = the app's `prefs.zuletztId`) – a draft (Planen · Speichern · Löschen), or a saved
+  route left as it is (its clean row with the „Gespeichert“ tag, also under Gespeichert; deleted → no row) – but a draft
+  outside the bin always wins over a saved route, and the newest draft over an older pointed one (a draft never hides).
+- **Taking the place sends every other draft to the Papierkorb** – never gone for good. Saved from Zuletzt (or the plan
+  from it saved): the draft and any draft with its points go (the saved route holds it), the saved route takes the place.
+  A saved route left as it is but deleted meanwhile → kept as a new draft. Löschen on the draft → Papierkorb, no question.
+  Once per browser (`onpath.zuletztTrimmed`) the older planner's drafts beyond the newest go to the bin (one INFO line).
+- **Papierkorb** (the app's `RecycleBinScreen`, its words: `common_recycle_bin`, `backup_bin_keep`, `backup_bin_deleted`
+  + `backup_bin_days_left` / `backup_bin_removed_next`, `common_restore`, `common_back`): a button beside „GPX
+  importieren“ while it holds a plan (the app: My routes ⋮ → Papierkorb). The list replaces Meine Touren's in the same
+  window: the keep line, per plan its name, „Plan · date · km“, „Gelöscht am … · noch N Tage“, Wiederherstellen (it takes
+  the Zuletzt place, the draft there goes in). 30 days, then a page start removes it. Only this browser's drafts – saved
+  routes deleted without a phone still ask first (§23); no „Jetzt löschen“ (the app's question speaks of the phone and its
+  backup folder). Stored in `onpath.recent` (`deletedAt`), at most 400 entries (the oldest bin entries beyond, reported).
+- Tests: `test/zuletzt-smoke.mjs` (recent.ts in Node + the page: trim, bin, restore, + Neu, Löschen, saved place over a
+  reload, a draft never hides, nothing lost, EN + DE words; check-web.sh), sync-smoke / parity-smoke (the open saved route
+  = the Recent row „In progress“ + „Saved“).
+- **Phone sheet (same day, field: a two-point link plan listed only „1 Start“ + „+ Ziel hinzufügen“):** at the points step
+  the sheet taller than the screen squeezed `#pointsSection` to its 96 px minimum – one row, the goal hidden inside the
+  list. On a phone the open sheet now scrolls as one and the list keeps every row (`style.css`, end). Test:
+  phonelink-smoke 2b (412 × 760 / 640, DE) and 1 (every row inside the list and the sheet).

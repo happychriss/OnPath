@@ -787,3 +787,9 @@ dialog.plans > .row.spread { margin-top: 16px; }
   #sheet[data-step="points"] { overflow-y: auto; overscroll-behavior: contain; }
   #sheet[data-step="points"] > #pointsSection { flex: none; }
 }
+
+/* Meine Touren → Papierkorb (recent.ts, the app's RecycleBinScreen): the keep line, a row's deletion line, Wiederherstellen */
+.planlist li.binkeep, .planlist li.binempty { display: block; border-top: none; padding: 4px 8px 8px; }
+.planlist li.binrow { flex-direction: column; align-items: stretch; padding: 8px 4px 4px 8px; }
+.planlist li.binrow .rowacts { display: flex; justify-content: flex-end; }
+dialog.plans .plansleft { display: inline-flex; flex-wrap: wrap; gap: 4px; }

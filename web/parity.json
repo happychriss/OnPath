@@ -316,6 +316,33 @@
         "web/app/src/plans.ts"
       ],
       "blob": "5ee4c46447ad47e0ce91f5a74eb151e90882cbff"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/domain/plan/LivePlan.kt",
+      "what": "LivePlanRows.of / RecentRow – the one Zuletzt row: the plan on the map („In Bearbeitung“, + „Gespeichert“ when saved as it is), else the pointed draft / saved route, a draft never hides",
+      "web": [
+        "web/app/src/recent.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "4b036fb8e916363c705bbb62424338809c899908"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RoutesState.kt",
+      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time)",
+      "web": [
+        "web/app/src/recent.ts",
+        "web/app/src/main.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "4048d54328eea0f128aa3516bb3f9616a0685393"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/BackupScreens.kt",
+      "what": "RecycleBinScreen / BinCard – the planner's Papierkorb for its drafts: keep line, „Plan · date · km“, „Gelöscht am … · noch N Tage“, Wiederherstellen (no „Jetzt löschen“: its question speaks of the phone)",
+      "web": [
+        "web/app/src/plans.ts"
+      ],
+      "blob": "8cf36ab390dde82bfaf06cd5bf93499d1c6db016"
     }
   ],
   "watch": [
