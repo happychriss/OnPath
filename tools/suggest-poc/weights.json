@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-14a",
+  "version": "2026-11-14b",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
   "simple": {
     "_about": "The page's few controls -> the numbers the engine works with. A level sets the taste slider(s); natur = forest + natural ground.",
@@ -771,8 +771,8 @@
         "flaws": {
           "road_per_100m": 0.8,
           "road_cap": 20.0,
-          "built_free": 0.2,
-          "built_per_10pct": 3.0,
+          "built_free": 0.3,
+          "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
@@ -952,8 +952,8 @@
         "flaws": {
           "road_per_100m": 0.8,
           "road_cap": 20.0,
-          "built_free": 0.2,
-          "built_per_10pct": 3.0,
+          "built_free": 0.3,
+          "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
@@ -1132,8 +1132,8 @@
         "flaws": {
           "road_per_100m": 0.8,
           "road_cap": 20.0,
-          "built_free": 0.2,
-          "built_per_10pct": 3.0,
+          "built_free": 0.3,
+          "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
