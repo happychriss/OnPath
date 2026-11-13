@@ -614,6 +614,7 @@ def railways():
 def route_bands():
     # One transparent green band without edges for every activity (owner, colour from the analysis in
     # docs/design/map-colour-analysis.md), drawn over street / road lanes (they show green-tinted) and under paths and trails, so the ways stay readable.
+    # Close in opaque_bands() makes the band opaque and moves it below the lanes (no dark dots where pieces overlap).
     # extract_overlays.py merges route pieces into continuous lines (the transparent band would darken where pieces
     # meet); the original pieces of major routes come again as "majoronly" copies for the pink highlight and labels.
     # The app shows the band of the current activity (MapController.setOverlay toggles routes-<kind>*).
@@ -1087,6 +1088,77 @@ def route_tiers():
             if kind == "hike":
                 reg["paint"] = {"line-color": T("route.band.color"), "line-width": Z("route.low.width")}
             L.insert(L.index(lyr), reg)
+
+
+# The wide see-through route bands (hiking green, the grey band above the T level, a long-distance cycle route's
+# green band). A see-through line darkens wherever it overlaps itself – round caps where two pieces meet, a branch,
+# an out-and-back stretch: dark dots along the band (owner 2026-11-12, Meran: "sieht unprofessionell aus").
+# opaque_bands() draws them opaque instead.
+OPAQUE_BANDS = ("routes-hike", "routes-hike-over", "routes-bike-over")
+# the band's overview line above the streets, switched with the band (ActivityLayers.ROUTE_SUFFIXES "-low" / "-over-low")
+BAND_LOW = {"routes-hike": "routes-hike-low", "routes-hike-over": "routes-hike-over-low",
+            "routes-bike-over": "routes-bike-over-low"}
+# the bike band: the opaque bands go just above it (its place – above the casings and track edges, below the town
+# paths, road edges and every lane)
+BAND_SLOT_AFTER = "routes-bike"
+
+
+def _rgb(c):
+    if not (isinstance(c, str) and len(c) == 7 and c[0] == "#"):
+        raise ValueError(f"opaque_bands: colour {c!r} must be #rrggbb")
+    return [int(c[i:i + 2], 16) for i in (1, 3, 5)]
+
+
+def over_land(color, opacity, ground=None):
+    """`color` drawn at `opacity` over the map's land colour (or `ground`), as one opaque #rrggbb: the same look as the
+    see-through line over open land."""
+    if not isinstance(opacity, (int, float)):
+        raise ValueError(f"opaque_bands: opacity {opacity!r} must be a number")
+    fg, bg = _rgb(color), _rgb(ground or T("land.color"))
+    return "#" + "".join(f"{round(opacity * f + (1 - opacity) * b):02x}" for f, b in zip(fg, bg))
+
+
+def opaque_bands():
+    """The see-through route bands (OPAQUE_BANDS) as opaque lines that never darken where they overlap:
+    - the band itself: its colour pre-blended over the land colour (over_land: the same look over open land), from the
+      overview line's colour at LOW_FROM to the band colour at LOW_TO. An opaque band on top of the streets would hide
+      them and the town paths, so it moves to the bike band's place (BAND_SLOT_AFTER): above the casings and track
+      edges, below the town paths, road edges and lanes – a street on the route shows inside it with a green border, a
+      path line inside it as before (paths outside towns are above it anyway).
+    - "<id>-low" (BAND_LOW): the overview line keeps the band's old place ON the streets (below LOW_FROM a street lane
+      is as wide as the line and would hide it), opaque, and narrows to nothing from LOW_FROM to LOW_TO while the band
+      widens under it – no see-through step in between either.
+    Runs after route_tiers() (the regional line copies the band's paint and stays in the old place)."""
+    lo_z, hi_z = low_from(), low_to()
+    moved = []
+    for lid in OPAQUE_BANDS:
+        lyr = next((x for x in L if x["id"] == lid), None)
+        if lyr is None:
+            continue
+        p = lyr["paint"]
+        color, opacity, width = p["line-color"], p.pop("line-opacity", 1), p["line-width"]
+        # opacity: low_fade(close, low) = interpolate zoom LOW_FROM low, LOW_TO close (no later stops for these bands)
+        if isinstance(opacity, list):
+            if not (opacity[:3] == ["interpolate", ["linear"], ["zoom"]] and opacity[3::2] == [lo_z, hi_z]):
+                raise ValueError(f"opaque_bands: {lid} opacity {opacity} is not a plain low_fade")
+            low_op, close_op = opacity[4], opacity[6]
+        else:
+            low_op = close_op = opacity
+        low_color, band_color = over_land(color, low_op), over_land(color, close_op)
+        # the overview line: the band's old place, its width up to LOW_FROM, then narrowing to nothing at LOW_TO
+        low = copy.deepcopy(lyr) | {"id": BAND_LOW[lid], "maxzoom": hi_z}
+        if isinstance(width, list) and width[:3] == ["interpolate", ["linear"], ["zoom"]]:
+            stops = [(z, v) for z, v in zip(width[3::2], width[4::2]) if z <= lo_z]
+        else:
+            stops = [(lo_z, width)]
+        low["paint"] = {"line-color": ["interpolate", ["linear"], ["zoom"], lo_z, low_color, hi_z, band_color],
+                        "line-width": ["interpolate", ["linear"], ["zoom"]] + [x for s in stops for x in s] + [hi_z, 0]}
+        L.insert(L.index(lyr), low)
+        p["line-color"] = ["interpolate", ["linear"], ["zoom"], lo_z, low_color, hi_z, band_color]
+        L.remove(lyr)
+        moved.append(lyr)
+    at = next(i for i, x in enumerate(L) if x["id"] == BAND_SLOT_AFTER) + 1
+    L[at:at] = moved
 
 
 def _plus(expr, d):
@@ -1662,7 +1734,8 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
     L.clear()
     # Order matters: route bands sit above the street / road lanes (owner: under the streets only two thin
     # pale edges showed, routes on small streets looked missing – Komoot tints the street) and below paths / trails /
-    # labels, so the path line inside the band stays sharp.
+    # labels, so the path line inside the band stays sharp. Since 2026-11-13 the wide bands are opaque and lie below
+    # the lanes (opaque_bands(): a see-through band darkened where it overlapped); only the overview line stays on top.
     bg(); landcover(); hillshade(); contours(); water(); buildings(); street_space(); roads(); track_edges(); lanes(); route_bands(); railways(); paths()
     green_ways()
     # no soft bike glow (owner: green line = good way, band = signed route, as hiking)
@@ -1683,6 +1756,7 @@ def build(theme=DEFAULT_THEME, fmt=1, out=None):
         town_below_streets()
     road_edges_on_top()
     route_tiers()
+    opaque_bands()
     low_zoom_view()
     if FMT == 2:
         region_view()

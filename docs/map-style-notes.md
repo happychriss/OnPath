@@ -380,7 +380,14 @@ Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overl
   - `low_to_close(low_key, close)`: widths that grow from the thin overview value into the close-up curve.
   - `route_band_paint()`: the hiking band and a long-distance cycle route's band.
 - Routes in the overview: a thin solid line (`route.low.width`, opacity `route.low.opacity`), no band.
-  - Hiking band: a single layer that changes with zoom.
+  - Hiking band (and the grey band above the T level, a long-distance cycle route's band): **opaque** since 2026-11-13
+    (owner, Meran: the see-through band darkened into dots where pieces meet, at branches and on out-and-back
+    stretches). `opaque_bands()` pre-blends the colour over `land.color` (#168403 at 0.4 → #9cc78f, grey #6f6f6f at
+    0.55 → #acaba7) and moves the band to the bike band's place (below the town paths, road edges and lanes – an
+    opaque band on the streets would hide them and the town paths; a street on the route shows inside the band with
+    a green border). `<id>-low` (`routes-hike-low`, `routes-hike-over-low`, `routes-bike-over-low`) keeps the overview
+    line in the old place on the streets and narrows to nothing from `from` to `to` while the band widens under it.
+    Guard: `StyleFormatTest.routeBandsAreOpaque`.
   - Bikes: the mint band sits below the lanes, where a street lane would hide a thin line. So `routes-bike-low` (dark
     green `route.bike.low.color`, above the lanes) fades out while `routes-bike` fades in.
   - `MapController` switches the `-low` suffix together with the route layers.

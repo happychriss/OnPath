@@ -3633,6 +3633,256 @@
    }
   },
   {
+   "id": "routes-hike",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 12.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "majoronly"
+     ]
+    ],
+    [
+     "all",
+     [
+      "<=",
+      [
+       "coalesce",
+       [
+        "get",
+        "sac"
+       ],
+       0
+      ],
+      3
+     ],
+     [
+      "!",
+      [
+       "has",
+       "hx"
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     "#168403",
+     14.5,
+     "#9cc78f"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     9.0,
+     1.0,
+     12.0,
+     1.6,
+     13.5,
+     2.2,
+     14.5,
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ]
+   }
+  },
+  {
+   "id": "routes-hike-over",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 12.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "majoronly"
+     ]
+    ],
+    [
+     "any",
+     [
+      ">",
+      [
+       "coalesce",
+       [
+        "get",
+        "sac"
+       ],
+       0
+      ],
+      3
+     ],
+     [
+      "has",
+      "hx"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     "#6f6f6f",
+     14.5,
+     "#acaba7"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     9.0,
+     1.0,
+     12.0,
+     1.6,
+     13.5,
+     2.2,
+     14.5,
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ]
+   }
+  },
+  {
+   "id": "routes-bike-over",
+   "type": "line",
+   "source": "overlays",
+   "source-layer": "routes",
+   "minzoom": 9,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "bike"
+    ],
+    [
+     ">=",
+     [
+      "coalesce",
+      [
+       "get",
+       "net"
+      ],
+      0
+     ],
+     3
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "none"
+   },
+   "paint": {
+    "line-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     "#168403",
+     14.5,
+     "#9cc78f"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     9.0,
+     1.0,
+     12.0,
+     1.6,
+     13.5,
+     2.2,
+     14.5,
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ]
+   }
+  },
+  {
    "id": "cycleway-town",
    "type": "line",
    "source": "overlays",
@@ -8032,7 +8282,7 @@
    "maxzoom": 12.5
   },
   {
-   "id": "routes-hike",
+   "id": "routes-hike-low",
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
@@ -8083,8 +8333,7 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#168403",
-    "line-opacity": [
+    "line-color": [
      "interpolate",
      [
       "linear"
@@ -8093,9 +8342,9 @@
       "zoom"
      ],
      13.5,
-     1,
+     "#168403",
      14.5,
-     0.4
+     "#9cc78f"
     ],
     "line-width": [
      "interpolate",
@@ -8112,18 +8361,13 @@
      13.5,
      2.2,
      14.5,
-     8.25,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
+     0
     ]
-   }
+   },
+   "maxzoom": 14.5
   },
   {
-   "id": "routes-hike-over",
+   "id": "routes-hike-over-low",
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
@@ -8171,8 +8415,7 @@
     "visibility": "visible"
    },
    "paint": {
-    "line-color": "#6f6f6f",
-    "line-opacity": [
+    "line-color": [
      "interpolate",
      [
       "linear"
@@ -8181,9 +8424,9 @@
       "zoom"
      ],
      13.5,
-     1,
+     "#6f6f6f",
      14.5,
-     0.55
+     "#acaba7"
     ],
     "line-width": [
      "interpolate",
@@ -8200,15 +8443,10 @@
      13.5,
      2.2,
      14.5,
-     8.25,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
+     0
     ]
-   }
+   },
+   "maxzoom": 14.5
   },
   {
    "id": "routes-hike-over-label",
@@ -8721,7 +8959,7 @@
    }
   },
   {
-   "id": "routes-bike-over",
+   "id": "routes-bike-over-low",
    "type": "line",
    "source": "overlays",
    "source-layer": "routes",
@@ -8755,8 +8993,7 @@
     "visibility": "none"
    },
    "paint": {
-    "line-color": "#168403",
-    "line-opacity": [
+    "line-color": [
      "interpolate",
      [
       "linear"
@@ -8765,9 +9002,9 @@
       "zoom"
      ],
      13.5,
-     1,
+     "#168403",
      14.5,
-     0.4
+     "#9cc78f"
     ],
     "line-width": [
      "interpolate",
@@ -8784,15 +9021,10 @@
      13.5,
      2.2,
      14.5,
-     8.25,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
+     0
     ]
-   }
+   },
+   "maxzoom": 14.5
   },
   {
    "id": "routes-bike-major-low-halo-bikeview",
