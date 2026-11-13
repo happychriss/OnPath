@@ -355,6 +355,15 @@
       "blob": "79cdb62934b03ff2250949ee350a578bd3f12b5d"
     },
     {
+      "app": "app/src/main/java/com/onpath/app/cells/PoiDensity.kt",
+      "what": "the density limit for city POIs (app b71b1df9): KINDS / CAP / ALL_FROM / PROP and firstZooms; PoiTiles.densityZooms (one cell's POIs, \"dz\" only when later than the kind) – the web sets \"dz\" on each cell's pois.geojson (cells.ts loadPois)",
+      "web": [
+        "web/app/src/poidensity.ts",
+        "web/app/src/cells.ts"
+      ],
+      "blob": "3fe621fbbe60a8efa52619b1dc48397c725c532e"
+    },
+    {
       "app": "app/src/main/java/com/onpath/app/ui/LongRouteCancelCamera.kt",
       "what": "very long route → Cancel: the map back to the plan from before (whole plan / its one point / stays); no tour on the web",
       "web": [
@@ -365,6 +374,11 @@
     }
   ],
   "watch": [
+    {
+      "app": "app/src/main/java/com/onpath/app/poi/PoiTap.kt",
+      "why": "how a tap / hold finds the POI under the finger (app: ShownPois, read once per camera stop – MapLibre Native's queryRenderedFeatures waits for its render thread; web: main.ts poiAt asks GL JS at the click, p50 0.1 ms in Köln, no render thread)",
+      "blob": "285b2151f9dca6f9b73a5c10272e3703218f5c22"
+    },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
@@ -433,7 +447,7 @@
     {
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
-      "blob": "67cb97f28babf4cd96eff8c29abcb159abf25dc9"
+      "blob": "e083d5bbb16bba97c2ebb0183f2f787b147b36e2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",

@@ -126,6 +126,35 @@ console.log('proposed name:', proposed);
 check(proposed === 'Vellau → Ifinger Hütte', 'Save proposes "Vellau → Ifinger Hütte" (RouteNamer)');
 await page.click('#saveCancel');
 
+// the density limit for city POIs (app b71b1df9, owner 2026-11-13): in Köln (a dense cell of the store) restaurants /
+// cafés / bars / snack bars / shops beyond 24 per map tile carry "dz" = 17 and are drawn only from z17 (the style's
+// `zoom >= dz`); huts, toilets, bus stops … never
+if (await page.evaluate(() => fetch('/data/cells/f2/10/531/342/current.json').then((r) => r.ok, () => false))) {
+  await page.evaluate(() => window.__map.jumpTo({ center: [6.9583, 50.9413], zoom: 15.5 }));
+  await page.waitForFunction(() => (window.__map.getSource('pois')?.serialize().data.features ?? []).some((f) => f.geometry.coordinates[0] > 6.9 && f.geometry.coordinates[0] < 7),
+    null, { timeout: 60_000 }).catch(() => {});
+  await page.waitForFunction(() => window.__map.loaded() && !window.__map.isMoving(), null, { timeout: 60_000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const LIMITED = ['restaurant', 'cafe', 'bar', 'fast_food', 'shop'];
+  const shown = () => page.evaluate((lim) => {
+    const m = window.__map, layers = m.getStyle().layers.filter((l) => l.id.startsWith('poi-') && !l.id.endsWith('-name')).map((l) => l.id);
+    const f = m.queryRenderedFeatures({ layers }).filter((x) => lim.includes(x.properties.kind));
+    return { n: f.length, late: f.filter((x) => Number(x.properties.dz ?? 0) > m.getZoom()).length, dz17: f.filter((x) => x.properties.dz === 17).length };
+  }, LIMITED);
+  const data = await page.evaluate((lim) => { const f = window.__map.getSource('pois').serialize().data.features;
+    return { limited: f.filter((x) => lim.includes(x.properties?.kind)).length, dz: f.filter((x) => x.properties?.dz != null).length,
+      otherDz: f.filter((x) => x.properties?.dz != null && !lim.includes(x.properties?.kind)).length }; }, LIMITED);
+  const z15 = await shown();
+  await page.evaluate(() => window.__map.jumpTo({ zoom: 17.2 }));
+  await page.waitForFunction(() => window.__map.loaded() && !window.__map.isMoving(), null, { timeout: 60_000 }).catch(() => {});
+  await page.waitForTimeout(800);
+  const z17 = await shown();
+  console.log('Köln POIs:', data, 'z15.5:', z15, 'z17.2:', z17);
+  check(data.dz > 0 && data.otherDz === 0, `Köln: ${data.dz} of ${data.limited} restaurants / cafés / bars / snack bars / shops wait for z17, no other kind`);
+  check(z15.n > 0 && z15.late === 0, `z15.5: ${z15.n} of them drawn, none held back for z17 among them`);
+  check(z17.dz17 > 0, `z17: the held-back ones are drawn (${z17.dz17})`);
+} else console.log('skip: no Köln cell in this store (the density check needs a dense city)');
+
 if (process.env.ONLINE === '1') {
   hits = await searchFor('Innsbruck');
   await page.waitForTimeout(2500);
