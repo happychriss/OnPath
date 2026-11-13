@@ -71,6 +71,33 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
 - Speed: one leg 35–60 ms; a request = 72 candidates ≈ 400–580 legs: 4–6 s around Hilden, 9 s in Düsseldorf centre
   (4 router threads, desktop). A phone will be several times slower – fewer candidates or results one by one.
 
+## Round 3 – variant B and our own map areas (2026-11-13 evening)
+
+Bench, same weights (13f), `bench.py --method a` vs `--method b` (bike cases run as A in both):
+
+| Case (hike) | ok A → B | Points A → B | Near forest % | Longest main-road m | Doubled % | Seconds A → B |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hilden 2 h | 5/6 → 5/6 | 67.9 → 68.3 | 60 → 48 | 370 → 74 | 0 → 0 | 5.2 → 2.0 |
+| Ohligser Heide 2 h | 5/7 → 6/7 | 78.5 → 84.6 | 81 → 71 | 0 → 0 | 21 → 0 | 3.7 → 1.8 |
+| Düsseldorf 2 h | 5/5 → 5/5 | 71.0 → 85.2 | 39 → 80 | 74 → 4 | 1 → 1 | 9 → 4.7 |
+| Hilden + Wasser 3 h | 6/6 → 6/6 | 74.4 → 76.3 | 42 → 49 | 108 → 23 | 0 → 0 | 6.6 → 4.4 |
+| Hilden Bekannte Wege 3 h | 6/7 → 6/7 | 77.7 → 79.8 | 67 → 64 | 370 → 109 | 0 → 0 | – → 6.3 |
+| Meran 3 h | 7/7 → 7/7 | 70.5 → 81.5 | 57 → 62 | 16 → 29 | 0 → 2 | 4.7 → 1.6 |
+
+Total 49 → 50 of 53. B's red checks: Hilden 2 h near forest 48 % (limit 50), Heide street 21 % (limit 15), Bekannte
+Wege signed 46 % (limit 50). No weight was tuned for B – `netsearch` in `weights.json` holds its first guesses.
+
+- The real router confirms 70–98 % of a B loop's length when it is routed through via points every 600 m
+  (`router_match_pct` in the run's numbers); the rest are places where BRouter prefers another way between two points.
+- Heights: BRouter marks "no elevation" with a huge negative value (bridges, gaps) – ignored in B's ascent. B's ascent
+  is a plain 6 m hysteresis over node heights, A's is BRouter's own filter; they agree within a few metres on the
+  checked loops (Meran 181 vs 186, 294 vs 309).
+- B counts a crossing per `footway=crossing` way piece, A per crossing node – B's "Querungen" read higher in towns.
+- Weak in B: the anchors are one node per sector and band, so in a city all good loops share the same park and only
+  the first is shown as clearly different; names of loops repeat ("Ziel Posthornweg" three times); no local
+  improvement step; ring walks only where the map's trail labels close a ring in the network (seen: none chosen in
+  the bench); hiking only; Python speed.
+
 ## Tuning: only against the bench
 
 `bench.py` runs nine fixed wishes (Hilden hike 2 h, Ohligser Heide, Düsseldorf, Hilden + Wasser 3 h → Elbsee, Hilden
