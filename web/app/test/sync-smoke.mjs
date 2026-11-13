@@ -391,7 +391,9 @@ await sent(A);
 await phone.round();
 check((await phone.titles()).includes('Handweg hier'), 'Save to phone sent the new name back');
 await menu(A, '#menuPlans');
-await A.click('#planList li:has-text("Vom Handy") .open'); await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
+await A.click('#planList li:has-text("Vom Handy") .open');
+check(!(await A.locator('dialog.overview[open]').isVisible()), 'a plan from the phone never opened here (no line known) opens at once – no empty overview (owner 2026-11-13)');
+await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }).catch(() => {});
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');

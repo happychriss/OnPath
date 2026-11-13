@@ -307,7 +307,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     if (it.recent) host.openRecent(it.recent);
     else if (it.saved) { sync.seen(it.saved.id, sync.open); host.open(it.saved, sync.open); }
   };
-  const showOverview = (it: Item) => { closeMenus(); overviewDialog(it, () => openItem(it), reopen); };
+  // no line known yet (a plan from the phone never opened here): the overview would be an empty white box – the row
+  // opens the plan at once (owner 2026-11-13, demo); with a line the overview stays as in the app
+  const showOverview = (it: Item) => { closeMenus(); if (!it.segs) { openItem(it); return; } overviewDialog(it, () => openItem(it), reopen); };
 
   const row = (it: Item, spec: RowSpec, folder: string, paired: boolean, liveMarked: boolean): HTMLLIElement => {
     const li = document.createElement('li');
