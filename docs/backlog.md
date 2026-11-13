@@ -36,6 +36,7 @@ and the commit history.
 
 ## In progress
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [donald] Tour suggestions POC on the computer (owner 2026-11-13, chat: „genauso machen wir es“): `tools/suggest-poc/` – start point, duration, pace, difficulty, taste sliders → loop candidates through BRouter, scored, on a local map page; the owner picks the best with a reason, the weights live in a plain file for quick tuning. No app code, no UI yet – since 2026-11-13
 
 ## Next
 - **[laptop] Planner points list: a two-point plan from a link listed only „1 Start“ + „+ Ziel hinzufügen“ once routed – the goal row missing (seen in phone screenshots 2026-11-13, not looked into)**; also check the live „map area being prepared“ message on a phone link to an area without a map (owner: cluttered).
