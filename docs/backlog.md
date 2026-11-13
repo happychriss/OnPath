@@ -39,6 +39,7 @@ and the commit history.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[laptop] Planner points list: a two-point plan from a link listed only „1 Start“ + „+ Ziel hinzufügen“ once routed – the goal row missing (seen in phone screenshots 2026-11-13, not looked into)**; also check the live „map area being prepared“ message on a phone link to an area without a map (owner: cluttered).
 - **[laptop] Planner on a phone: a shared route link opens well (owner 2026-11-13, chat)** – someone without OnPath gets
   a route link and opens it in the phone's browser. Today the plan sheet opens fully pulled up and only a tiny „Route
   wird geladen“ sits above it. Wanted: while loading, the map already shows the area of the route (zoomed to it, the
