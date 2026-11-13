@@ -688,6 +688,28 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
+     * Owner 2026-11-14: while planning (no tour), "Als neues Ziel" goes on forward – the place is the new goal and the old
+     * goal stays as the last stop („beim Planen anhängen, unterwegs ersetzen“); one Undo brings the plan before back.
+     */
+    @Test fun aPlaceMadeTheDestinationWhilePlanningKeepsTheOldGoalAsAStop() {
+        startPlanWithTwoPoints()
+        routeSettled()
+        var plan: List<GeoPoint> = emptyList()
+        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        assertEquals("a plan of two points", 2, plan.size)
+        val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
+        val poi = com.onpath.app.poi.Poi("e2e-hut", "alpine_hut", "Hütte E2E", past.lat, past.lon)
+        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        waitUntil("the plan goes on to the place, the old goal stays as a stop", 10_000) {
+            val w = waypointList()
+            w.size == 3 && w[0] == plan[0] && w[1] == plan[1] && com.onpath.app.data.Geo.distance(w[2], past) < 5.0
+        }
+        assertFalse("no tour started", recording())
+        scenario.onActivity { vm(it).undoStep() }
+        waitUntil("Undo: the plan before is back", 10_000) { waypointList() == plan }
+    }
+
+    /**
      * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
      * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
      */
