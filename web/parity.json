@@ -290,6 +290,32 @@
         "web/app/src/main.ts"
       ],
       "blob": "c57eea88bfc4e65164827d7c2ac3645597a53124"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RouteSort.kt",
+      "what": "Meine Touren's order: keys and their order, tap rule, ties (newest, then id), encode / decode (web: localStorage onpath.routesSort; a row without numbers goes last)",
+      "web": [
+        "web/app/src/routesort.ts"
+      ],
+      "blob": "51ec77c817abfa77d779151a336724e3f3c01248"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RouteSortChips.kt",
+      "what": "the sort chip row: labels, ✓ and ↓ / ↑ on the chosen chip, the spoken texts, the chosen chip in view with the one before peeking (40)",
+      "web": [
+        "web/app/src/routesort.ts",
+        "web/app/src/plans.ts",
+        "web/app/src/style.css"
+      ],
+      "blob": "310e8e7df686b56dd72b6faa778b125722e5463d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/RoutesTab.kt",
+      "what": "search (every word in the name, case / accents / ß folded)",
+      "web": [
+        "web/app/src/plans.ts"
+      ],
+      "blob": "5ee4c46447ad47e0ce91f5a74eb151e90882cbff"
     }
   ],
   "watch": [

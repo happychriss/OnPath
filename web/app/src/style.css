@@ -679,6 +679,16 @@ dialog.plans .plansearch input { flex: 1; min-width: 0; border: none; outline: n
 dialog.plans .plansearch input::-webkit-search-cancel-button { display: none; }
 dialog.plans .plansearch .iconbtn { width: 36px; height: 36px; }
 dialog.plans .plansearch .iconbtn[hidden] { display: none; }
+/* Meine Touren's sort chips (the app's RouteSortChips, owner 2026-11-12 variant C – Material filter chips): one row that
+   scrolls sideways under the search, 32 px high, the chosen one GreenLight with ✓ (and ↓ / ↑ for its direction) */
+dialog.plans .sortchips:not([hidden]) { display: flex; gap: 8px; overflow-x: auto; margin: 0 0 4px; padding: 2px 0 6px; scrollbar-width: thin; }
+dialog.plans .sortchip { flex: none; display: inline-flex; align-items: center; gap: 4px; height: 32px; min-height: 32px; padding: 0 12px;
+  border: 1px solid var(--edge-line); border-radius: 8px; background: var(--card-paper); color: var(--fg); font: inherit; font-size: 13px; font-weight: 500;
+  white-space: nowrap; box-shadow: none; cursor: pointer; }
+dialog.plans .sortchip.on { padding: 0 8px; border-color: transparent; background: #E1EAD5; /* OnPathColors.GreenLight */ }
+dialog.plans .sortchip .ic { fill: currentColor; }
+dialog.plans .sortchip .dir { display: inline-flex; }
+dialog.plans .planlist > li.muted { white-space: pre-line; }
 .row.spread { justify-content: space-between; align-items: center; }
 dialog.plans > .row.spread { margin-top: 16px; }
 .headmenu { right: auto; }

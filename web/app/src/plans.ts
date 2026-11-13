@@ -9,6 +9,7 @@ import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
 import { recentPlans, dropRecent, renameRecent, type RecentPlan } from './recent';
+import { sortRoutes, tapSort, loadSort, keepSort, sortChipsHtml, type SortKey } from './routesort';
 
 export interface PlanHost {
   /** The current plan as a plan code + its title, or null when there is nothing to save. */
@@ -257,7 +258,8 @@ export function overviewDialog(item: Item, onPlan: () => void, back: () => void)
  * Meine Touren (the app's My routes, owner 2026-11-07): ZULETZT – the plan on the map first („In Bearbeitung“), then the
  * plans kept by themselves (newest three, the rest on demand) –, then GESPEICHERT. A row: the route's preview tile
  * (⤢ = the overview), the name, „Plan · 30. Okt. 2026“, the facts (km · ↑ · ↓ when this browser knows them), on the right
- * where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything.
+ * where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything and,
+ * under it, its sort chips (routesort.ts): they order Gespeichert; Zuletzt is one row and stays as it is.
  * Bold = changed here and not on the phone yet. Follows the sync live.
  */
 export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
@@ -266,6 +268,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     <label class="plansearch" hidden><span class="sic">${icon('search', 20)}</span><input id="planSearch" type="search" autocomplete="off"
       placeholder="${esc(t('routes_search_hint'))}" aria-label="${esc(t('routes_search_hint'))}"><button id="planSearchClear" class="iconbtn" hidden
       aria-label="${esc(t('search_clear_query'))}" title="${esc(t('search_clear_query'))}">${icon('close', 20)}</button></label>
+    <div id="planSort" class="sortchips" role="group" hidden></div>
     <ul id="planList" class="planlist" aria-labelledby="plansTitle"></ul>
     <div class="row spread"><button id="plansImportGpx" class="textbtn">${icon('fileOpen', 18)}${esc(t('routes_import_gpx'))}</button><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
@@ -278,6 +281,26 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
   search.addEventListener('input', () => { query = search.value; $('planSearchClear').hidden = !query; render(); });
   $('planSearchClear').onclick = (e) => { e.preventDefault(); search.value = ''; query = ''; $('planSearchClear').hidden = true; search.focus(); render(); };
   $('plansImportGpx').onclick = () => { d.close(); host.importGpx(); };
+  // the sort chips (the app's RouteSortChips): a new order starts at the top of the list; kept in this browser
+  let sort = loadSort();
+  const chips = $('planSort');
+  const drawChips = () => { chips.innerHTML = sortChipsHtml(sort); };
+  drawChips();
+  chips.addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.sortchip');
+    if (!b) return;
+    sort = tapSort(sort, b.dataset.key as SortKey); keepSort(sort);
+    drawChips(); chips.querySelector<HTMLButtonElement>(`[data-key="${sort.key}"]`)?.focus();
+    void render().then(() => { $('planList').scrollTop = 0; });
+  });
+  let chipsPlaced = false;
+  /** When the list opens the chosen chip is in view, with a bit of the chip before it showing (the app's PEEK_DP 40). */
+  const placeChips = () => {
+    if (chipsPlaced || chips.hidden) return;
+    chipsPlaced = true;
+    const on = chips.querySelector<HTMLElement>('.sortchip.on');
+    if (on && on.previousElementSibling) chips.scrollLeft = Math.max(0, on.offsetLeft - chips.offsetLeft - 40);
+  };
   const justSaved = host.justSaved();
   /** The first row's id at the last render: a route added on top is scrolled into view (the app's ListTop, 4cf68bd7). */
   let firstId: string | null = null;
@@ -407,7 +430,12 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     // the plan on the map is that saved row whenever its id is in this folder's list (a pairing moves Without phone's
     // routes into the phone's folder with the same id – the page's savedFolder may still name the old one)
     const liveMarkedId = live && live.savedId && all.some((p) => p.id === live.savedId) ? live.savedId : null;
-    const plans = searchPlans(all, query);
+    // the numbers of a saved row: the plan on the map's own when it is that row, else what this browser kept (planstats)
+    const statsFor = (p: SavedPlan) => (p.id === liveMarkedId && live?.stats) || statsOf(p.kind === 'track' ? trackKey(p.id) : planKey(p.plan));
+    const plans = sortRoutes(searchPlans(all, query), sort, (p) => {
+      const st = statsFor(p);
+      return { at: p.updatedAt, id: p.id, m: st?.m ?? null, s: st?.s ?? null, up: st ? st.up : null };
+    });
     const recentAll = recentPlans().filter((r) => !live || (r.id !== live.recentId && r.points !== live.pointsKey));
     // exactly one row under Zuletzt (app 2923a3e7, owner 2026-11-12): the plan on the map, else the newest entry – searched like every row
     const recent = live ? [] : searchPlans(recentAll.slice(0, 1), query);
@@ -416,9 +444,10 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       : null;
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
-    search.closest<HTMLElement>('.plansearch')!.hidden = !all.length && !recentAll.length;
+    search.closest<HTMLElement>('.plansearch')!.hidden = chips.hidden = !all.length && !recentAll.length;
+    placeChips();
     const top = ul.scrollTop;
-    ul.innerHTML = plans.length || recent.length || liveItem ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('web_plans_none'))}</li>`;
+    ul.innerHTML = plans.length || recent.length || liveItem ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('routes_empty_planned'))}</li>`;
     if (recent.length || liveItem) {
       ul.append(sectionHead(t('routes_section_recent')));
       if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired, false));
@@ -432,8 +461,8 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const key = p.kind === 'track' ? trackKey(p.id) : planKey(p.plan);
       const marked = p.id === liveMarkedId;
       const it: Item = { section: 'saved', id: p.id, kind: p.kind === 'track' ? 'track' : 'plan', title: titleOf(p), at: p.updatedAt,
-        stats: statsOf(key), segs: shapeOf(key), code: p.plan ?? null, saved: p };
-      if (marked && live) { it.stats = live.stats ?? it.stats; it.segs = live.segs ?? it.segs; }
+        stats: statsFor(p), segs: shapeOf(key), code: p.plan ?? null, saved: p };
+      if (marked && live) it.segs = live.segs ?? it.segs;
       ul.append(row(it, rowActions('saved', it.kind, { liveMarked: marked, canSaveLive: !!live?.unsaved && !!live?.canSave }), folder, paired, marked));
     }
     // a route added on top is scrolled into view (the app's ListTop); otherwise the list stays where it was

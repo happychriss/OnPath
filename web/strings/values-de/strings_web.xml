@@ -113,7 +113,6 @@
     <string name="web_plans_sync_now">Jetzt abgleichen</string>
     <string name="web_sync_paired">Verbunden</string>
     <string name="web_saved_short">Gespeichert</string>
-    <string name="web_plans_none">Noch keine gespeicherten Pläne.</string>
     <string name="web_plans_open">Diesen Plan öffnen</string>
     <string name="web_plans_new_name">Neuer Name des Plans</string>
     <string name="web_keep">Behalten</string>
