@@ -610,6 +610,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
     dropped = {"cross": 0, "length": 0, "inner": 0}
     merge = W["score"]["selfcross_merge_m"]
 
+    full_cache = {}  # a connector searched in the whole network: once per pair of gates
+
     def realise(order, legs, want_extra, variant=0):
         """-> (nodes, edges, metres per patch visit). want_extra = {index in order: extra metres inside that patch}."""
         nodes, edges = [s], []
@@ -656,11 +658,21 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
                     # green way through another patch may be taken when it is not much longer (owner 2026-11-13:
                     # "der Rückweg durch Hassels, warum nicht durch den Hasseler Forst"; "warum durch Werne, es ist
                     # viel Grün drum rum"); ways already walked cost extra
+                    ck = (leg["gp"], leg["gq"])
+                    if GC["touch_cost_share"] <= 0 and ck in full_cache:
+                        r = full_cache[ck]
+                        if r is not None:
+                            ln_, le_ = r
+                        push(ln_, le_)
+                        g = leg["gq"]
+                        continue
                     if GC["touch_cost_share"] > 0:
                         avoid(leg["gp"])
-                    r = dij_to(G, leg["gp"], leg["gq"], cost, used, GC["used_penalty"],
+                    r = dij_to(G, leg["gp"], leg["gq"], cost, used if GC["touch_cost_share"] > 0 else None, GC["used_penalty"],
                                GC["reroute_limit"] * max(leg["cost"], 1.0) + AVOID["add"])
                     AVOID["nodes"] = None
+                    if GC["touch_cost_share"] <= 0:
+                        full_cache[ck] = r
                     if r is not None:
                         ln_, le_ = r
                 push(ln_, le_)

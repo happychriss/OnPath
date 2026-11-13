@@ -128,6 +128,12 @@ def ensure(lon, lat, reach_m, log=None):
         try:
             st = {tuple(int(v) for v in x["id"].replace("-", "/").split("/")[-2:]): x.get("state")
                   for x in status(todo).get("cells", [])}
+            # an area the server does not list is asked for, as the app does when one plans there; often it is ready
+            # at once (it exists, only not in the list), else the server builds it and a later request finds it
+            wait = [c for c in todo if st.get(c) != "ready"]
+            if wait and os.environ.get("SUGGEST_REQUEST_CELLS", "1") != "0":
+                for x in request(wait).get("cells", []):
+                    st[tuple(int(v) for v in x["id"].replace("-", "/").split("/")[-2:])] = x.get("state")
             for c in todo:
                 if st.get(c) == "ready":
                     get(c[0], c[1], log or (lambda *_: None))

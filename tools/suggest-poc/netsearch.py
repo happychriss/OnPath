@@ -103,18 +103,23 @@ class RoadGrid:
                 continue
             pts = [G.nodes[e[0]][:2]] + geom_of(e[6]) + [G.nodes[e[1]][:2]]
             for (x1, y1), (x2, y2) in zip(pts, pts[1:]):
-                n = max(1, int(S.dist((x1, y1), (x2, y2)) / 10.0))
+                n = max(1, int(math.hypot((x1 - x2) * 70000.0, (y1 - y2) * 111320.0) / 10.0))
                 for k in range(n + 1):
-                    cx = int((x1 + (x2 - x1) * k / n) / self.CX)
-                    cy = int((y1 + (y2 - y1) * k / n) / self.CY)
-                    for dx in (-1, 0, 1):
-                        for dy in (-1, 0, 1):
-                            key = (cx + dx, cy + dy)
-                            if self.cells.get(key, 0.0) < w:
-                                self.cells[key] = w
+                    key = (int((x1 + (x2 - x1) * k / n) / self.CX), int((y1 + (y2 - y1) * k / n) / self.CY))
+                    if self.cells.get(key, 0.0) < w:
+                        self.cells[key] = w
 
     def at(self, p):
-        return self.cells.get((int(p[0] / self.CX), int(p[1] / self.CY)), 0.0)
+        """The weight of a road within about one cell (12–25 m) of p."""
+        cx, cy = int(p[0] / self.CX), int(p[1] / self.CY)
+        g = self.cells.get
+        best = 0.0
+        for dx in (-1, 0, 1):
+            for dy in (-1, 0, 1):
+                v = g((cx + dx, cy + dy), 0.0)
+                if v > best:
+                    best = v
+        return best
 
     def beside(self, pts):
         """Weight of the road a way runs beside: at least two of its points at 1/4, 1/2, 3/4 lie at a road (a way
@@ -214,7 +219,9 @@ def mid_of(G, e):
     return [(na[0] + nb[0]) / 2, (na[1] + nb[1]) / 2]
 
 
-def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0):
+def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0, max_ln=None):
+    """max_ln: nodes further than this many metres along the found way are not expanded (a search from a turning
+    point needs only what a loop of the wished length can use)."""
     n = len(G.nodes)
     dist = [INF] * n
     ln = [0.0] * n
@@ -229,6 +236,8 @@ def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0):
             continue
         if u == stop:
             break
+        if max_ln is not None and ln[u] > max_ln:
+            continue
         for v, ei in adj[u]:
             c = cost[ei]
             if c < 0:
@@ -586,7 +595,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
     for sec, band, v, tname in alist:
         n1, e1 = path_to(prev0, pe0, v)
         used = walked(e1)
-        dA, pA, peA, lA = dijkstra(G, v, cost, pen=used, factor=N["used_penalty"])
+        dA, pA, peA, lA = dijkstra(G, v, cost, pen=used, factor=N["used_penalty"],
+                                   max_ln=N.get("anchor_search_len", 0.8) * target_m)
         info["searches"] += 1
         per_anchor.append((sec, band, v, tname, n1, e1, dA, pA, peA, lA))
         if dA[s] < INF:

@@ -116,7 +116,7 @@ def line(c):
                n.get("deep_pct", 0), n.get("green_km", "?"), n["street_pct"], n["main_longest_m"], n.get("roadside_pct", 0),
                n["doubled_pct"], n.get("self_cross", 0), n["signed_pct"],
                " | Bahntrasse %.1f km" % n["railtrail_km"] if n.get("railtrail_km") else "",
-               " | Ufer %.1f km" % n["bank_km"] if n.get("bank_km") else "", " | Abzug: " + fl if fl else ""))
+               " | Wasser %.1f km" % n["big_water_km"] if n.get("big_water_km") else "", " | Abzug: " + fl if fl else ""))
 
 
 def one(args):

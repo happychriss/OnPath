@@ -527,7 +527,7 @@ def numbers(c, wish, W, index=None, picks=None):
         uses[k] = uses.get(k, 0) + 1
     m = dict(forest_v=0.0, forest=0.0, noise_v=0.0, loud=0.0, river_v=0.0, street=0.0, big=0.0, paved=0.0,
              signed=0.0, signed_v=0.0, doubled=0.0, town=0.0, road_v=0.0, built=0.0, deep_v=0.0, rail=0.0, bank=0.0,
-             green=0.0)
+             green=0.0, bigbank=0.0)
     import nature as NA
     ND = W["nature"]
     reserves = {}
@@ -582,6 +582,9 @@ def numbers(c, wish, W, index=None, picks=None):
         at_bank = k not in "SG" and NA.water(e[0], ND.get("bank_radius_m", 90.0)) >= ND.get("bank_from", 0.04)
         if at_bank:
             m["bank"] += ln
+            # at big water – a lake, a wide river: much open water within big_water_radius_m (a pond, a brook: not)
+            if NA.water(e[0], ND.get("big_water_radius_m", 300.0)) >= ND.get("big_water_from", 0.08):
+                m["bigbank"] += ln
         if ND["enabled"]:  # large connected nature around this piece (forest, heath, protected area), 0..1
             dv = sum(NA.depth(e[0], r) for r in ND["radii_m"]) / len(ND["radii_m"])
             m["deep_v"] += ln * NA.value(dv, ND)
@@ -663,7 +666,7 @@ def numbers(c, wish, W, index=None, picks=None):
          "self_cross": cross, "roadside_pct": round(100 * m["road_v"] / total), "built_pct": round(100 * m["built"] / total),
          "deep_pct": round(100 * m["deep_v"] / total),
          "green_km": round(m["green"] / 1000.0, 1), "green_pct": round(100 * m["green"] / total),
-         "bank_km": round(m["bank"] / 1000.0, 1), "railtrail_km": round(m["rail"] / 1000.0, 1),
+         "bank_km": round(m["bank"] / 1000.0, 1), "big_water_km": round(m["bigbank"] / 1000.0, 1), "railtrail_km": round(m["rail"] / 1000.0, 1),
          "reserves": [[nm, round(v / 1000.0, 1)] for nm, v in sorted(reserves.items(), key=lambda x: -x[1]) if v >= 300][:3],
          "length_off_km": round(length_off_km(c, wish), 1),
          "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "views": views[:3],
@@ -693,7 +696,8 @@ def numbers(c, wish, W, index=None, picks=None):
         # … and the share walked directly at open water (the map's water shapes), full at bank_full_share; the
         # routing data's river class (which cannot tell the Rhine from a ditch) counts only river_class_factor
         "water": max(S.get("river_class_factor", 1.0) * min(1.0, m["river_v"] / total / S["water_full_at"]),
-                     min(1.0, m["bank"] / total / S.get("bank_full_share", 0.4)),
+                     min(1.0, (m["bigbank"] + S.get("small_water_factor", 0.5) * (m["bank"] - m["bigbank"])) / total
+                         / S.get("bank_full_share", 0.4)),
                      min(1.0, lake_m / max(S["lake_full_m"], S["lake_full_share"] * total))),
         "signed": min(1.0, m["signed_v"] / total / S["signed_full_at"]),
         "natural": 1 - m["paved"] / total,
@@ -925,6 +929,7 @@ def suggest(wish, W=None):
             notes.append("Für dieses Gebiet gibt es noch kein KI-Regionswissen – gerechnet wie ohne KI")
     t_attr = time.time() - t0
     method = wish.get("method", "auto")
+    timing = {"ziele": round(t_attr, 1)}
     net_info = None
     cands, tc = [], []
     if method == "auto":
@@ -933,10 +938,16 @@ def suggest(wish, W=None):
         # terrain decides which kind wins (mixed land: chains; one big forest: loops inside it)
         import netsearch as NS
         import greenchain as GCH
+        tt = time.time()
         G = NS.prepare(wish, W, kv, index, sys.modules[__name__], SERVICE)
+        timing["netz laden"] = round(G.t_graph, 1)
+        timing["wege bewerten"] = round(G.t_values, 1)
         if G.note:
             notes.append(G.note)
+        tt = time.time()
         b1, info_b, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks, G=G)
+        timing["netz-suche"] = round(time.time() - tt, 1)
+        tt = time.time()
         for c in b1:
             c["origin"] = "b"
         try:
@@ -951,8 +962,11 @@ def suggest(wish, W=None):
         net_info["chain"] = {k: v for k, v in info_c.items() if k not in ("chain_log",)}
         net_info["loops_kept"] = len(built)
         net_info["pool"] = {"b": len(b1), "c": len(c1)}
+        timing["grünstück-kette"] = round(time.time() - tt, 1)
+        tt = time.time()
         for c in built:
             numbers(c, wish, W, index, picks)
+        timing["benoten"] = round(time.time() - tt, 1)
     elif method == "b":
         import netsearch as NS
         built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
@@ -1049,26 +1063,50 @@ def suggest(wish, W=None):
     chosen.sort(key=lambda c: -c["score"])
     order = {id(c): i for i, c in enumerate(chosen)}
     built.sort(key=lambda c: (order.get(id(c), 99), -c["score"]))
-    # an explicit theme is always represented: with "am Wasser entlang" the shown loops include one made for a lake
-    # (along its shore) and, when one fits the wished time, a full round of a lake – even if loops elsewhere score
-    # higher or the round shares much with the shore loop
-    if wish["water"] >= W["select"].get("lake_slot_from_water", 2.0):
-        for want in ("ring", None):
-            if any(c.get("theme") == "lake" and (want is None or c.get("mode") == want) for c in chosen):
+    # "am Wasser entlang" is an explicit wish (owner 2026-11-13: "warum nicht am Wasser entlang?"): loops that really
+    # run at the water (a lake shore or a bank for at least water_min_km and water_min_share of the loop) are shown –
+    # up to water_slots of them, unless far behind (water_max_behind points) – and they stand first, even when a
+    # forest loop has more points; the run says so
+    def watery(c):
+        n = c["numbers"]
+        at = max(n.get("big_water_km", 0.0), sum(l[1] for l in n.get("lakes", [])))
+        return at >= max(SEL.get("water_min_km", 1.5), SEL.get("water_min_share", 0.15) * n["km"])
+
+    theme_water = wish["water"] >= SEL.get("lake_slot_from_water", 2.0)
+    if theme_water and chosen:
+        have = [c for c in chosen if watery(c)]
+        extra = [c for c in built if c["length_ok"] and not c.get("chosen") and watery(c)
+                 and c["score"] >= best_score - SEL.get("water_max_behind", 35.0)]
+        extra.sort(key=lambda c: -c["score"])
+        for c in extra:
+            if len(have) >= SEL.get("water_slots", 2):
+                break
+            if any(sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / c["len_m"] > SEL["max_shared"] for o in have):
                 continue
-            made = [c for c in built if c.get("theme") == "lake" and c["length_ok"] and not c.get("chosen")
-                    and (want is None or c.get("mode") == want)]
-            if made:
-                if len(chosen) >= W["select"]["show"]:
-                    drop = [c for c in chosen if c.get("theme") != "lake"][-1]
-                    drop["chosen"] = False
-                    chosen.remove(drop)
-                made[0]["chosen"] = True
-                chosen.append(made[0])
+            c["chosen"] = True
+            chosen.append(c)
+            have.append(c)
+            dry = [o for o in chosen if not watery(o)]
+            if len(chosen) > SEL["show"] and dry:
+                drop = min(dry, key=lambda o: o["score"])
+                drop["chosen"] = False
+                chosen.remove(drop)
+        if have and any(not watery(c) and c["score"] > min(h["score"] for h in have) for c in chosen):
+            notes.append("„Am Wasser entlang“ ist angekreuzt: Runden am Wasser stehen vorn, auch wenn eine andere mehr Punkte hat")
+        chosen.sort(key=lambda c: (0 if watery(c) else 1, -c["score"]))
+        order = {id(c): i for i, c in enumerate(chosen)}
+        built.sort(key=lambda c: (order.get(id(c), 99), -c["score"]))
+        for c in chosen:
+            if watery(c):
+                c["theme"] = "lake"
     if method in ("auto", "b", "c") and W["netsearch"]["router_check"]:
         import netsearch as NS
-        for c in chosen:  # each shown loop once through the real router: does BRouter confirm it?
-            c["numbers"].update(NS.router_check(c, wish, W, kv, sys.modules[__name__]))
+        tt = time.time()
+        # each shown loop once through the real router: does BRouter confirm it? (side by side)
+        with ThreadPoolExecutor(max(1, len(chosen))) as ex:
+            for c, upd in zip(chosen, ex.map(lambda c: NS.router_check(c, wish, W, kv, sys.modules[__name__]), chosen)):
+                c["numbers"].update(upd)
+        timing["router-prüfung"] = round(time.time() - tt, 1)
     out = []
     shown_names = set()
     for i, c in enumerate(built):
@@ -1114,7 +1152,7 @@ def suggest(wish, W=None):
     return {"run": run, "wish": wish, "weights_version": W["version"],
             "profile": W["routing"]["profile"], "profile_kv": kv,
             "main_road_max_m": int(W["score"]["main_road_max_m"] / (1.0 + W["score"]["main_road_natur"] * wish["forest"])), "seconds": round(time.time() - t0, 1),
-            "seconds_destinations": round(t_attr, 1), "method": method, "net": net_info,
+            "seconds_destinations": round(t_attr, 1), "timing": timing, "method": method, "net": net_info,
             "candidates_tried": net_info["loops_kept"] if net_info else len(cands) + len(tc), "notes": notes,
             "destinations": [{"kind": a["kind"], "name": a["name"], "km_away": round(a["d"] / 1000.0, 1)}
                              for a in sorted(attr, key=lambda a: a["d"]) if a["kind"] != "view"][:40],
@@ -1144,8 +1182,8 @@ def goals_text(n):
     t += ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("lakes", [])[:2]]
     if n.get("railtrail_km", 0) >= 1.0:
         t.append("%s km auf Bahntrasse" % ("%.1f" % n["railtrail_km"]).replace(".", ","))
-    if n.get("bank_km", 0) >= 1.0 and not n.get("lakes"):
-        t.append("%s km am Wasser" % ("%.1f" % n["bank_km"]).replace(".", ","))
+    if n.get("big_water_km", 0) >= 1.0 and not n.get("lakes"):
+        t.append("%s km am Wasser" % ("%.1f" % n["big_water_km"]).replace(".", ","))
     t += ["Aussicht: " + v for v in n.get("views", [])[:1]]
     t += ["%s km im Naturschutzgebiet %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("reserves", [])[:2]]
     if n.get("ferry_m"):
