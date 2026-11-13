@@ -71,8 +71,8 @@ check(await page.isEnabled('#undo') && await page.isDisabled('#redo'), 'undo pos
 {
   const pill = await page.locator('#undoPill').boundingBox(), top = await page.locator('#topbar').boundingBox();
   const u = await page.locator('#undo').boundingBox(), r = await page.locator('#redo').boundingBox();
-  check(pill && pill.y >= top.y + top.height + 4 && Math.abs(pill.x + pill.width - (top.x + top.width)) < 2 && r.y >= u.y + u.height - 1,
-    'the undo pill: under the bar, right-aligned with it, ↶ above ↷');
+  check(pill && pill.y >= top.y + top.height + 12 && Math.abs(pill.x + pill.width - (top.x + top.width)) < 2 && r.x >= u.x + u.width - 1 && Math.abs(r.y - u.y) < 1,
+    'the undo pill: under the bar, set a little apart, right-aligned with it, ↶ left of ↷ in one row (owner 2026-11-13)');
 }
 await clickAt(11.1350, 46.6840);
 await planned();
@@ -373,8 +373,8 @@ check((await Promise.all(['#eye', '#compass', '#locate', '#mapContent'].map((s) 
 check(await page.evaluate(() => { const p = document.getElementById('undoPill'), b = document.getElementById('topbar').getBoundingClientRect();
   if (p.hidden) return document.getElementById('undo').disabled && document.getElementById('redo').disabled; // nothing to undo → no pill
   const r = p.getBoundingClientRect(), s = document.getElementById('sheet').getBoundingClientRect();
-  if (document.body.classList.contains('undo-crowded')) return r.width === 0 && s.top < b.bottom + 124; // the sheet is up: the pill steps back
-  return r.top >= b.bottom && Math.abs(r.right - b.right) < 2 && r.width === 52 && r.bottom <= s.top; }),
+  if (document.body.classList.contains('undo-crowded')) return r.width === 0 && s.top < b.bottom + 76; // the sheet is up: the pill steps back
+  return r.top >= b.bottom + 12 && Math.abs(r.right - b.right) < 2 && r.width === 104 && r.height === 52 && r.bottom <= s.top; }),
   'phone: the undo pill under the bar\'s right end, clear of the sheet (or hidden: nothing to undo / the sheet pulled up)');
 await page.click('#menuBtn');
 const pm = await page.$$eval('#mainMenu .pb', (bs) => bs.filter((b) => b.getClientRects().length > 0).map((b) => b.id || 'link'));

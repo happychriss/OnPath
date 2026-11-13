@@ -2103,7 +2103,7 @@ $('langSwitch').addEventListener('click', (e) => {
 /** Phone: the bottom sheet pulled up past the undo pill hides the pill (the app's column steps back in the points step). */
 function placeUndoPill() {
   const bar = $('topbar').getBoundingClientRect(), sheet = $('sheet').getBoundingClientRect();
-  const crowded = matchMedia('(max-width: 700px)').matches && sheet.height > 0 && sheet.top < bar.bottom + 12 + 104 + 8;
+  const crowded = matchMedia('(max-width: 700px)').matches && sheet.height > 0 && sheet.top < bar.bottom + 16 + 52 + 8;
   document.body.classList.toggle('undo-crowded', crowded);
 }
 new ResizeObserver(() => {
