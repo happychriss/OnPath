@@ -1519,6 +1519,7 @@ class ScreenshotTest {
 
     /** My routes → ⋮ → Save as copy: the same dialog, titled "Save as copy", proposing "<name> (2)". */
     fun planSaveCopyDialog() = paparazzi.snapshot {
+        previewLines(tourList) // the rows behind the dialog the same in every test order
         OnPathTheme {
             RoutesScreen(tourList, {}, {}, {}, {}, {})
             SaveNameDialog(SaveAsk.Kind.COPY, "Route Meran – Hirzer (2)", {}, {})
