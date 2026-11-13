@@ -74,6 +74,8 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   'syncOutboxOf', 'syncHelloAs', 'syncPeek', 'syncJoinBlob', 'syncHelloId', 'syncRebase', 'syncSaveTrack', 'syncTrackFit', 'syncTrackGpx',
   // moving tours between folders is not an edit (owner 2026-11-12): never stamped newer
   'syncTake',
+  // My routes (owner 2026-11-13): the star (field 9) and a Zuletzt draft's activity line
+  'syncSetFavourite', 'syncPlanFacts',
   // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
   'syncSaveRouted', 'routingInfo',
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)

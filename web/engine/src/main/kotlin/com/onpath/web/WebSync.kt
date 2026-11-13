@@ -38,9 +38,11 @@ object WebSync {
     fun newDevice(random: String): String = b64(random).takeIf { it.size >= SyncFormat.DEVICE_BYTES }?.let(SyncFormat::newDevice) ?: ""
 
     /**
-     * Saved plans and imported tracks, newest first: [{id, kind, title, plan, track, updatedAt, device, mine, dirty, onPhone}]
+     * Saved plans and imported tracks, newest first: [{id, kind, title, plan, track, updatedAt, device, mine, dirty, onPhone,
+     * favourite, activity, sac, roundTrip}]
      * ([kind] "plan" / "track", [mine] = last changed on this device, [device] = who changed it last, [dirty] = not in
-     * the mailbox in this version yet – what Save sends, [onPhone] = a version of it is in the mailbox: web-sync.md §14.6).
+     * the mailbox in this version yet – what Save sends, [onPhone] = a version of it is in the mailbox: web-sync.md §14.6;
+     * [favourite] = sync field 9, not said = false (§5.3); [activity] / [sac] / [roundTrip] = [factsFields], for My routes' row).
      */
     fun list(ledger: String, device: String): String {
         val l = SyncLedger.read(ledger)
@@ -51,8 +53,49 @@ object WebSync {
                 ",\"updatedAt\":" + it.updatedAt + ",\"device\":" + str(it.device) + ",\"mine\":" + (it.device == device) +
                 ",\"dirty\":" + (e?.dirty ?: false) + ",\"onPhone\":" + ((e?.rev ?: 0L) > 0L) +
                 ",\"routing\":" + (it.routing?.let(::str) ?: "null") + ",\"routingData\":" + (it.routingData?.let(::str) ?: "null") +
-                ",\"otherRouting\":" + otherRouting(it, device) + "}"
+                ",\"otherRouting\":" + otherRouting(it, device) + ",\"favourite\":" + (it.favourite ?: false) + "," + factsFields(it) + "}"
         }
+    }
+
+    /**
+     * What My routes' row says of a plan or track besides its name (owner 2026-11-13): its activity (the enum name, null
+     * = unreadable), the T level and "↻ Rundtour" – the app's ui/routes/RoundTrip (not shared: it reads the app's Tour):
+     * a plan is a round trip when its points end at its start ([PlanEdits.isRoundTrip], the plan sheet's ↻ rule: certain);
+     * an imported track has no plan to ask – a guess from its line ([roundTripGuess]).
+     */
+    private fun factsFields(it: SyncItem): String {
+        var act: com.onpath.app.routing.Activity? = null
+        var sac = 0
+        var loop = false
+        if (it.kind == SyncItem.TRACK) {
+            TrackCode.of(it.track ?: "")?.let { t ->
+                act = t.activity; sac = t.sac
+                loop = roundTripGuess(t.segments.flatten().map { p -> com.onpath.app.routing.GeoPoint(p.lat, p.lon) })
+            }
+        } else {
+            com.onpath.app.routing.PlanCode.parse(it.plan ?: "")?.let { p ->
+                act = p.activity; sac = p.sac; loop = com.onpath.app.routing.PlanEdits.isRoundTrip(p.points)
+            }
+        }
+        return "\"activity\":" + (act?.name?.let(::str) ?: "null") + ",\"sac\":" + sac + ",\"roundTrip\":" + loop
+    }
+
+    /** [factsFields] of a plan code alone (a Zuletzt draft, kept in this browser – no sync item): {activity, sac, roundTrip}. */
+    fun planFacts(plan: String): String {
+        val p = com.onpath.app.routing.PlanCode.parse(plan) ?: return "{\"activity\":null,\"sac\":0,\"roundTrip\":false}"
+        return "{\"activity\":" + str(p.activity.name) + ",\"sac\":" + p.sac + ",\"roundTrip\":" +
+            com.onpath.app.routing.PlanEdits.isRoundTrip(p.points) + "}"
+    }
+
+    /**
+     * The app's RoundTrip.guess on a line: ≥ 3 points, it ends within RouteNamer.LOOP_M (200 m) of its start and went at
+     * least RouteNamer.OUT_M (500 m) away (the rule that names a track "Rundtour ab …"); a short ride back home is none.
+     */
+    internal fun roundTripGuess(pts: List<com.onpath.app.routing.GeoPoint>): Boolean {
+        if (pts.size < 3) return false
+        val start = pts.first()
+        return com.onpath.app.data.Geo.distance(start, pts.last()) <= com.onpath.app.search.RouteNamer.LOOP_M &&
+            pts.any { com.onpath.app.data.Geo.distance(start, it) >= com.onpath.app.search.RouteNamer.OUT_M }
     }
 
     /** The other devices: [{name, device, updatedAt}], newest first. */
@@ -130,6 +173,13 @@ object WebSync {
 
     fun rename(ledger: String, id: String, title: String, now: Double, device: String): String =
         SyncLedger.read(ledger).also { it.rename(id, title.ifBlank { null }, now.toLong(), device) }.write()
+
+    /**
+     * Stars a saved plan or track or takes the star away (owner 2026-11-13, the shared [SyncLedger.setFavourite]): an
+     * edit like [rename] – on a version already in the mailbox a star-only one (field 10), so a star never makes a copy.
+     */
+    fun setFavourite(ledger: String, id: String, favourite: Boolean, now: Double, device: String): String =
+        SyncLedger.read(ledger).also { it.setFavourite(id, favourite, now.toLong(), device) }.write()
 
     fun delete(ledger: String, id: String, now: Double, device: String): String =
         SyncLedger.read(ledger).also { it.delete(id, now.toLong(), device) }.write()

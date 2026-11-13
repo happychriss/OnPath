@@ -195,8 +195,11 @@ travels with it. One optional field for **kind 1 (plan) and kind 3 (track)** ite
 - **Phone:** `tours.favourite` (schema 8); export writes the tour's star (`save(..., t.favourite)`, `setFavourite` when only
   the star differs); import sets the tour's star when the item says one (null = keeps its own), a star alone gives no
   "Changed" tag. Also kept in the GPX backup record ("favourite": true) – not part of the sync.
-- **Browser (to do, laptop):** `WebSync.list` adds `"favourite": true|false` (null → false); a `syncSetFavourite(ledger,
-  id, star, now, device)` call; the page shows / toggles the star (its UI is the laptop's).
+- **Browser (laptop, 2026-11-13, built):** `WebSync.list` adds `"favourite": true|false` (null → false); `syncSetFavourite(ledger,
+  id, star, now, device)` (`WebSync.setFavourite` = the shared `SyncLedger.setFavourite`); sync.ts `PlanSync.setFavourite`
+  like rename – stored at once, sent with Save; the star per row in Meine Touren (web-planner.md §29). Tests:
+  `WebSyncFavouriteTest`, sync-smoke 16b (phone ★ → browser, browser ★ → phone with Save, a star meeting the phone's
+  rename: one route, no copy).
 - Tested: `PlanSyncTest.favouriteFieldIsFrozenAndOptional` / `anOldReaderSkipsTheStar` / `starOnlyOnLivePlansAndTracks` /
   `aStarIsContentNotSaidIsNoStar`, `CorePlanSyncTest.aStarTravelsBothWaysWithoutATagOrAnEcho` /
   `aStarredRouteFromTheBrowserArrivesStarred` / `anOlderPageNeverTakesAStarAwayAndNoRouteGoesUpAgain` /
