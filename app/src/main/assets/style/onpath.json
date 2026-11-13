@@ -1162,6 +1162,181 @@
    }
   },
   {
+   "id": "routes-hike",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 12.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "majoronly"
+     ]
+    ],
+    [
+     "all",
+     [
+      "<=",
+      [
+       "coalesce",
+       [
+        "get",
+        "sac"
+       ],
+       0
+      ],
+      3
+     ],
+     [
+      "!",
+      [
+       "has",
+       "hx"
+      ]
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     "#168403",
+     14.5,
+     "#9cc78f"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     9.0,
+     1.0,
+     12.0,
+     1.6,
+     13.5,
+     2.2,
+     14.5,
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ]
+   }
+  },
+  {
+   "id": "routes-hike-over",
+   "type": "line",
+   "source": "routes",
+   "minzoom": 12.5,
+   "filter": [
+    "all",
+    [
+     "==",
+     [
+      "get",
+      "kind"
+     ],
+     "hike"
+    ],
+    [
+     "!",
+     [
+      "has",
+      "majoronly"
+     ]
+    ],
+    [
+     "any",
+     [
+      ">",
+      [
+       "coalesce",
+       [
+        "get",
+        "sac"
+       ],
+       0
+      ],
+      3
+     ],
+     [
+      "has",
+      "hx"
+     ]
+    ]
+   ],
+   "layout": {
+    "line-join": "round",
+    "line-cap": "round",
+    "visibility": "visible"
+   },
+   "paint": {
+    "line-color": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     "#6f6f6f",
+     14.5,
+     "#acaba7"
+    ],
+    "line-width": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     9.0,
+     1.0,
+     12.0,
+     1.6,
+     13.5,
+     2.2,
+     14.5,
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ]
+   }
+  },
+  {
    "id": "road-service-casing",
    "type": "line",
    "source": "base",
@@ -2679,181 +2854,6 @@
    }
   },
   {
-   "id": "routes-hike",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 12.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "hike"
-    ],
-    [
-     "!",
-     [
-      "has",
-      "majoronly"
-     ]
-    ],
-    [
-     "all",
-     [
-      "<=",
-      [
-       "coalesce",
-       [
-        "get",
-        "sac"
-       ],
-       0
-      ],
-      3
-     ],
-     [
-      "!",
-      [
-       "has",
-       "hx"
-      ]
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13.5,
-     "#168403",
-     14.5,
-     "#9cc78f"
-    ],
-    "line-width": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     9.0,
-     1.0,
-     12.0,
-     1.6,
-     13.5,
-     2.2,
-     14.5,
-     8.25,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
-    ]
-   }
-  },
-  {
-   "id": "routes-hike-over",
-   "type": "line",
-   "source": "routes",
-   "minzoom": 12.5,
-   "filter": [
-    "all",
-    [
-     "==",
-     [
-      "get",
-      "kind"
-     ],
-     "hike"
-    ],
-    [
-     "!",
-     [
-      "has",
-      "majoronly"
-     ]
-    ],
-    [
-     "any",
-     [
-      ">",
-      [
-       "coalesce",
-       [
-        "get",
-        "sac"
-       ],
-       0
-      ],
-      3
-     ],
-     [
-      "has",
-      "hx"
-     ]
-    ]
-   ],
-   "layout": {
-    "line-join": "round",
-    "line-cap": "round",
-    "visibility": "visible"
-   },
-   "paint": {
-    "line-color": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     13.5,
-     "#6f6f6f",
-     14.5,
-     "#acaba7"
-    ],
-    "line-width": [
-     "interpolate",
-     [
-      "linear"
-     ],
-     [
-      "zoom"
-     ],
-     9.0,
-     1.0,
-     12.0,
-     1.6,
-     13.5,
-     2.2,
-     14.5,
-     8.25,
-     15,
-     9.5,
-     16,
-     12,
-     18,
-     17
-    ]
-   }
-  },
-  {
    "id": "routes-bike-over",
    "type": "line",
    "source": "routes",
@@ -3986,7 +3986,7 @@
    "maxzoom": 12.5
   },
   {
-   "id": "routes-hike-low",
+   "id": "routes-hike-tint",
    "type": "line",
    "source": "routes",
    "minzoom": 12.5,
@@ -4064,13 +4064,31 @@
      13.5,
      2.2,
      14.5,
-     0
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     1,
+     14.5,
+     0.5
     ]
-   },
-   "maxzoom": 14.5
+   }
   },
   {
-   "id": "routes-hike-over-low",
+   "id": "routes-hike-over-tint",
    "type": "line",
    "source": "routes",
    "minzoom": 12.5,
@@ -4145,10 +4163,28 @@
      13.5,
      2.2,
      14.5,
-     0
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     1,
+     14.5,
+     0.5
     ]
-   },
-   "maxzoom": 14.5
+   }
   },
   {
    "id": "routes-hike-over-label",
@@ -4654,7 +4690,7 @@
    }
   },
   {
-   "id": "routes-bike-over-low",
+   "id": "routes-bike-over-tint",
    "type": "line",
    "source": "routes",
    "minzoom": 9,
@@ -4715,10 +4751,28 @@
      13.5,
      2.2,
      14.5,
-     0
+     8.25,
+     15,
+     9.5,
+     16,
+     12,
+     18,
+     17
+    ],
+    "line-opacity": [
+     "interpolate",
+     [
+      "linear"
+     ],
+     [
+      "zoom"
+     ],
+     13.5,
+     1,
+     14.5,
+     0.5
     ]
-   },
-   "maxzoom": 14.5
+   }
   },
   {
    "id": "routes-bike-major-low-halo-bikeview",
