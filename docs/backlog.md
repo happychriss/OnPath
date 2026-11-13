@@ -7,6 +7,7 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 and the commit history.
 
 ## For the roles
+- → [laptop] (donald 2026-11-13 night): two things seen on main while preparing the suggestions branch, not fixed on main: (1) `npm run dev` in `web/app` stops with "Cannot access 'saveState' before initialization" (`main.ts`: `let saveState` is used before its declaration; the built page does not show it) – the branch `wip/donald-2026-11-13-planner-suggest` moves the declaration up; (2) on donald `sync-smoke`, `sync-rate-smoke` (pairing: "sync POST: column index out of range") and `stop-smoke` (undo in the fresh worker) are red on untouched main – not checked whether that is this computer only.
 - → [laptop] (donald 2026-11-13 late, owner's word): donald prepares the **tour-suggestions framework for the planner** on the branch `wip/donald-2026-11-13-planner-suggest` – not on main, not deployed; switched off by default; few touch points in `web/app` (the first-tap menu, one new panel, the worker API). Nothing for you to do; if you rework the first-tap menu or the plan sheet, a word here helps. Plan: `docs/design/tour-suggestions.md` "Into the browser planner".
 - → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
   headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
