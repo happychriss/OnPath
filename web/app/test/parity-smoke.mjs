@@ -267,13 +267,13 @@ const myRow = await page.evaluate(() => { const li = document.querySelector('#pl
 check(myRow.name === 'Test loop' && myRow.live === 'Test loop' && JSON.stringify(myRow.liveTags) === '["In progress","Saved"]' && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
   && JSON.stringify(myRow.menu) === '["Plan","Rename","Save as copy","Export GPX","Share plan","Delete"]',
   `My routes: the row "Test loop", the open one under Recent ("In progress" + "Saved"), 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
-// length and climb in the row (owner 2026-11-06, planstats.ts): the sheet's distance, ↑ / ↓ in metres; right of the name
+// length and climb in the row (owner 2026-11-06, planstats.ts): the sheet's distance, ↑ / ↓ in metres; under the name and the activity line, as the app's L1 row (2026-11-13)
 {
   const st = await page.evaluate(() => { const li = document.querySelector('#planList li[data-id]'), s = li.querySelector('.stats');
     const n = li.querySelector('.name').getBoundingClientRect(), r = s?.getBoundingClientRect();
-    return { text: s?.textContent ?? null, dist: document.querySelector('#summary .dist')?.textContent ?? '', sameLine: !!r && Math.abs(r.top - n.top) < 12 && r.left > n.left }; });
-  check(st.text !== null && st.text.startsWith(st.dist + ' · ↑ ') && /↑ \d+ m ↓ \d+ m$/.test(st.text) && st.sameLine,
-    `My routes: length and climb right of the name, "${st.text}" (sheet: ${st.dist})`);
+    return { text: s?.textContent ?? null, dist: document.querySelector('#summary .dist')?.textContent ?? '', below: !!r && r.top > n.bottom - 1 }; });
+  check(st.text !== null && st.text.startsWith(st.dist + ' · ↑ ') && /↑ \d+ m ↓ \d+ m$/.test(st.text) && st.below,
+    `My routes: length and climb under the name (the app's L1), "${st.text}" (sheet: ${st.dist})`);
 }
 await page.click('#closePlans');
 if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites; My routes ⋮ → Save as copy makes a copy

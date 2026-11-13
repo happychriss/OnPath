@@ -237,10 +237,10 @@ check(savedAfter === savedBefore + 1 && await recentN() === recent0 && (await pa
   `Recent → Save: a saved plan (${savedBefore} → ${savedAfter}), out of Recent, "✓ Just saved"`);
 // the saved row: the clean list – its line with ⤢, ›, every action in ⋮ with Plan first (the app's RouteRowActions)
 const sv = await page.evaluate(() => { const li = document.querySelector('dialog.plans li.tourrow.saved');
-  return { line: !!li.querySelector('.tile svg path'), chev: !!li.querySelector('.chev'), acts: li.querySelectorAll('.rowacts button').length,
+  return { line: !!li.querySelector('.tile svg path, .tile img.thumb'), chev: !!li.querySelector('.chev'), acts: li.querySelectorAll('.rowacts button').length,
     menu: [...li.querySelectorAll('.rowmenu button')].map((b) => b.textContent.trim()) }; });
-check(sv.line && sv.chev && sv.acts === 0 && JSON.stringify(sv.menu) === '["Plan","Rename","Save as copy","Export GPX","Share plan","Delete"]',
-  `a saved row: line, ›, no buttons on the row, ⋮ Plan · Rename · Save as copy · Export GPX · Share plan · Delete (${JSON.stringify(sv)})`);
+check(sv.line && !sv.chev && sv.acts === 0 && JSON.stringify(sv.menu) === '["Plan","Rename","Save as copy","Export GPX","Share plan","Delete"]',
+  `a saved row: line, no › (the app's L1), no buttons on the row, ⋮ Plan · Rename · Save as copy · Export GPX · Share plan · Delete (${JSON.stringify(sv)})`);
 await page.click('#closePlans');
 
 // 2. ☰ → Import GPX (Komoot hike) while the activity is Bike

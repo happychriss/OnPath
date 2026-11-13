@@ -177,7 +177,7 @@ await openList();
 sec = await sections();
 check(sec.recent.length === 1 && sec.recent[0].live && JSON.stringify(sec.recent[0].tags) === '["In progress","Saved"]' && !sec.recent[0].save,
   `the open saved route: the Recent row with "In progress" + "Saved", no Save (${JSON.stringify(sec.recent)})`);
-check(sec.saved.some((r) => r.name === 'My Waalweg' && r.chev && r.more && !r.tags.includes('In progress')), `… and under Saved its plain row (›, ⋮) (${JSON.stringify(sec.saved)})`);
+check(sec.saved.some((r) => r.name === 'My Waalweg' && !r.chev && r.more && !r.tags.includes('In progress')), `… and under Saved its plain row (⋮, no › – the app's L1) (${JSON.stringify(sec.saved)})`);
 await page.click('#closePlans');
 // + New on the saved route as it is: no draft – the saved route holds the place („Saved“, also under Saved)
 await page.click('#newPlan');
@@ -192,7 +192,7 @@ const placeRow = async () => {
   return x;
 };
 sec = await placeRow();
-check(sec.recent.length === 1 && sec.recent[0].name === 'My Waalweg' && JSON.stringify(sec.recent[0].tags) === '["Saved"]' && !sec.recent[0].live && sec.recent[0].chev
+check(sec.recent.length === 1 && sec.recent[0].name === 'My Waalweg' && JSON.stringify(sec.recent[0].tags) === '["Saved"]' && !sec.recent[0].live && !sec.recent[0].chev
   && sec.saved.some((r) => r.name === 'My Waalweg'), `empty map: Recent = the saved route with "Saved", under Saved too (${JSON.stringify(sec)})`);
 await page.reload();
 await ready();

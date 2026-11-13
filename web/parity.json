@@ -3,9 +3,12 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text)",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none)",
       "web": [
-        "web/app/src/activity.ts"
+        "web/app/src/activity.ts",
+        "web/app/src/plans.ts",
+        "web/app/src/routefilter.ts",
+        "web/app/src/style.css"
       ],
       "blob": "d0eec1c408d2489535ed30ae707567b729d3f307"
     },
@@ -328,13 +331,74 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RoutesState.kt",
-      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time)",
+      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time); open: Neueste zuerst at each opening (no stored sort – plans.ts openSort)",
       "web": [
         "web/app/src/recent.ts",
         "web/app/src/main.ts",
         "web/app/src/plans.ts"
       ],
-      "blob": "4048d54328eea0f128aa3516bb3f9616a0685393"
+      "blob": "1fda7c4c2bdef0e0f6c8a743dee06bf7c1427ced"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RouteThumbImages.kt",
+      "what": "pictures in memory capped by decoded bytes (8 MB, w × h × 4), the row shows its line until the picture is read",
+      "web": [
+        "web/app/src/routethumbs.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "83f809ac54df47e50d289bdc6c4cb2f0fd8d1ff2"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/RouteSnapshot.kt",
+      "what": "withoutNetworks (every routes-* layer and the routes data) and withLine (casing / line width × LINE_SCALE) for the map pictures",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "a4a5348d6f4af116eb5aa256e6c6069848576fdc"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/ThumbMaker.kt",
+      "what": "one picture at a time with a pause, QUALITY 82 WebP, start (line colour) + goal (red) dots in a white ring, a failure keeps the drawn line and is not tried again this run",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "844d700e65c272a9a9b7fe8139ef94d82136febf"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/RouteThumbs.kt",
+      "what": "ThumbRules: VERSION, TILE_DP 84, MARGIN, marker sizes, LINE_SCALE, region (square in Web Mercator) / project – the web keys pictures by line, not by sig / lineKey",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "3504e3b4fcc8c32723da715c05609b7966487e6c"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RoundTrip.kt",
+      "what": "„↻ Rundtour“: a plan = PlanEdits.isRoundTrip on its points; a track = the guess from its line (RouteNamer.LOOP_M / OUT_M)",
+      "web": [
+        "web/engine/src/main/kotlin/com/onpath/web/WebSync.kt",
+        "web/app/src/routefilter.ts"
+      ],
+      "blob": "2269e2c01c15f2c3af95409864273c26f7d45124"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/ActivityFilter.kt",
+      "what": "activity filter: MENU order, exactly the chosen activity, „Alle“ under a line, preset with the planning activity at each opening, every choice filters at once, the chip's spoken text",
+      "web": [
+        "web/app/src/routefilter.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "5154e78389808a8a62352d1d9191e5cdf137b76d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/Favourites.kt",
+      "what": "the star on a saved row (gold = favourite, its spoken texts) and the „☆ Favoriten“ pill first in the chips (only favourites; Zuletzt always shows; kept while the page is open)",
+      "web": [
+        "web/app/src/routefilter.ts",
+        "web/app/src/plans.ts",
+        "web/app/src/style.css"
+      ],
+      "blob": "fb75c81796e21ca2cfa0ef0cd70eb6631b9c5be4"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/BackupScreens.kt",

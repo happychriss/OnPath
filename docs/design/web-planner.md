@@ -1097,3 +1097,38 @@ Replaces §23's „newest 25 / newest 3“ and §25's „In Bearbeitung on the s
   the sheet taller than the screen squeezed `#pointsSection` to its 96 px minimum – one row, the goal hidden inside the
   list. On a phone the open sheet now scrolls as one and the list keeps every row (`style.css`, end). Test:
   phonelink-smoke 2b (412 × 760 / 640, DE) and 1 (every row inside the list and the sheet).
+
+## 29. Meine Touren = the app's My routes of 2026-11-13: favourites, map pictures, activity filter (laptop, 2026-11-13)
+Owner 2026-11-13: „Die Favoriten sind wirklich wichtig“ – the planner follows the app's My routes exactly (app 238cc3bd,
+e72fb540 / c543cd5a, 21c0eac1, 725b68e9 / 6ba34792, 21dcc5f5 / de1afd21, 870bff05, 82167d11). Replaces §25's row look.
+- **The row (L1)**: an 84 px map tile, the name, the activity line („🚶 Wandern · T2“, then „· ↻ Rundtour“), the facts;
+  ⋮ over the star; no ›. 🖥 / 📱 stay (the planner's own). The plan on the map has no activity line and no star (the app's
+  live row carries none); a Zuletzt draft has its activity line (engine `syncPlanFacts`) but no star.
+- **Favourites**: the star on every saved row (Zuletzt's saved row too) – one tap, stored at once in the folder's ledger
+  (sync field 9, `PlanSync.setFavourite`), sent with Save like a rename; a star never makes a copy (the shared ledger's
+  star-only version). „☆ Favoriten“ first in the chips: only the starred saved routes; kept while the page is open (the
+  app: while it runs). „Noch keine Favoriten. Tippe auf ☆ bei einer Tour.“ when nothing is left.
+- **Activity filter** (`routefilter.ts` = Favourites.kt + ActivityFilter.kt): the chip after Favoriten, preset with the
+  planning activity at every opening; its menu the six (radio) and „Alle“ under a line; exactly that activity (E-Bike only
+  E-Bike); every choice filters at once; „Keine Touren „E-Bike“ hier.“ when none fits. `syncList` returns `activity` /
+  `sac` / `roundTrip` (WebSync.factsFields: the plan code's / track's activity; round trip = PlanEdits.isRoundTrip on a
+  plan's points, a track's guess from its line with RouteNamer's 200 m / 500 m – the app's RoundTrip).
+- **Zuletzt shows whatever the filters**; each opening: Neueste zuerst (no sort kept any more – `onpath.routesSort` is
+  no longer read or written) and the planning activity; a list that comes back by itself (a copy, a Zuletzt save) keeps
+  the choices.
+- **Map pictures** (`routethumbs.ts` = ThumbRules / ThumbMaker / RouteSnapshot.withoutNetworks / RouteThumbImages): one
+  MapLibre map off screen (84 × 84 CSS px at the screen's ratio, `preserveDrawingBuffer`), the main map's current style
+  reduced to the style's own layers (no plan, no profile) minus every `routes-*` layer and the `routes` source; the region
+  square in Web Mercator with 14 % + a marker free (the whole route with its ends); the line 3.6 px in a 6 px casing in
+  plan blue; start / goal dots in a white ring drawn on a 2D canvas; WebP 0.82. One at a time, 150 ms pause, the map
+  removed 20 s after the last picture; a picture waits at most 30 s for the map (the app 15 s offline – the browser loads
+  tiles first); a failure → Problems, the row keeps its drawn line (not tried again until a reload). Kept by line
+  (`v2|planKey/trackKey|hash of the kept line`): memory 8 MB decoded, IndexedDB `onpath-thumbs` 4 MB, least recently used
+  out. The list never waits: the drawn line shows until the picture is there; a route this browser has no line for keeps
+  the kind's sign (no picture – the list never routes). No large overview (§25). Closing Meine Touren stops the
+  picture being made and removes the off-screen map at once (it draws frame after frame on the page's thread while its
+  tiles load). Automated browsers make pictures only with `window.__thumbsOn` (like `__reveal`): swiftshader's software
+  GL starved the other smokes' frames for seconds (first picture ~12 s with the map's start, then 0.7–1 s each).
+- Tests: `WebSyncFavouriteTest` (engine), sync-smoke 16b (both ways, no copy), `test/routes-smoke.mjs` (chips, filter,
+  star, activity line, pictures from memory / IndexedDB, no networks, Zuletzt unfiltered, EN + DE, screenshots desktop +
+  Pixel 7; in check-web.sh with the cell store), sort-smoke (each opening Newest first), zuletzt / import (no ›).

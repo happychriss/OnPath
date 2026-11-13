@@ -23,6 +23,7 @@ import { setupSearch, type PlaceCard, type PlaceRole } from './search';
 import { NO_PADDING, roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
+import { RouteThumbs } from './routethumbs';
 import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
@@ -261,9 +262,12 @@ if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 installDiag(DEBUG); // the problem log, window.__diag(), ?debug → "Copy diagnostics" (diag.ts)
 watchVersion(); // a newer planner deployed while this tab is open: one box "New version of the planner" [Reload] (version.ts)
 addDiagSection(() => `build: ${BUILD}`);
+const baseStyle = await loadStyle();
+/** The style's own sources and layers – what Meine Touren's map pictures draw (routethumbs.ts), never the page's additions. */
+const baseIds = { sources: new Set(Object.keys(baseStyle.sources)), layers: new Set(baseStyle.layers.map((l) => l.id)) };
 const map = new maplibregl.Map({
   // start view: ?at=lon,lat,zoom, else the build's VITE_START (preview), else Meran
-  container: 'map', style: await loadStyle(), center: [startAt[0], startAt[1]], zoom: startAt[2],
+  container: 'map', style: baseStyle, center: [startAt[0], startAt[1]], zoom: startAt[2],
   attributionControl: false, maxPitch: 0, // like the app: turn yes, tilt no
 });
 (window as unknown as { __viewText: () => string }).__viewText = () => { // read by i18n.switchLanguage before it reloads
@@ -1857,7 +1861,24 @@ async function keepAsRecent(why: string) {
 /** The saved plan just made from a Zuletzt entry: Meine Touren shows „✓ Gerade gespeichert“ on it. */
 let justSavedFromRecent: string | null = null;
 function forgetSaved() { state.savedId = null; state.savedTitle = null; state.savedCode = null; state.savedFolder = null; state.storedCode = null; }
+/**
+ * Meine Touren's map pictures (routethumbs.ts, the app's My routes L1): drawn on the map's style as it is now (the cells'
+ * current tile addresses, the activity's look), without what the page adds (the plan, POIs, the profile).
+ */
+const routeThumbs = new RouteThumbs(() => {
+  let s: StyleSpecification | undefined;
+  try { s = map.getStyle(); } catch { return null; } // expected: the style is still being read – tried again with the next list
+  if (!s?.layers?.length) return null;
+  s.layers = s.layers.filter((l) => baseIds.layers.has(l.id));
+  for (const k of Object.keys(s.sources)) if (!baseIds.sources.has(k)) delete s.sources[k];
+  return s;
+});
+(window as unknown as { __thumbs: RouteThumbs }).__thumbs = routeThumbs; // for the browser tests
 const plansHost = {
+  thumbs: routeThumbs,
+  /** The planning activity (the activity filter's preset each time Meine Touren opens) and the six with their names. */
+  activity: () => state.activity,
+  activityRows: () => picker.allRows(),
   current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
   linkTitle: () => (linkTitle && linkTitle.at === enc(state.points) ? linkTitle.title : null),
   openId: () => state.savedId,
@@ -2078,7 +2099,7 @@ const gpxImport = setupGpxImport({
   },
 });
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
-(window as unknown as { __planStats: unknown }).__planStats = { keepStats, planKey, trackKey }; // for the browser tests (sort-smoke)
+(window as unknown as { __planStats: unknown }).__planStats = { keepStats, planKey, trackKey, keepShape }; // for the browser tests (sort-smoke, routes-smoke)
 $('credits').onclick = () => credits();
 $('changedLine').onclick = () => { changedSeen = state.plan; $('changedLine').hidden = true; fitRoute(); }; // the app's tapRouteChangedLine
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };

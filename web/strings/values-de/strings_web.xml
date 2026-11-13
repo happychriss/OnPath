@@ -158,6 +158,7 @@
     <string name="web_save_failed">Nicht gespeichert – dieser Browser konnte den Plan nicht ablegen. Versuch es noch einmal oder sichere ihn mit „GPX exportieren“.</string>
     <string name="web_rename_failed">Nicht umbenannt – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_delete_failed">Nicht gelöscht – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
+    <string name="web_favourite_failed">Stern nicht geändert – dieser Browser konnte die Änderung nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_copy_failed">Die Kopie wurde nicht gespeichert – dieser Browser konnte sie nicht ablegen. Bitte noch einmal versuchen.</string>
     <string name="web_sync_gone">Die Verbindung wurde am Handy getrennt.</string>
     <string name="web_sync_busy">der Sync-Server ist ausgelastet – in einer Minute geht es weiter</string>

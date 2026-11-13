@@ -803,3 +803,42 @@ dialog.plans > .row.spread { margin-top: 16px; }
 .planlist li.binrow { flex-direction: column; align-items: stretch; padding: 8px 4px 4px 8px; }
 .planlist li.binrow .rowacts { display: flex; justify-content: flex-end; }
 dialog.plans .plansleft { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+
+/* ---- Meine Touren L1 + favourites (app 21c0eac1 / 21dcc5f5 / 870bff05, owner 2026-11-13): the 84 px map tile (its map
+   picture – routethumbs.ts – or the drawn line until it comes), name, activity line („🚶 Wandern · T2 · ↻ Rundtour“),
+   the facts; ⋮ over the star (gold = favourite); the chips start with „☆ Favoriten“ and the activity filter ---- */
+.planlist .tile, .planlist .tileface { width: 84px; height: 84px; }
+.planlist .tileface img.thumb { display: block; width: 84px; height: 84px; object-fit: cover; }
+.planlist .tileface img.thumb.pale { opacity: .6; }
+.planlist .tileface .kindic { width: 44px; height: 44px; }
+.planlist li.tourrow { padding: 10px 4px 10px 10px; }
+.planlist li.tourrow .rowmain { gap: 2px; }
+.planlist li.tourrow .open { padding: 2px 4px 2px 10px; }
+.planlist li.tourrow .txt { display: flex; flex-direction: column; gap: 2px; }
+.planlist li.tourrow .txt > * { align-self: stretch; text-align: left; } /* the facts under the activity line, as the app (not beside the name) */
+.planlist li.tourrow .name { font-weight: 600; }
+.planlist li.tourrow.waiting .name { font-weight: 800; } /* bold = changed here, not on the phone yet (§14.6) */
+.planlist li.tourrow .stats { font-size: 14px; color: var(--fg); font-weight: 600; }
+.planlist .actline { display: flex; align-items: center; min-width: 0; font-size: 14px; color: var(--muted); white-space: pre; }
+.planlist .actline .ic { fill: currentColor; flex: none; margin-right: 6px; }
+.planlist .actline .dot + .ic { margin-right: 3px; }
+.planlist .actline .atext { overflow: hidden; text-overflow: ellipsis; }
+.planlist .actline .dot, .planlist .actline .aloop { flex: none; }
+.planlist .rowside { flex: none; display: flex; flex-direction: column; align-items: center; align-self: stretch; justify-content: space-between; }
+.planlist .favstar { width: 44px; height: 44px; color: var(--muted); }
+.planlist .favstar .ic { fill: currentColor; }
+.planlist .favstar.on { color: #B07D00; /* OnPathColors.Favourite */ }
+.planlist .rowacts { padding-left: 0; }
+dialog.plans .favchip .star { display: inline-flex; color: var(--muted); }
+dialog.plans .favchip .star.on { color: #B07D00; }
+dialog.plans .favchip.on { padding: 0 12px 0 8px; }
+dialog.plans .actchip { padding-right: 6px; }
+dialog.plans .actchip.on { padding: 0 6px 0 8px; }
+.actfilter { position: fixed; top: 0; left: 0; right: auto; min-width: 230px; z-index: 6; }
+.actfilter[hidden] { display: none; }
+.actfilter .actpick { min-height: 48px; padding: 0 16px; gap: 16px; }
+.actfilter .actpick .asign { display: inline-flex; width: 24px; color: var(--fg); }
+.actfilter .actpick .asign .ic { fill: currentColor; color: var(--fg); }
+.actfilter .actpick .alabel { flex: 1; font-weight: 500; }
+.actfilter .radio { width: 20px; height: 20px; box-sizing: border-box; border: 2px solid var(--muted); border-radius: 50%; flex: none; }
+.actfilter .radio.on { border-color: var(--fg); background: radial-gradient(circle, var(--fg) 0 4px, transparent 5px); }
