@@ -48,7 +48,12 @@ class H(BaseHTTPRequestHandler):
                 with open(p, "rb") as f:
                     return self.send(f.read())
             return self.send({"error": "Lauf nicht gefunden"}, code=404)
-        self.send({"error": "not found"}, code=404)
+        if u.path == "/favicon.ico":
+            return self.send({"error": "not found"}, code=404)
+        # any other address (/index.html, a typo, a preview pane's path) shows the page instead of a bare 404
+        print("page for unknown path", self.path, flush=True)
+        with open(os.path.join(S.HERE, "page.html"), "rb") as f:
+            return self.send(f.read(), "text/html")
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
