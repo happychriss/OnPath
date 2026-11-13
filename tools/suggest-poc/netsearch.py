@@ -86,7 +86,10 @@ def mid_of(G, e):
     return [(na[0] + nb[0]) / 2, (na[1] + nb[1]) / 2]
 
 
-def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0):
+def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0, npen=None, ncost=0.0):
+    """pen / factor: ways already walked cost x factor. npen / ncost: stepping onto a node of the way already walked
+    costs ncost extra – the way home keeps off the way out instead of weaving across it (owner: at most one
+    crossing); where there is no other way (a ferry, a bridge) it is still taken."""
     n = len(G.nodes)
     dist = [INF] * n
     ln = [0.0] * n
@@ -107,6 +110,8 @@ def dijkstra(G, src, cost, pen=None, stop=None, factor=1.0):
                 continue
             if pen is not None and ei in pen:
                 c *= factor
+            elif npen is not None and v in npen:
+                c += ncost
             nd = d + c
             if nd < dist[v]:
                 dist[v] = nd
@@ -171,12 +176,17 @@ def edge_values(G, wish, W, index, S):
             near = index.at(mid, 1)
             # a known route counts on a way that lies on it – and on a main road only when the routing data says the
             # road itself carries a signed route (else the cycle path beside it is the route, not the carriageway)
-            hits = tuple(i for i in index.at(mid, 2) if index.attr[i]["kind"] != "route"
-                         or (i in near and (mw <= 0 or sr > 0)))
+            # … and a river's bank only on a way off the road (not a street, not a path beside a road near the river)
+            hits = tuple(i for i in index.at(mid, 2)
+                         if (index.attr[i]["kind"] == "lake" or index.attr[i]["kind"] == "view")
+                         or (index.attr[i]["kind"] == "river" and k not in "SG" and mw <= 0)
+                         or (index.attr[i]["kind"] == "route" and i in near and (mw <= 0 or sr > 0)))
             for i in hits:
                 a_ = index.attr[i]
                 if a_["kind"] == "lake" and k not in "SG":
                     river = 1.0
+                elif a_["kind"] == "river" and k not in "SG" and mw <= 0:
+                    river = max(river, a_["rank"])  # at the bank of a large river: first-class water
                 elif a_["kind"] == "route":
                     sr = max(sr, a_["rank"])
         # on or beside a busy road a signed route is worth nothing: being signed must not make a roadside way cheap
@@ -284,6 +294,22 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
             used |= set(m)
         return used
 
+    # crossing-aware building: the nodes of the way already walked (beyond the free stem) cost extra to step onto, so
+    # the next part goes round the way out instead of across it; `ncost` in unpleasant metres (netsearch.cross_cost_m)
+    ncost = N.get("cross_cost_m", 0.0)
+
+    def touched(used, keep=()):
+        if not ncost:
+            return None
+        ns = set()
+        for ei in used:
+            ns.add(G.edges[ei][0])
+            ns.add(G.edges[ei][1])
+        ns.discard(s)
+        for v in keep:
+            ns.discard(v)
+        return ns
+
     # ---- anchors: per sector and distance band the most pleasantly reached node
     sectors = N["sectors"]
     anchors = {}
@@ -313,7 +339,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, target_m, s, add, info)
         lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info)
     # ---- anchors on destinations (the most relevant first), and their rings
-    rel = {"lake": 0.3 + wish["water"], "route": 0.3 + wish["signed"], "view": 0.0}
+    rel = {"lake": 0.3 + wish["water"], "route": 0.3 + wish["signed"], "view": 0.0, "river": 0.3 + wish["water"]}
     tops = sorted([i for i, a in enumerate(index.attr)] if index else [],
                   key=lambda i: -(index.attr[i]["rank"] * rel[index.attr[i]["kind"]]))[:N["max_targets"]]
     on = {i: set() for i in tops}
@@ -340,6 +366,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         alist.append((sec, 9, entry, a["name"]))
         if far != entry:
             alist.append((int(S.bearing(s_xy, G.nodes[far]) / (360.0 / sectors)) % sectors, 9, far, a["name"]))
+        if a["kind"] == "river":
+            continue  # a bank has no ring; "Am <Fluss> entlang" is built in follow_routes
         # a ring in the network: leave the entry by one edge of the attraction, come back by the others
         sub = on[i]
         best = None
@@ -361,7 +389,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         if best and best[0] >= N["ring_min_m"]:
             n1, e1 = path_to(prev0, pe0, entry)
             used = walked(e1, best[2])
-            d3, p3, pe3, l3 = dijkstra(G, entry, cost, pen=used, stop=s, factor=N["used_penalty"])
+            d3, p3, pe3, l3 = dijkstra(G, entry, cost, pen=used, stop=s, factor=N["used_penalty"],
+                                       npen=touched(used, (entry,)), ncost=ncost)
             info["searches"] += 1
             if d3[s] < INF:
                 n3, e3 = path_to(p3, pe3, s)
@@ -415,7 +444,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     for sec, band, v, tname in alist:
         n1, e1 = path_to(prev0, pe0, v)
         used = walked(e1)
-        dA, pA, peA, lA = dijkstra(G, v, cost, pen=used, factor=N["used_penalty"])
+        dA, pA, peA, lA = dijkstra(G, v, cost, pen=used, factor=N["used_penalty"], npen=touched(used, (v,)), ncost=ncost)
         info["searches"] += 1
         per_anchor.append((sec, band, v, tname, n1, e1, dA, pA, peA, lA))
         if dA[s] < INF:
@@ -452,7 +481,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         A, B = per_anchor[ia], per_anchor[ib]
         n2, e2 = path_to(A[7], A[8], B[2])
         used = walked(A[5], e2)
-        d3, p3, pe3, l3 = dijkstra(G, B[2], cost, pen=used, stop=s, factor=N["used_penalty"])
+        d3, p3, pe3, l3 = dijkstra(G, B[2], cost, pen=used, stop=s, factor=N["used_penalty"],
+                                   npen=touched(used, (B[2],)), ncost=ncost)
         info["searches"] += 1
         done += 1
         if d3[s] == INF:
@@ -469,6 +499,33 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     info["dropped_length"] = dropped["length"]
     info["search_s"] = round(time.time() - t0 - t_graph, 2)
     return built, info, G
+
+
+def used_edges(G, W, e1, *more):
+    """Ways already walked, for the way home's penalty: the first score.free_stem_m of the way out are free (a short
+    way out and back to where the loop begins costs nothing – owner 2026-11-13)."""
+    free, used, acc = W["score"]["free_stem_m"], set(), 0.0
+    for ei in e1:
+        acc += G.edges[ei][2]
+        if acc > free:
+            used.add(ei)
+    for m in more:
+        used |= set(m)
+    return used
+
+
+def used_nodes(G, W, used, s, keep=()):
+    """The nodes of the ways already walked (see dijkstra npen); None when cross_cost_m is 0."""
+    if not W["netsearch"].get("cross_cost_m", 0.0):
+        return None
+    ns = set()
+    for ei in used:
+        ns.add(G.edges[ei][0])
+        ns.add(G.edges[ei][1])
+    ns.discard(s)
+    for v in keep:
+        ns.discard(v)
+    return ns
 
 
 def router_check(c, wish, W, kv, S):
@@ -496,14 +553,25 @@ def router_check(c, wish, W, kv, S):
 def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, target_m, s, add, info):
     N = W["netsearch"]
     F = N.get("follow", {})
-    if not F.get("enabled", True) or wish["signed"] < F.get("from_signed", 0.3):
+    if not F.get("enabled", True):
+        return
+    # known routes from "Bekannte Wege" >= from_signed; the bank of a large river from "am Wasser entlang"
+    # (>= river_from_water): "Am Rhein entlang" is built like "Entlang <Weg>" – along the bank ways (no street, not
+    # beside a road), home another way (the other bank where a ferry or bridge leads there)
+    kinds = set()
+    if wish["signed"] >= F.get("from_signed", 0.3):
+        kinds.add("route")
+    if wish["water"] >= F.get("river_from_water", 0.5):
+        kinds.add("river")
+    if not kinds:
         return
     on = {}
     for ei, hs in enumerate(hits):
         if cost[ei] < 0:
             continue
         for i in hs:
-            if index.attr[i]["kind"] == "route":
+            kd = index.attr[i]["kind"]
+            if kd in kinds and (kd == "route" or mws[ei] <= 0):
                 on.setdefault(i, set()).add(ei)
     stem_max = F.get("stem_max", 0.12) * target_m
     cands = []
@@ -519,7 +587,8 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
         if on_m < F.get("min_on", 0.12) * target_m:
             continue
         entry = min(reach, key=lambda v: d0[v])
-        cands.append((index.attr[i]["rank"] * min(1.0, on_m / (0.5 * target_m)), i, entry, nodes_on))
+        boost = F.get("river_boost", 1.5) if index.attr[i]["kind"] == "river" else 1.0
+        cands.append((boost * index.attr[i]["rank"] * min(1.0, on_m / (0.5 * target_m)), i, entry, nodes_on))
     cands.sort(key=lambda x: -x[0])
     s_xy = G.nodes[s]
     n_made = 0
@@ -535,7 +604,9 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
         dF, pF, peF, lF = dijkstra(G, entry, cf)
         info["searches"] += 1
         # nodes of the route reached (almost) only along the route
-        ok = [v for v in nodes_on if dF[v] < INF and lF[v] > 0 and dF[v] <= lF[v] * F.get("on_path_max", 0.5)]
+        # … a river's bank ways are in pieces (a harbour, a village between): there a wider share off the bank is fine
+        opm = F.get("river_on_path_max", 2.0) if a["kind"] == "river" else F.get("on_path_max", 0.5)
+        ok = [v for v in nodes_on if dF[v] < INF and lF[v] > 0 and dF[v] <= lF[v] * opm]
         if not ok:
             log.append("%s: vom Einstieg aus kein Stück am Weg entlang erreichbar" % a["name"])
             continue
@@ -563,8 +634,9 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
                     break
                 T = T2
                 n2, e2 = path_to(pF, peF, T)
-                used = set(e1) | set(e2)
-                d3, p3, pe3, l3 = dijkstra(G, T, cost, pen=used, stop=s, factor=N["used_penalty"])
+                used = used_edges(G, W, e1, e2)
+                d3, p3, pe3, l3 = dijkstra(G, T, cost, pen=used, stop=s, factor=N["used_penalty"],
+                                           npen=used_nodes(G, W, used, s, (T,)), ncost=N.get("cross_cost_m", 0.0))
                 info["searches"] += 1
                 if d3[s] == INF:
                     break
@@ -584,7 +656,8 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
             if not turned:
                 turned.append(S.bearing(e_xy, G.nodes[best[3]]))
             add(best[1], best[2], {"bearing": round(S.bearing(s_xy, G.nodes[best[3]])), "shape": "entlang",
-                                   "mode": "follow", "target_name": a["name"],
+                                   "mode": "shore" if a["kind"] == "river" else "follow",
+                                   "theme": "river" if a["kind"] == "river" else None, "target_name": a["name"],
                                    "vias": [list(G.nodes[entry][:2]), list(G.nodes[best[3]][:2])]})
             n_made += 1
     info["follow_built"] = n_made
@@ -638,7 +711,8 @@ def lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info):
         diff = lambda v, want: abs((ang[v] - a0 - want + 180) % 360 - 180)
 
         def home(from_v, used):
-            d3, p3, pe3, l3 = dijkstra(G, from_v, cost, pen=used, stop=s, factor=N["used_penalty"])
+            d3, p3, pe3, l3 = dijkstra(G, from_v, cost, pen=used, stop=s, factor=N["used_penalty"],
+                                       npen=used_nodes(G, W, used, s, (from_v,)), ncost=N.get("cross_cost_m", 0.0))
             info["searches"] += 1
             return path_to(p3, pe3, s) + (l3[s],) if d3[s] < INF else None
 
@@ -667,7 +741,7 @@ def lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info):
                 if twice <= 0.15 * r_len and inside:
                     ring = (r_len, r_nodes, r_edges)
         if ring and stem + ring[0] + stem <= (1 + N["keep_length_off"]) * target_m:
-            h = home(entry, set(e1) | set(ring[2]))
+            h = home(entry, used_edges(G, W, e1, ring[2]))
             if h:
                 add(n1 + ring[1][1:] + h[0][1:], e1 + ring[2] + h[1],
                     {"bearing": round(S.bearing(G.nodes[s], [cx, cy])), "shape": "runde", "mode": "ring", "theme": "lake",
@@ -687,7 +761,7 @@ def lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info):
                 continue
             T = min(pool, key=lambda v: abs(stem + lF[v] + 1.1 * lS[v] - target_m))
             n2, e2 = path_to(pF, peF, T)
-            h = home(T, set(e1) | set(e2))
+            h = home(T, used_edges(G, W, e1, e2))
             if not h:
                 continue
             add(n1 + n2[1:] + h[0][1:], e1 + e2 + h[1],

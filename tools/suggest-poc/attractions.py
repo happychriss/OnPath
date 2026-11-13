@@ -154,6 +154,64 @@ def read_cell(x, y, A):
     return out
 
 
+RIVER_VERSION = 1
+
+
+def read_rivers(x, y):
+    """Large rivers of one map area -> [{name, width_m, lines}]: the `water` polygons of class river (zoom 10) are the
+    river's surface, their outline inside the area is the bank; the name comes from the named `waterway` line that
+    runs through the polygon (Rhein, Wupper, Erft …). A stream without a surface polygon is no destination here.
+    Cached beside the cell as rivers-v<N>.json."""
+    d = CE.folder(x, y)
+    cache = os.path.join(d, "rivers-v%d.json" % RIVER_VERSION)
+    if os.path.isfile(cache):
+        with open(cache, encoding="utf-8") as f:
+            return json.load(f)
+    box = CE.cell_bbox(x, y)
+    ba = pmt.PMTiles(os.path.join(d, "base.pmtiles"))
+    raw = ba.tile(10, x, y)
+    polys, named = [], {}
+    if raw:
+        L = pmt.layers(raw, {"water", "waterway"}, 10, x, y)
+        for f in L.get("water", []):
+            if f["tags"].get("class") == "river":
+                polys += [r for r in f["parts"] if len(r) > 3]
+        for f in L.get("waterway", []):
+            nm = f["tags"].get("name")
+            if nm and f["tags"].get("class") == "river":
+                for part in f["parts"]:
+                    named.setdefault(nm, []).extend(_densify(part, 100))
+    kx = 111320.0 * math.cos(math.radians((box[1] + box[3]) / 2))
+    rivers = {}
+    for ring in polys:
+        votes = {nm: sum(1 for p in pts if _in_poly(p, ring)) for nm, pts in named.items()}
+        nm = max(votes, key=votes.get) if votes else None
+        if not nm or votes[nm] < 2:
+            continue
+        area = abs(sum(a[0] * b[1] - b[0] * a[1] for a, b in zip(ring, ring[1:]))) / 2 * kx * 111320.0
+        lines, cur = [], []
+        for q in ring:  # the bank inside the area only (the polygon is cut at the area's border)
+            if _inside(q, box):
+                cur.append([round(q[0], 6), round(q[1], 6)])
+            else:
+                if len(cur) > 1:
+                    lines.append(cur)
+                cur = []
+        if len(cur) > 1:
+            lines.append(cur)
+        bank = sum(_dist(a, b) for l in lines for a, b in zip(l, l[1:]))
+        if bank < 200:
+            continue
+        g = rivers.setdefault(nm, {"area": 0.0, "bank": 0.0, "lines": []})
+        g["area"] += area
+        g["bank"] += bank
+        g["lines"] += lines
+    out = [{"name": nm, "width_m": round(2 * g["area"] / g["bank"]), "lines": g["lines"]} for nm, g in rivers.items()]
+    with open(cache, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False)
+    return out
+
+
 def load_cells(start, reach_m, activity, W):
     A = W["attractions"]
     bike = activity != "hike"
@@ -162,11 +220,15 @@ def load_cells(start, reach_m, activity, W):
     missing = [c for c in need if not CE.have(*c)]
     key = ("cells", tuple(need), bike)
     if key not in _mem:
-        routes, lakes, views = {}, {}, []
+        routes, lakes, views, rivers = {}, {}, [], {}
         for c in need:
             if c in missing:
                 continue
             d = read_cell(c[0], c[1], A)
+            for r in read_rivers(c[0], c[1]):
+                g = rivers.setdefault(r["name"], {"width": 0, "lines": []})
+                g["width"] = max(g["width"], r["width_m"])
+                g["lines"] += r["lines"]
             for r in d["routes"]:
                 if (r["kind"] == "hike") == bike or r["kind"] not in ("hike", "bike"):
                     continue
@@ -186,8 +248,8 @@ def load_cells(start, reach_m, activity, W):
             n = sum(len(l) for l in routes[k]["lines"])
             if any(k.lower() in r for r in real) or n < 2:
                 del routes[k]
-        _mem[key] = (routes, lakes, views)
-    routes, lakes, views = _mem[key]
+        _mem[key] = (routes, lakes, views, rivers)
+    routes, lakes, views, rivers = _mem[key]
     skip = re.compile(A.get("lake_skip", "$^"), re.I)
     out = []
     for label, g in routes.items():
@@ -211,6 +273,19 @@ def load_cells(start, reach_m, activity, W):
     for v in views:
         out.append({"kind": "view", "name": v["name"], "rank": 0.5, "ring": False, "points": [v["p"]], "dense": [v["p"]],
                     "length_m": 0})
+    # large rivers: the bank is a destination of its own (owner 2026-11-13: "wunderbar am Rhein lang") – a way within
+    # river_pad_cells of the bank counts as "am Rhein"; the wider the river, the higher its rank
+    R = A.get("river", {})
+    for name, g in rivers.items() if R.get("enabled", True) else ():
+        if g["width"] < R.get("min_width_m", 15):
+            continue
+        dense = [p for l in g["lines"] for p in _densify(l, 25)]
+        near = [p for p in dense if _dist(start, p) <= A["max_reach_m"]]
+        if len(near) * 25.0 < R.get("min_bank_m", 1500):
+            continue
+        out.append({"kind": "river", "name": name, "rank": 1.0 if g["width"] >= R.get("big_width_m", 100) else R.get("small_rank", 0.7),
+                    "ring": False, "points": _thin(near, 150), "dense": near, "length_m": len(near) * 25.0 / 2,
+                    "pad": R.get("pad_cells", 5), "width_m": g["width"]})
     for a in out:
         a["d"] = min(_dist(start, p) for p in a["points"])
     note = None

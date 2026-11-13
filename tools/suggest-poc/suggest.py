@@ -587,6 +587,8 @@ def numbers(c, wish, W, index=None, picks=None):
                             (index.attr[best_route]["rank"], index.attr[best_route]["length_m"])):
                         best_route = i
                     continue
+                if a["kind"] == "river" and (k in "SG" or mw > 0):
+                    continue  # "am Rhein" is a way at the bank, not a street or a roadside path near it
                 named[i] = named.get(i, 0.0) + ln
             if best_route is not None:
                 named[best_route] = named.get(best_route, 0.0) + ln
@@ -601,8 +603,8 @@ def numbers(c, wish, W, index=None, picks=None):
     area = abs(sum(xy[i][0] * xy[(i + 1) % len(xy)][1] - xy[(i + 1) % len(xy)][0] * xy[i][1] for i in range(len(xy)))) / 2
     compact = 4 * math.pi * area / (total * total)
 
-    known, lakes, views = [], [], []
-    lake_m = 0.0
+    known, lakes, views, rivers = [], [], [], []
+    lake_m = river_m = 0.0
     if index is not None:
         for i, ln in sorted(named.items(), key=lambda x: -x[1] * index.attr[x[0]]["rank"]):
             a = index.attr[i]
@@ -611,6 +613,9 @@ def numbers(c, wish, W, index=None, picks=None):
             elif a["kind"] == "lake" and ln >= 200:
                 lakes.append([a["name"], round(ln / 1000.0, 1)])
                 lake_m += ln
+            elif a["kind"] == "river" and ln >= 300:
+                rivers.append([a["name"], round(ln / 1000.0, 1)])
+                river_m += ln * a["rank"]
             elif a["kind"] == "view":
                 views.append(a["name"])
 
@@ -629,7 +634,7 @@ def numbers(c, wish, W, index=None, picks=None):
          "deep_pct": round(100 * m["deep_v"] / total),
          "reserves": [[nm, round(v / 1000.0, 1)] for nm, v in sorted(reserves.items(), key=lambda x: -x[1]) if v >= 300][:3],
          "length_off_km": round(length_off_km(c, wish), 1),
-         "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "views": views[:3],
+         "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "rivers": rivers[:2], "views": views[:3],
          "by_highway_km": {k: round(v / 1000.0, 2) for k, v in sorted(by_hw.items(), key=lambda x: -x[1])}}
 
     # parts 0..1
@@ -642,7 +647,9 @@ def numbers(c, wish, W, index=None, picks=None):
         ascent_part = 1.0 if apk <= mx else max(0.0, 1 - (apk - mx) / (2 * mx))
     street_share = (m["street"] + (S["big_street_counts"] - 1) * m["big"]) / total
     # along a road is worse the more nature was asked for: the free stretch shrinks with the Natur level
-    mr = S["main_road_max_m"] / (1.0 + S["main_road_natur"] * wish["forest"])
+    # … and on a long loop a stretch counts relative to its length (bikes: 1.5 of 36 km beside a road is a small
+    # flaw – main_road_share of the loop is free; the share of roadside is punished by the part "roadside")
+    mr = max(S["main_road_max_m"] / (1.0 + S["main_road_natur"] * wish["forest"]), S.get("main_road_share", 0.0) * total)
     n["main_road_max_m"] = int(mr)
     off, flat = length_off_km(c, wish), S["length_flat_km"]
     parts = {
@@ -653,8 +660,10 @@ def numbers(c, wish, W, index=None, picks=None):
         "quiet": 1 - m["noise_v"] / total,
         # along water: the share near a river / lake (full at water_full_at), or a lake shore walked (full at
         # lake_full_m, on long loops at lake_full_share of the loop) – never full just because one pond was passed
+        # … and the bank of a large river (attractions kind "river", x its rank): full at river_full_share of the loop
         "water": max(min(1.0, m["river_v"] / total / S["water_full_at"]),
-                     min(1.0, lake_m / max(S["lake_full_m"], S["lake_full_share"] * total))),
+                     min(1.0, lake_m / max(S["lake_full_m"], S["lake_full_share"] * total)),
+                     min(1.0, river_m / (S.get("river_full_share", 0.5) * total))),
         "signed": min(1.0, m["signed_v"] / total / S["signed_full_at"]),
         "natural": 1 - m["paved"] / total,
         "surface": sum(surf_m[k] * sv[k] for k in surf_m) / total,
@@ -738,7 +747,7 @@ def target_cands(attr, wish, W, rnd):
     """Loops through the destinations in reach: the most relevant first (rank x the wish's taste), at most max_targets."""
     g = W["generator"]
     target_m = wish["hours"] * wish["pace"] * 1000.0
-    rel = {"lake": 0.3 + wish["water"], "route": 0.3 + wish["signed"], "view": 0.4}
+    rel = {"lake": 0.3 + wish["water"], "route": 0.3 + wish["signed"], "view": 0.4, "river": 0.3 + wish["water"]}
     ok = [a for a in attr if a["d"] <= g["target_reach_factor"] * target_m
           and not (a["kind"] == "route" and a["length_m"] < 1500)]
     ok.sort(key=lambda a: -(a["rank"] * rel[a["kind"]] * (1.2 if a["ring"] else 1.0)))
@@ -893,7 +902,8 @@ def fmt_h(h):
 
 def goals_text(n):
     """'4,2 km X30 Neandertalweg · 0,9 km am Elbsee' – what the card says about known routes and lakes."""
-    t = ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
+    t = ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("rivers", [])[:1]]
+    t += ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
     t += ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("lakes", [])[:2]]
     t += ["Aussicht: " + v for v in n.get("views", [])[:1]]
     t += ["%s km im Naturschutzgebiet %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("reserves", [])[:2]]

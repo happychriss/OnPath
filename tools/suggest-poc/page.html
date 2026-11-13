@@ -214,7 +214,7 @@ function shown() { return result.candidates.filter(c => c.chosen || $('all').che
 function colorOf(c) { return c.chosen ? COLORS[result.candidates.filter(x => x.chosen).indexOf(c) % COLORS.length] : '#8d948f'; }
 const km1 = x => x.toFixed(1).replace('.', ',');
 function goals(n) {
-  return [...(n.known || []).slice(0, 3).map(k => km1(k[1]) + ' km ' + k[0]), ...(n.lakes || []).slice(0, 2).map(k => km1(k[1]) + ' km am ' + k[0]),
+  return [...(n.rivers || []).slice(0, 1).map(k => km1(k[1]) + ' km am ' + k[0]), ...(n.known || []).slice(0, 3).map(k => km1(k[1]) + ' km ' + k[0]), ...(n.lakes || []).slice(0, 2).map(k => km1(k[1]) + ' km am ' + k[0]),
           ...(n.views || []).slice(0, 1).map(v => 'Aussicht: ' + v),
           ...(n.ferry_m ? ['mit Fähre'] : [])].join(' · ');
 }
