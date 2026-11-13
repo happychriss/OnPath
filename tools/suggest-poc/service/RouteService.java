@@ -41,6 +41,7 @@ public class RouteService {
     int threads = a.length > 3 ? Integer.parseInt(a[3]) : 4;
     HttpServer s = HttpServer.create(new InetSocketAddress("127.0.0.1", port), 0);
     s.createContext("/route", RouteService::handle);
+    s.createContext("/graph", RouteService::handleGraph);
     s.createContext("/ping", ex -> send(ex, "{\"ok\":true}"));
     s.setExecutor(Executors.newFixedThreadPool(threads));
     s.start();
@@ -151,6 +152,144 @@ public class RouteService {
     }
     sb.append("]}");
     return sb.toString();
+  }
+
+  static void handleGraph(HttpExchange ex) throws java.io.IOException {
+    String out;
+    try {
+      String body = new String(ex.getRequestBody().readAllBytes(), StandardCharsets.UTF_8);
+      synchronized (RouteService.class) { out = graph(body); }
+    } catch (Throwable t) {
+      java.io.StringWriter w = new java.io.StringWriter();
+      t.printStackTrace(new java.io.PrintWriter(w));
+      out = "ERR " + w;
+    }
+    byte[] b = out.getBytes(StandardCharsets.UTF_8);
+    ex.getResponseHeaders().add("Content-Type", "text/plain; charset=utf-8");
+    ex.sendResponseHeaders(200, b.length);
+    try (OutputStream o = ex.getResponseBody()) { o.write(b); }
+  }
+
+  /**
+   * POST /graph, body = lines: profile=…, kv=… (as /route), at=lon,lat, radius=<m>.
+   * The way network around the point, read straight from BRouter's node cache (the same data and the same profile
+   * evaluation as routing). Answer = text lines:
+   *   S <node>                          the graph node next to the start
+   *   N <id> <lon> <lat> <ele>
+   *   T <tagId> <BRouter way tags, "k=v k=v">
+   *   E <a> <b> <metres> <costfactor a→b> <costfactor b→a> <tagId> <lon,lat;lon,lat… of the pieces between a and b>
+   * costfactor ≥ 9999 = not allowed for this profile in that direction.
+   */
+  static String graph(String body) throws Exception {
+    String profile = "hiking-mountain";
+    double lon = 0, lat = 0, radius = 3000;
+    Map<String, String> kv = new HashMap<>();
+    kv.put("processUnusedTags", "1");
+    for (String line : body.split("\n")) {
+      line = line.trim();
+      int e = line.indexOf('=');
+      if (e < 0) continue;
+      String k = line.substring(0, e), v = line.substring(e + 1);
+      switch (k) {
+        case "profile": profile = v; break;
+        case "kv": { int i = v.indexOf('='); kv.put(v.substring(0, i), v.substring(i + 1)); break; }
+        case "at": { String[] c = v.split(","); lon = Double.parseDouble(c[0]); lat = Double.parseDouble(c[1]); break; }
+        case "radius": radius = Double.parseDouble(v); break;
+        default: break;
+      }
+    }
+    long t0 = System.currentTimeMillis();
+    RoutingContext rc = new RoutingContext();
+    rc.localFunction = new File(profileDir, profile + ".brf").getAbsolutePath();
+    rc.keyValues = kv;
+    btools.router.ProfileCache.parseProfile(rc);
+    btools.mapaccess.NodesCache nc = new btools.mapaccess.NodesCache(segDir, rc.expctxWay, rc.forceSecondaryData,
+      2000L * 1024 * 1024, null, true);
+    try {
+      btools.mapaccess.MatchedWaypoint mwp = new btools.mapaccess.MatchedWaypoint();
+      mwp.waypoint = new btools.mapaccess.OsmNode(ilon(lon), ilat(lat));
+      mwp.name = "from";
+      List<btools.mapaccess.MatchedWaypoint> l = new ArrayList<>();
+      l.add(mwp);
+      nc.matchWaypointsToNodes(l, 400, new btools.mapaccess.OsmNodePairSet(1));
+      // as RoutingEngine does: the cache used for matching is not the one to walk – a fresh one on the same files
+      nc = new btools.mapaccess.NodesCache(segDir, rc.expctxWay, rc.forceSecondaryData, 2000L * 1024 * 1024, nc, true);
+      btools.mapaccess.OsmNode centre = new btools.mapaccess.OsmNode(ilon(lon), ilat(lat));
+      btools.mapaccess.OsmNode start = nc.getGraphNode(mwp.node1);
+      StringBuilder sb = new StringBuilder(1 << 22);
+      Map<btools.mapaccess.OsmNode, Integer> ids = new java.util.IdentityHashMap<>();
+      Map<String, Integer> tagIds = new HashMap<>();
+      java.util.Set<btools.mapaccess.OsmLink> seen = java.util.Collections.newSetFromMap(new java.util.IdentityHashMap<>());
+      java.util.ArrayDeque<btools.mapaccess.OsmNode> queue = new java.util.ArrayDeque<>();
+      if (!nc.obtainNonHollowNode(start)) return "ERR start node not loadable";
+      ids.put(start, 0);
+      queue.add(start);
+      sb.append("S 0\n");
+      node(sb, 0, start);
+      int edges = 0;
+      while (!queue.isEmpty()) {
+        btools.mapaccess.OsmNode n = queue.poll();
+        nc.expandHollowLinkTargets(n);
+        for (btools.mapaccess.OsmLink link = n.firstlink; link != null; link = link.getNext(n)) {
+          if (link.descriptionBitmap == null || !seen.add(link)) continue;
+          btools.mapaccess.OsmNode t = link.getTarget(n);
+          if (t == null || !nc.obtainNonHollowNode(t)) continue;
+          Integer tid = ids.get(t);
+          if (tid == null) {
+            tid = ids.size();
+            ids.put(t, tid);
+            node(sb, tid, t);
+            if (t.calcDistance(centre) <= radius) queue.add(t);
+          }
+          boolean rev = link.isReverse(n);
+          rc.expctxWay.evaluate(rev, link.descriptionBitmap);
+          float cf = rc.expctxWay.getCostfactor();
+          rc.expctxWay.evaluate(!rev, link.descriptionBitmap);
+          float cb = rc.expctxWay.getCostfactor();
+          String tags = rc.expctxWay.getKeyValueDescription(rev, link.descriptionBitmap);
+          Integer tg = tagIds.get(tags);
+          if (tg == null) {
+            tg = tagIds.size();
+            tagIds.put(tags, tg);
+            sb.append("T ").append(tg).append(' ').append(tags).append('\n');
+          }
+          StringBuilder g = new StringBuilder();
+          double len = 0;
+          int plon = n.ilon, plat = n.ilat;
+          btools.mapaccess.OsmTransferNode tn = link.geometry == null ? null
+            : rc.geometryDecoder.decodeGeometry(link.geometry, n, t, rev);
+          for (; tn != null; tn = tn.next) {
+            len += dist(plon, plat, tn.ilon, tn.ilat);
+            plon = tn.ilon; plat = tn.ilat;
+            if (g.length() > 0) g.append(';');
+            g.append(fmt((plon - 180_000_000) / 1e6)).append(',').append(fmt((plat - 90_000_000) / 1e6));
+          }
+          len += dist(plon, plat, t.ilon, t.ilat);
+          sb.append("E ").append(ids.get(n)).append(' ').append(tid).append(' ').append(Math.round(len * 10) / 10.0)
+            .append(' ').append(cf).append(' ').append(cb).append(' ').append(tg).append(' ').append(g).append('\n');
+          edges++;
+        }
+      }
+      sb.append("# nodes ").append(ids.size()).append(" edges ").append(edges).append(" ms ")
+        .append(System.currentTimeMillis() - t0).append('\n');
+      return sb.toString();
+    } finally {
+      nc.close();
+      btools.router.ProfileCache.releaseProfile(rc);
+    }
+  }
+
+  static String fmt(double d) { return String.valueOf(Math.round(d * 1e6) / 1e6); }
+
+  static void node(StringBuilder sb, int id, btools.mapaccess.OsmNode n) {
+    sb.append("N ").append(id).append(' ').append(fmt((n.ilon - 180_000_000) / 1e6)).append(' ')
+      .append(fmt((n.ilat - 90_000_000) / 1e6)).append(' ').append(Math.round(n.getElev() * 10) / 10.0).append('\n');
+  }
+
+  static double dist(int lon1, int lat1, int lon2, int lat2) {
+    double ky = 0.11132;  // metres per micro-degree
+    double kx = ky * Math.cos(Math.toRadians((lat1 + lat2) / 2e6 - 90.0));
+    return Math.hypot((lon1 - lon2) * kx, (lat1 - lat2) * ky);
   }
 
   static String q(String s) {
