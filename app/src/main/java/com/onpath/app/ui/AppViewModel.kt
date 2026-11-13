@@ -4508,7 +4508,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the newest read wins: an older one ending late must not hide a row added since (RoutesState.show)
         val load = routes.beginLoad()
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
-            val list = routes.load { withModelTime(it) }
+            val list = routes.load { t -> withModelTime(t).let { m ->
+                // a recorded tour's followed plan: a round trip for certain when its points end at its start (RoundTrip)
+                if (m.kind == TourKind.RECORDED && m.hasPlan) m.copy(roundTrip = runCatching { db.planPoints(m.id) }
+                    .onFailure { e -> Problems.warn("routes", "The followed plan's points of tour ${m.id} not read – its row guesses from the track", e) }
+                    .getOrNull()?.let { w -> com.onpath.app.routing.PlanEdits.isRoundTrip(w.map { GeoPoint(it.lat, it.lon) }) })
+                else m
+            } }
             withContext(Dispatchers.Main) { routes.show(list, load); kickThumbs() }
         }
     }

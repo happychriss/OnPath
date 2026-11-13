@@ -1346,7 +1346,11 @@ class ScreenshotTest {
         override suspend fun load(t: Tour) = mapPics[t.id]
     }
     /** [sortList] with uuids (a picture belongs to one), two of them starred. */
-    private val favList get() = sortList.map { it.copy(uuid = "u-${it.id}", favourite = it.id == 11L || it.id == 15L) }
+    private val favList get() = sortList.map { it.copy(uuid = "u-${it.id}", favourite = it.id == 11L || it.id == 15L,
+        // Vigiljoch MTB-Runde: a round trip (its points end at its start) – "· ↻ Rundtour" in its activity line
+        waypoints = if (it.id == 15L) loopPts else it.waypoints) }
+    private val loopPts = listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null), com.onpath.app.gpx.GpxWaypoint(46.70, 11.20, null),
+        com.onpath.app.gpx.GpxWaypoint(46.72, 11.14, null), com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null))
 
     /**
      * My routes L1 (owner 2026-11-13): a square map picture left (route on the offline map; Ifinger Steig without one: the

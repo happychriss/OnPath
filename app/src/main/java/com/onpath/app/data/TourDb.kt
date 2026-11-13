@@ -64,6 +64,11 @@ data class Tour(
      * with the browser (item field 9). Every existing tour reads false.
      */
     val favourite: Boolean = false,
+    /**
+     * Recorded: the plan it followed is a round trip (its points end at its start) – set when My routes reads the list
+     * (ui/routes/RoundTrip); null = not known there (no plan: the row guesses from the line). Not stored.
+     */
+    val roundTrip: Boolean? = null,
 )
 
 /**
@@ -370,6 +375,11 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     fun setTourPlan(tourId: Long, plan: TourPlan) {
         writableDatabase.execSQL(TourSchema.PLAN_UPSERT, TourSchema.planArgs(tourId, plan))
     }
+
+    /** The points of the plan tour [tourId] followed (no line read); null = none. */
+    fun planPoints(tourId: Long): List<GpxWaypoint>? = readableDatabase.rawQuery(
+        "SELECT waypoints FROM tour_plan WHERE tour_id=?", arrayOf(tourId.toString())
+    ).use { c -> if (c.moveToFirst() && !c.isNull(0)) jsonToWaypoints(c.getString(0)) else null }
 
     /** The plan tour [tourId] followed; null = none (old tour, "Nur aufzeichnen") or unreadable (reported). */
     fun getTourPlan(tourId: Long): TourPlan? = readableDatabase.rawQuery(

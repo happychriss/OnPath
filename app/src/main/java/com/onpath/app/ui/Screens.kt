@@ -693,10 +693,9 @@ private fun TourCard(
     }
     // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06)
     val pale = DraftLook.of(t.draft)
-    // SKETCH round trip (owner 2026-11-13): B says it to TalkBack too
-    val rt = com.onpath.app.ui.routes.RoundTripSketch
-    val openLabel = str(Res.string.routes_open_row, t.name) +
-        (if (rt.isLoop(t.id) && rt.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.B) ", " + str(Res.string.plan_round_trip) else "")
+    // a round trip says so in the activity line ("↻ Rundtour", owner 2026-11-13 variant A) and to TalkBack
+    val loop = remember(t, line) { com.onpath.app.ui.routes.RoundTrip.of(t, line) }
+    val openLabel = str(Res.string.routes_open_row, t.name) + (if (loop) ", " + str(Res.string.plan_round_trip) else "")
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
         modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
@@ -715,19 +714,12 @@ private fun TourCard(
                             Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
                         }
                     })
-                    // SKETCH round trip B: ↻ on the tile's corner – a paper ring round an ink-blue disc, as the ⤢ badge was
-                    if (rt.isLoop(t.id) && rt.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.B)
-                        Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(ENLARGE_BADGE).clip(CircleShape)
-                            .background(OnPathColors.Paper).padding(2.dp).clip(CircleShape).background(OnPathColors.ActionEdit),
-                            contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Loop, null, tint = OnPathColors.Paper, modifier = Modifier.size(ENLARGE_ICON))
-                        }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
                     // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
                     RouteTitle(t.name, tag, tag2)
-                    ActivityLine(t)
+                    ActivityLine(t, loop)
                     Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
                         MaterialTheme.typography.bodySmall, muted), style = MaterialTheme.typography.bodySmall)
                     if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
@@ -753,20 +745,25 @@ private val MAP_TILE = com.onpath.app.map.ThumbRules.TILE_DP.dp
 private const val LARGE_FONT_TILE_SCALE = 1.5f
 private val MAP_TILE_LARGE_FONT = 64.dp
 
-/** "Wandern · T2" / "Fahrrad" / "Gravel" … with the activity's sign (the app's chip labels); nothing when unknown. */
+/**
+ * "Wandern · T2" / "Fahrrad" / "Gravel" … with the activity's sign (the app's chip labels), then "· ↻ Rundtour" for a
+ * round trip ([loop], owner 2026-11-13 variant A – the plan sheet's ↻ sign and word); nothing when neither is known.
+ */
 @Composable
-private fun ActivityLine(t: Tour) {
-    val a = t.activity?.let { n -> Activity.entries.firstOrNull { it.name == n } } ?: return
+private fun ActivityLine(t: Tour, loop: Boolean) {
+    val a = t.activity?.let { n -> Activity.entries.firstOrNull { it.name == n } }
+    if (a == null && !loop) return
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val text = if (a == Activity.HIKE && t.sac in 1..5) str(Res.string.activity_chip_with_level, a.chip, t.sac) else a.chip
     Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(a.icon, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f, fill = false))
-        // SKETCH round trip A: "· ↻ Rundtour" at the end of the line
-        if (com.onpath.app.ui.routes.RoundTripSketch.isLoop(t.id) && com.onpath.app.ui.routes.RoundTripSketch.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.A) {
-            Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+        if (a != null) {
+            val text = if (a == Activity.HIKE && t.sac in 1..5) str(Res.string.activity_chip_with_level, a.chip, t.sac) else a.chip
+            Icon(a.icon, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(text, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false))
+        }
+        if (loop) {
+            if (a != null) Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
             Icon(Icons.Outlined.Loop, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
             Spacer(Modifier.width(3.dp))
             Text(str(Res.string.plan_round_trip), style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
