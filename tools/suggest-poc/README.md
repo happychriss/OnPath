@@ -16,9 +16,13 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
 
 - Other ports (a second copy next to a running one): `SUGGEST_SERVICE=http://127.0.0.1:8793` (route service),
   `--port` / `SUGGEST_PORT` (page). Another weights file: `SUGGEST_WEIGHTS=<file>` or `bench.py --weights <file>`.
-- Destinations (lakes, known routes) come from Overpass (online) once per area and are cached in
-  `~/onpath-suggest-poc/cache/`; the public server is often busy – fill the cache patiently with
-  `python3 tools/suggest-poc/attractions.py <lon> <lat> hike|bike`. Without it a request runs without destinations.
+- `--method b` (run.py, bench.py; on the page "Verfahren") = variant B, the search in the way network (hiking only so
+  far); `a` = the fan of routed loops. Same score sheet for both.
+- Destinations (lakes, known routes, named trails, viewpoints) come from **the app's own map areas**: once
+  `python3 tools/suggest-poc/cells.py get <lon> <lat> 1` (3 × 3 cells around the point, ~15 MB each, from our map
+  server with the key in `~/.gradle/gradle.properties`; into `~/onpath-suggest-poc/cells/`). A missing area → the
+  request runs without its destinations and says which. `weights.json` `attractions.source: "overpass"` = the old
+  online stand-in.
 
 - Routing data: `~/onpath-routing/segments/*.rd5` (other folder: `ONPATH_SEGMENTS=<dir>`). Hilden / Düsseldorf need
   `E5_N50.rd5`. Profiles: the app's `app/src/main/assets/brouter/` (`PROFILE_DIR=<dir>` to try a changed copy).
@@ -34,7 +38,10 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
 | --- | --- |
 | `service/RouteService.java`, `start.sh` | One long-running JVM with the app's BRouter jars. `POST /route`: points + profile parameters + weighted nogo lines → line with BRouter's full way tags per piece. Only routes. |
 | `service/make_profiles.py` | The app's profiles copied to a build folder + the POC's one addition (`mainroad_penalty`, hiking). |
-| `attractions.py` | Destinations in reach: named lakes, known signed routes with rank, viewpoints (Overpass stand-in for the map area's own files – see its header). |
+| `service/RouteService.java` `POST /graph` | The way network around a point straight from BRouter's node cache: nodes, links with length, the profile's cost factor per direction, full way tags, geometry (Hilden, 4 km radius: 21 900 nodes, 28 700 links, 1 015 km of ways, 0.16 s). |
+| `netsearch.py` | **Variant B**: unpleasantness per metre for every piece of way (the score sheet's ingredients), one search from the start, anchors per direction and distance + on destinations, loops start → A → (B →) start with a penalty on ways already walked, ready-made rings (lake shore, circular route), then the same score sheet. Chosen loops go once through the real router (`router_match_pct`). |
+| `cells.py`, `pmt.py` | The app's map areas on this computer (download as the app does) and a small pure-Python reader for PMTiles + vector tiles. |
+| `attractions.py` | Destinations in reach from the map areas: known routes with name and rank (`overlays.pmtiles` `routes`), named trails – local circular walks, promenades, Waalwege (`trailnames`), named lakes with their shore (`base.pmtiles` `water` + `water_name`), viewpoints (`pois.geojson`). One name per piece of way (the highest-ranking route). |
 | `bench.py` | The fixed yardstick (see below). |
 | `suggest.py` | Everything else: wish, fan of candidates, way back pushed off the way out, resize until the time fits, second pass towards pleasant spots, numbers, score, selection, text. |
 | `weights.json` | **Every knob** (generator, profile switches, time model, way classes, score weights, selection, quick-pick places). Read again on every request – edit, save, press „Vorschläge". Raise `version` with each tuning so a verdict in `feedback.jsonl` says which weights it saw. |
@@ -63,6 +70,33 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
   33 % at 20, 2 % at 100 (+23 % length). Default 20.
 - Speed: one leg 35–60 ms; a request = 72 candidates ≈ 400–580 legs: 4–6 s around Hilden, 9 s in Düsseldorf centre
   (4 router threads, desktop). A phone will be several times slower – fewer candidates or results one by one.
+
+## Round 3 – variant B and our own map areas (2026-11-13 evening)
+
+Bench, same weights (13f), `bench.py --method a` vs `--method b` (bike cases run as A in both):
+
+| Case (hike) | ok A → B | Points A → B | Near forest % | Longest main-road m | Doubled % | Seconds A → B |
+| --- | --- | --- | --- | --- | --- | --- |
+| Hilden 2 h | 5/6 → 5/6 | 67.9 → 68.3 | 60 → 48 | 370 → 74 | 0 → 0 | 5.2 → 2.0 |
+| Ohligser Heide 2 h | 5/7 → 6/7 | 78.5 → 84.6 | 81 → 71 | 0 → 0 | 21 → 0 | 3.7 → 1.8 |
+| Düsseldorf 2 h | 5/5 → 5/5 | 71.0 → 85.2 | 39 → 80 | 74 → 4 | 1 → 1 | 9 → 4.7 |
+| Hilden + Wasser 3 h | 6/6 → 6/6 | 74.4 → 76.3 | 42 → 49 | 108 → 23 | 0 → 0 | 6.6 → 4.4 |
+| Hilden Bekannte Wege 3 h | 6/7 → 6/7 | 77.7 → 79.8 | 67 → 64 | 370 → 109 | 0 → 0 | – → 6.3 |
+| Meran 3 h | 7/7 → 7/7 | 70.5 → 81.5 | 57 → 62 | 16 → 29 | 0 → 2 | 4.7 → 1.6 |
+
+Total 49 → 50 of 53. B's red checks: Hilden 2 h near forest 48 % (limit 50), Heide street 21 % (limit 15), Bekannte
+Wege signed 46 % (limit 50). No weight was tuned for B – `netsearch` in `weights.json` holds its first guesses.
+
+- The real router confirms 70–98 % of a B loop's length when it is routed through via points every 600 m
+  (`router_match_pct` in the run's numbers); the rest are places where BRouter prefers another way between two points.
+- Heights: BRouter marks "no elevation" with a huge negative value (bridges, gaps) – ignored in B's ascent. B's ascent
+  is a plain 6 m hysteresis over node heights, A's is BRouter's own filter; they agree within a few metres on the
+  checked loops (Meran 181 vs 186, 294 vs 309).
+- B counts a crossing per `footway=crossing` way piece, A per crossing node – B's "Querungen" read higher in towns.
+- Weak in B: the anchors are one node per sector and band, so in a city all good loops share the same park and only
+  the first is shown as clearly different; names of loops repeat ("Ziel Posthornweg" three times); no local
+  improvement step; ring walks only where the map's trail labels close a ring in the network (seen: none chosen in
+  the bench); hiking only; Python speed.
 
 ## Tuning: only against the bench
 

@@ -137,3 +137,59 @@ endless trial and error.
 - **A fixed yardstick instead of trial and error:** `bench.py` – nine fixed wishes, one sheet, pass / fail on plain
   expectations, compared with the sheet before. `bench.py --refs` scores known circular routes with our scorer next
   to our own best – where a known route scores clearly lower, a weight is wrong.
+
+## Round 3 (2026-11-13 evening): our own map material, and variant B – search in the way network
+
+Owner: "macht es nicht mehr Sinn, das Kartenmaterial zu benutzen, das wir schon haben?" and "bau einfach eine zweite
+Variante … was echt Cooles, was es noch nicht gibt; ob Handy oder Server sehen wir dann".
+
+### Data source = the app's map areas (checked on the real cells of Hilden and Meran)
+
+The POC now downloads the z10 cells exactly as the app does (`cells.py`) and reads them (`pmt.py`). What is in them:
+
+| Need | Where | State |
+| --- | --- | --- |
+| Known routes with name and rank | `overlays.pmtiles` `routes`: `kind` hike / bike, `name`, `ref`, `net` (4 international … 2 regional) | there for net ≥ 2 (neanderland STEIG, X30, X19, EuroVelo, Euroga …); hiking net 1 only as a merged band without name; bike local routes have names |
+| Local circular walks, promenades, Waalwege | `overlays.pmtiles` `trailnames` (the map's trail labels: `name`, `tier` 1–3) | there: "Elbsee Rundweg A7", "Rundweg A2 Ohligser Heide", "Tappeiner-Promenade", "Algunder Waalweg", "Maiser Waalweg". These are label lines, not whole routes – enough to name and to attract, **not** enough to walk a circular route as it is |
+| Lakes with name | `base.pmtiles` `water` (polygons) + `water_name` (points, z14) | there (Elbsee, Menzelsee, Unterbacher See …); a lake across a cell border is joined by name |
+| Viewpoints | `pois.geojson` kind `viewpoint` | there |
+| Forest / parks as areas | `base.pmtiles` `landcover`, `park` | there, not used yet (the routing data's forest class does the job per way) |
+| **Missing for this feature** | a route's identity and order (relation id, roundtrip yes / no) | not in the cells – a known circular route cannot be offered "as it is" from today's files; would be one more small layer or file per cell (route id, name, rank, roundtrip, ordered line) |
+
+So nothing online is needed any more; Overpass stays only as an explicit fallback. The implausible lake names of
+round 2 came from the Overpass stand-in.
+
+### Variant B – one graph, one search, thousands of loops
+
+Variant A asks the router for every leg of every candidate (72 candidates ≈ 500 routings). Variant B asks **once**
+for the way network around the start – read directly from BRouter's node cache, with the profile's verdict per link
+(`POST /graph`; Hilden, 4 km radius: 21 900 nodes, 28 700 links, 0.16 s) – and searches loops inside it:
+
+1. every link gets an unpleasantness per metre for this wish (near forest, quiet, water / lake shore, signed or
+   known route by rank, natural ground; street and main road cost extra; the profile forbids what the T level forbids);
+2. one cheapest-way search from the start; anchors = per direction sector and distance band the most pleasantly
+   reached node, plus nodes on the destinations in reach;
+3. loops start → A → start and start → A → B → start; every later part pays a penalty on ways already walked;
+4. a lake shore or circular route that closes in the network is walked as a ring;
+5. the same score sheet as A; each shown loop is then routed once through the real router as a check.
+
+This is the "prize-collecting tour with a length budget" idea in its simplest honest form; local improvement
+(swap a piece for a nicer detour) is not built.
+
+**Contract for the real build:** besides the three additions of round 2, variant B needs one more thing from the
+routing layer – *the way network around a point with the profile's cost per link* (BRouter has it in memory during
+every routing; today no API hands it out). With it the loop search is plain Kotlin on top – shared by app and web.
+
+### Phone or server (measured on this desktop, Python – so the search time is an upper bound, not an estimate of Kotlin)
+
+| Step | Hilden 2 h (7 km) | Hilden 3 h (10.5 km) | Düsseldorf 2 h (8.4 km) |
+| --- | --- | --- | --- |
+| way network (BRouter, Java) | 0.2–0.3 s, 13 800 nodes | – | 0.3 s, 38 200 nodes |
+| loop search (Python, ~120 searches) | ~2 s | ~4 s | ~3.5 s |
+| whole request B | 2.0–2.7 s | 4.4–6.3 s | 4.7 s |
+| whole request A | 5.2 s | – | 9 s |
+
+The network of a 2–3 h walk is a few MB in memory; the searches are ordinary shortest-path runs. In Kotlin on a phone
+this should be seconds, not tens of seconds – **an estimate, not measured**. A server is not needed for the search;
+it would only be needed for an online free-text wish. Bike loops (15 km radius, several 100 000 links) are the open
+case: variant B is hiking-only so far.

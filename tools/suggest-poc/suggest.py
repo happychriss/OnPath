@@ -9,6 +9,7 @@ import math
 import os
 import random
 import subprocess
+import sys
 import time
 import urllib.parse
 import urllib.request
@@ -75,6 +76,7 @@ def simple_wish(b, W):
         if k in ("forest", "quiet", "water", "signed", "natural") and v is not None:
             w[k] = float(v)
     w["simple"] = {k: b.get(k) for k in ("natur", "ruhe", "bekannt", "wasser", "pace", "effort")}
+    w["method"] = "b" if str(b.get("method", "a")).lower() == "b" else "a"
     return w
 
 
@@ -440,11 +442,20 @@ def numbers(c, wish, W, index=None):
         by_hw[hw] = by_hw.get(hw, 0.0) + ln
         if index is not None:
             mid = [(e[0][0] + e[1][0]) / 2, (e[0][1] + e[1][1]) / 2]
+            near = index.at(mid, 1)
+            best_route = None
             for i in index.at(mid, 2):
                 a = index.attr[i]
-                if a["kind"] == "route" and (sr <= 0 or i not in index.at(mid, 1)):
-                    continue  # a named route counts only where the routing data also flags a signed route
+                if a["kind"] == "route":
+                    # one name per piece of way: the highest-ranking route on it (then the longer one) – and only
+                    # where the way really lies on it (30 m), so a parallel way does not borrow the name
+                    if i in near and (best_route is None or (a["rank"], a["length_m"]) >
+                                      (index.attr[best_route]["rank"], index.attr[best_route]["length_m"])):
+                        best_route = i
+                    continue
                 named[i] = named.get(i, 0.0) + ln
+            if best_route is not None:
+                named[best_route] = named.get(best_route, 0.0) + ln
     stalk = 0.0
     for e in edges:
         if uses[ekey(e[0], e[1])] < 2:
@@ -607,20 +618,31 @@ def suggest(wish, W=None):
         notes.append(note)
     index = AT.Index(attr) if attr else None
     t_attr = time.time() - t0
-    turn = rnd.uniform(0, 360.0 / g["directions"])
-    cands = []
-    for i in range(g["directions"]):
-        b = (turn + i * 360.0 / g["directions"]) % 360
-        for shape in g["shapes"]:
-            cands.append({"bearing": round(b), "shape": shape, "cw": rnd.random() < 0.5,
-                          "seed": rnd.randrange(1 << 30)})
-    tc = target_cands(attr, wish, W, rnd)
-    with ThreadPoolExecutor(g["threads"]) as ex:
-        built = list(ex.map(lambda c: build(c, wish, W, kv), cands + tc))
-    built = [c for c in built if c]
-    for c in built:
-        numbers(c, wish, W, index)
-    if g["taste_pass"] and built:
+    method = wish.get("method", "a")
+    if method == "b" and wish["activity"] != "hike":
+        notes.append("Netz-Suche (B) gibt es bisher nur fürs Wandern – gerechnet mit dem Fächer (A)")
+        method = "a"
+    net_info = None
+    cands, tc = [], []
+    if method == "b":
+        import netsearch as NS
+        built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE)
+        for c in built:
+            numbers(c, wish, W, index)
+    else:
+        turn = rnd.uniform(0, 360.0 / g["directions"])
+        for i in range(g["directions"]):
+            b = (turn + i * 360.0 / g["directions"]) % 360
+            for shape in g["shapes"]:
+                cands.append({"bearing": round(b), "shape": shape, "cw": rnd.random() < 0.5,
+                              "seed": rnd.randrange(1 << 30)})
+        tc = target_cands(attr, wish, W, rnd)
+        with ThreadPoolExecutor(g["threads"]) as ex:
+            built = list(ex.map(lambda c: build(c, wish, W, kv), cands + tc))
+        built = [c for c in built if c]
+        for c in built:
+            numbers(c, wish, W, index)
+    if method == "a" and g["taste_pass"] and built:
         good = good_points(built, wish, W)
         if good:
             again = [dict(c, good=good, taste=True, seed=c["seed"] + 1) for c in cands]
@@ -642,6 +664,10 @@ def suggest(wish, W=None):
         if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
             c["chosen"] = True
             chosen.append(c)
+    if method == "b" and W["netsearch"]["router_check"]:
+        import netsearch as NS
+        for c in chosen:  # each shown loop once through the real router: does BRouter confirm it?
+            c["numbers"].update(NS.router_check(c, wish, W, kv, sys.modules[__name__]))
     out = []
     for i, c in enumerate(built):
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
@@ -656,7 +682,8 @@ def suggest(wish, W=None):
                     "coords": [e[0] for e in c["edges"]] + [c["edges"][-1][1]], "cls": c["cls"]})
     return {"run": time.strftime("%Y%m%d-%H%M%S") + "-%d" % wish["seed"], "wish": wish, "weights_version": W["version"],
             "profile": W["routing"]["profile"], "profile_kv": kv, "seconds": round(time.time() - t0, 1),
-            "seconds_destinations": round(t_attr, 1), "candidates_tried": len(cands) + len(tc), "notes": notes,
+            "seconds_destinations": round(t_attr, 1), "method": method, "net": net_info,
+            "candidates_tried": net_info["loops_kept"] if net_info else len(cands) + len(tc), "notes": notes,
             "destinations": [{"kind": a["kind"], "name": a["name"], "km_away": round(a["d"] / 1000.0, 1)}
                              for a in sorted(attr, key=lambda a: a["d"]) if a["kind"] != "view"][:40],
             "legs_routed": sum(c["legs_routed"] for c in built), "route_ms_sum": sum(c["route_ms"] for c in built),

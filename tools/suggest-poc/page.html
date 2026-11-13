@@ -63,6 +63,8 @@
   <div class="lv" data-k="ruhe"><span>Ruhe</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <div class="lv" data-k="bekannt"><span>Bekannte Wege</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
+  <label>Verfahren (zum Vergleichen)</label>
+  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (nur Wandern)</option></select>
   <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
     <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
     <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
@@ -117,7 +119,7 @@ const setLevel = (k, v) => document.querySelectorAll(`.lv[data-k=${k}] button`).
 $('activity').onchange = () => { $('tbox').style.display = $('activity').value === 'hike' ? '' : 'none'; };
 function wish() {
   const w = {start, start_name:startName, activity:$('activity').value, hours:+$('hours').value, pace:$('pacekmh').value ? +$('pacekmh').value : $('pace').value,
-             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, seed};
+             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, method:$('method').value, seed};
   if ($('feinon').checked) w.fein = {forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value};
   return w;
 }
@@ -136,7 +138,7 @@ const hm = h => Math.floor(h) + ':' + String(Math.round((h - Math.floor(h)) * 60
 function show(r, ms) {
   result = r; sel = null;
   const ch = r.candidates.filter(c => c.chosen);
-  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version}` + ((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
+  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version} · Verfahren ${(r.method || 'a').toUpperCase()}` + (r.net ? ` · Netz ${r.net.graph_nodes} Knoten, ${r.net.searches} Suchen` : '') +((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
   $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, ziele_in_reichweite:(r.destinations || []).map(d => d.name + ' ' + d.km_away + ' km'), profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
   cards(); draw(true);
 }
@@ -198,6 +200,7 @@ if (P.get('run')) fetch('/run/' + P.get('run')).then(r => r.json()).then(r => {
   const w = r.wish, sm = w.simple || {};
   $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
   for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
+  $('method').value = w.method || 'a';
   $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;
   if (sm.effort) $('effort').value = ({relaxed:'leicht', medium:'mittel', sporty:'sportlich'})[sm.effort] || sm.effort;
   for (const k of ['forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = w[k]; $(k).dispatchEvent(new Event('input')); }
