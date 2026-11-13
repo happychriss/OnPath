@@ -890,6 +890,13 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     fun dpToPx(dp: Float) = dp * density
 
     /**
+     * Moves the map's content down by [dyPx] screen pixels (up when negative), eased: the found place's menu makes room
+     * above its pin (ui/PinMenuPlace, owner 2026-11-13). Never throws.
+     */
+    fun panBy(dyPx: Float) = runCatching { map.scrollBy(0f, dyPx, 300L) }
+        .onFailure { Problems.warn("map", "Map did not move to make room for the place's menu", it) }
+
+    /**
      * Adds every layer of the app (owner: the dot must never be under a line or a route point). On a style reload
      * MapLibre puts its position layers back before this controller adds its own, so a plain addLayer would land above
      * the dot. Directly below

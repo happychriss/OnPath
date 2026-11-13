@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -1049,15 +1051,24 @@ class ScreenshotTest {
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
-                             ring: Boolean = false, content: @Composable () -> Unit) {
+                             ring: Boolean = false,
+                             /** The found place's menu (MapOverlayHost → PinMenuOverlay: above the pin, else a card); null = its name chip. */
+                             pinMenu: (@Composable (card: Boolean) -> Unit)? = null,
+                             content: @Composable () -> Unit = {}) {
         Frame(route = false) { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
-        val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
+        // the place on the screen; PinMenuOverlay may move the map (its content) to make room above the pin
+        var a by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) })
+        }
         if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
-        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip (MapOverlayHost)
+        val top = with(d) { 160.dp.roundToPx() }
+        val bottom = with(d) { 300.dp.roundToPx() }
+        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip or its menu
+        // (MapOverlayHost)
         if (ring) {
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                 drawIntoCanvas { c ->
@@ -1065,15 +1076,12 @@ class ScreenshotTest {
                         android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
                 }
             }
-            PinChipAt(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
-                PinChip(shared.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), onAction = {}, onMore = {}, emptyPlan = empty)
-            }
+            if (pinMenu == null) PinChipAt(a, topPx = top, bottomPx = bottom) { PinChip(shared.title(), onClick = {}) }
+            else PinMenuOverlay("menu", a, with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() }, top, bottom,
+                onGone = {}, onPan = { a = a.copy(y = a.y + it) }, content = pinMenu)
+        } else {
+            AnchoredOverlay(a, topPx = top, bottomPx = bottom, content = content)
         }
-        // the pin's menu above the pin's head, else under its name chip (MapOverlayHost: lift / drop)
-        val lift = if (ring) with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() } else 0f
-        val drop = if (ring) with(d) { PIN_CHIP_BELOW_DP.dp.toPx() } else 0f
-        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() },
-            belowY = a.y + drop, loose = ring, content = content)
     }
 
     /** First hold on an empty plan: Start here · Go here (from my location) (position known). */
@@ -1126,31 +1134,44 @@ class ScreenshotTest {
 
     /** A place shared from Google Maps: once the map is there its ring's menu opens by itself (SharedPlaceMenu). */
     private val shared = com.onpath.app.search.Place("shared:46.6712,11.1598", "Gelateria Costantin", "other", 46.6712, 11.1598)
+    private val sharedAddress = "Freiheitsstraße 10, 39012 Meran"
+
+    /**
+     * The found place's menu frames (owner 2026-11-13, PinMenuOverlay) show the pin where it ends up: in the app the map
+     * moves it down so the menu fits above it (PinMenuPlace.panPx), or up above the card – effects do not run in
+     * Paparazzi, so the frame starts there. Normal font: low enough for the menu above; the largest font: the card.
+     */
+    internal companion object {
+        const val PIN_MENU_Y = 520
+        const val PIN_CARD_Y = 320
+    }
 
     /** Shared place, plan with points: "Add as new destination" (AddPreview.label, like a hold on the ring). */
-    fun sharedPlaceMenu() = paparazzi.snapshot {
+    fun sharedPlaceMenu(pinY: Int = PIN_MENU_Y) = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {},
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, pinY.dp), ring = true, pinMenu = { card ->
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {}, card = card, address = sharedAddress.takeIf { card },
+                    modifier = if (card) Modifier.fillMaxWidth() else Modifier,
                     addLabel = com.onpath.app.search.AddPreview.label(
                         com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
-            }
+            })
         }
     }
 
     /** A found place (search hit / shared place, owner 2026-11-02): the blue pin and its name chip "Gelateria Costantin ›". */
     @Test fun foundPlacePin() = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {}
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true)
         }
     }
 
     /** Shared place, empty plan: "Start here · Go here · Open in Google Maps". */
-    fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
+    fun sharedPlaceMenuEmptyPlan(pinY: Int = PIN_MENU_Y) = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {})
-            }
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, pinY.dp), empty = true, ring = true, pinMenu = { card ->
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {}, card = card,
+                    address = sharedAddress.takeIf { card }, modifier = if (card) Modifier.fillMaxWidth() else Modifier)
+            })
         }
     }
 

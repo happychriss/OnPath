@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "67a16842b16401e9d67b3bf8c70c2fb7021de229"
+      "blob": "7b2edd798e8ee83ea16e2cb647eb0915f39e8c61"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -93,7 +93,7 @@
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "b15948c0c8f2835fa30ce6ad80e07f223acbb7b6"
+      "blob": "85c8aa1dfc53d608a67e529b299ae4ed69ecb265"
     },
     {
       "app": "app/src/main/java/com/onpath/app/poi/PinnedPoiKinds.kt",
@@ -165,7 +165,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "66eb5f34738c2f1f864eaded5fc580af573cfc08"
+      "blob": "15eefd78f9a6c5383d67d7ca9c4acd74be3d9f51"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",

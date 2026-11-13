@@ -2401,6 +2401,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
         // with nothing running
         cancelRun(NotRouted.LONG)
+        // the map goes back to what was planned before the far point (owner 2026-11-13): the point / the whole plan, during
+        // a tour my position; the found place's pin and its chip stay (cancelRun)
+        val target = LongRouteCancelCamera.after(waypoints.toList(), route?.points, touring = recState.value != null,
+            hasPosition = tracker.location.value != null)
+        Problems.trace("map", "Very long plan cancelled: camera → ${target::class.simpleName}" +
+            ((target as? LongRouteCancelCamera.Target.Fit)?.let { " (${it.points.size} points)" } ?: ""))
+        when (target) {
+            LongRouteCancelCamera.Target.Me -> locate()
+            is LongRouteCancelCamera.Target.Fit -> { followMe = false; freeLookAt = null; events += UiEvent.Fit(target.points) }
+            LongRouteCancelCamera.Target.Stay -> Unit
+        }
     }
 
     /**
