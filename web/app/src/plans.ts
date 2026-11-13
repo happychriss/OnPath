@@ -339,9 +339,10 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       ${spec.chevron ? `<span class="chev" aria-hidden="true">${icon('chevronRight', 22)}</span>` : ''}
     </div>${spec.inline.length ? `<div class="rowacts">${spec.inline.map((a) => `<button class="r-${a} ${a === 'plan' ? 'tonal' : a === 'delete' ? 'textbtn danger' : 'textbtn planact'}">${icon(ic[a], 18)}${esc(label[a])}</button>`).join('')}</div>` : ''}`;
     const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel);
-    const tap = () => (spec.opensOverview ? showOverview(it) : openItem(it));
-    q('.open')!.onclick = tap;
-    q('.tile')!.onclick = tap;
+    // a row tap opens the plan at once (owner 2026-11-13: „der Planer kann die Tour direkt öffnen“ – the browser has the
+    // room the phone lacks); the large overview stays on the tile (⤢), as the app's enlarge
+    q('.open')!.onclick = () => openItem(it);
+    q('.tile')!.onclick = () => (spec.opensOverview ? showOverview(it) : openItem(it));
     const more = q<HTMLButtonElement>('.more');
     if (more) more.onclick = (e) => {
       e.stopPropagation();

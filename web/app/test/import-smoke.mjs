@@ -194,7 +194,7 @@ check(!(await page.$('dialog.plans[open]')) && await pins() === 2, 'a tap on the
 await page.click('#newPlan');
 check(await recentN() === recent0 + 1, 'the same points again: no second Recent entry');
 // Meine Touren: RECENT on top – the draft's line pale on its tile with ⤢, Plan · Save · Delete on the card, ⋮ Rename ·
-// Export GPX (the app's RouteRowActions); a tap opens the large overview (shape, start, goal flag, Cancel · Plan)
+// Export GPX (the app's RouteRowActions); the tile (⤢) opens the large overview (shape, start, goal flag, Cancel · Plan) – a row tap opens the plan at once (owner 2026-11-13)
 await page.click('#menuPlans');
 await page.waitForSelector('dialog.plans[open] li.draft');
 const rec = await page.evaluate(() => ({ head: document.querySelector('dialog.plans li.sectionhead')?.textContent,
@@ -203,13 +203,13 @@ const rec = await page.evaluate(() => ({ head: document.querySelector('dialog.pl
   menu: [...document.querySelectorAll('dialog.plans li.draft .rowmenu button')].map((b) => b.textContent.trim()) }));
 check(rec.head === 'RECENT' && rec.pale && rec.enlarge && JSON.stringify(rec.btns) === '["Plan","Save","Delete"]' && JSON.stringify(rec.menu) === '["Rename","Export GPX"]',
   `My tours: RECENT, the draft's pale line with ⤢, Plan · Save · Delete, ⋮ Rename · Export GPX (${JSON.stringify(rec)})`);
-await page.click('dialog.plans li.draft .open');
+await page.click('dialog.plans li.draft .tile');
 await page.waitForSelector('dialog.overview[open] .ovpic svg', { timeout: 10_000 });
 const ov = await page.evaluate(() => ({ title: document.querySelector('dialog.overview .ovtitle').textContent, facts: document.querySelector('dialog.overview .ovfacts')?.textContent ?? '',
   line: !!document.querySelector('dialog.overview .ovpic svg path'), flag: !!document.querySelector('dialog.overview .ovpic svg g'),
   btns: [...document.querySelectorAll('dialog.overview .ovbuttons button')].map((b) => b.textContent.trim()), pins: document.querySelectorAll('.pin').length }));
 check(ov.line && ov.flag && /km · ↑ \d+ m ↓ \d+ m/.test(ov.facts) && JSON.stringify(ov.btns) === '["Cancel","Plan"]' && ov.pins === 0,
-  `a draft's tap: the large overview – shape, goal flag, facts, Cancel · Plan, nothing on the map yet (${JSON.stringify(ov)})`);
+  `a draft's tile (⤢): the large overview – shape, goal flag, facts, Cancel · Plan, nothing on the map yet (${JSON.stringify(ov)})`);
 await page.click('dialog.overview .ovplan');
 await planned().catch(() => {});
 check(!(await page.$('dialog.overview[open]')) && await pins() === 2, 'overview → Plan: the plan is on the map');

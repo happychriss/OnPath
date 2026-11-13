@@ -210,7 +210,9 @@ check(await A.inputValue('#saveTitle') === 'Altroute (2)', 'My routes ⋮ → Sa
 await answerSave(A, 'Zweitroute');
 await until(A, async () => (await window.__sync.list()).length === 2);
 await A.waitForSelector('dialog.plans[open] #planList li[data-id]');
-await A.click('#planList li:has(.name:text-is("Zweitroute")) .open'); await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
+await A.click('#planList li:has(.name:text-is("Zweitroute")) .open');
+check(!(await A.locator('dialog.overview[open]').isVisible()), 'a row tap opens the plan at once – no overview in between (owner 2026-11-13)');
+await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Saved as Zweitroute'), null, { timeout: 30_000 }).catch(() => {});
 check((await status(A)).folder.key === 'none' && JSON.stringify(await titles(A)) === '["Altroute","Zweitroute"]', 'the copy "Zweitroute" is a second route, "Altroute" stays (Without phone)');
 check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the copy opened: the open route');
