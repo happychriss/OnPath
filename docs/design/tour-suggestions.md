@@ -534,3 +534,38 @@ many for a tidy plan, and the planner's own profile may route a piece differentl
 titles are the POC's working names ("SW · Schleife"), speaking names come with variant C; no small elevation profile
 on the cards and no "etwa 7 km" beside the duration yet (sketch 2 has both); on a phone the activity cannot be changed
 inside the wish window (it shows the chip's words; change it in the sheet before).
+
+### Test on the road (prepared 2026-11-14, switched off) – the mechanism `remote` and the debug setting
+
+Owner 2026-11-14: he travels this weekend and wants to try the suggestions in the real planner on his phone; donald
+stays on at home and computes; "über unsere Debug-Einstellung das Feature einstellen … und das VPN, ansonsten kann ich
+es ausstellen, dann ist alles normal."
+
+- **Mechanism `remote`** (`web/app/src/suggest/remote.ts`): asks the service on his computer at home
+  (`tools/suggest-poc/remote/remote_server.py`, branch `wip/donald-2026-11-14-suggest-remote`) – `POST <Rechner>/v1/suggest`
+  with the password in the header `X-OnPath-Token`, the wish as the POC's few controls, no method (the service picks
+  it). Its answer is mapped like `poc`. Plain messages (`ProviderMessage`, shown as they are): "Rechner nicht
+  erreichbar. Ist das VPN an?", "Falsches Passwort für den Rechner.", "Das dauert zu lange …", "Der Rechner rechnet
+  gerade …", and the service's own "Die Karte für diese Gegend wird vorbereitet …".
+- **The debug setting "Tourvorschläge (Test)"** (`testsetting.ts`): the planner's debug place is `?debug` in the
+  address (developer lines, "Copy diagnostics"); there one more small button opens the setting – switch
+  "Eingeschaltet", "Rechner" (address), "Passwort", "Verbindung prüfen", Abbrechen · OK. Stored only in this browser
+  under `onpath.suggest.remote`; OK reloads the page. While it is on, the button stays on the map (also without
+  `?debug`) so it can always be switched off. Switched off: every `onpath.suggest*` key is removed and the planner is
+  as before (tests: no row, no request, no key, no button without `?debug`). A set-up link
+  `…/?debug#suggest-test=<address>|<password>` fills the fields (nothing stored before OK; the part after `#` never
+  reaches a server) – `tools/suggest-poc/remote/setup_link.sh` prints it on the owner's own screen.
+- **The switch** (`registry.ts`): on = the debug setting with an address (any host → `remote` only), or `?suggest=1` on
+  localhost as before (`poc` in a dev build, `ring`). `ring` and `poc` are never offered outside localhost.
+- **https:** the live planner is https, so the Rechner address must be https too (a VPN that gives the computer an
+  https name, e.g. Tailscale `serve`); a plain `http://` address is refused by the browser, the setting says so
+  ("Diese Seite ist https – …"). For a plain VPN into the home network there is the **test planner served by the
+  computer itself** (`tools/suggest-poc/remote/test_planner.py`): the same build on `http://<computer>:8785/` with the
+  service on the same address (`/suggest-remote/`), map files passed on to the live host; no "Mein Standort" on an
+  http page, its saved tours are separate, no phone pairing.
+- **Tests:** `web/app/test/suggest-remote-smoke.mjs` (a fake remote with password + CORS): 43 checks – off, the
+  setting with "Verbindung prüfen", the whole flow to "Übernehmen", wrong password / computer away / map being
+  prepared, set-up link, off again, phone width.
+- **Not built / undecided:** nothing of this is on main or live; whether the branch goes live with the switch off (so
+  the live planner + an https VPN name works) or the owner uses the test planner is his decision. The password sits
+  in the browser's storage of the device that switched it on.

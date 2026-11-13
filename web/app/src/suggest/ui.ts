@@ -17,7 +17,7 @@ import type { MenuItem } from '../menus';
 import { icon } from '../icons';
 import { t, tp, lang, number } from '../i18n';
 import { post, dismiss } from '../msgcard';
-import { chosenProvider, providers } from './registry';
+import { chosenProvider, providers, setRemoteTexts } from './registry';
 import { SuggestSession, type SessionEngine } from './session';
 import { surfaceOptions, type Effort, type LatLon, type Level, type SuggestEvent, type Suggestion, type TourWish } from './types';
 import './suggest.css';
@@ -76,6 +76,8 @@ export function setupSuggest(host: SuggestHost): SuggestUi {
     searching: t('web_suggest_searching'), computing: (n, of) => t('web_suggest_computing', n, of), loadingMap: t('maps_load_loading'),
     shorter: t('web_suggest_shorter'), longer: t('web_suggest_longer'), failed: t('web_suggest_failed'), lang,
   }));
+  setRemoteTexts(() => ({ unreachable: t('web_suggest_remote_unreachable'), password: t('web_suggest_remote_password'), slow: t('web_suggest_remote_slow'),
+    blocked: t('web_suggest_test_ping_blocked'), busy: t('web_suggest_remote_busy'), preparing: t('web_suggest_remote_preparing') }));
   const provider = () => chosenProvider(providers());
 
   let mode: 'off' | 'wish' | 'results' = 'off';

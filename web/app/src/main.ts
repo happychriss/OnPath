@@ -50,6 +50,7 @@ import { RouteReveal } from './routereveal';
 import { isPoiKind, poiKindAt, poiPin } from './poipin';
 import { suggestEnabled } from './suggest/registry';
 import { setupSuggest, type SuggestUi } from './suggest/ui';
+import { installTestSetting } from './suggest/testsetting';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import './fonts/manrope.css';
@@ -265,6 +266,7 @@ const cells = new Cells(params.get('data') ?? base + 'data/');
 const mapFolder = params.get('data') ?? base + 'map/'; // folder mode only
 if (useCells) maplibregl.addProtocol('cell', cells.protocol);
 installDiag(DEBUG); // the problem log, window.__diag(), ?debug → "Copy diagnostics" (diag.ts)
+installTestSetting(DEBUG); // ?debug → "Tourvorschläge (Test)": the owner's switch for tour suggestions (suggest/testsetting.ts); off = nothing
 watchVersion(); // a newer planner deployed while this tab is open: one box "New version of the planner" [Reload] (version.ts)
 addDiagSection(() => `build: ${BUILD}`);
 const map = new maplibregl.Map({
@@ -2187,7 +2189,8 @@ addEventListener('resize', placeUndoPill);
 changed();
 
 // ---- tour suggestions (suggest/, docs/design/tour-suggestions.md "Planner framework") ----
-// OFF: nothing below runs unless the switch is on (localhost only – suggest/registry.ts). The code is part of the page
+// OFF: nothing below runs unless the switch is on (the debug setting "Tourvorschläge (Test)", or ?suggest=1 on
+// localhost – suggest/registry.ts). The code is part of the page
 // (no extra file to fetch, the build's files stay as they were) but inert.
 if (suggestEnabled()) {
   try {

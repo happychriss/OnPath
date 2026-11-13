@@ -2,7 +2,7 @@
 // (types.ts). Newest wins: starting a run cancels the one before; a cancelled run says nothing more.
 import type { EngineClient } from '../engine/client';
 import type { Progress } from '../engine/types';
-import type { Candidate, LatLon, SuggestEvent, SuggestProvider, Suggestion, TourWish } from './types';
+import { ProviderMessage, type Candidate, type LatLon, type SuggestEvent, type SuggestProvider, type Suggestion, type TourWish } from './types';
 
 /** The few engine calls the session needs – the planner's own plan computation, nothing new in the engine. */
 export type SessionEngine = Pick<EngineClient, 'plan' | 'planFromTrack' | 'dropPlans'>;
@@ -89,7 +89,8 @@ export class SuggestSession {
       if (!live()) return;
       if (failure && found === 0) {
         console.warn('[suggest] the mechanism failed', failure);
-        say({ type: 'error', message: tx.failed, detail: String((failure as Error)?.message ?? failure) });
+        // a mechanism's own plain words ("Rechner nicht erreichbar") are shown as they are, anything else as the general line
+        say({ type: 'error', message: failure instanceof ProviderMessage ? failure.message : tx.failed, detail: String((failure as Error)?.message ?? failure) });
       } else say({ type: 'done', count: found });
     } catch (e) {
       console.warn('[suggest] the run failed', e);

@@ -91,6 +91,9 @@ export interface ProviderContext {
   progress(text: string): void;
 }
 
+/** A failure a mechanism can explain in plain words ("Rechner nicht erreichbar"): its message is shown as it is. */
+export class ProviderMessage extends Error {}
+
 /**
  * A suggestion mechanism. Adding one = one file with this object + one line in registry.ts.
  * [run] hands candidates out one by one (best first) and resolves when it has no more; it throws on failure.

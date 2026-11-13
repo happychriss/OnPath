@@ -46,6 +46,24 @@
     <string name="web_suggest_again">Neue Vorschläge</string>
     <string name="web_suggest_adopt">Übernehmen</string>
     <string name="web_suggest_from">ab %1$s</string>
+    <!-- Die Debug-Einstellung „Tourvorschläge (Test)“ (suggest/testsetting.ts) und das Verfahren `remote` (der Rechner des Owners zu Hause) -->
+    <string name="web_suggest_test_title">Tourvorschläge (Test)</string>
+    <string name="web_suggest_test_about">Nur zum Testen: Die Runden rechnet dein Rechner zu Hause. Ausgeschaltet ist der Planer wie immer.</string>
+    <string name="web_suggest_test_on">Eingeschaltet</string>
+    <string name="web_suggest_test_host">Rechner</string>
+    <string name="web_suggest_test_password">Passwort</string>
+    <string name="web_suggest_test_check">Verbindung prüfen</string>
+    <string name="web_suggest_test_need_host">Bitte die Adresse des Rechners eintragen.</string>
+    <string name="web_suggest_test_ping_ok">Verbindung steht.</string>
+    <string name="web_suggest_test_ping_password">Falsches Passwort.</string>
+    <string name="web_suggest_test_ping_unreachable">Rechner nicht erreichbar. Ist das VPN an?</string>
+    <string name="web_suggest_test_ping_blocked">Diese Seite ist https – eine http-Adresse blockiert der Browser. Nimm eine https-Adresse oder den Test-Planer auf dem Rechner.</string>
+    <string name="web_suggest_test_ping_slow">Der Rechner antwortet nicht.</string>
+    <string name="web_suggest_remote_unreachable">Rechner nicht erreichbar. Ist das VPN an?</string>
+    <string name="web_suggest_remote_password">Falsches Passwort für den Rechner.</string>
+    <string name="web_suggest_remote_slow">Das dauert zu lange. Versuch eine kürzere Tour.</string>
+    <string name="web_suggest_remote_busy">Der Rechner rechnet gerade – gleich noch einmal.</string>
+    <string name="web_suggest_remote_preparing">Die Karte für diese Gegend wird vorbereitet – gleich noch einmal.</string>
     <plurals name="web_suggest_count">
         <item quantity="one">%1$s Vorschlag</item>
         <item quantity="other">%1$s Vorschläge</item>
