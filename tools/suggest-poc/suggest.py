@@ -50,12 +50,12 @@ def effective(W, activity):
 # ---------------------------------------------------------------- wish
 
 def make_wish(start, start_name="", hours=2.0, pace=4.0, t_level=2, effort="relaxed", forest=0.5, quiet=0.5,
-              water=0.0, signed=0.3, natural=0.5, seed=1, activity="hike"):
+              water=0.0, signed=0.3, natural=0.5, seed=1, activity="hike", surface=None):
     """start = [lon, lat]. pace = km/h on the flat. effort = relaxed | medium | sporty. Taste sliders 0..1."""
     return {"start": [float(start[0]), float(start[1])], "start_name": start_name, "hours": float(hours),
             "pace": float(pace), "t_level": int(t_level), "effort": effort, "forest": float(forest),
             "quiet": float(quiet), "water": float(water), "signed": float(signed), "natural": float(natural),
-            "seed": int(seed), "activity": activity if activity in ACTIVITIES else "hike"}
+            "seed": int(seed), "activity": activity if activity in ACTIVITIES else "hike", "surface": surface}
 
 
 def simple_wish(b, W):
@@ -71,7 +71,10 @@ def simple_wish(b, W):
     w = make_wish(b["start"], b.get("start_name", ""), b.get("hours", 2), pace, b.get("t_level", 2),
                   s["effort"].get(b.get("effort", "leicht"), b.get("effort", "relaxed")), nat, lv("ruhe"),
                   s["wasser_on"] if b.get("wasser") else s["wasser_off"], lv("bekannt"),
-                  nat * s["natur_natural_factor"], b.get("seed", 1), act)
+                  nat * s["natur_natural_factor"], b.get("seed", 1), act, b.get("surface"))
+    so = W["surface"].get(w["activity"], W["surface"]["hike"])
+    if w["surface"] not in so["options"]:
+        w["surface"] = so["default"]
     for k, v in (b.get("fein") or {}).items():
         if k in ("forest", "quiet", "water", "signed", "natural") and v is not None:
             w[k] = float(v)
@@ -372,6 +375,29 @@ def edge_class(tags, C):
     return "W" if forest >= C["forest_share_from_class"] else "P"
 
 
+def surface_class(tags, C):
+    """A = asphalt / paved, F = firm (compacted, gravel, a good track), N = natural ground. From surface, else
+    tracktype, else the kind of way."""
+    surf = tags.get("surface", "")
+    if surf:
+        return "A" if surf in C["surface_asphalt"] else "F" if surf in C["surface_firm"] else "N"
+    tt = tags.get("tracktype", "")
+    if tt:
+        return "A" if tt == "grade1" else "F" if tt == "grade2" else "N"
+    hw = tags.get("highway", "")
+    if hw in C["street_highways"] or hw == "cycleway":
+        return "A"
+    if hw == "track":
+        return "F"
+    return "A" if tags.get("estimated_town_class") and hw in ("footway", "pedestrian", "steps") else "N"
+
+
+def surface_values(wish, W):
+    """The wish's surface choice -> pleasure value per class {A, F, N} (+ 'avoid': classes to keep off)."""
+    so = W["surface"].get(wish.get("activity", "hike"), W["surface"]["hike"])
+    return so["options"].get(wish.get("surface") or so["default"], so["options"][so["default"]])
+
+
 def signed_rank(tags, C, ranks):
     """Rank of the best signed route this way belongs to (routing data flags route_hiking_rwn=yes …), 0 = none."""
     best = 0.0
@@ -396,6 +422,8 @@ def numbers(c, wish, W, index=None):
     m = dict(forest_v=0.0, forest=0.0, noise_v=0.0, loud=0.0, river_v=0.0, street=0.0, big=0.0, paved=0.0,
              signed=0.0, signed_v=0.0, doubled=0.0, town=0.0)
     cls = []
+    sv = surface_values(wish, W)
+    surf_m = {"A": 0.0, "F": 0.0, "N": 0.0}
     crossings = 0
     by_hw = {}
     named = {}
@@ -431,6 +459,7 @@ def numbers(c, wish, W, index=None):
         surf = t.get("surface", "")
         if surf in C["paved_surfaces"] or (not surf and hw in C["street_highways"]):
             m["paved"] += ln
+        surf_m[surface_class(t, C)] += ln
         sr = signed_rank(t, C, ranks)
         if sr > 0:
             m["signed"] += ln
@@ -488,6 +517,7 @@ def numbers(c, wish, W, index=None):
          "water_value": round(m["river_v"] / total, 2), "town_pct": round(100 * m["town"] / total),
          "street_pct": round(100 * m["street"] / total), "big_street_pct": round(100 * m["big"] / total),
          "main_longest_m": int(main_longest),
+         "surface_pct": {k: round(100 * v / total) for k, v in surf_m.items()},
          "paved_pct": round(100 * m["paved"] / total), "signed_pct": round(100 * m["signed"] / total),
          "doubled_pct": round(100 * m["doubled"] / total), "stalk_m": int(stalk), "crossings": crossings,
          "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "views": views[:3],
@@ -508,9 +538,13 @@ def numbers(c, wish, W, index=None):
         "ascent": ascent_part,
         "forest": m["forest_v"] / total,
         "quiet": 1 - m["noise_v"] / total,
-        "water": max(m["river_v"] / total, min(1.0, lake_m / S["lake_full_m"])),
+        # along water: the share near a river / lake (full at water_full_at), or a lake shore walked (full at
+        # lake_full_m, on long loops at lake_full_share of the loop) – never full just because one pond was passed
+        "water": max(min(1.0, m["river_v"] / total / S["water_full_at"]),
+                     min(1.0, lake_m / max(S["lake_full_m"], S["lake_full_share"] * total))),
         "signed": min(1.0, m["signed_v"] / total / S["signed_full_at"]),
         "natural": 1 - m["paved"] / total,
+        "surface": sum(surf_m[k] * sv[k] for k in surf_m) / total,
         "street": max(0.0, 1 - street_share / S["street_zero_at"]),
         "mainroad": 1.0 if main_longest <= mr else max(0.0, 1 - (main_longest - mr) / (mr * (S["main_road_zero_factor"] - 1))),
         "doubled": max(0.0, 1 - m["doubled"] / total / S["doubled_zero_at"]),
@@ -619,9 +653,6 @@ def suggest(wish, W=None):
     index = AT.Index(attr) if attr else None
     t_attr = time.time() - t0
     method = wish.get("method", "a")
-    if method == "b" and wish["activity"] != "hike":
-        notes.append("Netz-Suche (B) gibt es bisher nur fürs Wandern – gerechnet mit dem Fächer (A)")
-        method = "a"
     net_info = None
     cands, tc = [], []
     if method == "b":
@@ -672,7 +703,8 @@ def suggest(wish, W=None):
     for i, c in enumerate(built):
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
         if c.get("target_name"):
-            name = "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else "")
+            name = ("Entlang %s" % c["target_name"] if c.get("mode") == "follow" else
+                    "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else ""))
         else:
             name = "%s · %s%s" % (d, c["shape"].capitalize(), " · gezielt" if c.get("taste") else "")
         out.append({"id": i + 1, "name": name, "chosen": bool(c.get("chosen")), "target": c.get("target_name"),

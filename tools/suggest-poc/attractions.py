@@ -170,7 +170,10 @@ def load_cells(start, reach_m, activity, W):
             for r in d["routes"]:
                 if (r["kind"] == "hike") == bike or r["kind"] not in ("hike", "bike"):
                     continue
-                g = routes.setdefault(r["label"], {"net": 0, "lines": [], "trail": True})
+                # one route, many pieces ("EuroVelo 15 - Rheinradweg - Teilstrecke Köln - Moers" …): one name
+                lab = re.sub(r"\s+-\s+(Teilstrecke|Verbindung|Abschnitt|Etappe|Teil|Variante)\b.*$", "", r["label"])
+                lab = re.sub(r"\s*\((West|Ost|Nord|Süd|Mitte)\)$", "", lab)
+                g = routes.setdefault(lab, {"net": 0, "lines": [], "trail": True})
                 g["net"] = max(g["net"], r["net"])
                 g["lines"] += r["lines"]
                 g["trail"] = g["trail"] and r.get("trail", False)
@@ -215,6 +218,24 @@ def load_cells(start, reach_m, activity, W):
         note = "Kartengebiet fehlt auf diesem Rechner (%s) – dort ohne Ziele; holen: cells.py get" % ", ".join(
             "10-%d-%d" % c for c in missing)
     return [a for a in out if a["d"] <= reach_m], note
+
+
+def known_lines(start, reach_m, activity, W):
+    """The known routes around the start as lines for the page's overlay: [{name, net, lines}] (own map areas only)."""
+    load_cells(start, reach_m, activity, W)
+    A = W["attractions"]
+    bike = activity != "hike"
+    key = ("cells", tuple(CE.cells_for(start[0], start[1], A["max_reach_m"])), bike)
+    out = []
+    for label, g in _mem.get(key, ({}, {}, []))[0].items():
+        lines = []
+        for l in g["lines"]:
+            if _dist(start, l[0]) <= reach_m or _dist(start, l[-1]) <= reach_m:
+                lines.append([[round(q[0], 5), round(q[1], 5)] for q in l[::2] + ([l[-1]] if len(l) % 2 == 0 else [])])
+        if lines:
+            out.append({"name": label, "net": NET.get(g["net"], "l") + ("cn" if bike else "wn"), "trail": g["trail"],
+                        "lines": lines})
+    return out
 
 
 def load(start, reach_m, activity, W):

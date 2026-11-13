@@ -33,7 +33,7 @@ class H(BaseHTTPRequestHandler):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
         # behind a path prefix (preview pane) the calls arrive as <prefix>/places …: look at the end of the path
-        tail = re.search(r"/(ping|places|place|run/[^/]+)$", u.path)
+        tail = re.search(r"/(ping|places|place|known|run/[^/]+)$", u.path)
         if tail:
             u = u._replace(path="/" + tail.group(1))
         if u.path == "/":
@@ -43,7 +43,17 @@ class H(BaseHTTPRequestHandler):
             return self.send({"ok": True})
         if u.path == "/places":
             W = S.load_weights()
-            return self.send({"places": {k: v for k, v in W["places"].items() if not k.startswith("_")}, "weights_version": W["version"]})
+            return self.send({"places": {k: v for k, v in W["places"].items() if not k.startswith("_")}, "weights_version": W["version"],
+                              "surface": {k: v for k, v in W["surface"].items() if not k.startswith("_")}})
+        if u.path == "/known":  # the known signed routes around a point, from our own map areas (the page's overlay)
+            import attractions as AT
+            act = q.get("activity", ["hike"])[0]
+            E = S.effective(S.load_weights(), act)
+            at = [float(q["lon"][0]), float(q["lat"][0])]
+            try:
+                return self.send({"routes": AT.known_lines(at, float(q.get("reach", [12000])[0]), act, E)})
+            except Exception as e:  # shown as "no overlay" on the page – a POC has no other place for it
+                return self.send({"routes": [], "error": "%s: %s" % (type(e).__name__, e)})
         if u.path == "/place":
             r = S.find_place(q.get("q", [""])[0], S.load_weights())
             return self.send({"name": r[0], "lonlat": r[1]} if r else {"error": "Ort nicht gefunden"})

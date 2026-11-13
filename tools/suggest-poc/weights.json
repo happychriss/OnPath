@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-13f",
+  "version": "2026-11-13g",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
 
   "simple": {
@@ -54,7 +54,25 @@
     "keep_length_off": 0.2,
     "ascent_hysteresis_m": 6,
     "router_check": true,
-    "check_via_every_m": 600
+    "check_via_every_m": 600,
+    "k_surface": 1.5,
+    "surface_avoid_factor": 3.0,
+    "known_discount_per_signed": 0.8,
+    "known_discount_max": 0.75,
+    "follow": {
+      "_about": "Loops built along a known route: a short stem (at most stem_max of the wished length) onto the route, along it to the point where stem + route + way home fill the wished length (only points the route reaches fairly directly: direct_max x the straight line), back another way (ways already used cost used_penalty; other known routes are cheap through the discount). Only from 'Bekannte Wege' >= from_signed; the best max_routes routes by rank x length in reach, each in both directions.",
+      "enabled": true,
+      "from_signed": 0.3,
+      "max_routes": 4,
+      "stem_max": 0.12,
+      "min_on": 0.12,
+      "min_follow": 0.15,
+      "direct_max": 1.9,
+      "back_factor": 1.15,
+      "fit_tries": 3,
+      "on_cost": 0.08,
+      "on_path_max": 0.5
+    }
   },
 
   "attractions": {
@@ -119,6 +137,8 @@
     "lit_town_path_is_street": false,
     "main_gap_m": 40,
     "signed_prefixes": ["route_hiking_", "route_foot_"],
+    "surface_asphalt": ["asphalt", "paved", "concrete", "concrete:plates", "concrete:lanes", "paving_stones"],
+    "surface_firm": ["compacted", "fine_gravel", "gravel", "pebblestone", "sett", "cobblestone", "unhewn_cobblestone", "metal", "wood", "grass_paver"],
     "paved_surfaces": ["asphalt", "paved", "concrete", "paving_stones", "sett", "cobblestone", "concrete:plates", "concrete:lanes"]
   },
 
@@ -130,8 +150,9 @@
       "forest": 5.0,
       "quiet": 2.0,
       "water": 3.0,
-      "signed": 2.5,
-      "natural": 1.5,
+      "signed": 4.5,
+      "natural": 0.0,
+      "surface": 2.5,
       "street": 3.5,
       "mainroad": 3.0,
       "doubled": 3.0,
@@ -147,7 +168,27 @@
     "shape_full_at": 0.35,
     "crossings_zero_per_km": 3.0,
     "signed_full_at": 0.6,
-    "lake_full_m": 1000
+    "lake_full_m": 1000,
+    "lake_full_share": 0.12,
+    "water_full_at": 0.5
+  },
+
+  "surface": {
+    "_about": "The form's line 'Wegbeschaffenheit', per activity: label + pleasure value per surface class (A = asphalt / paved, F = firm: compacted, gravel, good track, N = natural ground; classes.surface_*). 'avoid' = classes the search keeps off (netsearch.surface_avoid_factor). Score part 'surface' = length-weighted value.",
+    "hike": {"default": "gemischt", "options": {
+      "natur": {"label": "Naturwege bevorzugt", "A": 0.15, "F": 0.7, "N": 1.0},
+      "gemischt": {"label": "gemischt", "A": 0.6, "F": 1.0, "N": 1.0},
+      "befestigt": {"label": "befestigt (auch bei Nässe / Kinderwagen)", "A": 1.0, "F": 0.9, "N": 0.1, "avoid": "N"}}},
+    "bike": {"default": "fest", "options": {
+      "asphalt": {"label": "Asphalt", "A": 1.0, "F": 0.4, "N": 0.0, "avoid": "N"},
+      "fest": {"label": "fester Weg", "A": 1.0, "F": 1.0, "N": 0.1, "avoid": "N"},
+      "egal": {"label": "egal", "A": 1.0, "F": 1.0, "N": 0.7}}},
+    "gravel": {"default": "gemischt", "options": {
+      "schotter": {"label": "Schotter gern", "A": 0.4, "F": 1.0, "N": 0.8},
+      "gemischt": {"label": "gemischt", "A": 0.9, "F": 1.0, "N": 0.5}}},
+    "mtb": {"default": "forst", "options": {
+      "trails": {"label": "Trails gern", "A": 0.15, "F": 0.6, "N": 1.0},
+      "forst": {"label": "Forstwege", "A": 0.4, "F": 1.0, "N": 0.6}}}
   },
 
   "select": {
@@ -169,14 +210,19 @@
       "pace": {"gemütlich": 14, "normal": 18, "zügig": 22},
       "hours": [1, 4],
       "routing": {"profile": "touring"},
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+                    "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway|path)",
+                    "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
+                    "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
+                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
-      "attractions": {"max_reach_m": 12000},
+      "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 1000},
       "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
       "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false},
-      "score": {"weights": {"forest": 2.5, "street": 1.0, "mainroad": 4.0, "natural": 0.0, "signed": 3.0, "crossings": 0.2},
+      "score": {"weights": {"forest": 2.5, "street": 1.0, "mainroad": 4.0, "natural": 0.0, "signed": 6.0, "surface": 3.0, "crossings": 0.2},
                 "street_zero_at": 1.2, "main_road_max_m": 1000, "doubled_zero_at": 0.3}
     },
     "gravel": {
@@ -184,14 +230,19 @@
       "pace": {"gemütlich": 13, "normal": 17, "zügig": 21},
       "hours": [1, 4],
       "routing": {"profile": "trekking"},
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+                    "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
+                    "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
+                    "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
+                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
-      "attractions": {"max_reach_m": 12000},
+      "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 900},
       "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
       "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false},
-      "score": {"weights": {"forest": 3.0, "street": 1.5, "mainroad": 4.0, "natural": 2.0, "signed": 2.0, "crossings": 0.2},
+      "score": {"weights": {"forest": 3.0, "street": 1.5, "mainroad": 4.0, "natural": 0.0, "signed": 4.0, "surface": 3.0, "crossings": 0.2},
                 "street_zero_at": 1.0, "main_road_max_m": 800, "doubled_zero_at": 0.3}
     },
     "mtb": {
@@ -199,6 +250,11 @@
       "pace": {"gemütlich": 10, "normal": 13, "zügig": 16},
       "hours": [1, 4],
       "routing": {"profile": "mtb"},
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+                    "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
+                    "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
+                    "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
+                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
@@ -206,7 +262,7 @@
       "time": {"ascent_m_per_h": 700},
       "effort": {"relaxed": {"max_m_per_km": 10}, "medium": {"max_m_per_km": 20}, "sporty": {"min_m_per_km": 15}},
       "classes": {"signed_prefixes": ["route_mtb_", "route_bicycle_"], "sidewalk_is_street": false},
-      "score": {"weights": {"forest": 4.0, "street": 2.5, "mainroad": 4.0, "natural": 3.0, "signed": 1.5, "crossings": 0.2},
+      "score": {"weights": {"forest": 4.0, "street": 2.5, "mainroad": 4.0, "natural": 0.0, "signed": 3.0, "surface": 3.5, "crossings": 0.2},
                 "street_zero_at": 0.8, "main_road_max_m": 600, "doubled_zero_at": 0.3}
     }
   },
@@ -216,6 +272,7 @@
     "Hilden": [6.9395, 51.1680],
     "Ohligser Heide (Solingen Vogelpark)": [6.9866, 51.1645],
     "Düsseldorf": [6.7763, 51.2254],
-    "Meran": [11.1597, 46.6713]
+    "Meran": [11.1597, 46.6713],
+    "Zons (Rhein)": [6.8448, 51.1231]
   }
 }
