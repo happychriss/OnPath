@@ -10,7 +10,7 @@ import com.onpath.app.routing.GeoPoint
  * - No point yet: "Hier starten" · "Hierhin" – during a tour only "Hierhin" (the tour already runs from here).
  * - One point (or no route ahead): today's wording, "Als Ziel setzen" (one entry).
  * - Two or more: "Als Zwischenstopp" (the best place on the route ahead, the goal stays) and/or "Als neues Ziel" (the
- *   route ends there, the old goal is dropped; Undo brings it back) – no stop numbers ("Stopp 2" confused the owner).
+ *   route goes on there, the old goal stays as the last stop – owner 2026-11-14; Undo brings the plan before back) – no stop numbers ("Stopp 2" confused the owner).
  *   Which of them, in which order, follows the geometry ([zone]): "Es gibt Sachen, wo es eindeutig ist … einen Bereich,
  *   wo es zweifelhaft ist – da kann man beides anwählen. Wenn es ganz weit weg ist, nur als Ziel." A clear case shows
  *   one entry; the other one is never lost – it waits under "⋯ Mehr" ([Menu.more]).

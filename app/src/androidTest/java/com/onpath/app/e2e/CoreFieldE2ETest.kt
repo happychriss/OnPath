@@ -689,9 +689,10 @@ class CoreFieldE2ETest : E2EBase() {
 
     /**
      * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
-     * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
+     * goes on to the place and the old goal stays as the last stop (owner 2026-11-14), one Undo brings the plan before back.
+     * The recording goes on throughout.
      */
-    @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
+    @Test fun aPlaceMadeTheDestinationDuringATourKeepsTheOldGoalAsAStopUndoBringsThePlanBack() {
         startPlanWithTwoPoints()
         routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
@@ -710,9 +711,9 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("the stop stays reachable: $menu",
             com.onpath.app.ui.PlaceAddMenu.Item.ADD_STOP in menu!!.main + menu!!.more)
         scenario.onActivity { vm(it).poiAsNewDestination(poi) }
-        waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
+        waitUntil("the plan goes on to the place, the old goal stays as a stop", 10_000) {
             val w = waypointList()
-            w.size == 2 && w[0] == plan[0] && com.onpath.app.data.Geo.distance(w[1], past) < 5.0
+            w.size == 3 && w[0] == plan[0] && w[1] == plan[1] && com.onpath.app.data.Geo.distance(w[2], past) < 5.0
         }
         assertTrue("the recording goes on", recording())
         scenario.onActivity { vm(it).undoStep() }
