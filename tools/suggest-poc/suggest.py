@@ -760,7 +760,8 @@ def suggest(wish, W=None):
                     "vias": c["vias"], "route_ms": c["route_ms"], "legs_routed": c["legs_routed"],
                     "coords": [e[0] for e in c["edges"]] + [c["edges"][-1][1]], "cls": c["cls"]})
     return {"run": time.strftime("%Y%m%d-%H%M%S") + "-%d" % wish["seed"], "wish": wish, "weights_version": W["version"],
-            "profile": W["routing"]["profile"], "profile_kv": kv, "seconds": round(time.time() - t0, 1),
+            "profile": W["routing"]["profile"], "profile_kv": kv,
+            "main_road_max_m": W["score"]["main_road_max_m"], "seconds": round(time.time() - t0, 1),
             "seconds_destinations": round(t_attr, 1), "method": method, "net": net_info,
             "candidates_tried": net_info["loops_kept"] if net_info else len(cands) + len(tc), "notes": notes,
             "destinations": [{"kind": a["kind"], "name": a["name"], "km_away": round(a["d"] / 1000.0, 1)}

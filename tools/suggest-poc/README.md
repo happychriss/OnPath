@@ -181,3 +181,45 @@ from the start, but long bike loops ran as variant A with destinations switched 
 - Weak: the network search on 200,000 nodes is at the limit of Python (0.2 s per search); „Entlang EV15“ southwards has
   a 2.4 km main-road stretch and comes back along the same river; bike main-road cost is still the app's profile;
   the surface options' numbers are a first guess; MTB not run.
+
+## Round 5 (2026-11-13, weights 2026-11-13h) – main roads for bikes, the Rhine ride on top, loops made for a lake
+
+Owner: "Mach bitte Punkt 1, bevor ich probiere" (main roads for bikes; the Rhine ride first; the Elbsee back).
+
+- **What the 1.4 km "main road" of the Rhine ride was:** Urdenbach, between the ferry and Benrath – `highway=tertiary`
+  with `maxspeed=30` and `cycleway:both=shared_lane`, on the signed Rhine route. A 30 km/h village street, classed
+  as main road only because every tertiary was. No busy road, no bridge.
+- **`classes.main` (suggest.main_weight):** "along a main road" is now a weight 0..1 instead of yes / no. Bikes:
+  secondary 1.0, tertiary 0.8, × 0.3 on a 30 km/h road, × 0.5 with a cycle track, × 0.75 with a lane, × 0.4 on a
+  bridge, a separate cycle path beside a loud road 0.4. From 0.5 a piece is shown as "an Hauptstraße"; the longest
+  stretch counts weighted metres from 0.3. Hike: all 1 (the old rule, results unchanged).
+- **Cost:** variant B's edge value takes `pen_main × weight`; the bike / gravel profile copies got
+  `mainroad_penalty` (make_profiles.py – final check route and variant A). mtb.brf is not changed.
+- **A known route on a main road** counts only where the routing data says the road itself carries a signed route.
+  Before, a loop "along EV15" rode 2 km on the B9 carriageway (70 km/h, no cycle way) because the road lies within
+  30 m of the route's line; the route is the path beside it.
+- **`signed` part for bikes:** full only at 90 % rank-weighted share (was 60 % – every bike loop had 1.0, the same
+  fault the water part had). Points of bike cases are therefore lower than on the 13g sheet and not comparable.
+- **Water:** weight 3 → 6 with `wasser_off` 0.25 → 0.12 (no change without the theme); full river share 0.5 → 0.8,
+  full lake stretch 1 km → 2.5 km / 25 % of the loop: passing a pond no longer gives full points.
+- **Loops made for a lake (`netsearch.lake`, hike only):** a fairly direct way to the lake (the most pleasant way
+  from Hilden centre to the Elbsee was 7.7 km for 2.5 km as the crow flies, so no loop ever got there), then round
+  the lake when the length allows and the walked ring really encloses the water, else along the shore each way,
+  home another way. A way up to ~120 m from the water counts as "at the lake" (`lake_pad_cells`). With the theme
+  on, one shown loop is made for a lake, and a lake round is shown when one fits (`select.lake_slot_from_water`).
+  Off for bikes: a small lake round is far too short for a bike wish (it won at Zons with 44 km for 54).
+- **Card:** "mit Fähre" when a loop uses a ferry (all three Zons suggestions cross with the Zons–Urdenbach ferry);
+  the main-road chip turns red at the activity's own threshold.
+- **Bench:** Zons now expects ≥ 25 km on the Rhine route in the first suggestion; new control `zons-bike-3h-mittel`
+  (Bekannte Wege mittel, no water); Hilden + Wasser also expects a lake round among the suggestions.
+
+Still weak after round 5:
+- The Hilden "Am Elbsee entlang" loop has 1.8 km at the Menzelsee and only 0.9 km at the Elbsee, is 14 % too long
+  and comes home the long way round the south-west. No way round the Elbsee itself was found in the network.
+- The Menzelsee round is a real round, but its way home wanders through the industrial area (the way back is
+  pushed off the way there) – a plain there-and-back stem would be better here.
+- Zons: only three different suggestions (many candidates are near copies), and all use the ferry – no check of
+  its hours. The first one has a spur at its north end (seen on the picture, not looked into).
+- Rivers are not named destinations yet: "at the water" for the Rhine comes from the routing data's river class,
+  which cannot tell the Rhine from a pond.
+- Not done: the two old reds (Hilden 2 h forest 49 % for 50, Heide street 21 % for 15); MTB; variant A not re-run.

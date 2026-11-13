@@ -576,8 +576,15 @@ def lake_loops(G, wish, W, S, index, hits, cost, target_m, s, add, info):
                 r_len = lA[P1] + lB[P2] + lC[entry]
                 r_edges = eA + eB + eC
                 twice = sum(G.edges[j][2] for j in set(eA) & set(eB) | set(eB) & set(eC) | set(eA) & set(eC))
-                if twice <= 0.15 * r_len:
-                    ring = (r_len, nA + nB[1:] + nC[1:], r_edges)
+                r_nodes = nA + nB[1:] + nC[1:]
+                # a round only if it really goes round the water: the lake's middle lies inside the walked ring
+                inside, poly = False, [G.nodes[v] for v in r_nodes]
+                for k in range(len(poly)):
+                    (x1, y1), (x2, y2) = poly[k][:2], poly[(k + 1) % len(poly)][:2]
+                    if (y1 > cy) != (y2 > cy) and cx < x1 + (cy - y1) * (x2 - x1) / (y2 - y1):
+                        inside = not inside
+                if twice <= 0.15 * r_len and inside:
+                    ring = (r_len, r_nodes, r_edges)
         if ring and stem + ring[0] + stem <= (1 + N["keep_length_off"]) * target_m:
             h = home(entry, set(e1) | set(ring[2]))
             if h:
