@@ -37,6 +37,12 @@ and the commit history.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[laptop] Planner on a phone: a shared route link opens well (owner 2026-11-13, chat)** – someone without OnPath gets
+  a route link and opens it in the phone's browser. Today the plan sheet opens fully pulled up and only a tiny „Route
+  wird geladen“ sits above it. Wanted: while loading, the map already shows the area of the route (zoomed to it, the
+  points / a rough line if known); the sheet starts pulled down (small / middle step) so the route is visible once it
+  is there. Check the whole planner at phone width at the same time (it must look good on a phone, not only on a PC).
+  Test at 390 px (Playwright phone) with a shared link; picture to the owner before deploying.
 - **[laptop] Flaky poipin-smoke (c) „the stop dragged off the POI is a plain dot again“ (2026-11-13: 1 red in 4 local runs)** – probably the drag ends before the stop has moved; make the test wait for it, never weaken the check. Also search-smoke „Vellau“ (once red 2026-11-12).
 - **[laptop] Planner Zuletzt = the app's one-plan rule in full (0.17.9: 2923a3e7 / 6f4b47d3; laptop 2026-11-13)** – the web shows one Zuletzt row now (the plan on the map, else the newest; `recent.ts` still keeps 25, shows 1). Still open: a saved route can hold the Zuletzt place („Gespeichert“ tag, also under Gespeichert); the open saved route as the Zuletzt row with In Bearbeitung + Gespeichert; replaced drafts to a web recycle bin, then MAX = 1 + one-time trim. Also the sage under the plan sheet / activity chip / top band (eb528689).
 - **[laptop] Planner: My routes sort chips like the app (donald 3b26b558, owner 2026-11-12 variant C; `ui/routes/RouteSort`, Prefs.routesSort)** – parity was marked checked on 2026-11-12 to let the sync fix deploy; the web still has no sort chips. Also check donald's 362459fc (difficulty stored at saving) for the planner's saved plans. 032aaeca (interrupted tour start) is phone only.
