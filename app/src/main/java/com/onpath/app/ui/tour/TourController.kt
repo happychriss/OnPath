@@ -5,6 +5,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.onpath.app.data.Tour
 import com.onpath.app.debug.Problems
+import com.onpath.app.domain.tour.ShortRecording
 import com.onpath.app.rides.RideView
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.time.TourTimes
@@ -101,6 +102,26 @@ class TourController(private val recorder: TourRecorder) {
 
     /** The service reported the tour as finished: whether it goes to the recycle bin (taken once – the next tour saves). */
     fun takeDeleteFinished(): Boolean = deleteFinished.also { deleteFinished = false }
+
+    /** What becomes of the finished tour ([finishedOutcome]). */
+    enum class Finished {
+        /** The end sheet's Löschen: the recycle bin, nothing said. */
+        DELETED,
+        /** Less than [ShortRecording.MIN_M] of track (owner 2026-11-12): the recycle bin with the notice and Rückgängig. */
+        SHORT,
+        /** The saved box "Tour gespeichert". */
+        SAVED,
+    }
+
+    /**
+     * The service reported the tour as finished with [distanceM] of track: the user's Löschen first (taken once), else
+     * a short recording goes to the bin ([ShortRecording]), else it is saved.
+     */
+    fun finishedOutcome(distanceM: Double): Finished = when {
+        takeDeleteFinished() -> Finished.DELETED
+        ShortRecording.bins(distanceM) -> Finished.SHORT
+        else -> Finished.SAVED
+    }
 
     /** After the tour ended (saved or deleted): no arrival box, no "Neuer Plan" line of the old tour. */
     fun afterFinished() { arrivalAsk = false; newPlanNote = null }
