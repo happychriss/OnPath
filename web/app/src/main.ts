@@ -1073,7 +1073,7 @@ function keepPlanStats(code: string) {
   const p = state.plan;
   if (!p || state.planning || p.error || p.failed || p.notice || p.gaps.gaps.length || planFor !== enc(state.points)) return;
   if (p.legs.some((l) => l.straight)) return;
-  keepStats(planKey(code), { m: p.distanceM, up: p.ascentM, down: p.descentM });
+  keepStats(planKey(code), { m: p.distanceM, up: p.ascentM, down: p.descentM, s: p.timeS, lv: p.level });
   keepShape(planKey(code), p.legs.map((l) => l.points.map(([la, lo]) => [la, lo] as [number, number])));
 }
 /** The plan before the point edit that is being planned now (the long-route question's "Far from your route"). */
@@ -1781,7 +1781,7 @@ const plansHost = {
       const before = gpxImport.shown;
       await gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name')));
       const tr = gpxImport.shown; // a new one = this track read fine (an unreadable one leaves the old one shown)
-      if (tr && tr !== before) { keepStats(trackKey(p.id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); keepShape(trackKey(p.id), trackSegs(tr.segments)); }
+      if (tr && tr !== before) { keepStats(trackKey(p.id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM, s: tr.durationS }); keepShape(trackKey(p.id), trackSegs(tr.segments)); }
       return;
     }
     const shared = await engine.parse('p=' + p.plan);
@@ -1981,11 +1981,12 @@ const gpxImport = setupGpxImport({
       // 250 tours per phone (SyncLimits): the track still shows; it is just not kept – the amber Save says why
       if (!(await sync.hasRoom())) { sync.refuseTour(); return; }
       const id = await sync.saveTrack(tr.segments, tr.waypoints, tr.activity, tr.sac, tr.name);
-      if (id) { keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM }); keepShape(trackKey(id), trackSegs(tr.segments)); } // My routes' numbers + line
+      if (id) { keepStats(trackKey(id), { m: tr.distanceM, up: tr.ascentM, down: tr.descentM, s: tr.durationS }); keepShape(trackKey(id), trackSegs(tr.segments)); } // My routes' numbers + line
     }).catch((e) => problem('sync', 'imported track not kept', e));
   },
 });
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
+(window as unknown as { __planStats: unknown }).__planStats = { keepStats, planKey, trackKey }; // for the browser tests (sort-smoke)
 $('credits').onclick = () => credits();
 $('changedLine').onclick = () => { changedSeen = state.plan; $('changedLine').hidden = true; fitRoute(); }; // the app's tapRouteChangedLine
 $('warning').onclick = () => { const sp = $('spots'); sp.hidden = !sp.hidden; $('warning').setAttribute('aria-expanded', String(!sp.hidden)); };

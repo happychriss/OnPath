@@ -639,7 +639,7 @@ await R.waitForFunction(() => window.__sync.status.folder.key === 'none' && wind
 await R.click('#closePhone');
 await menu(R, '#menuPlans');
 await R.waitForSelector('#planList li', { timeout: 10_000 });
-check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No saved plans yet'),
+check(!(await R.locator('#planList li.oldphone').count()) && (await R.textContent('#planList')).includes('No plans yet.'),
   'after Unpair My tours is plain: no line about the old phone (owner 2026-11-12: old folders stay quietly)');
 check((await status(R)).closed.length === 1 && (await titles(R, restPhone.device)).includes('Nie gesendet'), 'the old phone\'s folder and its plans stay in this browser');
 await R.click('#closePlans');

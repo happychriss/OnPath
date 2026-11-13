@@ -5,7 +5,9 @@
 // track by its id. Never routes anything for the list: a route this browser has not routed yet shows no numbers.
 import { distance } from './i18n';
 
-export interface PlanStats { m: number; up: number; down: number }
+/** [s] = the model time in seconds (Meine Touren's sort by Dauer), [lv] = the rating's level (the app stores it at saving,
+ * 362459fc – for a later sort by difficulty); both missing in numbers kept before 2026-11-13. */
+export interface PlanStats { m: number; up: number; down: number; s?: number; lv?: string }
 
 const KEY = 'onpath.planStats';
 /** The newest entries are kept; old ones go (a plan changed many times leaves its older codes behind). */
@@ -41,7 +43,7 @@ export function keepStats(key: string, s: PlanStats) {
   if (!(Number.isFinite(s.m) && s.m > 0)) return;
   const all = load();
   delete all[key]; // re-inserted last = newest
-  all[key] = { m: s.m, up: s.up || 0, down: s.down || 0 };
+  all[key] = { m: s.m, up: s.up || 0, down: s.down || 0, ...(Number.isFinite(s.s) && s.s! > 0 ? { s: s.s } : {}), ...(s.lv ? { lv: s.lv } : {}) };
   const keys = Object.keys(all);
   for (const k of keys.slice(0, Math.max(0, keys.length - MAX))) delete all[k];
   try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* expected: storage blocked – numbers not kept */ }
