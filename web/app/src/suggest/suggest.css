@@ -1,0 +1,70 @@
+/* Tour suggestions (suggest/ui.ts) – loaded only when the switch is on. Uses the page's own tokens (style.css :root). */
+
+/* while the wish or the suggestions are in the sheet, the plan's own rows step back; the handle stays (phone) */
+#sheet.suggesting > *:not(#suggestPanel):not(#handle) { display: none; }
+/* wide: the wish keeps the sheet's own activity chip (title above it, the form below it) */
+@media (min-width: 701px) {
+  #sheet.suggest-wish > #suggestPanel { display: contents; }
+  #sheet.suggesting.suggest-wish > .sheethead:not(#suggestPanel):not(#handle) { display: grid; order: -2; }
+  #sheet.suggest-wish > .sheethead > #share, #sheet.suggest-wish > .sheethead > #sheetStep, #sheet.suggest-wish > .sheethead #summary > * { display: none; }
+  #sheet.suggest-wish .sghead { order: -3; }
+  #sheet.suggest-wish .sgactivity { display: none; }
+  #sheet.suggest-wish { overflow-y: auto; }
+}
+#sheet.suggest-results { overflow-y: auto; }
+
+.suggestpanel, dialog.suggestwish { font-size: 14px; }
+.sghead h2 { margin: 0; font-size: 22px; font-weight: 400; line-height: 1.2; }
+.sghead.results { display: flex; align-items: flex-start; gap: 4px; }
+.sghead.results > div { flex: 1; min-width: 0; }
+.sgplace { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.sgdot, .suggeststart { display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--go); box-shadow: 0 0 0 2px #fff; }
+.suggeststart { width: 16px; height: 16px; box-shadow: 0 0 0 3px #fff, var(--shadow-low); }
+.sgrow { display: flex; align-items: center; gap: 10px; }
+.sgact { margin: 8px 0 2px; } .sgactivity { font-weight: 600; background: var(--chip); color: var(--chip-fg); border-radius: 10px; padding: 7px 10px; }
+.sglabel { margin: 10px 0 2px; }
+.seg.sg { margin: 2px 0; border-color: var(--line); border-radius: 12px; }
+.seg.sg button { padding: 7px 0; font: inherit; font-size: 13px; border-left-color: var(--line); color: var(--fg); min-width: 0; }
+.seg.sg button.on { background: var(--plan-light, #DCE6F2); color: var(--plan-ink, #1B3A5C); font-weight: 600; }
+.sgfine { display: flex; align-items: center; gap: 8px; margin: 4px 0 0; }
+.sgstep { width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--line); background: var(--bg); font: inherit; line-height: 1; }
+.sgtime { font-weight: 600; min-width: 56px; text-align: center; }
+.sglevels { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: center; }
+.sglevels > span { font-size: 13px; }
+.sgcheck { display: flex; align-items: center; gap: 8px; margin: 8px 0 0; }
+.sgcheck input { width: 18px; height: 18px; margin: 0; accent-color: var(--walnut); }
+.sgmore { margin-top: 8px; } .sgmore > summary { cursor: pointer; font-weight: 600; }
+.sgvia { margin-top: 6px; }
+.sgbuttons { margin-top: 12px; }
+.suggestpanel .sgbuttons button { padding: 8px 16px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); font: inherit; font-weight: 600; }
+.suggestpanel .sgbuttons button.primary, .sgcard button.primary { border: none; background: var(--green); color: #fff; }
+
+/* the cards */
+.sgcards { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.sgcard { background: var(--card); border-radius: 14px; padding: 10px 12px; border: 2px solid transparent; box-shadow: var(--shadow-low); cursor: pointer; }
+.sgcard.on { border-color: var(--c); }
+.sgctitle { display: flex; align-items: center; gap: 8px; }
+.sgctitle b { flex: 1; min-width: 0; font-size: 15px; }
+.sgline { flex: none; width: 18px; height: 4px; border-radius: 2px; background: var(--c); }
+.sgfacts { margin-top: 2px; font-weight: 600; }
+.sgreasons { margin-top: 2px; }
+.sghints { margin-top: 2px; color: var(--warn); font-weight: 600; }
+.sgcard .row.end { margin-top: 6px; }
+.sgcard button.primary { padding: 7px 16px; border-radius: 20px; font: inherit; font-weight: 600; }
+.sgagain { margin-top: 6px; align-self: flex-start; }
+.suggestpanel.results { display: flex; flex-direction: column; }
+
+/* the phone: the wish is a window (the Save-name dialog's look); the cards lie side by side, one in view, swipe for the next */
+dialog.suggestwish { max-height: calc(100dvh - 24px); overflow-y: auto; padding: 16px 18px; }
+dialog.suggestwish .sghead h2 { margin: 0; }
+dialog.suggestwish .seg.sg button { border: none; border-left: 1px solid var(--line); border-radius: 0; padding: 7px 0; background: none; }
+dialog.suggestwish .seg.sg button:first-child { border-left: none; }
+dialog.suggestwish .seg.sg button.on { background: var(--plan-light, #DCE6F2); }
+dialog.suggestwish .sgstep { padding: 0; }
+dialog.suggestwish .sgcheck input { width: 18px; flex: none; margin: 0; padding: 0; } /* not dialog.share's full-width text input */
+@media (max-width: 700px) {
+  #sheet.suggest-results { max-height: 46%; }
+  .sgcards { flex-direction: row; overflow-x: auto; scroll-snap-type: x mandatory; gap: 10px; padding-bottom: 4px; margin-top: 6px; }
+  .sgcard { flex: 0 0 88%; scroll-snap-align: center; box-sizing: border-box; }
+  .sghead.results h2 { font-size: 18px; }
+}

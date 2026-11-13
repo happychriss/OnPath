@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tour suggestions in the planner (web/app/src/suggest/, switched off – docs/design/tour-suggestions.md "Planner framework").
+     "Rundtour von hier" are the owner's words; the line under it (web_suggest_from_here_sub) is a proposal, not decided. -->
+<resources>
+    <string name="web_suggest_from_here">Round trip from here</string>
+    <string name="web_suggest_from_here_sub">Loops by duration and taste</string>
+    <string name="web_suggest_pace_note">Pace from your settings</string>
+    <string name="web_suggest_duration">Duration</string>
+    <string name="web_suggest_hours">%1$s h</string>
+    <string name="web_suggest_half_day">half day</string>
+    <string name="web_suggest_important">What matters to you?</string>
+    <string name="web_suggest_nature">Nature</string>
+    <string name="web_suggest_quiet">Quiet</string>
+    <string name="web_suggest_known">Known routes</string>
+    <string name="web_suggest_level_low">low</string>
+    <string name="web_suggest_level_mid">medium</string>
+    <string name="web_suggest_level_high">high</string>
+    <string name="web_suggest_water">along water (lake, river)</string>
+    <string name="web_suggest_surface">Surface</string>
+    <string name="web_suggest_surface_natural">natural paths</string>
+    <string name="web_suggest_surface_mixed">mixed</string>
+    <string name="web_suggest_surface_paved">paved</string>
+    <string name="web_suggest_surface_asphalt">asphalt</string>
+    <string name="web_suggest_surface_firm">firm path</string>
+    <string name="web_suggest_surface_any">any</string>
+    <string name="web_suggest_surface_gravel">gravel welcome</string>
+    <string name="web_suggest_surface_trails">trails welcome</string>
+    <string name="web_suggest_surface_forest">forest roads</string>
+    <string name="web_suggest_more">More</string>
+    <string name="web_suggest_effort">Effort</string>
+    <string name="web_suggest_effort_easy">easy</string>
+    <string name="web_suggest_effort_medium">medium</string>
+    <string name="web_suggest_effort_sporty">sporty</string>
+    <string name="web_suggest_tips">with AI region tips</string>
+    <string name="web_suggest_via">Mechanism: %1$s</string>
+    <string name="web_suggest_standin">a stand-in, only to test the flow</string>
+    <string name="web_suggest_searching">Looking for loops</string>
+    <string name="web_suggest_computing">Calculating loop %1$s of %2$s</string>
+    <string name="web_suggest_found">%1$s of %2$s found</string>
+    <string name="web_suggest_shorter">a little shorter than wished</string>
+    <string name="web_suggest_longer">a little longer than wished</string>
+    <string name="web_suggest_failed">No suggestions could be made.</string>
+    <string name="web_suggest_plan_unchanged">Your plan is unchanged.</string>
+    <string name="web_suggest_none">No fitting loop found</string>
+    <string name="web_suggest_change">Change wish</string>
+    <string name="web_suggest_again">New suggestions</string>
+    <string name="web_suggest_adopt">Use this</string>
+    <string name="web_suggest_from">from %1$s</string>
+    <plurals name="web_suggest_count">
+        <item quantity="one">%1$s suggestion</item>
+        <item quantity="other">%1$s suggestions</item>
+    </plurals>
+</resources>
