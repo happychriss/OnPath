@@ -39,12 +39,14 @@ CASES = [
     ("hilden-gravel-3h", dict(start=H, start_name="Hilden", activity="gravel", hours=3, pace="normal", effort="mittel",
                               natur="hoch", ruhe="hoch", bekannt="niedrig"), dict()),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
-                           effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"), dict(signed_min=40)),
+                           effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
+     dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
 ]
+METHOD = "a"
 
 
 def run_case(name, wish_in, exp, W):
-    wish = S.simple_wish(dict(wish_in, seed=1), W)
+    wish = S.simple_wish(dict(wish_in, seed=1, method=METHOD), W)
     E = S.effective(W, wish["activity"])
     try:
         r = S.suggest(wish, W)
@@ -74,6 +76,9 @@ def run_case(name, wish_in, exp, W):
     if "lake_in_top3" in exp:
         checks["%s unter den ersten 3" % exp["lake_in_top3"]] = any(
             exp["lake_in_top3"] in l[0] for c in ch[:3] for l in c["numbers"].get("lakes", []))
+    if exp.get("known_like"):
+        checks["%s unter den ersten 3" % " / ".join(exp["known_like"])] = any(
+            w in k[0] for c in ch[:3] for k in c["numbers"].get("known", []) for w in exp["known_like"])
     if exp.get("known_named"):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],
@@ -172,7 +177,9 @@ if __name__ == "__main__":
     ap.add_argument("--only", default="")
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
+    ap.add_argument("--method", default="a", choices=["a", "b"], help="a = fan of routed loops, b = search in the way network")
     a = ap.parse_args()
+    METHOD = a.method
     if a.compare:
         print(compare(json.load(open(a.compare[0])), json.load(open(a.compare[1]))))
         sys.exit()
@@ -181,6 +188,7 @@ if __name__ == "__main__":
         print(refs(W))
         sys.exit()
     res = [run_case(n, w, e, W) for n, w, e in CASES if a.only in n]
+    W["version"] += "-" + a.method.upper()
     text = sheet(res, W["version"])
     print(text)
     d = os.path.join(S.DATA, "bench")

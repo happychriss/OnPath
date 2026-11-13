@@ -1,23 +1,228 @@
 """Tour-suggestions POC – destinations in reach: named lakes, known signed routes, viewpoints.
 
-POC stand-in: one Overpass query per area (online, cached on disk under ~/onpath-suggest-poc/cache/). On the phone
-the same facts come from the map area's own files, no network:
+Source (weights.json attractions.source):
+  "cells" (default) – **the app's own map areas**, the same files the phone has (cells.py downloads them once):
   - known routes with name and rank: overlays.pmtiles, layer `routes` (`kind` hike / bike, `name`, `ref`, `net` =
-    network rank; docs/map-pipeline.md "Route bands") – and the rank alone also from the routing data
-    (way flags route_hiking_iwn / nwn / rwn / lwn, route_bicycle_icn / ncn / rcn / lcn), which the score uses.
-  - lakes: base.pmtiles, layers `water` (polygons) + `water_name` (name points).
-  - viewpoints: the POI file (kind `viewpoint`).
-Without network and without a cache entry the request simply runs without destinations (note in the result).
+    4 international … 2 regional). Named pieces exist only for net >= 2 – local routes (net 1, e.g. a town's
+    circular walks A1 / A2) are only in the merged band without a name; their rank is still in the routing data
+    (way flags route_hiking_lwn …), which the score uses.
+  - lakes: base.pmtiles, layer `water` (polygons, z10 tile = the whole cell) + `water_name` (name points, z14).
+  - viewpoints: pois.geojson (kind `viewpoint`).
+  Read once per cell with the small reader in pmt.py, kept as attr-*.json next to the cell.
+  "overpass" – the round-2 stand-in (online, cached), kept only as an explicit fallback.
+A map area that is not on this computer: the request runs without its destinations and says so.
 """
 import json
 import math
 import os
+import re
 import sys
 import time
 import urllib.parse
 import urllib.request
 
+import cells as CE
+import pmt
+
 DATA = os.environ.get("SUGGEST_DATA", os.path.expanduser("~/onpath-suggest-poc"))
+ATTR_VERSION = 5
+NET = {4: "i", 3: "n", 2: "r", 1: "l"}
+
+
+def _inside(p, box, eps=1e-5):
+    return box[0] + eps < p[0] < box[2] - eps and box[1] + eps < p[1] < box[3] - eps
+
+
+def _in_poly(p, ring):
+    x, y = p
+    inside = False
+    for a, b in zip(ring, ring[1:]):
+        if (a[1] > y) != (b[1] > y) and x < (b[0] - a[0]) * (y - a[1]) / (b[1] - a[1]) + a[0]:
+            inside = not inside
+    return inside
+
+
+def route_label(name, ref):
+    """'X30 Neandertalweg [Hilden]' + 'X30' -> 'X30 Neandertalweg'; one label per route whatever its pieces are called."""
+    name = re.sub(r"\s*\[[^\]]*\]\s*$", "", name or "").strip()
+    name = re.sub(r"^\[[^\]]*\]\s*", "", name).strip()
+    ref = (ref or "").strip()
+    if not name:
+        return ref
+    if ref and len(ref) <= 6 and ref.lower() not in name.lower() and not ref.startswith("<"):
+        return "%s · %s" % (ref, name)
+    return name
+
+
+def read_cell(x, y, A):
+    """Everything this feature needs from one map area -> {routes: [{kind, label, net, lines}], lakes: [{name,
+    lines}], views: [{name, p}]}; cached as JSON in the cell's folder."""
+    d = CE.folder(x, y)
+    cache = os.path.join(d, "attr-v%d.json" % ATTR_VERSION)
+    if os.path.isfile(cache):
+        with open(cache, encoding="utf-8") as f:
+            return json.load(f)
+    box = CE.cell_bbox(x, y)
+    out = {"routes": [], "lakes": [], "views": []}
+    # known routes: named pieces, grouped by (kind, label)
+    ov = pmt.PMTiles(os.path.join(d, "overlays.pmtiles"))
+    groups = {}
+    for z, tx, ty in pmt.tiles_of_cell(x, y, 12):
+        raw = ov.tile(z, tx, ty)
+        if not raw:
+            continue
+        n = float(1 << z)
+        tb = (tx / n * 360 - 180, None, (tx + 1) / n * 360 - 180, None)
+        for f in pmt.layers(raw, {"routes"}, z, tx, ty).get("routes", []):
+            t = f["tags"]
+            name, ref = t.get("name"), t.get("ref")
+            if not (name or ref):
+                continue
+            if re.search(r"\(\d+\)", name or "") or re.match(r"^\d+\s*-\s*\d+$", ref or ""):
+                continue  # links of the cycle node network: good ways, but no destination with a name
+            g = groups.setdefault((t.get("kind"), route_label(name, ref)), {"net": 0, "lines": []})
+            g["net"] = max(g["net"], int(t.get("net") or 0))
+            for part in f["parts"]:
+                # keep only what lies inside the tile (pieces are cut at tile borders with a buffer)
+                part = [p for p in part if tb[0] <= p[0] <= tb[2]]
+                if len(part) > 1:
+                    g["lines"].append([[round(p[0], 6), round(p[1], 6)] for p in part])
+    # named trails (layer trailnames, the map's trail labels): local circular walks ("Rund um Hilden H", "Rundweg A1"),
+    # promenades ("Tappeinerweg", "Algunder Waalweg") – tier 1 / 2 = a trail's own name, 3 = street-like names
+    for z, tx, ty in pmt.tiles_of_cell(x, y, 13):
+        raw = ov.tile(z, tx, ty)
+        if not raw:
+            continue
+        for f in pmt.layers(raw, {"trailnames"}, z, tx, ty).get("trailnames", []):
+            t = f["tags"]
+            if t.get("t") != "n" or not t.get("name") or (t.get("tier") or 9) > A.get("trailname_max_tier", 2):
+                continue
+            label = route_label(t["name"], None)
+            if ("bike", label) in groups:
+                continue
+            g = groups.setdefault(("hike", label), {"net": 1, "lines": [], "trail": True})
+            if g.get("trail"):
+                g["lines"] += [[[round(p[0], 6), round(p[1], 6)] for p in part] for part in f["parts"] if len(part) > 1]
+    for (kind, label), g in groups.items():
+        out["routes"].append({"kind": kind, "label": label, "net": g["net"], "lines": g["lines"],
+                              "trail": bool(g.get("trail"))})
+    # lakes: polygons of the whole cell (z10) + names (z14 points)
+    ba = pmt.PMTiles(os.path.join(d, "base.pmtiles"))
+    names = {}
+    for z, tx, ty in pmt.tiles_of_cell(x, y, 14):
+        raw = ba.tile(z, tx, ty)
+        if not raw:
+            continue
+        for f in pmt.layers(raw, {"water_name"}, z, tx, ty).get("water_name", []):
+            nm = f["tags"].get("name")
+            if nm and f["parts"] and f["tags"].get("class") in ("lake", "pond", None):
+                names.setdefault(nm, f["parts"][0][0])
+    raw = ba.tile(10, x, y)
+    polys = []
+    if raw:
+        for f in pmt.layers(raw, {"water"}, 10, x, y).get("water", []):
+            if f["tags"].get("class") not in ("lake", "pond"):
+                continue
+            polys += [r for r in f["parts"] if len(r) > 3]
+    for nm, p in names.items():
+        hit = [r for r in polys if _in_poly(p, r)]
+        if not hit:
+            continue
+        ring = max(hit, key=len)  # the outer ring has the most points
+        # the shore inside the cell only (a lake across a cell border is cut there; the neighbour has the rest)
+        lines, cur = [], []
+        for q in ring:
+            if _inside(q, box):
+                cur.append([round(q[0], 6), round(q[1], 6)])
+            else:
+                if len(cur) > 1:
+                    lines.append(cur)
+                cur = []
+        if len(cur) > 1:
+            lines.append(cur)
+        if lines:
+            out["lakes"].append({"name": nm, "lines": lines, "whole": len(lines) == 1 and len(lines[0]) >= len(ring) - 1})
+    pois = os.path.join(d, "pois.geojson")
+    if os.path.isfile(pois):
+        with open(pois, encoding="utf-8") as f:
+            for ft in json.load(f).get("features", []):
+                if ft["properties"].get("kind") == "viewpoint":
+                    out["views"].append({"name": ft["properties"].get("name") or "Aussichtspunkt",
+                                         "p": ft["geometry"]["coordinates"][:2]})
+    with open(cache, "w", encoding="utf-8") as f:
+        json.dump(out, f, ensure_ascii=False)
+    return out
+
+
+def load_cells(start, reach_m, activity, W):
+    A = W["attractions"]
+    bike = activity != "hike"
+    ranks = A["rank"]
+    need = CE.cells_for(start[0], start[1], A["max_reach_m"])
+    missing = [c for c in need if not CE.have(*c)]
+    key = ("cells", tuple(need), bike)
+    if key not in _mem:
+        routes, lakes, views = {}, {}, []
+        for c in need:
+            if c in missing:
+                continue
+            d = read_cell(c[0], c[1], A)
+            for r in d["routes"]:
+                if (r["kind"] == "hike") == bike or r["kind"] not in ("hike", "bike"):
+                    continue
+                g = routes.setdefault(r["label"], {"net": 0, "lines": [], "trail": True})
+                g["net"] = max(g["net"], r["net"])
+                g["lines"] += r["lines"]
+                g["trail"] = g["trail"] and r.get("trail", False)
+            for l in d["lakes"]:
+                lakes.setdefault(l["name"], []).extend(l["lines"])
+            views += d["views"]
+        # a trail label that only repeats a real route ("Neanderland STEIG" next to "NLS · neanderland STEIG") goes
+        real = [k.lower() for k, g in routes.items() if not g["trail"]]
+        for k in [k for k, g in routes.items() if g["trail"]]:
+            n = sum(len(l) for l in routes[k]["lines"])
+            if any(k.lower() in r for r in real) or n < 2:
+                del routes[k]
+        _mem[key] = (routes, lakes, views)
+    routes, lakes, views = _mem[key]
+    skip = re.compile(A.get("lake_skip", "$^"), re.I)
+    out = []
+    for label, g in routes.items():
+        dense = [p for l in g["lines"] for p in _densify(l, 25)]
+        near = [p for p in dense if _dist(start, p) <= A["max_reach_m"]]
+        if not near or (g["trail"] and len(near) * 25.0 < A.get("trail_min_m", 1000)):
+            continue
+        net = NET.get(g["net"], "l") + ("cn" if bike else "wn")
+        out.append({"kind": "route", "name": label, "rank": ranks.get(net, ranks[""]), "net": net,
+                    "ring": "rund" in label.lower(), "points": _thin(near, 150), "dense": near,
+                    "length_m": len(near) * 25.0})
+    for name, lines in lakes.items():
+        if skip.search(name):
+            continue
+        dense = [p for l in lines for p in _densify(l, 25)]
+        length = len(dense) * 25.0
+        if length < A["lake_min_shore_m"]:
+            continue
+        out.append({"kind": "lake", "name": name, "rank": 0.8, "ring": True, "points": _thin(dense, 150), "dense": dense,
+                    "length_m": length})
+    for v in views:
+        out.append({"kind": "view", "name": v["name"], "rank": 0.5, "ring": False, "points": [v["p"]], "dense": [v["p"]],
+                    "length_m": 0})
+    for a in out:
+        a["d"] = min(_dist(start, p) for p in a["points"])
+    note = None
+    if missing:
+        note = "Kartengebiet fehlt auf diesem Rechner (%s) – dort ohne Ziele; holen: cells.py get" % ", ".join(
+            "10-%d-%d" % c for c in missing)
+    return [a for a in out if a["d"] <= reach_m], note
+
+
+def load(start, reach_m, activity, W):
+    if not W["attractions"].get("enabled", True):
+        return [], "Ziele aus"
+    if W["attractions"].get("source", "cells") == "overpass":
+        return load_overpass(start, reach_m, activity, W)
+    return load_cells(start, reach_m, activity, W)
 MIRRORS = ["https://overpass-api.de/api/interpreter", "https://overpass.kumi.systems/api/interpreter"]
 _mem = {}
 _failed = {}
@@ -81,12 +286,10 @@ def _fetch(bbox, bike, A):
     return None, err
 
 
-def load(start, reach_m, activity, W):
+def load_overpass(start, reach_m, activity, W):
     """-> (list of attractions, note). Attraction: {kind: lake|route|view, name, rank, ring, points [[lon,lat]..] every
     ~150 m, dense (every ~25 m, for matching), length_m}."""
     A = W["attractions"]
-    if not A.get("enabled", True):
-        return [], "Ziele aus"
     bike = activity != "hike"
     g = A["cache_grid_deg"]
     box_m = A["max_reach_m"]  # always the same box per start, so one cache entry serves every duration
