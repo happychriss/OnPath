@@ -851,7 +851,9 @@ class CoreFieldE2ETest : E2EBase() {
             val draft = draftOf(first)!!
             scenario.onActivity { vm(it).saveDraft(draft) }
             waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
-            scenario.onActivity { assertEquals(draft.id, vm(it).justSavedId) }
+            // the mark is set on the main thread after the database write the wait above saw (GitHub 2026-11-14: read in
+            // between, -1) – wait for it the same way
+            waitUntil("\"✓ Gerade gespeichert\" on it", 5_000) { var id = -1L; scenario.onActivity { id = vm(it).justSavedId }; id == draft.id }
             // a second one, deleted from Zuletzt → recycle bin
             startPlanWithTwoPoints()
             hold(w * 0.45f, h * 0.65f)
