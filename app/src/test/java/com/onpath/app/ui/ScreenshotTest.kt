@@ -1362,6 +1362,23 @@ class ScreenshotTest {
         OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
     }
 
+    /**
+     * SKETCH activity filter (owner 2026-11-13, ActivityFilterSketchTest): the L1 list with mixed activities (+ a gravel
+     * route); [menuTop] / [menuStart] = where option 2's menu opens (drawn in place), null = closed.
+     */
+    fun activitySketch(menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp) = paparazzi.snapshot {
+        val gravel = Tour(16, TourKind.PLANNED, "Marlinger Waalweg", 1_791_000_000_000, "BIKE_TREKKING", 2, 18_200.0, 260.0, 260.0,
+            1.3 * 3600, "done", viaPts, uuid = "u-16")
+        val list = favList + gravel
+        previewLines(list + oneDraft.copy(uuid = "u-100"))
+        Box(Modifier.fillMaxSize()) {
+            OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
+            if (menuTop != null) OnPathTheme {
+                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) { com.onpath.app.ui.routes.ActivityFilterSketch.MenuItems() }
+            }
+        }
+    }
+
     /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt hides meanwhile. */
     @Test fun routesFavouritesOnly() = paparazzi.snapshot {
         previewLines(favList + oneDraft.copy(uuid = "u-100"))

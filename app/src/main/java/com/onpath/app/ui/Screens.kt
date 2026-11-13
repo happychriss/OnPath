@@ -491,8 +491,14 @@ fun RoutesScreen(
                 RouteSortChips(sort, { sort = it; onSort(it); scope.launch { listState.scrollToItem(0) } },
                     Modifier.padding(bottom = 8.dp),
                     // favourites C (owner 2026-11-13): "☆ Favoriten" first – on, both tabs show only the starred ones
-                    leading = { com.onpath.app.ui.routes.FavouriteChip(favOnly) {
-                        favOnly = it; onFavouritesOnly(it); scope.launch { listState.scrollToItem(0) }
+                    leading = { Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.onpath.app.ui.routes.FavouriteChip(favOnly) {
+                            favOnly = it; onFavouritesOnly(it); scope.launch { listState.scrollToItem(0) }
+                        }
+                        // SKETCH activity filter (owner 2026-11-13): drawn only by ActivityFilterSketchTest
+                        if (com.onpath.app.ui.routes.ActivityFilterSketch.mode != com.onpath.app.ui.routes.ActivityFilterSketch.Mode.NONE) {
+                            Spacer(Modifier.width(8.dp)); com.onpath.app.ui.routes.ActivityFilterSketch.Chips()
+                        }
                     } })
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
@@ -501,7 +507,8 @@ fun RoutesScreen(
             // "Zuletzt" = exactly one row (owner 2026-11-12, [LivePlanRows]): the plan on the map ("In Bearbeitung"), else
             // the draft or saved route worked on last – a saved one with the "Gespeichert" tag, and under Gespeichert too
             val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
-            val recent = if (tab == RoutesTab.PLANNED && !favOnly) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
+            val filtered = favOnly || com.onpath.app.ui.routes.ActivityFilterSketch.filtering // a filter on: Zuletzt hides
+            val recent = if (tab == RoutesTab.PLANNED && !filtered) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
                 else RecentRow.NONE
             val liveName = live?.name ?: str(Res.string.routes_live_name)
             // the row goes through the search like every other
@@ -512,7 +519,8 @@ fun RoutesScreen(
             val hasRecent = liveTour != null || recentTour != null
             // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
             val saved = remember(shown, sort, favOnly) {
-                RouteSort.sort(com.onpath.app.ui.routes.Favourites.shown(shown.filter { !it.draft }, favOnly), sort)
+                RouteSort.sort(com.onpath.app.ui.routes.Favourites.shown(shown.filter { !it.draft }, favOnly)
+                    .filter { com.onpath.app.ui.routes.ActivityFilterSketch.keep(it) }, sort)
             }
             PullToSync(if (tab == RoutesTab.PLANNED) onPull else null, pulling) {
             if (saved.isEmpty() && !hasRecent) {

@@ -93,4 +93,8 @@
     <string name="routes_fav_on">%1$s ist Favorit. Tippen entfernt.</string>
     <string name="routes_fav_off">%1$s als Favorit merken</string>
     <string name="routes_fav_none">Noch keine Favoriten. Tippe auf ☆ bei einer Tour.</string>
+    <!-- SKETCH activity filter (owner 2026-11-13) – proposals -->
+    <string name="sketch_act_bike">Rad</string>
+    <string name="sketch_act_all">Alle Arten</string>
+    <string name="sketch_act_n">%1$d Arten</string>
 </resources>
