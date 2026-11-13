@@ -193,3 +193,20 @@ The network of a 2–3 h walk is a few MB in memory; the searches are ordinary s
 this should be seconds, not tens of seconds – **an estimate, not measured**. A server is not needed for the search;
 it would only be needed for an online free-text wish. Bike loops (15 km radius, several 100 000 links) are the open
 case: variant B is hiking-only so far.
+
+## Round 4 (2026-11-13) – known routes first, bike in the network search, surface
+
+- Owner: official hiking / cycling / European routes must be included and **strongly preferred**, and visible on the
+  map; surface must be asked per activity; bike needs the same quality as hike. Trigger: at Zons the Rhine cycle path
+  (EV15, 0.5 km from the start) was known and ignored.
+- The network search (variant B) now serves all activities. Bikes get a coarser network (no minor ways unless signed).
+  A signed route's ways are cheap in the search in proportion to „Bekannte Wege“ × rank, and a construction step builds
+  loops *along* a known route (both directions) – so „Rheinradweg nach Norden, zurück anders“ exists by construction.
+- Surface: one form line per activity → pleasure value per surface class (asphalt / firm / natural); from the routing
+  data's `surface` (71 % filled by length near Zons), `tracktype` (16 %), else the kind of way.
+- Phone / server: a 3 h bike wish = a network of ~200,000 nodes (57 MB as text here), ~30 searches. Measured only in
+  Python on the desktop (10 s); a phone figure is not measured.
+- Contract additions for the real feature (beyond round 3's list): the network export needs tag filters (minor ways
+  off, signed ways kept) and a route's identity / order in the map data (still missing: pieces are matched by name).
+- Open: the planner's own map picture in the POC page (not built), main-road cost for bikes, tuning of the surface
+  values, the Elbsee case lost in the bench after the water fix.
