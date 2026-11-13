@@ -122,6 +122,36 @@ class RouteThumbsTest {
         assertEquals(1, made)
     }
 
+    /**
+     * Owner 2026-11-13: a picture always shows the WHOLE route with its start and end – on a square picture both ends lie
+     * at least the margin + a marker inside the edges, for a long thin route either way, a round trip, a short walk.
+     */
+    @Test fun theWholeRouteWithItsEndsFitsThePicture() {
+        val size = 220.0 // 84 dp at 2.625
+        val free = size * ThumbRules.MARGIN // ≥ 14 % on every side, the marker inside that
+        fun check(name: String, pts: List<GeoPoint>) {
+            val region = ThumbRules.region(pts)!!
+            for (p in pts) {
+                val (x, y) = ThumbRules.project(p, region, size)
+                assertTrue("$name: $p at ($x, $y)", x >= free - 1e-6 && y >= free - 1e-6 && x <= size - free + 1e-6 && y <= size - free + 1e-6)
+            }
+            val (sx, sy) = ThumbRules.project(pts.first(), region, size)
+            val r = size * (ThumbRules.MARKER_DP + ThumbRules.MARKER_RING_DP) / ThumbRules.TILE_DP
+            assertTrue("$name: the start's marker inside", sx - r > 0 && sy - r > 0 && sx + r < size && sy + r < size)
+        }
+        check("east-west 40 km", (0..100).map { GeoPoint(46.6, 11.0 + it * 0.005) })
+        check("north-south 40 km", (0..100).map { GeoPoint(46.4 + it * 0.0036, 11.1) })
+        check("round trip", (0..60).map { val t = it / 60.0 * 2 * Math.PI; GeoPoint(46.67 + 0.02 * Math.sin(t), 11.16 + 0.03 * (1 - Math.cos(t))) })
+        check("a short walk", listOf(GeoPoint(46.67, 11.16), GeoPoint(46.6702, 11.1601)))
+        check("one point", listOf(GeoPoint(46.67, 11.16)))
+        // square in Mercator: the long side spans the picture minus the margins, the route centred
+        val line = (0..100).map { GeoPoint(46.6, 11.0 + it * 0.005) }
+        val (x0, _) = ThumbRules.project(line.first(), ThumbRules.region(line)!!, size)
+        val (x1, y1) = ThumbRules.project(line.last(), ThumbRules.region(line)!!, size)
+        assertEquals(size / 2, y1, 0.5)
+        assertEquals(size, x0 + x1, 0.5)
+    }
+
     @Test fun thePillShowsOnlyFavourites() {
         val list = listOf(tour(1, favourite = true), tour(2), tour(3, favourite = true))
         assertEquals(list, Favourites.shown(list, false))

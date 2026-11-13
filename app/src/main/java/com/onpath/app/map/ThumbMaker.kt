@@ -120,12 +120,35 @@ class ThumbMaker(
         suspend fun render(context: Context, styleJson: String, segments: List<List<GeoPoint>>, color: Int): ByteArray? {
             val density = context.resources.displayMetrics.density
             val px = (ThumbRules.TILE_DP * density).toInt()
-            val shot = RouteSnapshot.make(context, styleJson, segments, color, px, px, (ThumbRules.PAD_DP * density).toInt(), density,
-                lineScale = ThumbRules.LINE_SCALE) ?: return null
-            return try { encode(shot.bitmap) } catch (e: Exception) {
+            val region = ThumbRules.region(segments.flatten()) ?: return null
+            // the room is in the region itself (square, larger by the margin and a marker) – no snapshot padding
+            val shot = RouteSnapshot.make(context, styleJson, segments, color, px, px, 0, density,
+                lineScale = ThumbRules.LINE_SCALE, region = region, withoutNetworks = true) ?: return null
+            return try { encode(withEnds(shot, color, density)) } catch (e: Exception) {
                 Problems.info("routes", "Map picture of a route not encoded – its row keeps the drawn line", e); null
             } finally { shot.bitmap.recycle() }
         }
+
+        /**
+         * Start and end on the picture (owner 2026-11-13): a dot in the line's colour at the start and the goal red, each
+         * in a white ring – the signs of the rows' drawn line. Drawn on a copy the snapshot's bitmap can be read from.
+         */
+        private fun withEnds(shot: RouteSnapshot.Shot, color: Int, density: Float): Bitmap {
+            val b = if (shot.bitmap.isMutable) shot.bitmap else shot.bitmap.copy(Bitmap.Config.ARGB_8888, true)
+            val c = android.graphics.Canvas(b)
+            val r = ThumbRules.MARKER_DP * density; val ring = ThumbRules.MARKER_RING_DP * density
+            val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+            fun dot(x: Float, y: Float, fill: Int) {
+                paint.color = android.graphics.Color.WHITE; c.drawCircle(x, y, r + ring, paint)
+                paint.color = fill; c.drawCircle(x, y, r, paint)
+            }
+            dot(shot.startX, shot.startY, color)
+            dot(shot.goalX, shot.goalY, GOAL)
+            return b
+        }
+
+        /** The goal's red (OnPathColors.PointGoal). */
+        private const val GOAL = 0xFFA32020.toInt()
 
         private fun encode(b: Bitmap): ByteArray = ByteArrayOutputStream().use { out ->
             @Suppress("DEPRECATION")
