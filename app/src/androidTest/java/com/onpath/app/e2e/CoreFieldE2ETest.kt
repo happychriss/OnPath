@@ -491,7 +491,11 @@ class CoreFieldE2ETest : E2EBase() {
         val followed = waypointList()
         var tourId = -1L
         scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
-        Thread.sleep(4_000) // walking along (the GPS mock moves every 0.5 s)
+        // walking along (the GPS mock moves every 0.5 s) – more than 50 m away from the start, or the tour would go to the
+        // recycle bin as a short recording (owner 2026-11-12)
+        waitUntil("more than 60 m recorded", 60_000) {
+            (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 60.0
+        }
         scenario.onActivity { vm(it).endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
