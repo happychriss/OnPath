@@ -175,7 +175,8 @@ export class LoadOverlay {
  * API for the tiles in view); without them the job is just "loading / loaded".
  */
 export function watchTiles(map: maplibregl.Map, overlay: LoadOverlay, look: () => JobLook) {
-  const seen = new Set<string>(), done = new Set<string>();
+  const seen = new Set<string>();
+  const done = new Set<string>();
   let timer = 0;
   const tick = () => {
     timer = 0;
