@@ -29,7 +29,16 @@ interface RouteThumbSource {
  * time – a picture made anew is read again). The list never makes a picture; [com.onpath.app.map.ThumbMaker] does.
  */
 class FileThumbSource(private val thumbs: RouteThumbs) : RouteThumbSource {
-    private val lru = android.util.LruCache<String, Pair<Long, ImageBitmap>>(96)
+    /** Kept by bytes, not by count ([MAX_BYTES]: about 60 pictures of 84 dp at 2.6 density). */
+    private val lru = object : android.util.LruCache<String, Pair<Long, ImageBitmap>>(MAX_BYTES) {
+        override fun sizeOf(key: String, value: Pair<Long, ImageBitmap>): Int = bytesOf(value.second)
+    }
+
+    companion object {
+        const val MAX_BYTES = 8 * 1024 * 1024
+        /** A decoded picture's memory (ARGB, 4 bytes a pixel), at least 1. */
+        fun bytesOf(b: ImageBitmap): Int = (b.width.toLong() * b.height * 4).coerceIn(1, Int.MAX_VALUE.toLong()).toInt()
+    }
 
     override fun cached(t: Tour): ImageBitmap? = t.uuid.takeIf { it.isNotEmpty() }?.let { lru.get(it)?.second }
 

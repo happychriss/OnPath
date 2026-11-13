@@ -225,12 +225,12 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var thumbVersion by mutableStateOf(0)
         private set
     private val thumbMaker by lazy {
-        com.onpath.app.map.ThumbMaker(getApplication(), thumbs, viewModelScope,
-            tours = { db.listTours() to db.listDeleted().mapTo(HashSet()) { it.uuid } },
-            lineKeys = { db.lineKeys() },
+        com.onpath.app.map.ThumbMaker(thumbs, viewModelScope,
+            binned = { db.listDeleted().mapTo(HashSet()) { it.uuid } },
+            lineKey = { t -> db.lineKey(t.id) },
             line = { t -> routes.line(t) { emptyList() } },
             style = { snapshotStyle() },
-            color = { t -> argbOf(RouteShape.tint(t.kind)) },
+            snap = { json, segs, t -> com.onpath.app.map.ThumbMaker.render(getApplication(), json, segs, argbOf(RouteShape.tint(t.kind))) },
             busy = { mode == AppMode.NAVIGATE || recState.value != null },
             made = { viewModelScope.launchSafe("routes", "Map picture shown", Dispatchers.Main) { thumbVersion++ } })
     }
@@ -3209,9 +3209,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
     }
 
-    /** Looks for map pictures to make (background, one at a time); [firstUuid] first. */
+    /** Looks for map pictures to make among My routes' list (background, one at a time); [firstUuid] first. */
     fun kickThumbs(firstUuid: String? = null) {
-        try { thumbMaker.kick(firstUuid) } catch (e: Exception) { Problems.info("routes", "Map pictures not started – the rows keep their lines", e) }
+        try { thumbMaker.kick(routes.tours, firstUuid) } catch (e: Exception) { Problems.info("routes", "Map pictures not started – the rows keep their lines", e) }
     }
 
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */

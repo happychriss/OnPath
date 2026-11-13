@@ -332,16 +332,14 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     }
 
     /**
-     * A short summary of each tour's stored line ("count:sumLat:sumLon", tour id → key): My routes' map pictures are made
-     * again when it changes (map/RouteThumbs). One query over the points index, no line loaded.
+     * A short summary of tour [id]'s stored line ("count:sumLat:sumLon"; null = no points): My routes' map pictures are
+     * made again when it changes (map/RouteThumbs). One query on the points index of that tour, no line loaded.
      */
-    fun lineKeys(): Map<Long, String> = readableDatabase.rawQuery(
-        "SELECT tour_id, COUNT(*), TOTAL(lat), TOTAL(lon) FROM points GROUP BY tour_id", null
+    fun lineKey(id: Long): String? = readableDatabase.rawQuery(
+        "SELECT COUNT(*), TOTAL(lat), TOTAL(lon) FROM points WHERE tour_id=?", arrayOf(id.toString())
     ).use { c ->
-        buildMap {
-            while (c.moveToNext()) put(c.getLong(0), "${c.getLong(1)}:" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(2)) +
-                ":" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(3)))
-        }
+        if (!c.moveToFirst() || c.getLong(0) == 0L) null
+        else "${c.getLong(0)}:" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(1)) + ":" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(2))
     }
 
     fun loadSegments(id: Long): List<List<TrackPoint>> {

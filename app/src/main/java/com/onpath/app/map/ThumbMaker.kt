@@ -3,7 +3,6 @@ package com.onpath.app.map
 import android.content.Context
 import android.graphics.Bitmap
 import android.os.Build
-import android.os.SystemClock
 import com.onpath.app.data.Tour
 import com.onpath.app.debug.Problems
 import com.onpath.app.debug.launchSafe
@@ -13,101 +12,126 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import java.io.ByteArrayOutputStream
 import java.util.Collections
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.coroutines.CoroutineContext
 
 /**
  * Makes My routes' map pictures ([RouteThumbs], owner 2026-11-13 L1) in the background: one at a time, a pause between
- * two, never while [busy] (navigating or recording – the snapshot shares the GPU with the live map). [kick] after a save /
- * overwrite, a tour's end, a sync, an import, a restore and when My routes opens: the pass finds what is missing or shows
- * an old line ([ThumbRules.todo]) and makes only that – a route saved on the phone, one from the browser, a GPX file, a
- * restored tour and the tours from before this version alike. Never blocks saving or ending a tour; a failure is an INFO
- * and the row keeps its drawn line (tried again at the next app start).
+ * two, never while [busy] (navigating or recording – the snapshot shares the GPU with the live map). [kick] with the list
+ * My routes just read (after a save / overwrite, a tour's end, a sync, an import, a restore, My routes opening): a pass
+ * compares each tour's cheap signature ([ThumbRules.sig], from the row – no database work) with the key its picture was
+ * made for (kept in memory after the first read of its key file); only a tour whose signature changed costs one indexed
+ * query for its line key ([lineKey]) and, when the line really changed, a picture. Never blocks saving or ending a tour;
+ * a failure is an INFO and the row keeps its drawn line (tried again at the next app start).
  */
 class ThumbMaker(
-    private val context: Context,
     private val thumbs: RouteThumbs,
     private val scope: CoroutineScope,
-    /** Every tour in My routes and the recycle bin's uuids (the bin keeps its pictures: restored, it shows at once). */
-    private val tours: () -> Pair<List<Tour>, Set<String>>,
-    /** TourDb.lineKeys. */
-    private val lineKeys: () -> Map<Long, String>,
+    /** The recycle bin's uuids (their pictures stay: restored, it shows at once) – read once per run for the clean-up. */
+    private val binned: () -> Set<String>,
+    /** TourDb.lineKey: the stored line's summary of one tour (null = no stored points). */
+    private val lineKey: (Tour) -> String?,
     /** The tour's line as My routes draws it. */
     private val line: (Tour) -> List<List<GeoPoint>>,
     /** The map style for a snapshot (offline cells + overview); null = no map now (nothing made, tried again later). */
     private val style: suspend () -> String?,
-    /** The line's colour (ARGB) of a tour. */
-    private val color: (Tour) -> Int,
+    /** The picture of [line] on [style] as file bytes ([render]); null = not made (reported there). */
+    private val snap: suspend (style: String, segments: List<List<GeoPoint>>, t: Tour) -> ByteArray?,
     /** Navigating or recording: no picture now. */
     private val busy: () -> Boolean,
-    /** A picture was stored (main thread is not promised): My routes reads it. */
+    /** A picture was stored: My routes reads it. */
     private val made: () -> Unit,
+    private val io: CoroutineContext = Dispatchers.IO,
+    private val pauseMs: Long = PAUSE_MS,
+    private val clock: () -> Long = System::currentTimeMillis,
 ) {
     private val running = AtomicBoolean(false)
     @Volatile private var again = false
     @Volatile private var first: String? = null
+    @Volatile private var latest: List<Tour> = emptyList()
+    @Volatile private var cleaned = false
+    /** uuid → the key its picture was made for ("" = none yet); filled from the key files once, then kept here. */
+    private val keys = ConcurrentHashMap<String, String>()
     /** Keys that failed in this run (no second 15 s wait for the same line until the next start). */
     private val failed: MutableSet<String> = Collections.synchronizedSet(HashSet())
 
     /** The time of the last pictures (ms each, newest last) – diagnostics. */
     val timings: MutableList<Long> = Collections.synchronizedList(ArrayList())
+    /** Line keys read from the database (tests, diagnostics: a pass over unchanged tours reads none). */
+    @Volatile var lineQueries = 0
+        private set
+    val idle: Boolean get() = !running.get()
 
-    /** Look for pictures to make; [firstUuid] = the tour just saved / ended goes first. Returns at once. */
-    fun kick(firstUuid: String? = null) {
+    /** Look for pictures to make among [tours] (My routes' list); [firstUuid] = just saved / ended goes first. Returns at once. */
+    fun kick(tours: List<Tour>, firstUuid: String? = null) {
+        latest = tours
         if (firstUuid != null) first = firstUuid
         if (!running.compareAndSet(false, true)) { again = true; return }
-        scope.launchSafe("routes", "Map pictures of My routes", Dispatchers.IO) {
+        scope.launchSafe("routes", "Map pictures of My routes", io) {
             try {
-                do { again = false; pass() } while (again)
+                do { again = false; pass(latest) } while (again)
             } finally { running.set(false) }
         }
     }
 
-    private suspend fun pass() {
+    private fun stored(uuid: String): String? = keys.getOrPut(uuid) { thumbs.storedKey(uuid) ?: "" }.takeIf { it.isNotEmpty() }
+
+    private suspend fun pass(tours: List<Tour>) {
         if (busy()) return
-        val (list, binned) = tours()
-        thumbs.retain(list.mapTo(HashSet()) { it.uuid } + binned)
-        val todo = ThumbRules.todo(list, lineKeys(), thumbs::storedKey, failed, first)
+        // once per run, and never on an empty list (not read yet – it would take every picture away)
+        if (!cleaned && tours.isNotEmpty()) {
+            cleaned = true
+            thumbs.retain(tours.mapTo(HashSet()) { it.uuid } + binned())
+        }
+        val plan = ThumbRules.plan(tours, ::stored, { t -> lineQueries++; lineKey(t) }, failed, first)
         first = null
-        if (todo.isEmpty()) return
+        for ((t, key) in plan.rekey) if (thumbs.writeKey(t.uuid, key)) keys[t.uuid] = key
+        if (plan.make.isEmpty()) return
         val json = style() ?: return
-        val density = context.resources.displayMetrics.density
-        val px = (ThumbRules.TILE_DP * density).toInt()
-        val pad = (ThumbRules.PAD_DP * density).toInt()
-        for ((t, key) in todo) {
-            if (busy()) { Problems.trace("routes", "Map pictures wait: a tour runs (${todo.size} to make)"); return }
+        for ((t, key) in plan.make) {
+            if (busy()) { Problems.trace("routes", "Map pictures wait: a tour runs (${plan.make.size} to make)"); return }
             val segs = line(t).filter { it.size >= 2 }
-            if (segs.isEmpty()) { thumbs.write(t.uuid, key, null); continue } // nothing to draw: the row's sign stays
-            val t0 = SystemClock.elapsedRealtime()
-            val shot = RouteSnapshot.make(context, json, segs, color(t), px, px, pad, density,
-                lineScale = ThumbRules.LINE_SCALE)
-            val ms = SystemClock.elapsedRealtime() - t0
-            if (shot == null) {
+            if (segs.isEmpty()) { if (thumbs.write(t.uuid, key, null)) keys[t.uuid] = key; continue } // the row's sign stays
+            val t0 = clock()
+            val bytes = snap(json, segs, t)
+            val ms = clock() - t0
+            if (bytes == null) {
                 failed += key
                 Problems.info("routes", "Map picture of a route not made (${ms} ms) – its row keeps the drawn line")
                 continue
             }
-            val bytes = try { encode(shot.bitmap) } catch (e: Exception) {
-                failed += key; Problems.info("routes", "Map picture of a route not encoded – its row keeps the drawn line", e); null
-            } finally { shot.bitmap.recycle() }
-            if (bytes != null && thumbs.write(t.uuid, key, bytes)) {
+            if (thumbs.write(t.uuid, key, bytes)) {
+                keys[t.uuid] = key
                 timings += ms
                 while (timings.size > 20) timings.removeAt(0)
                 Problems.trace("routes", "Map picture made in $ms ms (${bytes.size / 1024} KB, ${segs.sumOf { it.size }} points)")
                 made()
             }
-            delay(PAUSE_MS) // low priority: the app's own work goes first
+            delay(pauseMs) // low priority: the app's own work goes first
         }
-    }
-
-    private fun encode(b: Bitmap): ByteArray = ByteArrayOutputStream().use { out ->
-        @Suppress("DEPRECATION")
-        val format = if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
-        if (!b.compress(format, QUALITY, out)) error("compress refused")
-        out.toByteArray()
     }
 
     companion object {
         const val PAUSE_MS = 400L
         const val QUALITY = 82
+
+        /** The picture of [segments] in [color] on [styleJson] as WebP bytes; null = the snapshot failed (reported). */
+        suspend fun render(context: Context, styleJson: String, segments: List<List<GeoPoint>>, color: Int): ByteArray? {
+            val density = context.resources.displayMetrics.density
+            val px = (ThumbRules.TILE_DP * density).toInt()
+            val shot = RouteSnapshot.make(context, styleJson, segments, color, px, px, (ThumbRules.PAD_DP * density).toInt(), density,
+                lineScale = ThumbRules.LINE_SCALE) ?: return null
+            return try { encode(shot.bitmap) } catch (e: Exception) {
+                Problems.info("routes", "Map picture of a route not encoded – its row keeps the drawn line", e); null
+            } finally { shot.bitmap.recycle() }
+        }
+
+        private fun encode(b: Bitmap): ByteArray = ByteArrayOutputStream().use { out ->
+            @Suppress("DEPRECATION")
+            val format = if (Build.VERSION.SDK_INT >= 30) Bitmap.CompressFormat.WEBP_LOSSY else Bitmap.CompressFormat.WEBP
+            if (!b.compress(format, QUALITY, out)) error("compress refused")
+            out.toByteArray()
+        }
     }
 }

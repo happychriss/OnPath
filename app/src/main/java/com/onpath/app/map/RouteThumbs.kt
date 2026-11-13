@@ -28,6 +28,11 @@ class RouteThumbs(val dir: File) {
         true
     } catch (e: Exception) { Problems.info("routes", "Thumbnail of $uuid not stored – the row keeps its drawn line", e); false }
 
+    /** Only the key changes (the line is the same, its signature moved on): the picture stays. False on failure (reported). */
+    fun writeKey(uuid: String, key: String): Boolean = try {
+        dir.mkdirs(); AtomicFiles.writeText(keyFile(uuid), key); true
+    } catch (e: Exception) { Problems.info("routes", "Thumbnail key of $uuid not stored – looked at again next time", e); false }
+
     /** Removes the pictures of tours no longer on the phone ([keep] = uuids still there, recycle bin included). */
     fun retain(keep: Set<String>): Int {
         val files = dir.listFiles() ?: return 0
@@ -53,25 +58,45 @@ object ThumbRules {
     const val LINE_SCALE = 0.6f
 
     /**
-     * The key of [t]'s line: [points] = the stored points' summary ("count:sumLat:sumLon" from TourDb.lineKeys, null = no
-     * stored points → its via points / waypoints count, as the list's line does). The kind is in it (its line colour).
+     * The cheap signature of [t]'s line from its row alone (kind, distance, ascent, the via points / waypoints) – no
+     * database work. A line that changes (a route saved over, routed again after a sync, a track replaced) changes it.
      */
-    fun key(t: Tour, points: String?): String {
-        val line = points ?: t.waypoints.let { w ->
-            "w${w.size}:" + "%.6f".format(java.util.Locale.ROOT, w.sumOf { it.lat }) + ":" + "%.6f".format(java.util.Locale.ROOT, w.sumOf { it.lon })
-        }
-        return "v$VERSION ${t.kind.name} $line"
+    fun sig(t: Tour): String {
+        val w = t.waypoints
+        return "v$VERSION ${t.kind.name} " + "%.1f".format(java.util.Locale.ROOT, t.distanceM) + " " +
+            "%.1f".format(java.util.Locale.ROOT, t.ascentM) + " w${w.size}:" +
+            "%.6f".format(java.util.Locale.ROOT, w.sumOf { it.lat }) + ":" + "%.6f".format(java.util.Locale.ROOT, w.sumOf { it.lon })
     }
 
     /**
-     * The tours whose picture is missing or shows another line, in the order to make them: [first] (just saved / ended)
-     * first, then newest first. A tour being recorded, one without a uuid, and keys in [skip] (failed in this run) wait.
+     * The key a picture is made for: "[sig]|line" – line = the stored points' summary ("count:sumLat:sumLon", TourDb.lineKey;
+     * null = no stored points → its via points, as the list's line does).
      */
-    fun todo(tours: List<Tour>, keys: Map<Long, String>, stored: (String) -> String?, skip: Set<String> = emptySet(),
-             first: String? = null): List<Pair<Tour, String>> =
-        tours.asSequence().filter { it.state == "done" && it.uuid.isNotEmpty() }
-            .map { it to key(it, keys[it.id]) }
-            .filter { (t, k) -> k !in skip && stored(t.uuid) != k }
-            .sortedWith(compareBy<Pair<Tour, String>>({ it.first.uuid != first }, { -it.first.createdMs }))
-            .toList()
+    fun key(t: Tour, points: String?): String = sig(t) + "|" + (points ?: "none")
+
+    /** What a pass does: [make] these pictures (in this order), only [rekey] these (same line, new signature); [queried] = line keys read. */
+    data class Plan(val make: List<Pair<Tour, String>>, val rekey: List<Pair<Tour, String>>, val queried: Int)
+
+    /**
+     * A pass over My routes' [tours]: a tour whose stored key ([stored], by uuid) has its current [sig] needs nothing – no
+     * database work; only for the others the line key is read ([lineKey]) – a new line → a picture, the same line → the key
+     * only. [first] (just saved / ended) first, then newest first. A tour being recorded, one without a uuid, and keys in
+     * [skip] (failed in this run) wait.
+     */
+    fun plan(tours: List<Tour>, stored: (String) -> String?, lineKey: (Tour) -> String?, skip: Set<String> = emptySet(),
+             first: String? = null): Plan {
+        val make = ArrayList<Pair<Tour, String>>(); val rekey = ArrayList<Pair<Tour, String>>(); var queried = 0
+        for (t in tours) {
+            if (t.state != "done" || t.uuid.isEmpty()) continue
+            val have = stored(t.uuid)
+            val sig = sig(t)
+            if (have != null && have.substringBefore('|') == sig) continue
+            queried++
+            val key = key(t, lineKey(t))
+            if (key in skip) continue
+            if (have != null && have.substringAfter('|', "") == key.substringAfter('|')) rekey += t to key else make += t to key
+        }
+        make.sortWith(compareBy<Pair<Tour, String>>({ it.first.uuid != first }, { -it.first.createdMs }))
+        return Plan(make, rekey, queried)
+    }
 }
