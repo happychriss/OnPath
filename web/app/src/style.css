@@ -779,3 +779,11 @@ dialog.plans > .row.spread { margin-top: 16px; }
 .actmenu .actdone { display: flex; justify-content: flex-end; padding: 6px 8px 2px; }
 .actmenu .actdone .textbtn { min-height: 44px; }
 .actmenu { max-height: calc(100vh - 16px); overflow-y: auto; }
+
+/* phone, the open sheet (field 2026-11-13, Pixel 7: a two-point plan from a link listed only „1 Start“ + „+ Ziel
+   hinzufügen“): the sheet scrolls as one, the points list keeps every row – never squeezed to its minimum by a sheet
+   taller than the screen */
+@media (max-width: 700px) {
+  #sheet[data-step="points"] { overflow-y: auto; overscroll-behavior: contain; }
+  #sheet[data-step="points"] > #pointsSection { flex: none; }
+}
