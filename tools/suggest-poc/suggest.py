@@ -161,7 +161,8 @@ def profile_kv(wish, W):
                                                      + r["hiking_routes_preference_per_signed"] * wish["signed"], 2),
                    "mainroad_penalty": round(r["mainroad_penalty_base"] + r["mainroad_penalty_per_quiet"] * wish["quiet"], 2)})
     else:
-        kv.update({"consider_traffic": 1, "consider_elevation": int(wish["effort"] != "sporty")})
+        kv.update({"consider_traffic": 1, "consider_elevation": int(wish["effort"] != "sporty"),
+                   "mainroad_penalty": round(r["mainroad_penalty_base"] + r["mainroad_penalty_per_quiet"] * wish["quiet"], 2)})
         if wish["quiet"] >= r["avoid_unsafe_from"]:
             kv["avoid_unsafe"] = 1
         if wish["signed"] >= r["stick_to_cycleroutes_from"]:
@@ -352,20 +353,43 @@ def build(cand, wish, W, kv):
 
 # ---------------------------------------------------------------- numbers and score
 
-def edge_class(tags, C):
-    """G = along a main road (the road, or a pavement / cycle path beside it), S = quiet street,
-    W = way near forest (class >= forest_share_from_class), P = other way."""
+def main_weight(tags, C):
+    """How much a piece of way is "along a main road", 0..1: the busy road itself, or a pavement / cycle path beside
+    it. Rules in weights.json classes.main (per activity): a calm road (30 km/h) is no main road, a cycle track or
+    lane on the road counts milder, a bridge counts little (often the only crossing), a separate cycle path beside
+    a loud road counts `beside` – milder than the carriageway, worse than a quiet street."""
+    M = C["main"]
     hw = tags.get("highway", "")
-    if hw in C["big_highways"]:
-        return "G"
     noise = int(tags.get("estimated_noise_class", "0") or 0)
     forest = int(tags.get("estimated_forest_class", "0") or 0)
+    w = 0.0
+    if hw in C["big_highways"]:
+        w = M["base"].get(hw.replace("_link", ""), 1.0)
+        if tags.get("maxspeed", "") in M["calm_maxspeed"]:
+            w *= M["calm_factor"]
+        cw = [tags.get(k, "") for k in ("cycleway", "cycleway:both", "cycleway:right", "cycleway:left")]
+        if "track" in cw or "separate" in cw or tags.get("bicycle") == "use_sidepath":
+            w *= M["track_factor"]
+        elif "lane" in cw:
+            w *= M["lane_factor"]
+    elif tags.get("footway") == "sidewalk" and noise >= C["sidewalk_main_from_noise"]:
+        w = M["sidewalk"]
+    elif hw == "cycleway" and noise >= C["cycleway_main_from_noise"] and forest < C["forest_share_from_class"] \
+            and (tags.get("estimated_town_class") or not M["beside_needs_town"]):
+        w = M["beside"]
+    if w and tags.get("bridge") == "yes":
+        w *= M["bridge_factor"]
+    return w
+
+
+def edge_class(tags, C):
+    """G = along a main road (main_weight >= classes.main.class_from), S = quiet street,
+    W = way near forest (class >= forest_share_from_class), P = other way."""
+    hw = tags.get("highway", "")
+    if main_weight(tags, C) >= C["main"]["class_from"]:
+        return "G"
+    forest = int(tags.get("estimated_forest_class", "0") or 0)
     sidewalk = tags.get("footway") == "sidewalk"
-    if sidewalk and noise >= C["sidewalk_main_from_noise"]:
-        return "G"
-    if hw == "cycleway" and noise >= C["cycleway_main_from_noise"] and forest < C["forest_share_from_class"] \
-            and tags.get("estimated_town_class"):
-        return "G"
     street = hw in C["street_highways"] or (sidewalk and C["sidewalk_is_street"])
     if not street and C["lit_town_path_is_street"] and tags.get("lit") == "yes" and tags.get("estimated_town_class") \
             and not forest and hw in ("footway", "cycleway", "path"):
@@ -428,16 +452,20 @@ def numbers(c, wish, W, index=None):
     by_hw = {}
     named = {}
     main_run, main_gap, main_longest = 0.0, 1e9, 0.0
+    ferry_m = 0.0
     for e in edges:
         ln, t, nt = e[2], e[3], e[4]
         k = edge_class(t, C)
         cls.append(k)
-        if k == "G":
-            main_run = main_run + ln if main_gap <= C["main_gap_m"] else ln
+        mw = main_weight(t, C)
+        if mw >= C["main"]["run_from"]:  # the longest stretch counts weighted metres (a bridge, a cycle track: less)
+            main_run = main_run + ln * mw if main_gap <= C["main_gap_m"] else ln * mw
             main_gap = 0.0
             main_longest = max(main_longest, main_run)
         else:
             main_gap += ln
+        if t.get("route") == "ferry":
+            ferry_m += ln
         fc = t.get("estimated_forest_class", "")
         fv = C["forest_value"].get(fc, 0.0)
         if k in "SG":
@@ -478,8 +506,10 @@ def numbers(c, wish, W, index=None):
                 if a["kind"] == "route":
                     # one name per piece of way: the highest-ranking route on it (then the longer one) – and only
                     # where the way really lies on it (30 m), so a parallel way does not borrow the name
-                    if i in near and (best_route is None or (a["rank"], a["length_m"]) >
-                                      (index.attr[best_route]["rank"], index.attr[best_route]["length_m"])):
+                    # … and on a main road only when the road itself carries a signed route (see netsearch)
+                    if i in near and (mw <= 0 or sr > 0) and (
+                            best_route is None or (a["rank"], a["length_m"]) >
+                            (index.attr[best_route]["rank"], index.attr[best_route]["length_m"])):
                         best_route = i
                     continue
                 named[i] = named.get(i, 0.0) + ln
@@ -516,7 +546,7 @@ def numbers(c, wish, W, index=None):
          "loud_pct": round(100 * m["loud"] / total), "noise_value": round(m["noise_v"] / total, 2),
          "water_value": round(m["river_v"] / total, 2), "town_pct": round(100 * m["town"] / total),
          "street_pct": round(100 * m["street"] / total), "big_street_pct": round(100 * m["big"] / total),
-         "main_longest_m": int(main_longest),
+         "main_longest_m": int(main_longest), "ferry_m": int(ferry_m),
          "surface_pct": {k: round(100 * v / total) for k, v in surf_m.items()},
          "paved_pct": round(100 * m["paved"] / total), "signed_pct": round(100 * m["signed"] / total),
          "doubled_pct": round(100 * m["doubled"] / total), "stalk_m": int(stalk), "crossings": crossings,
@@ -695,6 +725,22 @@ def suggest(wish, W=None):
         if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
             c["chosen"] = True
             chosen.append(c)
+    # an explicit theme is always represented: with "am Wasser entlang" the shown loops include one made for a lake
+    # (along its shore) and, when one fits the wished time, a full round of a lake – even if loops elsewhere score
+    # higher or the round shares much with the shore loop
+    if wish["water"] >= W["select"].get("lake_slot_from_water", 2.0):
+        for want in ("ring", None):
+            if any(c.get("theme") == "lake" and (want is None or c.get("mode") == want) for c in chosen):
+                continue
+            made = [c for c in built if c.get("theme") == "lake" and c["length_ok"] and not c.get("chosen")
+                    and (want is None or c.get("mode") == want)]
+            if made:
+                if len(chosen) >= W["select"]["show"]:
+                    drop = [c for c in chosen if c.get("theme") != "lake"][-1]
+                    drop["chosen"] = False
+                    chosen.remove(drop)
+                made[0]["chosen"] = True
+                chosen.append(made[0])
     if method == "b" and W["netsearch"]["router_check"]:
         import netsearch as NS
         for c in chosen:  # each shown loop once through the real router: does BRouter confirm it?
@@ -704,6 +750,7 @@ def suggest(wish, W=None):
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
         if c.get("target_name"):
             name = ("Entlang %s" % c["target_name"] if c.get("mode") == "follow" else
+                    "Am %s entlang" % c["target_name"] if c.get("mode") == "shore" else
                     "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else ""))
         else:
             name = "%s · %s%s" % (d, c["shape"].capitalize(), " · gezielt" if c.get("taste") else "")
@@ -740,6 +787,8 @@ def goals_text(n):
     t = ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
     t += ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("lakes", [])[:2]]
     t += ["Aussicht: " + v for v in n.get("views", [])[:1]]
+    if n.get("ferry_m"):
+        t.append("mit Fähre")
     return " · ".join(t)
 
 
