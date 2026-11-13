@@ -491,6 +491,8 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
  * is never lost. [plan] = the points right after the add – only a Cancel of exactly that plan brings the pin back.
  */
 let pinTaken: { hit: Hit; at: LatLon; plan: string | null } | null = null;
+/** The next commit opens another plan (a link, a saved or recent plan): it starts with nothing to undo (owner 2026-11-13). */
+let freshHistory = false;
 async function commit(points: LatLon[], meta?: Meta[]) {
   // the add of a found place (TakenPin): the first commit after it is that add's plan; any later commit drops it
   if (pinTaken) { if (pinTaken.plan == null) pinTaken.plan = enc(points); else pinTaken = null; }
@@ -499,7 +501,8 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   editBefore = runCause === 'edit' ? { points: state.points, names: state.meta.map((m) => m.name) } : null;
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
-  const recorded = engine.call('historyRecord', enc(state.points));
+  const fresh = freshHistory; freshHistory = false;
+  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points));
   // the plan's first route, or a place from the card (the app's routing/RouteFit.firstRoute / fitAfterPlace, shared):
   // the map shows it whole once it is there, unless the map was touched meanwhile (fitFirstRoute). Asked before the
   // plan: the one worker answers in order, so this is known when the route comes.
@@ -955,6 +958,7 @@ async function loadShared(shared: SharedPlan) {
     map.fitBounds(b, { padding: fitPadding(), maxZoom: 15, duration: 0 });
   }
   nextCause = 'other';
+  freshHistory = true; // opening a plan is no edit: no undo back to the plan before it
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
 }
 

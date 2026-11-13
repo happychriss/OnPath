@@ -25,6 +25,8 @@ await page.waitForFunction(() => document.querySelector('#summary .big'), null, 
 check((await page.textContent('#points')).includes('Vellau'), 'point name from the code is shown');
 check((await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T3'), 'activity Hike, T3');
 check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 2, 'two points on the map');
+await page.waitForTimeout(500); // the history state comes back from the engine worker
+check(await page.isHidden('#undoPill'), 'a plan opened from a link has nothing to undo – no undo pill (owner 2026-11-13)');
 // the address holds the plan in the app's code; after routing the free start sits on the way the route uses (the app's
 // PlanResult snapping, as the phone stores it), the pinned + named Vellau keeps its place exactly
 await page.waitForTimeout(1500);
