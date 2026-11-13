@@ -52,6 +52,14 @@ CASES = [
      dict(known_km=("Rheinradweg", 18))),
     ("owner-koeln-bike-2h", dict(start=[6.97278, 50.94156], start_name="Köln", activity="bike", hours=2, pace="normal",
                                  effort="leicht", natur="hoch", ruhe="hoch", bekannt="niedrig"), dict()),
+    # the owner's comments of 2026-11-13 22:40–22:51 (feedback.jsonl): "warum nicht am Wasser entlang?" (a hike from
+    # just south of the Elbsee) and "der Rückweg geht nur durch die Stadt, warum nichts über die Urdenbacher Kämpe" /
+    # "zu viel durch Orte" (bike from Hilden) – through houses by the map's built-up land (nature.built)
+    ("elbsee-hike-2h-wasser", dict(start=[6.94460, 51.18413], start_name="Hilden Nord", activity="hike", hours=2,
+                                   pace="normal", effort="leicht", natur="hoch", ruhe="mittel", bekannt="mittel", wasser=True),
+     dict(lake_km=(("Elbsee", "Menzelsee"), 1.5))),
+    ("hilden-bike-2h-natur", dict(start=H, start_name="Hilden", activity="bike", hours=2, pace="normal", effort="leicht",
+                                  natur="hoch", ruhe="hoch", bekannt="mittel"), dict(built_max=30)),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
@@ -105,6 +113,12 @@ def run_case(name, wish_in, exp, W):
         word, km = exp["known_km"]
         checks["≥ %d km %s im ersten Vorschlag" % (km, word)] = sum(
             k[1] for k in n.get("known", []) if word in k[0]) >= km
+    if exp.get("lake_km"):
+        names, km = exp["lake_km"]
+        checks["≥ %g km am %s im ersten Vorschlag" % (km, " / ".join(names))] = sum(
+            l[1] for l in n.get("lakes", []) if any(w in l[0] for w in names)) >= km
+    if "built_max" in exp:
+        checks["durch Häuser ≤ %d %%" % exp["built_max"]] = n["built_pct"] <= exp["built_max"]
     if exp.get("known_named"):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],
@@ -209,7 +223,7 @@ if __name__ == "__main__":
     ap.add_argument("--only", default="")
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
-    ap.add_argument("--method", default="a", choices=["a", "b"], help="a = fan of routed loops, b = search in the way network")
+    ap.add_argument("--method", default="a", choices=["a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
     ap.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (score part 'ai' + the picks as destinations)")
     a = ap.parse_args()
     METHOD = a.method

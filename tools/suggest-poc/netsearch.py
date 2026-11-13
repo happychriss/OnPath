@@ -167,6 +167,8 @@ def edge_values(G, wish, W, index, S):
         hits = ()
         mid = mid_of(G, (a, b, ln, cf, cb, tid, geom))
         deep = NA.value(NA.depth(mid, ND["search_radius_m"]), ND) if tw_deep else 0.0
+        # through houses = inside the map's built-up land (replaces the routing data's coarse town class)
+        built = NA.built(mid, ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5)
         if index is not None:
             near = index.at(mid, 1)
             # a known route counts on a way that lies on it – and on a main road only when the routing data says the

@@ -1,18 +1,23 @@
-"""Tour-suggestions POC – "deep nature": how much large, connected nature lies around a point (owner 2026-11-13:
-"durch ein großes, zusammenhängendes Naturschutzgebiet zu gehen ist ein ganz anderes Gefühl als ein kleiner
-Grünstreifen").
+"""Tour-suggestions POC – what the land around a point is: deep nature, built-up land, open water (from our map).
+
+Deep nature (owner 2026-11-13: "durch ein großes, zusammenhängendes Naturschutzgebiet zu gehen ist ein ganz anderes
+Gefühl als ein kleiner Grünstreifen"), settlement (owner 2026-11-13: "so ein Halbland, halb Stadt, halb Wohngebiet …
+stärker vermeiden") and water banks all come from one grid per map area.
 
 From our own map areas (base.pmtiles of a cell, zoom 12): the `landcover` polygons that are forest / heath / wetland
-and the `park` polygons that are protected nature (nature reserve, national park) are drawn into a grid of ~45 m per
-map area (cached beside the cell as nature-v<N>.bin + .json). The measure for a point is then simply the share of
-grid squares that are nature within `radius_m` around it:
+and the `park` polygons that are protected nature (nature reserve, national park), the `landuse` polygons that are
+built-up (residential, commercial, industrial, retail, railway, schools …) and the `water` polygons (lake, river,
+pond) are drawn into a grid of ~45 m per map area (cached beside the cell as nature-v<N>.bin + .json). The measure
+for a point is then simply the share of grid squares of a kind within `radius_m` around it:
 
-  a path in the middle of a big forest or reserve  -> ~1.0
+  a path in the middle of a big forest or reserve  -> nature ~1.0
   a path along its edge                            -> ~0.5
   a green strip, a park between houses             -> 0.1 – 0.3
+  a street inside a housing area                   -> built ~1.0 (a green corridor between houses: ~0)
 
 So size and depth come out of one number, without joining polygons across tile borders. `name_at` says in which
-protected area a point lies (for the card: "2,4 km im Naturschutzgebiet Ohligser Heide").
+protected area a point lies (for the card: "2,4 km im Naturschutzgebiet Ohligser Heide"); `place_near` gives the
+nearest named place (for naming an unnamed green patch: "Wald bei Kalstert").
 Knobs: weights.json "nature".
 """
 import json
@@ -23,13 +28,17 @@ from array import array
 import cells as CE
 import pmt
 
-VERSION = 3
+VERSION = 4
 DLAT = 0.0004
 DLON = 0.00064
-FOREST, PROTECTED = 1, 2
+FOREST, PROTECTED, BUILT, WATER = 1, 2, 4, 8
 NATURE_CLASSES = ("wood", "wetland")
 NATURE_SUB = ("wood", "forest", "heath", "scrub", "wetland", "bog", "marsh", "swamp")
 PROTECTED_CLASSES = ("naturschutzgebiet", "nature_reserve", "national_park", "nationalpark", "naturwaldzelle", "vogelschutzgebiet", "biotop")
+BUILT_CLASSES = ("residential", "commercial", "industrial", "retail", "railway", "garages", "school", "college",
+                 "university", "education", "kindergarten", "hospital", "military")
+WATER_CLASSES = ("lake", "river", "pond")
+PLACE_CLASSES = ("city", "town", "village", "suburb", "hamlet", "quarter", "neighbourhood")
 
 _mem = {}
 
@@ -65,16 +74,30 @@ def build(x, y):
     w, h = int(math.ceil((east - west) / DLON)), int(math.ceil((north - south) / DLAT))
     grid, names = bytearray(w * h), bytearray(w * h)
     labels = [""]
+    places = {}
     ba = pmt.PMTiles(os.path.join(d, "base.pmtiles"))
     for z, tx, ty in pmt.tiles_of_cell(x, y, 12):
         raw = ba.tile(z, tx, ty)
         if not raw:
             continue
-        L = pmt.layers(raw, {"landcover", "park"}, z, tx, ty)
+        L = pmt.layers(raw, {"landcover", "park", "landuse", "water", "place"}, z, tx, ty)
         for f in L.get("landcover", []):
             t = f["tags"]
             if f["type"] == 3 and (t.get("class") in NATURE_CLASSES or t.get("subclass") in NATURE_SUB):
                 _fill(grid, w, h, west, north, f["parts"], FOREST)
+        for f in L.get("landuse", []):
+            if f["type"] == 3 and f["tags"].get("class") in BUILT_CLASSES:
+                _fill(grid, w, h, west, north, f["parts"], BUILT)
+        for f in L.get("water", []):
+            if f["type"] == 3 and f["tags"].get("class") in WATER_CLASSES:
+                _fill(grid, w, h, west, north, f["parts"], WATER)
+        for f in L.get("place", []):
+            t = f["tags"]
+            nm = t.get("name:de") or t.get("name") or ""
+            if f["type"] == 1 and nm and t.get("class") in PLACE_CLASSES and f["parts"] and f["parts"][0]:
+                q = f["parts"][0][0]
+                if west <= q[0] < east and south < q[1] <= north:
+                    places["%s|%.3f|%.3f" % (nm, q[0], q[1])] = [nm, round(q[0], 5), round(q[1], 5), t.get("class")]
         for f in L.get("park", []):
             t = f["tags"]
             if f["type"] != 3 or t.get("class") not in PROTECTED_CLASSES:
@@ -86,12 +109,13 @@ def build(x, y):
     with open(os.path.join(d, "nature-v%d.bin" % VERSION), "wb") as f:
         f.write(bytes(grid) + bytes(names))
     with open(os.path.join(d, "nature-v%d.json" % VERSION), "w", encoding="utf-8") as f:
-        json.dump({"w": w, "h": h, "west": west, "north": north, "labels": labels}, f, ensure_ascii=False)
+        json.dump({"w": w, "h": h, "west": west, "north": north, "labels": labels,
+                   "places": list(places.values())}, f, ensure_ascii=False)
 
 
 def cell(x, y):
-    """The grid of one map area, with a summed-area table for fast "share within a radius"; None when the area's
-    files are not there (the measure is then simply 0 – never an error)."""
+    """The grid of one map area, with summed-area tables for fast "share within a radius"; None when the area's
+    files are not there (the measures are then simply 0 – never an error)."""
     if (x, y) in _mem:
         return _mem[(x, y)]
     d = CE.folder(x, y)
@@ -111,23 +135,26 @@ def cell(x, y):
         return None
     w, h = m["w"], m["h"]
     grid, names = raw[:w * h], raw[w * h:]
-    sat = array("I", bytes(4 * (w + 1) * (h + 1)))
     W1 = w + 1
-    for r in range(h):
-        run = 0
-        base, up = (r + 1) * W1, r * W1
-        row = grid[r * w:(r + 1) * w]
-        for c in range(w):
-            if row[c]:
-                run += 1
-            sat[base + c + 1] = sat[up + c + 1] + run
-    m.update({"grid": grid, "names": names, "sat": sat})
+    for key, mask in (("sat", FOREST | PROTECTED), ("sat_built", BUILT), ("sat_water", WATER)):
+        sat = array("I", bytes(4 * (w + 1) * (h + 1)))
+        for r in range(h):
+            run = 0
+            base, up = (r + 1) * W1, r * W1
+            row = grid[r * w:(r + 1) * w]
+            for c in range(w):
+                if row[c] & mask:
+                    run += 1
+                sat[base + c + 1] = sat[up + c + 1] + run
+        m[key] = sat
+    m.update({"grid": grid, "names": names})
     _mem[(x, y)] = m
     return m
 
 
-def depth(p, radius_m=300.0):
-    """Share of nature (forest / heath / wetland / protected area) within radius_m around p = [lon, lat], 0..1."""
+def depth(p, radius_m=300.0, which="sat"):
+    """Share of nature (forest / heath / wetland / protected area) within radius_m around p = [lon, lat], 0..1.
+    which = "sat_built": share of built-up land; "sat_water": share of open water."""
     m = cell(*CE.cell_of(p[0], p[1]))
     if not m:
         return 0.0
@@ -138,9 +165,33 @@ def depth(p, radius_m=300.0):
     k = max(1, int(radius_m / 44.5))
     c0, c1, r0, r1 = max(0, c - k), min(w, c + k + 1), max(0, r - k), min(h, r + k + 1)
     W1 = w + 1
-    s = m["sat"]
+    s = m[which]
     n = s[r1 * W1 + c1] - s[r0 * W1 + c1] - s[r1 * W1 + c0] + s[r0 * W1 + c0]
     return n / float((c1 - c0) * (r1 - r0))
+
+
+def built(p, radius_m=45.0):
+    """Share of built-up land (housing, commerce, industry …) right around p: "inside houses" from about 0.5."""
+    return depth(p, radius_m, "sat_built")
+
+
+def water(p, radius_m=90.0):
+    """Share of open water (lake, river, pond) around p: > 0 means the way runs at a bank."""
+    return depth(p, radius_m, "sat_water")
+
+
+def place_near(p, max_m=2500.0):
+    """Name of the nearest named place (village, suburb, hamlet …) in p's map area; '' if none within max_m."""
+    m = cell(*CE.cell_of(p[0], p[1]))
+    if not m:
+        return ""
+    kx = math.cos(math.radians(p[1]))
+    best = None
+    for nm, lon, lat, _cls in m.get("places", []):
+        d2 = ((lon - p[0]) * kx) ** 2 + (lat - p[1]) ** 2
+        if best is None or d2 < best[0]:
+            best = (d2, nm)
+    return best[1] if best and math.sqrt(best[0]) * 111320.0 <= max_m else ""
 
 
 def name_at(p):
@@ -166,5 +217,6 @@ if __name__ == "__main__":
     for a in sys.argv[1:]:
         lon, lat = [float(v) for v in a.split(",")]
         t = time.time()
-        print("%s  Tiefe 300 m: %.2f  1000 m: %.2f  Schutzgebiet: %s  (%.1f s)" % (
-            a, depth([lon, lat], 300), depth([lon, lat], 1000), name_at([lon, lat]) or "–", time.time() - t))
+        print("%s  Tiefe 300 m: %.2f  1000 m: %.2f  bebaut: %.2f  Wasser 90 m: %.2f  Schutzgebiet: %s  Ort: %s  (%.1f s)" % (
+            a, depth([lon, lat], 300), depth([lon, lat], 1000), built([lon, lat]), water([lon, lat]),
+            name_at([lon, lat]) or "–", place_near([lon, lat]) or "–", time.time() - t))

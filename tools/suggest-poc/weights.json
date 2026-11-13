@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-13i",
+  "version": "2026-11-13k",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
 
   "simple": {
@@ -120,8 +120,9 @@
 
   "effort": {
     "_about": "ascent per km: 'max' = full points up to here, zero at 3 x max; 'min' = full points from here",
-    "relaxed": {"max_m_per_km": 12},
-    "medium": {"max_m_per_km": 35},
+    "_cap": "up_m_per_h = a clear cap (owner 2026-11-13, Meran: 'wie wollen wir mit Steigung umgehen?'): metres up per hour of the tour; a loop above it is not offered for this Anstrengung (if none is below it, the flattest are shown with a note). The card shows '↑ 420 m · mittel'. Proposed values, not yet tried by the owner.",
+    "relaxed": {"max_m_per_km": 12, "up_m_per_h": 120},
+    "medium": {"max_m_per_km": 35, "up_m_per_h": 300},
     "sporty": {"min_m_per_km": 25}
   },
 
@@ -225,7 +226,52 @@
     "radii_m": [300, 900],
     "search_radius_m": 500,
     "from": 0.25,
-    "full": 0.8
+    "full": 0.8,
+    "_built": "Through houses (score part 'town', netsearch pen_town): a way counts when the share of the map's built-up land (landuse residential / commercial / industrial / retail / railway / schools …) within built_radius_m around it is at least built_from – inside housing, not merely near a town. Replaces the routing data's town class (owner 2026-11-13: the loop he liked had 60 % by the old measure, the one 'zu viel durch Orte' 47 %; now 35 % and 46 %).",
+    "built_radius_m": 45,
+    "built_from": 0.5
+  },
+
+  "greenchain": {
+    "_about": "Variant C (greenchain.py): the green-patch chain. green = no street, main-road weight < green_max_main, not built-up, and nature share within green_radius_m >= green_from, or forest class >= green_forest_class, or at a bank (water share within bank_radius_m >= bank_from). Green ways that hang together = a patch (a not-green piece up to join_gap_m between two green ones joins them); patches under min_patch_m green metres are dropped, the max_patches most worthwhile kept. Connectors: least unpleasant way to each neighbouring patch, at most max_connector_share of the wished length, up to 'alternatives' gates >= gate_sep_m apart. Chain worth = green metres inside patches x quality - connector_weight x (1 + connector_natur x Natur) x unpleasant metres of connectors; inside a patch the way may be stretched up to stretch_share of its green metres (at most stretch_max_share of the wish). realise = how many chains become real loops.",
+    "green_radius_m": 150,
+    "green_from": 0.3,
+    "green_forest_class": 5,
+    "green_max_main": 0.2,
+    "bank_radius_m": 90,
+    "bank_from": 0.04,
+    "bank_value": 0.9,
+    "bank_bonus": 0.3,
+    "join_gap_m": 80,
+    "min_patch_m": 600,
+    "max_patches": 40,
+    "max_connector_share": 0.35,
+    "alternatives": 2,
+    "alternatives_home": 3,
+    "gate_sep_m": 350,
+    "max_patches_in_chain": 4,
+    "max_steps": 200000,
+    "inner_factor": 1.3,
+    "stretch_share": 0.5,
+    "stretch_max_share": 0.9,
+    "stretch_from": 1.15,
+    "loop_from": 2.5,
+    "loop_tol": 0.3,
+    "loop_variants": 3,
+    "loop_tries": 6,
+    "loop_variant_deg": 50,
+    "min_inner_loop_m": 300,
+    "turn_cost_weight": 0.05,
+    "connector_weight": 1.0,
+    "connector_natur": 1.0,
+    "length_slack": 0.1,
+    "short_penalty": 1.0,
+    "used_penalty": 6.0,
+    "avoid_penalty": 4.0,
+    "touch_cost_share": 0.15,
+    "reroute_limit": 4.0,
+    "fit_passes": 3,
+    "realise": 16
   },
 
   "ai": {
@@ -249,6 +295,8 @@
     "_about": "Best first; skipped: a candidate that shares more than max_shared of its length with an already chosen one, or whose time is more than max_length_off away from the wish.",
     "show": 5, "lake_slot_from_water": 0.5,
     "max_self_cross": 1,
+    "_cross": "Owner 2026-11-13: 'Achten bringen es gar nicht' – loops that never meet their own way come first; one that meets it once is shown only while fewer than cross_fill_below clean loops are chosen.",
+    "cross_fill_below": 2,
     "max_length_off": 0.2,
     "max_shared": 0.5
   },
@@ -275,7 +323,8 @@
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
       "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 1000},
-      "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
+      "effort": {"relaxed": {"max_m_per_km": 6, "up_m_per_h": 100}, "medium": {"max_m_per_km": 12, "up_m_per_h": 250}, "sporty": {"min_m_per_km": 10}},
+      "greenchain": {"min_patch_m": 1500, "max_patches": 30, "gate_sep_m": 1200, "join_gap_m": 150, "max_patches_in_chain": 6, "max_connector_share": 0.3, "stretch_share": 0.0, "stretch_max_share": 0.0, "length_slack": 0.08, "max_steps": 500000, "realise": 12},
       "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false,
                   "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
@@ -299,7 +348,8 @@
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
       "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 900},
-      "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
+      "effort": {"relaxed": {"max_m_per_km": 6, "up_m_per_h": 100}, "medium": {"max_m_per_km": 12, "up_m_per_h": 250}, "sporty": {"min_m_per_km": 10}},
+      "greenchain": {"min_patch_m": 1500, "max_patches": 30, "gate_sep_m": 1200, "join_gap_m": 150, "max_patches_in_chain": 6, "max_connector_share": 0.3, "stretch_share": 0.0, "stretch_max_share": 0.0, "length_slack": 0.08, "max_steps": 500000, "realise": 12},
       "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false,
                   "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
@@ -323,7 +373,8 @@
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
       "attractions": {"max_reach_m": 10000},
       "time": {"ascent_m_per_h": 700},
-      "effort": {"relaxed": {"max_m_per_km": 10}, "medium": {"max_m_per_km": 20}, "sporty": {"min_m_per_km": 15}},
+      "effort": {"relaxed": {"max_m_per_km": 10, "up_m_per_h": 200}, "medium": {"max_m_per_km": 20, "up_m_per_h": 400}, "sporty": {"min_m_per_km": 15}},
+      "greenchain": {"min_patch_m": 1500, "max_patches": 30, "gate_sep_m": 1000, "join_gap_m": 150, "max_patches_in_chain": 6, "max_connector_share": 0.3, "stretch_share": 0.0, "stretch_max_share": 0.0, "length_slack": 0.08, "max_steps": 500000, "realise": 12},
       "classes": {"signed_prefixes": ["route_mtb_", "route_bicycle_"], "sidewalk_is_street": false,
                   "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,

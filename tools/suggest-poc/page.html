@@ -72,7 +72,7 @@
   <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
   <label style="margin:6px 0 0; color:var(--ink)" title="Einmal pro Kartengebiet hat eine KI aus unserer eigenen Kartenliste ausgewählt, was ein Ortskundiger empfehlen würde. Beim Vorschlagen wird keine KI gefragt."><input type="checkbox" id="ai"> mit KI-Regionswissen</label>
   <label>Verfahren (zum Vergleichen)</label>
-  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (Wandern und Rad)</option></select>
+  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (Wandern und Rad)</option><option value="c">C · Grünstück-Kette (Grünflächen verbinden)</option></select>
   <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
     <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
     <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
@@ -230,7 +230,7 @@ function cards() {
     d.className = 'card' + (sel === c.id ? ' sel' : ''); d.style.borderLeftColor = colorOf(c);
     const chip = (t, cls) => `<span class="${cls || ''}">${t}</span>`;
     d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
-      <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
+      <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m${result && result.wish && result.wish.simple && result.wish.simple.effort ? ' · ' + esc(result.wish.simple.effort) : ''}</div>
       ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
       ${(n.reserves || []).length ? `<div class="goals">${n.reserves.slice(0, 2).map(r => km1(r[1]) + ' km im Naturschutzgebiet ' + esc(r[0])).join(' · ')}</div>` : ''}
       ${aiTips(n) ? `<div class="aitips">${aiTips(n)}</div>` : ''}
