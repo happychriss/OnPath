@@ -75,8 +75,9 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
   cancelled?: boolean;
   /** After a call that changed the undo / redo history: the history as text (Engine.historyExport), for a fresh worker. */
   history?: string }
-/** What a plan waits for: the routing data under it ([bytes] still to download), then the router. */
-export type Progress = { phase: 'download'; bytes: number } | { phase: 'route' }
+/** What a plan waits for: the routing data under it ([bytes] still to download when it started, [done] of them
+ * received so far – sizes from the rd5 files' index), then the router. */
+export type Progress = { phase: 'download'; bytes: number; done: number } | { phase: 'route' }
   /** the legs the router works on: the engine's own text ("Leg 2 of 5 is being calculated…", PlanStatus.calculating) */
   | { phase: 'legs'; text: string };
 

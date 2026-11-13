@@ -157,7 +157,7 @@ const whole = new Map<string, Promise<Uint8Array | null>>();
  * Bytes [from, to] of a file. Uses an HTTP range request; a server that ignores ranges (answers 200 with the whole
  * file, e.g. a simple static host for a small test area) still works – the file is kept once and sliced.
  */
-async function range(url: string, from: number, to: number): Promise<{ bytes: Uint8Array; total: number } | null> {
+async function range(url: string, from: number, to: number, onBytes?: (n: number) => void): Promise<{ bytes: Uint8Array; total: number } | null> {
   if (packed && !whole.has(url)) keep(whole, url, fetchPacked(url));
   let all = await whole.get(url);
   if (whole.has(url) && !all) return null;
@@ -166,13 +166,30 @@ async function range(url: string, from: number, to: number): Promise<{ bytes: Ui
     if (r.status === 404) return null;
     if (r.status === 206) {
       const total = Number((r.headers.get('Content-Range') ?? '').split('/')[1] ?? NaN);
-      return { bytes: new Uint8Array(await r.arrayBuffer()), total };
+      return { bytes: await body(r, onBytes), total };
     }
     if (r.status !== 200) throw new Error(`${url}: HTTP ${r.status}`);
     all = new Uint8Array(await r.arrayBuffer());
     whole.set(url, Promise.resolve(all));
   }
   return { bytes: all.slice(from, Math.min(to, all.length - 1) + 1), total: all.length };
+}
+
+/** A response's bytes; with [onBytes] read as they come, so the page can show how far a part is (the load overlay). */
+async function body(r: Response, onBytes?: (n: number) => void): Promise<Uint8Array> {
+  if (!onBytes || !r.body) return new Uint8Array(await r.arrayBuffer());
+  const reader = r.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let n = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    chunks.push(value); n += value.length; onBytes(value.length);
+  }
+  const out = new Uint8Array(n);
+  let o = 0;
+  for (const c of chunks) { out.set(c, o); o += c.length; }
+  return out;
 }
 
 /** End offsets of the 25 parts (low 48 bits of each big-endian long in the 200-byte index). */
@@ -185,6 +202,12 @@ function partEnds(index: Uint8Array): number[] {
 
 const layoutLoads = new Map<string, Promise<number[] | null>>();
 const partLoads = new Map<string, Promise<number>>();
+/** Bytes each part download has received so far (tile#i), and the parts that are settled (in the engine, empty or failed). */
+const partGot = new Map<string, number>();
+const partSettled = new Set<string>();
+/** The plans waiting for parts, told when bytes arrive (each throttles itself). */
+const byteListeners = new Set<() => void>();
+const heard = () => { for (const f of byteListeners) f(); };
 
 /** The tile's part layout (its head and tail go to the engine once); null when there is no such file. */
 function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
@@ -208,41 +231,59 @@ function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
  * Fetches the parts [points] need that the engine does not have yet (each part once, also when a prefetch and a plan
  * ask at the same time). Returns bytes downloaded by this call.
  */
-async function ensureParts(e: WasmEngine, points: string, activity: string, onNeed?: (bytes: number) => void): Promise<number> {
+async function ensureParts(e: WasmEngine, points: string, activity: string, onNeed?: (bytes: number, done: number) => void): Promise<number> {
   // the phone's corridor for the activity (OfflineCorridor: 10 km on foot, 20 km by bike; '' = not known → the largest)
   const need: [string, number][] = JSON.parse(e.partsNeeded(points, activity));
+  let stop = () => {};
   if (onNeed) {
-    // what is still to download (the layouts are small and fetched first), so the page can say "about 9 MB"
+    // what is still to download (the layouts are small and fetched first), so the page can say how far it is (the load
+    // overlay's percent): the sizes come from the files' own index – an honest total, no guess. A part another request
+    // is downloading (the prefetch) counts too: this plan waits for it as well.
     const ends = await Promise.all(need.map(([tile]) => layout(e, tile).catch(() => null)));
-    const bytes = need.reduce((sum, [tile, i], k) => {
-      const en = ends[k];
-      if (!en || partLoads.has(tile + '#' + i)) return sum;
-      return sum + Math.max(0, en[i] - (i === 0 ? 200 : en[i - 1]));
-    }, 0);
-    if (bytes > 0) onNeed(bytes);
+    const open = new Map<string, number>();
+    need.forEach(([tile, i], k) => {
+      const en = ends[k], key = tile + '#' + i;
+      if (!en || partSettled.has(key)) return;
+      const size = Math.max(0, en[i] - (i === 0 ? 200 : en[i - 1]));
+      if (size > 0) open.set(key, size);
+    });
+    const total = [...open.values()].reduce((a, b) => a + b, 0);
+    if (total > 0) {
+      const got = () => [...open].reduce((sum, [key, size]) => sum + (partSettled.has(key) ? size : Math.min(size, partGot.get(key) ?? 0)), 0);
+      let last = 0;
+      const tell = () => { const now = performance.now(); if (now - last < 100) return; last = now; onNeed(total, got()); };
+      onNeed(total, got());
+      byteListeners.add(tell);
+      stop = () => { byteListeners.delete(tell); onNeed(total, total); };
+    }
   }
   const sizes = await Promise.all(need.map(([tile, i]) => {
     const k = tile + '#' + i;
     let p = partLoads.get(k);
     if (!p) {
+      partGot.set(k, 0);
       p = (async () => {
-        const ends = await layout(e, tile);
-        if (!ends) return 0;
-        const start = i === 0 ? 200 : ends[i - 1];
-        if (ends[i] <= start) return 0; // empty part (sea / no ways)
-        const part = await range(new URL(tile, segments).href, start, ends[i] - 1);
-        if (!part) return 0;
-        if (!e.putPart(tile, i, new Int8Array(part.bytes.buffer))) {
-          partLoads.delete(k); // a later plan may try again
-          throw new Error(`${tile} part ${i} does not fit its index (${part.bytes.length} bytes, expected ${ends[i] - start})`);
-        }
-        return part.bytes.length;
+        try {
+          const ends = await layout(e, tile);
+          if (!ends) return 0;
+          const start = i === 0 ? 200 : ends[i - 1];
+          if (ends[i] <= start) return 0; // empty part (sea / no ways)
+          const part = await range(new URL(tile, segments).href, start, ends[i] - 1, (n) => { partGot.set(k, (partGot.get(k) ?? 0) + n); heard(); });
+          if (!part) return 0;
+          if (!e.putPart(tile, i, new Int8Array(part.bytes.buffer))) {
+            partLoads.delete(k); // a later plan may try again
+            throw new Error(`${tile} part ${i} does not fit its index (${part.bytes.length} bytes, expected ${ends[i] - start})`);
+          }
+          return part.bytes.length;
+        } finally { partSettled.add(k); partGot.delete(k); heard(); }
       })();
       keep(partLoads, k, p);
+      // expected: a failed part is reported by noPart below; it is not settled for the next plan, which tries it again
+      p.catch(() => { partSettled.delete(k); });
       return p.catch((err) => noPart(tile, i, err));
     }
     return p.then(() => 0, (err) => noPart(tile, i, err)); // someone else's download – counted there
-  }));
+  })).finally(stop);
   return sizes.reduce((a, b) => a + b, 0);
 }
 
@@ -348,7 +389,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const t0 = performance.now();
-    const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes } }));
+    const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes, done) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes, done } }));
     if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; } // superseded while downloading
     if (req.type === 'plan') reply({ id: req.id, ok: true, progress: { phase: 'route' } });
     if (req.type === 'planFromTrack') {

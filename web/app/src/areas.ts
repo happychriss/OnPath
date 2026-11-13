@@ -215,7 +215,25 @@ export class MapAreas {
   }
 
   /** The strip (mirror of CellCards.build). */
-  private show() { this.notices.set('areas', this.build()); }
+  private show() {
+    const n = this.build();
+    this.notices.set('areas', n);
+    this.onBuild?.(n?.kind === 'busy' ? { ...this.buildProgress(), notice: n } : null);
+  }
+
+  /** The load overlay (loadoverlay.ts) shows a busy strip as its top phase, with the doorman's own progress. */
+  onBuild: ((b: { done: number; total: number; notice: Notice } | null) => void) | null = null;
+
+  /** Areas of the open job: each 0..1 – ready (or failed: nobody waits for it) 1, being prepared its progress, else 0. */
+  private buildProgress() {
+    const ids = this.job?.ids ?? [];
+    let done = 0;
+    for (const id of ids) {
+      const x = this.states.get(id);
+      done += !x ? 0 : x.s === 'ready' || x.s === 'failed' ? 1 : x.s === 'building' ? Math.min(1, Math.max(0, x.progress)) : 0;
+    }
+    return { done, total: ids.length };
+  }
 
   build(): Notice | null {
     const close = { label: t('web_hide_loading'), onClose: () => { this.hidden = true; } };

@@ -12,10 +12,18 @@ export interface Notice {
   lines?: string[];
   /** × to hide (aria label); hiding calls [onClose]. */
   close?: { label: string; onClose: () => void };
+  /** The load overlay (loadoverlay.ts): 0..100 and its text ("45 %") – a bar under the title. */
+  progress?: number;
+  progressText?: string;
+  /** One text button (the route's Cancel). */
+  action?: { label: string; act: () => void };
 }
 
-/** Slots in their order on screen: the position, then the map loading, a cell whose map fails, then the map areas. */
-const ORDER = ['locate', 'loading', 'cells', 'areas'] as const;
+/**
+ * Slots in their order on screen: the load overlay, the position, a cell whose map fails, then the map areas. While the
+ * load overlay shows it is the one wait: the other busy lines step back (owner 2026-11-13 – never three waits at once).
+ */
+const ORDER = ['load', 'locate', 'loading', 'cells', 'areas'] as const;
 export type Slot = (typeof ORDER)[number];
 
 export class MapNotices {
@@ -31,15 +39,18 @@ export class MapNotices {
 
   private render() {
     this.box.replaceChildren();
+    const load = this.shown.has('load');
+    let count = 0;
     for (const slot of ORDER) {
       const n = this.shown.get(slot);
-      if (!n) continue;
+      if (!n || (load && slot !== 'load' && n.kind === 'busy')) continue;
+      count++;
       const el = document.createElement('div');
-      el.className = `mapnote ${n.kind}`;
+      el.className = `mapnote ${n.kind}` + (slot === 'load' ? ' load' : '');
       el.dataset.slot = slot;
       const head = document.createElement('div');
       head.className = 'head';
-      if (n.kind === 'busy') head.append(Object.assign(document.createElement('span'), { className: 'spinner', ariaHidden: 'true' }));
+      if (n.kind === 'busy' && n.progress == null) head.append(Object.assign(document.createElement('span'), { className: 'spinner', ariaHidden: 'true' }));
       if (n.kind === 'error') head.append(Object.assign(document.createElement('span'), { className: 'warn', textContent: '⚠', ariaHidden: 'true' }));
       head.append(Object.assign(document.createElement('span'), { className: 'title', textContent: n.title }));
       if (n.close) {
@@ -50,9 +61,27 @@ export class MapNotices {
         head.append(x);
       }
       el.append(head);
+      if (n.progress != null) {
+        el.dataset.pct = String(n.progress);
+        const row = document.createElement('div');
+        row.className = 'progress';
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.setAttribute('role', 'progressbar');
+        bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); bar.setAttribute('aria-valuenow', String(n.progress));
+        bar.append(Object.assign(document.createElement('i'), { style: `width: ${n.progress}%` }));
+        row.append(bar, Object.assign(document.createElement('span'), { className: 'pct', textContent: n.progressText ?? `${n.progress} %` }));
+        el.append(row);
+      }
       for (const l of n.lines ?? []) el.append(Object.assign(document.createElement('div'), { className: 'line', textContent: l }));
+      if (n.action) {
+        const a = n.action;
+        const b = Object.assign(document.createElement('button'), { className: 'act', textContent: a.label });
+        b.onclick = () => a.act();
+        el.append(b);
+      }
       this.box.append(el);
     }
-    this.box.hidden = this.shown.size === 0;
+    this.box.hidden = count === 0;
   }
 }

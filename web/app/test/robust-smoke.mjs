@@ -175,7 +175,8 @@ check(/Not saved/.test(saveLine) && !/quota|DOMException/i.test(saveLine), `Save
 await ctx.close();
 check(errors.length === 0, `no page error (${errors.join(' | ')})`);
 
-// ---- 7: the route's wait (owner 2026-11-02): after ~1 s a box in the middle of the map – spinner, text, Cancel ----
+// ---- 7: the route's wait (owner 2026-11-02): after ~1 s a box in the middle of the map – spinner, text, Cancel; while the map of a
+//      new area loads it is the load overlay instead (owner 2026-11-13): a bar, the text, Cancel ----
 {
   const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
   // a slow routing-data server, so the plan takes a few seconds
@@ -185,24 +186,25 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   await p.goto(url + 'index.html#p=' + CODE);
   await p.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
   const t0 = Date.now();
-  const box = await p.waitForSelector('#msgcards .msgcard.busy', { timeout: 30_000 }).then(() => true, () => false);
+  const box = await p.waitForSelector('#msgcards .msgcard.busy, #mapnotes .mapnote.load:has(button.act)', { timeout: 30_000 }).then(() => true, () => false);
   const at = Date.now() - t0;
-  const card = box ? await p.evaluate(() => { const c = document.querySelector('#msgcards .msgcard.busy'), r = c.getBoundingClientRect(),
+  const card = box ? await p.evaluate(() => { const c = document.querySelector('#msgcards .msgcard.busy, #mapnotes .mapnote.load:has(button.act)'), r = c.getBoundingClientRect(),
     sheet = document.getElementById('sheet').getBoundingClientRect();
-    return { text: c.textContent, spin: !!c.querySelector('.msgspin'), cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth,
+    return { text: c.textContent, spin: !!c.querySelector(".msgspin, .bar"), cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth,
       clock: document.getElementById('status').classList.contains('busy') }; }) : null;
   check(box && card.spin && /Cancel/.test(card.text) && /Calculating the route|Loading the map/.test(card.text),
     `the wait box: spinner, "${card?.text}", Cancel`);
   check(box && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
-  await p.click('#msgcards .msgcard.busy .msgbtn');
-  await p.waitForFunction(() => !document.querySelector('#msgcards .msgcard.busy') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
+  await p.click('#msgcards .msgcard.busy .msgbtn, #mapnotes .mapnote.load button.act');
+  await p.waitForFunction(() => !document.querySelector('#msgcards .msgcard.busy, #mapnotes .mapnote.load') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
   const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
     btn: document.getElementById('planAnyway')?.textContent }));
   check(after.pts === 2 && !after.plan && /calculation stopped/.test(after.line) && after.btn === 'Calculate',
     `Cancel: the points stay, "Route not calculated – calculation stopped." + Calculate (${JSON.stringify(after)})`);
   await p.click('#planAnyway');
   await p.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 }).catch(() => {});
-  check(await p.evaluate(() => !!window.__state.plan && !document.querySelector('#msgcards .msgcard.busy')), 'Calculate: the route comes, the box is gone');
+  await p.waitForFunction(() => !document.querySelector('#msgcards .msgcard.busy, #mapnotes .mapnote.load'), null, { timeout: 15_000 }).catch(() => {});
+  check(await p.evaluate(() => !!window.__state.plan && !document.querySelector('#msgcards .msgcard.busy, #mapnotes .mapnote.load')), 'Calculate: the route comes, the box is gone');
   console.log(`(the box came after ${at} ms)`);
   await c.close();
 }
