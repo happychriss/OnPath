@@ -21,4 +21,19 @@ object PositionDot {
      * during a tour, where the position is the activity sign anyway).
      */
     fun accuracyAlpha(navigate: Boolean): Float = if (navigate) ACCURACY_ALPHA else 0f
+
+    /** The image names MapLibre's native location layer (IndicatorLocationLayerRenderer) draws the dot from. */
+    val INDICATOR_SIGN_IMAGES = listOf("mapbox-location-icon", "mapbox-location-stale-icon")
+    val INDICATOR_OTHER_IMAGES = listOf("mapbox-location-bearing-icon", "mapbox-location-bearing-stale-icon",
+        "mapbox-location-stroke-icon", "mapbox-location-background-stale-icon", "mapbox-location-shadow-icon")
+
+    /**
+     * The plan sign during a tour on the native location layer, which ignores custom image names: image name → true =
+     * the sign, false = an empty image (no triangle, ring or shadow beside it); empty = MapLibre's own dot images. MapLibre
+     * writes its images again on every style apply and every render mode change (Plan ⇄ following), so MapController
+     * writes these after each of them – else the blue dot comes back while planning (emulator 2026-11-13).
+     */
+    fun planSignImages(planSign: Boolean): Map<String, Boolean> =
+        if (!planSign) emptyMap()
+        else INDICATOR_SIGN_IMAGES.associateWith { true } + INDICATOR_OTHER_IMAGES.associateWith { false }
 }

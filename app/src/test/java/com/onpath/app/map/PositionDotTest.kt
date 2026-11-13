@@ -16,4 +16,18 @@ class PositionDotTest {
         assertTrue(PositionDot.accuracyAlpha(navigate = true) > 0f)
         assertTrue(PositionDot.accuracyAlpha(navigate = false) == 0f)
     }
+
+    /**
+     * Plan sign during a tour on the native location layer (bug 2026-11-13: the blue dot stayed): the sign goes under
+     * both names the layer draws the dot from (fresh and stale), every other part of the dot becomes empty.
+     */
+    @Test fun planSignCoversEveryImageOfTheNativeLayer() {
+        val m = PositionDot.planSignImages(planSign = true)
+        assertTrue(m["mapbox-location-icon"] == true && m["mapbox-location-stale-icon"] == true)
+        for (other in listOf("mapbox-location-bearing-icon", "mapbox-location-bearing-stale-icon", "mapbox-location-stroke-icon",
+            "mapbox-location-background-stale-icon", "mapbox-location-shadow-icon")) assertTrue(other, m[other] == false)
+        assertTrue(m.size == 7)
+    }
+
+    @Test fun withoutPlanSignMapLibresOwnDotStays() = assertTrue(PositionDot.planSignImages(planSign = false).isEmpty())
 }
