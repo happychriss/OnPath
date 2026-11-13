@@ -774,8 +774,21 @@ def suggest(wish, W=None):
     kv = profile_kv(wish, W)
     notes = []
     target_m = wish["hours"] * wish["pace"] * 1000.0
+    # the map areas in reach: fetched like the app does; what cannot be had is said on the run, never silently missing
+    import cells as CE
+    reach_cells = max(W["attractions"]["max_reach_m"],
+                      min(W["netsearch"]["max_radius_m"], W["netsearch"]["radius_factor"] * target_m))
+    got, lacking = CE.ensure(wish["start"][0], wish["start"][1], reach_cells)
+    if got:
+        import nature as _NA
+        AT._mem.clear()
+        _NA._mem.clear()
+        notes.append("Kartengebiet geladen: %d" % len(got))
+    if lacking:
+        notes.append("Für einen Teil der Umgebung gibt es noch kein Kartengebiet (%s) – dort sind Wald, Orte, Seen und "
+                     "bekannte Wege unbekannt; die Vorschläge können deshalb einseitig sein" % ", ".join("10-%d-%d" % c for c in lacking))
     attr, note = AT.load(wish["start"], min(W["attractions"]["max_reach_m"], 0.5 * target_m), wish["activity"], W)
-    if note:
+    if note and not lacking:
         notes.append(note)
     index = AT.Index(attr) if attr else None
     picks = None

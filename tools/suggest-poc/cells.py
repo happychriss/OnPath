@@ -111,6 +111,34 @@ def get(x, y, log=print):
     return d
 
 
+_checked = {}
+
+
+def ensure(lon, lat, reach_m, log=None):
+    """Make sure the map areas a circle of reach_m around the point touches are on this computer: areas the server has
+    ready are downloaded (as the app does when one plans there); -> (fetched ids, ids the server does not have yet).
+    A data edge must never silently bias the loops (owner 2026-11-13, Nordkirchen: "warum gehen alle Wege nach
+    Süden?" – that run had no map area at all): the caller says so on the run when an area cannot be had.
+    Never raises: without network / key the missing areas simply stay missing."""
+    need = cells_for(lon, lat, reach_m)
+    missing = [c for c in need if not have(*c)]
+    todo = [c for c in missing if _checked.get(c) != "none"]
+    fetched = []
+    if todo:
+        try:
+            st = {tuple(int(v) for v in x["id"].replace("-", "/").split("/")[-2:]): x.get("state")
+                  for x in status(todo).get("cells", [])}
+            for c in todo:
+                if st.get(c) == "ready":
+                    get(c[0], c[1], log or (lambda *_: None))
+                    fetched.append(c)
+                else:
+                    _checked[c] = "none"
+        except (Exception, SystemExit):  # expected: no network, no key, a server hiccup – the areas stay missing
+            pass
+    return fetched, [c for c in need if not have(*c)]
+
+
 if __name__ == "__main__":
     cmd, lon, lat = sys.argv[1], float(sys.argv[2]), float(sys.argv[3])
     ring = int(sys.argv[4]) if len(sys.argv) > 4 else 1
