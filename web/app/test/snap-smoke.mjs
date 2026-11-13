@@ -43,13 +43,9 @@ const h1 = await settled();
 const p1 = await planOf();
 const moved = p1.points.map((q, i) => metres(q, clicked[i]));
 check(h1 !== '#p=' + code && moved.some((m) => m > 3), `the meadow points moved onto the path (${moved.map((m) => m.toFixed(0)).join(' / ')} m) – the address holds them`);
-// snapping is no undo step: one undo goes back to before the link (no points), never to the clicked meadow points
-await page.click('#undo');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
-check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 0, 'snapping is no undo step (one undo: back to before the link)');
-await page.click('#redo');
-await page.waitForFunction((h) => location.hash === h, h1, { timeout: 15_000 }).catch(() => {});
-check(await page.evaluate(() => location.hash) === h1, 'redo: the moved points again (the snapshot was moved too)');
+// snapping is no undo step, and opening a link is none either (owner 2026-11-13): nothing to undo, no undo pill
+await page.waitForTimeout(500); // the history state comes back from the engine worker
+check(await page.isHidden('#undoPill') && await page.isDisabled('#undo'), 'snapping is no undo step (a plan from a link: nothing to undo)');
 await settled();
 
 // planned again (another T level and back): the moved points stay where they are
