@@ -986,6 +986,24 @@ fun SavedTourDialog(t: Tour, times: com.onpath.app.time.TourTimes?, onOpen: () -
     )
 }
 
+/**
+ * A recording that never got away from its start went to the recycle bin at the end (owner 2026-11-12,
+ * `domain/tour/ShortRecording`): the sibling of the saved box – "Kurze Aufzeichnung (12 m)", "In den Papierkorb
+ * gelegt. 30 Tage lang wiederherstellbar.", Rückgängig (back as a normal tour) · OK. Stays until answered, so the
+ * Rückgängig is never missed; Back / a tap outside = OK (the bin keeps it).
+ */
+@Composable
+fun ShortRecordingDialog(t: Tour, onUndo: () -> Unit, onOk: () -> Unit) {
+    val neutral = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.Ink)
+    AlertDialog(
+        onDismissRequest = onOk,
+        icon = { Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.onSurfaceVariant) },
+        title = { Text(str(Res.string.routes_short_recording_title, Format.distance(t.distanceM).replace(' ', '\u00A0'))) }, // "12 m" never breaks
+        text = { DialogText(str(Res.string.routes_short_recording_text, com.onpath.app.backup.RecycleBin.DAYS)) },
+        confirmButton = { SavedTourActions(str(Res.string.plan_undo), onUndo, str(Res.string.common_ok), onOk, neutral) },
+    )
+}
+
 @Composable
 private fun SavedTourActions(open: String, onOpen: () -> Unit, ok: String, onOk: () -> Unit,
                              neutral: androidx.compose.material3.ButtonColors) {

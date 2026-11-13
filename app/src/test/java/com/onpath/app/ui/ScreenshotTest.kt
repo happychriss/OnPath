@@ -1243,6 +1243,18 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * A recording that never got away from its start went to the recycle bin at the end (owner 2026-11-12): the sibling
+     * of the saved box – "Kurze Aufzeichnung (12 m)", the bin line, Rückgängig · OK.
+     */
+    @Test fun shortRecordingBox() = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) { MapPlaceholder(Modifier.fillMaxSize()) }
+            ShortRecordingDialog(Tour(2, TourKind.RECORDED, "Tour 12 Nov 2026, 10:12", 1_760_200_000_000, "HIKE", 2, 12.0, 0.0, 0.0,
+                95.0, "done", emptyList()), {}, {})
+        }
+    }
+
     /** A recorded tour ended before its first point (owner 2026-10-30): nothing to follow – "Start recording · Hike". */
     fun trackWithoutLine() = paparazzi.snapshot {
         Frame {

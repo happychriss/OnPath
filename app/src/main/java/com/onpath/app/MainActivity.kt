@@ -436,6 +436,10 @@ class MainActivity : ComponentActivity() {
                 vm.finishedTour?.let { t ->
                     com.onpath.app.ui.SavedTourDialog(t, vm.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)
                 }
+                // a short recording went to the recycle bin instead (owner 2026-11-12): Rückgängig · OK, until answered
+                vm.shortBinnedTour?.let { t ->
+                    com.onpath.app.ui.ShortRecordingDialog(t, onUndo = vm::undoShortRecording, onOk = vm::closeShortRecording)
+                }
             }
         }
         if (!vm.prefs.setupWelcomeSeen) {

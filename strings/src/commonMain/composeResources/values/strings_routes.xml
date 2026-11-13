@@ -63,6 +63,8 @@
     <string name="routes_live_name">Current plan</string>
     <string name="routes_track_saved">Tour saved</string>
     <string name="routes_saved_open">In My tours ›</string>
+    <string name="routes_short_recording_title">Short recording (%1$s)</string>
+    <string name="routes_short_recording_text">Moved to the recycle bin. It can be restored for %1$d days.</string>
     <string name="routes_section_recent">Recent</string>
     <string name="routes_section_saved">Saved</string>
     <string name="routes_just_saved">✓ Just saved</string>

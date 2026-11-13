@@ -62,6 +62,8 @@
     <string name="routes_live_name">Aktueller Plan</string>
     <string name="routes_track_saved">Tour gespeichert</string>
     <string name="routes_saved_open">In Meine Touren ›</string>
+    <string name="routes_short_recording_title">Kurze Aufzeichnung (%1$s)</string>
+    <string name="routes_short_recording_text">In den Papierkorb gelegt. %1$d Tage lang wiederherstellbar.</string>
     <string name="routes_section_recent">Zuletzt</string>
     <string name="routes_section_saved">Gespeichert</string>
     <string name="routes_just_saved">✓ Gerade gespeichert</string>
