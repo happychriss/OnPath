@@ -45,6 +45,21 @@ CASES = [
     ("zons-bike-3h-mittel", dict(start=[6.8448, 51.1231], start_name="Zons", activity="bike", hours=3, pace="normal",
                                  effort="mittel", natur="mittel", ruhe="mittel", bekannt="mittel"),
      dict(known_km=("Rheinradweg", 14))),
+    # the owner's two bike trials of 2026-11-13 evening (feedback.jsonl): "wunderbar am Rhein lang" must be on top,
+    # no long return beside a road ("Münchner Straße – zwar offizieller Radweg")
+    ("owner-rhein-bike-2h", dict(start=[6.81206, 51.14162], start_name="Stürzelberg", activity="bike", hours=2,
+                                 pace="normal", effort="leicht", natur="hoch", ruhe="hoch", bekannt="mittel", wasser=True),
+     dict(known_km=("Rheinradweg", 18))),
+    ("owner-koeln-bike-2h", dict(start=[6.97278, 50.94156], start_name="Köln", activity="bike", hours=2, pace="normal",
+                                 effort="leicht", natur="hoch", ruhe="hoch", bekannt="niedrig"), dict()),
+    # the owner's comments of 2026-11-13 22:40–22:51 (feedback.jsonl): "warum nicht am Wasser entlang?" (a hike from
+    # just south of the Elbsee) and "der Rückweg geht nur durch die Stadt, warum nichts über die Urdenbacher Kämpe" /
+    # "zu viel durch Orte" (bike from Hilden) – through houses by the map's built-up land (nature.built)
+    ("elbsee-hike-2h-wasser", dict(start=[6.94460, 51.18413], start_name="Hilden Nord", activity="hike", hours=2,
+                                   pace="normal", effort="leicht", natur="hoch", ruhe="mittel", bekannt="mittel", wasser=True),
+     dict(lake_km=(("Elbsee", "Menzelsee"), 1.5))),
+    ("hilden-bike-2h-natur", dict(start=H, start_name="Hilden", activity="bike", hours=2, pace="normal", effort="leicht",
+                                  natur="hoch", ruhe="hoch", bekannt="mittel"), dict(built_max=30)),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
@@ -69,9 +84,14 @@ def run_case(name, wish_in, exp, W):
         return out
     top = ch[0]
     n = top["numbers"]
-    fit = abs(n["hours"] - wish["hours"]) / wish["hours"]
-    checks = {"Länge ±15 %": fit <= 0.15,
-              "Hauptstraße ≤ %d m" % E["score"]["main_road_max_m"]: n["main_longest_m"] <= E["score"]["main_road_max_m"],
+    # the owner's rules (2026-11-13): the length is a rough guide (±1 km on foot, ±5 km by bike, plus 10 %); the
+    # loop meets its own way at most once – every shown loop; no long stretch on or beside a busy road (the free
+    # stretch shrinks with the Natur level)
+    flat = E["score"]["length_flat_km"]
+    road_max = n.get("main_road_max_m", E["score"]["main_road_max_m"])
+    checks = {"Länge ±(%g km + 10 %%)" % flat: n["length_off_km"] <= flat + 0.1 * wish["hours"] * wish["pace"],
+              "an / neben Straße ≤ %d m" % road_max: n["main_longest_m"] <= road_max,
+              "kreuzt sich ≤ 1× (alle Vorschläge)": all(c["numbers"]["self_cross"] <= 1 for c in ch),
               "doppelt < 10 %": n["doubled_pct"] < 10,
               "≥ 3 Vorschläge": len(ch) >= 3,
               "≤ 15 s": r["seconds"] <= 15}
@@ -93,11 +113,19 @@ def run_case(name, wish_in, exp, W):
         word, km = exp["known_km"]
         checks["≥ %d km %s im ersten Vorschlag" % (km, word)] = sum(
             k[1] for k in n.get("known", []) if word in k[0]) >= km
+    if exp.get("lake_km"):
+        names, km = exp["lake_km"]
+        checks["≥ %g km am %s im ersten Vorschlag" % (km, " / ".join(names))] = sum(
+            l[1] for l in n.get("lakes", []) if any(w in l[0] for w in names)) >= km
+    if "built_max" in exp:
+        checks["durch Häuser ≤ %d %%" % exp["built_max"]] = n["built_pct"] <= exp["built_max"]
     if exp.get("known_named"):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],
                         "forest_pct": n["forest_pct"], "street_pct": n["street_pct"], "main_longest_m": n["main_longest_m"],
                         "signed_pct": n["signed_pct"], "doubled_pct": n["doubled_pct"], "goals": S.goals_text(n),
+                        "self_cross": n["self_cross"], "roadside_pct": n["roadside_pct"], "built_pct": n["built_pct"],
+                        "deep_pct": n["deep_pct"], "stalk_m": n["stalk_m"],
                         "ai_km": n.get("ai_km"), "ai": S.ai_text(n), "ai_part": top["parts"].get("ai")},
                 "checks": checks})
     return out
@@ -105,7 +133,7 @@ def run_case(name, wish_in, exp, W):
 
 def sheet(res, version):
     L = ["Bench · Gewichte %s · %s" % (version, time.strftime("%Y-%m-%d %H:%M")), "",
-         "Fall                  ok   Punkte    km  Zeit  Wald% Str% Haupt-m mark% dopp%   s  Erster Vorschlag"]
+         "Fall                  ok   Punkte    km  Zeit  Wald% Str% Haupt-m mark% dopp% kreuzt neben% Häuser% tief%    s  Erster Vorschlag"]
     ok_all = n_all = 0
     for c in res:
         ok = sum(1 for v in c["checks"].values() if v)
@@ -115,9 +143,10 @@ def sheet(res, version):
         if not t:
             L.append("%-20s %d/%d  – %s" % (c["name"], ok, len(c["checks"]), c.get("error", "kein Vorschlag")))
             continue
-        L.append("%-20s %d/%d  %6.1f %5.1f  %s  %4d %4d %6d %5d %5d %4.1f  %s%s"
+        L.append("%-20s %d/%d  %6.1f %5.1f  %s  %4d %4d %6d %5d %5d %5s %6s %6s %5s %5.1f  %s%s"
                  % (c["name"], ok, len(c["checks"]), t["score"], t["km"], S.fmt_h(t["hours"]), t["forest_pct"],
-                    t["street_pct"], t["main_longest_m"], t["signed_pct"], t["doubled_pct"], c["seconds"], t["name"],
+                    t["street_pct"], t["main_longest_m"], t["signed_pct"], t["doubled_pct"], t.get("self_cross", "–"),
+                    t.get("roadside_pct", "–"), t.get("built_pct", "–"), t.get("deep_pct", "–"), c["seconds"], t["name"],
                     " – " + t["goals"] if t["goals"] else ""))
         if t.get("ai"):
             L.append("%-20s      %s · KI-Teil %.2f · %.1f km auf Tipps" % ("", t["ai"], t.get("ai_part") or 0, t.get("ai_km") or 0))
@@ -194,7 +223,7 @@ if __name__ == "__main__":
     ap.add_argument("--only", default="")
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
-    ap.add_argument("--method", default="a", choices=["a", "b"], help="a = fan of routed loops, b = search in the way network")
+    ap.add_argument("--method", default="a", choices=["a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
     ap.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (score part 'ai' + the picks as destinations)")
     a = ap.parse_args()
     METHOD = a.method

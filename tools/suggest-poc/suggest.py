@@ -79,7 +79,8 @@ def simple_wish(b, W):
         if k in ("forest", "quiet", "water", "signed", "natural") and v is not None:
             w[k] = float(v)
     w["simple"] = {k: b.get(k) for k in ("natur", "ruhe", "bekannt", "wasser", "pace", "effort")}
-    w["method"] = "b" if str(b.get("method", "a")).lower() == "b" else "a"
+    m = str(b.get("method", "a")).lower()
+    w["method"] = m if m in ("b", "c") else "a"  # a = fan, b = search in the way network, c = green-patch chain
     if b.get("ai"):  # "mit KI-Regionswissen": the AI's picks per map area as a score part and as destinations
         w["ai"] = True
     return w
@@ -376,6 +377,13 @@ def main_weight(tags, C):
             w *= M["lane_factor"]
     elif tags.get("footway") == "sidewalk" and noise >= C["sidewalk_main_from_noise"]:
         w = M["sidewalk"]
+    elif M.get("beside_noise") and hw in M["beside_ways"]:
+        # a separate way (cycle path, shared path, footway, track) beside a busy road: the routing data's noise class
+        # says how close and how loud the road is – signed route or not (owner 2026-11-13: "entlang der Münchner
+        # Straße – zwar offizieller Radweg": highway=path, bicycle=designated, noise class 6)
+        w = M["beside_noise"].get(str(noise), 0.0)
+        if forest >= C["forest_share_from_class"]:
+            w *= M.get("beside_forest_factor", 1.0)
     elif hw == "cycleway" and noise >= C["cycleway_main_from_noise"] and forest < C["forest_share_from_class"] \
             and (tags.get("estimated_town_class") or not M["beside_needs_town"]):
         w = M["beside"]
@@ -436,6 +444,60 @@ def signed_rank(tags, C, ranks):
     return best
 
 
+def stem_edges(edges):
+    """How many edges at the start are walked back at the very end (the way out and back to where the loop begins)."""
+    n, i = len(edges), 0
+    while i < n // 2 and ekey(edges[i][0], edges[i][1]) == ekey(edges[n - 1 - i][0], edges[n - 1 - i][1]):
+        i += 1
+    return i
+
+
+def self_crossings(edges, stem=None, free_m=0.0, merge_m=0.0):
+    """How often the loop meets its own way again (owner: "einmal kreuzen ist das Maximum"): a point reached a second
+    time – a crossing, an eight's middle, a stretch walked twice, a dead-end spur – counts once per meeting (a shared
+    stretch is one meeting, not one per point; meetings less than merge_m apart along the way are one: the same
+    bottleneck, e.g. a ferry and its landing). Not counted: the start / end, the stem walked out and back, and a
+    piece shared within free_m of the start on the way out and of the end on the way home (score.free_stem_m)."""
+    if stem is None:
+        stem = stem_edges(edges)
+    pts = [key(e[0]) for e in edges] + [key(edges[-1][1])]
+    at = [0.0]
+    for e in edges:
+        at.append(at[-1] + e[2])
+    total = at[-1]
+    seen, count, in_run, last_end = {}, 0, False, -1e9
+    for i in range(stem, len(pts) - 1 - stem):
+        j = seen.get(pts[i])
+        if j is not None and i - j > 1 and not (at[j] <= free_m and total - at[i] <= free_m):
+            if not in_run and at[i] - last_end > merge_m:
+                count += 1
+            in_run = True
+            last_end = at[i]
+        else:
+            in_run = False
+        seen[pts[i]] = i
+    return count
+
+
+def length_off_km(c, wish):
+    """How far the loop's time is from the wish, as kilometres at the wish's pace."""
+    return abs(c["hours"] - wish["hours"]) * wish["pace"]
+
+
+def length_limit_km(wish, W, share):
+    """The length is a rough guide (owner: 1 km on foot, 5 km by bike either way): a loop may be `share` of the wished
+    length off, plus half the free band."""
+    return share * wish["hours"] * wish["pace"] + 0.5 * W["score"]["length_flat_km"]
+
+
+def builtup(tags, k, C):
+    """Through houses: a street, or a way inside a town that is not green (no forest class from 3, not at water)."""
+    if k in "SG":
+        return True
+    return bool(tags.get("estimated_town_class")) and int(tags.get("estimated_forest_class", "0") or 0) < 3 \
+        and int(tags.get("estimated_river_class", "0") or 0) < 4
+
+
 def numbers(c, wish, W, index=None, picks=None):
     C, S = W["classes"], W["score"]
     ranks = W["attractions"]["rank"]
@@ -446,7 +508,10 @@ def numbers(c, wish, W, index=None, picks=None):
         k = ekey(e[0], e[1])
         uses[k] = uses.get(k, 0) + 1
     m = dict(forest_v=0.0, forest=0.0, noise_v=0.0, loud=0.0, river_v=0.0, street=0.0, big=0.0, paved=0.0,
-             signed=0.0, signed_v=0.0, doubled=0.0, town=0.0)
+             signed=0.0, signed_v=0.0, doubled=0.0, town=0.0, road_v=0.0, built=0.0, deep_v=0.0)
+    import nature as NA
+    ND = W["nature"]
+    reserves = {}
     cls = []
     sv = surface_values(wish, W)
     surf_m = {"A": 0.0, "F": 0.0, "N": 0.0}
@@ -485,6 +550,16 @@ def numbers(c, wish, W, index=None, picks=None):
         m["river_v"] += C["river_value"].get(t.get("estimated_river_class", ""), 0.0) * ln
         if t.get("estimated_town_class"):
             m["town"] += ln
+        m["road_v"] += ln * mw  # on or beside a busy road, weighted
+        # through houses = the way runs inside the map's built-up land (not: a town is near) – nature.built
+        if NA.built(e[0], ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5):
+            m["built"] += ln
+        if ND["enabled"]:  # large connected nature around this piece (forest, heath, protected area), 0..1
+            dv = sum(NA.depth(e[0], r) for r in ND["radii_m"]) / len(ND["radii_m"])
+            m["deep_v"] += ln * NA.value(dv, ND)
+            nm = NA.name_at(e[0])
+            if nm:
+                reserves[nm] = reserves.get(nm, 0.0) + ln
         hw = t.get("highway", "?")
         surf = t.get("surface", "")
         if surf in C["paved_surfaces"] or (not surf and hw in C["street_highways"]):
@@ -493,7 +568,7 @@ def numbers(c, wish, W, index=None, picks=None):
         sr = signed_rank(t, C, ranks)
         if sr > 0:
             m["signed"] += ln
-            m["signed_v"] += ln * sr
+            m["signed_v"] += ln * sr * (1.0 - min(1.0, mw))
         if uses[ekey(e[0], e[1])] > 1:
             m["doubled"] += ln
         if nt.get("highway") in ("crossing", "traffic_signals"):
@@ -517,11 +592,11 @@ def numbers(c, wish, W, index=None, picks=None):
                 named[i] = named.get(i, 0.0) + ln
             if best_route is not None:
                 named[best_route] = named.get(best_route, 0.0) + ln
-    stalk = 0.0
-    for e in edges:
-        if uses[ekey(e[0], e[1])] < 2:
-            break
-        stalk += e[2]
+    n_stem = stem_edges(edges)
+    stalk = sum(e[2] for e in edges[:n_stem])
+    cross = self_crossings(edges, n_stem, S["free_stem_m"], S["selfcross_merge_m"])
+    # a short way out and back to where the loop begins is free (owner: 500–700 m on foot)
+    doubled_m = max(0.0, m["doubled"] - 2 * min(stalk, S["free_stem_m"]))
     # enclosed area vs a circle of the same length (1 = circle, 0 = out-and-back)
     kx = 111320.0 * math.cos(math.radians(edges[0][0][1]))
     xy = [(e[0][0] * kx, e[0][1] * 111320.0) for e in edges]
@@ -551,7 +626,11 @@ def numbers(c, wish, W, index=None, picks=None):
          "main_longest_m": int(main_longest), "ferry_m": int(ferry_m),
          "surface_pct": {k: round(100 * v / total) for k, v in surf_m.items()},
          "paved_pct": round(100 * m["paved"] / total), "signed_pct": round(100 * m["signed"] / total),
-         "doubled_pct": round(100 * m["doubled"] / total), "stalk_m": int(stalk), "crossings": crossings,
+         "doubled_pct": round(100 * doubled_m / total), "stalk_m": int(stalk), "crossings": crossings,
+         "self_cross": cross, "roadside_pct": round(100 * m["road_v"] / total), "built_pct": round(100 * m["built"] / total),
+         "deep_pct": round(100 * m["deep_v"] / total),
+         "reserves": [[nm, round(v / 1000.0, 1)] for nm, v in sorted(reserves.items(), key=lambda x: -x[1]) if v >= 300][:3],
+         "length_off_km": round(length_off_km(c, wish), 1),
          "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "views": views[:3],
          "by_highway_km": {k: round(v / 1000.0, 2) for k, v in sorted(by_hw.items(), key=lambda x: -x[1])}}
 
@@ -564,9 +643,13 @@ def numbers(c, wish, W, index=None, picks=None):
         mx = eff["max_m_per_km"]
         ascent_part = 1.0 if apk <= mx else max(0.0, 1 - (apk - mx) / (2 * mx))
     street_share = (m["street"] + (S["big_street_counts"] - 1) * m["big"]) / total
-    mr = S["main_road_max_m"]
+    # along a road is worse the more nature was asked for: the free stretch shrinks with the Natur level
+    mr = S["main_road_max_m"] / (1.0 + S["main_road_natur"] * wish["forest"])
+    n["main_road_max_m"] = int(mr)
+    off, flat = length_off_km(c, wish), S["length_flat_km"]
     parts = {
-        "length": max(0.0, 1 - c["fit"] / S["length_zero_at"]),
+        # the length is a rough guide: full points within +- length_flat_km, then gently down
+        "length": 1.0 if off <= flat else max(0.0, 1 - (off - flat) / (S["length_zero_at"] * wish["hours"] * wish["pace"])),
         "ascent": ascent_part,
         "forest": m["forest_v"] / total,
         "quiet": 1 - m["noise_v"] / total,
@@ -579,8 +662,12 @@ def numbers(c, wish, W, index=None, picks=None):
         "surface": sum(surf_m[k] * sv[k] for k in surf_m) / total,
         "street": max(0.0, 1 - street_share / S["street_zero_at"]),
         "mainroad": 1.0 if main_longest <= mr else max(0.0, 1 - (main_longest - mr) / (mr * (S["main_road_zero_factor"] - 1))),
-        "doubled": max(0.0, 1 - m["doubled"] / total / S["doubled_zero_at"]),
-        "shape": min(1.0, compact / S["shape_full_at"]),
+        "doubled": max(0.0, 1 - doubled_m / total / S["doubled_zero_at"]),
+        # the loop meets its own way: never / once is fine, more is no tour (and is not offered – select.max_self_cross)
+        "selfcross": S["selfcross_value"][min(cross, len(S["selfcross_value"]) - 1)],
+        "roadside": max(0.0, 1 - m["road_v"] / total / S["roadside_zero_at"]),
+        "town": max(0.0, 1 - m["built"] / total / S["town_zero_at"]),
+        "deep": min(1.0, m["deep_v"] / total / S["deep_full_at"]),
         "crossings": max(0.0, 1 - crossings / km / S["crossings_zero_per_km"]),
     }
     if picks:  # only with "mit KI-Regionswissen" and picks in reach – without, no part, no weight: nothing changes
@@ -591,10 +678,11 @@ def numbers(c, wish, W, index=None, picks=None):
         n["ai_tips"] = [{"name": t["name"], "how": t["how"], "km": t["km"], "rang": t["rang"], "warum": t["warum"]}
                         for t in tips[:W["ai"]["tips_on_card"]]]
     taste = {"forest": wish["forest"], "quiet": wish["quiet"], "water": wish["water"], "signed": wish["signed"],
-             "natural": wish["natural"]}
+             "natural": wish["natural"], "deep": wish["forest"]}
     wsum, ssum = 0.0, 0.0
     for k, p in parts.items():
-        w = S["weights"][k] * taste.get(k, 1.0)
+        # roads and houses weigh more the more nature was asked for (score.natur_scaled)
+        w = S["weights"][k] * taste.get(k, 1.0) * (1.0 + S["natur_scaled"].get(k, 0.0) * wish["forest"])
         wsum += w
         ssum += w * p
     c["numbers"] = n
@@ -705,6 +793,13 @@ def suggest(wish, W=None):
         built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
         for c in built:
             numbers(c, wish, W, index, picks)
+    elif method == "c":
+        import greenchain as GCH
+        built, net_info, _ = GCH.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
+        for c in built:
+            numbers(c, wish, W, index, picks)
+        if not built:
+            notes.append("Keine Grünstück-Kette gefunden (zu wenig zusammenhängendes Grün in Reichweite)")
     else:
         turn = rnd.uniform(0, 360.0 / g["directions"])
         for i in range(g["directions"]):
@@ -728,18 +823,43 @@ def suggest(wish, W=None):
                 numbers(c, wish, W, index, picks)
             built += more
     built.sort(key=lambda c: -c["score"])
-    chosen = []
+    # Anstrengung is a clear cap of metres up per hour (owner 2026-11-13, Meran): loops above it are not offered –
+    # unless none is below it, then the flattest are shown and the page says so
+    cap_up = W["effort"].get(wish["effort"], {}).get("up_m_per_h")
     for c in built:
-        total = sum(e[2] for e in c["edges"])
-        shared = 0.0
-        for o in chosen:
-            s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / total
-            shared = max(shared, s)
-        c["shared_with_chosen"] = round(shared, 2)
-        c["length_ok"] = c["fit"] <= W["select"]["max_length_off"]
-        if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
-            c["chosen"] = True
-            chosen.append(c)
+        c["numbers"]["up_m_per_h"] = int(round(c["ascent"] / max(c["hours"], 0.1)))
+        c["numbers"]["effort_cap"] = cap_up
+        c["ascent_ok"] = cap_up is None or c["numbers"]["up_m_per_h"] <= cap_up
+    if built and cap_up is not None and not any(c["ascent_ok"] for c in built):
+        notes.append("Keine Runde bleibt unter %d Höhenmetern je Stunde (Anstrengung „%s“) – gezeigt sind die flachsten"
+                     % (cap_up, (wish.get("simple") or {}).get("effort") or wish["effort"]))
+        flat = sorted(built, key=lambda c: c["numbers"]["up_m_per_h"])[:max(3, len(built) // 3)]
+        for c in flat:
+            c["ascent_ok"] = True
+    chosen = []
+    fill_below = W["select"].get("cross_fill_below", 99)
+    # loops that never meet their own way first (owner: "Achten bringen es gar nicht"); one meeting only as a filler
+    # (the strict rule is a knob: select.cross_fill_below; at or above select.show it is off – then one pass by score,
+    # and the score part selfcross alone makes a clean loop win)
+    for clean_pass in ((True, False) if fill_below < W["select"]["show"] else (None,)):
+        for c in built:
+            if c.get("chosen"):
+                continue
+            total = sum(e[2] for e in c["edges"])
+            shared = 0.0
+            for o in chosen:
+                s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / total
+                shared = max(shared, s)
+            c["shared_with_chosen"] = round(shared, 2)
+            c["length_ok"] = length_off_km(c, wish) <= length_limit_km(wish, W, W["select"]["max_length_off"]) \
+                and c["numbers"]["self_cross"] <= W["select"]["max_self_cross"] and c["ascent_ok"]
+            if clean_pass and c["numbers"]["self_cross"] > 0:
+                continue
+            if clean_pass is False and len(chosen) >= fill_below:
+                break
+            if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
+                c["chosen"] = True
+                chosen.append(c)
     # an explicit theme is always represented: with "am Wasser entlang" the shown loops include one made for a lake
     # (along its shore) and, when one fits the wished time, a full round of a lake – even if loops elsewhere score
     # higher or the round shares much with the shore loop
@@ -756,14 +876,16 @@ def suggest(wish, W=None):
                     chosen.remove(drop)
                 made[0]["chosen"] = True
                 chosen.append(made[0])
-    if method == "b" and W["netsearch"]["router_check"]:
+    if method in ("b", "c") and W["netsearch"]["router_check"]:
         import netsearch as NS
         for c in chosen:  # each shown loop once through the real router: does BRouter confirm it?
             c["numbers"].update(NS.router_check(c, wish, W, kv, sys.modules[__name__]))
     out = []
     for i, c in enumerate(built):
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
-        if c.get("target_name"):
+        if c.get("mode") == "chain":  # variant C: the chain of green patches names the loop
+            name = c.get("target_name") or "Grünstück-Kette %s" % d
+        elif c.get("target_name"):
             name = ("Entlang %s" % c["target_name"] if c.get("mode") == "follow" else
                     "Am %s entlang" % c["target_name"] if c.get("mode") == "shore" else
                     "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else ""))
@@ -779,7 +901,7 @@ def suggest(wish, W=None):
         run += "x"
     return {"run": run, "wish": wish, "weights_version": W["version"],
             "profile": W["routing"]["profile"], "profile_kv": kv,
-            "main_road_max_m": W["score"]["main_road_max_m"], "seconds": round(time.time() - t0, 1),
+            "main_road_max_m": int(W["score"]["main_road_max_m"] / (1.0 + W["score"]["main_road_natur"] * wish["forest"])), "seconds": round(time.time() - t0, 1),
             "seconds_destinations": round(t_attr, 1), "method": method, "net": net_info,
             "candidates_tried": net_info["loops_kept"] if net_info else len(cands) + len(tc), "notes": notes,
             "destinations": [{"kind": a["kind"], "name": a["name"], "km_away": round(a["d"] / 1000.0, 1)}
@@ -809,6 +931,7 @@ def goals_text(n):
     t = ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
     t += ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("lakes", [])[:2]]
     t += ["Aussicht: " + v for v in n.get("views", [])[:1]]
+    t += ["%s km im Naturschutzgebiet %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("reserves", [])[:2]]
     if n.get("ferry_m"):
         t.append("mit Fähre")
     return " · ".join(t)
@@ -869,16 +992,16 @@ def table(result, only_chosen=False):
          "Ziele in Reichweite: " + (", ".join("%s (%.1f km)" % (d["name"], d["km_away"]) for d in result.get("destinations", [])[:14]) or "–")]
     L += result.get("notes", [])
     L += ["",
-          " #  ✓ Punkte  Name                          km   Zeit   ↑m  Wald% Str% Haupt% längste Asph% mark% laut% dopp% Stiel Quer Form geteilt"]
+          " #  ✓ Punkte  Name                          km   Zeit   ↑m  Wald% Str% Haupt% längste Asph% mark% laut% dopp% Stiel Quer kreuzt geteilt  tief% neben% Häuser%"]
     for c in result["candidates"]:
         if only_chosen and not c["chosen"]:
             continue
         n = c["numbers"]
-        L.append("%2d  %s %6.1f  %-28s %5.1f  %s %4d  %4d %4d %5d %6dm %5d %5d %5d %5d %5d %4d %4.2f %5.2f"
+        L.append("%2d  %s %6.1f  %-28s %5.1f  %s %4d  %4d %4d %5d %6dm %5d %5d %5d %5d %5d %4d %5d %6.2f  %5d %5d %6d"
                  % (c["id"], "✓" if c["chosen"] else " ", c["score"], c["name"][:28], n["km"], fmt_h(n["hours"]), n["ascent"],
                     n["forest_pct"], n["street_pct"], n["big_street_pct"], n["main_longest_m"], n["paved_pct"],
-                    n["signed_pct"], n["loud_pct"], n["doubled_pct"], n["stalk_m"], n["crossings"], n["compact"],
-                    c["shared_with_chosen"]))
+                    n["signed_pct"], n["loud_pct"], n["doubled_pct"], n["stalk_m"], n["crossings"], n.get("self_cross", 0),
+                    c["shared_with_chosen"], n.get("deep_pct", 0), n.get("roadside_pct", 0), n.get("built_pct", 0)))
     L.append("")
     for c in result["candidates"]:
         if not c["chosen"]:

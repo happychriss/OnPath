@@ -260,11 +260,13 @@ check(sh.state === 'done' && sh.text === 'Saved' && sh.title === 'Everything is 
 await page.click('#menuPlans');
 await page.waitForSelector('dialog.plans[open] #planList li[data-id]');
 const myRow = await page.evaluate(() => { const li = document.querySelector('#planList li[data-id]');
-  return { name: li.querySelector('.name').textContent, current: li.classList.contains('current'), where: [...li.querySelectorAll('.where .w')].map((w) => w.getAttribute('aria-label')).join(),
+  const live = document.querySelector('#planList li[data-live]');
+  return { name: li.querySelector('.name').textContent, live: live?.querySelector('.name').textContent, liveTags: [...(live?.querySelectorAll('.tag') ?? [])].map((t) => t.textContent), where: [...li.querySelectorAll('.where .w')].map((w) => w.getAttribute('aria-label')).join(),
     menu: [...li.querySelectorAll('.rowmenu button')].map((b) => b.textContent.trim()) }; });
-check(myRow.name === 'Test loop' && myRow.current && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
-  && JSON.stringify(myRow.menu) === '["Rename","Save as copy","Export GPX","Share plan","Delete"]',
-  `My routes: the row "Test loop", marked as open, 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
+// the open saved route is the Recent row („In progress“ + „Saved“, app 2923a3e7); under Saved its plain row, ⋮ with Plan first
+check(myRow.name === 'Test loop' && myRow.live === 'Test loop' && JSON.stringify(myRow.liveTags) === '["In progress","Saved"]' && myRow.where === 'In this browser' && await page.locator('#saveCurrent').count() === 0
+  && JSON.stringify(myRow.menu) === '["Plan","Rename","Save as copy","Export GPX","Share plan","Delete"]',
+  `My routes: the row "Test loop", the open one under Recent ("In progress" + "Saved"), 🖥, ⋮ as the app's (${JSON.stringify(myRow)})`);
 // length and climb in the row (owner 2026-11-06, planstats.ts): the sheet's distance, ↑ / ↓ in metres; right of the name
 {
   const st = await page.evaluate(() => { const li = document.querySelector('#planList li[data-id]'), s = li.querySelector('.stats');

@@ -27,7 +27,7 @@ import { holdMenu, type MenuItem } from './menus';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
-import { keepRecent, dropRecent, renameRecentIf, type RecentPlan } from './recent';
+import { keepRecent, afterSaved, takePlace, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -407,6 +407,8 @@ ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchVi
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 syncRef = sync;
+// Zuletzt at the start: the bin's old entries go, once the drafts beyond the one go to the bin (recent.ts, app 2923a3e7)
+try { zuletztStartUp(); } catch (e) { problem('routes', 'Zuletzt: the start-up clean-up failed – tried again at the next start', e); }
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
 syncBadge(); // the header entry with its full tooltip at once – sync.init waits for the engine (CI race in sync-smoke)
 const syncReady = ready.then(async (ok) => {
@@ -1821,16 +1823,31 @@ async function newPlan() { engine.dropPlans(); await keepAsRecent('new plan'); c
 async function keepAsRecent(why: string) {
   const fromRecent = state.recentId;
   state.recentId = null;
+  if (state.points.length < 2) return; // one point is no plan
   // the plan itself unsaved (never saved, or changed since) – not Save's dark state, which also counts routes waiting for the phone
   // (read at once, like Save's state was: renderSaved keeps planUnsaved current; no await before the plan is read)
-  if (state.points.length < 2 || (state.savedId && !planUnsaved) || !(await ready)) return;
-  const pts = enc(state.points), code = await engine.encode(sharedPlan());
+  const savedId = state.savedId && !planUnsaved ? state.savedId : null, savedFolder = state.savedFolder;
+  const pts = enc(state.points), plan = { ...sharedPlan(), points: [...state.points] }, n = state.points.length;
   const own = state.title || plansHost.linkTitle();
+  if (savedId) {
+    // saved as it is: that saved route takes the Zuletzt place (the „Gespeichert“ tag, app 2923a3e7) – unless it is
+    // gone meanwhile (deleted here or on the phone): then the plan is kept as a draft, never lost
+    let there = true;
+    try {
+      await syncReady;
+      const folders = [...new Set([sync.open, savedFolder].filter((f): f is string => !!f))];
+      there = (await Promise.all(folders.map((f) => sync.list(f)))).some((l) => l.some((p) => p.id === savedId));
+    } catch (e) { there = false; problem('routes', 'Zuletzt: the saved routes could not be read – the plan is kept as a draft too (never lost)', e); }
+    if (there) { takePlace({ kind: 'saved', id: savedId }); return; }
+    console.info('[Problems] TRACE routes: Zuletzt: the plan\'s saved route is gone – kept as a new plan');
+  }
+  if (!(await ready)) return;
+  const code = await engine.encode(plan);
   const dated = datedName();
   const id = keepRecent(code, own || dated, pts, fromRecent);
   if (!id) return;
   keepPlanStats(code); // Zuletzt's numbers and line (Meine Touren's preview) – the plan is still the routed one here
-  console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${state.points.length} points`);
+  console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${n} points`);
   if (own) return;
   void Promise.race([suggestName(), new Promise<string>((r) => setTimeout(() => r(''), 5_000))]).then((name) => {
     // the place name follows as a rename (app 21b4a7b1) – never over a rename, a save or a delete meanwhile
@@ -1870,7 +1887,10 @@ const plansHost = {
     keepPlanStats(p.plan); // routed by now (loadShared waits for the plan) – My routes shows its numbers from now on
   },
   saved: (p: SavedPlan, folder: string) => {
-    if (state.recentId) { dropRecent(state.recentId); justSavedFromRecent = p.id; state.recentId = null; } // saved: it leaves Zuletzt
+    if (state.recentId) justSavedFromRecent = p.id;
+    // saved: the saved route takes the Zuletzt place – the draft it came from and any with its points go (the app's afterSaved)
+    afterSaved(p.id, state.recentId, state.points.length >= 2 ? enc(state.points) : null);
+    state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.title = p.title; state.savedFolder = folder; state.storedCode = p.plan;
     keepPlanStats(p.plan);
     rememberInAddress();
