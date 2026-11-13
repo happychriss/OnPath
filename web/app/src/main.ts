@@ -409,7 +409,7 @@ const syncReady = ready.then(async (ok) => {
   syncBadge();
   sync.onChange(syncBadge);
   sync.onChange(() => saveEntry(saveState)); // dark while anything is to save or waits for the phone (§14.6)
-  sync.onFolder((_from, to) => { openDraft(to); });
+  sync.onFolder((_from, to) => { folderSwitch = openDraft(to).catch((e) => problem('sync', 'the open route did not follow the folder switch', e, 'error')); });
   saveEntry(saveState);
   $('syncBadge').dataset.ready = '1'; // the sync runs (tests wait for this)
   return true;
@@ -990,6 +990,8 @@ function storeDraft(code: string) {
   syncRef.setDraft({ code, savedId: state.savedId, savedTitle: state.savedTitle, savedCode: state.savedCode, savedFolder: state.savedFolder, storedCode: state.storedCode })
     .catch((e) => console.warn('[Problems] WARN sync: the open route was not kept for its folder', e));
 }
+/** The open route's swap to another folder ([openDraft]) under way – a Save waits for it (it changes which plan is open). */
+let folderSwitch: Promise<void> = Promise.resolve();
 /** Another folder opened (pairing, unpairing, the phone ended it): its own open route comes back, or an empty map. */
 async function openDraft(folder: string) {
   draftsOn = false;
@@ -1437,6 +1439,7 @@ function saveEntry(st: 'empty' | 'save' | 'saved') {
 async function headerSave() {
   if (!(await syncReady)) return;
   await draftsRestored;
+  await folderSwitch; // never rejects (reported where it starts)
   await renderSaved();
   const paired = sync.status.paired, waiting = paired && sync.status.pending > 0;
   const send = () => { if (sync.status.paired) sync.sendAll(); };
@@ -1923,7 +1926,20 @@ window.setInterval(() => syncBadge(), 30_000);
 async function toPhone() {
   if (!(await syncReady)) return; // the engine did not start – the status line says so
   if (sync.status.paired) { await headerSave(); return; }
-  pairDialog(sync, location.href, () => { if (sync.status.paired) headerSave(); });
+  pairDialog(sync, location.href, () => { if (sync.status.paired) afterPairing(); });
+}
+/**
+ * OK after a pairing from "To phone": the open plan follows the pairing. Saved and unchanged, it never asks for a name
+ * – the pairing moved it into the phone's folder as waiting and its first round may already have sent it (then OK
+ * found nothing waiting, and Save of a saved plan asked for its name: sync-smoke scenario 1, CI 2026-11-13); OK sends
+ * what still waits. New or changed: Save as always (its name dialog for a new plan), then send.
+ */
+async function afterPairing() {
+  await draftsRestored;
+  await folderSwitch; // the pairing's swap of the open route into the phone's folder
+  await renderSaved();
+  if (saveState === 'saved') { if (sync.status.paired) sync.sendAll(); return; }
+  await headerSave();
 }
 /** Aufs Handy ▾ / the drop-down's Phone entry: the Phone window (state, Sync now, pair another, Unpair). */
 async function phoneWindow() {

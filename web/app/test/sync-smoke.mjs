@@ -731,6 +731,11 @@ await O.evaluate(() => { const l = document.getElementById('savedLine'); window.
   new MutationObserver(() => window.__savedLine.push(l.hidden ? 'hidden' : l.textContent)).observe(l, { attributes: true, childList: true, subtree: true, characterData: true }); });
 await ownerPhone.pairDirect((await O.inputValue('#pairLink')).split('#pair=')[1]);
 await O.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Owner phone'), null, { timeout: 30_000 }).catch(() => {});
+// the owner reads the dialog a moment: the pairing's own first round has sent "Meine Runde" before OK – OK then found
+// nothing waiting and Save asked for the name of the saved plan (CI 2026-11-13 run 43396231433: the slow machine's
+// timing; here made certain by waiting for that round)
+await O.waitForFunction(() => window.__sync.status.paired && window.__sync.status.pending === 0 && window.__sync.status.lastSync, null, { timeout: 30_000 }).catch(() => {});
+for (let end = Date.now() + 30_000; Date.now() < end && !(await ownerPhone.titles()).includes('Meine Runde');) { await new Promise((r) => setTimeout(r, 250)); await ownerPhone.round(); }
 await sendMark(O);
 await O.click('#closePair'); // OK: the plan follows the pairing (Save sends what waits)
 await sent(O);
