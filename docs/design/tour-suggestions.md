@@ -310,3 +310,24 @@ from BRouter's node cache work after TeaVM, how fast, how much memory – bike (
 generated profile copies (main-road cost) change the routing fingerprint and must not touch ordinary plans. Fallback
 only if the browser trial fails: the POC as a server service (the start point would leave the device; the app would
 need the port anyway).
+
+## Round 7 – stopped, parked (owner 2026-11-13 late: "die laufende Runde unterbrechen … die Grünstück-Kette bauen, das hat mehr Zukunft")
+
+Round 6 built the owner's taste rules but regressed; round 7 was to repair that inside variant B. It was stopped after
+~10 minutes; its unfinished, untested changes are on `wip/donald-2026-11-13-suggest-round7` (one commit: Rhine as a
+named destination, roadside by share, first steps of crossing-aware building – do not merge as is). What it was to do,
+still open, to pick up again or to make unnecessary by the green-patch chain:
+1. Rhine bike rides back on top without giving up the roadside rule (my recommendation, the owner did not answer: for
+   bikes the roadside punishment by share of the loop; big rivers as named destinations so km on the bank count as
+   first-class water; an inland loop with 57 % through houses must not win at Natur hoch). Cases: Zons 3 h, Zons
+   control, the owner's case bike 2 h from 51.14162, 6.81206; Köln 2 h must show ≥ 3 suggestions.
+2. Crossing-aware building instead of only filtering (7 built Rhine loops were dropped for two meetings).
+3. Hilden + Wasser 3 h: a lake round shown again; why no way round the Elbsee exists in the network.
+4. Düsseldorf 2 h became shorter and less green (56 % near forest for 81).
+5. The free stem also in the "Entlang" and lake constructions.
+6. Bench with the KI switch on for the owner's two cases.
+Also noted from his later comments (2026-11-13 22:40–22:51, `feedback.py`): the "durch Häuser" measure is wrong (the
+loop he liked had 60 %, the one "zu viel durch Orte" 47 %) → real settlement areas from our map; eights "bringen es
+gar nicht" → prefer zero crossings, one only when nothing clean exists; ascent: Anstrengung as a clear limit of
+metres up per hour, shown on the card; "warum nicht am Wasser entlang" (hike from 51.18413, 6.94460) and "warum nichts
+über die Urdenbacher Kämpe" (bike from Hilden) – compass turning points hit such things only by chance.
