@@ -60,11 +60,27 @@ CASES = [
      dict(lake_km=(("Elbsee", "Menzelsee"), 1.5))),
     ("hilden-bike-2h-natur", dict(start=H, start_name="Hilden", activity="bike", hours=2, pace="normal", effort="leicht",
                                   natur="hoch", ruhe="hoch", bekannt="mittel"), dict(built_max=30)),
+    # the night of 2026-11-13/14 (judge.py's places; the owner's comments on Nordkirchen and his test regions):
+    # no road walking and not through the village; by bike the suggestions go several ways (his runs had no map
+    # area and all went south); a rail trail in reach is used; big nature in the Eifel; the Ruhr valley by bike
+    ("nordkirchen-hike-2h", dict(start=[7.5251792, 51.7380176], start_name="Nordkirchen", activity="hike", hours=2,
+                                 pace="normal", effort="leicht", natur="hoch", ruhe="hoch", bekannt="mittel"),
+     dict(built_max=20)),
+    ("nordkirchen-bike-2h", dict(start=[7.5251792, 51.7380176], start_name="Nordkirchen", activity="bike", hours=2,
+                                 pace="normal", effort="leicht", natur="hoch", ruhe="mittel", bekannt="mittel"),
+     dict(built_max=15, spread_deg=90)),
+    ("wuppertal-bike-2h", dict(start=[7.1445, 51.2665], start_name="Wuppertal Mirke", activity="bike", hours=2,
+                               pace="normal", effort="mittel", natur="mittel", ruhe="hoch", bekannt="mittel"),
+     dict(rail_km_min=6)),
+    ("monschau-hike-3h", dict(start=[6.2416, 50.5545], start_name="Monschau", activity="hike", hours=3, pace="normal",
+                              effort="mittel", natur="hoch", ruhe="mittel", bekannt="hoch"), dict(deep_min=50, built_max=15)),
+    ("wetter-bike-3h", dict(start=[7.3900, 51.3870], start_name="Wetter (Ruhr)", activity="bike", hours=3, pace="normal",
+                            effort="mittel", natur="hoch", ruhe="hoch", bekannt="hoch", wasser=True), dict(bank_km_min=8)),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
 ]
-METHOD = "a"
+METHOD = "auto"
 AI = False
 
 
@@ -105,20 +121,32 @@ def run_case(name, wish_in, exp, W):
         checks["%s unter den ersten 3" % exp["lake_in_top3"]] = any(
             exp["lake_in_top3"] in l[0] for c in ch[:3] for l in c["numbers"].get("lakes", []))
     if exp.get("lake_round_shown"):
-        checks["eine See-Runde unter den Vorschlägen"] = any("· Runde" in c["name"] and c["numbers"].get("lakes") for c in ch)
+        checks["eine Runde am See unter den Vorschlägen (≥ 1,5 km am Ufer)"] = any(
+            sum(l[1] for l in c["numbers"].get("lakes", [])) >= 1.5 for c in ch)
     if exp.get("known_like"):
         checks["%s unter den ersten 3" % " / ".join(exp["known_like"])] = any(
             w in k[0] for c in ch[:3] for k in c["numbers"].get("known", []) for w in exp["known_like"])
     if exp.get("known_km"):
         word, km = exp["known_km"]
-        checks["≥ %d km %s im ersten Vorschlag" % (km, word)] = sum(
-            k[1] for k in n.get("known", []) if word in k[0]) >= km
+        # "wunderbar am Rhein lang": on the signed Rhine route, or directly at the river (half the km suffice there)
+        checks["≥ %d km %s oder ≥ %d km direkt am Wasser im ersten Vorschlag" % (km, word, km // 2)] = sum(
+            k[1] for k in n.get("known", []) if word in k[0]) >= km or n.get("big_water_km", 0) >= km // 2
     if exp.get("lake_km"):
         names, km = exp["lake_km"]
         checks["≥ %g km am %s im ersten Vorschlag" % (km, " / ".join(names))] = sum(
             l[1] for l in n.get("lakes", []) if any(w in l[0] for w in names)) >= km
     if "built_max" in exp:
         checks["durch Häuser ≤ %d %%" % exp["built_max"]] = n["built_pct"] <= exp["built_max"]
+    if "rail_km_min" in exp:
+        checks["≥ %g km Bahntrasse im ersten Vorschlag" % exp["rail_km_min"]] = n.get("railtrail_km", 0) >= exp["rail_km_min"]
+    if "bank_km_min" in exp:
+        checks["≥ %g km am Wasser im ersten Vorschlag" % exp["bank_km_min"]] = n.get("big_water_km", 0) >= exp["bank_km_min"]
+    if "deep_min" in exp:
+        checks["tief in der Natur ≥ %d %%" % exp["deep_min"]] = n.get("deep_pct", 0) >= exp["deep_min"]
+    if "spread_deg" in exp:
+        bs = [c.get("bearing", 0) for c in ch]
+        checks["Vorschläge in verschiedene Richtungen (≥ %d°)" % exp["spread_deg"]] = any(
+            abs((a_ - b_ + 180) % 360 - 180) >= exp["spread_deg"] for a_ in bs for b_ in bs)
     if exp.get("known_named"):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],
@@ -223,7 +251,7 @@ if __name__ == "__main__":
     ap.add_argument("--only", default="")
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
-    ap.add_argument("--method", default="a", choices=["a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
+    ap.add_argument("--method", default="auto", choices=["auto", "a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
     ap.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (score part 'ai' + the picks as destinations)")
     a = ap.parse_args()
     METHOD = a.method

@@ -349,3 +349,38 @@ Tuning log, round 8 (each tried against the bench):
 - patch quality squared + connectors up to 45 % of the wish: Hilden hike unchanged, Düsseldorf lost its only loop →
   back to 1.0 / 35 %.
 - bank value by the Wasser wish (a pond between houses is no destination without the theme): kept.
+
+## Night 2026-11-13/14 (weights 2026-11-14b) – one pooled method `auto`, judged at the owner's test places
+
+Full account, and **the method written out for the planner port**: `docs/design/tour-suggestions.md`
+("Night 2026-11-13/14 …" and "The method, as the planner should build it").
+
+- **`auto` is the default** (page, `run.py`, `bench.py`): the network search (B) and the green-patch chain (C) run on
+  one loaded network, their loops go into one pool, one score, one selection. `--method a|b|c` stay for comparison.
+- **`judge.py`** – the second yardstick: 21 wishes at places with different terrain (Hilden, Nordkirchen, Monschau,
+  Rursee, Winterberg, Siebengebirge, Ahr, Wuppertal, Mettmann, Schwelm, Hagen, Wetter, Fröndenberg, Zons, Meran), one
+  picture per run and the numbers to judge it; marks in `~/onpath-suggest-poc/night/judgement.md`.
+  `python3 tools/suggest-poc/judge.py --method auto --tag x [--only nk,wup]`
+- **Map areas** in reach are fetched by themselves (`cells.ensure`; `SUGGEST_REQUEST_CELLS=0` stops the page from
+  asking the server for areas it does not list). A run without a map area says so in a box.
+- New on the card: deductions ("Abzug: langes Stück an einer Straße −5"), green km, rail-trail km, km at the water,
+  the working name and where the loop came from (b / c).
+
+### Tuning log of the night (each against bench + the judged pictures)
+| Change | Why | Effect |
+|---|---|---|
+| Missing map areas fetched; note in a box | Nordkirchen: "alles nach Süden", "durch Werne", "Grünstück" – his runs had no map area | with the areas: loops in four directions, none through Werne |
+| Start seated on the connected network | Wuppertal Mirke by bike: no suggestion (start on steps to a private path) | 4 suggestions |
+| Road grid: a way beside a road found by geometry (`classes.main.beside_geo`); small roads by traffic class | "auf einer Landstraße wandern" – no noise class along a country road | such pieces are drawn and counted as "an Straße" |
+| Flaws = points off (`score.flaws`) | "nur 4 Punkte Unterschied" | a loop with a long road stretch / through houses / doubled is clearly behind |
+| Pool + one selection (`select.floor_points`, `shared_cost`, `same_dir_cost`, `max_built_pct`, `max_doubled_pct`) | "geht nur durch den Ort" as a fifth suggestion; all one way | fewer, different suggestions; old bench cases 93 (B) / 88 (C) → 98 of 104 |
+| Chain connectors searched again in the whole network (`greenchain.connector_full_search`); chains to realise must differ (`realise_max_common`) | "durch Hassels, warum nicht durch den Hasseler Forst" | Hilden bike: 21 % through houses (C before 26 %, B 35 %), 19 km in green |
+| Rail trails: cost −45 %, green for the chain, lines and turning points, part `railtrail` | owner's test regions (Wuppertal, Ruhr) | Wuppertal 2 h: 4–22 km rail trail in the shown loops; Wetter: 9.7 km |
+| `green` part (km in green); water from the map's shapes, big water told from ponds; water loops first with the box | "die Länge durch was Grünes ist wichtig"; "warum nicht am Wasser entlang?" | Elbsee case: Elbsee – Menzelsee first (4.1 km at the lakes); both water bench cases green |
+| Bikes: houses a flaw only beyond 30 % | the loop he liked had 35 %, "zu viel durch Orte" 46 % | bike points less crushed in suburbs |
+| Speed: lighter road grid, bounded searches, connector cache, router checks side by side, `long` settings | pooled runs took 20 s for 3 h by bike | 13–19 s |
+| Tried and dropped: a "theme bonus" in points for water | the forest loop also touches water and still won | replaced by "water loops first" in the selection |
+
+Known weak spots after the night: Fröndenberg / Ruhr valley (narrow river not seen as big water), Mettmann (rail trail
+6 km away not used), hikes from a town centre (entry points missing), names ("Bahntrasse" several times), bike loops
+10–15 km short of the wish, long bike runs over 15 s.
