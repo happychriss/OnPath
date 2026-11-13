@@ -5,6 +5,7 @@ import android.net.Uri
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import androidx.test.uiautomator.By
+import androidx.test.uiautomator.Until
 import com.onpath.app.data.Geo
 import com.onpath.app.data.Prefs
 import com.onpath.app.data.TourDb
@@ -35,6 +36,8 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_delete
 import com.onpath.strings.routes_overview_follow
+import com.onpath.strings.routes_act_chip_desc
+import com.onpath.strings.routes_act_all
 import com.onpath.strings.common_ok
 import com.onpath.strings.nav_stopped_line
 import com.onpath.strings.nav_arrived_title
@@ -241,6 +244,10 @@ class ReleaseRundgang : E2EBase() {
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            // My routes opens on the planning activity (owner 2026-11-13) – during the tour the tour's (bike); the route is
+            // a hike: "Alle" in the activity chip's menu shows it
+            device.wait(Until.findObject(By.desc(Txt.s(Res.string.routes_act_chip_desc, Activity.BIKE_TOURING.chip))), 5_000)!!.click()
+            clickText(Txt.s(Res.string.routes_act_all))
             clickText(name)
             // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
             clickText(Txt.s(Res.string.routes_overview_follow))
