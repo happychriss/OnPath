@@ -1366,15 +1366,23 @@ class ScreenshotTest {
      * SKETCH activity filter (owner 2026-11-13, ActivityFilterSketchTest): the L1 list with mixed activities (+ a gravel
      * route); [menuTop] / [menuStart] = where option 2's menu opens (drawn in place), null = closed.
      */
-    fun activitySketch(menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp) = paparazzi.snapshot {
+    fun activitySketch(menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp,
+                       tab: RoutesTab = RoutesTab.PLANNED, preset: Boolean = false) = paparazzi.snapshot {
         val gravel = Tour(16, TourKind.PLANNED, "Marlinger Waalweg", 1_791_000_000_000, "BIKE_TREKKING", 2, 18_200.0, 260.0, 260.0,
             1.3 * 3600, "done", viaPts, uuid = "u-16")
-        val list = favList + gravel
+        // Gemacht: recorded tours of three activities
+        val done = listOf(tourList[1].copy(uuid = "u-2"), tourList[3].copy(uuid = "u-4"),
+            Tour(7, TourKind.RECORDED, "Hirzer Hütte", 1_760_700_000_000, "HIKE", 3, 11_400.0, 980.0, 980.0, 5.0 * 3600, "done", emptyList(), uuid = "u-7"),
+            Tour(8, TourKind.RECORDED, "Etschdamm", 1_760_800_000_000, "BIKE_TOURING", 2, 24_000.0, 60.0, 60.0, 1.4 * 3600, "done", emptyList(), uuid = "u-8"))
+        val list = favList + gravel + done
         previewLines(list + oneDraft.copy(uuid = "u-100"))
         Box(Modifier.fillMaxSize()) {
-            OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
+            OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+                initialTab = tab) }
             if (menuTop != null) OnPathTheme {
-                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) { com.onpath.app.ui.routes.ActivityFilterSketch.MenuItems() }
+                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) {
+                    if (preset) com.onpath.app.ui.routes.ActivityFilterSketch.PresetMenuItems() else com.onpath.app.ui.routes.ActivityFilterSketch.MenuItems()
+                }
             }
         }
     }

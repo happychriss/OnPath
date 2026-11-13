@@ -39,6 +39,16 @@ abstract class ActivityFilterSketchBase {
     @Test fun menuClosed() = draw(Mode.MENU, emptySet())
     @Test fun menuOpenBike() = draw(Mode.MENU, bike, menu = true)
     @Test fun menuHike() = draw(Mode.MENU, setOf(Activity.HIKE))
+
+    // PRESET (owner 2026-11-13): the planning activity preset, a single choice, "Alle" at the bottom
+    private fun preset(chosen: Set<Activity>, menu: Boolean = false, tab: RoutesTab = RoutesTab.PLANNED) {
+        ActivityFilterSketch.mode = Mode.PRESET; ActivityFilterSketch.chosen = chosen
+        shots.activitySketch(if (menu) menuTop else null, menuStart, tab, preset = true)
+    }
+    @Test fun presetHike() = preset(setOf(Activity.HIKE))
+    @Test fun presetMenu() = preset(setOf(Activity.HIKE), menu = true)
+    @Test fun presetAll() = preset(emptySet())
+    @Test fun presetHikeDone() = preset(setOf(Activity.HIKE), tab = RoutesTab.DONE)
 }
 
 class ActivityFilterSketchTest : ActivityFilterSketchBase() {

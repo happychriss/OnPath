@@ -34,7 +34,12 @@ import com.onpath.strings.*
  * Both combine with Favoriten, the search and the sort, in both tabs.
  */
 object ActivityFilterSketch {
-    enum class Mode { NONE, CHIPS, MENU }
+    /**
+     * PRESET (owner 2026-11-13 after (2): „Alle Arten ist schwer zu verstehen“): the chip always names one activity –
+     * preset from the planning activity, "Wandern ▾" with its sign – the menu a single choice of the six with "Alle" under
+     * a line; [chosen] holds one activity, empty = "Alle".
+     */
+    enum class Mode { NONE, CHIPS, MENU, PRESET }
     enum class Group(val members: Set<Activity>) {
         HIKE(setOf(Activity.HIKE)),
         BIKE(setOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)),
@@ -64,6 +69,14 @@ object ActivityFilterSketch {
                     Spacer(Modifier.width(8.dp))
                 }
             }
+            Mode.PRESET -> {
+                val one = chosen.singleOrNull()
+                FilterChip(selected = one != null, onClick = {},
+                    label = { Text(one?.chip ?: str(Res.string.sketch_act_any), style = MaterialTheme.typography.labelMedium, maxLines = 1) },
+                    leadingIcon = one?.let { a -> { Icon(a.icon, null, Modifier.size(FilterChipDefaults.IconSize)) } },
+                    trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(FilterChipDefaults.IconSize)) },
+                    colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OnPathColors.GreenLight))
+            }
             Mode.MENU -> {
                 val label = when (chosen.size) {
                     0 -> str(Res.string.sketch_act_all)
@@ -77,6 +90,20 @@ object ActivityFilterSketch {
                     colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OnPathColors.GreenLight))
             }
         }
+    }
+
+    /** PRESET's items: the six as a single choice, "Alle" under a line. */
+    @Composable
+    fun PresetMenuItems() {
+        val one = chosen.singleOrNull()
+        for (a in listOf(Activity.HIKE, Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE, Activity.MTB, Activity.EMTB)) {
+            DropdownMenuItem(text = { Text(a.label) }, onClick = {}, leadingIcon = { Icon(a.icon, null) },
+                trailingIcon = { androidx.compose.material3.RadioButton(selected = a == one, onClick = null) })
+        }
+        androidx.compose.material3.HorizontalDivider()
+        DropdownMenuItem(text = { Text(str(Res.string.sketch_act_any)) }, onClick = {},
+            leadingIcon = { Spacer(Modifier.size(24.dp)) },
+            trailingIcon = { androidx.compose.material3.RadioButton(selected = one == null, onClick = null) })
     }
 
     /** MENU's items (the test draws them where the menu opens – popups are not drawn by Paparazzi). */

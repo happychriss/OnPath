@@ -96,5 +96,6 @@
     <!-- SKETCH activity filter (owner 2026-11-13) – proposals -->
     <string name="sketch_act_bike">Rad</string>
     <string name="sketch_act_all">Alle Arten</string>
+    <string name="sketch_act_any">Alle</string>
     <string name="sketch_act_n">%1$d Arten</string>
 </resources>
