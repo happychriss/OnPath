@@ -51,6 +51,11 @@ data class BackupMeta(
      * Added to record version 1: older apps ignore the key, a record without it has no plan.
      */
     val plan: com.onpath.app.data.TourPlan? = null,
+    /**
+     * Starred in My routes ([Tour.favourite], owner 2026-11-13) – key "favourite" (true only; record version 1: older apps
+     * ignore it, a record without it is no favourite). A restore puts the star back.
+     */
+    val favourite: Boolean = false,
 ) {
     /** "tour" (recorded), "plan" (saved planned route) or "imported" – readable in the file. */
     val type: String get() = typeOf(kind)
@@ -64,7 +69,7 @@ data class BackupMeta(
             val times = segments.flatten().mapNotNull { it.timeMs }
             return BackupMeta(t.uuid, t.kind, t.name, t.createdMs, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM,
                 t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides,
-                plan?.takeIf { t.kind == TourKind.RECORDED })
+                plan?.takeIf { t.kind == TourKind.RECORDED }, t.favourite)
         }
     }
 }
@@ -165,6 +170,7 @@ object BackupCodec {
         put("saved", m.savedMs)
         m.rides?.let { put("rides", it.toJson()) }
         m.plan?.let { put("plan", it.toJson()) }
+        if (m.favourite) put("favourite", true)
     }
 
     fun fromJson(o: JSONObject): BackupMeta? {
@@ -194,6 +200,7 @@ object BackupCodec {
             },
             // unreadable → the tour without its plan (reported in TourPlan.fromJson)
             plan = if (kind == TourKind.RECORDED) com.onpath.app.data.TourPlan.fromJson(o.optJSONObject("plan")) else null,
+            favourite = o.optBoolean("favourite", false),
         )
     }
 
