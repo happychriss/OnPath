@@ -349,7 +349,10 @@ open the page in two browser windows (one private). The claude.ai preview cannot
 ## 11. App side (built)
 
 `plansync/` (rules: `.claude/rules/sync-web.md`): `PlanSync` (background thread, never during a recording; `SyncPoll`
-about every 60 s while My routes / Browser sync is shown), `PlanSyncPass` (saved routes and imported GPX tracks ⇄
+every 15 s while My routes / Browser sync is shown – owner 2026-11-13, was 60 s; a failed pass doubles it up to 10 min,
+the server's busy quiet time wins; a pass is ~2 requests, so ≤ 8 a minute per phone; right away when one of them opens;
+pull to refresh on My routes → Planned when paired = a pass at once, the spinner until it ends, nothing while quiet or
+during a tour), `PlanSyncPass` (saved routes and imported GPX tracks ⇄
 items; a delete from outside → recycle bin, never a hard delete), `HttpMailbox`, `SyncFiles` (`files/sync/`, atomic,
 excluded from Android backup so a restored phone does not reuse an old mailbox). Pairing: ☰ → Pair with browser opens
 the camera; the `#pair=` link reaches the app's plan-link filter (`#p=` stays a plan), `SyncKeys.check` digits, Pair /

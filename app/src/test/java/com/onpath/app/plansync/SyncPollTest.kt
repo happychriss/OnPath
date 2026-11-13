@@ -9,12 +9,28 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Core feature C16, sync while the app stays open (owner 2026-10-30, "like WhatsApp Web"): about every minute while
+ * Core feature C16, sync while the app stays open (owner 2026-10-30, "like WhatsApp Web"): every 15 s (owner 2026-11-13:
+ * "a minute is blöd") while
  * the app is on screen, paired, no tour runs and My routes / Browser sync is shown (not the Plan map); back-off when the server is
  * not reached, reset on success.
  */
 class SyncPollTest {
     private val min = 60_000L
+    private val base = 15_000L
+
+    @Test fun pollsEvery15sAndStaysFarUnderTheHostLimit() {
+        assertEquals(15_000L, SyncPoll.BASE_MS)
+        assertEquals("back-off ceiling unchanged", 10 * min, SyncPoll.MAX_MS)
+        // a pass is about two requests: 8 a minute per phone, the host allows 300 a minute per IP
+        assertTrue(2 * min / SyncPoll.BASE_MS <= 8)
+    }
+
+    @Test fun pullToRefreshStartsAPassOnlyWhenItCan() {
+        assertTrue(SyncPoll.pullStarts(paired = true, recording = false, quiet = false))
+        assertFalse("not paired: no gesture, no server", SyncPoll.pullStarts(paired = false, recording = false, quiet = false))
+        assertFalse("during a tour the routes wait for its end", SyncPoll.pullStarts(paired = true, recording = true, quiet = false))
+        assertFalse("the server asked for quiet: its back-off wins, the spinner stops", SyncPoll.pullStarts(paired = true, recording = false, quiet = true))
+    }
 
     @Test fun pollsOnlyWhenVisiblePairedNoTourAndOnARoutesScreen() {
         assertTrue(SyncPoll.wanted(visible = true, paired = true, recording = false, routesScreen = true))
@@ -33,19 +49,19 @@ class SyncPollTest {
         assertFalse("another Settings page over My routes", SyncPoll.routesScreen(routesOpen = true, settingsOpen = true, syncPage = false))
     }
 
-    @Test fun everyMinuteAfterTheLastPass() {
+    @Test fun every15sAfterTheLastPass() {
         val p = SyncPoll()
         assertEquals("nothing ran yet: due at once", 0L, p.waitMs(1_000_000))
         p.requested(1_000_000)
-        assertEquals(min, p.waitMs(1_000_000))
+        assertEquals(base, p.waitMs(1_000_000))
         p.passEnded(1_002_000, ok = true) // the pass took 2 s
-        assertEquals(min, p.waitMs(1_002_000))
-        assertEquals(30_000L, p.waitMs(1_032_000))
-        assertEquals(0L, p.waitMs(1_062_000))
+        assertEquals(base, p.waitMs(1_002_000))
+        assertEquals(5_000L, p.waitMs(1_012_000))
+        assertEquals(0L, p.waitMs(1_017_000))
         assertEquals(0L, p.waitMs(9_000_000))
-        // another trigger (a saved route, back in the app) counts too: the next poll a minute after it
+        // another trigger (a saved route, back in the app) counts too: the next poll 15 s after it
         p.passEnded(9_000_000, ok = true)
-        assertEquals(min, p.waitMs(9_000_000))
+        assertEquals(base, p.waitMs(9_000_000))
     }
 
     @Test fun backOffDoublesUpToTenMinutesAndSuccessResets() {
@@ -53,19 +69,19 @@ class SyncPollTest {
         var t = 0L
         val seen = mutableListOf<Long>()
         repeat(6) { t += 1_000; p.passEnded(t, ok = false); seen += p.intervalMs }
-        assertEquals(listOf(2 * min, 4 * min, 8 * min, 10 * min, 10 * min, 10 * min), seen)
+        assertEquals(listOf(30_000L, min, 2 * min, 4 * min, 8 * min, 10 * min), seen)
         assertEquals(10 * min, p.waitMs(t))
         p.passEnded(t, ok = true)
-        assertEquals(min, p.intervalMs)
-        assertEquals(min, p.waitMs(t))
+        assertEquals(base, p.intervalMs)
+        assertEquals(base, p.waitMs(t))
     }
 
     @Test fun aPassThatDidNotRunChangesNothing() {
         val p = SyncPoll()
         p.passEnded(100_000, ok = false)
         p.passEnded(500_000, ok = null) // not paired / during a tour: no answer from the server either way
-        assertEquals(2 * min, p.intervalMs)
-        assertEquals(2 * min - 50_000, p.waitMs(150_000))
+        assertEquals(2 * base, p.intervalMs)
+        assertEquals(2 * base - 10_000, p.waitMs(110_000))
     }
 
     @Test fun whatAReportMeans() {
@@ -122,10 +138,10 @@ class SyncPollTest {
         assertTrue("ended 10 s ago", p.openDue(112_000, paired = true, recording = false, busy = false))
         p.passEnded(200_000, ok = false) // offline: the open still tries again after 10 s
         assertTrue(p.openDue(210_000, paired = true, recording = false, busy = false))
-        // the pass on open counts for the poll: the next one a minute later
+        // the pass on open counts for the poll: the next one 15 s later
         p.passEnded(300_000, ok = true)
         p.requested(400_000)
-        assertEquals(min, p.waitMs(400_000))
+        assertEquals(base, p.waitMs(400_000))
     }
 
     /**

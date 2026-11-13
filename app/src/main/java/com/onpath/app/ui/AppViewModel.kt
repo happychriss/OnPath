@@ -4557,8 +4557,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Saved routes and imported tracks ⇄ the paired browser. Runs in the background (plansync/PlanSync): at start,
-     * back in the app, after a change here, when the network is back, about every minute while the app stays open on
-     * My routes / Browser sync ([syncPoll]) and right away when one of them opens – never during a recording (after the tour).
+     * back in the app, after a change here, when the network is back, about every 15 s while the app stays open on
+     * My routes / Browser sync ([syncPoll]), on pull to refresh in My routes → Planned ([pullSync]) and right away when one of them opens – never during a recording (after the tour).
      */
     val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
         recording = { recState.value != null }, onReport = ::syncReport)
@@ -4572,8 +4572,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launchSafe("app", "syncMarkSeen", Dispatchers.IO) { sync.files.marks.remove(t.uuid) }
     }
 
-    /** Sync while the app stays open (owner: automatic like WhatsApp Web): every minute, back-off when offline. */
+    /** Sync while the app stays open (owner: automatic like WhatsApp Web): every 15 s, back-off when offline. */
     private val syncPoll = com.onpath.app.plansync.SyncPoll()
+
+    /** Pull to refresh in My routes → Planned runs: the spinner shows until its pass reports ([syncReport]). */
+    var syncPulling by mutableStateOf(false)
+        private set
+    private var syncPullTimeout: kotlinx.coroutines.Job? = null
+
+    /**
+     * My routes → Planned pulled down (owner 2026-11-13, only offered when paired): a pass now, the spinner until it
+     * ends. During a tour or while the server asked for quiet nothing is asked and the spinner stops at once
+     * ([com.onpath.app.plansync.SyncPoll.pullStarts]).
+     */
+    fun pullSync() {
+        if (!com.onpath.app.plansync.SyncPoll.pullStarts(sync.state.value.paired, recording = recState.value != null,
+                quiet = sync.quiet())) return
+        syncPulling = true
+        syncPoll.requested(android.os.SystemClock.elapsedRealtime())
+        sync.request("pulled", manual = true)
+        // never a spinner that stays: a pass that hangs in the network ends by itself, this is only the net under it
+        syncPullTimeout?.cancel()
+        syncPullTimeout = viewModelScope.launchSafe("app", "pullSync timeout") { delay(PULL_SPIN_MAX_MS); syncPulling = false }
+    }
 
     init {
         viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) { sync.files.marks.all() } // marks.txt → syncMarks (small file, never throws)
@@ -4583,7 +4604,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             var was = recState.value != null
             recState.collect { s -> if (was && s == null) sync.request("tour ended"); was = s != null }
         }
-        // on screen, paired, no tour, My routes / Browser sync shown (not the Plan map): a pass about every minute (SyncPoll)
+        // on screen, paired, no tour, My routes / Browser sync shown (not the Plan map): a pass about every 15 s (SyncPoll)
         viewModelScope.launchSafe("app", "start-up work") {
             val screen = androidx.compose.runtime.snapshotFlow {
                 appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routesOpen, showSettings,
@@ -4597,7 +4618,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     val wait = syncPoll.waitMs(android.os.SystemClock.elapsedRealtime())
                     when {
                         wait > 0 -> delay(wait)
-                        sync.poll("every minute") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
+                        sync.poll("poll") -> syncPoll.requested(android.os.SystemClock.elapsedRealtime())
                         else -> delay(com.onpath.app.plansync.SyncPoll.BUSY_RECHECK_MS) // a pass runs or waits
                     }
                 }
@@ -4664,6 +4685,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun syncReport(r: com.onpath.app.plansync.PlanSync.Report) {
         val res = r.result
         syncPoll.passEnded(android.os.SystemClock.elapsedRealtime(), com.onpath.app.plansync.SyncPoll.ok(r))
+        if (r.manual) { syncPulling = false; syncPullTimeout?.cancel() } // pull to refresh: its pass ended (or was skipped)
         if (r.ended) sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS)
         // Pair during a tour: only the handshake ran – Browser sync / ☰ show "Routes sync after the tour" (State.afterTour)
         if (res?.toursChanged == true) {
@@ -5312,7 +5334,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         refreshRd5(due.map { it.name })
     }
 
-    /** Synced plans' tile checks: once per tile in [ROUTING_CHECK_MS] (sync passes come every minute). */
+    /** Synced plans' tile checks: once per tile in [ROUTING_CHECK_MS] (sync passes come every 15 s on My routes). */
     private val syncRoutingThrottle = com.onpath.app.plansync.RefreshThrottle(ROUTING_CHECK_MS)
 
     /**
@@ -5446,6 +5468,8 @@ private const val ARRIVAL_MAX_WAIT_MS = 20_000L
 private const val SCRUB_HOLD_MS = 4000L
 /** Routing data: checked at most this often after a route (ms), and refreshed when older than this (days). */
 private const val ROUTING_CHECK_MS = 12 * 3600_000L
+/** Pull to refresh: the spinner stops after this at the latest. */
+private const val PULL_SPIN_MAX_MS = 30_000L
 private const val ROUTING_MAX_AGE_DAYS = 35
 /** Free look in Navigate ends after walking this far from where the map was turned / moved by hand. */
 private const val FREE_LOOK_BACK_M = 25.0

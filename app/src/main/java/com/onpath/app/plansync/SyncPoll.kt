@@ -9,13 +9,18 @@ import com.onpath.app.sync.SyncRound
  * - **When:** the app is on screen, paired, no tour is recording, and My routes or Settings → Browser sync is shown
  *   ([wanted]; owner 2026-10-30: not on the Plan map – the pass on open covers that). The app in the background polls
  *   nothing.
- * - **How often:** every [BASE_MS] after the last pass (any pass counts: after a change, back in the app …).
+ * - **How often:** every [BASE_MS] (15 s, owner 2026-11-13: "a minute is blöd" when a tour is saved in the browser
+ *   while My routes is open) after the last pass (any pass counts: after a change, back in the app …). A pass is about
+ *   two requests: 8 a minute per phone, far under the host's 300 a minute per IP. The server's busy back-off
+ *   ([PlanSync] quiet time) wins over every trigger.
  * - **Back-off:** a pass that did not reach the server (offline, refused, files not written) doubles the interval up to
  *   [MAX_MS]; a pass that reached it resets it to [BASE_MS] ([passEnded]).
  * - One pass at a time: the driver skips while a pass runs or waits ([com.onpath.app.plansync.PlanSync.busy]).
  * - **Right away on open** (owner 2026-10-30, "can it pull when My routes is opened?"): My routes opens, its Planned tab
  *   is chosen or Settings → Browser sync opens ([opened]) → a pass at once ([openDue]) – not if one ran, runs or waits
  *   within [OPEN_DEBOUNCE_MS]; never during a tour. The poll then counts from there.
+ * - **Pull to refresh** on My routes → Planned (owner 2026-11-13; only when paired): a pass at once ([pullStarts]),
+ *   the spinner until it ends; while the server asked for quiet or a tour records nothing is asked, the spinner stops.
  */
 class SyncPoll(private val baseMs: Long = BASE_MS, private val maxMs: Long = MAX_MS) {
     /** The current interval (ms): [baseMs], doubled after each failed pass up to [maxMs]. */
@@ -49,7 +54,7 @@ class SyncPoll(private val baseMs: Long = BASE_MS, private val maxMs: Long = MAX
     enum class Shown { OTHER, ROUTES_PLANNED, ROUTES_DONE, SYNC_PAGE }
 
     companion object {
-        const val BASE_MS = 60_000L
+        const val BASE_MS = 15_000L
         const val MAX_MS = 10 * 60_000L
         /** A pass runs or waits when the poll is due: look again after this. */
         const val BUSY_RECHECK_MS = 5_000L
@@ -75,6 +80,13 @@ class SyncPoll(private val baseMs: Long = BASE_MS, private val maxMs: Long = MAX
             (now == Shown.ROUTES_PLANNED || now == Shown.ROUTES_DONE) && before != Shown.ROUTES_PLANNED -> "my routes opened"
             else -> null
         }
+
+        /**
+         * Pull to refresh on My routes → Planned: ask for a pass now (true – the spinner shows until it ends) or not
+         * (false – the spinner stops at once): never unpaired (no gesture then), during a tour (the routes wait for its
+         * end) or while the server asked for quiet ([PlanSync.quiet] – its back-off wins).
+         */
+        fun pullStarts(paired: Boolean, recording: Boolean, quiet: Boolean): Boolean = paired && !recording && !quiet
 
         /** Poll at all: app on screen, paired, no tour recording, and My routes / Settings → Browser sync shown. */
         fun wanted(visible: Boolean, paired: Boolean, recording: Boolean, routesScreen: Boolean): Boolean =

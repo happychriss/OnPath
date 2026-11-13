@@ -416,6 +416,13 @@ fun RoutesScreen(
     /** The order of the saved routes / done tours (owner 2026-11-12, [RouteSort]); one for both tabs, kept by the app. */
     initialSort: RouteSort.Choice = RouteSort.DEFAULT,
     onSort: (RouteSort.Choice) -> Unit = {},
+    /**
+     * Pull to refresh on the Planned tab (owner 2026-11-13: a tour saved in the browser shows now, not after the next
+     * poll): a sync pass at once (AppViewModel.pullSync); null = not paired, no gesture.
+     */
+    onPull: (() -> Unit)? = null,
+    /** The pulled pass runs: the pull spinner shows until it ends. */
+    pulling: Boolean = false,
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     var sort by remember { mutableStateOf(initialSort) }
@@ -487,12 +494,16 @@ fun RoutesScreen(
             val hasRecent = liveTour != null || recentTour != null
             // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
             val saved = remember(shown, sort) { RouteSort.sort(shown.filter { !it.draft }, sort) }
+            PullToSync(if (tab == RoutesTab.PLANNED) onPull else null, pulling) {
             if (saved.isEmpty() && !hasRecent) {
-                Box(Modifier.fillMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
-                    Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
-                        else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
-                }
+                // a list of one so the empty Planned tab can be pulled too
+                LazyColumn(Modifier.fillMaxSize()) { item {
+                    Box(Modifier.fillParentMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
+                        Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
+                            else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
+                            color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                    }
+                } }
             } else {
                 // Gespeichert / Gemacht (owner 2026-11-07 09:40, variant A): tile + name + facts + ›, every action in ⋮ –
                 // the same card for a saved route under Zuletzt ([tag] "Gespeichert"), where the ✓ mark is left to Gespeichert
@@ -558,6 +569,7 @@ fun RoutesScreen(
                     items(saved, key = { it.id }) { t -> savedCard(t, RouteTag.of(t, marks), t.id == justSavedId) }
                 }
             }
+            }
         }
     }
     // drawn in place over the list, not in a dialog window (a full-screen Dialog got no navigation-bar inset: its
@@ -589,6 +601,18 @@ fun RoutesScreen(
         }), t.name, confirmLabel = str(Res.string.common_rename),
             onDone = { rename = null; onRename(t, it) }, onDismiss = { rename = null })
     }
+}
+
+/**
+ * Pull to refresh around Meine Touren's list (owner 2026-11-13): with [onPull] the Material pull gesture and its
+ * spinner while [pulling]; without (not paired, the Done tab) the list as it is.
+ */
+@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@Composable
+private fun PullToSync(onPull: (() -> Unit)?, pulling: Boolean, content: @Composable () -> Unit) {
+    if (onPull == null) { Box(Modifier.fillMaxSize()) { content() }; return }
+    androidx.compose.material3.pulltorefresh.PullToRefreshBox(isRefreshing = pulling, onRefresh = onPull,
+        modifier = Modifier.fillMaxSize()) { content() }
 }
 
 /** Meine Touren's search box: one line, a magnifier, ✕ clears (owner 2026-11-06). */

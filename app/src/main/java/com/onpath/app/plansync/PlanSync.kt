@@ -66,9 +66,9 @@ enum class PairStep {
  * [PlanSyncPass] – one background thread, the triggers and the state Settings shows.
  *
  * Triggers: after a change of a saved route / imported track ([changed], a short delay gathers several), at start
- * and when the app comes back ([request]), when the network comes back, and about every minute while the app stays
- * open on My routes / Browser sync ([poll], rule in [SyncPoll]), and right away when My routes or Browser sync
- * opens ([SyncPoll.opened], debounced). **Never during a recording** – the pass is
+ * and when the app comes back ([request]), when the network comes back, about every 15 s while the app stays
+ * open on My routes / Browser sync ([poll], rule in [SyncPoll]), right away when My routes or Browser sync
+ * opens ([SyncPoll.opened], debounced) and on pull to refresh in My routes → Planned ([SyncPoll.pullStarts]). **Never during a recording** – the pass is
  * skipped and runs when the tour has ended ([request] from the view model); only the pairing handshake right after a
  * scan runs during a tour (the phone's hello + one pull, once – field bug 2026-10-31). No sync while the app is closed
  * or in the background.
@@ -183,6 +183,9 @@ class PlanSync(
     /** A pass runs or waits to run. */
     fun busy(): Boolean = pendingRun?.isDone == false
 
+    /** The server said busy and its quiet time runs: a pass asked for now would wait for it ([quietUntilMs]). */
+    fun quiet(): Boolean = quietUntilMs > System.currentTimeMillis()
+
     /** The regular pass while the app stays open ([SyncPoll]): only when no pass runs or waits. True = asked for. */
     fun poll(why: String): Boolean {
         if (busy()) return false
@@ -190,8 +193,8 @@ class PlanSync(
         return true
     }
 
-    /** Sync now ([manual]: right after pairing – its result is said in Settings → Browser sync). */
-    /** [quiet]: a regular poll – it goes into the event log only when it moved something or failed (one a minute). */
+    /** Sync now ([manual]: right after pairing or pull to refresh – a pass that is skipped reports too, so the caller hears the end). */
+    /** [quiet]: a regular poll – it goes into the event log only when it moved something or failed (every 15 s). */
     fun request(why: String, manual: Boolean = false, delayMs: Long = 0, quiet: Boolean = false) {
         if (manual) manualWaiting = true
         asked++

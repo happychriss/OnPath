@@ -350,7 +350,7 @@ object SyncStatusText {
 
 /**
  * Settings → Browser sync. No "Sync now" (owner 2026-10-30: automatic like WhatsApp Web – the app syncs about every
- * minute while it is open, plansync/SyncPoll); the status line "Last synced: 1 min ago" moves on by itself.
+ * 15 s while it is open, plansync/SyncPoll); the status line "Last synced: 1 min ago" moves on by itself.
  */
 @Composable
 fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMillis()) {

@@ -232,6 +232,9 @@ class MainActivity : ComponentActivity() {
                                     snap
                                 },
                                 touring = recNow != null,
+                                // pull to refresh on Planned (owner 2026-11-13): only when paired
+                                onPull = if (vm.sync.state.collectAsState().value.paired) ({ vm.pullSync() }) else null,
+                                pulling = vm.syncPulling,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

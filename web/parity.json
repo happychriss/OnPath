@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "a440b405095aa2c102c9f5f3d409c5e8d4eec4f8"
+      "blob": "48885988ab93efc2cbed4d7e4444313f9d00352d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -165,7 +165,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "97948202f3e49fd9b8b2387102b2fe509a24d45c"
+      "blob": "66eb5f34738c2f1f864eaded5fc580af573cfc08"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
