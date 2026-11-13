@@ -124,6 +124,7 @@ class GermanScreenshotTest {
     @Test fun planEmptyDuringTour() = shots.planEmptyDuringTour()
     @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
+    @Test fun foundPlacePin() = shots.foundPlacePin()
     @Test fun tours() = shots.tours()
     @Test fun routesSortedByLength() = shots.routesSortedByLength()
     @Test fun routesSortedShortestFirst() = shots.routesSortedShortestFirst()
