@@ -243,12 +243,20 @@ export function overviewDialog(item: Item, onPlan: () => void, back: () => void)
     <div class="row spread ovbuttons"><button class="textbtn ovcancel">${esc(t('common_cancel'))}</button>
       <button class="tonal ovplan">${icon('route', 20)}${esc(t('routes_overview_plan'))}</button></div>`);
   const pic = d.querySelector<HTMLElement>('.ovpic')!;
+  // drawn for the picture's size – again whenever it changes (window resized, zoomed, turned): a shape drawn for the
+  // old size stuck out of the picture at its top left, not in the middle (owner 2026-11-13 „wirklich mittig“)
+  let drawn = '';
   const draw = () => {
     const w = Math.round(pic.clientWidth), h = Math.round(pic.clientHeight);
+    if (`${w}x${h}` === drawn) return;
+    drawn = `${w}x${h}`;
     const s = item.segs && w > 40 && h > 40 ? fitShape(item.segs, w, h, 24) : null;
     pic.innerHTML = s ? shapeSvg(s, w, h, { width: 4, dot: 6, flag: true }) : `<p class="muted">${esc(t('web_overview_no_line'))}</p>`;
   };
   requestAnimationFrame(draw);
+  const ro = new ResizeObserver(() => draw());
+  ro.observe(pic);
+  d.addEventListener('close', () => ro.disconnect());
   d.querySelector<HTMLButtonElement>('.ovcancel')!.onclick = () => { d.close(); back(); };
   d.querySelector<HTMLButtonElement>('.ovplan')!.onclick = () => { d.close(); onPlan(); };
   d.addEventListener('cancel', (e) => { e.preventDefault(); d.close(); back(); });

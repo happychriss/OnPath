@@ -781,6 +781,8 @@ dialog.overview .ovfacts { margin: 4px 0 0; color: var(--muted); font-size: 16px
 dialog.overview .ovpic { flex: 1; min-height: 200px; margin: 12px 0; border-radius: var(--r-card); background: var(--paper-dim);
   display: grid; place-items: center; overflow: hidden; }
 dialog.overview .ovpic .muted { padding: 24px; text-align: center; }
+/* until it is drawn again for a new size: never wider or taller than its picture, scaled about the middle (viewBox) */
+dialog.overview .ovpic > svg { max-width: 100%; max-height: 100%; }
 dialog.overview .ovbuttons button { min-height: 48px; padding: 0 20px; border-radius: 24px; font: inherit; font-weight: 600; cursor: pointer;
   display: inline-flex; align-items: center; gap: 8px; }
 dialog.overview .ovbuttons .tonal { border: 0; background: var(--plan-light); color: var(--plan-ink); }
