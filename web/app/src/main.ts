@@ -240,6 +240,10 @@ const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
 let syncRef: PlanSync | null = null;
 saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
+/** A shared link's first route is loading on a phone: its wait is the peek's one line (no box, no map strip). */
+let linkOpening = false;
+/** The peek's one wait line meanwhile (maps_load_loading or plan_calculating – the app's words, short). */
+let linkWaitText = t('plan_calculating');
 const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), $('summary'), () => {}, () => state.points.length);
 
 // ---- map ----
@@ -438,7 +442,7 @@ let loadingTimer = 0;
 map.on('moveend', () => {
   clearTimeout(loadingTimer);
   loadingTimer = window.setTimeout(() => {
-    if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: t('maps_load_loading') });
+    if (!map.areTilesLoaded() && !linkWaitShown()) notices.set('loading', { kind: 'busy', title: t('maps_load_loading') });
   }, 400);
 });
 map.on('movestart', (e) => { clearTimeout(loadingTimer); if ((e as { originalEvent?: unknown }).originalEvent) lastMapTouch = performance.now(); }); // a pan / zoom by the user
@@ -889,6 +893,7 @@ async function google(name: string, lat: number, lon: number, label: string) {
 /** A plan in the address (#p=…, from a QR code or a shared link) replaces the current one. */
 let linkChecked = false; // until then the address may still hold a plan to open – do not overwrite it
 async function openFromLink() {
+  const first = !linkChecked;
   linkChecked = true;
   if (!/[#&?]p=/.test(location.href)) { if (!draftsOn) restoreDraft(); return; }
   const shared = await engine.parse(location.href);
@@ -899,10 +904,24 @@ async function openFromLink() {
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
   // there before the camera fits the plan beside the sheet)
   if (shared.points.length >= 2) appHint($('apphint'));
+  // a phone (owner 2026-11-13): the person who got the link sees the route on the map first – the sheet peeks (facts
+  // only, not remembered), the wait is one line in it, the route is fitted above the peek once it is there
+  if (shared.points.length >= 2 && phoneWidth() && !(first && reloaded())) { linkOpening = true; linkWaitText = t('plan_calculating'); sheetSteps.set('small', false); }
   await loadShared(shared);
   // the link's title is the name Save proposes while its points are unchanged (the app's linkTitle)
   linkTitle = shared.title ? { title: shared.title, at: enc(state.points) } : null;
   if (!draftsOn) await restoreDraft(); // the page opened with its route in the address: which saved route it is
+}
+/** The page was reloaded (its own plan in the address): the remembered step stays. */
+function reloaded() {
+  try { return (performance.getEntriesByType('navigation')[0] as PerformanceNavigationTiming | undefined)?.type === 'reload'; } catch { return false; } // expected: old browser – treat as a link
+}
+function linkWaitShown() { return linkOpening && state.planning && phoneWidth(); }
+/** The link's first route is there (or failed / was replaced): the waits show as usual again. */
+function linkOpened() {
+  if (!linkOpening) return;
+  linkOpening = false;
+  if (!map.areTilesLoaded()) notices.set('loading', { kind: 'busy', title: t('maps_load_loading') });
 }
 /** The next commit comes from the place card: RouteFit.fitAfterPlace decides whether its route is fitted. */
 let placeFit = false;
@@ -1040,7 +1059,7 @@ const WAIT_CARD_MS = Number(params.get('waitMs') ?? 1000); // ?waitMs=0: the bro
 function setPlanning(on: boolean) {
   state.planning = on;
   document.body.dataset.planning = on ? '1' : '';
-  if (!on) dismiss('routing');
+  if (!on) { dismiss('routing'); linkOpened(); }
 }
 /** The wait box in the middle of the free map (beside / above the sheet), with Cancel – the app's onCancelRouting. */
 function waitCard(text: string) {
@@ -1130,7 +1149,12 @@ async function planRun(rounds: number) {
   // middle of the map – spinner, the routing data download (the app's "Loading the map for your area · about 9 MB",
   // map-cells.md §19.8), then "Calculating the route…", and Cancel; a fast route shows nothing (no flash)
   let wait = t('plan_calculating');
-  const show = () => { if (id === state.latest && state.planning) waitCard(wait); };
+  const show = () => {
+    if (id !== state.latest || !state.planning) return;
+    // a phone opening a link: the peek's line says it (short: the map loading or the route), nothing over the map
+    if (linkWaitShown()) { notices.set('loading', null); linkWait(wait.startsWith(t('maps_load_loading')) ? t('maps_load_loading') : t('plan_calculating')); return; }
+    waitCard(wait);
+  };
   let shown = false;
   const waitTimer = setTimeout(() => { shown = true; show(); }, WAIT_CARD_MS);
   const routed = state.points;
@@ -1277,6 +1301,12 @@ const routeReveal = new RouteReveal((legs) => (map.getSource('planned-route') as
   type: 'FeatureCollection',
   features: legs.map((l) => ({ type: 'Feature', properties: { straight: l.straight }, geometry: { type: 'LineString', coordinates: l.pts } })),
 } : empty()));
+function linkWait(text: string) {
+  if (text === linkWaitText) return;
+  linkWaitText = text;
+  const sub = document.querySelector<HTMLDivElement>('#summary .subline');
+  if (sub && linkOpening && state.points.length >= 2 && !state.plan) sub.textContent = text;
+}
 /** The sheet's texts follow the app's PlanStatus.noRouteLine ("Hold" → "Click"; the web does not record). */
 function render() {
   const p = state.points.length >= 2 ? state.plan : null;
@@ -1287,10 +1317,11 @@ function render() {
   const notice = $('notice');
   sub.classList.toggle('muted', !p);
   if (!p) {
-    head.innerHTML = `<span class="title">${escapeHtml(t('plan_plan_a_route'))}</span>`;
     const n = state.points.length;
+    const waiting = linkOpening && n >= 2 && !state.notRouted;
+    head.innerHTML = `<span class="title">${escapeHtml(waiting && state.title ? state.title : t('plan_plan_a_route'))}</span>`;
     sub.textContent = n === 0 ? t('web_hint_first_point')
-      : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : t('plan_calculating');
+      : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : waiting ? linkWaitText : t('plan_calculating');
     // one point: which one, also in the small step where the Points list is hidden (owner 2026-10-30)
     if (n === 1) sub.prepend(Object.assign(document.createElement('span'), { className: 'onepoint',
       textContent: t('web_one_point', state.meta[0]?.name || t('plan_point_start')) }));

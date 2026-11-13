@@ -333,6 +333,7 @@ dialog.mapcontent::backdrop { background: rgba(0,0,0,.25); }
   #sheet { top: auto; left: 0; right: 0; bottom: 0; width: auto; max-height: 48%; border-radius: 22px 22px 0 0;
     padding: 4px max(16px, env(safe-area-inset-right, 0px)) calc(12px + env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); }
   #sheet[data-step="points"] { max-height: calc(100% - 136px); }
+  #sheet[data-step="small"] > #apphint { display: none; } /* the peek: the facts only, the route on the map is the main thing (owner 2026-11-13) */
   #handle { padding: 8px 32px; margin: 0; }
   #footer { left: 12px; bottom: calc(var(--sheet-h) + 12px); }
   #results { max-height: 50vh; }

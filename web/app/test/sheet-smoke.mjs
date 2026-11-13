@@ -106,7 +106,8 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   const P = `${name}:`;
   // plan sheet A (owner 2026-11-07): open on start at every width (points and profile – „beim Start Punkte und Profil
   // zeigen, man kann ihn zuklappen“); the chevron collapses it, remembered; wide = the profile along the map's bottom edge
-  check(await step(page) === 'points', `${P} first step without storage = open (points and profile)`);
+  // a shared link on a phone peeks (owner 2026-11-13: the route on the map is the main thing; test/phonelink-smoke.mjs)
+  check(await step(page) === (phone ? 'small' : 'points'), `${P} first step without storage = ${phone ? 'small (a link on a phone)' : 'open (points and profile)'}`);
   check(phone ? await page.isVisible('#handle') && await page.isVisible('#sheetStep') : !(await page.isVisible('#handle')) && await page.isVisible('#sheetStep'),
     `${P} ${phone ? 'grab handle and chevron visible' : 'the chevron collapses the side panel (no handle)'}`);
   // the facts first of all (owner 2026-11-07: „Routenlänge und Höhen ↑/↓ als oberstes“): length · ↑ ↓ above the chip
@@ -152,11 +153,6 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     check(await step(page) === 'points', `${P} chevron again → open`);
   } else {
     s = await shown(page);
-    const pb = await page.locator('#profileBig').boundingBox().catch(() => null);
-    check(s['#points'] && s['#profile svg'] && await page.isVisible('#addDest') && pb && pb.height >= 44,
-      `${P} open on start: points, + Add destination, profile with a clear „Large elevation profile“ row`);
-    await page.click('#handle');
-    s = await shown(page);
     check(await step(page) === 'small' && s['#summary .big'] && s['#sheet .subline'] && !s['#profile svg'] && !s['#points'],
       `${P} small: time, distance, ↑/↓ + badge; no profile, no Points`);
     check(s['#share'] && !(await page.isDisabled('#share')) && await page.getAttribute('#share', 'aria-label') === 'Share' && !(await page.$('#sheet button.primary')),
@@ -168,8 +164,9 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     await page.screenshot({ path: path.join(shots, `${name}-small.png`) });
     await page.click('#handle');
     s = await shown(page);
-    check(await step(page) === 'points' && s['#points'] && s['#profile svg'] && await page.isVisible('#addDest') && await page.isVisible('#profileBig'),
-      `${P} handle → everything: points, + Add destination, profile with „Large elevation profile“`);
+    const pb = await page.locator('#profileBig').boundingBox().catch(() => null);
+    check(await step(page) === 'points' && s['#points'] && s['#profile svg'] && await page.isVisible('#addDest') && pb && pb.height >= 44,
+      `${P} handle → everything: points, + Add destination, profile with a clear „Large elevation profile“ row`);
     check(await page.getAttribute('#sheetStep', 'aria-label') === 'Show less', `${P} chevron says "Show less" when open`);
     await page.screenshot({ path: path.join(shots, `${name}-points.png`) });
     await page.click('#handle');

@@ -960,6 +960,12 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 - **Phone: two steps.** small = head + facts + lines, the chevron says „2 Punkte ⌃“; open = everything, the small profile
   with a full-width „⤢ Höhenprofil groß“ (the big one as before). The step is remembered (`onpath.sheetStep`, an old
   'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
+- **A shared link on a phone (owner 2026-11-13 field report):** the person who gets `#p=…` sees the route first. The
+  sheet opens *small* (the peek: the link's name or length · ↑ ↓, the activity, Share, „2 Punkte ⌃“; not remembered,
+  the handle pulls it up); the app hint waits in the open sheet. While the first route loads the peek's line is the one
+  wait (`plan_calculating`, or `maps_load_loading` while the routing data comes) – no wait box over the map, no map
+  strip at the same time; then the route is fitted above the peek. Wide screens and a plain visit unchanged. Test:
+  `test/phonelink-smoke.mjs` (check-web.sh; not yet in web.yml – a workflow change needs a pull request).
 - **Owner's second look (2026-11-07 noon):** „Routenlänge und Höhen ↑/↓ als oberstes“, „großes Profil prominent“, „beim Start
   Punkte und Profil zeigen, man kann ihn zuklappen“. Now, at every width: the first line of the sheet is **length · ↑ · ↓**
   (24 px), below it the time, max and the difficulty – above the activity chip. The sheet is **open on start** (points and
