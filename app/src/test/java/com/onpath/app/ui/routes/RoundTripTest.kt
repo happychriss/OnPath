@@ -18,7 +18,7 @@ class RoundTripTest {
     @Test fun aPlannedRouteByItsPoints() {
         assertTrue(RoundTrip.known(tour(TourKind.PLANNED, listOf(a, b, c, a)))!!)
         assertFalse(RoundTrip.known(tour(TourKind.PLANNED, listOf(a, b, c)))!!)
-        assertFalse("A → B → A is an out-and-back", RoundTrip.known(tour(TourKind.PLANNED, listOf(a, b, a)))!!)
+        assertTrue("A → B → A: what the plan sheet's ↻ makes of A → B", RoundTrip.known(tour(TourKind.PLANNED, listOf(a, b, a)))!!)
         // its line does not matter: the plan says it
         assertFalse(RoundTrip.of(tour(TourKind.PLANNED, listOf(a, b)), listOf(loop(1000.0))))
     }
