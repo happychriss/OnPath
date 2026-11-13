@@ -7,6 +7,7 @@ that still apply are listed in `docs/project-status.md`. Finished work is not ke
 and the commit history.
 
 ## For the roles
+- → [laptop] (donald 2026-11-13 late, owner's word): donald prepares the **tour-suggestions framework for the planner** on the branch `wip/donald-2026-11-13-planner-suggest` – not on main, not deployed; switched off by default; few touch points in `web/app` (the first-tap menu, one new panel, the worker API). Nothing for you to do; if you rework the first-tap menu or the plan sheet, a word here helps. Plan: `docs/design/tour-suggestions.md` "Into the browser planner".
 - → [cloud-web] (owner 2026-11-03, comparison card 5): **Play store screenshots** in the store pattern – a short benefit
   headline on top, the phone on OnPath green, the A-019 pictures. The owner's six headlines (final wording):
   1 "Plane in Ruhe – auch ohne Netz" · 2 "Unterwegs umplanen – ganz einfach" · 3 "Klare Ansagen an jeder Abzweigung" ·
@@ -41,6 +42,7 @@ and the commit history.
 ## In progress
 - [laptop] 0.17.9 look in the whole planner, Zuletzt like the app, the goal-row bug, the flaky smokes, new smokes in web.yml (PR) – owner 2026-11-13 evening.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
+- [donald] Tour suggestions: framework in the planner (owner 2026-11-13 late: "das Framework kannst du doch schon erstellen … andere Planer-Funktionalität nicht gefährden") – exchangeable suggestion mechanisms, AI tips as one more parameter, "Rundtour von hier" behind a switch that is off; branch `wip/donald-2026-11-13-planner-suggest`, to main only after the planner tests are green and the owner has seen it – since 2026-11-13
 - [donald] Tour suggestions POC on the computer (owner 2026-11-13, chat: „genauso machen wir es“): `tools/suggest-poc/` – start point, duration, pace, difficulty, taste sliders → loop candidates through BRouter, scored, on a local map page; the owner picks the best with a reason, the weights live in a plain file for quick tuning. No app code, no UI yet Rounds 1–6 on main (variant B = search in the way network, our own map areas, bike, AI region tips behind a switch, the owner's taste rules, bench `bench.py`). **Owner 2026-11-13 late: routes first; the planner UI ("Rundtour von hier", sketch 2) is parked** – plan in `docs/design/tour-suggestions.md` "Into the browser planner". Page: `python3 tools/suggest-poc/serve.py` → localhost:8790; his comments: `python3 tools/suggest-poc/feedback.py` – since 2026-11-13
 
 ## Next
