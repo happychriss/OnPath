@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tourvorschläge im Planer (web/app/src/suggest/, abgeschaltet – docs/design/tour-suggestions.md "Planner framework").
+     „Rundtour von hier“ sind die Worte des Owners; die Zeile darunter (web_suggest_from_here_sub) ist ein Vorschlag, nicht entschieden. -->
+<resources>
+    <string name="web_suggest_from_here">Rundtour von hier</string>
+    <string name="web_suggest_from_here_sub">Runden nach Dauer und Geschmack</string>
+    <string name="web_suggest_pace_note">Tempo aus deinen Einstellungen</string>
+    <string name="web_suggest_duration">Dauer</string>
+    <string name="web_suggest_hours">%1$s h</string>
+    <string name="web_suggest_half_day">halber Tag</string>
+    <string name="web_suggest_important">Was ist dir wichtig?</string>
+    <string name="web_suggest_nature">Natur</string>
+    <string name="web_suggest_quiet">Ruhe</string>
+    <string name="web_suggest_known">Bekannte Wege</string>
+    <string name="web_suggest_level_low">niedrig</string>
+    <string name="web_suggest_level_mid">mittel</string>
+    <string name="web_suggest_level_high">hoch</string>
+    <string name="web_suggest_water">am Wasser entlang (See, Fluss)</string>
+    <string name="web_suggest_surface">Wegbeschaffenheit</string>
+    <string name="web_suggest_surface_natural">Naturwege</string>
+    <string name="web_suggest_surface_mixed">gemischt</string>
+    <string name="web_suggest_surface_paved">befestigt</string>
+    <string name="web_suggest_surface_asphalt">Asphalt</string>
+    <string name="web_suggest_surface_firm">fester Weg</string>
+    <string name="web_suggest_surface_any">egal</string>
+    <string name="web_suggest_surface_gravel">Schotter gern</string>
+    <string name="web_suggest_surface_trails">Trails gern</string>
+    <string name="web_suggest_surface_forest">Forstwege</string>
+    <string name="web_suggest_more">Mehr</string>
+    <string name="web_suggest_effort">Anstrengung</string>
+    <string name="web_suggest_effort_easy">leicht</string>
+    <string name="web_suggest_effort_medium">mittel</string>
+    <string name="web_suggest_effort_sporty">sportlich</string>
+    <string name="web_suggest_tips">mit KI-Regionswissen</string>
+    <string name="web_suggest_via">Verfahren: %1$s</string>
+    <string name="web_suggest_standin">Platzhalter, nur zum Testen des Ablaufs</string>
+    <string name="web_suggest_searching">Runden werden gesucht</string>
+    <string name="web_suggest_computing">Runde %1$s von %2$s wird berechnet</string>
+    <string name="web_suggest_found">%1$s von %2$s gefunden</string>
+    <string name="web_suggest_shorter">etwas kürzer als gewünscht</string>
+    <string name="web_suggest_longer">etwas länger als gewünscht</string>
+    <string name="web_suggest_failed">Es konnten keine Vorschläge erstellt werden.</string>
+    <string name="web_suggest_plan_unchanged">Dein Plan ist unverändert.</string>
+    <string name="web_suggest_none">Keine passende Runde gefunden</string>
+    <string name="web_suggest_change">Wunsch ändern</string>
+    <string name="web_suggest_again">Neue Vorschläge</string>
+    <string name="web_suggest_adopt">Übernehmen</string>
+    <string name="web_suggest_from">ab %1$s</string>
+    <plurals name="web_suggest_count">
+        <item quantity="one">%1$s Vorschlag</item>
+        <item quantity="other">%1$s Vorschläge</item>
+    </plurals>
+</resources>

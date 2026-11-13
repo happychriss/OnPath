@@ -48,6 +48,8 @@ import { keepStats, planKey, trackKey } from './planstats';
 import { keepShape } from './routeshape';
 import { RouteReveal } from './routereveal';
 import { isPoiKind, poiKindAt, poiPin } from './poipin';
+import { suggestEnabled } from './suggest/registry';
+import { setupSuggest, type SuggestUi } from './suggest/ui';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import './fonts/manrope.css';
@@ -243,6 +245,10 @@ const waits = new OneWait(document.body);
 onShown((m) => waits.set('box', m?.id === 'routing'));
 /** The sync once it exists (the header's Save is drawn before it). */
 let syncRef: PlanSync | null = null;
+/** The shown route: empty (fewer than two points), save (new, or changed since it was saved), saved (and unchanged).
+ * Declared before its first use just below: the Vite dev server runs this file as written, and there a `let` read before
+ * its line stops the page ("Cannot access 'saveState' before initialization"; the built page did not show it). */
+let saveState: 'empty' | 'save' | 'saved' = 'empty';
 saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
 // the plan sheet's three steps (sheetstep.ts – the app's PlanSize): handle, chevron, a click on the summary; remembered
 /** A shared link's first route is loading on a phone: the peek shows the link's name, the wait is the load overlay. */
@@ -531,6 +537,7 @@ function setPoints(points: LatLon[], meta?: Meta[]) {
   state.points = points;
   state.meta = meta ?? points.map((p) => ({ ...(known.get(key(p)) ?? { pinned: false }) }));
   state.points.forEach((p, i) => known.set(key(p), state.meta[i]));
+  suggestUi?.planTouched();
 }
 
 /**
@@ -691,6 +698,8 @@ sortable($('points'), (from, to) => applyEdit('move', from, to));
 
 // ---- presses on the map: a click is the app's hold (MapGestures.decide, in the engine) ----
 let menu: maplibregl.Popup | null = null;
+/** Tour suggestions (suggest/ui.ts) – null unless the switch is on (suggest/registry.ts; set up at the end of this file). */
+let suggestUi: SuggestUi | null = null;
 let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: () => {}, planChanged: () => {}, showPin: () => {}, hasPin: () => false }; // the search's place card (set up below)
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
@@ -730,6 +739,7 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
   if (results && !results.hidden) { results.hidden = true; return; } // a click beside the search results only closes them
   if (placeCard.isOpen()) { placeCard.close(); return; } // … and one beside the place card closes it (nothing added)
   if (terrain3d.on) { closeMenu(); return; } // 3D is for looking (the note on the map says so); planning is on the flat map
+  if (suggestUi?.active()) { closeMenu(); if (pt) suggestUi.mapPress(pt); return; } // a wish / suggestions on screen: a click only picks a suggestion's line
   if (marker < 0 && pt) marker = markerNear(pt);
   const poi = pt && marker < 0 ? poiAt(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
@@ -821,9 +831,11 @@ async function fromMe(to: LatLon, toMeta: Meta) {
 /** First press on an empty plan: "Start here" · "Go here" (ui/MapOverlays.FirstPointMenu). */
 async function firstPointMenu(at: maplibregl.LngLat) {
   const p: LatLon = [at.lat, at.lng];
+  const loop = suggestUi?.menuItem(p); // "Rundtour von hier" – only with the switch on
   openMenu(at, [
     { icon: 'tripOrigin', label: t('plan_start_here'), act: () => commit([p], [{ pinned: false }]) },
     await goHereItem(() => fromMe(p, { pinned: false })),
+    ...(loop ? [loop] : []),
   ], `<b>${escapeHtml(t('plan_new_route'))}</b>`);
 }
 
@@ -869,7 +881,9 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
   const google: MenuItem = { icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') };
   const main = await Promise.all(pm.main.map(row)), more = await Promise.all(pm.more.map(row));
-  const items: MenuItem[] = [...main, google];
+  // an empty plan (Start here · Go here): "Rundtour von hier" under them – only with the switch on
+  const loop = pm.main.includes('GO_HERE') ? suggestUi?.menuItem(p, info.title) : null;
+  const items: MenuItem[] = [...main, ...(loop ? [loop] : []), google];
   // the alternative a clear case hides is never lost (the app: "⋯ Mehr" opens it in the same menu)
   if (more.length) items.push({ icon: 'more', label: t('common_more'), act: () => openMenu(at, [...main, google, ...more], head) });
   openMenu(at, items, head);
@@ -1478,8 +1492,6 @@ let changedSeen: PlanResult | null = null;
 /** A legend distance: "1.2 km" / "350 m" in the page's language (the app's Format.distance for these lengths). */
 const km = (m: number, _total: number) => (m >= 1000 ? `${number(m / 1000, 1)} km` : `${Math.round(m)} m`);
 
-/** The shown route: empty (fewer than two points), save (new, or changed since it was saved), saved (and unchanged). */
-let saveState: 'empty' | 'save' | 'saved' = 'empty';
 /**
  * Speichern in the plan bar (web-sync.md §14.6; owner 2026-11-06, A: always "Speichern" – paired it also sends, "Aufs
  * Handy" beside it says where): dark (the app green) while anything is to save – the shown route new or changed, or
@@ -2173,6 +2185,24 @@ new ResizeObserver(() => {
 }).observe($('sheet'));
 addEventListener('resize', placeUndoPill);
 changed();
+
+// ---- tour suggestions (suggest/, docs/design/tour-suggestions.md "Planner framework") ----
+// OFF: nothing below runs unless the switch is on (localhost only – suggest/registry.ts). The code is part of the page
+// (no extra file to fetch, the build's files stay as they were) but inert.
+if (suggestEnabled()) {
+  try {
+    suggestUi = setupSuggest({
+      map, engine, sheet: $('sheet'),
+      activity: () => state.activity, sac: () => state.sac,
+      activityLabel: () => `${picker.row(state.activity)?.chip ?? state.activity}${state.activity === 'HIKE' ? ' · T' + state.sac : ''}`,
+      planEmpty: () => state.points.length === 0,
+      phoneWidth, mapMiddle, fitPadding,
+      closeMenus: () => { closeMenu(); closeMenus(); },
+      adopt: (points) => queueEdit(async () => ({ planned: commit(points) })),
+    });
+    document.body.dataset.suggestReady = '1';
+  } catch (e) { problem('suggest', 'tour suggestions not set up', e); }
+}
 
 /** The sheet's status line; 'busy' = a wait the user started (spinner, CLAUDE.md "Messages"). */
 function status(t: string, kind: 'info' | 'error' | 'busy' = 'info') {

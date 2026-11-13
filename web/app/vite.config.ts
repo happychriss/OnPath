@@ -17,6 +17,14 @@ export default defineConfig({
     rollupOptions: { input: { main: 'index.html', compare: 'compare.html' } },
   },
   worker: { format: 'es' },
+  // dev server only: the tour-suggestions POC on this computer (tools/suggest-poc/serve.py) for the `poc` mechanism
+  // (src/suggest/poc.ts) – a production build has neither this proxy nor that mechanism
+  server: { proxy: {
+    '/poc': { target: process.env.SUGGEST_POC ?? 'http://127.0.0.1:8790', changeOrigin: true, rewrite: (p) => p.replace(/^\/poc/, '') },
+    // … and, with scripts/dev-local.mjs, routing data + a map store from this computer
+    ...(process.env.DEV_DATA ? { '/segments': { target: process.env.DEV_DATA }, '/data': { target: process.env.DEV_DATA } } : {}),
+    ...(process.env.DEV_DATA && process.env.DEV_OVERVIEW ? { '/overview': { target: process.env.DEV_DATA } } : {}),
+  } },
   plugins: [{
     name: 'onpath-version',
     generateBundle() { this.emitFile({ type: 'asset', fileName: 'version.json', source: JSON.stringify({ build: BUILD_ID }) + '\n' }); },

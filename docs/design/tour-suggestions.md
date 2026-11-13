@@ -458,3 +458,79 @@ measure and the crossing weight changed for both.
 as the border of a set of blocks; Karlsruhe, about 2013) and the arc-orienteering formulation for cycle-route
 planners (Leuven). The chain here is a small relative of both: patches instead of faces, a budgeted cycle on a patch
 graph instead of on the whole network.
+
+## Planner framework (prepared 2026-11-13, switched off)
+
+Owner: "die Struktur muss so sein, dass die Routing-Mechanismen, die wir nachher entwickeln, einfach ausgetauscht werden
+können, und dass KI nur ein weiterer Parameter ist … das Framework kannst du doch schon erstellen. Und sicherstellen,
+dass wir die andere Planer-Funktionalität dabei nicht gefährden." Built on the branch
+`wip/donald-2026-11-13-planner-suggest` – not on main, not deployed. Code: `web/app/src/suggest/`.
+
+**The contract (`types.ts`).** `TourWish` (start, activity + T level, hours, pace = the planner's time model, effort,
+Natur / Ruhe / Bekannte Wege as low · mid · high, water, surface per activity, seed, `tips` = AI region knowledge, one
+more field) → a mechanism (`SuggestProvider.run`) hands out `Candidate`s: a title, reason lines, honest hints and
+either a line (`track`) or plan points. A mechanism only says where a loop goes and why it is nice. `session.ts` then
+does the same for every mechanism: a line becomes few plan points (the app's TrackToPlan, `engine.planFromTrack`), the
+points are planned by the planner's own `engine.plan`, and the result is a `Suggestion` – so km, time, ascent,
+difficulty and the line on a card are exactly what "Übernehmen" gives. The session adds "etwas kürzer / länger als
+gewünscht" (more than 15 % off the wished time), drops loops that do not route or repeat, reports progress, and
+`cancel()` / a newer `start()` supersede a running request (the engine's running plan is dropped).
+
+**Mechanisms (`registry.ts` – one line each):**
+| id | what | where |
+| --- | --- | --- |
+| `poc` | asks the POC on this computer (`tools/suggest-poc/serve.py`, methods a / b / c with `?suggestPoc=`) through the Vite dev server's `/poc/` proxy; its chosen loops come over as lines | dev build only (`import.meta.env.DEV`); the production build contains neither the mechanism nor a request to it (checked: no `poc/`, no `8790` in `dist/`) |
+| `ring` | **stand-in**: three points on a circle through the start, routed by the planner – proves the in-browser path (worker, progress, cancel, superseding) and is what the tests use; no taste at all | built page on localhost; the UI says "Platzhalter" |
+| `core` | the real one, not built: the network search in the shared Kotlin core, compiled into the engine | the plan, with the interfaces, is `core-slot.ts` |
+
+**A new mechanism = 3 steps:** (1) a file with a `SuggestProvider` (`id`, `devName`, `run(wish, ctx, emit)`); (2) add
+it to `providers()` in `registry.ts` (the first is the default); (3) nothing else – wish, cards, Übernehmen and
+`test/suggest-smoke.mjs` stay. AI tips: the wish carries `tips`; a mechanism that has tips uses them only when it is
+on (the `poc` mechanism passes it as the POC's `ai`).
+
+**The surface (`ui.ts`, sketch 2):** the first-tap menu gets the row "Rundtour von hier" → the wish (wide: in the plan
+sheet under the sheet's own activity chip; phone: a window in the Save-name dialog's look) with Abbrechen · OK → the
+planner's message box as the wait card (with Abbrechen) → three lines on the map + three cards (title, difficulty
+badge, km · time · ↑, reasons, hints, "Übernehmen"), "Neue Vorschläge" (seed + 1), "Wunsch ändern" (values kept), ✕.
+"Übernehmen" = `commit(points)` through the page's edit queue, like points clicked by hand: undo history, share code
+in the address, Save, phone sync as for any plan. The module puts on the page only its panel in the sheet, one map
+source, one marker and one message, and takes all of it away again in `leave()`.
+
+**The switch – off.** `suggestEnabled()`: only when the page runs on localhost / 127.0.0.1 AND `?suggest=1` (or
+localStorage `onpath.suggest = "1"`). On plan.onpath.earth it cannot be turned on. With it off: the menu has its two
+rows, no request, no storage key written (the wish is remembered in `onpath.suggest.wish` only after an OK).
+Touch points in existing files: `main.ts` (two imports; `let suggestUi`; one row in the first-tap menu and one in the
+place menu; one guard in `press()` – a click only picks a suggestion's line while suggestions show; one line in
+`setPoints()` – a plan arriving from elsewhere closes the suggestions; the set-up block at the end),
+`vite.config.ts` (dev-server proxies), new texts in `web/strings/values*/strings_suggest.xml`. The build's files are
+the same as before (no extra chunk); `main-*.js` grew by 16.5 kB (5.4 kB gzip), the CSS by 3.8 kB. The engine (Wasm)
+is unchanged.
+
+**Also changed in `main.ts` (not part of the feature, found on the way):** `let saveState` is now declared before its
+first use (`saveEntry('empty')` near the top). As written before, the Vite dev server stopped at "Cannot access
+'saveState' before initialization" – `npm run dev` showed no planner at all on main; the built page did not show it.
+
+**Undecided by the owner** (recommendations built in, marked in `ui.ts`): the row only while the plan is empty; the
+same row in the menu of a place / map symbol under "Hierhin" (in the first try on the real map the tap hit the symbol
+"Quelle" on desktop and phone – without the row there the entry would have been missing); the small line under the
+row ("Runden nach Dauer und Geschmack" – my words).
+
+**Tested (donald, 2026-11-13):** `web/app/test/suggest-smoke.mjs` (new, 40 checks, green): switch off → two rows,
+nothing on the page, no storage key, no request to the POC; switch on with `ring` → third row, wish in the sheet,
+Abbrechen = the empty plan exactly, OK → wait card → cards; a second request supersedes the first (3 h asked, then
+1 h: only 1 h loops arrive); a map click starts no plan meanwhile; Übernehmen → a round-trip plan, in the address,
+shareable, saved, undo → empty, redo → back; a failing mechanism → one calm message, plan untouched; phone width → the
+wish is a window with Abbrechen · OK that fits 412 × 915 without scrolling. Existing suites with the switch off – see
+the hand-over report for the list and for the suites that are red on this computer on untouched main too (pairing).
+Not tested: the place-menu row in a test (needs a map store); the page in a real phone browser; `poc` in a test (it
+exists only in the dev server – looked at by hand, pictures in `~/onpath-suggest-poc/planner/`).
+
+**Seeing it:** `node web/app/scripts/dev-local.mjs <segmentsDir> <mapStoreDir> 5199 [overviewDir]` → the planner on
+this computer with local routing data and map areas, `/poc/` passed to the POC →
+`http://127.0.0.1:5199/?suggest=1` (`&suggestPoc=c`, `&suggestVia=ring`).
+
+**Known gaps:** a POC line turned into plan points gives 7–15 points (TrackToPlan follows the line closely) – too
+many for a tidy plan, and the planner's own profile may route a piece differently from the POC's line; the cards'
+titles are the POC's working names ("SW · Schleife"), speaking names come with variant C; no small elevation profile
+on the cards and no "etwa 7 km" beside the duration yet (sketch 2 has both); on a phone the activity cannot be changed
+inside the wish window (it shows the chip's words; change it in the sheet before).
