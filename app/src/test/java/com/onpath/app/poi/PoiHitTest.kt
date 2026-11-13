@@ -65,15 +65,26 @@ class PoiHitTest {
         assertEquals(12.5f, PoiHit.nameSizeDp(18.0), 0.01f)
     }
 
-    @Test fun readAgainAtOnceOnlyAfterARealMove() {
-        val c = PoiHit.Cam(16.0, 0.0, 0.0)
-        assertTrue(PoiHit.moved(null, c, 0f, 2400f))
-        assertFalse("same view", PoiHit.moved(c, c, 0f, 2400f))
-        assertFalse("GPS drift while following", PoiHit.moved(c, c, 100f, 2400f))
-        assertTrue("panned", PoiHit.moved(c, c, 300f, 2400f))
-        assertTrue("zoomed", PoiHit.moved(c, c.copy(zoom = 16.5), 0f, 2400f))
-        assertFalse("turned 2° over north", PoiHit.moved(c.copy(bearing = 359.0), c.copy(bearing = 1.0), 0f, 2400f))
-        assertTrue("turned", PoiHit.moved(c, c.copy(bearing = 10.0), 0f, 2400f))
+    /** Read once per camera stop / change, never again while the map just sits there (battery, owner's Pixel 2026-11-13). */
+    @Test fun readsOnceAfterACameraStopOrChangeNeverOnAStillMap() {
+        val t = PoiHit.ReadTrigger()
+        assertTrue("first idle after the map came up", t.mapIdle())
+        // a still map: the position dot redraws it every second – no read
+        repeat(600) { assertFalse(t.mapIdle()) }
+        t.cameraIdle()
+        assertTrue("first idle after a pan", t.mapIdle())
+        assertFalse(t.mapIdle())
+        // a camera stop while tiles still load: the read waits for the map's idle (all tiles in), once
+        t.cameraIdle(); t.cameraIdle()
+        assertTrue(t.mapIdle()); assertFalse(t.mapIdle())
+        t.changed()
+        assertTrue("new style / data / POI settings", t.mapIdle())
+        assertFalse(t.mapIdle())
+    }
+
+    @Test fun readRunsNoTimer() {
+        val tap = File("src/main/java/com/onpath/app/poi/PoiTap.kt").readText()
+        for (timer in listOf("postDelayed", "Timer(", "schedule", "delay(")) assertFalse(timer, tap.contains(timer))
     }
 
     /** No tap / hold path asks MapLibre for rendered features on the main thread. */

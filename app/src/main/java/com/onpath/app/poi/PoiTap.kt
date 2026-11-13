@@ -6,6 +6,8 @@ import android.view.View
 import com.onpath.app.debug.Problems
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
+import org.maplibre.geojson.Feature
+import java.util.concurrent.Executors
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.min
@@ -22,9 +24,6 @@ object PoiHit {
 
     /** Half the icon's size in dp (badge 24 px at icon-size ~1). */
     const val ICON_HALF_DP = 11f
-
-    /** Read what the map shows again at most this long after the last read when it did not move. */
-    const val MAX_AGE_MS = 2_000L
 
     /** The style's POI name size (tools/make_style.py pois(): 10.5 at z14 → 12.5 at z17). */
     fun nameSizeDp(zoom: Double): Float = (10.5 + (zoom.coerceIn(14.0, 17.0) - 14.0) * (2.0 / 3.0)).toFloat()
@@ -48,74 +47,66 @@ object PoiHit {
         }.minByOrNull { c -> (fx - c.x) * (fx - c.x) + (fy - c.y) * (fy - c.y) }?.poi
     }
 
-    /** Zoom, turn and tilt of the map at a read. */
-    data class Cam(val zoom: Double, val bearing: Double, val tilt: Double)
-
     /**
-     * The map moved enough since the last read that what it shows must be read again at once (else at most every
-     * [MAX_AGE_MS]): zoom, turn or tilt changed, or the old centre is now [shiftPx] away from the centre.
+     * When [ShownPois] reads what the map shows: once, on the first map idle (all tiles in, render thread done) after
+     * the camera stopped or the map changed (style / data reload, POI settings) – never on a timer while nothing moves
+     * (owner's Pixel 2026-11-13: a read every 2 s on a still map cost battery). The map's own idle events (the
+     * position dot redraws it every second) read nothing by themselves.
      */
-    fun moved(a: Cam?, b: Cam, shiftPx: Float, screenPx: Float): Boolean = a == null || abs(a.zoom - b.zoom) > 0.05 ||
-        abs(((a.bearing - b.bearing + 540.0) % 360.0) - 180.0) > 2.0 || abs(a.tilt - b.tilt) > 1.0 || shiftPx > 0.1f * screenPx
+    class ReadTrigger {
+        private var wanted = true
+
+        /** The camera stopped (a pan, zoom, fly or follow step ended). */
+        fun cameraIdle() { wanted = true }
+
+        /** What the map shows changed without a camera move: a new style or map data, other POI settings. */
+        fun changed() { wanted = true }
+
+        /** The map became idle: true = read now (once). */
+        fun mapIdle(): Boolean = wanted.also { wanted = false }
+    }
 }
 
 /**
- * The POIs the map shows, read from MapLibre while the map is idle ([onIdle]), so a tap or hold looks them up
- * ([at]) without queryRenderedFeatures on the main thread. That call waits for the render thread: in central London a
- * hold waited 1447 ms for a busy frame (owner's Pixel 2026-11-13) – a hold must never block the main thread.
- * Positions are kept as coordinates and projected at the hold (no render thread involved), so a POI under the finger is
- * found after the map moved a bit, too; what the map shows is read again on the next idle (at once after a real move,
- * else every [PoiHit.MAX_AGE_MS] – a changed POI setting counts within that). Main thread only. Never throws.
+ * The POIs the map shows, read from MapLibre while the map is idle ([onMapIdle], [PoiHit.ReadTrigger]), so a tap or
+ * hold looks them up ([at]) without queryRenderedFeatures: that call waits for the render thread – a hold waited
+ * 1447 ms for a busy frame in central London (owner's Pixel 2026-11-13); a hold must never block the main thread.
+ * The read: queryRenderedFeatures has to run on the main thread (MapLibre Android), on an idle map it does not wait;
+ * turning the features into POIs runs on a background thread, the list is swapped in on the main thread. Until a read
+ * is done a hold uses the last list. Positions are kept as coordinates and projected at the hold (no render thread
+ * involved). Main thread only. Never throws.
  */
 class ShownPois {
     private class Entry(val poi: Poi, val icon: Boolean, val nameChars: Int)
 
-    private var entries: List<Entry> = emptyList()
-    private var cam: PoiHit.Cam? = null
-    private var readCentre: LatLng? = null
-    private var readAt = 0L
-    private var idle = false
-    private var pending = false
+    @Volatile private var entries: List<Entry> = emptyList()
+    private val trigger = PoiHit.ReadTrigger()
+    private var seq = 0
 
-    /** The map started moving: a delayed read waits for the next idle. */
-    fun moving() { idle = false }
+    /** The camera stopped: the next map idle reads. */
+    fun cameraIdle() = trigger.cameraIdle()
 
-    /** Forget everything (a new style): until the next idle no POI is found. */
-    fun clear() { entries = emptyList(); cam = null; readCentre = null; readAt = 0L; idle = false }
+    /** A new style / map data: forget the old list (it belongs to another style); the next map idle reads. */
+    fun styleChanged() { entries = emptyList(); seq++; trigger.changed() }
 
-    /** The map became idle (render thread done): read what it shows when it moved or the last read is old. */
-    fun onIdle(map: MapLibreMap, view: View) {
-        idle = true
-        val age = SystemClock.uptimeMillis() - readAt
-        val moved = try {
-            val p = map.cameraPosition
-            val shift = readCentre?.let { c ->
-                val s = map.projection.toScreenLocation(c)
-                Math.hypot((s.x - view.width / 2f).toDouble(), (s.y - view.height / 2f).toDouble()).toFloat()
-            } ?: 0f
-            PoiHit.moved(cam, PoiHit.Cam(p.zoom, p.bearing, p.tilt), shift, maxOf(view.width, view.height).toFloat())
-        } catch (e: Exception) {
-            Problems.warn("poi", "Map camera not readable, shown POIs read again", e); true
-        }
-        if (moved || age >= PoiHit.MAX_AGE_MS) read(map, view)
-        else if (!pending) {
-            // once more when the last read gets old, if the map is still idle then (a POI setting changed, tiles came in)
-            pending = true
-            view.postDelayed({ pending = false; if (idle) read(map, view) }, PoiHit.MAX_AGE_MS - age)
-        }
-    }
+    /** Other POI settings (kinds shown): the next map idle reads. */
+    fun changed() = trigger.changed()
 
-    /** The POI under [x], [y] (pixels), from what the map showed at its last idle; null when none. */
+    /** The map became idle (render thread done, all tiles in): read what it shows when the trigger says so. */
+    fun onMapIdle(map: MapLibreMap, view: View) { if (trigger.mapIdle()) read(map, view) }
+
+    /** The POI under [x], [y] (pixels), from what the map showed at the last read; null when none. */
     fun at(map: MapLibreMap, x: Float, y: Float, boxDp: Float = 24f): Poi? = try {
         val t0 = SystemClock.uptimeMillis()
         val dp = android.content.res.Resources.getSystem().displayMetrics.density
-        val cands = entries.map { e ->
+        val list = entries
+        val cands = list.map { e ->
             val s = map.projection.toScreenLocation(LatLng(e.poi.lat, e.poi.lon))
             PoiHit.Candidate(e.poi, s.x, s.y, e.icon, e.nameChars)
         }
         PoiHit.pick(cands, x, y, boxDp * dp, dp, map.cameraPosition.zoom).also {
             val ms = SystemClock.uptimeMillis() - t0
-            if (ms > 50) Problems.trace("poi", "POI lookup at the finger took $ms ms (${entries.size} shown POIs)")
+            if (ms > 50) Problems.trace("poi", "POI lookup at the finger took $ms ms (${list.size} shown POIs)")
         }
     } catch (e: Exception) {
         Problems.warn("poi", "POI lookup at the finger failed, treated as no POI", e)
@@ -130,22 +121,33 @@ class ShownPois {
             val ids = style.layers.map { it.id }.filter { it.startsWith(POI_LAYER_PREFIX) }
             val (nameIds, iconIds) = ids.partition { it.endsWith("-name") }
             val box = RectF(0f, 0f, view.width.toFloat(), view.height.toFloat())
-            fun query(layers: List<String>): List<Poi> = if (layers.isEmpty()) emptyList()
-                else map.queryRenderedFeatures(box, *layers.toTypedArray()).mapNotNull { Poi.fromFeature(it) }.distinctBy { it.id }
-            val icons = query(iconIds)
-            val named = query(nameIds).associateBy { it.id }
-            val iconIdSet = icons.map { it.id }.toSet()
-            entries = icons.map { Entry(it, true, named[it.id]?.name?.length ?: 0) } +
-                named.values.filter { it.id !in iconIdSet }.map { Entry(it, false, it.name?.length ?: 0) }
-            // the camera this read belongs to: [onIdle] measures the next move from it
-            val p = map.cameraPosition
-            cam = PoiHit.Cam(p.zoom, p.bearing, p.tilt)
-            readCentre = p.target
-            readAt = SystemClock.uptimeMillis()
-            val ms = readAt - t0
-            if (ms > 50) Problems.trace("poi", "Shown POIs read in $ms ms (${entries.size}, map idle)")
+            fun query(layers: List<String>): List<Feature> =
+                if (layers.isEmpty()) emptyList() else map.queryRenderedFeatures(box, *layers.toTypedArray())
+            // main thread (MapLibre's rule) – only the two queries
+            val iconFeatures = query(iconIds)
+            val nameFeatures = query(nameIds)
+            val ms = SystemClock.uptimeMillis() - t0
+            if (ms > 100) Problems.trace("poi", "Shown POIs read in $ms ms on the main thread (map idle)")
+            val mine = ++seq
+            worker.execute {
+                val list = try {
+                    val icons = iconFeatures.mapNotNull { Poi.fromFeature(it) }.distinctBy { it.id }
+                    val named = nameFeatures.mapNotNull { Poi.fromFeature(it) }.associateBy { it.id }
+                    val iconIds2 = icons.map { it.id }.toSet()
+                    icons.map { Entry(it, true, named[it.id]?.name?.length ?: 0) } +
+                        named.values.filter { it.id !in iconIds2 }.map { Entry(it, false, it.name?.length ?: 0) }
+                } catch (e: Exception) {
+                    Problems.warn("poi", "Shown POIs not read, a tap or hold uses the last list", e); null
+                }
+                if (list != null) view.post { if (mine == seq) entries = list }
+            }
         } catch (e: Exception) {
-            Problems.warn("poi", "Shown POIs not read (map idle), a tap or hold may miss a POI until the next read", e)
+            Problems.warn("poi", "Shown POIs not read (map idle), a tap or hold uses the last list", e)
         }
+    }
+
+    companion object {
+        /** One background thread for all maps: turning the read features into POIs. */
+        private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "shown-pois").apply { isDaemon = true } }
     }
 }
