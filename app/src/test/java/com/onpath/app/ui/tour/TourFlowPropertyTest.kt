@@ -5,6 +5,7 @@ import com.onpath.app.data.TourKind
 import com.onpath.app.domain.plan.PlanSession
 import com.onpath.app.domain.tour.EndSheetGuard
 import com.onpath.app.domain.tour.ShortRecording
+import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.EndAsk
 import org.junit.Assert.assertEquals
@@ -36,7 +37,7 @@ import kotlin.random.Random
  */
 class TourFlowPropertyTest {
 
-    private enum class Op { START, PAUSE, RESUME, EDIT, UNDO, REDO, ASK_END, PRESS, ARRIVE, ARRIVAL_KEEP, LEAVE_ARRIVAL, RESTART, UNFINISHED, NEW_PLAN, WALK, UNDO_SHORT }
+    private enum class Op { START, PAUSE, RESUME, EDIT, UNDO, REDO, ASK_END, PRESS, ARRIVE, ARRIVAL_KEEP, LEAVE_ARRIVAL, RESTART, UNFINISHED, NEW_PLAN, WALK, GAP, RIDE, UNDO_SHORT }
     private enum class Press { SAVE, DELETE, KEEP }
 
     /** The recording service and the database as the controller sees them. */
@@ -45,15 +46,31 @@ class TourFlowPropertyTest {
         var running: Long? = null
         var paused = false
         val db = LinkedHashMap<Long, String>() // id → "active" / "done" / "bin"
-        /** The track so far per tour (m) – a start by mistake stays at 0 m. */
+        /** The distance counted per tour (m) – a start by mistake stays at 0 m; a new piece after a GPS gap adds nothing. */
         val distance = HashMap<Long, Double>()
+        /** The points per tour as stored: pieces of (metres north of the start). */
+        val pieces = HashMap<Long, MutableList<MutableList<Double>>>()
+        /** A bus / car / lift part found (C12). */
+        val rides = HashSet<Long>()
         var finished: Long? = null
         override fun start(activity: String, sac: Int) {
             if (running != null) return // the service ignores a second start while recording
-            val id = nextId++; db[id] = "active"; distance[id] = 0.0; running = id; paused = false
+            val id = nextId++; db[id] = "active"; distance[id] = 0.0; pieces[id] = mutableListOf(mutableListOf()); running = id; paused = false
         }
-        /** GPS fixes: the track grows while recording (never while paused). */
-        fun walk(m: Double) { val id = running ?: return; if (!paused) distance[id] = distance.getValue(id) + m }
+        /** GPS fixes: the track grows while recording (never while paused) – a point [m] further north, the distance counted. */
+        fun walk(m: Double) {
+            val id = running ?: return; if (paused) return
+            distance[id] = distance.getValue(id) + m
+            val piece = pieces.getValue(id).last(); piece += (piece.lastOrNull() ?: pieces.getValue(id).flatten().lastOrNull() ?: 0.0) + m
+        }
+        /** A GPS gap > 5 min or a jump (PointFilter): a new piece [m] further on, 0 m counted (RecordingService.kt ~680). */
+        fun gap(m: Double) {
+            val id = running ?: return; if (paused) return
+            val at = pieces.getValue(id).flatten().lastOrNull() ?: 0.0
+            pieces.getValue(id) += mutableListOf(at + m)
+        }
+        fun isShort(id: Long): Boolean = ShortRecording.bins(distance.getValue(id),
+            pieces.getValue(id).map { piece -> piece.map { TrackPoint(46.0 + it / 111_320.0, 11.0) } }, id in rides)
         override fun continueTour(tourId: Long) { if (running == null && db[tourId] == "active") { running = tourId; paused = false } }
         override fun pause(pause: Boolean) { if (running != null) paused = pause }
         override fun stop() { val id = running ?: return; db[id] = "done"; running = null; paused = false; finished = id }
@@ -71,6 +88,10 @@ class TourFlowPropertyTest {
         val shortBinned = LinkedHashSet<Long>()
         /** Tours brought back by Rückgängig. */
         val undone = HashSet<Long>()
+        /** Short boxes answered with OK (the tour stays in the bin). */
+        val boxClosed = HashSet<Long>()
+        /** Short recordings whose bin write failed: kept as a normal tour (the saved box) – never lost. */
+        val binFailed = HashSet<Long>()
         /** My routes → Planned (saved) and Zuletzt (drafts), as point lists. */
         val saved = ArrayList<List<GeoPoint>>()
         val drafts = ArrayList<List<GeoPoint>>()
@@ -89,9 +110,15 @@ class TourFlowPropertyTest {
         fun serviceFinished() {
             val id = service.finished ?: return
             service.finished = null
-            when (c.finishedOutcome(service.distance.getValue(id))) { // the user's press decides, else the track's length
+            when (c.finishedOutcome(short = service.isShort(id))) { // the user's press decides, else the points
                 TourController.Finished.DELETED -> { service.db[id] = "bin"; c.closeFinished() }
-                TourController.Finished.SHORT -> { service.db[id] = "bin"; shortBinned += id; c.closeFinished() }
+                TourController.Finished.SHORT -> {
+                    c.closeFinished()
+                    // the bin write: fails now and then – then it stays a normal tour (the saved box), never lost
+                    val ok = rnd.nextInt(10) != 0
+                    if (ok) { service.db[id] = "bin"; shortBinned += id } else binFailed += id
+                    c.afterShortBin(tour(id).copy(state = "done"), binned = ok, times = null)
+                }
                 TourController.Finished.SAVED -> c.showFinished(tour(id).copy(state = "done"), null)
             }
             followed = null
@@ -139,6 +166,7 @@ class TourFlowPropertyTest {
                 Op.RESTART -> {
                     // the app process dies; the service is sticky (keeps recording) or was killed with it
                     if (rnd.nextBoolean()) { service.running = null; service.paused = false }
+                    c.shortBinned?.let { boxClosed += it.id } // the app died with the box open: the bin keeps the tour
                     c = TourController(service)
                     val active = service.db.entries.firstOrNull { it.value == "active" }?.key
                     if (active != null && service.running == null) c.showUnfinished(tour(active), emptyList())
@@ -152,9 +180,11 @@ class TourFlowPropertyTest {
                     }
                 }
                 Op.WALK -> service.walk(rnd.nextDouble(0.0, 60.0))
-                Op.UNDO_SHORT -> shortBinned.firstOrNull()?.let { id -> // the notice's Rückgängig: back as a normal tour
-                    shortBinned -= id; undone += id; service.db[id] = "done"
-                    c.showFinished(tour(id).copy(state = "done"), null)
+                Op.GAP -> service.gap(rnd.nextDouble(0.0, 3_000.0))
+                Op.RIDE -> service.running?.let { service.rides += it }
+                Op.UNDO_SHORT -> c.takeShortBinned()?.let { t -> // the box's Rückgängig: back as a normal tour, its saved box
+                    shortBinned -= t.id; undone += t.id; service.db[t.id] = "done"
+                    c.showFinished(t, null)
                 }
                 Op.NEW_PLAN -> if (service.running != null) {
                     c.noteNewPlan(undo = session.points.isNotEmpty())
@@ -170,11 +200,17 @@ class TourFlowPropertyTest {
             // 1 – never lost without an explicit delete
             for ((id, state) in service.db) {
                 if (state == "bin") assertTrue("$where: tour $id in the bin without a delete", id in explicitDeletes || id in shortBinned)
-                if (id in shortBinned) assertTrue("$where: tour $id (${service.distance[id]} m) binned as short",
-                    ShortRecording.bins(service.distance.getValue(id)))
+                if (id in shortBinned) {
+                    assertTrue("$where: tour $id (${service.distance[id]} m) binned as short", service.isShort(id))
+                    assertTrue("$where: a tour with a ride binned", id !in service.rides)
+                    val pts = service.pieces.getValue(id).flatten()
+                    assertTrue("$where: a tour that got away from its start binned", pts.all { kotlin.math.abs(it - pts.first()) < ShortRecording.MIN_M })
+                    assertTrue("$where: a short recording in the bin without its box", c.shortBinned?.id == id || id in undone || id in boxClosed)
+                }
                 if (id in undone && id !in explicitDeletes) assertEquals("$where: tour $id brought back by Rückgängig is a tour", "done", state)
-                if (state == "done" && id !in undone && id !in explicitDeletes && service.running != id && c.finishedTour?.id == id)
-                    assertFalse("$where: tour $id (${service.distance[id]} m) saved though short", ShortRecording.bins(service.distance.getValue(id)))
+                if (state == "done" && id !in undone && id !in explicitDeletes && id !in binFailed && service.running != id && c.finishedTour?.id == id)
+                    assertFalse("$where: tour $id (${service.distance[id]} m) saved though short", service.isShort(id))
+                if (id in binFailed) assertEquals("$where: tour $id lost after a failed bin write", "done", state)
                 if (state == "active" && service.running != id)
                     assertEquals("$where: tour $id still recording, no service, no question", id, c.unfinished?.id)
             }
@@ -238,7 +274,7 @@ class TourFlowPropertyTest {
             ignored += f.log.count { it.endsWith("ignored") }
         }
         assertTrue("saves $saves", saves > 50); assertTrue("deletes $deletes", deletes > 50)
-        assertTrue("short recordings binned $shorts", shorts > 20); assertTrue("Rückgängig on them $undos", undos > 10)
+        assertTrue("short recordings binned $shorts", shorts > 10); assertTrue("Rückgängig on them $undos", undos > 3)
         assertTrue("interrupted questions $questions", questions > 20); assertTrue("ignored early presses $ignored", ignored > 20)
     }
 
@@ -285,7 +321,7 @@ class TourFlowPropertyTest {
      */
     @Test fun aShortRecordingGoesToTheBinAndRueckgaengigBringsItBack() {
         for (m in listOf(0.0, 12.0, 49.9)) {
-            val f = Flow(1)
+            val f = Flow(3) // seed 3: its first bin write succeeds
             f.session.edit { add(GeoPoint(51.0, 6.9)); add(GeoPoint(51.1, 7.0)) }
             f.step(Op.START)
             f.service.walk(m)
@@ -294,17 +330,21 @@ class TourFlowPropertyTest {
             f.c.end(delete = false); f.service.stop(); f.serviceFinished()
             assertEquals("$m m: in the bin", "bin", f.service.db[id])
             assertTrue(id in f.shortBinned); assertNull("no saved box for a short recording", f.c.finishedTour)
+            assertEquals("the box with Rückgängig", id, f.c.shortBinned?.id)
             assertTrue("the map is back at the start", f.session.points.isEmpty())
             f.check("short end $m m")
             f.step(Op.UNDO_SHORT)
             assertEquals("Rückgängig: a normal tour", "done", f.service.db[id])
-            assertEquals("… with its saved box", id, f.c.finishedTour?.id)
+            assertEquals("… with its saved box", id, f.c.finishedTour?.id); assertNull(f.c.shortBinned)
             f.check("after Rückgängig $m m")
         }
-        // exactly 50 m is a tour
-        val f = Flow(2); f.step(Op.START); f.service.walk(50.0); val id = f.service.running!!
-        f.c.end(delete = false); f.service.stop(); f.serviceFinished()
-        assertEquals("done", f.service.db[id]); assertEquals(id, f.c.finishedTour?.id)
+        // exactly 50 m, a GPS gap far away (0 m counted) or a ride part: a tour, the saved box
+        for (case in listOf("50m", "gap", "ride")) {
+            val f = Flow(2); f.step(Op.START); val id = f.service.running!!
+            when (case) { "50m" -> f.service.walk(50.0); "gap" -> f.service.gap(2_800.0); else -> f.service.rides += id }
+            f.c.end(delete = false); f.service.stop(); f.serviceFinished()
+            assertEquals(case, "done", f.service.db[id]); assertEquals(case, id, f.c.finishedTour?.id); assertNull(case, f.c.shortBinned)
+        }
     }
 
     @Test fun theArrivalBoxComesOncePerArrival() {

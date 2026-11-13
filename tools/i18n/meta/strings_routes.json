@@ -396,9 +396,15 @@
     "confidence": "sicher",
     "max": 22
   },
-  "routes_short_recording_binned": {
-    "area": "Plan map",
-    "context": "Quiet line on the map after a recording ended with less than 50 m of track (%1$s = the distance, e.g. '12 m'): it went to the recycle bin, an 'Undo' button follows – owner 2026-11-12",
+  "routes_short_recording_title": {
+    "area": "Dialogs",
+    "context": "Title of the box after a recording ended without getting away from its start (%1$s = the distance, e.g. '12 m'); buttons 'Undo' (back as a normal tour) and OK – owner 2026-11-12",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "routes_short_recording_text": {
+    "area": "Dialogs",
+    "context": "Text of that box: the recording went to the recycle bin, %1$d = 30 (days it can be restored)",
     "priority": 1,
     "confidence": "sicher"
   },

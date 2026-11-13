@@ -107,21 +107,33 @@ class TourController(private val recorder: TourRecorder) {
     enum class Finished {
         /** The end sheet's Löschen: the recycle bin, nothing said. */
         DELETED,
-        /** Less than [ShortRecording.MIN_M] of track (owner 2026-11-12): the recycle bin with the notice and Rückgängig. */
+        /** A short recording (owner 2026-11-12, [ShortRecording]): the recycle bin with the box "Kurze Aufzeichnung" and Rückgängig. */
         SHORT,
         /** The saved box "Tour gespeichert". */
         SAVED,
     }
 
     /**
-     * The service reported the tour as finished with [distanceM] of track: the user's Löschen first (taken once), else
-     * a short recording goes to the bin ([ShortRecording]), else it is saved.
+     * The service reported the tour as finished; [short] = [ShortRecording.bins] of its points (the view model reads
+     * them): the user's Löschen first (taken once), else a short recording goes to the bin, else it is saved.
      */
-    fun finishedOutcome(distanceM: Double): Finished = when {
+    fun finishedOutcome(short: Boolean): Finished = when {
         takeDeleteFinished() -> Finished.DELETED
-        ShortRecording.bins(distanceM) -> Finished.SHORT
+        short -> Finished.SHORT
         else -> Finished.SAVED
     }
+
+    /** A short recording just moved to the recycle bin: the box "Kurze Aufzeichnung (12 m)" – Rückgängig · OK – while set. */
+    var shortBinned by mutableStateOf<Tour?>(null)
+        private set
+
+    /** The bin write for the short recording [t] ran: [binned] → its box; failed → it stays a normal tour, the saved box says so. */
+    fun afterShortBin(t: Tour, binned: Boolean, times: TourTimes?) {
+        if (binned) shortBinned = t else showFinished(t, times)
+    }
+
+    /** The short box → Rückgängig / OK: the box goes; returns the tour it showed (once). */
+    fun takeShortBinned(): Tour? = shortBinned.also { shortBinned = null }
 
     /** After the tour ended (saved or deleted): no arrival box, no "Neuer Plan" line of the old tour. */
     fun afterFinished() { arrivalAsk = false; newPlanNote = null }
