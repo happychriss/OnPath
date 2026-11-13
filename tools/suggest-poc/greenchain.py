@@ -339,16 +339,6 @@ def inner_loop(G, cost, epatch, pid, a, b, want, used, GC, dA, lA, pA, eA, varia
         if b not in d3:
             continue
         n3, e3 = _path(p3, pe3, b)
-        if a == b:
-            # the way back meets the way out before the gate: walk the way out back from there (a longer stick of
-            # the lollipop) instead of crossing it – no eight at the gate
-            pos = {v: k for k, v in enumerate(n1)}
-            for t, v in enumerate(n3[:-1]):
-                k = pos.get(v)
-                if k is not None and 0 < k < len(n1) - 1:
-                    n3 = n3[:t + 1] + n1[:k][::-1]
-                    e3 = e3[:t] + e1[:k][::-1]
-                    break
         s1, s2, s3 = set(n1[1:-1]), set(n2[1:-1]), set(n3[1:-1])
         touch = len(s1 & s2) + len(s2 & s3) + (len(s1 & s3) if a != b else 0) + (1 if w2 in s1 else 0)
         es = e1 + e2 + e3
@@ -437,14 +427,15 @@ def patch_name(G, P, index, hits):
     name = ""
     if res:
         nm, m = max(res.items(), key=lambda x: x[1])
-        if m >= 0.25 * tot:
+        if m >= 0.12 * tot:
             name = nm
     if not name and lakes:
         nm, m = max(lakes.items(), key=lambda x: x[1])
         if m >= 0.15 * tot:
             name = nm
     if not name:
-        pl = NA.place_near([P["cx"], P["cy"]])
+        mid_e = G.edges[P["edges"][len(P["edges"]) // 2]]
+        pl = NA.place_near([P["cx"], P["cy"]]) or NA.place_near(NS.mid_of(G, mid_e), 4000.0)
         if pl:
             forest = NA.depth([P["cx"], P["cy"]], 300) >= 0.5
             name = ("Ufer bei %s" if P["bank_m"] > 0.4 * P["green_m"] else "Wald bei %s" if forest else "Grün bei %s") % pl
@@ -460,7 +451,12 @@ def short(name):
 
 
 def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
-    N, GC = W["netsearch"], W["greenchain"]
+    N = W["netsearch"]
+    # a bank counts by the Wasser wish: without the theme a pond between houses is no destination
+    GC = dict(W["greenchain"])
+    GC["bank_value"] = GC["bank_value_dry"] + (GC["bank_value"] - GC["bank_value_dry"]) * wish["water"]
+    GC["bank_bonus"] = GC["bank_bonus"] * wish["water"]
+    W = dict(W, greenchain=GC)
     t0 = time.time()
     target_m = wish["hours"] * wish["pace"] * 1000.0
     band = W["score"]["length_flat_km"] * 1000.0
@@ -518,7 +514,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         return min(patches[p]["green_m"] * GC["stretch_share"], GC["stretch_max_share"] * target_m)
 
     def q(p):
-        return patches[p]["q"] if p < nP else 0.0
+        return patches[p]["q"] ** GC["q_power"] if p < nP else 0.0
 
     # ---- chains: depth-first over the patch graph
     lam = GC["connector_weight"] * (1.0 + GC["connector_natur"] * wish["forest"])
@@ -635,9 +631,10 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
                     return None
                 push(r[0], r[1])
                 inner_m[i] = r[2]
+                inner_m.setdefault("_seg", {})[i] = r[0]
             if leg:
                 ln_, le_ = leg["nodes"], leg["edges"]
-                if any(v in touched for v in ln_[1:]):
+                if GC["touch_cost_share"] > 0 and any(v in touched for v in ln_[1:]):
                     # the stored connector would touch the loop so far: search it again around what was walked
                     avoid(leg["gp"])
                     r = dij_to(G, leg["gp"], leg["gq"], cost, used, GC["used_penalty"],
@@ -656,6 +653,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
                 return None
             push(r[0], r[1])
             inner_m["home"] = r[2]
+            inner_m.setdefault("_seg", {})["home"] = r[0]
         return nodes, edges, inner_m
 
     def total_len(edges):
@@ -720,12 +718,40 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         if sig in seen_loops:
             continue
         seen_loops.add(sig)
+        # the loop's name: per patch the part really walked decides – the protected area it runs in, else the lake at
+        # its bank, else the place nearest to the middle of the walked part ("Wald bei X"); a patch walked only a few
+        # steps is not named
         names = []
-        for p in order:
-            if p < nP:
-                nm = short(patch_name(G, patches[p], index, hits))
-                if nm not in names:
-                    names.append(nm)
+        segs = res[2].get("_seg", {})
+        for i, p in enumerate(order):
+            if p >= nP:
+                continue
+            seg = segs.get(i) or (segs.get("home") if p == home else None)
+            nm = ""
+            if seg and len(seg) >= 3:
+                votes = {}
+                for v in seg[::max(1, len(seg) // 40)]:
+                    r_ = NA.name_at(G.nodes[v])
+                    if r_:
+                        votes[r_] = votes.get(r_, 0) + 1
+                if votes:
+                    best_nm, cnt = max(votes.items(), key=lambda x: x[1])
+                    if cnt >= 0.3 * len(seg[::max(1, len(seg) // 40)]):
+                        nm = best_nm
+                if not nm:
+                    P = patches[p]
+                    cached = patch_name(G, P, index, hits)
+                    if P["bank_m"] >= 0.3 * P["green_m"] or not cached.startswith(("Wald bei", "Grün bei", "Grünstück")):
+                        nm = cached
+                    else:
+                        mid = G.nodes[seg[len(seg) // 2]]
+                        pl = NA.place_near(mid, 3000.0)
+                        nm = ("Wald bei %s" if NA.depth(mid, 300) >= 0.5 else "Grün bei %s") % pl if pl else cached
+            elif not seg:
+                nm = patch_name(G, patches[p], index, hits)
+            nm = short(nm) if nm else ""
+            if nm and nm not in names:
+                names.append(nm)
         gates = [list(G.nodes[l["gq"]][:2]) for l in legs]
         cx = sum(G.nodes[v][0] for v in nodes) / len(nodes)
         cy = sum(G.nodes[v][1] for v in nodes) / len(nodes)
@@ -759,7 +785,9 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         elif cross > max_cross:
             dropped["cross"] += 1; note("kreuzt %d" % cross)
         else:
-            c["theme"] = "chain"
+            # a chain through a patch that is mostly bank is a "lake" loop: with "am Wasser entlang" one is always shown
+            lakey = any(p < nP and patches[p]["bank_m"] >= 1000.0 and patches[p]["bank_m"] >= 0.3 * patches[p]["green_m"] for p in order)
+            c["theme"] = "lake" if lakey else "chain"
             built.append(c); note("ok %.1f km" % c["km"])
     info = {"graph_nodes": len(G.nodes), "graph_edges": len(G.edges), "graph_s": round(t_graph, 2),
             "radius_m": int(radius), "patches": nP, "home_in_patch": home_real, "connectors": n_conn,

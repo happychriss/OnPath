@@ -321,3 +321,31 @@ band). Points before / after are not comparable (other parts).
   before – with those the sheet reads 83 of 90.
 - **Not run:** variant A, MTB, `bench.py --refs`, the switch "mit KI", the page in a real browser (the comment button was
   not clicked).
+
+## Round 8 (2026-11-13 night, weights 2026-11-13k) – variant C, the green-patch chain
+
+`--method c` (run.py, bench.py), on the page "C · Grünstück-Kette (Grünflächen verbinden)"; B stays the default.
+Method, sizes, bench B vs C and weak spots: `docs/design/tour-suggestions.md` "Variant C – the green-patch chain".
+
+- `greenchain.py` – green ways → patches → connectors between neighbouring patches → chains enumerated on the patch
+  graph → realised (loops inside a patch on foot). Knobs: `weights.json` "greenchain" (per activity under
+  `activities.<name>.greenchain`). `net.chain_log` in a saved run says what became of every chain.
+- `nature.py` (grid version 4) – besides deep nature now built-up land (`built`), open water (`water`) and place names
+  (`place_near`) from the map areas. **"Durch Häuser" = inside the map's built-up land** (`nature.built_from`,
+  `built_radius_m`), for B and C – it replaces the routing data's town class.
+- Anstrengung is a cap of metres up per hour (`effort.<level>.up_m_per_h`); the card shows "↑ 304 m · mittel".
+- Crossing: score part `selfcross` 1.0 / 0.6 / 0 at weight 4; the strict rule `select.cross_fill_below` is built, off
+  (99).
+- Bench: two cases from the owner's comments (`elbsee-hike-2h-wasser`, `hilden-bike-2h-natur`), expectations
+  `lake_km` and `built_max`.
+
+Result: B 93 of 104 expectations, C 88 of 104. C is quicker on foot (1–3 s) and better for bikes on houses and deep
+nature, worse for hikes from a town centre and with "am Wasser entlang"; it shows fewer loops.
+
+Tuning log, round 8 (each tried against the bench):
+- touch cost 0.15 (search around nodes already passed): no gain for bikes, worse loops in the Ohligser Heide → 0.
+- stretching inside a patch for bikes: spurs, 3–5 meetings per loop → off (`stretch_share` 0).
+- strict "clean loops first" with n = 2: hid the best Heide loops → off; the score part does it instead.
+- patch quality squared + connectors up to 45 % of the wish: Hilden hike unchanged, Düsseldorf lost its only loop →
+  back to 1.0 / 35 %.
+- bank value by the Wasser wish (a pond between houses is no destination without the theme): kept.

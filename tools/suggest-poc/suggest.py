@@ -839,7 +839,9 @@ def suggest(wish, W=None):
     chosen = []
     fill_below = W["select"].get("cross_fill_below", 99)
     # loops that never meet their own way first (owner: "Achten bringen es gar nicht"); one meeting only as a filler
-    for clean_pass in (True, False):
+    # (the strict rule is a knob: select.cross_fill_below; at or above select.show it is off – then one pass by score,
+    # and the score part selfcross alone makes a clean loop win)
+    for clean_pass in ((True, False) if fill_below < W["select"]["show"] else (None,)):
         for c in built:
             if c.get("chosen"):
                 continue
@@ -853,12 +855,11 @@ def suggest(wish, W=None):
                 and c["numbers"]["self_cross"] <= W["select"]["max_self_cross"] and c["ascent_ok"]
             if clean_pass and c["numbers"]["self_cross"] > 0:
                 continue
-            if not clean_pass and len(chosen) >= fill_below:
+            if clean_pass is False and len(chosen) >= fill_below:
                 break
             if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
                 c["chosen"] = True
                 chosen.append(c)
-    chosen.sort(key=lambda c: (c["numbers"]["self_cross"] > 0, -c["score"]))
     # an explicit theme is always represented: with "am Wasser entlang" the shown loops include one made for a lake
     # (along its shore) and, when one fits the wished time, a full round of a lake – even if loops elsewhere score
     # higher or the round shares much with the shore loop
