@@ -14,7 +14,8 @@ import org.junit.runner.RunWith
 
 /**
  * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`, 5 = `tours.draft` (Zuletzt, 2026-11-06),
- * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07), 7 = `tours.difficulty` (2026-11-12). An existing version-2 … -6
+ * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07), 7 = `tours.difficulty` (2026-11-12), 8 = `tours.favourite`
+ * (2026-11-13: starred in My routes; every old tour 0, the recycle bin keeps the star). An existing version-2 … -7
  * database keeps every tour and point; old points read back as unknown accuracy, new ones store it, the tour has no rides,
  * is no draft (a saved route stays saved) and has no difficulty (null), a draft can be marked and a difficulty stored.
  */
@@ -32,7 +33,7 @@ class TourDbMigrationTest {
             db.execSQL("""CREATE TABLE tours(id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL,
                 created INTEGER NOT NULL, activity TEXT, sac INTEGER NOT NULL DEFAULT 3, distance REAL NOT NULL DEFAULT 0,
                 ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""})""")
+                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 7) ", difficulty TEXT" else ""})""")
             db.execSQL("""CREATE TABLE points(tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
                 lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER${if (version >= 3) ", acc REAL" else ""})""")
             db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (1, 'RECORDED', 'Old', 0, 'active', 'u1')")
@@ -53,7 +54,7 @@ class TourDbMigrationTest {
             assertEquals(12.5, acc[1]!!, 0.01)
             assertNull(acc[2])
             assertEquals(TourSchema.VERSION, tdb.readableDatabase.version)
-            assertEquals(7, TourSchema.VERSION) // a new schema version gets its own case here
+            assertEquals(8, TourSchema.VERSION) // a new schema version gets its own case here
             val t = tdb.getTour(1)!!
             assertEquals("u1", t.uuid)
             assertNull(t.rides)
@@ -69,6 +70,15 @@ class TourDbMigrationTest {
             assertTrue(tdb.replacePlanned(rated, "HIKE", 3, 4000.0, 200.0, 200.0, 1.0, emptyList(), emptyList(), difficulty = "EASY"))
             assertEquals("EASY", tdb.getTour(rated)!!.difficulty)
             tdb.deleteTour(rated)
+            // 8: tours.favourite – no old tour is starred; a star sticks, survives the recycle bin and an overwrite
+            assertFalse(saved.favourite); assertFalse(tdb.getTour(1)!!.favourite)
+            assertTrue(tdb.setFavourite(2, true))
+            assertTrue(tdb.getTour(2)!!.favourite)
+            assertTrue(tdb.setDeleted(2, 500L)); assertTrue(tdb.listDeleted().single().favourite); assertTrue(tdb.setDeleted(2, null))
+            assertTrue(tdb.replacePlanned(2, "HIKE", 3, 10.0, 0.0, 0.0, 1.0, emptyList(), emptyList()))
+            assertTrue("an overwrite keeps the star", tdb.getTour(2)!!.favourite)
+            assertTrue(tdb.getTour(tdb.insertTour(TourKind.PLANNED, "Starred", "HIKE", 2, 1.0, 0.0, 0.0, 1.0, emptyList(), favourite = true))!!.favourite)
+            assertTrue(tdb.setFavourite(2, false))
             assertTrue(tdb.setDraft(2, true))
             assertTrue(tdb.getTour(2)!!.draft)
             // a draft replaced under Zuletzt goes to the recycle bin and comes back (owner 2026-11-12, RoutesState.takePlace)
@@ -110,4 +120,6 @@ class TourDbMigrationTest {
     @Test fun version5DatabaseGetsTheFollowedPlansAndKeepsToursAndPoints() { writeOld(5); checkUpgraded() }
 
     @Test fun version6DatabaseGetsDifficultyAndKeepsToursAndPoints() { writeOld(6); checkUpgraded() }
+
+    @Test fun version7DatabaseGetsFavouriteAndKeepsToursAndPoints() { writeOld(7); checkUpgraded() }
 }

@@ -124,6 +124,28 @@ class BackupTest {
         assertNull(BackupCodec.decode(store.text("2026-10-21 Tour 2.gpx"))!!.meta.plan)
     }
 
+    /**
+     * Favourites (owner 2026-11-13): the star travels in the record (key "favourite", only when starred) – a restore on a
+     * new phone puts it back; an older record (no key) and an older app's reading are no favourite; the bin keeps it.
+     */
+    @Test fun theStarSurvivesBackupAndRestore() {
+        val starred = planMeta.copy(favourite = true)
+        val text = BackupCodec.encode(starred, planLine)
+        assertTrue(text.contains("favourite"))
+        assertEquals(starred, BackupCodec.decode(text)!!.meta)
+        assertFalse("no key when not starred", BackupCodec.encode(planMeta, planLine).contains("favourite"))
+        assertFalse(BackupCodec.decode(BackupCodec.encode(planMeta, planLine))!!.meta.favourite)
+        val t = Tour(8, TourKind.PLANNED, "P", created, "HIKE", 3, 1.0, 2.0, 3.0, 4.0, "done", planMeta.waypoints, "p",
+            deletedMs = 5L, favourite = true)
+        val m = BackupMeta.of(t, planLine, 1L)
+        assertTrue(m.favourite)
+        assertTrue("in the recycle bin too", BackupCodec.decode(BackupCodec.encode(m, planLine))!!.meta.favourite)
+        // a restore takes the newest file of a uuid – with its star
+        val older = found(starred.copy(favourite = false, savedMs = 1L), "a.gpx", planLine)
+        val newer = found(starred.copy(savedMs = 2L), "b.gpx", planLine)
+        assertTrue(BackupRestore.plan(listOf(older, newer), emptySet()).single().entry.meta.favourite)
+    }
+
     @Test fun foreignGpxIsNoBackup() {
         val other = com.onpath.app.gpx.GpxWriter.write("Komoot", planLine)
         assertFalse(BackupCodec.hasRecord(other))

@@ -54,12 +54,18 @@ object RouteSnapshot {
     /** [under] + [underColor]: a recorded tour's followed plan, thin under the track (owner 2026-11-07); empty = none. */
     suspend fun make(context: Context, styleJson: String, segments: List<List<GeoPoint>>, color: Int,
                      widthPx: Int, heightPx: Int, paddingPx: Int, density: Float,
-                     under: List<GeoPoint> = emptyList(), underColor: Int = 0): Shot? {
+                     under: List<GeoPoint> = emptyList(), underColor: Int = 0,
+                     /** The line's width against the map's (My routes' small pictures draw it thinner, ThumbRules.LINE_SCALE). */
+                     lineScale: Float = 1f,
+                     /** The map region (south, west, north, east) instead of the line's bounds (My routes' pictures: [ThumbRules.region]). */
+                     region: DoubleArray? = null,
+                     /** Leave out the route networks (hiking / cycling relations, `routes-*`): My routes' pictures show only the map and the line. */
+                     withoutNetworks: Boolean = false): Shot? {
         val all = segments.flatten()
         if (all.isEmpty()) return null
-        val b = OverviewRegion.of(all + under) ?: return null
+        val b = region ?: OverviewRegion.of(all + under) ?: return null
         val scale = Scale.of(widthPx, heightPx, paddingPx, density) ?: return null
-        val json = try { withLine(styleJson, segments, color, under, underColor) } catch (e: Exception) {
+        val json = try { withLine(if (withoutNetworks) withoutNetworks(styleJson) else styleJson, segments, color, under, underColor, lineScale) } catch (e: Exception) {
             Problems.warn("routes", "Overview: the route could not be added to the map style – the shape is shown alone", e)
             return null
         }
@@ -104,7 +110,7 @@ object RouteSnapshot {
      * ([RouteLook], in dp – the snapshot's pixel ratio turns them into pixels). Pure JSON work.
      */
     internal fun withLine(styleJson: String, segments: List<List<GeoPoint>>, color: Int,
-                          under: List<GeoPoint> = emptyList(), underColor: Int = 0): String {
+                          under: List<GeoPoint> = emptyList(), underColor: Int = 0, lineScale: Float = 1f): String {
         fun coords(s: List<GeoPoint>) = JSONArray().apply { s.forEach { put(JSONArray().put(it.lon).put(it.lat)) } }
         val lines = JSONArray().apply { segments.filter { it.size >= 2 }.forEach { put(coords(it)) } }
         val o = JSONObject(styleJson)
@@ -126,11 +132,32 @@ object RouteSnapshot {
         val hex = String.format("#%06X", 0xFFFFFF and color)
         fun round() = JSONObject().put("line-cap", "round").put("line-join", "round")
         layers.put(JSONObject().put("id", LAYER_CASE).put("type", "line").put("source", SRC_LINE).put("layout", round())
-            .put("paint", JSONObject().put("line-color", "#FFFFFF").put("line-width", RouteLook.CASING_DP.toDouble())))
+            .put("paint", JSONObject().put("line-color", "#FFFFFF").put("line-width", (RouteLook.CASING_DP * lineScale).toDouble())))
         layers.put(JSONObject().put("id", LAYER_LINE).put("type", "line").put("source", SRC_LINE).put("layout", round())
-            .put("paint", JSONObject().put("line-color", hex).put("line-width", RouteLook.LINE_DP.toDouble())))
+            .put("paint", JSONObject().put("line-color", hex).put("line-width", (RouteLook.LINE_DP * lineScale).toDouble())))
         return o.toString()
     }
+
+    /**
+     * [styleJson] without the route networks (owner 2026-11-13 on the Pixel: „sonst sieht man immer blaue Wege und dann
+     * lilane Wege“): every layer `routes-*` and every layer drawn from the `routes` data (format 1: source, format 2:
+     * source-layer). Pure JSON work.
+     */
+    internal fun withoutNetworks(styleJson: String): String {
+        val o = JSONObject(styleJson)
+        val layers = o.optJSONArray("layers") ?: return styleJson
+        val kept = JSONArray()
+        for (i in 0 until layers.length()) {
+            val l = layers.getJSONObject(i)
+            val network = l.optString("id").startsWith(NETWORK_PREFIX) || l.optString("source") == NETWORK_DATA ||
+                l.optString("source-layer") == NETWORK_DATA
+            if (!network) kept.put(l)
+        }
+        o.put("layers", kept)
+        return o.toString()
+    }
+    private const val NETWORK_PREFIX = "routes-"
+    private const val NETWORK_DATA = "routes"
 
     private const val SRC_LINE = "overview-line"
     private const val SRC_UNDER = "overview-plan"

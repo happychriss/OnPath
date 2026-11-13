@@ -15,7 +15,8 @@ import java.io.File
  * Text form: header `onpath-sync-links 1`, then per link `<item id> <tour uuid> <p|->`. Unreadable lines are dropped
  * (a lost link only means the tour is uploaded once more as a new item – nothing is lost on the phone).
  */
-class SyncLinks private constructor(private val byItem: LinkedHashMap<String, String>, private val pend: MutableSet<String>) {
+class SyncLinks private constructor(private val byItem: LinkedHashMap<String, String>, private val pend: MutableSet<String>,
+                                    private val star: MutableMap<String, Boolean> = HashMap()) {
     val pending: Set<String> get() = pend
     val all: Map<String, String> get() = byItem
 
@@ -27,13 +28,28 @@ class SyncLinks private constructor(private val byItem: LinkedHashMap<String, St
         byItem.entries.removeAll { it.value == tour && it.key != item }
         byItem[item] = tour
     }
-    fun unlink(item: String) { byItem.remove(item); pend.remove(item) }
-    fun markPending(item: String) { pend += item }
-    fun done(item: String) { pend -= item }
+    fun unlink(item: String) { byItem.remove(item); pend.remove(item); star.remove(item) }
+
+    /**
+     * [item] changed on the other side and waits to come in; [agreedStar] = the star both sides had before (owner
+     * 2026-11-13: a star set here meanwhile survives the import). The first one counts while it waits.
+     */
+    fun markPending(item: String, agreedStar: Boolean? = null) {
+        if (item !in pend && agreedStar != null) star[item] = agreedStar
+        pend += item
+    }
+    fun done(item: String) { pend -= item; star.remove(item) }
+
+    /** The star both sides had when [item] went pending; null = not known. */
+    fun agreedStar(item: String): Boolean? = star[item]
 
     fun write(): String = buildString {
         append(HEADER).append('\n')
-        for ((i, t) in byItem) append(i).append(' ').append(t).append(' ').append(if (i in pend) 'p' else '-').append('\n')
+        for ((i, t) in byItem) {
+            append(i).append(' ').append(t).append(' ').append(if (i in pend) 'p' else '-')
+            if (i in pend) star[i]?.let { append(if (it) " s1" else " s0") }
+            append('\n')
+        }
         // pending items without a tour yet (a new remote plan whose import failed)
         for (i in pend) if (i !in byItem) append(i).append(' ').append(NONE).append(" p\n")
     }
@@ -50,9 +66,10 @@ class SyncLinks private constructor(private val byItem: LinkedHashMap<String, St
             if (lines.firstOrNull() != HEADER) return out
             for (l in lines.drop(1)) {
                 val p = l.split(' ')
-                if (p.size != 3 || !SyncFormat.isId(p[0])) continue
+                if (p.size !in 3..4 || !SyncFormat.isId(p[0])) continue
                 if (p[1] != NONE) out.byItem[p[0]] = p[1]
                 if (p[2] == "p") out.pend += p[0]
+                when (p.getOrNull(3)) { "s1" -> out.star[p[0]] = true; "s0" -> out.star[p[0]] = false }
             }
             return out
         }

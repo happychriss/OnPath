@@ -127,6 +127,16 @@ class GermanScreenshotTest {
     @Test fun tours() = shots.tours()
     @Test fun routesSortedByLength() = shots.routesSortedByLength()
     @Test fun routesSortedShortestFirst() = shots.routesSortedShortestFirst()
+    /** L1 rows with map pictures and the favourites pill (owner 2026-11-13). */
+    @Test fun routesMapRows() = shots.routesMapRows()
+    @Test fun routesFavouritesOnly() = shots.routesFavouritesOnly()
+    @Test fun routesFavouritesNone() = shots.routesFavouritesNone()
+    /** The activity filter (owner 2026-11-13). */
+    @Test fun routesActivityHike() = shots.routesActivityHike()
+    @Test fun routesActivityBike() = shots.routesActivityBike()
+    @Test fun routesActivityMenu() = shots.routesActivityMenu()
+    @Test fun routesActivityAll() = shots.routesActivityAll()
+    @Test fun toursDoneActivityHike() = shots.toursDoneActivityHike()
     @Test fun toursRecent() = shots.toursRecent()
     @Test fun toursRecentDraft() = shots.toursRecentDraft()
     @Test fun toursRecentSaved() = shots.toursRecentSaved()

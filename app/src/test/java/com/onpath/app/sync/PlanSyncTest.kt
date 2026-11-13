@@ -86,7 +86,7 @@ class PlanSyncTest {
     }
 
     @Test fun itemSkipsUnknownFieldsAndRefusesDamage() {
-        val bytes = SyncFormat.encode(item(1, 10)) + byteArrayOf(9, 2, 1, 2) // tag 9, 2 bytes
+        val bytes = SyncFormat.encode(item(1, 10)) + byteArrayOf(42, 2, 1, 2) // tag 42 (unknown), 2 bytes (9 is the star since 2026-11-13)
         assertEquals(item(1, 10), SyncFormat.decode(bytes))
         val good = SyncFormat.encode(item(1, 10))
         for (n in 0 until good.size - 1) SyncFormat.decode(good.copyOf(n)) // never throws
@@ -243,6 +243,146 @@ class PlanSyncTest {
         assertEquals(mine, back.get(a.id))
         back.rename(a.id, "New name", 30, phone)
         assertEquals(fp, back.get(a.id)!!.routing)
+    }
+
+    // ---- favourites (owner 2026-11-13): field 9, one varint – 1 starred, 0 not; missing = not said ----
+
+    @Test fun favouriteFieldIsFrozenAndOptional() {
+        val old = item(1, 10)
+        val head = SyncFormat.encode(old)
+        // the item without a star has today's bytes (the blob stays frozen); with one, exactly the field 09 01 01 / 09 01 00
+        assertTrue(SyncFormat.encode(old.copy(favourite = null)).contentEquals(head))
+        val on = SyncFormat.encode(old.copy(favourite = true))
+        val off = SyncFormat.encode(old.copy(favourite = false))
+        assertTrue(on.copyOf(head.size).contentEquals(head))
+        assertEquals(listOf(9, 1, 1), on.drop(head.size).map { it.toInt() })
+        assertEquals(listOf(9, 1, 0), off.drop(head.size).map { it.toInt() })
+        // after the routing fields too
+        val routed = old.copy(routing = fp, routingData = data)
+        assertEquals(listOf(9, 1, 1), SyncFormat.encode(routed.copy(favourite = true)).drop(SyncFormat.encode(routed).size).map { it.toInt() })
+        // round trips
+        for (f in listOf(true, false, null)) assertEquals(old.copy(favourite = f), SyncFormat.decode(SyncFormat.encode(old.copy(favourite = f))))
+        val track = SyncItem(id(3), 5, phone, kind = SyncItem.TRACK, title = "Ritten", track = "AQID", favourite = true)
+        assertEquals(track, SyncFormat.decode(SyncFormat.encode(track)))
+    }
+
+    /** An older app / page skips field 9 like any unknown tag: the plain item, nothing else. */
+    @Test fun anOldReaderSkipsTheStar() {
+        val old = item(1, 10)
+        val bytes = SyncFormat.encode(old.copy(favourite = true))
+        val renumbered = bytes.copyOf().also { it[SyncFormat.encode(old).size] = 99 }
+        assertEquals(old, SyncFormat.decode(renumbered))
+        // and the blob opens as before
+        assertEquals(true, SyncFormat.open(keys, old.id, SyncFormat.seal(keys, old.copy(favourite = true), ByteArray(12) { 4 }))!!.favourite)
+    }
+
+    /** Plans and tracks only: a hello and a tombstone never carry a star. */
+    @Test fun starOnlyOnLivePlansAndTracks() {
+        val hello = SyncItem(SyncFormat.deviceItemId(phone), 5, phone, kind = SyncItem.DEVICE, name = "Pixel 8")
+        assertEquals(SyncFormat.encode(hello).size, SyncFormat.encode(hello.copy(favourite = true)).size)
+        val tomb = SyncItem(id(2), 7, phone, deleted = true, kind = SyncItem.PLAN)
+        assertEquals(SyncFormat.encode(tomb).size, SyncFormat.encode(tomb.copy(favourite = true)).size)
+        assertNull(SyncFormat.decode(SyncFormat.encode(tomb.copy(favourite = true)))!!.favourite)
+    }
+
+    /**
+     * A star change is content (an edit, a new version); "not said" (null, an older writer) and "not starred" are the
+     * same content – no conflict copy, no upload for every route after the update.
+     */
+    @Test fun aStarIsContentNotSaidIsNoStar() {
+        val a = item(1, 10)
+        assertFalse(a.sameContent(a.copy(favourite = true)))
+        assertTrue(a.sameContent(a.copy(favourite = false)))
+        assertTrue(a.copy(favourite = true).sameContent(a.copy(favourite = true, updatedAt = 99, device = web)))
+        val l = SyncLedger.empty()
+        l.save(a.id, plan, "Plan 1", 10, phone)
+        assertNull(l.get(a.id)!!.favourite)
+        assertTrue(l.setFavourite(a.id, true, 11, phone))
+        val starred = l.get(a.id)!!
+        assertEquals(true, starred.favourite); assertEquals(11, starred.updatedAt)
+        // a Save / rename that says nothing about the star keeps it (the page's Save before it knows stars)
+        l.save(a.id, plan, "Plan 1b", 12, web)
+        assertEquals(true, l.get(a.id)!!.favourite)
+        l.rename(a.id, "Plan 1c", 13, web)
+        assertEquals(true, l.get(a.id)!!.favourite)
+        l.save(a.id, plan, "Plan 1d", 14, phone, favourite = false)
+        assertEquals(false, l.get(a.id)!!.favourite)
+        // the same star again: no new version
+        val at = l.get(a.id)!!.updatedAt
+        assertTrue(l.setFavourite(a.id, false, 20, phone)); assertEquals(at, l.get(a.id)!!.updatedAt)
+        // the ledger file keeps it; a tombstone has none, and no star on a deleted or missing item
+        assertEquals(l.get(a.id), SyncLedger.read(l.write()).get(a.id))
+        l.delete(a.id, 21, phone)
+        assertNull(l.get(a.id)!!.favourite)
+        assertFalse(l.setFavourite(a.id, true, 22, phone))
+        assertFalse(l.setFavourite(id(5), true, 22, phone))
+        // a track's new version keeps its star too
+        l.saveTrack(id(6), "AQID", "Ritten", 30, phone, favourite = true)
+        l.saveTrack(id(6), "AQIE", "Ritten", 31, web)
+        assertEquals(true, l.get(id(6))!!.favourite)
+    }
+
+    // ---- a star never makes a copy (owner 2026-11-13): field 10 = the revision a star-only version re-stars ----
+
+    @Test fun starBaseIsField10AndNoContent() {
+        val old = item(1, 10)
+        val star = old.copy(favourite = true, starBase = 7)
+        val bytes = SyncFormat.encode(star)
+        assertEquals(listOf(9, 1, 1, 10, 1, 7), bytes.drop(SyncFormat.encode(old).size).map { it.toInt() })
+        assertEquals(star, SyncFormat.decode(bytes))
+        // an older reader skips it like any unknown tag
+        val renumbered = bytes.copyOf().also { it[SyncFormat.encode(old).size + 3] = 99 }
+        assertEquals(old.copy(favourite = true), SyncFormat.decode(renumbered))
+        assertTrue(star.sameContent(star.copy(starBase = null)))
+        assertNull("never on a tombstone", SyncFormat.decode(SyncFormat.encode(star.copy(deleted = true)))!!.starBase)
+    }
+
+    /** setFavourite on a version in the mailbox marks it star-only (field 10 = that revision); after another edit it is a normal edit. */
+    @Test fun aStarOnTopOfTheMailboxVersionIsStarOnly() {
+        val l = SyncLedger.empty()
+        l.save(id(1), plan, "Plan 1", 10, phone)
+        l.acked(l.get(id(1))!!, 5)
+        l.setFavourite(id(1), true, 11, phone)
+        assertEquals(5L, l.get(id(1))!!.starBase)
+        assertTrue(SyncMerge.starOnly(l.entries.getValue(id(1))))
+        l.setFavourite(id(1), false, 12, phone)
+        assertEquals("still star-only", 5L, l.get(id(1))!!.starBase)
+        l.rename(id(1), "Plan 1b", 13, phone)
+        assertNull(l.get(id(1))!!.starBase)
+        l.setFavourite(id(1), true, 14, phone)
+        assertNull("a star beside a rename waiting: a normal edit", l.get(id(1))!!.starBase)
+        // a fresh, never uploaded item: no base
+        l.save(id(2), plan, "Plan 2", 15, phone); l.setFavourite(id(2), true, 16, phone)
+        assertNull(l.get(id(2))!!.starBase)
+    }
+
+    @Test fun reconcileNeverCopiesForAStar() {
+        val base = item(1, 10, dev = web)
+        // mine: star only on rev 5; theirs: renamed at rev 6 → their rename with my star, to upload, no copy
+        val mine = SyncEntry(base.copy(updatedAt = 11, device = phone, favourite = true, starBase = 5), 5, dirty = true)
+        val renamed = base.copy(updatedAt = 12, title = "Renamed")
+        val out = SyncMerge.reconcile(mapOf(base.id to mine), listOf(RemoteItem(renamed, 6)))
+        assertEquals(1, out.size)
+        val e = out.getValue(base.id)
+        assertEquals("Renamed", e.item.title); assertEquals(true, e.item.favourite); assertEquals(6L, e.item.starBase)
+        assertTrue(e.dirty); assertEquals(6L, e.rev)
+        // theirs a delete → the delete wins, the star goes
+        val gone = SyncMerge.reconcile(mapOf(base.id to mine), listOf(RemoteItem(SyncItem(base.id, 12, web, deleted = true), 6)))
+        assertEquals(1, gone.size); assertTrue(gone.getValue(base.id).item.deleted); assertFalse(gone.getValue(base.id).dirty)
+        // the other way round: my rename / my delete on rev 5 meets their star-only version of rev 5
+        val theirStar = base.copy(updatedAt = 12, device = phone, favourite = true, starBase = 5)
+        val myRename = SyncEntry(base.copy(updatedAt = 11, title = "Mine"), 5, dirty = true)
+        val r1 = SyncMerge.reconcile(mapOf(base.id to myRename), listOf(RemoteItem(theirStar, 6)))
+        assertEquals(1, r1.size)
+        assertEquals("Mine", r1.getValue(base.id).item.title); assertEquals(true, r1.getValue(base.id).item.favourite)
+        assertTrue(r1.getValue(base.id).dirty); assertEquals(6L, r1.getValue(base.id).rev)
+        val myDelete = SyncEntry(SyncItem(base.id, 11, web, deleted = true), 5, dirty = true)
+        val r2 = SyncMerge.reconcile(mapOf(base.id to myDelete), listOf(RemoteItem(theirStar, 6)))
+        assertEquals(1, r2.size); assertTrue("my delete wins over their star", r2.getValue(base.id).item.deleted)
+        assertTrue(r2.getValue(base.id).dirty); assertEquals(6L, r2.getValue(base.id).rev)
+        // a normal edit of theirs (no star base) still keeps my edit as a copy – the old rule
+        val r3 = SyncMerge.reconcile(mapOf(base.id to myRename), listOf(RemoteItem(base.copy(updatedAt = 12, title = "Theirs"), 6)))
+        assertEquals(2, r3.size)
     }
 
     @Test fun routingDataText() {

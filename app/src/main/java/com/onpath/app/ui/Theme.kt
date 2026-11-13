@@ -84,6 +84,11 @@ object OnPathColors {
     val Gpx = Color(0xFF8E24AA)
     val Rec = Color(0xFFEF6C00)
     val Good = Color(0xFF2E7D32)
+    /**
+     * A favourite's star (owner 2026-11-13, My routes favourites C): a dark gold, 3.5:1 on paper – a sign, never a word.
+     * Only the filled star of a starred route and the ★ in the "Favoriten" pill when it is on.
+     */
+    val Favourite = Color(0xFFB07D00)
     /** GPS "weak" dot only (map furniture): bright, never for text. */
     val Weak = Color(0xFFF9A825)
     /** Grey info / a paused sign: ≥ 4.5:1 on paper and on the sage over the map ([MapGround], 4.7:1; owner 2026-11-12). */

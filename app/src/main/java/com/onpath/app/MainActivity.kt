@@ -235,6 +235,14 @@ class MainActivity : ComponentActivity() {
                                 // pull to refresh on Planned (owner 2026-11-13): only when paired
                                 onPull = if (vm.sync.state.collectAsState().value.paired) ({ vm.pullSync() }) else null,
                                 pulling = vm.syncPulling,
+                                // L1 map pictures (owner 2026-11-13): read from files/thumbs, made in the background
+                                thumbs = androidx.compose.runtime.remember { com.onpath.app.ui.routes.FileThumbSource(vm.thumbs) },
+                                thumbVersion = vm.thumbVersion,
+                                onFavourite = { t, on -> vm.setFavourite(t, on) },
+                                initialFavouritesOnly = vm.routesFavouritesOnly,
+                                onFavouritesOnly = { vm.routesFavouritesOnly = it },
+                                // the activity filter: the planning activity each time My routes opens (owner 2026-11-13)
+                                initialActivity = vm.activity,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

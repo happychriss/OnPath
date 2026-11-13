@@ -210,7 +210,7 @@ object Backups {
             val m = f.entry.meta
             try {
                 db.insertTour(m.kind, m.name, m.activity, m.sac, m.distanceM, m.ascentM, m.descentM, m.durationS,
-                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs, m.rides).also { id ->
+                    f.entry.segments, m.waypoints, "done", m.pinned, m.uuid, m.createdMs, m.rides, favourite = m.favourite).also { id ->
                     // the plan the tour followed (owner 2026-11-07): a failure keeps the tour, without its plan
                     m.plan?.let { p -> runCatching { db.setTourPlan(id, p) }
                         .onFailure { e -> Problems.warn("backup", "Restoring the followed plan of ${f.fileName} failed – the tour is restored without it", e) } }

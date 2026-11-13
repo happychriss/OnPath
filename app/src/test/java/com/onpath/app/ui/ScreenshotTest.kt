@@ -1333,6 +1333,83 @@ class ScreenshotTest {
     }
 
     /**
+     * L1 map pictures for the screenshots (owner 2026-11-13): crops of the app's own map around Meran, by tour id; Ifinger
+     * Steig (12) has none – its row keeps the line on paper, as on a phone whose picture is not made yet.
+     */
+    private val mapPics: Map<Long, androidx.compose.ui.graphics.ImageBitmap> by lazy {
+        mapOf(100L to "sq_100", 11L to "sq_11", 13L to "sq_13", 14L to "sq_14", 15L to "sq_16").mapValues { (_, n) ->
+            android.graphics.BitmapFactory.decodeStream(javaClass.getResourceAsStream("/route-thumbs/$n.jpg")).asImageBitmap()
+        }
+    }
+    private val picSource = object : com.onpath.app.ui.routes.RouteThumbSource {
+        override fun cached(t: Tour) = mapPics[t.id]
+        override suspend fun load(t: Tour) = mapPics[t.id]
+    }
+    /** [sortList] with uuids (a picture belongs to one), two of them starred. */
+    private val favList get() = sortList.map { it.copy(uuid = "u-${it.id}", favourite = it.id == 11L || it.id == 15L,
+        // Vigiljoch MTB-Runde: a round trip (its points end at its start) – "· ↻ Rundtour" in its activity line
+        waypoints = if (it.id == 15L) loopPts else it.waypoints) }
+    private val loopPts = listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null), com.onpath.app.gpx.GpxWaypoint(46.70, 11.20, null),
+        com.onpath.app.gpx.GpxWaypoint(46.72, 11.14, null), com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null))
+
+    /**
+     * My routes L1 (owner 2026-11-13): a square map picture left (route on the offline map; Ifinger Steig without one: the
+     * line on paper), name, activity ("Wandern · T3" with its sign), facts; ⋮ over the star – gold = favourite. The
+     * "☆ Favoriten" pill first in the chip row; Zuletzt as before, in the same look.
+     */
+    @Test fun routesMapRows() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
+    }
+
+    /**
+     * The activity filter (owner 2026-11-13): the L1 list with mixed activities (+ a gravel route; Gemacht: recorded tours
+     * of three activities); [act] = the chip's choice (null = "Alle"); [menuTop] / [menuStart] = where its menu opens
+     * (drawn in place – popups are not drawn), null = closed.
+     */
+    fun activityFilter(act: Activity?, menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp,
+                       tab: RoutesTab = RoutesTab.PLANNED) = paparazzi.snapshot {
+        val gravel = Tour(16, TourKind.PLANNED, "Marlinger Waalweg", 1_791_000_000_000, "BIKE_TREKKING", 2, 18_200.0, 260.0, 260.0,
+            1.3 * 3600, "done", viaPts, uuid = "u-16")
+        val done = listOf(tourList[1].copy(uuid = "u-2"), tourList[3].copy(uuid = "u-4"),
+            Tour(7, TourKind.RECORDED, "Hirzer Hütte", 1_760_700_000_000, "HIKE", 3, 11_400.0, 980.0, 980.0, 5.0 * 3600, "done", emptyList(), uuid = "u-7"),
+            Tour(8, TourKind.RECORDED, "Etschdamm", 1_760_800_000_000, "BIKE_TOURING", 2, 24_000.0, 60.0, 60.0, 1.4 * 3600, "done", emptyList(), uuid = "u-8"))
+        val list = favList + gravel + done
+        previewLines(list + oneDraft.copy(uuid = "u-100"))
+        Box(Modifier.fillMaxSize()) {
+            OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+                initialTab = tab, initialActivity = act) }
+            if (menuTop != null) OnPathTheme {
+                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) { com.onpath.app.ui.routes.ActivityFilterItems(act) {} }
+            }
+        }
+    }
+
+    /** The activity filter preset with the planning activity "Wandern": only hikes; Zuletzt shows whatever the filter (owner 2026-11-13). */
+    @Test fun routesActivityHike() = activityFilter(Activity.HIKE)
+    /** "Fahrrad" shows only Fahrrad (owner 2026-11-13: exactly the chosen activity). */
+    @Test fun routesActivityBike() = activityFilter(Activity.BIKE_TOURING)
+    /** The chip's menu: the six (single choice), a line, "Alle". */
+    @Test fun routesActivityMenu() = activityFilter(Activity.HIKE, menuTop = 248.dp, menuStart = 140.dp)
+    /** "Alle": every tour, Zuletzt back. */
+    fun routesActivityAll() = activityFilter(null)
+    /** Gemacht filtered the same way. */
+    fun toursDoneActivityHike() = activityFilter(Activity.HIKE, tab = RoutesTab.DONE)
+
+    /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt stays (owner 2026-11-13). */
+    @Test fun routesFavouritesOnly() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+            initialFavouritesOnly = true) }
+    }
+
+    /** The pill on and nothing starred yet: one grey line says how to star one. */
+    @Test fun routesFavouritesNone() = paparazzi.snapshot {
+        previewLines(sortList)
+        OnPathTheme { RoutesScreen(sortList, {}, {}, {}, {}, {}, initialFavouritesOnly = true) }
+    }
+
+    /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
      * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
      * width green, under it "Abbrechen" | "Planen".
@@ -1480,6 +1557,7 @@ class ScreenshotTest {
 
     /** My routes → ⋮ → Save as copy: the same dialog, titled "Save as copy", proposing "<name> (2)". */
     fun planSaveCopyDialog() = paparazzi.snapshot {
+        previewLines(tourList) // the rows behind the dialog the same in every test order
         OnPathTheme {
             RoutesScreen(tourList, {}, {}, {}, {}, {})
             SaveNameDialog(SaveAsk.Kind.COPY, "Route Meran – Hirzer (2)", {}, {})

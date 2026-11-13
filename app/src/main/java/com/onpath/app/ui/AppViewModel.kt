@@ -213,8 +213,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }, recent = prefs.zuletztId).also {
         it.onClosed = { routesNote = null } // the line at the top lasts until My routes is left
         it.onRecent = { id -> prefs.zuletztId = id } // the Zuletzt row survives an app start
-        it.sort = com.onpath.app.ui.routes.RouteSort.decode(prefs.routesSort) // the order chosen last, across app starts
     }
+    /**
+     * My routes' map pictures (owner 2026-11-13, L1: a square map + the route left of each row): files by uuid
+     * ([com.onpath.app.map.RouteThumbs], `files/thumbs/`, not backed up), made in the background by [thumbMaker] after
+     * every change of the list ([refreshTours]) and at a tour's end – never while navigating or recording. [thumbVersion]
+     * moves on when one is stored, so the rows read it again.
+     */
+    val thumbs by lazy { com.onpath.app.map.RouteThumbs(java.io.File(getApplication<Application>().filesDir, "thumbs")) }
+    var thumbVersion by mutableStateOf(0)
+        private set
+    private val thumbMaker by lazy {
+        com.onpath.app.map.ThumbMaker(thumbs, viewModelScope,
+            binned = { db.listDeleted().mapTo(HashSet()) { it.uuid } },
+            lineKey = { t -> db.lineKey(t.id) },
+            line = { t -> routes.line(t) { emptyList() } },
+            style = { snapshotStyle() },
+            snap = { json, segs, t -> com.onpath.app.map.ThumbMaker.render(getApplication(), json, segs, argbOf(RouteShape.tint(t.kind))) },
+            busy = { mode == AppMode.NAVIGATE || recState.value != null },
+            made = { viewModelScope.launchSafe("routes", "Map picture shown", Dispatchers.Main) { thumbVersion++ } })
+    }
+
+    /** How long the last map pictures took (ms each) – diagnostics and the emulator test. */
+    val thumbTimings: List<Long> get() = thumbMaker.timings.toList()
+
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routes.open
@@ -226,7 +248,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** My routes' order (owner 2026-11-12, [com.onpath.app.ui.routes.RouteSort]): one for both tabs, kept across app starts. */
     var routesSort: com.onpath.app.ui.routes.RouteSort.Choice
         get() = routes.sort
-        set(v) { routes.sort = v; prefs.routesSort = com.onpath.app.ui.routes.RouteSort.encode(v) }
+        set(v) { routes.sort = v } // while My routes is open only: "Neueste zuerst" at each opening (owner 2026-11-13)
+    /** My routes' "☆ Favoriten" pill (owner 2026-11-13, favourites C): on = only the starred ones; kept while the app runs. */
+    var routesFavouritesOnly = false
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     var mode by mutableStateOf(AppMode.PLAN)
         private set
@@ -3159,20 +3183,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     suspend fun routeSnapshot(segments: List<List<GeoPoint>>, tint: RouteShape.Tint, widthPx: Int, heightPx: Int,
                               paddingPx: Int, under: List<GeoPoint> = emptyList()): com.onpath.app.map.RouteSnapshot.Shot? {
         val app = getApplication<Application>()
-        val dataDir = dataFiles.dir; val theme = settings.mapTheme; val mapDir = dataFiles.mapDir()
-        val cover = detailedAreas(); val dev = devToolsShown; val packages = packageAreas()
-        val json = withContext(Dispatchers.IO) {
-            runCatching { com.onpath.app.map.StyleLoader.load(app, dataDir, theme, mapDir, cover, dev, packages) }
-                .onFailure { Problems.warn("routes", "Overview: map style could not be built – the shape is shown alone", it) }
-                .getOrNull()
-        } ?: return null
-        val color = android.graphics.Color.argb(255, (tint.color().red * 255).toInt(), (tint.color().green * 255).toInt(),
-            (tint.color().blue * 255).toInt())
+        val json = snapshotStyle() ?: return null
+        val color = argbOf(tint)
         val planBlue = RouteShape.Tint.PLAN.color().let { c ->
             android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
         }
         return com.onpath.app.map.RouteSnapshot.make(app, json, segments, color, widthPx, heightPx, paddingPx,
             app.resources.displayMetrics.density, under, planBlue)
+    }
+
+    /** The map style a snapshot draws (the app's own: offline cells, the overview map elsewhere); null = failed (reported). */
+    private suspend fun snapshotStyle(): String? {
+        val app = getApplication<Application>()
+        val (dataDir, theme, mapDir) = withContext(Dispatchers.Main) { Triple(dataFiles.dir, settings.mapTheme, dataFiles.mapDir()) }
+        val (cover, dev, packages) = withContext(Dispatchers.Main) { Triple(detailedAreas(), devToolsShown, packageAreas()) }
+        return withContext(Dispatchers.IO) {
+            runCatching { com.onpath.app.map.StyleLoader.load(app, dataDir, theme, mapDir, cover, dev, packages) }
+                .onFailure { Problems.warn("routes", "Overview: map style could not be built – the shape is shown alone", it) }
+                .getOrNull()
+        }
+    }
+
+    private fun argbOf(tint: RouteShape.Tint): Int = tint.color().let { c ->
+        android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
+    }
+
+    /** Looks for map pictures to make among My routes' list (background, one at a time); [firstUuid] first. */
+    fun kickThumbs(firstUuid: String? = null) {
+        try { thumbMaker.kick(routes.tours, firstUuid) } catch (e: Exception) { Problems.info("routes", "Map pictures not started – the rows keep their lines", e) }
     }
 
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */
@@ -3311,6 +3349,24 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             sync.changed("renamed")
             if (linkId == t.id) setSaved(name, linkId, savedPoints)
             shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
+            refreshTours()
+        }
+    }
+
+    /**
+     * My routes → ☆ on a row (owner 2026-11-13, favourites C): the star on or off at once in the list, then stored, the
+     * backup file written again (its record keeps the star) and the browser told (sync field 9). A failure puts the
+     * row back and says so in My routes.
+     */
+    fun setFavourite(t: Tour, favourite: Boolean) {
+        if (t.id == LivePlanRows.LIVE_ID || t.favourite == favourite) return
+        Problems.trace("routes", "Tour ${t.id} ${if (favourite) "starred" else "unstarred"}")
+        routes.show(routes.tours.map { if (it.id == t.id) it.copy(favourite = favourite) else it })
+        viewModelScope.launchSafe("app", "setFavourite") {
+            val ok = withContext(Dispatchers.IO) { runCatching { db.setFavourite(t.id, favourite) }
+                .onFailure { Problems.error("db", "Starring a route failed", it) }.getOrDefault(false) }
+            if (!ok) routesProblem = Txt.s(Res.string.msg_route_star_failed)
+            else { Backups.tourChanged(getApplication(), t.id); sync.changed("starred") }
             refreshTours()
         }
     }
@@ -4022,6 +4078,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("tour", "Tour ended: back to the start – the plan (${waypoints.size} points) goes the \"Neu planen\" way")
         clearPlan()
         guidanceEndedByEmptyPlan = false // nothing of the ended tour is resumed by the next plan
+        kickThumbs() // the ended tour's map picture: in the background, the tour is saved already
     }
 
     /** The arrival box → "Weiter aufzeichnen": the box goes, the recording goes on (the guidance stays quiet). */
@@ -4450,8 +4507,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // the newest read wins: an older one ending late must not hide a row added since (RoutesState.show)
         val load = routes.beginLoad()
         viewModelScope.launchSafe("app", "refreshTours", Dispatchers.IO) {
-            val list = routes.load { withModelTime(it) }
-            withContext(Dispatchers.Main) { routes.show(list, load) }
+            val list = routes.load { t -> withModelTime(t).let { m ->
+                // a recorded tour's followed plan: a round trip for certain when its points end at its start (RoundTrip)
+                if (m.kind == TourKind.RECORDED && m.hasPlan) m.copy(roundTrip = runCatching { db.planPoints(m.id) }
+                    .onFailure { e -> Problems.warn("routes", "The followed plan's points of tour ${m.id} not read – its row guesses from the track", e) }
+                    .getOrNull()?.let { w -> com.onpath.app.routing.PlanEdits.isRoundTrip(w.map { GeoPoint(it.lat, it.lon) }) })
+                else m
+            } }
+            withContext(Dispatchers.Main) { routes.show(list, load); kickThumbs() }
         }
     }
 

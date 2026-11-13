@@ -49,7 +49,7 @@ object SyncMerge {
     fun newer(a: SyncItem, b: SyncItem): Boolean {
         if (a.updatedAt != b.updatedAt) return a.updatedAt > b.updatedAt
         if (a.device != b.device) return a.device > b.device
-        fun content(i: SyncItem) = SyncFormat.encode(i.copy(routing = null, routingData = null))
+        fun content(i: SyncItem) = SyncFormat.encode(i.copy(routing = null, routingData = null, starBase = null))
         return compare(content(a), content(b)) ?: (compare(SyncFormat.encode(a), SyncFormat.encode(b)) == true)
     }
 
@@ -88,6 +88,21 @@ object SyncMerge {
                 e == null -> out[r.item.id] = SyncEntry(r.item, r.rev, dirty = false)
                 r.rev <= e.rev -> Unit
                 !e.dirty -> out[r.item.id] = SyncEntry(r.item, r.rev, dirty = false)
+                // a star never makes a copy (owner 2026-11-13): only the star changed here – the other side's version
+                // with our star (a delete of it wins, the star goes with it)
+                e.item.isUserItem && r.item.isUserItem && starOnly(e) -> {
+                    val star = e.item.favourite
+                    out[r.item.id] = if (r.item.deleted || star == null || (r.item.favourite ?: false) == star)
+                        SyncEntry(r.item, r.rev, dirty = false)
+                    else SyncEntry(r.item.copy(favourite = star, starBase = r.rev, device = e.item.device,
+                        updatedAt = maxOf(e.item.updatedAt, r.item.updatedAt + 1)), r.rev, dirty = true)
+                }
+                // only the star changed there, on the very version our change is based on: our change stays, with its
+                // star – our delete wins over it
+                e.item.isUserItem && r.item.isUserItem && r.item.starBase == e.rev && e.rev > 0 && !r.item.deleted -> {
+                    val mine = e.item
+                    out[r.item.id] = SyncEntry(if (mine.deleted) mine else mine.copy(favourite = r.item.favourite), r.rev, dirty = true)
+                }
                 // the version seen decides (owner 2026-11-12): the mailbox moved past what our change was based on –
                 // its version keeps the id, ours becomes a copy (a live tour with other content); a stale delete is dropped
                 e.item.isUserItem || r.item.isUserItem -> {
@@ -108,6 +123,9 @@ object SyncMerge {
         }
         return out
     }
+
+    /** [e] waits to go up and changes only the star of the version at its base ([SyncItem.starBase]). */
+    fun starOnly(e: SyncEntry): Boolean = e.dirty && !e.item.deleted && e.rev > 0 && e.item.starBase == e.rev
 
     /**
      * [entry] after the mailbox stored [sent] as revision [rev]. When the entry changed again meanwhile it stays

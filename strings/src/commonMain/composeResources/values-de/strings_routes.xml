@@ -86,4 +86,15 @@
     <string name="routes_sort_chip">Sortieren: %1$s</string>
     <string name="routes_sort_chip_on">Sortiert: %1$s</string>
     <string name="routes_sort_chip_flip">Sortiert: %1$s, %2$s. Tippen dreht die Reihenfolge um.</string>
+    <!-- My routes: favourites (owner 2026-11-13, variant C – the filter pill + the star on each row) -->
+    <string name="routes_fav_chip">Favoriten</string>
+    <string name="routes_fav_chip_off">Favoriten: nur Favoriten zeigen</string>
+    <string name="routes_fav_chip_on">Nur Favoriten. Tippen zeigt alle.</string>
+    <string name="routes_fav_on">%1$s ist Favorit. Tippen entfernt.</string>
+    <string name="routes_fav_off">%1$s als Favorit merken</string>
+    <string name="routes_fav_none">Noch keine Favoriten. Tippe auf ☆ bei einer Tour.</string>
+    <!-- My routes: the activity filter (owner 2026-11-13) – preset with the planning activity, "Alle" under a line -->
+    <string name="routes_act_all">Alle</string>
+    <string name="routes_act_chip_desc">Art: %1$s. Tippen zum Ändern</string>
+    <string name="routes_act_none">Keine Touren „%1$s“ hier.</string>
 </resources>
