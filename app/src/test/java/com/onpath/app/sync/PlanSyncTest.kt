@@ -322,6 +322,69 @@ class PlanSyncTest {
         assertEquals(true, l.get(id(6))!!.favourite)
     }
 
+    // ---- a star never makes a copy (owner 2026-11-13): field 10 = the revision a star-only version re-stars ----
+
+    @Test fun starBaseIsField10AndNoContent() {
+        val old = item(1, 10)
+        val star = old.copy(favourite = true, starBase = 7)
+        val bytes = SyncFormat.encode(star)
+        assertEquals(listOf(9, 1, 1, 10, 1, 7), bytes.drop(SyncFormat.encode(old).size).map { it.toInt() })
+        assertEquals(star, SyncFormat.decode(bytes))
+        // an older reader skips it like any unknown tag
+        val renumbered = bytes.copyOf().also { it[SyncFormat.encode(old).size + 3] = 99 }
+        assertEquals(old.copy(favourite = true), SyncFormat.decode(renumbered))
+        assertTrue(star.sameContent(star.copy(starBase = null)))
+        assertNull("never on a tombstone", SyncFormat.decode(SyncFormat.encode(star.copy(deleted = true)))!!.starBase)
+    }
+
+    /** setFavourite on a version in the mailbox marks it star-only (field 10 = that revision); after another edit it is a normal edit. */
+    @Test fun aStarOnTopOfTheMailboxVersionIsStarOnly() {
+        val l = SyncLedger.empty()
+        l.save(id(1), plan, "Plan 1", 10, phone)
+        l.acked(l.get(id(1))!!, 5)
+        l.setFavourite(id(1), true, 11, phone)
+        assertEquals(5L, l.get(id(1))!!.starBase)
+        assertTrue(SyncMerge.starOnly(l.entries.getValue(id(1))))
+        l.setFavourite(id(1), false, 12, phone)
+        assertEquals("still star-only", 5L, l.get(id(1))!!.starBase)
+        l.rename(id(1), "Plan 1b", 13, phone)
+        assertNull(l.get(id(1))!!.starBase)
+        l.setFavourite(id(1), true, 14, phone)
+        assertNull("a star beside a rename waiting: a normal edit", l.get(id(1))!!.starBase)
+        // a fresh, never uploaded item: no base
+        l.save(id(2), plan, "Plan 2", 15, phone); l.setFavourite(id(2), true, 16, phone)
+        assertNull(l.get(id(2))!!.starBase)
+    }
+
+    @Test fun reconcileNeverCopiesForAStar() {
+        val base = item(1, 10, dev = web)
+        // mine: star only on rev 5; theirs: renamed at rev 6 → their rename with my star, to upload, no copy
+        val mine = SyncEntry(base.copy(updatedAt = 11, device = phone, favourite = true, starBase = 5), 5, dirty = true)
+        val renamed = base.copy(updatedAt = 12, title = "Renamed")
+        val out = SyncMerge.reconcile(mapOf(base.id to mine), listOf(RemoteItem(renamed, 6)))
+        assertEquals(1, out.size)
+        val e = out.getValue(base.id)
+        assertEquals("Renamed", e.item.title); assertEquals(true, e.item.favourite); assertEquals(6L, e.item.starBase)
+        assertTrue(e.dirty); assertEquals(6L, e.rev)
+        // theirs a delete → the delete wins, the star goes
+        val gone = SyncMerge.reconcile(mapOf(base.id to mine), listOf(RemoteItem(SyncItem(base.id, 12, web, deleted = true), 6)))
+        assertEquals(1, gone.size); assertTrue(gone.getValue(base.id).item.deleted); assertFalse(gone.getValue(base.id).dirty)
+        // the other way round: my rename / my delete on rev 5 meets their star-only version of rev 5
+        val theirStar = base.copy(updatedAt = 12, device = phone, favourite = true, starBase = 5)
+        val myRename = SyncEntry(base.copy(updatedAt = 11, title = "Mine"), 5, dirty = true)
+        val r1 = SyncMerge.reconcile(mapOf(base.id to myRename), listOf(RemoteItem(theirStar, 6)))
+        assertEquals(1, r1.size)
+        assertEquals("Mine", r1.getValue(base.id).item.title); assertEquals(true, r1.getValue(base.id).item.favourite)
+        assertTrue(r1.getValue(base.id).dirty); assertEquals(6L, r1.getValue(base.id).rev)
+        val myDelete = SyncEntry(SyncItem(base.id, 11, web, deleted = true), 5, dirty = true)
+        val r2 = SyncMerge.reconcile(mapOf(base.id to myDelete), listOf(RemoteItem(theirStar, 6)))
+        assertEquals(1, r2.size); assertTrue("my delete wins over their star", r2.getValue(base.id).item.deleted)
+        assertTrue(r2.getValue(base.id).dirty); assertEquals(6L, r2.getValue(base.id).rev)
+        // a normal edit of theirs (no star base) still keeps my edit as a copy – the old rule
+        val r3 = SyncMerge.reconcile(mapOf(base.id to myRename), listOf(RemoteItem(base.copy(updatedAt = 12, title = "Theirs"), 6)))
+        assertEquals(2, r3.size)
+    }
+
     @Test fun routingDataText() {
         assertEquals(20752L, SyncRoutingData.day(1_793_000_000_000)) // 2026-10-26
         assertEquals(0L, SyncRoutingData.day(0)); assertEquals(-1L, SyncRoutingData.day(-1))

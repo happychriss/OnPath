@@ -44,6 +44,13 @@ data class SyncItem(
      * star (an older writer's rename never takes a star away). Content: a star change is an edit (a new version).
      */
     val favourite: Boolean? = null,
+    /**
+     * Kinds [PLAN] / [TRACK] only, field 10: this version changes ONLY the star of the version stored at this mailbox
+     * revision (owner 2026-11-13: a star never makes a copy). A device that changed the item unseen ([SyncMerge.reconcile])
+     * keeps its own change and takes the star; a delete of that very version wins over it. Null = a normal edit (or an
+     * older writer). Not content: [sameContent] and the merge's content order ignore it.
+     */
+    val starBase: Long? = null,
 ) {
     companion object {
         const val PLAN = 1
@@ -84,7 +91,8 @@ data class SyncItem(
  * only, missing = unknown), 7 = routing fingerprint (ASCII, "r1-" + 12 hex, ≤ [MAX_ROUTING]; kind 1 plan only),
  * 8 = routing data dates (ASCII, [SyncRoutingData] text, ≤ [MAX_ROUTING_DATA]; kind 1 plan only) – 7 and 8 are no
  * content (docs/design/routing-fingerprint.md "Sync fields"), 9 = favourite (one varint: 1 starred, 0 not; kinds 1 / 2
- * plan and track only, missing = not said – the reader keeps its own star; owner 2026-11-13). Unknown tags are skipped
+ * plan and track only, missing = not said – the reader keeps its own star; owner 2026-11-13), 10 = star base (one varint:
+ * the mailbox revision whose version this one only re-stars; no content). Unknown tags are skipped
  * (newer apps); one tag never means two things (the reader does not look at the kind).
  *
  * Blob (what the server stores, version 1): version (1), nonce (12), AES-256-GCM(item) with the 16-byte tag. The
@@ -119,6 +127,7 @@ object SyncFormat {
     private const val TAG_ROUTING = 7
     private const val TAG_ROUTING_DATA = 8
     private const val TAG_FAVOURITE = 9
+    private const val TAG_STAR_BASE = 10
 
     /** A new item id from 16 random bytes. */
     fun newId(random: ByteArray): String { require(random.size >= ID_BYTES); return B64.encode(random.copyOf(ID_BYTES)) }
@@ -154,6 +163,9 @@ object SyncFormat {
         if (item.isUserItem && !item.deleted) item.favourite?.let { f ->
             out.field(TAG_FAVOURITE, Out().apply { varint(if (f) 1 else 0) }.toArray())
         }
+        if (item.isUserItem && !item.deleted) item.starBase?.takeIf { it > 0 }?.let { b ->
+            out.field(TAG_STAR_BASE, Out().apply { varint(b) }.toArray())
+        }
         return out.toArray()
     }
 
@@ -167,7 +179,7 @@ object SyncFormat {
             val flags = r.byte()
             var title: String? = null; var plan: String? = null; var name: String? = null; var track: String? = null
             var pairCode: String? = null; var role: Int? = null; var routing: String? = null; var routingData: String? = null
-            var favourite: Boolean? = null
+            var favourite: Boolean? = null; var starBase: Long? = null
             while (r.more()) {
                 val tag = r.varint()
                 val len = r.varint()
@@ -186,12 +198,14 @@ object SyncFormat {
                     TAG_ROUTING_DATA.toLong() -> routingData = SyncRoutingData.clean(raw.decodeToString())
                     TAG_FAVOURITE.toLong() -> favourite = raw.takeIf { it.isNotEmpty() }?.let { In(it).varint() }
                         ?.let { v -> if (v == 1L) true else if (v == 0L) false else null } // another value: not said
+                    TAG_STAR_BASE.toLong() -> starBase = raw.takeIf { it.isNotEmpty() }?.let { In(it).varint() }?.takeIf { it > 0 }
                     else -> Unit // a field from a newer app: skip it
                 }
             }
             val deleted = flags and 1 != 0
             SyncItem(id, at, device, deleted, kind, title, plan, name, track, pairCode, role, routing, routingData,
-                favourite.takeIf { !deleted && (kind == SyncItem.PLAN || kind == SyncItem.TRACK) })
+                favourite.takeIf { !deleted && (kind == SyncItem.PLAN || kind == SyncItem.TRACK) },
+                starBase.takeIf { !deleted && (kind == SyncItem.PLAN || kind == SyncItem.TRACK) })
         }
     } catch (_: IndexOutOfBoundsException) {
         null // expected: cut-off bytes (damaged local store line); the caller counts it as unreadable

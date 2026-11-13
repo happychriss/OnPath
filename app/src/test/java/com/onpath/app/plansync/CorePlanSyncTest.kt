@@ -664,18 +664,71 @@ class CorePlanSyncTest {
         assertEquals(0, (phoneSync().outcome as SyncRound.Outcome.Done).pushed)
     }
 
-    /** A star is an edit: one the other side never saw meets the version-seen rule – nothing is lost, both agree. */
-    @Test fun aStarMeetingAnUnseenRenameFollowsTheConflictRule() {
+    // a star never makes a copy (owner 2026-11-13): a star-only change takes the other side's edit; a delete wins over it
+
+    /** The phone stars a route the browser renamed meanwhile (unseen): one route, the new name, starred – no copy. */
+    @Test fun aStarMeetingAnUnseenRenameKeepsTheRenameAndTheStar() {
         val t = store.savePlanned("Waalweg", listOf(a, b))
         phoneSync(); browserSync()
         browser.rename(browserPlan("Waalweg").id, "Algunder Waalweg", clock, web); browserSync()
         store.update(t) { it.copy(favourite = true) } // starred on the phone before it saw the rename
         phoneSync(); browserSync(); phoneSync(); browserSync()
-        val want = setOf("Algunder Waalweg", "Waalweg (copy)")
-        assertEquals(want, store.live().map { it.name }.toSet())
-        assertEquals(want, browser.plans().map { it.title }.toSet())
-        assertTrue("the starred version stays as the copy", store.byName("Waalweg (copy)").favourite)
-        assertEquals(true, browserPlan("Waalweg (copy)").favourite)
+        assertEquals(listOf("Algunder Waalweg"), store.live().map { it.name })
+        assertEquals(listOf("Algunder Waalweg"), browser.plans().map { it.title })
+        assertTrue(store.byName("Algunder Waalweg").favourite)
+        assertEquals(true, browserPlan("Algunder Waalweg").favourite)
+    }
+
+    /** The star lands first, the browser's rename (made before it saw the star) after: the rename and the star, no copy. */
+    @Test fun aStarThatLandsFirstKeepsABrowserRename() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        phoneSync(); browserSync()
+        browser.rename(browserPlan("Waalweg").id, "Algunder Waalweg", clock, web) // waiting in the browser
+        store.update(t) { it.copy(favourite = true) }; phoneSync()
+        browserSync(); phoneSync(); browserSync()
+        assertEquals(listOf("Algunder Waalweg"), store.live().map { it.name })
+        assertEquals(listOf("Algunder Waalweg"), browser.plans().map { it.title })
+        assertTrue(store.byName("Algunder Waalweg").favourite)
+        assertEquals(true, browserPlan("Algunder Waalweg").favourite)
+    }
+
+    /** The browser's delete lands first, the phone starred offline: the delete wins – the route goes to the bin, no copy. */
+    @Test fun aBrowserDeleteThatLandsFirstWinsOverAStar() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        phoneSync(); browserSync()
+        browser.delete(browserPlan("Waalweg").id, clock, web); browserSync()
+        store.update(t) { it.copy(favourite = true) }
+        phoneSync(); browserSync(); phoneSync(); browserSync()
+        assertTrue("nothing live on the phone", store.live().isEmpty())
+        assertNotNull("in the recycle bin", store.list.single { it.id == t.id }.deletedMs)
+        assertTrue(browser.plans().isEmpty())
+    }
+
+    /** The star lands first, the browser's delete (made before it saw the star) after: the delete still wins. */
+    @Test fun aStarThatLandsFirstNeverUndoesABrowserDelete() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        phoneSync(); browserSync()
+        browser.delete(browserPlan("Waalweg").id, clock, web) // waiting in the browser
+        store.update(t) { it.copy(favourite = true) }; phoneSync()
+        browserSync(); phoneSync(); browserSync()
+        assertTrue(browser.plans().isEmpty())
+        assertTrue(store.live().isEmpty())
+        assertNotNull(store.list.single { it.id == t.id }.deletedMs)
+    }
+
+    /** A star set while a browser change waits (during a recording) survives its import and then reaches the browser. */
+    @Test fun aStarSetWhileAChangeWaitsSurvives() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        phoneSync(); browserSync()
+        browser.rename(browserPlan("Waalweg").id, "Algunder Waalweg", clock, web); browserSync()
+        recording = true; phoneSync() // the rename waits
+        store.update(t) { it.copy(favourite = true) } // starred during the tour
+        recording = false; phoneSync()
+        assertEquals("Algunder Waalweg", store.list.single { it.id == t.id }.name)
+        assertTrue("the star set meanwhile stays", store.list.single { it.id == t.id }.favourite)
+        phoneSync(); browserSync()
+        assertEquals(true, browserPlan("Algunder Waalweg").favourite)
+        assertEquals(1, browser.plans().size)
     }
 
     /** [l] as an older page keeps it: every item without field 9 (it skips the tag). */

@@ -84,7 +84,11 @@ class SyncLedger private constructor(
     fun setFavourite(id: String, favourite: Boolean, now: Long, device: String): Boolean {
         val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
         if (old.item.favourite == favourite) return true
-        put(old.item.copy(favourite = favourite, updatedAt = stamp(old, now), device = device), old)
+        // star only: on top of a version that is in the mailbox and not changed here since (or star-only already) –
+        // field 10 says so, and a conflict then never makes a copy (SyncMerge.reconcile); after another change here
+        // it is a normal edit
+        val base = if ((!old.dirty || SyncMerge.starOnly(old)) && old.rev > 0) old.rev else null
+        put(old.item.copy(favourite = favourite, updatedAt = stamp(old, now), device = device, starBase = base), old)
         return true
     }
 
@@ -100,10 +104,10 @@ class SyncLedger private constructor(
         if (!item.isUserItem || item.deleted || !SyncFormat.isId(item.id)) return false
         val here = entries[item.id]
         when {
-            here == null -> entries = entries + (item.id to SyncEntry(item, 0, dirty = true))
+            here == null -> entries = entries + (item.id to SyncEntry(item.copy(starBase = null), 0, dirty = true))
             here.item.sameContent(item) -> Unit
             else -> {
-                val c = SyncMerge.copyOf(item)
+                val c = SyncMerge.copyOf(item.copy(starBase = null))
                 if (c.id !in entries) entries = entries + (c.id to SyncEntry(c, 0, dirty = true))
             }
         }
@@ -113,7 +117,7 @@ class SyncLedger private constructor(
     /** Renames a saved plan or track; false when there is none under [id]. */
     fun rename(id: String, title: String?, now: Long, device: String): Boolean {
         val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
-        put(old.item.copy(title = title, updatedAt = stamp(old, now), device = device), old)
+        put(old.item.copy(title = title, updatedAt = stamp(old, now), device = device, starBase = null), old)
         return true
     }
 
@@ -166,7 +170,7 @@ class SyncLedger private constructor(
      */
     fun forget() {
         entries = entries.filterValues { it.item.isUserItem && !it.item.deleted }
-            .mapValues { SyncEntry(it.value.item, 0, dirty = true) }
+            .mapValues { SyncEntry(it.value.item.copy(starBase = null), 0, dirty = true) }
         since = 0
     }
 
@@ -176,7 +180,7 @@ class SyncLedger private constructor(
      * Nothing is dropped; the merge keeps both versions where the other side changed an item meanwhile.
      */
     fun restart() {
-        entries = entries.filterValues { !it.item.deleted }.mapValues { SyncEntry(it.value.item, 0, dirty = true) }
+        entries = entries.filterValues { !it.item.deleted }.mapValues { SyncEntry(it.value.item.copy(starBase = null), 0, dirty = true) }
         since = 0
     }
 

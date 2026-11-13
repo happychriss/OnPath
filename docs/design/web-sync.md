@@ -182,9 +182,13 @@ travels with it. One optional field for **kind 1 (plan) and kind 3 (track)** ite
     9 = favourite   one varint: 1 = starred, 0 = not starred; only on live plans / tracks (never a hello, JOIN, tombstone)
                     missing = not said (an item from an older app or page) → the reader keeps its own star
 
-- **Content:** a star change is an edit – `SyncLedger.setFavourite(id, star, now, device)` writes a new version, the
-  conflict rule of §6 applies as to any edit (a star made here on a version the other side replaced unseen stays on the
-  copy). `sameContent` reads "not said" as "not starred", so existing items without the field never cause copies, and a
+- **A star never makes a copy** (owner policy, review 2026-11-13): `SyncLedger.setFavourite(id, star, now, device)` on a
+  version that is in the mailbox and not changed here since writes a *star-only* version – field **10 = star base**
+  (varint: the mailbox revision it re-stars; no content, older readers skip it). In `SyncMerge.reconcile`: our star-only
+  change meets a newer mailbox version → that version with our star (their rename / edit wins, the star is kept; their
+  delete wins, the star goes); our edit / delete meets their star-only version of our very base → our edit with their
+  star / our delete wins. A star beside another change still waiting here is a normal edit (the old rule).
+  The phone keeps a star set while a browser change waits (`SyncLinks.agreedStar`, the link line's 4th field `s1`/`s0`). `sameContent` reads "not said" as "not starred", so existing items without the field never cause copies, and a
   phone does not upload its routes again after the update (it writes the field with its next real edit / star change).
 - **Keeping it:** `save` / `saveTrack` take `favourite: Boolean? = null` – null keeps the star the item had (the page's
   Save before it knows stars never takes one away); `rename` keeps it; `take` (moving) keeps it.

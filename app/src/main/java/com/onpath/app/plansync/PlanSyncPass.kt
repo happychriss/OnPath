@@ -117,7 +117,7 @@ class PlanSyncPass(
         val outcome = SyncRound(keys, mailbox(keys), { random(12) }, aead).run(ledger)
         // what the round changed (only the other side and the merge change items): new or different items, and the
         // copies the merge kept – all to bring into the tours
-        for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id]) links.markPending(id)
+        for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id]) links.markPending(id, agreedStar(before[id]))
         files.saveLinks(links)
         files.saveLedger(ledger)
         val peer = ledger.devices(device).firstOrNull()?.name
@@ -158,13 +158,16 @@ class PlanSyncPass(
         val hello = SyncFormat.deviceItemId(device)
         val before = ledger.entries.mapValues { it.value.item }
         val outcome = SyncRound(keys, mailbox(keys), { random(12) }, aead).run(ledger) { it.id == hello }
-        for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id]) links.markPending(id)
+        for ((id, e) in ledger.entries) if (e.item.isUserItem && e.item != before[id]) links.markPending(id, agreedStar(before[id]))
         files.saveLinks(links)
         files.saveLedger(ledger)
         val peer = ledger.devices(device).firstOrNull()?.name
         if (outcome is SyncRound.Outcome.Ended) return Result(outcome, peer)
         return Result(outcome, peer, skippedForRecording = true)
     }
+
+    /** The star a live item said before the round (what both sides had); null = no live item before. */
+    private fun agreedStar(before: SyncItem?): Boolean? = before?.takeIf { !it.deleted && it.isUserItem }?.let { it.favourite ?: false }
 
     /** Local tours → ledger. */
     private fun export(ledger: SyncLedger, links: SyncLinks, now: Long, device: String) {
@@ -276,8 +279,11 @@ class PlanSyncPass(
                             if (c == null) unreadable++ else if (store.replaceTrack(tour, c)) changed = true
                         }
                         if (tour.name != name && title(tour) != item.title) { store.rename(tour, name); changed = true }
-                        // the star from the other side (null = an older writer: the phone keeps its own); no "Changed" tag
-                        val star = item.favourite?.takeIf { it != tour.favourite }?.also { store.setFavourite(tour, it) } != null
+                        // the star from the other side (null = an older writer: the phone keeps its own); one set here while
+                        // the change waited (not the star both had) stays – the next pass sends it; no "Changed" tag
+                        val agreed = links.agreedStar(id)
+                        val localStar = agreed != null && tour.favourite != agreed
+                        val star = item.favourite?.takeIf { it != tour.favourite && !localStar }?.also { store.setFavourite(tour, it) } != null
                         if (changed) { updated++; files.marks.changed(tour.uuid) } // "Changed in the browser" until opened
                         else if (star) updated++
                     }
