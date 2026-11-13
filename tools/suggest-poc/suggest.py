@@ -79,7 +79,8 @@ def simple_wish(b, W):
         if k in ("forest", "quiet", "water", "signed", "natural") and v is not None:
             w[k] = float(v)
     w["simple"] = {k: b.get(k) for k in ("natur", "ruhe", "bekannt", "wasser", "pace", "effort")}
-    w["method"] = "b" if str(b.get("method", "a")).lower() == "b" else "a"
+    m = str(b.get("method", "a")).lower()
+    w["method"] = m if m in ("b", "c") else "a"  # a = fan, b = search in the way network, c = green-patch chain
     if b.get("ai"):  # "mit KI-Regionswissen": the AI's picks per map area as a score part and as destinations
         w["ai"] = True
     return w
@@ -550,7 +551,8 @@ def numbers(c, wish, W, index=None, picks=None):
         if t.get("estimated_town_class"):
             m["town"] += ln
         m["road_v"] += ln * mw  # on or beside a busy road, weighted
-        if builtup(t, k, C):
+        # through houses = the way runs inside the map's built-up land (not: a town is near) – nature.built
+        if NA.built(e[0], ND.get("built_radius_m", 45.0)) >= ND.get("built_from", 0.5):
             m["built"] += ln
         if ND["enabled"]:  # large connected nature around this piece (forest, heath, protected area), 0..1
             dv = sum(NA.depth(e[0], r) for r in ND["radii_m"]) / len(ND["radii_m"])
@@ -791,6 +793,13 @@ def suggest(wish, W=None):
         built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
         for c in built:
             numbers(c, wish, W, index, picks)
+    elif method == "c":
+        import greenchain as GCH
+        built, net_info, _ = GCH.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
+        for c in built:
+            numbers(c, wish, W, index, picks)
+        if not built:
+            notes.append("Keine Grünstück-Kette gefunden (zu wenig zusammenhängendes Grün in Reichweite)")
     else:
         turn = rnd.uniform(0, 360.0 / g["directions"])
         for i in range(g["directions"]):
@@ -814,19 +823,43 @@ def suggest(wish, W=None):
                 numbers(c, wish, W, index, picks)
             built += more
     built.sort(key=lambda c: -c["score"])
-    chosen = []
+    # Anstrengung is a clear cap of metres up per hour (owner 2026-11-13, Meran): loops above it are not offered –
+    # unless none is below it, then the flattest are shown and the page says so
+    cap_up = W["effort"].get(wish["effort"], {}).get("up_m_per_h")
     for c in built:
-        total = sum(e[2] for e in c["edges"])
-        shared = 0.0
-        for o in chosen:
-            s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / total
-            shared = max(shared, s)
-        c["shared_with_chosen"] = round(shared, 2)
-        c["length_ok"] = length_off_km(c, wish) <= length_limit_km(wish, W, W["select"]["max_length_off"]) \
-            and c["numbers"]["self_cross"] <= W["select"]["max_self_cross"]
-        if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
-            c["chosen"] = True
-            chosen.append(c)
+        c["numbers"]["up_m_per_h"] = int(round(c["ascent"] / max(c["hours"], 0.1)))
+        c["numbers"]["effort_cap"] = cap_up
+        c["ascent_ok"] = cap_up is None or c["numbers"]["up_m_per_h"] <= cap_up
+    if built and cap_up is not None and not any(c["ascent_ok"] for c in built):
+        notes.append("Keine Runde bleibt unter %d Höhenmetern je Stunde (Anstrengung „%s“) – gezeigt sind die flachsten"
+                     % (cap_up, (wish.get("simple") or {}).get("effort") or wish["effort"]))
+        flat = sorted(built, key=lambda c: c["numbers"]["up_m_per_h"])[:max(3, len(built) // 3)]
+        for c in flat:
+            c["ascent_ok"] = True
+    chosen = []
+    fill_below = W["select"].get("cross_fill_below", 99)
+    # loops that never meet their own way first (owner: "Achten bringen es gar nicht"); one meeting only as a filler
+    # (the strict rule is a knob: select.cross_fill_below; at or above select.show it is off – then one pass by score,
+    # and the score part selfcross alone makes a clean loop win)
+    for clean_pass in ((True, False) if fill_below < W["select"]["show"] else (None,)):
+        for c in built:
+            if c.get("chosen"):
+                continue
+            total = sum(e[2] for e in c["edges"])
+            shared = 0.0
+            for o in chosen:
+                s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / total
+                shared = max(shared, s)
+            c["shared_with_chosen"] = round(shared, 2)
+            c["length_ok"] = length_off_km(c, wish) <= length_limit_km(wish, W, W["select"]["max_length_off"]) \
+                and c["numbers"]["self_cross"] <= W["select"]["max_self_cross"] and c["ascent_ok"]
+            if clean_pass and c["numbers"]["self_cross"] > 0:
+                continue
+            if clean_pass is False and len(chosen) >= fill_below:
+                break
+            if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
+                c["chosen"] = True
+                chosen.append(c)
     # an explicit theme is always represented: with "am Wasser entlang" the shown loops include one made for a lake
     # (along its shore) and, when one fits the wished time, a full round of a lake – even if loops elsewhere score
     # higher or the round shares much with the shore loop
@@ -843,14 +876,16 @@ def suggest(wish, W=None):
                     chosen.remove(drop)
                 made[0]["chosen"] = True
                 chosen.append(made[0])
-    if method == "b" and W["netsearch"]["router_check"]:
+    if method in ("b", "c") and W["netsearch"]["router_check"]:
         import netsearch as NS
         for c in chosen:  # each shown loop once through the real router: does BRouter confirm it?
             c["numbers"].update(NS.router_check(c, wish, W, kv, sys.modules[__name__]))
     out = []
     for i, c in enumerate(built):
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
-        if c.get("target_name"):
+        if c.get("mode") == "chain":  # variant C: the chain of green patches names the loop
+            name = c.get("target_name") or "Grünstück-Kette %s" % d
+        elif c.get("target_name"):
             name = ("Entlang %s" % c["target_name"] if c.get("mode") == "follow" else
                     "Am %s entlang" % c["target_name"] if c.get("mode") == "shore" else
                     "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else ""))

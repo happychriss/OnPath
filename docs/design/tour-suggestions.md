@@ -331,3 +331,130 @@ loop he liked had 60 %, the one "zu viel durch Orte" 47 %) → real settlement a
 gar nicht" → prefer zero crossings, one only when nothing clean exists; ascent: Anstrengung as a clear limit of
 metres up per hour, shown on the card; "warum nicht am Wasser entlang" (hike from 51.18413, 6.94460) and "warum nichts
 über die Urdenbacher Kämpe" (bike from Hilden) – compass turning points hit such things only by chance.
+
+## Variant C – the green-patch chain ("Grünstück-Kette"), round 8 (2026-11-13 night)
+
+Owner: "die Grünstück-Kette bauen, das hat mehr Zukunft" – his reference is a bike loop from Hilden he praised:
+"wirklich clever – einfach alle Grüngürtel geschickt kombiniert". Variant B sets turning points by compass direction,
+so a green belt lying between two directions is met only by chance. Variant C plans like a person ("durch den
+Stadtwald, rüber zur Heide, über den Grünzug zurück"). `tools/suggest-poc/greenchain.py`, `--method c`, on the page
+"C · Grünstück-Kette". **Not the page's default:** on the bench it is worse than B for hikes (below).
+
+**Method, in plain words**
+1. The way network around the start is loaded once (as in B) and every piece of way gets B's unpleasantness.
+2. *Patches.* A piece of way is green when it is no street, not on / beside a busy road, not inside built-up land, and
+   lies in or at nature (forest, heath, protected area within 150 m – `nature.py`; or the routing data's top forest
+   classes; or at a bank: open water within 90 m). Green pieces that hang together are one patch; a not-green piece of
+   up to 80 m (150 m for bikes) between two green ones – a road crossing – joins them. Patches under 600 m of green way
+   (1.5 km for bikes) are dropped, the 40 (30) most worthwhile kept. The start is a patch of one point, or lies in one.
+3. *Connectors.* From every patch one search over the not-green rest; it stops at the first point of another patch,
+   so only neighbours are linked. Per pair up to two connectors (three from the start) whose gates lie well apart.
+4. *The chain.* On this small graph every cycle start → patch → … → start of up to 4 patches (6 for bikes) is
+   enumerated depth-first, cut off by the length. Worth = green metres walked inside the patches × their quality −
+   unpleasant metres of the connectors (× more the higher the Natur level). The best chain per set of patches is kept.
+5. *Realise.* Connectors as found; inside a patch the nicest way between its two gates; when length is left, on foot a
+   real loop inside the patch (two turning points, three parts of a third each – tried in up to three directions for
+   chains of one or two patches). For bikes there is no stretching inside a patch: it produced dead-end spurs that
+   counted as meetings (3–5 per loop). Then the same score sheet as A and B, and the BRouter check route.
+6. *Names.* Per patch the part really walked decides: the protected area it runs in, else the lake at its bank, else
+   "Wald bei / Grün bei / Ufer bei <nearest named place>". Nothing invented – but see the weak spots.
+
+**What it needs from the map:** `base.pmtiles` of the map areas: `landcover` (forest, heath, wetland), `park`
+(protected areas with names), `landuse` (built-up land), `water` (lake, river, pond), `place` (names) – drawn into
+one 45 m grid per map area (`nature.py`, version 4, cached beside the cell); plus the routing data's way network and
+tags as in B. Nothing online.
+
+**Settlement measure (needed first).** "Durch Häuser" was the routing data's coarse town class; it rated the loop the
+owner praised at 60 % and the one he called "zu viel durch Orte" at 47 %. Now: a way counts when at least half of the
+land within 45 m is the map's built-up land. Checked against his comments (share of the loop inside built-up land):
+
+| His comment | old | new |
+|---|---|---|
+| "schöner Weg, nimmt alles mit" (Hilden bike, S · Schleife) | 60 % | 35 % |
+| "zu viel durch Orte" (Hilden bike, Ziel EV3) | 47 % | 46 % |
+| "Rückweg geht nur durch die Stadt" | 45 % | 46 % |
+| "viel zu viel Wohngebiet" (Zons bike, ONO · Keule) | not stored | 29 % |
+| "wunderbar am Rhein lang" (Zons bike, Entlang EV15) | not stored | 12 % |
+
+The order is right now; the gap between the praised and the disliked Hilden loop is modest (35 vs 46). The measure
+feeds the score part `town` and the search cost `pen_town` of B and C alike.
+
+**Ascent (his Meran comment "wie wollen wir mit Steigung umgehen?").** Anstrengung is a clear cap of metres up per
+hour of the tour (`effort.<level>.up_m_per_h`: on foot leicht 120, mittel 300; bike / gravel 100 / 250; MTB 200 / 400;
+sportlich no cap) – proposed values, not yet tried by him. Loops above the cap are not offered; if none is below it,
+the flattest are shown with a note. The card shows "↑ 304 m · mittel".
+
+**Crossing ("Achten bringen es gar nicht").** Two knobs. The score part `selfcross` now costs a loop that meets its
+own way once about 4 points (value 1.0 / 0.6 / 0, weight 4). The strict rule – such a loop only while fewer than n clean
+loops are chosen, `select.cross_fill_below` – is built but **off**: the counter also counts a touch near the foot of a
+lollipop, and with n = 2 the strict rule hid clearly better loops (Ohligser Heide: 87 points, 86 % near forest, with
+one touch, behind 81 points with 28 % street). Two or more meetings are still never offered.
+
+**Sizes and times (desktop, Python, one request)**
+
+| Case | Network nodes | Patches | Connectors | Chain steps | Chains | Loops kept | Shown | Seconds |
+|---|---|---|---|---|---|---|---|---|
+| Hilden hike 2 h | 13 788 | 17 | 141 | 2 773 | 75 | 17 | 5 | 1.3 |
+| Ohligser Heide hike 2 h | 14 483 | 20 | 182 | 8 180 | 56 | 10 | 5 | 1.0 |
+| Düsseldorf hike 2 h | 38 223 | 25 | 293 | 32 083 | 167 | 1 | 1 | 1.7 |
+| Hilden hike 3 h | 40 024 | 40 | 769 | 200 000 (limit) | 617 | 13 | 5 | 2.8 |
+| Meran hike 3 h | 12 210 | 40 | 622 | 151 779 | 958 | 13 | 2 | 1.5 |
+| Hilden bike 2 h | 103 375 | 30 | 379 | 500 000 (limit) | 443 | 12 | 2 | 5.9 |
+| Zons bike 3 h | 203 271 | 30 | 358 | 500 000 (limit) | 380 | 12 | 3 | 8.6 |
+| Hilden bike 4 h | 209 520 | 30 | 698 | 500 000 (limit) | 1 539 | 10 | 1 | 12.9 |
+
+Hikes take 1–3 s (B: 2–7 s), bikes 5–13 s (B: 5–14 s). Per request: network 0.1–1.9 s, patches 0.2–3.3 s, connectors
+0.1–3.6 s, chain 0.01–1.8 s; the rest is realising and scoring. Where the enumeration stops at its step limit (3 h
+hikes, all bikes) it is not exact. Memory not measured; nothing measured on a phone.
+
+**Bench, B vs C, same weights (2026-11-13k), same sheet**
+
+| Case | ok B → C | Points B → C | Through houses % | Deep nature % | Meets itself | Shown by C | Seconds |
+|---|---|---|---|---|---|---|---|
+| Hilden hike 2 h | 6/7 → 7/7 | 75.3 → 70.9 | 22 → 36 | 29 → 28 | 0 → 0 | 5 | 2.3 → 1.3 |
+| Ohligser Heide hike 2 h | 7/8 → 7/8 | 91.1 → 87.1 | 13 → 11 | 65 → 65 | 0 → 1 | 5 | 2.0 → 1.0 |
+| Düsseldorf hike 2 h | 6/6 → 4/6 | 71.3 → 65.0 | 25 → 16 | 0 → 0 | 1 → 1 | 1 | 4.9 → 1.7 |
+| Hilden + Wasser 3 h | 7/8 → 5/8 | 78.2 → 73.7 | 18 → 22 | 46 → 35 | 0 → 0 | 5 | 4.3 → 2.0 |
+| Hilden Bekannte Wege 3 h | 8/8 → 8/8 | 82.1 → 81.3 | 18 → 21 | 37 → 40 | 0 → 0 | 5 | 6.7 → 2.8 |
+| Elbsee hike 2 h, Wasser (new) | 6/7 → 6/7 | 89.5 → 89.9 | 4 → 0 | 71 → 81 | 0 → 0 | 5 | 2.8 → 1.5 |
+| Meran hike 3 h | 8/8 → 7/8 | 76.5 → 75.6 | 24 → 22 | 6 → 0 | 0 → 0 | 2 | 1.7 → 1.5 |
+| Hilden bike 2 h | 6/6 → 5/6 | 83.4 → 86.0 | 37 → 28 | 22 → 30 | 0 → 0 | 2 | 6.2 → 5.9 |
+| Hilden bike 2 h, Natur hoch (new) | 5/7 → 6/7 | 81.1 → 84.5 | 35 → 27 | 22 → 32 | 0 → 0 | 2 | 5.5 → 5.7 |
+| Hilden bike 4 h | 6/6 → 5/6 | 85.8 → 84.8 | 28 → 22 | 12 → 23 | 0 → 0 | 1 | 13.8 → 12.9 |
+| Hilden gravel 3 h | 5/6 → 6/6 | 82.5 → 85.9 | 23 → 22 | 25 → 31 | 0 → 0 | 4 | 9.3 → 10.8 |
+| Zons bike 3 h | 6/7 → 6/7 | 80.4 → 83.8 | 30 → 15 | 19 → 25 | 0 → 0 | 3 | 11.8 → 8.6 |
+| Zons bike 3 h control | 6/7 → 5/7 | 86.5 → 87.8 | 24 → 18 | 16 → 27 | 0 → 0 | 2 | 10.8 → 8.7 |
+| Owner: bike 2 h Stürzelberg | 6/7 → 5/7 | 80.6 → 81.9 | 17 → 11 | 18 → 16 | 1 → 0 | 2 | 5.2 → 4.8 |
+| Owner: bike 2 h Köln | 5/6 → 6/6 | 86.1 → 86.0 | 15 → 16 | 8 → 8 | 0 → 0 | 4 | 5.3 → 5.3 |
+
+Total: B 93 of 104 expectations, C 88 of 104. B shows at least three loops in every case but Hilden gravel and Köln.
+Sheets: `~/onpath-suggest-poc/bench/20261113-231959-2026-11-13k-B.txt` and `…/20261113-232238-2026-11-13k-C.txt`.
+Nothing was tuned for C beyond what is described here; B's numbers differ from round 6 because the settlement
+measure and the crossing weight changed for both.
+
+- **Hikes: C is worse or equal.** From Hilden centre it walks out through town to the fields and the Garather Forst
+  (36 % through houses) where B goes to the Ohligser Heide; in Düsseldorf one loop only; with "am Wasser entlang" it
+  does not put a lake loop on top (the Stadtwald loop wins, a lake chain is shown further down). From the edge of a
+  big patch (Ohligser Heide, Stadtwald north of Hilden) its loops are as good as B's.
+- **Bikes: C is better on the numbers the owner cares about** – fewer houses (Hilden 37 → 28 %, Zons 30 → 15 %), more
+  deep nature – and its top loops are rings through the green belts (Hilden: Ohligser Heide – Götsche – Garather
+  Forst – Benrath – Eller Forst – Elbsee; Zons: Chorbusch – Rheinaue Worringen-Langel – right bank – Urdenbacher
+  Kämpe – ferry). But it shows only 1–3 loops, they tend to be short (Hilden 29–31 km for 36), and it does not build
+  the "wunderbar am Rhein lang" ride on purpose: the Rhine-route expectations stay red (they are red for B too).
+
+**Weak spots of C**
+- Chains share patches, so after the "at most half shared" rule few different loops remain (bikes: 1–3).
+- No stretching for bikes → loops as long as the chain happens to be; on foot the loop inside a patch can still touch
+  itself once, and from the Vogelpark the stick of the lollipop is 1.2 km (15 % walked twice).
+- A river bank is "green at water" like a pond; the Rhine is not a destination of its own; known routes count only
+  through B's edge values, not in the chain's worth.
+- Names from the nearest place can mislead ("Grün bei Bruchermühle" for a loop in the Hildener Stadtwald; "Ufer bei
+  Zenoberg – Tirol" for the Passer promenade). Protected-area and lake names are right where they apply.
+- The enumeration is depth-first with a step limit – complete for 2 h hikes, cut off beyond (3 h hike, all bikes).
+- The touch cost (search around what was already walked) is built but off: no gain measured, and it hurt the Heide.
+- Not run: MTB, the KI switch with C, `bench.py --refs`, the page clicked in a real browser.
+
+**Related work, said to exist – not looked up:** computing jogging routes from the faces of the way network (a loop
+as the border of a set of blocks; Karlsruhe, about 2013) and the arc-orienteering formulation for cycle-route
+planners (Leuven). The chain here is a small relative of both: patches instead of faces, a budgeted cycle on a patch
+graph instead of on the whole network.
