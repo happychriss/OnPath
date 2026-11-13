@@ -276,3 +276,37 @@ re-used the way out – nothing counted crossings until now.
 
 **Open after round 6** (bench, variant B, 81 of 90): the Rhine rides are no longer on top in the three bike cases at the
 Rhine – see the README's round-6 section for the reason and numbers.
+
+## Into the browser planner – the plan, parked (owner 2026-11-13: "merk dir diese Planung … erstmal weiter an den Routen, das bauen wir etwas später")
+
+Not built, not scheduled. The routes come first (the POC); this is what was agreed for when it is built.
+
+**Surface (owner's own proposal, sketch 2 = https://claude.ai/artifact/GE3STB3Dj1zFgYTiAK8gjV; sketch 1 with three
+entry variants = https://claude.ai/artifact/4vw94n6ag24ziSHRMSkftX; sources `~/onpath-suggest-poc/sketch/`):**
+1. The first tap into an empty plan opens today's menu ("Hier starten" · "Hierhin"); a third row **"Rundtour von hier"**
+   (the owner's words). No extra button in the "Neuer Plan" sheet.
+2. The wish: in the browser in the plan sheet, on a phone as a window over the dimmed map (like the Save-name dialog),
+   both with **Abbrechen** · **OK**. No Start line – the tapped point is the start, its place name under the title.
+   Lines: activity chip, Dauer (1 h · 2 h · 3 h · halber Tag + fine control), Natur / Ruhe / Bekannte Wege each
+   niedrig · mittel · hoch, "am Wasser entlang", Wegbeschaffenheit per activity, "Mehr" (Anstrengung). Pace comes from
+   the existing time model. Last values remembered.
+3. Abbrechen → the plain plan, nothing changed. OK → the existing wait card, then three loops on the map and three
+   cards (a speaking name, km · time · ↑, difficulty, one reason line, honest hints such as "mit Fähre", "etwas kürzer
+   als gewünscht"; no score number), "Neue Vorschläge", "Wunsch ändern", ✕ back to the empty plan.
+4. "Übernehmen" → a normal plan (round trip, a few points); edit / save / share / phone sync as today.
+
+**Still the owner's to decide (recommendations given, no answer yet):** the entry only while the plan is empty
+(recommended); the same row in the menu of a place / map symbol – on a phone three of five taps near a trailhead hit a
+symbol, so without it the entry is often missing (recommended: yes, under "Hierhin"); the small line under the entry
+("Runden nach Dauer und Geschmack" is the sketch's wording, not the owner's).
+
+**Technique:** write the network search once in the shared core (pure Kotlin, no Android), not port the POC's Python;
+`web/engine` compiles it with TeaVM like the router today, it runs in the planner's worker and hands suggestions out
+one by one; a chosen suggestion is an ordinary point list. Way network from the routing-data parts the planner already
+fetches; known routes, trail names, lakes, protected areas from the map areas the page loads anyway (read in the page,
+handed to the core); AI tips as an optional small file per map area from the map server; weights in one file shared
+with the POC; the POC's bench cases become the core's tests. First a trial build for Hike only: does the network read
+from BRouter's node cache work after TeaVM, how fast, how much memory – bike (200 000 nodes) is the open case. The
+generated profile copies (main-road cost) change the routing fingerprint and must not touch ordinary plans. Fallback
+only if the browser trial fails: the POC as a server service (the start point would leave the device; the app would
+need the port anyway).
