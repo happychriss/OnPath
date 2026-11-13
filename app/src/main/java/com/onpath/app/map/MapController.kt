@@ -458,6 +458,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             )
             // the plan sign may have been asked for before the dot existed
             try { showPlanPuckImages() } catch (e: Exception) { Problems.warn("map", "Plan sign on the position not shown", e) }
+            // a render mode change (Plan ⇄ following, heading-up) writes MapLibre's own images again: the plan sign back on
+            lc.addOnRenderModeChangedListener {
+                try { showPlanPuckImages() } catch (e: Exception) { Problems.warn("map", "Plan sign on the position not shown after a render mode change", e) }
+            }
             lc.setCompassEngine(heading)
             heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
             facing.unsure = heading.arrowGrey
