@@ -182,7 +182,8 @@ public class RouteService {
    */
   static String graph(String body) throws Exception {
     String profile = "hiking-mountain";
-    double lon = 0, lat = 0, radius = 3000;
+    double lon = 0, lat = 0, radius = 3000, maxcf = 1e9;
+    java.util.regex.Pattern skip = null, keep = null;
     Map<String, String> kv = new HashMap<>();
     kv.put("processUnusedTags", "1");
     for (String line : body.split("\n")) {
@@ -195,6 +196,9 @@ public class RouteService {
         case "kv": { int i = v.indexOf('='); kv.put(v.substring(0, i), v.substring(i + 1)); break; }
         case "at": { String[] c = v.split(","); lon = Double.parseDouble(c[0]); lat = Double.parseDouble(c[1]); break; }
         case "radius": radius = Double.parseDouble(v); break;
+        case "skip": skip = java.util.regex.Pattern.compile(v); break;  // way tags left out (minor ways for bikes) …
+        case "keep": keep = java.util.regex.Pattern.compile(v); break;  // … unless these tags are on the way (signed routes)
+        case "maxcf": maxcf = Double.parseDouble(v); break;  // ways the profile dislikes this much are left out (coarser network for bikes)
         default: break;
       }
     }
@@ -234,6 +238,17 @@ public class RouteService {
           if (link.descriptionBitmap == null || !seen.add(link)) continue;
           btools.mapaccess.OsmNode t = link.getTarget(n);
           if (t == null || !nc.obtainNonHollowNode(t)) continue;
+          boolean far = t.calcDistance(centre) > 500;  // near the start every way stays (the start may sit on a minor way)
+          if (far && maxcf < 1e8) {
+            rc.expctxWay.evaluate(link.isReverse(n), link.descriptionBitmap);
+            float c1 = rc.expctxWay.getCostfactor();
+            rc.expctxWay.evaluate(!link.isReverse(n), link.descriptionBitmap);
+            if (Math.min(c1, rc.expctxWay.getCostfactor()) >= maxcf) continue;
+          }
+          if (far && skip != null) {
+            String ts = rc.expctxWay.getKeyValueDescription(link.isReverse(n), link.descriptionBitmap);
+            if (skip.matcher(ts).find() && (keep == null || !keep.matcher(ts).find())) continue;
+          }
           Integer tid = ids.get(t);
           if (tid == null) {
             tid = ids.size();

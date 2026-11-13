@@ -38,6 +38,9 @@ CASES = [
                             natur="mittel", ruhe="hoch", bekannt="hoch"), dict()),
     ("hilden-gravel-3h", dict(start=H, start_name="Hilden", activity="gravel", hours=3, pace="normal", effort="mittel",
                               natur="hoch", ruhe="hoch", bekannt="niedrig"), dict()),
+    ("zons-bike-3h", dict(start=[6.8448, 51.1231], start_name="Zons", activity="bike", hours=3, pace="normal",
+                          effort="mittel", natur="hoch", ruhe="hoch", bekannt="hoch", wasser=True),
+     dict(known_km=("Rheinradweg", 15))),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
@@ -79,6 +82,10 @@ def run_case(name, wish_in, exp, W):
     if exp.get("known_like"):
         checks["%s unter den ersten 3" % " / ".join(exp["known_like"])] = any(
             w in k[0] for c in ch[:3] for k in c["numbers"].get("known", []) for w in exp["known_like"])
+    if exp.get("known_km"):
+        word, km = exp["known_km"]
+        checks["≥ %d km %s im ersten Vorschlag" % (km, word)] = sum(
+            k[1] for k in n.get("known", []) if word in k[0]) >= km
     if exp.get("known_named"):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],

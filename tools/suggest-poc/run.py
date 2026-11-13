@@ -31,6 +31,7 @@ p.add_argument("--natur", default="mittel", choices=["niedrig", "mittel", "hoch"
 p.add_argument("--ruhe", default="mittel", choices=["niedrig", "mittel", "hoch"])
 p.add_argument("--bekannt", default="mittel", choices=["niedrig", "mittel", "hoch"])
 p.add_argument("--wasser", action="store_true")
+p.add_argument("--surface", default=None, help="Wegbeschaffenheit: an option of weights.json surface.<activity> (hike: natur / gemischt / befestigt; bike: asphalt / fest / egal; gravel: schotter / gemischt; mtb: trails / forst)")
 for k in ("forest", "quiet", "water", "signed", "natural"):
     p.add_argument("--" + k, type=float, default=None, help="exact slider 0..1 (wins over the level)")
 p.add_argument("--seed", type=int, default=1)
@@ -49,7 +50,7 @@ except ValueError:
     pace = a.pace
 wish = S.simple_wish({"start": place[1], "start_name": place[0], "activity": a.activity, "hours": a.hours, "pace": pace,
                       "t_level": a.t, "effort": a.effort, "natur": a.natur, "ruhe": a.ruhe, "bekannt": a.bekannt,
-                      "wasser": a.wasser, "seed": a.seed, "method": a.method,
+                      "wasser": a.wasser, "surface": a.surface, "seed": a.seed, "method": a.method,
                       "fein": {k: getattr(a, k) for k in ("forest", "quiet", "water", "signed", "natural")}}, W)
 res = S.suggest(wish, W)
 path = S.save_run(res)

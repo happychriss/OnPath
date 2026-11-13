@@ -58,13 +58,15 @@
     <div><label>Anstrengung</label><select id="effort"><option selected>leicht</option><option>mittel</option><option>sportlich</option></select></div>
     <div id="tbox"><label>Schwierigkeit bis</label><select id="t"><option value="1">T1</option><option value="2" selected>T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5</option></select></div>
   </div>
+  <label>Wegbeschaffenheit</label>
+  <select id="surface"></select>
   <label>Was ist dir wichtig?</label>
   <div class="lv" data-k="natur"><span>Natur</span><button>niedrig</button><button>mittel</button><button class="on">hoch</button></div>
   <div class="lv" data-k="ruhe"><span>Ruhe</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <div class="lv" data-k="bekannt"><span>Bekannte Wege</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
   <label>Verfahren (zum Vergleichen)</label>
-  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (nur Wandern)</option></select>
+  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (Wandern und Rad)</option></select>
   <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
     <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
     <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
@@ -80,8 +82,10 @@
   <div class="opts">
     <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
     <label style="margin:0"><input type="checkbox" id="kinds" checked> gewählte Runde nach Wegart färben</label>
+    <label style="margin:0"><input type="checkbox" id="known" checked> bekannte Wege zeigen</label>
   </div>
   <div class="legend">Wegart: <i style="background:#1f8a4c"></i>am Wald <i style="background:#8a6d3b"></i>Weg <i style="background:#d9822b"></i>Straße <i style="background:#c62828"></i>an Hauptstraße</div>
+  <div class="legend">Bekannte Wege (aus unseren Karten): <i style="background:#7b1fa2;height:6px"></i>Europa / national <i style="background:#ab47bc"></i>regional <i style="background:#ce93d8"></i>lokal · Name: Maus darüber oder antippen</div>
   <div id="cards"></div>
   <details><summary>Zahlen des Laufs</summary><pre id="meta"></pre></details>
 </div>
@@ -97,15 +101,40 @@ const KIND = {W:'#1f8a4c', P:'#8a6d3b', S:'#d9822b', G:'#c62828'};
 const map = L.map('map', {zoomSnap:0.25}).setView([51.168, 6.9395], 13);
 if (!P.get('notiles')) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
 let start = [6.9395, 51.1680], startName = 'Hilden', seed = 1, result = null, sel = null;
+map.createPane('known'); map.getPane('known').style.zIndex = 350;   // under the suggestions (overlay pane 400)
+const knownLayer = L.layerGroup().addTo(map);
 const layers = L.layerGroup().addTo(map);
+let surfaceOpts = {}, knownKey = '';
+function fillSurface() {
+  const o = surfaceOpts[$('activity').value]; if (!o) return;
+  $('surface').innerHTML = Object.entries(o.options).map(([k, v]) => `<option value="${k}"${k === o.default ? ' selected' : ''}>${v.label}</option>`).join('');
+}
+// the known signed routes from our own map areas, drawn under the suggestions
+async function loadKnown(force) {
+  if (!$('known').checked) { knownLayer.clearLayers(); knownKey = ''; return; }
+  const key = start.map(x => x.toFixed(2)).join(',') + $('activity').value;
+  if (key === knownKey && !force) return;
+  knownKey = key;
+  const reach = $('activity').value === 'hike' ? 8000 : 20000;
+  const r = await (await fetch(BASE + `known?lon=${start[0]}&lat=${start[1]}&activity=${$('activity').value}&reach=${reach}`)).json();
+  knownLayer.clearLayers();
+  for (const k of r.routes || []) {
+    const big = /^[in]/.test(k.net), mid = /^r/.test(k.net);
+    const line = L.polyline(k.lines.map(l => l.map(p => [p[1], p[0]])), {pane:'known', color: big ? '#7b1fa2' : mid ? '#ab47bc' : '#ce93d8',
+      weight: big ? 6 : mid ? 4.5 : 3.5, opacity: 0.55}).addTo(knownLayer);
+    line.bindTooltip(k.name, {sticky:true}); line.bindPopup(k.name);
+  }
+}
 const startMark = L.circleMarker([start[1], start[0]], {radius:8, color:'#fff', weight:3, fillColor:'#22302a', fillOpacity:1}).addTo(map);
 
 document.querySelectorAll('.sl input').forEach(i => { const f = () => i.nextElementSibling.textContent = (+i.value).toFixed(1); i.oninput = f; f(); });
-fetch(BASE + 'places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join(''); });
+fetch(BASE + 'places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join('');
+  surfaceOpts = d.surface || {}; fillSurface(); if (window.pendingSurface) $('surface').value = window.pendingSurface; });
 
 function setStart(lonlat, name, fly) {
   start = lonlat; startName = name; startMark.setLatLng([lonlat[1], lonlat[0]]);
   if (fly) map.setView([lonlat[1], lonlat[0]], 13.5);
+  loadKnown();
 }
 async function findPlace() {
   const r = await (await fetch(BASE + 'place?q=' + encodeURIComponent($('place').value))).json();
@@ -119,10 +148,11 @@ map.on('click', e => { setStart([e.latlng.lng, e.latlng.lat], e.latlng.lat.toFix
 document.querySelectorAll('.lv').forEach(d => d.querySelectorAll('button').forEach(b => b.onclick = () => { d.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); }));
 const level = k => document.querySelector(`.lv[data-k=${k}] button.on`).textContent;
 const setLevel = (k, v) => document.querySelectorAll(`.lv[data-k=${k}] button`).forEach(b => b.classList.toggle('on', b.textContent === v));
-$('activity').onchange = () => { $('tbox').style.display = $('activity').value === 'hike' ? '' : 'none'; };
+$('activity').onchange = () => { $('tbox').style.display = $('activity').value === 'hike' ? '' : 'none'; fillSurface(); loadKnown(); };
+$('known').onchange = () => loadKnown(true);
 function wish() {
   const w = {start, start_name:startName, activity:$('activity').value, hours:+$('hours').value, pace:$('pacekmh').value ? +$('pacekmh').value : $('pace').value,
-             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, method:$('method').value, seed};
+             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, surface:$('surface').value, method:$('method').value, seed};
   if ($('feinon').checked) w.fein = {forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value};
   return w;
 }
@@ -162,7 +192,7 @@ function cards() {
       <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
       ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
       <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
-        ${n.main_longest_m ? chip('an Hauptstraße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > 300 ? 'bad' : '') : ''}${chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
+        ${n.main_longest_m ? chip('an Hauptstraße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > 300 ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
         ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}</div>
       <div class="parts">Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
       <div class="fb"><input type="text" placeholder="Warum ist sie die beste? (oder: was stört)"><div class="row"><button class="pri best">Das ist die beste</button><button class="bad">Die ist schlecht</button></div></div>`;
@@ -190,7 +220,7 @@ function draw(fit) {
       let i = 0;
       while (i < c.cls.length) { let j = i; while (j < c.cls.length && c.cls[j] === c.cls[i]) j++; L.polyline(ll.slice(i, j + 1), {color:KIND[c.cls[i]], weight:5}).addTo(layers); i = j; }
     } else {
-      L.polyline(ll, {color:'#fff', weight:c.chosen ? 7 : 4, opacity:dim ? 0.2 : 0.8}).addTo(layers);
+      L.polyline(ll, {color:'#fff', weight:c.chosen ? 8 : 4, opacity:dim ? 0.2 : 0.9}).addTo(layers);
       L.polyline(ll, {color:colorOf(c), weight:c.chosen ? 4 : 2, opacity:dim ? 0.25 : 0.95}).addTo(layers).on('click', () => { sel = c.id; cards(); draw(); });
     }
   }
@@ -204,6 +234,8 @@ if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r
   $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
   for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
   $('method').value = w.method || 'a';
+  window.pendingSurface = w.surface; fillSurface(); if (w.surface) $('surface').value = w.surface;
+  if (P.get('noknown')) { $('known').checked = false; loadKnown(true); }
   $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;
   if (sm.effort) $('effort').value = ({relaxed:'leicht', medium:'mittel', sporty:'sportlich'})[sm.effort] || sm.effort;
   for (const k of ['forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = w[k]; $(k).dispatchEvent(new Event('input')); }

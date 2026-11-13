@@ -150,3 +150,34 @@ bench; a change that turns a green case red needs a reason in the log below.
 - Doubled way = the very same way pieces; the other pavement of the same street is not seen as doubled.
 - No way names in the routing data; names come from the destinations (known routes, lakes).
 - The time model is two numbers per activity.
+
+## Round 4 (2026-11-13, weights 2026-11-13g) – bike in the network search, along known routes, surface, routes on the map
+
+Why the Rhine cycle path was missed at Zons (owner's run 20261113-193638): EV15 was in the destinations list 0.5 km
+from the start, but long bike loops ran as variant A with destinations switched off (6 plain hexagons), and the score's
+`water` part was 1.0 for every candidate (one pond passed = full points). Changed:
+
+- **Variant B for Bike / Gravel / MTB** (`netsearch.py`, `activities.<act>.netsearch`): the network comes without
+  forbidden ways and without minor ways (`skip` = service / footway / steps / path …, unless on a signed cycle route or
+  `bicycle=designated` – `keep`; every way within 500 m of the start stays). Zons 3 h: 203,000 nodes, load 1.8 s.
+- **Known routes count strongly**: a way on a signed route costs `1 - known_discount_per_signed x Bekannte Wege x rank`
+  of the others in the search (hoch ≈ 28 %, mittel ≈ 60 %, niedrig ≈ 84 %), score weight `signed` 2.5 → 4.5 (bike 6).
+- **Loops along a known route** (`netsearch.follow`, from Bekannte Wege ≥ 0.3): short stem onto the route, along it to
+  the point where stem + route + way home fill the wished length, back another way; both directions; card name
+  „Entlang <Weg>“. `net.follow` in the run file says per route what was built.
+- **One name per route**: „EuroVelo 15 - Rheinradweg - Teilstrecke …“ pieces and „(West)/(Ost)“ parts are one route.
+- **`water` part fixed**: share near water (full at `water_full_at`) or lake shore (full at `lake_full_m`, on long loops
+  `lake_full_share` of the loop).
+- **Wegbeschaffenheit** (form line, per activity; `surface` in weights.json): surface class A asphalt / F firm / N
+  natural from `surface` (filled on 71 % of the way length around Zons), else `tracktype` (16 %), else the kind of way;
+  `smoothness` (14 %) is not used. Score part `surface`, cost in the search, card shows the split. Replaces the old
+  `natural` part (weight 0).
+- **Known routes on the map**: checkbox „bekannte Wege zeigen“ draws the routes of our own map areas (`/known`,
+  `attractions.known_lines`) under the suggestions, name on hover / tap. The planner's own map picture (MapLibre +
+  our style) was **not** built in – the page is Leaflet; that is a rewrite of the page's map part.
+- Bench: new case `zons-bike-3h` (≥ 15 km Rheinradweg in the first suggestion). Sheet B 2026-11-13g: 56 of 59;
+  red: Hilden 2 h forest 45 % (limit 50), Heide street 21 %, **Hilden + Wasser lost the Elbsee in the top 3** (new
+  with the water fix – not tuned). Times B: bike 2 h 5.7 s, 3 h 10.3 s, 4 h 13.2 s, gravel 3 h 9.8 s.
+- Weak: the network search on 200,000 nodes is at the limit of Python (0.2 s per search); „Entlang EV15“ southwards has
+  a 2.4 km main-road stretch and comes back along the same river; bike main-road cost is still the app's profile;
+  the surface options' numbers are a first guess; MTB not run.
