@@ -116,7 +116,12 @@ fun MapHost(
     DisposableEffect(mapView) {
         // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
         val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm::mapGestureMeasured) }
+        // the POIs the map shows, read while it is idle: a tap / hold never asks MapLibre on the main thread (it waits
+        // for the render thread – 1447 ms in central London, owner's Pixel 2026-11-13)
+        val shownPois = com.onpath.app.poi.ShownPois()
+        var idleListener: MapView.OnDidBecomeIdleListener? = null
         mapView.getMapAsync { map ->
+            idleListener = MapView.OnDidBecomeIdleListener { shownPois.onIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
             map.setMinZoomPreference(3.0)
@@ -136,6 +141,7 @@ fun MapHost(
                 val n = ++styleLoads
                 // asked and done are both in the event log (a load that never finishes is visible there)
                 com.onpath.app.debug.Problems.trace("map", "Style load #$n asked (${loadedFrom?.name ?: "data folder"})")
+                shownPois.clear()
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
                     // each load in the event log with the native heap (it can grow per reload)
                     com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
@@ -194,6 +200,7 @@ fun MapHost(
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
+                shownPois.moving()
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                     vm.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
                 }
@@ -237,7 +244,7 @@ fun MapHost(
                         com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
                     } == true
                 }
-                val poi = if (marker >= 0) null else mark?.toPoi() ?: com.onpath.app.poi.findPoiAt(map, screen)
+                val poi = if (marker >= 0) null else mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(24f) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
@@ -281,8 +288,8 @@ fun MapHost(
                     val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
-                    // the POI query waits for the render thread: only where the buzz depends on it (MapGestures.buzzNeedsPoi)
-                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && com.onpath.app.poi.findPoiAt(map, at) != null
+                    // only where the buzz depends on a POI (MapGestures.buzzNeedsPoi); from the shown POIs, never waits
+                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && shownPois.at(map, at.x, at.y) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null
                 }
@@ -305,6 +312,7 @@ fun MapHost(
         }
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
+            idleListener?.let { mapView.removeOnDidBecomeIdleListener(it) }
             host.disposed()
             ctrlRef.clear(host)
             gestureFrames?.cancel()

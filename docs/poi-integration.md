@@ -26,6 +26,9 @@ All POI data is OpenStreetMap (ODbL). Google Maps is a link-out only: nothing fr
   card when Google knows the place; an unnamed point opens as an exact pin `geo:0,0?q=<lat>,<lon>(<kind>)` (`api=1&query=<name lat,lon>` has no
   location bias and often lands elsewhere). Browser fallback: `maps/search/<name>/@lat,lon,16z`
   or `api=1&query=<lat,lon>`. Built offline; no place IDs (they would need the online Places API).
-- `findPoiAt(map, screenPoint, boxDp = 24f)`: queries all `poi-*` layers. The nearest hit wins. It never throws.
+- `ShownPois` (`poi/PoiTap.kt`): the POIs the map shows, read with queryRenderedFeatures on all `poi-*` layers while
+  the map is idle (at once after a move, else every 2 s); a tap / hold looks them up with `at(map, x, y)` – the icon
+  or the placed name within a 24 dp finger box, nearest wins (`PoiHit.pick`, unit tested) – and never asks MapLibre on
+  the main thread (that waited 1447 ms for the busy render thread in central London, 2026-11-13). It never throws.
 - `PoiDetails(poi, onClose)`: the Material 3 sheet content.
 - Tests: `app/src/test/java/com/onpath/app/poi/PoiTest.kt`.
