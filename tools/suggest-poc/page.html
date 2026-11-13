@@ -87,6 +87,9 @@
 </div>
 <div id="map"></div>
 <script>
+// the page may sit behind a path (a preview pane, /index.html) – call the server next to the page, not at the host's root
+const BASE = location.pathname.replace(/[^\/]*\.[^\/]*$/, '').replace(/\/?$/, '/');
+
 const $ = id => document.getElementById(id);
 const P = new URLSearchParams(location.search);
 const COLORS = ['#1565c0', '#c2185b', '#6a1b9a', '#00838f', '#ef6c00', '#455a64', '#558b2f', '#4e342e'];
@@ -98,14 +101,14 @@ const layers = L.layerGroup().addTo(map);
 const startMark = L.circleMarker([start[1], start[0]], {radius:8, color:'#fff', weight:3, fillColor:'#22302a', fillOpacity:1}).addTo(map);
 
 document.querySelectorAll('.sl input').forEach(i => { const f = () => i.nextElementSibling.textContent = (+i.value).toFixed(1); i.oninput = f; f(); });
-fetch('/places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join(''); });
+fetch(BASE + 'places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join(''); });
 
 function setStart(lonlat, name, fly) {
   start = lonlat; startName = name; startMark.setLatLng([lonlat[1], lonlat[0]]);
   if (fly) map.setView([lonlat[1], lonlat[0]], 13.5);
 }
 async function findPlace() {
-  const r = await (await fetch('/place?q=' + encodeURIComponent($('place').value))).json();
+  const r = await (await fetch(BASE + 'place?q=' + encodeURIComponent($('place').value))).json();
   if (r.error) { $('status').textContent = r.error; return false; }
   setStart(r.lonlat, r.name, true); return true;
 }
@@ -126,7 +129,7 @@ function wish() {
 async function go() {
   $('status').textContent = 'rechnet …'; $('cards').innerHTML = ''; layers.clearLayers();
   const t0 = performance.now();
-  const r = await (await fetch('/suggest', {method:'POST', body:JSON.stringify(wish())})).json();
+  const r = await (await fetch(BASE + 'suggest', {method:'POST', body:JSON.stringify(wish())})).json();
   if (r.error) { $('status').textContent = 'Fehler: ' + r.error; return; }
   show(r, Math.round(performance.now() - t0));
 }
@@ -171,7 +174,7 @@ function cards() {
 }
 async function feedback(c, verdict, d) {
   const slim = x => ({id:x.id, name:x.name, chosen:x.chosen, score:x.score, parts:x.parts, numbers:x.numbers});
-  await fetch('/feedback', {method:'POST', body:JSON.stringify({run:result.run, verdict, candidate:c.id, reason:d.querySelector('input').value,
+  await fetch(BASE + 'feedback', {method:'POST', body:JSON.stringify({run:result.run, verdict, candidate:c.id, reason:d.querySelector('input').value,
     wish:result.wish, weights_version:result.weights_version, candidates:result.candidates.map(slim)})});
   d.querySelector('.fb').innerHTML = '<i>Notiert – danke.</i>';
 }
@@ -195,7 +198,7 @@ function draw(fit) {
   if (fit && b.length) map.fitBounds(b, {padding:[30, 30]});
 }
 // a saved run by address: /?run=<id>[&sel=<candidate>][&only=<candidate>][&all=1][&notiles=1]  (run.py --png uses this)
-if (P.get('run')) fetch('/run/' + P.get('run')).then(r => r.json()).then(r => {
+if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r => {
   setStart(r.wish.start, r.wish.start_name); $('place').value = r.wish.start_name;
   const w = r.wish, sm = w.simple || {};
   $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;

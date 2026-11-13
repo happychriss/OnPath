@@ -9,6 +9,7 @@ import json
 import os
 import time
 import urllib.parse
+import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import suggest as S
@@ -31,6 +32,10 @@ class H(BaseHTTPRequestHandler):
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
         q = urllib.parse.parse_qs(u.query)
+        # behind a path prefix (preview pane) the calls arrive as <prefix>/places …: look at the end of the path
+        tail = re.search(r"/(ping|places|place|run/[^/]+)$", u.path)
+        if tail:
+            u = u._replace(path="/" + tail.group(1))
         if u.path == "/":
             with open(os.path.join(S.HERE, "page.html"), "rb") as f:
                 return self.send(f.read(), "text/html")
@@ -58,12 +63,12 @@ class H(BaseHTTPRequestHandler):
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
-            if self.path == "/suggest":
+            if self.path.endswith("/suggest"):
                 wish = S.simple_wish(body, S.load_weights())
                 res = S.suggest(wish)
                 S.save_run(res)
                 return self.send(res)
-            if self.path == "/feedback":
+            if self.path.endswith("/feedback"):
                 os.makedirs(S.DATA, exist_ok=True)
                 body["at"] = time.strftime("%Y-%m-%dT%H:%M:%S")
                 with open(os.path.join(S.DATA, "feedback.jsonl"), "a", encoding="utf-8") as f:
