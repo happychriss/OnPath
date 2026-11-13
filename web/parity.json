@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "d0eec1c408d2489535ed30ae707567b729d3f307"
+      "blob": "196c999fd8edd3906f97f570a1f1f9884cc51201"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -93,7 +93,7 @@
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "85c8aa1dfc53d608a67e529b299ae4ed69ecb265"
+      "blob": "ca54dc9b4cd635efcf3d9339708e3cecc8611229"
     },
     {
       "app": "app/src/main/java/com/onpath/app/poi/PinnedPoiKinds.kt",
@@ -165,7 +165,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "6656683e5203c6de480fb55b3f75eeaeac3e2d19"
+      "blob": "21e777af54ca182daba90b9b16feb2f8629e9754"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
