@@ -1387,7 +1387,7 @@ class ScreenshotTest {
 
     /** The activity filter preset with the planning activity "Wandern": only hikes, Zuletzt hidden. */
     @Test fun routesActivityHike() = activityFilter(Activity.HIKE)
-    /** "Fahrrad" shows the bike family: Fahrrad + Gravel + E-Bike. */
+    /** "Fahrrad" shows only Fahrrad (owner 2026-11-13: exactly the chosen activity). */
     @Test fun routesActivityBike() = activityFilter(Activity.BIKE_TOURING)
     /** The chip's menu: the six (single choice), a line, "Alle". */
     @Test fun routesActivityMenu() = activityFilter(Activity.HIKE, menuTop = 248.dp, menuStart = 140.dp)

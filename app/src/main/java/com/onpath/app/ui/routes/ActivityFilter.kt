@@ -35,8 +35,8 @@ import com.onpath.strings.*
 /**
  * My routes filtered by activity (owner 2026-11-13, after the sketches): a chip after "☆ Favoriten" always names one
  * choice – preset with the planning activity every time My routes opens ("🚶 Wandern ▾"), a pick holds until My routes
- * closes. Its menu: the six activities (single choice) and "Alle" under a line ("Alle ▾"). An activity shows its family:
- * Fahrrad / Gravelbike / E-Bike → the bike family, MTB / E-MTB → the MTB family, Wandern → Wandern. Combines with
+ * closes. Its menu: the six activities (single choice) and "Alle" under a line ("Alle ▾"). An activity shows exactly its
+ * own tours (owner 2026-11-13 on the Pixel: „wenn ich E-Bike anklicke, will ich nur E-Bike sehen“). Combines with
  * Favoriten, the search and the sort, in both tabs; Zuletzt hides while one is chosen. Tours without a known activity
  * show only under "Alle". Pure rules here.
  */
@@ -44,16 +44,16 @@ object ActivityFilter {
     /** The menu's order. */
     val MENU = listOf(Activity.HIKE, Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE, Activity.MTB, Activity.EMTB)
 
-    /** The activities [a] shows (its family). */
-    fun family(a: Activity): Set<Activity> = when (a) {
-        Activity.HIKE -> setOf(Activity.HIKE)
-        Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE -> setOf(Activity.BIKE_TOURING, Activity.BIKE_TREKKING, Activity.EBIKE)
-        Activity.MTB, Activity.EMTB -> setOf(Activity.MTB, Activity.EMTB)
-    }
+    /** [t] shows under [chosen] (null = "Alle"): exactly that activity. */
+    fun keep(t: Tour, chosen: Activity?): Boolean = chosen == null || t.activity == chosen.name
 
-    /** [t] shows under [chosen] (null = "Alle"). */
-    fun keep(t: Tour, chosen: Activity?): Boolean =
-        chosen == null || Activity.entries.firstOrNull { it.name == t.activity }?.let { it in family(chosen) } == true
+    /**
+     * The saved routes / done tours My routes shows (no drafts – they show only as the Zuletzt row): only favourites when
+     * [onlyFavourites], only [act] (null = all), in the order [sort]. One function, so the screen recomputes it with every
+     * input as a key (field bug 2026-11-13: the activity was not one – a choice did not always filter the list).
+     */
+    fun saved(shown: List<Tour>, sort: RouteSort.Choice, onlyFavourites: Boolean, act: Activity?): List<Tour> =
+        RouteSort.sort(Favourites.shown(shown.filter { !it.draft }, onlyFavourites).filter { keep(it, act) }, sort)
 }
 
 /** The chip and its menu ([ActivityFilter]); [chosen] null = "Alle". */

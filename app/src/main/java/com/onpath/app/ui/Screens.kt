@@ -523,10 +523,8 @@ fun RoutesScreen(
             val recentTour = if (recent.live) null else shown.firstOrNull { it.id == recent.tourId }
             val hasRecent = liveTour != null || recentTour != null
             // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
-            val saved = remember(shown, sort, favOnly) {
-                RouteSort.sort(com.onpath.app.ui.routes.Favourites.shown(shown.filter { !it.draft }, favOnly)
-                    .filter { com.onpath.app.ui.routes.ActivityFilter.keep(it, act) }, sort)
-            }
+            // every input is a key: a new activity, star filter or order recomputes it (field bug 2026-11-13)
+            val saved = remember(shown, sort, favOnly, act) { com.onpath.app.ui.routes.ActivityFilter.saved(shown, sort, favOnly, act) }
             PullToSync(if (tab == RoutesTab.PLANNED) onPull else null, pulling) {
             if (saved.isEmpty() && !hasRecent) {
                 // a list of one so the empty Planned tab can be pulled too
