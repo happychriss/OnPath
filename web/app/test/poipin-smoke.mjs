@@ -41,7 +41,8 @@ const findPoi = () => page.waitForFunction(() => {
   return { kind: String(fs[0].properties.kind), lat, lon, x: p.x, y: p.y };
 }, null, { timeout: 60_000, polling: 500 }).then((h) => h.jsonValue());
 const pinInfo = () => page.$$eval('.pin', (els) => els.map((e) => ({ poi: e.classList.contains('poipin'), kind: e.dataset.kind ?? null,
-  badge: e.querySelector('.badge')?.textContent ?? null, ring: getComputedStyle(e).borderTopColor })));
+  badge: e.querySelector('.badge')?.textContent ?? null, ring: getComputedStyle(e).borderTopColor,
+  round: (() => { const b = e.querySelector('.badge')?.getBoundingClientRect(); return !b || Math.abs(b.width - b.height) < 0.5; })() })));
 
 // (a) tapped on the map → its menu → the first add entry (an empty plan: "Start here")
 await ready();
@@ -55,6 +56,7 @@ await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1,
 let pins = await pinInfo();
 check(pins[0].poi && pins[0].kind === poi.kind, `tapped POI as start: its own symbol stays (${poi.kind}, ${JSON.stringify(pins[0])})`);
 check(pins[0].badge === '1', 'the badge says ① (the order)');
+check(pins.every((p) => p.round), 'the badge is a circle, not an oval (owner 2026-11-13, Pixel 8)');
 check(/rgb\(30, 63, 174\)/.test(pins[0].ring), `the ring is route blue (${pins[0].ring})`);
 
 // (b) a plan from a link: a held point → the POI (pinned) → a held point; the POI's kind comes from the map
