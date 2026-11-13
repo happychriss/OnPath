@@ -69,6 +69,9 @@ CASES = [
                                           natur="hoch", ruhe="hoch", bekannt="hoch", wasser=True)),
     ("fro-bike-3h", "Fröndenberg", dict(start=[7.7660, 51.4720], activity="bike", hours=3, pace="normal", effort="mittel",
                                         natur="hoch", ruhe="mittel", bekannt="mittel", wasser=True)),
+    # the owner's Rhine case of 2026-11-13 ("es gibt einen wunderbaren Radweg am Rhein entlang")
+    ("zons-bike-3h", "Zons", dict(start=[6.8448, 51.1231], activity="bike", hours=3, pace="normal", effort="mittel",
+                                  natur="hoch", ruhe="hoch", bekannt="hoch", wasser=True)),
     # the mountain control
     ("meran-hike-3h", "Meran", dict(start=[11.1597, 46.6713], activity="hike", hours=3, pace="normal", effort="mittel",
                                     t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch")),

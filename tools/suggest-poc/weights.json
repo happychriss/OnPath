@@ -490,7 +490,7 @@
     "bank_radius_m": 90,
     "bank_from": 0.04,
     "big_water_radius_m": 300,
-    "big_water_from": 0.08
+    "big_water_from": 0.04
   },
   "greenchain": {
     "_about": "Variant C (greenchain.py): the green-patch chain. green = no street, main-road weight < green_max_main, not built-up, and nature share within green_radius_m >= green_from, or forest class >= green_forest_class, or at a bank (water share within bank_radius_m >= bank_from). Green ways that hang together = a patch (a not-green piece up to join_gap_m between two green ones joins them); patches under min_patch_m green metres are dropped, the max_patches most worthwhile kept. Connectors: least unpleasant way to each neighbouring patch, at most max_connector_share of the wished length, up to 'alternatives' gates >= gate_sep_m apart. Chain worth = green metres inside patches x quality - connector_weight x (1 + connector_natur x Natur) x unpleasant metres of connectors; inside a patch the way may be stretched up to stretch_share of its green metres (at most stretch_max_share of the wish). realise = how many chains become real loops.",
@@ -576,7 +576,8 @@
     "water_min_km": 1.5,
     "water_min_share": 0.15,
     "water_slots": 2,
-    "water_max_behind": 35.0
+    "water_max_behind": 35.0,
+    "max_doubled_pct": 30
   },
   "activities": {
     "_about": "Per activity: label, BRouter profile, pace words (km/h on the flat), and overrides of the sections above.",
@@ -638,7 +639,17 @@
         "pen_main": 6.0,
         "pen_town": 0.8,
         "check_via_every_m": 4000,
-        "rail_discount": 0.45
+        "rail_discount": 0.45,
+        "long_from_km": 60,
+        "long": {
+          "pairs_max": 4,
+          "max_targets": 2,
+          "anchor_search_len": 0.6,
+          "follow": {
+            "max_routes": 2,
+            "rail_max": 1
+          }
+        }
       },
       "generator": {
         "directions": 8,
@@ -691,7 +702,13 @@
         "length_slack": 0.08,
         "max_steps": 250000,
         "realise": 8,
-        "rail_value": 0.9
+        "rail_value": 0.9,
+        "long_from_km": 60,
+        "long": {
+          "realise": 6,
+          "max_steps": 150000,
+          "max_patches": 20
+        }
       },
       "classes": {
         "signed_prefixes": [
@@ -807,7 +824,17 @@
         "pen_main": 6.0,
         "pen_town": 0.8,
         "check_via_every_m": 4000,
-        "rail_discount": 0.45
+        "rail_discount": 0.45,
+        "long_from_km": 60,
+        "long": {
+          "pairs_max": 4,
+          "max_targets": 2,
+          "anchor_search_len": 0.6,
+          "follow": {
+            "max_routes": 2,
+            "rail_max": 1
+          }
+        }
       },
       "generator": {
         "directions": 8,
@@ -860,7 +887,13 @@
         "length_slack": 0.08,
         "max_steps": 250000,
         "realise": 8,
-        "rail_value": 0.9
+        "rail_value": 0.9,
+        "long_from_km": 60,
+        "long": {
+          "realise": 6,
+          "max_steps": 150000,
+          "max_patches": 20
+        }
       },
       "classes": {
         "signed_prefixes": [
@@ -972,7 +1005,17 @@
         "pen_main": 6.0,
         "pen_town": 0.8,
         "check_via_every_m": 4000,
-        "rail_discount": 0.45
+        "rail_discount": 0.45,
+        "long_from_km": 60,
+        "long": {
+          "pairs_max": 4,
+          "max_targets": 2,
+          "anchor_search_len": 0.6,
+          "follow": {
+            "max_routes": 2,
+            "rail_max": 1
+          }
+        }
       },
       "generator": {
         "directions": 8,
@@ -1025,7 +1068,13 @@
         "length_slack": 0.08,
         "max_steps": 250000,
         "realise": 8,
-        "rail_value": 0.9
+        "rail_value": 0.9,
+        "long_from_km": 60,
+        "long": {
+          "realise": 6,
+          "max_steps": 150000,
+          "max_patches": 20
+        }
       },
       "classes": {
         "signed_prefixes": [

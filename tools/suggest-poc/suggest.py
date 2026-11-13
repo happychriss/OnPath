@@ -778,7 +778,7 @@ def short_area(nm):
     """An official protected-area name as one would say it: 'Mittleres Rurtal mit den Felsbildungen …' -> 'Mittleres
     Rurtal'."""
     nm = nm.replace("Naturschutzgebiet ", "").replace("NSG ", "")
-    for cut in (",", " mit ", " - ", " – ", " (", " zwischen ", " bei ", " südlich ", " nördlich ", " östlich ", " westlich "):
+    for cut in (",", " mit ", " - ", " – ", " (", " zwischen ", " südlich ", " nördlich ", " östlich ", " westlich "):
         if cut in nm and len(nm) > 22:
             nm = nm.split(cut)[0]
     return nm.strip()[:36]
@@ -899,6 +899,9 @@ def suggest(wish, W=None):
     g = W["generator"]
     if wish["hours"] * wish["pace"] >= g.get("long_from_km", 1e9):  # long loops: fewer candidates, more and shorter legs
         g.update(g["long"])
+    for sec in ("netsearch", "greenchain"):  # long loops: a lighter search (the network is several times larger)
+        if wish["hours"] * wish["pace"] >= W[sec].get("long_from_km", 1e9):
+            _merge(W[sec], W[sec].get("long", {}))
     t0 = time.time()
     rnd = random.Random(wish["seed"])
     kv = profile_kv(wish, W)
@@ -1032,8 +1035,11 @@ def suggest(wish, W=None):
     # good suggestions than five with three poor ones (owner: "geht nur durch den Ort")
     for c in built:
         c["shared_with_chosen"] = 0.0
+        # not offered at all: too far from the wished time, meets its own way more than once, above the ascent cap,
+        # or mostly a there-and-back (more than max_doubled_pct walked twice beyond the free stem)
         c["length_ok"] = length_off_km(c, wish) <= length_limit_km(wish, W, SEL["max_length_off"]) \
-            and c["numbers"]["self_cross"] <= SEL["max_self_cross"] and c["ascent_ok"]
+            and c["numbers"]["self_cross"] <= SEL["max_self_cross"] and c["ascent_ok"] \
+            and c["numbers"]["doubled_pct"] <= SEL.get("max_doubled_pct", 100)
         c["len_m"] = sum(e[2] for e in c["edges"])
     pool = [c for c in built if c["length_ok"]]
     best_score = pool[0]["score"] if pool else 0.0
@@ -1116,7 +1122,13 @@ def suggest(wish, W=None):
             tn = c.get("target_name") or ""
             # no "Grünstück": an unnamed chain gets a name from what it passes, or direction + village
             name = tn if tn and "Grünstück" not in tn else speaking_name(c, wish, W["select"].get("name_skip"))
-            work = "Kette " + d
+            # a chain whose patches have only stand-in names ("Grün bei X – Wald bei Y") is better named by what it
+            # really passes, when our map has a name for that (a promenade, a protected area, a lake)
+            if tn and all(x.startswith(("Grün bei", "Wald bei", "Ufer bei", "Wälder bei")) for x in tn.split(" – ")):
+                sp = speaking_name(c, wish, W["select"].get("name_skip"))
+                if not sp.startswith(("Nach ", "Runde nach")):
+                    name = sp
+            work = "Kette " + d + (" · " + tn if tn and tn != name else "")
         elif c.get("mode") == "follow" and c.get("target_name"):
             name = "Entlang %s" % c["target_name"]
         elif method in ("auto", "b", "c") and c.get("mode") != "shore" and c.get("mode") != "ring":

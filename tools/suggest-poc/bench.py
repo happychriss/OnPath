@@ -128,8 +128,9 @@ def run_case(name, wish_in, exp, W):
             w in k[0] for c in ch[:3] for k in c["numbers"].get("known", []) for w in exp["known_like"])
     if exp.get("known_km"):
         word, km = exp["known_km"]
-        checks["≥ %d km %s im ersten Vorschlag" % (km, word)] = sum(
-            k[1] for k in n.get("known", []) if word in k[0]) >= km
+        # "wunderbar am Rhein lang": on the signed Rhine route, or directly at the river (half the km suffice there)
+        checks["≥ %d km %s oder ≥ %d km direkt am Wasser im ersten Vorschlag" % (km, word, km // 2)] = sum(
+            k[1] for k in n.get("known", []) if word in k[0]) >= km or n.get("big_water_km", 0) >= km // 2
     if exp.get("lake_km"):
         names, km = exp["lake_km"]
         checks["≥ %g km am %s im ersten Vorschlag" % (km, " / ".join(names))] = sum(
