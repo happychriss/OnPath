@@ -35,31 +35,43 @@
   .opts { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin:4px 0; }
   .legend { font-size:11.5px; color:var(--muted); margin-top:4px; }
   .legend i { display:inline-block; width:14px; height:4px; vertical-align:middle; margin:0 3px 0 8px; }
+  .lv { display:flex; align-items:center; gap:6px; margin:4px 0; } .lv span { width:110px; font-size:13px; }
+  .lv button { flex:1; padding:5px 4px; } .lv button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
+  .goals { font-size:12.5px; margin:0 0 5px; color:#1d5a3c; font-weight:500; }
   details { margin-top:10px; font-size:12px; color:var(--muted); } pre { white-space:pre-wrap; font-size:11px; }
 </style>
 </head>
 <body>
 <div id="side">
   <h1>Tourvorschläge</h1>
-  <p class="sub">Versuch am Rechner · Rundtouren zu Fuß · Start auch per Klick auf die Karte</p>
+  <p class="sub">Versuch am Rechner · Rundtouren zu Fuß und mit dem Rad · Start auch per Klick auf die Karte</p>
 
   <label>Start</label>
   <div class="row"><div style="flex:3"><input type="text" id="place" list="places" value="Hilden" placeholder="Ort oder „51.17, 6.94“"><datalist id="places"></datalist></div>
     <div><button id="find" style="width:100%">Suchen</button></div></div>
   <div class="row">
+    <div><label>Aktivität</label><select id="activity"><option value="hike" selected>Wandern</option><option value="bike">Fahrrad</option><option value="gravel">Gravel</option><option value="mtb">MTB</option></select></div>
     <div><label>Dauer (Stunden)</label><input type="number" id="hours" value="2" min="0.5" max="8" step="0.25"></div>
-    <div><label>Gehtempo (km/h)</label><input type="number" id="pace" value="3.5" min="2" max="7" step="0.1"></div>
   </div>
   <div class="row">
-    <div><label>Schwierigkeit bis</label><select id="t"><option value="1">T1 Wandern</option><option value="2" selected>T2 Bergwandern</option><option value="3">T3 anspruchsvoll</option><option value="4">T4 Alpin</option><option value="5">T5</option></select></div>
-    <div><label>Anstrengung</label><select id="effort"><option value="relaxed" selected>entspannt</option><option value="medium">mittel</option><option value="sporty">sportlich</option></select></div>
+    <div><label>Tempo</label><select id="pace"><option>gemütlich</option><option selected>normal</option><option>zügig</option></select></div>
+    <div><label>Anstrengung</label><select id="effort"><option selected>leicht</option><option>mittel</option><option>sportlich</option></select></div>
+    <div id="tbox"><label>Schwierigkeit bis</label><select id="t"><option value="1">T1</option><option value="2" selected>T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5</option></select></div>
   </div>
-  <label>Vorlieben</label>
-  <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
-  <div class="sl"><span>Ruhe</span><input type="range" id="quiet" min="0" max="1" step="0.1" value="0.7"><b></b></div>
-  <div class="sl"><span>Wasser</span><input type="range" id="water" min="0" max="1" step="0.1" value="0"><b></b></div>
-  <div class="sl"><span>Markierte Wege</span><input type="range" id="signed" min="0" max="1" step="0.1" value="0.3"><b></b></div>
-  <div class="sl"><span>Naturboden</span><input type="range" id="natural" min="0" max="1" step="0.1" value="0.5"><b></b></div>
+  <label>Was ist dir wichtig?</label>
+  <div class="lv" data-k="natur"><span>Natur</span><button>niedrig</button><button>mittel</button><button class="on">hoch</button></div>
+  <div class="lv" data-k="ruhe"><span>Ruhe</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
+  <div class="lv" data-k="bekannt"><span>Bekannte Wege</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
+  <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
+  <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
+    <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
+    <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
+    <div class="sl"><span>Ruhe</span><input type="range" id="quiet" min="0" max="1" step="0.1" value="0.5"><b></b></div>
+    <div class="sl"><span>Wasser</span><input type="range" id="water" min="0" max="1" step="0.1" value="0.2"><b></b></div>
+    <div class="sl"><span>Markierte Wege</span><input type="range" id="signed" min="0" max="1" step="0.1" value="0.5"><b></b></div>
+    <div class="sl"><span>Naturboden</span><input type="range" id="natural" min="0" max="1" step="0.1" value="0.6"><b></b></div>
+    <div class="row"><div><label>Tempo genau (km/h, leer = Stufe)</label><input type="number" id="pacekmh" min="2" max="30" step="0.1"></div></div>
+  </details>
 
   <div class="btns"><button class="pri" id="go">Vorschläge</button><button id="again">Neue Vorschläge</button></div>
   <div id="status"></div>
@@ -67,7 +79,7 @@
     <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
     <label style="margin:0"><input type="checkbox" id="kinds" checked> gewählte Runde nach Wegart färben</label>
   </div>
-  <div class="legend">Wegart: <i style="background:#1f8a4c"></i>am Wald <i style="background:#8a6d3b"></i>Weg <i style="background:#d9822b"></i>Straße <i style="background:#c62828"></i>große Straße</div>
+  <div class="legend">Wegart: <i style="background:#1f8a4c"></i>am Wald <i style="background:#8a6d3b"></i>Weg <i style="background:#d9822b"></i>Straße <i style="background:#c62828"></i>an Hauptstraße</div>
   <div id="cards"></div>
   <details><summary>Zahlen des Laufs</summary><pre id="meta"></pre></details>
 </div>
@@ -99,9 +111,15 @@ $('find').onclick = findPlace;
 $('place').onchange = findPlace;
 map.on('click', e => { setStart([e.latlng.lng, e.latlng.lat], e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5)); $('place').value = startName; });
 
+document.querySelectorAll('.lv').forEach(d => d.querySelectorAll('button').forEach(b => b.onclick = () => { d.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); }));
+const level = k => document.querySelector(`.lv[data-k=${k}] button.on`).textContent;
+const setLevel = (k, v) => document.querySelectorAll(`.lv[data-k=${k}] button`).forEach(b => b.classList.toggle('on', b.textContent === v));
+$('activity').onchange = () => { $('tbox').style.display = $('activity').value === 'hike' ? '' : 'none'; };
 function wish() {
-  return {start, start_name:startName, hours:+$('hours').value, pace:+$('pace').value, t_level:+$('t').value, effort:$('effort').value,
-          forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value, seed};
+  const w = {start, start_name:startName, activity:$('activity').value, hours:+$('hours').value, pace:$('pacekmh').value ? +$('pacekmh').value : $('pace').value,
+             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, seed};
+  if ($('feinon').checked) w.fein = {forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value};
+  return w;
 }
 async function go() {
   $('status').textContent = 'rechnet …'; $('cards').innerHTML = ''; layers.clearLayers();
@@ -118,12 +136,17 @@ const hm = h => Math.floor(h) + ':' + String(Math.round((h - Math.floor(h)) * 60
 function show(r, ms) {
   result = r; sel = null;
   const ch = r.candidates.filter(c => c.chosen);
-  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version}`;
-  $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
+  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version}` + ((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
+  $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, ziele_in_reichweite:(r.destinations || []).map(d => d.name + ' ' + d.km_away + ' km'), profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
   cards(); draw(true);
 }
 function shown() { return result.candidates.filter(c => c.chosen || $('all').checked); }
 function colorOf(c) { return c.chosen ? COLORS[result.candidates.filter(x => x.chosen).indexOf(c) % COLORS.length] : '#8d948f'; }
+const km1 = x => x.toFixed(1).replace('.', ',');
+function goals(n) {
+  return [...(n.known || []).slice(0, 3).map(k => km1(k[1]) + ' km ' + k[0]), ...(n.lakes || []).slice(0, 2).map(k => km1(k[1]) + ' km am ' + k[0]),
+          ...(n.views || []).slice(0, 1).map(v => 'Aussicht: ' + v)].join(' · ');
+}
 function cards() {
   $('cards').innerHTML = '';
   for (const c of shown()) {
@@ -132,8 +155,9 @@ function cards() {
     const chip = (t, cls) => `<span class="${cls || ''}">${t}</span>`;
     d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
       <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
+      ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
       <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
-        ${n.big_street_pct ? chip('große Straße ' + n.big_street_pct + ' %', 'bad') : ''}${chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
+        ${n.main_longest_m ? chip('an Hauptstraße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > 300 ? 'bad' : '') : ''}${chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
         ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}</div>
       <div class="parts">Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
       <div class="fb"><input type="text" placeholder="Warum ist sie die beste? (oder: was stört)"><div class="row"><button class="pri best">Das ist die beste</button><button class="bad">Die ist schlecht</button></div></div>`;
@@ -171,8 +195,13 @@ function draw(fit) {
 // a saved run by address: /?run=<id>[&sel=<candidate>][&only=<candidate>][&all=1][&notiles=1]  (run.py --png uses this)
 if (P.get('run')) fetch('/run/' + P.get('run')).then(r => r.json()).then(r => {
   setStart(r.wish.start, r.wish.start_name); $('place').value = r.wish.start_name;
-  for (const k of ['hours', 'pace', 'effort', 'forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = r.wish[k]; $(k).dispatchEvent(new Event('input')); }
-  $('t').value = r.wish.t_level; if (P.get('all')) $('all').checked = true;
+  const w = r.wish, sm = w.simple || {};
+  $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
+  for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
+  $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;
+  if (sm.effort) $('effort').value = ({relaxed:'leicht', medium:'mittel', sporty:'sportlich'})[sm.effort] || sm.effort;
+  for (const k of ['forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = w[k]; $(k).dispatchEvent(new Event('input')); }
+  if (P.get('all')) $('all').checked = true;
   show(r); if (P.get('sel')) { sel = +P.get('sel'); cards(); draw(true); }
   document.body.dataset.ready = '1';
 });
