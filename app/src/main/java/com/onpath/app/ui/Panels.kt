@@ -57,7 +57,8 @@ fun BottomPanel(
     Surface(
         modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)),
         shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
-        color = MaterialTheme.colorScheme.surface) {
+        // the light sage over the map like the plan sheet (owner 2026-11-13: the track sheet was still paper)
+        color = OnPathColors.MapGround) {
         Column(Modifier.animateContentSize().navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             // Material drag handle (32 × 4 dp)

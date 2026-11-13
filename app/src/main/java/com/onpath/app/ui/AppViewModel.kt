@@ -213,7 +213,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }, recent = prefs.zuletztId).also {
         it.onClosed = { routesNote = null } // the line at the top lasts until My routes is left
         it.onRecent = { id -> prefs.zuletztId = id } // the Zuletzt row survives an app start
-        it.sort = com.onpath.app.ui.routes.RouteSort.decode(prefs.routesSort) // the order chosen last, across app starts
     }
     /**
      * My routes' map pictures (owner 2026-11-13, L1: a square map + the route left of each row): files by uuid
@@ -249,7 +248,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** My routes' order (owner 2026-11-12, [com.onpath.app.ui.routes.RouteSort]): one for both tabs, kept across app starts. */
     var routesSort: com.onpath.app.ui.routes.RouteSort.Choice
         get() = routes.sort
-        set(v) { routes.sort = v; prefs.routesSort = com.onpath.app.ui.routes.RouteSort.encode(v) }
+        set(v) { routes.sort = v } // while My routes is open only: "Neueste zuerst" at each opening (owner 2026-11-13)
     /** My routes' "☆ Favoriten" pill (owner 2026-11-13, favourites C): on = only the starred ones; kept while the app runs. */
     var routesFavouritesOnly = false
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */

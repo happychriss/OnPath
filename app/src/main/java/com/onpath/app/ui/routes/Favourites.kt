@@ -22,7 +22,7 @@ import com.onpath.strings.*
 /**
  * Favourites in My routes (owner 2026-11-13, variant C after the sketches on `sketch/favourites-2026-11-13`): a star on
  * each saved row (tap toggles; filled gold = favourite) and a "☆ Favoriten" filter pill at the start of the sort chips –
- * on, both tabs show only the favourites, in the chosen order; Zuletzt hides meanwhile. Several favourites. Pure rules here.
+ * on, both tabs show only the favourites, in the chosen order; Zuletzt (the plan worked on) always shows. Several favourites. Pure rules here.
  */
 object Favourites {
     /** The saved routes / done tours shown: all, or with the pill on only the starred ones. */

@@ -512,8 +512,9 @@ fun RoutesScreen(
             // "Zuletzt" = exactly one row (owner 2026-11-12, [LivePlanRows]): the plan on the map ("In Bearbeitung"), else
             // the draft or saved route worked on last – a saved one with the "Gespeichert" tag, and under Gespeichert too
             val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
-            val filtered = favOnly || act != null // a filter on: Zuletzt hides
-            val recent = if (tab == RoutesTab.PLANNED && !filtered) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
+            // Zuletzt – the plan worked on – shows whatever the filters (owner 2026-11-13: „keine Zuletzt-Route mehr,
+            // obwohl ich gerade geplant habe“); Favoriten and the activity filter apply to the sections below
+            val recent = if (tab == RoutesTab.PLANNED) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
                 else RecentRow.NONE
             val liveName = live?.name ?: str(Res.string.routes_live_name)
             // the row goes through the search like every other
@@ -896,8 +897,9 @@ internal fun TourMenuItems(t: Tour, onRename: () -> Unit, onExport: () -> Unit, 
     if (onPlan != null) DropdownMenuItem(text = { Text(str(Res.string.routes_overview_plan), color = OnPathColors.ActionEdit, fontWeight = FontWeight.SemiBold) },
         leadingIcon = { Icon(Icons.Filled.Route, null, tint = OnPathColors.ActionEdit) },
         onClick = on(onPlan), modifier = Modifier.heightIn(min = 48.dp))
-    if (onGo != null) DropdownMenuItem(text = { Text(str(Res.string.plan_bar_go), color = OnPathColors.ActionGo, fontWeight = FontWeight.SemiBold) },
-        leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.ActionGo) },
+    // plan blue like every go in Plan (owner 2026-11-13: „sonst sehr verwirrend“ – ActionButtons.planGo)
+    if (onGo != null) DropdownMenuItem(text = { Text(str(Res.string.plan_bar_go), color = OnPathColors.PlanGo, fontWeight = FontWeight.SemiBold) },
+        leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.PlanGo) },
         onClick = on(onGo), modifier = Modifier.heightIn(min = 48.dp))
     if (onPlan != null || onGo != null) androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 4.dp))
     // a done tour / track as a plan to edit (owner 2026-11-06, F1): planning = blue

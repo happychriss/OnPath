@@ -1385,7 +1385,7 @@ class ScreenshotTest {
         }
     }
 
-    /** The activity filter preset with the planning activity "Wandern": only hikes, Zuletzt hidden. */
+    /** The activity filter preset with the planning activity "Wandern": only hikes; Zuletzt shows whatever the filter (owner 2026-11-13). */
     @Test fun routesActivityHike() = activityFilter(Activity.HIKE)
     /** "Fahrrad" shows only Fahrrad (owner 2026-11-13: exactly the chosen activity). */
     @Test fun routesActivityBike() = activityFilter(Activity.BIKE_TOURING)
@@ -1396,7 +1396,7 @@ class ScreenshotTest {
     /** Gemacht filtered the same way. */
     fun toursDoneActivityHike() = activityFilter(Activity.HIKE, tab = RoutesTab.DONE)
 
-    /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt hides meanwhile. */
+    /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt stays (owner 2026-11-13). */
     @Test fun routesFavouritesOnly() = paparazzi.snapshot {
         previewLines(favList + oneDraft.copy(uuid = "u-100"))
         OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,

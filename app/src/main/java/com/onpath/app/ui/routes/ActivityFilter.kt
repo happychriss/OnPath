@@ -37,7 +37,7 @@ import com.onpath.strings.*
  * choice – preset with the planning activity every time My routes opens ("🚶 Wandern ▾"), a pick holds until My routes
  * closes. Its menu: the six activities (single choice) and "Alle" under a line ("Alle ▾"). An activity shows exactly its
  * own tours (owner 2026-11-13 on the Pixel: „wenn ich E-Bike anklicke, will ich nur E-Bike sehen“). Combines with
- * Favoriten, the search and the sort, in both tabs; Zuletzt hides while one is chosen. Tours without a known activity
+ * Favoriten, the search and the sort, in both tabs; Zuletzt (the plan worked on) always shows. Tours without a known activity
  * show only under "Alle". Pure rules here.
  */
 object ActivityFilter {
