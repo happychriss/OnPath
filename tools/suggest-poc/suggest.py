@@ -1049,6 +1049,10 @@ def suggest(wish, W=None):
         for c in pool:
             if c["score"] < floor and chosen:
                 continue
+            # with Natur hoch a loop mostly through houses is not shown beside a better one ("geht nur durch den Ort")
+            if chosen and wish["forest"] >= SEL.get("built_limit_from_natur", 2.0) \
+                    and c["numbers"]["built_pct"] > SEL.get("max_built_pct", 100):
+                continue
             shared, same_dir = 0.0, False
             for o in chosen:
                 s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / c["len_m"]

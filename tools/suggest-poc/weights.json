@@ -577,7 +577,9 @@
     "water_min_share": 0.15,
     "water_slots": 2,
     "water_max_behind": 35.0,
-    "max_doubled_pct": 30
+    "max_doubled_pct": 30,
+    "built_limit_from_natur": 0.8,
+    "max_built_pct": 33
   },
   "activities": {
     "_about": "Per activity: label, BRouter profile, pace words (km/h on the flat), and overrides of the sections above.",
@@ -776,6 +778,9 @@
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
+      },
+      "select": {
+        "max_built_pct": 42
       }
     },
     "gravel": {
@@ -957,6 +962,9 @@
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
+      },
+      "select": {
+        "max_built_pct": 42
       }
     },
     "mtb": {
@@ -1137,6 +1145,9 @@
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
         }
+      },
+      "select": {
+        "max_built_pct": 42
       }
     }
   },
