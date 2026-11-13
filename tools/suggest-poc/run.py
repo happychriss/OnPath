@@ -4,12 +4,14 @@
   python3 tools/suggest-poc/run.py --start Hilden --hours 2 --pace 3.5 --effort relaxed --forest 0.9 --quiet 0.7
 
 Prints a table of all candidates and a short text per chosen route; writes the run (JSON), every candidate as GeoJSON
-and – with --png – a picture of the map with the chosen routes (needs serve.py's page; started here when needed).
+and – with --png – a picture of the map with the chosen routes (headless Chrome on serve.py's page; started here when needed).
 Output folder: ~/onpath-suggest-poc/runs/<run>/ (SUGGEST_DATA changes the base).
 """
 import argparse
+import glob
 import json
 import os
+import shutil
 import subprocess
 import sys
 import time
@@ -62,5 +64,17 @@ if a.png:
         subprocess.Popen([sys.executable, os.path.join(S.HERE, "serve.py"), "--port", str(a.port)],
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, start_new_session=True)
         time.sleep(1.5)
-    r = subprocess.run(["node", os.path.join(S.HERE, "shot.js"), base, res["run"], out], capture_output=True, text=True)
-    print((r.stdout + r.stderr).strip())
+    chrome = os.environ.get("CHROME") or next((c for c in [shutil.which("google-chrome"), shutil.which("chromium"),
+                                                        "/opt/pw-browsers/chromium"]
+                                               + glob.glob(os.path.expanduser("~/.cache/ms-playwright/chromium-*/chrome-linux*/chrome"))
+                                               if c and os.path.exists(c)), None)
+    if not chrome:
+        sys.exit("kein Chrome / Chromium gefunden (CHROME=<Pfad> setzen)")
+    shots = [("", "overview.png")] + [("&sel=%d&only=%d" % (c["id"], c["id"]), "route-%02d.png" % c["id"])
+                                      for c in res["candidates"] if c["chosen"]]
+    for q, name in shots:
+        png = os.path.join(out, name)
+        subprocess.run([chrome, "--headless=new", "--no-sandbox", "--hide-scrollbars", "--window-size=1500,1000",
+                        "--virtual-time-budget=9000", "--screenshot=" + png, "%s/?run=%s%s" % (base, res["run"], q)],
+                       capture_output=True, timeout=90)
+        print(png if os.path.isfile(png) else "Bild fehlt: " + png)

@@ -1,11 +1,11 @@
 {
-  "version": "2026-11-13a",
+  "version": "2026-11-13b",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again.",
 
   "generator": {
     "_about": "Fan of loops around the start: directions x shapes; each loop is routed leg by leg, resized until its time fits.",
     "directions": 12,
-    "shapes": ["dreieck", "viereck"],
+    "shapes": ["dreieck", "viereck", "keule"],
     "detour_factor": 1.35,
     "fit_iterations": 2,
     "fit_tolerance": 0.08,
@@ -45,8 +45,8 @@
 
   "classes": {
     "_about": "How way tags become values. forest/noise/river/town = BRouter's estimated_*_class (none, 1..6).",
-    "forest_value": {"": 0.0, "1": 0.2, "2": 0.35, "3": 0.5, "4": 0.7, "5": 0.85, "6": 1.0},
-    "forest_share_from_class": 4,
+    "forest_value": {"": 0.0, "1": 0.05, "2": 0.15, "3": 0.3, "4": 0.5, "5": 0.8, "6": 1.0},
+    "forest_share_from_class": 5,
     "forest_on_street_factor": 0.3,
     "noise_value": {"": 0.0, "1": 0.15, "2": 0.3, "3": 0.5, "4": 0.7, "5": 0.85, "6": 1.0},
     "loud_from_class": 4,
@@ -64,20 +64,20 @@
     "weights": {
       "length": 2.0,
       "ascent": 1.0,
-      "forest": 3.0,
+      "forest": 5.0,
       "quiet": 2.0,
       "water": 1.5,
       "signed": 1.0,
       "natural": 1.5,
-      "street": 2.5,
-      "doubled": 3.0,
-      "shape": 1.0,
+      "street": 3.0,
+      "doubled": 2.0,
+      "shape": 0.5,
       "crossings": 0.5
     },
     "length_zero_at": 0.35,
     "street_zero_at": 0.6,
     "big_street_counts": 2.0,
-    "doubled_zero_at": 0.3,
+    "doubled_zero_at": 0.5,
     "shape_full_at": 0.35,
     "crossings_zero_per_km": 3.0,
     "signed_full_at": 0.7

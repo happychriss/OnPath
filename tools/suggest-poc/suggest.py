@@ -143,6 +143,9 @@ def shape_points(start, bearing, shape, air_len, rnd, jitter, clockwise):
     r = air_len / (2 * math.pi)
     centre = offset(start, bearing, r)
     angles = [120, 240] if shape == "dreieck" else [90, 180, 270]
+    if shape == "keule":  # a stem out, a smaller loop at its end, the stem back (the way back is pushed off the way out)
+        r = 0.5 * air_len / (2 * math.pi)
+        centre = offset(start, bearing, 0.25 * air_len + r)
     if not clockwise:
         angles = [360 - a for a in angles]
     pts = []
