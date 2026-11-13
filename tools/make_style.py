@@ -1561,6 +1561,10 @@ POI_TIERS = [
 # sides of the road merged by extract_pois.py), from BUS_DETAIL_ZOOM every stop on its own.
 BUS_ZOOM = 14
 BUS_DETAIL_ZOOM = 16
+# Density limit for city POIs (owner 2026-11-13, central London; app cells/PoiDensity.kt): where more than 24
+# restaurants / cafés / bars / snack bars / shops share one map tile of the zoom shown, the POI tiles give the less
+# notable ones "dz" = the first zoom they are drawn at (all from z17). Data without "dz" (GeoJSON) draws as before.
+POI_DENSITY_FILTER = [">=", ["zoom"], ["to-number", ["get", "dz"], 0]]
 POI_PRIO_EXTRA = ["bus"]
 POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_PRIO_EXTRA
 POI_KINDS = set(POI_PRIO)
@@ -1623,7 +1627,7 @@ def pois():
     specs = [
         (f"poi-bus-detail", 3, BUS_DETAIL_ZOOM, None, BUS_DETAIL_ZOOM, ["all", is_bus, ["!", ["has", "merged"]]]),
         (f"poi-bus", 3, BUS_ZOOM, BUS_DETAIL_ZOOM, 15, ["all", is_bus, ["!", ["has", "detail"]]]),
-    ] + [(f"poi-tier{tier}", tier, minz, None, label_z, ["in", kind, ["literal", kinds]])
+    ] + [(f"poi-tier{tier}", tier, minz, None, label_z, ["all", ["in", kind, ["literal", kinds]], POI_DENSITY_FILTER])
          for tier, minz, label_z, kinds in reversed(POI_TIERS)]
     icons, names = [], []
     for id_, tier, minz, maxz, label_z, flt in specs:

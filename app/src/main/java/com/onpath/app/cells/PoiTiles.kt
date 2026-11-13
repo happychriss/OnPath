@@ -32,6 +32,12 @@ object PoiTiles {
     const val MAX_ZOOM = 14
     const val EXTENT = 8192
 
+    /**
+     * What the tiles hold; a store with tiles of an older version writes them again once ([CellStore.needsPoiTiles]).
+     * 1 = every POI from its kind's zoom; 2 = the density limit for city POIs ([PoiDensity], 2026-11-13).
+     */
+    const val VERSION = 2
+
     /** Kinds the style draws from z12 (tools/make_style.py POI_TIERS tier 1). */
     private val FROM_Z12 = setOf("hut", "bivouac", "shelter", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle")
 
@@ -93,16 +99,20 @@ object PoiTiles {
 
     /** All tiles of one cell's POIs ("z/x/y" → gzip MVT). */
     private fun encodeCell(cell: CellId, jsonl: File): Map<Triple<Int, Int, Int>, ByteArray> {
+        val firstZoom = densityZooms(jsonl)
         val layers = HashMap<Triple<Int, Int, Int>, LayerBuilder>()
         jsonl.bufferedReader(Charsets.UTF_8).useLines { lines ->
-            for (line in lines) {
+            for ((lineNo, line) in lines.withIndex()) {
                 if (line.isBlank()) continue
                 val f = JsonParser.parseString(line)
                 val (lat, lon) = GeoJsonMerge.firstPosition(f) ?: continue
-                val props = properties(f)
+                var props = properties(f)
                 val kind = props.firstOrNull { it.first == "kind" }?.second as? String
                 val mx = mercX(lon); val my = mercY(lat)
-                for (z in maxOf(MIN_ZOOM, minZoom(kind))..MAX_ZOOM) {
+                // the density limit (PoiDensity): drawn only from its first zoom – left out of the tiles below it
+                val dz = firstZoom[lineNo] ?: 0
+                if (dz > 0) props = props.filter { it.first != PoiDensity.PROP } + (PoiDensity.PROP to dz.toLong())
+                for (z in maxOf(MIN_ZOOM, minZoom(kind), minOf(dz, MAX_ZOOM))..MAX_ZOOM) {
                     val s = 1 shl (z - CellId.Z)
                     val n = (1 shl z).toDouble()
                     // the tile inside the owner cell (a point on the cell's edge stays in its cell's tiles)
@@ -115,6 +125,33 @@ object PoiTiles {
             }
         }
         return layers.mapValues { (_, l) -> PmTiles.gzip(l.tile()) }
+    }
+
+    /**
+     * First pass over one cell's POIs: line number → first zoom, only for POIs the density limit draws later than their
+     * kind ([PoiDensity]). Kept small: a position, kind and priority per restaurant / café / bar / snack bar / shop.
+     */
+    private fun densityZooms(jsonl: File): Map<Int, Int> {
+        val lineOf = ArrayList<Int>()
+        val points = ArrayList<PoiDensity.Point>()
+        jsonl.bufferedReader(Charsets.UTF_8).useLines { lines ->
+            for ((lineNo, line) in lines.withIndex()) {
+                if (line.isBlank()) continue
+                val f = JsonParser.parseString(line)
+                val p = f.asJsonObject.get("properties")?.takeIf { it.isJsonObject }?.asJsonObject ?: continue
+                val kind = p.get("kind")?.takeIf { it.isJsonPrimitive }?.asString ?: continue
+                if (kind !in PoiDensity.KINDS) continue
+                val (lat, lon) = GeoJsonMerge.firstPosition(f) ?: continue
+                val named = p.get("name")?.takeIf { it.isJsonPrimitive }?.asString?.isNotBlank() == true
+                val pr = p.get("pr")?.takeIf { it.isJsonPrimitive }?.asString?.toDoubleOrNull()?.toLong() ?: 0L
+                points += PoiDensity.Point(mercX(lon), mercY(lat), kind, named, pr)
+                lineOf += lineNo
+            }
+        }
+        val zooms = PoiDensity.firstZooms(points)
+        val out = HashMap<Int, Int>()
+        for (i in points.indices) if (zooms[i] > PoiDensity.KINDS.getValue(points[i].kind)) out[lineOf[i]] = zooms[i]
+        return out
     }
 
     /** Properties in file order; null values left out, numbers as Long when whole, objects / arrays as JSON text. */

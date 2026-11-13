@@ -74,6 +74,8 @@ class CellStore(
         val createdAt: Long,
         /** Building [PoiTiles.FILE] failed for this generation (no retry at start, [needsPoiTiles]). */
         val poiTilesFailed: Boolean = false,
+        /** [PoiTiles.VERSION] of its [PoiTiles.FILE] (1 = written before the version was kept). */
+        val poiTilesVersion: Int = PoiTiles.VERSION,
     ) {
         val cellIds: Set<CellId> get() = cells.map { it.id }.toSet()
         fun cell(id: CellId) = cells.firstOrNull { it.id == id }
@@ -159,6 +161,7 @@ class CellStore(
             o.optJSONObject("files")?.let { r -> r.keys().asSequence().associateWith { r.getLong(it) } }.orEmpty(),
             o.optLong("createdAt"),
             o.optBoolean("poiTilesFailed"),
+            o.optInt("poiTilesVersion", 1),
         )
     } catch (e: Exception) {
         if (!dir.exists()) {
@@ -309,11 +312,12 @@ class CellStore(
     }
 
     /**
-     * True when the current generation has its POIs only as GeoJSON (written by an app before [PoiTiles]) and building
-     * the tiles did not fail for it before: [MapCells] then writes a new generation at start.
+     * True when the current generation has its POIs only as GeoJSON (written by an app before [PoiTiles]) or as tiles of an
+     * older [PoiTiles.VERSION], and building the tiles did not fail for it before: [MapCells] then writes a new generation at start.
      */
     fun needsPoiTiles(): Boolean = current()?.let { g ->
-        g.cells.isNotEmpty() && !g.poiTilesFailed && File(g.dir, POIS).isFile && !File(g.dir, PoiTiles.FILE).isFile
+        g.cells.isNotEmpty() && !g.poiTilesFailed && File(g.dir, POIS).isFile &&
+            (!File(g.dir, PoiTiles.FILE).isFile || g.poiTilesVersion < PoiTiles.VERSION)
     } ?: false
 
     /**
@@ -335,7 +339,8 @@ class CellStore(
             if (POIS in region) encode(File(dataDir, POIS)) { lat, lon -> CellId.at(lat, lon)?.let { it !in allIds } ?: false }
                 ?.let { inputs += PmTiles.Input(it) { _, _, _ -> true }; owners += null }
             val prev = cur?.dir?.takeIf { keptIds.isNotEmpty() }
-            val prevTiles = prev?.let { File(it, PoiTiles.FILE) }?.takeIf { it.isFile }
+            // tiles of an older PoiTiles.VERSION are encoded again from the previous generation's GeoJSON
+            val prevTiles = prev?.let { File(it, PoiTiles.FILE) }?.takeIf { it.isFile && (cur?.poiTilesVersion ?: 0) >= PoiTiles.VERSION }
             if (prevTiles != null) {
                 inputs += PmTiles.Input(prevTiles) { z, x, y -> CellId.ofTile(z, x, y)?.let { it in keptIds } ?: false }; owners += null
             } else prev?.let { File(it, POIS) }?.takeIf { it.isFile }?.let { f ->
@@ -469,6 +474,7 @@ class CellStore(
     private fun toJson(g: Generation) = JSONObject()
         .put("generation", g.number).put("format", 2).put("createdAt", g.createdAt)
         .apply { if (g.poiTilesFailed) put("poiTilesFailed", true) }
+        .put("poiTilesVersion", g.poiTilesVersion)
         .put("region", JSONObject(g.region as Map<*, *>))
         .put("files", JSONObject(g.files as Map<*, *>))
         .put("cells", JSONArray(g.cells.map { c ->
