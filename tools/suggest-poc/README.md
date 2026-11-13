@@ -16,9 +16,13 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
 
 - Other ports (a second copy next to a running one): `SUGGEST_SERVICE=http://127.0.0.1:8793` (route service),
   `--port` / `SUGGEST_PORT` (page). Another weights file: `SUGGEST_WEIGHTS=<file>` or `bench.py --weights <file>`.
-- Destinations (lakes, known routes) come from Overpass (online) once per area and are cached in
-  `~/onpath-suggest-poc/cache/`; the public server is often busy – fill the cache patiently with
-  `python3 tools/suggest-poc/attractions.py <lon> <lat> hike|bike`. Without it a request runs without destinations.
+- `--method b` (run.py, bench.py; on the page "Verfahren") = variant B, the search in the way network (hiking only so
+  far); `a` = the fan of routed loops. Same score sheet for both.
+- Destinations (lakes, known routes, named trails, viewpoints) come from **the app's own map areas**: once
+  `python3 tools/suggest-poc/cells.py get <lon> <lat> 1` (3 × 3 cells around the point, ~15 MB each, from our map
+  server with the key in `~/.gradle/gradle.properties`; into `~/onpath-suggest-poc/cells/`). A missing area → the
+  request runs without its destinations and says which. `weights.json` `attractions.source: "overpass"` = the old
+  online stand-in.
 
 - Routing data: `~/onpath-routing/segments/*.rd5` (other folder: `ONPATH_SEGMENTS=<dir>`). Hilden / Düsseldorf need
   `E5_N50.rd5`. Profiles: the app's `app/src/main/assets/brouter/` (`PROFILE_DIR=<dir>` to try a changed copy).
@@ -34,7 +38,10 @@ python3 tools/suggest-poc/bench.py --refs     # known circular routes scored by 
 | --- | --- |
 | `service/RouteService.java`, `start.sh` | One long-running JVM with the app's BRouter jars. `POST /route`: points + profile parameters + weighted nogo lines → line with BRouter's full way tags per piece. Only routes. |
 | `service/make_profiles.py` | The app's profiles copied to a build folder + the POC's one addition (`mainroad_penalty`, hiking). |
-| `attractions.py` | Destinations in reach: named lakes, known signed routes with rank, viewpoints (Overpass stand-in for the map area's own files – see its header). |
+| `service/RouteService.java` `POST /graph` | The way network around a point straight from BRouter's node cache: nodes, links with length, the profile's cost factor per direction, full way tags, geometry (Hilden, 4 km radius: 21 900 nodes, 28 700 links, 1 015 km of ways, 0.16 s). |
+| `netsearch.py` | **Variant B**: unpleasantness per metre for every piece of way (the score sheet's ingredients), one search from the start, anchors per direction and distance + on destinations, loops start → A → (B →) start with a penalty on ways already walked, ready-made rings (lake shore, circular route), then the same score sheet. Chosen loops go once through the real router (`router_match_pct`). |
+| `cells.py`, `pmt.py` | The app's map areas on this computer (download as the app does) and a small pure-Python reader for PMTiles + vector tiles. |
+| `attractions.py` | Destinations in reach from the map areas: known routes with name and rank (`overlays.pmtiles` `routes`), named trails – local circular walks, promenades, Waalwege (`trailnames`), named lakes with their shore (`base.pmtiles` `water` + `water_name`), viewpoints (`pois.geojson`). One name per piece of way (the highest-ranking route). |
 | `bench.py` | The fixed yardstick (see below). |
 | `suggest.py` | Everything else: wish, fan of candidates, way back pushed off the way out, resize until the time fits, second pass towards pleasant spots, numbers, score, selection, text. |
 | `weights.json` | **Every knob** (generator, profile switches, time model, way classes, score weights, selection, quick-pick places). Read again on every request – edit, save, press „Vorschläge". Raise `version` with each tuning so a verdict in `feedback.jsonl` says which weights it saw. |

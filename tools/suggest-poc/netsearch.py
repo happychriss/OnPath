@@ -184,6 +184,10 @@ def to_candidate(G, nodes, edges, wish, W, S, extra):
         for i in range(len(pts) - 1):
             out.append([pts[i], pts[i + 1], S.dist(pts[i], pts[i + 1]), t, nt if i == 0 else {}])
         ele = G.nodes[v][2]
+        if ele < -1000:  # BRouter's "no elevation here" (bridges, tunnels, gaps in the height data)
+            continue
+        if ref < -1000:
+            ref = ele
         if ele > ref + hyst:
             up += ele - ref
             ref = ele
