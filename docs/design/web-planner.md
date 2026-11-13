@@ -562,12 +562,12 @@ the blue dot and no word why. "When there are waits, the user must know why … 
 | --- | --- | --- |
 | Engine start | sheet status line, spinner | Loading the routing engine… |
 | Locate | map strip, spinner | Finding your position… (after 20 s: Still finding your position – …); denied: red "Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again." (the next click asks again); off: red "Your position is not available – …" |
-| Map tiles still loading 400 ms after the map stopped | map strip, spinner, until idle | Loading the map for your area (`maps_load_loading`) |
-| Routing data for a plan | sheet status line, spinner | Loading the map for your area · about 10 MB (`maps_about_mb`; the worker sends the bytes still missing before it downloads – the app's map-cells.md §19.8 wording, no "routing data") |
+| Map tiles still loading 400 ms after the map stopped | **load overlay (§27)**, percent, until loaded | Loading the map for your area (`maps_load_loading`) |
+| Routing data for a plan | **load overlay (§27)**, percent (bytes received of the bytes needed) | Loading the map for your area (`maps_load_loading`; until 2026-11-13 „· about 10 MB“, `maps_about_mb`, in the wait box) |
 | Routing | sheet subline + status line, spinner | Calculating the route… (`plan_calculating`) |
 | "Go here" waiting for the position | status line, spinner | Finding your position… |
 | Spot without detailed map, zoom ≥ 10 | map strip, grey | Overview only – the detailed map for this area is asked for when the map rests here. |
-| Map area being built | map strip, spinner | the app's strip: "Preparing map for this area – about 5 min", rows "Your position · waiting – about 5 min" / "being prepared – 40 %, about 2 min", "2 more areas · waiting", × = hide (keeps loading) |
+| Map area being built | **load overlay (§27)**, the doorman's percent | the app's strip: "Preparing map for this area – about 5 min", rows "Your position · waiting – about 5 min" / "being prepared – 40 %, about 2 min", "2 more areas · waiting", × = hide (keeps loading) |
 | Map server down / offline | map strip, grey | "Map server not reachable – trying again." / "No detailed map – loads when online" |
 | Build failed | map strip, red | the doorman's reason, or "Map for this area failed" |
 | No key on the host | map strip, grey | The detailed map for this area is not available on the web yet – the overview map is shown. |
@@ -962,9 +962,9 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
   'profile' = open). A click on a point row on the phone folds the sheet (map and point visible).
 - **A shared link on a phone (owner 2026-11-13 field report):** the person who gets `#p=…` sees the route first. The
   sheet opens *small* (the peek: the link's name or length · ↑ ↓, the activity, Share, „2 Punkte ⌃“; not remembered,
-  the handle pulls it up); the app hint waits in the open sheet. While the first route loads the peek's line is the one
-  wait (`plan_calculating`, or `maps_load_loading` while the routing data comes) – no wait box over the map, no map
-  strip at the same time; then the route is fitted above the peek. Wide screens and a plain visit unchanged. Test:
+  the handle pulls it up); the app hint waits in the open sheet. While the first route loads the one wait is the load
+  overlay at the top of the map with its percent (§27, owner 2026-11-13 – until then the peek's line); no wait box over
+  the map, no second line; then the route is fitted above the peek. Wide screens and a plain visit unchanged. Test:
   `test/phonelink-smoke.mjs` (check-web.sh; not yet in web.yml – a workflow change needs a pull request).
 - **Owner's second look (2026-11-07 noon):** „Routenlänge und Höhen ↑/↓ als oberstes“, „großes Profil prominent“, „beim Start
   Punkte und Profil zeigen, man kann ihn zuklappen“. Now, at every width: the first line of the sheet is **length · ↑ · ↓**
@@ -1017,3 +1017,43 @@ after ~120 ms, fresh worker ready in ~70 ms, a short plan right after in ~0.7 s.
 E5_N50; skips otherwise – in `web/parity/check-web.sh`, not in GitHub's smokes: no NRW data there).
 Also (owner 2026-11-07, app f37793d0 `RouteWarnings.saysChanged`): the user's own activity / T change in Plan says no
 „New route for … – check it“ – in the planner the change is always the user's own, so the line never shows.
+
+## 27. The load overlay – the map of a new place loading, in percent (laptop, 2026-11-13)
+Owner 2026-11-13: „Das wird der Normalfall sein: man ist im Urlaub und plant für einen neuen Ort, sucht ihn – oder bekommt
+einen Link von einem Freund und war da noch nie. Die Meldung, dass die Karte noch geladen wird, sollte als Overlay
+erscheinen, mit einer prozentualen Fortschrittsangabe.“
+
+**What it is** (`loadoverlay.ts`, drawn by `mapnotice.ts` in the strip's place – slot `load`): one card at the top of
+the map (phone: under the search bar, full width; desktop: beside the side panel) – the line, a bar and the percent
+(„Karte für deine Gegend wird geladen ███░░ 43 %“), Cancel while a plan waits in it. It comes 400 ms after a wait began
+(a short wait shows nothing), when the map tiles of the view, a plan's or a link's routing data or a map area the server
+prepares are still loading; the engine starting and the route calculation only *join* a card that is up (the
+calculation alone keeps the wait box, as before). The route calculation is its last phase („Route wird berechnet…“,
+the engine's „Leg 2 of 5…“). It goes by itself: the full bar for a moment, then away. A failure shows the existing plain
+lines (plan failed, build failed – the strip's red line), no new error. **One wait at a time:** while the card is up, the
+strip's other spinners (map loading, position, „Preparing map …“ – its rows are the card's lines), the route's wait box,
+the sheet's wait line („Calculating the route…“) and the engine's status line step back (`body[data-loadover]`). On a
+phone a shared link keeps today's peek (§24): the sheet stays collapsed, the card is over the map.
+
+**What is measured** (one percent, weighted; it never goes back and is below 100 % until all is there):
+
+| Part | How | Weight |
+| --- | --- | --- |
+| Routing data under a plan | bytes received / bytes needed – the sizes come from the rd5 files' own 200-byte index (exact), the bytes are counted as the range answers stream in (`worker.ts` `ensureParts` → progress `{download, bytes, done}`); a part the prefetch is fetching counts too | bytes |
+| Map tiles of the view | tiles seen loading → loaded (or failed, or no longer in view); maplibre's tile managers (`_inViewTiles`, no public API; without it: loading / loaded). A pmtiles tile's size is not known before it comes | 40 kB per tile |
+| Map area being prepared (§17) | the doorman's own `progress` per area (0 while queued, 1 ready / failed) | 20 MB per area – it takes minutes, it outweighs the downloads |
+| Engine starting, a link before its routing data size is known, the route calculation | not measurable (TeaVM loads the Wasm itself; the router says no fraction) – a fixed share, done in one step | 3 MB, 4 MB (replaced by the real bytes once known), 1 MB |
+
+When work is added while the card is up (a new part, the route's map areas, tiles after the route is fitted) the bar
+does not jump back: the part still to go is shared by all open work from that moment (`LoadProgress` rebase). Nothing
+sits at 99 % for ever: every part ends – downloaded, failed (counted as done; the plain error line says it) or dropped
+(Cancel, a new plan). Percent in the page's language (`Intl.NumberFormat`: „43 %“ / „43%“). No new strings: the line is
+`maps_load_loading`, `plan_calculating`, the area strip's `maps_card_preparing*`; „· about 10 MB“ is no longer shown
+(the percent says it better).
+
+Tests: `test/phonelink-smoke.mjs` (held-back then slow routing data, phone + desktop: the card appears, percent rises in
+steps to 100 and never back, the card goes, never more than one wait visible – sampled every 50 ms –, the sheet stays
+collapsed on the phone, Cancel in the card stops the plan; red before, green after; `phonelink-smoke.mjs <seg> - <dir>`
+writes `phone-link-loading.png` / `desktop-link-loading.png`); `areas-smoke` D (the card's percent while the routing data
+comes), `robust-smoke` 7 (the card's Cancel). §17's table: „Map tiles still loading“, „Routing data for a plan“ and
+„Map area being built“ are this card now.

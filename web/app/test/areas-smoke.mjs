@@ -8,7 +8,7 @@
 //    about 5 min", "Your position · waiting – about 5 min", then "being prepared – 40 %") → ready: current.json appears
 //    in the store, the page reloads the cell sources (requests go to the new version folder) and the strip closes.
 // C. Location denied → a red line that says how to allow it.
-// D. Planning: the sheet says "Loading the routing engine…", "Loading the map for your area · about N MB" (routing data)
+// D. Planning: the sheet says "Loading the routing engine…"; the load overlay "Loading the map for your area · 45 %" (routing data)
 //    and "Calculating the route…" with a spinner.
 // Usage: node test/areas-smoke.mjs [segmentsDir]
 import fs from 'node:fs';
@@ -50,6 +50,10 @@ async function open(ctxOpts, at, serverOpts) {
       // the route's wait is the box in the middle of the map (owner 2026-11-02): spinner + text + Cancel
       const c = document.querySelector('#msgcards .msgcard.busy .msgtitle');
       if (c?.textContent && window.__statusLog.at(-1) !== '[busy] ' + c.textContent) window.__statusLog.push('[busy] ' + c.textContent);
+      // the map of a new area loading: the load overlay with its percent (owner 2026-11-13)
+      const o = document.querySelector('#mapnotes .mapnote.load');
+      const ot = o && `[busy] ${o.querySelector('.title')?.textContent} · ${o.querySelector('.pct')?.textContent}`;
+      if (ot && window.__statusLog.at(-1) !== ot) window.__statusLog.push(ot);
     }).observe(document.body, { subtree: true, childList: true, characterData: true }));
   });
   await page.goto(url + 'index.html?waitMs=0&at=' + at); // waitMs=0: the route's wait box at once (no 1 s delay)
@@ -174,8 +178,8 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   const seen = await page.evaluate(() => window.__statusLog);
   check(seen.includes('[busy] Loading the routing engine…'), 'engine start: "Loading the routing engine…" with a spinner');
-  check(seen.some((t) => /^\[busy\] Loading the map for your area · about \d+ MB$/.test(t)), `routing data: "${seen.find((t) => t.includes('about')) ?? 'not seen'}"`);
-  check(seen.includes('[busy] Calculating the route…'), 'routing: "Calculating the route…" (the app\'s plan_calculating) with a spinner');
+  check(seen.some((t) => /^\[busy\] Loading the map for your area · \d+\s?%$/.test(t)), `routing data: the overlay with a percent ("${seen.find((t) => t.includes('%')) ?? 'not seen'}")`);
+  check(seen.some((t) => /^\[busy\] Calculating the route…( · \d+\s?%)?$/.test(t)), 'routing: "Calculating the route…" (the app\'s plan_calculating) – the overlay\'s last phase or the wait box');
   check(!(await page.evaluate(() => document.getElementById('status').classList.contains('busy') || !!document.querySelector('#msgcards .msgcard.busy'))), 'after the plan: no spinner left');
   await ctx.close(); server.close();
 }

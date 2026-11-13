@@ -384,6 +384,20 @@ dialog.pair .check b { letter-spacing: .08em; }
 .mapnote .line { font-size: 12px; color: var(--muted); margin: 2px 0 0 22px; }
 .mapnote .x, .mapnote button, .mapnote a { pointer-events: auto; }  /* clicks on the strip's text reach the map below */
 .mapnote .x { flex: none; border: none; background: none; color: var(--muted); font-size: 18px; line-height: 1; padding: 0 2px; margin: -2px -4px 0 0; }
+/* the load overlay (loadoverlay.ts, owner 2026-11-13): one calm card – the line, a bar and the percent, Cancel while routing */
+.mapnote.load { padding: 12px 14px; font-size: 15px; box-shadow: 0 4px 16px var(--shadow); }
+.mapnote.load .title { font-weight: 600; }
+.mapnote.load .progress { display: flex; align-items: center; gap: 10px; margin-top: 8px; }
+.mapnote.load .bar { flex: 1; height: 6px; border-radius: 3px; background: var(--line); overflow: hidden; }
+.mapnote.load .bar > i { display: block; height: 100%; border-radius: 3px; background: var(--plan); transition: width .25s ease-out; }
+.mapnote.load .pct { flex: none; min-width: 3.2em; text-align: right; font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.mapnote.load .line { margin-left: 0; }
+.mapnote.load .act { display: block; margin: 8px 0 -4px auto; border: none; background: none; color: var(--green-fg, var(--plan)); font: inherit; font-size: 14px;
+  font-weight: 600; padding: 4px 2px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .mapnote.load .bar > i { transition: none; } }
+/* while it shows it is the one wait: the sheet's wait line and the engine's status line step back; the wait box too */
+body[data-loadover="1"] #summary .subline.waitline, body[data-loadover="1"] #status.busy { display: none; }
+body:has(#msgcards .msgcard[data-id="routing"]) #summary .subline.waitline { display: none; }
 .spinner { flex: none; width: 10px; height: 10px; margin-top: 3px; border-radius: 50%; border: 2px solid var(--line); border-top-color: var(--plan);
   animation: spin .9s linear infinite; }
 .status.busy::before { content: ""; display: inline-block; vertical-align: -2px; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%;
