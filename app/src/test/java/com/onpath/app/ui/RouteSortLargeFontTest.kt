@@ -24,6 +24,10 @@ abstract class RouteSortLargeFontTest {
 
     @Test fun routesSortedByLength() = shots.routesSortedByLength()
     @Test fun routesSortedShortestFirst() = shots.routesSortedShortestFirst()
+    /** L1 rows with map pictures and the favourites pill (owner 2026-11-13). */
+    @Test fun routesMapRows() = shots.routesMapRows()
+    @Test fun routesFavouritesOnly() = shots.routesFavouritesOnly()
+    @Test fun routesFavouritesNone() = shots.routesFavouritesNone()
     @Test fun tours() = shots.tours()
 }
 

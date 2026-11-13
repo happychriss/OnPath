@@ -1333,6 +1333,45 @@ class ScreenshotTest {
     }
 
     /**
+     * L1 map pictures for the screenshots (owner 2026-11-13): crops of the app's own map around Meran, by tour id; Ifinger
+     * Steig (12) has none – its row keeps the line on paper, as on a phone whose picture is not made yet.
+     */
+    private val mapPics: Map<Long, androidx.compose.ui.graphics.ImageBitmap> by lazy {
+        mapOf(100L to "sq_100", 11L to "sq_11", 13L to "sq_13", 14L to "sq_14", 15L to "sq_16").mapValues { (_, n) ->
+            android.graphics.BitmapFactory.decodeStream(javaClass.getResourceAsStream("/route-thumbs/$n.jpg")).asImageBitmap()
+        }
+    }
+    private val picSource = object : com.onpath.app.ui.routes.RouteThumbSource {
+        override fun cached(t: Tour) = mapPics[t.id]
+        override suspend fun load(t: Tour) = mapPics[t.id]
+    }
+    /** [sortList] with uuids (a picture belongs to one), two of them starred. */
+    private val favList get() = sortList.map { it.copy(uuid = "u-${it.id}", favourite = it.id == 11L || it.id == 15L) }
+
+    /**
+     * My routes L1 (owner 2026-11-13): a square map picture left (route on the offline map; Ifinger Steig without one: the
+     * line on paper), name, activity ("Wandern · T3" with its sign), facts; ⋮ over the star – gold = favourite. The
+     * "☆ Favoriten" pill first in the chip row; Zuletzt as before, in the same look.
+     */
+    @Test fun routesMapRows() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
+    }
+
+    /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt hides meanwhile. */
+    @Test fun routesFavouritesOnly() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+            initialFavouritesOnly = true) }
+    }
+
+    /** The pill on and nothing starred yet: one grey line says how to star one. */
+    @Test fun routesFavouritesNone() = paparazzi.snapshot {
+        previewLines(sortList)
+        OnPathTheme { RoutesScreen(sortList, {}, {}, {}, {}, {}, initialFavouritesOnly = true) }
+    }
+
+    /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
      * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
      * width green, under it "Abbrechen" | "Planen".

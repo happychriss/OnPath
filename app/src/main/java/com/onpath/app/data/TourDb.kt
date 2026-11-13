@@ -331,6 +331,19 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         } finally { db.endTransaction() }
     }
 
+    /**
+     * A short summary of each tour's stored line ("count:sumLat:sumLon", tour id → key): My routes' map pictures are made
+     * again when it changes (map/RouteThumbs). One query over the points index, no line loaded.
+     */
+    fun lineKeys(): Map<Long, String> = readableDatabase.rawQuery(
+        "SELECT tour_id, COUNT(*), TOTAL(lat), TOTAL(lon) FROM points GROUP BY tour_id", null
+    ).use { c ->
+        buildMap {
+            while (c.moveToNext()) put(c.getLong(0), "${c.getLong(1)}:" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(2)) +
+                ":" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(3)))
+        }
+    }
+
     fun loadSegments(id: Long): List<List<TrackPoint>> {
         val out = mutableListOf<MutableList<TrackPoint>>()
         var lastSeg = Int.MIN_VALUE

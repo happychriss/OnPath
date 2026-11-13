@@ -87,4 +87,11 @@
     <string name="routes_sort_chip">Sort: %1$s</string>
     <string name="routes_sort_chip_on">Sorted: %1$s</string>
     <string name="routes_sort_chip_flip">Sorted: %1$s, %2$s. Tap to reverse the order.</string>
+    <!-- My routes: favourites (owner 2026-11-13, variant C – the filter pill + the star on each row) -->
+    <string name="routes_fav_chip">Favorites</string>
+    <string name="routes_fav_chip_off">Favorites: show only favorites</string>
+    <string name="routes_fav_chip_on">Only favorites shown. Tap to show all.</string>
+    <string name="routes_fav_on">%1$s is a favorite. Tap to remove.</string>
+    <string name="routes_fav_off">Add %1$s to favorites</string>
+    <string name="routes_fav_none">No favorites yet. Tap ☆ on a route.</string>
 </resources>

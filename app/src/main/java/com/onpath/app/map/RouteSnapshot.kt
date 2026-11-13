@@ -54,12 +54,14 @@ object RouteSnapshot {
     /** [under] + [underColor]: a recorded tour's followed plan, thin under the track (owner 2026-11-07); empty = none. */
     suspend fun make(context: Context, styleJson: String, segments: List<List<GeoPoint>>, color: Int,
                      widthPx: Int, heightPx: Int, paddingPx: Int, density: Float,
-                     under: List<GeoPoint> = emptyList(), underColor: Int = 0): Shot? {
+                     under: List<GeoPoint> = emptyList(), underColor: Int = 0,
+                     /** The line's width against the map's (My routes' small pictures draw it thinner, ThumbRules.LINE_SCALE). */
+                     lineScale: Float = 1f): Shot? {
         val all = segments.flatten()
         if (all.isEmpty()) return null
         val b = OverviewRegion.of(all + under) ?: return null
         val scale = Scale.of(widthPx, heightPx, paddingPx, density) ?: return null
-        val json = try { withLine(styleJson, segments, color, under, underColor) } catch (e: Exception) {
+        val json = try { withLine(styleJson, segments, color, under, underColor, lineScale) } catch (e: Exception) {
             Problems.warn("routes", "Overview: the route could not be added to the map style – the shape is shown alone", e)
             return null
         }
@@ -104,7 +106,7 @@ object RouteSnapshot {
      * ([RouteLook], in dp – the snapshot's pixel ratio turns them into pixels). Pure JSON work.
      */
     internal fun withLine(styleJson: String, segments: List<List<GeoPoint>>, color: Int,
-                          under: List<GeoPoint> = emptyList(), underColor: Int = 0): String {
+                          under: List<GeoPoint> = emptyList(), underColor: Int = 0, lineScale: Float = 1f): String {
         fun coords(s: List<GeoPoint>) = JSONArray().apply { s.forEach { put(JSONArray().put(it.lon).put(it.lat)) } }
         val lines = JSONArray().apply { segments.filter { it.size >= 2 }.forEach { put(coords(it)) } }
         val o = JSONObject(styleJson)
@@ -126,9 +128,9 @@ object RouteSnapshot {
         val hex = String.format("#%06X", 0xFFFFFF and color)
         fun round() = JSONObject().put("line-cap", "round").put("line-join", "round")
         layers.put(JSONObject().put("id", LAYER_CASE).put("type", "line").put("source", SRC_LINE).put("layout", round())
-            .put("paint", JSONObject().put("line-color", "#FFFFFF").put("line-width", RouteLook.CASING_DP.toDouble())))
+            .put("paint", JSONObject().put("line-color", "#FFFFFF").put("line-width", (RouteLook.CASING_DP * lineScale).toDouble())))
         layers.put(JSONObject().put("id", LAYER_LINE).put("type", "line").put("source", SRC_LINE).put("layout", round())
-            .put("paint", JSONObject().put("line-color", hex).put("line-width", RouteLook.LINE_DP.toDouble())))
+            .put("paint", JSONObject().put("line-color", hex).put("line-width", (RouteLook.LINE_DP * lineScale).toDouble())))
         return o.toString()
     }
 

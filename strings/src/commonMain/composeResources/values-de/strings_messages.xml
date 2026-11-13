@@ -37,6 +37,7 @@
     <string name="msg_no_new_route">Keine neue Route gefunden – du folgst weiter der bisherigen.</string>
     <string name="msg_route_save_failed">Der Plan konnte nicht gespeichert werden. Dein Plan ist noch da – versuche es bitte noch einmal.</string>
     <string name="msg_route_rename_failed">Der Plan konnte nicht umbenannt werden. Versuche es bitte noch einmal.</string>
+    <string name="msg_route_star_failed">Der Stern konnte nicht gespeichert werden. Versuche es bitte noch einmal.</string>
     <string name="msg_tour_delete_failed">„%1$s“ konnte nicht gelöscht werden. Versuche es bitte noch einmal.</string>
     <string name="msg_tour_restore_failed">„%1$s“ konnte nicht wiederhergestellt werden. Versuche es bitte noch einmal.</string>
     <string name="msg_name_route">Plan</string>

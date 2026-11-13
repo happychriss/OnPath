@@ -36,14 +36,18 @@ import com.onpath.strings.*
  * and the current direction.
  */
 @Composable
-fun RouteSortChips(choice: RouteSort.Choice, onChoice: (RouteSort.Choice) -> Unit, modifier: Modifier = Modifier) {
-    val chosenIndex = RouteSort.Key.entries.indexOf(choice.key)
+fun RouteSortChips(choice: RouteSort.Choice, onChoice: (RouteSort.Choice) -> Unit, modifier: Modifier = Modifier,
+                   /** A chip before the sort chips: "☆ Favoriten" (owner 2026-11-13, favourites C). */
+                   leading: (@Composable () -> Unit)? = null) {
+    // with a leading chip the chosen one is one further on – the row still opens at it ("Neueste": the pill in view)
+    val chosenIndex = RouteSort.Key.entries.indexOf(choice.key) + (if (leading != null && choice.key != RouteSort.Key.entries.first()) 1 else 0)
     val state = rememberLazyListState(initialFirstVisibleItemIndex = chosenIndex)
     val peek = with(LocalDensity.current) { PEEK_DP.dp.toPx() }
     // the chip before the chosen one peeks in from the left (only at the start – never moves under the finger later)
     LaunchedEffect(Unit) { if (chosenIndex > 0) state.scrollBy(-peek) }
     LazyRow(modifier.fillMaxWidth(), state = state, contentPadding = PaddingValues(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+        leading?.let { l -> item(key = "lead") { l() } }
         items(RouteSort.Key.entries, key = { it.name }) { k ->
             val chosen = k == choice.key
             val label = keyLabel(k)

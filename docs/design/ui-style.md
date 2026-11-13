@@ -31,6 +31,7 @@ buttons; a 10 dp walnut `edgeShadow` under Plan's top band and above the sheet).
 | `Line` | fine lines `#D2DACD` (outlineVariant) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
 | `InfoBlue` | the left edge of a **FRAGE** box (a question) – never a status or a failure |
+| `Favourite` | the dark gold `#B07D00` of a favourite's ★ (owner 2026-11-13, My routes favourites C): the filled star of a starred route and the ★ in the "Favoriten" pill when on – a sign, never a word |
 | `TagContainer`, `TagInk` | a **tag** (light blue pill, dark blue word): the state of an item – "New" / "Changed" in My routes; the same look for the background-download chip |
 | `Grey` | the left edge of a plain **HINWEIS** box; grey icons |
 | `Warn` (+ `WarnContainer`, `OnWarnContainer`) | **attention**: ⚠ + amber edge, route warning lines, the off-route card, a weak state |
