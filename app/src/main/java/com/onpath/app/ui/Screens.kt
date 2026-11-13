@@ -82,6 +82,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
@@ -718,7 +720,16 @@ private fun TourCard(
                 verticalAlignment = Alignment.CenterVertically) {
                 // the map tile: decorative (the row says what it opens); smaller at a large font – the words need the room
                 val tile = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= LARGE_FONT_TILE_SCALE) MAP_TILE_LARGE_FONT else MAP_TILE
-                Box(Modifier.size(tile).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
+                // one element for TalkBack (and the E2E tests): "Übersicht vergrößern" where a tap opens the large overview,
+                // a button of its own like the ⤢ tile before L1; else "Übersicht anzeigen" (the plan on the map)
+                val opens = row.opensOverview && onOpen != null
+                val tileLabel = str(if (opens) Res.string.routes_overview_enlarge else Res.string.routes_overview_show)
+                Box(Modifier.size(tile).clip(OnPathShapes.Small).background(OnPathColors.PaperDim)
+                    .then(if (opens) Modifier.clickable(onClickLabel = tileLabel, role = androidx.compose.ui.semantics.Role.Button) { onOpen?.invoke() } else Modifier)
+                    .clearAndSetSemantics {
+                        contentDescription = tileLabel
+                        if (opens) { role = androidx.compose.ui.semantics.Role.Button; onClick(label = tileLabel) { onOpen?.invoke(); true } }
+                    }, contentAlignment = Alignment.Center) {
                     if (thumb != null) androidx.compose.foundation.Image(thumb, contentDescription = null,
                         contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxSize()
                             .then(if (t.draft) Modifier.alpha(0.6f) else Modifier))

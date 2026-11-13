@@ -4,6 +4,8 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.common_cancel
 import com.onpath.strings.routes_overview_follow
+import com.onpath.strings.routes_act_chip_desc
+import com.onpath.strings.routes_act_all
 import com.onpath.strings.routes_overview_plan
 import com.onpath.strings.routes_options_desc
 import com.onpath.strings.plan_bar_go
@@ -245,6 +247,11 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("My routes lists \"$name\"", 20_000) {
                 var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == savedId } }; listed
             }
+            // My routes opens on the planning activity (owner 2026-11-13) – during the tour the tour's; the route is for
+            // another activity: "Alle" in the activity chip's menu shows it
+            val act = activityBefore!!
+            device.wait(Until.findObject(By.desc(Txt.s(Res.string.routes_act_chip_desc, act.chip))), 5_000)!!.click()
+            clickText(Txt.s(Res.string.routes_act_all))
             clickText(name)
             // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
             clickText(Txt.s(Res.string.routes_overview_follow))
