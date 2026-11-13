@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Tourvorschläge – Versuch</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+  :root { --ink:#22302a; --muted:#66756d; --line:#d9ded9; --bg:#f6f5f0; --card:#fff; --accent:#2f6b4f; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:14px/1.4 system-ui, sans-serif; color:var(--ink); background:var(--bg); display:flex; height:100vh; }
+  #side { width:400px; min-width:400px; overflow-y:auto; padding:14px 14px 40px; border-right:1px solid var(--line); }
+  #map { flex:1; background:#e9ebe6; }
+  h1 { font-size:18px; margin:0 0 2px; } .sub { color:var(--muted); margin:0 0 12px; font-size:12px; }
+  label { display:block; font-size:12px; color:var(--muted); margin:8px 0 2px; }
+  input[type=text], input[type=number], select { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; background:#fff; }
+  .row { display:flex; gap:8px; } .row > div { flex:1; }
+  .sl { display:flex; align-items:center; gap:8px; } .sl span:first-child { width:92px; font-size:12px; color:var(--muted); }
+  .sl input { flex:1; } .sl b { width:30px; text-align:right; font-weight:500; font-variant-numeric:tabular-nums; }
+  button { font:inherit; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+  button.pri { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
+  .btns { display:flex; gap:8px; margin:12px 0 6px; }
+  #status { font-size:12px; color:var(--muted); min-height:18px; margin-bottom:6px; }
+  .card { background:var(--card); border:1px solid var(--line); border-left:6px solid #999; border-radius:8px; padding:9px 10px; margin:8px 0; cursor:pointer; }
+  .card.sel { box-shadow:0 0 0 2px var(--ink); }
+  .card h3 { margin:0; font-size:14px; display:flex; justify-content:space-between; }
+  .card .big { font-variant-numeric:tabular-nums; margin:2px 0 4px; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; font-size:11.5px; }
+  .chips span { background:#eef1ec; border-radius:10px; padding:1px 7px; white-space:nowrap; }
+  .chips span.bad { background:#f6dfd8; } .chips span.good { background:#dcefdf; }
+  .parts { font-size:11px; color:var(--muted); margin-top:5px; display:none; }
+  .card.sel .parts, .card.sel .fb { display:block; }
+  .fb { display:none; margin-top:7px; } .fb input { margin-bottom:5px; }
+  .opts { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin:4px 0; }
+  .legend { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .legend i { display:inline-block; width:14px; height:4px; vertical-align:middle; margin:0 3px 0 8px; }
+  details { margin-top:10px; font-size:12px; color:var(--muted); } pre { white-space:pre-wrap; font-size:11px; }
+</style>
+</head>
+<body>
+<div id="side">
+  <h1>Tourvorschläge</h1>
+  <p class="sub">Versuch am Rechner · Rundtouren zu Fuß · Start auch per Klick auf die Karte</p>
+
+  <label>Start</label>
+  <div class="row"><div style="flex:3"><input type="text" id="place" list="places" value="Hilden" placeholder="Ort oder „51.17, 6.94“"><datalist id="places"></datalist></div>
+    <div><button id="find" style="width:100%">Suchen</button></div></div>
+  <div class="row">
+    <div><label>Dauer (Stunden)</label><input type="number" id="hours" value="2" min="0.5" max="8" step="0.25"></div>
+    <div><label>Gehtempo (km/h)</label><input type="number" id="pace" value="3.5" min="2" max="7" step="0.1"></div>
+  </div>
+  <div class="row">
+    <div><label>Schwierigkeit bis</label><select id="t"><option value="1">T1 Wandern</option><option value="2" selected>T2 Bergwandern</option><option value="3">T3 anspruchsvoll</option><option value="4">T4 Alpin</option><option value="5">T5</option></select></div>
+    <div><label>Anstrengung</label><select id="effort"><option value="relaxed" selected>entspannt</option><option value="medium">mittel</option><option value="sporty">sportlich</option></select></div>
+  </div>
+  <label>Vorlieben</label>
+  <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
+  <div class="sl"><span>Ruhe</span><input type="range" id="quiet" min="0" max="1" step="0.1" value="0.7"><b></b></div>
+  <div class="sl"><span>Wasser</span><input type="range" id="water" min="0" max="1" step="0.1" value="0"><b></b></div>
+  <div class="sl"><span>Markierte Wege</span><input type="range" id="signed" min="0" max="1" step="0.1" value="0.3"><b></b></div>
+  <div class="sl"><span>Naturboden</span><input type="range" id="natural" min="0" max="1" step="0.1" value="0.5"><b></b></div>
+
+  <div class="btns"><button class="pri" id="go">Vorschläge</button><button id="again">Neue Vorschläge</button></div>
+  <div id="status"></div>
+  <div class="opts">
+    <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
+    <label style="margin:0"><input type="checkbox" id="kinds" checked> gewählte Runde nach Wegart färben</label>
+  </div>
+  <div class="legend">Wegart: <i style="background:#1f8a4c"></i>am Wald <i style="background:#8a6d3b"></i>Weg <i style="background:#d9822b"></i>Straße <i style="background:#c62828"></i>große Straße</div>
+  <div id="cards"></div>
+  <details><summary>Zahlen des Laufs</summary><pre id="meta"></pre></details>
+</div>
+<div id="map"></div>
+<script>
+const $ = id => document.getElementById(id);
+const P = new URLSearchParams(location.search);
+const COLORS = ['#1565c0', '#c2185b', '#6a1b9a', '#00838f', '#ef6c00', '#455a64', '#558b2f', '#4e342e'];
+const KIND = {W:'#1f8a4c', P:'#8a6d3b', S:'#d9822b', G:'#c62828'};
+const map = L.map('map', {zoomSnap:0.25}).setView([51.168, 6.9395], 13);
+if (!P.get('notiles')) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
+let start = [6.9395, 51.1680], startName = 'Hilden', seed = 1, result = null, sel = null;
+const layers = L.layerGroup().addTo(map);
+const startMark = L.circleMarker([start[1], start[0]], {radius:8, color:'#fff', weight:3, fillColor:'#22302a', fillOpacity:1}).addTo(map);
+
+document.querySelectorAll('.sl input').forEach(i => { const f = () => i.nextElementSibling.textContent = (+i.value).toFixed(1); i.oninput = f; f(); });
+fetch('/places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join(''); });
+
+function setStart(lonlat, name, fly) {
+  start = lonlat; startName = name; startMark.setLatLng([lonlat[1], lonlat[0]]);
+  if (fly) map.setView([lonlat[1], lonlat[0]], 13.5);
+}
+async function findPlace() {
+  const r = await (await fetch('/place?q=' + encodeURIComponent($('place').value))).json();
+  if (r.error) { $('status').textContent = r.error; return false; }
+  setStart(r.lonlat, r.name, true); return true;
+}
+$('find').onclick = findPlace;
+$('place').onchange = findPlace;
+map.on('click', e => { setStart([e.latlng.lng, e.latlng.lat], e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5)); $('place').value = startName; });
+
+function wish() {
+  return {start, start_name:startName, hours:+$('hours').value, pace:+$('pace').value, t_level:+$('t').value, effort:$('effort').value,
+          forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value, seed};
+}
+async function go() {
+  $('status').textContent = 'rechnet …'; $('cards').innerHTML = ''; layers.clearLayers();
+  const t0 = performance.now();
+  const r = await (await fetch('/suggest', {method:'POST', body:JSON.stringify(wish())})).json();
+  if (r.error) { $('status').textContent = 'Fehler: ' + r.error; return; }
+  show(r, Math.round(performance.now() - t0));
+}
+$('go').onclick = () => go();
+$('again').onclick = () => { seed = Math.floor(Math.random() * 1e6) + 2; go(); };
+$('all').onchange = () => draw(); $('kinds').onchange = () => draw();
+
+const hm = h => Math.floor(h) + ':' + String(Math.round((h - Math.floor(h)) * 60) % 60).padStart(2, '0');
+function show(r, ms) {
+  result = r; sel = null;
+  const ch = r.candidates.filter(c => c.chosen);
+  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version}`;
+  $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
+  cards(); draw(true);
+}
+function shown() { return result.candidates.filter(c => c.chosen || $('all').checked); }
+function colorOf(c) { return c.chosen ? COLORS[result.candidates.filter(x => x.chosen).indexOf(c) % COLORS.length] : '#8d948f'; }
+function cards() {
+  $('cards').innerHTML = '';
+  for (const c of shown()) {
+    const n = c.numbers, d = document.createElement('div');
+    d.className = 'card' + (sel === c.id ? ' sel' : ''); d.style.borderLeftColor = colorOf(c);
+    const chip = (t, cls) => `<span class="${cls || ''}">${t}</span>`;
+    d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
+      <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
+      <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
+        ${n.big_street_pct ? chip('große Straße ' + n.big_street_pct + ' %', 'bad') : ''}${chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
+        ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}</div>
+      <div class="parts">Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
+      <div class="fb"><input type="text" placeholder="Warum ist sie die beste? (oder: was stört)"><div class="row"><button class="pri best">Das ist die beste</button><button class="bad">Die ist schlecht</button></div></div>`;
+    d.onclick = e => { if (e.target.closest('.fb')) return; sel = sel === c.id ? null : c.id; cards(); draw(); };
+    d.querySelector('.best').onclick = () => feedback(c, 'beste', d);
+    d.querySelector('.bad').onclick = () => feedback(c, 'schlecht', d);
+    $('cards').appendChild(d);
+  }
+}
+async function feedback(c, verdict, d) {
+  const slim = x => ({id:x.id, name:x.name, chosen:x.chosen, score:x.score, parts:x.parts, numbers:x.numbers});
+  await fetch('/feedback', {method:'POST', body:JSON.stringify({run:result.run, verdict, candidate:c.id, reason:d.querySelector('input').value,
+    wish:result.wish, weights_version:result.weights_version, candidates:result.candidates.map(slim)})});
+  d.querySelector('.fb').innerHTML = '<i>Notiert – danke.</i>';
+}
+function draw(fit) {
+  layers.clearLayers(); if (!result) return;
+  const only = P.get('only'), b = [];
+  for (const c of shown().slice().reverse()) {
+    if (only && String(c.id) !== only) continue;
+    const ll = c.coords.map(p => [p[1], p[0]]), isSel = sel === c.id, dim = sel !== null && !isSel;
+    b.push(...ll);
+    if (isSel && $('kinds').checked) {
+      L.polyline(ll, {color:'#fff', weight:9, opacity:0.9}).addTo(layers);
+      let i = 0;
+      while (i < c.cls.length) { let j = i; while (j < c.cls.length && c.cls[j] === c.cls[i]) j++; L.polyline(ll.slice(i, j + 1), {color:KIND[c.cls[i]], weight:5}).addTo(layers); i = j; }
+    } else {
+      L.polyline(ll, {color:'#fff', weight:c.chosen ? 7 : 4, opacity:dim ? 0.2 : 0.8}).addTo(layers);
+      L.polyline(ll, {color:colorOf(c), weight:c.chosen ? 4 : 2, opacity:dim ? 0.25 : 0.95}).addTo(layers).on('click', () => { sel = c.id; cards(); draw(); });
+    }
+  }
+  startMark.bringToFront();
+  if (fit && b.length) map.fitBounds(b, {padding:[30, 30]});
+}
+// a saved run by address: /?run=<id>[&sel=<candidate>][&only=<candidate>][&all=1][&notiles=1]  (run.py --png uses this)
+if (P.get('run')) fetch('/run/' + P.get('run')).then(r => r.json()).then(r => {
+  setStart(r.wish.start, r.wish.start_name); $('place').value = r.wish.start_name;
+  for (const k of ['hours', 'pace', 'effort', 'forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = r.wish[k]; $(k).dispatchEvent(new Event('input')); }
+  $('t').value = r.wish.t_level; if (P.get('all')) $('all').checked = true;
+  show(r); if (P.get('sel')) { sel = +P.get('sel'); cards(); draw(true); }
+  document.body.dataset.ready = '1';
+});
+</script>
+</body>
+</html>
