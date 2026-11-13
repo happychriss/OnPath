@@ -94,9 +94,8 @@
     <string name="routes_fav_on">%1$s is a favorite. Tap to remove.</string>
     <string name="routes_fav_off">Add %1$s to favorites</string>
     <string name="routes_fav_none">No favorites yet. Tap ☆ on a route.</string>
-    <!-- SKETCH activity filter (owner 2026-11-13) – proposals -->
-    <string name="sketch_act_bike">Bike</string>
-    <string name="sketch_act_all">All kinds</string>
-    <string name="sketch_act_any">All</string>
-    <string name="sketch_act_n">%1$d kinds</string>
+    <!-- My routes: the activity filter (owner 2026-11-13) – preset with the planning activity, "Alle" under a line -->
+    <string name="routes_act_all">All</string>
+    <string name="routes_act_chip_desc">Activity: %1$s. Tap to change</string>
+    <string name="routes_act_none">No %1$s tours here.</string>
 </resources>

@@ -241,6 +241,8 @@ class MainActivity : ComponentActivity() {
                                 onFavourite = { t, on -> vm.setFavourite(t, on) },
                                 initialFavouritesOnly = vm.routesFavouritesOnly,
                                 onFavouritesOnly = { vm.routesFavouritesOnly = it },
+                                // the activity filter: the planning activity each time My routes opens (owner 2026-11-13)
+                                initialActivity = vm.activity,
                             )
                         }
                         vm.editRides?.let { (t, s) ->

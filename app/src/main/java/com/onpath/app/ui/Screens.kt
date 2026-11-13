@@ -436,10 +436,17 @@ fun RoutesScreen(
     /** The "☆ Favoriten" pill on at the start (the app keeps it while it runs; screenshots). */
     initialFavouritesOnly: Boolean = false,
     onFavouritesOnly: (Boolean) -> Unit = {},
+    /**
+     * The activity filter's preset (owner 2026-11-13): the planning activity – My routes opens showing its family; null =
+     * "Alle". A pick holds until My routes closes ([com.onpath.app.ui.routes.ActivityFilter]).
+     */
+    initialActivity: Activity? = null,
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     var sort by remember { mutableStateOf(initialSort) }
     var favOnly by remember { mutableStateOf(initialFavouritesOnly) }
+    // the activity filter (owner 2026-11-13): preset with the planning activity at every opening, a pick holds while open
+    var act by remember { mutableStateOf(initialActivity) }
     // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
     var overview by remember { mutableStateOf(initialOverview) }
     val line: @Composable (Tour) -> List<List<com.onpath.app.routing.GeoPoint>>? = { t -> rememberRouteLine(t, loadLine) }
@@ -495,10 +502,8 @@ fun RoutesScreen(
                         com.onpath.app.ui.routes.FavouriteChip(favOnly) {
                             favOnly = it; onFavouritesOnly(it); scope.launch { listState.scrollToItem(0) }
                         }
-                        // SKETCH activity filter (owner 2026-11-13): drawn only by ActivityFilterSketchTest
-                        if (com.onpath.app.ui.routes.ActivityFilterSketch.mode != com.onpath.app.ui.routes.ActivityFilterSketch.Mode.NONE) {
-                            Spacer(Modifier.width(8.dp)); com.onpath.app.ui.routes.ActivityFilterSketch.Chips()
-                        }
+                        Spacer(Modifier.width(8.dp))
+                        com.onpath.app.ui.routes.ActivityFilterChip(act) { act = it; scope.launch { listState.scrollToItem(0) } }
                     } })
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
@@ -507,7 +512,7 @@ fun RoutesScreen(
             // "Zuletzt" = exactly one row (owner 2026-11-12, [LivePlanRows]): the plan on the map ("In Bearbeitung"), else
             // the draft or saved route worked on last – a saved one with the "Gespeichert" tag, and under Gespeichert too
             val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
-            val filtered = favOnly || com.onpath.app.ui.routes.ActivityFilterSketch.filtering // a filter on: Zuletzt hides
+            val filtered = favOnly || act != null // a filter on: Zuletzt hides
             val recent = if (tab == RoutesTab.PLANNED && !filtered) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
                 else RecentRow.NONE
             val liveName = live?.name ?: str(Res.string.routes_live_name)
@@ -520,7 +525,7 @@ fun RoutesScreen(
             // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
             val saved = remember(shown, sort, favOnly) {
                 RouteSort.sort(com.onpath.app.ui.routes.Favourites.shown(shown.filter { !it.draft }, favOnly)
-                    .filter { com.onpath.app.ui.routes.ActivityFilterSketch.keep(it) }, sort)
+                    .filter { com.onpath.app.ui.routes.ActivityFilter.keep(it, act) }, sort)
             }
             PullToSync(if (tab == RoutesTab.PLANNED) onPull else null, pulling) {
             if (saved.isEmpty() && !hasRecent) {
@@ -529,6 +534,7 @@ fun RoutesScreen(
                     Box(Modifier.fillParentMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                         Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
                             else if (favOnly) str(Res.string.routes_fav_none)
+                            else if (act != null && tabbed.any { !it.draft }) str(Res.string.routes_act_none, act!!.chip)
                             else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
