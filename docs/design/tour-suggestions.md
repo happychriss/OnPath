@@ -246,3 +246,33 @@ score part `ai` and extra destinations in variant B, card line "KI-Tipp: Name (k
   the owner's own comparison decides.
 - **For the real feature:** the file would be made by the map server when it builds a cell and shipped with the cell;
   the AI's free sentence must not be shown as fact (it was wrong for the Elbsee).
+
+## Owner's taste rules (2026-11-13) – round 6
+
+The owner tried the page (bike 2 h near Zons and Köln, hikes around Hilden) and said what a good tour is for him. These
+are rules of the product, not tuning; the numbers behind them are in `weights.json` (`score._taste_rules`).
+
+| Rule (his sense) | In the POC |
+| --- | --- |
+| **The loop meets its own way at most once.** "Eine 8 oder ein Wollknäuel, um auf die Kilometerzahl zu kommen … mehrfach kreuzen ist keine Wanderung." | `suggest.self_crossings`: a point reached a second time (crossing, an eight's middle, a stretch walked twice, a dead-end spur) is one meeting; meetings close together along the way are one (the same bottleneck – a ferry and its landing). 0 or 1 is fine (score part `selfcross`, 1.0 / 0.85), 2 or more is **not offered** (`select.max_self_cross`) and variant B drops such a loop when it is built. The old `shape` part (compactness) is gone: a long narrow loop along both banks of a river is a good ride. Card: "kreuzt sich 1×". |
+| **Along a road is always bad – signed route or not.** "Auch wenn das als Wanderweg / offizieller Radweg ausgezeichnet ist, das macht keinen Spaß … vor allem wenn ich naturnah ankreuze." | "Beside a road" is part of the main-road weight (`suggest.main_weight`): any separate way (cycle path, shared path, footway, track) counts by the routing data's noise class (4 / 5 / 6 → 0.35 / 0.7 / 1.0). Such a piece (a) costs in the network search and in the profile copies, (b) gets **no signed-route discount** and does not count as "markiert" in the score, where a followed route runs beside a road a quiet way nearby wins (`netsearch.follow.road_cost`), (c) is punished by share (`roadside`) and by the longest stretch (`mainroad`), both scaled by the Natur level (`score.natur_scaled`, `main_road_natur`). |
+| **Not through houses** ("geht durch viel zu viel Wohngebiet – schlecht"). | Score part `town` = share on streets and on town ways that are not green; costs in the search (`netsearch.pen_town`), both x the Natur level. |
+| **Large connected nature is a different feeling than a green strip.** | `nature.py`: forest / heath / wetland (`landcover`) and protected nature (`park`: Naturschutzgebiet …) of our own map areas drawn into a 45 m grid per area; the measure is the share of nature within 300 m and 900 m around a point – deep inside a big area ~1, along its edge ~0.5, a green strip 0.1–0.3. Score part `deep` (x Natur), a pleasure term in the search, card: "2,4 km im Naturschutzgebiet Ohligser Heide". Size and depth come from one number; polygons are not joined across tile borders. |
+| **A short way out and back is allowed** (500–700 m on foot) "– das erhöht die Möglichkeiten für einen schönen Weg". | `score.free_stem_m` (hike 700 m, bike / gravel 2500 m, MTB 1500 m): the stem counts neither as doubled way nor as a meeting, and in variant B the way home may use the first metres of the way out without the "already walked" penalty. |
+| **The length is a rough guide** (± 1 km on foot, ± 5 km by bike) "bevor man seltsame Wege geht". | `score.length_flat_km`: full points inside the band, gently down outside; the cut for "too far off" is the old share plus half the band. No loop is lengthened by an eight or a detour: such loops fall to the crossing rule. |
+| **One comment per suggestion** instead of "beste / schlecht". | One text field + "Kommentar senden" on every card; saved with run, route id, name, numbers and wish. `python3 tools/suggest-poc/feedback.py` prints all comments with their routes. |
+
+**What the Münchener Straße stretch was** (his comment on the bike loop of 21:50): 1.15 km of `highway=path, bicycle=designated,
+foot=designated, segregated=no`, noise class 6, town class 4, on EuroVelo 15 – a shared path right beside a four-lane
+road. It was classed as a plain "Weg" with main-road weight 0, because the old "beside" rule only knew `highway=cycleway`.
+
+**How variant B gets to the wished length today** (the owner asked): it does not stretch a loop. One search from the start
+tells how far every point is; turning points (anchors) are taken at fixed shares of the wished length (bands, per
+direction) and on destinations; a loop is start → anchor → home another way, or start → A → B → start for two anchors whose
+estimated total fits; "Entlang" picks the point on the known route where stem + route + estimated way home fill the length,
+a lake round is taken as it is. Loops outside the length limit are dropped, the rest are scored. The eights and tangles
+came from the way home: it only *pays extra* for ways already used, so where the pleasant ways are few it crossed or
+re-used the way out – nothing counted crossings until now.
+
+**Open after round 6** (bench, variant B, 81 of 90): the Rhine rides are no longer on top in the three bike cases at the
+Rhine – see the README's round-6 section for the reason and numbers.
