@@ -110,6 +110,15 @@ class CorePlanE2ETest : E2EBase() {
         waitUntil("the add taken back") { waypointCount() == 2 }
         scenario.onActivity { mark = vm(it).searchMark }
         assertTrue("the far place is a pin again, not forgotten (mark $mark)", mark == far)
+        // owner 2026-11-13: the map goes back to the plan from before (two points: the whole plan), not to the far place
+        var plan: List<com.onpath.app.routing.GeoPoint> = emptyList()
+        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        val mid = com.onpath.app.routing.GeoPoint((plan[0].lat + plan[1].lat) / 2, (plan[0].lon + plan[1].lon) / 2)
+        waitUntil("the camera back on the plan") {
+            var c: LatLng? = null
+            onMap { m -> c = m.cameraPosition.target }
+            c?.let { com.onpath.app.data.Geo.distance(com.onpath.app.routing.GeoPoint(it.latitude, it.longitude), mid) < 5_000 } == true
+        }
     }
 
     /**

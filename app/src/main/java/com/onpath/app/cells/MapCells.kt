@@ -653,7 +653,8 @@ class MapCells(
         } catch (e: Exception) {
             Problems.error("cells", "Downloaded map areas could not be joined after a restart; they load again", e)
         }
-        // a store written before POI tiles (PoiTiles): rewritten once, so MapLibre reads the POIs as tiles, not GeoJSON
+        // a store written before POI tiles (PoiTiles) or with tiles of an older PoiTiles.VERSION: rewritten once, so
+        // MapLibre reads the POIs as tiles, not GeoJSON, with the density limit (PoiDensity)
         try {
             if (!holdUpdates && store.needsPoiTiles()) {
                 Problems.info("cells", "Map store rewritten with POI tiles (once after the app update)")

@@ -381,6 +381,35 @@ class CellStoreTest {
     }
 
     /**
+     * POI tiles of an older [PoiTiles.VERSION] (before the density limit, [PoiDensity]) are written again once, and a
+     * kept cell's old tiles are never copied into a new generation – they are encoded again from its GeoJSON.
+     */
+    @Test fun olderPoiTilesVersionIsWrittenAgain() {
+        val data = tmp.newFolder("data")
+        val store = CellStore(data)
+        store.apply(add = listOf(download(store, a, "v1")))
+        val old = store.current()!!
+        assertEquals(PoiTiles.VERSION, old.poiTilesVersion)
+        assertFalse(store.needsPoiTiles())
+        // as an app before the version was kept wrote it: no "poiTilesVersion", tiles missing a POI
+        val json = File(old.dir, CellStore.STORE_JSON)
+        json.writeText(org.json.JSONObject(json.readText()).apply { remove("poiTilesVersion") }.toString())
+        val one = File(tmp.root, "one.geojson").apply {
+            writeText("""{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":""" +
+                """[${a.center.lon},${a.center.lat}]},"properties":{"kind":"cafe","name":"old tiles"}}]}""")
+        }
+        PoiTiles.build(listOf(PoiTiles.Input(one) { _, _ -> true }), File(old.dir, PoiTiles.FILE), File(tmp.root, "w"))
+        assertEquals(listOf("old tiles"), poiTileNames(old.dir))
+        CellStore.forget(store.storeDir)
+        assertEquals(1, store.current()!!.poiTilesVersion)
+        assertTrue(store.needsPoiTiles())
+        val g = store.apply(add = listOf(download(store, b, "v1")))
+        assertEquals(PoiTiles.VERSION, g.poiTilesVersion)
+        assertEquals(poiNames(g.dir), poiTileNames(g.dir))
+        assertFalse(store.needsPoiTiles())
+    }
+
+    /**
      * POI tiles that cannot be built never cost the map: the generation is written with the GeoJSON (the style falls
      * back to it), not retried at every start, and the next change builds them from the GeoJSON again.
      */

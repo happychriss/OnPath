@@ -13,6 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
@@ -1049,15 +1051,24 @@ class ScreenshotTest {
     /** Map overlay over the plan screen, anchored at a fake marker / POI dot drawn at [anchorDp]. */
     @Composable
     private fun OverlayFrame(dotColor: androidx.compose.ui.graphics.Color?, anchorDp: androidx.compose.ui.unit.DpOffset, empty: Boolean = false,
-                             ring: Boolean = false, content: @Composable () -> Unit) {
+                             ring: Boolean = false,
+                             /** The found place's menu (MapOverlayHost → PinMenuOverlay: above the pin, else a card); null = its name chip. */
+                             pinMenu: (@Composable (card: Boolean) -> Unit)? = null,
+                             content: @Composable () -> Unit = {}) {
         Frame(route = false) { PlanPanel(if (empty) planUi(n = 0, r = null) else planUi(), PlanCallbacks()) }
         val d = androidx.compose.ui.platform.LocalDensity.current
-        val a = with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) }
+        // the place on the screen; PinMenuOverlay may move the map (its content) to make room above the pin
+        var a by androidx.compose.runtime.remember {
+            androidx.compose.runtime.mutableStateOf(with(d) { androidx.compose.ui.geometry.Offset(anchorDp.x.toPx(), anchorDp.y.toPx()) })
+        }
         if (dotColor != null) androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
             drawCircle(androidx.compose.ui.graphics.Color.White, 13.dp.toPx(), a)
             drawCircle(dotColor, 11.dp.toPx(), a)
         }
-        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip (MapOverlayHost)
+        val top = with(d) { 160.dp.roundToPx() }
+        val bottom = with(d) { 300.dp.roundToPx() }
+        // the found place's pin – the map's own drawing (MapController.setSearchMark) – and its name chip or its menu
+        // (MapOverlayHost)
         if (ring) {
             androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                 drawIntoCanvas { c ->
@@ -1065,15 +1076,12 @@ class ScreenshotTest {
                         android.graphics.Color.parseColor(com.onpath.app.map.MapController.ROUTE_COLOR))
                 }
             }
-            PinChipAt(a, topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
-                PinChip(shared.title(), str(if (empty) Res.string.plan_go_here else Res.string.plan_pin_add), onAction = {}, onMore = {}, emptyPlan = empty)
-            }
+            if (pinMenu == null) PinChipAt(a, topPx = top, bottomPx = bottom) { PinChip(shared.title(), onClick = {}) }
+            else PinMenuOverlay("menu", a, with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() }, top, bottom,
+                onGone = {}, onPan = { a = a.copy(y = a.y + it) }, content = pinMenu)
+        } else {
+            AnchoredOverlay(a, topPx = top, bottomPx = bottom, content = content)
         }
-        // the pin's menu above the pin's head, else under its name chip (MapOverlayHost: lift / drop)
-        val lift = if (ring) with(d) { com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP.dp.toPx() } else 0f
-        val drop = if (ring) with(d) { PIN_CHIP_BELOW_DP.dp.toPx() } else 0f
-        AnchoredOverlay(a.copy(y = a.y - lift), topPx = with(d) { 160.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() },
-            belowY = a.y + drop, loose = ring, content = content)
     }
 
     /** First hold on an empty plan: Start here · Go here (from my location) (position known). */
@@ -1126,31 +1134,44 @@ class ScreenshotTest {
 
     /** A place shared from Google Maps: once the map is there its ring's menu opens by itself (SharedPlaceMenu). */
     private val shared = com.onpath.app.search.Place("shared:46.6712,11.1598", "Gelateria Costantin", "other", 46.6712, 11.1598)
+    private val sharedAddress = "Freiheitsstraße 10, 39012 Meran"
+
+    /**
+     * The found place's menu frames (owner 2026-11-13, PinMenuOverlay) show the pin where it ends up: in the app the map
+     * moves it down so the menu fits above it (PinMenuPlace.panPx), or up above the card – effects do not run in
+     * Paparazzi, so the frame starts there. Normal font: low enough for the menu above; the largest font: the card.
+     */
+    internal companion object {
+        const val PIN_MENU_Y = 520
+        const val PIN_CARD_Y = 320
+    }
 
     /** Shared place, plan with points: "Add as new destination" (AddPreview.label, like a hold on the ring). */
-    fun sharedPlaceMenu() = paparazzi.snapshot {
+    fun sharedPlaceMenu(pinY: Int = PIN_MENU_Y) = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {},
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, pinY.dp), ring = true, pinMenu = { card ->
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, onRemovePin = {}, card = card, address = sharedAddress.takeIf { card },
+                    modifier = if (card) Modifier.fillMaxWidth() else Modifier,
                     addLabel = com.onpath.app.search.AddPreview.label(
                         com.onpath.app.routing.WaypointInsertion.Decision(3, com.onpath.app.routing.WaypointInsertion.Kind.DESTINATION), 3))
-            }
+            })
         }
     }
 
     /** A found place (search hit / shared place, owner 2026-11-02): the blue pin and its name chip "Gelateria Costantin ›". */
     @Test fun foundPlacePin() = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true) {}
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), ring = true)
         }
     }
 
     /** Shared place, empty plan: "Start here · Go here · Open in Google Maps". */
-    fun sharedPlaceMenuEmptyPlan() = paparazzi.snapshot {
+    fun sharedPlaceMenuEmptyPlan(pinY: Int = PIN_MENU_Y) = paparazzi.snapshot {
         OnPathTheme {
-            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, 430.dp), empty = true, ring = true) {
-                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {})
-            }
+            OverlayFrame(null, androidx.compose.ui.unit.DpOffset(195.dp, pinY.dp), empty = true, ring = true, pinMenu = { card ->
+                PoiMenu(shared.toPoi(), onAdd = {}, onGoogle = {}, emptyPlan = true, onRemovePin = {}, card = card,
+                    address = sharedAddress.takeIf { card }, modifier = if (card) Modifier.fillMaxWidth() else Modifier)
+            })
         }
     }
 
@@ -1333,6 +1354,83 @@ class ScreenshotTest {
     }
 
     /**
+     * L1 map pictures for the screenshots (owner 2026-11-13): crops of the app's own map around Meran, by tour id; Ifinger
+     * Steig (12) has none – its row keeps the line on paper, as on a phone whose picture is not made yet.
+     */
+    private val mapPics: Map<Long, androidx.compose.ui.graphics.ImageBitmap> by lazy {
+        mapOf(100L to "sq_100", 11L to "sq_11", 13L to "sq_13", 14L to "sq_14", 15L to "sq_16").mapValues { (_, n) ->
+            android.graphics.BitmapFactory.decodeStream(javaClass.getResourceAsStream("/route-thumbs/$n.jpg")).asImageBitmap()
+        }
+    }
+    private val picSource = object : com.onpath.app.ui.routes.RouteThumbSource {
+        override fun cached(t: Tour) = mapPics[t.id]
+        override suspend fun load(t: Tour) = mapPics[t.id]
+    }
+    /** [sortList] with uuids (a picture belongs to one), two of them starred. */
+    private val favList get() = sortList.map { it.copy(uuid = "u-${it.id}", favourite = it.id == 11L || it.id == 15L,
+        // Vigiljoch MTB-Runde: a round trip (its points end at its start) – "· ↻ Rundtour" in its activity line
+        waypoints = if (it.id == 15L) loopPts else it.waypoints) }
+    private val loopPts = listOf(com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null), com.onpath.app.gpx.GpxWaypoint(46.70, 11.20, null),
+        com.onpath.app.gpx.GpxWaypoint(46.72, 11.14, null), com.onpath.app.gpx.GpxWaypoint(46.67, 11.16, null))
+
+    /**
+     * My routes L1 (owner 2026-11-13): a square map picture left (route on the offline map; Ifinger Steig without one: the
+     * line on paper), name, activity ("Wandern · T3" with its sign), facts; ⋮ over the star – gold = favourite. The
+     * "☆ Favoriten" pill first in the chip row; Zuletzt as before, in the same look.
+     */
+    @Test fun routesMapRows() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource) }
+    }
+
+    /**
+     * The activity filter (owner 2026-11-13): the L1 list with mixed activities (+ a gravel route; Gemacht: recorded tours
+     * of three activities); [act] = the chip's choice (null = "Alle"); [menuTop] / [menuStart] = where its menu opens
+     * (drawn in place – popups are not drawn), null = closed.
+     */
+    fun activityFilter(act: Activity?, menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp,
+                       tab: RoutesTab = RoutesTab.PLANNED) = paparazzi.snapshot {
+        val gravel = Tour(16, TourKind.PLANNED, "Marlinger Waalweg", 1_791_000_000_000, "BIKE_TREKKING", 2, 18_200.0, 260.0, 260.0,
+            1.3 * 3600, "done", viaPts, uuid = "u-16")
+        val done = listOf(tourList[1].copy(uuid = "u-2"), tourList[3].copy(uuid = "u-4"),
+            Tour(7, TourKind.RECORDED, "Hirzer Hütte", 1_760_700_000_000, "HIKE", 3, 11_400.0, 980.0, 980.0, 5.0 * 3600, "done", emptyList(), uuid = "u-7"),
+            Tour(8, TourKind.RECORDED, "Etschdamm", 1_760_800_000_000, "BIKE_TOURING", 2, 24_000.0, 60.0, 60.0, 1.4 * 3600, "done", emptyList(), uuid = "u-8"))
+        val list = favList + gravel + done
+        previewLines(list + oneDraft.copy(uuid = "u-100"))
+        Box(Modifier.fillMaxSize()) {
+            OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+                initialTab = tab, initialActivity = act) }
+            if (menuTop != null) OnPathTheme {
+                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) { com.onpath.app.ui.routes.ActivityFilterItems(act) {} }
+            }
+        }
+    }
+
+    /** The activity filter preset with the planning activity "Wandern": only hikes; Zuletzt shows whatever the filter (owner 2026-11-13). */
+    @Test fun routesActivityHike() = activityFilter(Activity.HIKE)
+    /** "Fahrrad" shows only Fahrrad (owner 2026-11-13: exactly the chosen activity). */
+    @Test fun routesActivityBike() = activityFilter(Activity.BIKE_TOURING)
+    /** The chip's menu: the six (single choice), a line, "Alle". */
+    @Test fun routesActivityMenu() = activityFilter(Activity.HIKE, menuTop = 248.dp, menuStart = 140.dp)
+    /** "Alle": every tour, Zuletzt back. */
+    fun routesActivityAll() = activityFilter(null)
+    /** Gemacht filtered the same way. */
+    fun toursDoneActivityHike() = activityFilter(Activity.HIKE, tab = RoutesTab.DONE)
+
+    /** The pill on (favourites C): only the starred routes, in the chosen order; Zuletzt stays (owner 2026-11-13). */
+    @Test fun routesFavouritesOnly() = paparazzi.snapshot {
+        previewLines(favList + oneDraft.copy(uuid = "u-100"))
+        OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + favList, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
+            initialFavouritesOnly = true) }
+    }
+
+    /** The pill on and nothing starred yet: one grey line says how to star one. */
+    @Test fun routesFavouritesNone() = paparazzi.snapshot {
+        previewLines(sortList)
+        OnPathTheme { RoutesScreen(sortList, {}, {}, {}, {}, {}, initialFavouritesOnly = true) }
+    }
+
+    /**
      * A row tapped in My routes (owner 2026-11-07 00:30): the large overview first – name, facts, the route fitted (here
      * the drawn shape; on the phone the map picture under it) – a planned route (owner 2026-11-07): "▶ Los geht's" full
      * width green, under it "Abbrechen" | "Planen".
@@ -1480,6 +1578,7 @@ class ScreenshotTest {
 
     /** My routes → ⋮ → Save as copy: the same dialog, titled "Save as copy", proposing "<name> (2)". */
     fun planSaveCopyDialog() = paparazzi.snapshot {
+        previewLines(tourList) // the rows behind the dialog the same in every test order
         OnPathTheme {
             RoutesScreen(tourList, {}, {}, {}, {}, {})
             SaveNameDialog(SaveAsk.Kind.COPY, "Route Meran – Hirzer (2)", {}, {})

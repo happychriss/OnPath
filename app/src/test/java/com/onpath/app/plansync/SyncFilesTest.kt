@@ -84,6 +84,12 @@ class SyncFilesTest {
         assertEquals(setOf(id(2), id(3)), lb.pending)
         assertEquals(id(4), lb.itemOf("uuid-a"))
         assertTrue(SyncLinks.read("nonsense").all.isEmpty())
+        // the star both sides had when a change went pending (owner 2026-11-13) is kept with it, the first one counts
+        links.markPending(id(5), agreedStar = true); links.link(id(5), "uuid-c"); links.markPending(id(5), agreedStar = false)
+        val ls = SyncLinks.read(links.write())
+        assertEquals(true, ls.agreedStar(id(5))); assertNull(ls.agreedStar(id(2)))
+        ls.done(id(5)); assertNull(ls.agreedStar(id(5)))
+        assertTrue("an older line without it still reads", SyncLinks.read("${SyncLinks.HEADER}\n${id(6)} uuid-d p\n").isPending(id(6)))
         f.saveLastOk(99)
         assertEquals(99, f.lastOk())
         // "ended in the browser" stays noted (☰ amber) until Browser sync is opened or a new pairing is made

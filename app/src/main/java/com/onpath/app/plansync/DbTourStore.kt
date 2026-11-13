@@ -53,6 +53,8 @@ class DbTourStore(
 
     override fun rename(t: Tour, name: String) { db.rename(t.id, name); Backups.tourChanged(context, t.id) }
 
+    override fun setFavourite(t: Tour, favourite: Boolean) { if (db.setFavourite(t.id, favourite)) Backups.tourChanged(context, t.id) }
+
     override fun toBin(t: Tour) { if (db.setDeleted(t.id, System.currentTimeMillis())) Backups.tourChanged(context, t.id) }
 
     override fun fromBin(t: Tour) { if (db.setDeleted(t.id, null)) Backups.tourChanged(context, t.id) }

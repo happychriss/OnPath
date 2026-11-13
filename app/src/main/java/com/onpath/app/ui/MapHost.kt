@@ -66,6 +66,9 @@ fun MapHost(
     val styleScope = androidx.compose.runtime.rememberCoroutineScope()
     /** Theme of this host's loaded style. */
     val myTheme = remember { arrayOfNulls<String>(1) }
+    // the POIs the map shows, read once the map is idle after a camera stop / reload: a tap / hold never asks MapLibre
+    // (it waits for the render thread – 1447 ms in central London, owner's Pixel 2026-11-13)
+    val shownPois = remember { com.onpath.app.poi.ShownPois() }
     // No frame-rate cap (owner): the map runs at the display's full rate while you look at it.
     // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
@@ -116,7 +119,9 @@ fun MapHost(
     DisposableEffect(mapView) {
         // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
         val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm::mapGestureMeasured) }
+        var idleListener: MapView.OnDidBecomeIdleListener? = null
         mapView.getMapAsync { map ->
+            idleListener = MapView.OnDidBecomeIdleListener { shownPois.onMapIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
             map.setMinZoomPreference(3.0)
@@ -136,6 +141,7 @@ fun MapHost(
                 val n = ++styleLoads
                 // asked and done are both in the event log (a load that never finishes is visible there)
                 com.onpath.app.debug.Problems.trace("map", "Style load #$n asked (${loadedFrom?.name ?: "data folder"})")
+                shownPois.styleChanged()
                 map.setStyle(Style.Builder().fromJson(json)) { style ->
                     // each load in the event log with the native heap (it can grow per reload)
                     com.onpath.app.debug.Problems.trace("map", "Style load #$n (${loadedFrom?.name ?: "data folder"}): " +
@@ -184,6 +190,7 @@ fun MapHost(
                 }
             }
             map.addOnCameraIdleListener {
+                shownPois.cameraIdle()
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
@@ -237,7 +244,7 @@ fun MapHost(
                         com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
                     } == true
                 }
-                val poi = if (marker >= 0) null else mark?.toPoi() ?: com.onpath.app.poi.findPoiAt(map, screen)
+                val poi = if (marker >= 0) null else mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(24f) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
@@ -281,8 +288,8 @@ fun MapHost(
                     val edit = vm.canEditMap && !vm.routePeek
                     val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
                     downMarker = marker
-                    // the POI query waits for the render thread: only where the buzz depends on it (MapGestures.buzzNeedsPoi)
-                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && com.onpath.app.poi.findPoiAt(map, at) != null
+                    // only where the buzz depends on a POI (MapGestures.buzzNeedsPoi); from the shown POIs, never waits
+                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && shownPois.at(map, at.x, at.y) != null
                     holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null
                 }
@@ -305,6 +312,7 @@ fun MapHost(
         }
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
+            idleListener?.let { mapView.removeOnDidBecomeIdleListener(it) }
             host.disposed()
             ctrlRef.clear(host)
             gestureFrames?.cancel()
@@ -333,6 +341,8 @@ fun MapHost(
             if (!host.reload()) Problems.warn("map", "Map style reload skipped: the map was not ready (version ${vm.styleVersion})")
         }
     }
+    // other POI kinds shown (Settings → POIs): the shown POIs are read again at the next map idle
+    LaunchedEffect(vm.settings.hiddenPoiKinds) { shownPois.changed() }
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())

@@ -7,7 +7,7 @@
       "web": [
         "web/app/src/activity.ts"
       ],
-      "blob": "48885988ab93efc2cbed4d7e4444313f9d00352d"
+      "blob": "d0eec1c408d2489535ed30ae707567b729d3f307"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -16,7 +16,7 @@
         "web/app/src/main.ts",
         "web/app/src/menus.ts"
       ],
-      "blob": "67a16842b16401e9d67b3bf8c70c2fb7021de229"
+      "blob": "7b2edd798e8ee83ea16e2cb647eb0915f39e8c61"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanStatus.kt",
@@ -93,7 +93,7 @@
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "b15948c0c8f2835fa30ce6ad80e07f223acbb7b6"
+      "blob": "85c8aa1dfc53d608a67e529b299ae4ed69ecb265"
     },
     {
       "app": "app/src/main/java/com/onpath/app/poi/PinnedPoiKinds.kt",
@@ -165,7 +165,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "66eb5f34738c2f1f864eaded5fc580af573cfc08"
+      "blob": "6656683e5203c6de480fb55b3f75eeaeac3e2d19"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -173,7 +173,7 @@
       "web": [
         "web/app/src/gpximport.ts"
       ],
-      "blob": "8219e1776dbbb5864fcd2b5e9698b4f2c1366904"
+      "blob": "f51b2d3cd4d58daa1451352f26b5ccd9ede26bea"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsSection.kt",
@@ -256,7 +256,7 @@
       "web": [
         "web/app/src/cells.ts"
       ],
-      "blob": "9ec8c7346f0265eb99b94a1ac38de6ff18c41545"
+      "blob": "8b8ae1be05834567c1aaaaf647c33e7426215533"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/CellCard.kt",
@@ -307,7 +307,7 @@
         "web/app/src/plans.ts",
         "web/app/src/style.css"
       ],
-      "blob": "310e8e7df686b56dd72b6faa778b125722e5463d"
+      "blob": "9a49e953af08f3c6d6ceb687c9eae36390dbd034"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RoutesTab.kt",

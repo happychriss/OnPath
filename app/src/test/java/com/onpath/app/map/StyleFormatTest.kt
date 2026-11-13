@@ -122,8 +122,8 @@ class StyleFormatTest {
     }
 
     /**
-     * Names can never push out icons (owner). Each POI layer is split into an icon layer "poi-<x>" (icon, no
-     * text) and a name layer "poi-<x>-name" (text, no icon) with the same filter, sort key and zooms. MapLibre Native
+     * Names can never push out icons (owner). Each POI layer is split into an icon layer "poi-<x>" (icon + an
+     * invisible key text that takes no room, [assertInvisibleKeyText]) and a name layer "poi-<x>-name" (text, no icon) with the same filter, sort key and zooms. MapLibre Native
      * places symbols from the TOP layer down, so every icon layer lies above every name layer – all icons are placed
      * before any name; a name without room simply does not show. Icons still collide (no pile-ups), names collide
      * with icons and each other, nothing ignores placement.
@@ -151,7 +151,8 @@ class StyleFormatTest {
                     assertEquals("$id: names collide", false, lo.optBoolean("text-allow-overlap", false))
                     assertEquals("$id: names block others", false, lo.optBoolean("text-ignore-placement", false))
                 } else {
-                    assertTrue("$id: icon only", lo.has("icon-image") && !lo.has("text-field"))
+                    assertTrue("$id: icon", lo.has("icon-image"))
+                    assertInvisibleKeyText(id, l)
                     assertEquals("$id: icon not optional", false, lo.optBoolean("icon-optional", false))
                     assertEquals("$id: icons collide", false, lo.optBoolean("icon-allow-overlap", false))
                     assertEquals("$id: icons block others", false, lo.optBoolean("icon-ignore-placement", false))
@@ -163,6 +164,23 @@ class StyleFormatTest {
                 }
             }
         }
+    }
+
+    /**
+     * Every POI icon symbol carries an invisible key text (the POI's id): MapLibre's CrossTileSymbolIndex matches symbols
+     * of neighbouring zoom tiles by their text, and without text all icons of a layer shared the empty key – n²
+     * matching, ~1 fps in central London (owner's Pixel 2026-11-13). The text must never show and never take room.
+     */
+    private fun assertInvisibleKeyText(id: String, l: JSONObject) {
+        val lo = l.getJSONObject("layout")
+        val field = lo.get("text-field").toString().replace(" ", "")
+        assertTrue("$id: key text is the POI id", field.contains("""["get","id"]"""))
+        assertTrue("$id: key text never empty", field.contains("""["get","pr"]"""))
+        assertEquals("$id: key text never seen", 0.0, l.getJSONObject("paint").getDouble("text-opacity"), 0.0)
+        assertEquals("$id: key text overlaps", true, lo.optBoolean("text-allow-overlap", false))
+        assertEquals("$id: key text takes no room", true, lo.optBoolean("text-ignore-placement", false))
+        assertEquals("$id: icon shows without the key text", true, lo.optBoolean("text-optional", false))
+        assertTrue("$id: nothing to place beside", !lo.has("text-variable-anchor") && !lo.has("text-radial-offset"))
     }
 
     /** Format 2: small streets come from overlays "streets" from z13 – the trimmed base map has none there. */

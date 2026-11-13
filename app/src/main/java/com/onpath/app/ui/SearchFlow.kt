@@ -83,9 +83,10 @@ class SearchFlow(
     fun closeSearch() { searchOpen = false }
 
     /**
-     * Result tapped (owner): close the search, fly the map there and mark the place with a pin – no card. Holding the
-     * pin opens the usual POI menu (Add to route / Start here … / Google Maps). The mark stays until the next search
-     * pick or until the place is added to the route.
+     * Result tapped (owner): close the search, fly the map there and mark the place with a pin; once the map is there
+     * the pin's own menu opens by itself – the very menu a hold on it gives (owner 2026-11-13: "genauso wie beim Punkt",
+     * no "Hierhin" card), the same way as a place shared from Google Maps ([SharedPlaceMenu]). Back / a tap elsewhere
+     * closes the menu; the pin and its name chip stay until the next search pick or until the place is added.
      */
     fun pickSearchResult(place: com.onpath.app.search.Place) {
         val p = search.resolve(place)
@@ -96,6 +97,7 @@ class SearchFlow(
         searchMark = p
         // every pick in the event log: a later "the destination was forgotten" shows what happened to its pin
         Problems.trace("search", "Search pick: \"${p.title()}\" – pin set (plan ${waypoints.size} points, ${mode.name.lowercase()})")
+        sharedMenuWaiting = sharedMenu.arrived(SharedPlaceMenu.key(p.lat, p.lon, p.name))
         flyToPlace(p)
     }
 
@@ -215,7 +217,7 @@ class SearchFlow(
     private val sharedMenu = SharedPlaceMenu()
     /** The map moved by hand during the flight to a shared place: its menu no longer opens by itself. */
     fun mapMovedByHand() {
-        if (sharedMenu.cancel()) { sharedMenuWaiting = false; Problems.trace("plan", "Shared place: menu not opened – map moved by hand") }
+        if (sharedMenu.cancel()) { sharedMenuWaiting = false; Problems.trace("plan", "Found place: menu not opened – map moved by hand") }
     }
     /** The shared place's menu waits for the camera to arrive ([openSharedMenuIfArrived], asked by MapScreen). */
     var sharedMenuWaiting by mutableStateOf(false)
@@ -242,12 +244,12 @@ class SearchFlow(
         when (step) {
             SharedPlaceMenu.Step.OPEN -> {
                 sharedMenuWaiting = false
-                Problems.trace("plan", "Shared place: the map is there – its menu opens (plan ${waypoints.size} points)")
+                Problems.trace("plan", "Found place: the map is there – its menu opens (plan ${waypoints.size} points)")
                 if (m != null) host.openPoiMenu(m.toPoi())
             }
             SharedPlaceMenu.Step.DROP -> {
                 sharedMenuWaiting = false
-                Problems.trace("plan", "Shared place: menu not opened – the user went on (ring ${if (m == null) "gone" else "shown"}, " +
+                Problems.trace("plan", "Found place: menu not opened – the user went on (ring ${if (m == null) "gone" else "shown"}, " +
                     "map editable $canEditMap)")
             }
             SharedPlaceMenu.Step.WAIT, SharedPlaceMenu.Step.NONE -> Unit

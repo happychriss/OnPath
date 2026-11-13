@@ -58,6 +58,17 @@ data class Tour(
      * sorting by difficulty later (owner 2026-11-12: "erst ohne, später dazu").
      */
     val difficulty: String? = null,
+    /**
+     * Planned / imported / recorded: starred in My routes (owner 2026-11-13, favourites variant C – the ☆ Favoriten filter
+     * pill shows only these). Kept in the GPX backup's record (key "favourite") and, for plans and imported tracks, synced
+     * with the browser (item field 9). Every existing tour reads false.
+     */
+    val favourite: Boolean = false,
+    /**
+     * Recorded: the plan it followed is a round trip (its points end at its start) – set when My routes reads the list
+     * (ui/routes/RoundTrip); null = not known there (no plan: the row guesses from the line). Not stored.
+     */
+    val roundTrip: Boolean? = null,
 )
 
 /**
@@ -110,6 +121,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 5 → 6 (owner 2026-11-07): the table `tour_plan` – the frozen copy of the plan a recorded tour followed ([TourPlan]).
      * 6 → 7 (owner 2026-11-12): `tours.difficulty` – a planned route's difficulty level at saving ([Tour.difficulty]);
      * every existing tour reads null (not known).
+     * 7 → 8 (owner 2026-11-13): `tours.favourite` – starred in My routes ([Tour.favourite]); every existing tour 0.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -164,6 +176,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         draft: Boolean = false,
         /** [Tour.difficulty]; null = not known. */
         difficulty: String? = null,
+        /** [Tour.favourite] (restore, a route from the browser). */
+        favourite: Boolean = false,
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
@@ -177,6 +191,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("waypoints", waypointsToJson(waypoints))
                 put("draft", if (draft) 1 else 0)
                 put("difficulty", difficulty)
+                put("favourite", if (favourite) 1 else 0)
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -208,6 +223,14 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     /** A plan under "Zuletzt" becomes saved ([draft] false) or the other way. False when the tour is gone. */
     fun setDraft(id: Long, draft: Boolean): Boolean = writableDatabase.update("tours", ContentValues().apply {
         put("draft", if (draft) 1 else 0)
+    }, "id=?", arrayOf(id.toString())) > 0
+
+    /**
+     * Stars a tour in My routes or takes the star away ([Tour.favourite]); the recycle bin keeps it. False when the tour is
+     * gone. The caller writes the backup file again (Backups.tourChanged) – the flag lives in its record.
+     */
+    fun setFavourite(id: Long, favourite: Boolean): Boolean = writableDatabase.update("tours", ContentValues().apply {
+        put("favourite", if (favourite) 1 else 0)
     }, "id=?", arrayOf(id.toString())) > 0
 
     /** Moves a tour to the recycle bin ([deletedMs]) or back (null). False when the tour is gone. */
@@ -313,6 +336,17 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         } finally { db.endTransaction() }
     }
 
+    /**
+     * A short summary of tour [id]'s stored line ("count:sumLat:sumLon"; null = no points): My routes' map pictures are
+     * made again when it changes (map/RouteThumbs). One query on the points index of that tour, no line loaded.
+     */
+    fun lineKey(id: Long): String? = readableDatabase.rawQuery(
+        "SELECT COUNT(*), TOTAL(lat), TOTAL(lon) FROM points WHERE tour_id=?", arrayOf(id.toString())
+    ).use { c ->
+        if (!c.moveToFirst() || c.getLong(0) == 0L) null
+        else "${c.getLong(0)}:" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(1)) + ":" + "%.6f".format(java.util.Locale.ROOT, c.getDouble(2))
+    }
+
     fun loadSegments(id: Long): List<List<TrackPoint>> {
         val out = mutableListOf<MutableList<TrackPoint>>()
         var lastSeg = Int.MIN_VALUE
@@ -341,6 +375,11 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     fun setTourPlan(tourId: Long, plan: TourPlan) {
         writableDatabase.execSQL(TourSchema.PLAN_UPSERT, TourSchema.planArgs(tourId, plan))
     }
+
+    /** The points of the plan tour [tourId] followed (no line read); null = none. */
+    fun planPoints(tourId: Long): List<GpxWaypoint>? = readableDatabase.rawQuery(
+        "SELECT waypoints FROM tour_plan WHERE tour_id=?", arrayOf(tourId.toString())
+    ).use { c -> if (c.moveToFirst() && !c.isNull(0)) jsonToWaypoints(c.getString(0)) else null }
 
     /** The plan tour [tourId] followed; null = none (old tour, "Nur aufzeichnen") or unreadable (reported). */
     fun getTourPlan(tourId: Long): TourPlan? = readableDatabase.rawQuery(
@@ -465,6 +504,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             draft = opt(c, "draft")?.let { c.getInt(it) == 1 } ?: false,
             hasPlan = opt(c, "has_plan")?.let { c.getInt(it) == 1 } ?: false,
             difficulty = opt(c, "difficulty")?.let { c.getString(it) },
+            favourite = opt(c, "favourite")?.let { c.getInt(it) == 1 } ?: false,
         )
     }
 
@@ -520,9 +560,9 @@ object TourSchema {
     /**
      * 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft`
      * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]); 7 = `tours.difficulty`
-     * ([Tour.difficulty]).
+     * ([Tour.difficulty]); 8 = `tours.favourite` ([Tour.favourite]).
      */
-    const val VERSION = 7
+    const val VERSION = 8
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -532,7 +572,8 @@ object TourSchema {
             distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
             descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
             state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
-            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0, difficulty TEXT)""",
+            uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0, difficulty TEXT,
+            favourite INTEGER NOT NULL DEFAULT 0)""",
         "CREATE INDEX tours_uuid ON tours(uuid)",
         """CREATE TABLE points(
             tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
@@ -552,6 +593,9 @@ object TourSchema {
 
     /** 6 → 7 (owner 2026-11-12): a planned route's difficulty at saving ([Tour.difficulty]); existing tours null. */
     const val ADD_DIFFICULTY = "ALTER TABLE tours ADD COLUMN difficulty TEXT"
+
+    /** 7 → 8 (owner 2026-11-13): starred in My routes ([Tour.favourite]); every existing tour 0 (not starred). */
+    const val ADD_FAVOURITE = "ALTER TABLE tours ADD COLUMN favourite INTEGER NOT NULL DEFAULT 0"
 
     /**
      * 5 → 6 (owner 2026-11-07): the plan a recorded tour followed, one row per tour – a table of its own, because the line
@@ -593,5 +637,6 @@ object TourSchema {
         if (old < 4) add(Step("tours", "rides", ADD_RIDES))
         if (old < 5) add(Step("tours", "draft", ADD_DRAFT))
         if (old < 7) add(Step("tours", "difficulty", ADD_DIFFICULTY))
+        if (old < 8) add(Step("tours", "favourite", ADD_FAVOURITE))
     }
 }

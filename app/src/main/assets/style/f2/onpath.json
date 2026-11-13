@@ -20701,21 +20701,38 @@
    "source-layer": "pois",
    "minzoom": 15,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "picnic",
+       "toilets",
+       "info",
+       "bike_shop",
+       "charging",
+       "shop",
+       "parking"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "picnic",
-      "toilets",
-      "info",
-      "bike_shop",
-      "charging",
-      "shop",
-      "parking"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -20881,23 +20898,40 @@
    "source-layer": "pois",
    "minzoom": 14,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "water",
+       "bar",
+       "fast_food",
+       "camping",
+       "church",
+       "ruins",
+       "cave",
+       "museum",
+       "chapel"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "water",
-      "bar",
-      "fast_food",
-      "camping",
-      "church",
-      "ruins",
-      "cave",
-      "museum",
-      "chapel"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -21063,24 +21097,41 @@
    "source-layer": "pois",
    "minzoom": 12,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "hut",
+       "bivouac",
+       "shelter",
+       "restaurant",
+       "cafe",
+       "viewpoint",
+       "spring",
+       "waterfall",
+       "lift",
+       "castle"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "hut",
-      "bivouac",
-      "shelter",
-      "restaurant",
-      "cafe",
-      "viewpoint",
-      "spring",
-      "waterfall",
-      "lift",
-      "castle"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -21465,7 +21516,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21627,7 +21703,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21637,21 +21738,38 @@
    "source-layer": "pois",
    "minzoom": 15,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "picnic",
+       "toilets",
+       "info",
+       "bike_shop",
+       "charging",
+       "shop",
+       "parking"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "picnic",
-      "toilets",
-      "info",
-      "bike_shop",
-      "charging",
-      "shop",
-      "parking"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -21789,7 +21907,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21799,23 +21942,40 @@
    "source-layer": "pois",
    "minzoom": 14,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "water",
+       "bar",
+       "fast_food",
+       "camping",
+       "church",
+       "ruins",
+       "cave",
+       "museum",
+       "chapel"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "water",
-      "bar",
-      "fast_food",
-      "camping",
-      "church",
-      "ruins",
-      "cave",
-      "museum",
-      "chapel"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -21953,7 +22113,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21963,24 +22148,41 @@
    "source-layer": "pois",
    "minzoom": 12,
    "filter": [
-    "in",
+    "all",
     [
-     "get",
-     "kind"
+     "in",
+     [
+      "get",
+      "kind"
+     ],
+     [
+      "literal",
+      [
+       "hut",
+       "bivouac",
+       "shelter",
+       "restaurant",
+       "cafe",
+       "viewpoint",
+       "spring",
+       "waterfall",
+       "lift",
+       "castle"
+      ]
+     ]
     ],
     [
-     "literal",
+     ">=",
      [
-      "hut",
-      "bivouac",
-      "shelter",
-      "restaurant",
-      "cafe",
-      "viewpoint",
-      "spring",
-      "waterfall",
-      "lift",
-      "castle"
+      "zoom"
+     ],
+     [
+      "to-number",
+      [
+       "get",
+       "dz"
+      ],
+      0
      ]
     ]
    ],
@@ -22134,7 +22336,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -22171,7 +22398,32 @@
     ],
     "icon-allow-overlap": false,
     "icon-padding": 1,
-    "symbol-sort-key": 0
+    "symbol-sort-key": 0,
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {

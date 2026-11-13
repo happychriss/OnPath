@@ -49,6 +49,24 @@ class RouteSnapshotTest {
         assertTrue(!JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0)).getJSONObject("sources").has("overview-plan"))
     }
 
+    /** My routes' small map pictures (owner 2026-11-13, L1): the same line, thinner ([ThumbRules.LINE_SCALE]). */
+    @Test fun aSmallPictureDrawsTheLineThinner() {
+        val seg = listOf(GeoPoint(46.6, 11.1), GeoPoint(46.61, 11.12))
+        val layers = JSONObject(RouteSnapshot.withLine(style, listOf(seg), 0, lineScale = ThumbRules.LINE_SCALE)).getJSONArray("layers")
+        assertEquals(RouteLook.LINE_DP * ThumbRules.LINE_SCALE.toDouble(), layers.getJSONObject(layers.length() - 1).getJSONObject("paint").getDouble("line-width"), 1e-6)
+        assertEquals(RouteLook.CASING_DP * ThumbRules.LINE_SCALE.toDouble(), layers.getJSONObject(layers.length() - 2).getJSONObject("paint").getDouble("line-width"), 1e-6)
+    }
+
+    /** Owner 2026-11-13: My routes' pictures without the route networks („blaue Wege und dann lilane Wege“), both formats. */
+    @Test fun thePicturesLeaveOutTheRouteNetworks() {
+        val style = """{"version":8,"sources":{},"layers":[{"id":"bg","type":"background"},
+            {"id":"routes-hike","type":"line","source":"routes"},{"id":"routes-bike-major-label","type":"symbol","source":"overlays","source-layer":"routes"},
+            {"id":"net","type":"line","source":"overlays","source-layer":"routes"},{"id":"paths","type":"line","source":"overlays","source-layer":"paths"},
+            {"id":"trails-mountain","type":"line","source":"trails"}]}"""
+        val layers = JSONObject(RouteSnapshot.withoutNetworks(style)).getJSONArray("layers")
+        assertEquals(listOf("bg", "paths", "trails-mountain"), (0 until layers.length()).map { layers.getJSONObject(it).getString("id") })
+    }
+
     @Test fun aOnePointSegmentIsLeftOut() {
         val o = JSONObject(RouteSnapshot.withLine(style, listOf(listOf(GeoPoint(46.6, 11.1)), listOf(GeoPoint(46.6, 11.1), GeoPoint(46.7, 11.2))), 0))
         assertEquals(1, o.getJSONObject("sources").getJSONObject("overview-line").getJSONObject("data").getJSONObject("geometry")

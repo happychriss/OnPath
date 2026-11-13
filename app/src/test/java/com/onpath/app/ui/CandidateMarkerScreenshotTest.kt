@@ -98,7 +98,7 @@ class CandidateMarkerScreenshotTest {
                         val d = androidx.compose.ui.platform.LocalDensity.current
                         val hPx = with(d) { Offset(atDp(p).x.dp.toPx(), atDp(p).y.dp.toPx()) }
                         PinChipAt(hPx, topPx = with(d) { 100.dp.roundToPx() }, bottomPx = with(d) { 300.dp.roundToPx() }) {
-                            PinChip(hut.title(), str(Res.string.plan_pin_add), onAction = {}, onMore = {})
+                            PinChip(hut.title(), onClick = {})
                         }
                         Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                             PlanTopBar({}, PlanMenu(), Modifier.fillMaxWidth())

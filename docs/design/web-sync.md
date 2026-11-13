@@ -174,6 +174,34 @@ without field 8 the plan's tiles older than 7 days are checked when it is opened
 7 differs gets the same kind of grey line ("Auf dem Handy mit anderer Routenberechnung geplant – …"). The browser
 always reads current rd5 files (proxy, cached ≤ 1 day), so it has no refresh to do.
 
+### 5.3 Favourite – the star (owner 2026-11-13) – format fixed, built on the app side
+
+Owner decision 2026-11-13 (My routes L1 + favourites variant C): a route or imported track can be starred; the star
+travels with it. One optional field for **kind 1 (plan) and kind 3 (track)** items, backward compatible:
+
+    9 = favourite   one varint: 1 = starred, 0 = not starred; only on live plans / tracks (never a hello, JOIN, tombstone)
+                    missing = not said (an item from an older app or page) → the reader keeps its own star
+
+- **A star never makes a copy** (owner policy, review 2026-11-13): `SyncLedger.setFavourite(id, star, now, device)` on a
+  version that is in the mailbox and not changed here since writes a *star-only* version – field **10 = star base**
+  (varint: the mailbox revision it re-stars; no content, older readers skip it). In `SyncMerge.reconcile`: our star-only
+  change meets a newer mailbox version → that version with our star (their rename / edit wins, the star is kept; their
+  delete wins, the star goes); our edit / delete meets their star-only version of our very base → our edit with their
+  star / our delete wins. A star beside another change still waiting here is a normal edit (the old rule).
+  The phone keeps a star set while a browser change waits (`SyncLinks.agreedStar`, the link line's 4th field `s1`/`s0`). `sameContent` reads "not said" as "not starred", so existing items without the field never cause copies, and a
+  phone does not upload its routes again after the update (it writes the field with its next real edit / star change).
+- **Keeping it:** `save` / `saveTrack` take `favourite: Boolean? = null` – null keeps the star the item had (the page's
+  Save before it knows stars never takes one away); `rename` keeps it; `take` (moving) keeps it.
+- **Phone:** `tours.favourite` (schema 8); export writes the tour's star (`save(..., t.favourite)`, `setFavourite` when only
+  the star differs); import sets the tour's star when the item says one (null = keeps its own), a star alone gives no
+  "Changed" tag. Also kept in the GPX backup record ("favourite": true) – not part of the sync.
+- **Browser (to do, laptop):** `WebSync.list` adds `"favourite": true|false` (null → false); a `syncSetFavourite(ledger,
+  id, star, now, device)` call; the page shows / toggles the star (its UI is the laptop's).
+- Tested: `PlanSyncTest.favouriteFieldIsFrozenAndOptional` / `anOldReaderSkipsTheStar` / `starOnlyOnLivePlansAndTracks` /
+  `aStarIsContentNotSaidIsNoStar`, `CorePlanSyncTest.aStarTravelsBothWaysWithoutATagOrAnEcho` /
+  `aStarredRouteFromTheBrowserArrivesStarred` / `anOlderPageNeverTakesAStarAwayAndNoRouteGoesUpAgain` /
+  `aStarMeetingAnUnseenRenameFollowsTheConflictRule`, `SyncRulesRandomTest.starsAgreeOnBothSidesAndNothingIsLost`.
+
 ## 6. Conflict rule (`SyncMerge`)
 
 Owner 2026-11-12, after the „Bad Honnef“ field bug (an old browser change pushed a phone tour away; research and the

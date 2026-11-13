@@ -6,7 +6,8 @@ import java.util.Locale
  * Google Maps place → go there (owner 2026-10-30): a place shared into OnPath gets the candidate marker and, once the map
  * has flown there, the ring's own hold menu ([PoiMenu]: "Start here · Go here" on an empty plan, else "Set as
  * destination" / "Add as stop N" / "Add as new destination", plus "Open in Google Maps") opens by itself – the very menu
- * a hold on the ring opens, under the same rules (Plan, no shown track: [AppViewModel.canEditMap]).
+ * a hold on the ring opens, under the same rules (Plan, no shown track: [AppViewModel.canEditMap]). Since 2026-11-13
+ * (owner) a picked search result does the same ([SearchFlow.pickSearchResult]); where the menu goes: [PinMenuPlace].
  *
  * Every share opens it, the same place shared again too (field bug 2026-10-31; a re-delivered intent never gets here –
  * MainActivity's IncomingIntent handles each share once). The menu does not open

@@ -51,24 +51,45 @@ class SyncLedger private constructor(
     /**
      * Saves a plan: a new one under [id] (from [SyncFormat.newId]) or a new version of an existing one. [routing] /
      * [routingData] = this side's routing fingerprint and the plan's routing data dates (fields 7, 8; null = unknown).
-     * Returns the stored item, or null when [id] is not an item id.
+     * [favourite] = starred (field 9); null = keep what the item said (a caller without stars – the page's Save – never
+     * takes a star away). Returns the stored item, or null when [id] is not an item id.
      */
     fun save(id: String, plan: String, title: String?, now: Long, device: String,
-             routing: String? = null, routingData: String? = null): SyncItem? {
+             routing: String? = null, routingData: String? = null, favourite: Boolean? = null): SyncItem? {
         if (!SyncFormat.isId(id)) return null
         val old = entries[id]
         return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.PLAN, title = title, plan = plan,
-            routing = routing, routingData = routingData), old)
+            routing = routing, routingData = routingData, favourite = favourite ?: starOf(old)), old)
     }
 
     /**
      * Saves an imported track ([track] = [TrackCode] bytes as Base64url, from [TrackCode.fit]): a new one under [id] or
-     * a new version. Returns the stored item, or null when [id] is not an item id.
+     * a new version. [favourite] as in [save]. Returns the stored item, or null when [id] is not an item id.
      */
-    fun saveTrack(id: String, track: String, title: String?, now: Long, device: String): SyncItem? {
+    fun saveTrack(id: String, track: String, title: String?, now: Long, device: String, favourite: Boolean? = null): SyncItem? {
         if (!SyncFormat.isId(id)) return null
         val old = entries[id]
-        return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.TRACK, title = title, track = track), old)
+        return put(SyncItem(id, stamp(old, now), device, kind = SyncItem.TRACK, title = title, track = track,
+            favourite = favourite ?: starOf(old)), old)
+    }
+
+    /** The star a live item said (field 9); null for none / a tombstone. */
+    private fun starOf(old: SyncEntry?): Boolean? = old?.item?.takeIf { !it.deleted && it.isUserItem }?.favourite
+
+    /**
+     * Stars a saved plan or track or takes the star away (owner 2026-11-13) – an edit like [rename]: a new version, the
+     * conflict rule as for any edit (SyncMerge.reconcile). False when there is no live plan / track under [id]; nothing
+     * changes when it already says [favourite].
+     */
+    fun setFavourite(id: String, favourite: Boolean, now: Long, device: String): Boolean {
+        val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
+        if (old.item.favourite == favourite) return true
+        // star only: on top of a version that is in the mailbox and not changed here since (or star-only already) –
+        // field 10 says so, and a conflict then never makes a copy (SyncMerge.reconcile); after another change here
+        // it is a normal edit
+        val base = if ((!old.dirty || SyncMerge.starOnly(old)) && old.rev > 0) old.rev else null
+        put(old.item.copy(favourite = favourite, updatedAt = stamp(old, now), device = device, starBase = base), old)
+        return true
     }
 
     /**
@@ -83,10 +104,10 @@ class SyncLedger private constructor(
         if (!item.isUserItem || item.deleted || !SyncFormat.isId(item.id)) return false
         val here = entries[item.id]
         when {
-            here == null -> entries = entries + (item.id to SyncEntry(item, 0, dirty = true))
+            here == null -> entries = entries + (item.id to SyncEntry(item.copy(starBase = null), 0, dirty = true))
             here.item.sameContent(item) -> Unit
             else -> {
-                val c = SyncMerge.copyOf(item)
+                val c = SyncMerge.copyOf(item.copy(starBase = null))
                 if (c.id !in entries) entries = entries + (c.id to SyncEntry(c, 0, dirty = true))
             }
         }
@@ -96,7 +117,7 @@ class SyncLedger private constructor(
     /** Renames a saved plan or track; false when there is none under [id]. */
     fun rename(id: String, title: String?, now: Long, device: String): Boolean {
         val old = entries[id]?.takeIf { !it.item.deleted && it.item.isUserItem } ?: return false
-        put(old.item.copy(title = title, updatedAt = stamp(old, now), device = device), old)
+        put(old.item.copy(title = title, updatedAt = stamp(old, now), device = device, starBase = null), old)
         return true
     }
 
@@ -149,7 +170,7 @@ class SyncLedger private constructor(
      */
     fun forget() {
         entries = entries.filterValues { it.item.isUserItem && !it.item.deleted }
-            .mapValues { SyncEntry(it.value.item, 0, dirty = true) }
+            .mapValues { SyncEntry(it.value.item.copy(starBase = null), 0, dirty = true) }
         since = 0
     }
 
@@ -159,7 +180,7 @@ class SyncLedger private constructor(
      * Nothing is dropped; the merge keeps both versions where the other side changed an item meanwhile.
      */
     fun restart() {
-        entries = entries.filterValues { !it.item.deleted }.mapValues { SyncEntry(it.value.item, 0, dirty = true) }
+        entries = entries.filterValues { !it.item.deleted }.mapValues { SyncEntry(it.value.item.copy(starBase = null), 0, dirty = true) }
         since = 0
     }
 

@@ -67,6 +67,12 @@ class TourSchemaTest {
         exec("INSERT INTO tours(kind, name, created, difficulty) VALUES ('PLANNED', 'Neu', 2, 'MODERATE')")
         assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE name='Neu' AND difficulty='MODERATE'"))
         exec("DELETE FROM tours WHERE name='Neu'")
+        // 7 → 8 (owner 2026-11-13): starred in My routes – every existing tour is not, a star sticks, the bin keeps it
+        assertTrue("favourite" in columns("tours"))
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE id=1 AND favourite=0"))
+        exec("UPDATE tours SET favourite=1, deleted_at=5 WHERE id=1")
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE id=1 AND favourite=1 AND deleted_at=5"))
+        exec("UPDATE tours SET favourite=0, deleted_at=NULL WHERE id=1")
         exec("UPDATE tours SET rides='{}' WHERE id=1")
         exec("INSERT INTO points VALUES (1, 50, 0, 46.6, 11.1, 600, 50000, 12.5)")
         assertEquals(1, count("SELECT COUNT(*) FROM points WHERE acc=12.5"))
@@ -114,6 +120,28 @@ class TourSchemaTest {
     }
 
     /**
+     * A version 7 database (difficulty) gets `tours.favourite` (owner 2026-11-13): every tour, point and plan copy stays,
+     * every row reads 0 (no star); twice (a half-done upgrade) breaks nothing and loses no row.
+     */
+    @Test fun upgradeFrom7AddsFavourite() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.exec(TourSchema.CREATE_PLAN)
+            c.exec(TourSchema.ADD_DIFFICULTY)
+            c.exec("INSERT INTO tours(kind, name, created, uuid, draft, difficulty) VALUES ('PLANNED', 'Vigiljoch', 3, 'u2', 1, 'EASY')")
+            c.setPlan(7, plan) // a plan copy of another tour: it stays
+            assertTrue("favourite" !in c.columns("tours"))
+            c.upgrade(7)
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours WHERE favourite=0"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE uuid='u2' AND draft=1 AND difficulty='EASY'"))
+            c.assertUpgraded()
+            c.upgrade(7)
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours"))
+            assertEquals(51, c.count("SELECT COUNT(*) FROM points WHERE tour_id=1")) // 50 + the one assertUpgraded adds
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=7"))
+        }
+    }
+
+    /**
      * Owner 2026-11-07: the copy is a copy – the planned route deleted (or changed) later, the tour still has the plan it
      * followed; a newer version replaces the older (the last version counts); the tour removed for good takes it along.
      */
@@ -147,7 +175,8 @@ class TourSchemaTest {
             assertTrue("draft" in c.columns("tours"))
             assertTrue("tour_plan" in c.tables())
             assertTrue("difficulty" in c.columns("tours"))
-            assertEquals(7, TourSchema.VERSION)
+            assertTrue("favourite" in c.columns("tours"))
+            assertEquals(8, TourSchema.VERSION)
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

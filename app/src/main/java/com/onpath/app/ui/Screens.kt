@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -78,6 +79,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -423,9 +425,28 @@ fun RoutesScreen(
     onPull: (() -> Unit)? = null,
     /** The pulled pass runs: the pull spinner shows until it ends. */
     pulling: Boolean = false,
+    /**
+     * The rows' map pictures (owner 2026-11-13, L1: made in the background, read here only – [RouteThumbSource]); null =
+     * none, every row draws its line on paper. [thumbVersion] moves on when a picture was made.
+     */
+    thumbs: com.onpath.app.ui.routes.RouteThumbSource? = null,
+    thumbVersion: Int = 0,
+    /** ☆ on a row (owner 2026-11-13, favourites C): starred or not. */
+    onFavourite: (Tour, Boolean) -> Unit = { _, _ -> },
+    /** The "☆ Favoriten" pill on at the start (the app keeps it while it runs; screenshots). */
+    initialFavouritesOnly: Boolean = false,
+    onFavouritesOnly: (Boolean) -> Unit = {},
+    /**
+     * The activity filter's preset (owner 2026-11-13): the planning activity – My routes opens showing its family; null =
+     * "Alle". A pick holds until My routes closes ([com.onpath.app.ui.routes.ActivityFilter]).
+     */
+    initialActivity: Activity? = null,
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     var sort by remember { mutableStateOf(initialSort) }
+    var favOnly by remember { mutableStateOf(initialFavouritesOnly) }
+    // the activity filter (owner 2026-11-13): preset with the planning activity at every opening, a pick holds while open
+    var act by remember { mutableStateOf(initialActivity) }
     // a row tap opens the large overview first (owner 2026-11-07 00:30) – "Planen" / "Folgen" there opens it as before
     var overview by remember { mutableStateOf(initialOverview) }
     val line: @Composable (Tour) -> List<List<com.onpath.app.routing.GeoPoint>>? = { t -> rememberRouteLine(t, loadLine) }
@@ -475,7 +496,15 @@ fun RoutesScreen(
                 // the sort chips (owner 2026-11-12, variant C): a new order starts at the top of the list
                 val scope = androidx.compose.runtime.rememberCoroutineScope()
                 RouteSortChips(sort, { sort = it; onSort(it); scope.launch { listState.scrollToItem(0) } },
-                    Modifier.padding(bottom = 8.dp))
+                    Modifier.padding(bottom = 8.dp),
+                    // favourites C (owner 2026-11-13): "☆ Favoriten" first – on, both tabs show only the starred ones
+                    leading = { Row(verticalAlignment = Alignment.CenterVertically) {
+                        com.onpath.app.ui.routes.FavouriteChip(favOnly) {
+                            favOnly = it; onFavouritesOnly(it); scope.launch { listState.scrollToItem(0) }
+                        }
+                        Spacer(Modifier.width(8.dp))
+                        com.onpath.app.ui.routes.ActivityFilterChip(act) { act = it; scope.launch { listState.scrollToItem(0) } }
+                    } })
             }
             if (busy == Busy.EXPORT) Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(horizontal = 20.dp),
                 verticalAlignment = Alignment.CenterVertically) { BusyContent(Busy.EXPORT.text) }
@@ -483,6 +512,8 @@ fun RoutesScreen(
             // "Zuletzt" = exactly one row (owner 2026-11-12, [LivePlanRows]): the plan on the map ("In Bearbeitung"), else
             // the draft or saved route worked on last – a saved one with the "Gespeichert" tag, and under Gespeichert too
             val tabbed = remember(tours, tab) { RoutesTab.filter(tours, tab) }
+            // Zuletzt – the plan worked on – shows whatever the filters (owner 2026-11-13: „keine Zuletzt-Route mehr,
+            // obwohl ich gerade geplant habe“); Favoriten and the activity filter apply to the sections below
             val recent = if (tab == RoutesTab.PLANNED) LivePlanRows.of(live, tabbed.filter { it.draft }, tabbed.filter { !it.draft }, recentId)
                 else RecentRow.NONE
             val liveName = live?.name ?: str(Res.string.routes_live_name)
@@ -493,13 +524,16 @@ fun RoutesScreen(
             val recentTour = if (recent.live) null else shown.firstOrNull { it.id == recent.tourId }
             val hasRecent = liveTour != null || recentTour != null
             // the chosen order (RouteSort) for the saved routes / done tours; a draft shows only as the Zuletzt row
-            val saved = remember(shown, sort) { RouteSort.sort(shown.filter { !it.draft }, sort) }
+            // every input is a key: a new activity, star filter or order recomputes it (field bug 2026-11-13)
+            val saved = remember(shown, sort, favOnly, act) { com.onpath.app.ui.routes.ActivityFilter.saved(shown, sort, favOnly, act) }
             PullToSync(if (tab == RoutesTab.PLANNED) onPull else null, pulling) {
             if (saved.isEmpty() && !hasRecent) {
                 // a list of one so the empty Planned tab can be pulled too
                 LazyColumn(Modifier.fillMaxSize()) { item {
                     Box(Modifier.fillParentMaxSize().padding(32.dp), contentAlignment = Alignment.Center) {
                         Text(if (query.isNotBlank()) str(Res.string.routes_search_none, query.trim())
+                            else if (favOnly) str(Res.string.routes_fav_none)
+                            else if (act != null && tabbed.any { !it.draft }) str(Res.string.routes_act_none, act!!.chip)
                             else str(if (tab == RoutesTab.PLANNED) Res.string.routes_empty_planned else Res.string.routes_empty_done),
                             color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
                     }
@@ -513,7 +547,8 @@ fun RoutesScreen(
                         waypoints = t.waypoints.size, touring = touring, hasPlan = t.hasPlan)
                     fun has(a: RouteRowActions.Action) = a in row.menu
                     TourCard(t, tag = tag, row = row, onOpen = { overview = t }, justSaved = justSaved, line = line(t),
-                        recording = t.id == recordingId,
+                        recording = t.id == recordingId, thumb = com.onpath.app.ui.routes.rememberThumb(t, thumbs, thumbVersion),
+                        onFavourite = { onFavourite(t, it) },
                         onRename = { rename = t }, onExport = { onExport(t) },
                         onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
                         onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
@@ -561,7 +596,8 @@ fun RoutesScreen(
                                 TourCard(t, tag = null, row = row, onOpen = { overview = t }, onRename = { rename = t }, onExport = { onExport(t) },
                                     onDelete = null, footer = { DraftActions({ onSaveDraft(t) }, { onDeleteDraft(t) },
                                         onPlan = if (RouteRowActions.Action.PLAN in row.inline) ({ onOpen(t) }) else null) },
-                                    line = line(t), onGo = if (RouteRowActions.Action.GO in row.menu) ({ onGo(t) }) else null)
+                                    line = line(t), onGo = if (RouteRowActions.Action.GO in row.menu) ({ onGo(t) }) else null,
+                                    thumb = com.onpath.app.ui.routes.rememberThumb(t, thumbs, thumbVersion))
                             } else savedCard(t, RouteTag.SAVED, false)
                         } }
                         if (saved.isNotEmpty()) item(key = "h-saved") { SectionHeader(str(Res.string.routes_section_saved)) }
@@ -630,6 +666,13 @@ private fun RoutesSearchField(query: String, onQuery: (String) -> Unit, modifier
 
 
 
+/**
+ * A My routes row – L1 (owner 2026-11-13, after the map sketches): a square map tile left (the route on the offline map,
+ * [thumb]; without a picture the line on paper, without a line the kind's sign), then the name (+ tags), the activity
+ * ("Wandern · T2" with its sign, the app's own labels) and the facts; at the right ⋮ over the star ([onFavourite]; filled
+ * gold = favourite). A tap on the row opens the large overview. The date line went (the tab says the kind, the sort chips
+ * how new); no › any more – the tile shows what a tap opens.
+ */
 @Composable
 private fun TourCard(
     t: Tour, tag: RouteTag?, row: RouteRowActions.Row, onOpen: (() -> Unit)?, onRename: () -> Unit, onExport: () -> Unit,
@@ -645,52 +688,98 @@ private fun TourCard(
     justSaved: Boolean = false,
     /** The ⋮ menu (rename, export …); off for the plan on the map – it is no stored route. */
     menu: Boolean = true,
-    /** Its line for the small preview (owner 2026-11-07); null / too short = the kind's sign as before. */
+    /** Its line for the tile when there is no map picture (owner 2026-11-07); null / too short = the kind's sign. */
     line: List<List<com.onpath.app.routing.GeoPoint>>? = null,
     /** The tour being recorded right now: "Wird gerade aufgezeichnet" under the numbers. */
     recording: Boolean = false,
     /** ⋮ → "Planen" (blue) / "Los geht's" (green) on top (owner 2026-11-07); null = not in ⋮. */
     onPlan: (() -> Unit)? = null, onGo: (() -> Unit)? = null,
+    /** The tile's map picture ([com.onpath.app.ui.routes.RouteThumbSource]); null = the line on paper. */
+    thumb: androidx.compose.ui.graphics.ImageBitmap? = null,
+    /** The star under ⋮ (owner 2026-11-13); null = none (Zuletzt's draft, the plan on the map). */
+    onFavourite: ((Boolean) -> Unit)? = null,
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
         TourKind.RECORDED -> Icons.Filled.FiberManualRecord to OnPathColors.Rec
         TourKind.IMPORTED -> Icons.Filled.FileOpen to OnPathColors.Gpx
     }
-    // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06), the words the same ("Plan · date")
+    // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06)
     val pale = DraftLook.of(t.draft)
-    val openLabel = str(Res.string.routes_open_row, t.name)
+    // a round trip says so in the activity line ("↻ Rundtour", owner 2026-11-13 variant A) and to TalkBack
+    val loop = remember(t, line) { com.onpath.app.ui.routes.RoundTrip.of(t, line) }
+    val openLabel = str(Res.string.routes_open_row, t.name) + (if (loop) ", " + str(Res.string.plan_round_trip) else "")
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
-        modifier = Modifier.heightIn(min = 72.dp).warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
             .semantics { onClick(label = openLabel) { onOpen?.invoke(); onOpen != null } }) {
         Column {
-        Row(Modifier.fillMaxWidth().padding(start = 14.dp, top = 12.dp, bottom = 10.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            // the route's shape on paper (owner 2026-11-07); without a line the kind's sign as before. ⤢ on it: a tap there
-            // (like on the row) opens the large overview (owner 2026-11-07 09:40 "deutlich, wo man tippen muss")
-            RoutePreviewTile(line, RouteShape.tint(t.kind), pale = t.draft, placeholder = {
-                Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
-                    Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
+            Row(Modifier.fillMaxWidth().padding(start = 10.dp, top = 10.dp, bottom = 10.dp, end = 4.dp),
+                verticalAlignment = Alignment.CenterVertically) {
+                // the map tile: decorative (the row says what it opens); smaller at a large font – the words need the room
+                val tile = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= LARGE_FONT_TILE_SCALE) MAP_TILE_LARGE_FONT else MAP_TILE
+                Box(Modifier.size(tile).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
+                    if (thumb != null) androidx.compose.foundation.Image(thumb, contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Fit, modifier = Modifier.fillMaxSize()
+                            .then(if (t.draft) Modifier.alpha(0.6f) else Modifier))
+                    else RoutePreviewTile(line, RouteShape.tint(t.kind), pale = t.draft, tile = tile - 8.dp, placeholder = {
+                        Box(Modifier.size(44.dp).clip(CircleShape).background(color.copy(alpha = pale.circle)), contentAlignment = Alignment.Center) {
+                            Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
+                        }
+                    })
                 }
-            }, onEnlarge = if (row.opensOverview) onOpen else null)
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
-                // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
-                RouteTitle(t.name, tag, tag2)
-                Text("${t.kind.label} · " + SimpleDateFormat(str(Res.string.common_date), Locale.getDefault()).format(Date(t.createdMs)).replace(' ', '\u00A0'),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
-                    MaterialTheme.typography.bodySmall, MaterialTheme.colorScheme.onSurfaceVariant), style = MaterialTheme.typography.bodySmall)
-                if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
-                if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
-                    color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))
+                Spacer(Modifier.width(12.dp))
+                Column(Modifier.weight(1f)) {
+                    // from the browser and not opened yet (owner 2026-10-31): a "New" / "Changed" tag after the name, until opened
+                    RouteTitle(t.name, tag, tag2)
+                    ActivityLine(t, loop)
+                    Text(instrument(RouteRowActions.facts(Format.distance(t.distanceM), Format.meters(t.ascentM), Format.duration(t.durationS)),
+                        MaterialTheme.typography.bodySmall, muted), style = MaterialTheme.typography.bodySmall)
+                    if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
+                    if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
+                        color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))
+                }
+                // ⋮ over the star (the approved L1 picture); each 48 dp
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    if (menu) TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom, onPlan, onGo)
+                    else Spacer(Modifier.width(8.dp))
+                    onFavourite?.let { com.onpath.app.ui.routes.FavouriteStar(t.favourite, t.name, it) }
+                }
             }
-            if (row.chevron) Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-            if (menu) TourItemMenu(t, onRename, onExport, onDelete, onEditRides, onCopy, onShare, onPlanFrom, onPlan, onGo)
-            else Spacer(Modifier.width(8.dp))
+            // the card's whole width from its tile's edge (Planen · Speichern · Löschen need it in German; at a large font they stack)
+            footer?.let { Box(Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 8.dp)) { it() } }
         }
-        // the card's whole width from its tile's edge (Planen · Speichern · Löschen need it in German; at a large font they stack)
-        footer?.let { Box(Modifier.fillMaxWidth().padding(start = 14.dp, end = 12.dp, bottom = 8.dp)) { it() } }
+    }
+}
+
+/** The L1 row's map tile (owner 2026-11-13: 84 dp, the sketch's square; [com.onpath.app.map.ThumbRules.TILE_DP]). */
+private val MAP_TILE = com.onpath.app.map.ThumbRules.TILE_DP.dp
+/** From this font scale the tile is [MAP_TILE_LARGE_FONT] (the picture scaled down whole). */
+private const val LARGE_FONT_TILE_SCALE = 1.5f
+private val MAP_TILE_LARGE_FONT = 64.dp
+
+/**
+ * "Wandern · T2" / "Fahrrad" / "Gravel" … with the activity's sign (the app's chip labels), then "· ↻ Rundtour" for a
+ * round trip ([loop], owner 2026-11-13 variant A – the plan sheet's ↻ sign and word); nothing when neither is known.
+ */
+@Composable
+private fun ActivityLine(t: Tour, loop: Boolean) {
+    val a = t.activity?.let { n -> Activity.entries.firstOrNull { it.name == n } }
+    if (a == null && !loop) return
+    val muted = MaterialTheme.colorScheme.onSurfaceVariant
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        if (a != null) {
+            val text = if (a == Activity.HIKE && t.sac in 1..5) str(Res.string.activity_chip_with_level, a.chip, t.sac) else a.chip
+            Icon(a.icon, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(text, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false))
+        }
+        if (loop) {
+            if (a != null) Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+            Icon(Icons.Outlined.Loop, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(3.dp))
+            Text(str(Res.string.plan_round_trip), style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
         }
     }
 }
@@ -808,8 +897,9 @@ internal fun TourMenuItems(t: Tour, onRename: () -> Unit, onExport: () -> Unit, 
     if (onPlan != null) DropdownMenuItem(text = { Text(str(Res.string.routes_overview_plan), color = OnPathColors.ActionEdit, fontWeight = FontWeight.SemiBold) },
         leadingIcon = { Icon(Icons.Filled.Route, null, tint = OnPathColors.ActionEdit) },
         onClick = on(onPlan), modifier = Modifier.heightIn(min = 48.dp))
-    if (onGo != null) DropdownMenuItem(text = { Text(str(Res.string.plan_bar_go), color = OnPathColors.ActionGo, fontWeight = FontWeight.SemiBold) },
-        leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.ActionGo) },
+    // plan blue like every go in Plan (owner 2026-11-13: „sonst sehr verwirrend“ – ActionButtons.planGo)
+    if (onGo != null) DropdownMenuItem(text = { Text(str(Res.string.plan_bar_go), color = OnPathColors.PlanGo, fontWeight = FontWeight.SemiBold) },
+        leadingIcon = { Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.PlanGo) },
         onClick = on(onGo), modifier = Modifier.heightIn(min = 48.dp))
     if (onPlan != null || onGo != null) androidx.compose.material3.HorizontalDivider(Modifier.padding(vertical = 4.dp))
     // a done tour / track as a plan to edit (owner 2026-11-06, F1): planning = blue

@@ -105,21 +105,23 @@ internal val PREVIEW_TILE = 52.dp
 internal fun RoutePreviewTile(segments: List<List<GeoPoint>>?, tint: RouteShape.Tint, pale: Boolean,
                               placeholder: @Composable () -> Unit, modifier: Modifier = Modifier,
                               /** A tap on the tile: the large overview; non-null = the ⤢ badge (owner 2026-11-07 09:40). */
-                              onEnlarge: (() -> Unit)? = null) {
+                              onEnlarge: (() -> Unit)? = null,
+                              /** The tile's edge: [PREVIEW_TILE], or the L1 row's map tile when there is no map picture. */
+                              tile: androidx.compose.ui.unit.Dp = PREVIEW_TILE) {
     val label = str(if (onEnlarge != null) Res.string.routes_overview_enlarge else Res.string.routes_overview_show)
     // the badge sits on the tile's corner, a little outside it: the outer box is that much larger
-    Box(modifier.size(PREVIEW_TILE + ENLARGE_OUT).let { m ->
+    Box(modifier.size(tile + (if (onEnlarge != null || tile == PREVIEW_TILE) ENLARGE_OUT else 0.dp)).let { m ->
             if (onEnlarge != null) m.clickable(onClickLabel = label, role = Role.Button) { onEnlarge() } else m
         }.semantics { contentDescription = label }) {
-        Box(Modifier.size(PREVIEW_TILE).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
+        Box(Modifier.size(tile).clip(OnPathShapes.Small).background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {
             val density = LocalDensity.current
-            val px = with(density) { PREVIEW_TILE.toPx() }
+            val px = with(density) { tile.toPx() }
             // with the ⤢ badge: nothing is drawn under it (the line, start or goal fitted beside / above its corner)
             val corner = if (onEnlarge == null) 0f
                 else with(density) { RouteShape.cornerFor((ENLARGE_BADGE - ENLARGE_OUT).toPx(), (3.dp * 1.6f).toPx()) }
             val shape = remember(segments, px, corner) { segments?.let { RouteShape.of(it, px, px, with(density) { 8.dp.toPx() }, corner = corner) } }
             if (shape == null) placeholder()
-            else RouteCanvas(shape, tint.color().copy(alpha = if (pale) 0.45f else 1f), 2.5.dp, 3.dp, Modifier.size(PREVIEW_TILE))
+            else RouteCanvas(shape, tint.color().copy(alpha = if (pale) 0.45f else 1f), 2.5.dp, 3.dp, Modifier.size(tile))
         }
         // ⤢ "vergrößern": a paper ring round an ink-blue disc with a 16 dp paper sign – plain on paper, and on the line
         if (onEnlarge != null) Box(Modifier.align(Alignment.BottomEnd).size(ENLARGE_BADGE).clip(CircleShape)

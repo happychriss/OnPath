@@ -50,15 +50,23 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     var onRecent: (Long) -> Unit = {}
 
     private var shown by mutableStateOf(false)
-    /** My routes list (☰ → My routes) is open; closing drops the line at the top and the "✓ Gerade gespeichert" mark. */
+    /**
+     * My routes list (☰ → My routes) is open; closing drops the line at the top and the "✓ Gerade gespeichert" mark;
+     * opening starts with "Neueste zuerst" (owner 2026-11-13: „Das ist wichtig“ – a sort chosen holds while My routes is
+     * open, not across openings; the chip row then starts at its left end).
+     */
     var open: Boolean
         get() = shown
-        set(v) { if (!v) { onClosed(); justSavedId = -1L }; shown = v }
+        set(v) {
+            if (!v) { onClosed(); justSavedId = -1L }
+            if (v && !shown) sort = RouteSort.DEFAULT
+            shown = v
+        }
 
     /** The last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var tab by mutableStateOf(RoutesTab.PLANNED)
 
-    /** The order of the saved routes / done tours ([RouteSort]); the view model reads it from and writes it to the prefs. */
+    /** The order of the saved routes / done tours ([RouteSort]) while My routes is open; "Neueste zuerst" at each opening. */
     var sort by mutableStateOf(RouteSort.DEFAULT)
 
     /** The tours My routes shows (state "done", not in the recycle bin), newest first. */

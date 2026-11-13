@@ -379,6 +379,14 @@ class ReleaseRundgang : E2EBase() {
             Thread.sleep(250)
         }
         shot("2-after-5s")
+        // picking the hit (owner 2026-11-13, "A mit Ausweich B"): the pin, and once the map is there the pin's own hold
+        // menu opens by itself – no "Hierhin" card
+        val hit = read { vm -> vm.search.ui.results.first().place }
+        scenario.onActivity { vm(it).pickSearchResult(hit) }
+        waitUntil("the pick's pin", 10_000) { read { it.searchMark } != null }
+        waitUntil("the pin's menu opens by itself", 30_000) { read { vm -> vm.poiMenu?.let(vm::isCandidate) == true } }
+        assertNotNull("its menu ends with \"Remove pin\"", findFresh(By.text(Txt.s(Res.string.plan_remove_pin)), 5_000))
+        shot("3-picked-menu-open")
     }
 
     /**
