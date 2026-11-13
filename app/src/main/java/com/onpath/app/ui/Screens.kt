@@ -9,6 +9,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Save
+import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -692,7 +693,10 @@ private fun TourCard(
     }
     // a plan under Zuletzt: the route sign pale – only a draft (owner 2026-11-06)
     val pale = DraftLook.of(t.draft)
-    val openLabel = str(Res.string.routes_open_row, t.name)
+    // SKETCH round trip (owner 2026-11-13): B says it to TalkBack too
+    val rt = com.onpath.app.ui.routes.RoundTripSketch
+    val openLabel = str(Res.string.routes_open_row, t.name) +
+        (if (rt.isLoop(t.id) && rt.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.B) ", " + str(Res.string.plan_round_trip) else "")
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(onClick = { onOpen?.invoke() }, enabled = onOpen != null, shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
         modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, OnPathShapes.Card)
@@ -711,6 +715,13 @@ private fun TourCard(
                             Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
                         }
                     })
+                    // SKETCH round trip B: ↻ on the tile's corner – a paper ring round an ink-blue disc, as the ⤢ badge was
+                    if (rt.isLoop(t.id) && rt.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.B)
+                        Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(ENLARGE_BADGE).clip(CircleShape)
+                            .background(OnPathColors.Paper).padding(2.dp).clip(CircleShape).background(OnPathColors.ActionEdit),
+                            contentAlignment = Alignment.Center) {
+                            Icon(Icons.Outlined.Loop, null, tint = OnPathColors.Paper, modifier = Modifier.size(ENLARGE_ICON))
+                        }
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -751,7 +762,15 @@ private fun ActivityLine(t: Tour) {
     Row(verticalAlignment = Alignment.CenterVertically) {
         Icon(a.icon, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
         Spacer(Modifier.width(6.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(text, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f, fill = false))
+        // SKETCH round trip A: "· ↻ Rundtour" at the end of the line
+        if (com.onpath.app.ui.routes.RoundTripSketch.isLoop(t.id) && com.onpath.app.ui.routes.RoundTripSketch.mode == com.onpath.app.ui.routes.RoundTripSketch.Mode.A) {
+            Text(" · ", style = MaterialTheme.typography.bodySmall, color = muted)
+            Icon(Icons.Outlined.Loop, contentDescription = null, tint = muted, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(3.dp))
+            Text(str(Res.string.plan_round_trip), style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 1)
+        }
     }
 }
 
