@@ -223,3 +223,47 @@ Still weak after round 5:
 - Rivers are not named destinations yet: "at the water" for the Rhine comes from the routing data's river class,
   which cannot tell the Rhine from a pond.
 - Not done: the two old reds (Hilden 2 h forest 49 % for 50, Heide street 21 % for 15); MTB; variant A not re-run.
+
+## Stage 2 – AI region knowledge per map area, behind a switch (2026-11-13)
+
+Owner: "einmal mit und einmal ohne KI, dass man es im direkten Vergleich sehen kann." Default **off**; with it off the
+bench sheet is number for number the round-5 sheet (checked).
+
+- **Where the knowledge comes from:** `region_ai.py` – one AI call per map area (middle model, 7–12 ct through this
+  tool), the AI picks **by number from our own list** of named things (no name matching), files in
+  `~/onpath-suggest-poc/region-ai/10-x-y.json`. At request time no AI is called; a missing file = as without AI
+  (the page says so). `python3 tools/suggest-poc/region_ai.py --around Hilden --km 20` lists the areas in reach without
+  a file and the cost; `--create` makes them. Present: the 3×2 areas around Hilden / Zons / Solingen and Meran.
+- **Switch:** page "mit KI-Regionswissen", `run.py --ai`, `bench.py --ai`, wish field `ai`.
+- **Score part `ai`** (`score.weights.ai`, knobs under `ai.bonus`): every ~30 m of the loop counts once, with the rang
+  value of the best pick it lies on / in (rang 3 = 1.0, 2 = 0.7, 1 = 0.4); that share of the loop is full at 50 %.
+  A pick that is a signed route counts half (`route_pick_factor`) because the `signed` part already pays for signed
+  routes by rank. A sight passed adds 0.06 × rang value, at most 0.15. Picks the activity does not fit are not loaded.
+- **Generator (variant B):** up to `ai.targets` picks that the map's own destinations do not have (areas, sights, river
+  banks) become anchors – loops "Ziel <Name> (KI-Tipp)". Variant A only scores, it builds nothing towards picks.
+- **Card:** "KI-Tipp: <Name> (x km)" – name and km only; the AI's sentence only as a tooltip "KI-Text, ungeprüft".
+- **Compare:** page button "Vergleich mit / ohne KI" (same wish, same seed, both top 3 in a table, two buttons switch
+  the map); `run.py … --compare-ai [--png]` prints the table and writes `overview.png` + `overview-ohne-ki.png`.
+- **Points with and without are not comparable** – with the switch on there is one more part in the mean.
+
+Bench, variant B, weights 13h, off → on (first suggestion):
+
+| Case | Points | First suggestion off → on | Judgement |
+|---|---|---|---|
+| Hilden hike 2 h | 69.8 → 68.4 | same loop | same |
+| Ohligser Heide 2 h | 86.4 → 86.3 | same loop | same |
+| Düsseldorf 2 h | 84.6 → 72.7 | same loop, AI part 0 (no pick touched) | same; the points fall for nothing |
+| Hilden + Wasser 3 h | 77.0 → 71.7 | same loop | same |
+| Hilden Bekannte Wege 3 h | 78.9 → 76.9 | NO → O loop, 3.2 km in the Ohligser Heide | about the same |
+| Hilden bike 2 h | 86.8 → 78.9 | W loop (36.0 km, 2:01) → to the Rhine (38.8 km, 2:10, 16 km EV15) | a ride a local would name, but 8 % too long and less green |
+| Hilden bike 4 h | 87.4 → 82.8 | Euroga loop north → along the Rhine (41 km EV15), 15.5 s | different taste, not better; too slow |
+| Hilden gravel 3 h | 84.6 → 76.7 | → through the Urdenbacher Kämpe (4.4 km) | plausible |
+| Zons bike 3 h | 80.7 → 80.3 | same Rhine ride | same |
+| Zons bike 3 h control | 87.2 → 84.5 | → via Knechtsteden forest: 36 % green for 15, main road 105 m for 233 | better |
+| Meran hike 3 h | 81.0 → 78.3 | same loop | same |
+
+64 of 66 → 63 of 66 (the lost one is the time limit on the 4 h bike case). Honest summary: in 6 of 11 cases nothing
+changes; where it changes, it pulls bike loops to the Rhine and into named nature areas – once clearly better, mostly a
+different, defensible choice, never a clearly bad loop in this sheet. Weak: a loop that touches no pick loses points for
+no reason (Düsseldorf); the anchors cost 1–3 s on bikes; much of the picks repeats the signed routes; only one
+AI call per area, stability untested.

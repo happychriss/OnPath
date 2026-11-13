@@ -227,3 +227,22 @@ case: variant B is hiking-only so far.
 - **For the real feature:** rivers as named destinations (the map has `waterway` with names), ferries as a flagged
   piece of a loop (hours, price), and the there-and-back stem as a legitimate shape for a destination across town.
 - Numbers and what is still weak: `tools/suggest-poc/README.md` "Round 5".
+
+## Stage 2 (2026-11-13) – AI region knowledge per map area, with / without
+
+Built as an experiment behind a switch (default off): `region_ai.py` (one call per map area, the AI picks by number from
+a closed list of our own named objects – no name matching), `regionbonus.py` (reads the files, never calls the AI),
+score part `ai` and extra destinations in variant B, card line "KI-Tipp: Name (km)", compare view on the page and in
+`run.py --compare-ai`. Details, formula and the bench off / on: `tools/suggest-poc/README.md` "Stage 2".
+
+- **Cost:** 7–12 ct per map area with the middle model through the command-line tool (its own overhead included);
+  seven areas made so far. Once per area, not per user or request; nothing leaves the phone.
+- **What it adds beyond the map:** a ranking of areas and sights (Urdenbacher Kämpe, Zonser Grind, Knechtsteden,
+  Ohligser Heide, Neandertal); the signed routes it picks are already rewarded by rank.
+- **What the map lacks (the AI's extras):** ferries (Zons–Urdenbach …), monasteries and old towns, city parks and
+  promenades, cable cars – not in our cell files as destinations today.
+- **Result so far:** no change in about half of the bench cases; on bikes it pulls loops to the Rhine and into named
+  nature areas – one case clearly better, the others a different defensible choice. Not proven to be worth it yet;
+  the owner's own comparison decides.
+- **For the real feature:** the file would be made by the map server when it builds a cell and shipped with the cell;
+  the AI's free sentence must not be shown as fact (it was wrong for the Elbsee).
