@@ -2,7 +2,7 @@
 // PlanSize): small = summary row (chip, time, distance, ↑/↓, badge, chevron, a compact Share) + ⇅ Reverse · ↻ Round trip, profile = + profile,
 // points = + Points. Grab handle (the app's handle tap), chevron (Show more / Show less), a click on the summary, Arrow
 // keys; remembered after a reload; the camera fit leaves the sheet free (also the toolbar's "Show whole route" after a
-// pan / zoom away, in the small and Points step, with a GPX track); the place card, the GPX track panel and the
+// pan / zoom away, in the small and Points step, with a GPX track); the found place's menu (app 6714ad6f), the GPX track panel and the
 // header without Send to phone / Pair phone. Needs only the rd5 (CI); Photon is a fake answer.
 // Usage: node test/sheet-smoke.mjs [segmentsDir] [screenshotDir]
 import path from 'node:path';
@@ -28,17 +28,6 @@ const far = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry:
   properties: { name: 'Fabriciusstraße', housenumber: '11', osm_key: 'place', osm_value: 'house', city: 'Hilden', country: 'Deutschland' } }] };
 
 const settle = (page) => page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 }).then(() => page.waitForTimeout(300));
-/** The search ring (the picked point), the card, its side and tail tip, sheet and top bar – page pixels. */
-const cardGeom = (page) => page.evaluate(() => {
-  const box = (e) => { if (!e || e.hidden || !e.offsetParent) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
-  const ring = box(document.querySelector('.candidate')), pc = document.getElementById('placecard'), card = box(pc);
-  const side = pc.dataset.side, t = parseFloat(pc.style.getPropertyValue('--tail'));
-  const tip = !card || !side ? null : side === 'above' ? { x: card.x + t, y: card.y + card.h + 10 } : side === 'below' ? { x: card.x + t, y: card.y - 10 }
-    : side === 'right' ? { x: card.x - 10, y: card.y + t } : { x: card.x + card.w + 10, y: card.y + t };
-  // the pin's tip is the place: 4.2 px above the pin box's bottom (search.ts TIP_MARGIN)
-  return { ring: ring && { x: ring.x + ring.w / 2, y: ring.y + ring.h - 4.2 }, card, side, tip, anchored: pc.classList.contains('anchored'),
-    visible: getComputedStyle(pc).visibility !== 'hidden', sheet: box(document.getElementById('sheet')), bar: box(document.getElementById('topbar')) };
-});
 /** Every route point, the planned line and a shown GPX track (map coordinates) inside the free map room: in the map,
  *  outside the plan sheet and the top bar. */
 const freeRoom = (page) => page.evaluate(() => {
@@ -74,24 +63,13 @@ async function checkFit(page, P, how = 'click') {
   const r = await freeRoom(page);
   check(r.n >= 2 && r.bad === 0, `${P} "Show whole route" (${how}): all ${r.n} route points in the free map room, clear of sheet and top bar (zoom ${r.zoom}${r.bad ? `, ${r.bad} outside, e.g. ${JSON.stringify(r.first)}` : ''})`);
 }
-const overlaps = (a, b) => !!a && !!b && a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
-function checkAnchored(g, vp, P) {
-  const across = g.tip && g.ring ? (g.side === 'above' || g.side === 'below' ? Math.abs(g.tip.x - g.ring.x) : Math.abs(g.tip.y - g.ring.y)) : 99;
-  const along = g.tip && g.ring ? Math.hypot(g.tip.x - g.ring.x, g.tip.y - g.ring.y) : 99;
-  check(g.anchored && g.visible && across <= 3 && along <= 16, `${P} the card's tail points at the point (${g.side}, tip ${across.toFixed(1)} px across, ${along.toFixed(1)} px from it)`);
-  check(g.card.x >= 0 && g.card.y >= 0 && g.card.x + g.card.w <= vp.width && g.card.y + g.card.h <= vp.height && g.ring.x > 0 && g.ring.x < vp.width && g.ring.y > 0 && g.ring.y < vp.height,
-    `${P} card and point inside the window`);
-  const r = (b) => b && [b.x, b.y, b.w, b.h].map(Math.round).join(',');
-  check(!overlaps(g.card, g.sheet) && !overlaps(g.card, g.bar), `${P} the card covers neither the plan sheet nor the top bar`
-    + (overlaps(g.card, g.sheet) || overlaps(g.card, g.bar) ? ` (${g.side}: card ${r(g.card)}, sheet ${r(g.sheet)}, bar ${r(g.bar)}, point ${r({ ...g.ring, w: 0, h: 0 })})` : ''));
-}
 
 async function open(vp, phone) {
   const ctx = await browser.newContext({ viewport: vp, isMobile: phone, hasTouch: phone });
   await ctx.route('https://photon.komoot.io/**', (r) => r.fulfill({ body: JSON.stringify(/hilden/i.test(r.request().url()) ? far : photon), contentType: 'application/json' }));
   const page = await ctx.newPage();
   page.on('pageerror', (e) => errors.push(String(e)));
-  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); if (process.env.DEBUG && /\[(search|map)\]/.test(m.text())) console.log('  page:', m.text()); });
   await page.goto(url + 'index.html#p=' + CODE);
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   await page.click('#appHintLine .x').catch(() => {}); // the one line about the app (a shared link) – the step sizes without it
@@ -213,54 +191,61 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   check(await page.isVisible('#notice'), `${P} the red route line is visible in the small step`);
   await page.evaluate(() => { document.getElementById('notice').hidden = true; });
 
-  // the place card still works in the small step – and belongs to its point (owner 2026-10-30, like the app): wide →
-  // a callout whose tail points at the search ring, clear of sheet and top bar, following a pan; phone → the bottom
-  // card with the point visible above it
+  // the found place's menu still works in the small step (app 6714ad6f, owner 2026-11-13 "A mit Ausweich B"): a pick
+  // opens the pin's hold menu by itself – above the pin (it moves with the map), else under it, else the same rows as a
+  // card at the bottom (on a phone in place of the sheet) with the pin visible above it
+  const MENU = '.holdpopup.pinmenu .pointmenu, #placecard.pinmenucard .pointmenu';
   const pick = async (q) => {
     await page.fill('#q', q);
     await page.waitForSelector('#results .hit', { timeout: 30_000 });
     await page.click('#results .hit');
-    await page.waitForSelector('#placecard:not([hidden]) #cdest', { timeout: 20_000 });
+    await page.waitForSelector(MENU, { timeout: 30_000 });
     await settle(page);
   };
+  const menuGeom = () => page.evaluate(() => {
+    const box = (e) => { if (!e || e.hidden || !e.offsetParent) return null; const r = e.getBoundingClientRect(); return { x: r.x, y: r.y, w: r.width, h: r.height }; };
+    const pin = box(document.querySelector('.candidate'));
+    return { pin, tip: pin && { x: pin.x + pin.w / 2, y: pin.y + pin.h - 4.2 }, popup: box(document.querySelector('.holdpopup.pinmenu')),
+      card: box(document.querySelector('#placecard.pinmenucard')), sheet: box(document.getElementById('sheet')), bar: box(document.getElementById('topbar')) };
+  });
+  const rowsNow = () => page.$$eval(`:is(${MENU}) button`, (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim() ?? ''));
+  const checkMenu = (g, what) => {
+    if (g.popup) check(g.popup.y + g.popup.h <= g.pin.y + 2 || g.popup.y >= g.tip.y,
+      `${what} the menu at the pin – above its head or under its tip (menu ${Math.round(g.popup.y)}..${Math.round(g.popup.y + g.popup.h)}, pin ${Math.round(g.pin.y)}..${Math.round(g.tip.y)})`);
+    else check(!!g.card && g.card.y + g.card.h >= vp.height - 20 && g.tip.y <= g.card.y + 2 && g.pin.y >= (g.bar ? g.bar.y + g.bar.h - 2 : 0),
+      `${what} the menu as a card at the bottom, the pin visible above it (${JSON.stringify({ card: g.card, pin: g.pin })})`);
+  };
   await pick('Ifinger');
-  const card = await page.locator('#placecard').boundingBox();
-  let g = await cardGeom(page);
+  let g = await menuGeom();
+  checkMenu(g, `${P} small step:`);
   if (phone) {
-    check(await page.isHidden('#sheet') && card.y + card.height >= vp.height - 2, `${P} place card stands in for the sheet at the bottom`);
-    check(g.ring && g.ring.y + 13 < g.card.y && g.ring.y - 13 > g.bar.y + g.bar.h && g.ring.x > 0 && g.ring.x < vp.width,
-      `${P} the picked point is visible above the bottom card (ring ${JSON.stringify(g.ring)}, card top ${Math.round(g.card.y)})`);
+    if (g.card) check(await page.isHidden('#sheet'), `${P} the menu card stands in for the sheet`);
   } else {
-    checkAnchored(g, vp, `${P} small step:`);
+    check(!!g.popup, `${P} wide map: the menu above the pin, not a card`);
     await page.evaluate(() => window.__map.panBy([-140, 70], { duration: 0 })); await settle(page);
-    const g2 = await cardGeom(page);
-    checkAnchored(g2, vp, `${P} after a pan:`);
-    check(Math.abs(g2.ring.x - g.ring.x - 140) < 3 && Math.abs(g2.ring.y - g.ring.y + 70) < 3, `${P} the card followed the point during the pan`);
-    // no room above (the point just under the top bar): the card flips to another side
-    await page.evaluate((dy) => window.__map.panBy([0, dy], { duration: 0 }), Math.round(g2.ring.y - (g2.bar.y + g2.bar.h + 90))); await settle(page);
-    const g3 = await cardGeom(page);
-    check(g3.side !== 'above', `${P} point under the top bar: the card flips (${g3.side})`);
-    checkAnchored(g3, vp, `${P} flipped:`);
-    // a map click beside the card closes it and adds nothing; Escape closes it too
+    const g2 = await menuGeom();
+    check(!!g2.popup && Math.abs(g2.popup.x - g.popup.x - 140) < 3 && Math.abs(g2.popup.y - g.popup.y + 70) < 3, `${P} the menu followed the point during the pan`);
+    // a map click beside the menu closes it and adds nothing; the pin and its chip stay; Escape closes it too
     const pins = await page.locator('.pin').count();
     await page.mouse.click(vp.width - 120, Math.round(vp.height * 0.35)); // the map, not the profile along the bottom
     await page.waitForTimeout(400);
-    check(await page.isHidden('#placecard') && await page.locator('.pin').count() === pins, `${P} a map click beside the card closes it (nothing added)`);
+    check(await page.locator(MENU).count() === 0 && await page.locator('.pin').count() === pins && await page.isVisible('.pinchip'),
+      `${P} a map click beside the menu closes it (nothing added, pin and chip stay)`);
     await pick('Ifinger');
     await page.keyboard.press('Escape');
-    check(await page.isHidden('#placecard'), `${P} Escape closes the card`);
-    // a far result after a move that left a padding behind (spot / gap "show"): centred in the free room, card at it
+    check(await page.locator(MENU).count() === 0, `${P} Escape closes the menu`);
+    // a far result after a move that left a padding behind (spot / gap "show"): in the free room, its menu at it
     await page.evaluate(() => window.__map.easeTo({ padding: { top: 90, bottom: 50, left: 446, right: 90 }, duration: 0 }));
     await pick('hilden fabriciusstr 11');
-    g = await cardGeom(page);
-    checkAnchored(g, vp, `${P} far result (Hilden):`);
-    check(g.ring.x > g.sheet.x + g.sheet.w && g.ring.y > g.bar.y + g.bar.h && g.ring.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.ring)})`);
+    g = await menuGeom();
+    checkMenu(g, `${P} far result (Hilden):`);
+    check(g.tip.x > g.sheet.x + g.sheet.w && g.tip.y > g.bar.y + g.bar.h && g.tip.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.tip)})`);
     await page.screenshot({ path: path.join(shots, `${name}-card-far.png`) });
     // the far place added, then Cancel at "very long" (the app's TakenPin, field 2026-11-07 S10): the add is taken
     // back and the place stays as its pin – never forgotten
     {
       const before = await page.locator('.pin').count();
-      await page.click('#cadd');
+      await page.locator(`:is(${MENU}) button`).first().click();
       const asked = await page.waitForSelector('dialog.longroute', { timeout: 30_000 }).then(() => true).catch(() => false);
       if (asked) {
         await page.click('#lrCancel');
@@ -268,57 +253,54 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
       }
       check(asked && await page.locator('.pin').count() === before && await page.locator('.candidate').count() === 1 && await page.isVisible('.pinchip'),
         `${P} far place added, Cancel at "very long": the add is taken back, its pin is shown again (asked ${asked})`);
-      if (await page.locator('.candidate').count()) { await page.click('.pinchip .pinmore'); await page.waitForSelector('#placecard:not([hidden]) #cunpin', { timeout: 20_000 }).catch(() => {}); await page.click('#cunpin').catch(() => {}); }
+      // the map went back to the plan from before (app 4216a144): the route in the free room, the far pin out of view
+      // (the next pick replaces it)
+      await page.waitForTimeout(400); await settle(page);
+      const back = await freeRoom(page);
+      const far = (await menuGeom()).tip, farInView = !!far && far.x > 0 && far.x < vp.width && far.y > 0 && far.y < vp.height;
+      check(back.bad === 0 && !farInView,
+        `${P} Cancel: the map is back on the plan from before, not on the far place (${JSON.stringify(back)})`);
     }
     await page.keyboard.press('Escape');
-    await pick('Ifinger');
   }
   // the found place's pin (the app's CandidateMarker, 2026-11-02): a route-blue pin, its name as a chip "Ifinger ›" under
-  // it, a thin dashed line to where adding it would join the route
+  // it (hidden while the menu is open – the menu has the name on top), a thin dashed line to where adding it would join
+  await pick('Ifinger');
+  check(await page.locator('.pinchip').isHidden(), `${P} the name chip hides while the menu is open`);
+  await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
+  await page.keyboard.press('Escape');
   const joinCount = () => page.evaluate(() => window.__map.getSource('candidate-join')?.serialize().data.features.length ?? 0);
   const cand = await page.evaluate(() => ({ pin: !!document.querySelector('.candidate svg path[fill="#1E3FAE"]'), chip: document.querySelector('.pinchip b')?.textContent,
     chipBelow: document.querySelector('.pinchip').getBoundingClientRect().y >= document.querySelector('.candidate').getBoundingClientRect().bottom - 6,
-    orange: !!document.querySelector('.searchring') }));
-  check(cand.pin && cand.chip === 'Ifinger' && cand.chipBelow && !cand.orange && await joinCount() === 1, `${P} found place: blue pin, the name chip below, a dashed line to the route (${JSON.stringify(cand)})`);
-  await page.screenshot({ path: path.join(shots, `${name}-card.png`) });
-  // the pin card (owner 2026-11-04, design B – the app's PinChip): the name, a blue "+ Add" (owner 2026-11-05, onpath.private#26) and "⋯ More", both ≥ 48 px
-  const pc = await page.evaluate(() => { const r = (s) => document.querySelector(s)?.getBoundingClientRect();
-    return { add: document.querySelector('.pinchip .pinadd')?.textContent, more: document.querySelector('.pinchip .pinmore')?.textContent,
-      h: Math.min(r('.pinchip .pinadd')?.height ?? 0, r('.pinchip .pinmore')?.height ?? 0),
-      blue: getComputedStyle(document.querySelector('.pinchip .pinadd'), '::after').backgroundColor }; });
-  check(pc.add === 'Add' && pc.more === 'More' && pc.h >= 48 && pc.blue === 'rgb(51, 90, 133)',
-    `${P} the pin card: "+ Add" (blue) · "⋯ More", touch targets ≥ 48 px (${JSON.stringify(pc)})`);
-  // closing the card keeps the pin (the app 2026-11-02); its chip opens the card again; "Remove pin" takes it away
-  await page.click('#cclose');
-  check(await page.isHidden('#placecard') && await page.isVisible('.candidate') && await page.isVisible('.pinchip'), `${P} the card closed, the pin and its chip stay`);
-  await page.click('.pinchip .pinmore');
-  await page.waitForSelector('#placecard:not([hidden]) #cunpin', { timeout: 20_000 }).catch(() => {});
-  check(await page.isVisible('#placecard') && await page.isVisible('#cunpin'), `${P} "⋯ More" opens the place card again (with "Remove pin")`);
-  await page.click('#cunpin');
-  check(await page.isHidden('#placecard') && await page.locator('.candidate').count() === 0 && await page.locator('.pinchip').count() === 0, `${P} "Remove pin": card, pin and chip gone`);
-  // "+ Add" on the pin card adds the place where it fits (the card's main button), pin and card go
-  {
-    const before = await page.locator('.pin').count();
-    await pick('Ifinger');
-    await page.click('#cclose');
-    await page.click('.pinchip .pinadd');
-    await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n + 1, before, { timeout: 20_000 }).catch(() => {});
-    check(await page.locator('.pin').count() === before + 1 && await page.locator('.pinchip').count() === 0, `${P} "+ Add" adds the place, the pin card goes`);
-    await page.click('#undo');
-    await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n, before, { timeout: 20_000 }).catch(() => {});
-  }
+    chipH: document.querySelector('.pinchip').getBoundingClientRect().height, orange: !!document.querySelector('.searchring') }));
+  check(cand.pin && cand.chip === 'Ifinger' && cand.chipBelow && cand.chipH >= 48 && !cand.orange && await joinCount() === 1,
+    `${P} found place: blue pin, the name chip "Ifinger ›" below (≥ 48 px), a dashed line to the route (${JSON.stringify(cand)})`);
+  // its chip opens the same menu again; "Remove pin" takes menu, pin and chip away
+  await page.click('.pinchip');
+  await page.waitForSelector(MENU, { timeout: 20_000 }).catch(() => {});
+  const rows = await rowsNow();
+  check(rows.includes('Open in Google Maps') && rows.includes('Remove pin'), `${P} the chip opens the pin's menu again (${rows.join(' · ')})`);
+  await page.locator(`:is(${MENU}) button`).filter({ hasText: 'Remove pin' }).click();
+  check(await page.locator(MENU).count() === 0 && await page.locator('.candidate').count() === 0 && await page.locator('.pinchip').count() === 0, `${P} "Remove pin": menu, pin and chip gone`);
+  // the menu's first row adds the place where it fits (the app's PlaceAddMenu), menu, pin and preview line go; the step
+  // is kept and the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)
   await pick('Ifinger');
-  await page.click('#cdest');
-  check(await page.isHidden('#placecard') && await page.isVisible('#sheet') && await joinCount() === 0 && await page.locator('.candidate').count() === 0, `${P} the card closes after its action, the sheet is back, pin and preview line gone`);
-  await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 20_000 }).catch(() => {});
+  const before = await page.locator('.pin').count();
+  const first = (await rowsNow())[0];
+  await page.locator(`:is(${MENU}) button`).first().click();
+  check(await page.locator(MENU).count() === 0 && await page.isVisible('#sheet') && await joinCount() === 0 && await page.locator('.candidate').count() === 0,
+    `${P} "${first}": the menu closes, the sheet is back, pin and preview line gone`);
+  await page.waitForFunction(() => document.querySelectorAll('.pin').length >= 2 && !window.__state.planning, null, { timeout: 20_000 }).catch(() => {});
   check(await step(page) === (phone ? 'small' : 'points'), `${P} the step is kept`);
-  // a place added from the card: the new route is fitted once it is there (the app's WholeRoute.fitAfterPlace, add-on 2)
-  // wait for the NEW plan (three points) – the old two-point plan is still in state.plan while the new one is routed;
-  // then the fit (WholeRoute.SETTLE_MS = 500 ms after the route) and the camera's ease
-  await page.waitForFunction(() => !window.__state.planning && window.__state.plan?.points.length === 3, null, { timeout: 60_000 }).catch(() => {});
+  // wait for the NEW plan – the old plan is still in state.plan while the new one is routed; then the fit
+  // (WholeRoute.SETTLE_MS = 500 ms after the route) and the camera's ease
+  await page.waitForFunction((n) => !window.__state.planning && window.__state.plan?.points.length === window.__state.points.length &&
+    window.__state.points.some(([la, lo]) => Math.abs(la - 46.7006) < 1e-3 && Math.abs(lo - 11.2585) < 1e-3), before, { timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(900); await settle(page);
-  const fitted = await freeRoom(page);
-  check(fitted.bad === 0, `${P} after "As destination" the whole new route shows (${JSON.stringify(fitted)})`);
+  let fitted = await freeRoom(page);
+  // the fit comes 500 ms after the route, then eases: under load later than the wait above
+  for (let i = 0; i < 10 && fitted.bad; i++) { await page.waitForTimeout(500); await settle(page); fitted = await freeRoom(page); }
+  check(fitted.bad === 0, `${P} after "${first}" the whole new route shows (${JSON.stringify(fitted)})`);
 
   // the GPX track panel shows fully in any step; closing it brings the remembered step back
   await page.evaluate(() => window.__gpx.importFile(new File([`<?xml version="1.0"?><gpx version="1.1" creator="t" xmlns="http://www.topografix.com/GPX/1/1"><trk><name>Test track</name><trkseg>

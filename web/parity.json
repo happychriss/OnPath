@@ -11,10 +11,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look; the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts)",
       "web": [
         "web/app/src/main.ts",
-        "web/app/src/menus.ts"
+        "web/app/src/menus.ts",
+        "web/app/src/search.ts"
       ],
       "blob": "7b2edd798e8ee83ea16e2cb647eb0915f39e8c61"
     },
@@ -343,6 +344,24 @@
         "web/app/src/plans.ts"
       ],
       "blob": "8cf36ab390dde82bfaf06cd5bf93499d1c6db016"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/PinMenuPlace.kt",
+      "what": "the found place's menu (app 6714ad6f, owner 2026-11-13 „A mit Ausweich B“): PinMenuPlace.decide / cardPan (above the pin, the map moved down; under it; else a card at the bottom), PinMenuItems.of (the rows' order, Remove pin before More)",
+      "web": [
+        "web/app/src/pinmenu.ts",
+        "web/app/src/search.ts"
+      ],
+      "blob": "79cdb62934b03ff2250949ee350a578bd3f12b5d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/LongRouteCancelCamera.kt",
+      "what": "very long route → Cancel: the map back to the plan from before (whole plan / its one point / stays); no tour on the web",
+      "web": [
+        "web/app/src/longroute.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "0ae700e453477dc5c2b59f3ff3e1b73d3de1e90d"
     }
   ],
   "watch": [

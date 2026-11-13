@@ -100,21 +100,18 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 /* the found place's pin (search.ts candidateMarker – the app's CandidateMarker): the tip on the place; its name chip below */
 .candidate { cursor: pointer; }
 .candidate svg { display: block; }
-.pinchip { min-width: 200px; box-sizing: border-box; padding: 9px 10px 0; border-radius: var(--r-card); background: var(--card); color: #243C31;
-  box-shadow: 0 1px 4px rgba(0,0,0,.3); font-size: 14px; cursor: default; }
-.pinchip > b { display: block; padding: 0 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.pinchip .pinbtns { display: flex; gap: 6px; position: relative; z-index: 0; }
-/* the app's PinCardButton: a 36 px pill in a 48 px touch box – blue ActionEdit = edit, PaperDim = more (owner 2026-11-06) */
-.pinchip .pinbtns button { flex: 1; min-height: 48px; border: 0; padding: 0 10px; background: none; font: inherit; font-weight: 700;
-  cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px; position: relative; white-space: nowrap; }
-.pinchip .pinbtns button::after { content: ''; position: absolute; inset: 6px 0; border-radius: var(--r-card); z-index: -1; }
-.pinchip .pinadd { color: #fff; }
-.pinchip .pinadd::after { background: var(--plan); }
-.pinchip .pinmore { color: #243C31; }
-.pinchip .pinmore::after { background: var(--paper-dim); }
-.pinchip .pinbtns button:hover::after { filter: brightness(.94); }
-.pinchip .pinbtns button:focus-visible { outline: none; }
-.pinchip .pinbtns button:focus-visible::after { outline: 2px solid #243C31; outline-offset: 1px; }
+/* its name chip "Name ›" (search.ts pinChip – the app's PinChip since 2026-11-13): one button that opens the pin's menu
+   again; the menu goes above / under the pin (a hold popup) or becomes a card at the bottom (pinmenu.ts B) */
+.pinchip { display: flex; align-items: center; gap: 2px; min-height: 48px; max-width: 240px; box-sizing: border-box; padding: 0 8px 0 14px;
+  border: 0; border-radius: var(--r-card); background: var(--card); color: #243C31; box-shadow: 0 1px 4px rgba(0,0,0,.3);
+  font: inherit; font-size: 14px; cursor: pointer; }
+.pinchip > b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pinchip:hover { filter: brightness(.97); }
+.pinchip:focus-visible { outline: 2px solid #243C31; outline-offset: 1px; }
+.menuhead .addr { display: block; }
+.placecard.pinmenucard { top: auto; bottom: 16px; padding: 0; gap: 0; overflow: hidden; }
+.placecard.pinmenucard .pointmenu { min-width: 0; }
+@media (max-width: 700px) { .placecard.pinmenucard { bottom: 0; padding: 0 0 env(safe-area-inset-bottom, 0px); } }
 
 /* ---- menus (☰, ⋯) ---- */
 .menu { position: absolute; z-index: 5; right: 0; top: 60px; min-width: 230px; padding: 6px 0; background: var(--bg); border-radius: 6px;
@@ -246,6 +243,8 @@ dialog.share #exportGpx { margin-top: 8px; }
 .pointmenu button { display: flex; gap: 16px; align-items: center; border: none; background: none; padding: 10px 16px; min-height: 48px; text-align: left; font-size: 15px; }
 .pointmenu button:hover:not(:disabled) { background: var(--surface2); }
 .pointmenu button.danger { color: var(--error); }
+/* a row's label wraps to two lines, never cut (app 6714ad6f: "Als Zwischenstopp" / "In Google Maps öffnen") */
+.pointmenu button .txt > span:first-child { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 
 /* ---- activity drop-down (at the chip) ---- */
 .actmenu { position: fixed; z-index: 8; width: 340px; max-width: calc(100vw - 24px); max-height: calc(100vh - 24px); overflow: auto; box-sizing: border-box;

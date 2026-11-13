@@ -1,6 +1,6 @@
 // Search with the app's code: offline hits from the map cell in view (POIs, base-map places and peaks, trail names),
-// the place card (its button says what adding does – the app's AddPreview.label) and adding a found place as a named,
-// pinned stop.
+// a pick opens the found place's pin with its hold menu (the app's 6714ad6f – above the pin, else a card at the bottom) and
+// adding a found place as a named, pinned stop.
 // Online (Photon) only when ONLINE=1 (CI has network; the result is checked loosely).
 // Usage: node test/search-smoke.mjs [segmentsDir] [mapStoreDir] [screenshot.png]
 import path from 'node:path';
@@ -22,7 +22,7 @@ const fails = [];
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails.push(what); };
 const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
-page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); if (process.env.DEBUG && /\[(search|map)\]/.test(m.text())) console.log('  page:', m.text()); });
 
 await page.goto(url + 'index.html');
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
@@ -35,7 +35,9 @@ const searchFor = async (t) => {
 };
 
 const t0 = Date.now();
+// the map areas in view are found a moment after the engine is ready (cells.ts): the first search may come too early
 let hits = await searchFor('Vellau');
+for (let i = 0; i < 5 && !hits.length; i++) { await page.waitForTimeout(1500); await page.fill('#q', ''); hits = await searchFor('Vellau'); }
 console.log('Vellau →', hits.slice(0, 5), `${Date.now() - t0} ms incl. indexing`);
 check(hits.some((h) => /Vellau/.test(h)), 'a place from the base map (Vellau)');
 hits = await searchFor('Ifinger');
@@ -48,48 +50,73 @@ hits = await searchFor('Waalweg');
 console.log('Waalweg →', hits.slice(0, 5));
 check(hits.length > 0, 'trail names (Waalweg)');
 
-// pick → card → its button says what adding does, like the app's (0.13: "Set as start" / "Set as destination" /
-// "Add as a stop on the way" / "Add as new destination", app strings since 2026-11-07); a small button doing the same as the main one is left out
-await searchFor('Vellau');
-await page.click('#results .hit');
-await page.waitForSelector('#placecard:not([hidden]) #cadd');
-const add = await page.textContent('#cadd');
-console.log('card:', add.replace(/\s+/g, ' '));
-check(/^\s*Set as start/.test(add), 'empty plan: the card says "Set as start"');
-check(await page.locator('#placecard #cstart').count() === 0 && await page.locator('#placecard #cdest').count() === 1,
-  'empty plan: no small "As start" beside it (the main button does that), "As destination" stays');
-await page.click('#cadd');
+// pick → the pin and, once the map is there, the pin's own hold menu opens by itself (app 6714ad6f, owner 2026-11-13
+// "A mit Ausweich B"): the very rows a hold gives, in the same order (PinMenuItems), "Remove pin" last (before "More");
+// above the pin when it fits, else under it, else the same rows as a card at the bottom. No "Set as start" card any more.
+const menuRows = () => page.$$eval('.holdpopup.pinmenu .pointmenu button, #placecard.pinmenucard .pointmenu button',
+  (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim() ?? ''));
+const pinMenuOpen = () => page.waitForSelector('.holdpopup.pinmenu .pointmenu, #placecard.pinmenucard .pointmenu', { timeout: 30_000 });
+const pickFirst = async (q) => { await searchFor(q); await page.click('#results .hit'); await pinMenuOpen(); await page.waitForTimeout(400); };
+const box = (sel) => page.evaluate((s) => { const r = document.querySelector(s)?.getBoundingClientRect(); return r ? { x: r.x, y: r.y, w: r.width, h: r.height } : null; }, sel);
+await pickFirst('Vellau');
+let rows = await menuRows();
+console.log('empty plan, menu:', rows.join(' · '));
+check(rows.join('|') === 'Start here|Go here|Open in Google Maps|Remove pin', `empty plan: the pin's menu opens by itself with the hold's rows + Remove pin (${rows.join(' · ')})`);
+check(await page.locator('#placecard #cadd, #placecard #cstart, .pinchip .pinadd').count() === 0, 'no old place card / "Hierhin" button');
+const pinBox = await box('.candidate'), menuBox = await box('.holdpopup.pinmenu');
+check(!!menuBox && menuBox.y + menuBox.h <= pinBox.y + 2, `wide map: the menu above the pin (menu bottom ${menuBox && Math.round(menuBox.y + menuBox.h)}, pin top ${Math.round(pinBox.y)})`);
+check(await page.locator('.pinchip').isHidden(), 'the name chip hides while the menu is open (the menu has the name on top)');
+await page.click('.holdpopup.pinmenu button:has-text("Start here")');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 });
-await searchFor('Ifinger');
-await page.click('#results .hit');
-await page.waitForSelector('#placecard:not([hidden]) #cadd');
-const add2 = await page.textContent('#cadd');
-check(/^\s*Set as destination/.test(add2), `only a start: the card says "Set as destination" (${add2.trim()})`);
-check(await page.locator('#placecard #cdest').count() === 0 && await page.locator('#placecard #cstart').count() === 1,
-  'only a start: no small "As destination" beside it, "As start" stays');
+check(await page.locator('.candidate').count() === 0 && await page.locator('.holdpopup.pinmenu').count() === 0, 'Start here: the place is the start, pin and menu gone');
+await pickFirst('Ifinger');
+rows = await menuRows();
+check(rows.join('|') === 'Set as destination|Open in Google Maps|Remove pin', `only a start: "Set as destination", Google, Remove pin (${rows.join(' · ')})`);
 await page.waitForTimeout(800); // the online search would have answered by now (owner 2026-10-28: the list came back)
-const card = await page.locator('#placecard').boundingBox(), sheet = await page.locator('#sheet').boundingBox();
-check(card.x >= sheet.x + sheet.width || card.y >= sheet.y + sheet.height, 'place card beside the plan sheet, not over it');
-check(await page.isHidden('#results'), 'the results list stays closed while the card is shown');
-await page.click('#cadd');
-check(await page.isHidden('#placecard'), 'the card closes after its action');
+check(await page.isHidden('#results'), 'the results list stays closed while the menu is shown');
+// a click elsewhere closes the menu; the pin and its chip "Name ›" stay, the chip opens the same menu again
+{ const m = await page.locator('#map').boundingBox(); await page.mouse.click(m.x + m.width - 120, m.y + m.height - 160); }
+await page.waitForTimeout(300);
+check(await page.locator('.holdpopup.pinmenu').count() === 0 && await page.isVisible('.candidate') && await page.isVisible('.pinchip'),
+  'a click elsewhere: the menu closes, pin and name chip stay');
+check(/Ifinger.*›?/.test(await page.textContent('.pinchip')) && await page.locator('.pinchip button, .pinchip .pinmore').count() === 0, 'the chip is the name only');
+await page.click('.pinchip');
+await pinMenuOpen();
+check((await menuRows())[0] === 'Set as destination', 'the chip opens the pin\'s menu again');
+await page.click('.holdpopup.pinmenu button:has-text("Set as destination")');
+check(await page.locator('.holdpopup.pinmenu').count() === 0, 'the menu closes after its action');
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
 const pts = await page.textContent('#points');
 console.log('points:', pts.replace(/\s+/g, ' '));
 check(/Vellau/.test(pts) && /Ifinger/.test(pts), 'found places are named stops in the Points list');
 check((await page.evaluate(() => location.hash)).length > 10, 'plan with pinned, named places in the link');
 check(/Vellau/.test(pts.split(/Ifinger/)[0] ?? ''), 'the second place became the destination (after the start)');
-// a start and a destination: a third place is a stop or a new destination – said on the button, both small buttons back
-await searchFor('Meran');
-await page.click('#results .hit');
-await page.waitForSelector('#placecard:not([hidden]) #cadd');
-const add3 = (await page.textContent('#cadd')).trim();
-console.log('third place:', add3.replace(/\s+/g, ' '));
-check(/^(Add as a stop|Add as new destination)/.test(add3), `two points: "Add as a stop…" or "Add as new destination" (${add3})`);
-check(await page.locator('#placecard #cstart').count() === 1 && await page.locator('#placecard #cdest').count() === 1,
-  'two points: As start and As destination both shown');
+// a start and a destination: a third place is a stop or a new destination (the app's PlaceAddMenu), "Remove pin" before "More"
+await pickFirst('Meran');
+rows = await menuRows();
+console.log('third place:', rows.join(' · '));
+check(/^(Add as a stop|Make it the destination)$/.test(rows[0]) && rows.includes('Open in Google Maps') &&
+  rows.indexOf('Remove pin') > rows.indexOf('Open in Google Maps') && (!rows.includes('More') || rows.at(-1) === 'More'),
+  `two points: "Add as a stop" / "Make it the destination", Google, Remove pin, More last (${rows.join(' · ')})`);
 await page.keyboard.press('Escape');
+check(await page.locator('.holdpopup.pinmenu').count() === 0 && await page.isVisible('.candidate'), 'Escape closes the menu, the pin stays');
 await page.screenshot({ path: shot });
+// B: a map too low for the menu above or under the pin – the same rows as a card at the bottom, name on top; the pin
+// stays visible above it
+await page.setViewportSize({ width: 1280, height: 430 });
+await page.waitForTimeout(500);
+await pickFirst('Meran');
+const cardRows = await menuRows();
+const cardBox = await box('#placecard.pinmenucard'), pinB = await box('.candidate');
+console.log('low map:', cardRows.join(' · '), cardBox, pinB);
+check(await page.isVisible('#placecard.pinmenucard') && await page.locator('.holdpopup.pinmenu').count() === 0 && cardRows.join('|') === rows.join('|'),
+  `low map: the same rows as a card at the bottom (${cardRows.join(' · ')})`);
+const overlap = cardBox && pinB && pinB.x < cardBox.x + cardBox.w && pinB.x + pinB.w > cardBox.x && pinB.y < cardBox.y + cardBox.h && pinB.y + pinB.h > cardBox.y;
+check(!!cardBox && !!pinB && !overlap && pinB.y >= 0 && pinB.y + pinB.h <= 430, 'the pin stays visible, never under the card');
+await page.click('#placecard.pinmenucard button:has-text("Remove pin")');
+check(await page.isHidden('#placecard') && await page.locator('.candidate').count() === 0, 'Remove pin: card, pin and chip gone');
+await page.setViewportSize({ width: 1280, height: 800 });
+await page.waitForTimeout(500);
 // Save proposes a name like the app (RouteNamer: the places the stops came from)
 await page.click('#menuSavePlan');
 // the dialog opens with the date name; the place proposal replaces it when it arrives (5 s at most)
