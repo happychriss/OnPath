@@ -398,6 +398,7 @@ class CorePlanSyncTest {
             override fun addTrack(name: String, track: TrackContent) = error("tour written during a tour")
             override fun replaceTrack(t: com.onpath.app.data.Tour, track: TrackContent) = error("tour written during a tour")
             override fun rename(t: com.onpath.app.data.Tour, name: String) = error("tour written during a tour")
+            override fun setFavourite(t: com.onpath.app.data.Tour, favourite: Boolean) = error("tour written during a tour")
             override fun toBin(t: com.onpath.app.data.Tour) = error("tour written during a tour")
             override fun fromBin(t: com.onpath.app.data.Tour) = error("tour written during a tour")
         }
@@ -605,6 +606,86 @@ class CorePlanSyncTest {
         browser.save(id(7), plan(listOf(b, c)), "Runde", clock, web)
         browserSync(); phoneSync()
         assertEquals(2, store.live().count { it.name == "Runde" })
+    }
+
+    // ---- favourites (owner 2026-11-13): the star travels with plans and imported tracks (item field 9) ----
+
+    @Test fun aStarTravelsBothWaysWithoutATagOrAnEcho() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        val g = store.saveImported("Ritten.gpx", listOf(listOf(TrackPoint(a.lat, a.lon, 500.0), TrackPoint(b.lat, b.lon, 520.0))))
+        phoneSync(); browserSync()
+        assertTrue((browser.plans() + browser.tracks()).all { it.favourite != true })
+        // starred on the phone → starred in the browser
+        store.update(t) { it.copy(favourite = true) }; store.update(g) { it.copy(favourite = true) }
+        phoneSync(); browserSync()
+        assertEquals(true, browserPlan("Waalweg").favourite)
+        assertEquals(true, browser.tracks().single().favourite)
+        // nothing echoes
+        assertEquals(0, (phoneSync().outcome as SyncRound.Outcome.Done).pushed)
+        // the star taken away in the browser → gone on the phone, the route is not tagged "Changed"
+        browser.setFavourite(browserPlan("Waalweg").id, false, clock, web); browserSync()
+        val r = phoneSync()
+        assertFalse(store.byName("Waalweg").favourite)
+        assertTrue(store.byName("Ritten.gpx").favourite)
+        assertTrue(r.toursChanged)
+        assertNull(files.marks.of(t.uuid))
+        assertEquals(0, (phoneSync().outcome as SyncRound.Outcome.Done).pushed)
+    }
+
+    @Test fun aStarredRouteFromTheBrowserArrivesStarred() {
+        browser.save(id(1), plan(listOf(a, b)), "Meran → Vellau", clock, web, favourite = true)
+        browser.save(id(2), plan(listOf(a, c)), "Lana", clock, web)
+        browserSync(); phoneSync()
+        assertTrue(store.byName("Meran → Vellau").favourite)
+        assertFalse(store.byName("Lana").favourite)
+    }
+
+    /**
+     * An older page (no field 9) renames a starred route: the phone keeps its star and says it again; existing routes
+     * without a star are no reason to upload anything after the update.
+     */
+    @Test fun anOlderPageNeverTakesAStarAwayAndNoRouteGoesUpAgain() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        store.savePlanned("Lana", listOf(a, c))
+        phoneSync(); browserSync()
+        store.update(t) { it.copy(favourite = true) }
+        phoneSync(); browserSync()
+        // the older page: it knows no star – its rename writes the item without field 9
+        val old = olderPage(browser)
+        old.rename(old.plans().single { it.title == "Waalweg" }.id, "Algunder Waalweg", clock, web)
+        assertNull(old.plans().single { it.title == "Algunder Waalweg" }.favourite)
+        SyncRound(keys, server.box(keys), { ByteArray(12) { (n++).toByte() } }).run(old); clock += 1000
+        phoneSync()
+        assertTrue("the phone keeps its star", store.byName("Algunder Waalweg").favourite)
+        phoneSync() // its next pass says the star again (the item from the older page said none)
+        browserSync()
+        assertEquals("the phone said its star again", true, browserPlan("Algunder Waalweg").favourite)
+        assertFalse(browserPlan("Lana").favourite == true)
+        assertEquals(0, (phoneSync().outcome as SyncRound.Outcome.Done).pushed)
+    }
+
+    /** A star is an edit: one the other side never saw meets the version-seen rule – nothing is lost, both agree. */
+    @Test fun aStarMeetingAnUnseenRenameFollowsTheConflictRule() {
+        val t = store.savePlanned("Waalweg", listOf(a, b))
+        phoneSync(); browserSync()
+        browser.rename(browserPlan("Waalweg").id, "Algunder Waalweg", clock, web); browserSync()
+        store.update(t) { it.copy(favourite = true) } // starred on the phone before it saw the rename
+        phoneSync(); browserSync(); phoneSync(); browserSync()
+        val want = setOf("Algunder Waalweg", "Waalweg (copy)")
+        assertEquals(want, store.live().map { it.name }.toSet())
+        assertEquals(want, browser.plans().map { it.title }.toSet())
+        assertTrue("the starred version stays as the copy", store.byName("Waalweg (copy)").favourite)
+        assertEquals(true, browserPlan("Waalweg (copy)").favourite)
+    }
+
+    /** [l] as an older page keeps it: every item without field 9 (it skips the tag). */
+    private fun olderPage(l: SyncLedger): SyncLedger {
+        val lines = l.write().split('\n').filter { it.isNotBlank() }
+        return SyncLedger.read((listOf(lines.first()) + lines.drop(1).map { line ->
+            val p = line.split(' ')
+            val item = SyncFormat.decode(SyncFormat.fromText(p[2])!!)!!.copy(favourite = null)
+            "${p[0]} ${p[1]} ${SyncFormat.toText(SyncFormat.encode(item))}"
+        }).joinToString("\n"))
     }
 
     private fun id(k: Int) = SyncFormat.newId(ByteArray(16) { k.toByte() })

@@ -42,7 +42,21 @@ class SyncRulesRandomTest {
         if (failures > 0) fail("$failures of 400 sequences broke a rule – first: $first")
     }
 
-    private fun runSeed(seed: Int): String? {
+    /**
+     * Favourites (owner 2026-11-13): the same sequences with stars set and taken away on both sides (a star change is an
+     * edit, field 9) – both sides end with the same tours AND the same stars, and no saved version is lost.
+     */
+    @Test fun starsAgreeOnBothSidesAndNothingIsLost() {
+        var failures = 0
+        val first = StringBuilder()
+        for (seed in 1..400) {
+            val problem = runSeed(seed, stars = true)
+            if (problem != null) { failures++; if (first.isEmpty()) first.append("seed $seed: ").append(problem) }
+        }
+        if (failures > 0) fail("$failures of 400 sequences with stars broke a rule – first: $first")
+    }
+
+    private fun runSeed(seed: Int, stars: Boolean = false): String? {
         val rnd = Random(seed)
         val server = MemoryServer()
         var clock = 1_793_000_000_000L
@@ -65,7 +79,7 @@ class SyncRulesRandomTest {
             clock += rnd.nextLong(1, 3 * days / 2)
             val s = sides[rnd.nextInt(2)]
             val now = clock + s.skew
-            when (rnd.nextInt(10)) {
+            when (rnd.nextInt(if (stars) 12 else 10)) {
                 0, 1, 2 -> { // the user saves a new version (or a new tour, or edits a copy)
                     val live = s.ledger.plans().map { it.id }
                     val id = if (live.isNotEmpty() && rnd.nextInt(3) == 0) live.random(rnd) else ids.random(rnd)
@@ -100,6 +114,15 @@ class SyncRulesRandomTest {
                         log += "browser takes ${src.plans().map { it.title }}"
                     }
                 }
+                10, 11 -> { // the user stars a tour shown there or takes the star away
+                    val live = s.ledger.plans()
+                    if (live.isNotEmpty()) {
+                        val it = live.random(rnd)
+                        val star = it.favourite != true
+                        s.ledger.setFavourite(it.id, star, now, s.device)
+                        log += "${s.name} ${if (star) "stars" else "unstars"} ${it.title}"
+                    }
+                }
             }
         }
         // everything online again, both sync until nothing waits
@@ -110,6 +133,9 @@ class SyncRulesRandomTest {
         val p = phone.ledger.plans().associate { it.id to it.title }
         val b = browser.ledger.plans().associate { it.id to it.title }
         if (p != b) return "phone $p ≠ browser $b; log ${log.takeLast(20)}"
+        val ps = phone.ledger.plans().associate { it.id to (it.favourite ?: false) }
+        val bs = browser.ledger.plans().associate { it.id to (it.favourite ?: false) }
+        if (ps != bs) return "stars: phone $ps ≠ browser $bs; log ${log.takeLast(20)}"
         val present = p.values.mapNotNull(::core).toSet()
         for (s in sides) for ((_, t) in s.last) {
             if (t != null && t !in knowinglyGone && t !in present) return "${s.name}'s last save $t lost; now $p; log ${log.takeLast(25)}"

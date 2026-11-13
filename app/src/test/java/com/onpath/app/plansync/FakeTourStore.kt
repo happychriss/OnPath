@@ -73,6 +73,7 @@ class FakeTourStore : TourStore {
     }
 
     override fun rename(t: Tour, name: String) { write(); update(t) { it.copy(name = name) } }
+    override fun setFavourite(t: Tour, favourite: Boolean) { write(); update(t) { it.copy(favourite = favourite) } }
     override fun toBin(t: Tour) { write(); update(t) { it.copy(deletedMs = now) } }
     override fun fromBin(t: Tour) { write(); update(t) { it.copy(deletedMs = null) } }
 }

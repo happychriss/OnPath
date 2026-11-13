@@ -86,7 +86,7 @@ class PlanSyncTest {
     }
 
     @Test fun itemSkipsUnknownFieldsAndRefusesDamage() {
-        val bytes = SyncFormat.encode(item(1, 10)) + byteArrayOf(9, 2, 1, 2) // tag 9, 2 bytes
+        val bytes = SyncFormat.encode(item(1, 10)) + byteArrayOf(42, 2, 1, 2) // tag 42 (unknown), 2 bytes (9 is the star since 2026-11-13)
         assertEquals(item(1, 10), SyncFormat.decode(bytes))
         val good = SyncFormat.encode(item(1, 10))
         for (n in 0 until good.size - 1) SyncFormat.decode(good.copyOf(n)) // never throws
@@ -243,6 +243,83 @@ class PlanSyncTest {
         assertEquals(mine, back.get(a.id))
         back.rename(a.id, "New name", 30, phone)
         assertEquals(fp, back.get(a.id)!!.routing)
+    }
+
+    // ---- favourites (owner 2026-11-13): field 9, one varint – 1 starred, 0 not; missing = not said ----
+
+    @Test fun favouriteFieldIsFrozenAndOptional() {
+        val old = item(1, 10)
+        val head = SyncFormat.encode(old)
+        // the item without a star has today's bytes (the blob stays frozen); with one, exactly the field 09 01 01 / 09 01 00
+        assertTrue(SyncFormat.encode(old.copy(favourite = null)).contentEquals(head))
+        val on = SyncFormat.encode(old.copy(favourite = true))
+        val off = SyncFormat.encode(old.copy(favourite = false))
+        assertTrue(on.copyOf(head.size).contentEquals(head))
+        assertEquals(listOf(9, 1, 1), on.drop(head.size).map { it.toInt() })
+        assertEquals(listOf(9, 1, 0), off.drop(head.size).map { it.toInt() })
+        // after the routing fields too
+        val routed = old.copy(routing = fp, routingData = data)
+        assertEquals(listOf(9, 1, 1), SyncFormat.encode(routed.copy(favourite = true)).drop(SyncFormat.encode(routed).size).map { it.toInt() })
+        // round trips
+        for (f in listOf(true, false, null)) assertEquals(old.copy(favourite = f), SyncFormat.decode(SyncFormat.encode(old.copy(favourite = f))))
+        val track = SyncItem(id(3), 5, phone, kind = SyncItem.TRACK, title = "Ritten", track = "AQID", favourite = true)
+        assertEquals(track, SyncFormat.decode(SyncFormat.encode(track)))
+    }
+
+    /** An older app / page skips field 9 like any unknown tag: the plain item, nothing else. */
+    @Test fun anOldReaderSkipsTheStar() {
+        val old = item(1, 10)
+        val bytes = SyncFormat.encode(old.copy(favourite = true))
+        val renumbered = bytes.copyOf().also { it[SyncFormat.encode(old).size] = 99 }
+        assertEquals(old, SyncFormat.decode(renumbered))
+        // and the blob opens as before
+        assertEquals(true, SyncFormat.open(keys, old.id, SyncFormat.seal(keys, old.copy(favourite = true), ByteArray(12) { 4 }))!!.favourite)
+    }
+
+    /** Plans and tracks only: a hello and a tombstone never carry a star. */
+    @Test fun starOnlyOnLivePlansAndTracks() {
+        val hello = SyncItem(SyncFormat.deviceItemId(phone), 5, phone, kind = SyncItem.DEVICE, name = "Pixel 8")
+        assertEquals(SyncFormat.encode(hello).size, SyncFormat.encode(hello.copy(favourite = true)).size)
+        val tomb = SyncItem(id(2), 7, phone, deleted = true, kind = SyncItem.PLAN)
+        assertEquals(SyncFormat.encode(tomb).size, SyncFormat.encode(tomb.copy(favourite = true)).size)
+        assertNull(SyncFormat.decode(SyncFormat.encode(tomb.copy(favourite = true)))!!.favourite)
+    }
+
+    /**
+     * A star change is content (an edit, a new version); "not said" (null, an older writer) and "not starred" are the
+     * same content – no conflict copy, no upload for every route after the update.
+     */
+    @Test fun aStarIsContentNotSaidIsNoStar() {
+        val a = item(1, 10)
+        assertFalse(a.sameContent(a.copy(favourite = true)))
+        assertTrue(a.sameContent(a.copy(favourite = false)))
+        assertTrue(a.copy(favourite = true).sameContent(a.copy(favourite = true, updatedAt = 99, device = web)))
+        val l = SyncLedger.empty()
+        l.save(a.id, plan, "Plan 1", 10, phone)
+        assertNull(l.get(a.id)!!.favourite)
+        assertTrue(l.setFavourite(a.id, true, 11, phone))
+        val starred = l.get(a.id)!!
+        assertEquals(true, starred.favourite); assertEquals(11, starred.updatedAt)
+        // a Save / rename that says nothing about the star keeps it (the page's Save before it knows stars)
+        l.save(a.id, plan, "Plan 1b", 12, web)
+        assertEquals(true, l.get(a.id)!!.favourite)
+        l.rename(a.id, "Plan 1c", 13, web)
+        assertEquals(true, l.get(a.id)!!.favourite)
+        l.save(a.id, plan, "Plan 1d", 14, phone, favourite = false)
+        assertEquals(false, l.get(a.id)!!.favourite)
+        // the same star again: no new version
+        val at = l.get(a.id)!!.updatedAt
+        assertTrue(l.setFavourite(a.id, false, 20, phone)); assertEquals(at, l.get(a.id)!!.updatedAt)
+        // the ledger file keeps it; a tombstone has none, and no star on a deleted or missing item
+        assertEquals(l.get(a.id), SyncLedger.read(l.write()).get(a.id))
+        l.delete(a.id, 21, phone)
+        assertNull(l.get(a.id)!!.favourite)
+        assertFalse(l.setFavourite(a.id, true, 22, phone))
+        assertFalse(l.setFavourite(id(5), true, 22, phone))
+        // a track's new version keeps its star too
+        l.saveTrack(id(6), "AQID", "Ritten", 30, phone, favourite = true)
+        l.saveTrack(id(6), "AQIE", "Ritten", 31, web)
+        assertEquals(true, l.get(id(6))!!.favourite)
     }
 
     @Test fun routingDataText() {
