@@ -71,8 +71,12 @@ check(await page.isEnabled('#undo') && await page.isDisabled('#redo'), 'undo pos
 {
   const pill = await page.locator('#undoPill').boundingBox(), top = await page.locator('#topbar').boundingBox();
   const u = await page.locator('#undo').boundingBox(), r = await page.locator('#redo').boundingBox();
-  check(pill && pill.y >= top.y + top.height + 12 && Math.abs(pill.x + pill.width - (top.x + top.width)) < 2 && r.x >= u.x + u.width - 1 && Math.abs(r.y - u.y) < 1,
-    'the undo pill: under the bar, set a little apart, right-aligned with it, ↶ left of ↷ in one row (owner 2026-11-13)');
+  const vw = page.viewportSize().width;
+  const placed = vw >= 1012
+    ? pill && Math.abs(pill.y + pill.height / 2 - (top.y + top.height / 2)) < 2 && pill.x >= top.x + top.width + 12 && pill.x + pill.width <= vw
+    : pill && pill.y >= top.y + top.height + 12 && Math.abs(pill.x + pill.width - (top.x + top.width)) < 2;
+  check(placed && r.x >= u.x + u.width - 1 && Math.abs(r.y - u.y) < 1,
+    `the undo pill: ${vw >= 1012 ? 'to the right of the bar, on its height' : 'under the bar, right-aligned'}, set a little apart, ↶ left of ↷ in one row (owner 2026-11-13)`);
 }
 await clickAt(11.1350, 46.6840);
 await planned();

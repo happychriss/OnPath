@@ -133,6 +133,8 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 .undopill[hidden], body.three-d .undopill { display: none; }
 /* phone: a sheet pulled up past the pill – the pill steps back, like the app's column in the points step (placeUndoPill) */
 body.undo-crowded .undopill { display: none; }
+/* a wide window (room beside the bar, owner 2026-11-13): the pill sits to the right of the bar, on its height */
+@media (min-width: 1012px) { .undopill { top: 0; right: auto; left: calc(100% + 16px); } }
 .undopill .tool { width: 52px; height: 52px; border-radius: 26px; color: var(--plan); }
 .tool.on { color: var(--route); } #eye.on { background: var(--green-light); color: var(--fg); }
 .maplibregl-ctrl-bottom-right .maplibregl-ctrl-group { border-radius: 12px; box-shadow: var(--float-shadow); margin: 0 16px 16px 0; }
@@ -389,7 +391,7 @@ dialog.pair .check b { letter-spacing: .08em; }
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { .spinner, .status.busy::before { animation-duration: 3s; } }
 @media (max-width: 700px) { .mapnotes { top: 122px; left: 12px; right: 12px; width: auto; max-width: none; } }
-@media (min-width: 701px) { body.undo-shown:not(.three-d) .mapnotes { max-width: calc(100% - var(--sheet-w) - 164px); } } /* clear of the undo pill */
+@media (min-width: 701px) and (max-width: 1011px) { body.undo-shown:not(.three-d) .mapnotes { max-width: calc(100% - var(--sheet-w) - 164px); } } /* clear of the undo pill under the bar */
 @media (max-width: 700px) { body.undo-shown:not(.three-d):not(.undo-crowded) .mapnotes { right: 128px; } } /* the undo pill keeps its place */
 
 /* ---- website links, language switch, the one line about the app (A-011; web-planner.md §18) ---- */
