@@ -21465,7 +21465,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21627,7 +21652,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21789,7 +21839,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -21953,7 +22028,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -22134,7 +22234,32 @@
       ]
      ]
     ],
-    "symbol-z-order": "auto"
+    "symbol-z-order": "auto",
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
@@ -22171,7 +22296,32 @@
     ],
     "icon-allow-overlap": false,
     "icon-padding": 1,
-    "symbol-sort-key": 0
+    "symbol-sort-key": 0,
+    "text-field": [
+     "to-string",
+     [
+      "coalesce",
+      [
+       "get",
+       "id"
+      ],
+      [
+       "get",
+       "pr"
+      ],
+      "·"
+     ]
+    ],
+    "text-font": [
+     "Noto Sans Regular"
+    ],
+    "text-size": 1,
+    "text-allow-overlap": true,
+    "text-ignore-placement": true,
+    "text-optional": true
+   },
+   "paint": {
+    "text-opacity": 0
    }
   },
   {
