@@ -31,7 +31,7 @@
   .chips span.bad { background:#f6dfd8; } .chips span.good { background:#dcefdf; }
   .parts { font-size:11px; color:var(--muted); margin-top:5px; display:none; }
   .card.sel .parts, .card.sel .fb { display:block; }
-  .fb { display:none; margin-top:7px; } .fb input { margin-bottom:5px; }
+  .fb { display:flex; gap:6px; margin-top:7px; } .fb input { flex:1; min-width:0; } .fb button { white-space:nowrap; }
   .opts { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin:4px 0; }
   .legend { font-size:11.5px; color:var(--muted); margin-top:4px; }
   .legend i { display:inline-block; width:14px; height:4px; vertical-align:middle; margin:0 3px 0 8px; }
@@ -232,23 +232,28 @@ function cards() {
     d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
       <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
       ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
+      ${(n.reserves || []).length ? `<div class="goals">${n.reserves.slice(0, 2).map(r => km1(r[1]) + ' km im Naturschutzgebiet ' + esc(r[0])).join(' · ')}</div>` : ''}
       ${aiTips(n) ? `<div class="aitips">${aiTips(n)}</div>` : ''}
       <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
-        ${n.main_longest_m ? chip('an Hauptstraße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
-        ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}</div>
+        ${n.main_longest_m ? chip('an / neben Straße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (n.main_road_max_m || result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
+        ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}
+        ${n.self_cross ? chip('kreuzt sich ' + n.self_cross + '×', n.self_cross > 1 ? 'bad' : '') : ''}${n.stalk_m >= 150 ? chip('hin und zurück ' + n.stalk_m + ' m') : ''}${n.roadside_pct !== undefined ? chip('an / neben Straße ' + n.roadside_pct + ' %', n.roadside_pct >= 10 ? 'bad' : '') + chip('durch Häuser ' + n.built_pct + ' %', n.built_pct >= 40 ? 'bad' : '') + chip('tief in der Natur ' + n.deep_pct + ' %', n.deep_pct >= 40 ? 'good' : '') : ''}</div>
       <div class="parts">Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
-      <div class="fb"><input type="text" placeholder="Warum ist sie die beste? (oder: was stört)"><div class="row"><button class="pri best">Das ist die beste</button><button class="bad">Die ist schlecht</button></div></div>`;
+      <div class="fb"><input type="text" placeholder="Kommentar zu dieser Runde"><button class="send">Kommentar senden</button></div>`;
     d.onclick = e => { if (e.target.closest('.fb')) return; sel = sel === c.id ? null : c.id; cards(); draw(); };
-    d.querySelector('.best').onclick = () => feedback(c, 'beste', d);
-    d.querySelector('.bad').onclick = () => feedback(c, 'schlecht', d);
+    d.querySelector('.send').onclick = () => feedback(c, d);
+    d.querySelector('.fb input').onkeydown = e => { if (e.key === 'Enter') feedback(c, d); };
     $('cards').appendChild(d);
   }
 }
-async function feedback(c, verdict, d) {
-  const slim = x => ({id:x.id, name:x.name, chosen:x.chosen, score:x.score, parts:x.parts, numbers:x.numbers});
-  await fetch(BASE + 'feedback', {method:'POST', body:JSON.stringify({run:result.run, verdict, candidate:c.id, reason:d.querySelector('input').value,
-    wish:result.wish, weights_version:result.weights_version, candidates:result.candidates.map(slim)})});
-  d.querySelector('.fb').innerHTML = '<i>Notiert – danke.</i>';
+// one comment per suggestion: saved with the run, the route's id, name and numbers and the wish, so it can be found again
+async function feedback(c, d) {
+  const text = d.querySelector('.fb input').value.trim();
+  if (!text) { d.querySelector('.fb input').focus(); return; }
+  const place = result.candidates.filter(x => x.chosen).indexOf(c) + 1;
+  await fetch(BASE + 'feedback', {method:'POST', body:JSON.stringify({run:result.run, candidate:c.id, name:c.name, place, comment:text,
+    score:c.score, parts:c.parts, numbers:c.numbers, wish:result.wish, weights_version:result.weights_version, method:result.method})});
+  d.querySelector('.fb').innerHTML = '<i>Kommentar gespeichert.</i>';
 }
 function draw(fit) {
   layers.clearLayers(); if (!result) return;

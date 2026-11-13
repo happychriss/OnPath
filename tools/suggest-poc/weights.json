@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-13h",
+  "version": "2026-11-13i",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
 
   "simple": {
@@ -59,6 +59,9 @@
     "surface_avoid_factor": 3.0,
     "known_discount_per_signed": 0.8,
     "known_discount_max": 0.75,
+    "pen_main_natur": 1.0,
+    "pen_town": 1.0,
+    "roadside_no_discount": 1.5,
     "lake": {"_about": "'Am Wasser entlang' (Wasser >= from_water): loops made for the named lakes in reach (the max_lakes with the most way at the water). The way there is a fairly direct one (the usual dislikes to the power direct_power – through town if need be), at most stem_max of the wished length; then round the lake if the length allows it, else along the shore each way; home another way.", "enabled": true, "from_water": 0.5, "max_lakes": 3, "stem_max": 0.4, "min_on_m": 800, "min_follow_m": 700, "on_cost": 0.15, "direct_power": 0.5},
     "follow": {
       "_about": "Loops built along a known route: a short stem (at most stem_max of the wished length) onto the route, along it to the point where stem + route + way home fill the wished length (only points the route reaches fairly directly: direct_max x the straight line), back another way (ways already used cost used_penalty; other known routes are cheap through the discount). Only from 'Bekannte Wege' >= from_signed; the best max_routes routes by rank x length in reach, each in both directions.",
@@ -72,7 +75,8 @@
       "back_factor": 1.15,
       "fit_tries": 3,
       "on_cost": 0.08,
-      "on_path_max": 0.5
+      "road_cost": 2.5,
+      "on_path_max": 0.9
     }
   },
 
@@ -141,7 +145,11 @@
       "_about": "How much a piece counts as 'along a main road' (0..1, suggest.main_weight). base = the road class; calm_maxspeed x calm_factor = a 30 km/h road is no main road; track_factor / lane_factor = a cycle track / lane on the road; bridge_factor = bridges (often the only crossing); sidewalk / beside = a pavement / a separate cycle path beside a loud road. class_from = from here the piece is shown and counted as 'an Hauptstraße'; run_from = from here it adds (weighted metres) to the longest stretch. Hike = the old rule: everything 1.",
       "base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 1.0},
       "calm_maxspeed": [], "calm_factor": 1.0, "track_factor": 1.0, "lane_factor": 1.0, "bridge_factor": 1.0,
-      "sidewalk": 1.0, "beside": 1.0, "beside_needs_town": true, "class_from": 0.5, "run_from": 0.3
+      "sidewalk": 1.0, "beside": 1.0, "beside_needs_town": true, "class_from": 0.5, "run_from": 0.3,
+      "_beside": "Owner 2026-11-13: along a road is always bad, signed route or not. A separate way (beside_ways) beside a busy road counts by the routing data's noise class (beside_noise: 4 = a road near, 6 = right beside a loud road); x beside_forest_factor where the way is in forest all the same.",
+      "beside_ways": ["cycleway", "path", "footway", "track", "pedestrian", "bridleway"],
+      "beside_noise": {"4": 0.35, "5": 0.7, "6": 1.0},
+      "beside_forest_factor": 0.7
     },
     "signed_prefixes": ["route_hiking_", "route_foot_"],
     "surface_asphalt": ["asphalt", "paved", "concrete", "concrete:plates", "concrete:lanes", "paving_stones"],
@@ -163,17 +171,29 @@
       "street": 3.5,
       "mainroad": 3.0,
       "doubled": 3.0,
-      "shape": 0.5,
+      "selfcross": 1.5,
+      "roadside": 3.0,
+      "town": 2.0,
+      "deep": 4.0,
       "crossings": 0.5,
       "ai": 4.0
     },
+    "_taste_rules": "Owner's taste rules 2026-11-13 (docs/design/tour-suggestions.md): selfcross = the loop meets its own way (0, 1, 2+ times -> selfcross_value; 2+ is not offered, select.max_self_cross). roadside = weighted share on / beside a busy road, zero at roadside_zero_at. town = share through houses, zero at town_zero_at. deep = large connected nature around the way (nature.py), full at deep_full_at; counts x the Natur level. natur_scaled: these parts weigh x (1 + value x Natur) – roads and houses hurt more when nature was asked for; main_road_natur shrinks the free roadside stretch the same way. free_stem_m = a way out and back at the start that costs nothing. length_flat_km = the length is a rough guide: full points within +- this.",
+    "selfcross_value": [1.0, 0.85, 0.0],
+    "roadside_zero_at": 0.3,
+    "town_zero_at": 0.6,
+    "deep_full_at": 0.6,
+    "free_stem_m": 700,
+    "selfcross_merge_m": 400,
+    "length_flat_km": 1.0,
+    "main_road_natur": 1.0,
+    "natur_scaled": {"roadside": 1.5, "town": 1.5, "mainroad": 1.0, "street": 0.5},
     "length_zero_at": 0.35,
     "street_zero_at": 0.6,
     "big_street_counts": 1.0,
     "main_road_max_m": 300,
     "main_road_zero_factor": 2.5,
     "doubled_zero_at": 0.35,
-    "shape_full_at": 0.35,
     "crossings_zero_per_km": 3.0,
     "signed_full_at": 0.6,
     "lake_full_m": 2500,
@@ -199,6 +219,15 @@
       "forst": {"label": "Forstwege", "A": 0.4, "F": 1.0, "N": 0.6}}}
   },
 
+  "nature": {
+    "_about": "Deep nature (nature.py): share of forest / heath / wetland / protected area within radii_m around a point (mean of the radii); below 'from' it counts nothing, from 'full' fully. search_radius_m = the one radius the network search uses per way.",
+    "enabled": true,
+    "radii_m": [300, 900],
+    "search_radius_m": 500,
+    "from": 0.25,
+    "full": 0.8
+  },
+
   "ai": {
     "_about": "Stage 2, only with the switch 'mit KI-Regionswissen' (wish.ai): the AI's picks per map area (region_ai.py, one call per area, files in ~/onpath-suggest-poc/region-ai/) as the score part 'ai' (score.weights.ai) and as extra destinations in variant B. bonus: every ~30 m of the loop counts once with the rang value of the best pick it lies on / in; the rang-weighted share of the loop is full at full_share. route_pick_factor: a pick that is a signed route counts only this much (the 'signed' part already pays for it). A sight passed adds point_value x rang value, up to point_cap. targets = how many picks (areas, sights, river banks) become anchors; target_min_frac = not closer than this share of the wished length.",
     "max_reach_m": 20000,
@@ -219,6 +248,7 @@
   "select": {
     "_about": "Best first; skipped: a candidate that shares more than max_shared of its length with an already chosen one, or whose time is more than max_length_off away from the wish.",
     "show": 5, "lake_slot_from_water": 0.5,
+    "max_self_cross": 1,
     "max_length_off": 0.2,
     "max_shared": 0.5
   },
@@ -239,7 +269,7 @@
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway|path)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
-                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
+                    "pen_street": 0.3, "pen_main": 6.0, "pen_town": 0.8, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
@@ -250,8 +280,9 @@
                   "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
                            "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
-      "score": {"weights": {"forest": 2.5, "street": 1.0, "mainroad": 4.0, "natural": 0.0, "signed": 6.0, "surface": 3.0, "crossings": 0.2},
-                "street_zero_at": 1.2, "main_road_max_m": 1000, "signed_full_at": 0.9, "doubled_zero_at": 0.3}
+      "score": {"weights": {"forest": 2.5, "street": 1.0, "mainroad": 4.0, "natural": 0.0, "signed": 6.0, "surface": 3.0, "crossings": 0.2, "roadside": 4.0, "town": 2.5, "deep": 3.0},
+                "street_zero_at": 1.2, "main_road_max_m": 1000, "signed_full_at": 0.9, "doubled_zero_at": 0.3,
+                "free_stem_m": 2500, "selfcross_merge_m": 1500, "length_flat_km": 5.0, "main_road_natur": 0.4, "main_road_zero_factor": 3.5, "roadside_zero_at": 0.4, "town_zero_at": 0.7}
     },
     "gravel": {
       "label": "Gravel",
@@ -262,7 +293,7 @@
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
-                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
+                    "pen_street": 0.3, "pen_main": 6.0, "pen_town": 0.8, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
@@ -274,7 +305,8 @@
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
                            "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
       "score": {"weights": {"forest": 3.0, "street": 1.5, "mainroad": 4.0, "natural": 0.0, "signed": 4.0, "surface": 3.0, "crossings": 0.2},
-                "street_zero_at": 1.0, "main_road_max_m": 800, "doubled_zero_at": 0.3}
+                "street_zero_at": 1.0, "main_road_max_m": 800, "doubled_zero_at": 0.3,
+                "free_stem_m": 2500, "selfcross_merge_m": 1500, "length_flat_km": 5.0, "main_road_natur": 0.4, "main_road_zero_factor": 3.5, "roadside_zero_at": 0.4, "town_zero_at": 0.7}
     },
     "mtb": {
       "label": "MTB",
@@ -285,7 +317,7 @@
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
-                    "pen_street": 0.3, "pen_main": 6.0, "check_via_every_m": 4000},
+                    "pen_street": 0.3, "pen_main": 6.0, "pen_town": 0.8, "check_via_every_m": 4000},
       "generator": {"directions": 8, "shapes": ["dreieck", "viereck"], "fit_iterations": 1, "taste_pass": false,
                     "max_targets": 4, "leg_timeout_ms": 15000, "detour_factor": 1.3,
                     "long_from_km": 50, "long": {"directions": 6, "shapes": ["sechseck"], "max_targets": 0}},
@@ -297,7 +329,8 @@
                            "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
                            "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
       "score": {"weights": {"forest": 4.0, "street": 2.5, "mainroad": 4.0, "natural": 0.0, "signed": 3.0, "surface": 3.5, "crossings": 0.2},
-                "street_zero_at": 0.8, "main_road_max_m": 600, "doubled_zero_at": 0.3}
+                "street_zero_at": 0.8, "main_road_max_m": 600, "doubled_zero_at": 0.3,
+                "free_stem_m": 1500, "selfcross_merge_m": 1000, "length_flat_km": 3.0, "roadside_zero_at": 0.35, "town_zero_at": 0.6}
     }
   },
 

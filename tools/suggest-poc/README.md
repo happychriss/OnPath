@@ -267,3 +267,57 @@ changes; where it changes, it pulls bike loops to the Rhine and into named natur
 different, defensible choice, never a clearly bad loop in this sheet. Weak: a loop that touches no pick loses points for
 no reason (Düsseldorf); the anchors cost 1–3 s on bikes; much of the picks repeats the signed routes; only one
 AI call per area, stability untested.
+
+## Round 6 (2026-11-13, weights 2026-11-13i) – the owner's taste rules
+
+The owner's rules (table and reasons: `docs/design/tour-suggestions.md` "Owner's taste rules"): the loop meets its own way
+at most once; along a road is bad, signed or not; not through houses; large connected nature counts; a short way out and
+back is free; the length is a rough guide; one comment per suggestion.
+
+- **New / changed:** `nature.py` (deep nature from our map areas' `landcover` + `park`, a 45 m grid per area, cached as
+  `nature-v3.*` beside the cell), `feedback.py` (prints the comments with their routes), score parts `selfcross`,
+  `roadside`, `town`, `deep` (the old `shape` is gone), `score.free_stem_m`, `score.length_flat_km`,
+  `select.max_self_cross`, `classes.main.beside_noise`, `netsearch.pen_town / pen_main_natur / roadside_no_discount /
+  follow.road_cost`, the profile copies' "beside a road" for every separate way (`service/make_profiles.py` – restart the
+  route service). Page: one field + "Kommentar senden" per card; chips "kreuzt sich n×", "hin und zurück n m", "an / neben
+  Straße %", "durch Häuser %", "tief in der Natur %"; "x km im Naturschutzgebiet <Name>".
+- **Read the owner's comments:** `python3 tools/suggest-poc/feedback.py [--last 5]`.
+
+### Bench, variant B, 13h → 13i (the two owner cases are new in both columns)
+
+| Case | ok before → after | Points | First suggestion after |
+| --- | --- | --- | --- |
+| Hilden hike 2 h | 5/6 → 7/7 | 69.8 → 69.9 | to the Ohligser Heide, 3.1 km in the reserve, stem 249 m |
+| Ohligser Heide 2 h | 6/7 → 7/8 | 86.4 → 90.3 | 84 % near forest, 68 % deep nature, 2.6 km Ohligser Heide + 2.3 km Krüdersheide |
+| Düsseldorf 2 h | 5/5 → 6/6 | 84.6 → 70.9 | a shorter loop (6.6 km, 1:35) – worse: 56 % near forest for 81 |
+| Hilden + Wasser 3 h | 7/7 → 6/8 | 77.0 → 75.3 | no lake loop on top, no lake round shown – worse |
+| Hilden Bekannte Wege 3 h | 7/7 → 8/8 | 78.9 → 78.7 | |
+| Hilden bike 2 h | 5/5 → 6/6 | 86.8 → 80.4 | |
+| Hilden bike 4 h | 5/5 → 5/6 (6/6 re-timed) | 87.4 → 81.9 | 94 km for 88 |
+| Hilden gravel 3 h | 5/5 → 5/6 (6/6 re-timed) | 84.6 → 82.4 | |
+| Zons bike 3 h | 6/6 → 6/7 | 80.7 → 78.3 | a loop to the east – the Rhine ride is no longer first |
+| Zons bike 3 h control | 6/6 → 6/7 | 87.2 → 81.9 | 5.4 km Rheinradweg for 24 |
+| Owner: bike 2 h, Stürzelberg, Wasser | 5/6 → 6/7 | 78.1 → 73.5 | "Entlang Euroga Radwege"; the Rhine ride he called the best is second (71.1) |
+| Owner: bike 2 h, Köln | 5/5 → 5/6 | 85.9 → 76.4 | one suggestion only |
+| Meran hike 3 h | 7/7 → 8/8 | 81.0 → 79.2 | |
+
+Total 74 of 77 → 81 of 90 (13 more expectations: "kreuzt sich ≤ 1×" in every case; the length check is now the owner's
+band). Points before / after are not comparable (other parts).
+
+### What is wrong after round 6 (tune next, against this sheet)
+
+- **The Rhine rides lost the top place** in all three Rhine bike cases. The owner's favourite ("wunderbar am Rhein lang",
+  south to Worringen and back by the ferry) has 1.5 km on the path beside the Neusser Landstraße; the longest-roadside rule
+  costs it the first place (`mainroad` 0.18 before softening for bikes, second place after). The rule he asked for and the
+  loop he likes pull against each other here; a way round that stretch was not found by the search.
+- **Too few suggestions for bikes at the Rhine:** 7 of the built loops are dropped for meeting their own way twice (bridges
+  and ferries are bottlenecks); Köln shows one loop, Stürzelberg four.
+- **Hilden + Wasser:** the lake loops are built but none is shown; the first loop walks 15 % twice.
+- **"Beside a road" comes from the noise class only** – the routing data has no "this path runs parallel to that road". A
+  forest path near a motorway counts too (x 0.7).
+- **`follow` and the lake loops** still treat their stem as walked (no free stem there).
+- **Timing:** the first request in a new map area builds its nature grid (a few seconds, once). Two bike cases took 31 s
+  and 69 s in the last full bench run (not explained); run alone right after they took 10.1 s and 14.9 s, as in the run
+  before – with those the sheet reads 83 of 90.
+- **Not run:** variant A, MTB, `bench.py --refs`, the switch "mit KI", the page in a real browser (the comment button was
+  not clicked).

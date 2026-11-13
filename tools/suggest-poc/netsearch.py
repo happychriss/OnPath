@@ -133,7 +133,14 @@ def edge_values(G, wish, W, index, S):
     C, SC, N = W["classes"], W["score"]["weights"], W["netsearch"]
     ranks = W["attractions"]["rank"]
     tw = {k: SC[k] * wish[k] for k in ("forest", "quiet", "water", "signed")}
-    wsum = sum(tw.values()) or 1.0
+    import nature as NA
+    ND = W["nature"]
+    tw_deep = SC["deep"] * wish["forest"] if ND["enabled"] else 0.0
+    wsum = (sum(tw.values()) + tw_deep) or 1.0
+    # along a road and through houses cost more the more nature was asked for
+    pen_main = N["pen_main"] * (1.0 + N.get("pen_main_natur", 0.0) * wish["forest"])
+    pen_town = N.get("pen_town", 0.0) * wish["forest"]
+    no_disc = N.get("roadside_no_discount", 1.5)
     sv = S.surface_values(wish, W)
     k_surf, avoid = N.get("k_surface", 1.5), sv.get("avoid", "")
     # known signed routes are favoured strongly: their ways cost (1 - discount x rank) of the others
@@ -155,11 +162,12 @@ def edge_values(G, wish, W, index, S):
             hw, surf = t.get("highway", "?"), t.get("surface", "")
             per_tag[tid] = (k, fv, 1 - C["noise_value"].get(t.get("estimated_noise_class", ""), 0.0),
                             C["river_value"].get(t.get("estimated_river_class", ""), 0.0), S.signed_rank(t, C, ranks),
-                            S.surface_class(t, C), S.main_weight(t, C))
-        k, fv, quiet, river, sr, sclass, mw = per_tag[tid]
+                            S.surface_class(t, C), S.main_weight(t, C), S.builtup(t, k, C))
+        k, fv, quiet, river, sr, sclass, mw, built = per_tag[tid]
         hits = ()
+        mid = mid_of(G, (a, b, ln, cf, cb, tid, geom))
+        deep = NA.value(NA.depth(mid, ND["search_radius_m"]), ND) if tw_deep else 0.0
         if index is not None:
-            mid = mid_of(G, (a, b, ln, cf, cb, tid, geom))
             near = index.at(mid, 1)
             # a known route counts on a way that lies on it – and on a main road only when the routing data says the
             # road itself carries a signed route (else the cycle path beside it is the route, not the carriageway)
@@ -171,12 +179,15 @@ def edge_values(G, wish, W, index, S):
                     river = 1.0
                 elif a_["kind"] == "route":
                     sr = max(sr, a_["rank"])
-        p = (tw["forest"] * fv + tw["quiet"] * quiet + tw["water"] * river + tw["signed"] * min(1.0, sr)) / wsum
-        # along a main road costs by its weight (the carriageway fully, a cycle track beside it / a calm road less)
-        c = 1.0 + N["k_taste"] * (1.0 - p) + N["pen_main"] * mw + (N["pen_street"] if k == "S" else 0.0)
+        # on or beside a busy road a signed route is worth nothing: being signed must not make a roadside way cheap
+        sr_eff = min(1.0, sr) * max(0.0, 1.0 - no_disc * mw)
+        p = (tw["forest"] * fv + tw["quiet"] * quiet + tw["water"] * river + tw["signed"] * sr_eff + tw_deep * deep) / wsum
+        # along a road costs by its weight (the carriageway, a path beside it by its noise; a calm road less)
+        c = 1.0 + N["k_taste"] * (1.0 - p) + pen_main * mw + (N["pen_street"] if k == "S" else 0.0) \
+            + (pen_town if built else 0.0)
         c *= 1.0 + N["cf_weight"] * (min(min(cf, cb), 5.0) - 1.0)
         c *= 1.0 + k_surf * (1.0 - sv[sclass]) + (N.get("surface_avoid_factor", 3.0) if sclass in avoid else 0.0)
-        c *= 1.0 - disc * min(1.0, sr)
+        c *= 1.0 - disc * sr_eff
         cost.append(ln * c)
         hits_all.append(hits)
         mws.append(mw)
@@ -243,10 +254,35 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     built = []
     max_off = N["keep_length_off"]
 
+    max_cross = W["select"]["max_self_cross"]
+    free_stem = W["score"]["free_stem_m"]
+    keep_km = S.length_limit_km(wish, W, max_off)
+    dropped = {"cross": 0, "length": 0}
+
     def add(nodes, edges, extra):
         c = to_candidate(G, nodes, edges, wish, W, S, extra)
-        if c and c["fit"] <= max_off:
+        if not c:
+            return
+        if S.length_off_km(c, wish) > keep_km:
+            dropped["length"] += 1
+        elif S.self_crossings(c["edges"], None, free_stem, W["score"]["selfcross_merge_m"]) > max_cross:  # an eight twice over, a tangle: not a tour, not kept
+            dropped["cross"] += 1
+        else:
             built.append(c)
+
+    # a short way out and back to where the loop begins is free (score.free_stem_m): the way home may use the first
+    # metres of the way out again without the "already walked" penalty
+    free_stem = W["score"]["free_stem_m"]
+
+    def walked(e1, *more):
+        used, acc = set(), 0.0
+        for ei in e1:
+            acc += G.edges[ei][2]
+            if acc > free_stem:
+                used.add(ei)
+        for m in more:
+            used |= set(m)
+        return used
 
     # ---- anchors: per sector and distance band the most pleasantly reached node
     sectors = N["sectors"]
@@ -324,7 +360,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
             break
         if best and best[0] >= N["ring_min_m"]:
             n1, e1 = path_to(prev0, pe0, entry)
-            used = set(e1) | set(best[2])
+            used = walked(e1, best[2])
             d3, p3, pe3, l3 = dijkstra(G, entry, cost, pen=used, stop=s, factor=N["used_penalty"])
             info["searches"] += 1
             if d3[s] < INF:
@@ -378,7 +414,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     per_anchor = []
     for sec, band, v, tname in alist:
         n1, e1 = path_to(prev0, pe0, v)
-        used = set(e1)
+        used = walked(e1)
         dA, pA, peA, lA = dijkstra(G, v, cost, pen=used, factor=N["used_penalty"])
         info["searches"] += 1
         per_anchor.append((sec, band, v, tname, n1, e1, dA, pA, peA, lA))
@@ -415,7 +451,7 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
         per_a[ia] = per_a.get(ia, 0) + 1
         A, B = per_anchor[ia], per_anchor[ib]
         n2, e2 = path_to(A[7], A[8], B[2])
-        used = set(A[5]) | set(e2)
+        used = walked(A[5], e2)
         d3, p3, pe3, l3 = dijkstra(G, B[2], cost, pen=used, stop=s, factor=N["used_penalty"])
         info["searches"] += 1
         done += 1
@@ -429,6 +465,8 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     info["anchors"] = len(alist)
     info["pairs_tried"] = done
     info["loops_kept"] = len(built)
+    info["dropped_crossing"] = dropped["cross"]
+    info["dropped_length"] = dropped["length"]
     info["search_s"] = round(time.time() - t0 - t_graph, 2)
     return built, info, G
 
@@ -490,8 +528,10 @@ def follow_routes(G, wish, W, S, index, hits, cost, mws, d0, prev0, pe0, len0, t
         sub = on[i]
         a = index.attr[i]
         on_cost = F.get("on_cost", 0.08)
-        pm = N["pen_main"]  # on the route a way is cheap – but a main-road piece of it stays dearer than a quiet one
-        cf = [(G.edges[j][2] * on_cost * (1.0 + pm * mws[j]) if j in sub else c) for j, c in enumerate(cost)]
+        # on the route a way is cheap – but where the route runs on or beside a busy road it is not: there a quiet way
+        # nearby wins (owner: "auch wenn das als offizieller Radweg ausgezeichnet ist")
+        rc = F.get("road_cost", 2.5) * (1.0 + N.get("pen_main_natur", 0.0) * wish["forest"])
+        cf = [(G.edges[j][2] * (on_cost + rc * mws[j]) if j in sub else c) for j, c in enumerate(cost)]
         dF, pF, peF, lF = dijkstra(G, entry, cf)
         info["searches"] += 1
         # nodes of the route reached (almost) only along the route
