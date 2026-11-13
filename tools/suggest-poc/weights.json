@@ -164,7 +164,8 @@
       "mainroad": 3.0,
       "doubled": 3.0,
       "shape": 0.5,
-      "crossings": 0.5
+      "crossings": 0.5,
+      "ai": 4.0
     },
     "length_zero_at": 0.35,
     "street_zero_at": 0.6,
@@ -196,6 +197,23 @@
     "mtb": {"default": "forst", "options": {
       "trails": {"label": "Trails gern", "A": 0.15, "F": 0.6, "N": 1.0},
       "forst": {"label": "Forstwege", "A": 0.4, "F": 1.0, "N": 0.6}}}
+  },
+
+  "ai": {
+    "_about": "Stage 2, only with the switch 'mit KI-Regionswissen' (wish.ai): the AI's picks per map area (region_ai.py, one call per area, files in ~/onpath-suggest-poc/region-ai/) as the score part 'ai' (score.weights.ai) and as extra destinations in variant B. bonus: every ~30 m of the loop counts once with the rang value of the best pick it lies on / in; the rang-weighted share of the loop is full at full_share. route_pick_factor: a pick that is a signed route counts only this much (the 'signed' part already pays for it). A sight passed adds point_value x rang value, up to point_cap. targets = how many picks (areas, sights, river banks) become anchors; target_min_frac = not closer than this share of the wished length.",
+    "max_reach_m": 20000,
+    "targets": 5,
+    "target_near_m": 150,
+    "target_min_frac": 0.08,
+    "tips_on_card": 4,
+    "bonus": {
+      "rang": {"1": 0.4, "2": 0.7, "3": 1.0},
+      "route_pick_factor": 0.5,
+      "full_share": 0.5,
+      "point_value": 0.06,
+      "point_cap": 0.15,
+      "min_km": 0.25
+    }
   },
 
   "select": {

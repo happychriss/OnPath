@@ -6,11 +6,11 @@ Never calls the AI; a missing or old file is an empty list, never an error.
 
     picks = load(start_lonlat, reach_m, activity)      # the picks in reach, for this activity
     hits  = along(route_points, picks)                  # which picks one loop touches, and how much
-    value, tips = bonus(route_points, picks, weights)   # one number 0–1 + the lines for the card
+    value, tips, km = bonus(route_points, picks, weights)   # one number 0–1, the card's lines, km on picks
 
-Wiring (not done here – after round 5): a score part `ai` = value with a weight from weights.json, an on / off
-switch "mit KI-Regionswissen" on the page; `tips` on the card; `targets(picks)` gives the generator extra
-destinations (a point per pick) next to the map's own.
+Wiring (suggest.py / netsearch.py, only when the wish has `ai`): the score part `ai` = value with its weight from
+weights.json (`score.weights.ai`, knobs under `ai`), the tips on the card, and the picks as extra destinations for
+the generator.
 
     python3 tools/suggest-poc/regionbonus.py            # self-test on saved runs (Zons bike, Ohligser Heide)
 """
@@ -27,12 +27,12 @@ import cells as CE  # noqa: E402
 OUT = os.path.join(CE.DATA, "region-ai")
 DEFAULTS = {
     "near_m": {"line": 40.0, "shore": 90.0, "point": 150.0},   # how close counts as "on it"
-    "need_frac": {"line": 0.12, "shore": 0.06, "area": 0.08},  # share of the loop that earns a pick's full value …
-    "need_km": {"line": [1.0, 8.0], "shore": [0.5, 3.0], "area": [0.5, 4.0]},  # … within these bounds
     "min_km": 0.25,                                            # less than this on a line / in an area = not touched
-    "rang": {"1": 0.5, "2": 0.8, "3": 1.0},
-    "point_value": 0.5,                                        # a sight passed counts half of a way followed
-    "full_at": 3.0,                                            # this sum of values = bonus 1.0
+    "rang": {"1": 0.4, "2": 0.7, "3": 1.0},                    # value per metre on a pick of that rang
+    "route_pick_factor": 0.5,                                  # a pick that is a signed route: `signed` already pays for it
+    "full_share": 0.5,                                         # this rang-weighted share of the loop = bonus 1.0
+    "point_value": 0.06,                                       # a sight passed adds this x rang value ...
+    "point_cap": 0.15,                                         # ... up to this in all
 }
 _cache = {}
 
@@ -108,81 +108,137 @@ def _in_ring(p, ring):
     return inside
 
 
-def along(route_points, picks, weights=None):
-    """Which picks this loop touches: [{id, name, kind, rang, warum, km | passes}] – lines / shores: km of the loop
-    on them; areas: km inside; points: passes within reach."""
-    W = dict(DEFAULTS, **(weights or {}))
-    step = 30.0
-    route = _densify(route_points, step)
-    if not route:
-        return []
-    # the loop's own points can be closer than `step`: a point stands for the way around it, not for 30 m
-    seg = [dist_m(route[i], route[i + 1]) for i in range(len(route) - 1)]
-    wt = [((seg[i - 1] if i else 0.0) + (seg[i] if i < len(seg) else 0.0)) / 2000.0 for i in range(len(route))]
-    lat0 = route[0][1]
+_prep = {}
+
+
+def prepare(picks):
+    """The picks' geometry in a 100 m grid, built once per list of picks (a request scores many loops against it)."""
+    hit = _prep.get(id(picks))
+    if hit and hit[0] is picks:
+        return hit[1]
+    lat0 = next((q[1] for pk in picks for q in _points(pk["geom"])), 50.0)
     gy = 100.0 / 111320.0
     gx = gy / math.cos(math.radians(lat0))
-    grid = {}
-    for i, p in enumerate(route):
-        grid.setdefault((int(p[0] / gx), int(p[1] / gy)), []).append(i)
-    rb = (min(p[0] for p in route), min(p[1] for p in route), max(p[0] for p in route), max(p[1] for p in route))
-    hits = []
-    for pk in picks:
+    lines, points, areas = {}, {}, []
+    for pi, pk in enumerate(picks):
         g = pk["geom"]
         t = g["type"]
         if t == "area":
-            km = 0.0
-            rings = [r for r in g["rings"] if not (max(q[0] for q in r) < rb[0] or min(q[0] for q in r) > rb[2]
-                                                   or max(q[1] for q in r) < rb[1] or min(q[1] for q in r) > rb[3])]
-            if rings:
-                boxes = [(min(q[0] for q in r), min(q[1] for q in r), max(q[0] for q in r), max(q[1] for q in r)) for r in rings]
-                for i, p in enumerate(route):
-                    if any(b[0] <= p[0] <= b[2] and b[1] <= p[1] <= b[3] and _in_ring(p, r) for r, b in zip(rings, boxes)):
-                        km += wt[i]
-            if km >= W["min_km"]:
-                hits.append({"id": pk["id"], "name": pk["name"], "kind": pk["kind"], "rang": pk["rang"], "warum": pk.get("warum", ""), "type": t, "km": round(km, 1)})
-            continue
-        near = W["near_m"]["point" if t == "point" else t]
-        reach = int(near / 100.0) + 1
-        on = set()
-        pts = [g["p"]] if t == "point" else [q for l in g["lines"] for q in _densify(l, 30.0)]
-        for q in pts:
-            cx, cy = int(q[0] / gx), int(q[1] / gy)
-            for dx in range(-reach, reach + 1):
-                for dy in range(-reach, reach + 1):
-                    for i in grid.get((cx + dx, cy + dy), ()):
-                        if i not in on and dist_m(route[i], q) <= near:
-                            on.add(i)
+            areas.append((pi, g["rings"], [(min(q[0] for q in r), min(q[1] for q in r), max(q[0] for q in r),
+                                            max(q[1] for q in r)) for r in g["rings"]]))
+        elif t == "point":
+            q = g["p"]
+            points.setdefault((int(q[0] / gx), int(q[1] / gy)), []).append((pi, q[0], q[1]))
+        else:
+            for l in g["lines"]:
+                for q in _densify(l, 30.0):
+                    lines.setdefault((int(q[0] / gx), int(q[1] / gy)), []).append((pi, q[0], q[1]))
+    P = {"gx": gx, "gy": gy, "lines": lines, "points": points, "areas": areas}
+    _prep.clear()
+    _prep[id(picks)] = (picks, P)
+    return P
+
+
+def cover(route_points, picks, weights=None):
+    """The loop cut into ~30 m points and, per pick, which of them lie on / in it.
+    -> (route, wt_km per point, [(pick, set of point indexes)])"""
+    W = dict(DEFAULTS, **(weights or {}))
+    step = 30.0
+    route = _densify(route_points, step)
+    if not route or not picks:
+        return route, [], []
+    # the loop's own points can be closer than `step`: a point stands for the way around it, not for 30 m
+    seg = [dist_m(route[i], route[i + 1]) for i in range(len(route) - 1)]
+    wt = [((seg[i - 1] if i else 0.0) + (seg[i] if i < len(seg) else 0.0)) / 2000.0 for i in range(len(route))]
+    P = prepare(picks)
+    gx, gy = P["gx"], P["gy"]
+    near = [W["near_m"].get(pk["geom"]["type"], 0.0) for pk in picks]
+    on = {}
+    for i, p in enumerate(route):
+        cx, cy = int(p[0] / gx), int(p[1] / gy)
+        seen = set()
+        for grid, r in ((P["lines"], 1), (P["points"], 2)):
+            if not grid:
+                continue
+            for dx in range(-r, r + 1):
+                for dy in range(-r, r + 1):
+                    for pi, x, y in grid.get((cx + dx, cy + dy), ()):
+                        if pi not in seen and dist_m(p, (x, y)) <= near[pi]:
+                            seen.add(pi)
+        for pi, rings, boxes in P["areas"]:
+            if any(b[0] <= p[0] <= b[2] and b[1] <= p[1] <= b[3] and _in_ring(p, r) for r, b in zip(rings, boxes)):
+                seen.add(pi)
+        for pi in seen:
+            on.setdefault(pi, set()).add(i)
+    return route, wt, [(picks[pi], idx) for pi, idx in sorted(on.items())]
+
+
+def sample(pick, n=40):
+    """Up to n points of a pick for the generator: where a loop could be led to."""
+    pts = _points(pick["geom"])
+    if len(pts) > n:
+        k = len(pts) / float(n)
+        pts = [pts[int(i * k)] for i in range(n)]
+    return pts
+
+
+def along(route_points, picks, weights=None):
+    """Which picks this loop touches: [{id, name, kind, rang, warum, type, km | passes}] – lines / shores: km of the
+    loop on them; areas: km inside; points: passes within reach."""
+    W = dict(DEFAULTS, **(weights or {}))
+    route, wt, cov = cover(route_points, picks, weights)
+    hits = []
+    for pk, on in cov:
+        t = pk["geom"]["type"]
+        h = {"id": pk["id"], "name": pk["name"], "kind": pk["kind"], "rang": pk["rang"], "warum": pk.get("warum", ""), "type": t}
         if t == "point":
-            if on:
-                hits.append({"id": pk["id"], "name": pk["name"], "kind": pk["kind"], "rang": pk["rang"], "warum": pk.get("warum", ""), "type": t, "passes": True})
+            hits.append(dict(h, passes=True))
         else:
             km = sum(wt[i] for i in on)
             if km >= W["min_km"]:
-                hits.append({"id": pk["id"], "name": pk["name"], "kind": pk["kind"], "rang": pk["rang"], "warum": pk.get("warum", ""), "type": t, "km": round(km, 1)})
+                hits.append(dict(h, km=round(km, 1)))
     return hits
 
 
 def bonus(route_points, picks, weights=None):
-    """-> (value 0–1, tips): how much of what the AI recommends this loop really takes, and the card's lines."""
+    """-> (value 0–1, tips, km on picks). Depth, not breadth: every ~30 m of the loop counts once, with the rang value
+    of the best pick it lies on / in (rang 3 > 2 > 1); the sum over the loop's length is the share "on the AI's
+    recommendations", full at `full_share`. A pick that is a signed route counts only `route_pick_factor` of that
+    (the `signed` score part already pays for signed routes by their rank – the AI adds its own ranking on top, not
+    a second full reward). A sight passed (point pick) adds a small fixed amount, capped."""
     W = dict(DEFAULTS, **(weights or {}))
-    route_km = sum(dist_m(route_points[i], route_points[i + 1]) for i in range(len(route_points) - 1)) / 1000.0
-    total, tips = 0.0, []
-    for h in along(route_points, picks, weights):
-        rw = float(W["rang"].get(str(h["rang"]), 0.5))
-        if h["type"] == "point":
+    route, wt, cov = cover(route_points, picks, weights)
+    if not route:
+        return 0.0, [], 0.0
+    total_km = sum(wt) or 1.0
+    best = {}
+    any_on = set()
+    tips, pts = [], 0.0
+    for pk, on in cov:
+        rw = float(W["rang"].get(str(pk["rang"]), 0.5))
+        t = pk["geom"]["type"]
+        if t == "point":
             v = rw * W["point_value"]
-            how = "am Weg"
-        else:
-            lo, hi = W["need_km"][h["type"]]
-            need = min(hi, max(lo, W["need_frac"][h["type"]] * route_km))
-            v = rw * min(1.0, h["km"] / need)
-            how = "%.1f km" % h["km"]
-        total += v
-        tips.append({"id": h["id"], "name": h["name"], "rang": h["rang"], "value": round(v, 2), "how": how,
-                     "text": "KI-Tipp: %s (%s) – %s" % (h["name"], how, h["warum"])})
+            pts += v
+            tips.append({"id": pk["id"], "name": pk["name"], "rang": pk["rang"], "value": round(v, 3), "km": None,
+                         "how": "am Weg", "warum": pk.get("warum", "")})
+            continue
+        km = sum(wt[i] for i in on)
+        if km < W["min_km"]:
+            continue
+        f = rw * (W["route_pick_factor"] if pk["kind"].startswith("route") else 1.0)
+        for i in on:
+            if f > best.get(i, 0.0):
+                best[i] = f
+        any_on |= on
+        tips.append({"id": pk["id"], "name": pk["name"], "rang": pk["rang"], "value": round(f * km / total_km, 3),
+                     "km": round(km, 1), "how": ("%.1f km" % km).replace(".", ","), "warum": pk.get("warum", "")})
+    depth = sum(wt[i] * f for i, f in best.items()) / total_km
+    value = min(1.0, depth / W["full_share"] + min(W["point_cap"], pts))
     tips.sort(key=lambda t: -t["value"])
-    return round(min(1.0, total / W["full_at"]), 3), tips
+    for t in tips:
+        t["text"] = "KI-Tipp: %s (%s)" % (t["name"], t["how"])
+    return round(value, 3), tips, round(sum(wt[i] for i in any_on), 1)
 
 
 def targets(picks):
@@ -217,8 +273,8 @@ def _selftest():
         print("\n== %s · Lauf %s · %d KI-Tipps in Reichweite (%.0f km): %s" % (
             title, d["run"], len(picks), reach / 1000, ", ".join("%s(r%d)" % (p["name"], p["rang"]) for p in picks[:12])))
         for c in [c for c in d["candidates"] if c.get("chosen")]:
-            v, tips = bonus(c["coords"], picks)
-            print("  %-34s %5.1f km  Punkte %5.1f  KI-Bonus %.2f" % (c["name"][:34], c["numbers"]["km"], c["score"], v))
+            v, tips, kmp = bonus(c["coords"], picks)
+            print("  %-34s %5.1f km  Punkte %5.1f  KI-Bonus %.2f  (%.1f km auf Tipps)" % (c["name"][:34], c["numbers"]["km"], c["score"], v, kmp))
             for t in tips[:4]:
                 print("      " + t["text"][:150])
 

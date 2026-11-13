@@ -36,6 +36,8 @@ for k in ("forest", "quiet", "water", "signed", "natural"):
     p.add_argument("--" + k, type=float, default=None, help="exact slider 0..1 (wins over the level)")
 p.add_argument("--seed", type=int, default=1)
 p.add_argument("--method", default="a", choices=["a", "b"], help="a = fan of routed loops, b = search in the way network")
+p.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (the AI's picks per map area: score part + destinations)")
+p.add_argument("--compare-ai", action="store_true", help="the same wish without and with the AI's region knowledge, side by side")
 p.add_argument("--png", action="store_true", help="also write map pictures (chosen routes; one per route by way kind)")
 p.add_argument("--port", type=int, default=int(os.environ.get("SUGGEST_PORT", 8790)))
 a = p.parse_args()
@@ -48,10 +50,15 @@ try:
     pace = float(a.pace)
 except ValueError:
     pace = a.pace
-wish = S.simple_wish({"start": place[1], "start_name": place[0], "activity": a.activity, "hours": a.hours, "pace": pace,
-                      "t_level": a.t, "effort": a.effort, "natur": a.natur, "ruhe": a.ruhe, "bekannt": a.bekannt,
-                      "wasser": a.wasser, "surface": a.surface, "seed": a.seed, "method": a.method,
-                      "fein": {k: getattr(a, k) for k in ("forest", "quiet", "water", "signed", "natural")}}, W)
+body = {"start": place[1], "start_name": place[0], "activity": a.activity, "hours": a.hours, "pace": pace,
+        "t_level": a.t, "effort": a.effort, "natur": a.natur, "ruhe": a.ruhe, "bekannt": a.bekannt,
+        "wasser": a.wasser, "surface": a.surface, "seed": a.seed, "method": a.method,
+        "fein": {k: getattr(a, k) for k in ("forest", "quiet", "water", "signed", "natural")}}
+off = None
+if a.compare_ai:  # first without, then with – same wish, same seed
+    off = S.suggest(S.simple_wish(dict(body, ai=False), W), W)
+    S.save_run(off)
+wish = S.simple_wish(dict(body, ai=a.ai or a.compare_ai), W)
 res = S.suggest(wish, W)
 path = S.save_run(res)
 out = path[:-5]
@@ -66,6 +73,11 @@ with open(os.path.join(out, "table.txt"), "w", encoding="utf-8") as f:
     f.write(text + "\n")
 print(text)
 print("\nLauf: %s\nOrdner: %s" % (res["run"], out))
+if off:
+    cmp_text = S.compare_ai(off, res)
+    with open(os.path.join(out, "vergleich-ki.txt"), "w", encoding="utf-8") as f:
+        f.write(cmp_text + "\n")
+    print("\n" + cmp_text + "\nLauf ohne KI: " + off["run"])
 
 if a.png:
     base = "http://127.0.0.1:%d" % a.port
@@ -81,11 +93,13 @@ if a.png:
                                                if c and os.path.exists(c)), None)
     if not chrome:
         sys.exit("kein Chrome / Chromium gefunden (CHROME=<Pfad> setzen)")
-    shots = [("", "overview.png")] + [("&sel=%d&only=%d" % (c["id"], c["id"]), "route-%02d.png" % c["id"])
-                                      for c in res["candidates"] if c["chosen"]]
-    for q, name in shots:
+    shots = [(res["run"], "", "overview.png")] + [(res["run"], "&sel=%d&only=%d" % (c["id"], c["id"]), "route-%02d.png" % c["id"])
+                                                  for c in res["candidates"] if c["chosen"]]
+    if off:
+        shots.insert(1, (off["run"], "", "overview-ohne-ki.png"))
+    for run, q, name in shots:
         png = os.path.join(out, name)
         subprocess.run([chrome, "--headless=new", "--no-sandbox", "--hide-scrollbars", "--window-size=1500,1000",
-                        "--virtual-time-budget=9000", "--screenshot=" + png, "%s/?run=%s%s" % (base, res["run"], q)],
+                        "--virtual-time-budget=9000", "--screenshot=" + png, "%s/?run=%s%s" % (base, run, q)],
                        capture_output=True, timeout=90)
         print(png if os.path.isfile(png) else "Bild fehlt: " + png)

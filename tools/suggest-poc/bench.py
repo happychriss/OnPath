@@ -50,10 +50,11 @@ CASES = [
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
 ]
 METHOD = "a"
+AI = False
 
 
 def run_case(name, wish_in, exp, W):
-    wish = S.simple_wish(dict(wish_in, seed=1, method=METHOD), W)
+    wish = S.simple_wish(dict(wish_in, seed=1, method=METHOD, ai=AI), W)
     E = S.effective(W, wish["activity"])
     try:
         r = S.suggest(wish, W)
@@ -96,7 +97,8 @@ def run_case(name, wish_in, exp, W):
         checks["bekannter Weg benannt"] = bool(n.get("known"))
     out.update({"top": {"name": top["name"], "score": top["score"], "km": n["km"], "hours": n["hours"], "ascent": n["ascent"],
                         "forest_pct": n["forest_pct"], "street_pct": n["street_pct"], "main_longest_m": n["main_longest_m"],
-                        "signed_pct": n["signed_pct"], "doubled_pct": n["doubled_pct"], "goals": S.goals_text(n)},
+                        "signed_pct": n["signed_pct"], "doubled_pct": n["doubled_pct"], "goals": S.goals_text(n),
+                        "ai_km": n.get("ai_km"), "ai": S.ai_text(n), "ai_part": top["parts"].get("ai")},
                 "checks": checks})
     return out
 
@@ -117,6 +119,8 @@ def sheet(res, version):
                  % (c["name"], ok, len(c["checks"]), t["score"], t["km"], S.fmt_h(t["hours"]), t["forest_pct"],
                     t["street_pct"], t["main_longest_m"], t["signed_pct"], t["doubled_pct"], c["seconds"], t["name"],
                     " – " + t["goals"] if t["goals"] else ""))
+        if t.get("ai"):
+            L.append("%-20s      %s · KI-Teil %.2f · %.1f km auf Tipps" % ("", t["ai"], t.get("ai_part") or 0, t.get("ai_km") or 0))
         bad = [k for k, v in c["checks"].items() if not v]
         if bad:
             L.append("%-20s      ✗ %s" % ("", " · ✗ ".join(bad)))
@@ -191,8 +195,10 @@ if __name__ == "__main__":
     ap.add_argument("--refs", action="store_true")
     ap.add_argument("--compare", nargs=2)
     ap.add_argument("--method", default="a", choices=["a", "b"], help="a = fan of routed loops, b = search in the way network")
+    ap.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (score part 'ai' + the picks as destinations)")
     a = ap.parse_args()
     METHOD = a.method
+    AI = a.ai
     if a.compare:
         print(compare(json.load(open(a.compare[0])), json.load(open(a.compare[1]))))
         sys.exit()
@@ -201,7 +207,7 @@ if __name__ == "__main__":
         print(refs(W))
         sys.exit()
     res = [run_case(n, w, e, W) for n, w, e in CASES if a.only in n]
-    W["version"] += "-" + a.method.upper()
+    W["version"] += "-" + a.method.upper() + ("-KI" if a.ai else "")
     text = sheet(res, W["version"])
     print(text)
     d = os.path.join(S.DATA, "bench")

@@ -227,7 +227,7 @@ def to_candidate(G, nodes, edges, wish, W, S, extra):
     return c
 
 
-def search(wish, W, kv, attr, index, rnd, S, service):
+def search(wish, W, kv, attr, index, rnd, S, service, picks=None):
     N = W["netsearch"]
     t0 = time.time()
     target_m = wish["hours"] * wish["pace"] * 1000.0
@@ -332,6 +332,47 @@ def search(wish, W, kv, attr, index, rnd, S, service):
                 add(n1 + best[1][1:] + n3[1:], e1 + best[2] + e3,
                     {"bearing": round(S.bearing(s_xy, G.nodes[entry])), "shape": "runde", "mode": "ring",
                      "target_name": a["name"], "vias": [list(G.nodes[entry][:2])]})
+
+    # ---- "mit KI-Regionswissen": the AI's picks that the map's own destinations do not have (areas, sights, river
+    #      banks – signed routes and lakes are destinations already) become anchors: loops are built towards them
+    if picks:
+        import regionbonus as RB
+        A = W["ai"]
+        gy = 150.0 / 111320.0
+        gx = gy / math.cos(math.radians(s_xy[1]))
+        ngrid = {}
+        for v, nd in enumerate(G.nodes):
+            if d0[v] < INF:
+                ngrid.setdefault((int(nd[0] / gx), int(nd[1] / gy)), []).append(v)
+        want = [p for p in picks if not p["kind"].startswith("route") and p["kind"] != "lake"]
+        want.sort(key=lambda p: (-p["rang"], min(S.dist(s_xy, q) for q in RB.sample(p, 12))))
+        made = 0
+        for pk in want:
+            if made >= A["targets"]:
+                break
+            near = set()
+            for q in RB.sample(pk, 40):
+                cx, cy = int(q[0] / gx), int(q[1] / gy)
+                best = None
+                for dx in (-1, 0, 1):
+                    for dy in (-1, 0, 1):
+                        for v in ngrid.get((cx + dx, cy + dy), ()):
+                            dd = S.dist(G.nodes[v], q)
+                            if dd <= A["target_near_m"] and (best is None or dd < best[0]):
+                                best = (dd, v)
+                if best:
+                    near.add(best[1])
+            reach = [v for v in near if A["target_min_frac"] * target_m <= len0[v] <= N["target_reach"] * target_m]
+            if not reach:
+                continue
+            entry = min(reach, key=lambda v: d0[v])
+            far = max(reach, key=lambda v: len0[v])
+            label = pk["name"] + " (KI-Tipp)"
+            alist.append((int(S.bearing(s_xy, G.nodes[entry]) / (360.0 / sectors)) % sectors, 9, entry, label))
+            if far != entry and len0[far] - len0[entry] > 0.05 * target_m:
+                alist.append((int(S.bearing(s_xy, G.nodes[far]) / (360.0 / sectors)) % sectors, 9, far, label))
+            made += 1
+        info["ai_targets"] = made
 
     # ---- one search per anchor (ways of start→A cost extra): lollipops, and the middle part of the pairs
     per_anchor = []

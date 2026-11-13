@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 """Tour-suggestions POC – "region knowledge" from an AI, once per map area (experiment, owner 2026-11-13). Version 2.
 
+    python3 tools/suggest-poc/region_ai.py --around Hilden --km 20   # which map areas in reach lack an AI file, cost
+    python3 tools/suggest-poc/region_ai.py --around Hilden --km 20 --create   # … and create them (one call each)
     python3 tools/suggest-poc/region_ai.py Hilden            # the map area that holds the place
     python3 tools/suggest-poc/region_ai.py 10-543-361        # a map area by id (Meran)
     python3 tools/suggest-poc/region_ai.py 10-531-341 --list # only show the closed list, no AI call
@@ -434,8 +436,40 @@ def run(x, y, model="sonnet", only_list=False, recheck=False, log=print):
     return res
 
 
+def around(place, reach_km, create, model):
+    """Which map areas within reach of a place have no AI file yet, and what creating them would cost. Creates them
+    only with --create (one AI call per missing area)."""
+    pl = S.find_place(place, S.load_weights())
+    if not pl:
+        sys.exit("Ort nicht gefunden: " + place)
+    cells = CE.cells_for(pl[1][0], pl[1][1], reach_km * 1000.0)
+    missing = []
+    for x, y in cells:
+        f = os.path.join(OUT, "10-%d-%d.json" % (x, y))
+        ok = False
+        if os.path.isfile(f):
+            with open(f, encoding="utf-8") as fh:
+                d = json.load(fh)
+            ok = d.get("version") == VERSION
+            print(" 10-%d-%d  KI-Datei da (%s, %d Tipps, %s)" % (x, y, d.get("model"), len(d.get("picks", [])), d.get("at", "?")))
+        if not ok:
+            missing.append((x, y))
+            print(" 10-%d-%d  fehlt%s" % (x, y, "" if CE.have(x, y) else " (Kartengebiet noch nicht geladen)"))
+    print("%s, %d km Umkreis: %d Kartengebiete, %d ohne KI-Datei – anlegen kostet etwa %d × 10 Cent = %.2f $ (mittleres Modell)"
+          % (pl[0], reach_km, len(cells), len(missing), len(missing), 0.10 * len(missing)))
+    if create:
+        for x, y in missing:
+            run(x, y, model=model)
+
+
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--around" in sys.argv:
+        i = sys.argv.index("--around")
+        place = sys.argv[i + 1]
+        km = float(sys.argv[sys.argv.index("--km") + 1]) if "--km" in sys.argv else 6.0
+        model = sys.argv[sys.argv.index("--model") + 1] if "--model" in sys.argv else "sonnet"
+        return around(place, km, "--create" in sys.argv, model)
     model = "sonnet"
     if "--model" in sys.argv:
         model = sys.argv[sys.argv.index("--model") + 1]

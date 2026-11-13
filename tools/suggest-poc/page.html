@@ -38,6 +38,11 @@
   .lv { display:flex; align-items:center; gap:6px; margin:4px 0; } .lv span { width:110px; font-size:13px; }
   .lv button { flex:1; padding:5px 4px; } .lv button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
   .goals { font-size:12.5px; margin:0 0 5px; color:#1d5a3c; font-weight:500; }
+  .aitips { font-size:12.5px; margin:0 0 5px; color:#5b3a8c; font-weight:500; }
+  .aitips span { border-bottom:1px dotted #5b3a8c; cursor:help; }
+  #cmp { font-size:12.5px; margin:8px 0; padding:8px; background:#fff; border:1px solid #d9d4c7; border-radius:8px; display:none; }
+  #cmp table { border-collapse:collapse; width:100%; } #cmp td, #cmp th { padding:2px 4px; text-align:left; vertical-align:top; border-top:1px solid #eee; }
+  #cmp th { border-top:none; } #cmp .btns { margin:6px 0 0; }
   details { margin-top:10px; font-size:12px; color:var(--muted); } pre { white-space:pre-wrap; font-size:11px; }
 </style>
 </head>
@@ -65,6 +70,7 @@
   <div class="lv" data-k="ruhe"><span>Ruhe</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <div class="lv" data-k="bekannt"><span>Bekannte Wege</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
   <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
+  <label style="margin:6px 0 0; color:var(--ink)" title="Einmal pro Kartengebiet hat eine KI aus unserer eigenen Kartenliste ausgewählt, was ein Ortskundiger empfehlen würde. Beim Vorschlagen wird keine KI gefragt."><input type="checkbox" id="ai"> mit KI-Regionswissen</label>
   <label>Verfahren (zum Vergleichen)</label>
   <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (Wandern und Rad)</option></select>
   <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
@@ -78,6 +84,8 @@
   </details>
 
   <div class="btns"><button class="pri" id="go">Vorschläge</button><button id="again">Neue Vorschläge</button></div>
+  <div class="btns" style="margin-top:6px"><button id="cmpgo">Vergleich mit / ohne KI</button></div>
+  <div id="cmp"></div>
   <div id="status"></div>
   <div class="opts">
     <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
@@ -152,7 +160,7 @@ $('activity').onchange = () => { $('tbox').style.display = $('activity').value =
 $('known').onchange = () => loadKnown(true);
 function wish() {
   const w = {start, start_name:startName, activity:$('activity').value, hours:+$('hours').value, pace:$('pacekmh').value ? +$('pacekmh').value : $('pace').value,
-             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, surface:$('surface').value, method:$('method').value, seed};
+             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, surface:$('surface').value, method:$('method').value, ai:$('ai').checked, seed};
   if ($('feinon').checked) w.fein = {forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value};
   return w;
 }
@@ -163,7 +171,34 @@ async function go() {
   if (r.error) { $('status').textContent = 'Fehler: ' + r.error; return; }
   show(r, Math.round(performance.now() - t0));
 }
-$('go').onclick = () => go();
+$('go').onclick = () => { $('cmp').style.display = 'none'; go(); };
+// the same wish (same seed) once without and once with the AI's region knowledge, side by side
+let pair = null;
+async function compareAi() {
+  $('status').textContent = 'rechnet zweimal: ohne und mit KI …'; $('cards').innerHTML = ''; layers.clearLayers(); $('cmp').style.display = 'none';
+  const w = wish(), post = b => fetch(BASE + 'suggest', {method:'POST', body:JSON.stringify(b)}).then(r => r.json());
+  const off = await post({...w, ai:false}); if (off.error) { $('status').textContent = 'Fehler: ' + off.error; return; }
+  const on = await post({...w, ai:true}); if (on.error) { $('status').textContent = 'Fehler: ' + on.error; return; }
+  pair = {off, on}; showPair('on');
+}
+function showPair(which) {
+  const top = r => r.candidates.filter(c => c.chosen).slice(0, 3), a = top(pair.off), b = top(pair.on);
+  const cell = c => c ? `<b>${c.name}</b><br>${c.numbers.km.toFixed(1)} km · ${c.score.toFixed(1)} Punkte` : '–';
+  const same = (x, y) => x && y && Math.abs(x.numbers.km - y.numbers.km) < 0.05 && x.numbers.ascent === y.numbers.ascent && x.coords.length === y.coords.length;
+  let rows = '';
+  for (let i = 0; i < Math.max(a.length, b.length); i++) {
+    const y = b[i];
+    rows += `<tr><td>${i + 1}</td><td>${cell(a[i])}</td><td>${cell(y)}${y ? '<br>' + km1(y.numbers.ai_km || 0) + ' km auf KI-Tipps' + (same(a[i], y) ? ' · <i>derselbe Weg</i>' : a.some(x => same(x, y)) ? ' · <i>ohne KI auf anderem Platz</i>' : ' · <i>neu durch KI</i>') : ''}</td></tr>`;
+  }
+  const n = (pair.on.ai || {}).picks_in_reach || 0;
+  $('cmp').innerHTML = `<b>Vergleich: derselbe Wunsch ohne und mit KI-Regionswissen</b> · ${n} KI-Tipps in Reichweite` + (n ? '' : ' – für dieses Gebiet gibt es noch keine, beide Seiten sind gleich') +
+    `<table><tr><th></th><th>ohne KI</th><th>mit KI</th></tr>${rows}</table>
+     <div class="btns"><button id="cmpoff"${which === 'off' ? ' class="pri"' : ''}>ohne KI zeigen</button><button id="cmpon"${which === 'on' ? ' class="pri"' : ''}>mit KI zeigen</button></div>`;
+  $('cmp').style.display = 'block';
+  $('cmpoff').onclick = () => showPair('off'); $('cmpon').onclick = () => showPair('on');
+  show(pair[which]);
+}
+$('cmpgo').onclick = compareAi;
 $('again').onclick = () => { seed = Math.floor(Math.random() * 1e6) + 2; go(); };
 $('all').onchange = () => draw(); $('kinds').onchange = () => draw();
 
@@ -171,7 +206,7 @@ const hm = h => Math.floor(h) + ':' + String(Math.round((h - Math.floor(h)) * 60
 function show(r, ms) {
   result = r; sel = null;
   const ch = r.candidates.filter(c => c.chosen);
-  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version} · Verfahren ${(r.method || 'a').toUpperCase()}` + (r.net ? ` · Netz ${r.net.graph_nodes} Knoten, ${r.net.searches} Suchen` : '') +((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
+  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version} · Verfahren ${(r.method || 'a').toUpperCase()}` + (r.net ? ` · Netz ${r.net.graph_nodes} Knoten, ${r.net.searches} Suchen` : '') +((r.ai || {}).on ? ` · mit KI-Regionswissen (${r.ai.picks_in_reach} Tipps in Reichweite)` : '') + ((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
   $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, ziele_in_reichweite:(r.destinations || []).map(d => d.name + ' ' + d.km_away + ' km'), profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
   cards(); draw(true);
 }
@@ -183,6 +218,11 @@ function goals(n) {
           ...(n.views || []).slice(0, 1).map(v => 'Aussicht: ' + v),
           ...(n.ferry_m ? ['mit Fähre'] : [])].join(' · ');
 }
+const esc = t => String(t).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[ch]);
+// name and km only – the AI's own sentence is not shown as fact, it sits in the tooltip, marked as unchecked
+function aiTips(n) {
+  return (n.ai_tips || []).map(t => `<span title="KI-Text, ungeprüft: ${esc(t.warum || '')}">KI-Tipp: ${esc(t.name)} (${esc(t.how)})</span>`).join(' · ');
+}
 function cards() {
   $('cards').innerHTML = '';
   for (const c of shown()) {
@@ -192,6 +232,7 @@ function cards() {
     d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
       <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
       ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
+      ${aiTips(n) ? `<div class="aitips">${aiTips(n)}</div>` : ''}
       <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
         ${n.main_longest_m ? chip('an Hauptstraße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
         ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}</div>
@@ -234,7 +275,7 @@ if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r
   const w = r.wish, sm = w.simple || {};
   $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
   for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
-  $('method').value = w.method || 'a';
+  $('method').value = w.method || 'a'; $('ai').checked = !!w.ai;
   window.pendingSurface = w.surface; fillSurface(); if (w.surface) $('surface').value = w.surface;
   if (P.get('noknown')) { $('known').checked = false; loadKnown(true); }
   $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;

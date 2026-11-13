@@ -80,6 +80,8 @@ def simple_wish(b, W):
             w[k] = float(v)
     w["simple"] = {k: b.get(k) for k in ("natur", "ruhe", "bekannt", "wasser", "pace", "effort")}
     w["method"] = "b" if str(b.get("method", "a")).lower() == "b" else "a"
+    if b.get("ai"):  # "mit KI-Regionswissen": the AI's picks per map area as a score part and as destinations
+        w["ai"] = True
     return w
 
 
@@ -434,7 +436,7 @@ def signed_rank(tags, C, ranks):
     return best
 
 
-def numbers(c, wish, W, index=None):
+def numbers(c, wish, W, index=None, picks=None):
     C, S = W["classes"], W["score"]
     ranks = W["attractions"]["rank"]
     edges = c["edges"]
@@ -581,6 +583,13 @@ def numbers(c, wish, W, index=None):
         "shape": min(1.0, compact / S["shape_full_at"]),
         "crossings": max(0.0, 1 - crossings / km / S["crossings_zero_per_km"]),
     }
+    if picks:  # only with "mit KI-Regionswissen" and picks in reach – without, no part, no weight: nothing changes
+        import regionbonus as RB
+        v, tips, km_on = RB.bonus([e[0] for e in edges] + [edges[-1][1]], picks, W["ai"]["bonus"])
+        parts["ai"] = v
+        n["ai_km"] = km_on
+        n["ai_tips"] = [{"name": t["name"], "how": t["how"], "km": t["km"], "rang": t["rang"], "warum": t["warum"]}
+                        for t in tips[:W["ai"]["tips_on_card"]]]
     taste = {"forest": wish["forest"], "quiet": wish["quiet"], "water": wish["water"], "signed": wish["signed"],
              "natural": wish["natural"]}
     wsum, ssum = 0.0, 0.0
@@ -681,15 +690,21 @@ def suggest(wish, W=None):
     if note:
         notes.append(note)
     index = AT.Index(attr) if attr else None
+    picks = None
+    if wish.get("ai"):
+        import regionbonus as RB
+        picks = RB.load(wish["start"], min(W["ai"]["max_reach_m"], 0.5 * target_m), wish["activity"]) or None
+        if not picks:
+            notes.append("Für dieses Gebiet gibt es noch kein KI-Regionswissen – gerechnet wie ohne KI")
     t_attr = time.time() - t0
     method = wish.get("method", "a")
     net_info = None
     cands, tc = [], []
     if method == "b":
         import netsearch as NS
-        built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE)
+        built, net_info, _ = NS.search(wish, W, kv, attr, index, rnd, sys.modules[__name__], SERVICE, picks)
         for c in built:
-            numbers(c, wish, W, index)
+            numbers(c, wish, W, index, picks)
     else:
         turn = rnd.uniform(0, 360.0 / g["directions"])
         for i in range(g["directions"]):
@@ -702,7 +717,7 @@ def suggest(wish, W=None):
             built = list(ex.map(lambda c: build(c, wish, W, kv), cands + tc))
         built = [c for c in built if c]
         for c in built:
-            numbers(c, wish, W, index)
+            numbers(c, wish, W, index, picks)
     if method == "a" and g["taste_pass"] and built:
         good = good_points(built, wish, W)
         if good:
@@ -710,7 +725,7 @@ def suggest(wish, W=None):
             with ThreadPoolExecutor(g["threads"]) as ex:
                 more = [c for c in ex.map(lambda c: build(c, wish, W, kv), again) if c]
             for c in more:
-                numbers(c, wish, W, index)
+                numbers(c, wish, W, index, picks)
             built += more
     built.sort(key=lambda c: -c["score"])
     chosen = []
@@ -759,7 +774,10 @@ def suggest(wish, W=None):
                     "shared_with_chosen": c["shared_with_chosen"], "bearing": c["bearing"], "shape": c["shape"],
                     "vias": c["vias"], "route_ms": c["route_ms"], "legs_routed": c["legs_routed"],
                     "coords": [e[0] for e in c["edges"]] + [c["edges"][-1][1]], "cls": c["cls"]})
-    return {"run": time.strftime("%Y%m%d-%H%M%S") + "-%d" % wish["seed"], "wish": wish, "weights_version": W["version"],
+    run = time.strftime("%Y%m%d-%H%M%S") + "-%d" % wish["seed"] + ("-ki" if wish.get("ai") else "")
+    while os.path.exists(os.path.join(DATA, "runs", run + ".json")):
+        run += "x"
+    return {"run": run, "wish": wish, "weights_version": W["version"],
             "profile": W["routing"]["profile"], "profile_kv": kv,
             "main_road_max_m": W["score"]["main_road_max_m"], "seconds": round(time.time() - t0, 1),
             "seconds_destinations": round(t_attr, 1), "method": method, "net": net_info,
@@ -767,7 +785,10 @@ def suggest(wish, W=None):
             "destinations": [{"kind": a["kind"], "name": a["name"], "km_away": round(a["d"] / 1000.0, 1)}
                              for a in sorted(attr, key=lambda a: a["d"]) if a["kind"] != "view"][:40],
             "legs_routed": sum(c["legs_routed"] for c in built), "route_ms_sum": sum(c["route_ms"] for c in built),
-            "target_km": round(wish["hours"] * wish["pace"], 1), "candidates": out}
+            "target_km": round(wish["hours"] * wish["pace"], 1), "candidates": out,
+            "ai": {"on": bool(wish.get("ai")), "picks_in_reach": len(picks or []),
+                   "picks": [{"name": p["name"], "rang": p["rang"], "kind": p["kind"]} for p in
+                             sorted(picks or [], key=lambda p: -p["rang"])[:30]]}}
 
 
 def save_run(result):
@@ -791,6 +812,49 @@ def goals_text(n):
     if n.get("ferry_m"):
         t.append("mit Fähre")
     return " · ".join(t)
+
+
+def ai_text(n):
+    """'KI-Tipp: Urdenbacher Kämpe (1,4 km) · KI-Tipp: Schloss Benrath (am Weg)' – name and km only; the AI's own
+    sentence is not shown as fact (it was wrong for the Elbsee)."""
+    return " · ".join("KI-Tipp: %s (%s)" % (t["name"], t["how"]) for t in n.get("ai_tips", []))
+
+
+def compare_ai(off, on):
+    """The same wish without and with the AI's region knowledge, place by place (text for the terminal / the page)."""
+    def rows(r):
+        return [c for c in r["candidates"] if c["chosen"]][:5]
+    a, b = rows(off), rows(on)
+    L = ["Vergleich ohne / mit KI-Regionswissen · %d KI-Tipps in Reichweite" % on.get("ai", {}).get("picks_in_reach", 0),
+         "Platz  ohne KI                               km  Punkte | mit KI                                km  Punkte  km auf Tipps"]
+    for i in range(max(len(a), len(b))):
+        x = a[i] if i < len(a) else None
+        y = b[i] if i < len(b) else None
+        L.append("%-5d  %-36s %5s  %6s | %-36s %5s  %6s  %s" % (
+            i + 1, x["name"][:36] if x else "–", "%.1f" % x["numbers"]["km"] if x else "", "%.1f" % x["score"] if x else "",
+            y["name"][:36] if y else "–", "%.1f" % y["numbers"]["km"] if y else "", "%.1f" % y["score"] if y else "",
+            ("%.1f" % y["numbers"].get("ai_km", 0)) if y else ""))
+        if y and y["numbers"].get("ai_tips"):
+            L.append("%-51s | %s" % ("", ai_text(y["numbers"])[:110]))
+    same = bool(a and b) and same_line(a[0], b[0])
+    L.append("Erster Vorschlag: " + ("derselbe Weg mit und ohne KI" if same else "mit KI ein anderer Weg"))
+    return "\n".join(L)
+
+
+def same_line(x, y):
+    """Two loops are the same way when they are about equally long and their points lie on each other."""
+    if abs(x["numbers"]["km"] - y["numbers"]["km"]) > 0.03 * max(x["numbers"]["km"], 1):
+        return False
+    cy = y["coords"]
+    step = max(1, len(x["coords"]) // 60)
+    stepy = max(1, len(cy) // 400)
+    ys = cy[::stepy]
+    far = 0
+    pts = x["coords"][::step]
+    for p in pts:
+        if min(dist(p, q) for q in ys) > 120:
+            far += 1
+    return far <= 0.1 * len(pts)
 
 
 def table(result, only_chosen=False):
@@ -824,5 +888,7 @@ def table(result, only_chosen=False):
         L.append("   Wegarten km: " + ", ".join("%s %.1f" % kv for kv in list(c["numbers"]["by_highway_km"].items())[:7]))
         if goals_text(c["numbers"]):
             L.append("   Bekannt: " + goals_text(c["numbers"]))
+        if ai_text(c["numbers"]):
+            L.append("   " + ai_text(c["numbers"]) + " · KI-Teil %.2f" % c["parts"].get("ai", 0))
         L.append("   Verlauf: " + c["story"])
     return "\n".join(L)
