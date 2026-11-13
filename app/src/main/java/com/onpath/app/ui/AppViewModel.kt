@@ -215,6 +215,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         it.onRecent = { id -> prefs.zuletztId = id } // the Zuletzt row survives an app start
         it.sort = com.onpath.app.ui.routes.RouteSort.decode(prefs.routesSort) // the order chosen last, across app starts
     }
+    /**
+     * My routes' map pictures (owner 2026-11-13, L1: a square map + the route left of each row): files by uuid
+     * ([com.onpath.app.map.RouteThumbs], `files/thumbs/`, not backed up), made in the background by [thumbMaker] after
+     * every change of the list ([refreshTours]) and at a tour's end – never while navigating or recording. [thumbVersion]
+     * moves on when one is stored, so the rows read it again.
+     */
+    val thumbs by lazy { com.onpath.app.map.RouteThumbs(java.io.File(getApplication<Application>().filesDir, "thumbs")) }
+    var thumbVersion by mutableStateOf(0)
+        private set
+    private val thumbMaker by lazy {
+        com.onpath.app.map.ThumbMaker(getApplication(), thumbs, viewModelScope,
+            tours = { db.listTours() to db.listDeleted().mapTo(HashSet()) { it.uuid } },
+            lineKeys = { db.lineKeys() },
+            line = { t -> routes.line(t) { emptyList() } },
+            style = { snapshotStyle() },
+            color = { t -> argbOf(RouteShape.tint(t.kind)) },
+            busy = { mode == AppMode.NAVIGATE || recState.value != null },
+            made = { viewModelScope.launchSafe("routes", "Map picture shown", Dispatchers.Main) { thumbVersion++ } })
+    }
+
+    /** How long the last map pictures took (ms each) – diagnostics and the emulator test. */
+    val thumbTimings: List<Long> get() = thumbMaker.timings.toList()
+
     /** My routes list (☰ → My routes) is open. */
     var routesOpen: Boolean
         get() = routes.open
@@ -3185,29 +3208,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun argbOf(tint: RouteShape.Tint): Int = tint.color().let { c ->
         android.graphics.Color.argb(255, (c.red * 255).toInt(), (c.green * 255).toInt(), (c.blue * 255).toInt())
     }
-
-    /**
-     * My routes' map pictures (owner 2026-11-13, L1: a square map + the route left of each row): files by uuid
-     * ([com.onpath.app.map.RouteThumbs], `files/thumbs/`, not backed up), made in the background by [thumbMaker] after
-     * every change of the list ([refreshTours]) and at a tour's end – never while navigating or recording. [thumbVersion]
-     * moves on when one is stored, so the rows read it again.
-     */
-    val thumbs by lazy { com.onpath.app.map.RouteThumbs(java.io.File(getApplication<Application>().filesDir, "thumbs")) }
-    var thumbVersion by mutableStateOf(0)
-        private set
-    private val thumbMaker by lazy {
-        com.onpath.app.map.ThumbMaker(getApplication(), thumbs, viewModelScope,
-            tours = { db.listTours() to db.listDeleted().mapTo(HashSet()) { it.uuid } },
-            lineKeys = { db.lineKeys() },
-            line = { t -> routes.line(t) { emptyList() } },
-            style = { snapshotStyle() },
-            color = { t -> argbOf(RouteShape.tint(t.kind)) },
-            busy = { mode == AppMode.NAVIGATE || recState.value != null },
-            made = { viewModelScope.launch(Dispatchers.Main) { thumbVersion++ } })
-    }
-
-    /** How long the last map pictures took (ms each) – diagnostics and the emulator test. */
-    val thumbTimings: List<Long> get() = thumbMaker.timings.toList()
 
     /** Looks for map pictures to make (background, one at a time); [firstUuid] first. */
     fun kickThumbs(firstUuid: String? = null) {
