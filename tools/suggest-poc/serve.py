@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Tour-suggestions POC – the local page.   python3 tools/suggest-poc/serve.py   → http://localhost:8790
+"""Tour-suggestions POC – the local page.   python3 tools/suggest-poc/serve.py   → http://localhost:8790   (other ports: --port / SUGGEST_PORT, route service SUGGEST_SERVICE=http://127.0.0.1:<port>)
 
 Starts the BRouter route service when it is not running (service/start.sh, port 8791). weights.json is read again on
 every request. Runs and the owner's verdicts go to ~/onpath-suggest-poc/ (runs/*.json, feedback.jsonl; SUGGEST_DATA).
@@ -54,9 +54,7 @@ class H(BaseHTTPRequestHandler):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if self.path == "/suggest":
-                w = body
-                wish = S.make_wish(w["start"], w.get("start_name", ""), w["hours"], w["pace"], w["t_level"], w["effort"],
-                                   w["forest"], w["quiet"], w["water"], w["signed"], w["natural"], w["seed"])
+                wish = S.simple_wish(body, S.load_weights())
                 res = S.suggest(wish)
                 S.save_run(res)
                 return self.send(res)
@@ -73,7 +71,7 @@ class H(BaseHTTPRequestHandler):
 
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--port", type=int, default=8790)
+    ap.add_argument("--port", type=int, default=int(os.environ.get("SUGGEST_PORT", 8790)))
     a = ap.parse_args()
     S.ensure_service()
     print("Tourvorschläge (POC): http://localhost:%d   – Daten: %s" % (a.port, S.DATA))

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Tour-suggestions POC from the terminal – the mode for judging routes without the page (also for the AI).
 
-  python3 tools/suggest-poc/run.py --start Hilden --hours 2 --pace 3.5 --effort relaxed --forest 0.9 --quiet 0.7
+  python3 tools/suggest-poc/run.py --start Hilden --hours 2 --pace gemütlich --effort leicht --natur hoch --ruhe hoch
+  python3 tools/suggest-poc/run.py --start Hilden --activity bike --hours 2 --wasser --png
 
 Prints a table of all candidates and a short text per chosen route; writes the run (JSON), every candidate as GeoJSON
 and – with --png – a picture of the map with the chosen routes (headless Chrome on serve.py's page; started here when needed).
@@ -21,26 +22,34 @@ import suggest as S
 
 p = argparse.ArgumentParser()
 p.add_argument("--start", default="Hilden", help="place name (weights.json 'places', else Nominatim) or 'lat,lon'")
+p.add_argument("--activity", default="hike", choices=S.ACTIVITIES)
 p.add_argument("--hours", type=float, default=2.0)
-p.add_argument("--pace", type=float, default=4.0, help="km/h on the flat")
-p.add_argument("--t", type=int, default=2, help="SAC level T1..T5")
-p.add_argument("--effort", default="relaxed", choices=["relaxed", "medium", "sporty"])
-p.add_argument("--forest", type=float, default=0.5)
-p.add_argument("--quiet", type=float, default=0.5)
-p.add_argument("--water", type=float, default=0.0)
-p.add_argument("--signed", type=float, default=0.3)
-p.add_argument("--natural", type=float, default=0.5)
+p.add_argument("--pace", default="normal", help="gemütlich | normal | zügig, or km/h on the flat")
+p.add_argument("--t", type=int, default=2, help="SAC level T1..T5 (hike)")
+p.add_argument("--effort", default="leicht", help="leicht | mittel | sportlich (or relaxed | medium | sporty)")
+p.add_argument("--natur", default="mittel", choices=["niedrig", "mittel", "hoch"])
+p.add_argument("--ruhe", default="mittel", choices=["niedrig", "mittel", "hoch"])
+p.add_argument("--bekannt", default="mittel", choices=["niedrig", "mittel", "hoch"])
+p.add_argument("--wasser", action="store_true")
+for k in ("forest", "quiet", "water", "signed", "natural"):
+    p.add_argument("--" + k, type=float, default=None, help="exact slider 0..1 (wins over the level)")
 p.add_argument("--seed", type=int, default=1)
 p.add_argument("--png", action="store_true", help="also write map pictures (chosen routes; one per route by way kind)")
-p.add_argument("--port", type=int, default=8790)
+p.add_argument("--port", type=int, default=int(os.environ.get("SUGGEST_PORT", 8790)))
 a = p.parse_args()
 
 W = S.load_weights()
 place = S.find_place(a.start, W)
 if not place:
     sys.exit("Ort nicht gefunden: " + a.start)
-wish = S.make_wish(place[1], place[0], a.hours, a.pace, a.t, a.effort, a.forest, a.quiet, a.water, a.signed, a.natural,
-                   a.seed)
+try:
+    pace = float(a.pace)
+except ValueError:
+    pace = a.pace
+wish = S.simple_wish({"start": place[1], "start_name": place[0], "activity": a.activity, "hours": a.hours, "pace": pace,
+                      "t_level": a.t, "effort": a.effort, "natur": a.natur, "ruhe": a.ruhe, "bekannt": a.bekannt,
+                      "wasser": a.wasser, "seed": a.seed,
+                      "fein": {k: getattr(a, k) for k in ("forest", "quiet", "water", "signed", "natural")}}, W)
 res = S.suggest(wish, W)
 path = S.save_run(res)
 out = path[:-5]

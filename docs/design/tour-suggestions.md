@@ -79,7 +79,17 @@ wish (sentence, online, later) ─┴─► TourWish
 
 Everything between `TourWish` and the selection is one new package in the shared core (no Android types), so the web
 planner gets it through TeaVM. A suggestion ends as a plain point list – edit, save, navigate, share unchanged.
-`RoutingEngine` needs two additions for it: profile switches per request and weighted nogo lines.
+**The POC's router and the app's.** The POC's route service talks to BRouter itself – the same jars, profiles and rd5
+as the app – but not through the app's wrapper (`BRouterEngine` / `Planner`: via correction, island retry, leg cache,
+the there-and-back trim at a join). The real feature goes into the shared core on top of `RoutingEngine`. What the
+route service uses that `RoutingContract` does not offer today – the contract change to plan:
+
+| Needed | POC | Today in `RoutingContract` |
+| --- | --- | --- |
+| Weighted nogo lines per request (the way back avoids the way out) | `nogo=<weight>;<line>` → `OsmNogoPolygon.nogoWeight` | no nogos at all |
+| Profile switches per request (`consider_forest`, `consider_noise`, `hiking_routes_preference`, `mainroad_penalty`, `avoid_unsafe` …) | `kv=` lines → `RoutingContext.keyValues` | fixed per activity (+ T level) |
+| Way tags per piece of the line (forest / noise / river / town class, highway, surface, sidewalk, `route_*` flags) | BRouter's aggregated messages with `processUnusedTags` | only what `RouteSummary` / `RawTap` (tests) read |
+| One new profile term: cost along a main road (`mainroad_penalty`, hiking) | `service/make_profiles.py` patches a copy of `hiking-mountain.brf` | not in the app's profile (default 0 = unchanged routes) |
 
 ## Open risks
 
@@ -95,3 +105,35 @@ planner gets it through TeaVM. A suggestion ends as a plain point list – edit,
 `~/onpath-suggest-poc/feedback.jsonl`). `python3 tools/suggest-poc/run.py … --png` prints the table and writes
 pictures – the way an AI session judges routes and tunes `weights.json`. Next: the owner's verdicts on real requests,
 then entry points, then a sketch of the app screen.
+
+## Round 2 (2026-11-13, after the owner's first look)
+
+Owner: cycling too; not long along a main road – dodge to side streets; "why not the Elbsee?"; known tourist ways
+(Meran: Tappeinerweg, Waalwege) must count – they are in our map data; few controls (hoch / mittel / niedrig); no
+endless trial and error.
+
+- **Destinations first (method C built).** Before the fan the engine collects what is in reach – named lakes, known
+  signed routes (ranked by network: international / national 1.0, regional 0.85, local 0.6), viewpoints – and builds
+  loops *through* them: round a lake or a circular signed route ("Runde"), or a stem-and-loop pulled onto the
+  destination. The card names what the loop uses ("2,1 km Algunder Waalweg · 1,4 km am Menzelsee").
+  **Data:** the rank of a signed route is in the routing data (way flags `route_hiking_iwn/nwn/rwn/lwn`,
+  `route_bicycle_icn/ncn/rcn/lcn`) – used for the score, offline. Names and lake shapes come in the POC from one
+  Overpass query per area (cached); on the phone the same is in the map area's files: `overlays.pmtiles` layer
+  `routes` (`kind`, `name`, `ref`, `net`; `docs/map-pipeline.md` "Route bands"), `base.pmtiles` `water` +
+  `water_name`, the POI file for viewpoints. No tile package for Hilden is on this computer, hence the stand-in.
+  The Elbsee answer: 3 km from Hilden centre, so there, along the shore and back is ≥ 9–10 km – out of reach of the
+  7 km wish, and the first generator had no notion of a destination. With 3 h it is now offered.
+- **Main roads, two places.** Routing: `mainroad_penalty` (hiking) makes walking on a primary / secondary / tertiary
+  road or on a noisy pavement beside one clearly dearer than a side street. Scoring: the **longest continuous
+  stretch** along a main road (hike 300 m, bike 1000 m free; zero points at 2.5 ×). Way kinds: "an Hauptstraße" = the
+  road or a pavement / cycle path beside it (by noise class); quiet street; way near forest; other way. A lit park
+  path is no longer "street".
+- **Cycling.** Bike (`touring.brf`), Gravel (`trekking.brf`), MTB (`mtb.brf`) with own pace words, thresholds and
+  weights (`weights.json` `activities`). Long loops (≥ 50 km) use few candidates with six short legs – routing time
+  grows with the square of a leg's length.
+- **Few controls.** Start, activity, duration, pace (gemütlich / normal / zügig), effort (leicht / mittel /
+  sportlich; T level only for hiking), three lines niedrig / mittel / hoch – **Natur, Ruhe, Bekannte Wege** – and
+  "am Wasser entlang". The sliders are folded away for tuning.
+- **A fixed yardstick instead of trial and error:** `bench.py` – nine fixed wishes, one sheet, pass / fail on plain
+  expectations, compared with the sheet before. `bench.py --refs` scores known circular routes with our scorer next
+  to our own best – where a known route scores clearly lower, a weight is wrong.
