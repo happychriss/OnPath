@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-13b",
+  "version": "2026-11-13c",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again.",
 
   "generator": {
@@ -84,20 +84,16 @@
   },
 
   "select": {
-    "_about": "Best first; a candidate that shares more than max_shared of its length with an already chosen one is skipped.",
+    "_about": "Best first; skipped: a candidate that shares more than max_shared of its length with an already chosen one, or whose time is more than max_length_off away from the wish.",
     "show": 5,
+    "max_length_off": 0.2,
     "max_shared": 0.5
   },
 
   "places": {
+    "_about": "Quick picks for the start field; any other name goes to Nominatim (online), 'lat, lon' also works.",
     "Hilden": [6.9395, 51.1680],
-    "Hilden Stadtwald (Waldschenke)": [6.9770, 51.1668],
-    "Düsseldorf": [6.7763, 51.2254],
-    "Düsseldorf Grafenberger Wald": [6.8330, 51.2410],
-    "Düsseldorf Benrath": [6.8720, 51.1620],
-    "Haan": [7.0130, 51.1930],
-    "Solingen Ohligs": [7.0040, 51.1620],
-    "Langenfeld": [6.9480, 51.1080],
-    "Erkrath": [6.9080, 51.2230]
+    "Ohligser Heide (Solingen Vogelpark)": [6.9866, 51.1645],
+    "Düsseldorf": [6.7763, 51.2254]
   }
 }

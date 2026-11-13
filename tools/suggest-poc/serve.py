@@ -38,7 +38,7 @@ class H(BaseHTTPRequestHandler):
             return self.send({"ok": True})
         if u.path == "/places":
             W = S.load_weights()
-            return self.send({"places": W["places"], "weights_version": W["version"]})
+            return self.send({"places": {k: v for k, v in W["places"].items() if not k.startswith("_")}, "weights_version": W["version"]})
         if u.path == "/place":
             r = S.find_place(q.get("q", [""])[0], S.load_weights())
             return self.send({"name": r[0], "lonlat": r[1]} if r else {"error": "Ort nicht gefunden"})

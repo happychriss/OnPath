@@ -39,13 +39,15 @@ def make_wish(start, start_name="", hours=2.0, pace=4.0, t_level=2, effort="rela
 def find_place(name, W):
     """Built-in list first (weights.json 'places'), then Nominatim (online). Returns (label, [lon, lat]) or None."""
     n = name.strip().lower()
-    for k, v in W["places"].items():
+    places = {k: v for k, v in W["places"].items() if not k.startswith("_")}
+    for k, v in places.items():
         if k.lower() == n:
+            return k, v
+    for k, v in places.items():
+        if k.lower().startswith(n):
             return k, v
     try:
         lon, lat = [float(x) for x in name.replace(";", ",").split(",")]
-        if abs(lat) > abs(lon) and abs(lon) < 30:  # "51.17, 6.94" typed lat first
-            pass
         if lon > lat:  # in Europe lat > lon: accept either order
             lon, lat = lat, lon
         return "%.5f, %.5f" % (lat, lon), [lon, lat]
@@ -59,9 +61,6 @@ def find_place(name, W):
             return r[0]["display_name"].split(",")[0], [float(r[0]["lon"]), float(r[0]["lat"])]
     except Exception:  # expected: no network / no hit – the caller says "Ort nicht gefunden"
         pass
-    for k, v in W["places"].items():
-        if k.lower().startswith(n):
-            return k, v
     return None
 
 
@@ -461,7 +460,8 @@ def suggest(wish, W=None):
             s = sum(e[2] for e in c["edges"] if ekey(e[0], e[1]) in o["keys"]) / total
             shared = max(shared, s)
         c["shared_with_chosen"] = round(shared, 2)
-        if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"]:
+        c["length_ok"] = c["fit"] <= W["select"]["max_length_off"]
+        if len(chosen) < W["select"]["show"] and shared <= W["select"]["max_shared"] and c["length_ok"]:
             c["chosen"] = True
             chosen.append(c)
     out = []
