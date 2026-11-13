@@ -20,11 +20,17 @@ object ActivityLayers {
     /** Town part of a layer, drawn below the streets (tools/make_style.py town_below_streets) – switched with it. */
     const val TOWN = "-town"
 
-    /** Route band layers: the band plus its major-route / overview / regional parts (a style may lack some). */
-    val ROUTE_SUFFIXES = listOf("", "-over", "-over-label", "-major-low", "-major", "-major-label", "-low", "-regional")
+    /**
+     * Route band layers: the band plus its major-route / overview / regional parts (a style may lack some). "-tint" /
+     * "-over-tint": the band's see-through copy on top of the streets (tools/make_style.py opaque_bands).
+     */
+    val ROUTE_SUFFIXES = listOf("", "-over", "-over-label", "-major-low", "-major", "-major-label", "-low", "-regional", "-tint", "-over-tint")
 
-    /** The hiking band's layers whose filter follows the T level ([hikeRouteFilters]): band, grey band, its "T3" label. */
-    val HIKE_BAND_LAYERS = listOf("routes-hike", "routes-hike-over", "routes-hike-over-label")
+    /**
+     * The hiking band's layers whose filter follows the T level ([hikeRouteFilters]): band, grey band, its "T3" label,
+     * and the tint copies of both bands.
+     */
+    val HIKE_BAND_LAYERS = listOf("routes-hike", "routes-hike-over", "routes-hike-over-label", "routes-hike-tint", "routes-hike-over-tint")
 
     /** Format 2 styles have one forbidden-way layer set per BRouter profile family; format 1 only foot / bike. */
     const val PER_PROFILE_MARKER = "access-no-dash-touring"
@@ -113,7 +119,10 @@ object ActivityLayers {
             "routes-hike" to """$head["all",["<=",$sac,$t],["!",["has","hx"]]]]""",
             "routes-hike-over" to """$head["any",[">",$sac,$t],["has","hx"]]]""",
             // the grey band's level label ("T3") stands on exactly the grey pieces
-            "routes-hike-over-label" to """$head["any",[">",$sac,$t],["has","hx"]]]""")
+            "routes-hike-over-label" to """$head["any",[">",$sac,$t],["has","hx"]]]""",
+            // each band's see-through copy on top of the streets follows its band
+            "routes-hike-tint" to """$head["all",["<=",$sac,$t],["!",["has","hx"]]]]""",
+            "routes-hike-over-tint" to """$head["any",[">",$sac,$t],["has","hx"]]]""")
     }
 
     /**

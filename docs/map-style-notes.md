@@ -380,7 +380,17 @@ Why each colour: `docs/design/map-colour-analysis.md` "Quiet towns". Data: overl
   - `low_to_close(low_key, close)`: widths that grow from the thin overview value into the close-up curve.
   - `route_band_paint()`: the hiking band and a long-distance cycle route's band.
 - Routes in the overview: a thin solid line (`route.low.width`, opacity `route.low.opacity`), no band.
-  - Hiking band: a single layer that changes with zoom.
+  - Hiking band (and the grey band above the T level, a long-distance cycle route's band): **two copies, never
+    darker where pieces overlap** since 2026-11-13 (owner, Meran: the see-through band darkened into dots where
+    pieces meet, at branches and on out-and-back stretches; the street inside the band stays green-tinted, "wie
+    Komoot"). `opaque_bands()`: the band opaque, its colour pre-blended over `land.color` (#168403 at 0.4 → #9cc78f,
+    grey #6f6f6f at 0.55 → #acaba7), below every road casing (the long-distance cycle band just above the mint band);
+    `<id>-tint` (`routes-hike-tint`, `routes-hike-over-tint`, `routes-bike-over-tint`) in the old place on the streets
+    with exactly the band's colour, width and filter, opaque up to `from` (the overview line), `route.tint.opacity`
+    (0.5) from `to`. Over the band the tint copy changes nothing, also where its pieces overlap; over a street, track
+    or town path inside the band it tints it. Costs: on a street where two pieces overlap the street is a little
+    greener; town path lines inside the band read lighter than before (a lighter tint over them). The exact former
+    look would need map data (a route flag on the streets). Guard: `StyleFormatTest.routeBandsNeverDarken`.
   - Bikes: the mint band sits below the lanes, where a street lane would hide a thin line. So `routes-bike-low` (dark
     green `route.bike.low.color`, above the lanes) fades out while `routes-bike` fades in.
   - `MapController` switches the `-low` suffix together with the route layers.

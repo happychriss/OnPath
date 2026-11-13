@@ -323,9 +323,10 @@ class StyleFormatTest {
         val byId = byId(f2)
         fun op(id: String, z: Double) = range(byId.getValue(id).getJSONObject("paint").get("line-opacity"), z)
         fun w(id: String, z: Double) = range(byId.getValue(id).getJSONObject("paint").get("line-width"), z)
-        // routes: thin and solid zoomed out, the soft band close in
-        assertTrue(w("routes-hike", 13.0).second <= 2.5 && op("routes-hike", 13.0).first >= 0.9)
-        assertTrue(w("routes-hike", 15.0).first >= 8.0 && op("routes-hike", 15.0).second <= 0.5)
+        // routes: thin and solid zoomed out (the tint copy opaque on the streets), the soft band close in
+        // (routeBandsNeverDarken)
+        assertTrue(w("routes-hike-tint", 13.0).second <= 2.5 && op("routes-hike-tint", 13.0).first == 1.0)
+        assertTrue(w("routes-hike", 15.0).first >= 8.0 && op("routes-hike-tint", 15.0).second <= 0.6)
         assertTrue("bike band hidden zoomed out", op("routes-bike", 13.0).second == 0.0)
         assertTrue("bike overview line", op("routes-bike-low", 13.0).first >= 0.9 && op("routes-bike-low", 14.5).second == 0.0)
         // paths: no black lines for bikes zoomed out, faint for hikers, full close in
@@ -336,6 +337,37 @@ class StyleFormatTest {
         }
         assertTrue(op("paths-own", 15.0).second == 1.0)
         assertTrue(op("track-bike-lane-bikeview", 13.0).second == 0.0)
+    }
+
+    /**
+     * The wide route bands never darken where they overlap (owner 2026-11-12, Meran: dark dots at joins and on
+     * out-and-back stretches) and keep the street inside them green-tinted (owner 2026-11-13): each band is opaque
+     * below the streets; its "-tint" copy on the streets has exactly the band's colour, width, filter and zooms – over the
+     * band it changes nothing, also where its pieces overlap – and is see-through only there, so streets show tinted.
+     */
+    @Test fun routeBandsNeverDarken() {
+        for ((name, s) in listOf("f1" to f1, "f2" to f2)) {
+            val ids = ids(s)
+            val byId = byId(s)
+            for (band in listOf("routes-hike", "routes-hike-over", "routes-bike-over")) {
+                val l = byId.getValue(band)
+                val tint = byId.getValue("$band-tint")
+                assertTrue("$name $band opaque", !l.getJSONObject("paint").has("line-opacity"))
+                assertTrue("$name $band below the lanes", ids.indexOf(band) < ids.indexOf("road-minor-lane"))
+                assertTrue("$name $band-tint on the streets", ids.indexOf("$band-tint") > ids.indexOf("road-minor-lane"))
+                for (k in listOf("line-color", "line-width"))
+                    assertEquals("$name $band-tint $k", l.getJSONObject("paint").get(k).toString(), tint.getJSONObject("paint").get(k).toString())
+                for (k in listOf("filter", "minzoom", "layout")) assertEquals("$name $band-tint $k", l.opt(k)?.toString(), tint.opt(k)?.toString())
+                assertTrue("$name $band-tint no maxzoom", !tint.has("maxzoom") && !l.has("maxzoom"))
+                // close in: the former see-through colour over open land (#168403 at 0.4, #6f6f6f at 0.55 over #f6f4ec)
+                val color = l.getJSONObject("paint").getJSONArray("line-color")
+                assertEquals("$name $band", if (band == "routes-hike-over") "#acaba7" else "#9cc78f", color.getString(color.length() - 1))
+            }
+            // the hiking band lies below every street casing, so a street shows inside it with its edges
+            assertTrue("$name below the casings", ids.indexOf("routes-hike") < ids.indexOf("road-minor-casing"))
+            if (s === f2) for (town in listOf("paths-own-town", "cycleway-town"))
+                assertTrue("$name $town between band and tint", ids.indexOf(town) in ids.indexOf("routes-hike")..ids.indexOf("routes-hike-tint"))
+        }
     }
 
     /** Region view (owner): long-distance routes always, regional from z11, every route from z12.5 – bike and hike. */
