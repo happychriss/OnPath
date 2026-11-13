@@ -1,5 +1,5 @@
 // Shots of Meine Touren like the app (owner 2026-11-07): a saved route, a plan under Zuletzt and the plan on the map
-// („In Bearbeitung“), each with its route preview; the large overview a row tap opens; wide and phone.
+// („In Bearbeitung“), each with its route preview, and a saved row's ⋮; wide and phone (no large overview in the planner, owner 2026-11-13).
 //   node test/tours-shots.mjs <segments> <cellStore> <outDir> [lang] [liveUrl]
 // With [liveUrl] (e.g. https://plan.onpath.earth/) the same steps run against that page (the "before" shots).
 import { chromium } from 'playwright';
@@ -49,15 +49,7 @@ for (const [name, vp] of [['breit', { width: 1280, height: 860 }], ['handy', { w
   await page.waitForSelector('dialog.plans #planList li', { timeout: 10_000 });
   await page.waitForTimeout(600);
   await page.screenshot({ path: path.join(out, `touren-${name}-${tag}.png`) });
-  const saved = page.locator('dialog.plans li.tourrow.saved .open').first();
-  if (await saved.count()) { // the overview and ⋮ – only the new page has them
-    await saved.click();
-    await page.waitForSelector('dialog.overview .ovpic svg, dialog.overview .ovpic p', { timeout: 10_000 });
-    await page.waitForTimeout(400);
-    await page.screenshot({ path: path.join(out, `uebersicht-${name}-${tag}.png`) });
-    await page.click('dialog.overview .ovcancel');
-    await page.waitForSelector('dialog.plans', { timeout: 10_000 });
-    await page.waitForTimeout(400);
+  if (await page.locator('dialog.plans li.tourrow.saved .more').count()) { // ⋮ – only the new page has it
     await page.locator('dialog.plans li.tourrow.saved').first().evaluate((el) => el.scrollIntoView({ block: 'center' }));
     await page.waitForTimeout(300);
     await page.locator('dialog.plans li.tourrow.saved .more').first().click(); await page.waitForTimeout(300);

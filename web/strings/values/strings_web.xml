@@ -287,5 +287,4 @@
     <string name="web_to_phone">To phone</string>
     <string name="web_to_phone_pair">Pair your phone, then the plan goes onto it</string>
     <string name="web_phone_menu">Phone connection …</string>
-    <string name="web_overview_no_line">The line shows here once the plan has been opened in this browser.</string>
 </resources>

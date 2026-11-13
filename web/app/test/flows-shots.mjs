@@ -193,7 +193,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
     await seen(); await settle(page);
     if (want('C06')) await shot(page, 'C06-web-aufs-handy-sichern', lang);
   }
-  if (want('B07')) { // Meine Touren with route pictures, „In Bearbeitung“, then the large overview
+  if (want('B07')) { // Meine Touren with route pictures, „In Bearbeitung“ (no large overview in the planner, owner 2026-11-13)
     // a second saved tour (opened once here, so its row has its route picture), then the hike on the map again
     await page.evaluate((c) => { location.hash = 'p=' + c; }, WAAL); await planned(page); await page.waitForTimeout(1200);
     await page.click('#menuSavePlan');
@@ -204,13 +204,6 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
     await page.waitForSelector('dialog.plans[open] #planList li', { timeout: 15_000 });
     await page.waitForTimeout(1200);
     await shot(page, 'B07-web-meine-touren', lang);
-    const row = page.locator('dialog.plans li.tourrow.saved .open').last();
-    if (await row.count()) {
-      await row.click();
-      await page.waitForSelector('dialog.overview .ovpic svg, dialog.overview .ovpic p', { timeout: 10_000 }).catch(() => {});
-      await page.waitForTimeout(1200);
-      await shot(page, 'B07b-web-meine-touren-uebersicht', lang);
-    }
   }
   await ctx.close();
 }

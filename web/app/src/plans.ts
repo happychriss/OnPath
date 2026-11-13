@@ -191,13 +191,14 @@ export function searchPlans<T extends { title: string | null }>(plans: T[], quer
  * The app's RouteRowActions (owner 2026-11-07 09:40): every action in exactly one place. Zuletzt: Planen · Speichern ·
  * Löschen on the row, ⋮ only Umbenennen · GPX exportieren. The plan on the map: a tap goes back to it, Speichern on the
  * row when it can be saved, no ⋮. Gespeichert: the clean list – tile + name + facts + ›, every action in ⋮. A row tap (or
- * the tile, marked ⤢) opens the large overview – except the plan on the map. „Los geht's“ is the phone's (no tour here).
+ * its tile) opens the plan at once – the planner has no large overview (owner 2026-11-13: „das brauchen wir im Browser
+ * nicht, weil wir direkt in die Route springen“). „Los geht's“ is the phone's (no tour here).
  */
 export type RowAction = 'plan' | 'save' | 'delete' | 'planFrom' | 'rename' | 'copy' | 'export' | 'share';
-export interface RowSpec { inline: RowAction[]; menu: RowAction[]; chevron: boolean; opensOverview: boolean }
+export interface RowSpec { inline: RowAction[]; menu: RowAction[]; chevron: boolean }
 export function rowActions(section: 'live' | 'draft' | 'saved', kind: 'plan' | 'track', o: { liveMarked?: boolean; canSaveLive?: boolean; points?: number } = {}): RowSpec {
-  if (section === 'live') return { inline: o.canSaveLive ? ['save'] : [], menu: [], chevron: false, opensOverview: false };
-  if (section === 'draft') return { inline: ['plan', 'save', 'delete'], menu: ['rename', 'export'], chevron: false, opensOverview: true };
+  if (section === 'live') return { inline: o.canSaveLive ? ['save'] : [], menu: [], chevron: false };
+  if (section === 'draft') return { inline: ['plan', 'save', 'delete'], menu: ['rename', 'export'], chevron: false };
   const menu: RowAction[] = [];
   if (kind === 'plan' && !o.liveMarked) menu.push('plan');
   if (kind === 'track') menu.push('planFrom');
@@ -206,20 +207,19 @@ export function rowActions(section: 'live' | 'draft' | 'saved', kind: 'plan' | '
   menu.push('export');
   if (kind === 'plan' && (o.points ?? 2) >= 2) menu.push('share');
   menu.push('delete');
-  return { inline: o.liveMarked && o.canSaveLive ? ['save'] : [], menu, chevron: !o.liveMarked, opensOverview: !o.liveMarked };
+  return { inline: o.liveMarked && o.canSaveLive ? ['save'] : [], menu, chevron: !o.liveMarked };
 }
 
 /** The menu items' older class names (the smokes and screenshots address them). */
 const MENU_CLASS: Record<RowAction, string> = { plan: 'planit', save: 'msave', delete: 'del', planFrom: 'planfrom', rename: 'rename', copy: 'copy', export: 'export', share: 'sharerow' };
-/** The tile's size (the app's PREVIEW_TILE 52 dp), the ⤢ badge's (ENLARGE_BADGE 26, reaching 6 out of the tile). */
-const TILE = 52, BADGE = 26, OUT = 6;
-/** A row's preview tile: the route's shape on paper (or the kind's sign while no line is known here), ⤢ when it opens the overview. */
-function tileHtml(segs: Seg[] | null, kind: 'plan' | 'track', pale: boolean, enlarge: boolean): string {
-  const corner = enlarge ? BADGE - OUT + 3 * 1.6 : 0;
-  const s = segs ? fitShape(segs, TILE, TILE, 8, corner) : null;
+/** The tile's size (the app's PREVIEW_TILE 52 dp). */
+const TILE = 52;
+/** A row's preview tile: the route's shape on paper (or the kind's sign while no line is known here). */
+function tileHtml(segs: Seg[] | null, kind: 'plan' | 'track', pale: boolean): string {
+  const s = segs ? fitShape(segs, TILE, TILE, 8) : null;
   const inner = s ? shapeSvg(s, TILE, TILE, { width: 2.5, dot: 3, pale })
     : `<span class="kindic${pale ? ' pale' : ''}">${icon(kind === 'track' ? 'fileOpen' : 'route', 22)}</span>`;
-  return `<span class="tileface">${inner}</span>${enlarge ? `<span class="enlarge" aria-hidden="true">${icon('openInFull', 16)}</span>` : ''}`;
+  return `<span class="tileface">${inner}</span>`;
 }
 
 /** One thing in the list: a saved route / track, a Zuletzt plan or the plan on the map. */
@@ -231,42 +231,10 @@ interface Item {
 }
 
 /**
- * The large overview (the app's RouteOverview, owner 2026-11-07 00:30 / ce27c111): a row tap opens it first – the name,
- * the facts, the route's shape as large as the window gives (the line as wide as on the map, the start dot, the goal
- * flag), then Abbrechen · Planen. Nothing on the map changes until Planen. „Los geht's“ is the phone's.
- */
-export function overviewDialog(item: Item, onPlan: () => void, back: () => void) {
-  const d = dialog('overview', `
-    <h2 class="ovtitle">${esc(item.title)}</h2>
-    ${item.stats ? `<p class="ovfacts">${esc(statsText(item.stats))}</p>` : ''}
-    <div class="ovpic"></div>
-    <div class="row spread ovbuttons"><button class="textbtn ovcancel">${esc(t('common_cancel'))}</button>
-      <button class="tonal ovplan">${icon('route', 20)}${esc(t('routes_overview_plan'))}</button></div>`);
-  const pic = d.querySelector<HTMLElement>('.ovpic')!;
-  // drawn for the picture's size – again whenever it changes (window resized, zoomed, turned): a shape drawn for the
-  // old size stuck out of the picture at its top left, not in the middle (owner 2026-11-13 „wirklich mittig“)
-  let drawn = '';
-  const draw = () => {
-    const w = Math.round(pic.clientWidth), h = Math.round(pic.clientHeight);
-    if (`${w}x${h}` === drawn) return;
-    drawn = `${w}x${h}`;
-    const s = item.segs && w > 40 && h > 40 ? fitShape(item.segs, w, h, 24) : null;
-    pic.innerHTML = s ? shapeSvg(s, w, h, { width: 4, dot: 6, flag: true }) : `<p class="muted">${esc(t('web_overview_no_line'))}</p>`;
-  };
-  requestAnimationFrame(draw);
-  const ro = new ResizeObserver(() => draw());
-  ro.observe(pic);
-  d.addEventListener('close', () => ro.disconnect());
-  d.querySelector<HTMLButtonElement>('.ovcancel')!.onclick = () => { d.close(); back(); };
-  d.querySelector<HTMLButtonElement>('.ovplan')!.onclick = () => { d.close(); onPlan(); };
-  d.addEventListener('cancel', (e) => { e.preventDefault(); d.close(); back(); });
-}
-
-/**
  * Meine Touren (the app's My routes, owner 2026-11-07): ZULETZT – the plan on the map first („In Bearbeitung“), then the
  * plans kept by themselves (newest three, the rest on demand) –, then GESPEICHERT. A row: the route's preview tile
- * (⤢ = the overview), the name, „Plan · 30. Okt. 2026“, the facts (km · ↑ · ↓ when this browser knows them), on the right
- * where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything and,
+ * (a tap on it opens the plan like the row), the name, „Plan · 30. Okt. 2026“, the facts (km · ↑ · ↓ when this browser
+ * knows them), on the right where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything and,
  * under it, its sort chips (routesort.ts): they order Gespeichert; Zuletzt is one row and stays as it is.
  * Bold = changed here and not on the phone yet. Follows the sync live.
  */
@@ -338,9 +306,6 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     if (it.recent) host.openRecent(it.recent);
     else if (it.saved) { sync.seen(it.saved.id, sync.open); host.open(it.saved, sync.open); }
   };
-  // no line known yet (a plan from the phone never opened here): the overview would be an empty white box – the row
-  // opens the plan at once (owner 2026-11-13, demo); with a line the overview stays as in the app
-  const showOverview = (it: Item) => { closeMenus(); if (!it.segs) { openItem(it); return; } overviewDialog(it, () => openItem(it), reopen); };
 
   const row = (it: Item, spec: RowSpec, folder: string, paired: boolean, liveMarked: boolean): HTMLLIElement => {
     const li = document.createElement('li');
@@ -359,9 +324,8 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     if (p && p.id === justSaved) li.classList.add('justsaved');
     const tag = liveMarked || it.section === 'live' ? `<span class="tag live">${esc(t('routes_tag_live'))}</span>` : p ? tagOf(p) : '';
     const kindWord = it.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
-    const tileLabel = spec.opensOverview ? t('routes_overview_enlarge') : t('routes_overview_show');
     li.innerHTML = `<div class="rowmain">
-      <button class="tile" ${spec.opensOverview ? '' : 'tabindex="-1"'} title="${esc(tileLabel)}" aria-label="${esc(tileLabel)}">${tileHtml(it.segs, it.kind, it.section === 'draft', spec.opensOverview)}</button>
+      <button class="tile" tabindex="-1" aria-hidden="true">${tileHtml(it.segs, it.kind, it.section === 'draft')}</button>
       <button class="open" title="${esc(t('routes_open_row', it.title))}"><span class="txt"><span class="nameline"><span class="name">${esc(it.title)}</span>${tag}</span>
         <span class="muted small sub">${esc(kindWord + ' · ' + appDate(it.at))}</span>${it.stats ? `<span class="stats">${esc(statsText(it.stats))}</span>` : ''}${p && p.id === justSaved ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
       ${where}
@@ -370,10 +334,10 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       ${spec.chevron ? `<span class="chev" aria-hidden="true">${icon('chevronRight', 22)}</span>` : ''}
     </div>${spec.inline.length ? `<div class="rowacts">${spec.inline.map((a) => `<button class="r-${a} ${a === 'plan' ? 'tonal' : a === 'delete' ? 'textbtn danger' : 'textbtn planact'}">${icon(ic[a], 18)}${esc(label[a])}</button>`).join('')}</div>` : ''}`;
     const q = <T extends HTMLElement>(sel: string) => li.querySelector<T>(sel);
-    // a row tap opens the plan at once (owner 2026-11-13: „der Planer kann die Tour direkt öffnen“ – the browser has the
-    // room the phone lacks); the large overview stays on the tile (⤢), as the app's enlarge
+    // a row tap – or its tile – opens the plan at once (owner 2026-11-13: „der Planer kann die Tour direkt öffnen“; no
+    // large overview in the browser: „das brauchen wir im Browser nicht, weil wir direkt in die Route springen“)
     q('.open')!.onclick = () => openItem(it);
-    q('.tile')!.onclick = () => (spec.opensOverview ? showOverview(it) : openItem(it));
+    q('.tile')!.onclick = () => openItem(it);
     const more = q<HTMLButtonElement>('.more');
     if (more) more.onclick = (e) => {
       e.stopPropagation();

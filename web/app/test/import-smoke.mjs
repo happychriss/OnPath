@@ -193,26 +193,22 @@ await page.click('dialog.plans li[data-live] .open');
 check(!(await page.$('dialog.plans[open]')) && await pins() === 2, 'a tap on the plan on the map closes My tours, the plan stays');
 await page.click('#newPlan');
 check(await recentN() === recent0 + 1, 'the same points again: no second Recent entry');
-// Meine Touren: RECENT on top – the draft's line pale on its tile with ⤢, Plan · Save · Delete on the card, ⋮ Rename ·
-// Export GPX (the app's RouteRowActions); the tile (⤢) opens the large overview (shape, start, goal flag, Cancel · Plan) – a row tap opens the plan at once (owner 2026-11-13)
+// Meine Touren: RECENT on top – the draft's line pale on its tile (no ⤢), Plan · Save · Delete on the card, ⋮ Rename ·
+// Export GPX (the app's RouteRowActions); the tile opens the plan at once like the row – the planner has no large
+// overview (owner 2026-11-13)
 await page.click('#menuPlans');
 await page.waitForSelector('dialog.plans[open] li.draft');
 const rec = await page.evaluate(() => ({ head: document.querySelector('dialog.plans li.sectionhead')?.textContent,
   pale: !!document.querySelector('dialog.plans li.draft .tile svg path[opacity]'), enlarge: !!document.querySelector('dialog.plans li.draft .enlarge'),
+  tab: document.querySelector('dialog.plans li.draft .tile')?.getAttribute('tabindex'),
   btns: [...document.querySelectorAll('dialog.plans li.draft .rowacts button')].map((b) => b.textContent.trim()),
   menu: [...document.querySelectorAll('dialog.plans li.draft .rowmenu button')].map((b) => b.textContent.trim()) }));
-check(rec.head === 'RECENT' && rec.pale && rec.enlarge && JSON.stringify(rec.btns) === '["Plan","Save","Delete"]' && JSON.stringify(rec.menu) === '["Rename","Export GPX"]',
-  `My tours: RECENT, the draft's pale line with ⤢, Plan · Save · Delete, ⋮ Rename · Export GPX (${JSON.stringify(rec)})`);
+check(rec.head === 'RECENT' && rec.pale && !rec.enlarge && rec.tab === '-1' && JSON.stringify(rec.btns) === '["Plan","Save","Delete"]' && JSON.stringify(rec.menu) === '["Rename","Export GPX"]',
+  `My tours: RECENT, the draft's pale line (no ⤢, tile no tab stop), Plan · Save · Delete, ⋮ Rename · Export GPX (${JSON.stringify(rec)})`);
 await page.click('dialog.plans li.draft .tile');
-await page.waitForSelector('dialog.overview[open] .ovpic svg', { timeout: 10_000 });
-const ov = await page.evaluate(() => ({ title: document.querySelector('dialog.overview .ovtitle').textContent, facts: document.querySelector('dialog.overview .ovfacts')?.textContent ?? '',
-  line: !!document.querySelector('dialog.overview .ovpic svg path'), flag: !!document.querySelector('dialog.overview .ovpic svg g'),
-  btns: [...document.querySelectorAll('dialog.overview .ovbuttons button')].map((b) => b.textContent.trim()), pins: document.querySelectorAll('.pin').length }));
-check(ov.line && ov.flag && /km · ↑ \d+ m ↓ \d+ m/.test(ov.facts) && JSON.stringify(ov.btns) === '["Cancel","Plan"]' && ov.pins === 0,
-  `a draft's tile (⤢): the large overview – shape, goal flag, facts, Cancel · Plan, nothing on the map yet (${JSON.stringify(ov)})`);
-await page.click('dialog.overview .ovplan');
 await planned().catch(() => {});
-check(!(await page.$('dialog.overview[open]')) && await pins() === 2, 'overview → Plan: the plan is on the map');
+check(!(await page.$('dialog.plans[open]')) && !(await page.$('dialog.overview')) && await pins() === 2,
+  "a draft's tile opens the plan at once – no overview in between: the plan is on the map");
 // a new route draws itself in 0.5 s (the app's RouteReveal): Reverse → the line grows from start to goal, then whole
 {
   await page.evaluate(() => { window.__reveal = true; });

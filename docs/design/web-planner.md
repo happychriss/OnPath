@@ -940,7 +940,7 @@ Problems found while making the browser plan exactly like the phone, and the spe
   surfaces; tonal `#DDE5EE` / ink `#1E3550` also for tags), warm walnut shadows (`--shadow-low` / `--shadow-high`), one corner
   family (cards 20 px, small 12 px, pills round), the compass ink blue / walnut grey (no red), the goal as a white flag on the
   map, in the points list and the point menu, locate without the GPS dot and greyed without a position (the app's PlanGps),
-  the pin card's „Mehr“ on PaperDim. Meine Touren's „In Bearbeitung“ row, the route previews, the overview and RouteReveal: §25. Not taken: the
+  the pin card's „Mehr“ on PaperDim. Meine Touren's „In Bearbeitung“ row, the route previews and RouteReveal: §25 (no large overview, owner 2026-11-13). Not taken: the
   profile's fill (ProfileFill) – the planner keeps its steepness bars (owner 2026-11-05). Paper tone B `#F5F3EB` for
   surfaces, `#FAFAF6` for cards in lists (CardPaper). Phone-only: Navigate's ⚙ settings, lock line,
   tour controller / RoutesState refactors, accuracy circle only in Navigate, Prefs.
@@ -979,10 +979,10 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 
 ## 25. Meine Touren like the app (laptop, 2026-11-07, owner: „ja“ – app 01b38ffa / cb791053 / ce27c111 / e570e467 / ddc8d59b / 4cf68bd7)
 - **Rows** (`plans.ts` `myPlansDialog`, `rowActions` = the app's `RouteRowActions`): cards with a 52 px **preview tile**
-  (`routeshape.ts` = the app's `RoutePreview` / `RouteShape`: the line on PaperDim, start dot, goal in dark red, ⤢ badge
-  when it opens the overview; without a known line the kind's sign), the name, „Plan · 7. Nov. 2026“ / „Importierte GPX ·
+  (`routeshape.ts` = the app's `RoutePreview` / `RouteShape`: the line on PaperDim, start dot, goal in dark red, no ⤢
+  badge; without a known line the kind's sign; a tap on it opens the plan like the row), the name, „Plan · 7. Nov. 2026“ / „Importierte GPX ·
   …“ (the app's words), the facts. ZULETZT: the plan on the map first (`routes_live_name` / its own name, tag
-  `routes_tag_live` „In Bearbeitung“, Speichern on the card when it can be saved, a tap goes back to it, no ⋮ / ⤢; a Zuletzt
+  `routes_tag_live` „In Bearbeitung“, Speichern on the card when it can be saved, a tap goes back to it, no ⋮; a Zuletzt
   entry with its points is not shown twice), then the drafts with **Planen · Speichern · Löschen** on the card and ⋮
   Umbenennen · GPX exportieren. GESPEICHERT: the clean row – tile, name, facts, 🖥 / 📱, ⋮, › – ⋮ = Planen · Umbenennen ·
   Als Kopie speichern · GPX exportieren · Plan teilen · Löschen (a track: Als Plan übernehmen instead of Planen / Kopie /
@@ -991,15 +991,14 @@ section „Gebaut“ with the shots). The owner chose A („Punkte zuerst“, li
 - **The line** is kept in this browser like the numbers (planstats.ts): `keepShape(planKey(code) | trackKey(id))` when a
   plan is routed here (saved, opened, kept under Zuletzt) or a track is read – at most 200 points, 12 + 12 bits each in
   the line's box, the newest 300 (localStorage `onpath.planShapes`). The list never routes anything.
-- **Overview** (a row / tile tap, `overviewDialog` = the app's `RouteOverview`): name, facts, the shape as large as the
-  window gives (line 4 px like the map's route, start dot, goal flag), **Abbrechen · Planen**; nothing on the map changes
-  before Planen. The app draws a map picture under it (MapLibre snapshotter); the web draws the shape on PaperDim (the
-  app's fallback) – no second live map.
+- **No large overview** (owner 2026-11-13: „das brauchen wir im Browser nicht, weil wir direkt in die Route springen“):
+  the app's `RouteOverview` is not mirrored. A row or its tile opens the plan at once; the browser has the room to show
+  it on the map itself.
 - **The route draws itself** (`routereveal.ts` = the app's `RouteReveal`): a new route for the plan runs from start to goal
   in 0.5 s (decelerating), not the first route after the page loaded, not the same route again, not over 4 000 points, not
   with „reduce motion“; automated browsers only with `window.__reveal` (import-smoke checks it).
-- Tests: import-smoke (live row, draft row + menu, overview, Planen, the reveal, the saved row's ⋮), sync-smoke (the app's
-  words, „In Bearbeitung“, opening through the overview), `test/tours-shots.mjs` (shots wide + phone, before / after).
+- Tests: import-smoke (live row, draft row + menu, the tile opens the plan, the reveal, the saved row's ⋮), sync-smoke
+  (the app's words, „In Bearbeitung“, a row tap opens at once), `test/tours-shots.mjs` (shots wide + phone, before / after).
 
 
 ## 26. A dropped long plan never holds the planner (laptop, 2026-11-07)

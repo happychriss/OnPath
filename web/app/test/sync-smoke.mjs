@@ -212,7 +212,6 @@ await until(A, async () => (await window.__sync.list()).length === 2);
 await A.waitForSelector('dialog.plans[open] #planList li[data-id]');
 await A.click('#planList li:has(.name:text-is("Zweitroute")) .open');
 check(!(await A.locator('dialog.overview[open]').isVisible()), 'a row tap opens the plan at once – no overview in between (owner 2026-11-13)');
-await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Saved as Zweitroute'), null, { timeout: 30_000 }).catch(() => {});
 check((await status(A)).folder.key === 'none' && JSON.stringify(await titles(A)) === '["Altroute","Zweitroute"]', 'the copy "Zweitroute" is a second route, "Altroute" stays (Without phone)');
 check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the copy opened: the open route');
@@ -395,12 +394,11 @@ check((await phone.titles()).includes('Handweg hier'), 'Save to phone sent the n
 await menu(A, '#menuPlans');
 await A.click('#planList li:has-text("Vom Handy") .open');
 check(!(await A.locator('dialog.overview[open]').isVisible()), 'a plan from the phone never opened here (no line known) opens at once – no empty overview (owner 2026-11-13)');
-await A.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }).catch(() => {});
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 row = await listRow(A, 'Vom Handy');
-check(row?.current && row.tag === 'In progress', `a click on a row opens it (overview → Plan): the open route is marked „In progress“ (the app's LivePlanRows), its New / Changed tag gone (${JSON.stringify(row)})`);
+check(row?.current && row.tag === 'In progress', `a click on a row opens it: the open route is marked „In progress“ (the app's LivePlanRows), its New / Changed tag gone (${JSON.stringify(row)})`);
 await A.click('#closePlans');
 const note = await A.evaluate(() => { const n = document.getElementById('routingNote'); return n && !n.hidden ? n.textContent : ''; });
 check(note === 'Planned on the phone with other routing – the route may differ slightly',
@@ -772,7 +770,7 @@ check(await O.locator('#planList li[data-id]').count() === 1 && !!(await listRow
 await O.click('#planSearchClear');
 check((await O.inputValue('#planSearch')) === '' && await O.locator('#planList li[data-id]').count() >= 1, 'the search\'s ✕ clears it, the whole list again');
 await O.fill('#planSearch', 'runde');
-await O.click('#planList li:has(.name:text-is("Meine Runde")) .open'); await O.locator('dialog.overview .ovplan').click({ timeout: 3_000 }).catch(() => {}); // a row tap opens the overview first (owner 2026-11-07), Planen loads it – the plan on the map has none
+await O.click('#planList li:has(.name:text-is("Meine Runde")) .open');
 await O.waitForFunction(() => document.getElementById('savedLine')?.textContent?.includes('Meine Runde'), null, { timeout: 30_000 }).catch(() => {});
 const before = (await ownerPhone.list()).find((x) => x.title === 'Meine Runde');
 await O.click('#reverse');
