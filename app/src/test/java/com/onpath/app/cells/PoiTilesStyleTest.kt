@@ -38,6 +38,22 @@ class PoiTilesStyleTest {
         }
     }
 
+    /**
+     * The density limit ([PoiDensity]) knows the zoom each limited kind is drawn from, and every POI layer drawing a
+     * limited kind hides a feature below its "dz".
+     */
+    @Test fun densityLimitMatchesTheStyle() {
+        val layers = f2.getJSONArray("layers").let { a -> (0 until a.length()).map { a.getJSONObject(it) } }
+            .filter { it.optString("id").startsWith(POI_LAYER_PREFIX) }
+        for ((kind, zoom) in PoiDensity.KINDS) {
+            val drawing = layers.filter { kind in strings(it.opt("filter")) }
+            assertTrue("$kind is drawn", drawing.isNotEmpty())
+            assertEquals(kind, zoom.toDouble(), drawing.minOf { it.optDouble("minzoom", 0.0) }, 0.0)
+            for (l in drawing) assertTrue("${l.getString("id")}: hides $kind below its dz",
+                l.get("filter").toString().replace(" ", "").contains("""[">=",["zoom"],["to-number",["get","${PoiDensity.PROP}"],0]]"""))
+        }
+    }
+
     @Test fun styleUsesThePoiTilesWithTheGeoJsonAsStandIn() {
         val src = f2.getJSONObject("sources").getJSONObject("pois")
         assertEquals("vector", src.getString("type"))

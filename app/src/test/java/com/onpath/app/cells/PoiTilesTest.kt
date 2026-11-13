@@ -101,6 +101,24 @@ class PoiTilesTest {
         }
     }
 
+    /** The density limit ([PoiDensity]) in the tiles: "dz" on the POIs drawn later, left out of the tiles below it. */
+    @Test fun denseCityPoisCarryTheirFirstZoom() {
+        val c = cell.center
+        val n = 60
+        val rest = (0 until n).map { i ->
+            poi(c.lat + 0.001 + (i / 10) * 0.00005, c.lon + 0.001 + (i % 10) * 0.00005, mapOf("id" to "r$i", "kind" to "restaurant", "name" to "R$i", "pr" to i))
+        }
+        val hut = poi(c.lat + 0.001, c.lon + 0.001, mapOf("id" to "h", "kind" to "hut", "name" to "Hütte"))
+        val (out, _) = build(file(*(rest + hut).toTypedArray()))
+        val byZoom = MvtTestDecoder.featuresByZoom(out)
+        val top = (n - PoiDensity.CAP until n).map { "r$it" }.toSet()
+        for (z in 12..13) assertEquals("z$z", top + "h", byZoom.getValue(z).map { it.props["id"] }.toSet())
+        val z14 = byZoom.getValue(14).associateBy { it.props["id"] }
+        assertEquals(n + 1, z14.size) // the z14 tile is over-zoomed up to z18: every POI, the later ones with "dz"
+        for (i in 0 until n) assertEquals("r$i", if ("r$i" in top) null else PoiDensity.ALL_FROM.toLong(), z14.getValue("r$i").props["dz"])
+        assertNull(z14.getValue("h").props["dz"])
+    }
+
     @Test fun zoomTable() {
         assertEquals(10, PoiTiles.minZoom("train"))
         assertEquals(12, PoiTiles.minZoom("restaurant"))

@@ -1561,6 +1561,10 @@ POI_TIERS = [
 # sides of the road merged by extract_pois.py), from BUS_DETAIL_ZOOM every stop on its own.
 BUS_ZOOM = 14
 BUS_DETAIL_ZOOM = 16
+# Density limit for city POIs (owner 2026-11-13, central London; app cells/PoiDensity.kt): where more than 24
+# restaurants / cafés / bars / snack bars / shops share one map tile of the zoom shown, the POI tiles give the less
+# notable ones "dz" = the first zoom they are drawn at (all from z17). Data without "dz" (GeoJSON) draws as before.
+POI_DENSITY_FILTER = [">=", ["zoom"], ["to-number", ["get", "dz"], 0]]
 POI_PRIO_EXTRA = ["bus"]
 POI_PRIO = ["train"] + [k for _, _, _, kinds in POI_TIERS for k in kinds] + POI_PRIO_EXTRA
 POI_KINDS = set(POI_PRIO)
@@ -1578,6 +1582,13 @@ FIRST_LANE = "track-own-lane" + HIKEVIEW
 TRACK_DOTS_ZOOM = 14.5  # from here a track is two dotted edges (dot spacing = surface), below one dashed line
 
 
+# The invisible key text of every POI icon symbol (see pois()): the OSM id ("n123"), else the priority, never empty.
+KEY_TEXT_LAYOUT = {"text-field": ["to-string", ["coalesce", ["get", "id"], ["get", "pr"], "·"]],
+                   "text-font": ["Noto Sans Regular"], "text-size": 1, "text-allow-overlap": True,
+                   "text-ignore-placement": True, "text-optional": True}
+KEY_TEXT_PAINT = {"text-opacity": 0}
+
+
 def _match(values, fallback):
     expr = ["match", ["get", "kind"]]
     for k, v in values:
@@ -1591,7 +1602,13 @@ def pois():
     from the TOP of the style down (RenderOrchestrator walks the placement layers in reverse), so all icon layers sit
     above all name layers: every icon is placed before any name, and a name can never push out an icon. A name that
     does not fit beside its icon simply does not show (rarely a name may show without its icon – accepted).
-    Ids start with "poi-", so the app's tap lookup, Settings POI filter and the missing-file strip treat both alike."""
+    Ids start with "poi-", so the app's tap lookup, Settings POI filter and the missing-file strip treat both alike.
+
+    Each icon symbol also carries an invisible key text (KEY_TEXT, the POI's OSM id): MapLibre matches a tile's
+    symbols with the same symbols of its parent / child tiles (CrossTileSymbolIndex) by their TEXT – every icon-only
+    symbol has the empty text, so all icons of a layer fell into one group and the matching went n² (owner's Pixel in
+    central London 2026-11-13: ~1 fps, 93 % of the render thread in TileLayerIndex::findMatches). The key text is never
+    seen (opacity 0) and never collides (allow overlap + ignore placement, optional), so the look stays as it was."""
     kind = ["get", "kind"]
     rank = _match([(k, i) for i, k in enumerate(POI_PRIO)], 99)
     # lower = placed first: kind rank, then named before unnamed, then the POI's fixed priority "pr" (0..49999,
@@ -1610,7 +1627,7 @@ def pois():
     specs = [
         (f"poi-bus-detail", 3, BUS_DETAIL_ZOOM, None, BUS_DETAIL_ZOOM, ["all", is_bus, ["!", ["has", "merged"]]]),
         (f"poi-bus", 3, BUS_ZOOM, BUS_DETAIL_ZOOM, 15, ["all", is_bus, ["!", ["has", "detail"]]]),
-    ] + [(f"poi-tier{tier}", tier, minz, None, label_z, ["in", kind, ["literal", kinds]])
+    ] + [(f"poi-tier{tier}", tier, minz, None, label_z, ["all", ["in", kind, ["literal", kinds]], POI_DENSITY_FILTER])
          for tier, minz, label_z, kinds in reversed(POI_TIERS)]
     icons, names = [], []
     for id_, tier, minz, maxz, label_z, flt in specs:
@@ -1623,7 +1640,8 @@ def pois():
                                   # small dots stay tiny while zoomed out, badges from z13
                                   "icon-size": interp(12, 0.45, 12.9, 0.5, 13, 0.78, 15, 0.92, 17, 1.05, base=1),
                                   "icon-allow-overlap": False, "icon-padding": 1,
-                                  "symbol-sort-key": sort_key, "symbol-z-order": "auto"}))
+                                  "symbol-sort-key": sort_key, "symbol-z-order": "auto", **KEY_TEXT_LAYOUT},
+                          paint=dict(KEY_TEXT_PAINT)))
         # the name beside the (already placed) icon: radial offset from the POI point, in ems
         names.append(dict(id_=f"{id_}-name", type="symbol", source="pois", minzoom=minz, filter=flt, **extra,
                           layout={"text-field": ["step", ["zoom"], "", label_z, name],
@@ -1640,7 +1658,9 @@ def pois():
     icons.append(dict(id_="poi-station", type="symbol", source="pois", minzoom=10, filter=station,
                       layout={"icon-image": "poi-train",
                               "icon-size": interp(10, 0.85, 13, 0.95, 16, 1.15, base=1),
-                              "icon-allow-overlap": False, "icon-padding": 1, "symbol-sort-key": 0}))
+                              "icon-allow-overlap": False, "icon-padding": 1, "symbol-sort-key": 0,
+                              **KEY_TEXT_LAYOUT},
+                      paint=dict(KEY_TEXT_PAINT)))
     names.append(dict(id_="poi-station-name", type="symbol", source="pois", minzoom=10, filter=station,
                       layout={"text-field": ["step", ["zoom"], "", 11, name],
                               "symbol-sort-key": 0,

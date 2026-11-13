@@ -64,7 +64,7 @@ bivouac 21, cave 15.
   `["all", <original filter>, ["in", ["get","kind"], ["literal", [enabled kinds]]]]` works.
   Keep the original filter of each layer (read it with `layer.filter` before wrapping, or remember it once
   after the style loads), otherwise a kind may appear at the wrong zoom.
-- `findPoiAt` (queries all `poi-*` layers) keeps working; symbol hit boxes are the icon (~21 dp).
+- The tap / hold lookup (`ShownPois`, read from all `poi-*` layers while the map is idle) keeps working; symbol hit boxes are the icon (~21 dp).
 
 ## Sprite
 - Style: `"sprite": "asset://sprites/onpath"`. MapLibre Native appends `.json`/`.png` and, on screens with
