@@ -31,7 +31,8 @@ import { keepRecent, dropRecent, renameRecentIf, type RecentPlan } from './recen
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
-import { post, dismiss } from './msgcard';
+import { post, dismiss, onShown } from './msgcard';
+import { OneWait } from './onewait';
 import { setupGpxImport } from './gpximport';
 import { overviewStyle, followCover, followPackages } from './overview';
 import { PlanGapsLayer } from './plangaps';
@@ -237,6 +238,9 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 const phoneWidth = () => matchMedia('(max-width: 700px)').matches;
+// one wait at a time (onewait.ts, owner 2026-11-13): every wait says whether it wants to show, one shows (body[data-wait])
+const waits = new OneWait(document.body);
+onShown((m) => waits.set('box', m?.id === 'routing'));
 /** The sync once it exists (the header's Save is drawn before it). */
 let syncRef: PlanSync | null = null;
 saveEntry('empty'); // the header's Save: greyed until a route exists (renderSaved keeps it current)
@@ -420,7 +424,7 @@ const syncReady = ready.then(async (ok) => {
 addEventListener('hashchange', () => openFromLink());
 
 // ---- waits on the map: position, map loading, map areas on demand (mapnotice.ts, areas.ts – web-planner.md §17) ----
-const notices = new MapNotices($('mapnotes'));
+const notices = new MapNotices($('mapnotes'), (busy) => waits.set('strip', busy));
 /** The app's texts for the strip and the waits (WebMaps.kt); empty until the engine is there. */
 const mapTexts: Promise<MapTexts> = ready.then(async (ok) => (ok ? JSON.parse(await engine.call('mapTexts')) as MapTexts : {}))
   .catch((e) => { console.warn('map texts not loaded', e); return {}; });
@@ -444,7 +448,12 @@ const percentFormat = new Intl.NumberFormat(locale, { style: 'percent', maximumF
 const overlay = new LoadOverlay(notices, 400, (on) => {
   document.body.dataset.loadover = on ? '1' : '';
   if (on) dismiss('routing'); // the wait box's text and Cancel are in the card now
+  waits.set('load', on);
 }, (f) => percentFormat.format(f));
+// the card is due (its 400 ms delay runs) while two other waits want to show: it comes at once and carries them
+waits.loadDue = () => overlay.due;
+waits.loadNow = () => overlay.showNow();
+overlay.onDue = () => waits.decide();
 const loadLook = (): JobLook => ({ title: t('maps_load_loading'), prio: 1, opens: true });
 const cancelLook = () => ({ label: t('common_cancel'), act: () => { cancelRouting(); } });
 // tiles alone bring the card up only once the map rests (as the strip did: a pan shows no card while it moves)
@@ -1075,6 +1084,11 @@ function setPlanning(on: boolean) {
   state.planning = on;
   document.body.dataset.planning = on ? '1' : '';
   if (!on) { dismiss('routing'); linkOpened(); overlay.finish('route'); overlay.finish('calc'); }
+  sheetWait();
+}
+/** The sheet's wait line („Calculating the route…“) wants to show while a plan runs (onewait.ts decides whether it does). */
+function sheetWait() {
+  waits.set('sheet', state.planning && !!document.querySelector('#summary .subline.waitline'));
 }
 /** The wait box in the middle of the free map (beside / above the sheet), with Cancel – the app's onCancelRouting. */
 function waitCard(text: string) {
@@ -1339,14 +1353,16 @@ function render() {
   const notice = $('notice');
   sub.classList.toggle('muted', !p);
   sub.classList.remove('waitline');
+  sheetWait();
   if (!p) {
     const n = state.points.length;
     const waiting = linkOpening && n >= 2 && !state.notRouted;
     head.innerHTML = `<span class="title">${escapeHtml(waiting && state.title ? state.title : t('plan_plan_a_route'))}</span>`;
     sub.textContent = n === 0 ? t('web_hint_first_point')
       : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : t('plan_calculating');
-    // the sheet's wait line steps back while the load overlay or the wait box says it (one wait at a time, style.css)
+    // the sheet's wait line steps back while another wait shows (onewait.ts, body[data-wait], style.css)
     sub.classList.toggle('waitline', n >= 2 && !state.notRouted);
+    sheetWait();
     // one point: which one, also in the small step where the Points list is hidden (owner 2026-10-30)
     if (n === 1) sub.prepend(Object.assign(document.createElement('span'), { className: 'onepoint',
       textContent: t('web_one_point', state.meta[0]?.name || t('plan_point_start')) }));
@@ -2144,6 +2160,7 @@ function status(t: string, kind: 'info' | 'error' | 'busy' = 'info') {
   s.textContent = t;
   s.classList.toggle('error', kind === 'error');
   s.classList.toggle('busy', kind === 'busy' && t !== '');
+  waits.set('status', kind === 'busy' && t !== '');
 }
 function empty(): FeatureCollection { return { type: 'FeatureCollection', features: [] }; }
 function escapeHtml(s: string) { return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!); }

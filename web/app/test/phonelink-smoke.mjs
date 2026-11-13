@@ -24,10 +24,10 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
 const errors = [];
 
 /**
- * In the page from its first moment: every 50 ms the wait texts a person sees (the load overlay, the box over the map,
+ * In the page from its first moment: every [every] ms (default 50) the wait texts a person sees (the load overlay, the box over the map,
  * the strip's spinners, the sheet's line, the sheet's busy status line) and the overlay's percent – one entry per change.
  */
-function watchWaits() {
+function watchWaits(every = 50) {
   const seen = (el) => !!el && !el.hidden && el.getClientRects().length > 0 && getComputedStyle(el).visibility !== 'hidden';
   const tx = (el) => el.innerText.replace(/\s+/g, ' ').trim();
   window.__waits = () => {
@@ -51,7 +51,7 @@ function watchWaits() {
     const w = window.__waits();
     const L = window.__log;
     L.maxWaits = Math.max(L.maxWaits, w.length);
-    if (w.length > 1 && L.many.length < 5) L.many.push(w);
+    if (w.length > 1) { L.overlaps = (L.overlaps ?? 0) + 1; if (L.many.length < 5) L.many.push(w); }
     const load = document.querySelector('#mapnotes .mapnote.load');
     if (load && !was) L.sessions++;
     was = !!load;
@@ -60,7 +60,7 @@ function watchWaits() {
       const last = L.pct.at(-1);
       if (!last || last.s !== L.sessions || last.p !== p) L.pct.push({ s: L.sessions, p, text: load.querySelector('.pct')?.textContent ?? '' });
     }
-  }, 50);
+  }, every);
 }
 
 /** Percent shown by the first overlay: rises, never back, ends at 100. */
@@ -208,6 +208,71 @@ const overlayGone = (page) => page.waitForFunction(() => !document.querySelector
   check(await overlayGone(page), 'wide: after Cancel the overlay goes');
   release();
   await ctx.close();
+}
+
+// 6. one wait at a time while a map area is being prepared and the route waits (owner 2026-11-13: „das irritiert den
+// Benutzer“ – the field run's „box: Calculating the route… Cancel“ + „strip: Preparing map for this area“). The doorman
+// answers late (held), then "queued" (the area stays "preparing" through the whole load), or the host has no map
+// service (a late 404: the strip shows a moment, then goes) – phone and desktop, the route held, then slow; sampled
+// every 16 ms over the whole load, around Cancel, and around a failed download.
+{
+  let mapsMode = 'queued', holdMaps = 0;
+  const maps = async (req) => {
+    await new Promise((ok) => setTimeout(ok, holdMaps));
+    if (mapsMode === 'none') return new Response('not found', { status: 404 });
+    const u = new URL(req.url);
+    const ids = req.method === 'POST' ? (await req.json()).cells : (u.searchParams.get('ids') ?? '').split(',');
+    return Response.json({ cells: ids.map((id) => ({ id, state: 'queued', eta_s: 360 })), poll_s: 5 });
+  };
+  const s2 = await serve({ dist: path.resolve(here, '../dist'), segments, dataDir, maps });
+  const viewports = { phone: { viewport: { width: 412, height: 839 }, isMobile: true, hasTouch: true }, wide: { viewport: { width: 1280, height: 800 } } };
+  const run = async (who, vp, mode, then) => {
+    mapsMode = mode.maps; holdMaps = mode.hold;
+    const ctx = await browser.newContext({ ...viewports[vp], locale: 'en-US' });
+    const page = await ctx.newPage();
+    page.on('pageerror', (e) => errors.push(String(e)));
+    await page.addInitScript(watchWaits, 16);
+    let release; const held = new Promise((ok) => { release = ok; });
+    let n = 0;
+    await page.route(/\/segments\//, async (r) => {
+      await held;
+      if (mode.failData) { await r.abort().catch(() => {}); return; }
+      await new Promise((ok) => setTimeout(ok, 150 * n++));
+      await r.continue().catch(() => {});
+    });
+    if (mode.later) {
+      // the page open and calm first (engine ready, the map there, no card): then the link – a plain plan run, no link
+      // share of the bar to bring the card up early
+      await page.goto(s2.url + 'index.html?waitMs=0&lang=en');
+      await page.waitForFunction(() => document.body.dataset.engine === 'ready' && window.__map?.areTilesLoaded() && !document.querySelector('#mapnotes .mapnote.load'), null, { timeout: 60_000 }).catch(() => {});
+      await page.waitForTimeout(500);
+      await page.evaluate((c) => { location.hash = 'p=' + c; }, CODE);
+    } else await page.goto(s2.url + 'index.html?waitMs=0&lang=en#p=' + CODE);
+    await page.waitForFunction(() => document.body.dataset.planning === '1', null, { timeout: 60_000 }).catch(() => {});
+    await page.waitForTimeout(mode.holdFor ?? 1200);
+    await then(page, release);
+    await page.waitForTimeout(1500);
+    const log = await page.evaluate(() => window.__log);
+    check(log.maxWaits <= 1, `${who}: never more than one wait at a time, sampled every 16 ms (${log.overlaps ?? 0} overlapping samples ${JSON.stringify(log.many)})`);
+    await ctx.close();
+  };
+  const routed = (page) => page.waitForFunction(() => document.querySelector('#summary .big') || /not calculated|failed|missing|Straight/i.test(document.getElementById('summary').textContent + document.getElementById('status').textContent), null, { timeout: 120_000 }).catch(() => {});
+  const cancel = async (page, release) => {
+    await page.click('#mapnotes .mapnote.load button.act, #msgcards .msgcard[data-id="routing"] .msgbtn').catch(() => {});
+    await page.waitForTimeout(800); release();
+  };
+  for (const vp of ['phone', 'wide']) for (const later of [false, true]) {
+    const who = vp + (later ? ' (link into an open page)' : '');
+    // the static host: no map service, its 404 comes after 150 ms – the strip's „Preparing map …“ a moment, the route waiting
+    await run(`${who}, no map service (late 404)`, vp, { maps: 'none', hold: 150, holdFor: 300, later }, async (page, release) => { release(); await routed(page); });
+    // the area stays „preparing“ (queued) through the whole load, the doorman's first answer late
+    await run(`${who}, area being prepared`, vp, { maps: 'queued', hold: 300, later }, async (page, release) => { release(); await routed(page); });
+    // Cancel while the area is being prepared and the route waits
+    await run(`${who}, Cancel while an area is prepared`, vp, { maps: 'queued', hold: 100, later }, cancel);
+    // the routing data fails while the area is prepared
+    await run(`${who}, routing data fails`, vp, { maps: 'queued', hold: 100, failData: true, later }, async (page, release) => { release(); await routed(page); });
+  }
+  s2.server.close();
 }
 
 await browser.close(); server.close();

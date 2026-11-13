@@ -1029,10 +1029,20 @@ the map (phone: under the search bar, full width; desktop: beside the side panel
 prepares are still loading; the engine starting and the route calculation only *join* a card that is up (the
 calculation alone keeps the wait box, as before). The route calculation is its last phase („Route wird berechnet…“,
 the engine's „Leg 2 of 5…“). It goes by itself: the full bar for a moment, then away. A failure shows the existing plain
-lines (plan failed, build failed – the strip's red line), no new error. **One wait at a time:** while the card is up, the
-strip's other spinners (map loading, position, „Preparing map …“ – its rows are the card's lines), the route's wait box,
-the sheet's wait line („Calculating the route…“) and the engine's status line step back (`body[data-loadover]`). On a
-phone a shared link keeps today's peek (§24): the sheet stays collapsed, the card is over the map.
+lines (plan failed, build failed – the strip's red line), no new error. **One wait at a time** (owner 2026-11-13: overlapping waits are no detail – „das irritiert den
+Benutzer“): one arbiter (`onewait.ts`) decides which wait shows, desktop and phone. Each of the five only says whether
+it *wants* to show – the card (`loadoverlay.ts`), the route's wait box (`msgcard.ts` `onShown`), a busy strip
+(`mapnotice.ts`: position, „Preparing map …“), the sheet's wait line (while a plan runs), the engine's status line –
+and the arbiter writes the one that shows to `body[data-wait]`, by priority card > box > strip > sheet > status line;
+`style.css` hides the others in the same task (no frame with two), and of several busy strips only the first shows.
+While the card's 400 ms delay runs and two other waits want to show, the card comes at once (it carries them: the
+area's rows are its lines, the calculation its last phase); with one other wait that one shows until the card takes
+over. The paths found 2026-11-13 (the field run's „box + strip“): a point's map area asked for → the strip's
+„Preparing map … Your point · waiting“ at once, while the box (or, on a phone with a link, the sheet's line) already
+said „Calculating the route…“ and the card was still in its 400 ms delay – or never came (a plain recalculation without
+download, routing data prefetched); a host without map service (the strip until its late 404); Cancel and a failed
+download while an area is prepared (the box and the strip side by side until the card). On a phone a shared link
+keeps today's peek (§24): the sheet stays collapsed, the card is over the map.
 
 **What is measured** (one percent, weighted; it never goes back and is below 100 % until all is there):
 
@@ -1051,7 +1061,10 @@ sits at 99 % for ever: every part ends – downloaded, failed (counted as done; 
 (the percent says it better).
 
 Tests: `test/phonelink-smoke.mjs` (held-back then slow routing data, phone + desktop: the card appears, percent rises in
-steps to 100 and never back, the card goes, never more than one wait visible – sampled every 50 ms –, the sheet stays
+steps to 100 and never back, the card goes, never more than one wait visible – sampled every 50 ms; part 6: a fake
+doorman holds the area „preparing“ (or the host answers a late 404) while the route waits – a link at start and a link
+into an open page, the whole load, Cancel, a failed download, phone and desktop, sampled every 16 ms: red before the
+arbiter in every run, green 5× after – the sheet stays
 collapsed on the phone, Cancel in the card stops the plan; red before, green after; `phonelink-smoke.mjs <seg> - <dir>`
 writes `phone-link-loading.png` / `desktop-link-loading.png`); `areas-smoke` D (the card's percent while the routing data
 comes), `robust-smoke` 7 (the card's Cancel). §17's table: „Map tiles still loading“, „Routing data for a plan“ and

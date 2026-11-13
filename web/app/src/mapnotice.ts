@@ -21,14 +21,16 @@ export interface Notice {
 
 /**
  * Slots in their order on screen: the load overlay, the position, a cell whose map fails, then the map areas. While the
- * load overlay shows it is the one wait: the other busy lines step back (owner 2026-11-13 – never three waits at once).
+ * load overlay shows it is the one wait: the other busy lines step back; otherwise only the first busy line shows, and
+ * only when it is the page's one wait (onewait.ts, body[data-wait="strip"]; owner 2026-11-13 – one wait at a time).
  */
 const ORDER = ['load', 'locate', 'loading', 'cells', 'areas'] as const;
 export type Slot = (typeof ORDER)[number];
 
 export class MapNotices {
   private shown = new Map<Slot, Notice>();
-  constructor(private box: HTMLElement) { box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); this.render(); }
+  /** [onBusy]: whether a busy strip wants to show (onewait.ts decides whether it does – one wait at a time). */
+  constructor(private box: HTMLElement, private onBusy: (busy: boolean) => void = () => {}) { box.setAttribute('role', 'status'); box.setAttribute('aria-live', 'polite'); this.render(); }
 
   set(slot: Slot, n: Notice | null) {
     if (n) this.shown.set(slot, n); else this.shown.delete(slot);
@@ -83,5 +85,6 @@ export class MapNotices {
       this.box.append(el);
     }
     this.box.hidden = count === 0;
+    this.onBusy([...this.shown].some(([slot, n]) => slot !== 'load' && n.kind === 'busy') && !load);
   }
 }
