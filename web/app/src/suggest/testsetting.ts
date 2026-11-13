@@ -4,8 +4,9 @@
 // lines and the "Copy diagnostics" button) – this adds one more small button there, which opens the setting:
 //   switch off / on · Rechner (address of the computer at home) · Passwort · "Verbindung prüfen".
 // Stored only in this browser under one key (remote.ts TEST_KEY); switching off removes every key of the feature and
-// reloads – the planner is then exactly as before. Without ?debug and with the switch off this file does nothing.
-// While the switch is on the same button stays on the map (also without ?debug), so it can always be switched off.
+// reloads – the planner is then exactly as before. Without ?debug this file puts nothing on the page.
+// While the switch is on, the wish ("Mehr") and the cards carry a small link to this setting (ui.ts), so it can always
+// be switched off without typing ?debug again.
 import { t } from '../i18n';
 import { clearTestSetting, pingRemote, saveTestSetting, testSetting, type PingResult, type TestSetting } from './remote';
 
@@ -60,7 +61,15 @@ export function openTestSetting(prefill: TestSetting | null = null) {
     if (want) saveTestSetting(now()); else clearTestSetting();
     d.close();
     // the feature is set up when the page starts: a changed setting takes effect with a reload (the plan is in the address)
-    if (JSON.stringify(testSetting()) !== was) { history.replaceState(null, '', location.pathname + location.search + location.hash.replace(/[#&]suggest-test=[^&]*/, '')); location.reload(); }
+    if (JSON.stringify(testSetting()) !== was) {
+      // switched on: the address loses ?debug (its buttons would sit over the cards on a phone) – the link in the wish
+      // and under the cards leads back here; the set-up link's part goes in any case
+      const q = new URLSearchParams(location.search);
+      if (want) q.delete('debug');
+      const search = q.toString().replace(/=(?=&|$)/g, '');
+      history.replaceState(null, '', location.pathname + (search ? '?' + search : '') + location.hash.replace(/[#&]suggest-test=[^&]*/, ''));
+      location.reload();
+    }
   };
   d.addEventListener('close', () => d.remove());
   d.showModal();
@@ -69,12 +78,13 @@ export function openTestSetting(prefill: TestSetting | null = null) {
 /** Called once at page start (main.ts). [debug] = ?debug is in the address. */
 export function installTestSetting(debug: boolean) {
   const link = parseSetupHash(location.hash);
-  if (!debug && !link && !testSetting()) return; // off and no debug: nothing at all
+  if (!debug && !link) return; // no debug: nothing at all (while the switch is on, the wish and the cards carry a link to the setting)
   const b = document.createElement('button');
   b.id = 'suggestTestBtn';
   b.type = 'button';
   b.textContent = t('web_suggest_test_title');
-  b.style.cssText = 'position:fixed;z-index:50;right:12px;bottom:132px;padding:6px 10px;border-radius:10px;border:1px solid #888;background:#fff;color:#222;font:12px sans-serif';
+  // at the map's right edge, half way up: clear of the sheet, the cards and the bars on a phone and on a wide page
+  b.style.cssText = 'position:fixed;z-index:5;right:12px;top:42%;padding:6px 10px;border-radius:10px;border:1px solid #888;background:#fff;color:#222;font:12px sans-serif';
   b.onclick = () => openTestSetting();
   document.body.append(b);
   if (link) openTestSetting(link); // a set-up link fills the fields; nothing is stored before OK

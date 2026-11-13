@@ -563,7 +563,7 @@ es ausstellen, dann ist alles normal."
   computer itself** (`tools/suggest-poc/remote/test_planner.py`): the same build on `http://<computer>:8785/` with the
   service on the same address (`/suggest-remote/`), map files passed on to the live host; no "Mein Standort" on an
   http page, its saved tours are separate, no phone pairing.
-- **Tests:** `web/app/test/suggest-remote-smoke.mjs` (a fake remote with password + CORS): 43 checks – off, the
+- **Tests:** `web/app/test/suggest-remote-smoke.mjs` (a fake remote with password + CORS): 44 checks – off, the
   setting with "Verbindung prüfen", the whole flow to "Übernehmen", wrong password / computer away / map being
   prepared, set-up link, off again, phone width.
 - **Not built / undecided:** nothing of this is on main or live; whether the branch goes live with the switch off (so

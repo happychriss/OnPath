@@ -120,6 +120,8 @@ async function askLoops(page) {
   await Promise.all([p2.waitForNavigation(), p2.click('#stOk')]);
   await ready(p2);
   check(JSON.stringify(await keys(p2)) === '["onpath.suggest.remote"]', 'OK: one storage key, the page reloaded');
+  check(!/debug/.test(p2.url()) && /lang=de/.test(p2.url()) && !(await p2.$('#suggestTestBtn')) && !(await p2.$('#diagCopy')),
+    'switched on: the address lost ?debug (no debug buttons over the cards), the rest of the address stays');
   check(await p2.evaluate(() => document.body.dataset.suggestReady === '1'), 'on: the feature is set up after the reload');
 
   // ---- (c) on: the whole flow against the remote ----
@@ -136,6 +138,7 @@ async function askLoops(page) {
   check(cards.length >= 1 && cards.every((c) => /^Testrunde \d$/.test(c.title) && /km · .+ · ↑ \d+ m/.test(c.facts)), `cards from the remote with the planner's own numbers (${cards.length})`);
   check(cards.every((c) => /2,5 km Testweg/.test(c.reasons)), 'the remote\'s reasons are on the cards');
   check(/remote/.test(await p2.textContent('#suggestPanel .sgvia')), 'the mechanism line says remote');
+  check((await p2.textContent('#suggestPanel .sgvia .sgtest')) === 'Tourvorschläge (Test)', 'the cards carry the link to the test setting (the way to switch off)');
   const post = remote.calls.filter((c) => c.method === 'POST');
   const sent = post.length ? JSON.parse(post[0].body) : {};
   check(post.length === 1 && post[0].token === TOKEN && post[0].url.endsWith('/v1/suggest'), 'one request to /v1/suggest with the password in the header');
@@ -151,7 +154,18 @@ async function askLoops(page) {
   await p2.click('#undo');
   await p2.waitForFunction(() => window.__state.points.length === 0, null, { timeout: 15_000 }).catch(() => {});
   check((await points(p2)) === 0, 'Undo: the empty plan');
-  check(!!(await p2.$('#suggestTestBtn')), 'on: the test button stays reachable (to switch off)');
+  {
+    // on, the page opened WITHOUT ?debug (the owner's normal use): no floating button, the link in the wish opens the setting
+    const p4 = await open('?lang=de' + AT, undefined, p2.context());
+    check(!(await p4.$('#suggestTestBtn')), 'on, no ?debug: no floating button on the map');
+    await clickAt(p4, ...START); await p4.waitForSelector('.pointmenu');
+    await p4.click('.pointmenu button:nth-of-type(3)'); await p4.waitForSelector('#suggestPanel .sgok');
+    await p4.click('#suggestPanel .sgmore summary');
+    await p4.click('#suggestPanel .sgtest');
+    await p4.waitForSelector('dialog#suggestTest[open]');
+    check(await p4.isChecked('#stOn'), 'on, no ?debug: the link in the wish ("Mehr") opens the setting');
+    await p4.close();
+  }
 
   // ---- (d) calm messages, the plan untouched ----
   const calm = async (what, expect) => {
@@ -174,8 +188,11 @@ async function askLoops(page) {
 
   // ---- (f) switched off again ----
   check((await keys(p2)).includes('onpath.suggest.wish'), 'on: the wish was remembered (a second key of the group)');
-  await p2.click('#suggestTestBtn'); await p2.waitForSelector('dialog#suggestTest[open]');
-  check(await p2.isChecked('#stOn') && (await p2.inputValue('#stUrl')) === REMOTE, 'the setting shows on + the address');
+  await clickAt(p2, ...START); await p2.waitForSelector('.pointmenu');
+  await p2.click('.pointmenu button:nth-of-type(3)'); await p2.waitForSelector('#suggestPanel .sgok');
+  await p2.click('#suggestPanel .sgmore summary');
+  await p2.click('#suggestPanel .sgtest'); await p2.waitForSelector('dialog#suggestTest[open]');
+  check(await p2.isChecked('#stOn') && (await p2.inputValue('#stUrl')) === REMOTE, 'the setting (from the wish\'s link) shows on + the address');
   await p2.uncheck('#stOn');
   await Promise.all([p2.waitForNavigation(), p2.click('#stOk')]);
   await ready(p2);

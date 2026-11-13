@@ -68,3 +68,11 @@ dialog.suggestwish .sgcheck input { width: 18px; flex: none; margin: 0; padding:
   .sgcard { flex: 0 0 88%; scroll-snap-align: center; box-sizing: border-box; }
   .sghead.results h2 { font-size: 18px; }
 }
+
+/* the owner's test setting: a small link beside the mechanism line */
+.sgtest { border: none; background: none; padding: 0; font: inherit; color: var(--green-fg); text-decoration: underline; cursor: pointer; }
+dialog.suggesttest .row { display: flex; align-items: center; gap: 10px; margin: 2px 0 10px; }
+dialog.suggesttest #stResult[data-r="ok"] { color: var(--green-fg); }
+dialog.suggesttest p { margin: 0 0 10px; }
+dialog.suggesttest .sgcheck { display: flex; align-items: center; gap: 8px; margin: 0 0 10px; }
+dialog.suggesttest .sgcheck input { width: auto; margin: 0; }

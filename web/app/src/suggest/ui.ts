@@ -18,6 +18,8 @@ import { icon } from '../icons';
 import { t, tp, lang, number } from '../i18n';
 import { post, dismiss } from '../msgcard';
 import { chosenProvider, providers, setRemoteTexts } from './registry';
+import { testSetting } from './remote';
+import { openTestSetting } from './testsetting';
 import { SuggestSession, type SessionEngine } from './session';
 import { surfaceOptions, type Effort, type LatLon, type Level, type SuggestEvent, type Suggestion, type TourWish } from './types';
 import './suggest.css';
@@ -81,6 +83,9 @@ export function setupSuggest(host: SuggestHost): SuggestUi {
   const provider = () => chosenProvider(providers());
 
   let mode: 'off' | 'wish' | 'results' = 'off';
+  // with the owner's test setting on: a small link to it beside the mechanism line (the way to switch it off again)
+  const testLink = () => (testSetting() ? ` · <button type="button" class="sgtest">${esc(t('web_suggest_test_title'))}</button>` : '');
+  const wireTest = (root: HTMLElement) => { const b = root.querySelector<HTMLButtonElement>('.sgtest'); if (b) b.onclick = () => openTestSetting(); };
   let wish: TourWish | null = null;
   let vals = remembered();
   let seed = 1;
@@ -178,7 +183,7 @@ export function setupSuggest(host: SuggestHost): SuggestUi {
         <div class="sglabel muted small">${esc(t('web_suggest_effort'))}</div>
         ${seg('effort', EFFORTS.map((e) => [e, t('web_suggest_effort_' + e)]), vals.effort)}
         <label class="sgcheck"><input type="checkbox" name="tips" ${vals.tips ? 'checked' : ''}><span>${esc(t('web_suggest_tips'))}</span></label>
-        <div class="sgvia muted small">${esc(t('web_suggest_via', via.devName))}</div>
+        <div class="sgvia muted small">${esc(t('web_suggest_via', via.devName))}${testLink()}</div>
       </details>
       <div class="row end sgbuttons"><button type="button" class="sgcancel">${esc(t('common_cancel'))}</button><button type="button" class="primary sgok">${esc(t('common_ok'))}</button></div>`;
   }
@@ -209,6 +214,7 @@ export function setupSuggest(host: SuggestHost): SuggestUi {
       root.querySelector('.sgtime')!.textContent = hm(vals.hours);
       root.querySelectorAll<HTMLButtonElement>('.sg[data-name=hours] button').forEach((x) => { const on = Number(x.dataset.v) === vals.hours; x.classList.toggle('on', on); x.setAttribute('aria-pressed', String(on)); });
     }));
+    wireTest(root);
     root.querySelector<HTMLButtonElement>('.sgcancel')!.onclick = () => leave();
     root.querySelector<HTMLButtonElement>('.sgok')!.onclick = () => {
       read();
@@ -331,7 +337,8 @@ export function setupSuggest(host: SuggestHost): SuggestUi {
           <div class="row end"><button type="button" class="primary sgadopt" data-i="${i}">${esc(t('web_suggest_adopt'))}</button></div>
         </div>`).join('')}</div>
       ${over ? `<button type="button" class="textbtn sgagain">${icon('loop', 18)}${esc(t('web_suggest_again'))}</button>` : ''}
-      <div class="sgvia muted small">${esc(t('web_suggest_via', via.devName))}${via.standIn ? ' – ' + esc(t('web_suggest_standin')) : ''}</div>`;
+      <div class="sgvia muted small">${esc(t('web_suggest_via', via.devName))}${via.standIn ? ' – ' + esc(t('web_suggest_standin')) : ''}${testLink()}</div>`;
+    wireTest(p);
     p.querySelector<HTMLButtonElement>('.sgclose')!.onclick = () => leave();
     p.querySelector<HTMLButtonElement>('.sgchange')!.onclick = () => openWish(w.start, w.startName, true);
     const again = p.querySelector<HTMLButtonElement>('.sgagain');
