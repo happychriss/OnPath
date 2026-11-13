@@ -100,11 +100,16 @@ async function saveAs(P, name) {
 }
 const openRoute = async (P, hash) => { await P.evaluate((h) => { location.hash = h; }, hash); await P.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 30_000 }); };
 /** A row of My routes: where it lies (browser / phone / browser+phone, from the 🖥 📱 symbols), bold, the line below, open. */
-const listRow = (P, name) => P.evaluate((n) => { const li = [...document.querySelectorAll('#planList li')].find((l) => l.querySelector('.name')?.textContent === n);
+// the saved row (under Saved – a row with an id; the plan on the map is its own Recent row, [liveRow])
+const listRow = (P, name) => P.evaluate((n) => { const li = [...document.querySelectorAll('#planList li[data-id]:not([data-zuletzt])')].find((l) => l.querySelector('.name')?.textContent === n);
   if (!li) return null;
   const where = [...li.querySelectorAll('.where .w')].map((w) => (w.classList.contains('browser') ? 'browser' : 'phone') + ':' + w.getAttribute('aria-label')).join(' ');
   return { where, bold: Number(getComputedStyle(li.querySelector('.name')).fontWeight) >= 700, sub: li.querySelector('.sub').textContent, kind: li.dataset.kind,
     current: li.classList.contains('current'), tag: li.querySelector('.tag')?.textContent ?? '', text: li.textContent.replace(/\s+/g, ' ').trim() }; }, name);
+/** The plan on the map's row under Recent: its name and tags („In progress“, + „Saved“ when saved as it is), a Save on it. */
+const liveRow = (P) => P.evaluate(() => { const li = document.querySelector('#planList li[data-live]');
+  return li ? { name: li.querySelector('.name').textContent, tags: [...li.querySelectorAll('.tag')].map((t) => t.textContent),
+    save: [...li.querySelectorAll('button')].some((b) => /^(Save|Speichern)$/.test(b.textContent.trim())) } : null; });
 const HERE = 'browser:In this browser', PHONE = 'phone:On the phone', BOTH = HERE + ' ' + PHONE;
 /** My routes → ⋮ of [name] → [item] (rename / export / del). */
 async function rowMenu(P, name, item) {
@@ -218,7 +223,9 @@ check((await A.textContent('#savedLine')).includes('Saved as Zweitroute'), 'the 
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 let row = await listRow(A, 'Zweitroute');
-check(row?.where === HERE && !row.bold && row.current && row.tag === 'In progress' && /^Plan · \d+ \w+ \d{4}$/.test(row.sub), `not paired: a row shows 🖥 only, not bold, the open one marked „In progress“, "Plan · date" (the app's words) (${JSON.stringify(row)})`);
+let lv = await liveRow(A);
+check(row?.where === HERE && !row.bold && !row.current && /^Plan · \d+ \w+ \d{4}$/.test(row.sub) && lv?.name === 'Zweitroute' && JSON.stringify(lv.tags) === '["In progress","Saved"]',
+  `not paired: a row shows 🖥 only, not bold, "Plan · date" (the app's words); the open one is the Recent row „In progress“ + „Saved“ (${JSON.stringify({ row, lv })})`);
 const dialogText = await A.textContent('dialog.plans');
 check(!/Your planned routes|Save current route|Saved as|Without phone|Remove routes/.test(dialogText) && await A.locator('dialog.plans .rename.iconbtn, dialog.plans h3').count() === 0,
   'My routes is one plain list: no heading line, no Save box, no folder lines, no ✎ / 🗑 in the row');
@@ -398,7 +405,8 @@ await A.waitForFunction(() => document.getElementById('points')?.textContent?.in
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 row = await listRow(A, 'Vom Handy');
-check(row?.current && row.tag === 'In progress', `a click on a row opens it: the open route is marked „In progress“ (the app's LivePlanRows), its New / Changed tag gone (${JSON.stringify(row)})`);
+lv = await liveRow(A);
+check(lv?.name === 'Vom Handy' && JSON.stringify(lv.tags) === '["In progress","Saved"]' && row && !row.tag, `a click on a row opens it: the open route is the Recent row „In progress“ + „Saved“ (the app's LivePlanRows), its New / Changed tag gone (${JSON.stringify({ lv, row })})`);
 await A.click('#closePlans');
 const note = await A.evaluate(() => { const n = document.getElementById('routingNote'); return n && !n.hidden ? n.textContent : ''; });
 check(note === 'Planned on the phone with other routing – the route may differ slightly',
@@ -750,11 +758,9 @@ check(e2.dot && e2.phone === 'Owner phone', `paired: the 📱 status with the do
 // Save on it after the pairing moved it into the phone's folder (screenshot round 2026-11-07)
 await O.click('#menuPlans');
 await O.waitForSelector('#planList li[data-id]', { timeout: 10_000 }).catch(() => {});
-const liveRows = await O.evaluate(() => ({ live: document.querySelectorAll('#planList li[data-live]').length,
-  current: [...document.querySelectorAll('#planList li.current .name')].map((n) => n.textContent),
-  save: [...document.querySelectorAll('#planList li.current button')].filter((b) => /^(Save|Speichern)$/.test(b.textContent.trim())).length }));
-check(liveRows.live === 0 && liveRows.current.join() === 'Meine Runde' && liveRows.save === 0,
-  `paired, saved and unchanged: the plan on the map is the "Meine Runde" row, no "Current plan" row, no Save (${JSON.stringify(liveRows)})`);
+const liveRows = await liveRow(O);
+check(liveRows?.name === 'Meine Runde' && JSON.stringify(liveRows.tags) === '["In progress","Saved"]' && !liveRows.save,
+  `paired, saved and unchanged: the plan on the map is the "Meine Runde" Recent row („In progress“ + „Saved“), no "Current plan", no Save (${JSON.stringify(liveRows)})`);
 await O.click('#closePlans');
 // (2) second visit
 await O.close();

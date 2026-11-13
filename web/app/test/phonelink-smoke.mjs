@@ -101,6 +101,19 @@ const routeInView = (page) => page.evaluate(() => {
   });
   return inside.length / Math.max(1, pts.length);
 });
+/**
+ * Every point row of the open sheet is there to see (field 2026-11-13, Pixel 7: a two-point plan from a link listed
+ * only „1 Start“ + „+ Add destination“ – the list squeezed to one row): none clipped by the list's own box, each inside
+ * the sheet.
+ */
+const pointRows = (page) => page.evaluate(() => {
+  const list = document.getElementById('points'), sheet = document.getElementById('sheet').getBoundingClientRect();
+  const box = list.getBoundingClientRect();
+  return [...list.querySelectorAll(':scope > li')].map((li) => {
+    const r = li.getBoundingClientRect();
+    return { text: li.innerText.replace(/\s+/g, ' ').trim(), shown: r.height > 0 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1 && r.top >= sheet.top - 1 && r.bottom <= sheet.bottom + 1 };
+  });
+});
 const overlayGone = (page) => page.waitForFunction(() => !document.querySelector('#mapnotes .mapnote.load'), null, { timeout: 30_000 }).then(() => true, () => false);
 
 // 1. phone, first visit, the routing data slow: the sheet peeks, the load overlay is the one wait, no box over the map
@@ -148,10 +161,33 @@ const overlayGone = (page) => page.waitForFunction(() => !document.querySelector
   // the user pulls it up
   await page.click('#handle');
   check(await page.getAttribute('#sheet', 'data-step') === 'points' && await page.isVisible('#pointsSection'), 'phone: the handle pulls the sheet up');
+  const rows = await pointRows(page);
+  check(rows.length === 2 && rows.every((r) => r.shown), `phone: the open sheet lists start and goal (${JSON.stringify(rows)})`);
   // a reload is the user's own plan in the address, no link from someone: the step they chose stays
   await page.reload();
   await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
   check(await page.getAttribute('#sheet', 'data-step') === 'points', 'phone: a reload keeps the step the user chose');
+  await ctx.close();
+}
+
+// 2b. a Pixel 7 in Chrome (412 × 760 CSS px under the address bar), German: the link routed, the sheet pulled up to its
+// points step – both rows „1 Start“ and „Vellau · Ziel“ are there, then „+ Ziel hinzufügen“ (field 2026-11-13: the goal
+// row was missing – the points list squeezed to its 96 px minimum, one row, by a sheet taller than the screen)
+for (const height of [760, 640]) {
+  const ctx = await browser.newContext({ viewport: { width: 412, height }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true, locale: 'de-DE' });
+  const page = await ctx.newPage();
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.goto(url + 'index.html?waitMs=0&lang=de#p=' + CODE);
+  await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+  await page.waitForTimeout(800);
+  await page.click('#handle');
+  await page.waitForTimeout(400);
+  const rows = await pointRows(page);
+  check(rows.length === 2 && rows.every((r) => r.shown) && /Vellau/.test(rows[1]?.text ?? ''),
+    `Pixel 7 412×${height}, link pulled up: start and the goal Vellau both listed (${JSON.stringify(rows)})`);
+  const add = await page.evaluate(() => { const a = document.getElementById('addDest').getBoundingClientRect(), last = document.querySelector('#points > li:last-child').getBoundingClientRect(); return a.top >= last.bottom - 1; });
+  check(add, `Pixel 7 412×${height}: „+ Ziel hinzufügen“ comes after the goal row`);
+  if (shots) await page.screenshot({ path: path.join(shots, `pixel7-${height}-points.png`) });
   await ctx.close();
 }
 

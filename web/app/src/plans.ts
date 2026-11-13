@@ -4,11 +4,11 @@
 import qrcode from 'qrcode-generator';
 import { NONE, shownTitle, type PlanSync, type SavedPlan, type SyncStatus } from './sync';
 import { icon } from './icons';
-import { t, tp, locale } from './i18n';
+import { t, tp, locale, distance } from './i18n';
 import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
-import { recentPlans, dropRecent, renameRecent, type RecentPlan } from './recent';
+import { recentPlans, binnedPlans, afterSaved, toBin, restoreRecent, renameRecent, recentRow, zuletztPlace, daysLeft, BIN_DAYS, type RecentPlan } from './recent';
 import { sortRoutes, tapSort, loadSort, keepSort, sortChipsHtml, type SortKey } from './routesort';
 
 export interface PlanHost {
@@ -231,8 +231,9 @@ interface Item {
 }
 
 /**
- * Meine Touren (the app's My routes, owner 2026-11-07): ZULETZT – the plan on the map first („In Bearbeitung“), then the
- * plans kept by themselves (newest three, the rest on demand) –, then GESPEICHERT. A row: the route's preview tile
+ * Meine Touren (the app's My routes, owner 2026-11-07): ZULETZT – exactly one row (owner 2026-11-12, recent.ts): the
+ * plan on the map („In Bearbeitung“, + „Gespeichert“ when saved as it is), else the draft or the saved route worked on
+ * last –, then GESPEICHERT; a Papierkorb for this browser's drafts behind its button. A row: the route's preview tile
  * (a tap on it opens the plan like the row), the name, „Plan · 30. Okt. 2026“, the facts (km · ↑ · ↓ when this browser
  * knows them), on the right where it lies (🖥 this browser, 📱 the phone) and ⋮ / ›. Actions per [rowActions]. The app's search over everything and,
  * under it, its sort chips (routesort.ts): they order Gespeichert; Zuletzt is one row and stays as it is.
@@ -246,7 +247,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       aria-label="${esc(t('search_clear_query'))}" title="${esc(t('search_clear_query'))}">${icon('close', 20)}</button></label>
     <div id="planSort" class="sortchips" role="group" hidden></div>
     <ul id="planList" class="planlist" aria-labelledby="plansTitle"></ul>
-    <div class="row spread"><button id="plansImportGpx" class="textbtn">${icon('fileOpen', 18)}${esc(t('routes_import_gpx'))}</button><button id="closePlans">${esc(t('common_close'))}</button></div>`);
+    <div class="row spread"><span class="plansleft"><button id="plansImportGpx" class="textbtn">${icon('fileOpen', 18)}${esc(t('routes_import_gpx'))}</button><button id="plansBin" class="textbtn" hidden>${icon('delete', 18)}${esc(t('common_recycle_bin'))}</button><button id="binBack" class="textbtn" hidden>${esc(t('common_back'))}</button></span><button id="closePlans">${esc(t('common_close'))}</button></div>`);
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const closeMenus = () => d.querySelectorAll<HTMLElement>('.rowmenu').forEach((m) => { m.hidden = true; m.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
   d.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.rowmenu, .more')) closeMenus(); });
@@ -296,7 +297,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     let id: string;
     try { id = await sync.save(r.code, storedTitle(r.title), undefined, into); } catch (e) { failLine(d, t('web_save_failed'), e); return; }
     askPersist();
-    dropRecent(r.id);
+    afterSaved(id, r.id, r.points); // the draft goes for good (the saved route holds it) and the saved route takes the Zuletzt place
     host.setJustSaved(id);
     reopen();
   };
@@ -307,7 +308,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     else if (it.saved) { sync.seen(it.saved.id, sync.open); host.open(it.saved, sync.open); }
   };
 
-  const row = (it: Item, spec: RowSpec, folder: string, paired: boolean, liveMarked: boolean): HTMLLIElement => {
+  const tagHtml = (key: string, cls = '') => `<span class="tag${cls ? ' ' + cls : ''}">${esc(t(key))}</span>`;
+  /** [o.tags] = the tags after the name (HTML), [o.mark] = „✓ Gerade gespeichert“ may show on it. */
+  const row = (it: Item, spec: RowSpec, folder: string, paired: boolean, o: { tags: string; mark: boolean }): HTMLLIElement => {
     const li = document.createElement('li');
     li.className = 'tourrow ' + it.section; li.dataset.kind = it.kind;
     if (it.section === 'live') li.dataset.live = '1'; else li.dataset.id = it.id; // the plan on the map is no stored row
@@ -320,14 +323,15 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const w = (cls: string, key: string, ic2: 'monitor' | 'phone') => `<span class="w ${cls}" role="img" title="${esc(t(key))}" aria-label="${esc(t(key))}">${icon(ic2, 18)}</span>`;
       where = `<span class="where">${here ? w('browser', 'web_where_browser', 'monitor') : ''}${phone ? w('phone', 'web_where_phone', 'phone') : ''}</span>`;
     }
-    if (liveMarked || it.section === 'live') li.classList.add('current');
-    if (p && p.id === justSaved) li.classList.add('justsaved');
-    const tag = liveMarked || it.section === 'live' ? `<span class="tag live">${esc(t('routes_tag_live'))}</span>` : p ? tagOf(p) : '';
+    if (it.section === 'live') li.classList.add('current');
+    const marked = !!p && o.mark && p.id === justSaved;
+    if (marked) li.classList.add('justsaved');
+    const tag = o.tags;
     const kindWord = it.kind === 'track' ? t('routes_kind_imported') : t('routes_kind_planned');
     li.innerHTML = `<div class="rowmain">
       <button class="tile" tabindex="-1" aria-hidden="true">${tileHtml(it.segs, it.kind, it.section === 'draft')}</button>
       <button class="open" title="${esc(t('routes_open_row', it.title))}"><span class="txt"><span class="nameline"><span class="name">${esc(it.title)}</span>${tag}</span>
-        <span class="muted small sub">${esc(kindWord + ' · ' + appDate(it.at))}</span>${it.stats ? `<span class="stats">${esc(statsText(it.stats))}</span>` : ''}${p && p.id === justSaved ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
+        <span class="muted small sub">${esc(kindWord + ' · ' + appDate(it.at))}</span>${it.stats ? `<span class="stats">${esc(statsText(it.stats))}</span>` : ''}${marked ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
       ${where}
       ${spec.menu.length ? `<button class="more iconbtn" aria-haspopup="menu" aria-expanded="false" aria-label="${esc(t('web_route_options'))}" title="${esc(t('web_route_options'))}">${icon('moreVert', 22)}</button>
         <div class="menu rowmenu" role="menu" hidden>${spec.menu.map((a) => `<button class="m-${a} ${MENU_CLASS[a]}${a === 'plan' ? ' planact' : ''}${a === 'delete' ? ' danger' : ''}" role="menuitem">${icon(ic[a], 20)}${esc(label[a])}</button>`).join('')}</div>` : ''}
@@ -361,7 +365,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       d.close(); await host.saveLive(); // the plan on the map (its own row, or the saved route it is)
     });
     act('delete', async () => {
-      if (it.recent) { dropRecent(it.recent.id); render(); return; } // a draft: no question, as the app
+      if (it.recent) { toBin(it.recent.id); render(); return; } // a draft: into the recycle bin, no question, as the app
       if (!p) return;
       if (folder !== NONE) { // on the phone: its recycle bin is the net – no question, as the app (owner 2026-11-06)
         try { await sync.remove(p.id, folder); } catch (e) { await render(); failLine(d, t('web_delete_failed'), e); return; }
@@ -395,9 +399,53 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
     return li;
   };
 
+  // Papierkorb (the app's RecycleBinScreen, My routes ⋮ → Papierkorb – here a button beside „GPX importieren“ while it
+  // holds a plan): this browser's Zuletzt plans that another plan replaced, Löschen or the one-time clean-up sent there.
+  // Wiederherstellen brings one back as the Zuletzt plan (the plan there goes in instead); after [BIN_DAYS] days a page
+  // start removes it, as the line at the top says. No „Jetzt löschen“: the app's question speaks of the phone and its
+  // backup folder – the days do it here.
+  let binMode = false;
+  const renderBin = () => {
+    const ul = $('planList'), now = Date.now(), list = binnedPlans();
+    $('plansTitle').textContent = t('common_recycle_bin');
+    search.closest<HTMLElement>('.plansearch')!.hidden = chips.hidden = true;
+    $('plansImportGpx').hidden = $('plansBin').hidden = true;
+    $('binBack').hidden = false;
+    ul.innerHTML = '';
+    ul.append(Object.assign(document.createElement('li'), { className: 'muted small binkeep', textContent: t('backup_bin_keep', BIN_DAYS) }));
+    if (!list.length) ul.append(Object.assign(document.createElement('li'), { className: 'muted binempty', textContent: t('backup_bin_empty') }));
+    for (const r of list) {
+      const li = document.createElement('li');
+      li.className = 'tourrow binrow'; li.dataset.id = r.id;
+      const st = statsOf(planKey(r.code)), left = daysLeft(r.deletedAt!, now);
+      const sub = [t('routes_kind_planned'), appDate(r.at), ...(st ? [distance(st.m)] : [])].join(' · ');
+      const gone = t('backup_bin_deleted', appDate(r.deletedAt!), left === 0 ? t('backup_bin_removed_next') : tp('backup_bin_days_left', left, left));
+      li.innerHTML = `<div class="rowmain"><span class="txt"><span class="nameline"><span class="name">${esc(r.title)}</span></span>
+        <span class="muted small sub">${esc(sub)}</span><span class="muted small binwhen">${esc(gone)}</span></span></div>
+        <div class="rowacts"><button class="r-restore textbtn">${icon('restore', 18)}${esc(t('common_restore'))}</button></div>`;
+      li.querySelector<HTMLButtonElement>('.r-restore')!.onclick = () => {
+        if (!restoreRecent(r.id)) problem('routes', `recycle bin: "${r.title}" could not be restored – it is gone`);
+        else console.info(`[Problems] TRACE routes: recycle bin → Zuletzt: "${r.title}"`);
+        renderBin();
+      };
+      ul.append(li);
+    }
+  };
+  const showBin = (on: boolean) => {
+    binMode = on;
+    if (on) { renderBin(); $<HTMLButtonElement>('binBack').focus(); return; }
+    $('plansTitle').textContent = t('routes_title');
+    $('plansImportGpx').hidden = false; $('binBack').hidden = true;
+    void render().then(() => $<HTMLButtonElement>('closePlans').focus());
+  };
+  $('plansBin').onclick = () => showBin(true);
+  $('binBack').onclick = () => showBin(false);
+
   const render = async () => {
+    if (binMode) { renderBin(); return; }
     const folder = sync.open, paired = sync.status.paired;
     const all = await sync.list(folder);
+    if (binMode) return; // the bin opened meanwhile
     const live = host.live();
     // the plan on the map is that saved row whenever its id is in this folder's list (a pairing moves Without phone's
     // routes into the phone's folder with the same id – the page's savedFolder may still name the old one)
@@ -408,40 +456,52 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost) {
       const st = statsFor(p);
       return { at: p.updatedAt, id: p.id, m: st?.m ?? null, s: st?.s ?? null, up: st ? st.up : null };
     });
-    const recentAll = recentPlans().filter((r) => !live || (r.id !== live.recentId && r.points !== live.pointsKey));
-    // exactly one row under Zuletzt (app 2923a3e7, owner 2026-11-12): the plan on the map, else the newest entry – searched like every row
-    const recent = live ? [] : searchPlans(recentAll.slice(0, 1), query);
-    const liveItem: Item | null = live && !liveMarkedId && searchPlans([{ title: live.title ?? t('routes_live_name') }], query).length
+    // exactly one row under Zuletzt (app 2923a3e7 / 6f4b47d3, owner 2026-11-12, recent.ts recentRow = LivePlanRows): the plan
+    // on the map, else the draft or the saved route worked on last – searched like every row
+    const drafts = recentPlans();
+    const rr = recentRow(live ? { savedHere: !!liveMarkedId, unsaved: live.unsaved } : null, drafts, new Set(all.map((p) => p.id)), zuletztPlace());
+    const liveItem: Item | null = rr?.live && live && searchPlans([{ title: live.title ?? t('routes_live_name') }], query).length
       ? { section: 'live', id: 'live', kind: 'plan', title: live.title ?? t('routes_live_name'), at: Date.now(), stats: live.stats, segs: live.segs, code: null }
       : null;
+    const recent = rr && !rr.live && 'draft' in rr ? searchPlans([rr.draft], query) : [];
+    const placeSaved = rr && !rr.live && 'savedId' in rr ? searchPlans(all.filter((p) => p.id === rr.savedId), query) : [];
+    const savedItem = (p: SavedPlan): Item => ({ section: 'saved', id: p.id, kind: p.kind === 'track' ? 'track' : 'plan', title: titleOf(p), at: p.updatedAt,
+      stats: statsFor(p), segs: shapeOf(p.kind === 'track' ? trackKey(p.id) : planKey(p.plan)), code: p.plan ?? null, saved: p });
+    // the recycle bin's way in (the app: My routes ⋮ → Papierkorb) – while it holds a plan
+    $('plansBin').hidden = !binnedPlans().length;
     const ul = $('planList');
     if (ul.querySelector('.confirm')) return; // a delete question is open: keep the list as it is
-    search.closest<HTMLElement>('.plansearch')!.hidden = chips.hidden = !all.length && !recentAll.length;
+    search.closest<HTMLElement>('.plansearch')!.hidden = chips.hidden = !all.length && !drafts.length;
     placeChips();
     const top = ul.scrollTop;
-    ul.innerHTML = plans.length || recent.length || liveItem ? '' : `<li class="muted">${esc((all.length || recentAll.length) && query.trim() ? t('routes_search_none', query.trim()) : t('routes_empty_planned'))}</li>`;
-    if (recent.length || liveItem) {
+    ul.innerHTML = plans.length || recent.length || liveItem || placeSaved.length ? '' : `<li class="muted">${esc((all.length || drafts.length) && query.trim() ? t('routes_search_none', query.trim()) : t('routes_empty_planned'))}</li>`;
+    if (recent.length || liveItem || placeSaved.length) {
       ul.append(sectionHead(t('routes_section_recent')));
-      if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired, false));
+      // the plan on the map: „In Bearbeitung“, and „Gespeichert“ beside it when it is a saved route as it is
+      if (liveItem) ul.append(row(liveItem, rowActions('live', 'plan', { canSaveLive: live!.canSave && live!.unsaved }), folder, paired,
+        { tags: tagHtml('routes_tag_live', 'live') + (rr?.live && rr.saved ? tagHtml('routes_section_saved', 'savedtag') : ''), mark: false }));
       for (const r of recent) {
         const it: Item = { section: 'draft', id: r.id, kind: 'plan', title: r.title, at: r.at, stats: statsOf(planKey(r.code)), segs: shapeOf(planKey(r.code)), code: r.code, recent: r };
-        ul.append(row(it, rowActions('draft', 'plan'), folder, paired, false));
+        ul.append(row(it, rowActions('draft', 'plan'), folder, paired, { tags: '', mark: false }));
+      }
+      // a saved route holding the place: its clean row with „Gespeichert“ – it is under Gespeichert too (the ✓ mark is left there)
+      for (const p of placeSaved) {
+        const it = savedItem(p);
+        const li = row(it, rowActions('saved', it.kind), folder, paired, { tags: tagHtml('routes_section_saved', 'savedtag'), mark: false });
+        li.dataset.zuletzt = '1';
+        ul.append(li);
       }
       if (plans.length) ul.append(sectionHead(t('routes_section_saved')));
     }
     for (const p of plans) {
-      const key = p.kind === 'track' ? trackKey(p.id) : planKey(p.plan);
-      const marked = p.id === liveMarkedId;
-      const it: Item = { section: 'saved', id: p.id, kind: p.kind === 'track' ? 'track' : 'plan', title: titleOf(p), at: p.updatedAt,
-        stats: statsFor(p), segs: shapeOf(key), code: p.plan ?? null, saved: p };
-      if (marked && live) it.segs = live.segs ?? it.segs;
-      ul.append(row(it, rowActions('saved', it.kind, { liveMarked: marked, canSaveLive: !!live?.unsaved && !!live?.canSave }), folder, paired, marked));
+      const it = savedItem(p);
+      ul.append(row(it, rowActions('saved', it.kind), folder, paired, { tags: tagOf(p), mark: true }));
     }
     // a route added on top is scrolled into view (the app's ListTop); otherwise the list stays where it was
     const first = ul.querySelector<HTMLElement>('li[data-id], li[data-live]')?.dataset.id ?? (ul.querySelector('li[data-live]') ? 'live' : null);
     if (firstId !== null && first !== firstId && top < 40) ul.scrollTop = 0; else ul.scrollTop = top;
     firstId = first;
-    if (justSaved) ul.querySelector<HTMLElement>(`li[data-id="${CSS.escape(justSaved)}"]`)?.scrollIntoView({ block: 'nearest' });
+    if (justSaved) ul.querySelector<HTMLElement>('li.justsaved')?.scrollIntoView({ block: 'nearest' });
   };
   const off = sync.onChange(() => { if (d.open && !d.querySelector('.rowmenu:not([hidden])')) render(); });
   d.addEventListener('close', () => off());
