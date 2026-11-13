@@ -207,7 +207,7 @@ def load_cells(start, reach_m, activity, W):
         if length < A["lake_min_shore_m"]:
             continue
         out.append({"kind": "lake", "name": name, "rank": 0.8, "ring": True, "points": _thin(dense, 150), "dense": dense,
-                    "length_m": length})
+                    "length_m": length, "pad": A.get("lake_pad_cells", 0)})
     for v in views:
         out.append({"kind": "view", "name": v["name"], "rank": 0.5, "ring": False, "points": [v["p"]], "dense": [v["p"]],
                     "length_m": 0})
@@ -370,8 +370,15 @@ class Index:
         self.cells = {}
         self.attr = attractions
         for i, a in enumerate(attractions):
+            pad = a.get("pad", 0)  # lakes: the shore path often runs 50–120 m from the water – a wider band counts
             for p in a["dense"]:
-                self.cells.setdefault((int(p[0] / self.CX), int(p[1] / self.CY)), set()).add(i)
+                cx, cy = int(p[0] / self.CX), int(p[1] / self.CY)
+                if not pad:
+                    self.cells.setdefault((cx, cy), set()).add(i)
+                    continue
+                for dx in range(-pad, pad + 1):
+                    for dy in range(-pad, pad + 1):
+                        self.cells.setdefault((cx + dx, cy + dy), set()).add(i)
 
     def at(self, p, reach=1):
         cx, cy = int(p[0] / self.CX), int(p[1] / self.CY)

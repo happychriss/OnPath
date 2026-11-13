@@ -29,7 +29,7 @@ CASES = [
     ("duesseldorf-hike-2h", dict(start=[6.7763, 51.2254], start_name="Düsseldorf", activity="hike", hours=2, pace="normal",
                                  effort="leicht", natur="hoch", ruhe="mittel", bekannt="mittel"), dict()),
     ("hilden-wasser-3h", dict(start=H, start_name="Hilden", activity="hike", hours=3, pace="gemütlich", effort="leicht",
-                              natur="hoch", ruhe="mittel", bekannt="mittel", wasser=True), dict(lake_in_top3="Elbsee")),
+                              natur="hoch", ruhe="mittel", bekannt="mittel", wasser=True), dict(lake_in_top3="Elbsee", lake_round_shown=True)),
     ("hilden-bekannt-3h", dict(start=H, start_name="Hilden", activity="hike", hours=3, pace="normal", effort="leicht",
                                natur="mittel", ruhe="mittel", bekannt="hoch"), dict(signed_min=50, known_named=True)),
     ("hilden-bike-2h", dict(start=H, start_name="Hilden", activity="bike", hours=2, pace="normal", effort="leicht",
@@ -40,7 +40,11 @@ CASES = [
                               natur="hoch", ruhe="hoch", bekannt="niedrig"), dict()),
     ("zons-bike-3h", dict(start=[6.8448, 51.1231], start_name="Zons", activity="bike", hours=3, pace="normal",
                           effort="mittel", natur="hoch", ruhe="hoch", bekannt="hoch", wasser=True),
-     dict(known_km=("Rheinradweg", 15))),
+     dict(known_km=("Rheinradweg", 25))),
+    # control for the Rhine case: without the water theme and with "Bekannte Wege mittel" it must stay a sound loop
+    ("zons-bike-3h-mittel", dict(start=[6.8448, 51.1231], start_name="Zons", activity="bike", hours=3, pace="normal",
+                                 effort="mittel", natur="mittel", ruhe="mittel", bekannt="mittel"),
+     dict(known_km=("Rheinradweg", 14))),
     ("meran-hike-3h", dict(start=[11.1597, 46.6713], start_name="Meran", activity="hike", hours=3, pace="normal",
                            effort="mittel", t_level=2, natur="hoch", ruhe="mittel", bekannt="hoch"),
      dict(signed_min=40, known_like=("Tappeiner", "Waalweg"))),
@@ -79,6 +83,8 @@ def run_case(name, wish_in, exp, W):
     if "lake_in_top3" in exp:
         checks["%s unter den ersten 3" % exp["lake_in_top3"]] = any(
             exp["lake_in_top3"] in l[0] for c in ch[:3] for l in c["numbers"].get("lakes", []))
+    if exp.get("lake_round_shown"):
+        checks["eine See-Runde unter den Vorschlägen"] = any("· Runde" in c["name"] and c["numbers"].get("lakes") for c in ch)
     if exp.get("known_like"):
         checks["%s unter den ersten 3" % " / ".join(exp["known_like"])] = any(
             w in k[0] for c in ch[:3] for k in c["numbers"].get("known", []) for w in exp["known_like"])

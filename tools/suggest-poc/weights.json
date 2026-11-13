@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-13g",
+  "version": "2026-11-13h",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
 
   "simple": {
@@ -7,7 +7,7 @@
     "levels": {"niedrig": 0.2, "mittel": 0.5, "hoch": 0.9},
     "natur_natural_factor": 0.7,
     "wasser_on": 0.9,
-    "wasser_off": 0.25,
+    "wasser_off": 0.12,
     "effort": {"leicht": "relaxed", "mittel": "medium", "sportlich": "sporty"}
   },
 
@@ -59,6 +59,7 @@
     "surface_avoid_factor": 3.0,
     "known_discount_per_signed": 0.8,
     "known_discount_max": 0.75,
+    "lake": {"_about": "'Am Wasser entlang' (Wasser >= from_water): loops made for the named lakes in reach (the max_lakes with the most way at the water). The way there is a fairly direct one (the usual dislikes to the power direct_power – through town if need be), at most stem_max of the wished length; then round the lake if the length allows it, else along the shore each way; home another way.", "enabled": true, "from_water": 0.5, "max_lakes": 3, "stem_max": 0.4, "min_on_m": 800, "min_follow_m": 700, "on_cost": 0.15, "direct_power": 0.5},
     "follow": {
       "_about": "Loops built along a known route: a short stem (at most stem_max of the wished length) onto the route, along it to the point where stem + route + way home fill the wished length (only points the route reaches fairly directly: direct_max x the straight line), back another way (ways already used cost used_penalty; other known routes are cheap through the discount). Only from 'Bekannte Wege' >= from_signed; the best max_routes routes by rank x length in reach, each in both directions.",
       "enabled": true,
@@ -76,7 +77,7 @@
   },
 
   "attractions": {
-    "_about": "Destinations: named lakes, known routes and named trails, viewpoints (attractions.py). source 'cells' = the app's own map areas (cells.py get …), 'overpass' = the old online stand-in. rank = how much a route's network counts; named trails from the map's trail labels count as lwn. lake_skip = names that are no destination.",
+    "_about": "Destinations: named lakes, known routes and named trails, viewpoints (attractions.py). source 'cells' = the app's own map areas (cells.py get …), 'overpass' = the old online stand-in. rank = how much a route's network counts; named trails from the map's trail labels count as lwn. lake_skip = names that are no destination. lake_pad_cells = how far from the water a way still counts as 'at the lake' (cells of ~30 m on top of the usual two: 2 = about 120 m).",
     "source": "cells",
     "trailname_max_tier": 2,
     "trail_min_m": 1000,
@@ -84,7 +85,7 @@
     "enabled": true,
     "cache_grid_deg": 0.05,
     "max_reach_m": 6000,
-    "lake_min_shore_m": 600,
+    "lake_min_shore_m": 600, "lake_pad_cells": 2,
     "timeout_s": 25,
     "tries": 1,
     "retry_after_s": 300,
@@ -92,7 +93,7 @@
   },
 
   "routing": {
-    "_about": "Profile parameters derived from the wish. A taste slider at or above 'from' switches the profile option on. mainroad_penalty (hike, POC addition – service/make_profiles.py) = base + per_quiet x Ruhe.",
+    "_about": "Profile parameters derived from the wish. A taste slider at or above 'from' switches the profile option on. mainroad_penalty (POC addition to the hiking and bike profiles – service/make_profiles.py) = base + per_quiet x Ruhe.",
     "profile": "hiking-mountain",
     "consider_forest_from": 0.5,
     "consider_noise_from": 0.5,
@@ -136,6 +137,12 @@
     "cycleway_main_from_noise": 4,
     "lit_town_path_is_street": false,
     "main_gap_m": 40,
+    "main": {
+      "_about": "How much a piece counts as 'along a main road' (0..1, suggest.main_weight). base = the road class; calm_maxspeed x calm_factor = a 30 km/h road is no main road; track_factor / lane_factor = a cycle track / lane on the road; bridge_factor = bridges (often the only crossing); sidewalk / beside = a pavement / a separate cycle path beside a loud road. class_from = from here the piece is shown and counted as 'an Hauptstraße'; run_from = from here it adds (weighted metres) to the longest stretch. Hike = the old rule: everything 1.",
+      "base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 1.0},
+      "calm_maxspeed": [], "calm_factor": 1.0, "track_factor": 1.0, "lane_factor": 1.0, "bridge_factor": 1.0,
+      "sidewalk": 1.0, "beside": 1.0, "beside_needs_town": true, "class_from": 0.5, "run_from": 0.3
+    },
     "signed_prefixes": ["route_hiking_", "route_foot_"],
     "surface_asphalt": ["asphalt", "paved", "concrete", "concrete:plates", "concrete:lanes", "paving_stones"],
     "surface_firm": ["compacted", "fine_gravel", "gravel", "pebblestone", "sett", "cobblestone", "unhewn_cobblestone", "metal", "wood", "grass_paver"],
@@ -149,7 +156,7 @@
       "ascent": 1.0,
       "forest": 5.0,
       "quiet": 2.0,
-      "water": 3.0,
+      "water": 6.0,
       "signed": 4.5,
       "natural": 0.0,
       "surface": 2.5,
@@ -168,9 +175,9 @@
     "shape_full_at": 0.35,
     "crossings_zero_per_km": 3.0,
     "signed_full_at": 0.6,
-    "lake_full_m": 1000,
-    "lake_full_share": 0.12,
-    "water_full_at": 0.5
+    "lake_full_m": 2500,
+    "lake_full_share": 0.25,
+    "water_full_at": 0.8
   },
 
   "surface": {
@@ -193,7 +200,7 @@
 
   "select": {
     "_about": "Best first; skipped: a candidate that shares more than max_shared of its length with an already chosen one, or whose time is more than max_length_off away from the wish.",
-    "show": 5,
+    "show": 5, "lake_slot_from_water": 0.5,
     "max_length_off": 0.2,
     "max_shared": 0.5
   },
@@ -210,7 +217,7 @@
       "pace": {"gemütlich": 14, "normal": 18, "zügig": 22},
       "hours": [1, 4],
       "routing": {"profile": "touring"},
-      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "lake": {"enabled": false}, "maxcf": 9000,
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway|path)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
@@ -221,16 +228,19 @@
       "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 1000},
       "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
-      "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false},
+      "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false,
+                  "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
+                           "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
+                           "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
       "score": {"weights": {"forest": 2.5, "street": 1.0, "mainroad": 4.0, "natural": 0.0, "signed": 6.0, "surface": 3.0, "crossings": 0.2},
-                "street_zero_at": 1.2, "main_road_max_m": 1000, "doubled_zero_at": 0.3}
+                "street_zero_at": 1.2, "main_road_max_m": 1000, "signed_full_at": 0.9, "doubled_zero_at": 0.3}
     },
     "gravel": {
       "label": "Gravel",
       "pace": {"gemütlich": 13, "normal": 17, "zügig": 21},
       "hours": [1, 4],
       "routing": {"profile": "trekking"},
-      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "lake": {"enabled": false}, "maxcf": 9000,
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
@@ -241,7 +251,10 @@
       "attractions": {"max_reach_m": 20000},
       "time": {"ascent_m_per_h": 900},
       "effort": {"relaxed": {"max_m_per_km": 6}, "medium": {"max_m_per_km": 12}, "sporty": {"min_m_per_km": 10}},
-      "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false},
+      "classes": {"signed_prefixes": ["route_bicycle_"], "sidewalk_is_street": false,
+                  "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
+                           "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
+                           "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
       "score": {"weights": {"forest": 3.0, "street": 1.5, "mainroad": 4.0, "natural": 0.0, "signed": 4.0, "surface": 3.0, "crossings": 0.2},
                 "street_zero_at": 1.0, "main_road_max_m": 800, "doubled_zero_at": 0.3}
     },
@@ -250,7 +263,7 @@
       "pace": {"gemütlich": 10, "normal": 13, "zügig": 16},
       "hours": [1, 4],
       "routing": {"profile": "mtb"},
-      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "maxcf": 9000,
+      "netsearch": {"radius_factor": 0.4, "max_radius_m": 22000, "follow": {"max_routes": 3}, "lake": {"enabled": false}, "maxcf": 9000,
                     "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)",
                     "keep": "route_bicycle_[a-z]+=yes|bicycle=designated", "sectors": 6, "bands": [0.3],
                     "band_width": 0.02, "pairs_max": 6, "pairs_per_anchor": 2, "max_targets": 3, "used_penalty": 5.0,
@@ -261,7 +274,10 @@
       "attractions": {"max_reach_m": 10000},
       "time": {"ascent_m_per_h": 700},
       "effort": {"relaxed": {"max_m_per_km": 10}, "medium": {"max_m_per_km": 20}, "sporty": {"min_m_per_km": 15}},
-      "classes": {"signed_prefixes": ["route_mtb_", "route_bicycle_"], "sidewalk_is_street": false},
+      "classes": {"signed_prefixes": ["route_mtb_", "route_bicycle_"], "sidewalk_is_street": false,
+                  "main": {"base": {"trunk": 1.0, "primary": 1.0, "secondary": 1.0, "tertiary": 0.8},
+                           "calm_maxspeed": ["10", "20", "30"], "calm_factor": 0.3, "track_factor": 0.5, "lane_factor": 0.75,
+                           "bridge_factor": 0.4, "beside": 0.4, "beside_needs_town": false}},
       "score": {"weights": {"forest": 4.0, "street": 2.5, "mainroad": 4.0, "natural": 0.0, "signed": 3.0, "surface": 3.5, "crossings": 0.2},
                 "street_zero_at": 0.8, "main_road_max_m": 600, "doubled_zero_at": 0.3}
     }

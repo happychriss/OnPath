@@ -210,3 +210,20 @@ case: variant B is hiking-only so far.
   off, signed ways kept) and a route's identity / order in the map data (still missing: pieces are matched by name).
 - Open: the planner's own map picture in the POC page (not built), main-road cost for bikes, tuning of the surface
   values, the Elbsee case lost in the bench after the water fix.
+
+## Round 5 (2026-11-13) – "along a main road" is a weight, loops made for a lake
+
+- **Main road = a weight 0..1 per piece of way, per activity** (`classes.main`): road class, calm (30 km/h), cycle
+  track / lane, bridge, a path beside a loud road. One rule feeds the network cost, the profile addition, the
+  longest-stretch score and the card. Found on the owner's Zons case: the "1.4 km main road" of the Rhine ride was a
+  30 km/h village street on the signed route.
+- **A known route counts on a road only where the routing data flags the road itself** – the map's route line
+  alone (30 m) also catches the carriageway next to the cycle path.
+- **Score parts must tell loops apart:** after `water` (round 4) the `signed` part had the same fault for bikes
+  (1.0 for all). Rule for every new part: look at its spread over one run's candidates.
+- **A theme needs its own construction and a reserved slot:** with "am Wasser entlang" the search builds loops for
+  the lakes in reach with a *direct* way there (the pleasant-way search never arrives across a town) and shows one
+  even when loops elsewhere score higher.
+- **For the real feature:** rivers as named destinations (the map has `waterway` with names), ferries as a flagged
+  piece of a loop (hours, price), and the there-and-back stem as a legitimate shape for a destination across town.
+- Numbers and what is still weak: `tools/suggest-poc/README.md` "Round 5".
