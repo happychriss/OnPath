@@ -19,7 +19,7 @@ How it works – no name matching:
     (Tappeinerweg ↔ Tappeiner-Promenade): then it is an alias and joins the picks.
 Only the area's box, its town names and our own map's names go out; nothing about a user.
 Result: ~/onpath-suggest-poc/region-ai/10-x-y.json (version 2; an old version-1 file is kept as *.v1.json).
-`regionbonus.py` reads these files at request time – it never calls the AI.
+`suggest.tips` reads these files at request time (wish field `tips`) – a request never calls the AI.
 
 The AI call here is `claude -p` (the Claude Code command line on this computer, run in an empty folder so it
 knows nothing of this project). The real thing would be one API call on the map server when it builds an area.

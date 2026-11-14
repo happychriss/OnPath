@@ -113,8 +113,8 @@ def suggest(wish, S=None):
     lap("facts")
     P = Place(net, F, ch, S, tips(wish, radius))
     if P.access >= 0.1 * ch.target_m:
-        notes.append("Von hier sind es etwa %s km bis ins Grüne. Dieser Weg hinaus und zurück ist bei jeder Runde gleich "
-                     "und zählt bei der Bewertung nicht mit." % ("%.1f" % (P.access / 1000.0)).replace(".", ","))
+        notes.append("Von hier sind es etwa %s km durch den Ort bis ins Grüne. Dieser Weg hinaus und zurück ist bei jeder "
+                     "Runde gleich und zählt bei der Bewertung nicht mit." % ("%.1f" % (P.access / 1000.0)).replace(".", ","))
     lap("place")
     cands = pool(P, S)
     lap("loops")

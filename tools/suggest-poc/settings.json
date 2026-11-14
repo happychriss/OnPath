@@ -44,8 +44,8 @@
   },
 
   "place": {
-    "_about": "Level 2 – the place as the yardstick. A value is poor at the `low` quantile of the ways in reach and full at the `high` one (at least min_span apart). standout = the best share of the ground here: connected it forms the areas and lines the loops aim at; an area counts from min_area x the wished length. access_max = at most this share of the wished length counts as the unavoidable way out.",
-    "low": 0.25, "high": 0.95, "min_span": 0.15, "standout": 0.3, "min_area": 0.12, "access_max": 0.2
+    "_about": "Level 2 – the place as the yardstick. A value is poor at the `low` quantile of the ways in reach and full at the `high` one (at least min_span apart). standout = the best share of the ground here: connected it forms the areas and lines the loops aim at; an area counts from min_area x the wished length. access_built = the way out ends where less than this share of the ways runs through houses; access_max = at most this share of the wished length counts as the unavoidable way out.",
+    "low": 0.25, "high": 0.95, "min_span": 0.15, "standout": 0.3, "min_area": 0.12, "access_built": 0.3, "access_max": 0.2
   },
 
   "search": {
