@@ -40,7 +40,8 @@ class H(BaseHTTPRequestHandler):
         st = S.load_settings()
         if what == "places":
             return self.send({"places": st["places"], "version": st["version"],
-                              "activities": {k: v["label"] for k, v in st["activities"].items() if k != "_about"}})
+                              "activities": {k: v["label"] for k, v in st["activities"].items() if k != "_about"},
+                              "paces": {k: v["pace"] for k, v in st["activities"].items() if k != "_about"}})
         if what == "place":
             r = S.find_place(q.get("q", ""), st)
             return self.send({"name": r[0], "lonlat": r[1]} if r else {"error": "Ort nicht gefunden"})

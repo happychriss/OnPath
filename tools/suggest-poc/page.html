@@ -47,11 +47,14 @@
   <div class="row">
     <div><label>Aktivität</label><select id="activity"></select></div>
     <div id="tbox"><label>Schwierigkeit bis</label><select id="t_level"><option value="1">T1 gemütlich</option><option value="2" selected>T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5 wild</option></select></div>
-    <div><label>Dauer (Stunden)</label><input type="number" id="hours" value="2" min="0.5" max="8" step="0.25"></div>
+  </div>
+  <div class="row">
+    <div><label>Dauer von – bis (Stunden) <span id="km"></span></label><div class="row"><input type="number" id="h0" value="1.5" min="0.25" max="10" step="0.25"><input type="number" id="h1" value="2.5" min="0.25" max="10" step="0.25"></div></div>
+    <div><label>Höhenmeter von – bis</label><div class="row"><input type="number" id="up0" min="0" step="50" placeholder="auto"><input type="number" id="up1" min="0" step="50" placeholder="auto"></div></div>
   </div>
   <div class="row">
     <div><label>Tempo</label><select id="pace"><option>gemütlich</option><option selected>normal</option><option>zügig</option></select></div>
-    <div><label>Anstrengung</label><select id="effort"><option>leicht</option><option selected>mittel</option><option>sportlich</option></select></div>
+    <div><label>Anstrengung</label><select id="effort" title="gibt die Höhenmeter vor, wenn dort nichts eingetragen ist"><option>leicht</option><option selected>mittel</option><option>sportlich</option></select></div>
     <div><label>Wegbeschaffenheit</label><select id="surface"></select></div>
   </div>
   <label>Was ist dir wichtig?</label>
@@ -79,7 +82,7 @@ const SURFACE = {foot: [['befestigt','befestigt'], ['gemischt','gemischt'], ['na
 const map = L.map('map').setView([51.168, 6.9395], 13);
 L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
 const layer = L.layerGroup().addTo(map), knownLayer = L.layerGroup().addTo(map);
-let start = [6.9395, 51.168], marker = null, result = null, selected = null, seed = 1;
+let start = [6.9395, 51.168], marker = null, result = null, selected = null, seed = 1, paces = {};
 const level = {natur: 'mittel', ruhe: 'mittel', bekannt: 'mittel'};
 
 document.querySelectorAll('.lv').forEach(row => ['niedrig', 'mittel', 'hoch'].forEach(v => {
@@ -91,7 +94,12 @@ function forActivity() {
   $('tbox').style.display = foot ? '' : 'none';
   $('surface').innerHTML = SURFACE[foot ? 'foot' : 'wheel'].map(o => `<option value="${o[0]}"${o[0] === 'gemischt' ? ' selected' : ''}>${o[1]}</option>`).join('');
 }
-$('activity').onchange = forActivity;
+function showKm() {
+  const p = (paces[$('activity').value] || {})[$('pace').value];
+  $('km').textContent = p ? `≈ ${km(Math.round($('h0').value * p))}–${km(Math.round($('h1').value * p))} km` : '';
+}
+$('activity').onchange = () => { forActivity(); showKm(); };
+['pace', 'h0', 'h1'].forEach(id => $(id).oninput = showKm);
 function setStart(lonlat, name) {
   start = lonlat; if (name) $('place').value = name;
   if (marker) marker.remove();
@@ -105,7 +113,8 @@ async function find() {
 }
 $('find').onclick = find;
 $('place').onkeydown = e => { if (e.key === 'Enter') find(); };
-const wish = () => ({start, start_name: $('place').value, activity: $('activity').value, t_level: +$('t_level').value, hours: +$('hours').value,
+const wish = () => ({start, start_name: $('place').value, activity: $('activity').value, t_level: +$('t_level').value, hours: [+$('h0').value, +$('h1').value],
+  ascent: $('up0').value !== '' && $('up1').value !== '' ? [+$('up0').value, +$('up1').value] : null,
   pace: $('pace').value, effort: $('effort').value, surface: $('surface').value, ...level, wasser: $('wasser').checked, tips: $('tips').checked, seed});
 async function go() {
   $('status').textContent = 'Runden werden gesucht …'; $('cards').innerHTML = ''; $('notes').innerHTML = '';
@@ -119,7 +128,7 @@ const km = x => String(x).replace('.', ','), hm = h => Math.floor(h) + ':' + Str
 function show(r) {
   result = r; selected = null;
   const shown = r.candidates.filter(c => c.chosen);
-  $('status').textContent = `${shown.length} Vorschläge aus ${r.candidates.length} Runden · ${km(r.seconds)} s · Ziel ~${km(r.target_km)} km · Charakter ${r.character.word} · Stand ${r.version}`;
+  $('status').textContent = `${shown.length} Vorschläge aus ${r.candidates.length} Runden · ${km(r.seconds)} s · ${hm(r.hours[0])}–${hm(r.hours[1])} h (${km(r.target_km[0])}–${km(r.target_km[1])} km) · ↑ ${r.ascent[0]}–${r.ascent[1]} m · Charakter ${r.character.word} · Stand ${r.version}`;
   $('notes').innerHTML = r.notes.map(n => `<div>${n}</div>`).join('');
   $('cards').innerHTML = '';
   shown.forEach((c, i) => {
@@ -174,9 +183,15 @@ $('known').onchange = async () => {
 fetch(BASE + 'places').then(r => r.json()).then(d => {
   $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join('');
   $('activity').innerHTML = Object.entries(d.activities).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
-  forActivity();
+  paces = d.paces; forActivity(); showKm();
   if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r => {
-    $('activity').value = r.wish.activity; forActivity(); $('hours').value = r.wish.hours; show(r); });
+    const w = r.wish;
+    $('activity').value = w.activity; forActivity(); $('t_level').value = w.t_level; $('h0').value = +w.hours[0].toFixed(2); $('h1').value = +w.hours[1].toFixed(2);
+    if (w.ascent) { $('up0').value = w.ascent[0]; $('up1').value = w.ascent[1]; }
+    $('effort').value = w.effort; $('surface').value = w.surface; $('wasser').checked = w.wasser; $('tips').checked = w.tips;
+    document.querySelectorAll('.lv').forEach(row => row.querySelectorAll('button').forEach(b => b.className = b.textContent === w[row.dataset.k] ? 'on' : ''));
+    Object.keys(level).forEach(k => level[k] = w[k]);
+    showKm(); show(r); });
 });
 setStart(start);
 </script>

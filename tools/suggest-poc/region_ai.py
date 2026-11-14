@@ -36,7 +36,7 @@ import unicodedata
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
-import attractions as AT  # noqa: E402  (read-only use: the per-area extract of routes / trails / lakes)
+import named as AT  # noqa: E402  (read-only use: the per-area extract of routes / trails / lakes)
 import cells as CE  # noqa: E402
 import pmt  # noqa: E402
 import suggest as S  # noqa: E402
@@ -118,8 +118,7 @@ def _area_km2(ring):
 def catalog(x, y, W=None):
     """The closed list of one map area: [{id, kind, name, rank, detail, geom}] – every entry is an object of our map.
     geom: {type: line|shore|area|point, lines | rings | p}."""
-    W = W or S.load_weights()
-    A = W["attractions"]
+    A = {"trail_min_m": 1000, "lake_skip": AT.NOT_A_LAKE.pattern, "lake_min_shore_m": 600}
     box = CE.cell_bbox(x, y)
     d = CE.folder(x, y)
     cell_km2 = _area_km2([[box[0], box[1]], [box[2], box[1]], [box[2], box[3]], [box[0], box[3]]])
@@ -134,7 +133,7 @@ def catalog(x, y, W=None):
 
     # known routes and named trails (the POC's per-area extract; pieces of one route merged under one name)
     groups = {}
-    for r in AT.read_cell(x, y, A)["routes"]:
+    for r in AT.read_cell(x, y)["routes"]:
         g = groups.setdefault((r["kind"], bool(r.get("trail")), merged_label(r["label"])), {"net": 0, "lines": []})
         g["net"] = max(g["net"], int(r.get("net") or 0))
         for l in r["lines"]:
@@ -152,7 +151,7 @@ def catalog(x, y, W=None):
             add("route:" + kind, label, g["net"], {"type": "line", "lines": lines}, km)
     # lakes with a real shore
     skip = re.compile(A.get("lake_skip", "^$"), re.I)
-    for l in AT.read_cell(x, y, A)["lakes"]:
+    for l in AT.read_cell(x, y)["lakes"]:
         km = length_km(l["lines"])
         if skip.search(l["name"]) or km * 1000 < A.get("lake_min_shore_m", 600):
             continue
@@ -439,7 +438,7 @@ def run(x, y, model="sonnet", only_list=False, recheck=False, log=print):
 def around(place, reach_km, create, model):
     """Which map areas within reach of a place have no AI file yet, and what creating them would cost. Creates them
     only with --create (one AI call per missing area)."""
-    pl = S.find_place(place, S.load_weights())
+    pl = S.find_place(place, S.load_settings())
     if not pl:
         sys.exit("Ort nicht gefunden: " + place)
     cells = CE.cells_for(pl[1][0], pl[1][1], reach_km * 1000.0)
@@ -479,7 +478,7 @@ def main():
     if m:
         x, y = int(m.group(1)), int(m.group(2))
     else:
-        pl = S.find_place(arg, S.load_weights())
+        pl = S.find_place(arg, S.load_settings())
         if not pl:
             sys.exit("Ort nicht gefunden: " + arg)
         x, y = CE.cell_of(*pl[1])

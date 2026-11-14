@@ -21,7 +21,7 @@ from facts import Facts
 from generate import pool
 from net import load, seat_start
 from place import Place
-from score import choose, explain, score
+from score import choose, explain, judge
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SERVICE = os.environ.get("SUGGEST_SERVICE", "http://127.0.0.1:8791")
@@ -98,7 +98,7 @@ def suggest(wish, S=None):
         times[key], t = round(time.time() - t, 2), time.time()
     t0, notes = t, []
     ch = Character(wish, S)
-    radius = min(ch.family["reach_max_m"], max(1500.0, S["search"]["radius"] * ch.target_m))
+    radius = min(ch.family["reach_max_m"], max(1500.0, S["search"]["radius"] * ch.max_m))
     ensure_service()
     missing = cells.ensure(wish["start"][0], wish["start"][1], radius)[1]
     if missing:
@@ -116,17 +116,16 @@ def suggest(wish, S=None):
         notes.append("Von hier sind es etwa %s km bis ins Grüne. Dieser Weg hinaus und zurück ist bei jeder Runde gleich "
                      "und zählt bei der Bewertung nicht mit." % ("%.1f" % (P.access / 1000.0)).replace(".", ","))
     lap("place")
-    cands = pool(P, S, wish)
+    cands = pool(P, S)
     lap("loops")
     views = [{"name": th["name"], "p": th["dense"][0]} for th in things if th["kind"] == "view"]
-    for i, c in enumerate(cands):
-        score(P, S, c, wish, views)
+    for i, c in enumerate(judge(P, S, cands, views)):
         c["id"] = i + 1
     shown = choose(P, S, cands)
     for c in cands:
         c["chosen"] = c in shown
         if c["chosen"]:
-            explain(P, c, wish)
+            explain(P, c)
         nodes = c.pop("nodes")
         c["coords"], c["cls"] = [[round(v, 6) for v in net.nodes[nodes[0]][:2]]], ""
         for ei, frm in zip(c.pop("edges"), nodes):
@@ -136,10 +135,13 @@ def suggest(wish, S=None):
                          "W" if F.green[ei] >= 0.5 else "P") * len(pts)
     if not shown:
         notes.append("Von hier ließ sich keine passende Runde finden.")
+    elif max(c["up"] for c in shown) < ch.up[0]:
+        notes.append("So viele Höhenmeter sind in dieser Zeit von hier aus nicht zu finden – die Vorschläge haben weniger.")
     lap("judging")
     return {"run": time.strftime("%Y%m%d-%H%M%S") + "-%d" % wish["seed"], "wish": wish, "version": S["version"],
             "weights_version": S["version"], "method": "v2", "seconds": round(time.time() - t0, 1), "times": times,
-            "notes": notes, "target_km": round(ch.target_m / 1000.0, 1), "character": {"wild": round(ch.wild, 2), "word": ch.word(),
+            "notes": notes, "target_km": [round(ch.min_m / 1000.0, 1), round(ch.max_m / 1000.0, 1)], "hours": list(ch.hours),
+            "ascent": list(ch.up), "character": {"wild": round(ch.wild, 2), "word": ch.word(),
                                                                                     "axes": {k: round(v, 2) for k, v in ch.axes.items()}},
             "place": {"nodes": len(net.nodes), "access_m": int(P.access), "low": {k: round(v, 2) for k, v in P.low.items()},
                       "high": {k: round(v, 2) for k, v in P.high.items()},
@@ -162,8 +164,8 @@ def save_run(result):
 def table(result, everything=False):
     """The run as text – for the terminal and for judging without a picture."""
     w, pl = result["wish"], result["place"]
-    out = ["%s · %s · %g h · Ziel %s km · Charakter %s (%.2f) · %d Wegpunkte · %.1f s" % (
-        w["start_name"] or w["start"], w["activity"], w["hours"], result["target_km"], result["character"]["word"],
+    out = ["%s · %s · %.2g–%.2g h (%s–%s km) · ↑ %d–%d m · Charakter %s (%.2f) · %d Wegpunkte · %.1f s" % (
+        w["start_name"] or w["start"], w["activity"], *result["hours"], *result["target_km"], *result["ascent"], result["character"]["word"],
         result["character"]["wild"], pl["nodes"], result["seconds"])]
     out += ["  Hinweis: " + n for n in result["notes"]]
     out.append("  Was hier heraussticht: " + (", ".join("%s (%s km)" % tuple(a) for a in pl["areas"][:8]) or "–"))

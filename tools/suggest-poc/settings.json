@@ -12,7 +12,7 @@
   },
 
   "family": {
-    "_about": "What differs between going on foot and on wheels. ground = how welcome [paved, firm, natural, rough] ground is at the gemütlich and the wild end. up_m_per_h = metres of ascent per hour that are still comfortable (the cap is 1.5 x). ascent_m_per_h = time model: hours = km / pace + ascent / this. band_km = the length is a rough guide this far either way. free_stem_m = a way out and back this long costs nothing. road_walk_max_m = longest stretch along a road with cars outside a town (0 = no limit). reach_max_m / coarse = how much way network is loaded (wheels: minor ways left out unless a signed route runs on them). sectors / pairs / chains / lines = how many loops each generator tries.",
+    "_about": "What differs between going on foot and on wheels. ground = how welcome [paved, firm, natural, rough] ground is at the gemütlich and the wild end. up_m_per_h = usual metres of ascent per hour at the gemütlich and the wild end (with the effort it gives the ascent range). ascent_m_per_h = time model: hours = km / pace + ascent / this. band_km = a single wished time is widened by this many kilometres either way to a range. free_stem_m = a way out and back this long costs nothing. road_walk_max_m = longest stretch along a road with cars outside a town (0 = no limit). reach_max_m / coarse = how much way network is loaded (wheels: minor ways left out unless a signed route runs on them). sectors / pairs / chains / lines = how many loops each generator tries.",
     "foot":  {"ground": {"gemütlich": [0.8, 1.0, 0.8, 0.1], "wild": [0.1, 0.5, 1.0, 1.0]}, "up_m_per_h": [150, 500], "ascent_m_per_h": 500,
               "band_km": 1.0, "free_stem_m": 700, "road_walk_max_m": 300, "reach_max_m": 7000, "coarse": null,
               "sectors": 12, "pairs": 12, "chains": 8, "lines": 4},
@@ -29,11 +29,11 @@
   },
 
   "controls": {
-    "_about": "The page's few controls only nudge the character. level = factor on an axis weight (Natur, Ruhe) or on signed routes (Bekannte Wege). surface = step on the character scale for the ground only. effort = factor on the comfortable ascent (sportlich: no cap). water = with 'am Wasser entlang' water is what counts as special, and Besonderes weighs this much more.",
+    "_about": "The page's few controls only nudge the character. level = factor on an axis weight (Natur, Ruhe) or on signed routes (Bekannte Wege). surface = step on the character scale for the ground only. effort = the ascent range when none is given: [from, to] x the usual metres up per hour of this character x the hours wished. water = with 'am Wasser entlang' water is what counts as special, and Besonderes weighs this much more.",
     "level": {"niedrig": 0.5, "mittel": 1.0, "hoch": 1.7},
     "surface": {"befestigt": -0.35, "glatt": -0.35, "asphalt": -0.35, "gemischt": 0.0, "fest": 0.0, "egal": 0.0, "natur": 0.35, "rau": 0.35},
-    "effort": {"leicht": 0.6, "mittel": 1.0, "sportlich": 0},
-    "water": 2.0
+    "effort": {"leicht": [0, 0.6], "mittel": [0, 1.2], "sportlich": [0.5, 3.0]},
+    "water": 3.0
   },
 
   "facts": {
@@ -54,12 +54,12 @@
   },
 
   "form": {
-    "_about": "The Form axis and the few hard rules. length_zero = share of the wished length beyond the band at which the length part is 0 (and the loop is not kept). doubled_zero = share walked twice (beyond the free stem) at which that part is 0. cross = factor for one meeting with the own way; max_cross = more meetings than this are never offered. view = bonus per viewpoint passed.",
-    "length_zero": 0.3, "doubled_zero": 0.25, "cross": 0.75, "max_cross": 1, "view": 0.05
+    "_about": "The Form axis and the few hard rules. Inside the wished ranges of time and ascent every loop is equally fine. short_zero = share below the shortest wished time at which the time part is 0; long_zero = share above the longest from which a loop is no longer offered; under the wished ascent the part falls gently, above it the loop is not offered. doubled_zero = share walked twice (beyond the free stem) at which that part is 0. cross = factor for one meeting with the own way; max_cross = more meetings than this are never offered. view = bonus per viewpoint passed.",
+    "short_zero": 0.3, "long_zero": 0.1, "doubled_zero": 0.25, "cross": 0.75, "max_cross": 1, "view": 0.05
   },
 
   "select": {
-    "_about": "max suggestions; a further one may share at most `overlap` of its way (beyond the common way out) with one already shown and must not be more than `behind` points below the first; every stand-out area in reach gets one suggestion if its best loop is within cover_behind points.",
-    "max": 5, "overlap": 0.6, "behind": 18, "cover_behind": 12
+    "_about": "max suggestions; a further one may share at most `overlap` of its way (beyond the common way out) with one already shown and must not be more than `behind` points below the first; what stands out in reach (a top line such as the river with 'am Wasser entlang', an area) gets one suggestion if its best loop is within cover_behind points.",
+    "max": 5, "overlap": 0.6, "behind": 18, "cover_behind": 15
   }
 }

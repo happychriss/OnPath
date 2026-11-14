@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Tour suggestions in the terminal – one wish, the suggestions as text, on request as pictures.
 
-  python3 tools/suggest-poc/run.py Hilden --hours 2
+  python3 tools/suggest-poc/run.py Hilden --hours 1.5-2.5 --ascent 0-150
   python3 tools/suggest-poc/run.py "51.18413, 6.94460" --wasser --png        (map picture of the suggestions + the first one)
   python3 tools/suggest-poc/run.py Zons --activity bike --hours 3 --natur hoch --all
 
@@ -45,7 +45,9 @@ if __name__ == "__main__":
     ap.add_argument("start")
     ap.add_argument("--activity", default="hike")
     ap.add_argument("--t", dest="t_level", type=int, default=2)
-    ap.add_argument("--hours", type=float, default=2.0)
+    span = lambda s: [float(x) for x in s.split("-")] if "-" in s else float(s)
+    ap.add_argument("--hours", type=span, default=2.0, help="2 or a range 1.5-2.5")
+    ap.add_argument("--ascent", type=span, default=None, help="metres up as a range, e.g. 0-200 (default: from the effort)")
     for k, default in (("pace", "normal"), ("effort", "mittel"), ("surface", "gemischt"), ("natur", "mittel"), ("ruhe", "mittel"), ("bekannt", "mittel")):
         ap.add_argument("--" + k, default=default)
     ap.add_argument("--wasser", action="store_true")

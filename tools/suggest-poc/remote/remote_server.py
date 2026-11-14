@@ -22,8 +22,8 @@ Rules it keeps:
 - Map areas the POC does not have yet are fetched (or their build is asked for, as the app would) in the background;
   until they are there the answer is a calm {"preparing": true, …} instead of an error or a long wait.
 
-The method: ~/onpath-suggest-poc/remote/method (one word) wins; else weights.json "default_method"; else `auto` when
-the POC knows it; else `b`. Read at every request, like weights.json.
+The wish may carry the old single values (hours) or the new ranges (hours / duration = [from, to], ascent =
+[from, to] metres up); an old "method" field is ignored – there is one method. settings.json is read at every request.
 """
 import argparse
 import hmac
@@ -79,12 +79,18 @@ def clean_wish(b):
     act = b.get("activity", "hike")
     if act not in ACTIVITIES:
         raise ValueError("unknown activity")
-    hours = float(b.get("hours", 2))
-    if not 0.25 <= hours <= 8:
-        raise ValueError("hours must be 0.25 … 8")
+    # time and ascent: the old single value or the new range [from, to] (also as "duration")
+    def span(v, lo, hi, what):
+        vals = [float(x) for x in v] if isinstance(v, list) and len(v) == 2 else [float(v)]
+        if not all(lo <= x <= hi for x in vals):
+            raise ValueError("%s must be %g … %g" % (what, lo, hi))
+        return sorted(vals) if len(vals) == 2 else vals[0]
+    hours = span(b.get("duration") or b.get("hours", 2), 0.25, 10, "hours")
     w = {"start": [lon, lat], "start_name": str(b.get("start_name") or "")[:80], "activity": act, "hours": hours,
          "t_level": max(1, min(5, int(b.get("t_level", 2)))), "pace": "normal", "seed": int(b.get("seed", 1)) % 100000,
-         "wasser": bool(b.get("wasser")), "ai": bool(b.get("ai"))}
+         "wasser": bool(b.get("wasser")), "ai": bool(b.get("ai") or b.get("tips"))}
+    if isinstance(b.get("ascent"), list):
+        w["ascent"] = span(b["ascent"], 0, 5000, "ascent")
     if b.get("pace") in ("gemütlich", "normal", "zügig"):
         w["pace"] = b["pace"]
     if b.get("effort") in ("leicht", "mittel", "sportlich"):
@@ -94,9 +100,7 @@ def clean_wish(b):
             w[k] = b[k]
     if isinstance(b.get("surface"), str):
         w["surface"] = b["surface"][:20]
-    if isinstance(b.get("method"), str) and b["method"].lower() in ("a", "b", "c", "auto"):
-        w["method"] = b["method"].lower()
-    return w
+    return w  # "method" in an old wish is ignored: there is one method
 
 
 def rd5_name(lon, lat):
@@ -117,15 +121,7 @@ def worker_main(conn, service):
         pass
     import suggest as S
     import cells as CE
-
-    def method_for(w, W):
-        if w.get("method"):
-            want = w["method"]
-        else:
-            p = os.path.join(RDIR, "method")
-            want = open(p).read().strip().lower() if os.path.isfile(p) else str(W.get("default_method") or "auto").lower()
-        probe = S.simple_wish({"start": [7.0, 51.0], "method": want}, W)  # the POC maps a method it does not know to "a"
-        return want if probe.get("method") == want else "b"
+    from character import wish as make_wish
 
     while True:
         try:
@@ -133,26 +129,24 @@ def worker_main(conn, service):
         except EOFError:
             return
         try:
-            W = S.load_weights()
-            w = job["wish"]
-            m = method_for(w, W)
-            wish = S.simple_wish(dict(w, method=m), W)
+            st = S.load_settings()
+            wish = make_wish(job["wish"], st)
             if job["op"] == "need":
-                target_m = wish["hours"] * wish["pace"] * 1000.0
+                target_m = wish["hours"][1] * wish["pace"] * 1000.0
                 # a loop of length L stays within L/2 of its start: the map areas in that circle (at least 3 km, at most 30)
                 reach = min(max(0.5 * target_m, 3000.0), 30000.0)
                 need = CE.cells_for(wish["start"][0], wish["start"][1], reach)
                 conn.send({"need": need, "missing": [c for c in need if not CE.have(*c)],
                            "segments": os.environ.get("ONPATH_SEGMENTS", os.path.expanduser("~/onpath-routing/segments"))})
                 continue
-            res = S.suggest(wish)
+            res = S.suggest(wish, st)
             if job.get("save"):
                 d = os.path.join(RDIR, "runs")
                 os.makedirs(d, exist_ok=True)
                 with open(os.path.join(d, res["run"] + ".json"), "w", encoding="utf-8") as f:
                     json.dump(res, f, ensure_ascii=False)
             keep = ("km", "hours", "ascent", "ferry_m", "known", "reserves", "lakes", "forest_pct", "self_cross",
-                    "street_pct", "town_pct", "deep_pct", "signed_pct")
+                    "street_pct", "town_pct", "deep_pct", "signed_pct", "water_km", "rail_km", "road_longest_m")
             out = []
             for c in res.get("candidates", []):
                 if not c.get("chosen"):
@@ -160,7 +154,8 @@ def worker_main(conn, service):
                 n = c.get("numbers", {})
                 out.append({"id": c["id"], "name": c["name"], "chosen": True, "score": c.get("score"),
                             "coords": [[round(p[0], 6), round(p[1], 6)] for p in c.get("coords", [])],
-                            "numbers": {k: n[k] for k in keep if k in n}, "tips": c.get("tips") or []})
+                            "numbers": {k: n[k] for k in keep if k in n}, "tips": [],
+                            "reasons": c.get("reasons", []), "hints": c.get("hints", []), "axes": c.get("axes"), "why": c.get("why")})
             conn.send({"candidates": out, "method": res.get("method"), "seconds": res.get("seconds"),
                        "notes": res.get("notes", []), "weights_version": res.get("weights_version"), "run": res.get("run")})
         except Exception as e:  # reported to the caller as a calm error; the worker lives on

@@ -4,16 +4,15 @@ From our own map areas (base.pmtiles of a cell, zoom 12): the `landcover` polygo
 and the `park` polygons that are protected nature (nature reserve, national park), the `landuse` polygons that are
 built-up (residential, commercial, industrial, retail, railway, schools …) and the `water` polygons (lake, river,
 pond) are drawn into a grid of ~45 m per map area (cached beside the cell as nature-v<N>.bin + .json). The measure
-for a point is then simply the share of grid squares of a kind within `radius_m` around it:
+for a point is then simply the share of grid squares of a kind within a radius around it (`around`):
 
   a path in the middle of a big forest or reserve  -> nature ~1.0
   a path along its edge                            -> ~0.5
   a green strip, a park between houses             -> 0.1 – 0.3
   a street inside a housing area                   -> built ~1.0 (a green corridor between houses: ~0)
 
-So size and depth come out of one number, without joining polygons across tile borders. `name_at` says in which
-protected area a point lies (for the card: "2,4 km im Naturschutzgebiet Ohligser Heide"); `place_near` gives the
-nearest named place (for naming an unnamed green patch: "Wald bei Kalstert").
+So size and depth come out of one number, without joining polygons across tile borders. `around` also says in which
+protected area a point lies; `place_near` gives the nearest named place (for naming an unnamed area: "Wald bei Kalstert").
 """
 import json
 import math
@@ -142,37 +141,32 @@ def cell(x, y):
                     run += 1
                 sat[base + c + 1] = sat[up + c + 1] + run
         m[key] = sat
-    m.update({"grid": grid, "names": names})
+    m.update({"grid": grid, "names": names, "east": m["west"] + w * DLON, "south": m["north"] - h * DLAT})
     _mem[(x, y)] = m
     return m
 
 
-def depth(p, radius_m=300.0, which="sat"):
-    """Share of nature (forest / heath / wetland / protected area) within radius_m around p = [lon, lat], 0..1.
-    which = "sat_built": share of built-up land; "sat_water": share of open water."""
-    m = cell(*CE.cell_of(p[0], p[1]))
-    if not m:
-        return 0.0
+_last = [None]
+
+
+def around(p):
+    """What the land is around p = [lon, lat], in one look-up: (nature within 100 m, 300 m, 900 m; built-up within
+    45 m; open water within 90 m, 300 m – each a share 0..1; name of the protected area p lies in or '')."""
+    m = _last[0]
+    if not (m and m["west"] <= p[0] < m["east"] and m["south"] < p[1] <= m["north"]):
+        m = _last[0] = cell(*CE.cell_of(p[0], p[1]))
+        if not m:
+            return 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, ""
     w, h = m["w"], m["h"]
-    c, r = int((p[0] - m["west"]) / DLON), int((m["north"] - p[1]) / DLAT)
-    if not (0 <= c < w and 0 <= r < h):
-        return 0.0
-    k = max(1, int(radius_m / 44.5))
-    c0, c1, r0, r1 = max(0, c - k), min(w, c + k + 1), max(0, r - k), min(h, r + k + 1)
+    c, r = min(w - 1, int((p[0] - m["west"]) / DLON)), min(h - 1, int((m["north"] - p[1]) / DLAT))
     W1 = w + 1
-    s = m[which]
-    n = s[r1 * W1 + c1] - s[r0 * W1 + c1] - s[r1 * W1 + c0] + s[r0 * W1 + c0]
-    return n / float((c1 - c0) * (r1 - r0))
 
-
-def built(p, radius_m=45.0):
-    """Share of built-up land (housing, commerce, industry …) right around p: "inside houses" from about 0.5."""
-    return depth(p, radius_m, "sat_built")
-
-
-def water(p, radius_m=90.0):
-    """Share of open water (lake, river, pond) around p: > 0 means the way runs at a bank."""
-    return depth(p, radius_m, "sat_water")
+    def share(s, k):
+        c0, c1, r0, r1 = max(0, c - k), min(w, c + k + 1), max(0, r - k), min(h, r + k + 1)
+        return (s[r1 * W1 + c1] - s[r0 * W1 + c1] - s[r1 * W1 + c0] + s[r0 * W1 + c0]) / float((c1 - c0) * (r1 - r0))
+    nat, wat, i = m["sat"], m["sat_water"], r * w + c
+    return (share(nat, 2), share(nat, 6), share(nat, 20), share(m["sat_built"], 1), share(wat, 2), share(wat, 6),
+            m["labels"][m["names"][i]] if m["grid"][i] & PROTECTED else "")
 
 
 def place_near(p, max_m=2500.0):
@@ -189,24 +183,9 @@ def place_near(p, max_m=2500.0):
     return best[1] if best and math.sqrt(best[0]) * 111320.0 <= max_m else ""
 
 
-def name_at(p):
-    """Name of the protected area p lies in ('' = none / unnamed)."""
-    m = cell(*CE.cell_of(p[0], p[1]))
-    if not m:
-        return ""
-    c, r = int((p[0] - m["west"]) / DLON), int((m["north"] - p[1]) / DLAT)
-    if not (0 <= c < m["w"] and 0 <= r < m["h"]):
-        return ""
-    i = r * m["w"] + c
-    return m["labels"][m["names"][i]] if m["grid"][i] & PROTECTED else ""
-
-
 if __name__ == "__main__":
     import sys
-    import time
     for a in sys.argv[1:]:
         lon, lat = [float(v) for v in a.split(",")]
-        t = time.time()
-        print("%s  Tiefe 300 m: %.2f  1000 m: %.2f  bebaut: %.2f  Wasser 90 m: %.2f  Schutzgebiet: %s  Ort: %s  (%.1f s)" % (
-            a, depth([lon, lat], 300), depth([lon, lat], 1000), built([lon, lat]), water([lon, lat]),
-            name_at([lon, lat]) or "–", place_near([lon, lat]) or "–", time.time() - t))
+        print(a, "Natur 100 / 300 / 900 m: %.2f %.2f %.2f  bebaut: %.2f  Wasser 90 / 300 m: %.2f %.2f  Schutzgebiet: %s" % around([lon, lat]),
+              " Ort:", place_near([lon, lat]) or "–")

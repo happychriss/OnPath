@@ -100,20 +100,17 @@ class Facts:
             if not road and e[2] >= 25.0 and roads.cells:
                 road = K["beside"] * roads.beside(net.geom(ei))
             self.traffic[ei] = road
-            self.built[ei] = land.built(mid, 45.0) >= 0.5
-            self.green[ei] = g = land.depth(mid, 100.0)
-            self.depth[ei] = 0.5 * (land.depth(mid, 300.0) + land.depth(mid, 900.0))
-            bank = land.water(mid, 90.0) > 0.04
+            g, n300, n900, built, w90, w300, nm = land.around(mid)
+            self.built[ei], self.green[ei], self.depth[ei] = built >= 0.5, g, 0.5 * (n300 + n900)
+            bank = w90 > 0.04
             hits = tuple(index.at(mid, 1))
             for i in hits:
                 th = things[i]
                 if th["kind"] == "route" and (road < K["beside_from"] or signed):
                     signed = max(signed, th["rank"])  # on a busy road only when the road itself carries the route
                 bank = bank or th["kind"] == "lake"
-            big = bank and land.depth(mid, 300.0, "sat_water") >= K["big_water"]
-            self.water[ei] = 1.0 if big else 0.5 if bank or (river >= 4 and g >= 0.2) else 0.0
+            self.water[ei] = 1.0 if bank and w300 >= K["big_water"] else 0.5 if bank or (river >= 4 and g >= 0.2) else 0.0
             self.signed[ei], self.named[ei] = signed, hits
-            nm = land.name_at(mid)
             if nm:
                 if nm not in self.areas:
                     self.areas.append(nm)

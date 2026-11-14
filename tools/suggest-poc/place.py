@@ -17,7 +17,7 @@ AXES = ("natur", "ruhe", "weg", "besonderes")
 
 def quantile(pairs, q):
     """Length-weighted quantile of (value, metres) pairs."""
-    pairs = sorted(pairs)
+    pairs = sorted(pairs[::max(1, len(pairs) // 30000)])  # a sample is enough for a quantile
     want, acc = q * sum(m for _, m in pairs), 0.0
     for v, m in pairs:
         acc += m

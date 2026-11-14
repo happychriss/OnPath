@@ -6,8 +6,9 @@
   Besonderes  water, known routes, a rail trail, a named protected area, a tip – what makes it more than a way
   Form        a clean loop: about the wished length, nothing walked twice, not crossing itself, ascent that fits
 
-The first four are means over the loop beyond the unavoidable way out, read on the place's own yardstick
-(place.rel): 1 = as good as it gets from here. Form is absolute. The total is their mean, weighted by the character.
+The first four are means over the loop beyond the unavoidable way out, read between "poor here" (the place's
+yardstick) and the best any loop from this start reaches – the loops are judged together, so 100 means "as good as it
+gets from here". Form is absolute. The total is their mean, weighted by the character.
 """
 from net import direction, dist
 
@@ -15,30 +16,38 @@ AXES = ("natur", "ruhe", "weg", "besonderes", "form")
 WORDS = {"natur": "Natur", "ruhe": "Ruhe", "weg": "Weg", "besonderes": "Besonderes", "form": "Form"}
 
 
-def score(P, S, c, wish, views):
-    """Fills c with axes, points, numbers and the reason a hard rule drops it (c["out"])."""
-    F, ch, net, K = P.F, P.ch, P.net, S["form"]
-    edges = c["edges"]
-    core = [e for e in edges if P.core(e)] or edges
-    m = sum(F.ln[e] for e in core)
-    ax = {a: P.rel(a, sum(P.v[a][e] * F.ln[e] for e in core) / m) for a in ("natur", "ruhe", "weg", "besonderes")}
-    seen_views = sorted({v["name"] for v in views if any(dist(net.nodes[x], v["p"]) < 120.0 for x in c["nodes"][::3])})
-    ax["besonderes"] = min(1.0, ax["besonderes"] + K["view"] * min(3, len(seen_views)))
-    fam, clamp = ch.family, lambda x: max(0.0, min(1.0, x))
-    off_m = max(0.0, abs(c["hours"] - wish["hours"]) * wish["pace"] * 1000.0 - fam["band_km"] * 1000.0)
-    up_h = c["up"] / c["hours"]
-    parts = {"Länge": 1.0 - clamp(off_m / (K["length_zero"] * P.target)),
+def judge(P, S, cands, views):
+    """Fills every loop with axes, points, numbers and the reason a hard rule drops it (c["out"]).
+    The loops are looked at together: on each of the four place axes a loop is measured between what is poor here
+    (the place's low quantile) and the best any loop from this start reaches."""
+    F, net, K, min_span = P.F, P.net, S["form"], S["place"]["min_span"]
+    for c in cands:
+        core = [e for e in c["edges"] if P.core(e)] or c["edges"]
+        m = sum(F.ln[e] for e in core)
+        c["raw"] = {a: sum(P.v[a][e] * F.ln[e] for e in core) / m for a in AXES[:4]}
+        c["views"] = sorted({v["name"] for v in views if any(dist(net.nodes[x], v["p"]) < 120.0 for x in c["nodes"][::3])})
+        c["raw"]["besonderes"] += K["view"] * min(3, len(c["views"]))
+    top = {a: max([c["raw"][a] for c in cands] + [P.low[a] + min_span]) for a in AXES[:4]}
+    for c in cands:
+        ax = {a: max(0.0, min(1.0, (c["raw"][a] - P.low[a]) / (top[a] - P.low[a]))) for a in AXES[:4]}
+        _finish(P, S, c, ax)
+    return cands
+
+
+def _finish(P, S, c, ax):
+    ch, K, seen_views = P.ch, S["form"], c.pop("views")
+    fam, clamp, h = ch.family, lambda x: max(0.0, min(1.0, x)), c["hours"]
+    # inside the wished ranges of time and ascent every loop is equally fine; a bit short or flat falls off gently
+    parts = {"Zeit": 1.0 - clamp(max((ch.hours[0] - h) / (K["short_zero"] * ch.hours[0]), (h - ch.hours[1]) / (K["long_zero"] * ch.hours[1]))),
+             "Höhenmeter": 1.0 - 0.7 * clamp((ch.up[0] - c["up"]) / max(ch.up[0], 1.0)),
              "doppelt": 1.0 - clamp(c["doubled_m"] / c["m"] / K["doubled_zero"]),
-             "kreuzt sich": K["cross"] ** c["cross"],
-             "Steigung": 1.0 if ch.up_ok is None else 1.0 - clamp((up_h - ch.up_ok) / (0.5 * ch.up_ok))}
-    ax["form"] = parts["Länge"] * parts["doppelt"] * parts["kreuzt sich"] * parts["Steigung"]
+             "kreuzt sich": K["cross"] ** c["cross"]}
+    ax["form"] = parts["Zeit"] * parts["Höhenmeter"] * parts["doppelt"] * parts["kreuzt sich"]
     c["axes"] = {a: round(ax[a], 3) for a in AXES}
     c["score"] = round(100.0 * sum(ch.axes[a] * ax[a] for a in AXES), 1)
     c["form_parts"] = {k: round(v, 2) for k, v in parts.items() if v < 0.995}
     n = c["numbers"] = numbers(P, c, seen_views)
-    c["out"] = ("zu steil für die gewählte Anstrengung" if parts["Steigung"] <= 0 else
-                "langes Stück an einer Straße mit Autos" if 0 < fam["road_walk_max_m"] < n["road_longest_m"] else None)
-    return c
+    c["out"] = "langes Stück an einer Straße mit Autos" if 0 < fam["road_walk_max_m"] < n["road_longest_m"] else None
 
 
 def numbers(P, c, views):
@@ -66,23 +75,25 @@ def numbers(P, c, views):
             "reserves": top("reserves", 0.8), "known": top("known", 0.8), "lakes": top("lakes", 0.4), "views": views[:3]}
 
 
-def explain(P, c, wish):
+def explain(P, c):
     """Title, the reason line and the five-word verdict of a loop."""
     n, net = c["numbers"], P.net
     far = max(c["nodes"], key=lambda x: dist(net.nodes[net.start], net.nodes[x]))
     where = "Richtung %s" % direction(net.nodes[net.start], net.nodes[far])
     main = [x[0] for x in n["reserves"][:2]] + [x[0] for x in n["lakes"][:1]] \
         + [x[0] for x in n["known"][:1] if x[1] >= 0.25 * n["km"]] + (["Bahntrasse"] if n["rail_km"] >= 0.25 * n["km"] else [])
-    c["name"] = " – ".join(dict.fromkeys(main[:3])) or next((a for a in c["aim"] if " bei " in a or " im " in a), where)
+    c["name"] = " – ".join(list(dict.fromkeys(main))[:2]) or next((a for a in c["aim"] if " bei " in a or " im " in a), where)
     c["bearing"] = where
     km = lambda rows, pre: ["%s km %s%s" % (str(k).replace(".", ","), pre, nm) for nm, k in rows]
     c["reasons"] = (km(n["reserves"], "im Schutzgebiet ") + km(n["lakes"], "am ") + km(n["known"], "auf ")
                     + (["%s km am Wasser" % str(n["water_km"]).replace(".", ",")] if n["water_km"] >= 1 and not n["lakes"] else [])
                     + (["%s km Bahntrasse" % str(n["rail_km"]).replace(".", ",")] if n["rail_km"] >= 1 else [])
                     + ["Aussicht: " + v for v in n["views"][:1]] + (["mit Fähre"] if n["ferry_m"] else []))[:5]
-    off = (c["hours"] - wish["hours"]) * wish["pace"]
-    band = P.ch.family["band_km"]
-    c["hints"] = (["etwas %s als gewünscht" % ("kürzer" if off < 0 else "länger")] if abs(off) > band else []) \
+    ch, h = P.ch, c["hours"]
+    edge = lambda v, rng: rng[1] > rng[0] and (v - rng[0]) / (rng[1] - rng[0])
+    c["hints"] = (["etwas kürzer als gewünscht"] if h < ch.hours[0] else ["etwas länger als gewünscht"] if h > ch.hours[1] else
+                  ["am oberen Rand der gewünschten Zeit"] if edge(h, ch.hours) > 0.9 else []) \
+        + (["weniger Höhenmeter als gewünscht"] if c["up"] < ch.up[0] else ["am oberen Rand der Höhenmeter"] if edge(c["up"], ch.up) > 0.9 else []) \
         + (["%d m an einer Straße am Stück" % n["road_longest_m"]] if n["road_longest_m"] >= 200 else []) \
         + (["%d %% doppelt" % n["doubled_pct"]] if n["doubled_pct"] >= 8 else []) \
         + (["kreuzt sich einmal"] if n["self_cross"] else []) + (["%d %% durch Häuser" % n["town_pct"]] if n["town_pct"] >= 30 else [])
@@ -95,8 +106,8 @@ def explain(P, c, wish):
 
 
 def choose(P, S, cands):
-    """The best first; further ones must be different and not far behind; every stand-out area in reach gets the
-    loop that uses it best, if that loop is good enough. Fewer than three is fine when the rest is poor."""
+    """The best first; further ones must be different and not far behind; what stands out in reach (a top line, an
+    area) gets the loop that uses it best, if that loop is good enough. Fewer than three is fine when the rest is poor."""
     F, K = P.F, S["select"]
     ranked = sorted((c for c in cands if not c["out"]), key=lambda c: -c["score"])
     if not ranked:
@@ -107,9 +118,12 @@ def choose(P, S, cands):
     def fresh(c, shown):
         return all(length(core[id(c)] & core[id(o)]) <= K["overlap"] * length(core[id(c)]) for o in shown)
     shown = [ranked[0]]
-    for area in P.areas:
-        best = next((c for c in ranked if length(core[id(c)] & area["edges"]) >= min(2500.0, 0.3 * area["m"])), None)
-        if best and best not in shown and best["score"] >= ranked[0]["score"] - K["cover_behind"] and fresh(best, shown):
+    # what stands out here is shown: the top lines (the Rhine with "am Wasser entlang", a first-rank route), then the areas
+    for thing in [ln for ln in P.lines if ln["rank"] >= 0.9][:2] + P.areas:
+        need = 0.25 * P.target if thing["kind"] != "area" else min(2500.0, 0.3 * thing["m"])
+        best = next((c for c in ranked if length(core[id(c)] & thing["edges"]) >= need), None)
+        if best and best not in shown and len(shown) < K["max"] and best["score"] >= ranked[0]["score"] - K["cover_behind"] \
+                and fresh(best, shown):
             shown.append(best)
     for c in ranked:
         if len(shown) >= K["max"] or c["score"] < ranked[0]["score"] - K["behind"]:
