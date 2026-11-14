@@ -59,8 +59,11 @@ export class RouteReveal {
     const first = !this.drewOne;
     if (plan) this.drewOne = true;
     if (!plan || first || n < 2 || n > MAX_POINTS || !this.enabled()) { this.set(legs); return; }
-    const start = performance.now();
+    // the clock starts with the first frame (like the app's ValueAnimator): a busy page after the route came (sheet,
+    // profile, map) must not eat the 0.5 s, or the line would jump to whole without ever drawing itself
+    let start = -1;
     const frame = (now: number) => {
+      if (start < 0) start = now;
       const t = (now - start) / DURATION_MS;
       if (t >= 1) { this.raf = 0; this.set(legs); return; }
       this.set(cut(legs, ease(t)));
