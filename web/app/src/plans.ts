@@ -285,7 +285,11 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
   const $ = <T extends HTMLElement>(id: string) => d.querySelector<T>('#' + id)!;
   const closeMenus = () => d.querySelectorAll<HTMLElement>('.rowmenu').forEach((m) => { m.hidden = true; m.previousElementSibling?.setAttribute('aria-expanded', 'false'); });
   d.addEventListener('click', (e) => { if (!(e.target as HTMLElement).closest('.rowmenu, .more')) closeMenus(); });
-  $('planList').addEventListener('scroll', closeMenus); // the menu stays fixed: it goes when its row moves
+  // the menu stays fixed: it goes when its row moves – only then. A redraw of the list (its scroll to 0 and back in one
+  // task) or the browser scrolling the tapped ⋮ into view sends its scroll event a frame later, after the menu opened,
+  // with the list where it was (sync-smoke 2026-11-14: the menu closed again at once)
+  let menuScroll = 0;
+  $('planList').addEventListener('scroll', () => { if (Math.abs($('planList').scrollTop - menuScroll) > 2) closeMenus(); });
 
   let query = '';
   const search = $<HTMLInputElement>('planSearch');
@@ -448,6 +452,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
       closeMenus();
       m.hidden = !open;
       more.setAttribute('aria-expanded', String(open));
+      menuScroll = $('planList').scrollTop;
       if (!open) return;
       // fixed at its ⋮ (below it, or above when there is no room) – the scrolling list never cuts it off
       const r = more.getBoundingClientRect(), h = m.offsetHeight, w = m.offsetWidth;

@@ -147,6 +147,30 @@ check((await P.textContent('#planList')).trim() === 'No favorites yet. Tap ☆ o
 await clickDrawn(P, '#planSort .favchip');
 await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Vigiljoch MTB-Runde")) .favstar');
 
+// 4b. ⋮ on the last row, below the fold (field: sync-smoke 2026-11-14 – the taller L1 rows): the list scrolls it into view
+// first, the scroll's event comes after the tap – the menu must stay open; a real scroll afterwards closes it
+{
+  await P.evaluate(() => { document.getElementById('planList').scrollTop = 0; });
+  const lastName = (await names(P)).at(-1);
+  const below = await P.evaluate((n) => { const ul = document.getElementById('planList'), li = [...ul.querySelectorAll('li[data-id]')].find((l) => l.querySelector('.name').textContent === n);
+    return li.querySelector('.more').getBoundingClientRect().bottom > ul.getBoundingClientRect().bottom; }, lastName);
+  await P.click(`#planList li[data-id]:has(.name:text-is("${lastName}")) .more`);
+  const open = await P.waitForSelector(`#planList li[data-id]:has(.name:text-is("${lastName}")) .rowmenu:not([hidden])`, { timeout: 3_000 }).then(() => true).catch(() => false);
+  check(below && open, `⋮ on the last row below the fold (${lastName}): scrolled into view, the menu stays open (below ${below}, open ${open})`);
+  // the sync-smoke case: a render redraws the list (its scroll goes to 0 and back in one task) right before the tap – the
+  // scroll event comes in the next frame, after the menu opened; the list did not move, so the menu stays
+  await P.evaluate(() => document.querySelectorAll('#planList .rowmenu').forEach((m) => { m.hidden = true; }));
+  await P.evaluate((n) => { const ul = document.getElementById('planList'), s = ul.scrollTop;
+    ul.scrollTop = 0; ul.scrollTop = s;
+    [...ul.querySelectorAll('li[data-id]')].find((l) => l.querySelector('.name').textContent === n).querySelector('.more').click(); }, lastName);
+  await P.waitForTimeout(300);
+  const stays = await P.evaluate(() => !!document.querySelector('#planList .rowmenu:not([hidden])'));
+  check(stays, `a redraw of the list right before ⋮ (its scroll back where it was): the menu stays open (${stays})`);
+  await P.evaluate(() => { document.getElementById('planList').scrollTop -= 120; });
+  const closed = await P.waitForFunction(() => !document.querySelector('#planList .rowmenu:not([hidden])'), null, { timeout: 3_000 }).then(() => true).catch(() => false);
+  check(closed, 'a real scroll of the list afterwards closes the menu (it is fixed: its row moves away)');
+}
+
 // 5. the map pictures: made off screen one at a time, the drawn line until then; a row without a line keeps its sign
 const pictures = await P.waitForFunction(() => [...document.querySelectorAll('#planList li[data-id]')].filter((l) => l.dataset.thumb === 'map').length >= 4, null, { timeout: 90_000 }).then(() => true).catch(() => false);
 const st = await P.evaluate(() => ({ ...window.__thumbs.stats }));
