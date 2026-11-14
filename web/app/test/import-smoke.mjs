@@ -95,6 +95,12 @@ await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2,
 await page.waitForTimeout(500); await planned().catch(() => {});
 console.log('after cancel:', await pins(), await page.textContent('#summary'), await page.textContent('#status'));
 check(await pins() === 2 && !!(await page.$('#summary .big')), 'Cancel (a clicked point): the point is taken back, the short route stays');
+// the map goes back to the plan from before (app 4216a144, owner 2026-11-13): two points – the whole plan, not the far
+// spot up north the click was on (zoom 5.5 there)
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
+{ const cam = await page.evaluate(() => { const c = window.__map.getCenter(); return { lat: c.lat, lon: c.lng, zoom: window.__map.getZoom() }; });
+  console.log('camera after cancel:', cam);
+  check(Math.abs(cam.lat - 46.68) < 0.1 && Math.abs(cam.lon - 11.15) < 0.15 && cam.zoom > 10, `Cancel: the map is back on the plan from before (${cam.lat.toFixed(3)}, ${cam.lon.toFixed(3)} z${cam.zoom.toFixed(1)})`); }
 
 // 1d. "Far from your route" (owner 2026-10-30: "war in Meran, suche nach Hilden, gebe als Start" – a point left in
 // Algund made Hilden's "As start" a 35 h plan). A fake Photon answer for "Hilden"; the map jumps there first.
@@ -102,12 +108,14 @@ const toHilden = async () => {
   await page.evaluate(() => window.__map.jumpTo({ center: [6.93, 51.17], zoom: 12 }));
   await page.waitForTimeout(800);
 };
-const hildenAs = async (button) => {
+// a pick opens the pin's hold menu by itself (app 6714ad6f): [row] = the row's text (or several, clicked one after the other)
+const hildenAs = async (row) => {
   await page.fill('#q', 'Hilden');
   await page.waitForSelector('#results .hit:has-text("Hilden")', { timeout: 30_000 });
   await page.click('#results .hit:has-text("Hilden")');
-  await page.waitForSelector(`${button}:not([disabled])`);
-  await page.click(button);
+  const menu = '.holdpopup.pinmenu .pointmenu, #placecard.pinmenucard .pointmenu';
+  await page.waitForSelector(menu, { timeout: 30_000 });
+  for (const r of [row].flat()) { await page.waitForSelector(menu, { timeout: 10_000 }); await page.locator(`:is(${menu}) button`).filter({ hasText: r }).first().click(); }
 };
 const summaryText = () => page.textContent('#summary .subline');
 // the planner brings the last open route back when opened without #p= (review 2026-11-01, web H3): forget it for an empty plan
@@ -116,11 +124,11 @@ const emptyPlan = async () => { await page.evaluate(() => window.__sync.setDraft
 await emptyPlan();
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 await toHilden();
-await hildenAs('#cadd'); // empty plan: the main button is "Set as start" (app 0.13), no small As start beside it
+await hildenAs('Start here'); // empty plan: the menu's "Start here" (the app's hold menu)
 await page.waitForTimeout(1500);
 check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summaryText()).includes('1 point · Hilden'),
   `empty plan + Hilden as start: no question, "1 point · Hilden" (${await summaryText()})`);
-// (b) the owner's case: a single point "Algund" left from earlier, Hilden as start
+// (b) the owner's case: a single point "Algund" left from earlier, Hilden added (one point: "Set as destination")
 const algund = await page.evaluate(() => window.__engine.encode({ points: [[46.6773, 11.1302]], activity: 'BIKE_TOURING', sac: 2, pinned: [0], names: { 0: 'Algund' }, title: null }));
 await page.goto(url + 'index.html#p=' + algund);
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 60_000 });
@@ -137,8 +145,20 @@ check((await page.textContent('#offmap')).includes('Your route is outside the ma
 await page.click('#showPlan');
 await page.waitForFunction(() => window.__map.getBounds().contains([11.1302, 46.6773]) && !window.__map.isMoving(), null, { timeout: 15_000 }).catch(() => {});
 check(await page.evaluate(() => window.__map.getBounds().contains([11.1302, 46.6773])) && !(await page.isVisible('#offmap')), 'Show: the plan in view, the line gone');
+// Cancel: the map goes back to Algund (one point: that point at the one-place zoom – app 4216a144), Hilden's pin is back
 await toHilden();
-await hildenAs('#cstart');
+await hildenAs('Set as destination');
+await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
+await page.click('#lrCancel');
+await page.waitForFunction(() => !document.querySelector('dialog.longroute') && document.querySelectorAll('.pin').length === 1, null, { timeout: 30_000 }).catch(() => {});
+await page.waitForTimeout(300);
+await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
+{ const cam = await page.evaluate(() => { const c = window.__map.getCenter(); return { lat: c.lat, lon: c.lng, zoom: window.__map.getZoom(),
+    algund: window.__map.getBounds().contains([11.1302, 46.6773]) }; });
+  check(cam.algund && cam.zoom > 14 && await pins() === 1 && await page.locator('.candidate').count() === 1,
+    `Cancel of the far question: the map back on Algund (z${cam.zoom.toFixed(1)}), Hilden's pin back`); }
+await toHilden();
+await hildenAs('Set as destination');
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
 const farText = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
 const order = await page.$$eval('dialog.longroute button', (b) => b.map((x) => x.id));
@@ -151,11 +171,11 @@ check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summar
 await page.click('#undo');
 await page.waitForFunction(() => document.getElementById('summary').textContent.includes('Algund'), null, { timeout: 10_000 }).catch(() => {});
 check(await pins() === 1 && (await summaryText()).includes('1 point · Algund') && !(await page.$('dialog.longroute')), 'undo: the point in Algund is back, no question');
-// (c) a route in Meran (2 points, Hike) + Hilden as start: the question names it; "Add to the route" = the old Plan anyway
+// (c) a route in Meran (2 points, Hike) + Hilden as a stop: the question names it; "Add to the route" = the old Plan anyway
 await page.goto(url + 'index.html#p=' + CODE);
 await planned();
 await toHilden();
-await hildenAs('#cstart');
+await hildenAs(['More', 'Add as a stop']); // far past the goal: "Make it the destination" first, the stop behind "More"
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
 const farRoute = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
 check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.test(farRoute), `a far route: "${farRoute}"`);

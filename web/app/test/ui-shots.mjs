@@ -123,11 +123,11 @@ for (const [name, vp] of [['desktop', { width: 1440, height: 900 }], ['phone', {
   await page.fill('#q', 'Ifinger');
   await page.waitForSelector('#results .hit', { timeout: 60_000 });
   await page.click('#results .hit');
-  await page.waitForSelector('#placecard:not([hidden]) #cclose');
+  await page.waitForSelector('.holdpopup.pinmenu, #placecard.pinmenucard'); // the pin's menu (app 6714ad6f)
   await page.waitForTimeout(1500);
   await page.screenshot({ path: path.join(out, `${name}-card.png`) });
   if (name === 'phone') {
-    await page.click('#cclose');
+    await page.keyboard.press('Escape');
     await page.click('#menuBtn');
     await page.screenshot({ path: path.join(out, `${name}-menu.png`) });
   }

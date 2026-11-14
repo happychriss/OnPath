@@ -1,16 +1,22 @@
 // Search like the app's (ui/search/SearchSession): offline on every keystroke – the app's index and ranking in the
 // engine, over the map areas in view – and online (Photon, OpenStreetMap data) after 350 ms without typing for 3+
-// letters, mixed in below the rows already shown. A pick opens the place card: one button that says what adding does
-// ("Set as destination", "Add as stop 2", … – the app's AddPreview), "As start", "As destination" (left out when the
-// main button does the same), "Google" (ui/search/PlaceCard).
+// letters, mixed in below the rows already shown. A pick sets the found place's pin and, once the map is there, opens
+// the pin's own hold menu – the very rows a hold on that spot gives (the app's SearchFlow.pickSearchResult since
+// 2026-11-13, owner "A mit Ausweich B"): above the pin, else under it, else the same rows as a card at the bottom
+// (pinmenu.ts – the app's PinMenuPlace).
 import * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import type { Hit } from './engine/types';
 import { icon } from './icons';
 import { t } from './i18n';
-import { boxesOf, NO_PADDING, offsetTo, placeCard, pointTarget } from './cardanchor';
+import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
+import { holdMenu, type MenuItem } from './menus';
+import { cardPan, decidePinMenu, MENU_GAP, pinRows, TIP_ROOM, type PinMenuDecision } from './pinmenu';
 
 export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
+
+/** A held place's menu (main.ts placeRows – the app's PoiMenu): its head and rows; [more] waits behind "⋯ More". */
+export interface PinRows { head: string; main: MenuItem[]; more: MenuItem[]; google: MenuItem }
 
 export interface SearchHost {
   map: maplibregl.Map;
@@ -19,29 +25,27 @@ export interface SearchHost {
   areas(): Promise<{ key: string; dir: string }[]>;
   points(): [number, number][];
   route(): [number, number][];
-  add(hit: Hit, role: PlaceRole): void;
-  /** "Hierhin" on an empty plan (the pin card's action): from my position to this place (the app's poiFromMyLocation). */
-  goHere(hit: Hit): void;
-  /** "Google": the app's Google Maps link-out for this place (a new tab). */
-  google(hit: Hit): void;
-  /** The place card opened or closed (the page makes room: on a phone it stands in for the plan sheet). */
+  /** The found place's menu: the rows a hold on it gives (the app's PinMenuItems), each add a place from the search. */
+  pinMenu(hit: Hit): Promise<PinRows>;
+  /** The bottom card opened or closed (the page makes room: on a phone it stands in for the plan sheet). */
   cardShown?(open: boolean): void;
   /** A result is shown on the map (the app's trigger T2: its map area is asked for – areas.ts). */
   placeShown?(lat: number, lon: number): void;
+  /** The free map between the top bar and the plan sheet (phone) / the map's bottom (wide), map pixels: where the found
+   *  place's menu may go (the app's PinMenuOverlay topPx / bottomPx). */
+  menuRoom(): { top: number; bottom: number };
   /** The free room of the map (top bar, plan sheet or bottom card, controls) – main.ts fitPadding. */
   fitPadding(): maplibregl.PaddingOptions;
 }
 
-/** What the page can do with the place card: close it (a map click elsewhere, Escape) and ask whether it is open. */
-/** [close] closes the card only – the found place's pin stays (app 2026-11-02); [removePin] takes the pin away too. */
+/** What the page can do with the found place's menu: close it (a map click elsewhere, Escape) and ask whether it is open. */
+/** [close] closes the menu only – the found place's pin stays (app 2026-11-02); [removePin] takes the pin away too. */
 export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void;
-  /** The pin of [hit] again, without its card (the app's TakenPin: a Cancel took back the add of this place). */
+  /** The pin of [hit] again, without its menu (the app's TakenPin: a Cancel took back the add of this place). */
   showPin(hit: Hit): void; hasPin(): boolean;
-  /** The plan changed: the pin card's action follows ("+ Zur Route", on an empty plan "Hierhin"). */
+  /** The plan changed: the pin's dashed preview line follows. */
   planChanged(): void }
 
-/** The elements the anchored card must not cover (wide screen). */
-const BLOCKERS = ['#topbar', '#sheet', '#trackPanel', '#mapnotes', '#footer', '.maplibregl-ctrl-bottom-right'];
 const phone = () => matchMedia('(max-width: 700px)').matches;
 
 const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
@@ -54,10 +58,9 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
 }
 
 /**
- * [box] holds the search pill and its results; [card] is the place card – on a wide screen a callout at the picked
- * point with a tail to it, moving with the map (owner 2026-10-30, like the app: the card belongs to the point); on a
- * phone a bottom card in place of the sheet with the point visible above it. It never covers the sheet (owner
- * 2026-10-28) and closes after any action, on ✕, Escape and a map click elsewhere.
+ * [box] holds the search pill and its results; [card] is the bottom card the found place's menu becomes where it fits
+ * neither above nor under its pin (the app's PinMenuPlace B – on a phone in place of the plan sheet). The menu closes
+ * after any action, on Escape and a map click elsewhere; the pin and its name chip stay.
  */
 export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElement): PlaceCard {
   box.innerHTML = `
@@ -70,23 +73,13 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   const clear = box.querySelector<HTMLButtonElement>('#qclear')!;
   let gen = 0;
   let timer: ReturnType<typeof setTimeout> | null = null;
-  /** The found place's pin and its name chip (the app's CandidateMarker + MapOverlays PinChip): they outlive the card. */
+  /** The found place's pin and its name chip (the app's CandidateMarker + MapOverlays PinChip): they outlive its menu. */
   let marker: maplibregl.Marker | null = null;
   let chip: maplibregl.Marker | null = null;
   let chipHit: Hit | null = null;
   const removePin = () => {
+    close();
     marker?.remove(); marker = null; chip?.remove(); chip = null; chipHit = null; setJoin(host.map, null);
-  };
-  /** The pin card's action button: "+ Zur Route", on an empty plan "Hierhin" (the app's MapOverlays, design B). */
-  const chipAction = () => {
-    const el = chip?.getElement(), h = chipHit;
-    if (!el || !h) return;
-    const empty = host.points().length === 0;
-    const label = t(empty ? 'plan_go_here' : 'plan_pin_add');
-    const b = el.querySelector<HTMLButtonElement>('.pinadd')!;
-    b.innerHTML = `${icon(empty ? 'gpsFixed' : 'add', 16)}<span>${esc(label)}</span>`;
-    b.setAttribute('aria-label', t('plan_pin_action_desc', label, h.title));
-    b.onclick = (e) => { e.stopPropagation(); close(); removePin(); if (empty) host.goHere(h); else host.add(h, 'SMART'); };
   };
   /** The chip picked (the app's SearchKinds.Category name), '' = none; the six chips with their labels from the engine. */
   let category = '';
@@ -141,93 +134,130 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   };
 
   let picked = 0;
-  /** [fly] false: the pin's chip (or the pin) tapped – the card opens again where the map is (the app's openPinMenu). */
-  const pick = async (h: Hit, fly = true, pinOnly = false) => {
-    const my = ++picked;
-    gen++; // a search still running (online results after 350 ms) must not open the list again over the card
+  /**
+   * A pick: the pin and its name chip, the map flies there and – once it is there and was not moved by hand on the way
+   * (the app's SharedPlaceMenu) – the pin's menu opens by itself. [fly] false: the pin again where the map is, its menu
+   * at once; [pinOnly]: only the pin and its chip (TakenPin) – the menu opens on a click as usual.
+   */
+  const pick = (h: Hit, fly = true, pinOnly = false) => {
+    gen++; // a search still running (online results after 350 ms) must not open the list again over the menu
     if (timer) clearTimeout(timer);
     results.hidden = true;
+    close();
     removePin();
-    const again = () => { if (card.hidden) void pick(h, false); };
+    const my = ++picked;
     const pinEl = candidateMarker();
-    pinEl.addEventListener('click', (e) => { e.stopPropagation(); again(); });
+    pinEl.addEventListener('click', (e) => { e.stopPropagation(); void openPinMenu(h); });
     marker = new maplibregl.Marker({ element: pinEl, anchor: 'bottom', offset: [0, TIP_MARGIN] }).setLngLat([h.lon, h.lat]).addTo(host.map);
     const chipEl = pinChip(h.title);
-    chipEl.addEventListener('click', (e) => e.stopPropagation()); // a click on the card itself is not a map click
-    chipEl.querySelector<HTMLButtonElement>('.pinmore')!.onclick = (e) => { e.stopPropagation(); again(); };
+    chipEl.addEventListener('click', (e) => { e.stopPropagation(); void openPinMenu(h); });
     chip = new maplibregl.Marker({ element: chipEl, anchor: 'top', offset: [0, CHIP_GAP] }).setLngLat([h.lon, h.lat]).addTo(host.map);
     chipHit = h;
-    chipAction();
+    void updateJoin();
     if (fly) host.placeShown?.(h.lat, h.lon);
-    if (pinOnly) return; // only the pin and its chip (TakenPin) – the card opens on a tap as usual
-    const pv = await host.engine.placePreview(host.points(), h.lat, h.lon);
-    if (my === picked) setJoin(host.map, pv.join ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
-    const n = host.points().length;
-    const atStart = pv.existing === 0, atEnd = pv.existing != null && pv.existing === n - 1;
-    // the main button already sets the start / the destination: its small button is left out (app PlaceCard)
-    const planned = pv.existing != null;
-    if (my !== picked) return; // a newer pick or a close came first
-    card.hidden = false;
-    host.cardShown?.(true);
-    card.innerHTML = `
-      <div class="cardhead"><span class="glyph" style="background:${h.color}">${esc(h.glyph)}</span>
-        <span class="txt"><b>${esc(h.title)}</b><span class="muted">${esc(h.subtitle)}</span>
-        ${h.address ? `<span class="muted small">${esc(h.address)}</span>` : ''}</span>
-        <button id="cclose" class="iconbtn" aria-label="${esc(t('common_close'))}">${icon('close', 20)}</button></div>
-      ${pv.existing == null
-        ? `<button id="cadd" class="primary wide twoline">${icon('addLocation')}<span class="txt"><span>${esc(pv.label ?? '')}</span>${pv.subtitle ? `<span class="small">${esc(pv.subtitle)}</span>` : ''}</span></button>`
-        : `<button id="cremove" class="primary wide twoline">${icon('delete')}<span class="txt"><span>${esc(t('search_card_remove'))}</span><span class="small">${esc(pv.subtitle)}</span></span></button>`}
-      <div class="row three">${planned || !pv.addIsStart ? `<button id="cstart" class="outline" ${atStart ? 'disabled' : ''}>${esc(t('search_card_as_start'))}</button>` : ''}
-        ${planned || !pv.addIsDestination ? `<button id="cdest" class="outline" ${atEnd ? 'disabled' : ''}>${esc(t('search_card_as_destination'))}</button>` : ''}
-        <button id="cgoogle" class="outline" title="${esc(t('web_google_title'))}">${icon('map', 18)}Google</button></div>
-      <button id="cunpin" class="textbtn small">${icon('close', 16)}${esc(t('plan_remove_pin'))}</button>`;
-    const done = (role: PlaceRole) => { close(); removePin(); host.add(h, role); };
-    card.querySelector<HTMLButtonElement>('#cunpin')!.onclick = () => { close(); removePin(); };
-    card.querySelector<HTMLButtonElement>('#cadd')?.addEventListener('click', () => done('SMART'));
-    card.querySelector<HTMLButtonElement>('#cremove')?.addEventListener('click', () => done('REMOVE'));
-    card.querySelector<HTMLButtonElement>('#cstart')?.addEventListener('click', () => done('START'));
-    card.querySelector<HTMLButtonElement>('#cdest')?.addEventListener('click', () => done('DESTINATION'));
-    card.querySelector<HTMLButtonElement>('#cgoogle')!.onclick = () => { close(); host.google(h); };
-    card.querySelector<HTMLButtonElement>('#cclose')!.onclick = close;
-    at = [h.lon, h.lat];
-    layout();
-    // the camera: point and card in the free room (beside the sheet / above the bottom card). Not keepFollow – this
-    // ends following my position (CLAUDE.md map camera). padding 0 resets one an earlier move may have left behind.
-    if (!fly) return;
-    const c = host.map.getContainer(), w = c.clientWidth, hh = c.clientHeight;
-    const [tx, ty] = pointTarget(host.fitPadding(), w, hh, card.offsetHeight, !phone());
-    host.map.flyTo({ center: at, zoom: Math.max(host.map.getZoom(), 14), offset: offsetTo(tx, ty, w, hh),
-      padding: NO_PADDING });
+    if (pinOnly) return;
+    if (!fly) { void openPinMenu(h); return; }
+    // the camera: the place in the free room (beside the sheet / above it), on a wide screen low enough for the menu
+    // above it. Not keepFollow – this ends following my position (CLAUDE.md map camera). padding 0 resets one an earlier
+    // move may have left behind.
+    const map = host.map, c = map.getContainer(), w = c.clientWidth, hh = c.clientHeight;
+    const [tx, mid] = pointTarget(host.fitPadding(), w, hh, 0, false);
+    const room = host.menuRoom();
+    const ty = phone() ? mid : Math.max(room.top, Math.min(room.bottom - TIP_ROOM, room.top + MENU_GAP + PIN_HEAD + MENU_ROOM));
+    let byHand = false;
+    const hand = () => { byHand = true; };
+    const events = ['mousedown', 'touchstart', 'wheel'] as const;
+    for (const e of events) map.on(e, hand);
+    const arrived = () => {
+      for (const e of events) map.off(e, hand);
+      if (my !== picked || !marker) return; // a newer pick, a close or Remove pin came first
+      if (byHand) { console.info('[search] found place: menu not opened – map moved by hand'); return; }
+      void openPinMenu(h);
+    };
+    map.flyTo({ center: [h.lon, h.lat], zoom: Math.max(map.getZoom(), 14), offset: offsetTo(tx, ty, w, hh), padding: NO_PADDING });
+    if (map.isMoving()) map.once('moveend', arrived); else arrived();
   };
 
-  /** The card at its point (wide screen): the side with room, the tail pointing at the point; off the map → hidden. */
-  let at: [number, number] | null = null;
-  const layout = () => {
-    if (card.hidden || !at) return;
-    if (phone()) { card.classList.remove('anchored'); card.style.cssText = ''; return; }
-    const stage = host.map.getContainer().parentElement!, c = host.map.getContainer();
-    const w = c.clientWidth, h = c.clientHeight;
-    const p = host.map.project(at);
-    card.classList.add('anchored');
-    const off = p.x < 0 || p.y < 0 || p.x > w || p.y > h;
-    const pl = placeCard(p.x, p.y, card.offsetWidth, card.offsetHeight, w, h, boxesOf(stage, BLOCKERS));
-    card.style.left = pl.x + 'px'; card.style.top = pl.y + 'px';
-    card.style.setProperty('--tail', pl.tail + 'px');
-    card.style.visibility = off ? 'hidden' : '';
-    card.dataset.side = pl.side;
+  /** The open menu: a popup at the pin (above / under it) or the bottom card; [menuGen] drops a menu still being built. */
+  let popup: maplibregl.Popup | null = null;
+  let menuGen = 0;
+  let menuAt: Hit | null = null;
+  /** The pin's menu: its rows from the page, placed once per opened menu (pinmenu.ts – the app's PinMenuPlace). */
+  const openPinMenu = async (h: Hit) => {
+    close();
+    const my = ++menuGen;
+    let rows: PinRows;
+    try { rows = await host.pinMenu(h); } catch (e) { console.warn('[Problems] WARN search: the found place\'s menu not built', e); return; }
+    if (my !== menuGen || chipHit !== h) return; // closed, another pick or the pin removed meanwhile
+    showMenu(h, rows, false, null);
   };
-  host.map.on('move', layout);
-  host.map.on('resize', layout);
-  // the card and what it must not cover: a sheet or top bar that grows later (a route arrives, a line shows) moves the card too
-  const ro = new ResizeObserver(layout);
-  ro.observe(card);
-  for (const q of BLOCKERS) for (const e of document.querySelectorAll<HTMLElement>(q)) ro.observe(e);
-
-  const close = () => {
-    picked++; // a pick still waiting for its preview must not open the card afterwards
+  /** The rows in the app's order (PinMenuItems), then placed: [decided] keeps the place of a menu that is open already. */
+  const showMenu = (h: Hit, rows: PinRows, moreOpen: boolean, decided: PinMenuDecision | null) => {
+    const byKey = new Map([...rows.main, ...rows.more].map((m) => [m.key ?? '', m] as const));
+    const remove: MenuItem = { icon: 'wrongLocation', label: t('plan_remove_pin'), act: () => removePin() };
+    const more: MenuItem = { icon: 'more', label: t('common_more'), act: () => showMenu(h, rows, true, decision) };
+    // an add takes the place: its pin goes (the app: the mark stays until the place is added)
+    const adds = (m: MenuItem): MenuItem => ({ ...m, act: () => { removePin(); m.act(); } });
+    const items = pinRows(rows.main.map((m) => m.key ?? ''), rows.more.map((m) => m.key ?? ''), true, moreOpen).map((r) =>
+      r === 'GOOGLE' ? rows.google : r === 'REMOVE_PIN' ? remove : r === 'MORE' ? more : adds(byKey.get(r)!));
+    const map = host.map, c = map.getContainer();
+    const { top, bottom } = host.menuRoom();
+    const tip = map.project([h.lon, h.lat]).y, head = tip - PIN_HEAD;
+    menuAt = h;
+    chip?.getElement().style.setProperty('display', 'none'); // the menu has the name on top
+    let decision: PinMenuDecision;
+    if (decided?.kind === 'CARD') decision = decided;
+    else {
+      const p = pinPopup(holdMenu(rows.head, items, close), decided?.kind === 'BELOW' ? 'BELOW' : 'ABOVE', h);
+      decision = decided ?? decidePinMenu(head, tip, p.getElement().offsetHeight, top, bottom);
+      if (!decided) console.info(`[search] found place menu: ${decision.kind}${decision.panPx ? `, map moved ${decision.panPx} px` : ''} (menu ${p.getElement().offsetHeight} px, map ${Math.round(top)}..${Math.round(bottom)} px)`);
+      if (decision.kind === 'ABOVE') { popup = p; if (decision.panPx) map.panBy([0, -decision.panPx], { duration: 300 }); return; }
+      p.remove();
+      if (decision.kind === 'BELOW') { popup = pinPopup(holdMenu(rows.head, items, close), 'BELOW', h); return; }
+    }
+    // B: the same rows as a card at the bottom, the name and address on top; the map moves up so the pin stays visible
+    const addr = h.address ? `<span class="muted small addr">${esc(h.address)}</span>` : '';
+    card.replaceChildren(holdMenu(rows.head.replace(/<\/span>$/, addr + '</span>'), items, close));
+    card.classList.add('pinmenucard');
     const was = !card.hidden;
-    card.hidden = true; card.innerHTML = ''; at = null; setJoin(host.map, null); // the preview line is the card's (it would go stale with the plan)
-    card.classList.remove('anchored'); card.style.cssText = '';
+    card.hidden = false;
+    if (!was) host.cardShown?.(true);
+    if (decided) return;
+    // the pin stays visible above the card (once) – the card's top counts where it lies under the pin (the app's card
+    // spans the width; the planner's on a wide screen stands beside the plan sheet), else the free map's bottom
+    const cb = card.getBoundingClientRect(), mb = c.getBoundingClientRect(), x = map.project([h.lon, h.lat]).x + mb.left;
+    const under = x >= cb.left - PIN_HALF_W && x <= cb.right + PIN_HALF_W;
+    const pan = cardPan(head, tip, under ? Math.min(cb.top - mb.top, bottom) : bottom, top);
+    if (pan) map.panBy([0, -pan], { duration: 300 });
+  };
+  /** The menu as a popup above the pin's head (A) or under its tip; it moves with the map. */
+  const pinPopup = (el: HTMLElement, kind: 'ABOVE' | 'BELOW', h: Hit) =>
+    new maplibregl.Popup({ anchor: kind === 'ABOVE' ? 'bottom' : 'top', offset: kind === 'ABOVE' ? [0, -(PIN_HEAD + MENU_GAP)] : [0, MENU_GAP],
+      closeButton: false, closeOnClick: false, maxWidth: '320px', className: 'holdpopup pinmenu' })
+      .setDOMContent(el).setLngLat([h.lon, h.lat]).addTo(host.map);
+  // the place leaves the visible map: its menu closes (the app's onGone)
+  host.map.on('move', () => {
+    if (!popup || !menuAt) return;
+    const c = host.map.getContainer(), p = host.map.project([menuAt.lon, menuAt.lat]);
+    if (p.x < 0 || p.y < 0 || p.x > c.clientWidth || p.y > c.clientHeight) close();
+  });
+
+  /** The pin's dashed preview line to where adding it would join the route (the app's candidateJoin). */
+  const updateJoin = async () => {
+    const h = chipHit;
+    if (!h) return;
+    const pv = await host.engine.placePreview(host.points(), h.lat, h.lon).catch(() => null);
+    if (chipHit !== h) return;
+    setJoin(host.map, pv?.join && pv.existing == null ? [[h.lon, h.lat], [pv.join[1], pv.join[0]]] : null);
+  };
+
+  /** Closes the menu (popup or bottom card); the pin and its name chip stay. */
+  const close = () => {
+    menuGen++; // a menu still being built must not open afterwards
+    popup?.remove(); popup = null; menuAt = null;
+    chip?.getElement().style.removeProperty('display');
+    const was = !card.hidden;
+    card.hidden = true; card.replaceChildren(); card.classList.remove('pinmenucard');
     if (was) host.cardShown?.(false);
   };
   card.addEventListener('keydown', (e) => { if (e.key === 'Escape') close(); });
@@ -236,9 +266,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   q.addEventListener('focus', () => { if (!q.value.trim() && !category) run(); }); // the chips to start from
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
-  return { close, isOpen: () => !card.hidden, removePin, planChanged: chipAction,
-    showPin: (h: Hit) => { void pick(h, false, true); }, hasPin: () => marker != null };
+  return { close, isOpen: () => popup != null || !card.hidden, removePin, planChanged: () => { void updateJoin(); },
+    showPin: (h: Hit) => { pick(h, false, true); }, hasPin: () => marker != null };
 }
+
+/** A wide screen's room kept above the place for its menu when the map flies there (a menu of 4–5 rows, its head 2 lines). */
+const MENU_ROOM = 300;
 
 /**
  * The found place's pin (the app's map/CandidateMarker, owner 2026-11-02 – replaces the dashed ring with "+"): a search
@@ -271,18 +304,22 @@ export function pinChipLabel(name: string): string {
   const n = name.trim();
   return n.length <= 20 ? n : n.slice(0, 19).trimEnd() + '…';
 }
-/** Gap from the tip to the card's top. */
+/** Gap from the tip to the chip's top. */
 const CHIP_GAP = 6;
+/** From the pin's tip up to the top of its head (the app's CandidateMarker.PIN_HEIGHT_DP). */
+const PIN_HEAD = TIP + HEAD + OUTLINE;
+/** Half the pin's width. */
+const PIN_HALF_W = HEAD + OUTLINE;
 /**
- * The found place under its pin (the app's MapOverlays.PinChip, owner 2026-11-04 design B): a small white card – the
- * name, below it the blue action ("+ Zur Route", on an empty plan "Hierhin", set by chipAction) and "⋯ Mehr" (the place
- * card – the web's pin menu: as start / destination, Google, remove pin). Both ≥ 48 px touch targets; long names "…".
+ * The found place's name under its pin, "Name ›" (the app's MapOverlays.PinChip – since 2026-11-13 the name only: the
+ * pick opens the pin's menu itself, owner "A mit Ausweich B"): one ≥ 48 px button that opens the menu again after
+ * Escape / a click elsewhere; hidden while the menu is open. Long names end in "…".
  */
 function pinChip(name: string): HTMLElement {
-  const d = document.createElement('div');
+  const d = document.createElement('button');
   d.className = 'pinchip';
-  d.innerHTML = `<b>${esc(pinChipLabel(name))}</b><div class="pinbtns"><button class="pinadd"></button>` +
-    `<button class="pinmore" aria-label="${esc(t('plan_pin_chip_desc', name))}">${icon('more', 16)}<span>${esc(t('plan_pin_more'))}</span></button></div>`;
+  d.setAttribute('aria-label', t('plan_pin_chip_desc', name));
+  d.innerHTML = `<b>${esc(pinChipLabel(name))}</b>${icon('chevronRight', 20)}`;
   return d;
 }
 

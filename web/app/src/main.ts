@@ -19,7 +19,7 @@ import { FlyOver } from './flyover';
 import { STEEP_COLOURS } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
-import { setupSearch, type PlaceCard, type PlaceRole } from './search';
+import { setupSearch, type PinRows, type PlaceCard, type PlaceRole } from './search';
 import { NO_PADDING, roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
@@ -31,7 +31,7 @@ import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDia
 import { keepRecent, afterSaved, takePlace, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
-import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
+import { longRouteOk, allowLongRoute, cancelCamera, notRoutedTexts, setNotRouted, type Before } from './longroute';
 import { post, dismiss, onShown } from './msgcard';
 import { OneWait } from './onewait';
 import { setupGpxImport } from './gpximport';
@@ -857,26 +857,41 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const info = JSON.parse(await engine.call('poiMenu', String(pr.kind ?? ''), String(pr.name ?? ''), pr.ele != null ? String(pr.ele) : '', lat, lon));
   if (!info) return;
   const hit = { title: info.title, name: pr.name ? String(pr.name) : null, kind: String(pr.kind ?? ''), lat, lon } as Hit;
-  // the add entries – the app's PlaceAddMenu (owner 2026-11-07): with 2+ points „Als Zwischenstopp“ and/or „Als neues
-  // Ziel“ by how clear the case is; a clear case's alternative waits behind „⋯ Mehr“
+  const r = await placeRows(hit, info, false);
+  const at = new maplibregl.LngLat(lon, lat);
+  const items: MenuItem[] = [...r.main, r.google];
+  // the alternative a clear case hides is never lost (the app: "⋯ Mehr" opens it in the same menu)
+  if (r.more.length) items.push({ icon: 'more', label: t('common_more'), act: () => openMenu(at, [...r.main, r.google, ...r.more], r.head) });
+  openMenu(at, items, r.head);
+}
+
+/**
+ * The rows of a held place's menu (the app's PoiMenu + PinMenuItems): its head, the add entries (the app's PlaceAddMenu,
+ * owner 2026-11-07: with 2+ points „Als Zwischenstopp“ and/or „Als neues Ziel“ by how clear the case is; a clear case's
+ * alternative in [more], behind „⋯ Mehr“) and Google. [pin] = the found place's pin (search.ts, owner 2026-11-13): an
+ * add is a place from the search – the new route is fitted (fitAfterPlace) and a Cancel of the long-route question
+ * brings the pin back (TakenPin).
+ */
+async function placeRows(hit: Hit, info: { title: string; sub: string; color: string; google?: string }, pin: boolean):
+  Promise<PinRows> {
+  const { lat, lon } = hit;
   const pm = JSON.parse(await engine.call('placeMenu', enc(state.points), lat, lon, state.roundTrip)) as { main: string[]; more: string[]; stop: number };
   const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
-  const row = async (item: string): Promise<MenuItem> => {
-    if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') };
-    if (item === 'GO_HERE') return goHereItem(() => fromMe(p, { pinned: true, name: info.title, kind: hit.kind }));
-    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => addPlaceAt(hit, pm.stop) };
-    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => placeAsNewDestination(hit) };
+  /** Before an add from the pin: TakenPin + fit the new route (the old place card's host.add). */
+  const fromPin = () => { if (pin) { pinTaken = { hit, at: p, plan: null }; placeFit = true; } };
+  const row = async (item: string): Promise<MenuItem> => ({ ...(await row0(item)), key: item === 'SET_DESTINATION' ? 'ADD' : item });
+  const row0 = async (item: string): Promise<MenuItem> => {
+    if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => { fromPin(); void addPlace(hit, 'START', pin); } };
+    if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind }); });
+    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void addPlaceAt(hit, pm.stop); } };
+    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAsNewDestination(hit); } };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
-      act: () => addPlace(hit, 'SMART') };
+      act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
-  const at = new maplibregl.LngLat(lon, lat);
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
-  const google: MenuItem = { icon: 'map', label: t('plan_open_google_maps'), act: () => window.open(info.google, '_blank', 'noopener') };
-  const main = await Promise.all(pm.main.map(row)), more = await Promise.all(pm.more.map(row));
-  const items: MenuItem[] = [...main, google];
-  // the alternative a clear case hides is never lost (the app: "⋯ Mehr" opens it in the same menu)
-  if (more.length) items.push({ icon: 'more', label: t('common_more'), act: () => openMenu(at, [...main, google, ...more], head) });
-  openMenu(at, items, head);
+  const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'),
+    act: () => { if (info.google) window.open(info.google, '_blank', 'noopener'); else google(hit.name ?? '', lat, lon, hit.name ? '' : hit.title); } };
+  return { head, main: await Promise.all(pm.main.map(row)), more: await Promise.all(pm.more.map(row)), google: googleRow };
 }
 
 /** Place menu → „Als Zwischenstopp“: at [index] (the engine's stopOnly place – never behind the goal), pinned with its name. */
@@ -1155,7 +1170,7 @@ async function changed() {
   planGaps.clear(); // the last plan's gaps belong to other points
   // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
   const answer = await longRouteOk(engine, state.points, state.activity, before);
-  if (answer === 'cancel') { await cancelLongRoute(); return; }
+  if (answer === 'cancel') { await cancelLongRoute(); cancelLongRouteCamera(); return; }
   if (answer !== 'plan') { await startFresh(answer.fresh); return; }
   await planRun(1);
 }
@@ -1229,7 +1244,7 @@ async function planRun(rounds: number) {
     fitNextRoute = false;
     const asked = fitAskedAt, plan = state.plan;
     // WholeRoute.SETTLE_MS: a moment for the map; not when the user moved it meanwhile or the plan moved on
-    setTimeout(() => { if (lastMapTouch <= asked && state.plan === plan) fitRoute(); }, 500);
+    setTimeout(() => { if (lastMapTouch <= asked && state.plan === plan) fitRoute(); else console.info(`[map] route fit left out: ${lastMapTouch > asked ? 'the map was touched' : 'another plan'}`); }, 500);
   }
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   engine.call('routingInfo').then((l) => { routingLine = l; }, (e) => problem('routing', 'routing fingerprint line not read', e));
@@ -1659,6 +1674,22 @@ function fitRoute() {
   if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
   map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
 }
+/**
+ * After Cancel at the very-long-route question (the app's answerLongRoute(false), owner 2026-11-13): the map goes back
+ * to the plan from before – the whole plan, or its one point at the one-place zoom; no point: it stays
+ * (longroute.ts cancelCamera). Only this Cancel moves the map, not Stop or the slow plan's Cancel.
+ */
+function cancelLongRouteCamera() {
+  const line = state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? null;
+  const fit = cancelCamera(state.points, line?.length ? line : null);
+  console.info(`[map] very long plan cancelled: camera → ${fit ? `fit (${fit.length} points)` : 'stays'}`);
+  if (!fit) return;
+  const b = new maplibregl.LngLatBounds();
+  fit.forEach(([la, lo]) => b.extend([lo, la]));
+  const p = map.getPadding();
+  if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
+  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+}
 /** The plan's points, its route and a shown GPX track – what fitRoute and 3D frame; null without points. */
 function routeBounds(): maplibregl.LngLatBounds | null {
   if (!state.points.length) return null;
@@ -1719,14 +1750,19 @@ placeCard = setupSearch({
   areas: async () => (useCells ? cells.searchAreas(map) : [{ key: 'map', dir: mapFolder }]),
   points: () => state.points,
   route: () => state.plan?.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon)) ?? [],
-  add: (h, role) => { pinTaken = { hit: h, at: [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))], plan: null }; void addPlace(h, role, true); },
-  goHere: (h) => {
-    placeFit = true;
-    const at: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-    pinTaken = { hit: h, at, plan: null };
-    void fromMe(at, { pinned: true, name: h.title, kind: h.kind });
+  // the found place's menu: the very rows a hold on it gives (owner 2026-11-13, PinMenuItems) – the head's kind line
+  // from the app's PoiMenu when the place is a POI kind, else the search row's own
+  pinMenu: async (h) => {
+    const info = JSON.parse(await engine.call('poiMenu', h.kind, h.name ?? '', '', h.lat, h.lon)) as { sub: string; color: string } | null;
+    return placeRows(h, { title: h.title, sub: info?.sub ?? h.subtitle, color: info?.color ?? h.color }, true);
   },
-  google: (h) => google(h.name ?? '', h.lat, h.lon, h.name ? '' : h.title),
+  // the free map between the top bar and the plan sheet (phone) or the big profile / the map's bottom (wide)
+  menuRoom: () => {
+    const st = $('stage').getBoundingClientRect(), bar = $('topbar').getBoundingClientRect(), bp = $('bigProfile');
+    const top = bar.height > 0 ? bar.bottom - st.top : 0;
+    const under = phoneWidth() ? $('sheet').getBoundingClientRect().top : bp.hidden ? st.bottom : bp.getBoundingClientRect().top;
+    return { top, bottom: Math.max(top, Math.min(st.bottom, under) - st.top) };
+  },
   cardShown: (open) => document.body.classList.toggle('card-open', open),
   placeShown: (lat, lon) => areas?.wantPoint(lat, lon, 'searched'), // T2
 }, $('searchbox'), $('placecard'));

@@ -14,6 +14,8 @@ PARITY=0; node web/parity/check.mjs --report "$REPORT" || PARITY=$?
 run() { echo "== $*"; "$@" || { echo "RED: $*"; exit 3; }; }
 run tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine test generateWasmGC copyWasmGCRuntime overviewStyle
 run node web/app/test/texts-check.mjs
+run node web/app/test/pinmenu-check.mjs
+run node web/app/test/poidensity-check.mjs
 run node web/app/test/sync-engine.mjs
 run node web/app/test/gpx-engine.mjs
 run tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine runJvm parityJvm -Psegments="$SEG"
