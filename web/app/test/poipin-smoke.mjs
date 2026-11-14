@@ -24,7 +24,15 @@ page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const VIEW = '11.1450,46.6880,16'; // Algund / Vellau: inns and a few huts
 
+// With software GL (SwiftShader, the tests' headless Chromium) the map's GPU work can lag the page by half a minute on a
+// busy machine. A reload (Chrome destroys the old WebGL context before the new page commits) and a screenshot wait for
+// it and would spend their own 30 s on it – drained first: a 1-pixel read waits for every frame drawn before it.
+const drainGpu = () => page.evaluate(() => {
+  const gl = window.__map?.getCanvas().getContext('webgl2');
+  gl?.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+}).catch(() => {}); // expected: about:blank before the first load – no map
 const ready = async (hash = '') => {
+  await drainGpu();
   await page.goto(url + 'index.html?at=' + VIEW + hash);
   await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 };
@@ -71,8 +79,18 @@ pins = await pinInfo();
 check(pins.length === 3 && pins[1].poi && pins[1].kind === poi.kind && pins[1].badge === '2',
   `plan from a link: the pinned stop shows the ${poi.kind} symbol with ② (${JSON.stringify(pins.map((p) => p.kind ?? p.badge))})`);
 check(!pins[0].poi && !pins[2].poi, '(c) the points that are not pinned stay plain dots');
+// the first route of a plan is framed whole 0.5 s after it came (WholeRoute.SETTLE_MS, main.ts fitRoute): the camera has
+// to be at rest – the pin still for a second – before its place is read, or the drag below grabs the map, not the pin
+await page.waitForFunction(() => {
+  const el = document.querySelector('.pin.poipin'), w = window, now = performance.now();
+  if (!el || w.__map.isMoving()) { w.__still = null; return false; }
+  const r = el.getBoundingClientRect(), at = `${Math.round(r.x)},${Math.round(r.y)}`;
+  if (w.__still?.at !== at) { w.__still = { at, since: now }; return false; }
+  return now - w.__still.since >= 1000;
+}, null, { timeout: 30_000, polling: 100 });
 const el = page.locator('.pin.poipin');
 const pb = await el.boundingBox();
+await drainGpu();
 await page.screenshot({ path: shot, clip: { x: pb.x - 140, y: pb.y - 100, width: pb.width + 280, height: pb.height + 200 } });
 console.log('screenshot:', shot);
 

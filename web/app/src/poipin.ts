@@ -47,7 +47,9 @@ function symbolUrl(map: MlMap, kind: string): string | null {
     const { width, height, data } = img.data;
     const c = document.createElement('canvas');
     c.width = width; c.height = height;
-    c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
+    // a CPU canvas (willReadFrequently): toDataURL on a GPU canvas waits for the GPU process to finish the map's frames
+    // first – with software GL (SwiftShader, no GPU) that held the page for seconds after a POI was added
+    c.getContext('2d', { willReadFrequently: true })!.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
     const url = c.toDataURL();
     symbols.set(id, url);
     return url;

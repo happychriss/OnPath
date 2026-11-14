@@ -599,11 +599,14 @@ function pinnedKind(i: number): string | null {
   if (k) m.kind = k;
   return k;
 }
-// a pinned point whose POI was not loaded yet when it was drawn: draw again once the map has it
-map.on('idle', () => {
+// a pinned point whose POI was not loaded yet when it was drawn: draw again once the map has it – as soon as the POIs
+// are in, not only when the whole map is idle (a busy map – tiles, terrain – can take a minute to be idle)
+const lateKinds = () => {
   const late = state.meta.some((m, i) => m.pinned && !isPoiKind(map, m.kind) && state.points[i] && poiKindAt(map, state.points[i][0], state.points[i][1]));
   if (late) void drawPoints();
-});
+};
+map.on('idle', lateKinds);
+map.on('sourcedata', (e) => { if (e.sourceId === 'pois' && e.isSourceLoaded) lateKinds(); });
 
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
 async function drawPoints() {
