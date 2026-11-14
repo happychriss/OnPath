@@ -14,6 +14,8 @@ PARITY=0; node web/parity/check.mjs --report "$REPORT" || PARITY=$?
 run() { echo "== $*"; "$@" || { echo "RED: $*"; exit 3; }; }
 run tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine test generateWasmGC copyWasmGCRuntime overviewStyle
 run node web/app/test/texts-check.mjs
+run node web/app/test/pinmenu-check.mjs
+run node web/app/test/poidensity-check.mjs
 run node web/app/test/sync-engine.mjs
 run node web/app/test/gpx-engine.mjs
 run tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine runJvm parityJvm -Psegments="$SEG"
@@ -24,6 +26,7 @@ for t in browser-compare ui-smoke share-smoke edit-smoke snap-smoke version-smok
 done
 ( cd web/app && run node test/search-smoke.mjs "$SEG" "$CELLS" )
 ( cd web/app && run node test/poipin-smoke.mjs "$SEG" "$CELLS" )
+( cd web/app && run node test/routes-smoke.mjs "$SEG" "$CELLS" )
 ( cd web/host && run node --test )
 # the app leads (web-planner.md §14.2): adopt each change in the web, re-run this script, push – do not wait for a person
 if [ "$PARITY" != 0 ]; then echo "mirrored app files changed – see $REPORT; adopt them in the web (the app leads), then node web/parity/check.mjs --update"; exit 4; fi

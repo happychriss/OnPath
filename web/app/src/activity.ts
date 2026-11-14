@@ -73,6 +73,8 @@ export class ActivityPicker {
 
   setRows(rows: ActivityRow[]) { this.rows = rows; }
   row(a: Activity) { return this.rows.find((r) => r.key === a); }
+  /** The six with their names (Meine Touren's activity filter and activity line). */
+  allRows(): ActivityRow[] { return this.rows; }
   get isOpen() { return !this.box.hidden; }
 
   /** Opens under [anchor] (the chip); a second click on the chip closes it. */

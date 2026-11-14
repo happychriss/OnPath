@@ -2,7 +2,9 @@
 // (icon + label, an optional line under it); a danger row in red. Shown in a maplibre popup at the point.
 import { icon, type IconName } from './icons';
 
-export interface MenuItem { icon: IconName; label: string; sub?: string; danger?: boolean; disabled?: boolean; act: () => void }
+export interface MenuItem { icon: IconName; label: string; sub?: string; danger?: boolean; disabled?: boolean; act: () => void;
+  /** The app's row name (PinMenuItems: START_HERE, GO_HERE, ADD, …), for the rows' order. */
+  key?: string }
 
 export function holdMenu(headHtml: string, items: MenuItem[], close: () => void): HTMLElement {
   const box = document.createElement('div');

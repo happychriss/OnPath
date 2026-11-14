@@ -24,6 +24,12 @@ export interface SavedPlan {
   routing?: string | null; routingData?: string | null;
   /** A plan from the phone routed with another fingerprint than this page's: the sheet's grey line when opened. */
   otherRouting?: boolean;
+  /** Starred in Meine Touren (sync field 9, web-sync.md §5.3; not said = false) – the same star as on the phone. */
+  favourite?: boolean;
+  /** The row's activity line (WebSync.factsFields): the activity (the app's enum name, null = unreadable), its T level. */
+  activity?: string | null; sac?: number;
+  /** „↻ Rundtour“ (the app's RoundTrip: a plan's points end at its start; a track: a guess from its line). */
+  roundTrip?: boolean;
 }
 export interface Device { name: string; updatedAt: number }
 export interface FolderInfo { key: string; name: string }
@@ -279,6 +285,25 @@ export class PlanSync {
       await this.setLedgerOf(folder, await this.call('syncRename', await this.ledgerOf(folder), id, title, Date.now(), await this.device()));
     });
     await this.refresh();
+  }
+
+  /**
+   * The star on a saved route / track (owner 2026-11-13, the shared SyncLedger.setFavourite): an edit like [rename] –
+   * stored at once, it goes to the phone with the next Save; a star never makes a copy (a star-only version, field 10).
+   */
+  async setFavourite(id: string, on: boolean, folder = this.dir.open) {
+    await this.locked(async () => {
+      await this.setLedgerOf(folder, await this.call('syncSetFavourite', await this.ledgerOf(folder), id, on ? 1 : 0, Date.now(), await this.device()));
+    });
+    await this.refresh();
+  }
+
+  /** A Zuletzt draft's activity line (its plan code alone – no sync item): {activity, sac, roundTrip}. */
+  async planFacts(code: string): Promise<{ activity: string | null; sac: number; roundTrip: boolean }> {
+    try { return JSON.parse(await this.call('syncPlanFacts', code)); } catch (e) {
+      problem('routes', 'a Zuletzt plan\'s activity could not be read – its row shows none', e);
+      return { activity: null, sac: 0, roundTrip: false };
+    }
   }
 
   async remove(id: string, folder = this.dir.open) {

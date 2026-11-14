@@ -12,6 +12,7 @@ import type { Feature, FeatureCollection } from 'geojson';
 import { PMTiles } from 'pmtiles';
 import { PACKED, MemorySource } from './packed';
 import { problem } from './diag';
+import { applyDensity } from './poidensity';
 
 const CELL_Z = 10;
 /** Region packages: z7 tiles, the map z7–9 (map-cells.md §20; the app's Overview.PACKAGE_ZOOM). */
@@ -390,6 +391,12 @@ export class Cells {
         const r = await fetch(c.dir + 'pois.geojson');
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         const fc = (await r.json()) as FeatureCollection;
+        // the app's density limit for city POIs (PoiDensity, owner 2026-11-13): "dz" on the restaurants / cafés / bars /
+        // snack bars / shops beyond 24 per tile – the style draws them only from that zoom, as from the app's POI tiles
+        const t0 = performance.now();
+        const later = applyDensity(fc.features);
+        const ms = performance.now() - t0;
+        if (ms > 100) console.info(`[cells] map cell ${key}: POI density limit took ${Math.round(ms)} ms (${fc.features.length} POIs, ${later} from z17)`);
         if (this.poisLoaded.has(key)) { this.pois.set(key, fc.features); added = true; }
       } catch (e) {
         // POIs are optional: left out, asked again on a later move (once per move – no loop)

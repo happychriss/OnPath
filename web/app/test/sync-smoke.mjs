@@ -104,7 +104,7 @@ const openRoute = async (P, hash) => { await P.evaluate((h) => { location.hash =
 const listRow = (P, name) => P.evaluate((n) => { const li = [...document.querySelectorAll('#planList li[data-id]:not([data-zuletzt])')].find((l) => l.querySelector('.name')?.textContent === n);
   if (!li) return null;
   const where = [...li.querySelectorAll('.where .w')].map((w) => (w.classList.contains('browser') ? 'browser' : 'phone') + ':' + w.getAttribute('aria-label')).join(' ');
-  return { where, bold: Number(getComputedStyle(li.querySelector('.name')).fontWeight) >= 700, sub: li.querySelector('.sub').textContent, kind: li.dataset.kind,
+  return { where, bold: Number(getComputedStyle(li.querySelector('.name')).fontWeight) >= 700, sub: [...li.querySelectorAll('.actline > span')].map((s) => s.textContent.trim()).join(' '), kind: li.dataset.kind,
     current: li.classList.contains('current'), tag: li.querySelector('.tag')?.textContent ?? '', text: li.textContent.replace(/\s+/g, ' ').trim() }; }, name);
 /** The plan on the map's row under Recent: its name and tags („In progress“, + „Saved“ when saved as it is), a Save on it. */
 const liveRow = (P) => P.evaluate(() => { const li = document.querySelector('#planList li[data-live]');
@@ -172,6 +172,8 @@ class Phone {
   }
   async rename(id, title) { this.ledger = await call('syncRename', this.ledger, id, title, Date.now(), this.device); }
   async remove(id) { this.ledger = await call('syncDelete', this.ledger, id, Date.now(), this.device); }
+  /** ☆ on the phone (the app's AppViewModel.setFavourite → SyncLedger.setFavourite, web-sync.md §5.3). */
+  async star(id, on) { this.ledger = await call('syncSetFavourite', this.ledger, id, on ? 1 : 0, Date.now(), this.device); }
   idOf = async (title) => (await this.list()).find((x) => x.title === title)?.id;
   /** "Unpair?" on the phone: the mailbox ends for every browser. */
   async end() { const k = await this.keys(); return (await box('DELETE', k.mailbox, k.token)).status; }
@@ -224,8 +226,8 @@ await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
 let row = await listRow(A, 'Zweitroute');
 let lv = await liveRow(A);
-check(row?.where === HERE && !row.bold && !row.current && /^Plan · \d+ \w+ \d{4}$/.test(row.sub) && lv?.name === 'Zweitroute' && JSON.stringify(lv.tags) === '["In progress","Saved"]',
-  `not paired: a row shows 🖥 only, not bold, "Plan · date" (the app's words); the open one is the Recent row „In progress“ + „Saved“ (${JSON.stringify({ row, lv })})`);
+check(row?.where === HERE && !row.bold && !row.current && row.sub === 'Hike · T3' && lv?.name === 'Zweitroute' && JSON.stringify(lv.tags) === '["In progress","Saved"]',
+  `not paired: a row shows 🖥 only, not bold, its activity line "Hike · T3" (the app's L1 row); the open one is the Recent row „In progress“ + „Saved“ (${JSON.stringify({ row, lv })})`);
 const dialogText = await A.textContent('dialog.plans');
 check(!/Your planned routes|Save current route|Saved as|Without phone|Remove routes/.test(dialogText) && await A.locator('dialog.plans .rename.iconbtn, dialog.plans h3').count() === 0,
   'My routes is one plain list: no heading line, no Save box, no folder lines, no ✎ / 🗑 in the row');
@@ -428,7 +430,7 @@ await phone.round();
 check(JSON.stringify(await phone.titles()) === want, 'after Save the phone has the same two ' + JSON.stringify(await phone.titles()));
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-id]');
-check(/^Plan · /.test((await listRow(A, 'Browser name (copy)'))?.sub ?? ''), 'the copy is a row like any other');
+check((await listRow(A, 'Browser name (copy)'))?.sub === 'Hike · T3', 'the copy is a row like any other');
 await A.click('#closePlans');
 
 // ---- 7. delete both ways ----
@@ -462,7 +464,7 @@ await A.click('#closeTrack');
 await menu(A, '#menuPlans');
 await A.waitForSelector('#planList li[data-kind="track"]');
 let tr = await listRow(A, 'Meran 2000 & Ifinger Hütte');
-check(tr?.kind === 'track' && /^Imported GPX · /.test(tr.sub) && tr.bold && tr.where === HERE, `the track's row: "Imported GPX · date" (the app's words), bold, 🖥 (${JSON.stringify(tr)})`);
+check(tr?.kind === 'track' && /^Hike · T\d$/.test(tr.sub) && tr.bold && tr.where === HERE, `the track's row: its activity line "Hike · T2" (the app's L1 row), bold, 🖥 (${JSON.stringify(tr)})`);
 const dl = A.waitForEvent('download', { timeout: 30_000 }).catch(() => null);
 // the name the page gives (headless Chromium reports non-ASCII download names as "download")
 await A.evaluate(() => { const c = HTMLAnchorElement.prototype.click; HTMLAnchorElement.prototype.click = function () { window.__dlName = this.download; return c.call(this); }; });
@@ -800,6 +802,49 @@ await sent(O);
 await ownerPhone.round();
 check(JSON.stringify((await ownerPhone.titles()).filter((x) => /Runde/.test(x))) === '["Andere Runde","Meine Runde"]' && (await O.textContent('#savedLine')).includes('Andere Runde'),
   'Save as: "Andere Runde" next to "Meine Runde" (both on the phone), the new one is open');
+
+// ---- 16b. the star both ways (owner 2026-11-13: „auch beim Planer unterstützt und mit synchronisiert“, web-sync.md §5.3):
+// starred on the phone → starred here (★ on the row); starred here → with Save on the phone; a star never makes a copy –
+// also when the phone renamed the route meanwhile ----
+const favOf = async (P, name) => (await P.evaluate(async () => window.__sync.list())).filter((p) => p.title === name).map((p) => !!p.favourite);
+const pull = async (P) => { await sendMark(P); await P.evaluate(() => window.__sync.syncNow());
+  await P.waitForFunction(() => (window.__sync.status.lastSync ?? 0) > window.__sendMark, null, { timeout: 30_000 }).catch(() => {}); };
+await ownerPhone.round();
+const phoneCount = (await ownerPhone.list()).length;
+await ownerPhone.star(await ownerPhone.idOf('Meine Runde'), true);
+await ownerPhone.round();
+await pull(O);
+await O.click('#menuPlans');
+await O.waitForSelector('#planList li[data-id]', { timeout: 10_000 });
+// the activity filter starts on the planning activity: „All“ shows every row
+await O.click('#planSort .actchip'); await O.click('#actFilterMenu .actpick[data-act="ALL"]'); await O.waitForTimeout(200);
+const starOn = await O.evaluate(() => [...document.querySelectorAll('#planList li[data-id]:not([data-zuletzt])')].find((l) => l.querySelector('.name').textContent === 'Meine Runde')?.querySelector('.favstar')?.getAttribute('aria-pressed'));
+check(JSON.stringify(await favOf(O, 'Meine Runde')) === '[true]' && starOn === 'true', `starred on the phone → ★ here, one row (${JSON.stringify(await favOf(O, 'Meine Runde'))}, star ${starOn})`);
+await O.click('#planList li[data-id]:not([data-zuletzt]):has(.name:text-is("Andere Runde")) .favstar');
+await O.waitForTimeout(300);
+await O.click('#closePlans');
+check(JSON.stringify(await favOf(O, 'Andere Runde')) === '[true]' && (await saveBtn(O)).state === 'dark', 'starred here: stored, Save dark (it goes with Save, like a rename)');
+await sendMark(O);
+await O.click('#menuSavePlan');
+await sent(O);
+await ownerPhone.round();
+const onPhone = (await ownerPhone.list()).filter((x) => x.title === 'Andere Runde');
+check(onPhone.length === 1 && onPhone[0].favourite === true && (await ownerPhone.list()).length === phoneCount, `starred here → ★ on the phone after Save, no copy (${onPhone.length} × favourite ${onPhone[0]?.favourite})`);
+// the phone renames, the browser takes the star away before it saw the rename: the newer rename with the browser's star
+await ownerPhone.rename(await ownerPhone.idOf('Meine Runde'), 'Meine Runde X');
+await ownerPhone.round();
+await O.evaluate(async () => { const s = window.__sync; const p = (await s.list()).find((x) => x.title === 'Meine Runde'); if (p) await s.setFavourite(p.id, false); });
+await sendMark(O);
+await O.click('#menuSavePlan');
+if (await O.locator('dialog.savename[open]').count()) await answerSave(O, null);
+await sent(O);
+await ownerPhone.round();
+await pull(O);
+const pl = await ownerPhone.list();
+const renamed = pl.filter((x) => /^Meine Runde/.test(x.title ?? ''));
+check(renamed.length === 1 && renamed[0].title === 'Meine Runde X' && renamed[0].favourite === false && pl.length === phoneCount,
+  `a star meeting a rename from the phone: one route, the phone's name, the browser's star – no copy (${JSON.stringify(renamed.map((x) => [x.title, x.favourite]))})`);
+check(JSON.stringify(await favOf(O, 'Meine Runde X')) === '[false]' && !(await titles(O)).some((x) => /Kopie|copy/.test(x)), 'the browser agrees: "Meine Runde X", no star, no copy');
 
 // ---- 17. 250 tours per phone (owner 2026-11-07, the shared SyncLimits): „N of 250 tours“ in the Phone window, amber
 // from 200; a NEW tour beyond 250 is refused before the name is asked (Save amber, why in its tooltip); room again

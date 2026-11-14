@@ -3,18 +3,22 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text)",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none)",
       "web": [
-        "web/app/src/activity.ts"
+        "web/app/src/activity.ts",
+        "web/app/src/plans.ts",
+        "web/app/src/routefilter.ts",
+        "web/app/src/style.css"
       ],
       "blob": "196c999fd8edd3906f97f570a1f1f9884cc51201"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look; the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts)",
       "web": [
         "web/app/src/main.ts",
-        "web/app/src/menus.ts"
+        "web/app/src/menus.ts",
+        "web/app/src/search.ts"
       ],
       "blob": "7b2edd798e8ee83ea16e2cb647eb0915f39e8c61"
     },
@@ -328,7 +332,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RoutesState.kt",
-      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time)",
+      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time); open: Neueste zuerst at each opening (no stored sort – plans.ts openSort)",
       "web": [
         "web/app/src/recent.ts",
         "web/app/src/main.ts",
@@ -337,15 +341,108 @@
       "blob": "1fda7c4c2bdef0e0f6c8a743dee06bf7c1427ced"
     },
     {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RouteThumbImages.kt",
+      "what": "pictures in memory capped by decoded bytes (8 MB, w × h × 4), the row shows its line until the picture is read",
+      "web": [
+        "web/app/src/routethumbs.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "83f809ac54df47e50d289bdc6c4cb2f0fd8d1ff2"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/RouteSnapshot.kt",
+      "what": "withoutNetworks (every routes-* layer and the routes data) and withLine (casing / line width × LINE_SCALE) for the map pictures",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "a4a5348d6f4af116eb5aa256e6c6069848576fdc"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/ThumbMaker.kt",
+      "what": "one picture at a time with a pause, QUALITY 82 WebP, start (line colour) + goal (red) dots in a white ring, a failure keeps the drawn line and is not tried again this run",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "844d700e65c272a9a9b7fe8139ef94d82136febf"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/RouteThumbs.kt",
+      "what": "ThumbRules: VERSION, TILE_DP 84, MARGIN, marker sizes, LINE_SCALE, region (square in Web Mercator) / project – the web keys pictures by line, not by sig / lineKey",
+      "web": [
+        "web/app/src/routethumbs.ts"
+      ],
+      "blob": "3504e3b4fcc8c32723da715c05609b7966487e6c"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RoundTrip.kt",
+      "what": "„↻ Rundtour“: a plan = PlanEdits.isRoundTrip on its points; a track = the guess from its line (RouteNamer.LOOP_M / OUT_M)",
+      "web": [
+        "web/engine/src/main/kotlin/com/onpath/web/WebSync.kt",
+        "web/app/src/routefilter.ts"
+      ],
+      "blob": "2269e2c01c15f2c3af95409864273c26f7d45124"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/ActivityFilter.kt",
+      "what": "activity filter: MENU order, exactly the chosen activity, „Alle“ under a line, preset with the planning activity at each opening, every choice filters at once, the chip's spoken text",
+      "web": [
+        "web/app/src/routefilter.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "5154e78389808a8a62352d1d9191e5cdf137b76d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/Favourites.kt",
+      "what": "the star on a saved row (gold = favourite, its spoken texts) and the „☆ Favoriten“ pill first in the chips (only favourites; Zuletzt always shows; kept while the page is open)",
+      "web": [
+        "web/app/src/routefilter.ts",
+        "web/app/src/plans.ts",
+        "web/app/src/style.css"
+      ],
+      "blob": "fb75c81796e21ca2cfa0ef0cd70eb6631b9c5be4"
+    },
+    {
       "app": "app/src/main/java/com/onpath/app/ui/BackupScreens.kt",
       "what": "RecycleBinScreen / BinCard – the planner's Papierkorb for its drafts: keep line, „Plan · date · km“, „Gelöscht am … · noch N Tage“, Wiederherstellen (no „Jetzt löschen“: its question speaks of the phone)",
       "web": [
         "web/app/src/plans.ts"
       ],
       "blob": "8cf36ab390dde82bfaf06cd5bf93499d1c6db016"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/PinMenuPlace.kt",
+      "what": "the found place's menu (app 6714ad6f, owner 2026-11-13 „A mit Ausweich B“): PinMenuPlace.decide / cardPan (above the pin, the map moved down; under it; else a card at the bottom), PinMenuItems.of (the rows' order, Remove pin before More)",
+      "web": [
+        "web/app/src/pinmenu.ts",
+        "web/app/src/search.ts"
+      ],
+      "blob": "79cdb62934b03ff2250949ee350a578bd3f12b5d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/cells/PoiDensity.kt",
+      "what": "the density limit for city POIs (app b71b1df9): KINDS / CAP / ALL_FROM / PROP and firstZooms; PoiTiles.densityZooms (one cell's POIs, \"dz\" only when later than the kind) – the web sets \"dz\" on each cell's pois.geojson (cells.ts loadPois)",
+      "web": [
+        "web/app/src/poidensity.ts",
+        "web/app/src/cells.ts"
+      ],
+      "blob": "3fe621fbbe60a8efa52619b1dc48397c725c532e"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/LongRouteCancelCamera.kt",
+      "what": "very long route → Cancel: the map back to the plan from before (whole plan / its one point / stays); no tour on the web",
+      "web": [
+        "web/app/src/longroute.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "0ae700e453477dc5c2b59f3ff3e1b73d3de1e90d"
     }
   ],
   "watch": [
+    {
+      "app": "app/src/main/java/com/onpath/app/poi/PoiTap.kt",
+      "why": "how a tap / hold finds the POI under the finger (app: ShownPois, read once per camera stop – MapLibre Native's queryRenderedFeatures waits for its render thread; web: main.ts poiAt asks GL JS at the click, p50 0.1 ms in Köln, no render thread)",
+      "blob": "285b2151f9dca6f9b73a5c10272e3703218f5c22"
+    },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
@@ -414,7 +511,7 @@
     {
       "app": "tools/make_style.py",
       "why": "map style (the web copies the generated style)",
-      "blob": "67cb97f28babf4cd96eff8c29abcb159abf25dc9"
+      "blob": "e083d5bbb16bba97c2ebb0183f2f787b147b36e2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",

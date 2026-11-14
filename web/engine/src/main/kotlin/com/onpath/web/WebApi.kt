@@ -772,6 +772,9 @@ external fun planProgress(text: String)
     WebSync.saveRouted(ledger, id, plan, title, now, device)
 @JSExport fun syncRename(ledger: String, id: String, title: String, now: Double, device: String): String =
     WebSync.rename(ledger, id, title, now, device)
+@JSExport fun syncSetFavourite(ledger: String, id: String, favourite: Int, now: Double, device: String): String =
+    WebSync.setFavourite(ledger, id, favourite != 0, now, device)
+@JSExport fun syncPlanFacts(plan: String): String = WebSync.planFacts(plan)
 @JSExport fun syncDelete(ledger: String, id: String, now: Double, device: String): String = WebSync.delete(ledger, id, now, device)
 @JSExport fun syncHello(ledger: String, device: String, name: String, now: Double): String = WebSync.hello(ledger, device, name, now)
 @JSExport fun syncForget(ledger: String): String = WebSync.forget(ledger)

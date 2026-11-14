@@ -1,8 +1,9 @@
 // The order of Meine Touren (the app's ui/routes/RouteSort + RouteSortChips, owner 2026-11-12 variant C; owner
 // 2026-11-13: "Der Planer braucht auch dieselben Suchen und Sortieren-Einstellungen wie das Handy"). Mirrored – the app's
 // RouteSort works on its database Tour, which the engine does not compile (web/parity.json). Same chips in the same
-// order with the app's strings, the same tap rule, the same ties, the same stored form ("LENGTH:down") under
-// onpath.routesSort (the app's Prefs.routesSort). One addition the app does not need: a plan this browser never routed
+// order with the app's strings, the same tap rule, the same ties, the same text form ("LENGTH:down"). Not kept any more
+// (app 82167d11, owner 2026-11-13): Meine Touren opens with Neueste zuerst every time, a choice holds while it is open
+// (plans.ts). One addition the app does not need: a plan this browser never routed
 // has no numbers (planstats.ts) – it goes after those with numbers, in either direction, newest first among themselves.
 import { t } from './i18n';
 import { icon } from './icons';
@@ -54,13 +55,6 @@ export function decodeSort(s: string | null | undefined): SortChoice {
   return SORT_KEYS.some((x) => x.key === k) ? { key: k as SortKey, biggestFirst: d !== 'up' } : SORT_DEFAULT;
 }
 
-const STORE = 'onpath.routesSort';
-export function loadSort(): SortChoice {
-  try { return decodeSort(localStorage.getItem(STORE)); } catch { return SORT_DEFAULT; /* expected: storage blocked – newest first */ }
-}
-export function keepSort(c: SortChoice) {
-  try { localStorage.setItem(STORE, encodeSort(c)); } catch { /* expected: storage blocked – kept while the page is open */ }
-}
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 

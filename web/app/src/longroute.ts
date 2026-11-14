@@ -45,6 +45,19 @@ export async function longRouteOk(engine: EngineClient, points: LatLon[], activi
   return answer;
 }
 
+/**
+ * Where the map goes after Cancel at the very-long-route question – the app's LongRouteCancelCamera.after (owner
+ * 2026-11-13, app 4216a144): back to what was planned before the far point (the start in Hilden after Paris was picked
+ * in the search and taken as the destination). Two or more points left: the whole plan as "Show whole route" fits it
+ * (its route line, when one is known, and the points); one point: that point (the one-place zoom, 16); none: the map
+ * stays (null). The planner has no tour, so the app's "follow my position during a tour" never applies. Pure.
+ */
+export function cancelCamera(points: LatLon[], routeLine: LatLon[] | null): LatLon[] | null {
+  if (points.length >= 2) return [...(routeLine ?? []), ...points];
+  if (points.length === 1) return [points[0]];
+  return null;
+}
+
 interface Far { point: LatLon; text: string }
 
 /**

@@ -1,8 +1,8 @@
 // Meine Touren's sort chips and search like the app's (ui/routes/RouteSort + RouteSortChips, RoutesTab.search; owner
 // 2026-11-13: "dieselben Suchen und Sortieren-Einstellungen wie das Handy"): the five chips in the app's order with its
 // words (EN + DE), the chosen one ✓ (and ↓ / ↑), a second tap turns Länge / Dauer / Anstieg round, the app's ties, a row
-// this browser has no numbers for goes last, the choice kept in localStorage (onpath.routesSort, the app's stored form)
-// over a reload, the search (every word, case / accents / ß folded) with the order kept, the app's empty texts.
+// this browser has no numbers for goes last, Newest first at every opening (app 82167d11 – no stored order any more),
+// the search (every word, case / accents / ß folded) with the order kept, the app's empty texts.
 // Usage: node test/sort-smoke.mjs [segmentsDir] [shot.png]
 import path from 'node:path';
 import fs from 'node:fs';
@@ -38,7 +38,7 @@ async function open(ctx, q = '') {
 const openList = async (P) => { await P.click('#menuPlans'); await P.waitForSelector('dialog.plans[open] #planList', { timeout: 10_000 }); };
 const closeList = (P) => P.click('#closePlans');
 const names = (P) => P.$$eval('#planList li[data-id] .name', (els) => els.map((e) => e.textContent));
-const chips = (P) => P.$$eval('#planSort .sortchip', (els) => els.map((e) => ({ key: e.dataset.key, text: e.textContent.trim(), on: e.classList.contains('on'),
+const chips = (P) => P.$$eval('#planSort .sortchip[data-key]', (els) => els.map((e) => ({ key: e.dataset.key, text: e.textContent.trim(), on: e.classList.contains('on'),
   pressed: e.getAttribute('aria-pressed'), label: e.getAttribute('aria-label'), check: !!e.querySelector('.ic:first-child') && e.classList.contains('on'),
   dir: e.querySelector('.dir')?.dataset.dir ?? null })));
 const tap = async (P, key) => { await P.click(`#planSort .sortchip[data-key="${key}"]`); await P.waitForTimeout(150); };
@@ -56,6 +56,9 @@ await P.evaluate(async ({ A, B, C }) => {
   st.keepStats(st.trackKey(id), { m: 8000, up: 100, down: 100, s: 10000 });
 }, { A, B, C });
 await openList(P);
+// the activity filter starts on the planning activity (Hike, app 21dcc5f5): „All“ for the whole list (routes-smoke tests the filter)
+const allActs = async (P) => { await P.click('#planSort .actchip'); await P.click('#actFilterMenu .actpick[data-act="ALL"]'); await P.waitForTimeout(150); };
+await allActs(P);
 const NEWEST = ['Straße am Berg', 'Algund Lana', 'Leiteralm', 'Waalweg Köln'];
 let c = await chips(P);
 check(same(c.map((x) => x.key), ['NEWEST', 'OLDEST', 'LENGTH', 'DURATION', 'ASCENT']), 'the five chips in the app\'s order');
@@ -109,25 +112,20 @@ await P.click('#planSearchClear');
 await P.waitForTimeout(150);
 if (shot) await P.locator('dialog.plans').screenshot({ path: shot });
 
-// --- kept over a reload, in the app's stored form
-check(await P.evaluate(() => localStorage.getItem('onpath.routesSort')) === 'LENGTH:down', 'kept as the app keeps it: onpath.routesSort = LENGTH:down');
+// --- each opening the same way (app 82167d11, owner 2026-11-13 „Das ist wichtig“): a choice holds while the list is open,
+// the next opening starts with Newest first again – nothing kept in this browser (an old stored order is ignored)
+check(await P.evaluate(() => localStorage.getItem('onpath.routesSort')) == null, 'no order kept in this browser (the app: no prefs any more)');
 await closeList(P);
-await P.close();
-P = await open(ctx);
 await openList(P);
+await allActs(P);
 c = await chips(P);
-check(c[2].on && c[2].dir === 'down' && same(await names(P), ['Waalweg Köln', 'Straße am Berg', 'Leiteralm', 'Algund Lana']), 'after a reload: Length longest first again');
-await P.evaluate(() => localStorage.setItem('onpath.routesSort', 'DIFFICULTY:up'));
+check(c[0].on && !c[2].on && same(await names(P), NEWEST), 'opened again: Newest first (Length was chosen before)');
 await closeList(P); await P.close();
+await ctx.addInitScript(() => { try { localStorage.setItem('onpath.routesSort', 'ASCENT:up'); } catch { /* expected: none */ } });
 P = await open(ctx);
 await openList(P);
-check((await chips(P))[0].on && same(await names(P), NEWEST), 'an unknown stored order (a newer app): newest first');
-await P.evaluate(() => localStorage.setItem('onpath.routesSort', 'ASCENT:up'));
-await closeList(P); await P.close();
-P = await open(ctx);
-await openList(P);
-c = await chips(P);
-check(c[4].on && c[4].dir === 'up' && same(await names(P), ['Straße am Berg', 'Waalweg Köln', 'Leiteralm', 'Algund Lana']), 'ASCENT:up read back: least first');
+await allActs(P);
+check((await chips(P))[0].on && same(await names(P), NEWEST), 'an order an older planner stored: ignored, Newest first');
 await P.close();
 
 // --- German: the app's words

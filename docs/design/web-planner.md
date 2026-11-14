@@ -440,6 +440,9 @@ compiled from `app/` as it is.
 | POI kinds and filters | `poi/PoiKinds`, `poi/PoiFilter` | same | shared; visibility rules mirrored (`mapcontent.ts`, `LayerSettings`) |
 | Routing data per corridor (1° parts) | `routing/Rd5Parts`, `routing/OfflineCorridor` | same | shared; the plan's activity picks the corridor (10 km on foot, 20 km by bike, 2026-11-07; `partsNeeded(points, activity)`, a prefetch without a plan the largest); download loop in `worker.ts` (app: `RoutingDataLoader`, `Rd5PartStore`) |
 | A held place's add entries („Als Zwischenstopp“ / „Als neues Ziel“, „⋯ Mehr“) | `ui/PlaceAddMenu` | same | shared; engine `placeMenu` (no tour: the route ahead = the plan), `poiMenu` in `main.ts` |
+| The found place's menu at once (above the pin, else under it, else a card at the bottom; „Name ›“ chip) | `ui/PinMenuPlace` (+ `PinMenuItems`), `MapOverlays.PinMenuOverlay` | same since 2026-11-13 (§29) | mirrored (`pinmenu.ts`, `search.ts`); rows from `main.ts placeRows` |
+| Very long route → Cancel: the map back to the plan from before | `ui/LongRouteCancelCamera` | same since 2026-11-13 (§29) | mirrored (`longroute.ts cancelCamera`, `main.ts cancelLongRouteCamera`) |
+| Density limit for city POIs (≤ 24 restaurants / cafés / bars / snack bars / shops per tile below z17) | `cells/PoiDensity`, `PoiTiles` ("dz") | same since 2026-11-13 (§29) | mirrored (`poidensity.ts`, on each cell's `pois.geojson` in `cells.ts`); the style's `zoom >= dz` and the POI icons' invisible key text come with the app's style |
 | Locate off the map: the distance under the icon, a tap frames plan + me | `ui/LocateDistance` | same | shared; engine `locateLabel` on `moveend` / a new fix (`updateLocateLabel` in `main.ts`) |
 | Plan sync | `sync/*` | same | shared |
 | World overview below z10 | `map/Overview.merge` | same (§16) | shared, run at build time; cover + URLs in `overview.ts` |
@@ -1097,3 +1100,71 @@ Replaces §23's „newest 25 / newest 3“ and §25's „In Bearbeitung on the s
   the sheet taller than the screen squeezed `#pointsSection` to its 96 px minimum – one row, the goal hidden inside the
   list. On a phone the open sheet now scrolls as one and the list keeps every row (`style.css`, end). Test:
   phonelink-smoke 2b (412 × 760 / 640, DE) and 1 (every row inside the list and the sheet).
+
+## 29. Meine Touren = the app's My routes of 2026-11-13: favourites, map pictures, activity filter (laptop, 2026-11-13)
+Owner 2026-11-13: „Die Favoriten sind wirklich wichtig“ – the planner follows the app's My routes exactly (app 238cc3bd,
+e72fb540 / c543cd5a, 21c0eac1, 725b68e9 / 6ba34792, 21dcc5f5 / de1afd21, 870bff05, 82167d11). Replaces §25's row look.
+- **The row (L1)**: an 84 px map tile, the name, the activity line („🚶 Wandern · T2“, then „· ↻ Rundtour“), the facts;
+  ⋮ over the star; no ›. 🖥 / 📱 stay (the planner's own). The plan on the map has no activity line and no star (the app's
+  live row carries none); a Zuletzt draft has its activity line (engine `syncPlanFacts`) but no star.
+- **Favourites**: the star on every saved row (Zuletzt's saved row too) – one tap, stored at once in the folder's ledger
+  (sync field 9, `PlanSync.setFavourite`), sent with Save like a rename; a star never makes a copy (the shared ledger's
+  star-only version). „☆ Favoriten“ first in the chips: only the starred saved routes; kept while the page is open (the
+  app: while it runs). „Noch keine Favoriten. Tippe auf ☆ bei einer Tour.“ when nothing is left.
+- **Activity filter** (`routefilter.ts` = Favourites.kt + ActivityFilter.kt): the chip after Favoriten, preset with the
+  planning activity at every opening; its menu the six (radio) and „Alle“ under a line; exactly that activity (E-Bike only
+  E-Bike); every choice filters at once; „Keine Touren „E-Bike“ hier.“ when none fits. `syncList` returns `activity` /
+  `sac` / `roundTrip` (WebSync.factsFields: the plan code's / track's activity; round trip = PlanEdits.isRoundTrip on a
+  plan's points, a track's guess from its line with RouteNamer's 200 m / 500 m – the app's RoundTrip).
+- **Zuletzt shows whatever the filters**; each opening: Neueste zuerst (no sort kept any more – `onpath.routesSort` is
+  no longer read or written) and the planning activity; a list that comes back by itself (a copy, a Zuletzt save) keeps
+  the choices.
+- **Map pictures** (`routethumbs.ts` = ThumbRules / ThumbMaker / RouteSnapshot.withoutNetworks / RouteThumbImages): one
+  MapLibre map off screen (84 × 84 CSS px at the screen's ratio, `preserveDrawingBuffer`), the main map's current style
+  reduced to the style's own layers (no plan, no profile) minus every `routes-*` layer and the `routes` source; the region
+  square in Web Mercator with 14 % + a marker free (the whole route with its ends); the line 3.6 px in a 6 px casing in
+  plan blue; start / goal dots in a white ring drawn on a 2D canvas; WebP 0.82. One at a time, 150 ms pause, the map
+  removed 20 s after the last picture; a picture waits at most 30 s for the map (the app 15 s offline – the browser loads
+  tiles first); a failure → Problems, the row keeps its drawn line (not tried again until a reload). Kept by line
+  (`v2|planKey/trackKey|hash of the kept line`): memory 8 MB decoded, IndexedDB `onpath-thumbs` 4 MB, least recently used
+  out. The list never waits: the drawn line shows until the picture is there; a route this browser has no line for keeps
+  the kind's sign (no picture – the list never routes). No large overview (§25). Closing Meine Touren stops the
+  picture being made and removes the off-screen map at once (it draws frame after frame on the page's thread while its
+  tiles load). Automated browsers make pictures only with `window.__thumbsOn` (like `__reveal`): swiftshader's software
+  GL starved the other smokes' frames for seconds (first picture ~12 s with the map's start, then 0.7–1 s each).
+- Tests: `WebSyncFavouriteTest` (engine), sync-smoke 16b (both ways, no copy), `test/routes-smoke.mjs` (chips, filter,
+  star, activity line, pictures from memory / IndexedDB, no networks, Zuletzt unfiltered, EN + DE, screenshots desktop +
+  Pixel 7; in check-web.sh with the cell store), sort-smoke (each opening Newest first), zuletzt / import (no ›).
+
+## 30. The planner follows the app's 2026-11-13 changes (laptop – app 6714ad6f, 4216a144, b71b1df9, f857102b, 796c9b84 / dffa9914)
+
+- **A search pick opens the place's hold menu at once** (owner „A mit Ausweich B“, app 6714ad6f): the pin, and once the
+  map is there (not when it was moved by hand on the way – the app's SharedPlaceMenu) the pin's own menu – the rows a
+  hold on that spot gives (`main.ts placeRows`, the same function a map POI's menu uses) in the app's order
+  (`pinmenu.ts pinRows` = PinMenuItems: the add entries of PlaceAddMenu, Google, „Nadel entfernen“, „⋯ Mehr“ last).
+  Where it goes is the app's `PinMenuPlace` mirrored (`pinmenu.ts`): above the pin (a hold popup, the map moved down
+  when that makes it fit), else under it, else the same rows as a card at the bottom with name + address
+  (`#placecard.pinmenucard`; on a phone in place of the sheet), the map moved so the pin stays visible. The room is the
+  map between the top bar and the sheet (phone) / the big profile (wide) – `menuRoom` in `main.ts`. On a wide screen the
+  fly leaves ~300 px above the place, so the menu fits above without a move. The chip under the pin is the name only,
+  „Name ›“, and opens the menu again; Escape / a click elsewhere closes the menu, the pin stays. The old place card
+  („Als Start“ / „Als Ziel“ / „Von hier entfernen“) and the „+ Hinzufügen“ · „⋯ Mehr“ chip are gone, as in the app.
+  Tests: search-smoke (rows per plan size, above the pin, chip, Escape, the card on a low map), pinmenu-check (the app's
+  PinMenuPlaceTest numbers), sheet- / import- / follow-smoke.
+- **Very long route → Abbrechen moves the map back** (app 4216a144): `longroute.ts cancelCamera` = LongRouteCancelCamera
+  without a tour – two or more points: the whole plan (route line + points), one point: that point at z16, none: the
+  map stays. Only that Cancel (also the web's „Far from your route“ Cancel), not Stop or the slow plan's Cancel.
+  Test: import-smoke (a clicked far point → Cancel → the Meran plan; Algund + Hilden → Cancel → Algund at z16).
+- **Density limit for city POIs** (app b71b1df9): the app writes "dz" into the POI tiles it builds when joining cells;
+  the planner reads each cell's `pois.geojson` in place, so `poidensity.ts` (PoiDensity mirrored) sets the same "dz" per
+  cell when it is loaded (`cells.ts loadPois`, ~35 ms for Köln's 20 000 POIs). The style comes from the app's
+  `f2/onpath.json` (copy-engine / `overviewStyle`), so the POI layers' `zoom >= dz` filter and the icons' invisible key
+  text (f857102b) are in the planner with the app's style, nothing to do. Measured with the cells store (no London in
+  it – Köln Dom, 19 158 POIs in view, 2 746 held back for z17), `test/poi-fps.mjs` on this laptop's GPU, zooming z14 ↔
+  z16.5: before ~27–31 fps, density limit ~32–40 fps, with the key text ~31–40 fps (noisy; the key text alone made no
+  measurable difference at Köln's density – GL JS keys its cross-tile index the same way, so a denser city should gain
+  as the app did). Test: search-smoke (Köln: "dz" only on the five kinds; none drawn at z15.5, drawn at z17),
+  poidensity-check (the app's PoiDensityTest cases).
+- **POIs read once per camera stop / tap from the last idle** (796c9b84 / dffa9914): not mirrored. The app's lookup
+  waited for MapLibre Native's render thread (1447 ms); GL JS has none – `main.ts poiAt` asks at the click, p50 0.1 ms,
+  worst ~20 ms in Köln (`poi-fps.mjs`). `poi/PoiTap.kt` is on the parity watch list.
