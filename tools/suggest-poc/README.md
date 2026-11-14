@@ -59,4 +59,23 @@ python3 tools/suggest-poc/feedback.py --last 5          # his comments from the 
 
 ## Weak spots (2026-11-14)
 
-WEAK_SPOTS
+- **Following a river is brittle.** A loop along a line needs a way home that is not the line; at a river that means
+  a bridge or a ferry at the right place. Zons, bike 3 h: the Rhine ride (north to Düsseldorf and back on the other
+  bank, 59 km) comes out in a trace but not reliably in a run – the one failing check in `cases.py`. The 2 h Rhine
+  ride from Stürzelberg works.
+- **Direction variety.** Hilden, bike 2 h: the three first loops all go west to the Rhine; the ring through the green
+  belts east of the town, which the first version had on top, is not offered.
+- **Meeting the own way.** At 2 of 20 judged wishes the first loop still meets its own way once (the coast at
+  St. Peter-Ording, the Rhine meadow at Zons – few ways through a dyke or a meadow).
+- **A wished climb in the hills.** Schierke, T3 sportlich: the loops have 300–430 m where 650 m and more were wished;
+  the run says so, but a higher turning point was not found within the time.
+- **Roads for bikes.** In farmland and at the coast a first loop can have 500–800 m on a road at a stretch.
+- **Speed.** Walks 0.2–2 s (München centre 5 s), bikes 2–14 s on this computer; on big bike networks the facts take
+  the most. Memory is not measured; nothing is measured on a phone.
+- **Names.** Long protected-area names; unnamed areas are "Wald bei <Ort>"; in the mountains many titles are only a
+  direction.
+- **Brooks** come from the routing data's river class plus green beside the way; not checked on pictures.
+- **Not tried in this version:** MTB, the AI tips input (`--tips`), the remote front end to end (it compiles and the
+  adapter is changed), the page's controls by hand (pictures are made from saved runs).
+- **Unmeasured guesses** in `settings.json`: the character table (axis weights at both ends, ground welcome, usual
+  ascent per hour) and the search factors are first values that passed the checks, nothing more.

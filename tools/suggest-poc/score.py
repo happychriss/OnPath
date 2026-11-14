@@ -110,7 +110,9 @@ def choose(P, S, cands):
     """The best first; further ones must be different and not far behind; what stands out in reach (a top line, an
     area) gets the loop that uses it best, if that loop is good enough. Fewer than three is fine when the rest is poor."""
     F, K = P.F, S["select"]
-    ranked = sorted((c for c in cands if not c["out"]), key=lambda c: -c["score"])
+    lo, hi = P.ch.hours
+    fits = lambda c: lo <= c["hours"] <= hi  # the wished time is the wish: loops inside it come before loops near it
+    ranked = sorted((c for c in cands if not c["out"]), key=lambda c: (not fits(c), -c["score"]))
     if not ranked:
         return []
     core = {id(c): {e for e in c["edges"] if P.core(e)} or set(c["edges"]) for c in ranked}
@@ -136,8 +138,8 @@ def choose(P, S, cands):
                 and fresh(best, shown):
             shown.append(best)
     for c in ranked:
-        if len(shown) >= K["max"] or c["score"] < ranked[0]["score"] - K["behind"]:
+        if len(shown) >= K["max"]:
             break
-        if c not in shown and fresh(c, shown):
+        if c not in shown and c["score"] >= ranked[0]["score"] - K["behind"] and fresh(c, shown):
             shown.append(c)
-    return sorted(shown[:K["max"]], key=lambda c: (not at_water(c), -c["score"]))
+    return sorted(shown[:K["max"]], key=lambda c: (not at_water(c), not fits(c), -c["score"]))
