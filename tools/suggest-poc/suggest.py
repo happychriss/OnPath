@@ -147,7 +147,7 @@ def suggest(wish, S=None):
                       "high": {k: round(v, 2) for k, v in P.high.items()},
                       "areas": [[a["name"], round(a["m"] / 1000.0, 1)] for a in P.areas],
                       "lines": [[ln["name"], ln["kind"], round(ln["m"] / 1000.0, 1)] for ln in P.lines[:12]]},
-            "candidates": sorted(cands, key=lambda c: (not c["chosen"], -c["score"]))}
+            "candidates": shown + sorted((c for c in cands if not c["chosen"]), key=lambda c: -c["score"])}
 
 
 def save_run(result):

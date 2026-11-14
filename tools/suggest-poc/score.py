@@ -68,6 +68,7 @@ def numbers(P, c, views):
             "town_pct": pct(lambda e: F.built[e]), "street_pct": pct(lambda e: F.traffic[e] >= 0.15),
             "road_longest_m": int(longest), "signed_pct": pct(lambda e: F.signed[e] > 0),
             "water_km": round(sum(F.ln[e] for e in edges if F.water[e] > 0) / 1000.0, 1),
+            "water_pct": int(round(100.0 * sum(F.ln[e] * F.water[e] for e in edges) / total)),  # big water counts full, small half
             "rail_km": round(sum(F.ln[e] for e in edges if F.rail[e]) / 1000.0, 1),
             "ground_pct": [pct(lambda e, g=g: F.ground[e] == g) for g in range(4)],
             "ferry_m": int(sum(F.ln[e] for e in set(edges) if F.ferry[e])), "self_cross": c["cross"],
@@ -117,8 +118,10 @@ def choose(P, S, cands):
 
     def fresh(c, shown):
         return all(length(core[id(c)] & core[id(o)]) <= K["overlap"] * length(core[id(c)]) for o in shown)
-    shown = [ranked[0]]
-    # what stands out here is shown: the top lines (the Rhine with "am Wasser entlang", a first-rank route), then the areas
+    # "am Wasser entlang" is the wish's theme: the best loop that really is at the water is always shown, and first
+    at_water = lambda c: P.ch.water and c["numbers"]["water_pct"] >= 20
+    shown = [ranked[0]] + [c for c in ranked[1:] if at_water(c)][:0 if at_water(ranked[0]) else 1]
+    # what stands out here is shown: the top lines (a first-rank route, the river), then the areas
     for thing in [ln for ln in P.lines if ln["rank"] >= 0.9][:2] + P.areas:
         need = 0.25 * P.target if thing["kind"] != "area" else min(2500.0, 0.3 * thing["m"])
         best = next((c for c in ranked if length(core[id(c)] & thing["edges"]) >= need), None)
@@ -130,4 +133,4 @@ def choose(P, S, cands):
             break
         if c not in shown and fresh(c, shown):
             shown.append(c)
-    return sorted(shown[:K["max"]], key=lambda c: -c["score"])
+    return sorted(shown[:K["max"]], key=lambda c: (not at_water(c), -c["score"]))
