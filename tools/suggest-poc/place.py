@@ -47,7 +47,7 @@ class Place:
         P, Q = S["place"], S["search"]
         n, things, tips = len(net.edges), F.things, tips or {}
         ok = [ei for ei in range(n) if F.ok[ei]]
-        self.net, self.F, self.ch, self.target = net, F, ch, ch.target_m
+        self.net, self.F, self.ch, self.S, self.target = net, F, ch, S, ch.target_m
         # --- absolute values per way
         v = self.v = {a: [0.0] * n for a in AXES}
         w_water, w_other = (1.0, 0.4) if ch.water else (0.6, 1.0)
@@ -81,8 +81,10 @@ class Place:
         by_reserve = {}  # a named protected area is an area of its own (the Hirschpark, the Ohligser Heide)
         for ei in top:
             by_reserve.setdefault(F.area[ei], []).append(ei)
-        self.areas = sorted((self._thing(es, "area") for part in by_reserve.values() for es in groups(net, part)
-                             if sum(F.ln[e] for e in es) >= min_area), key=lambda a: -a["m"] * a["good"])[:14]
+        areas = (self._thing(es, "area") for part in by_reserve.values() for es in groups(net, part)
+                 if sum(F.ln[e] for e in es) >= min_area)
+        # only what a loop of the wished length can take in: an area further out than P["area_reach"] of it is no aim
+        self.areas = sorted((a for a in areas if a["d"] <= P["area_reach"] * self.target), key=lambda a: -a["m"] * a["good"])[:14]
         self.lines = self._lines(reach, things, min_area)
         # --- the unavoidable way out: how far it is from the start until one has left the houses
         step, bands = max(250.0, 0.03 * self.target), {}

@@ -27,6 +27,11 @@ def judge(P, S, cands, views):
         c["raw"] = {a: sum(P.v[a][e] * F.ln[e] for e in core) / m for a in AXES[:4]}
         c["views"] = sorted({v["name"] for v in views if any(dist(net.nodes[x], v["p"]) < 120.0 for x in c["nodes"][::3])})
         c["raw"]["besonderes"] += K["view"] * min(3, len(c["views"]))
+    # the wilder the character, the more a climb belongs to the way – measured against the steepest loop from here,
+    # so in flat land it changes nothing
+    steep = max([c["up"] / c["m"] for c in cands] + [0.015])
+    for c in cands:
+        c["raw"]["weg"] += P.ch.climb * c["up"] / c["m"] / steep * (1.0 - c["raw"]["weg"])
     top = {a: max([c["raw"][a] for c in cands] + [P.low[a] + min_span]) for a in AXES[:4]}
     for c in cands:
         ax = {a: max(0.0, min(1.0, (c["raw"][a] - P.low[a]) / (top[a] - P.low[a]))) for a in AXES[:4]}
@@ -112,11 +117,19 @@ def choose(P, S, cands):
     area) gets the loop that uses it best, if that loop is good enough. Fewer than three is fine when the rest is poor."""
     F, K = P.F, S["select"]
     lo, hi = P.ch.hours
-    fits = lambda c: lo <= c["hours"] <= hi  # the wished time is the wish: loops inside it come before loops near it
-    ranked = sorted((c for c in cands if not c["out"]), key=lambda c: (not fits(c), -c["score"]))
-    if not ranked:
+    # the wished time is the wish: loops inside it come before loops near it; and a loop that meets its own way
+    # stands behind the clean ones unless it is clearly better ("Achten bringen es gar nicht")
+    # The wished time is a rough guide: a loop a little outside it competes on its points (Form already counts the
+    # time); a loop clearly outside is the exception – only what the wish itself names, or when nothing is nearer.
+    # A loop that meets its own way stands behind the clean ones unless it is clearly better ("Achten bringen es
+    # gar nicht").
+    near = lambda c: (1 - K["near_time"]) * lo <= c["hours"] <= (1 + K["near_time"]) * hi
+    order = lambda c: (not near(c), K["eight_behind"] * c["cross"] - c["score"])
+    named = sorted((c for c in cands if not c["out"]), key=order)  # every loop that may be shown, best first
+    if not named:
         return []
-    core = {id(c): {e for e in c["edges"] if P.core(e)} or set(c["edges"]) for c in ranked}
+    ranked = [c for c in named if near(c)] or named
+    core = {id(c): {e for e in c["edges"] if P.core(e)} or set(c["edges"]) for c in named}
     length = lambda es: sum(F.ln[e] for e in es) or 1.0
 
     def fresh(c, shown):
@@ -128,9 +141,9 @@ def choose(P, S, cands):
     route = next((ln for ln in P.lines if ln["kind"] == "route" and ln["rank"] >= 0.9), None) if P.ch.signed >= 1.0 else None
     shown = [ranked[0]]
     if not at_water(ranked[0]):
-        shown += [c for c in ranked if at_water(c)][:1]
+        shown += [c for c in named if at_water(c)][:1]
     if route:  # the clean loop that stays on the route longest
-        on_it = [c for c in ranked if uses(c, route) and c["axes"]["form"] >= 0.5]
+        on_it = [c for c in named if uses(c, route) and c["axes"]["form"] >= 0.5]
         shown += [c for c in sorted(on_it, key=lambda c: -length(core[id(c)] & route["edges"]))[:1] if c not in shown]
     # what stands out here is shown if its best loop is good enough: the top lines, then the areas
     for thing in [ln for ln in P.lines if ln["rank"] >= 0.9][:2] + P.areas:
@@ -143,4 +156,4 @@ def choose(P, S, cands):
             break
         if c not in shown and c["score"] >= ranked[0]["score"] - K["behind"] and fresh(c, shown):
             shown.append(c)
-    return sorted(shown[:K["max"]], key=lambda c: (not at_water(c), not fits(c), -c["score"]))
+    return sorted(shown[:K["max"]], key=lambda c: (not at_water(c),) + order(c))

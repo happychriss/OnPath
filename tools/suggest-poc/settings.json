@@ -12,11 +12,11 @@
   },
 
   "family": {
-    "_about": "What differs between going on foot and on wheels. ground = how welcome [paved, firm, natural, rough] ground is at the gemütlich and the wild end. up_m_per_h = metres of ascent per hour up to which a tour is usual at the gemütlich and the wild end: when no ascent range is wished it is 0 … this x the longest wished time. ascent_m_per_h = time model: hours = km / pace + ascent / this. band_km = a single wished time is widened by this many kilometres either way to a range. free_stem_m = a way out and back this long costs nothing. road_walk_max_m = longest stretch along a road with cars outside a town (0 = no limit). reach_max_m / coarse = how much way network is loaded (wheels: minor ways left out unless a signed route runs on them). sectors / pairs / chains / lines = how many loops each generator tries.",
-    "foot":  {"ground": {"gemütlich": [0.8, 1.0, 0.8, 0.1], "wild": [0.1, 0.5, 1.0, 1.0]}, "up_m_per_h": [180, 600], "ascent_m_per_h": 500,
+    "_about": "What differs between going on foot and on wheels. ground = how welcome [paved, firm, natural, rough] ground is at the gemütlich and the wild end. up_m_per_h = metres of ascent per hour up to which a tour is usual at the gemütlich and the wild end: when no ascent range is wished it is 0 … this x the longest wished time. climb = how much of the Weg axis is the climb itself (metres up per km against the steepest loop from this start) at the gemütlich and the wild end. ascent_m_per_h = time model: hours = km / pace + ascent / this. band_km = a single wished time is widened by this many kilometres either way to a range. free_stem_m = a way out and back this long costs nothing. road_walk_max_m = longest stretch along a road with cars outside a town (0 = no limit). reach_max_m / coarse = how much way network is loaded (wheels: minor ways left out unless a signed route runs on them). sectors / pairs / chains / lines = how many loops each generator tries.",
+    "foot":  {"ground": {"gemütlich": [0.8, 1.0, 0.8, 0.1], "wild": [0.1, 0.5, 1.0, 1.0]}, "up_m_per_h": [180, 600], "climb": [0.0, 0.5], "ascent_m_per_h": 500,
               "band_km": 1.0, "free_stem_m": 700, "road_walk_max_m": 300, "reach_max_m": 7000, "coarse": null,
               "sectors": 12, "pairs": 12, "chains": 8, "lines": 4},
-    "wheel": {"ground": {"gemütlich": [1.0, 0.7, 0.1, 0.0], "wild": [0.3, 0.8, 1.0, 0.8]}, "up_m_per_h": [150, 600], "ascent_m_per_h": 1200,
+    "wheel": {"ground": {"gemütlich": [1.0, 0.7, 0.1, 0.0], "wild": [0.3, 0.8, 1.0, 0.8]}, "up_m_per_h": [150, 600], "climb": [0.0, 0.15], "ascent_m_per_h": 1200,
               "band_km": 5.0, "free_stem_m": 2500, "road_walk_max_m": 0, "reach_max_m": 22000,
               "coarse": {"maxcf": 9000, "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)", "keep": "route_bicycle_[a-z]+=yes|bicycle=designated"},
               "sectors": 6, "pairs": 6, "chains": 4, "lines": 2}
@@ -43,8 +43,8 @@
   },
 
   "place": {
-    "_about": "Level 2 – the place as the yardstick. A value is poor at the `low` quantile of the ways in reach and full at the `high` one (at least min_span apart). standout = the best share of the ground here: connected it forms the areas and lines the loops aim at; an area counts from min_area x the wished length. access_built = the way out ends where less than this share of the ways runs through houses; access_max = at most this share of the wished length counts as the unavoidable way out.",
-    "low": 0.25, "high": 0.95, "min_span": 0.15, "standout": 0.3, "min_area": 0.12, "access_built": 0.3, "access_max": 0.2
+    "_about": "Level 2 – the place as the yardstick. A value is poor at the `low` quantile of the ways in reach and full at the `high` one (at least min_span apart). standout = the best share of the ground here: connected it forms the areas and lines the loops aim at; an area counts from min_area x the wished length of ways, and only when it begins within area_reach x the wished length from the start (further out no loop of that length can take it in). access_built = the way out ends where less than this share of the ways runs through houses; access_max = at most this share of the wished length counts as the unavoidable way out.",
+    "low": 0.25, "high": 0.95, "min_span": 0.15, "standout": 0.3, "min_area": 0.12, "area_reach": 0.35, "access_built": 0.3, "access_max": 0.2
   },
 
   "search": {
@@ -53,12 +53,12 @@
   },
 
   "form": {
-    "_about": "The Form axis and the few hard rules. Inside the wished ranges of time and ascent every loop is equally fine. short_zero = share below the shortest wished time at which the time part is 0; long_zero = share above the longest from which a loop is no longer offered; under the wished ascent the part falls gently, above it the loop is not offered. doubled_zero = share walked twice (beyond the free stem) at which that part is 0. cross = factor for one meeting with the own way; max_cross = more meetings than this are never offered. view = bonus per viewpoint passed.",
-    "short_zero": 0.3, "long_zero": 0.1, "doubled_zero": 0.25, "cross": 0.5, "max_cross": 1, "view": 0.05
+    "_about": "The Form axis and the few hard rules. Inside the wished ranges of time and ascent every loop is equally fine. short_zero = share below the shortest wished time at which the time part is 0; long_zero = share above the longest from which a loop is no longer offered; under the wished ascent the part falls gently, above it the loop is not offered. doubled_zero = share walked twice (beyond the free stem) at which that part is 0. cross = factor for one meeting with the own way; max_cross = more meetings than this are never offered; stem_share = touching the own way within this share of the loop from the start (or within the free stem) is the way out to where the loop begins, not a meeting. view = bonus per viewpoint passed.",
+    "short_zero": 0.3, "long_zero": 0.1, "doubled_zero": 0.25, "cross": 0.5, "max_cross": 1, "stem_share": 0.12, "view": 0.05
   },
 
   "select": {
-    "_about": "max suggestions; a further one may share at most `overlap` of its way (beyond the common way out) with one already shown and must not be more than `behind` points below the first; what stands out in reach (a top line such as the river with 'am Wasser entlang', an area) gets one suggestion if its best loop is within cover_behind points.",
-    "max": 5, "overlap": 0.6, "behind": 18, "cover_behind": 15
+    "_about": "max suggestions; a further one may share at most `overlap` of its way (beyond the common way out) with one already shown and must not be more than `behind` points below the first; what stands out in reach (a top line such as the river with 'am Wasser entlang', an area) gets one suggestion if its best loop is within cover_behind points; a loop that meets its own way ranks as if it had eight_behind points less; loops inside the wished time come first, loops more than near_time (share) outside it are shown only when nothing nearer exists.",
+    "max": 5, "overlap": 0.6, "behind": 18, "cover_behind": 15, "eight_behind": 10, "near_time": 0.08
   }
 }

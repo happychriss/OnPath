@@ -45,7 +45,7 @@ class Character:
             axes["besonderes"] *= K["water"]
         total = sum(axes.values())
         self.axes = {k: v / total for k, v in axes.items()}
-        self.depth = mix(ends[0]["depth"], ends[1]["depth"])
+        self.depth, self.climb = mix(ends[0]["depth"], ends[1]["depth"]), mix(*F["climb"])
         self.signed = min(1.0, mix(ends[0]["signed"], ends[1]["signed"]) * K["level"][w["bekannt"]])
         g = F["ground"]
         self.ground = [mix(a, b, c + K["surface"][w["surface"]]) for a, b in zip(g["gemütlich"], g["wild"])]

@@ -6,7 +6,8 @@ the way home apart from the way out, so nothing is walked twice or crossed. The 
 choose the points:
   turning points  the most pleasant point per direction at the right distance, alone or in pairs;
                   when a climb is wished, also points high enough and near enough for the time
-  chains          the stand-out areas of the place, in order around the start, each crossed through its heart
+  chains          the stand-out areas of the place, in order around the start, each crossed through its heart;
+                  a ring = the best area of each direction, all the way round
   lines           follow a known route, a rail trail or a bank, come home another way
 A loop inside one big area needs no generator of its own: there the pleasant turning points lie inside it.
 The wished time is a range: turning points are taken across all of it, and distance is counted in time.
@@ -43,8 +44,11 @@ def assemble(P, S, points, costs=None):
 
 
 def cut_spurs(net, F, edges):
-    """A spur – out to a turning point off the way and back the same way, also with a little loop at its tip – is not
-    part of a loop: cut it. (A closed piece of the walk of which a third or more is walked twice.)"""
+    """Cut what hangs on a loop without being part of it, whenever the way comes back to a point passed before:
+    a spur – out and back the same way, also with a little loop at its tip (a third or more of the piece walked
+    twice) – and an appendix – the small half of an eight, when what remains is a clean loop by itself."""
+    metres = lambda es: sum(F.ln[e] for e in es)
+    twice = lambda es: metres(es) - metres(set(es))
     while True:
         out = []
         for ei in edges:  # straight there and back
@@ -52,16 +56,15 @@ def cut_spurs(net, F, edges):
                 out.pop()
             else:
                 out.append(ei)
-        edges, nodes, first = out, [net.start], {net.start: 0}
+        edges, node, first, total = out, net.start, {net.start: 0}, metres(out)
         for k, ei in enumerate(edges):
-            x = net.other(ei, nodes[-1])
-            nodes.append(x)
-            i = first.setdefault(x, k + 1)
-            piece = edges[i:k + 1]
-            if 0 < i <= k and len(piece) < 0.6 * len(edges):  # back at a node passed before: is the piece between a spur?
-                walked = sum(F.ln[e] for e in piece)
-                if walked - sum(F.ln[e] for e in set(piece)) >= 0.3 * walked:
-                    edges = edges[:i] + edges[k + 1:]
+            node = net.other(ei, node)
+            i = first.setdefault(node, k + 1)
+            if 0 < i <= k:
+                piece, rest = edges[i:k + 1], edges[:i] + edges[k + 1:]
+                m = metres(piece)
+                if (len(piece) < 0.6 * len(edges) and twice(piece) >= 0.3 * m) or (m <= 0.3 * total and twice(rest) <= 0.1 * (total - m)):
+                    edges = rest
                     break
         else:
             return edges
@@ -70,7 +73,7 @@ def cut_spurs(net, F, edges):
 def measure(P, edges):
     """The plain measures of a loop: nodes, metres, ascent, hours, metres walked twice beyond the free stem, and how
     often it meets its own way (a crossing, an eight's middle, a shared stretch = one meeting each; the start, the
-    stem and a touch within the free stem do not count)."""
+    stem and a touch on the way out to where the loop begins do not count)."""
     net, F, ch = P.net, P.F, P.ch
     nodes, at = [net.start], [0.0]
     for ei in edges:
@@ -88,6 +91,7 @@ def measure(P, edges):
         elif ele > ref + 6.0:
             up, ref = up + ele - ref, ele
     free, total = ch.family["free_stem_m"], at[-1]
+    near = max(free, P.S["form"]["stem_share"] * total)  # out to where the loop begins and home beside it is no eight
     stem = 0
     while stem < len(edges) // 2 and edges[stem] == edges[-1 - stem]:
         stem += 1
@@ -98,7 +102,7 @@ def measure(P, edges):
     seen, cross, in_run, last = {}, 0, False, -1e9
     for i in range(stem, len(nodes) - 1 - stem):
         j = seen.get(nodes[i])
-        if j is not None and i - j > 1 and not (at[j] <= free and total - at[i] <= free):
+        if j is not None and i - j > 1 and not (at[j] <= near and total - at[i] <= near):
             cross += not in_run and at[i] - last > 150.0
             in_run, last = True, at[i]
         else:
@@ -178,6 +182,20 @@ def pool(P, S):
                 chains.append((-sum(a["m"] * a["good"] for a in seq), i, k, pts, [a["name"] for a in seq]))
     for _, _, _, pts, names in sorted(chains)[:fam["chains"]]:
         add(pts, "Kette", names)
+    # a ring round the start: the best area of each direction at the distance of a circle of the wished length – the
+    # green belts round a town, strung together; it starts and ends at the widest gap between them
+    for n in (4, 6):
+        r, best = ch.target_m / 9.0, {}  # out, round most of the circle and home, on real ways: about nine radii
+        for a in P.areas:
+            if 0.5 * r <= dist(start, a["p"]) <= 1.6 * r:
+                k = int(bearing(start, a["p"]) * n / 360.0)
+                if k not in best or a["m"] * a["good"] > best[k]["m"] * best[k]["good"]:
+                    best[k] = a
+        seq = [best[k] for k in sorted(best)]
+        if len(seq) >= 3:
+            gap = max(range(len(seq)), key=lambda i: (bearing(start, seq[i]["p"]) - bearing(start, seq[i - 1]["p"])) % 360.0)
+            seq = seq[gap:] + seq[:gap]
+            add([a["heart"] for a in seq], "Ring", [a["name"] for a in seq])
 
     # --- lines: join at the nearest point, follow it (both ways), come home another way
     for ln in P.lines[:fam["lines"]]:
@@ -186,7 +204,8 @@ def pool(P, S):
             continue
         along_cost = list(P.cost)
         for e in ln["edges"]:
-            along_cost[e] *= Q["line"]
+            if P.F.traffic[e] < S["facts"]["beside_from"]:  # along a road is no better for being signed
+                along_cost[e] *= Q["line"]
         d, _, _, along = dijkstra(net, entry, along_cost, max_len=0.75 * ch.max_m)
         on = [v for v in ln["nodes"] if d[v] < INF and v != entry and v in bear]
         if not on:
@@ -196,9 +215,21 @@ def pool(P, S):
         first = min(on, key=half)
         other = [v for v in on if turn(v, first) >= 90.0]
         for guess in [first] + ([min(other, key=half)] if other else []):
-            # the way home is not known before it is built (a river: is there a way back on the other bank?),
-            # so three turning points are built per direction and the judging decides
-            same = [u for u in on if turn(u, guess) < 60.0]
-            for share in (1.0, 1.15, 0.85):
-                add([entry, min(same, key=lambda u: abs(along[u] - share * along[guess]))], "Linie", [ln["name"]], {1: along_cost})
+            # The way home is not known before it is built (a river: back on the other bank, or inland?): build the
+            # loop, then move the turning point once or twice by what the time was off. The way home may use the line
+            # too – a route on both banks of a river is followed out on one and home on the other. If the turning
+            # point sits on the far branch, the way home has to cross back over the way out: then the point at the
+            # same distance on the near branch is tried as well, and the judging decides.
+            same, share = [u for u in on if turn(u, guess) < 60.0], 1.0
+            for _ in range(3):
+                want = share * along[guess]
+                u = min(same, key=lambda v: abs(along[v] - want))
+                m = add([entry, u], "Linie", [ln["name"]], {1: along_cost, 2: along_cost})
+                if m and m["cross"]:
+                    far = max((v for v in same if abs(along[v] - want) <= 0.1 * want), key=lambda v: dist(net.nodes[v], net.nodes[u]), default=u)
+                    if dist(net.nodes[far], net.nodes[u]) > 300.0:
+                        m = add([entry, far], "Linie", [ln["name"]], {1: along_cost, 2: along_cost}) or m
+                if not m or h_lo <= m["hours"] <= h_hi:
+                    break
+                share *= h_mid / m["hours"]
     return out
