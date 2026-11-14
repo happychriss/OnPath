@@ -27,9 +27,15 @@ page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await page.goto(url + 'index.html');
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 const titles = async () => page.$$eval('#results .hit b', (b) => b.map((x) => x.textContent));
+// the list shown may still be an older one – the focus's "Type a name" hint or the last word's rows – while this word's
+// search runs (the first one indexes the map areas, > 1 s on a slow machine): wait until the engine answered THIS text
+await page.evaluate(() => {
+  const engine = window.__engine, search = engine.search.bind(engine);
+  engine.search = async (text, ...rest) => { const hits = await search(text, ...rest); window.__searched = text; return hits; };
+});
 const searchFor = async (t) => {
   await page.fill('#q', t);
-  await page.waitForFunction(() => document.querySelector('#results .hit') || document.querySelector('#results .pad'), null, { timeout: 60_000 });
+  await page.waitForFunction((t) => window.__searched === t && (document.querySelector('#results .hit') || document.querySelector('#results .pad')), t, { timeout: 60_000 });
   await page.waitForTimeout(700);
   return titles();
 };
@@ -89,6 +95,9 @@ check(/^(Add as a stop|Add as new destination)/.test(add3), `two points: "Add as
 check(await page.locator('#placecard #cstart').count() === 1 && await page.locator('#placecard #cdest').count() === 1,
   'two points: As start and As destination both shown');
 await page.keyboard.press('Escape');
+// software GL (SwiftShader) can lag the page by many seconds on a busy machine; the screenshot waits for it within its
+// own 30 s – the map's frames drawn so far are finished first (a 1-pixel read waits for them)
+await page.evaluate(() => { const gl = window.__map.getCanvas().getContext('webgl2'); gl?.readPixels(0, 0, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4)); });
 await page.screenshot({ path: shot });
 // Save proposes a name like the app (RouteNamer: the places the stops came from)
 await page.click('#menuSavePlan');
