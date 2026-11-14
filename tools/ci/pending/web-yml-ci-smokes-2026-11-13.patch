@@ -1,0 +1,141 @@
+From 7970bb12b37ec9b235e1ca5ee779e936abb93d10 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Sat, 14 Nov 2026 00:13:26 +0100
+Subject: [PATCH] =?UTF-8?q?Web=20planner=20CI:=20the=20smokes=20check-web.?=
+ =?UTF-8?q?sh=20runs=20but=20CI=20did=20not=20=E2=80=93=20center,=20stop,?=
+ =?UTF-8?q?=20phonelink,=20sort,=20sync-rate?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+web/parity/check-web.sh ran seven browser smokes that .github/workflows/web.yml never ran. Five of them go into the
+smoke groups with the most room (sheet-sync stays the longest group, ~8 min, so the run takes no longer):
+- cells: center-smoke (~1.5 min) and stop-smoke (~1 min); this group also gets the Ruhr routing data (E5_N50, the
+  jvm job's weekly cache key) – stop-smoke plans Meran → Hilden and skips itself without it
+- areas-parity: phonelink-smoke (~3 min)
+- lang-gpx: sort-smoke (~45 s) and sync-rate-smoke (~30 s)
+About 7 machine-minutes more per run, no longer wall time. Not added: search-smoke and poipin-smoke need real map
+cells (a cell store), which CI does not have. texts-check, sync-engine, gpx-engine, plan-parity, browser-compare and
+the host tests already ran in CI (web-build / jvm).
+
+stop-smoke's undo check needs the test fix on main (a plan from a link has nothing to undo since 0eff405f; the check
+now asks right after the fresh worker, before the short link).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .github/workflows/web.yml | 47 ++++++++++++++++++++++++++++++++-------
+ 1 file changed, 39 insertions(+), 8 deletions(-)
+
+diff --git a/.github/workflows/web.yml b/.github/workflows/web.yml
+index 355ca4f4..1cdca505 100644
+--- a/.github/workflows/web.yml
++++ b/.github/workflows/web.yml
+@@ -275,8 +275,10 @@ jobs:
+             web/engine/build/*.json
+             web/engine/build/*.png
+ 
+-  # The browser smokes on 5 machines, balanced by their times (cells-smoke alone is the longest, ~150 s). Each smoke
+-  # stays its own step, so a failure's log is that smoke's alone; a new smoke goes into the shortest group.
++  # The browser smokes on 5 machines, balanced by their times (sheet-sync is the longest, ~8 min). Each smoke stays its
++  # own step, so a failure's log is that smoke's alone; a new smoke goes into the shortest group. Every browser smoke of
++  # web/parity/check-web.sh runs here too, except search-smoke and poipin-smoke: they need real map cells (a cell
++  # store), which CI does not have.
+   smokes:
+     runs-on: ubuntu-latest
+     timeout-minutes: 30
+@@ -297,14 +299,18 @@ jobs:
+       - name: Week number (cache key)
+         id: week
+         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
++      # group cells also gets the Ruhr (E5_N50, the same cache as the jvm job): stop-smoke plans Meran → Hilden
+       - uses: actions/cache@v4
+         with:
+           path: segments
+-          key: rd5-E10_N45-${{ steps.week.outputs.week }}
++          key: rd5-${{ matrix.group == 'cells' && 'E10_N45-E5_N50' || 'E10_N45' }}-${{ steps.week.outputs.week }}
+       - name: Routing data
++        env:
++          RUHR: ${{ matrix.group == 'cells' }}
+         run: |
+           mkdir -p segments
+           [ -s segments/E10_N45.rd5 ] || curl -fsS --retry 3 -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5
++          [ "$RUHR" != true ] || [ -s segments/E5_N50.rd5 ] || curl -fsS --retry 3 -o segments/E5_N50.rd5 https://brouter.de/brouter/segments4/E5_N50.rd5
+           ls -la segments
+ 
+       - name: Playwright's Chromium
+@@ -333,13 +339,23 @@ jobs:
+           name: web-build
+           path: web
+ 
+-      # group cells (~150 s)
++      # group cells (~4.5 min)
+       - name: A cell whose map fails (404, busy, 429, new generation, slow) – bounded tries, overview stays, strip says it, diagnostics
+         if: matrix.group == 'cells'
+         working-directory: web/app
+         run: node test/cells-smoke.mjs $GITHUB_WORKSPACE/segments
+ 
+-      # group sheet-sync (~140 s)
++      - name: Every dialog sits in the middle (1280×800, 1920×1080, 412×839; a QR code in the middle of its dialog)
++        if: matrix.group == 'cells'
++        working-directory: web/app
++        run: node test/center-smoke.mjs $GITHUB_WORKSPACE/segments
++
++      - name: A long plan never holds the planner (Meran → Hilden dropped by + New – fresh worker, short plan at once, undo)
++        if: matrix.group == 'cells'
++        working-directory: web/app
++        run: node test/stop-smoke.mjs $GITHUB_WORKSPACE/segments
++
++      # group sheet-sync (~8 min)
+       - name: Plan sheet steps (small / profile / Points on desktop and phone, handle, chevron, remembered; Share icon, place card)
+         if: matrix.group == 'sheet-sync'
+         working-directory: web/app
+@@ -350,7 +366,7 @@ jobs:
+         working-directory: web/app
+         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
+ 
+-      # group areas-parity (~135 s)
++      # group areas-parity (~5.5 min)
+       - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
+         if: matrix.group == 'areas-parity'
+         working-directory: web/app
+@@ -361,7 +377,12 @@ jobs:
+         working-directory: web/app
+         run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
+ 
+-      # group lang-gpx (~100 s)
++      - name: A shared link on a phone – the sheet peeks, one load overlay with a percent, the route whole above the peek
++        if: matrix.group == 'areas-parity'
++        working-directory: web/app
++        run: node test/phonelink-smoke.mjs $GITHUB_WORKSPACE/segments
++
++      # group lang-gpx (~4.5 min)
+       - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
+         if: matrix.group == 'lang-gpx'
+         working-directory: web/app
+@@ -377,12 +398,22 @@ jobs:
+         working-directory: web/app
+         run: node test/follow-smoke.mjs $GITHUB_WORKSPACE/segments
+ 
++      - name: Meine Touren sorts and searches like the app (five chips, ↓ / ↑, kept over a reload, every word found)
++        if: matrix.group == 'lang-gpx'
++        working-directory: web/app
++        run: node test/sort-smoke.mjs $GITHUB_WORKSPACE/segments
++
++      - name: Plan sync stays under the host's per-IP limit (110 routes after pairing in batches; a 429 is quiet, waited out)
++        if: matrix.group == 'lang-gpx'
++        working-directory: web/app
++        run: node test/sync-rate-smoke.mjs $GITHUB_WORKSPACE/segments
++
+       - name: Where the time goes (numbers only, nothing checked)
+         if: matrix.group == 'lang-gpx'
+         working-directory: web/app
+         run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
+ 
+-      # group short (~80 s)
++      # group short (~5 min)
+       - name: No WebGL2 → a plain message, never a blank page (owner 2026-10-30)
+         if: matrix.group == 'short'
+         working-directory: web/app
+-- 
+2.53.0
+
