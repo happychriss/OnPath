@@ -29,6 +29,12 @@ class WebPlaceMenuTest {
         assertTrue(m, m.startsWith("{\"main\":[\"NEW_DESTINATION\"]"))
     }
 
+    // „Als neues Ziel“ in the planner (no tour) keeps the old goal as the last stop – PlaceAddMenu.keepsOldGoal (owner 2026-11-14)
+    @Test fun theNewGoalKeepsTheOldOneInThePlanner() {
+        val m = Engine.placeMenu(ab, 46.6700, 11.6000, false)
+        assertTrue(m, m.contains("\"keepOld\":true"))
+    }
+
     // the locate distance (the app's LocateDistance): only while I am off the visible map
     @Test fun locateLabelOnlyOffTheMap() {
         assertEquals("", Engine.locateLabel(true, 46.67, 11.16, 46.6, 11.1, 46.7, 11.2)) // in view

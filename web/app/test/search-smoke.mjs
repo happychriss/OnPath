@@ -135,6 +135,40 @@ console.log('proposed name:', proposed);
 check(proposed === 'Vellau → Ifinger Hütte', 'Save proposes "Vellau → Ifinger Hütte" (RouteNamer)');
 await page.click('#saveCancel');
 
+// A POI's menu → „Als neues Ziel“ / "Make it the destination" (the app 0.17.10, PlaceAddMenu.keepsOldGoal, owner
+// 2026-11-14 „beim Planen anhängen, unterwegs ersetzen“): the planner has no tours – it always appends, the old goal
+// stays as stop 2 and the place becomes the destination. A POI in view, away from the markers (a marker opens its own menu).
+const rowNames = () => page.$$eval('#points li .txt > span:first-child', (s) => s.map((x) => x.textContent));
+const before = await rowNames();
+const poi = await page.waitForFunction(() => {
+  const map = window.__map;
+  if (!map.loaded() || map.isMoving()) return null;
+  const layers = map.getStyle().layers.filter((l) => l.id.startsWith('poi-') && !l.id.endsWith('-name')).map((l) => l.id);
+  const c = map.getCanvas(), w = c.clientWidth, h = c.clientHeight;
+  const pins = [...document.querySelectorAll('.pin')].map((e) => e.getBoundingClientRect()), cr = c.getBoundingClientRect();
+  const fs = map.queryRenderedFeatures([[w * 0.35, h * 0.1], [w * 0.95, h * 0.9]], { layers }).filter((f) => {
+    if (f.geometry.type !== 'Point' || !f.properties?.kind || f.properties.kind === 'bus' || !f.properties.name) return false;
+    const p = map.project(f.geometry.coordinates);
+    return pins.every((r) => Math.hypot(cr.x + p.x - (r.x + r.width / 2), cr.y + p.y - (r.y + r.height / 2)) > 70);
+  });
+  if (!fs.length) return null;
+  const p = map.project(fs[0].geometry.coordinates);
+  return { name: String(fs[0].properties.name), x: p.x, y: p.y };
+}, null, { timeout: 60_000, polling: 500 }).then((h) => h.jsonValue());
+console.log('POI for a new destination:', poi);
+const mapBox = await page.locator('#map canvas').first().boundingBox();
+await page.mouse.click(mapBox.x + poi.x, mapBox.y + poi.y);
+await page.waitForSelector('.pointmenu', { timeout: 15_000 });
+const entry = () => page.locator('.pointmenu button', { hasText: 'Make it the destination' });
+if (await entry().count() === 0) await page.locator('.pointmenu button', { hasText: 'More' }).click(); // a clear case hides it behind „⋯ Mehr“
+await page.waitForSelector('.pointmenu button:has-text("Make it the destination")', { timeout: 10_000 });
+await entry().first().click();
+await page.waitForFunction(() => document.querySelectorAll('#points li').length === 3, null, { timeout: 15_000 }).catch(() => {});
+const after = await rowNames();
+console.log('after "Make it the destination":', before, '→', after);
+check(after.length === 3 && after[0] === before[0] && after[1] === before[1] && after[2] !== before[1],
+  `"Make it the destination" appends: the old goal is stop 2, the place the destination (${after.join(' → ')})`);
+
 // the density limit for city POIs (app b71b1df9, owner 2026-11-13): in Köln (a dense cell of the store) restaurants /
 // cafés / bars / snack bars / shops beyond 24 per map tile carry "dz" = 17 and are drawn only from z17 (the style's
 // `zoom >= dz`); huts, toilets, bus stops … never

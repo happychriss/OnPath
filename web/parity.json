@@ -159,7 +159,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; requestSave; suggestName; pinnedPoiKinds / refreshPinnedKinds",
+      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; poiAsNewDestination (appends while planning – PlaceAddMenu.keepsOldGoal; the planner has no tour, main.ts placeAsNewDestination); requestSave; suggestName; pinnedPoiKinds / refreshPinnedKinds",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -911,7 +911,7 @@
       ]
     },
     "app/src/main/java/com/onpath/app/ui/PlaceAddMenu.kt": {
-      "blob": "a5d1b1c38fcce73bd56cdb6cf7f819fff182e026",
+      "blob": "b5ff8e1061d7ce44a9237affadea23d397424ae9",
       "perf": [
         "var detour = Double.MAX_VALUE"
       ]
@@ -1193,7 +1193,7 @@
       "perf": []
     },
     "app/src/test/java/com/onpath/app/ui/PlaceAddMenuTest.kt": {
-      "blob": "78bc16b68fb29ad122daf577ef732ab07d287c15",
+      "blob": "4c8112462c07eebb915beea3b4e17c9b7e60512d",
       "perf": []
     },
     "app/src/test/java/com/onpath/app/ui/LocateDistanceTest.kt": {
