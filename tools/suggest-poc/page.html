@@ -72,7 +72,7 @@
   <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
   <label style="margin:6px 0 0; color:var(--ink)" title="Einmal pro Kartengebiet hat eine KI aus unserer eigenen Kartenliste ausgewählt, was ein Ortskundiger empfehlen würde. Beim Vorschlagen wird keine KI gefragt."><input type="checkbox" id="ai"> mit KI-Regionswissen</label>
   <label>Verfahren (zum Vergleichen)</label>
-  <select id="method"><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b" selected>B · Netz-Suche (Wandern und Rad)</option><option value="c">C · Grünstück-Kette (Grünflächen verbinden)</option></select>
+  <select id="method"><option value="auto" selected>Automatisch · Netz-Suche und Grünstück-Kette, eine Auswahl</option><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b">B · nur Netz-Suche</option><option value="c">C · Grünstück-Kette (Grünflächen verbinden)</option></select>
   <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
     <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
     <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
@@ -87,6 +87,7 @@
   <div class="btns" style="margin-top:6px"><button id="cmpgo">Vergleich mit / ohne KI</button></div>
   <div id="cmp"></div>
   <div id="status"></div>
+  <div id="notes" style="display:none;margin:6px 0;padding:6px 8px;border-left:3px solid #b45309;background:#fff7ed;color:#7c2d12;font-size:12px;line-height:1.35"></div>
   <div class="opts">
     <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
     <label style="margin:0"><input type="checkbox" id="kinds" checked> gewählte Runde nach Wegart färben</label>
@@ -207,6 +208,7 @@ function show(r, ms) {
   result = r; sel = null;
   const ch = r.candidates.filter(c => c.chosen);
   $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version} · Verfahren ${(r.method || 'a').toUpperCase()}` + (r.net ? ` · Netz ${r.net.graph_nodes} Knoten, ${r.net.searches} Suchen` : '') +((r.ai || {}).on ? ` · mit KI-Regionswissen (${r.ai.picks_in_reach} Tipps in Reichweite)` : '') + ((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
+  $('notes').style.display = (r.notes || []).length ? 'block' : 'none'; $('notes').innerHTML = (r.notes || []).map(esc).join('<br>');
   $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, ziele_in_reichweite:(r.destinations || []).map(d => d.name + ' ' + d.km_away + ' km'), profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
   cards(); draw(true);
 }
@@ -238,7 +240,8 @@ function cards() {
         ${n.main_longest_m ? chip('an / neben Straße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (n.main_road_max_m || result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
         ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}
         ${n.self_cross ? chip('kreuzt sich ' + n.self_cross + '×', n.self_cross > 1 ? 'bad' : '') : ''}${n.stalk_m >= 150 ? chip('hin und zurück ' + n.stalk_m + ' m') : ''}${n.roadside_pct !== undefined ? chip('an / neben Straße ' + n.roadside_pct + ' %', n.roadside_pct >= 10 ? 'bad' : '') + chip('durch Häuser ' + n.built_pct + ' %', n.built_pct >= 40 ? 'bad' : '') + chip('tief in der Natur ' + n.deep_pct + ' %', n.deep_pct >= 40 ? 'good' : '') : ''}</div>
-      <div class="parts">Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
+      ${c.flaws && Object.keys(c.flaws).length ? `<div class="goals" style="color:#9a3412">Abzug: ${Object.entries(c.flaws).map(([k, v]) => ({road:'langes Stück an einer Straße', built:'durch Häuser', doubled:'doppelt gefahren', cross:'kreuzt den eigenen Weg', roadside:'viel an Straßen'}[k] || k) + ' −' + v.toFixed(0)).join(' · ')}</div>` : ''}
+      <div class="parts">${n.green_km !== undefined ? 'im Grünen ' + km1(n.green_km) + ' km' + (n.railtrail_km >= 1 ? ' · Bahntrasse ' + km1(n.railtrail_km) + ' km' : '') + (n.bank_km >= 1 ? ' · am Wasser ' + km1(n.bank_km) + ' km' : '') + (c.work_name ? ' · Arbeitsname: ' + esc(c.work_name) : '') + (c.origin ? ' · Herkunft ' + c.origin : '') + '<br>' : ''}Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
       <div class="fb"><input type="text" placeholder="Kommentar zu dieser Runde"><button class="send">Kommentar senden</button></div>`;
     d.onclick = e => { if (e.target.closest('.fb')) return; sel = sel === c.id ? null : c.id; cards(); draw(); };
     d.querySelector('.send').onclick = () => feedback(c, d);
@@ -280,7 +283,7 @@ if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r
   const w = r.wish, sm = w.simple || {};
   $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
   for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
-  $('method').value = w.method || 'a'; $('ai').checked = !!w.ai;
+  $('method').value = w.method || 'auto'; $('ai').checked = !!w.ai;
   window.pendingSurface = w.surface; fillSurface(); if (w.surface) $('surface').value = w.surface;
   if (P.get('noknown')) { $('known').checked = false; loadKnown(true); }
   $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;

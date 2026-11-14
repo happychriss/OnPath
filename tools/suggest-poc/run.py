@@ -35,7 +35,7 @@ p.add_argument("--surface", default=None, help="Wegbeschaffenheit: an option of 
 for k in ("forest", "quiet", "water", "signed", "natural"):
     p.add_argument("--" + k, type=float, default=None, help="exact slider 0..1 (wins over the level)")
 p.add_argument("--seed", type=int, default=1)
-p.add_argument("--method", default="a", choices=["a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
+p.add_argument("--method", default="auto", choices=["auto", "a", "b", "c"], help="a = fan of routed loops, b = search in the way network, c = green-patch chain")
 p.add_argument("--ai", action="store_true", help="mit KI-Regionswissen (the AI's picks per map area: score part + destinations)")
 p.add_argument("--compare-ai", action="store_true", help="the same wish without and with the AI's region knowledge, side by side")
 p.add_argument("--png", action="store_true", help="also write map pictures (chosen routes; one per route by way kind)")

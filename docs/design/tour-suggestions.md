@@ -458,3 +458,247 @@ measure and the crossing weight changed for both.
 as the border of a set of blocks; Karlsruhe, about 2013) and the arc-orienteering formulation for cycle-route
 planners (Leuven). The chain here is a small relative of both: patches instead of faces, a budgeted cycle on a patch
 graph instead of on the whole network.
+
+## Night 2026-11-13/14 – judged at the owner's test places, tuned; one pooled method `auto`
+
+Owner, before bed: "Du solltest dir die Bilder auch selber angucken und deine eigene Bewertung machen. Verschiedene Orte
+nehmen … tune deine Einstellung … Keine Rückfragen. Wenn du eine sauberere Variante hast, dann mache alles so klar, dass
+der Planer das einbauen kann." And his places: Sauerland, Eifel / Monschau, Münsterland, towards Langenfeld and
+Mettmann, Wuppertal with its rail trails, and the stretch Wuppertal – Fröndenberg he rides often.
+Verdicts, pictures, sheets: `~/onpath-suggest-poc/night/` (`judgement.md`, `report.md`, `pics/before|after/`, `bench/`).
+
+**Places and wishes (21, `tools/suggest-poc/judge.py`):** Hilden centre / Ohligser Heide / Langenfeld (mixed town and
+green belts); Nordkirchen (Münsterland, his comments); Monschau, Einruhr at the Rursee, Winterberg, Königswinter
+(Siebengebirge), Altenahr (big connected nature, known for walking); by bike on rail trails and along the Ruhr:
+Wuppertal Mirke and Vohwinkel, Mettmann, Schwelm, Hagen, Wetter, Fröndenberg; Zons (his Rhine case); Meran (mountain
+control). `judge.py` writes one picture per run (the shown loops on the map, pieces on / beside a busy road dark red)
+and the numbers a person needs; I looked at the pictures and gave marks 1–5 (`judgement.md`).
+
+**What was wrong, and the cause:**
+- *"Warum gehen alle Wege nach Süden?", "warum durch Werne", card title "Grünstück" (Nordkirchen):* his runs had **no
+  map area at all** on this computer (nine areas missing; the note was a small line on the page). Without the map there
+  is no built-up land, no nature grid, no place names – the green came only from the routing data's forest class. Not
+  re-run without data, but with the areas present the same wish gives loops to the south, west, north and east and none
+  through Werne. Now: missing map areas in reach are fetched as the app does (`cells.ensure`, also asks the server for
+  areas it does not list yet); what cannot be had is said in a clearly visible box on the run.
+- *Wuppertal Mirke by bike: no suggestion at all:* the start had snapped onto steps leading to a private path – it
+  reached two nodes. Now the start is seated on the connected network (`netsearch.seat_start`) and the run says so.
+- *"Ein langes Stück an der Straße … auf einer Landstraße wandern", "nur 4 Punkte Unterschied":* the path beside a
+  country road has no noise class in the routing data, so it counted as a plain way. Now a way beside a road with car
+  traffic is found **by geometry** (`netsearch.RoadGrid`), and flaws take **points off** on top of the mean.
+- *"Rückweg durch Hassels, warum nicht durch den Hasseler Forst", "eine Stadt war gerne noch dabei":* a chain's
+  connectors were searched outside all patches, so they could not use a third green piece. Now each connector is
+  searched again in the whole network when the chain is realised.
+- *"Geht nur durch den Ort" (a fifth-place suggestion):* five were always shown. Now a suggestion more than 18 points
+  behind the best is not shown, nor – with Natur hoch – one that runs more than a third through houses beside a better
+  one.
+- *"Einige Strecken doppelt gefahren, war das nötig?":* doubling is a flaw in points, and a loop walked twice for more
+  than 30 % (beyond the free stem) is not offered at all.
+
+**What changed (weights 2026-11-14b):**
+1. **One pool, one selection – method `auto`** (the page's default; A / B / C stay selectable): the loops of the
+   network search and the chains of green patches are made on the same loaded network and judged together. In the 21
+   judged runs 74 of the 95 shown loops came from the network search and 21 from the chain; the chain is first in 5
+   runs (Hilden bike, Langenfeld bike, Wuppertal 3 h, Zons, Meran) – mixed land by bike, as the owner guessed ("bei
+   gemischtem Gelände hat die Stückroute einen Vorteil; wo alles grün ist, nicht").
+2. **Rail trails** (owner 2026-11-14): the routing data keeps `railway=abandoned` on a path / cycleway laid on a
+   former line (40 km of it around Wuppertal Mirke, 30 km around Hattingen). For bikes such ways cost 45 % less in the
+   search, are green pieces for the chain also between houses, are lines to ride along like known routes, give turning
+   points at their ends, and count as a score part (`railtrail`, only in runs where one is in reach). The map names
+   some (Sambatrasse, Korkenziehertrasse, PanoramaRadweg Niederbergbahn, Rheinischer Esel) but not the Nordbahntrasse.
+3. **Green km** (`green`: share of the loop in / at nature, at a bank, on a rail trail – "die Länge, die ich durch was
+   Grünes fahre, ist wichtig") and **water told apart**: directly at open water from the map's water shapes; *big water*
+   (a lake, a wide river: at least 4 % water within 300 m) against ponds and brooks. With "am Wasser entlang" loops
+   really at big water are shown and stand first, even when a forest loop has more points – the run says so.
+4. **Speaking names** from what a loop passes (protected area, lake, rail trail, main known route; else direction and
+   village), unique among the shown ones; the working name ("SW · Schleife") stays as a second field.
+5. Faster: a lighter road grid, searches from turning points bounded by the useful length, connectors cached, the
+   router checks side by side, long bike loops with fewer candidates.
+
+**Bench (the 15 old cases, same expectations, one changed – see below): B 93, C 88 → `auto` 98 of 104.** With the six
+new cases from the night 134 of 141. Red: Hilden centre hike forest 46 % for 50; Ohligser Heide street 17 % for 15;
+Düsseldorf centre shows two suggestions, not three (on purpose: the rest was poor); Hilden bike 4 h 19 s and gravel 3 h
+17 s, Wetter bike 3 h 17.6 s in the last run and 14 s in the one before (limit 15; the long bike runs vary); Zons 3 h: 11.4 km directly at the Rhine for 12.
+Changed expectation, stated openly: the three Rhine cases asked for km on the signed Rheinradweg; now "≥ x km
+Rheinradweg **or** ≥ x/2 km directly at the water" – the first suggestions are loops through the Rhine meadows on both
+banks, which is "am Rhein lang" but not always on the signed route. The ride north to Düsseldorf that the owner called
+"wunderbar" is still not first.
+
+**My marks (first suggestion, 1–5; 13 of 21 from a picture, 8 from numbers): before 3.4 (the better of B and C per
+case) → after 3.6.** Better in 9 cases, same in 10, worse in 2 (Mettmann, Fröndenberg).
+
+**Decisions taken without asking:** `auto` is the default; fewer than three suggestions are allowed when the rest is
+poor; water loops first when the box is ticked; the Rhine expectation reworded; for bikes houses are a flaw only
+beyond 30 % of the loop (the loop he liked had 35 % by the new measure, the one "zu viel durch Orte" 46 %); the page
+now asks the map server for missing areas like the app does (nine areas were asked for tonight – all were ready at
+once, none was built); no AI call was made and the KI switch was not part of the tuning.
+
+**Still weak:**
+- *Fröndenberg and the Ruhr valley:* the Ruhr is narrower than the big-water measure sees, so "am Wasser entlang" is
+  not honoured there and the Ruhrtalradweg loop is third. Named rivers from the map's `waterway` layer are the fix.
+- *Mettmann:* poor loops (65 points), the Niederbergbahn 6 km away is not used; suburban hills by bike stay mediocre
+  (Schwelm, Hagen ~77 points).
+- *From a town centre on foot* (Hilden, Düsseldorf) the best is ~58–68 points: the way out costs. **Entry points**
+  (a car park / stop at the green) remain the biggest missing piece.
+- *Names:* "Bahntrasse" several times in one list; stand-in patch names ("Grün bei …") still appear.
+- *Short loops:* several bike firsts are 10–15 km under the wish (Wuppertal 26 for 36 km, Wetter 39 for 54).
+- *Time:* long bike loops 13–19 s on this desktop in Python; hikes 0.5–8 s.
+- *A-to-B:* the stretch Wuppertal → Fröndenberg is a one-way ride. The same machinery fits – a pleasant-cost search
+  from A to B with rail trails and river banks cheap, a few different ways offered – but nothing was built.
+- Not run tonight: MTB, variant A, the KI switch with the new scoring, `bench.py --refs`, the page in a real browser.
+
+## The method, as the planner should build it (state 2026-11-14, POC method `auto`)
+
+Written so that the shared-core port can be made from it. The POC files are the reference implementation
+(`suggest.py` = request, numbers, score, selection; `netsearch.py` = network, values, loops; `greenchain.py` = chains;
+`nature.py` = land grid; `attractions.py` = named destinations; `cells.py` = map areas); every number is a knob in
+`weights.json` (base section, overridden per activity under `activities.<name>`). `bench.py` (21 cases with plain
+expectations) and `judge.py` (21 places) are the tests to carry over.
+
+**Inputs**
+1. *Wish:* start; activity (hike with T level / bike / gravel / mtb → the app's BRouter profile); hours; pace (km/h on
+   the flat); effort (relaxed / medium / sporty); tastes 0..1: forest (= Natur), quiet (Ruhe), signed (Bekannte Wege),
+   water (the box: 0.9 / 0.12); surface choice per activity; seed; optional AI tips.
+2. *Way network* from the routing data: all nodes and links within `netsearch.radius_factor` × wished length (capped
+   `max_radius_m`), each link with length, the profile's cost factor per direction, way tags, geometry. Bikes: a coarser
+   network (`skip` / `keep` / `maxcf`). The POC's route service reads this from BRouter's node cache (`/graph`).
+3. *Map areas* in reach (z10 cells): `overlays` layer `routes` (known routes: name, rank) and `trailnames` (local
+   trails); `base` layers `water` + `water_name` (lakes), `landcover` (forest, heath, wetland), `park` (protected areas
+   with names), `landuse` (built-up), `place` (names); `pois` (viewpoints). From these: a land grid of ~45 m per area
+   with the bits forest / protected / built / water and summed-area tables ("share of X within r metres" in O(1)),
+   and a grid index "which named route / lake lies at this point".
+   A map area that is missing is fetched; if it cannot be had the result carries a note.
+
+**Step 1 – value every link once** (`netsearch.edge_values`). Per link:
+- *class* G / S / W / P (at a main road / street / way near forest / other way) and *main weight* 0..1 = how much it is
+  "at a busy road": the road class itself (`classes.main.base`, milder at 30 km/h, with a cycle track / lane, on a
+  bridge), a small road by its traffic class, a pavement or path beside a loud road by the noise class, and – by
+  geometry – a separate way running beside a road with car traffic (road grid of ~12 m cells; at least two of the
+  way's points at ¼, ½, ¾ lie at the road) × `beside_geo`;
+- *pleasure* p 0..1 = weighted mean of forest value (forest class), quiet (noise class), water (river class, or 1 on a
+  named lake's shore), signed rank (routing flags, or the map's known route on it – nothing on / beside a busy road),
+  deep nature (land grid, radius `nature.search_radius_m`), each weighted by score weight × taste;
+- *cost per metre* = [1 + `k_taste`·(1 − p) + `pen_main`·main·(1 + `pen_main_natur`·Natur) + `pen_street` if a street +
+  `pen_town`·Natur if inside built-up land] × [1 + `cf_weight`·(profile factor − 1)] × surface factor (the wish's
+  surface choice) × [1 − known-route discount × signed rank] × [1 − `rail_discount` on a rail trail]; −1 = not allowed.
+The start is moved to the nearest node of the big connected piece if its own piece is tiny.
+
+**Step 2 – candidates from the network search** (`netsearch.search`):
+1. one search from the start over the costs (also gives the walked length to every node);
+2. *turning points:* per direction sector × distance band (`sectors`, `bands` as shares of the wished length) the most
+   pleasantly reached node; nodes on the most relevant destinations (lake, known route) – the nearest and the
+   farthest; the near and far end of each rail-trail piece; with AI tips their areas;
+3. *lollipop:* start → A → start, the way back paying `used_penalty` on ways already walked (the first
+   `score.free_stem_m` are free: a short way out and back is fine);
+4. *pairs:* start → A → B → start for A, B `pair_min_sectors`..`pair_max_sectors` apart whose estimated length fits;
+5. *along a line:* a known route or a rail-trail piece – a short stem onto it, along it (its ways cost almost nothing,
+   but not where it runs at a busy road) to the point where stem + line + estimated way home fill the wished length,
+   home another way; both directions;
+6. *lakes* (on foot, with the water wish): a fairly direct way to the lake, round it if the length allows and the ring
+   really encloses the water, else along the shore, home another way;
+7. kept: time within `keep_length_off` of the wish (plus half the free band), meets its own way at most once.
+
+**Step 3 – candidates from the green-patch chain** (`greenchain.search`, same network and costs):
+1. a link is *green* when it is no street, not at a busy road, not inside built-up land, and lies in / at nature
+   (nature share within `green_radius_m` ≥ `green_from`, or forest class ≥ `green_forest_class`), or at a bank (with
+   the water wish), or is a rail trail (bikes; also between houses);
+2. connected green links = a *patch* (a gap up to `join_gap_m` joins); patches under `min_patch_m` dropped, the
+   `max_patches` most worthwhile kept; the start is a patch of its own unless it lies in one;
+3. *connectors:* from each patch one search over the rest – the least unpleasant way to each neighbouring patch, with
+   the gates where it leaves and arrives (up to `alternatives` gates per pair, `gate_sep_m` apart);
+4. *chains:* depth-first over the small graph start → patch → … → start (at most `max_patches_in_chain` patches,
+   `max_steps` steps): worth = green metres inside the patches × patch quality − connector unpleasantness ×
+   `connector_weight`·(1 + `connector_natur`·Natur); a chain fits when its shortest form is not too long and, on foot,
+   its form stretched inside patches not too short;
+5. the best chains that differ (at most `realise_max_common` of their patches in common), `realise` of them, become
+   loops: **each connector is searched again in the whole network** between its two gates (so a green way through a
+   third patch wins over streets), inside a patch the nicest way between the gates, on foot stretched by a turning point
+   or a loop inside it when length is missing;
+6. the loop is named after its patches (protected area, lake; never "Grünstück").
+
+**Step 4 – numbers and score, the same for every candidate** (`suggest.numbers`, `rescore`). Per loop: km, time
+(km / pace + ascent / `time.ascent_m_per_h`), ascent; shares of forest, street, at a road (weighted), through houses
+(inside built-up land), deep nature, **green km**, at water (and at big water), on a rail trail, on signed routes,
+walked twice (beyond the free stem), meetings with its own way, the longest stretch at a busy road, surface split,
+known routes / lakes / protected areas with km. *Parts* 0..1 (`score.weights`, taste parts × the wish's slider, road
+and house parts × (1 + `natur_scaled`·Natur)): length (flat within ± `length_flat_km`), ascent, forest, quiet, water,
+signed, surface, street, mainroad, doubled, selfcross, roadside, town, deep, green, railtrail (only if a candidate of
+the run has ≥ `railtrail_min_km`), crossings, ai. **Score = 100 × weighted mean − flaws** (`score.flaws`, points off):
+the longest stretch at a busy road beyond the free stretch; the share through houses beyond `built_free`; walked
+twice beyond `doubled_free`; each meeting with the own way; the weighted share at roads beyond `roadside_free`.
+
+**Step 5 – one selection** (`suggest.suggest`, knobs `select`):
+1. *not offered at all:* time more than `max_length_off` from the wish (plus half the band); meets its own way more
+   than `max_self_cross` (1) times; above the effort's cap of metres up per hour (`effort.*.up_m_per_h`; if none is
+   below it the flattest are shown with a note); more than `max_doubled_pct` walked twice;
+2. the best first; then, up to `show` (5): the candidate with the highest (points − `shared_cost` × share of its
+   length it has in common with a shown one − `same_dir_cost` if it heads the same way within `same_dir_deg`), skipping
+   those that share more than `max_shared`, are more than `floor_points` behind the best, or – with Natur ≥
+   `built_limit_from_natur` – run more than `max_built_pct` through houses;
+3. *water theme:* with the box ticked, up to `water_slots` loops really at big water (≥ `water_min_km` and
+   `water_min_share` of the loop) are shown unless more than `water_max_behind` points behind, and stand first;
+4. each shown loop is routed once through the real router (via points every `check_via_every_m`) – the confirmed
+   share and the router's ascent are stored;
+5. names: speaking and unique; notes on the result (missing map area, moved start, water first, ascent cap).
+
+**The owner's taste rules as rules** – hard: at most one meeting with the own way; not mostly a there-and-back; the
+effort's ascent cap; with Natur hoch not mostly through houses beside a better loop. Soft (cost, parts, flaws): along
+a road is bad, signed route or not, and worse the more nature is wished; known routes strongly preferred by rank; big
+connected nature and green km count; a short way out and back (700 m on foot, 2.5 km by bike) is free; the length is a
+rough guide (± 1 km on foot, ± 5 km by bike); few controls.
+
+**Sizes and times** (this desktop, Python + the Java route service, one request alone): hike 2–3 h: 14,000–40,000
+nodes, 0.5–8 s; bike 2 h: ~100,000 nodes, 5–9 s; bike 3–4 h: 170,000–210,000 nodes, 13–19 s, of which network load
+~2 s, valuing the links ~3.5 s, network search 4–8 s, chain 3–8 s, numbers < 1 s, router checks < 1 s. Memory and a
+phone: not measured.
+
+**What the port needs that `RoutingContract` does not offer today:** the network read (nodes, links, tags, cost
+factors within a radius); profile switches per request; the generated profile copies with the main-road term (they
+change the routing fingerprint and must stay apart from ordinary plans); for the final check a route through many via
+points. No weighted nogo lines any more (only variant A used them).
+
+**The knobs of `weights.json` used by `auto`** (one line each; legacy variant A: section `generator`, see its `_about`):
+- `simple`: `levels` niedrig / mittel / hoch → 0.2 / 0.5 / 0.9; `wasser_on` / `wasser_off`; `effort` words;
+  `natur_natural_factor` (unused weight).
+- `netsearch`: `radius_factor`, `max_radius_m` network size; `k_taste`, `pen_street`, `pen_main`, `pen_main_natur`,
+  `pen_town`, `cf_weight`, `k_surface`, `surface_avoid_factor`, `roadside_no_discount`, `known_discount_per_signed`,
+  `known_discount_max`, `rail_discount` the cost formula; `used_penalty` ways already walked; `sectors`, `bands`,
+  `band_width`, `anchor_jitter` turning points; `max_targets`, `target_reach` destinations; `pair_min_sectors`,
+  `pair_max_sectors`, `pair_length_off`, `pairs_max`, `pairs_per_anchor` pairs; `ring_min_m` ready-made rings;
+  `keep_length_off` length gate; `anchor_search_len` bound of a turning point's search; `ascent_hysteresis_m` ascent
+  from node heights; `router_check`, `check_via_every_m` the final check; `maxcf`, `skip`, `keep` the coarser bike
+  network; `follow.*` along a line (`from_signed`, `max_routes`, `stem_max`, `min_on`, `min_follow`, `direct_max`,
+  `back_factor`, `fit_tries`, `on_cost`, `road_cost`, `on_path_max`, `rail_rank_bonus`, and for rail trails
+  `rail_lines`, `rail_min_m`, `rail_gap_m`, `rail_max`, `rail_rank`, `rail_stem_max`, `rail_min_on`); `lake.*` lake
+  loops; `long_from_km` + `long` lighter settings for long loops.
+- `greenchain`: `green_radius_m`, `green_from`, `green_forest_class`, `green_max_main`, `rail_value` what is green;
+  `bank_radius_m`, `bank_from`, `bank_value`, `bank_value_dry`, `bank_bonus` banks; `join_gap_m`, `min_patch_m`,
+  `max_patches` patches; `max_connector_share`, `alternatives`, `alternatives_home`, `gate_sep_m` connectors;
+  `max_patches_in_chain`, `max_steps`, `inner_factor`, `q_power`, `connector_weight`, `connector_natur`,
+  `length_slack`, `short_penalty` chains; `realise`, `realise_max_common`, `connector_full_search`, `stretch_share`,
+  `stretch_max_share`, `stretch_from`, `loop_from`, `loop_tol`, `loop_variants`, `loop_tries`, `loop_variant_deg`,
+  `min_inner_loop_m`, `turn_cost_weight`, `used_penalty`, `avoid_penalty`, `touch_cost_share`, `reroute_limit`,
+  `fit_passes` realising; `long_from_km` + `long`.
+- `nature`: `radii_m`, `search_radius_m`, `from`, `full` deep nature; `built_radius_m`, `built_from` inside houses;
+  `green_radius_m`, `green_from` in green; `bank_radius_m`, `bank_from` at water; `big_water_radius_m`,
+  `big_water_from` at big water.
+- `attractions`: `source`, `max_reach_m`, `rank` (per network level), `trailname_max_tier`, `trail_min_m`,
+  `lake_min_shore_m`, `lake_pad_cells`, `lake_skip`.
+- `classes`: `forest_value`, `noise_value`, `river_value` class → value; `forest_share_from_class`,
+  `forest_on_street_factor`, `loud_from_class`; `street_highways`, `big_highways`; `main.*` the main weight (`base`,
+  `calm_maxspeed`, `calm_factor`, `track_factor`, `lane_factor`, `bridge_factor`, `sidewalk`, `beside`, `beside_ways`,
+  `beside_noise`, `beside_forest_factor`, `beside_geo`, `unclassified_traffic`, `class_from`, `run_from`);
+  `main_gap_m`; `signed_prefixes`; `surface_asphalt`, `surface_firm`, `paved_surfaces`.
+- `score`: `weights` per part; `natur_scaled`; `length_flat_km`, `length_zero_at`; `street_zero_at`; `main_road_max_m`,
+  `main_road_natur`, `main_road_zero_factor`; `doubled_zero_at`; `selfcross_value`, `selfcross_merge_m`;
+  `roadside_zero_at`; `town_zero_at`; `deep_full_at`; `green_full_at`; `railtrail_full_at`, `railtrail_min_km`;
+  `signed_full_at`; `water_full_at`, `river_class_factor`, `bank_full_share`, `small_water_factor`, `lake_full_m`,
+  `lake_full_share`; `crossings_zero_per_km`; `free_stem_m`; `flaws.*` (`road_per_100m`, `road_natur`, `road_cap`,
+  `built_free`, `built_per_10pct`, `built_base`, `built_cap`, `doubled_free`, `doubled_per_10pct`, `doubled_cap`,
+  `cross_each`, `roadside_free`, `roadside_per_10pct`, `roadside_cap`).
+- `select`: `show`, `max_shared`, `shared_cost`, `same_dir_cost`, `same_dir_deg`, `floor_points`, `max_length_off`,
+  `max_self_cross`, `max_doubled_pct`, `built_limit_from_natur`, `max_built_pct`, `lake_slot_from_water`,
+  `water_min_km`, `water_min_share`, `water_slots`, `water_max_behind`, `name_skip`.
+- `effort`: per word `max_m_per_km` / `min_m_per_km` (score part) and `up_m_per_h` (the cap); `time.ascent_m_per_h`;
+  `surface.<activity>.options` value per surface class A / F / N and `avoid`; `routing.*` profile switches from the
+  wish; `ai.*` the AI tips (unchanged tonight).
