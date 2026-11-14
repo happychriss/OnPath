@@ -50,6 +50,11 @@ try {
     await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
     const clearMs = Date.now() - t0;
     check(clearMs < 3000, `„+ Neu" during the long plan: the map is empty at once (${clearMs} ms)`);
+    // „+ Neu" can be undone (the plan comes back) – also in the fresh worker. Asked before the short link below: a plan
+    // opened from a link starts with nothing to undo (owner 2026-11-13), so after it there is no history to carry.
+    await page.waitForFunction(() => window.__engine.restarts.count >= 1, null, { timeout: 15_000 }).catch(() => {});
+    const h = JSON.parse(await page.evaluate(() => window.__engine.call('historyState')));
+    check(h.canUndo, 'undo still works in the fresh worker (the history moved along)');
     await page.evaluate((c) => { location.hash = '#p=' + c; }, short);
     const ok = await page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1' && document.querySelectorAll('.pin').length === 2,
       null, { timeout: 30_000 }).then(() => true, () => false);
@@ -57,8 +62,6 @@ try {
     const r = await page.evaluate(() => window.__engine.restarts);
     check(ok && shortMs < 15_000, `a short plan right after arrives in ${shortMs} ms (not after the long one)`);
     check(r.count >= 1, `the blocked worker was replaced (${r.count}×, fresh worker ready in ${r.lastMs} ms)`);
-    const h = JSON.parse(await page.evaluate(() => window.__engine.call('historyState')));
-    check(h.canUndo, 'undo still works in the fresh worker (the history moved along)');
   }
   const bad = errors.filter((e) => !/Failed to load resource|favicon/.test(e));
   check(bad.length === 0, `no page errors (${bad.slice(0, 3).join(' | ')})`);
