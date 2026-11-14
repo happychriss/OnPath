@@ -1,18 +1,20 @@
 #!/usr/bin/env python3
-"""Tour-suggestions POC – the local page.   python3 tools/suggest-poc/serve.py   → http://localhost:8790   (other ports: --port / SUGGEST_PORT, route service SUGGEST_SERVICE=http://127.0.0.1:<port>)
+"""Tour suggestions – the local page.   python3 tools/suggest-poc/serve.py   → http://localhost:8790
 
-Starts the BRouter route service when it is not running (service/start.sh, port 8791). weights.json is read again on
-every request. Runs and the owner's verdicts go to ~/onpath-suggest-poc/ (runs/*.json, feedback.jsonl; SUGGEST_DATA).
+Other ports: --port / SUGGEST_PORT; route service: SUGGEST_SERVICE=http://127.0.0.1:<port> (started when it is not
+running). settings.json is read again on every request. Runs and comments go to ~/onpath-suggest-poc/ (SUGGEST_DATA).
 """
 import argparse
 import json
 import os
+import re
 import time
 import urllib.parse
-import re
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+import named
 import suggest as S
+from character import wish as make_wish
 
 
 class H(BaseHTTPRequestHandler):
@@ -31,51 +33,41 @@ class H(BaseHTTPRequestHandler):
 
     def do_GET(self):
         u = urllib.parse.urlparse(self.path)
-        q = urllib.parse.parse_qs(u.query)
-        # behind a path prefix (preview pane) the calls arrive as <prefix>/places …: look at the end of the path
-        tail = re.search(r"/(ping|places|place|known|run/[^/]+)$", u.path)
-        if tail:
-            u = u._replace(path="/" + tail.group(1))
-        if u.path == "/":
-            with open(os.path.join(S.HERE, "page.html"), "rb") as f:
-                return self.send(f.read(), "text/html")
-        if u.path == "/ping":
-            return self.send({"ok": True})
-        if u.path == "/places":
-            W = S.load_weights()
-            return self.send({"places": {k: v for k, v in W["places"].items() if not k.startswith("_")}, "weights_version": W["version"],
-                              "surface": {k: v for k, v in W["surface"].items() if not k.startswith("_")}})
-        if u.path == "/known":  # the known signed routes around a point, from our own map areas (the page's overlay)
-            import attractions as AT
-            act = q.get("activity", ["hike"])[0]
-            E = S.effective(S.load_weights(), act)
-            at = [float(q["lon"][0]), float(q["lat"][0])]
+        q = {k: v[0] for k, v in urllib.parse.parse_qs(u.query).items()}
+        # behind a path prefix (a preview pane) the calls arrive as <prefix>/places …: the end of the path decides
+        tail = re.search(r"/(places|place|known|run/[^/]+)$", u.path)
+        what = tail.group(1) if tail else ""
+        st = S.load_settings()
+        if what == "places":
+            return self.send({"places": st["places"], "version": st["version"],
+                              "activities": {k: v["label"] for k, v in st["activities"].items() if k != "_about"},
+                              "paces": {k: v["pace"] for k, v in st["activities"].items() if k != "_about"}})
+        if what == "place":
+            r = S.find_place(q.get("q", ""), st)
+            return self.send({"name": r[0], "lonlat": r[1]} if r else {"error": "Ort nicht gefunden"})
+        if what == "known":  # the known signed routes around a point, from our own map areas (the page's overlay)
             try:
-                return self.send({"routes": AT.known_lines(at, float(q.get("reach", [12000])[0]), act, E)})
+                return self.send({"routes": named.known_lines([float(q["lon"]), float(q["lat"])], float(q.get("reach", 12000)),
+                                                              q.get("activity", "hike") != "hike")})
             except Exception as e:  # shown as "no overlay" on the page – a POC has no other place for it
                 return self.send({"routes": [], "error": "%s: %s" % (type(e).__name__, e)})
-        if u.path == "/place":
-            r = S.find_place(q.get("q", [""])[0], S.load_weights())
-            return self.send({"name": r[0], "lonlat": r[1]} if r else {"error": "Ort nicht gefunden"})
-        if u.path.startswith("/run/"):
-            p = os.path.join(S.DATA, "runs", os.path.basename(u.path) + ".json")
+        if what.startswith("run/"):
+            p = os.path.join(S.DATA, "runs", os.path.basename(what) + ".json")
             if os.path.isfile(p):
                 with open(p, "rb") as f:
                     return self.send(f.read())
             return self.send({"error": "Lauf nicht gefunden"}, code=404)
-        if u.path == "/favicon.ico":
+        if u.path.endswith("/favicon.ico"):
             return self.send({"error": "not found"}, code=404)
-        # any other address (/index.html, a typo, a preview pane's path) shows the page instead of a bare 404
-        print("page for unknown path", self.path, flush=True)
-        with open(os.path.join(S.HERE, "page.html"), "rb") as f:
+        with open(os.path.join(S.HERE, "page.html"), "rb") as f:  # any other address shows the page
             return self.send(f.read(), "text/html")
 
     def do_POST(self):
         body = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
         try:
             if self.path.endswith("/suggest"):
-                wish = S.simple_wish(body, S.load_weights())
-                res = S.suggest(wish)
+                st = S.load_settings()
+                res = S.suggest(make_wish(body, st), st)
                 S.save_run(res)
                 return self.send(res)
             if self.path.endswith("/feedback"):
@@ -94,5 +86,5 @@ if __name__ == "__main__":
     ap.add_argument("--port", type=int, default=int(os.environ.get("SUGGEST_PORT", 8790)))
     a = ap.parse_args()
     S.ensure_service()
-    print("Tourvorschläge (POC): http://localhost:%d   – Daten: %s" % (a.port, S.DATA))
+    print("Tourvorschläge: http://localhost:%d   – Daten: %s" % (a.port, S.DATA))
     ThreadingHTTPServer(("127.0.0.1", a.port), H).serve_forever()

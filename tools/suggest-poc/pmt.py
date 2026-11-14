@@ -2,7 +2,7 @@
 
 Enough to read the app's map areas (base.pmtiles / overlays.pmtiles): tile lookup, gzip, layers → features with
 tags and geometry in lon / lat. Not fast, not complete (no leaf-directory cache eviction, no polygon winding logic) –
-attractions.py reads a cell once and caches what it needs as JSON.
+named.py and land.py read a map area once and cache what they need.
 """
 import gzip
 import math

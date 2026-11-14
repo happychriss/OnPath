@@ -12,10 +12,10 @@ difference to the app is readable in one place. One addition:
   Bike / Gravel (touring.brf, trekking.brf): on the road itself (primary 1.0, secondary 1.0, tertiary 0.8), x 0.3 on a
   30 km/h road, x 0.5 with a cycle track / x 0.75 with a cycle lane, x 0.4 on a bridge (often the only crossing); a
   separate cycle path beside a loud road (noise class 4–6) 0.4. mtb.brf is not changed.
-  Round 6 (owner: along a road is always bad, signed route or not): any separate way beside a busy road (cycle path,
+  Along a road is always bad, signed route or not (owner): any separate way beside a busy road (cycle path,
   shared path, footway, track) costs by the noise class – bikes 0.35 / 0.7 / 1.0 for class 4 / 5 / 6, hiking 0.25 / 0.5 / 0.7.
   A parallel residential street or a path away from traffic stays free, so the router dodges by itself. The value
-  comes per request from weights.json (routing.mainroad_penalty_*).
+  comes per request (character.py: mainroad_penalty).
 """
 import os
 import shutil
