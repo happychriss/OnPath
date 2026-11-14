@@ -9,7 +9,7 @@ choose the points:
   chains          the stand-out areas of the place, in order around the start, each crossed through its heart
   lines           follow a known route, a rail trail or a bank, come home another way
 A loop inside one big area needs no generator of its own: there the pleasant turning points lie inside it.
-The wished time is a range: turning points are taken across all of it.
+The wished time is a range: turning points are taken across all of it, and distance is counted in time.
 """
 from net import bearing, dijkstra, dist, path, INF
 
@@ -38,13 +38,33 @@ def assemble(P, S, points, costs=None):
                     pen.setdefault(e2, Q["beside_used"])
         edges += leg
         cur = w
-    out = []
-    for ei in edges:  # a spur walked out and straight back (to a turning point off the way) is cut
-        if out and out[-1] == ei:
-            out.pop()
+    edges = cut_spurs(net, F, edges)
+    return edges if len(edges) >= 3 else None
+
+
+def cut_spurs(net, F, edges):
+    """A spur – out to a turning point off the way and back the same way, also with a little loop at its tip – is not
+    part of a loop: cut it. (A closed piece of the walk of which a third or more is walked twice.)"""
+    while True:
+        out = []
+        for ei in edges:  # straight there and back
+            if out and out[-1] == ei:
+                out.pop()
+            else:
+                out.append(ei)
+        edges, nodes, first = out, [net.start], {net.start: 0}
+        for k, ei in enumerate(edges):
+            x = net.other(ei, nodes[-1])
+            nodes.append(x)
+            i = first.setdefault(x, k + 1)
+            piece = edges[i:k + 1]
+            if 0 < i <= k and len(piece) < 0.6 * len(edges):  # back at a node passed before: is the piece between a spur?
+                walked = sum(F.ln[e] for e in piece)
+                if walked - sum(F.ln[e] for e in set(piece)) >= 0.3 * walked:
+                    edges = edges[:i] + edges[k + 1:]
+                    break
         else:
-            out.append(ei)
-    return out if len(out) >= 3 else None
+            return edges
 
 
 def measure(P, edges):
@@ -89,10 +109,11 @@ def measure(P, edges):
 
 
 def pool(P, S):
-    """All loops worth judging for this wish: [{edges, nodes, m, up, hours, …, origin, aim}]."""
+    """All loops worth judging for this wish: [{edges, nodes, m, up, hours, …, origin, aim}].
+    Everything is planned in time, not metres: a turning point 300 m higher is further away than one on the flat."""
     net, ch, fam, Q = P.net, P.ch, P.ch.family, S["search"]
-    lo, hi, T = ch.min_m, ch.max_m, ch.target_m
-    start = net.nodes[net.start]
+    (h_lo, h_hi), start = ch.hours, net.nodes[net.start]
+    h_mid = 0.5 * (h_lo + h_hi)
     out, seen = [], set()
 
     def add(points, origin, aim=(), costs=None):
@@ -101,13 +122,16 @@ def pool(P, S):
         m = measure(P, edges) if edges and frozenset(edges) not in seen else None
         if m:
             seen.add(frozenset(edges))
-            if m["cross"] <= S["form"]["max_cross"] and (1 - S["form"]["short_zero"]) * ch.hours[0] <= m["hours"] \
-                    <= (1 + S["form"]["long_zero"]) * ch.hours[1] and m["up"] <= ch.up[1]:
+            if m["cross"] <= S["form"]["max_cross"] and (1 - S["form"]["short_zero"]) * h_lo <= m["hours"] \
+                    <= (1 + S["form"]["long_zero"]) * h_hi and m["up"] <= ch.up[1]:
                 out.append(dict(m, origin=origin, aim=list(aim)))
         return m
 
-    reached = [v for v in range(len(net.nodes)) if 0 < P.len0[v] < hi and P.d0[v] < INF]
+    reached = [v for v in range(len(net.nodes)) if 0 < P.len0[v] < ch.max_m and P.d0[v] < INF]
     bear = {v: bearing(start, net.nodes[v]) for v in reached}
+    rise = lambda v: abs(net.nodes[v][2] - start[2]) if min(net.nodes[v][2], start[2]) > -1000 else 0.0
+    hours = lambda metres, *via: ch.time(metres, max(rise(v) for v in via))  # a loop over these points, estimated
+    there_and_back = lambda v: hours(2.2 * P.len0[v], v)  # the way home is another way, a little longer
 
     def anchors(fits):
         """Per direction the node that fits and is reached most pleasantly."""
@@ -120,19 +144,17 @@ def pool(P, S):
         return [v for _, v in best.values()]
 
     # --- turning points: one per direction (at the short and the long end of the range), then pairs a quarter turn apart
-    for out_m in ((0.45 * T,) if hi < 1.25 * lo else (0.45 * lo, 0.45 * hi)):
-        for v in anchors(lambda v: 0.9 * out_m <= P.len0[v] <= 1.1 * out_m):
+    for h in ((h_mid,) if h_hi < 1.25 * h_lo else (h_lo, h_hi)):
+        for v in anchors(lambda v: 0.9 * h <= there_and_back(v) <= 1.1 * h):
             add([v], "Wendepunkt")
-    if ch.up[0] >= 100.0:  # a climb is wished: turning points high enough, and near enough for the time
-        gain = lambda v: net.nodes[v][2] - start[2]
-        for v in anchors(lambda v: 0.8 * ch.up[0] <= gain(v) <= ch.up[1]
-                         and ch.hours[0] <= ch.time(2.1 * P.len0[v], gain(v)) <= ch.hours[1]):
+    if ch.up[0] >= 100.0:  # a climb is wished: turning points high enough
+        for v in anchors(lambda v: 0.8 * ch.up[0] <= net.nodes[v][2] - start[2] <= ch.up[1] and h_lo <= there_and_back(v) <= h_hi):
             add([v], "Anstieg")
-    A = anchors(lambda v: 0.27 * lo <= P.len0[v] <= 0.36 * hi)
+    A = anchors(lambda v: 0.6 * h_lo <= there_and_back(v) <= 0.8 * h_hi)
     pairs = []
     for a in A:
-        est = lambda b: P.len0[a] + 1.3 * dist(net.nodes[a], net.nodes[b]) + P.len0[b]
-        fit = lambda b: max(0.0, lo - est(b), est(b) - hi)
+        est = lambda b: hours(P.len0[a] + 1.3 * dist(net.nodes[a], net.nodes[b]) + P.len0[b], a, b)
+        fit = lambda b: max(0.0, h_lo - est(b), est(b) - h_hi)
         side = [b for b in A if 40.0 <= (bear[b] - bear[a]) % 360.0 <= 110.0]
         if side:
             pairs.append((fit(min(side, key=fit)), a, min(side, key=fit)))
@@ -145,14 +167,14 @@ def pool(P, S):
     for i in range(len(areas)):
         for k in range(1, min(4, len(areas)) + 1):
             seq = [areas[(i + j) % len(areas)] for j in range(k)]
-            if k == 1:
-                turn = min(seq[0]["nodes"], key=lambda v: abs(P.len0[v] - 0.45 * T))
+            if k == 1:  # one area: through its heart to the far side that the time allows
+                turn = min(seq[0]["nodes"], key=lambda v: abs(there_and_back(v) - h_mid))
                 pts = [seq[0]["heart"], turn] if P.len0[seq[0]["heart"]] < P.len0[turn] - 200.0 else [turn]
-                est = 2.1 * P.len0[turn]
+                est = there_and_back(turn)
             else:
                 pts = [a["heart"] for a in seq]
-                est = P.len0[pts[0]] + P.len0[pts[-1]] + 1.35 * sum(dist(net.nodes[x], net.nodes[y]) for x, y in zip(pts, pts[1:]))
-            if 0.7 * lo <= est <= 1.25 * hi:
+                est = hours(P.len0[pts[0]] + P.len0[pts[-1]] + 1.35 * sum(dist(net.nodes[x], net.nodes[y]) for x, y in zip(pts, pts[1:])), *pts)
+            if 0.7 * h_lo <= est <= 1.25 * h_hi:
                 chains.append((-sum(a["m"] * a["good"] for a in seq), i, k, pts, [a["name"] for a in seq]))
     for _, _, _, pts, names in sorted(chains)[:fam["chains"]]:
         add(pts, "Kette", names)
@@ -160,24 +182,23 @@ def pool(P, S):
     # --- lines: join at the nearest point, follow it (both ways), come home another way
     for ln in P.lines[:fam["lines"]]:
         entry = ln["near"]
-        if P.len0[entry] > 0.35 * T:
+        if P.len0[entry] > 0.35 * ch.target_m:
             continue
         along_cost = list(P.cost)
         for e in ln["edges"]:
             along_cost[e] *= Q["line"]
-        d, _, _, along = dijkstra(net, entry, along_cost, max_len=0.75 * hi)
+        d, _, _, along = dijkstra(net, entry, along_cost, max_len=0.75 * ch.max_m)
         on = [v for v in ln["nodes"] if d[v] < INF and v != entry and v in bear]
         if not on:
             continue
         turn = lambda u, v: abs((bearing(net.nodes[entry], net.nodes[u]) - bearing(net.nodes[entry], net.nodes[v]) + 180.0) % 360.0 - 180.0)
-        half = lambda v: abs(P.len0[entry] + along[v] - 0.5 * T)  # half the loop on the line, as a first guess
+        half = lambda v: abs(hours(2.0 * (P.len0[entry] + along[v]), v) - h_mid)  # half the loop on the line, as a first guess
         first = min(on, key=half)
         other = [v for v in on if turn(v, first) >= 90.0]
-        for v in [first] + ([min(other, key=half)] if other else []):
-            for _ in range(2):  # the way home is not known before it is built: build, then move the turning point once
-                m = add([entry, v], "Linie", [ln["name"]], {1: along_cost})
-                if not m or lo <= m["m"] <= hi:
-                    break
-                want, same = along[v] + 0.5 * (T - m["m"]), [u for u in on if turn(u, v) < 60.0]
-                v = min(same, key=lambda u: abs(along[u] - want))
+        for guess in [first] + ([min(other, key=half)] if other else []):
+            # the way home is not known before it is built (a river: is there a way back on the other bank?),
+            # so three turning points are built per direction and the judging decides
+            same = [u for u in on if turn(u, guess) < 60.0]
+            for share in (1.0, 1.15, 0.85):
+                add([entry, min(same, key=lambda u: abs(along[u] - share * along[guess]))], "Linie", [ln["name"]], {1: along_cost})
     return out

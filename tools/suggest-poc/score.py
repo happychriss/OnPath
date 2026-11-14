@@ -118,13 +118,20 @@ def choose(P, S, cands):
 
     def fresh(c, shown):
         return all(length(core[id(c)] & core[id(o)]) <= K["overlap"] * length(core[id(c)]) for o in shown)
-    # "am Wasser entlang" is the wish's theme: the best loop that really is at the water is always shown, and first
+    uses = lambda c, thing: length(core[id(c)] & thing["edges"]) >= (0.25 * P.target if thing["kind"] != "area" else min(2500.0, 0.3 * thing["m"]))
+    # what the wish names is always shown: with "am Wasser entlang" the best loop really at the water (and first),
+    # with "Bekannte Wege: hoch" the best loop along the first known route here
     at_water = lambda c: P.ch.water and c["numbers"]["water_pct"] >= 20
-    shown = [ranked[0]] + [c for c in ranked[1:] if at_water(c)][:0 if at_water(ranked[0]) else 1]
-    # what stands out here is shown: the top lines (a first-rank route, the river), then the areas
+    route = next((ln for ln in P.lines if ln["kind"] == "route" and ln["rank"] >= 0.9), None) if P.ch.signed >= 1.0 else None
+    shown = [ranked[0]]
+    if not at_water(ranked[0]):
+        shown += [c for c in ranked if at_water(c)][:1]
+    if route:  # the clean loop that stays on the route longest
+        on_it = [c for c in ranked if uses(c, route) and c["axes"]["form"] >= 0.5]
+        shown += [c for c in sorted(on_it, key=lambda c: -length(core[id(c)] & route["edges"]))[:1] if c not in shown]
+    # what stands out here is shown if its best loop is good enough: the top lines, then the areas
     for thing in [ln for ln in P.lines if ln["rank"] >= 0.9][:2] + P.areas:
-        need = 0.25 * P.target if thing["kind"] != "area" else min(2500.0, 0.3 * thing["m"])
-        best = next((c for c in ranked if length(core[id(c)] & thing["edges"]) >= need), None)
+        best = next((c for c in ranked if uses(c, thing)), None)
         if best and best not in shown and len(shown) < K["max"] and best["score"] >= ranked[0]["score"] - K["cover_behind"] \
                 and fresh(best, shown):
             shown.append(best)

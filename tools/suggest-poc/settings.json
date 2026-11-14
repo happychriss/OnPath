@@ -19,7 +19,7 @@
     "wheel": {"ground": {"gemütlich": [1.0, 0.7, 0.1, 0.0], "wild": [0.3, 0.8, 1.0, 0.8]}, "up_m_per_h": [120, 500], "ascent_m_per_h": 1200,
               "band_km": 5.0, "free_stem_m": 2500, "road_walk_max_m": 0, "reach_max_m": 22000,
               "coarse": {"maxcf": 9000, "skip": "highway=(service|footway|steps|pedestrian|platform|corridor|bridleway)", "keep": "route_bicycle_[a-z]+=yes|bicycle=designated"},
-              "sectors": 6, "pairs": 6, "chains": 4, "lines": 3}
+              "sectors": 6, "pairs": 6, "chains": 4, "lines": 2}
   },
 
   "character": {
@@ -50,12 +50,12 @@
 
   "search": {
     "_about": "How the cheapest way is found: metres x (1 + taste x (1 - how good the way is here)) x (1 + road x traffic). used = factor on a way already in the loop, beside_used = on ways touching it (keeps the way home apart, so nothing is doubled or crossed), line = factor on the ways of a line that is being followed. radius = network loaded around the start, as a share of the wished length.",
-    "taste": 4.0, "road": 3.0, "profile": 0.15, "used": 6.0, "beside_used": 1.6, "line": 0.3, "radius": 0.42
+    "taste": 4.0, "road": 3.0, "profile": 0.15, "used": 6.0, "beside_used": 2.5, "line": 0.3, "radius": 0.42
   },
 
   "form": {
     "_about": "The Form axis and the few hard rules. Inside the wished ranges of time and ascent every loop is equally fine. short_zero = share below the shortest wished time at which the time part is 0; long_zero = share above the longest from which a loop is no longer offered; under the wished ascent the part falls gently, above it the loop is not offered. doubled_zero = share walked twice (beyond the free stem) at which that part is 0. cross = factor for one meeting with the own way; max_cross = more meetings than this are never offered. view = bonus per viewpoint passed.",
-    "short_zero": 0.3, "long_zero": 0.1, "doubled_zero": 0.25, "cross": 0.75, "max_cross": 1, "view": 0.05
+    "short_zero": 0.3, "long_zero": 0.1, "doubled_zero": 0.25, "cross": 0.5, "max_cross": 1, "view": 0.05
   },
 
   "select": {

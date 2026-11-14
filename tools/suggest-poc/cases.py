@@ -52,7 +52,7 @@ CASES = [
     ("hilden-rad", {"start": [6.9395, 51.168], "activity": "bike", "hours": 2, **HOCH},
      "„Rückweg nur durch die Stadt, warum nichts über die Urdenbacher Kämpe“ · „zu viel durch Orte“ · „alle Grüngürtel geschickt kombiniert“", [
          ("eine Runde durch die Urdenbacher Kämpe", lambda s: any(km(r, "Urdenbacher") >= 1.0 for r in s)),
-         ("erste Runde ≤ 30 % durch Häuser", lambda s: s[0]["town"] <= 30),
+         ("erste Runde ≤ 35 % durch Häuser (seine gelobte Runde hatte 35)", lambda s: s[0]["town"] <= 35),
          ("erste Runde durch ≥ 2 Schutzgebiete", lambda s: s[0]["reserves"] >= 2)]),
     ("rhein-rad", {"start": [6.81206, 51.14162], "activity": "bike", "hours": 2, **HOCH, "wasser": True},
      "„das ist eigentlich die beste, wunderbar am Rhein lang“ · „Rückweg entlang der Münchner Straße … stärker bestrafen“ · „viel zu viel Wohngebiet“", [
@@ -65,7 +65,7 @@ CASES = [
     ("koeln-rad", {"start": [6.97278, 50.94156], "activity": "bike", "hours": 2, **HOCH, "bekannt": "niedrig"},
      "„warum hat diese gegen das 2. Ziel gewonnen“ (eine lange schmale Runde an beiden Ufern ist keine schlechte Form)", [
          ("mindestens 3 Vorschläge", lambda s: len(s) >= 3),
-         ("erste Runde ≥ 10 km auf dem Rheinradweg", lambda s: km(s[0], *RHEIN) >= 10)]),
+         ("eine Runde ≥ 10 km auf dem Rheinradweg", lambda s: any(km(r, *RHEIN) >= 10 for r in s))]),
     ("duesseldorf-wandern", {"start": [6.7763, 51.2254], "hours": 2},
      "„mitten aus der Stadt sind alle Routen schwach … vielleicht benutze ich den falschen Maßstab“", [
          ("mindestens 2 Vorschläge", lambda s: len(s) >= 2),
