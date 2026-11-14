@@ -144,11 +144,13 @@ if (await page.evaluate(() => fetch('/data/cells/f2/10/531/342/current.json').th
   const data = await page.evaluate((lim) => { const f = window.__map.getSource('pois').serialize().data.features;
     return { limited: f.filter((x) => lim.includes(x.properties?.kind)).length, dz: f.filter((x) => x.properties?.dz != null).length,
       otherDz: f.filter((x) => x.properties?.dz != null && !lim.includes(x.properties?.kind)).length }; }, LIMITED);
-  const z15 = await shown();
+  let z15 = await shown();
+  for (let i = 0; i < 20 && !z15.n; i++) { await page.waitForTimeout(500); z15 = await shown(); } // the symbols placed a moment after the tiles
   await page.evaluate(() => window.__map.jumpTo({ zoom: 17.2 }));
   await page.waitForFunction(() => window.__map.loaded() && !window.__map.isMoving(), null, { timeout: 60_000 }).catch(() => {});
   await page.waitForTimeout(800);
-  const z17 = await shown();
+  let z17 = await shown();
+  for (let i = 0; i < 20 && !z17.dz17; i++) { await page.waitForTimeout(500); z17 = await shown(); }
   console.log('Köln POIs:', data, 'z15.5:', z15, 'z17.2:', z17);
   check(data.dz > 0 && data.otherDz === 0, `Köln: ${data.dz} of ${data.limited} restaurants / cafés / bars / snack bars / shops wait for z17, no other kind`);
   check(z15.n > 0 && z15.late === 0, `z15.5: ${z15.n} of them drawn, none held back for z17 among them`);
