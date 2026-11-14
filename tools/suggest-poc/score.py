@@ -86,7 +86,8 @@ def explain(P, c):
     c["name"] = " – ".join(list(dict.fromkeys(main))[:2]) or next((a for a in c["aim"] if " bei " in a or " im " in a), where)
     c["bearing"] = where
     km = lambda rows, pre: ["%s km %s%s" % (str(k).replace(".", ","), pre, nm) for nm, k in rows]
-    c["reasons"] = (km(n["reserves"], "im Schutzgebiet ") + km(n["lakes"], "am ") + km(n["known"], "auf ")
+    kind = lambda nm: nm if "schutzgebiet" in nm.lower() or nm.startswith(("Nationalpark", "Naturpark")) else "Schutzgebiet " + nm
+    c["reasons"] = (km([[kind(nm), k] for nm, k in n["reserves"]], "im ") + km(n["lakes"], "am ") + km(n["known"], "auf ")
                     + (["%s km am Wasser" % str(n["water_km"]).replace(".", ",")] if n["water_km"] >= 1 and not n["lakes"] else [])
                     + (["%s km Bahntrasse" % str(n["rail_km"]).replace(".", ",")] if n["rail_km"] >= 1 else [])
                     + ["Aussicht: " + v for v in n["views"][:1]] + (["mit Fähre"] if n["ferry_m"] else []))[:5]

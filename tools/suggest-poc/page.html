@@ -50,13 +50,9 @@
   </div>
   <div class="row">
     <div><label>Dauer von – bis (Stunden) <span id="km"></span></label><div class="row"><input type="number" id="h0" value="1.5" min="0.25" max="10" step="0.25"><input type="number" id="h1" value="2.5" min="0.25" max="10" step="0.25"></div></div>
-    <div><label>Höhenmeter von – bis</label><div class="row"><input type="number" id="up0" min="0" step="50" placeholder="auto"><input type="number" id="up1" min="0" step="50" placeholder="auto"></div></div>
+    <div><label>Höhenmeter von – bis</label><div class="row"><input type="number" id="up0" min="0" step="50" placeholder="auto" title="leer = von flach bis zu dem, was für diese Aktivität üblich ist"><input type="number" id="up1" min="0" step="50" placeholder="auto"></div></div>
   </div>
-  <div class="row">
-    <div><label>Tempo</label><select id="pace"><option>gemütlich</option><option selected>normal</option><option>zügig</option></select></div>
-    <div><label>Anstrengung</label><select id="effort" title="gibt die Höhenmeter vor, wenn dort nichts eingetragen ist"><option>leicht</option><option selected>mittel</option><option>sportlich</option></select></div>
-    <div><label>Wegbeschaffenheit</label><select id="surface"></select></div>
-  </div>
+  <label>Wegbeschaffenheit</label><select id="surface"></select>
   <label>Was ist dir wichtig?</label>
   <div class="lv" data-k="natur"><span>Natur</span></div>
   <div class="lv" data-k="ruhe"><span>Ruhe</span></div>
@@ -95,11 +91,11 @@ function forActivity() {
   $('surface').innerHTML = SURFACE[foot ? 'foot' : 'wheel'].map(o => `<option value="${o[0]}"${o[0] === 'gemischt' ? ' selected' : ''}>${o[1]}</option>`).join('');
 }
 function showKm() {
-  const p = (paces[$('activity').value] || {})[$('pace').value];
+  const p = paces[$('activity').value];
   $('km').textContent = p ? `≈ ${km(Math.round($('h0').value * p))}–${km(Math.round($('h1').value * p))} km` : '';
 }
 $('activity').onchange = () => { forActivity(); showKm(); };
-['pace', 'h0', 'h1'].forEach(id => $(id).oninput = showKm);
+['h0', 'h1'].forEach(id => $(id).oninput = showKm);
 function setStart(lonlat, name) {
   start = lonlat; if (name) $('place').value = name;
   if (marker) marker.remove();
@@ -115,7 +111,7 @@ $('find').onclick = find;
 $('place').onkeydown = e => { if (e.key === 'Enter') find(); };
 const wish = () => ({start, start_name: $('place').value, activity: $('activity').value, t_level: +$('t_level').value, hours: [+$('h0').value, +$('h1').value],
   ascent: $('up0').value !== '' && $('up1').value !== '' ? [+$('up0').value, +$('up1').value] : null,
-  pace: $('pace').value, effort: $('effort').value, surface: $('surface').value, ...level, wasser: $('wasser').checked, tips: $('tips').checked, seed});
+  surface: $('surface').value, ...level, wasser: $('wasser').checked, tips: $('tips').checked, seed});
 async function go() {
   $('status').textContent = 'Runden werden gesucht …'; $('cards').innerHTML = ''; $('notes').innerHTML = '';
   const r = await (await fetch(BASE + 'suggest', {method: 'POST', body: JSON.stringify(wish())})).json();
@@ -188,7 +184,7 @@ fetch(BASE + 'places').then(r => r.json()).then(d => {
     const w = r.wish;
     $('activity').value = w.activity; forActivity(); $('t_level').value = w.t_level; $('h0').value = +w.hours[0].toFixed(2); $('h1').value = +w.hours[1].toFixed(2);
     if (w.ascent) { $('up0').value = w.ascent[0]; $('up1').value = w.ascent[1]; }
-    $('effort').value = w.effort; $('surface').value = w.surface; $('wasser').checked = w.wasser; $('tips').checked = w.tips;
+    $('surface').value = w.surface; $('wasser').checked = w.wasser; $('tips').checked = w.tips;
     document.querySelectorAll('.lv').forEach(row => row.querySelectorAll('button').forEach(b => b.className = b.textContent === w[row.dataset.k] ? 'on' : ''));
     Object.keys(level).forEach(k => level[k] = w[k]);
     showKm(); show(r); });

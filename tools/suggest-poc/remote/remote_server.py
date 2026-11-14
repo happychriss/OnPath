@@ -93,8 +93,6 @@ def clean_wish(b):
         w["ascent"] = span(b["ascent"], 0, 5000, "ascent")
     if b.get("pace") in ("gemütlich", "normal", "zügig"):
         w["pace"] = b["pace"]
-    if b.get("effort") in ("leicht", "mittel", "sportlich"):
-        w["effort"] = b["effort"]
     for k in ("natur", "ruhe", "bekannt"):
         if b.get(k) in LEVELS:
             w[k] = b[k]

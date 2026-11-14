@@ -49,8 +49,7 @@ gar nicht mehr wissen, warum").
 | start | [lon, lat] | |
 | activity, t_level | hike (T1–T5), bike, gravel, mtb | gives the character |
 | hours (or duration) | **[from, to]** hours | a single number is widened by ± 1 km on foot / ± 5 km by bike |
-| ascent | **[from, to]** metres up | missing = from the character and `effort` (leicht / mittel / sportlich) |
-| pace | gemütlich / normal / zügig | km/h per activity |
+| ascent | **[from, to]** metres up | missing = from flat up to what is usual for the activity and level |
 | natur, ruhe, bekannt | niedrig / mittel / hoch | nudge the axis weights / the worth of signed routes |
 | wasser | yes / no | "am Wasser entlang": water is what counts as special, the best loop at the water is shown first |
 | surface | befestigt / gemischt / natur (wheels: glatt / gemischt / rau) | a step on the character scale for the ground |
@@ -59,6 +58,12 @@ gar nicht mehr wissen, warum").
 Ranges instead of fixed values (owner 2026-11-14: "eine Range bei den Höhenmetern und eine Range bei der Zeit … man
 erkennt den Willen des Nutzers besser"): inside both ranges every loop is equally fine, so the other axes decide; a
 bit short or a bit flat falls off gently; above the ascent or clearly too long is not offered.
+
+No separate "level" of effort and no pace in the wish (owner 2026-11-14: "den Level brauchen wir nicht mehr … was
+Level dann noch macht, ist auch für den User unklar"): the activity as the app has it (Wandern with its T level, Rad,
+Gravel, MTB) sets the character, the two ranges say how long and how much climbing; the activity's normal pace turns
+time into distance. Possibly redundant too: `surface` – on wheels the choice of Rad / Gravel / MTB already says which
+ground is welcome; it is kept as a nudge until the owner decides.
 
 ## 3. The method, as the planner should build it
 

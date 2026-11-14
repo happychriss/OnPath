@@ -47,8 +47,8 @@ if __name__ == "__main__":
     ap.add_argument("--t", dest="t_level", type=int, default=2)
     span = lambda s: [float(x) for x in s.split("-")] if "-" in s else float(s)
     ap.add_argument("--hours", type=span, default=2.0, help="2 or a range 1.5-2.5")
-    ap.add_argument("--ascent", type=span, default=None, help="metres up as a range, e.g. 0-200 (default: from the effort)")
-    for k, default in (("pace", "normal"), ("effort", "mittel"), ("surface", "gemischt"), ("natur", "mittel"), ("ruhe", "mittel"), ("bekannt", "mittel")):
+    ap.add_argument("--ascent", type=span, default=None, help="metres up as a range, e.g. 0-200 (default: flat up to what is usual for the activity)")
+    for k, default in (("surface", "gemischt"), ("natur", "mittel"), ("ruhe", "mittel"), ("bekannt", "mittel")):
         ap.add_argument("--" + k, default=default)
     ap.add_argument("--wasser", action="store_true")
     ap.add_argument("--tips", action="store_true", help="mit KI-Regionswissen (region_ai.py)")
