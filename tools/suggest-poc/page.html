@@ -221,6 +221,8 @@ function goals(n) {
           ...(n.ferry_m ? ['mit Fähre'] : [])].join(' · ');
 }
 const esc = t => String(t).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[ch]);
+// the protected areas the loop runs in; said first when one of them is the loop's main thing (numbers.reserve_main)
+const resLine = n => `<div class="goals">${n.reserves.slice(0, 2).map(r => km1(r[1]) + ' km im Naturschutzgebiet ' + esc(r[0])).join(' · ')}</div>`;
 // name and km only – the AI's own sentence is not shown as fact, it sits in the tooltip, marked as unchecked
 function aiTips(n) {
   return (n.ai_tips || []).map(t => `<span title="KI-Text, ungeprüft: ${esc(t.warum || '')}">KI-Tipp: ${esc(t.name)} (${esc(t.how)})</span>`).join(' · ');
@@ -233,8 +235,9 @@ function cards() {
     const chip = (t, cls) => `<span class="${cls || ''}">${t}</span>`;
     d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
       <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m${result && result.wish && result.wish.simple && result.wish.simple.effort ? ' · ' + esc(result.wish.simple.effort) : ''}</div>
+      ${n.reserve_main && (n.reserves || []).length ? resLine(n) : ''}
       ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
-      ${(n.reserves || []).length ? `<div class="goals">${n.reserves.slice(0, 2).map(r => km1(r[1]) + ' km im Naturschutzgebiet ' + esc(r[0])).join(' · ')}</div>` : ''}
+      ${!n.reserve_main && (n.reserves || []).length ? resLine(n) : ''}
       ${aiTips(n) ? `<div class="aitips">${aiTips(n)}</div>` : ''}
       <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
         ${n.main_longest_m ? chip('an / neben Straße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (n.main_road_max_m || result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}

@@ -65,7 +65,8 @@ CASES = [
     # area and all went south); a rail trail in reach is used; big nature in the Eifel; the Ruhr valley by bike
     ("nordkirchen-hike-2h", dict(start=[7.5251792, 51.7380176], start_name="Nordkirchen", activity="hike", hours=2,
                                  pace="normal", effort="leicht", natur="hoch", ruhe="hoch", bekannt="mittel"),
-     dict(built_max=20)),
+     # owner 2026-11-14: "warum taucht der Hirschpark nicht auf, super schön" – a shown loop really goes through it
+     dict(built_max=20, area_km=("Hirschpark", 2.5))),
     ("nordkirchen-bike-2h", dict(start=[7.5251792, 51.7380176], start_name="Nordkirchen", activity="bike", hours=2,
                                  pace="normal", effort="leicht", natur="hoch", ruhe="mittel", bekannt="mittel"),
      dict(built_max=15, spread_deg=90)),
@@ -111,6 +112,21 @@ def run_case(name, wish_in, exp, W):
               "doppelt < 10 %": n["doubled_pct"] < 10,
               "≥ 3 Vorschläge": len(ch) >= 3,
               "≤ 15 s": r["seconds"] <= 15}
+    # a card is named after a protected area only when the loop really goes through it (>= 1 km): every shown card
+    forms = {}
+    for c in r["candidates"]:
+        for nm, km_ in c["numbers"].get("reserves", []):
+            for f_ in (nm, S.short_area(nm), nm.replace("Naturschutzgebiet ", "").replace("NSG ", "").split(",")[0].strip()):
+                forms[f_] = nm
+    def touched_only(c):
+        have = dict((nm, km_) for nm, km_ in c["numbers"].get("reserves", []))
+        lakes = dict((l[0], l[1]) for l in c["numbers"].get("lakes", []))
+        return [p_ for p_ in c["name"].split(" – ") if p_ in forms and have.get(forms[p_], 0.0) < 1.0 and lakes.get(p_, 0.0) < 0.5]
+    checks["keine Karte nach einem Gebiet mit < 1 km darin benannt"] = not any(touched_only(c) for c in ch)
+    if exp.get("area_km"):
+        word, km = exp["area_km"]
+        checks["ein Vorschlag mit ≥ %g km im %s" % (km, word)] = any(
+            sum(v for nm, v in c["numbers"].get("reserves", []) if word in nm) >= km for c in ch)
     if "forest_min" in exp:
         checks["am Wald ≥ %d %%" % exp["forest_min"]] = n["forest_pct"] >= exp["forest_min"]
     if "street_max" in exp:

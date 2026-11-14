@@ -531,6 +531,7 @@ def numbers(c, wish, W, index=None, picks=None):
     import nature as NA
     ND = W["nature"]
     reserves = {}
+    res_first = {}
     cls = []
     sv = surface_values(wish, W)
     surf_m = {"A": 0.0, "F": 0.0, "N": 0.0}
@@ -595,6 +596,8 @@ def numbers(c, wish, W, index=None, picks=None):
                 m["green"] += ln
             nm = NA.name_at(e[0])
             if nm:
+                if nm not in reserves:
+                    res_first[nm] = len(cls)
                 reserves[nm] = reserves.get(nm, 0.0) + ln
         hw = t.get("highway", "?")
         surf = t.get("surface", "")
@@ -630,9 +633,18 @@ def numbers(c, wish, W, index=None, picks=None):
                 named[best_route] = named.get(best_route, 0.0) + ln
     n_stem = stem_edges(edges)
     stalk = sum(e[2] for e in edges[:n_stem])
-    cross = self_crossings(edges, n_stem, S["free_stem_m"], S["selfcross_merge_m"])
-    # a short way out and back to where the loop begins is free (owner: 500–700 m on foot)
-    doubled_m = max(0.0, m["doubled"] - 2 * min(stalk, S["free_stem_m"]))
+    # the main named protected area of the loop (owner 2026-11-14, Hirschpark Nordkirchen: an area is *used*, not
+    # touched): the one with the most km, when that is at least reserve_main_km and reserve_main_share of the loop
+    res_top = max(reserves.items(), key=lambda x: x[1]) if reserves else None
+    res_main = res_top[0] if res_top and res_top[1] >= max(S.get("reserve_main_km", 2.0) * 1000.0,
+                                                           S.get("reserve_main_share", 0.2) * total) else None
+    # a short way out and back to where the loop begins is free (owner: 500–700 m on foot); to a real loop inside a
+    # named protected area the way there and back may be longer (reserve_stem_m): it is what a walker does when the
+    # area has one entrance
+    free_stem = S["free_stem_m"] if not res_main else max(S["free_stem_m"], min(S.get("reserve_stem_m", S["free_stem_m"]),
+                                                                              S.get("reserve_stem_share", 0.2) * total))
+    cross = self_crossings(edges, n_stem, free_stem, S["selfcross_merge_m"])
+    doubled_m = max(0.0, m["doubled"] - 2 * min(stalk, free_stem))
     # enclosed area vs a circle of the same length (1 = circle, 0 = out-and-back)
     kx = 111320.0 * math.cos(math.radians(edges[0][0][1]))
     xy = [(e[0][0] * kx, e[0][1] * 111320.0) for e in edges]
@@ -667,7 +679,10 @@ def numbers(c, wish, W, index=None, picks=None):
          "deep_pct": round(100 * m["deep_v"] / total),
          "green_km": round(m["green"] / 1000.0, 1), "green_pct": round(100 * m["green"] / total),
          "bank_km": round(m["bank"] / 1000.0, 1), "big_water_km": round(m["bigbank"] / 1000.0, 1), "railtrail_km": round(m["rail"] / 1000.0, 1),
-         "reserves": [[nm, round(v / 1000.0, 1)] for nm, v in sorted(reserves.items(), key=lambda x: -x[1]) if v >= 300][:3],
+         "reserves": [[nm, round(v / 1000.0, 1)] for nm, v in sorted(reserves.items(), key=lambda x: -x[1]) if v >= 300][:8],
+         # the same areas in walking order, and the main one (None: no area is the main thing of this loop)
+         "reserve_order": [nm for nm in sorted(res_first, key=lambda k: res_first[k]) if reserves[nm] >= 300],
+         "reserve_main": res_main, "free_stem_m": int(free_stem),
          "length_off_km": round(length_off_km(c, wish), 1),
          "compact": round(compact, 2), "known": known[:4], "lakes": lakes[:3], "views": views[:3],
          "by_highway_km": {k: round(v / 1000.0, 2) for k, v in sorted(by_hw.items(), key=lambda x: -x[1])}}
@@ -750,6 +765,7 @@ def numbers(c, wish, W, index=None, picks=None):
     c["cls"] = "".join(cls)
     c["story"] = story(edges, cls)
     c["keys"] = set(uses)
+    c["res_m"] = reserves
 
 
 def rescore(c, wish, W, skip=()):
@@ -769,6 +785,29 @@ def rescore(c, wish, W, skip=()):
     mean = 100 * ssum / wsum if wsum else 0.0
     c["mean"] = round(mean, 1)
     c["score"] = round(max(0.0, mean - sum(c.get("flaws", {}).values())), 1)
+
+
+NAME_AREA_KM = 1.0  # set from weights (select.name_area_km) in suggest()
+
+
+def area_guard(name, c):
+    """No card named after an area with less than name_area_km in it: drops such parts from a ' – ' name. Returns
+    the cleaned name ('' when nothing is left)."""
+    res = c.get("res_m") or {}
+    forms = {}
+    for nm, v in res.items():
+        for f in (nm, short_area(nm), nm.replace("Naturschutzgebiet ", "").replace("NSG ", "").split(",")[0].strip()):
+            forms[f] = max(forms.get(f, 0.0), v)
+    known = c.get("area_labels") or set()
+    # (a lake and the protected area around it often share a name – "Elbsee": a loop at the lake's shore keeps it)
+    lakes = dict((l[0], l[1]) for l in c.get("numbers", {}).get("lakes", []))
+    out = []
+    for part in name.split(" – "):
+        if (part in forms or part in known) and forms.get(part, 0.0) < NAME_AREA_KM * 1000.0 \
+                and lakes.get(part, 0.0) < 0.5:
+            continue
+        out.append(part)
+    return " – ".join(out)
 
 
 DIR_WORDS = ["Norden", "Nordosten", "Osten", "Südosten", "Süden", "Südwesten", "Westen", "Nordwesten"]
@@ -791,11 +830,13 @@ def speaking_name(c, wish, skip_re=None):
     n = c["numbers"]
     km = n["km"]
     bits = []
-    for nm, v in n.get("reserves", [])[:2]:
-        if v >= max(0.8, 0.08 * km):
-            x = short_area(nm)
-            if x and x not in bits:
-                bits.append(x)
+    # a protected area names the loop only when the loop really goes through it (>= name_area_km, default 1 km) –
+    # the two with the most km, said in walking order
+    use = [nm for nm, v in n.get("reserves", [])[:2] if v >= max(NAME_AREA_KM, 0.08 * km)]
+    for nm in sorted(use, key=lambda k: (n.get("reserve_order") or use).index(k) if k in (n.get("reserve_order") or use) else 99):
+        x = short_area(nm)
+        if x and x not in bits:
+            bits.append(x)
     for nm, v in n.get("lakes", [])[:2]:
         if v >= max(0.5, 0.05 * km) and nm not in bits:
             bits.append(nm)
@@ -1029,6 +1070,8 @@ def suggest(wish, W=None):
             c["ascent_ok"] = True
     chosen = []
     SEL = W["select"]
+    global NAME_AREA_KM
+    NAME_AREA_KM = SEL.get("name_area_km", 1.0)
     # ONE SELECTION for every kind of loop: the best first; each further one must be a different way (shares at most
     # max_shared with a shown one), is preferred when it goes somewhere else (shared_cost per shared share, same_dir_cost
     # when it heads the same way as a shown one) and must not be much worse than the best (floor_points) – rather two
@@ -1073,6 +1116,45 @@ def suggest(wish, W=None):
     chosen.sort(key=lambda c: -c["score"])
     order = {id(c): i for i, c in enumerate(chosen)}
     built.sort(key=lambda c: (order.get(id(c), 99), -c["score"]))
+    # COVERAGE of named protected areas (owner 2026-11-14: "warum taucht der Hirschpark nicht auf, super schön"): each
+    # large named protected area in reach that a loop of the wished length can really use (it is that loop's main
+    # area with at least reserve_cover_km in it) is the main area of at least one shown suggestion – unless the best
+    # such loop is poor (more than reserve_cover_behind points behind the first). It takes the place of the weakest
+    # shown loop that is not itself the only one for its area.
+    cover_km = SEL.get("reserve_cover_km", 2.5) * 1000.0
+    if chosen and SEL.get("reserve_cover_slots", 0) > 0:
+        def area_of(c):
+            r_ = c["numbers"].get("reserve_main")
+            return r_ if r_ and c["res_m"].get(r_, 0.0) >= cover_km else None
+        by_area = {}
+        for c in built:
+            a_ = area_of(c)
+            if a_ and c["length_ok"]:
+                by_area.setdefault(a_, []).append(c)
+        added = 0
+        for a_, lst in sorted(by_area.items(), key=lambda x: -max(c["score"] for c in x[1])):
+            if added >= SEL["reserve_cover_slots"] or any(area_of(o) == a_ for o in chosen):
+                continue
+            # the one that uses the area most among the good ones (within 5 points of the best for this area)
+            top_ = max(c["score"] for c in lst)
+            cand_ = max((c for c in lst if c["score"] >= top_ - 5.0), key=lambda c: c["res_m"][a_])
+            if cand_["score"] < best_score - SEL.get("reserve_cover_behind", 12.0):
+                continue
+            cand_["chosen"] = True
+            cand_["cover"] = a_
+            chosen.append(cand_)
+            added += 1
+            if len(chosen) > SEL["show"]:
+                only = lambda o: area_of(o) and sum(1 for x in chosen if area_of(x) == area_of(o)) == 1
+                drop = [o for o in chosen if o is not cand_ and not only(o) and o["score"] < max(x["score"] for x in chosen)]
+                if drop:
+                    d_ = min(drop, key=lambda o: o["score"])
+                    d_["chosen"] = False
+                    chosen.remove(d_)
+        if added:
+            chosen.sort(key=lambda c: -c["score"])
+            order = {id(c): i for i, c in enumerate(chosen)}
+            built.sort(key=lambda c: (order.get(id(c), 99), -c["score"]))
     # "am Wasser entlang" is an explicit wish (owner 2026-11-13: "warum nicht am Wasser entlang?"): loops that really
     # run at the water (a lake shore or a bank for at least water_min_km and water_min_share of the loop) are shown –
     # up to water_slots of them, unless far behind (water_max_behind points) – and they stand first, even when a
@@ -1119,11 +1201,18 @@ def suggest(wish, W=None):
         timing["router-prüfung"] = round(time.time() - tt, 1)
     out = []
     shown_names = set()
+    # every protected-area name seen in this run, in the forms a card name may carry (for area_guard)
+    labels = set()
+    for c in built:
+        for nm in c.get("res_m", {}):
+            labels.update((nm, short_area(nm), nm.replace("Naturschutzgebiet ", "").replace("NSG ", "").split(",")[0].strip()))
     for i, c in enumerate(built):
+        c["area_labels"] = labels
         d = DIR_NAMES[int((c["bearing"] + 11.25) // 22.5) % 16]
         work = None
         if c.get("mode") == "chain":  # variant C: the chain of green patches names the loop
-            tn = c.get("target_name") or ""
+            # (an area the chain only touches – under name_area_km in it – is not in its name: area_guard)
+            tn = area_guard(c.get("target_name") or "", c)
             # no "Grünstück": an unnamed chain gets a name from what it passes, or direction + village
             name = tn if tn and "Grünstück" not in tn else speaking_name(c, wish, W["select"].get("name_skip"))
             # a chain whose patches have only stand-in names ("Grün bei X – Wald bei Y") is better named by what it
@@ -1135,6 +1224,9 @@ def suggest(wish, W=None):
             work = "Kette " + d + (" · " + tn if tn and tn != name else "")
         elif c.get("mode") == "follow" and c.get("target_name"):
             name = "Entlang %s" % c["target_name"]
+            if c["numbers"].get("reserve_main"):  # mostly inside one named area: the area names the loop, then the route
+                name = speaking_name(c, wish, W["select"].get("name_skip"))
+                work = "Entlang %s" % c["target_name"]
         elif method in ("auto", "b", "c") and c.get("mode") != "shore" and c.get("mode") != "ring":
             # a loop of the network search: a speaking name instead of the working name ("SW · Schleife")
             name = speaking_name(c, wish, W["select"].get("name_skip"))
@@ -1145,6 +1237,17 @@ def suggest(wish, W=None):
                     "Ziel %s%s" % (c["target_name"], " · Runde" if c.get("mode") == "ring" else ""))
         else:
             name = "%s · %s%s" % (d, c["shape"].capitalize(), " · gezielt" if c.get("taste") else "")
+        if c.get("mode") != "chain":
+            g_ = area_guard(name, c)
+            if g_ != name:
+                name = g_ or speaking_name(c, wish, W["select"].get("name_skip"))
+        # the main area leads the name when the loop is mostly inside it and the name does not say so yet
+        main_ = c["numbers"].get("reserve_main")
+        if main_ and c.get("mode") not in ("shore", "ring"):
+            forms_ = (short_area(main_), main_.replace("Naturschutzgebiet ", "").replace("NSG ", "").split(",")[0].strip())
+            if not any(f_ in name or name.startswith(f_[:18]) or (" – " + f_[:18]) in name for f_ in forms_):
+                rest_ = name.replace("Entlang ", "")
+                name = (forms_[0] + " – " + rest_) if len(rest_) < 40 and not rest_.startswith(("Nach ", "Runde nach")) else forms_[0]
         if c.get("chosen"):  # two shown loops never carry the same name: the later one says where it heads
             if name in shown_names:
                 co_ = [e[0] for e in c["edges"]]
@@ -1194,14 +1297,18 @@ def fmt_h(h):
 
 def goals_text(n):
     """'4,2 km X30 Neandertalweg · 0,9 km am Elbsee' – what the card says about known routes and lakes."""
-    t = ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
+    res = ["%s km im Naturschutzgebiet %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("reserves", [])[:2]]
+    main = bool(n.get("reserve_main"))  # the area is the main thing of the loop: it is said first
+    t = list(res) if main else []
+    t += ["%s km %s" % (("%.1f" % km).replace(".", ","), name) for name, km, _ in n.get("known", [])[:3]]
     t += ["%s km am %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("lakes", [])[:2]]
     if n.get("railtrail_km", 0) >= 1.0:
         t.append("%s km auf Bahntrasse" % ("%.1f" % n["railtrail_km"]).replace(".", ","))
     if n.get("big_water_km", 0) >= 1.0 and not n.get("lakes"):
         t.append("%s km am Wasser" % ("%.1f" % n["big_water_km"]).replace(".", ","))
     t += ["Aussicht: " + v for v in n.get("views", [])[:1]]
-    t += ["%s km im Naturschutzgebiet %s" % (("%.1f" % km).replace(".", ","), name) for name, km in n.get("reserves", [])[:2]]
+    if not main:
+        t += res
     if n.get("ferry_m"):
         t.append("mit Fähre")
     return " · ".join(t)

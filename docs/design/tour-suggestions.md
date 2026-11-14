@@ -702,3 +702,27 @@ points. No weighted nogo lines any more (only variant A used them).
 - `effort`: per word `max_m_per_km` / `min_m_per_km` (score part) and `up_m_per_h` (the cap); `time.ascent_m_per_h`;
   `surface.<activity>.options` value per surface class A / F / N and `avoid`; `routing.*` profile switches from the
   wish; `ai.*` the AI tips (unchanged tonight).
+
+## Round 10 (2026-11-14) – a named protected area is used, not touched (Hirschpark Nordkirchen)
+
+Owner: "Nordkirchen wandern 2 Stunden, warum taucht der Hirschpark nicht auf, super schön." The park is in our map
+(Naturschutzgebiet, 5.1 km of ways, entrance 1.9 km from the start) but no generator aimed at it: compass turning
+points lay elsewhere, the chain entered and left its patch at the near edge (0.6 km) and still carried its name; the
+candidates with most of the park were there-and-backs along its one long track.
+
+Rules added to the method (they belong to "The method, as the planner should build it" – generator, names, selection):
+1. **Generator – through the heart:** for each named protected area in reach with enough ways (2 km on foot): way in
+   → a way through that stays inside, to the point where the length fits or by two turning points inside → home
+   another way; the far gate is a turning point for the pair loops too. (POC: hike only, for time.)
+2. **Main area:** the protected area with the most km, if ≥ 2 km and ≥ 20 % of the loop (bikes 3 km / 10 %). It
+   leads the card's name and its reason line.
+3. **Names:** an area names a card only with ≥ 1 km in it; the areas in walking order.
+4. **Selection – coverage:** each named protected area that some fitting loop really uses (main area, ≥ 2.5 km) is
+   the main area of one shown suggestion, unless that loop is more than 12 points behind the first.
+5. **Stem:** to a loop whose main part is inside a named protected area the free way out and back may be up to 2 km
+   (25 % of the loop at most).
+
+Result at Nordkirchen (hike 2 h): first "Hirschpark Nordkirchen – X2 Wesel", 9.1 km, 3.5 km in the park, nothing
+doubled; Tiergarten second. Bench 156 of 162 (old checks 136 → 135: Hilden hike now shows one loop instead of three –
+its new first is better, the others are too much the same way; open: measure "the same loop" without the common way
+out of town). Details and knobs: `tools/suggest-poc/README.md` "Round 10".
