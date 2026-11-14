@@ -571,6 +571,104 @@ def search(wish, W, kv, attr, index, rnd, S, service, picks=None, G=None):
             made += 1
         info["ai_targets"] = made
 
+    # ---- named protected areas in reach, THROUGH THE HEART (owner 2026-11-14, Nordkirchen: "warum taucht der
+    #      Hirschpark nicht auf, super schön" – the loops only touched its edge): for each area with enough ways the
+    #      nicest way in (entry), then a way through it that stays inside – to the point where way in + through + way
+    #      home fills the wished length, or by two turning points inside when the area is the destination – and home
+    #      another way. The way there and back may share a longer stem than usual (score.reserve_stem_m).
+    RMIN = N.get("reserve_min_way_m", 0)
+    if RMIN > 0:
+        import nature as NA
+        reach_m = N["target_reach"] * target_m
+        sub = {}
+        for ei, e in enumerate(G.edges):
+            if cost[ei] < 0 or d0[e[0]] == INF or len0[e[0]] > 1.5 * reach_m:
+                continue
+            nm = NA.name_at(mid_of(G, e))
+            if nm:
+                sub.setdefault(nm, set()).add(ei)
+        areas = []
+        for nm, es in sub.items():
+            m_in = sum(G.edges[i][2] for i in es)
+            if m_in < RMIN:
+                continue
+            ns = set()
+            for i in es:
+                ns.add(G.edges[i][0])
+                ns.add(G.edges[i][1])
+            entry = min(ns, key=lambda v: d0[v])
+            if len0[entry] <= reach_m:
+                areas.append((len0[entry], nm, es, ns, entry, m_in))
+        areas.sort(key=lambda a: a[0])
+        info["reserve_areas"] = ["%s: %.1f km Wege, Eingang nach %.1f km" % (a[1], a[5] / 1000.0, a[0] / 1000.0) for a in areas]
+        r_stem = max(free_stem, W["score"].get("reserve_stem_m", free_stem))
+        band_m = W["score"]["length_flat_km"] * 1000.0
+        made = 0
+
+        def walked_r(e1, *more):
+            used, acc = set(), 0.0
+            for ei in e1:
+                acc += G.edges[ei][2]
+                if acc > r_stem:
+                    used.add(ei)
+            for m in more:
+                used |= set(m)
+            return used
+
+        out_f = N.get("reserve_out_factor", 5.0)
+        for _l, nm, es, ns, entry, m_in in areas[:N.get("reserve_targets", 3)]:
+            # inside the area ways cost as always, outside out_f times as much: the way through stays inside where
+            # the area's ways hang together and bridges a gap where they do not
+            rcost = [c if j in es else c * out_f for j, c in enumerate(cost)]
+            dR, pR, peR, lR = dijkstra(G, entry, rcost, max_ln=target_m)
+            info["searches"] += 1
+            inside = [v for v in ns if v != entry and dR[v] < INF and lR[v] > 0]
+            if not inside:
+                continue
+            label = nm.replace("Naturschutzgebiet ", "").replace("NSG ", "").split(",")[0].strip()
+            n1, e1 = path_to(prev0, pe0, entry)
+            ex = {"shape": "gebiet", "mode": "reserve", "target_name": label, "area": nm}
+            room = target_m - 2.0 * len0[entry]  # what is left for the area itself when the way home is as short as the way in
+            jobs = []
+            # (1) one way through: the point inside where in + through + (direct) home fills the length
+            v1 = min(inside, key=lambda v: abs(len0[entry] + lR[v] + len0[v] - target_m))
+            if len0[entry] + lR[v1] + len0[v1] >= target_m - band_m:
+                jobs.append(("durch", v1, None))
+            # (2) the area is the destination: a first turning point about half the room away (the farthest such
+            #     point by air – across the area), then a second one inside so that the length fits, another way
+            half = [v for v in inside if 0.3 * room <= lR[v] <= 0.6 * room] or inside
+            a1 = max(half, key=lambda v: S.dist(G.nodes[entry], G.nodes[v]))
+            jobs.append(("runde", a1, True))
+            for kind, turn, second in jobs:
+                n2, e2 = path_to(pR, peR, turn)
+                if second:
+                    d2, p2, pe2, l2 = dijkstra(G, turn, rcost, pen=set(e2), factor=N["used_penalty"], max_ln=target_m)
+                    info["searches"] += 1
+                    on_way = set(n2)
+                    opts = [v for v in inside if d2[v] < INF and v not in on_way]
+                    if opts:
+                        b2 = min(opts, key=lambda v: abs(len0[entry] + lR[turn] + l2[v] + len0[v] - target_m))
+                        n2b, e2b = path_to(p2, pe2, b2)
+                        n2, e2, turn = n2 + n2b[1:], e2 + e2b, b2
+                used = walked_r(e1, e2)
+                d3, p3, pe3, l3 = dijkstra(G, turn, cost, pen=used, stop=s, factor=N["used_penalty"])
+                info["searches"] += 1
+                if d3[s] == INF:
+                    continue
+                n3, e3 = path_to(p3, pe3, s)
+                nb = len(built)
+                add(n1 + n2[1:] + n3[1:], e1 + e2 + e3,
+                    dict(ex, bearing=round(S.bearing(s_xy, G.nodes[turn])),
+                         vias=[list(G.nodes[entry][:2]), list(G.nodes[turn][:2])]))
+                info.setdefault("reserve_log", []).append(
+                    "%s %s: hin %.1f km, innen %.1f km, heim %.1f km – %s" % (label, kind, len0[entry] / 1000.0,
+                    sum(G.edges[i][2] for i in e2) / 1000.0, l3[s] / 1000.0, "ok" if len(built) > nb else "verworfen (Länge / Kreuzung)"))
+            # the far gate is also a turning point for the pairs
+            far = max(inside, key=lambda v: lR[v] if lR[v] <= 0.45 * target_m else 0.0)
+            alist.append((int(S.bearing(s_xy, G.nodes[far]) / (360.0 / sectors)) % sectors, 9, far, label))
+            made += 1
+        info["reserve_targets"] = made
+
     # ---- rail trails in reach: the far end and the near end of each piece are turning points – the way there runs
     #      along the trail (it is cheap), the way back is another one; pairs with other turning points make loops
     for key, sub in (info.get("_rail") or {}).items():

@@ -1,5 +1,5 @@
 {
-  "version": "2026-11-14b",
+  "version": "2026-11-14c",
   "_about": "Every knob of the tour-suggestions POC. Read again on every request – edit, save, press 'Vorschläge' again. 'activities.<name>' overrides any section below for that activity. Tune against bench.py, not by eye.",
   "simple": {
     "_about": "The page's few controls -> the numbers the engine works with. A level sets the taste slider(s); natur = forest + natural ground.",
@@ -104,7 +104,11 @@
       "rail_rank_bonus": 1.0
     },
     "rail_discount": 0.0,
-    "anchor_search_len": 0.7
+    "anchor_search_len": 0.7,
+    "_reserve": "Through the heart: named protected areas with >= reserve_min_way_m of ways in reach (the reserve_targets nearest) get loops built through them (in – through, staying inside – home another way) and their far gate as a turning point. 0 = off. Off for bikes (0): on their large networks it cost 1–2 s per request and changed no first suggestion on the bench; bike loops reach the areas through the chain of green patches.",
+    "reserve_min_way_m": 2000,
+    "reserve_targets": 3,
+    "reserve_out_factor": 5.0
   },
   "attractions": {
     "_about": "Destinations: named lakes, known routes and named trails, viewpoints (attractions.py). source 'cells' = the app's own map areas (cells.py get …), 'overpass' = the old online stand-in. rank = how much a route's network counts; named trails from the map's trail labels count as lwn. lake_skip = names that are no destination. lake_pad_cells = how far from the water a way still counts as 'at the lake' (cells of ~30 m on top of the usual two: 2 = about 120 m).",
@@ -383,7 +387,12 @@
       "roadside_per_10pct": 6.0,
       "roadside_cap": 20.0
     },
-    "small_water_factor": 0.5
+    "small_water_factor": 0.5,
+    "_reserve": "A named protected area is the loop's MAIN area when the loop has the most km in it and at least reserve_main_km and reserve_main_share of its length there (owner 2026-11-14, Hirschpark Nordkirchen: used, not touched). Then the area leads the card's name and reason line, and the free way out and back to the loop may be up to reserve_stem_m (at most reserve_stem_share of the loop).",
+    "reserve_main_km": 2.0,
+    "reserve_main_share": 0.2,
+    "reserve_stem_m": 2000,
+    "reserve_stem_share": 0.25
   },
   "surface": {
     "_about": "The form's line 'Wegbeschaffenheit', per activity: label + pleasure value per surface class (A = asphalt / paved, F = firm: compacted, gravel, good track, N = natural ground; classes.surface_*). 'avoid' = classes the search keeps off (netsearch.surface_avoid_factor). Score part 'surface' = length-weighted value.",
@@ -579,7 +588,12 @@
     "water_max_behind": 35.0,
     "max_doubled_pct": 30,
     "built_limit_from_natur": 0.8,
-    "max_built_pct": 33
+    "max_built_pct": 33,
+    "_reserve": "name_area_km: a card is named after a protected area only with at least this many km in it. Coverage: each named protected area that is the main area of a loop with >= reserve_cover_km in it gets one shown suggestion (up to reserve_cover_slots added), unless that loop is more than reserve_cover_behind points behind the first.",
+    "name_area_km": 1.0,
+    "reserve_cover_km": 2.5,
+    "reserve_cover_slots": 2,
+    "reserve_cover_behind": 12.0
   },
   "activities": {
     "_about": "Per activity: label, BRouter profile, pace words (km/h on the flat), and overrides of the sections above.",
@@ -651,7 +665,8 @@
             "max_routes": 2,
             "rail_max": 1
           }
-        }
+        },
+        "reserve_min_way_m": 0
       },
       "generator": {
         "directions": 8,
@@ -777,10 +792,14 @@
           "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
-        }
+        },
+        "reserve_main_km": 3.0,
+        "reserve_main_share": 0.1,
+        "reserve_stem_m": 4000
       },
       "select": {
-        "max_built_pct": 42
+        "max_built_pct": 42,
+        "reserve_cover_km": 4.0
       }
     },
     "gravel": {
@@ -839,7 +858,8 @@
             "max_routes": 2,
             "rail_max": 1
           }
-        }
+        },
+        "reserve_min_way_m": 0
       },
       "generator": {
         "directions": 8,
@@ -961,10 +981,14 @@
           "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
-        }
+        },
+        "reserve_main_km": 3.0,
+        "reserve_main_share": 0.1,
+        "reserve_stem_m": 4000
       },
       "select": {
-        "max_built_pct": 42
+        "max_built_pct": 42,
+        "reserve_cover_km": 4.0
       }
     },
     "mtb": {
@@ -1023,7 +1047,8 @@
             "max_routes": 2,
             "rail_max": 1
           }
-        }
+        },
+        "reserve_min_way_m": 0
       },
       "generator": {
         "directions": 8,
@@ -1144,10 +1169,14 @@
           "built_per_10pct": 5.0,
           "roadside_free": 0.06,
           "roadside_per_10pct": 5.0
-        }
+        },
+        "reserve_main_km": 3.0,
+        "reserve_main_share": 0.1,
+        "reserve_stem_m": 4000
       },
       "select": {
-        "max_built_pct": 42
+        "max_built_pct": 42,
+        "reserve_cover_km": 4.0
       }
     }
   },
