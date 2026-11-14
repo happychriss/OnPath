@@ -621,6 +621,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
     if (firstId !== null && first !== firstId && top < 40) ul.scrollTop = 0; else ul.scrollTop = top;
     firstId = first;
     if (justSaved) ul.querySelector<HTMLElement>('li.justsaved')?.scrollIntoView({ block: 'nearest' });
+    ul.dataset.renders = String((Number(ul.dataset.renders) || 0) + 1); // the list was drawn (the smokes wait for it)
   };
   const off = sync.onChange(() => { if (d.open && !d.querySelector('.rowmenu:not([hidden])')) render(); });
   d.addEventListener('close', () => { off(); host.thumbs?.forgetQueued(); });

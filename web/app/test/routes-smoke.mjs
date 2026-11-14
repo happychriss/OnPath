@@ -56,7 +56,12 @@ const rowOf = (P, name) => P.evaluate((n) => {
     starBelowMenu: (() => { const m = li.querySelector('.more'); return !!(m && star && star.getBoundingClientRect().top >= m.getBoundingClientRect().bottom - 1); })(),
     tileW: li.querySelector('.tile').getBoundingClientRect().width, chev: !!li.querySelector('.chev') };
 }, name);
+/** Waits until the list was drawn again after [before] (plans.ts counts its renders) – a busy machine takes its time. */
+const renders = (P) => P.evaluate(() => Number(document.getElementById('planList')?.dataset.renders ?? 0));
+const drawnAfter = (P, before) => P.waitForFunction((b) => Number(document.getElementById('planList')?.dataset.renders ?? 0) > b, before, { timeout: 30_000 }).catch(() => {});
+const clickDrawn = async (P, sel) => { const before = await renders(P); await P.click(sel); await drawnAfter(P, before); };
 const pickAct = async (P, key) => {
+  const before = await renders(P);
   await P.click('#planSort .actchip');
   await P.waitForSelector('#actFilterMenu:not([hidden])');
   // the swiftshader GL of the off-screen picture map can starve the page's frames for seconds – Playwright's „stable“ check
@@ -66,7 +71,7 @@ const pickAct = async (P, key) => {
     console.log(`  (the menu item was not "stable" for ${Date.now() - t0} ms – clicked directly)`);
     await P.click(`#actFilterMenu .actpick[data-act="${key}"]`, { force: true });
   });
-  await P.waitForTimeout(250);
+  await drawnAfter(P, before);
 };
 
 // --- five tours: a hike, an MTB round trip, a bike tour, a hike this browser never routed (no line), a hiking track
@@ -129,22 +134,18 @@ c = await chipRow(P);
 check(c[1].text === 'All' && !c[1].on && (await names(P)).length === 5, 'All: every tour, the chip outlined');
 
 // 4. the star: one tap, stored as the sync's field 9 (an edit to send with Save); the pill shows only the starred ones
-await P.click('#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
-await P.waitForTimeout(300);
+await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
 r = await rowOf(P, 'Waalweg');
 const stored = await P.evaluate(async () => (await window.__sync.list()).find((p) => p.title === 'Waalweg'));
 check(r.star === 'true' && r.starLabel === 'Waalweg is a favorite. Tap to remove.' && stored.favourite === true && stored.dirty === true, `☆ → ★: at once, stored (favourite ${stored.favourite}, to send ${stored.dirty})`);
 check((await P.evaluate(async () => (await window.__sync.list()).length)) === 5, 'a star makes no copy');
-await P.click('#planSort .favchip');
-await P.waitForTimeout(250);
+await clickDrawn(P, '#planSort .favchip');
 c = await chipRow(P);
 check(c[0].on && c[0].label === 'Only favorites shown. Tap to show all.' && same(await names(P), ['Waalweg']), 'Favorites on: only the starred one');
-await P.click('#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
-await P.waitForTimeout(400);
+await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
 check((await P.textContent('#planList')).trim() === 'No favorites yet. Tap ☆ on a route.', 'the star off with the pill on: the app\'s empty text');
-await P.click('#planSort .favchip');
-await P.click('#planList li[data-id]:has(.name:text-is("Vigiljoch MTB-Runde")) .favstar');
-await P.waitForTimeout(300);
+await clickDrawn(P, '#planSort .favchip');
+await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Vigiljoch MTB-Runde")) .favstar');
 
 // 5. the map pictures: made off screen one at a time, the drawn line until then; a row without a line keeps its sign
 const pictures = await P.waitForFunction(() => [...document.querySelectorAll('#planList li[data-id]')].filter((l) => l.dataset.thumb === 'map').length >= 4, null, { timeout: 90_000 }).then(() => true).catch(() => false);
@@ -182,7 +183,7 @@ await openList(P);
 c = await chipRow(P);
 check(c[0].on && c[1].text === 'Hike' && c[2].on && !c[4].on, 'opened again: Favorites still on, the activity back on Hike, Newest first again (not kept)');
 check(await P.evaluate(() => localStorage.getItem('onpath.routesSort')) == null, 'no sort kept in this browser (app 82167d11: no prefs)');
-await P.click('#planSort .favchip');
+await clickDrawn(P, '#planSort .favchip');
 await pickAct(P, 'ALL');
 check((await P.$$eval('#planList li[data-thumb="map"] img.thumb', (els) => els.length)) >= 4, 'opened again: the pictures at once from memory');
 
