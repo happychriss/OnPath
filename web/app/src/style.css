@@ -821,9 +821,9 @@ dialog.plans .plansleft { display: inline-flex; flex-wrap: wrap; gap: 4px; }
 .planlist li.tourrow .stats { font-size: 14px; color: var(--fg); font-weight: 600; }
 .planlist .actline { display: flex; align-items: center; min-width: 0; font-size: 14px; color: var(--muted); white-space: pre; }
 .planlist .actline .ic { fill: currentColor; flex: none; margin-right: 6px; }
-.planlist .actline .dot + .ic { margin-right: 3px; }
+.planlist .actline .asep + .ic { margin-right: 3px; } /* not .dot: that is the 12 px status dot (it squeezed the · low) */
 .planlist .actline .atext { overflow: hidden; text-overflow: ellipsis; }
-.planlist .actline .dot, .planlist .actline .aloop { flex: none; }
+.planlist .actline .asep, .planlist .actline .aloop { flex: none; }
 .planlist .rowside { flex: none; display: flex; flex-direction: column; align-items: center; align-self: stretch; justify-content: space-between; }
 .planlist .favstar { width: 44px; height: 44px; color: var(--muted); }
 .planlist .favstar .ic { fill: currentColor; }

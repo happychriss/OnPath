@@ -222,6 +222,9 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 900 }
   if (name === 'desktop') {
     check(c[0].text === 'Favoriten' && c[1].text === 'Wandern' && c[2].text === 'Neueste zuerst', 'German chips: Favoriten · Wandern · Neueste zuerst');
     check((await rowOf(P, 'Runde ab Algund')).act === 'Wandern · T2 · Rundtour', 'German activity line: "Wandern · T2 · Rundtour"');
+    check(await P.evaluate(() => { const s = document.querySelector('dialog.plans .actline .asep'), a = s?.parentElement.querySelector('.atext');
+      if (!s || !a) return false; const r = s.getBoundingClientRect(), q = a.getBoundingClientRect(); return r.width > 4 && Math.abs(r.top - q.top) < 1 && Math.abs(r.height - q.height) < 1; }),
+      'the „·“ before Rundtour sits on the text line (not squeezed low)');
   }
   await pickAct(P, 'ALL');
   await P.waitForFunction(() => document.querySelectorAll('#planList li[data-thumb="map"]').length >= 4, null, { timeout: 90_000 }).catch(() => {});

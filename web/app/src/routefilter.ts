@@ -77,6 +77,6 @@ export function activityLineHtml(activity: string | null | undefined, sac: numbe
     const text = a === 'HIKE' && sac != null && sac >= 1 && sac <= 5 ? t('activity_chip_with_level', chipOf(a, rows), sac) : chipOf(a, rows);
     h += `${activityIcon(a, 16)}<span class="atext">${esc(text)}</span>`;
   }
-  if (loop) h += (a ? '<span class="dot"> · </span>' : '') + `${icon('loop', 16)}<span class="aloop">${esc(t('plan_round_trip'))}</span>`;
+  if (loop) h += (a ? '<span class="asep"> · </span>' : '') + `${icon('loop', 16)}<span class="aloop">${esc(t('plan_round_trip'))}</span>`;
   return `<span class="actline muted small">${h}</span>`;
 }
