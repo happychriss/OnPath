@@ -858,13 +858,13 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const hit = { title: info.title, name: pr.name ? String(pr.name) : null, kind: String(pr.kind ?? ''), lat, lon } as Hit;
   // the add entries – the app's PlaceAddMenu (owner 2026-11-07): with 2+ points „Als Zwischenstopp“ and/or „Als neues
   // Ziel“ by how clear the case is; a clear case's alternative waits behind „⋯ Mehr“
-  const pm = JSON.parse(await engine.call('placeMenu', enc(state.points), lat, lon, state.roundTrip)) as { main: string[]; more: string[]; stop: number };
+  const pm = JSON.parse(await engine.call('placeMenu', enc(state.points), lat, lon, state.roundTrip)) as { main: string[]; more: string[]; stop: number; keepOld?: boolean };
   const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
   const row = async (item: string): Promise<MenuItem> => {
     if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => addPlace(hit, 'START') };
     if (item === 'GO_HERE') return goHereItem(() => fromMe(p, { pinned: true, name: info.title, kind: hit.kind }));
     if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => addPlaceAt(hit, pm.stop) };
-    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => placeAsNewDestination(hit) };
+    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => placeAsNewDestination(hit, pm.keepOld ?? true) };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
       act: () => addPlace(hit, 'SMART') };
   };
@@ -893,13 +893,18 @@ async function addPlaceAt(h: Hit, index: number) {
   });
 }
 
-/** Place menu → „Als neues Ziel“: the route ends there, the old goal is dropped (one Undo brings it back). */
-async function placeAsNewDestination(h: Hit) {
+/**
+ * Place menu → „Als neues Ziel“: the route goes on to the place. [keepOld] (the engine's PlaceAddMenu.keepsOldGoal, owner
+ * 2026-11-14 „beim Planen anhängen, unterwegs ersetzen“; the planner has no tour, so always true): the old goal stays as
+ * the last stop; else it is replaced. One Undo brings the plan before back either way.
+ */
+async function placeAsNewDestination(h: Hit, keepOld: boolean) {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   await queueEdit(async () => {
     const pts = state.points.slice(), meta = state.meta.slice();
-    if (!pts.length) { pts.push(p); meta.push({ pinned: true, name: h.title, kind: h.kind }); }
-    else { pts[pts.length - 1] = p; meta[meta.length - 1] = { pinned: true, name: h.title, kind: h.kind }; }
+    const m = { pinned: true, name: h.title, kind: h.kind };
+    if (!pts.length || keepOld) { pts.push(p); meta.push(m); }
+    else { pts[pts.length - 1] = p; meta[meta.length - 1] = m; }
     return { planned: commit(pts, meta) };
   });
 }

@@ -545,8 +545,9 @@ object Engine {
     /**
      * A held place's add entries – the app's PlaceAddMenu (owner 2026-11-07): `{"main":[…],"more":[…],"stop":i}`, items
      * START_HERE / GO_HERE / SET_DESTINATION / ADD_STOP / NEW_DESTINATION; [stop] = where „Als Zwischenstopp“ puts it
-     * (WaypointInsertion stopOnly: the best place on the route, never behind the goal). The planner has no tour: the
-     * route ahead is the whole plan.
+     * (WaypointInsertion stopOnly: the best place on the route, never behind the goal); [keepOld] = whether „Als neues Ziel“
+     * keeps the old goal as the last stop ([PlaceAddMenu.keepsOldGoal], owner 2026-11-14 „beim Planen anhängen, unterwegs
+     * ersetzen“). The planner has no tour: the route ahead is the whole plan, and the new goal always appends.
      */
     fun placeMenu(points: String, lat: Double, lon: Double, roundTrip: Boolean): String {
         val w = parsePoints(points)
@@ -555,7 +556,8 @@ object Engine {
         val m = com.onpath.app.ui.PlaceAddMenu.menu(w.size, touring = false, zone = zone)
         val stop = if (w.size < 2) w.size else WaypointInsertion.decide(w, p, lastPlanFor(w)?.points, 30.0, stopOnly = true).index
         fun list(items: List<com.onpath.app.ui.PlaceAddMenu.Item>) = items.joinToString(",", "[", "]") { str(it.name) }
-        return "{\"main\":" + list(m.main) + ",\"more\":" + list(m.more) + ",\"stop\":" + stop + "}"
+        val keepOld = com.onpath.app.ui.PlaceAddMenu.keepsOldGoal(touring = false)
+        return "{\"main\":" + list(m.main) + ",\"more\":" + list(m.more) + ",\"stop\":" + stop + ",\"keepOld\":" + keepOld + "}"
     }
 
     /**
