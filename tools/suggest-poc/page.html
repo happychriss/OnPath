@@ -7,295 +7,178 @@
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <style>
-  :root { --ink:#22302a; --muted:#66756d; --line:#d9ded9; --bg:#f6f5f0; --card:#fff; --accent:#2f6b4f; }
+  :root { --ink:#22302a; --muted:#66756d; --line:#d9ded9; --bg:#f6f5f0; --accent:#2f6b4f; }
   * { box-sizing:border-box; }
   body { margin:0; font:14px/1.4 system-ui, sans-serif; color:var(--ink); background:var(--bg); display:flex; height:100vh; }
   #side { width:400px; min-width:400px; overflow-y:auto; padding:14px 14px 40px; border-right:1px solid var(--line); }
   #map { flex:1; background:#e9ebe6; }
-  h1 { font-size:18px; margin:0 0 2px; } .sub { color:var(--muted); margin:0 0 12px; font-size:12px; }
+  h1 { font-size:18px; margin:0 0 2px; } .sub { color:var(--muted); margin:0 0 10px; font-size:12px; }
   label { display:block; font-size:12px; color:var(--muted); margin:8px 0 2px; }
   input[type=text], input[type=number], select { width:100%; padding:6px 8px; border:1px solid var(--line); border-radius:6px; font:inherit; background:#fff; }
   .row { display:flex; gap:8px; } .row > div { flex:1; }
-  .sl { display:flex; align-items:center; gap:8px; } .sl span:first-child { width:92px; font-size:12px; color:var(--muted); }
-  .sl input { flex:1; } .sl b { width:30px; text-align:right; font-weight:500; font-variant-numeric:tabular-nums; }
   button { font:inherit; padding:8px 12px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; }
   button.pri { background:var(--accent); color:#fff; border-color:var(--accent); font-weight:600; }
   .btns { display:flex; gap:8px; margin:12px 0 6px; }
-  #status { font-size:12px; color:var(--muted); min-height:18px; margin-bottom:6px; }
-  .card { background:var(--card); border:1px solid var(--line); border-left:6px solid #999; border-radius:8px; padding:9px 10px; margin:8px 0; cursor:pointer; }
-  .card.sel { box-shadow:0 0 0 2px var(--ink); }
-  .card h3 { margin:0; font-size:14px; display:flex; justify-content:space-between; }
-  .card .big { font-variant-numeric:tabular-nums; margin:2px 0 4px; }
-  .chips { display:flex; flex-wrap:wrap; gap:4px; font-size:11.5px; }
-  .chips span { background:#eef1ec; border-radius:10px; padding:1px 7px; white-space:nowrap; }
-  .chips span.bad { background:#f6dfd8; } .chips span.good { background:#dcefdf; }
-  .parts { font-size:11px; color:var(--muted); margin-top:5px; display:none; }
-  .card.sel .parts, .card.sel .fb { display:block; }
-  .fb { display:flex; gap:6px; margin-top:7px; } .fb input { flex:1; min-width:0; } .fb button { white-space:nowrap; }
-  .opts { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin:4px 0; }
-  .legend { font-size:11.5px; color:var(--muted); margin-top:4px; }
-  .legend i { display:inline-block; width:14px; height:4px; vertical-align:middle; margin:0 3px 0 8px; }
   .lv { display:flex; align-items:center; gap:6px; margin:4px 0; } .lv span { width:110px; font-size:13px; }
   .lv button { flex:1; padding:5px 4px; } .lv button.on { background:var(--accent); color:#fff; border-color:var(--accent); }
-  .goals { font-size:12.5px; margin:0 0 5px; color:#1d5a3c; font-weight:500; }
-  .aitips { font-size:12.5px; margin:0 0 5px; color:#5b3a8c; font-weight:500; }
-  .aitips span { border-bottom:1px dotted #5b3a8c; cursor:help; }
-  #cmp { font-size:12.5px; margin:8px 0; padding:8px; background:#fff; border:1px solid #d9d4c7; border-radius:8px; display:none; }
-  #cmp table { border-collapse:collapse; width:100%; } #cmp td, #cmp th { padding:2px 4px; text-align:left; vertical-align:top; border-top:1px solid #eee; }
-  #cmp th { border-top:none; } #cmp .btns { margin:6px 0 0; }
-  details { margin-top:10px; font-size:12px; color:var(--muted); } pre { white-space:pre-wrap; font-size:11px; }
+  .opts { font-size:12px; color:var(--muted); display:flex; gap:12px; flex-wrap:wrap; margin:6px 0; }
+  #status { font-size:12px; color:var(--muted); min-height:18px; }
+  #notes div { font-size:12.5px; background:#fff7df; border:1px solid #ead9a0; border-radius:8px; padding:6px 9px; margin:6px 0; }
+  .card { background:#fff; border:1px solid var(--line); border-left:6px solid #999; border-radius:8px; padding:9px 10px; margin:8px 0; cursor:pointer; }
+  .card.sel { box-shadow:0 0 0 2px var(--ink); }
+  .card h3 { margin:0; font-size:14px; display:flex; justify-content:space-between; gap:8px; } .card h3 b { white-space:nowrap; }
+  .big { font-variant-numeric:tabular-nums; margin:2px 0 3px; }
+  .why { font-size:12.5px; color:#1d5a3c; font-weight:500; margin:0 0 4px; }
+  .chips { display:flex; flex-wrap:wrap; gap:4px; font-size:11.5px; } .chips span { background:#f6dfd8; border-radius:10px; padding:1px 7px; }
+  .axes { display:grid; grid-template-columns:78px 1fr 26px; gap:2px 6px; font-size:11.5px; color:var(--muted); margin-top:6px; align-items:center; }
+  .axes i { display:block; height:6px; background:#e7ebe5; border-radius:3px; overflow:hidden; } .axes i u { display:block; height:100%; background:var(--accent); }
+  .verdict { font-size:11.5px; color:var(--muted); margin-top:4px; }
+  .fb { display:none; gap:6px; margin-top:7px; } .card.sel .fb { display:flex; } .fb input { flex:1; min-width:0; }
+  .legend { font-size:11.5px; color:var(--muted); } .legend i { display:inline-block; width:14px; height:4px; vertical-align:middle; margin:0 3px 0 8px; }
 </style>
 </head>
 <body>
 <div id="side">
   <h1>Tourvorschläge</h1>
   <p class="sub">Versuch am Rechner · Rundtouren zu Fuß und mit dem Rad · Start auch per Klick auf die Karte</p>
-
   <label>Start</label>
   <div class="row"><div style="flex:3"><input type="text" id="place" list="places" value="Hilden" placeholder="Ort oder „51.17, 6.94“"><datalist id="places"></datalist></div>
     <div><button id="find" style="width:100%">Suchen</button></div></div>
   <div class="row">
-    <div><label>Aktivität</label><select id="activity"><option value="hike" selected>Wandern</option><option value="bike">Fahrrad</option><option value="gravel">Gravel</option><option value="mtb">MTB</option></select></div>
+    <div><label>Aktivität</label><select id="activity"></select></div>
+    <div id="tbox"><label>Schwierigkeit bis</label><select id="t_level"><option value="1">T1 gemütlich</option><option value="2" selected>T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5 wild</option></select></div>
     <div><label>Dauer (Stunden)</label><input type="number" id="hours" value="2" min="0.5" max="8" step="0.25"></div>
   </div>
   <div class="row">
     <div><label>Tempo</label><select id="pace"><option>gemütlich</option><option selected>normal</option><option>zügig</option></select></div>
-    <div><label>Anstrengung</label><select id="effort"><option selected>leicht</option><option>mittel</option><option>sportlich</option></select></div>
-    <div id="tbox"><label>Schwierigkeit bis</label><select id="t"><option value="1">T1</option><option value="2" selected>T2</option><option value="3">T3</option><option value="4">T4</option><option value="5">T5</option></select></div>
+    <div><label>Anstrengung</label><select id="effort"><option>leicht</option><option selected>mittel</option><option>sportlich</option></select></div>
+    <div><label>Wegbeschaffenheit</label><select id="surface"></select></div>
   </div>
-  <label>Wegbeschaffenheit</label>
-  <select id="surface"></select>
   <label>Was ist dir wichtig?</label>
-  <div class="lv" data-k="natur"><span>Natur</span><button>niedrig</button><button>mittel</button><button class="on">hoch</button></div>
-  <div class="lv" data-k="ruhe"><span>Ruhe</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
-  <div class="lv" data-k="bekannt"><span>Bekannte Wege</span><button>niedrig</button><button class="on">mittel</button><button>hoch</button></div>
-  <label style="margin:6px 0 0; color:var(--ink)"><input type="checkbox" id="wasser"> am Wasser entlang (See, Fluss)</label>
-  <label style="margin:6px 0 0; color:var(--ink)" title="Einmal pro Kartengebiet hat eine KI aus unserer eigenen Kartenliste ausgewählt, was ein Ortskundiger empfehlen würde. Beim Vorschlagen wird keine KI gefragt."><input type="checkbox" id="ai"> mit KI-Regionswissen</label>
-  <label>Verfahren (zum Vergleichen)</label>
-  <select id="method"><option value="auto" selected>Automatisch · Netz-Suche und Grünstück-Kette, eine Auswahl</option><option value="a">A · Fächer (viele Einzelrouten)</option><option value="b">B · nur Netz-Suche</option><option value="c">C · Grünstück-Kette (Grünflächen verbinden)</option></select>
-  <details id="fein"><summary>Feinheiten (nur zum Tüfteln)</summary>
-    <label style="color:var(--ink)"><input type="checkbox" id="feinon"> diese Regler statt der Stufen oben benutzen</label>
-    <div class="sl"><span>Wald</span><input type="range" id="forest" min="0" max="1" step="0.1" value="0.9"><b></b></div>
-    <div class="sl"><span>Ruhe</span><input type="range" id="quiet" min="0" max="1" step="0.1" value="0.5"><b></b></div>
-    <div class="sl"><span>Wasser</span><input type="range" id="water" min="0" max="1" step="0.1" value="0.2"><b></b></div>
-    <div class="sl"><span>Markierte Wege</span><input type="range" id="signed" min="0" max="1" step="0.1" value="0.5"><b></b></div>
-    <div class="sl"><span>Naturboden</span><input type="range" id="natural" min="0" max="1" step="0.1" value="0.6"><b></b></div>
-    <div class="row"><div><label>Tempo genau (km/h, leer = Stufe)</label><input type="number" id="pacekmh" min="2" max="30" step="0.1"></div></div>
-  </details>
-
+  <div class="lv" data-k="natur"><span>Natur</span></div>
+  <div class="lv" data-k="ruhe"><span>Ruhe</span></div>
+  <div class="lv" data-k="bekannt"><span>Bekannte Wege</span></div>
+  <div class="opts"><label style="margin:0"><input type="checkbox" id="wasser"> am Wasser entlang</label>
+    <label style="margin:0"><input type="checkbox" id="tips"> mit KI-Regionswissen</label></div>
   <div class="btns"><button class="pri" id="go">Vorschläge</button><button id="again">Neue Vorschläge</button></div>
-  <div class="btns" style="margin-top:6px"><button id="cmpgo">Vergleich mit / ohne KI</button></div>
-  <div id="cmp"></div>
-  <div id="status"></div>
-  <div id="notes" style="display:none;margin:6px 0;padding:6px 8px;border-left:3px solid #b45309;background:#fff7ed;color:#7c2d12;font-size:12px;line-height:1.35"></div>
-  <div class="opts">
-    <label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
-    <label style="margin:0"><input type="checkbox" id="kinds" checked> gewählte Runde nach Wegart färben</label>
-    <label style="margin:0"><input type="checkbox" id="known" checked> bekannte Wege zeigen</label>
-  </div>
-  <div class="legend">Wegart: <i style="background:#1f8a4c"></i>am Wald <i style="background:#8a6d3b"></i>Weg <i style="background:#d9822b"></i>Straße <i style="background:#c62828"></i>an Hauptstraße</div>
-  <div class="legend">Bekannte Wege (aus unseren Karten): <i style="background:#7b1fa2;height:6px"></i>Europa / national <i style="background:#ab47bc"></i>regional <i style="background:#ce93d8"></i>lokal · Name: Maus darüber oder antippen</div>
+  <div id="status"></div><div id="notes"></div>
+  <div class="opts"><label style="margin:0"><input type="checkbox" id="all"> alle Kandidaten</label>
+    <label style="margin:0"><input type="checkbox" id="byclass" checked> gewählte Runde nach Wegart färben</label>
+    <label style="margin:0"><input type="checkbox" id="known"> bekannte Wege zeigen</label></div>
+  <div class="legend">Wegart:<i style="background:#2e8b57"></i>am Wald<i style="background:#8a6d3b"></i>Weg<i style="background:#e08a2c"></i>Straße / Häuser<i style="background:#c62828"></i>an einer Straße mit Autos</div>
   <div id="cards"></div>
-  <details><summary>Zahlen des Laufs</summary><pre id="meta"></pre></details>
 </div>
 <div id="map"></div>
 <script>
-// the page may sit behind a path (a preview pane, /index.html) – call the server next to the page, not at the host's root
+// the page may sit behind a path (a preview pane) – call the server next to the page, not at the host's root
 const BASE = location.pathname.replace(/[^\/]*\.[^\/]*$/, '').replace(/\/?$/, '/');
+const $ = id => document.getElementById(id), P = new URLSearchParams(location.search);
+const COLORS = ['#1f5fbf', '#c2185b', '#6a1b9a', '#00838f', '#ef6c00'], CLS = {W:'#2e8b57', P:'#8a6d3b', S:'#e08a2c', G:'#c62828'};
+const AXES = [['natur','Natur'], ['ruhe','Ruhe'], ['weg','Weg'], ['besonderes','Besonderes'], ['form','Form']];
+const SURFACE = {foot: [['befestigt','befestigt'], ['gemischt','gemischt'], ['natur','Naturwege']], wheel: [['glatt','glatt'], ['gemischt','gemischt'], ['rau','rau']]};
+const map = L.map('map').setView([51.168, 6.9395], 13);
+L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '© OpenStreetMap'}).addTo(map);
+const layer = L.layerGroup().addTo(map), knownLayer = L.layerGroup().addTo(map);
+let start = [6.9395, 51.168], marker = null, result = null, selected = null, seed = 1;
+const level = {natur: 'mittel', ruhe: 'mittel', bekannt: 'mittel'};
 
-const $ = id => document.getElementById(id);
-const P = new URLSearchParams(location.search);
-const COLORS = ['#1565c0', '#c2185b', '#6a1b9a', '#00838f', '#ef6c00', '#455a64', '#558b2f', '#4e342e'];
-const KIND = {W:'#1f8a4c', P:'#8a6d3b', S:'#d9822b', G:'#c62828'};
-const map = L.map('map', {zoomSnap:0.25}).setView([51.168, 6.9395], 13);
-if (!P.get('notiles')) L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:19, attribution:'© OpenStreetMap'}).addTo(map);
-let start = [6.9395, 51.1680], startName = 'Hilden', seed = 1, result = null, sel = null;
-map.createPane('known'); map.getPane('known').style.zIndex = 350;   // under the suggestions (overlay pane 400)
-const knownLayer = L.layerGroup().addTo(map);
-const layers = L.layerGroup().addTo(map);
-let surfaceOpts = {}, knownKey = '';
-function fillSurface() {
-  const o = surfaceOpts[$('activity').value]; if (!o) return;
-  $('surface').innerHTML = Object.entries(o.options).map(([k, v]) => `<option value="${k}"${k === o.default ? ' selected' : ''}>${v.label}</option>`).join('');
+document.querySelectorAll('.lv').forEach(row => ['niedrig', 'mittel', 'hoch'].forEach(v => {
+  const b = document.createElement('button'); b.textContent = v; b.className = v === 'mittel' ? 'on' : '';
+  b.onclick = () => { level[row.dataset.k] = v; row.querySelectorAll('button').forEach(x => x.className = x === b ? 'on' : ''); };
+  row.appendChild(b); }));
+function forActivity() {
+  const foot = $('activity').value === 'hike';
+  $('tbox').style.display = foot ? '' : 'none';
+  $('surface').innerHTML = SURFACE[foot ? 'foot' : 'wheel'].map(o => `<option value="${o[0]}"${o[0] === 'gemischt' ? ' selected' : ''}>${o[1]}</option>`).join('');
 }
-// the known signed routes from our own map areas, drawn under the suggestions
-async function loadKnown(force) {
-  if (!$('known').checked) { knownLayer.clearLayers(); knownKey = ''; return; }
-  const key = start.map(x => x.toFixed(2)).join(',') + $('activity').value;
-  if (key === knownKey && !force) return;
-  knownKey = key;
-  const reach = $('activity').value === 'hike' ? 8000 : 20000;
-  const r = await (await fetch(BASE + `known?lon=${start[0]}&lat=${start[1]}&activity=${$('activity').value}&reach=${reach}`)).json();
-  knownLayer.clearLayers();
-  for (const k of r.routes || []) {
-    const big = /^[in]/.test(k.net), mid = /^r/.test(k.net);
-    const line = L.polyline(k.lines.map(l => l.map(p => [p[1], p[0]])), {pane:'known', color: big ? '#7b1fa2' : mid ? '#ab47bc' : '#ce93d8',
-      weight: big ? 6 : mid ? 4.5 : 3.5, opacity: 0.55}).addTo(knownLayer);
-    line.bindTooltip(k.name, {sticky:true}); line.bindPopup(k.name);
-  }
+$('activity').onchange = forActivity;
+function setStart(lonlat, name) {
+  start = lonlat; if (name) $('place').value = name;
+  if (marker) marker.remove();
+  marker = L.circleMarker([start[1], start[0]], {radius: 7, color: '#fff', weight: 2, fillColor: '#111', fillOpacity: 1}).addTo(map);
 }
-const startMark = L.circleMarker([start[1], start[0]], {radius:8, color:'#fff', weight:3, fillColor:'#22302a', fillOpacity:1}).addTo(map);
-
-document.querySelectorAll('.sl input').forEach(i => { const f = () => i.nextElementSibling.textContent = (+i.value).toFixed(1); i.oninput = f; f(); });
-fetch(BASE + 'places').then(r => r.json()).then(d => { $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join('');
-  surfaceOpts = d.surface || {}; fillSurface(); if (window.pendingSurface) $('surface').value = window.pendingSurface; });
-
-function setStart(lonlat, name, fly) {
-  start = lonlat; startName = name; startMark.setLatLng([lonlat[1], lonlat[0]]);
-  if (fly) map.setView([lonlat[1], lonlat[0]], 13.5);
-  loadKnown();
-}
-async function findPlace() {
+map.on('click', e => setStart([e.latlng.lng, e.latlng.lat], e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5)));
+async function find() {
   const r = await (await fetch(BASE + 'place?q=' + encodeURIComponent($('place').value))).json();
   if (r.error) { $('status').textContent = r.error; return false; }
-  setStart(r.lonlat, r.name, true); return true;
+  setStart(r.lonlat, r.name); map.setView([r.lonlat[1], r.lonlat[0]], 13); return true;
 }
-$('find').onclick = findPlace;
-$('place').onchange = findPlace;
-map.on('click', e => { setStart([e.latlng.lng, e.latlng.lat], e.latlng.lat.toFixed(5) + ', ' + e.latlng.lng.toFixed(5)); $('place').value = startName; });
-
-document.querySelectorAll('.lv').forEach(d => d.querySelectorAll('button').forEach(b => b.onclick = () => { d.querySelectorAll('button').forEach(x => x.classList.remove('on')); b.classList.add('on'); }));
-const level = k => document.querySelector(`.lv[data-k=${k}] button.on`).textContent;
-const setLevel = (k, v) => document.querySelectorAll(`.lv[data-k=${k}] button`).forEach(b => b.classList.toggle('on', b.textContent === v));
-$('activity').onchange = () => { $('tbox').style.display = $('activity').value === 'hike' ? '' : 'none'; fillSurface(); loadKnown(); };
-$('known').onchange = () => loadKnown(true);
-function wish() {
-  const w = {start, start_name:startName, activity:$('activity').value, hours:+$('hours').value, pace:$('pacekmh').value ? +$('pacekmh').value : $('pace').value,
-             t_level:+$('t').value, effort:$('effort').value, natur:level('natur'), ruhe:level('ruhe'), bekannt:level('bekannt'), wasser:$('wasser').checked, surface:$('surface').value, method:$('method').value, ai:$('ai').checked, seed};
-  if ($('feinon').checked) w.fein = {forest:+$('forest').value, quiet:+$('quiet').value, water:+$('water').value, signed:+$('signed').value, natural:+$('natural').value};
-  return w;
-}
+$('find').onclick = find;
+$('place').onkeydown = e => { if (e.key === 'Enter') find(); };
+const wish = () => ({start, start_name: $('place').value, activity: $('activity').value, t_level: +$('t_level').value, hours: +$('hours').value,
+  pace: $('pace').value, effort: $('effort').value, surface: $('surface').value, ...level, wasser: $('wasser').checked, tips: $('tips').checked, seed});
 async function go() {
-  $('status').textContent = 'rechnet …'; $('cards').innerHTML = ''; layers.clearLayers();
-  const t0 = performance.now();
-  const r = await (await fetch(BASE + 'suggest', {method:'POST', body:JSON.stringify(wish())})).json();
-  if (r.error) { $('status').textContent = 'Fehler: ' + r.error; return; }
-  show(r, Math.round(performance.now() - t0));
+  $('status').textContent = 'Runden werden gesucht …'; $('cards').innerHTML = ''; $('notes').innerHTML = '';
+  const r = await (await fetch(BASE + 'suggest', {method: 'POST', body: JSON.stringify(wish())})).json();
+  if (r.error) { $('status').textContent = r.error; return; }
+  show(r);
 }
-$('go').onclick = () => { $('cmp').style.display = 'none'; go(); };
-// the same wish (same seed) once without and once with the AI's region knowledge, side by side
-let pair = null;
-async function compareAi() {
-  $('status').textContent = 'rechnet zweimal: ohne und mit KI …'; $('cards').innerHTML = ''; layers.clearLayers(); $('cmp').style.display = 'none';
-  const w = wish(), post = b => fetch(BASE + 'suggest', {method:'POST', body:JSON.stringify(b)}).then(r => r.json());
-  const off = await post({...w, ai:false}); if (off.error) { $('status').textContent = 'Fehler: ' + off.error; return; }
-  const on = await post({...w, ai:true}); if (on.error) { $('status').textContent = 'Fehler: ' + on.error; return; }
-  pair = {off, on}; showPair('on');
-}
-function showPair(which) {
-  const top = r => r.candidates.filter(c => c.chosen).slice(0, 3), a = top(pair.off), b = top(pair.on);
-  const cell = c => c ? `<b>${c.name}</b><br>${c.numbers.km.toFixed(1)} km · ${c.score.toFixed(1)} Punkte` : '–';
-  const same = (x, y) => x && y && Math.abs(x.numbers.km - y.numbers.km) < 0.05 && x.numbers.ascent === y.numbers.ascent && x.coords.length === y.coords.length;
-  let rows = '';
-  for (let i = 0; i < Math.max(a.length, b.length); i++) {
-    const y = b[i];
-    rows += `<tr><td>${i + 1}</td><td>${cell(a[i])}</td><td>${cell(y)}${y ? '<br>' + km1(y.numbers.ai_km || 0) + ' km auf KI-Tipps' + (same(a[i], y) ? ' · <i>derselbe Weg</i>' : a.some(x => same(x, y)) ? ' · <i>ohne KI auf anderem Platz</i>' : ' · <i>neu durch KI</i>') : ''}</td></tr>`;
-  }
-  const n = (pair.on.ai || {}).picks_in_reach || 0;
-  $('cmp').innerHTML = `<b>Vergleich: derselbe Wunsch ohne und mit KI-Regionswissen</b> · ${n} KI-Tipps in Reichweite` + (n ? '' : ' – für dieses Gebiet gibt es noch keine, beide Seiten sind gleich') +
-    `<table><tr><th></th><th>ohne KI</th><th>mit KI</th></tr>${rows}</table>
-     <div class="btns"><button id="cmpoff"${which === 'off' ? ' class="pri"' : ''}>ohne KI zeigen</button><button id="cmpon"${which === 'on' ? ' class="pri"' : ''}>mit KI zeigen</button></div>`;
-  $('cmp').style.display = 'block';
-  $('cmpoff').onclick = () => showPair('off'); $('cmpon').onclick = () => showPair('on');
-  show(pair[which]);
-}
-$('cmpgo').onclick = compareAi;
-$('again').onclick = () => { seed = Math.floor(Math.random() * 1e6) + 2; go(); };
-$('all').onchange = () => draw(); $('kinds').onchange = () => draw();
-
-const hm = h => Math.floor(h) + ':' + String(Math.round((h - Math.floor(h)) * 60) % 60).padStart(2, '0');
-function show(r, ms) {
-  result = r; sel = null;
-  const ch = r.candidates.filter(c => c.chosen);
-  $('status').textContent = `${ch.length} Vorschläge aus ${r.candidates.length} Kandidaten · ${r.seconds} s · Ziel ~${r.target_km} km · Gewichte ${r.weights_version} · Verfahren ${(r.method || 'a').toUpperCase()}` + (r.net ? ` · Netz ${r.net.graph_nodes} Knoten, ${r.net.searches} Suchen` : '') +((r.ai || {}).on ? ` · mit KI-Regionswissen (${r.ai.picks_in_reach} Tipps in Reichweite)` : '') + ((r.notes || []).length ? ' · ' + r.notes.join(' · ') : '');
-  $('notes').style.display = (r.notes || []).length ? 'block' : 'none'; $('notes').innerHTML = (r.notes || []).map(esc).join('<br>');
-  $('meta').textContent = JSON.stringify({lauf:r.run, wunsch:r.wish, ziele_in_reichweite:(r.destinations || []).map(d => d.name + ' ' + d.km_away + ' km'), profil:r.profile_kv, teilstrecken:r.legs_routed, router_ms:r.route_ms_sum}, null, 1);
-  cards(); draw(true);
-}
-function shown() { return result.candidates.filter(c => c.chosen || $('all').checked); }
-function colorOf(c) { return c.chosen ? COLORS[result.candidates.filter(x => x.chosen).indexOf(c) % COLORS.length] : '#8d948f'; }
-const km1 = x => x.toFixed(1).replace('.', ',');
-function goals(n) {
-  return [...(n.known || []).slice(0, 3).map(k => km1(k[1]) + ' km ' + k[0]), ...(n.lakes || []).slice(0, 2).map(k => km1(k[1]) + ' km am ' + k[0]),
-          ...(n.views || []).slice(0, 1).map(v => 'Aussicht: ' + v),
-          ...(n.ferry_m ? ['mit Fähre'] : [])].join(' · ');
-}
-const esc = t => String(t).replace(/[&<>"]/g, ch => ({'&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;'})[ch]);
-// the protected areas the loop runs in; said first when one of them is the loop's main thing (numbers.reserve_main)
-const resLine = n => `<div class="goals">${n.reserves.slice(0, 2).map(r => km1(r[1]) + ' km im Naturschutzgebiet ' + esc(r[0])).join(' · ')}</div>`;
-// name and km only – the AI's own sentence is not shown as fact, it sits in the tooltip, marked as unchecked
-function aiTips(n) {
-  return (n.ai_tips || []).map(t => `<span title="KI-Text, ungeprüft: ${esc(t.warum || '')}">KI-Tipp: ${esc(t.name)} (${esc(t.how)})</span>`).join(' · ');
-}
-function cards() {
+$('go').onclick = () => { seed = 1; go(); };
+$('again').onclick = () => { seed++; go(); };
+const km = x => String(x).replace('.', ','), hm = h => Math.floor(h) + ':' + String(Math.round((h % 1) * 60)).padStart(2, '0');
+function show(r) {
+  result = r; selected = null;
+  const shown = r.candidates.filter(c => c.chosen);
+  $('status').textContent = `${shown.length} Vorschläge aus ${r.candidates.length} Runden · ${km(r.seconds)} s · Ziel ~${km(r.target_km)} km · Charakter ${r.character.word} · Stand ${r.version}`;
+  $('notes').innerHTML = r.notes.map(n => `<div>${n}</div>`).join('');
   $('cards').innerHTML = '';
-  for (const c of shown()) {
+  shown.forEach((c, i) => {
     const n = c.numbers, d = document.createElement('div');
-    d.className = 'card' + (sel === c.id ? ' sel' : ''); d.style.borderLeftColor = colorOf(c);
-    const chip = (t, cls) => `<span class="${cls || ''}">${t}</span>`;
-    d.innerHTML = `<h3><span>${c.chosen ? '' : '(' }${c.id} · ${c.name}${c.chosen ? '' : ')'}</span><span>${c.score.toFixed(0)} Punkte</span></h3>
-      <div class="big">${n.km.toFixed(1)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m${result && result.wish && result.wish.simple && result.wish.simple.effort ? ' · ' + esc(result.wish.simple.effort) : ''}</div>
-      ${n.reserve_main && (n.reserves || []).length ? resLine(n) : ''}
-      ${goals(n) ? `<div class="goals">${goals(n)}</div>` : ''}
-      ${!n.reserve_main && (n.reserves || []).length ? resLine(n) : ''}
-      ${aiTips(n) ? `<div class="aitips">${aiTips(n)}</div>` : ''}
-      <div class="chips">${chip('am Wald ' + n.forest_pct + ' %', n.forest_pct >= 50 ? 'good' : '')}${chip('Straße ' + n.street_pct + ' %', n.street_pct >= 40 ? 'bad' : '')}
-        ${n.main_longest_m ? chip('an / neben Straße längstes Stück ' + n.main_longest_m + ' m', n.main_longest_m > (n.main_road_max_m || result.main_road_max_m || 300) ? 'bad' : '') : ''}${n.surface_pct ? chip('Asphalt ' + n.surface_pct.A + ' % · fester Weg ' + n.surface_pct.F + ' % · Naturweg ' + n.surface_pct.N + ' %') : chip('Asphalt ' + n.paved_pct + ' %')}${chip('markiert ' + n.signed_pct + ' %')}
-        ${chip('laut ' + n.loud_pct + ' %', n.loud_pct >= 20 ? 'bad' : '')}${chip('doppelt ' + n.doubled_pct + ' %', n.doubled_pct >= 10 ? 'bad' : '')}${chip('Querungen ' + n.crossings)}
-        ${n.self_cross ? chip('kreuzt sich ' + n.self_cross + '×', n.self_cross > 1 ? 'bad' : '') : ''}${n.stalk_m >= 150 ? chip('hin und zurück ' + n.stalk_m + ' m') : ''}${n.roadside_pct !== undefined ? chip('an / neben Straße ' + n.roadside_pct + ' %', n.roadside_pct >= 10 ? 'bad' : '') + chip('durch Häuser ' + n.built_pct + ' %', n.built_pct >= 40 ? 'bad' : '') + chip('tief in der Natur ' + n.deep_pct + ' %', n.deep_pct >= 40 ? 'good' : '') : ''}</div>
-      ${c.flaws && Object.keys(c.flaws).length ? `<div class="goals" style="color:#9a3412">Abzug: ${Object.entries(c.flaws).map(([k, v]) => ({road:'langes Stück an einer Straße', built:'durch Häuser', doubled:'doppelt gefahren', cross:'kreuzt den eigenen Weg', roadside:'viel an Straßen'}[k] || k) + ' −' + v.toFixed(0)).join(' · ')}</div>` : ''}
-      <div class="parts">${n.green_km !== undefined ? 'im Grünen ' + km1(n.green_km) + ' km' + (n.railtrail_km >= 1 ? ' · Bahntrasse ' + km1(n.railtrail_km) + ' km' : '') + (n.bank_km >= 1 ? ' · am Wasser ' + km1(n.bank_km) + ' km' : '') + (c.work_name ? ' · Arbeitsname: ' + esc(c.work_name) : '') + (c.origin ? ' · Herkunft ' + c.origin : '') + '<br>' : ''}Teile (0–1): ${Object.entries(c.parts).map(([k, v]) => k + ' ' + v.toFixed(2)).join(' · ')}<br>Verlauf (km): ${c.story}</div>
-      <div class="fb"><input type="text" placeholder="Kommentar zu dieser Runde"><button class="send">Kommentar senden</button></div>`;
-    d.onclick = e => { if (e.target.closest('.fb')) return; sel = sel === c.id ? null : c.id; cards(); draw(); };
-    d.querySelector('.send').onclick = () => feedback(c, d);
-    d.querySelector('.fb input').onkeydown = e => { if (e.key === 'Enter') feedback(c, d); };
-    $('cards').appendChild(d);
-  }
-}
-// one comment per suggestion: saved with the run, the route's id, name and numbers and the wish, so it can be found again
-async function feedback(c, d) {
-  const text = d.querySelector('.fb input').value.trim();
-  if (!text) { d.querySelector('.fb input').focus(); return; }
-  const place = result.candidates.filter(x => x.chosen).indexOf(c) + 1;
-  await fetch(BASE + 'feedback', {method:'POST', body:JSON.stringify({run:result.run, candidate:c.id, name:c.name, place, comment:text,
-    score:c.score, parts:c.parts, numbers:c.numbers, wish:result.wish, weights_version:result.weights_version, method:result.method})});
-  d.querySelector('.fb').innerHTML = '<i>Kommentar gespeichert.</i>';
+    d.className = 'card'; d.style.borderLeftColor = COLORS[i % 5];
+    d.innerHTML = `<h3><span>${i + 1} · ${c.name}</span><b>${Math.round(c.score)} Punkte</b></h3>
+      <div class="big">${km(n.km)} km · ${hm(n.hours)} h · ↑ ${n.ascent} m</div>
+      <div class="why">${c.reasons.join(' · ')}</div>
+      <div class="chips">${c.hints.map(h => `<span>${h}</span>`).join('')}</div>
+      <div class="axes">${AXES.map(a => `<span>${a[1]}</span><i><u style="width:${Math.round(100 * c.axes[a[0]])}%"></u></i><span>${Math.round(100 * c.axes[a[0]])}</span>`).join('')}</div>
+      <div class="verdict">${c.why} · am Wald ${n.forest_pct} % · durch Häuser ${n.town_pct} % · Belag fest ${n.ground_pct[0] + n.ground_pct[1]} % / Natur ${n.ground_pct[2] + n.ground_pct[3]} %</div>
+      <div class="fb"><input type="text" placeholder="Kommentar zu dieser Runde"><button>Kommentar senden</button></div>`;
+    d.onclick = () => { selected = c.id; draw(); };
+    d.querySelector('.fb').onclick = e => e.stopPropagation();
+    d.querySelector('.fb button').onclick = async () => {
+      await fetch(BASE + 'feedback', {method: 'POST', body: JSON.stringify({run: r.run, candidate: c.id, name: c.name, place: r.wish.start_name,
+        comment: d.querySelector('input').value, score: c.score, axes: c.axes, numbers: n, wish: r.wish, version: r.version})});
+      d.querySelector('.fb').innerHTML = '<i>Kommentar gespeichert.</i>';
+    };
+    c.card = d; $('cards').appendChild(d);
+  });
+  setStart(r.wish.start, r.wish.start_name);
+  if (P.get('only')) selected = (shown[+P.get('only') - 1] || {}).id;
+  draw(true);
 }
 function draw(fit) {
-  layers.clearLayers(); if (!result) return;
-  const only = P.get('only'), b = [];
-  for (const c of shown().slice().reverse()) {
-    if (only && String(c.id) !== only) continue;
-    const ll = c.coords.map(p => [p[1], p[0]]), isSel = sel === c.id, dim = sel !== null && !isSel;
-    b.push(...ll);
-    if (isSel && $('kinds').checked) {
-      L.polyline(ll, {color:'#fff', weight:9, opacity:0.9}).addTo(layers);
-      let i = 0;
-      while (i < c.cls.length) { let j = i; while (j < c.cls.length && c.cls[j] === c.cls[i]) j++; L.polyline(ll.slice(i, j + 1), {color:KIND[c.cls[i]], weight:5}).addTo(layers); i = j; }
-    } else {
-      L.polyline(ll, {color:'#fff', weight:c.chosen ? 8 : 4, opacity:dim ? 0.2 : 0.9}).addTo(layers);
-      L.polyline(ll, {color:colorOf(c), weight:c.chosen ? 4 : 2, opacity:dim ? 0.25 : 0.95}).addTo(layers).on('click', () => { sel = c.id; cards(); draw(); });
-    }
-  }
-  startMark.bringToFront();
-  if (fit && b.length) map.fitBounds(b, {padding:[30, 30]});
+  layer.clearLayers();
+  const shown = result.candidates.filter(c => c.chosen), ll = c => c.coords.map(p => [p[1], p[0]]);
+  if ($('all').checked) result.candidates.filter(c => !c.chosen).forEach(c => L.polyline(ll(c), {color: '#777', weight: 1.5, opacity: 0.45}).addTo(layer));
+  const bounds = [];
+  shown.forEach((c, i) => {
+    c.card.classList.toggle('sel', c.id === selected);
+    if (P.get('only') && c.id !== selected) return;
+    const pts = ll(c); bounds.push(...pts);
+    if (c.id === selected && $('byclass').checked) {
+      L.polyline(pts, {color: '#fff', weight: 8, opacity: 0.9}).addTo(layer);
+      let from = 0;
+      for (let k = 1; k <= c.cls.length; k++) if (k === c.cls.length || c.cls[k] !== c.cls[from]) {
+        L.polyline(pts.slice(from, k + 1), {color: CLS[c.cls[from]], weight: 5}).addTo(layer); from = k; }
+    } else L.polyline(pts, {color: COLORS[i % 5], weight: c.id === selected ? 6 : 3.5, opacity: selected && c.id !== selected ? 0.45 : 0.9}).addTo(layer);
+  });
+  if (fit && bounds.length) map.fitBounds(bounds, {padding: [30, 30]});
 }
-// a saved run by address: /?run=<id>[&sel=<candidate>][&only=<candidate>][&all=1][&notiles=1]  (run.py --png uses this)
-if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r => {
-  setStart(r.wish.start, r.wish.start_name); $('place').value = r.wish.start_name;
-  const w = r.wish, sm = w.simple || {};
-  $('hours').value = w.hours; $('activity').value = w.activity || 'hike'; $('activity').onchange(); $('t').value = w.t_level;
-  for (const k of ['natur', 'ruhe', 'bekannt']) if (sm[k]) setLevel(k, sm[k]);
-  $('method').value = w.method || 'auto'; $('ai').checked = !!w.ai;
-  window.pendingSurface = w.surface; fillSurface(); if (w.surface) $('surface').value = w.surface;
-  if (P.get('noknown')) { $('known').checked = false; loadKnown(true); }
-  $('wasser').checked = !!sm.wasser; if (typeof sm.pace === 'string') $('pace').value = sm.pace; else $('pacekmh').value = w.pace;
-  if (sm.effort) $('effort').value = ({relaxed:'leicht', medium:'mittel', sporty:'sportlich'})[sm.effort] || sm.effort;
-  for (const k of ['forest', 'quiet', 'water', 'signed', 'natural']) { $(k).value = w[k]; $(k).dispatchEvent(new Event('input')); }
-  if (P.get('all')) $('all').checked = true;
-  show(r); if (P.get('sel')) { sel = +P.get('sel'); cards(); draw(true); }
-  document.body.dataset.ready = '1';
+['all', 'byclass'].forEach(id => $(id).onchange = () => result && draw());
+$('known').onchange = async () => {
+  knownLayer.clearLayers();
+  if (!$('known').checked) return;
+  const r = await (await fetch(BASE + `known?lon=${start[0]}&lat=${start[1]}&activity=${$('activity').value}`)).json();
+  r.routes.forEach(k => k.lines.forEach(l => L.polyline(l.map(p => [p[1], p[0]]), {color: '#7b3fa0', weight: 'in'.includes(k.net[0]) ? 4 : k.net[0] === 'r' ? 3 : 2, opacity: 0.5})
+    .bindTooltip(k.name, {sticky: true}).addTo(knownLayer)));
+};
+fetch(BASE + 'places').then(r => r.json()).then(d => {
+  $('places').innerHTML = Object.keys(d.places).map(k => `<option value="${k}">`).join('');
+  $('activity').innerHTML = Object.entries(d.activities).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+  forActivity();
+  if (P.get('run')) fetch(BASE + 'run/' + P.get('run')).then(r => r.json()).then(r => {
+    $('activity').value = r.wish.activity; forActivity(); $('hours').value = r.wish.hours; show(r); });
 });
+setStart(start);
 </script>
 </body>
 </html>

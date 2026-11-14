@@ -1,8 +1,4 @@
-"""Tour-suggestions POC – what the land around a point is: deep nature, built-up land, open water (from our map).
-
-Deep nature (owner 2026-11-13: "durch ein großes, zusammenhängendes Naturschutzgebiet zu gehen ist ein ganz anderes
-Gefühl als ein kleiner Grünstreifen"), settlement (owner 2026-11-13: "so ein Halbland, halb Stadt, halb Wohngebiet …
-stärker vermeiden") and water banks all come from one grid per map area.
+"""What the land around a point is – nature, built-up land, open water – from our own map areas.
 
 From our own map areas (base.pmtiles of a cell, zoom 12): the `landcover` polygons that are forest / heath / wetland
 and the `park` polygons that are protected nature (nature reserve, national park), the `landuse` polygons that are
@@ -18,7 +14,6 @@ for a point is then simply the share of grid squares of a kind within `radius_m`
 So size and depth come out of one number, without joining polygons across tile borders. `name_at` says in which
 protected area a point lies (for the card: "2,4 km im Naturschutzgebiet Ohligser Heide"); `place_near` gives the
 nearest named place (for naming an unnamed green patch: "Wald bei Kalstert").
-Knobs: weights.json "nature".
 """
 import json
 import math
@@ -204,11 +199,6 @@ def name_at(p):
         return ""
     i = r * m["w"] + c
     return m["labels"][m["names"][i]] if m["grid"][i] & PROTECTED else ""
-
-
-def value(d, N):
-    """Depth share -> pleasure 0..1: nothing below `from`, full at `full`."""
-    return max(0.0, min(1.0, (d - N["from"]) / (N["full"] - N["from"])))
 
 
 if __name__ == "__main__":
