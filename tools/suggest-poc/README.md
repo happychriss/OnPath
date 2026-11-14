@@ -384,3 +384,52 @@ Full account, and **the method written out for the planner port**: `docs/design/
 Known weak spots after the night: Fröndenberg / Ruhr valley (narrow river not seen as big water), Mettmann (rail trail
 6 km away not used), hikes from a town centre (entry points missing), names ("Bahntrasse" several times), bike loops
 10–15 km short of the wish, long bike runs over 15 s.
+
+## Round 10 (2026-11-14, weights 2026-11-14c) – a named protected area is used, not touched
+
+Owner, on the night page: "Nordkirchen wandern 2 Stunden, warum taucht der Hirschpark nicht auf, super schön." The
+Hirschpark Nordkirchen (Naturschutzgebiet, 5.1 km of paths and tracks in our network, none forbidden, its entrance
+1.9 km from the start) was only touched: the first suggestion had 0.6 km in it, three of the shown loops none.
+
+Why: no generator aimed at it. The compass turning points happened to lie south (Tiergarten); the chain's patch
+"Hirschpark Nordkirchen" was entered and left at its near edge. The two candidates with 3.7–4.5 km in the park were
+there-and-backs – 1.5 km of the park's long track walked twice on the way to the wood east of it and back (30 %
+doubled, one meeting, ≈ 15 points off) – not an access problem: the stem from the start was 0–600 m.
+
+What changed (all knobs in `weights.json`, `_reserve` notes):
+- **Loops through the heart** (`netsearch.py`, hike; `netsearch.reserve_min_way_m`, `reserve_targets`,
+  `reserve_out_factor`): for the nearest named protected areas with at least 2 km of ways in reach: the nicest way in,
+  a way through that stays inside (ways outside cost 5 x), either to the point where in + through + home fills the
+  wished length or by two turning points inside (the area is the destination), home another way; the area's far gate
+  is also a turning point for the pairs. Off for bikes: on their large networks it cost 1–2 s and changed no first
+  suggestion; bikes reach the areas through the chain.
+- **Main area** (`score.reserve_main_km`, `reserve_main_share`; bikes 3 km / 10 %): the protected area with the most
+  km when that is at least 2 km and 20 % of the loop. It leads the card's name and the reason line ("3,5 km im
+  Naturschutzgebiet Hirschpark Nordkirchen" first), also on a loop built along a known route.
+- **Names** (`select.name_area_km` = 1): no card is named after a protected area with less than 1 km in it (a chain
+  that only touches a patch loses that part of its name; a lake of the same name – "Elbsee" – stays when the loop is
+  at its shore). The two areas with the most km, in walking order.
+- **Coverage** (`select.reserve_cover_km` 2.5, bikes 4; `reserve_cover_slots`, `reserve_cover_behind`): each named
+  protected area that is the main area of a fitting loop with at least 2.5 km in it gets one shown suggestion, unless
+  that loop is more than 12 points behind the first.
+- **Stem to an area** (`score.reserve_stem_m` 2000, bikes 4000; `reserve_stem_share`): when the loop's main part lies
+  in a named protected area the free way out and back may be that long (one entrance: it is what a walker does).
+- `numbers.reserves` now lists up to 8 areas (was 3), plus `reserve_order`, `reserve_main`.
+- Bench: Nordkirchen expects a shown loop with ≥ 2.5 km in the Hirschpark; every case checks that no shown card is
+  named after an area with < 1 km in it.
+
+Bench `auto`, 2026-11-14b → 14c: the 141 old expectations 136 → 135, the 21 new ones all green (before: the
+Hirschpark one red – 0.6 km; the name check cannot be judged exactly on the old runs, which stored three areas per
+loop). 156 of 162 in all.
+
+| Case | before → after |
+|---|---|
+| Nordkirchen hike 2 h | "Tiergarten – X2 Wesel" 7.6 km, 0.6 km Hirschpark, 3 shown → "Hirschpark Nordkirchen – X2 Wesel" 9.1 km, 3.5 km in the park, nothing doubled, no meeting, 88.5 points, 4 shown (Tiergarten second) |
+| Hilden hike 2 h | 67.7 → 70.9 points, 2.5 → 3.0 km in the Ohligser Heide – but **1 suggestion shown instead of 3** (new red): the next loops share 64–96 % with the new first (limit 60 %), the south-west loop is below the 18-point floor |
+| all bike cases, Ohligser Heide, Elbsee, Monschau, Meran, Düsseldorf | first suggestion unchanged (same km and points) |
+
+Still weak: from a town centre every good loop uses the same way out, so "a different loop" is rarely under 60 %
+shared (Hilden: one card) – the share should be measured without the common way out and back; a chain still enters
+and leaves a patch at its near edge (only its *name* is now honest); the through-the-heart loops are hike only; the
+Meinhövels Holz loops at Nordkirchen were dropped (way home 10 km – one access, the inner ways all count as used).
+Pictures: `~/onpath-suggest-poc/r10/` (`nordkirchen-hike-2h-vorher.png` / `-nachher.png`, `hilden-hike-2h-*.png`).
