@@ -259,6 +259,12 @@ and planner will do), default: the file where a cell has one. Files lie in the c
   the Geofabrik extracts of 2026-11-15 (`LAYERS` from `rebuild_plan`: suggest, or overlays + suggest for an s7 cell).
   The bump makes every phone download its cells once more (the whole new version) for a file it does not use –
   unless it rides on a rebuild that happens anyway (owner question open).
+  Test cells: version `2026-11-15-s9`, partial build 13–44 s for suggest only, 59 / 105 s with the overlays;
+  `suggest.bin` 268–424 KB (with `routelines`; Hilden 268, Traumpfade 274–424). Acceptance: the POC from the tiles
+  (`SUGGEST_FILE=0`) and from the file (`SUGGEST_FILE=1`) give equal grid, names, labels, places, heights, routes,
+  lakes, sights in all 7 cells; loops against `build_suggest.loops` over the whole extracts (owned by the cell): 229 of
+  229 equal (line, km, T, parking), Hilden has 2 more – loops across the Düsseldorf / Köln border, whole only in the
+  merged cut.
 - Later, with stage 4: the app keeps `suggest.bin` per cell at the join (as `addresses/<cell>.sqlite` today).
 
 ## 5. The owner's taste rules
