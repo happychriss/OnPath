@@ -254,7 +254,7 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
 Why: cells built before the overlays layer `streets` existed showed no small streets (the style draws them at z13+
 only from it), and a version named by the OSM date alone would give a rebuild on the same OSM date the same
 (immutable, cached) name. So:
-- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 8 – see below); the manifest has
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 9 – see below); the manifest has
   `version` and `schema`. A build whose name is already published (a pipeline fix rebuilt on the same OSM date) gets a
   rebuild number: `<osm_date>.N-s<schema>`, first free N ≥ 2 (`job_build.py rebuild_number` → `build_cell.sh REBUILD`;
   2026-10-30, the Bremen / Berlin repair) – app and doorman compare names only, so the repaired cell reaches phones
@@ -298,6 +298,21 @@ only from it), and a version named by the OSM date alone would give a rebuild on
   date or an older schema is rebuilt whole, as before. `extract_overlays.py` writes the layer by default;
   `--no-all-routes` stays for before / after comparisons and the tests only (a cell built with it would lack a layer
   its schema promises – the build scripts never pass it). +5–10 % overlays per cell.
+- **Schema 9 (cell layer `suggest`: `suggest.bin`, the tour suggestions' data – `tools/build_suggest.py`, format and
+  sizes `docs/design/tour-suggestions.md` §4a; owner 2026-11-16 „Ja, Vorschlags-Datei“) adds a file no released app
+  reads:** builder (`cells.py` `CELL_SCHEMA` 9, `LAYER_SCHEMA` suggest 9) and doorman (`wrangler.toml`, `config.js`
+  default) 9, `CELL_SCHEMA_SERVE` and the app stay at 3. Step `suggest` in `build_cell.sh` after terrain, from the cell's
+  own base / overlays / pois / terrain and the cut (signed loops in walking order). The layer is **computed from other
+  layers** (`LAYER_INPUTS`): it is rebuilt whenever one of them is, and a suggest-only rebuild of an s8 cell fetches
+  their published files (`job_build.py layer_inputs`, checked by size + sha256 → `SUGGEST_FROM`; a damaged one → the
+  cell is built whole). Partial rebuild of an s8 cell: cut + suggest, ~40 s on donald (Hilden 39 s, `suggest.bin`
+  268 KB with routelines). **Cost on the phones:** a released app joins only the names it knows (`CellStore.LAYERS`,
+  `pois.geojson`, `addresses/`) and ignores `suggest.bin`, but the new version name makes it download the **whole
+  cell again** (new folder `download/<cell>/<version>.part`, every manifest file; nothing reused from the installed
+  version) – when it asks for a refresh: after a route is computed (corridor cells, `CellTriggers.freshenAlong`),
+  „Karten jetzt aktualisieren“, a router-class mismatch; never just from looking at the map (app `CELL_SCHEMA` stays
+  3, so no `UPDATE`). Typical cell 9–23 MB for a 0.2–0.3 MB file; the server also pre-warms every cell asked for in the
+  last 30 days (queue.js). Test cells first (`store-test-routes`, laptop), all cells only after IR's check.
 
 ## 7d. Released APKs, loading modal, fresh-install reset
 
@@ -448,7 +463,7 @@ than Cloud Run's 2 vCPU. An overlays-only rebuild takes ~80 s here, ~4.2 min in 
 **Partial rebuild** (`cells.py LAYER_SCHEMA`, `job_build.py plan / reuse`): a look-only schema bump no longer
 rebuilds every layer.
 - **Per-layer schema:** `LAYER_SCHEMA` = per layer of a format-2 cell (`base`, `overlays`, `pois`, `addresses`,
-  `terrain`, `contours`) the cell schema in which its data last changed. A change bumps `CELL_SCHEMA` **and** the
+  `terrain`, `contours`, `suggest`) the cell schema in which its data last changed. A change bumps `CELL_SCHEMA` **and** the
   layer(s) it touches (a change needing two layers in step bumps both). `CELL_SCHEMA` stays the highest of them
   (selftest), so the version name `<osm_date>-s<CELL_SCHEMA>`, the doorman's "current" test (`schemaOf(version) ≥
   CELL_SCHEMA`, adoption, pre-warm) and the app (`CellApi.schemaOf`) are **unchanged** – no doorman or app change.
@@ -460,7 +475,9 @@ rebuilds every layer.
   unreadable published version, region packages (own `PACKAGE_SCHEMA`), a file of no known layer, a required layer
   (base, overlays, terrain) missing, nothing stale (a plain re-run), `PARTIAL=0`. Any error in the decision → whole.
 - **Build:** `build_cell.sh` with `LAYERS="overlays"` + `BASE_MANIFEST` runs only that layer's steps (the cut only for
-  base / overlays / pois / addresses; terrain / contours need none). The manifest lists the new files plus the published
+  base / overlays / pois / addresses / suggest; terrain / contours need none). A layer computed from others
+  (`LAYER_INPUTS`: `suggest` from base, overlays, pois, terrain) is stale whenever one of its inputs is; the inputs this
+  run does not build are fetched from the published version (`SUGGEST_FROM`). The manifest lists the new files plus the published
   version's entries of the other layers (size + sha256 kept, url in the **new** version folder); the local version
   folder holds only the rebuilt files. A failed partial build is retried whole in the same execution.
 - **Publish:** the kept files are copied into the new version folder in R2 (**CopyObject**, server-side; checked by

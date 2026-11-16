@@ -164,8 +164,9 @@ a run says when an area cannot be had (without the map there is no nature, no se
 
 Everything in rows 2–5 of the table, plus the signed loops, computed **once per map cell by the map pipeline** into one
 small file `suggest.bin`; phone, browser and the POC only read it. Built: the format + reader (`tools/suggest_file.py`,
-standard library only), the producer (`tools/build_suggest.py`), the POC's reader switch. Not yet in the pipeline –
-that is the laptop's (patch: `tools/cells/suggest-layer.patch`, notes below).
+standard library only), the producer (`tools/build_suggest.py`), the POC's reader switch. In the pipeline as cell
+layer `suggest`, schema 9 (laptop 2026-11-17, branch `laptop/suggest-layer-2026-11-17`, not on main yet: test cells
+first – notes below, `docs/design/map-hosting.md` §7c).
 
 **Format** (exact bytes: the head of `tools/suggest_file.py`): 8 plain bytes – magic `OPSG`, u16 format version (1),
 u16 0 – then one zlib stream. Inside: sections of 4 letters + u32 length + payload; a reader skips sections it does not
@@ -230,8 +231,11 @@ and planner will do), default: the file where a cell has one. Files lie in the c
 
 **Compatibility:**
 - Released apps: they download every file a manifest lists and join only the names they know
-  (the download loop in `MapCells`, the join's `CellStore.LAYERS` / `POIS` / addresses) – `suggest.bin` is fetched (+ ~0.25 MB per cell, about
-  1 %), ignored and removed with the download folder. Checked by reading the code, not on a phone.
+  (the download loop in `MapCells`, the join's `CellStore.LAYERS` / `POIS` / addresses) – `suggest.bin` is fetched,
+  ignored and removed with the download folder. But a new version is downloaded **whole** (new folder
+  `download/<cell>/<version>.part`, nothing reused from the installed version): the s9 bump costs a phone its whole
+  cell again (9–23 MB) at its next refresh of that cell, not just the 0.2–0.3 MB file (laptop 2026-11-17, read in
+  `MapCells.downloadAndInstall`; not tried on a phone).
 - The reader (later the Kotlin core): no file for a cell in reach, or format version below the one it needs, or
   `content` below the one it needs → no suggestions from that cell and the line "die Karte wird hier gerade
   aktualisiert" (+ ask for the refresh). A format version above the reader's own → the same line with "App
@@ -239,7 +243,7 @@ and planner will do), default: the file where a cell has one. Files lie in the c
 - Two numbers, on purpose: the **layer schema** in `cells.py` says "this cell's file is stale, rebuild it" (server
   side); the **format version / content** in the file says "this reader can use it" (reader side).
 
-**Integration (for the laptop; `tools/cells/suggest-layer.patch`, applies to main 186224c5, `git apply`):**
+**Integration (IR's patch, applied by the laptop 2026-11-17 on top of schema 8; the patch file is gone):**
 - `cells.py`: layer `suggest` (file `suggest.bin`) with `LAYER_SCHEMA` 9, `CELL_SCHEMA` 9; it needs the cut
   (`OSM_LAYERS`); `LAYER_INPUTS = {"suggest": (base, overlays, pois, terrain)}` – `rebuild_plan` rebuilds it whenever
   one of them is rebuilt.
@@ -249,10 +253,12 @@ and planner will do), default: the file where a cell has one. Files lie in the c
   progress.
 - Tried on donald in the job image: `LAYERS=suggest` for Hilden = 37 s (cut 11 s, renumber 2 s, suggest 24 s – that
   was before the producer's speed-up, alone it now takes 7 s), version `…-s9`, manifest with 7 files and `layers.suggest.schema 9`.
-- Left for the laptop: `test_cloud.py` pins the layer table (7 tests need the new layer), `wrangler.toml`
-  `CELL_SCHEMA` 9, `docs/map-pipeline.md` / `map-hosting.md`, the fetch against the real store. The bump makes every
-  phone download its cells once more (the whole new version) for a file it does not use – unless it rides on a
-  rebuild that happens anyway.
+- Laptop 2026-11-17: `test_cloud.py` with the layer (fetch of the inputs from the store, damaged input → whole
+  build), doorman `CELL_SCHEMA` 9 (`wrangler.toml`, `config.js`), docs. Test cells (Hilden 10-531-342, Traumpfade
+  10-531…533-345…346) in the laptop's `onpath-data/store-test-routes`, built from the published s8 / s7 versions with
+  the Geofabrik extracts of 2026-11-15 (`LAYERS` from `rebuild_plan`: suggest, or overlays + suggest for an s7 cell).
+  The bump makes every phone download its cells once more (the whole new version) for a file it does not use –
+  unless it rides on a rebuild that happens anyway (owner question open).
 - Later, with stage 4: the app keeps `suggest.bin` per cell at the join (as `addresses/<cell>.sqlite` today).
 
 ## 5. The owner's taste rules

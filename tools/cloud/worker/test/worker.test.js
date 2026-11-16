@@ -437,7 +437,7 @@ test("cell of an older content schema: rebuilt with the asked priority, not serv
   const row = await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(MERAN).first();
   assert.deepEqual({ ...row }, { job: "queued", priority: 0 });
   // a current-schema cell is just touched
-  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s8', job = NULL WHERE id = ?").bind(MERAN).run();
+  await env.DB.prepare("UPDATE cells SET version = '2026-10-19-s9', job = NULL WHERE id = ?").bind(MERAN).run();
   const k = await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, Date.parse("2026-10-21"));
   assert.equal(k.cells[0].state, "ready");
   assert.equal(k.cells[0].updating, undefined);
@@ -447,7 +447,7 @@ test("cell of an older content schema: rebuilt with the asked priority, not serv
 test("cell of an older but servable schema (s3, no POI priority): rebuilt, served as ready meanwhile", async () => {
   const env = testEnv();
   const cfg = config(env);
-  assert.equal(cfg.cellSchema, 8);
+  assert.equal(cfg.cellSchema, 9);
   assert.equal(cfg.cellSchemaServe, 3);
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
       VALUES (?, 2, '2026-10-19-s3', '2026-10-19', 5, 3, 1)`).bind(MERAN).run();
@@ -461,8 +461,8 @@ test("cell of an older but servable schema (s3, no POI priority): rebuilt, serve
 
 for (const [old, why] of [["s4", "router classes of the old bike profiles"], ["s5", "no town flag / path links"],
     ["s6", "no cycle network filter / route labels / bicycle streets / footbridges"],
-    ["s7", "no layer routelines (every signed route whole)"]]) {
-  test(`cell of schema ${old.slice(1)} (${why}): rebuilt to s8, served as ready meanwhile`, async () => {
+    ["s7", "no layer routelines (every signed route whole)"], ["s8", "no suggest file (tour suggestions)"]]) {
+  test(`cell of schema ${old.slice(1)} (${why}): rebuilt to s9, served as ready meanwhile`, async () => {
     const env = testEnv();
     const cfg = config(env);
     await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
@@ -490,44 +490,44 @@ async function publishCurrent(env, id, version, osmDate, size = 4321) {
 const NOW = Date.parse("2026-10-26T12:00:00Z");
 const row = async (env, id) => ({ ...(await env.DB.prepare("SELECT version, osm_date, size, job FROM cells WHERE id = ?").bind(id).first()) });
 
-test("fast lane: a current version published outside a job is taken at request time (s7 → s8, no build)", async () => {
+test("fast lane: a current version published outside a job is taken at request time (s8 → s9, no build)", async () => {
   const env = testEnv();
   const cfg = config(env);
   const g = fakeGoogle();
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
       VALUES (?, 2, '2026-10-20-s6', '2026-10-20', 5, 3, 1)`).bind(MERAN).run();
-  await publishCurrent(env, MERAN, "2026-10-25-s8", "2026-10-25");
-  await publishCurrent(env, BOZEN, "2026-10-25-s8", "2026-10-25"); // never asked for before
+  await publishCurrent(env, MERAN, "2026-10-25-s9", "2026-10-25");
+  await publishCurrent(env, BOZEN, "2026-10-25-s9", "2026-10-25"); // never asked for before
   const j = await requestCells(env, cfg, { cells: [MERAN, BOZEN], reason: "refresh" }, NOW);
   for (const c of j.cells) {
     assert.equal(c.state, "ready", c.id);
-    assert.equal(c.version, "2026-10-25-s8");
+    assert.equal(c.version, "2026-10-25-s9");
     assert.equal(c.updating, undefined);
   }
-  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s8", osm_date: "2026-10-25", size: 4321, job: null });
-  assert.deepEqual(await row(env, BOZEN), { version: "2026-10-25-s8", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s9", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.deepEqual(await row(env, BOZEN), { version: "2026-10-25-s9", osm_date: "2026-10-25", size: 4321, job: null });
   await pump(env, cfg, NOW + 1000, g);
   assert.equal(g.calls.filter((x) => x.url.endsWith(":run")).length, 0); // nothing to build
 });
 
-test("fast lane: a rebuild on the same OSM date (job_build.py rebuild number, 2026-10-25.2-s8) is taken over the old name", async () => {
+test("fast lane: a rebuild on the same OSM date (job_build.py rebuild number, 2026-10-25.2-s9) is taken over the old name", async () => {
   const env = testEnv();
   const cfg = config(env);
-  assert.equal(schemaOf("2026-10-25.2-s8"), 8);
+  assert.equal(schemaOf("2026-10-25.2-s9"), 9);
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
-      VALUES (?, 2, '2026-10-25-s8', '2026-10-25', 5, 3, 1)`).bind(MERAN).run();
-  await publishCurrent(env, MERAN, "2026-10-25.2-s8", "2026-10-25");
+      VALUES (?, 2, '2026-10-25-s9', '2026-10-25', 5, 3, 1)`).bind(MERAN).run();
+  await publishCurrent(env, MERAN, "2026-10-25.2-s9", "2026-10-25");
   const j = await requestCells(env, cfg, { cells: [MERAN], reason: "refresh" }, NOW);
   assert.equal(j.cells[0].state, "ready");
-  assert.equal(j.cells[0].version, "2026-10-25.2-s8");
-  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25.2-s8", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.equal(j.cells[0].version, "2026-10-25.2-s9");
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25.2-s9", osm_date: "2026-10-25", size: 4321, job: null });
 });
 
 test("fast lane: an old-schema or OSM-old published version is not taken – the cell is built", async () => {
   const env = testEnv();
   const cfg = config(env);
   await publishCurrent(env, MERAN, "2026-10-25-s5", "2026-10-25"); // older schema
-  await publishCurrent(env, BOZEN, "2026-01-02-s8", "2026-01-02"); // older than REFRESH_DAYS
+  await publishCurrent(env, BOZEN, "2026-01-02-s9", "2026-01-02"); // older than REFRESH_DAYS
   const j = await requestCells(env, cfg, { cells: [MERAN, BOZEN], reason: "point" }, NOW);
   assert.deepEqual(j.cells.map((c) => c.state), ["queued", "queued"]);
   assert.equal((await row(env, MERAN)).job, "queued");
@@ -542,19 +542,19 @@ test("fast lane: the pump takes a version published while the cell waited in the
   await pump(env, cfg, NOW + 1000, g); // the only slot builds `busy`
   await requestCells(env, cfg, { cells: [MERAN], reason: "point" }, NOW + 2000);
   assert.equal((await row(env, MERAN)).job, "queued");
-  await publishCurrent(env, MERAN, "2026-10-25-s8", "2026-10-25");
-  await publishCurrent(env, busy, "2026-10-25-s8", "2026-10-25");
+  await publishCurrent(env, MERAN, "2026-10-25-s9", "2026-10-25");
+  await publishCurrent(env, busy, "2026-10-25-s9", "2026-10-25");
   await pump(env, cfg, NOW + 3000, g);
-  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s8", osm_date: "2026-10-25", size: 4321, job: null });
+  assert.deepEqual(await row(env, MERAN), { version: "2026-10-25-s9", osm_date: "2026-10-25", size: 4321, job: null });
   assert.equal((await row(env, busy)).job, "building"); // the running job finishes and publishes itself
   const s = await statusFor(env, cfg, [MERAN], 2, NOW + 4000);
   assert.equal(s.cells[0].state, "ready");
   // also while builds are switched off
   const off = testEnv({ BUILDS_ENABLED: "false" });
   await requestCells(off, config(off), { cells: [BOZEN], reason: "point" }, NOW);
-  await publishCurrent(off, BOZEN, "2026-10-25-s8", "2026-10-25");
+  await publishCurrent(off, BOZEN, "2026-10-25-s9", "2026-10-25");
   await pump(off, config(off), NOW + 1000, g);
-  assert.equal((await row(off, BOZEN)).version, "2026-10-25-s8");
+  assert.equal((await row(off, BOZEN)).version, "2026-10-25-s9");
 });
 
 // ------------------------------------------------------------------------------------------------ background lane
@@ -586,7 +586,7 @@ test("pre-warm: after a schema bump the recently used cells of an older schema a
       size, job, priority, last_request, requests) VALUES (?, 2, ?, '2026-10-20', 5, ?, 0, ?, 1)`).bind(id, version, job, lastRequest).run();
   await ins("10-530-341", "2026-10-20-s5", NOW - 2 * 86_400_000);  // used 2 days ago, old schema → rebuilt
   await ins("10-531-341", "2026-10-20-s5", NOW - 40 * 86_400_000); // not used for 40 days → left alone
-  await ins("10-532-341", "2026-10-20-s8", NOW - 86_400_000);      // current → left alone
+  await ins("10-532-341", "2026-10-20-s9", NOW - 86_400_000);      // current → left alone
   await ins("10-533-341", "2026-10-20-s5", NOW - 86_400_000, "failed");
   await pump(env, cfg, NOW, g);
   const st = async (id) => ({ ...(await env.DB.prepare("SELECT job, priority FROM cells WHERE id = ?").bind(id).first()) });
@@ -731,10 +731,10 @@ test("package: request (with cells) → queued → built → ready → manifest"
   assert.equal((await handle(req("/v1/cells/9/66/42/manifest?format=2"), env, ctx(), g)).status, 400);
 });
 
-test("package schema is its own: a package s1 is current while CELL_SCHEMA = 8; below PACKAGE_SCHEMA it is rebuilt, served meanwhile", async () => {
+test("package schema is its own: a package s1 is current while CELL_SCHEMA = 9; below PACKAGE_SCHEMA it is rebuilt, served meanwhile", async () => {
   const env = testEnv();
   const cfg = config(env);
-  assert.equal(cfg.cellSchema, 8);
+  assert.equal(cfg.cellSchema, 9);
   assert.equal(cfg.packageSchema, 1);
   await env.DB.prepare(`INSERT INTO cells (id, format, version, osm_date, size, priority, requests)
       VALUES (?, 2, '2026-10-25-s1', '2026-10-25', 5, 3, 1)`).bind(DUS).run();

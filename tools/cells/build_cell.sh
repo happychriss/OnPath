@@ -23,11 +23,14 @@
 #   BUFFER_KM=5              osmium cut buffer (complete features at the edge)
 #   KEEP_WORK=1              keep the temp folder (raw unclipped files, for the seam check)
 #   LAYERS="overlays pois"   partial rebuild (format 2, set by job_build.py – map-hosting.md §7h): build only these
-#                            layers (cells.py LAYER_SCHEMA: base overlays pois addresses terrain contours); the cut runs
-#   BASE_MANIFEST=<path>     only for base / overlays / pois / addresses. BASE_MANIFEST = the published version's
+#                            layers (cells.py LAYER_SCHEMA: base overlays pois addresses terrain contours suggest); the
+#   BASE_MANIFEST=<path>     cut runs only for base / overlays / pois / addresses / suggest. BASE_MANIFEST = the published version's
 #                            manifest (same OSM date, else the build fails): the new manifest lists its other layers'
 #                            files, and the version folder holds ONLY the rebuilt files – the job copies the rest
 #                            from the published version in the store. Empty = the whole cell (default).
+#   SUGGEST_FROM=<dir>       partial rebuild with the layer suggest: the published version's base.pmtiles,
+#                            overlays.pmtiles, pois.geojson, terrain.pmtiles for those of them this run does not build
+#                            (job_build.py fetches them; cells.py LAYER_INPUTS)
 #   REBUILD=1                version number on the same OSM date + schema (set by job_build.py when that version is
 #                            already published): N > 1 → version "<osm_date>.N-s<schema>" (cells.py version_name)
 #
@@ -58,6 +61,8 @@
 #             format 2: build_terrain.py --cell 10/X/Y --format 2 (WebP z10-13, own tiles only)
 #   contours  format 1: build_contours.py from the ring terrain; format 2: build_contours.py aws (AWS z12/z13,
 #             one tile ring read); own tiles kept; format 2 keeps contours.pmtiles separate (same file as the region)
+#   suggest   format 2: tools/build_suggest.py – suggest.bin from the cell's own base / overlays / pois / terrain and the
+#             cut (signed loops); the tour suggestions read it (docs/design/tour-suggestions.md §4a)
 #   clip      GeoJSON: lines cut exactly at the border, points by the half-open owner rule (tools/cells/cells.py)
 #   manifest  manifest.json (sizes, sha256), then <version> folder renamed into place and current.json switched
 # The steps call the same tools as tools/build_region.sh (which stays the region / zip build).
@@ -132,7 +137,7 @@ fi
 # has LAYER: is this layer built?
 has() { [ -z "$LAYERS" ] || [[ " $LAYERS " == *" $1 "* ]]; }
 NEED_OSM=0
-for l in base overlays pois addresses; do has $l && NEED_OSM=1; done
+for l in base overlays pois addresses suggest; do has $l && NEED_OSM=1; done
 
 CELL_BBOX=$($PY bbox "$Z" "$X" "$Y")                              # exact (for --bounds and clipping)
 INSET_BBOX=$($PY bbox "$Z" "$X" "$Y" --inset)                     # tile-range tools: no neighbour tiles
@@ -256,6 +261,21 @@ else
   run terrain-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/terrain.pmtiles" "$TMP/out/terrain.pmtiles"
 fi
 has contours && run contours-own $PY tiles "$Z" "$X" "$Y" "$TMP/raw/contours.pmtiles" "$TMP/out/contours.pmtiles"
+
+# ------------------------------------------------------------------------------------- suggest file
+# from the cell's finished layers (this run's, else the published version's in SUGGEST_FROM) + the cut
+if [ "$FORMAT" = 2 ] && has suggest; then
+  SG_ARGS=()
+  for f in base.pmtiles overlays.pmtiles pois.geojson terrain.pmtiles; do
+    if [ -s "$TMP/out/$f" ]; then SG_ARGS+=("--${f%%.*}" "$TMP/out/$f")
+    elif [ -n "${SUGGEST_FROM:-}" ] && [ -s "$SUGGEST_FROM/$f" ]; then SG_ARGS+=("--${f%%.*}" "$SUGGEST_FROM/$f")
+    elif [ "$f" != pois.geojson ]; then die "suggest: $f is neither built in this run nor in SUGGEST_FROM"
+    fi
+  done
+  run suggest python3 "$TOOLS/build_suggest.py" "$TMP/out/suggest.bin" --cell "$Z/$X/$Y" "${SG_ARGS[@]}" \
+    --osm "$TMP/cell.osm.pbf" --ids "$IDX" --osm-date "$OSM_DATE"
+  sed 's/^/    /' "$TMP/logs/suggest.log"
+fi
 for f in "$TMP"/logs/*-own.log; do [ -f "$f" ] && sed 's/^/    /' "$f"; done
 
 if [ "$FORMAT" = 2 ]; then REQ="base.pmtiles terrain.pmtiles overlays.pmtiles"

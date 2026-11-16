@@ -72,7 +72,7 @@ MIN_SOURCE_BYTES = 100_000
 STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.23, "renumber": 0.24, "base": 0.245,
                  "base-own": 0.47, "base-trim": 0.47, "overlays": 0.48, "overlays-tiles": 0.58, "overlays-own": 0.63,
                  "pois": 0.63, "pois-ids": 0.70, "clip": 0.70, "addresses": 0.70, "terrain": 0.76, "contours": 0.94,
-                 "terrain-own": 0.94, "contours-own": 0.97, "manifest": 0.97, "upload": 0.98}
+                 "terrain-own": 0.94, "contours-own": 0.955, "suggest": 0.96, "manifest": 0.97, "upload": 0.98}
 # region packages (z7 ids, tools/cells/build_package.sh, map-cells.md §20): cut + Planetiler are most of the time
 PACKAGE_STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0.35, "renumber": 0.4, "base": 0.45,
                          "base-own": 0.75, "base-trim": 0.76, "routes-filter": 0.78, "routes": 0.8, "routes-tiles": 0.85,
@@ -81,7 +81,7 @@ PACKAGE_STEP_PROGRESS = {"source": 0.0, "download": 0.0, "cut": 0.01, "merge": 0
 CUT_STEPS = ("cut", "merge", "renumber")
 LAYER_STEPS = {"base": ("base", "base-own", "base-trim"), "overlays": ("overlays", "overlays-tiles", "overlays-own"),
                "pois": ("pois", "pois-ids", "clip"), "addresses": ("addresses",), "terrain": ("terrain",),
-               "contours": ("contours", "contours-own")}
+               "contours": ("contours", "contours-own"), "suggest": ("suggest",)}
 
 
 def partial_progress(layers):
@@ -427,6 +427,27 @@ class Builder:
         log(f"cell {cid}: partial rebuild of {' '.join(layers)} – the other layers are copied from {version}")
         return {"layers": layers, "from": version, "manifest": path}
 
+    def layer_inputs(self, z, x, y, plan, cid):
+        """A partial rebuild of a layer that is computed from other layers (cells.py LAYER_INPUTS: the suggest file):
+        the published files of those layers this run does not build, fetched into a folder (checked by size + sha256)
+        – build_cell.sh SUGGEST_FROM. None when nothing is needed."""
+        need = {i for layer in plan["layers"] for i in cell_tools.LAYER_INPUTS.get(layer, ())} - set(plan["layers"])
+        if not need:
+            return None
+        d = os.path.join(self.work, f"inputs-{cid}")
+        shutil.rmtree(d, ignore_errors=True)
+        os.makedirs(d)
+        with open(plan["manifest"]) as f:
+            published = json.load(f)
+        for e in published["files"]:
+            if cell_tools.layer_of(e["name"]) in need:
+                path = os.path.join(d, e["name"])
+                self.store.get_file(f"{self.cell_prefix(z, x, y)}/{plan['from']}/{e['name']}", path)
+                if os.path.getsize(path) != e["size"] or r2.file_sha256(path) != e["sha256"]:
+                    raise RuntimeError(f"{e['name']} of {plan['from']}: size / sha256 differ from the manifest")
+        log(f"cell {cid}: {' '.join(sorted(need))} of {plan['from']} fetched as input")
+        return d
+
     def rebuild_number(self, z, x, y, pbfs, cid):
         """1, or N > 1 when the version this build would be named (OSM date + schema) is already published: a published
         folder is immutable and cached, and app and doorman only compare names – a repaired cell under the old name
@@ -477,6 +498,14 @@ class Builder:
                    FORMAT=str(self.fmt), PLANETILER_SOURCES=os.path.join(self.work, "planetiler-sources"),
                    KEEP_WORK="0", BUFFER_KM=str(self.buffer_km).rstrip("0").rstrip("."),
                    LAYERS=" ".join(plan["layers"]) if plan else "", BASE_MANIFEST=plan["manifest"] if plan else "")
+        inputs = None
+        if plan:
+            try:
+                inputs = self.layer_inputs(z, x, y, plan, cid)
+            except Exception as e:  # noqa: BLE001 – the caller then builds the cell whole
+                log(f"cell {cid}: inputs of the published version not readable ({type(e).__name__}: {e})")
+                return 1, [f"step inputs failed: {e}"]
+            env["SUGGEST_FROM"] = inputs or ""
         p = self.popen(["bash", self.build_cell, str(z), str(x), str(y)], env=env, stdout=subprocess.PIPE,
                        stderr=subprocess.STDOUT, text=True, bufsize=1)
         tail, progress = [], 0.0
@@ -490,6 +519,8 @@ class Builder:
                 progress = table.get(step, progress)
                 self.status(cid, "building", step=step, progress=progress)
         rc = p.wait()
+        if plan and inputs:
+            shutil.rmtree(inputs, ignore_errors=True)
         return rc, tail
 
     def publish(self, z, x, y, cid, plan=None):

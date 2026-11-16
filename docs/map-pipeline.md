@@ -261,6 +261,14 @@ Small streets + 15° / 3 m smoothing (package `out-f2c`): `overlays.pmtiles` 14.
 `streets` ~2.0 MB, 15° / 3 m smoothing +0.3 MB), base map 21.0 → **19.9 MB** (no minor / service lines at z13–14);
 net +1.3 MB for the region. Overlay build ~80 s.
 
+**Suggest file (cell layer `suggest`, schema 9).** Not a source-layer: a file `suggest.bin` per format-2 cell for
+the tour suggestions (`tools/build_suggest.py`, reader `tools/suggest_file.py`, design
+`docs/design/tour-suggestions.md` §4a) – land grid, heights, place names, signed routes, lakes, sights from the cell's
+own `base` / `overlays` / `pois` / `terrain`, and the signed loops in walking order from the cell's cut. Step `suggest`
+in `build_cell.sh` after terrain; rebuilt with any of those layers (`cells.py LAYER_INPUTS`). Median ~0.2 MB, Hilden
+268 KB with `routelines`; 13 s, ~300 MB in the builder image. Not used by `build_region.sh` (cells only); no style
+or released app reads it.
+
 Token reference and the "why" of the look: `docs/map-style-notes.md`. POI kinds and counts:
 `docs/poi-categories.md`, `docs/poi-integration.md`.
 

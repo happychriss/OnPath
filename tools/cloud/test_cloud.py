@@ -528,7 +528,8 @@ class GcsLocks(unittest.TestCase):
 
 # ------------------------------------------------------------------------------------- partial rebuild (map-hosting §7h)
 LAYER_FILES = {"base": "base.pmtiles", "overlays": "overlays.pmtiles", "pois": "pois.geojson",
-               "addresses": "addresses/{cid}.sqlite", "terrain": "terrain.pmtiles", "contours": "contours.pmtiles"}
+               "addresses": "addresses/{cid}.sqlite", "terrain": "terrain.pmtiles", "contours": "contours.pmtiles",
+               "suggest": "suggest.bin"}
 
 # fake build_cell.sh for partial rebuilds: writes one small file per built layer (content = layer + schema) and the
 # manifest through the real cells.write_manifest – with the layer schemas of the test (FAKE_LAYER_SCHEMA)
@@ -556,6 +557,8 @@ for name, f in files.items():
     if not layers or name in layers:
         with open(os.path.join(vdir, f.format(cid=cid)), "w") as fh:
             fh.write(f"{name} s{cells.LAYER_SCHEMA[name]} built")
+            if name == "suggest" and os.environ.get("SUGGEST_FROM"):
+                fh.write(" from " + " ".join(sorted(n.partition(".")[0] for n in os.listdir(os.environ["SUGGEST_FROM"]))))
 cells.write_manifest(z, x, y, vdir, osm, "test", f"cells/f2/{z}/{x}/{y}/{ver}", 2, ver, None, None,
                      layers or None, base)
 json.dump({"version": ver}, open(os.path.join(dest, "current.json"), "w"))
@@ -619,9 +622,9 @@ class PartialRebuild(unittest.TestCase):
         m7 = self.manifest("2026-10-19-s7")
         self.assertEqual(m7["layers"]["overlays"], {"schema": 7, "version": "2026-10-19-s7"})
         s = self.build(dict(self.S7, overlays=8), "exec-2")
-        self.assertEqual(self.calls, ["", "overlays"])
+        self.assertEqual(self.calls, ["", "overlays suggest"])  # suggest is computed from the overlays (LAYER_INPUTS)
         self.assertEqual((s["state"], s["version"], s["layers"], s["reused_from"]),
-                         ("ready", "2026-10-19-s8", ["overlays"], "2026-10-19-s7"))
+                         ("ready", "2026-10-19-s8", ["overlays", "suggest"], "2026-10-19-s7"))
         self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19-s8"})
         m8 = self.manifest("2026-10-19-s8")
         self.assertEqual((m8["schema"], m8["reused_from"]), (8, "2026-10-19-s7"))
@@ -633,19 +636,20 @@ class PartialRebuild(unittest.TestCase):
             p = self.cell("2026-10-19-s8", f["name"])
             self.assertEqual(f["url"], f"cells/f2/10/543/361/2026-10-19-s8/{f['name']}")
             self.assertEqual((os.path.getsize(p), r2.file_sha256(p)), (f["size"], f["sha256"]))  # app check holds
-            if f["name"] == "overlays.pmtiles":
+            if f["name"] in ("overlays.pmtiles", "suggest.bin"):
                 self.assertNotEqual(f["sha256"], old[f["name"]]["sha256"])
-                self.assertEqual(open(p).read(), "overlays s8 built")
+                self.assertEqual(open(p).read(), "overlays s8 built" if f["name"] == "overlays.pmtiles" else
+                                 "suggest s7 built from base pois terrain")
             else:
                 self.assertEqual(f["sha256"], old[f["name"]]["sha256"])
         self.assertEqual(m8["total_size"], sum(f["size"] for f in m8["files"]))
         # a third bump (pois) keeps the overlays of s8 and the base of s7, recorded per layer
         self.build(dict(self.S7, overlays=8, pois=9), "exec-3")
         m9 = self.manifest("2026-10-19-s9")
-        self.assertEqual(self.calls[-1], "pois")
+        self.assertEqual(self.calls[-1], "pois suggest")
         self.assertEqual({k: v["version"][-2:] for k, v in m9["layers"].items()},
                          {"base": "s7", "overlays": "s8", "pois": "s9", "addresses": "s7", "terrain": "s7",
-                          "contours": "s7"})
+                          "contours": "s7", "suggest": "s9"})
 
     def test_rebuild_on_the_same_osm_date_gets_a_new_version_name(self):
         """A pipeline fix rebuilt on the same OSM date: phones compare names only, so the repaired cell needs a new
@@ -663,7 +667,7 @@ class PartialRebuild(unittest.TestCase):
         # a schema bump or a new OSM date is a new name anyway: no number
         self.assertEqual(self.build(dict(self.S7, overlays=8), "exec-4")["version"], "2026-10-19-s8")
         self.assertEqual(self.build(self.S7, "exec-5", osm="2026-10-26")["version"], "2026-10-26-s7")
-        self.assertEqual(self.calls, ["", "", "", "overlays", ""])
+        self.assertEqual(self.calls, ["", "", "", "overlays suggest", ""])
 
     def test_new_extract_date_builds_the_whole_cell(self):
         self.build(self.S7, "exec-1")
@@ -677,7 +681,7 @@ class PartialRebuild(unittest.TestCase):
         self.build(dict(self.S7, overlays=8), "exec-2", PARTIAL="0")
         self.assertEqual(self.calls, ["", ""])
         s = self.build(dict(self.S7, overlays=8, terrain=9), "exec-3", FAKE_FAIL_PARTIAL="1")
-        self.assertEqual(self.calls[2:], ["terrain", ""])  # partial failed → whole, same execution
+        self.assertEqual(self.calls[2:], ["suggest terrain", ""])  # partial failed → whole, same execution
         self.assertEqual((s["state"], s["version"]), ("ready", "2026-10-19-s9"))
         self.assertNotIn("reused_from", self.manifest("2026-10-19-s9"))
 
@@ -692,12 +696,18 @@ class PartialRebuild(unittest.TestCase):
         for f in self.manifest("2026-10-19-s8")["files"]:
             self.assertEqual(r2.file_sha256(self.cell("2026-10-19-s8", f["name"])), f["sha256"])
         # a published file that no longer matches its manifest is never reused
-        with open(self.cell("2026-10-19-s8", "terrain.pmtiles"), "w") as f:
+        with open(self.cell("2026-10-19-s8", "contours.pmtiles"), "w") as f:
             f.write("damaged")
         s = self.build(dict(self.S7, overlays=9), "exec-3", store=NoCopy(self.r2))
         self.assertEqual((s["state"], s["reason"]), ("failed", "Upload failed"))
         self.assertIn("sha256", s["detail"])
         self.assertEqual(json.load(open(self.cell("current.json"))), {"version": "2026-10-19-s8"})
+        # a damaged input of the suggest file (fetched for the build, LAYER_INPUTS): the cell is built whole
+        with open(self.cell("2026-10-19-s8", "terrain.pmtiles"), "w") as f:
+            f.write("damaged")
+        s = self.build(dict(self.S7, overlays=10), "exec-4", store=NoCopy(self.r2))
+        self.assertEqual(self.calls[-2:], ["overlays suggest", ""])
+        self.assertEqual((s["state"], s["version"]), ("ready", "2026-10-19-s10"))
 
     # ---- the decision and the merge on their own (cells.py)
     def published(self, version="2026-10-19-s7", **kw):
@@ -711,10 +721,11 @@ class PartialRebuild(unittest.TestCase):
         from unittest import mock
         plan = job_build.cell_tools.rebuild_plan
         with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8, pois=8):
-            self.assertEqual(plan(self.published(), "2026-10-19", 10, 543, 361), ["overlays", "pois"])
+            self.assertEqual(plan(self.published(), "2026-10-19", 10, 543, 361), ["overlays", "pois", "suggest"])
             # recorded per-layer schemas win over the version's
             rec = {"overlays": {"schema": 8, "version": "x"}, "pois": {"schema": 7, "version": "y"}}
-            self.assertEqual(plan(self.published("2026-10-19-s8", layers=rec), "2026-10-19", 10, 543, 361), ["pois"])
+            self.assertEqual(plan(self.published("2026-10-19-s8", layers=rec), "2026-10-19", 10, 543, 361),
+                             ["pois", "suggest"])
             for why, args in {
                 "other OSM date": (self.published(), "2026-10-26", 10, 543, 361),
                 "other cell": (self.published(), "2026-10-19", 10, 543, 362),
@@ -731,8 +742,15 @@ class PartialRebuild(unittest.TestCase):
                 "nothing published": (None, "2026-10-19", 10, 543, 361),
             }.items():
                 self.assertIsNone(plan(*args), why)
-        # the real table: schema 8 (layer routelines) rebuilds only the overlays of an s7 cell
-        self.assertEqual(plan(self.published(), "2026-10-19", 10, 543, 361), ["overlays"])
+        # the real table: an s7 cell gets the overlays of schema 8 (routelines) and the suggest file computed from them
+        s7 = self.published(files=[f for f in self.published()["files"] if f["name"] != "suggest.bin"])
+        self.assertEqual(plan(s7, "2026-10-19", 10, 543, 361), ["overlays", "suggest"])
+        # schema 9 (suggest file) on an s8 cell, which has no suggest.bin yet: only that file is built
+        s8 = dict(s7, version="2026-10-19-s8", layers={"overlays": {"schema": 8, "version": "2026-10-19-s8"}})
+        self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest"])
+        # a layer the suggest file is computed from changes: both are built
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, terrain=10):
+            self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest", "terrain"])
         # nothing stale (a plain rebuild) and everything stale: whole cell, as before
         cur = f"2026-10-19-s{job_build.cell_tools.CELL_SCHEMA}"
         self.assertIsNone(plan(self.published(cur), "2026-10-19", 10, 543, 361))
@@ -740,8 +758,8 @@ class PartialRebuild(unittest.TestCase):
             self.assertIsNone(plan(self.published(), "2026-10-19", 10, 543, 361))
         # optional layers may be missing: contours of a cell at sea level are not built again for it
         no_contours = self.published(files=[f for f in self.published()["files"] if f["name"] != "contours.pmtiles"])
-        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8):
-            self.assertEqual(plan(no_contours, "2026-10-19", 10, 543, 361), ["overlays"])
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8, suggest=7):
+            self.assertEqual(plan(no_contours, "2026-10-19", 10, 543, 361), ["overlays", "suggest"])
 
     def test_merge_refuses_mixing_cells_or_dates(self):
         c = job_build.cell_tools
@@ -758,7 +776,7 @@ class PartialRebuild(unittest.TestCase):
             m = c.write_manifest(10, 543, 361, d, "2026-10-19", "t", "cells/f2/10/543/361/v8", 2, "v8",
                                  layers=["overlays"], base=base)
             self.assertNotIn("wayclass", m)  # rebuilt overlays: the build's own hash (none given here)
-            self.assertEqual(len(m["files"]), 6)
+            self.assertEqual(len(m["files"]), len(LAYER_FILES))
             self.assertTrue(all(f["url"].startswith("cells/f2/10/543/361/v8/") for f in m["files"]))
             os.remove(os.path.join(d, "overlays.pmtiles"))
             with open(os.path.join(d, "pois.geojson"), "w") as f:

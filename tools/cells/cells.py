@@ -55,16 +55,22 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 # bike routes as before; s8 adds a layer no style reads). Keep builder
 # and doorman in step. CELL_SCHEMA stays a plain number on this line (tools/dev/publish_area.sh reads it) and is always
 # the highest value in LAYER_SCHEMA (selftest).
-CELL_SCHEMA = 8
+CELL_SCHEMA = 9
 # Per-layer content schema (docs/design/map-hosting.md §7h "Partial rebuild"): for each layer of a format-2 cell, the
 # cell schema in which its data last changed. A change bumps CELL_SCHEMA (version name, doorman and app see only that)
 # AND the layer(s) it touches; a change that needs two layers in step (e.g. trim_base hiding lines the overlays draw
 # from then on) bumps both. When the OSM extract date is the same, job_build.py then rebuilds only the layers whose
 # schema is newer than the published version's and copies the others into the new version. 7 = all layers when the
 # table came in: older versions (< PARTIAL_FROM_SCHEMA) are always rebuilt whole. 8 = overlays only (routelines).
-LAYER_SCHEMA = {"base": 7, "overlays": 8, "pois": 7, "addresses": 7, "terrain": 7, "contours": 7}
+# 9 = suggest only (suggest.bin, tools/build_suggest.py – the tour suggestions' data; apps without them ignore it).
+LAYER_SCHEMA = {"base": 7, "overlays": 8, "pois": 7, "addresses": 7, "terrain": 7, "contours": 7, "suggest": 9}
 PARTIAL_FROM_SCHEMA = 7
-OSM_LAYERS = ("base", "overlays", "pois", "addresses")  # these need the OSM cut; terrain + contours only AWS tiles
+# these need the OSM cut; terrain + contours only AWS tiles
+OSM_LAYERS = ("base", "overlays", "pois", "addresses", "suggest")
+# a layer computed from other layers' files: rebuilt whenever one of them is (rebuild_plan); when none of them is
+# rebuilt, its build reads their published files (job_build.py fetches them, build_cell.sh SUGGEST_FROM)
+LAYER_INPUTS = {"suggest": ("base", "overlays", "pois", "terrain")}
+LAYER_EXT = {"pois": "geojson", "suggest": "bin"}  # the others: pmtiles (addresses: addresses/<cell>.sqlite)
 REQUIRED_LAYERS = ("base", "overlays", "terrain")       # a published version without one of them is never reused
 # Region packages (z7 tile, map z7-9: main roads, towns, forests, rivers, long-distance routes, relief) have their own
 # content schema – the doorman compares a package version with PACKAGE_SCHEMA (wrangler.toml), never with CELL_SCHEMA.
@@ -303,7 +309,7 @@ def layer_of(name):
     stem, _, ext = name.partition(".")
     if "/" in name or stem not in LAYER_SCHEMA or stem == "addresses":
         return None
-    return stem if ext == ("geojson" if stem == "pois" else "pmtiles") else None
+    return stem if ext == LAYER_EXT.get(stem, "pmtiles") else None
 
 
 def schema_of(version):
@@ -343,7 +349,9 @@ def rebuild_plan(published, osm_date, z, x, y, fmt=2):
     if None in have or not set(REQUIRED_LAYERS) <= have:
         return None
     built = layer_schemas(published)
-    stale = sorted(name for name, cur in LAYER_SCHEMA.items() if built[name] < cur)
+    stale = {name for name, cur in LAYER_SCHEMA.items() if built[name] < cur}
+    stale |= {name for name, inputs in LAYER_INPUTS.items() if stale & set(inputs)}  # computed from a rebuilt layer
+    stale = sorted(stale)
     return stale if 0 < len(stale) < len(LAYER_SCHEMA) else None
 
 
@@ -468,6 +476,8 @@ def selftest():
     assert CELL_SCHEMA == max(LAYER_SCHEMA.values()) and PARTIAL_FROM_SCHEMA <= CELL_SCHEMA
     assert [layer_of(n) for n in ("base.pmtiles", "pois.geojson", "addresses/10-1-2.sqlite", "build.json")] == \
         ["base", "pois", "addresses", None]
+    assert layer_of("suggest.bin") == "suggest" and layer_of("suggest.pmtiles") is None
+    assert all(set(i) <= set(LAYER_SCHEMA) for i in LAYER_INPUTS.values())
     print("ok")
 
 
