@@ -72,6 +72,27 @@ did not say, decided while building:
 - Until the phone stores days (stage 4, `RouteItems.PHONE_KEEPS_DAYS`), sync compares plans without them, so the phone
   never wipes the browser's nights.
 
+Built in stages 2 + 3 (2026-11-17, session „mehrtage“, planner `web/`) – details decided while building:
+- Engine: `web/engine/…/WebDays.kt` (the page's tour text, the plan code with the tour, `daysView`, `daysRule` = the
+  rules of `PlanDays`, `hotelText`), `trackCut` / `trackAppend` (`TrackToPlan.cut` / `append`). The page:
+  `web/app/src/multiday.ts` (guide, days box, overview, symbols, menus, hotel dialog), `tourtext.ts`; trim handles in
+  `gpximport.ts`. Texts: `strings/…/strings_days.xml`.
+- The way in: "Mehrtagestour planen" in the plan bar (its word from 1281 px, icon below) and in Plan ▾; "Als
+  Mehrtagestour planen" in Speichern ▾ and Plan ▾ (the planner has no ⋯ of a plan any more).
+- Undo: the tour is kept beside the engine's point history, one snapshot per step – every tour action is one undo step.
+- A plan point with a night is drawn as its blue moon / green bed (no number); its menu is the night menu. Grey
+  proposals are their own markers (draggable → blue, R7; a click: "Übernachtung hier", "Hotel hinterlegen").
+- A click on the route of a multi-day plan opens "Übernachtung hier" · "Einfügen" instead of adding a point at once.
+- Saving: a change of days or nights counts as unsaved (Speichern turns dark), points as before.
+- Stats per day as the app writes them ("94 km · ↑ 780 m · 5 h 30 min"), not "hm"; day ends named after the nearest
+  place of the planner's place index, else "km 94".
+- Trim handles only while the guide is open (a plain GPX import is unchanged). `TrackToPlan`: calls scale with the
+  track (1 per 1.5 km, at least 60), a seed point every 25 km, progress in the busy box, Cancel stops the worker.
+  `LegCache` keeps 500 legs, bounded by 250 000 line points.
+- A pasted link: Google Maps links with a position are taken directly; Booking links name the hotel in the path →
+  searched; an address → searched (offline index + Photon). Short links (maps.app.goo.gl) cannot be resolved in the
+  browser – their text is searched. `SharedPlaceParser` moved to the pure `search/SharedPlaceText.kt` for this.
+
 ## 3. The flows
 
 ### Browser planner (where the tour is made)
