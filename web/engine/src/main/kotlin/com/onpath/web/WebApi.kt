@@ -464,12 +464,12 @@ object Engine {
             ",\"join\":" + (join?.let { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } ?: "null") + "}"
     }
 
-    private fun parseNames(names: String): Map<Int, String> = names.split('\n').mapNotNull { l ->
+    internal fun parseNames(names: String): Map<Int, String> = names.split('\n').mapNotNull { l ->
         val i = l.substringBefore('\t').toIntOrNull() ?: return@mapNotNull null
         i to l.substringAfter('\t')
     }.toMap()
 
-    private fun parseIndices(s: String): Set<Int> = s.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
+    internal fun parseIndices(s: String): Set<Int> = s.split(',').mapNotNull { it.trim().toIntOrNull() }.toSet()
 
     /**
      * The plan code ([PlanCode], the app's own) for the page's plan. [names] = lines "index<TAB>name" (names never
@@ -493,6 +493,8 @@ object Engine {
             append(",\"pinned\":").append(p.pinned.sorted().joinToString(",", "[", "]"))
             append(",\"names\":").append(p.names.toSortedMap().entries.joinToString(",", "{", "}") { str(it.key.toString()) + ":" + str(it.value) })
             append(",\"title\":").append(p.title?.let { str(it) } ?: "null")
+            // multi-day tours (WebDays.kt, 2026-11-17): days, limits, night marks, description – null for a normal plan
+            append(",\"tour\":").append(WebDays.tourJson(p))
             append('}')
         }
     }
@@ -818,7 +820,9 @@ external fun planProgress(text: String)
 @JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
-@JSExport fun planFromTrack(track: String, activity: String, sac: Int): String = WebImport.planFromTrack(track, activity, sac)
+@JSExport fun planFromTrack(track: String, activity: String, sac: Int): String =
+    // the wait box's share done (TrackToPlan's calls of its most calls, multi-day tours stage 3): "37 %" via planProgress
+    WebImport.planFromTrack(track, activity, sac) { done, max -> planProgress("${(100 * done / max.coerceAtLeast(1)).coerceIn(0, 100)} %") }
 // the app's texts for map areas on demand and waits (WebMaps.kt, web-planner.md §17)
 @JSExport fun mapTexts(): String = WebMaps.texts()
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----
@@ -905,6 +909,23 @@ external fun planProgress(text: String)
  */
 @JSExport fun activityLayers(activity: String, sac: Int, layerIds: String): String =
     com.onpath.app.map.ActivityLayers.toJson(Activity.valueOf(activity), sac, layerIds.split(',').filter { it.isNotEmpty() })
+
+// ---- multi-day tours (WebDays.kt, docs/design/multi-day-tours.md stages 2 + 3, session „mehrtage“ 2026-11-17) ----
+// [tour] = the page's tour text (WebDays.parseTour), "" = a normal plan
+@JSExport fun planCodeTour(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, tour: String): String =
+    WebDays.planCode(points, activity, sac, pinned, names, title, tour)
+@JSExport fun daysView(points: String, activity: String, sac: Int, pinned: String, names: String, tour: String): String =
+    WebDays.view(points, activity, sac, pinned, names, tour)
+@JSExport fun daysRule(op: String, points: String, activity: String, sac: Int, pinned: String, names: String, tour: String,
+                       n: Int, lat: Double, lon: Double, text: String): String =
+    WebDays.rule(op, points, activity, sac, pinned, names, tour, n, lat, lon, text)
+@JSExport fun hotelText(text: String): String = WebDays.hotelText(text)
+/** TrackToPlan's range (the trim handles): the track between [fromM] and [toM] along it, "lat,lon;…". */
+@JSExport fun trackCut(track: String, fromM: Double, toM: Double): String =
+    com.onpath.app.routing.TrackToPlan.cut(Engine.parsePoints(track), fromM, toM).joinToString(";") { Engine.num(it.lat, 6) + "," + Engine.num(it.lon, 6) }
+/** "An die Route anhängen": [add]'s route points after [points] (turned round when its end is nearer). */
+@JSExport fun trackAppend(points: String, add: String): String =
+    com.onpath.app.routing.TrackToPlan.append(Engine.parsePoints(points), Engine.parsePoints(add)).joinToString(";") { Engine.num(it.lat, 6) + "," + Engine.num(it.lon, 6) }
 
 fun main() {}
 

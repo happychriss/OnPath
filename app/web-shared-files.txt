@@ -50,6 +50,8 @@ poi/Poi.kt
 poi/PoiKinds.kt
 # web UI (docs/design/web-planner.md §13): route name proposal (Save), POI kind filters (Map content)
 search/RouteNamer.kt
+# multi-day tours stage 2 (2026-11-17, „Hotel hinterlegen“): a pasted Google Maps link / address read like a shared place
+search/SharedPlaceText.kt
 poi/PoiFilter.kt
 # page parity with the phone (docs/design/web-planner.md §11): undo / redo, hold and point menus, Google link-out
 ui/PlanState.kt

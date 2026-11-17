@@ -1,0 +1,57 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Multi-day tours (docs/design/multi-day-tours.md, owner 2026-11-17, round 3): planned in the browser planner first
+     (stage 2 + 3), followed on the phone (stage 4). Words: tools/i18n/glossary.tsv (multi-day tour, GPX track, overnight
+     stop, hotel, days). Menus: bare labels (owner: minimal text). -->
+<resources>
+    <string name="days_plan_tour">Plan a multi-day tour</string>
+    <string name="days_plan_as_tour">Plan as multi-day tour</string>
+    <string name="days_multi_day_tour">Multi-day tour</string>
+    <string name="days_step_route">Route</string>
+    <string name="days_step_days">Days</string>
+    <string name="days_load_gpx">Load GPX track</string>
+    <string name="days_load_gpx_line">You can trim its start and end afterwards.</string>
+    <string name="days_open_saved">Open saved route</string>
+    <string name="days_open_saved_line">From My routes.</string>
+    <string name="days_append_more">Append more:</string>
+    <string name="days_next_days">Next: set the days</string>
+    <string name="days_trim_start">Start</string>
+    <string name="days_trim_end">End</string>
+    <string name="days_trim_hint">Drag the start and end on the line or in the profile.</string>
+    <string name="days_append_to_route">Append to the route</string>
+    <string name="days_box_title">Set the days</string>
+    <string name="days_name">Name</string>
+    <string name="days_max_per_day">At most per day</string>
+    <string name="days_limit_hours">h</string>
+    <string name="days_limit_ascent">m ascent</string>
+    <string name="days_days">Days</string>
+    <string name="days_fewer">One day fewer</string>
+    <string name="days_more">One day more</string>
+    <string name="days_suggested">From the limits: at least %1$d days</string>
+    <string name="days_per_day">≈ %1$s per day</string>
+    <string name="days_remove_first">Remove an overnight stop first</string>
+    <string name="days_day_added">One day more – every night was already set</string>
+    <string name="days_limits_line">At most %1$s per day</string>
+    <string name="days_overnight_here">Overnight stop here</string>
+    <string name="days_set_hotel">Add hotel</string>
+    <string name="days_change_hotel">Change hotel</string>
+    <string name="days_remove_hotel">Remove hotel</string>
+    <string name="days_remove_overnight">Remove overnight stop</string>
+    <string name="days_hotel_for_tour">Hotel for this tour</string>
+    <string name="days_open_night">Night not decided</string>
+    <string name="days_overnight">Overnight stop</string>
+    <string name="days_hotel">Hotel</string>
+    <string name="days_over_limit">Above the limit: %1$s</string>
+    <string name="days_night_n">Night %1$d</string>
+    <string name="days_night_nearest">Night %1$d (nearest)</string>
+    <string name="days_hotel_title">Hotel · night %1$d</string>
+    <string name="days_hotel_hint">Search the hotel, or paste a Google Maps or Booking link or an address</string>
+    <string name="days_hotel_none">Nothing found – try the name or the address</string>
+    <string name="days_which_night">Which night?</string>
+    <string name="days_remove_hotel_ask">Remove the overnight stop with its hotel?</string>
+    <string name="days_from_to">%1$s – %2$s</string>
+    <string name="days_km_at">km %1$s</string>
+    <plurals name="days_count">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+</resources>

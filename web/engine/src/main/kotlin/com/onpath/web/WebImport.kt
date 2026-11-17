@@ -79,11 +79,11 @@ object WebImport {
      * Shown track → a plannable route with few route points (AppViewModel.planFromShown): the routing data along
      * the track is already in place (the page fetched its parts). `{"points": [[lat, lon], …]}` or {"error": …}.
      */
-    fun planFromTrack(track: String, activity: String, sac: Int): String = try {
+    fun planFromTrack(track: String, activity: String, sac: Int, progress: (Int, Int) -> Unit = { _, _ -> }): String = try {
         val t = Engine.parsePoints(track)
         val act = Activity.valueOf(activity)
         val t0 = System.currentTimeMillis()
-        val r = TrackToPlan.fit(t, Engine.engine(), act, sac)
+        val r = TrackToPlan.fit(t, Engine.engine(), act, sac, progress = progress)
         if (r.points.size < 2) "{\"error\":" + Engine.str(Txt.s(Res.string.plan_from_track_failed)) + "}" else {
             Problems.trace("plan", "Track → plan: ${t.size} track points → ${r.points.size} route points, follows " +
                 "${(r.follows * 100).toInt()} %, ${r.calls} routing calls, ${r.failedLegs} legs without a route, " +

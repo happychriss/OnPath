@@ -60,3 +60,7 @@ you (address)	du	Friendly, factual; imperative "Tippe …", "Prüfe …"; button
 time (duration)	1 h 05 min	Same as English (as on Alpine signposts), not "1 Std. 5 Min." – Owner 2026-10-26
 hill shading	Relief	Map switch "Relief"; not "Schummerung" – Owner 2026-10-26
 Slide to plan (Navigate slider)	Tour-Menü	English "Tour menu", small line "Route ändern · Pause · Beenden" / "Change route · Pause · End" – owner 2026-10-31 (was "Planen" / "Plan", before that "Route ändern" / "Edit route")
+multi-day tour	Mehrtagestour	One plan + a number of days + its overnight stops (owner 2026-11-17, docs/design/multi-day-tours.md): "Mehrtagestour planen", "Als Mehrtagestour planen"
+overnight stop	Übernachtung	A day end the user chose (blue moon): "Übernachtung hier", "Übernachtung entfernen" (owner 2026-11-17)
+hotel	Hotel	A booked overnight stop (green bed), name + address or link: "Hotel hinterlegen", "Hotel entfernen" (owner 2026-11-17)
+days	Tage	The number of days of a multi-day tour: "Tage festlegen", "6 Tage"; a day is "Tag 3" (owner 2026-11-17)
