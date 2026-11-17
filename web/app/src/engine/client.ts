@@ -13,6 +13,8 @@ export class EngineClient {
   private sent = new Map<number, EngineRequest>();
   /** Running plans: id → when it started routing (0 = still waiting for routing data). */
   private plans = new Map<number, number>();
+  /** Per open request: its no-answer timer started again – a progress reply says the worker is alive (a long GPX fit). */
+  private rearm = new Map<number, () => void>();
   /** What a fresh worker must be told first: the page's config, the pace levels, the undo / redo history. */
   private cfg: NoId<EngineRequest> | null = null;
   private pace: (string | number | boolean)[] | null = null;
@@ -30,6 +32,7 @@ export class EngineClient {
       const r = ev.data;
       if (r.progress) {
         if (r.progress.phase !== 'download' && this.plans.get(r.id) === 0) this.plans.set(r.id, performance.now());
+        this.rearm.get(r.id)?.();
         this.progress.get(r.id)?.(r.progress); return; // not the answer yet
       }
       if (r.history != null) this.history = r.history;
@@ -38,6 +41,7 @@ export class EngineClient {
       this.progress.delete(r.id);
       this.sent.delete(r.id);
       this.plans.delete(r.id);
+      this.rearm.delete(r.id);
     };
     // robust first: a crashed worker (failed engine load, a trap the worker could not catch) must never leave the
     // page waiting forever – every open request gets a plain failure the caller already shows
@@ -61,14 +65,17 @@ export class EngineClient {
     if (onProgress) this.progress.set(id, onProgress);
     if (req.type === 'config') this.cfg = req;
     if (req.type === 'call' && req.fn === 'paceSet') this.pace = req.args;
-    if (req.type === 'plan') this.plans.set(id, 0);
+    // a GPX track's fit routes for minutes on a long tour (multi-day tours stage 3): stoppable like a plan (dropPlans)
+    if (req.type === 'plan' || req.type === 'planFromTrack') this.plans.set(id, 0);
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      const noAnswer = () => {
         if (!this.waiting.delete(id)) return;
-        this.sent.delete(id); this.plans.delete(id);
+        this.sent.delete(id); this.plans.delete(id); this.rearm.delete(id);
         console.error(`[engine] no answer to "${req.type}" in ${EngineClient.NO_ANSWER_MS / 1000} s`);
         resolve({ id, ok: false, error: t('web_engine_no_answer') });
-      }, EngineClient.NO_ANSWER_MS);
+      };
+      let timer = setTimeout(noAnswer, EngineClient.NO_ANSWER_MS);
+      this.rearm.set(id, () => { clearTimeout(timer); timer = setTimeout(noAnswer, EngineClient.NO_ANSWER_MS); });
       this.waiting.set(id, (r) => { clearTimeout(timer); resolve(r); });
       const full = { ...req, id } as EngineRequest;
       this.sent.set(id, full);
@@ -205,8 +212,9 @@ export class EngineClient {
   }
 
   /** The app's TrackToPlan for [track] (routing data along it fetched first): {points} or {error}. */
-  async planFromTrack(track: [number, number][], activity: Activity, sac: number): Promise<string> {
-    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac });
+  async planFromTrack(track: [number, number][], activity: Activity, sac: number, onProgress?: (p: Progress) => void): Promise<string> {
+    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac }, onProgress);
+    if (r.cancelled) return JSON.stringify({ cancelled: true });
     if (!r.ok || r.text == null) throw new Error(r.error ?? 'track not planned');
     return r.text;
   }

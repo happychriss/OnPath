@@ -4,6 +4,7 @@
 // Rd5Parts.forCorridor, decided inside the engine) – then routes. The page never blocks while it computes.
 import type { EngineRequest, EngineReply, RouteStats } from './types';
 import { fetchPacked } from '../b64';
+import { tourText } from '../tourtext';
 
 declare const __BUILD_ID__: string;
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
@@ -57,6 +58,7 @@ interface WasmEngine {
   planTime(points: string, activity: string, sac: number): string;
   rangeStats(points: string, activity: string, sac: number, fromM: number, toM: number): string;
   mapTexts(): string;
+  planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
@@ -91,7 +93,9 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // the phone unpaired itself (its hello deleted – the app's guard)
   'syncPhoneGone',
   // the app's shared rules wired since main 2e50efbc: mailbox restart (M4), save as copy (H3), route names, route fit
-  'syncRestart', 'saveKeepsOtherEdit', 'planNewRouteName', 'planCopyName', 'routeFirst', 'routeFitAfterPlace']);
+  'syncRestart', 'saveKeepsOtherEdit', 'planNewRouteName', 'planCopyName', 'routeFirst', 'routeFitAfterPlace',
+  // multi-day tours (WebDays.kt, stages 2 + 3): days, rules R1–R7, a pasted hotel, the trim and the append of a GPX track
+  'daysView', 'daysRule', 'hotelText', 'trackCut', 'trackAppend']);
 
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: WasmEngine }> } };
 
@@ -359,7 +363,9 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const p = req.plan;
       const names = Object.entries(p.names).map(([i, n]) => `${i}\t${n.replace(/[\t\n]/g, ' ')}`).join('\n');
       const pts = p.points.map(([la, lo]) => `${la.toFixed(6)},${lo.toFixed(6)}`).join(';');
-      reply({ id: req.id, ok: true, code: e.planCode(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '') });
+      // a multi-day tour carries its days and night marks (tourText, WebDays.parseTour)
+      reply({ id: req.id, ok: true, code: p.tour ? e.planCodeTour(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '', tourText(p.tour))
+        : e.planCode(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '') });
       return;
     }
     if (req.type === 'parse') {
@@ -405,8 +411,13 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     if (req.type === 'planFromTrack') {
       // a shown track → plan (the app's TrackToPlan): the routing data along the whole track first, like the app
       e.writeParts();
+      reply({ id: req.id, ok: true, progress: { phase: 'route' } }); // from here it can be stopped (client.ts dropPlans)
+      const gp = globalThis as unknown as { onpathPlanProgress?: (text: string) => void };
+      gp.onpathPlanProgress = (text) => reply({ id: req.id, ok: true, progress: { phase: 'legs', text } }); // "37 %"
+      try {
       reply({ id: req.id, ok: true, text: e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
         problems: JSON.parse(e.problems()) });
+      } finally { gp.onpathPlanProgress = undefined; }
       return;
     }
     const t1 = performance.now();

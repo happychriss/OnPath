@@ -1,3 +1,4 @@
+import type { Tour } from '../tourtext';
 export type Activity = 'BIKE_TOURING' | 'BIKE_TREKKING' | 'EBIKE' | 'MTB' | 'EMTB' | 'HIKE';
 
 export type EngineRequest =
@@ -23,6 +24,8 @@ export type EngineRequest =
 export interface SharedPlan {
   points: [number, number][]; activity: Activity; sac: number;
   pinned: number[]; names: Record<string, string>; title: string | null;
+  /** A multi-day tour (WebDays.kt): days, limits, night marks; null / missing = a normal plan. */
+  tour?: Tour | null;
 }
 
 export interface PlanResult {
