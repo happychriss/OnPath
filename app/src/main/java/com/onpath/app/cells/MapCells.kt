@@ -170,6 +170,28 @@ class MapCells(
         set(v) { field = v; wake() }
 
     /**
+     * Multi-day tours (docs/design/multi-day-tours.md §7): the corridor cells of the tours the user said "load" to – kept
+     * beside the current plan's corridor ([keepCorridor] never drops their requests, also while a single day is planned).
+     */
+    @Volatile var tourCells: Set<CellId> = emptySet()
+        set(v) { field = v; wake() }
+
+    /** Of [tourCells]: those asked for on mobile data – they wait for Wi-Fi (§7: "On mobile data … wait for Wi-Fi"). */
+    @Volatile var tourWifiCells: Set<CellId> = emptySet()
+        set(v) { field = v; wake() }
+
+    /** Wi-Fi / Ethernet / unmetered now (a multi-day tour's map question says whether it waits for Wi-Fi). */
+    fun unmetered(): Boolean = try { network.unmetered() } catch (e: Exception) {
+        Problems.warn("cells", "Network kind unknown – taken as mobile data", e); false
+    }
+
+    /** Of [cells]: those that are neither installed nor covered by the region package (a multi-day tour's "maps missing"). */
+    fun notOnPhone(cells: List<CellId>): List<CellId> {
+        val inst = _installed.value.map { it.id }.toSet()
+        return cells.filter { it !in inst && !hasDetailedMap(it.center) }
+    }
+
+    /**
      * True while a tour runs (Navigate / recording service): cells still download, but are joined into the map only
      * when this goes false (after the tour / back in Plan) – the map never switches under the user's feet (owner).
      */
@@ -381,7 +403,7 @@ class MapCells(
      * cells stay); those inside belong to the plan again (after a restart they wait for this). Returns the dropped cells.
      */
     override fun keepCorridor(keep: Collection<CellId>): List<CellId> {
-        val k = keep.toSet()
+        val k = keep.toSet() + tourCells // a multi-day tour's maps stay asked for (§7)
         planCorridor = k
         val drop = ArrayList<CellId>()
         synchronized(queue) {
@@ -957,7 +979,9 @@ class MapCells(
     }
 
     /** Mobile data rule: mobile data by default; "Maps only on Wi-Fi" waits unless the user said yes. */
-    private fun allowed(p: Pending): Boolean = network.unmetered() || !wifiOnly || p.approvedMobile
+    // a multi-day tour's corridor asked for on mobile data waits for Wi-Fi – unless a point / the position asks for it too
+    private fun allowed(p: Pending): Boolean = network.unmetered() || p.approvedMobile ||
+        (!wifiOnly && (p.reason != CellReason.CORRIDOR || p.id !in tourWifiCells))
 
     private fun failed(e: CellApi.ApiException, pending: List<Pending>): Long {
         val delays = longArrayOf(60_000, 120_000, 300_000, 600_000)
