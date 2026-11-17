@@ -120,6 +120,32 @@ class LegCacheTest {
         assertEquals(legs(p[0], p[1]), e.calls.take(1))
     }
 
+    /** Stage 0 (2026-11-17): a 189-point multi-day tour keeps every leg – one per plan point of the largest plan. */
+    @Test fun aWholeMultiDayTourStaysInTheCache() {
+        assertEquals(PlanCode.MAX_POINTS, LegCache.CAPACITY)
+        val pts = (0 until 190).map { GeoPoint(46.0 + it * 0.01, 11.0) }
+        val e = Engine(); val cache = LegCache()
+        Planner(e, legs = cache).plan(pts, act, 2)
+        e.calls.clear()
+        Planner(e, legs = cache).plan(pts, act, 2)
+        assertEquals("no leg routed again", 0, e.calls.size)
+        assertEquals(189, cache.size)
+    }
+
+    /** The memory bound: legs with many line points go, oldest first, before the count limit is reached. */
+    @Test fun theLinePointBoundDropsTheOldestLegs() {
+        val cache = LegCache(capacity = 100, maxLinePoints = 25)
+        val line = { n: Int -> (0 until n).map { GeoPoint(46.0 + it * 1e-4, 11.0) } }
+        cache.put(p[0], p[1], act, 2, RouteResult(line(10), 1.0, 0.0, 0.0, 1.0))
+        cache.put(p[1], p[2], act, 2, RouteResult(line(10), 1.0, 0.0, 0.0, 1.0))
+        cache.put(p[2], p[3], act, 2, RouteResult(line(10), 1.0, 0.0, 0.0, 1.0)) // 30 points > 25: the first goes
+        assertEquals(2, cache.size)
+        assertNull(cache.get(p[0], p[1], act, 2))
+        cache.put(p[3], p[4], act, 2, RouteResult(line(40), 1.0, 0.0, 0.0, 1.0)) // alone above the bound: kept, the rest go
+        assertEquals(1, cache.size)
+        assertTrue(cache.get(p[3], p[4], act, 2) != null)
+    }
+
     @Test fun progressCountsOnlyTheLegsRouted() {
         val e = Engine(); val cache = LegCache()
         run(e, cache, p[0], p[2], p[4])

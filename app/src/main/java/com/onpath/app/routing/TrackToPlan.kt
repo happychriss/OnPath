@@ -22,7 +22,18 @@ object TrackToPlan {
     const val STEP_M = 25.0
     /** Start and goal this close = a round trip. */
     const val ROUND_TRIP_M = 80.0
+    /** Routing calls at least; a long track gets one per [CALL_PER_M] ([maxCalls]). */
     const val MAX_CALLS = 60
+    /**
+     * A long track's call budget: one per this many metres (stage 0, 2026-11-17: München–Venedig, 564 km, needed 351
+     * calls for 99.8 % – with 60 it followed the track 9 %).
+     */
+    const val CALL_PER_M = 1_500.0
+    /**
+     * A long track is first split every this many metres on the track (stage 0: the first calls of 564 km and its halves
+     * took 44 of 62 s) – no call routes hundreds of km.
+     */
+    const val SEED_M = 25_000.0
     /** Route points never closer than this along the track (no point clusters on a messy GPS bit). */
     const val MIN_GAP_M = 75.0
 
@@ -35,12 +46,23 @@ object TrackToPlan {
         val failedLegs: Int,
     )
 
+    /** The routing calls a track of [lengthM] may use: [MAX_CALLS], more for a long one ([CALL_PER_M]). */
+    fun maxCalls(lengthM: Double): Int = maxOf(MAX_CALLS, kotlin.math.ceil(lengthM / CALL_PER_M).toInt())
+
+    /**
+     * [progress] (calls made, the most calls this track may use) after each routing call – the browser's wait bar.
+     */
     fun fit(track: List<GeoPoint>, engine: RoutingEngine, activity: Activity, sacLimit: Int = 3,
-            cancelled: () -> Boolean = { false }, cancel: RouteCancel? = null): Result {
+            cancelled: () -> Boolean = { false }, cancel: RouteCancel? = null,
+            progress: (Int, Int) -> Unit = { _, _ -> }): Result {
         val t = resample(track, STEP_M)
         if (t.size < 2) return Result(t, 1.0, 0, 0)
         val along = Geo.cumulative(t)
         val idx = sortedSetOf(0, t.lastIndex)
+        val maxCalls = maxCalls(along.last())
+        // a long track: a point on it every SEED_M first (they lie on ways, as every track point)
+        var next = SEED_M
+        for (k in 1 until t.lastIndex) if (along[k] >= next && along.last() - along[k] >= SEED_M / 2) { idx += k; next = along[k] + SEED_M }
         if (Geo.distance(t.first(), t.last()) < ROUND_TRIP_M && t.size > 4) {
             idx += t.indices.maxBy { Geo.distance(t.first(), t[it]) } // a round trip: start = goal + the far point
         }
@@ -56,11 +78,12 @@ object TrackToPlan {
                 r.points.takeIf { it.size >= 2 }
             }
             catch (e: RoutingException) { null } // expected: no route for this leg – split half-way or count it failed
+            finally { progress(calls, maxCalls) }
         }
         // legs to check, in track order; a split adds its two halves
         val todo = ArrayDeque<Pair<Int, Int>>()
         idx.zipWithNext().forEach { todo += it }
-        while (todo.isNotEmpty() && calls < MAX_CALLS && !cancelled() && cancel?.isCancelled != true) {
+        while (todo.isNotEmpty() && calls < maxCalls && !cancelled() && cancel?.isCancelled != true) {
             val (i, j) = todo.removeFirst()
             if (j - i < 2) continue
             val l = line(i, j)
@@ -111,6 +134,45 @@ object TrackToPlan {
         }
         return cand.entries.sortedByDescending { it.value }.map { it.key }
             .firstOrNull { along[it] - along[i] >= MIN_GAP_M && along[j] - along[it] >= MIN_GAP_M }
+    }
+
+    /**
+     * The part of [track] from [fromM] to [toM] along it (the trim handles, multi-day tours stage 3, owner 2026-11-17:
+     * „Anfang und Ende zuschneiden“): its own points between, the two ends put on the track where they fall. The ends
+     * are clamped to the track and swapped when given the other way round; fewer than two points → the track as it is.
+     */
+    fun cut(track: List<GeoPoint>, fromM: Double, toM: Double): List<GeoPoint> {
+        if (track.size < 2) return track
+        val along = Geo.cumulative(track)
+        val a = minOf(fromM, toM).coerceIn(0.0, along.last()); val b = maxOf(fromM, toM).coerceIn(0.0, along.last())
+        fun at(m: Double): GeoPoint {
+            val hi = along.indexOfFirst { it >= m }.let { if (it < 0) track.lastIndex else it }
+            if (hi == 0) return track[0]
+            val lo = hi - 1; val span = along[hi] - along[lo]
+            val f = if (span > 0) (m - along[lo]) / span else 0.0
+            val p = track[lo]; val q = track[hi]
+            val ele = if (p.ele != null && q.ele != null) p.ele + (q.ele - p.ele) * f else p.ele ?: q.ele
+            return GeoPoint(p.lat + (q.lat - p.lat) * f, p.lon + (q.lon - p.lon) * f, ele)
+        }
+        val out = ArrayList<GeoPoint>()
+        out += at(a)
+        for (k in track.indices) if (along[k] > a && along[k] < b) out += track[k]
+        out += at(b)
+        return if (out.size >= 2 && b > a) out else track
+    }
+
+    /**
+     * "An die Route anhängen" (multi-day tours §3.3): the route points [add] of another track after the plan's [points].
+     * The joint is a normal point. When [add]'s end lies nearer the plan's last point than its start, it is turned round
+     * (the track runs the other way); its first point is left out when it lies within [MIN_GAP_M] of the plan's last
+     * point (the same place twice). An empty plan takes [add] as it is.
+     */
+    fun append(points: List<GeoPoint>, add: List<GeoPoint>): List<GeoPoint> {
+        if (points.isEmpty() || add.isEmpty()) return points + add
+        val end = points.last()
+        val a = if (add.size > 1 && Geo.distance(end, add.last()) < Geo.distance(end, add.first())) add.reversed() else add
+        val rest = if (Geo.distance(end, a.first()) <= MIN_GAP_M) a.drop(1) else a
+        return points + rest
     }
 
     /** The track every [stepM] (its own points kept where they are closer – no smoothing of corners). */

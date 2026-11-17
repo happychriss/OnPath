@@ -19,15 +19,29 @@ package com.onpath.app.routing
  * is used only while it is [LegStore.Stored.fresh] (same routing fingerprint, the routing data under it unchanged);
  * a stale one is only a stand-in line while the leg is routed again ([stale]).
  */
-class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore? = null) {
+class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore? = null,
+               private val maxLinePoints: Int = MAX_LINE_POINTS) {
     data class Key(val fromLat: Long, val fromLon: Long, val toLat: Long, val toLon: Long, val activity: Activity, val sac: Int)
 
     /** A leg found: [stored] = read from the [store] (not routed in this process). */
     class Hit(val leg: RouteResult, val stored: Boolean)
 
     private val lock = Any()
-    private val map = object : LinkedHashMap<Key, RouteResult>(capacity + 1, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<Key, RouteResult>?) = size > capacity
+    private val map = LinkedHashMap<Key, RouteResult>(minOf(capacity, 64) + 1, 0.75f, true)
+    /** Line points of the legs held (the memory bound beside [capacity], [maxLinePoints]). */
+    private var linePoints = 0L
+
+    /** Keeps [leg] under [k] (under [lock]); the oldest legs go while more than [capacity] legs or [maxLinePoints] are held. */
+    private fun keep(k: Key, leg: RouteResult) {
+        map.put(k, leg)?.let { linePoints -= it.points.size }
+        linePoints += leg.points.size
+        val it = map.entries.iterator()
+        while ((map.size > capacity || linePoints > maxLinePoints) && map.size > 1 && it.hasNext()) {
+            val e = it.next()
+            if (e.key == k) continue // the leg just kept stays
+            linePoints -= e.value.points.size
+            it.remove()
+        }
     }
 
     fun get(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): RouteResult? = lookup(from, to, activity, sac)?.leg
@@ -37,7 +51,7 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         val k = key(from, to, activity, sac)
         synchronized(lock) { map[k] }?.let { return Hit(it, stored = false) }
         val s = store?.get(k)?.takeIf { it.fresh } ?: return null
-        synchronized(lock) { map[k] = s.leg }
+        synchronized(lock) { keep(k, s.leg) }
         return Hit(s.leg, stored = true)
     }
 
@@ -55,7 +69,7 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
 
     fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult) {
         val k = key(from, to, activity, sac)
-        synchronized(lock) { map[k] = leg }
+        synchronized(lock) { keep(k, leg) }
         store?.put(k, from, to, leg)
     }
 
@@ -78,11 +92,19 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
      * Newer routing data (the same points may route differently now): every leg in memory goes. The [store] keeps its
      * legs – each says by itself whether the data under it changed ([LegStore.Stored.fresh]).
      */
-    fun clear() { synchronized(lock) { map.clear() } }
+    fun clear() { synchronized(lock) { map.clear(); linePoints = 0 } }
 
     companion object {
-        /** Legs kept: a 35 km bike leg is ~1 000 line points – 64 legs are a few MB, and several long plans fit. */
-        const val CAPACITY = 64
+        /**
+         * Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) – a multi-day tour of 189 points
+         * (München–Venedig, stage 0 2026-11-17) routed ~120 of its legs again at every edit with 64.
+         */
+        const val CAPACITY = PlanCode.MAX_POINTS
+        /**
+         * The memory bound: line points held in all legs (a point ~50 bytes → ~12 MB). München–Venedig, 594 km, is ~60 000
+         * line points – several such tours fit; a 35 km bike leg is ~1 000.
+         */
+        const val MAX_LINE_POINTS = 250_000
 
         /** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */
         fun key(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int) = Key(

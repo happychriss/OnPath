@@ -84,4 +84,47 @@ class TrackToPlanTest {
         TrackToPlan.fit(line(*c), eng, Activity.BIKE_TOURING, cancel = cancel)
         assertEquals("stops right after the request that ran", 3, withLimits)
     }
+
+    // ---- multi-day tours, stage 3 (2026-11-17): long tracks, trim, append ----
+
+    @Test fun aLongTrackGetsMoreCallsAndSeedsSoNoCallRoutesHundredsOfKm() {
+        assertEquals(TrackToPlan.MAX_CALLS, TrackToPlan.maxCalls(10_000.0))
+        assertEquals(376, TrackToPlan.maxCalls(564_000.0))
+        val longest = ArrayList<Double>()
+        val eng = object : RoutingEngine {
+            val inner = Straight()
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+                longest += com.onpath.app.data.Geo.distance(waypoints.first(), waypoints.last())
+                return inner.route(waypoints, activity, sacLimit)
+            }
+        }
+        val seen = ArrayList<Pair<Int, Int>>()
+        // 120 km straight: seeds every 25 km, every call shorter than 30 km
+        val r = TrackToPlan.fit(line(0.0 to 0.0, 120_000.0 to 0.0), eng, Activity.BIKE_TOURING, progress = { c, m -> seen += c to m })
+        assertTrue("longest call ${longest.max()}", longest.max() < 30_000)
+        assertEquals(1.0, r.follows, 0.01)
+        assertEquals(r.calls, seen.size)
+        assertEquals(80, seen.last().second)
+    }
+
+    @Test fun cutKeepsOnlyThePartBetweenTheHandles() {
+        val tr = line(0.0 to 0.0, 1000.0 to 0.0)
+        val c = TrackToPlan.cut(tr, 250.0, 600.0)
+        assertEquals(350.0, com.onpath.app.data.Geo.length(c), 2.0)
+        assertTrue(com.onpath.app.data.Geo.distance(c.first(), p(250.0, 0.0)) < 2)
+        assertTrue(com.onpath.app.data.Geo.distance(c.last(), p(600.0, 0.0)) < 2)
+        // the other way round and beyond the ends: clamped, swapped
+        assertEquals(1000.0, com.onpath.app.data.Geo.length(TrackToPlan.cut(tr, 5000.0, -3.0)), 2.0)
+        assertEquals(tr, TrackToPlan.cut(tr, 300.0, 300.0))
+    }
+
+    @Test fun appendPutsTheTrackBehindTheLastPointAndTurnsItRound() {
+        val plan = listOf(p(0.0, 0.0), p(1000.0, 0.0))
+        // runs on from the goal: kept as it is, the joint (same place) once
+        assertEquals(listOf(p(0.0, 0.0), p(1000.0, 0.0), p(2000.0, 0.0)), TrackToPlan.append(plan, listOf(p(1010.0, 0.0), p(2000.0, 0.0))))
+        // its end is nearer: turned round
+        assertEquals(listOf(p(0.0, 0.0), p(1000.0, 0.0), p(1500.0, 0.0), p(3000.0, 0.0)),
+            TrackToPlan.append(plan, listOf(p(3000.0, 0.0), p(1500.0, 0.0))))
+        assertEquals(plan, TrackToPlan.append(plan, emptyList()))
+    }
 }
