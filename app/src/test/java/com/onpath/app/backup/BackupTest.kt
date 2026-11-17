@@ -146,6 +146,26 @@ class BackupTest {
         assertTrue(BackupRestore.plan(listOf(older, newer), emptySet()).single().entry.meta.favourite)
     }
 
+    /**
+     * Multi-day tours (stage 4): a planned route's days travel in the record (key "days") – N, limits, night marks with
+     * the hotel's name / address / link and the description; a route without days has no key; the GPX itself stays a
+     * normal route (no day field outside the record); an unreadable "days" restores a normal route.
+     */
+    @Test fun theDaysSurviveBackupAndRestore() {
+        val days = com.onpath.app.data.MultiDay(3, com.onpath.app.routing.DayLimits(300, 1200),
+            mapOf(1 to com.onpath.app.routing.NightMark(com.onpath.app.routing.Hotel("Gasthof <Post>", "Dorf 1 & 2", "https://b.example/?a=1&b=2"))),
+            "Drei Tage\nZweite Zeile")
+        val multi = planMeta.copy(days = days)
+        val text = BackupCodec.encode(multi, planLine)
+        assertEquals(multi, BackupCodec.decode(text)!!.meta)
+        assertFalse("no key without days", BackupCodec.encode(planMeta, planLine).contains("\"days\""))
+        assertNull(BackupCodec.decode(BackupCodec.encode(planMeta, planLine))!!.meta.days)
+        val t = Tour(8, TourKind.PLANNED, "P", created, "HIKE", 3, 1.0, 2.0, 3.0, 4.0, "done", planMeta.waypoints, "p", days = days)
+        assertEquals(days, BackupMeta.of(t, planLine, 1L).days)
+        val broken = BackupCodec.toJson(planMeta).put("days", org.json.JSONObject().put("days", "x"))
+        assertNull(BackupCodec.fromJson(broken)!!.days)
+    }
+
     @Test fun foreignGpxIsNoBackup() {
         val other = com.onpath.app.gpx.GpxWriter.write("Komoot", planLine)
         assertFalse(BackupCodec.hasRecord(other))

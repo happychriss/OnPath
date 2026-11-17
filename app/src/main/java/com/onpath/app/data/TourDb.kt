@@ -74,6 +74,16 @@ data class Tour(
      * My routes reads the list from `tour-times.json`; null = not known there (the row shows its time instead). Not stored.
      */
     val avgKmh: Double? = null,
+    /**
+     * Planned: a multi-day tour's days (N, limits, night marks, description – docs/design/multi-day-tours.md stage 4);
+     * null = a normal route (every tour saved before schema 9). Stored in `tours.days` (JSON), backed up, synced.
+     */
+    val days: MultiDay? = null,
+    /**
+     * Planned multi-day tour: map areas of its corridor are missing ("Karten fehlen" in My routes) – set when My routes
+     * reads the list; null = not known / not a multi-day tour. Not stored.
+     */
+    val mapsMissing: Boolean? = null,
 )
 
 /**
@@ -127,6 +137,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 6 → 7 (owner 2026-11-12): `tours.difficulty` – a planned route's difficulty level at saving ([Tour.difficulty]);
      * every existing tour reads null (not known).
      * 7 → 8 (owner 2026-11-13): `tours.favourite` – starred in My routes ([Tour.favourite]); every existing tour 0.
+     * 8 → 9 (multi-day tours, stage 4): `tours.days` – a planned route's days ([Tour.days], JSON); every existing tour
+     * null (a normal route).
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -183,6 +195,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         difficulty: String? = null,
         /** [Tour.favourite] (restore, a route from the browser). */
         favourite: Boolean = false,
+        /** [Tour.days] of a multi-day tour; null = a normal route. */
+        days: MultiDay? = null,
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
@@ -197,6 +211,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("draft", if (draft) 1 else 0)
                 put("difficulty", difficulty)
                 put("favourite", if (favourite) 1 else 0)
+                if (days != null) put("days", days.toJson())
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -279,6 +294,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>, pinned: Set<Int> = emptySet(),
         /** [Tour.difficulty] of the new version; null = not known (the old level would describe the old line). */
         difficulty: String? = null,
+        /** [Tour.days] of the new version (null = a normal route: no days any more). */
+        days: MultiDay? = null,
     ): Boolean {
         val db = writableDatabase
         db.beginTransaction()
@@ -287,6 +304,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("activity", activity); put("sac", sac); put("distance", distance); put("ascent", ascent)
                 put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
                 put("pinned", pinnedToJson(pinned)); put("difficulty", difficulty)
+                if (days != null) put("days", days.toJson()) else putNull("days")
             }, "id=? AND kind=? AND deleted_at IS NULL", arrayOf(id.toString(), TourKind.PLANNED.name))
             if (n == 0) return false
             db.delete("points", "tour_id=?", arrayOf(id.toString()))
@@ -510,6 +528,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             hasPlan = opt(c, "has_plan")?.let { c.getInt(it) == 1 } ?: false,
             difficulty = opt(c, "difficulty")?.let { c.getString(it) },
             favourite = opt(c, "favourite")?.let { c.getInt(it) == 1 } ?: false,
+            days = opt(c, "days")?.let { MultiDay.fromJson(c.getString(it)) },
         )
     }
 
@@ -565,9 +584,9 @@ object TourSchema {
     /**
      * 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft`
      * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]); 7 = `tours.difficulty`
-     * ([Tour.difficulty]); 8 = `tours.favourite` ([Tour.favourite]).
+     * ([Tour.difficulty]); 8 = `tours.favourite` ([Tour.favourite]); 9 = `tours.days` ([Tour.days], multi-day tours).
      */
-    const val VERSION = 8
+    const val VERSION = 9
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -578,7 +597,7 @@ object TourSchema {
             descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
             state TEXT NOT NULL DEFAULT 'done', waypoints TEXT,
             uuid TEXT, pinned TEXT, deleted_at INTEGER, rides TEXT, draft INTEGER NOT NULL DEFAULT 0, difficulty TEXT,
-            favourite INTEGER NOT NULL DEFAULT 0)""",
+            favourite INTEGER NOT NULL DEFAULT 0, days TEXT)""",
         "CREATE INDEX tours_uuid ON tours(uuid)",
         """CREATE TABLE points(
             tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
@@ -601,6 +620,9 @@ object TourSchema {
 
     /** 7 → 8 (owner 2026-11-13): starred in My routes ([Tour.favourite]); every existing tour 0 (not starred). */
     const val ADD_FAVOURITE = "ALTER TABLE tours ADD COLUMN favourite INTEGER NOT NULL DEFAULT 0"
+
+    /** 8 → 9 (multi-day tours, stage 4): a planned route's days ([Tour.days], JSON); existing tours null (a normal route). */
+    const val ADD_DAYS = "ALTER TABLE tours ADD COLUMN days TEXT"
 
     /**
      * 5 → 6 (owner 2026-11-07): the plan a recorded tour followed, one row per tour – a table of its own, because the line
@@ -643,5 +665,6 @@ object TourSchema {
         if (old < 5) add(Step("tours", "draft", ADD_DRAFT))
         if (old < 7) add(Step("tours", "difficulty", ADD_DIFFICULTY))
         if (old < 8) add(Step("tours", "favourite", ADD_FAVOURITE))
+        if (old < 9) add(Step("tours", "days", ADD_DAYS))
     }
 }

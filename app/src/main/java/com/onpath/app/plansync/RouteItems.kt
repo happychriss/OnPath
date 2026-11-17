@@ -27,6 +27,9 @@ data class PlanContent(val points: List<GeoPoint>, val activity: Activity, val s
                        val nights: Map<Int, NightMark> = emptyMap(), val description: String? = null) {
     /** The route's stops as saved (GpxWaypoint with the names, like AppViewModel.savedStops). */
     val stops: List<GpxWaypoint> get() = points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, names[i]) }
+
+    /** The days as the phone stores them ([Tour.days]); null for a normal plan. */
+    val multiDay: com.onpath.app.data.MultiDay? get() = days?.let { com.onpath.app.data.MultiDay(it, limits, nights, description) }
 }
 
 /** What a synced track puts into an imported tour. */
@@ -49,16 +52,19 @@ object RouteItems {
     fun planOf(t: Tour): String? {
         if (t.waypoints.size < 2) return null
         val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
-        return PlanCode.encode(SharedPlan(pts, activityOf(t), t.sac.coerceIn(1, 5), t.pinned.filter { it in pts.indices }.toSet(),
-            t.waypoints.mapIndexedNotNull { i, w -> w.name?.let { i to it } }.toMap(), title = null))
+        val plan = SharedPlan(pts, activityOf(t), t.sac.coerceIn(1, 5), t.pinned.filter { it in pts.indices }.toSet(),
+            t.waypoints.mapIndexedNotNull { i, w -> w.name?.let { i to it } }.toMap(), title = null)
+        // a multi-day tour travels with its days (stage 4): N, limits, night marks, description
+        return PlanCode.encode(t.days?.into(plan) ?: plan)
     }
 
     /**
-     * The phone's route store keeps a multi-day tour's days (N, limits, night marks, description): false until stage 4
-     * of docs/design/multi-day-tours.md. While false, a saved route and its item compare without them ([samePlan]) –
-     * else every sync pass would send the route back without its days and wipe the browser's (owner 2026-11-17).
+     * The phone's route store keeps a multi-day tour's days (N, limits, night marks, description) – true since stage 4 of
+     * docs/design/multi-day-tours.md ([Tour.days]): a saved route and its item compare with them, so a night set in the
+     * browser comes in and the phone's own change goes out with them. While it was false, they compared without the days
+     * ([samePlan]) – else every sync pass would have sent the route back without its days and wiped the browser's.
      */
-    const val PHONE_KEEPS_DAYS = false
+    const val PHONE_KEEPS_DAYS = true
 
     /**
      * Same plan (points, activity, T level, pins, names and – with [days] – a multi-day tour's days) – a title inside a

@@ -25,9 +25,9 @@ class FakeTourStore : TourStore {
     private fun write() { if (failWrites > 0) { failWrites--; error("database is full") } }
 
     fun savePlanned(name: String, points: List<GeoPoint>, activity: Activity = Activity.HIKE, sac: Int = 2, names: Map<Int, String> = emptyMap(),
-                    pinned: Set<Int> = emptySet()): Tour {
+                    pinned: Set<Int> = emptySet(), days: com.onpath.app.data.MultiDay? = null): Tour {
         val t = Tour(next++, TourKind.PLANNED, name, now, activity.name, sac, 0.0, 0.0, 0.0, 0.0, "done",
-            points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, names[i]) }, uuid = "uuid-$next", pinned = pinned)
+            points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, names[i]) }, uuid = "uuid-$next", pinned = pinned, days = days)
         list += t; lines[t.id] = listOf(points.map { TrackPoint(it.lat, it.lon) })
         return t
     }
@@ -49,12 +49,12 @@ class FakeTourStore : TourStore {
 
     override fun addPlan(name: String, plan: PlanContent): Tour {
         write()
-        return savePlanned(name, plan.points, plan.activity, plan.sac, plan.names, plan.pinned)
+        return savePlanned(name, plan.points, plan.activity, plan.sac, plan.names, plan.pinned, plan.multiDay)
     }
 
     override fun replacePlan(t: Tour, plan: PlanContent): Boolean {
         write()
-        update(t) { it.copy(activity = plan.activity.name, sac = plan.sac, waypoints = plan.stops, pinned = plan.pinned) }
+        update(t) { it.copy(activity = plan.activity.name, sac = plan.sac, waypoints = plan.stops, pinned = plan.pinned, days = plan.multiDay) }
         lines[t.id] = listOf(plan.points.map { TrackPoint(it.lat, it.lon) })
         return true
     }

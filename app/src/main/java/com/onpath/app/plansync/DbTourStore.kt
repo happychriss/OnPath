@@ -28,14 +28,14 @@ class DbTourStore(
 
     override fun addPlan(name: String, plan: PlanContent): Tour {
         val id = db.insertTour(TourKind.PLANNED, name, plan.activity.name, plan.sac, Geo.length(plan.points), 0.0, 0.0, 0.0,
-            listOf(plan.points.map { TrackPoint(it.lat, it.lon) }), plan.stops, pinned = plan.pinned)
+            listOf(plan.points.map { TrackPoint(it.lat, it.lon) }), plan.stops, pinned = plan.pinned, days = plan.multiDay)
         Backups.tourChanged(context, id)
         return db.getTour(id) ?: error("planned route $id not found after saving")
     }
 
     override fun replacePlan(t: Tour, plan: PlanContent): Boolean =
         db.replacePlanned(t.id, plan.activity.name, plan.sac, Geo.length(plan.points), 0.0, 0.0, 0.0,
-            listOf(plan.points.map { TrackPoint(it.lat, it.lon) }), plan.stops, plan.pinned)
+            listOf(plan.points.map { TrackPoint(it.lat, it.lon) }), plan.stops, plan.pinned, days = plan.multiDay)
             .also { if (it) Backups.tourChanged(context, t.id) }
 
     override fun addTrack(name: String, track: TrackContent): Tour {

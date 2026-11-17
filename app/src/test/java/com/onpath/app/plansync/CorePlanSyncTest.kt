@@ -763,6 +763,47 @@ class CorePlanSyncTest {
         browser.save(id(3), PlanCode.encode(tour.copy(points = listOf(a, c, c, d))), "Drei Tage", clock, web); browserSync()
         phoneSync()
         assertEquals(listOf(a, c, c, d), store.byName("Drei Tage").waypoints.map { GeoPoint(it.lat, it.lon) })
+        // the phone's store keeps the days (stage 4)
+        assertEquals(com.onpath.app.data.MultiDay.of(tour), store.byName("Drei Tage").days)
+    }
+
+    /**
+     * Stage 4 ([RouteItems.PHONE_KEEPS_DAYS]): the phone stores a multi-day tour with its days; a night set in the browser
+     * comes in; the phone's own change (a day edit written back) goes out WITH the days – no pass ever drops the browser's
+     * nights, also not when the phone changed only the points.
+     */
+    @Test fun thePhoneKeepsAndSendsTheDays() {
+        assertTrue(RouteItems.PHONE_KEEPS_DAYS)
+        val d = GeoPoint(46.70020, 11.17110)
+        val tour = SharedPlan(listOf(a, b, c, d), Activity.BIKE_TOURING, 2, days = 3,
+            nights = mapOf(1 to com.onpath.app.routing.NightMark.OVERNIGHT))
+        browser.save(id(4), PlanCode.encode(tour), "Drei Tage", clock, web)
+        browserSync(); phoneSync()
+        assertEquals(3, store.byName("Drei Tage").days?.days)
+        assertEquals(mapOf(1 to com.onpath.app.routing.NightMark.OVERNIGHT), store.byName("Drei Tage").days?.nights)
+        // a hotel on night 2 set in the browser comes in
+        val hotel = com.onpath.app.routing.NightMark(com.onpath.app.routing.Hotel("Gasthof Post", link = "https://b.example/p"))
+        val withHotel = tour.copy(nights = tour.nights + (2 to hotel), names = mapOf(2 to "Gasthof Post"))
+        browser.save(id(4), PlanCode.encode(withHotel), "Drei Tage", clock, web); browserSync()
+        phoneSync()
+        assertEquals(hotel, store.byName("Drei Tage").days?.nights?.get(2))
+        repeat(2) { phoneSync(); browserSync() }
+        assertEquals(PlanCode.encode(withHotel), browserPlan("Drei Tage").plan)
+        // the phone changes the route (a point added on day 1, the marks moved with their points): it goes out with the days
+        val e = GeoPoint(46.67500, 11.14000)
+        val t = store.byName("Drei Tage")
+        val after = com.onpath.app.routing.PlanDays.afterEdit(withHotel, listOf(a, e, b, c, d))
+        store.update(t) { it.copy(waypoints = after.points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, after.names[i]) },
+            days = com.onpath.app.data.MultiDay.of(after)) }
+        phoneSync(); browserSync()
+        val got = PlanCode.decode(browserPlan("Drei Tage").plan!!)!!
+        assertEquals(listOf(a, e, b, c, d), got.points)
+        assertEquals(3, got.days)
+        assertEquals(mapOf(2 to com.onpath.app.routing.NightMark.OVERNIGHT, 3 to hotel), got.nights)
+        assertEquals(0, (phoneSync().outcome as SyncRound.Outcome.Done).pushed)
+        // a normal route saved on the phone stays a normal route in the browser
+        store.savePlanned("Waalweg", listOf(a, b)); phoneSync(); browserSync()
+        assertNull(PlanCode.decode(browserPlan("Waalweg").plan!!)!!.days)
     }
 
     /** [l] as an older page keeps it: every item without field 9 (it skips the tag). */

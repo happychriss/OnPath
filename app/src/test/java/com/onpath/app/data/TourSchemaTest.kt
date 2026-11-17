@@ -73,6 +73,9 @@ class TourSchemaTest {
         exec("UPDATE tours SET favourite=1, deleted_at=5 WHERE id=1")
         assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE id=1 AND favourite=1 AND deleted_at=5"))
         exec("UPDATE tours SET favourite=0, deleted_at=NULL WHERE id=1")
+        // 8 → 9 (multi-day tours): every existing tour is a normal route (no days)
+        assertTrue("days" in columns("tours"))
+        assertEquals(1, count("SELECT COUNT(*) FROM tours WHERE id=1 AND days IS NULL"))
         exec("UPDATE tours SET rides='{}' WHERE id=1")
         exec("INSERT INTO points VALUES (1, 50, 0, 46.6, 11.1, 600, 50000, 12.5)")
         assertEquals(1, count("SELECT COUNT(*) FROM points WHERE acc=12.5"))
@@ -142,6 +145,36 @@ class TourSchemaTest {
     }
 
     /**
+     * A version 8 database (favourites) gets `tours.days` (multi-day tours, stage 4): every tour, point and plan copy stays,
+     * every row reads no days (a normal route); a multi-day route written after the upgrade reads its days back – N, limits,
+     * the night marks with their hotel and the description; twice (a half-done upgrade) breaks nothing.
+     */
+    @Test fun upgradeFrom8AddsDays() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.exec(TourSchema.CREATE_PLAN)
+            c.exec(TourSchema.ADD_DIFFICULTY); c.exec(TourSchema.ADD_FAVOURITE)
+            c.exec("INSERT INTO tours(kind, name, created, uuid, favourite) VALUES ('PLANNED', 'Brenner', 3, 'u2', 1)")
+            assertTrue("days" !in c.columns("tours"))
+            c.upgrade(8)
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours WHERE days IS NULL"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE uuid='u2' AND favourite=1"))
+            c.assertUpgraded()
+            c.upgrade(8)
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours"))
+            val days = MultiDay(3, com.onpath.app.routing.DayLimits(300, null), mapOf(1 to com.onpath.app.routing.NightMark.OVERNIGHT,
+                2 to com.onpath.app.routing.NightMark(com.onpath.app.routing.Hotel("Gasthof Post", "Dorf 1", "https://b.example/p"))),
+                "Drei Tage\nmit Zeilen")
+            c.prepareStatement("UPDATE tours SET days=? WHERE uuid='u2'").use { it.setString(1, days.toJson()); it.executeUpdate() }
+            val back = c.createStatement().use { s -> s.executeQuery("SELECT days FROM tours WHERE uuid='u2'").use { r -> r.next(); r.getString(1) } }
+            assertEquals(days, MultiDay.fromJson(back))
+            // unreadable text: no days, never a crash
+            assertEquals(null, MultiDay.fromJson("{broken"))
+            assertEquals(null, MultiDay.fromJson("""{"days": 0}"""))
+            assertEquals(null, MultiDay.fromJson(null))
+        }
+    }
+
+    /**
      * Owner 2026-11-07: the copy is a copy – the planned route deleted (or changed) later, the tour still has the plan it
      * followed; a newer version replaces the older (the last version counts); the tour removed for good takes it along.
      */
@@ -176,7 +209,8 @@ class TourSchemaTest {
             assertTrue("tour_plan" in c.tables())
             assertTrue("difficulty" in c.columns("tours"))
             assertTrue("favourite" in c.columns("tours"))
-            assertEquals(8, TourSchema.VERSION)
+            assertTrue("days" in c.columns("tours"))
+            assertEquals(9, TourSchema.VERSION)
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

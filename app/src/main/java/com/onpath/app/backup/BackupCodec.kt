@@ -56,6 +56,12 @@ data class BackupMeta(
      * ignore it, a record without it is no favourite). A restore puts the star back.
      */
     val favourite: Boolean = false,
+    /**
+     * Planned multi-day tour: its days ([Tour.days] – N, limits, night marks with the hotel, description) – key "days" in
+     * the record (record version 1: older apps ignore it, a record without it is a normal route). The GPX part itself
+     * carries nothing of them: other apps see a normal route, hotels as named waypoints.
+     */
+    val days: com.onpath.app.data.MultiDay? = null,
 ) {
     /** "tour" (recorded), "plan" (saved planned route) or "imported" – readable in the file. */
     val type: String get() = typeOf(kind)
@@ -69,7 +75,7 @@ data class BackupMeta(
             val times = segments.flatten().mapNotNull { it.timeMs }
             return BackupMeta(t.uuid, t.kind, t.name, t.createdMs, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM,
                 t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides,
-                plan?.takeIf { t.kind == TourKind.RECORDED }, t.favourite)
+                plan?.takeIf { t.kind == TourKind.RECORDED }, t.favourite, t.days.takeIf { t.kind == TourKind.PLANNED })
         }
     }
 }
@@ -171,6 +177,7 @@ object BackupCodec {
         m.rides?.let { put("rides", it.toJson()) }
         m.plan?.let { put("plan", it.toJson()) }
         if (m.favourite) put("favourite", true)
+        m.days?.let { put("days", JSONObject(it.toJson())) }
     }
 
     fun fromJson(o: JSONObject): BackupMeta? {
@@ -201,6 +208,8 @@ object BackupCodec {
             // unreadable → the tour without its plan (reported in TourPlan.fromJson)
             plan = if (kind == TourKind.RECORDED) com.onpath.app.data.TourPlan.fromJson(o.optJSONObject("plan")) else null,
             favourite = o.optBoolean("favourite", false),
+            // unreadable → a normal route (reported in MultiDay.fromJson)
+            days = if (kind == TourKind.PLANNED) o.optJSONObject("days")?.let { com.onpath.app.data.MultiDay.fromJson(it.toString()) } else null,
         )
     }
 
