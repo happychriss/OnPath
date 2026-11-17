@@ -1,0 +1,81 @@
+/* Multi-day tours (multiday.ts; docs/design/multi-day-tours.md §3, sketches round 2 + 3). Day-end symbols, owner
+   2026-11-17 round 3 A: very light grey dashed moon = night not decided, blue moon = Übernachtung, green bed = Hotel.
+   Blue is the edit blue (--plan), green the start green (--go). */
+.daysym { display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; box-sizing: border-box; flex: none; }
+.daysym .ic { fill: currentColor; }
+.daysym.grey { background: #EEF0EC; border: 1.5px dashed #A9AFA6; color: #9AA096; }
+.daysym.blue { background: var(--plan); border: 2px solid #fff; color: #fff; }
+.daysym.green { background: var(--go); border: 2px solid #fff; color: #fff; }
+.daysym.goal { width: 22px; height: 22px; background: var(--goal); color: #fff; }
+.dayend { cursor: pointer; filter: drop-shadow(0 1px 2px rgba(59,42,30,.35)); }
+.dayend.proposal { cursor: grab; }
+/* a plan point with a night mark is drawn as its symbol (main.ts drawPoints) */
+.pin.night { background: none !important; width: auto; height: auto; padding: 0; border: none; box-shadow: none; filter: drop-shadow(0 1px 2px rgba(59,42,30,.35)); }
+
+/* the guide panel: in the plan sheet's place (the GPX track panel still wins while a track is shown) */
+#sheet.guide:not(.track) > :not(#tourGuide):not(#handle) { display: none !important; }
+.tourguide { display: flex; flex-direction: column; gap: 8px; }
+.tourguide .tghead { display: flex; align-items: center; justify-content: space-between; font-size: 16px; }
+.tourguide .tgstep { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.tourguide .tgnum { width: 22px; height: 22px; border-radius: 50%; background: var(--plan); color: #fff; display: inline-flex; align-items: center;
+  justify-content: center; font-size: 12px; font-weight: 700; }
+.tourguide .tgnum.done { background: var(--go); }
+.tourguide .tgnum.done .ic { fill: #fff; }
+.tourguide .tgnum.off { background: #C9CEC6; }
+.tourguide .tgbody { display: flex; flex-direction: column; gap: 6px; padding-left: 30px; }
+.tourguide .tgway, .tourguide .tgroute { display: flex; align-items: center; gap: 10px; text-align: left; padding: 8px 12px; border-radius: var(--r-small);
+  background: var(--paper); border: 1px solid var(--line); font: inherit; color: inherit; min-height: 48px; }
+.tourguide .tgway { cursor: pointer; }
+.tourguide .tgway:hover { background: var(--paper-deep); }
+.tourguide .tgway .ic { fill: var(--plan); flex: none; }
+.tourguide .txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.tourguide .tgmore { margin-top: 4px; }
+.tourguide .tgnext { height: 48px; background: var(--plan); margin-left: 30px; }
+.tourguide .tgnext:disabled { background: #C9CEC6; cursor: default; }
+
+/* the days box */
+dialog.daysbox .dbrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 8px 0; }
+dialog.daysbox .dblabel { font-weight: 600; flex: none; }
+dialog.daysbox #dbName { flex: 1; margin: 0; font-size: 15px; padding: 8px 10px; }
+dialog.daysbox .dbrow.limits { flex-direction: column; align-items: stretch; gap: 6px; }
+dialog.daysbox .dblimits { display: flex; gap: 16px; flex-wrap: wrap; }
+dialog.daysbox .dblimits label { display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+dialog.daysbox .dblimits input { width: 72px; margin: 0; font-size: 15px; padding: 6px 8px; }
+dialog.daysbox .dbper { margin: 10px 0 14px; padding: 8px 12px; border-radius: var(--r-small); background: var(--paper-dim); font-weight: 600; }
+.stepper { display: inline-flex; align-items: center; gap: 4px; }
+.stepper button { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); background: var(--paper); font-size: 20px; line-height: 1; }
+.stepper button:disabled { opacity: .38; }
+.stepper b { min-width: 64px; text-align: center; }
+dialog.daysbox .row.end button.primary, dialog.nightpick .row.end button.primary { background: var(--plan); color: #fff; }
+
+/* the overview in the plan sheet */
+.touroverview { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--line); }
+.touroverview .tohead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.touroverview .toname { font: inherit; font-size: 16px; font-weight: 700; background: none; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer; }
+.touroverview .tolimits { background: none; border: none; padding: 0; text-align: left; cursor: pointer; font: inherit; font-size: 12px; color: var(--muted); }
+.touroverview .tohint { color: var(--muted); }
+.touroverview .todays { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.touroverview .today { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 10px; border-radius: var(--r-small);
+  border: 1px solid transparent; background: var(--paper); font: inherit; color: inherit; cursor: pointer; min-height: 48px; }
+.touroverview .today .dn { width: 20px; font-weight: 700; color: var(--muted); flex: none; text-align: center; }
+.touroverview .today .txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.touroverview .today.sel { border-color: var(--plan); background: var(--plan-light); }
+.touroverview .today.over { background: var(--warn-bg); }
+.touroverview .today .overline { color: var(--warn); font-weight: 600; }
+
+/* day borders in the profiles */
+.profplot .dayborder { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed #9AA096; pointer-events: none; }
+.profplot .dayborder.overnight { border-left: 2px solid var(--plan); }
+.profplot .dayborder.hotel { border-left: 2px solid var(--go); }
+
+/* the hotel dialog and the night pick */
+dialog.hoteldlg .hotelres { list-style: none; margin: 0 0 8px; padding: 0; max-height: 300px; overflow: auto; }
+dialog.hoteldlg .hotelres button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 2px; text-align: left; padding: 8px 10px;
+  border: none; border-radius: var(--r-small); background: none; font: inherit; color: inherit; cursor: pointer; }
+dialog.hoteldlg .hotelres button:hover { background: var(--paper-deep); }
+dialog.nightpick .nightlist { display: flex; flex-direction: column; gap: 6px; margin: 8px 0 14px; }
+dialog.nightpick .nightrow { display: flex; align-items: center; gap: 8px; min-height: 40px; }
+
+/* the small step (sheetstep.ts) shows the facts only – the overview comes with the full sheet, like the Points list */
+#sheet[data-step="small"] > #tourOverview { display: none; }
+.tourguide .tgway .small { white-space: normal; }

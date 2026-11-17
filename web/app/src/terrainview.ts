@@ -86,6 +86,12 @@ export class RouteProfile {
   /** The cursor at [m] metres from outside (the flyover): the dot on the map and the line in both profiles; null = none. */
   showAt(m: number | null) { this.cursor(m); }
 
+  /**
+   * Marks [r] metres from outside (a multi-day tour's day row, multi-day tours §3.5): the map's highlighter, the shade in
+   * both profiles, the numbers; null clears it.
+   */
+  markRange(r: [number, number] | null) { this.mark(r); this.small?.range(r); }
+
   /** A new plan (or none): the sheet's profile, and the big one when open. Same profile object = nothing to redraw. */
   update(plan: PlanResult | null, noElevation: string) {
     const p = plan?.profile ?? null;

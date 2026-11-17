@@ -536,6 +536,8 @@ a.quietbtn { padding: 0 8px; }
 @media (max-width: 1500px) { #header .hint { display: none; } }
 @media (max-width: 1180px) and (min-width: 701px) { #menuAbout .lbl { display: none; } #menuAbout { padding: 0 8px; } .phonebtn .sub { display: none; } }
 @media (max-width: 1000px) and (min-width: 701px) { #newPlan .lbl, #menuPlans .lbl { display: none; } #newPlan, #menuPlans { padding: 0 9px; } }
+/* multi-day tours (multiday.ts): „Mehrtagestour planen“ in the bar; its word goes first when the bar gets narrow */
+@media (max-width: 1280px) and (min-width: 701px) { #menuMultiDay .lbl { display: none; } #menuMultiDay { padding: 0 9px; } }
 @media (max-width: 860px) and (min-width: 701px) { .phonebtn .lbl, .phonebtn .sub { display: none; } .phonebtn { padding: 0 9px; } #header { gap: 10px; } }
 @media (max-width: 700px) {
   #menuBtn { display: inline-flex; margin-left: 4px; padding: 0 6px 0 10px; }

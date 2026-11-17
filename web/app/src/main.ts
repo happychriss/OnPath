@@ -51,6 +51,8 @@ import { keepStats, planKey, trackKey, statsText } from './planstats';
 import { keepShape } from './routeshape';
 import { RouteReveal } from './routereveal';
 import { isPoiKind, poiFeatureAt, poiKindAt, poiPin } from './poipin';
+import { MultiDay, endSymbol, type DayPlan } from './multiday';
+import { tourText, type Tour } from './tourtext';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import './fonts/manrope.css';
@@ -103,7 +105,18 @@ const state = {
   canRedo: false,
   /** "Very long plan" was cancelled with nothing to take back: the points stay without a route (app: NotRouted.LONG). */
   notRouted: false,
+  /** A multi-day tour (multiday.ts, docs/design/multi-day-tours.md): days, limits, night marks by point index; null = a normal plan. */
+  tour: null as Tour | null,
 };
+/** The multi-day tour UI (multiday.ts) – set up once the sheet and the map exist; render() asks it. */
+let multiDay: MultiDay | null = null;
+/**
+ * The tour beside the engine's undo / redo history (which keeps only the points): one snapshot per historyRecord, so
+ * every tour action is one undo step like a point edit (multi-day tours §2: „each is one undo step“).
+ */
+const tourUndo: (Tour | null)[] = [], tourRedo: (Tour | null)[] = [];
+/** The tour the next commit sets (a rule's result, a loaded plan, Neu); undefined = the marks follow the edit (R6). */
+let nextTour: Tour | null | undefined;
 /** Names and pins by point value, also for points only undo / redo can bring back (the app: PlanHistory.allPoints). */
 const known = new Map<string, Meta>();
 /** A pairing link (#pair=…) this page was opened with – taken out of the address at once (it holds the secret). */
@@ -146,6 +159,8 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <nav id="mainMenu" class="planbar" aria-label="${escapeHtml(t('web_plan_menu'))}">
       ${hb('newPlan', 'add', t('web_plan_new'), '', 'disabled')}
       ${hb('menuPlans', 'folder', t('routes_title'))}
+      ${hb('menuMultiDay', 'moon', t('days_plan_tour'), 'multidaybtn')}
+      ${hb('menuPlanAsTour', 'moon', t('days_plan_as_tour'), 'ponly', 'disabled')}
       ${hb('menuImportGpx', 'fileOpen', t('routes_import_gpx'), 'ponly')}
       <span class="split">${hb('menuSavePlan', 'save', t('common_save'), 'savebtn', 'data-state="empty" disabled')}${more('saveMore', 'saveMenu', t('web_save_more'))}</span>
       ${hb('menuSaveAs', 'edit', t('web_save_as'), 'ponly', 'disabled')}
@@ -160,6 +175,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <div id="saveMenu" class="menu headmenu" role="menu" hidden>
       <button id="saveAsItem" role="menuitem">${icon('edit', 20)}<span>${escapeHtml(t('web_save_as'))}</span></button>
       <button id="exportGpxItem" role="menuitem">${icon('download', 20)}<span>${escapeHtml(t('common_export_gpx'))}</span></button>
+      <button id="planAsTourItem" role="menuitem">${icon('moon', 20)}<span>${escapeHtml(t('days_plan_as_tour'))}</span></button>
     </div>
     <span class="hint muted">${escapeHtml(t('web_header_hint'))}</span>
     <span id="headRight" class="headright">
@@ -528,6 +544,10 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const fresh = freshHistory; freshHistory = false;
   const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points));
+  // the tour beside the history: a fresh plan starts with none to undo; else the tour as it was is one undo step
+  const tourBefore = state.tour, pointsBefore = state.points, metaBefore = state.meta;
+  if (fresh) { tourUndo.length = 0; tourRedo.length = 0; } else { tourUndo.push(tourBefore); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0; }
+  const wantTour = nextTour; nextTour = undefined;
   // the plan's first route, or a place from the card (the app's routing/RouteFit.firstRoute / fitAfterPlace, shared):
   // the map shows it whole once it is there, unless the map was touched meanwhile (fitFirstRoute). Asked before the
   // plan: the one worker answers in order, so this is known when the route comes.
@@ -539,8 +559,33 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   engine.call('routeFirst', state.points.length, points.length).then(fit, (e) => problem('plan', 'route fit rule not asked', e));
   if (fromCard) engine.call('routeFitAfterPlace', enc(state.points), enc(points)).then(fit, (e) => problem('plan', 'route fit rule not asked', e));
   setPoints(points, meta);
+  // a multi-day tour: night marks follow their points, a dragged night stays one (R6 – the engine's PlanDays.afterEdit)
+  state.tour = wantTour !== undefined ? wantTour : tourBefore ? await followTour(pointsBefore, metaBefore, tourBefore, points) : null;
   await changed();
   await recorded;
+}
+
+/** PlanDays.afterEdit for an edit [before] → [after] of a multi-day tour: the tour with its marks moved along. */
+async function followTour(before: LatLon[], meta: Meta[], tour: Tour, after: LatLon[]): Promise<Tour | null> {
+  if (enc(before) === enc(after)) return tour;
+  try {
+    const names = meta.map((m, i) => (m.name ? `${i}\t${m.name.replace(/[\t\n]/g, ' ')}` : '')).filter(Boolean).join('\n');
+    const r = await engine.call('daysRule', 'afterEdit', enc(before), state.activity, state.sac,
+      meta.flatMap((m, i) => (m.pinned ? [i] : [])).join(','), names, tourText(tour), 0, 0, 0, enc(after));
+    return r && r !== 'null' ? (JSON.parse(r) as DayPlan).tour ?? tour : tour;
+  } catch (e) {
+    problem('days', 'night marks not moved along with the edit', e);
+    return tour;
+  }
+}
+
+/** A multi-day rule's plan (multiday.ts) as one undo step: points, pins, names and the tour. */
+async function applyDayPlan(p: DayPlan) {
+  await queueEdit(async () => {
+    const meta = p.points.map((q, i): Meta => ({ ...(known.get(key(q)) ?? { pinned: false }), pinned: p.pinned.includes(i), name: p.names[String(i)] }));
+    nextTour = p.tour;
+    return { planned: commit(p.points, meta) };
+  });
 }
 
 function setPoints(points: LatLon[], meta?: Meta[]) {
@@ -578,6 +623,9 @@ function step(op: 'undo' | 'redo') {
     runCause = op;
     state.otherRouting = false;
     if (t === 'null') return null;
+    // the tour of that step (kept beside the history in commit)
+    const from = op === 'undo' ? tourUndo : tourRedo, to = op === 'undo' ? tourRedo : tourUndo;
+    if (from.length) { to.push(state.tour); state.tour = from.pop()!; }
     setPoints(dec(t));
     return { planned: changed() };
   });
@@ -587,7 +635,11 @@ function step(op: 'undo' | 'redo') {
  * Deletes plan point [i] – map menu Delete and the Points list ✕: the app's PlanPoints.deleteAt (in the engine), so a
  * round trip stays closed at the next point, as on the phone. Names and pins follow their points by value.
  */
-async function deletePoint(i: number) { await applyEdit('delete', i); }
+async function deletePoint(i: number) {
+  // a hotel's point of a multi-day tour: asked first – its hotel goes with it (multi-day tours §4 scenario N)
+  if (multiDay?.nightOf(i) === 'HOTEL' && !(await multiDay.askRemoveHotel())) return;
+  await applyEdit('delete', i);
+}
 
 // ---- markers ----
 const markers: maplibregl.Marker[] = [];
@@ -634,10 +686,13 @@ async function drawPoints() {
   state.points.forEach(([lat, lon], i) => {
     if (state.roundTrip && i === last) return; // the closing point sits on the start
     const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
+    // a night of a multi-day tour: its blue moon / green bed (owner 2026-11-17, round 3 A) instead of the number
+    const night = multiDay?.nightOf(i) ?? null;
     // pinned on a POI: its symbol in a blue ring with the sign on a badge (owner 2026-11-10, variant A), else the dot
-    const kind = pinnedKind(i);
+    const kind = night ? null : pinnedKind(i);
     const el = (kind ? poiPin(map, kind, sign, color) : null) ?? document.createElement('div');
-    if (!el.classList.contains('poipin')) {
+    if (night) { el.className = 'pin night'; el.innerHTML = endSymbol(night, 28); }
+    else if (!el.classList.contains('poipin')) {
       el.className = 'pin';
       el.style.background = color;
       el.innerHTML = sign;
@@ -693,6 +748,7 @@ async function drawPoints() {
   // Speichern ▾ → Save as / Export GPX: need a route (two points; GPX the planned line)
   for (const id of ['menuSaveAs', 'saveAsItem']) $<HTMLButtonElement>(id).disabled = n < 2;
   for (const id of ['menuExportGpx', 'exportGpxItem']) $<HTMLButtonElement>(id).disabled = n < 2 || !state.plan;
+  for (const id of ['menuPlanAsTour', 'planAsTourItem']) $<HTMLButtonElement>(id).disabled = n < 2;
 }
 
 // Points list: click = show on the map, ✕ = delete, drag ≡ = new order (PlanEdits.move; sortable.ts)
@@ -821,8 +877,16 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
   if (action.startsWith('PointMenu:')) await pointMenu(Number(action.split(':')[1]));
   else if (action === 'PoiMenu' && poi) await poiMenu(poi);
   else if (action === 'FirstPointMenu') await firstPointMenu(at);
+  // a multi-day tour: a click on its route asks „Übernachtung hier“ or „Einfügen“ (multi-day tours §3.6)
+  else if (action === 'AddPoint' && multiDay?.isTour && pt && onRouteLine(pt)) multiDay.routeMenu(at);
   else if (action === 'AddPoint') { void addPoint(at); await editChain; }
   else if (action === 'CloseMenu') closeMenu();
+}
+
+/** The click at [pt] is on the planned route line (the pointing hand's rule, 10 px either side). */
+function onRouteLine(pt: maplibregl.Point): boolean {
+  const layers = ['planned-route', 'planned-route-casing'].filter((l) => map.getLayer(l));
+  return layers.length > 0 && map.queryRenderedFeatures([[pt.x - 10, pt.y - 10], [pt.x + 10, pt.y + 10]], { layers }).length > 0;
 }
 
 /** The marker within reach of the click (the app: MapGestures.nearestMarker; 20 px for a mouse, 48 for a finger). */
@@ -1041,6 +1105,9 @@ async function firstPointMenu(at: maplibregl.LngLat) {
  * point; the planner's click is the app's hold, so one click gives both).
  */
 async function pointMenu(i: number) {
+  // a night of a multi-day tour: its own menu (owner 2026-11-17 – Hotel hinterlegen / ändern / entfernen, Übernachtung entfernen)
+  const nm = multiDay?.nightMenu(i);
+  if (nm) { const [la, lo] = state.points[i]; openMenu(new maplibregl.LngLat(lo, la), nm.items, nm.head); return; }
   const n = state.points.length, name = state.meta[i]?.name;
   const [lat, lon] = state.points[i];
   const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip, enc(state.points)));
@@ -1104,7 +1171,10 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
   const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'),
     act: () => { if (info.google) window.open(info.google, '_blank', 'noopener'); else google(hit.name ?? '', lat, lon, hit.name ? '' : hit.title); } };
-  return { head, main: await Promise.all(pm.main.map(row)), keep: await keepRows(hit.code), google: googleRow };
+  const main = await Promise.all(pm.main.map(row));
+  // a multi-day tour: a found place can be the hotel of a night (scenario F) – the nearest day end is offered
+  if (multiDay?.isTour && pm.main.length) main.push({ icon: 'bed', label: t('days_hotel_for_tour'), key: 'HOTEL', act: () => { void multiDay?.hotelForTour(hit); } });
+  return { head, main, keep: await keepRows(hit.code), google: googleRow };
 }
 
 // ---- kept places (owner 2026-11-15, „Orte merken“ – the app's b2504c3d, F-PLAN-14; keptplaces.ts) ----
@@ -1244,6 +1314,7 @@ async function loadShared(shared: SharedPlan) {
   }
   nextCause = 'other';
   freshHistory = true; // opening a plan is no edit: no undo back to the plan before it
+  nextTour = shared.tour ?? null; // a multi-day tour comes with its days and nights
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
 }
 
@@ -1281,7 +1352,7 @@ function sharedPlan(): SharedPlan {
   const names: Record<string, string> = {};
   state.meta.forEach((m, i) => { if (m.name) names[String(i)] = m.name; });
   return { points: state.points, activity: state.activity, sac: state.sac,
-    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title };
+    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title, tour: state.tour };
 }
 
 /** Keeps the plan in the address bar (#p=…): a reload or a bookmark brings it back; nothing goes to a server. */
@@ -1564,12 +1635,13 @@ async function startFresh(p: LatLon) {
   const m = state.meta[state.points.findIndex((q) => key(q) === key(p))] ?? { pinned: false };
   state.latest++; state.plan = null; setPlanning(false);
   state.title = null; forgetSaved();
+  state.tour = null; // one point left: no tour
   setPoints([p], [m]);
   await changed();
 }
 
 /** Clear route (⋯ and the Points head; the app's RouteRules.canClear: from one point): no question – ↶ brings it back. */
-function clearRoute() { closeMenus(); state.title = null; forgetSaved(); commit([], []); }
+function clearRoute() { closeMenus(); state.title = null; forgetSaved(); nextTour = null; commit([], []); }
 
 /**
  * A plan the map does not show (owner 2026-10-30: a point left in Meran, the map in Hilden): when no point and no piece
@@ -1709,6 +1781,7 @@ function render() {
   rn.textContent = rn.hidden ? '' : t('web_routing_other_phone');
   renderChip();
   renderFabs();
+  multiDay?.render(); // a multi-day tour: the guide, the overview, the day ends on the map
 }
 
 /**
@@ -1747,7 +1820,11 @@ async function samePointsAsSaved(): Promise<boolean> {
 /** "Saved as …" under the summary while the plan is a saved one (the app's sheet line after Save). */
 /** The saved plan on the map changed since its Save – its points only (RouteRules.isUnsaved). */
 async function savedPlanChanged(): Promise<boolean> {
-  return state.savedCode != null && (await ready) && !(await samePointsAsSaved());
+  if (state.savedCode == null || !(await ready)) return false;
+  if (!(await samePointsAsSaved())) return true;
+  // a multi-day tour's days and nights are part of it (multi-day tours §1 #10: saved as every plan – so a change asks for Save)
+  const saved = await savedPoints(state.savedCode).plan;
+  return tourText(saved?.tour) !== tourText(state.tour);
 }
 /** The plan on the map differs from its saved version (or was never saved) – Meine Touren's „Speichern“ on its row. */
 let planUnsaved = false;
@@ -2116,6 +2193,9 @@ const ACTS: Record<string, () => void> = {
   menuSavePlan: () => { headerSave(); },
   menuSaveAs: () => { saveAs(); }, saveAsItem: () => { saveAs(); },
   menuExportGpx: () => { exportGpx(); }, exportGpxItem: () => { exportGpx(); },
+  // multi-day tours (multiday.ts): the guide panel, or the open plan straight to the days box
+  menuMultiDay: () => { multiDay?.openGuide(); },
+  menuPlanAsTour: () => { void multiDay?.daysBox(); }, planAsTourItem: () => { void multiDay?.daysBox(); },
   syncBadge: () => { if (sync.status.paired) phoneWindow(); else toPhone(); },
   phoneMore: () => { phoneWindow(); }, menuPhone: () => { phoneWindow(); },
   menuAbout: () => credits(), menuAboutP: () => credits(),
@@ -2246,6 +2326,8 @@ const plansHost = {
     }
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
+    // the multi-day guide's „Noch etwas anhängen“ → „Gespeicherte Route öffnen“: appended behind the route, not opened
+    if (multiDay?.takeAppend()) { await appendRoute(shared.points); return; }
     if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('another plan opened');
     state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
@@ -2434,9 +2516,13 @@ const gpxImport = setupGpxImport({
   setActivity: (a, sac) => setActivity(a, sac, true),
   plan: async (points, title, names, pinned) => {
     state.title = title; forgetSaved();
+    nextTour = null; // a new route from a track: a normal plan until the days are set
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
+  // multi-day tours (stage 3): trim handles while the guide is open; „An die Route anhängen“ once it has a route
+  tourMode: () => multiDay?.gpxMode() ?? 'off',
+  append: async (points) => { await appendRoute(points); },
   // A-017 rule 14: an imported track is kept in the open folder and goes to the phone with Save
   imported: (tr) => {
     syncReady.then(async (ok) => {
@@ -2449,6 +2535,40 @@ const gpxImport = setupGpxImport({
   },
 });
 (window as unknown as { __gpx: typeof gpxImport }).__gpx = gpxImport; // for the browser tests
+
+/** „An die Route anhängen“ (multi-day tours §3.3): [points] behind the last point – turned round when their end is nearer (TrackToPlan.append). One undo step. */
+async function appendRoute(points: LatLon[]) {
+  await queueEdit(async () => {
+    const joined = dec(await engine.call('trackAppend', enc(state.points), enc(points)));
+    return joined.length > state.points.length ? { planned: commit(joined) } : null;
+  });
+}
+
+// the multi-day tour UI (multiday.ts): guide, days box, overview, day ends, night menus, hotel dialog
+multiDay = new MultiDay({
+  map, engine,
+  points: () => state.points,
+  pinned: () => state.meta.flatMap((m, i) => (m.pinned ? [i] : [])),
+  namesText,
+  activity: () => state.activity,
+  sac: () => state.sac,
+  title: () => state.title,
+  setTitle: (title) => { state.title = title; rememberInAddress(); },
+  tour: () => state.tour,
+  routedPlan: () => (state.points.length >= 2 && state.plan && !state.planning && planFor === enc(state.points) ? state.plan : null),
+  apply: applyDayPlan,
+  status,
+  pickGpx: () => gpxImport.pick(),
+  openSaved: () => { void myPlansDialog(sync, plansHost); },
+  clearRoute,
+  suggestName,
+  searchAreas: async () => { await engine.searchAreas(await (useCells ? cells.searchAreas(map) : Promise.resolve([{ key: 'map', dir: mapFolder }]))); },
+  markRange: (r) => routeProfile.markRange(r),
+  fitPadding,
+  openMenu,
+  addPoint: (at) => { void addPoint(at); },
+}, $('sheet'));
+render();
 (window as unknown as { __planStats: unknown }).__planStats = { keepStats, planKey, trackKey, keepShape, statsText }; // for the browser tests (sort-smoke, routes-smoke)
 $('credits').onclick = () => credits();
 $('changedLine').onclick = () => { changedSeen = state.plan; $('changedLine').hidden = true; fitRoute(); }; // the app's tapRouteChangedLine
