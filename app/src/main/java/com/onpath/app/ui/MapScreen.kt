@@ -503,6 +503,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
         if (vm.pairHint) pairHintMessage(onCamera = { vm.pairHintCamera(pairCamera) }, onCancel = vm::pairHintCancel) else null,
         mapBox?.takeIf { it.kind == MessageKind.FRAGE },
+        // a multi-day tour opened the first time (§7): its maps, asked once with the sizes
+        vm.tourMapsAsk?.let { tourMapsMessage(it, vm::answerTourMaps) },
         // opening the app asks for the map of here, it never loads by itself, e.g. in a car (owner)
         here?.let { hereAskMessage(it.bytes, onLoad = { vm.answerHereAsk(true) }, onNotNow = { vm.answerHereAsk(false) }, mustBuild = it.mustBuild) },
         upd?.release?.version?.takeIf { rec == null && it != vm.updateDismissed }?.let { v ->
@@ -597,7 +599,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             points = rows,
             routingSlow = vm.routingSlow, routeProgress = vm.routeProgress, routeShare = vm.routeShare, notRouted = vm.notRouted, gapText = vm.planGapText(), warnText = vm.warningLineText(), warnCount = vm.warningCount(),
             changedText = vm.routeChangedLineText(), syncRoutingText = vm.syncRoutingNote, tapHint = vm.tapHoldHint,
-            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) }),
+            offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) },
+            days = vm.daysUi(), dayHead = vm.dayHeadUi()),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm::undoStep, onClear = vm::requestClear,
             onStartNavigation = onStartNavigation, onContinue = vm::continueNavigation,
@@ -613,6 +616,8 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onPause = vm::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm::movePointInList, onDeletePoint = vm::deletePointFromList, onShowPoint = vm::showPointFromList,
             onSearch = vm::openSearch, onMyRoutes = vm::openRoutes,
+            onDayTap = vm.multiDay::tapDay, onDayHold = vm.multiDay::holdDay, onRideDays = vm::rideDays, onAllDays = vm::allDays,
+            onLoadDayMaps = vm::loadDayMaps,
         ),
     )
     if (vm.spotsOpen) {
@@ -730,6 +735,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     val recTrack = com.onpath.app.domain.tour.TourEndFlow.trackShown(rec?.track, vm.unfinished != null, vm.unfinishedTrack)
     LaunchedEffect(c, recTrack.sumOf { it.size }.takeUnless { rest }) { if (!rest) c.setTrack(MapController.SRC_REC, recTrack) }
     LaunchedEffect(c, vm.highlight) { c.setHighlight(vm.highlight) }
+    // a multi-day tour (stage 4): its day ends on the line and the picked day(s), in Plan
+    LaunchedEffect(c) { snapshotFlow { vm.dayEndsOnMap() }.distinctUntilChanged().collect { (ends, day) -> c.setDayEnds(ends, day) } }
     // the spot tapped in the route warnings list: its piece of route amber (Plan only)
     LaunchedEffect(c, vm.spotLine, vm.mode) { c.setSpotLine(vm.spotLine?.takeIf { vm.mode == AppMode.PLAN }) }
     // the found place's pin – Plan only: hidden in Navigate, back in Plan (owner 2026-11-02); its chip: MapOverlayHost

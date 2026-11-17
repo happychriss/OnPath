@@ -56,6 +56,12 @@ class PlanSession(
         points.clear(); points.addAll(list)
     }
 
+    /**
+     * Undo / Redo start afresh (a multi-day tour's day becomes the plan, or the whole tour again: an Undo across that would
+     * put the other plan's points into this one).
+     */
+    fun forgetHistory() = history.restore(emptyList(), emptyList())
+
     /** The router snapped points onto the way ([moves] old → new): Undo / Redo show the snapped points too. */
     fun snapped(moves: Map<GeoPoint, GeoPoint>) = history.replacePoints(moves)
 

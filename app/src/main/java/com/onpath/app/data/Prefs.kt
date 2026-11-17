@@ -205,6 +205,34 @@ class Prefs internal constructor(private val sp: android.content.SharedPreferenc
         get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
 
+    /**
+     * Multi-day tours (stage 4, ui/MultiDayFlow): the open tour's days and night marks (JSON); null = a normal plan. Kept
+     * like the plan's points, so a restart keeps them.
+     */
+    var planMultiDay: String?
+        get() = sp.getString("planMultiDay", null)
+        set(v) = sp.edit().putString("planMultiDay", v).apply()
+
+    /** The day of a multi-day tour being followed as the plan (JSON, ui/MultiDayFlow); null = none. */
+    var planDayFollow: String?
+        get() = sp.getString("planDayFollow", null)
+        set(v) = sp.edit().putString("planDayFollow", v).apply()
+
+    /** Multi-day tours whose map question was answered (uuids, §7: asked once). */
+    var multiDayMapsAsked: Set<String>
+        get() = sp.getStringSet("multiDayMapsAsked", null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet("multiDayMapsAsked", v).apply()
+
+    /** Map areas of multi-day tours the user said "load" to (cell ids), kept beside every plan's corridor. */
+    var multiDayMapCells: Set<String>
+        get() = sp.getStringSet("multiDayMapCells", null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet("multiDayMapCells", v).apply()
+
+    /** Of [multiDayMapCells]: those asked for on mobile data – they wait for Wi-Fi. */
+    var multiDayWifiCells: Set<String>
+        get() = sp.getStringSet("multiDayWifiCells", null)?.toSet() ?: emptySet()
+        set(v) = sp.edit().putStringSet("multiDayWifiCells", v).apply()
+
     /** The plan's points as the last plan link brought them (snapped by the router); null = none (core feature C15). */
     var planLinkPoints: List<GeoPoint>?
         get() = sp.getString("planLinkPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }

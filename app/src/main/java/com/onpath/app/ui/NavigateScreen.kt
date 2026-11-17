@@ -156,6 +156,8 @@ data class NavUi(
     val notificationsOff: Boolean = false,
     /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
+    /** A multi-day tour's day is followed: "Tag 4 von 6", small at the top of the status card (stage 4); null otherwise. */
+    val day: String? = null,
 )
 
 /**
@@ -620,6 +622,8 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                 Spacer(Modifier.width(10.dp))
             }
             Column(Modifier.weight(1f)) {
+                // a multi-day tour's day (sketch round 2, step 12): "Tag 4 von 6", small above the numbers
+                ui.day?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
                 // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
                 if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold, maxLines = 2)
@@ -1096,6 +1100,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 state = tt?.state ?: com.onpath.app.time.EstimateState.OK, pausedBecause = tt?.pausedBecause?.text, target = target)
         },
         recordedM = rec?.distanceM, elapsedS = rec?.elapsedS ?: 0, paused = rec?.paused == true,
+        day = vm.multiDay.dayLabel(),
         pausedSinceMs = rec?.pausedSinceMs?.takeIf { rec.paused },
         waitingGps = rec?.gpsLost == true && prov == null,
         quietGps = rec?.gpsQuiet == true,

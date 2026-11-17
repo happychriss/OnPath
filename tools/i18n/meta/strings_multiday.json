@@ -1,0 +1,22 @@
+{
+  "multiday_days_count": {"area": "Multi-day tour", "context": "Number of days of a multi-day tour: My routes row (\"6 Tage · 564 km · Fahrrad\") and the plan sheet's overview title", "priority": 1, "confidence": "sicher", "max": 12},
+  "multiday_day_of": {"area": "Multi-day tour", "context": "Navigate's top card and the day's plan sheet while one day is followed: %1$s = day, %2$s = number of days (\"Tag 4 von 6\", sketch round 2)", "priority": 1, "confidence": "sicher", "max": 20},
+  "multiday_days_of": {"area": "Multi-day tour", "context": "As multiday_day_of for several days in a row: %1$s–%2$s of %3$s", "priority": 2, "confidence": "sicher", "max": 24},
+  "multiday_ride_day": {"area": "Multi-day tour", "context": "The plan sheet's one button in the overview: the picked day becomes the plan (sketch round 2: \"Tag 4 fahren\")", "priority": 1, "confidence": "sicher", "max": 22},
+  "multiday_ride_days": {"area": "Multi-day tour", "context": "As multiday_ride_day for several days in a row (picked by holding a second day row)", "priority": 2, "confidence": "sicher", "max": 24},
+  "multiday_pick": {"area": "Multi-day tour", "context": "The plan sheet's button in the overview while no day row is picked (not pressable)", "priority": 2, "confidence": "sicher", "max": 22},
+  "multiday_all_days": {"area": "Multi-day tour", "context": "Small pill in the day's plan sheet: back to the whole tour's overview (not during a tour)", "priority": 2, "confidence": "sicher", "max": 14},
+  "multiday_maps_missing": {"area": "Multi-day tour", "context": "Tag on a multi-day tour's row in My routes: map areas along it are not on the phone (sketch round 2)", "priority": 1, "confidence": "sicher", "max": 16},
+  "multiday_maps_title": {"area": "Multi-day tour", "context": "Question box at the first opening of a multi-day tour (concept §7), title", "priority": 1, "confidence": "sicher"},
+  "multiday_maps_text": {"area": "Multi-day tour", "context": "The question's detail line", "priority": 1, "confidence": "sicher"},
+  "multiday_maps_wifi": {"area": "Multi-day tour", "context": "Added to the detail on mobile data: the maps load once on Wi-Fi", "priority": 1, "confidence": "sicher"},
+  "multiday_maps_whole": {"area": "Multi-day tour", "context": "Button of the question: load all map areas of the tour; %1$s = size (\"340 MB\")", "priority": 1, "confidence": "sicher", "max": 24},
+  "multiday_maps_day": {"area": "Multi-day tour", "context": "Button of the question: load only one day's maps; %1$s = day, %2$s = size", "priority": 1, "confidence": "sicher", "max": 24},
+  "multiday_maps_later": {"area": "Multi-day tour", "context": "Button of the question: nothing loads now (My routes keeps the \"Karten fehlen\" tag; picking a day checks again)", "priority": 1, "confidence": "sicher", "max": 12},
+  "multiday_day_maps_missing": {"area": "Multi-day tour", "context": "Line in the day's plan sheet after a day was picked and its maps are not all there; %1$s = size; tap = load", "priority": 1, "confidence": "sicher"},
+  "multiday_load": {"area": "Multi-day tour", "context": "Tap word at the end of multiday_day_maps_missing", "priority": 2, "confidence": "sicher", "max": 10},
+  "multiday_end_open": {"area": "Multi-day tour", "context": "Screen reader text of the grey moon at a day end (a worked-out proposal, round 3 variant A)", "priority": 3, "confidence": "sicher"},
+  "multiday_end_overnight": {"area": "Multi-day tour", "context": "Screen reader text of the blue moon at a day end (glossary: Übernachtung)", "priority": 3, "confidence": "sicher"},
+  "multiday_end_hotel": {"area": "Multi-day tour", "context": "Screen reader text of the green bed at a day end (glossary: Hotel)", "priority": 3, "confidence": "sicher"},
+  "multiday_end_finish": {"area": "Multi-day tour", "context": "Screen reader text of the last day's end (the tour's finish)", "priority": 3, "confidence": "sicher"}
+}

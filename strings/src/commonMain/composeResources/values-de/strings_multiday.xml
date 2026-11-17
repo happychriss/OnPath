@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Mehrtagestouren auf dem Handy. Kontext: tools/i18n/meta/strings_multiday.json -->
+<resources>
+    <plurals name="multiday_days_count">
+        <item quantity="one">%1$d Tag</item>
+        <item quantity="other">%1$d Tage</item>
+    </plurals>
+    <string name="multiday_day_of">Tag %1$s von %2$s</string>
+    <string name="multiday_days_of">Tage %1$s–%2$s von %3$s</string>
+    <string name="multiday_ride_day">Tag %1$s fahren</string>
+    <string name="multiday_ride_days">Tage %1$s–%2$s fahren</string>
+    <string name="multiday_pick">Tag wählen</string>
+    <string name="multiday_all_days">Alle Tage</string>
+    <string name="multiday_maps_missing">Karten fehlen</string>
+    <string name="multiday_maps_title">Karten für die Tour laden?</string>
+    <string name="multiday_maps_text">Ohne Karten geht die Tour unterwegs nicht offline.</string>
+    <string name="multiday_maps_wifi">Im Mobilfunk: wartet auf WLAN.</string>
+    <string name="multiday_maps_whole">Ganze Tour · %1$s</string>
+    <string name="multiday_maps_day">Nur Tag %1$s · %2$s</string>
+    <string name="multiday_maps_later">Später</string>
+    <string name="multiday_day_maps_missing">Karten für diesen Tag fehlen (≈ %1$s)</string>
+    <string name="multiday_load">Laden</string>
+    <string name="multiday_end_open">Nacht noch offen</string>
+    <string name="multiday_end_overnight">Übernachtung</string>
+    <string name="multiday_end_hotel">Hotel</string>
+    <string name="multiday_end_finish">Ziel</string>
+</resources>

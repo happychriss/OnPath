@@ -107,6 +107,22 @@ did not say, decided while building:
    destination point. The recording is a normal day tour.
 4. Later stage: share a hotel to OnPath → "Hotel in der Tour" → which night. Syncs back.
 
+Built in stage 4 (2026-11-17, mehrtage) – details decided while building:
+- Store: `tours.days` (schema 9, JSON: N, limits, night marks with hotel, description; old rows = none); synced with
+  `PHONE_KEEPS_DAYS = true`; the GPX backup keeps them in its OnPath record only (the GPX itself stays a normal route).
+- On the phone the night marks are kept **by value** like the pins (`ui/MultiDayFlow`); the days count only while the
+  plan still belongs to the saved tour (a cleared plan is a normal plan, Undo brings the tour back).
+- Overview: tap a day row = that day; **hold** another row = the days in between too ("Tage 3–4"). "Tag n fahren" makes
+  the day the plan (a grey day end = an added destination point); "Los geht's" then starts it as a normal tour –
+  two steps, so the day's maps line and the route can be seen first. "‹ Alle Tage" brings the whole tour back (not
+  during a tour). Undo / Redo start afresh at both switches.
+- Every change of the day's plan is written back into the whole tour (`domain/plan/DayFollow`); Save (also at the tour
+  start and under Zuletzt) stores the whole tour, its line = the stored line with the day's new line spliced in. A
+  save that would drop a tour's days (lost day context) saves a copy instead.
+- Maps: the whole plan never loads its corridor by itself; the question loads the 10 km corridor, all cells
+  (`MapCells.tourCells` keeps them through later plans, asked on mobile data they wait for Wi-Fi unless a point / the
+  position on tour asks for them). Sizes: the server's where known, else 12.5 MB per area.
+
 ## 4. Scenarios with the round-2 model (owner 2026-11-17: "betrachte jeden Satz … überlege potenzielle Szenarien")
 
 Every row is solved with R1–R7; none needs another tool.

@@ -772,7 +772,11 @@ private fun TourCard(
                     // a done tour with its average (owner 2026-11-16): "… · 10,3 km/h", the time beside the activity
                     val facts = RouteRowActions.rowFacts(t.distanceM, t.ascentM, t.durationS, t.avgKmh)
                     ActivityLine(t, loop, facts.time)
-                    Text(instrument(facts.line, MaterialTheme.typography.bodySmall, muted), style = MaterialTheme.typography.bodySmall)
+                    // a multi-day tour (stage 4, sketch round 2 step 9): "6 Tage · 564 km · …"
+                    val days = t.days?.let { plural(Res.plurals.multiday_days_count, it.days, it.days) + " · " }.orEmpty()
+                    Text(instrument(days + facts.line, MaterialTheme.typography.bodySmall, muted), style = MaterialTheme.typography.bodySmall)
+                    // its map areas are not all on the phone (§7: no dialog by itself – the question comes when it is opened)
+                    if (t.days != null && t.mapsMissing == true) Tag(str(Res.string.multiday_maps_missing), Modifier.padding(top = 4.dp))
                     if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
                     if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
                         color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))

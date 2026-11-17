@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Multi-day tours on the phone (ui/MultiDayFlow.kt, ui/MultiDaySheet.kt, My routes row, Navigate). Context: tools/i18n/meta/strings_multiday.json -->
+<resources>
+    <plurals name="multiday_days_count">
+        <item quantity="one">%1$d day</item>
+        <item quantity="other">%1$d days</item>
+    </plurals>
+    <string name="multiday_day_of">Day %1$s of %2$s</string>
+    <string name="multiday_days_of">Days %1$s–%2$s of %3$s</string>
+    <string name="multiday_ride_day">Ride day %1$s</string>
+    <string name="multiday_ride_days">Ride days %1$s–%2$s</string>
+    <string name="multiday_pick">Pick a day</string>
+    <string name="multiday_all_days">All days</string>
+    <string name="multiday_maps_missing">Maps missing</string>
+    <string name="multiday_maps_title">Load the maps for the tour?</string>
+    <string name="multiday_maps_text">Without maps the tour does not work offline on the way.</string>
+    <string name="multiday_maps_wifi">On mobile data: waits for Wi-Fi.</string>
+    <string name="multiday_maps_whole">Whole tour · %1$s</string>
+    <string name="multiday_maps_day">Only day %1$s · %2$s</string>
+    <string name="multiday_maps_later">Later</string>
+    <string name="multiday_day_maps_missing">Maps for this day missing (≈ %1$s)</string>
+    <string name="multiday_load">Load</string>
+    <string name="multiday_end_open">Night not decided</string>
+    <string name="multiday_end_overnight">Overnight stay</string>
+    <string name="multiday_end_hotel">Hotel</string>
+    <string name="multiday_end_finish">Finish</string>
+</resources>

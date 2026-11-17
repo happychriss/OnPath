@@ -385,6 +385,46 @@ class MapDataFlow(
         if (wait && miss.isNotEmpty() && routingData.status != null && mode == AppMode.PLAN) routingModal = true
     }
 
+    /**
+     * Multi-day tours (docs/design/multi-day-tours.md §7, stage 0: a 10 km corridor, ALL its cells – never capped at
+     * CORRIDOR_MAX_CELLS): the map areas along [line] that are not on the phone, and about how many bytes they are (the
+     * server's sizes where known – [com.onpath.app.cells.TourCorridor]). Blocking geometry: call it off the main thread.
+     * Null when it cannot be worked out (reported).
+     */
+    fun tourMaps(line: List<GeoPoint>): TourMaps? = try {
+        val m = com.onpath.app.cells.TourCorridor.of(line, cells::cellsAlong, cells::notOnPhone, cells::knownSize)
+        TourMaps(m.all, m.missing, m.bytes)
+    } catch (e: Exception) {
+        Problems.warn("cells", "Map areas of a multi-day tour unknown – nothing asked, nothing loaded", e); null
+    }
+
+    /**
+     * Loads the map areas [want] of a multi-day tour along [line] (the user said "load", §7) with their routing data: kept
+     * beside every plan's corridor ([com.onpath.app.cells.MapCells.tourCells]); asked on mobile data, they wait for
+     * Wi-Fi ([wifiWait], §7: "On mobile data the default is to wait for Wi-Fi").
+     * Returns the areas asked for.
+     */
+    fun loadTourMaps(want: List<com.onpath.app.cells.CellId>, line: List<GeoPoint>, wifiWait: Boolean): List<com.onpath.app.cells.CellId> {
+        var asked = emptyList<com.onpath.app.cells.CellId>()
+        safeCells("multi-day") {
+            cells.tourCells = cells.tourCells + want
+            if (wifiWait) cells.tourWifiCells = cells.tourWifiCells + want
+            asked = cells.request(want, com.onpath.app.cells.CellReason.CORRIDOR, ownPoint = false)
+            tagLoads(asked, LoadTag(LoadWhy.ROUTE, line.lastOrNull()))
+            Problems.info("cells", "Multi-day tour: ${asked.size} of ${want.size} map area(s) asked for" + if (wifiWait) " (waiting for Wi-Fi)" else "")
+        }
+        safeRouting("multi-day") { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line, com.onpath.app.cells.TourCorridor.CORRIDOR_M)) }
+        return asked
+    }
+
+    /** The kept multi-day areas after a restart ([loadTourMaps]); [wifi] = those that wait for Wi-Fi. */
+    fun restoreTourMaps(all: Set<com.onpath.app.cells.CellId>, wifi: Set<com.onpath.app.cells.CellId>) = safeCells("multi-day") {
+        cells.tourCells = all; cells.tourWifiCells = wifi
+    }
+
+    /** What [tourMaps] found: the corridor's areas, those not on the phone and about how many bytes they are. */
+    class TourMaps(val all: List<com.onpath.app.cells.CellId>, val missing: List<com.onpath.app.cells.CellId>, val bytes: Long)
+
     /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
     fun routingForLine(keys: List<String>) = safeRouting("route") {
         routingData.keepCorridor(keys) // parts of an older route's corridor go
