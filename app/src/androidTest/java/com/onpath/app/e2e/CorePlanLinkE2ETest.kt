@@ -36,7 +36,7 @@ class CorePlanLinkE2ETest : E2EBase() {
             a.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(link)).setPackage(a.packageName)
                 .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK))
         }
-        Thread.sleep(500)
+        pause(500, "the link's activity opens")
     }
 
     private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).waypoints.toList() }; return p }
@@ -72,7 +72,7 @@ class CorePlanLinkE2ETest : E2EBase() {
     /** Owner 2026-11-06 ("Zuletzt"): a link replaces an unsaved plan without a question – the old one goes under Zuletzt. */
     @Test fun unsavedPlanGoesUnderZuletzt() {
         startPlanWithTwoPoints()
-        Thread.sleep(1_500)
+        pause(1_500, "the plan is routed and snapped")
         val before = points()
         open(frozenLink)
         waitUntil("replaced by the link's plan, no question") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
@@ -93,12 +93,12 @@ class CorePlanLinkE2ETest : E2EBase() {
             pinned = setOf(0, 1, 2)))
         open(frozenLink)
         waitUntil("first link's plan") { waypointCount() == 2 }
-        Thread.sleep(1_500) // routed and snapped – still "unchanged"
+        pause(1_500, "routed and snapped, still unchanged") // routed and snapped – still "unchanged"
         open(second)
         waitUntil("second link's plan, no question – ${state()}") { waypointCount() == 3 }
         scenario.onActivity { assertEquals(Activity.MTB, vm(it).activity) }
         // changed on the phone → the next link replaces it too, the changed plan is kept under Zuletzt
-        Thread.sleep(1_500)
+        pause(1_500, "the second plan is routed and snapped")
         scenario.onActivity { vm(it).deletePointFromList(2) }
         waitUntil("point deleted") { waypointCount() == 2 }
         open(frozenLink)

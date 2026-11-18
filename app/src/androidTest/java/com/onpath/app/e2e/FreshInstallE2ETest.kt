@@ -64,9 +64,9 @@ class FreshInstallE2ETest {
             scenario.onActivity { a -> shown = mapView(a)?.let { it.width > 0 } == true }
             if (shown) break
             if (System.currentTimeMillis() > end) fail("map not shown on a fresh install")
-            Thread.sleep(200)
+            e2ePause(200, "poll interval while the map is shown")
         }
-        Thread.sleep(5_000) // style loaded, MapLibre would have reported missing sources by now
+        e2ePause(5_000, "proving that no map error comes after the style load") // style loaded, MapLibre would have reported missing sources by now
         val mapErrors = Problems.snapshot().filter { it.level == Problems.Level.ERROR && it.area == "map" }
         assertTrue("map errors on a fresh install: ${mapErrors.joinToString { it.message }}", mapErrors.isEmpty())
         assertTrue("missing-data screen must not show", device.findObject(By.text("Offline map data is missing")) == null)

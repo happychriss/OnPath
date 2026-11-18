@@ -42,7 +42,7 @@ class CoreIndoorStartE2ETest : E2EBase() {
             while (feeding) {
                 for (p in listOf("network", "fused")) sh("cmd location providers set-test-provider-location $p --location $inLat,$inLon --accuracy 60")
                 if (outside) { gpsLat += 0.00001; sh("cmd location providers set-test-provider-location gps --location $gpsLat,$gpsLon --accuracy 4") }
-                Thread.sleep(1_000)
+                pause(1_000, "feeder thread: one fake fix per second")
             }
         }
         launch() // its one GPS fix (start area) goes stale after 30 s: then the Wi-Fi position stands in
@@ -69,7 +69,7 @@ class CoreIndoorStartE2ETest : E2EBase() {
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         if (findFresh(By.text(APPROX), 15_000) == null) { shot("no-approx-line"); throw AssertionError("no \"Approximate position\" line – ${state()}") }
         assertFalse("no GPS fix yet", hadGps())
-        Thread.sleep(4_000)
+        pause(4_000, "time for approximate fixes to be recorded")
         var tourId = -1L
         scenario.onActivity { tourId = vm(it).recState.value?.tourId ?: -1L }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -78,7 +78,7 @@ class CoreIndoorStartE2ETest : E2EBase() {
         outside = true
         waitUntil("first GPS fix in the tour", 30_000) { hadGps() }
         assertTrue("the approximate line goes with the first GPS fix", goneFresh(By.text(APPROX), 15_000))
-        Thread.sleep(5_000)
+        pause(5_000, "time for GPS fixes to be recorded")
         val pts = db.loadSegments(tourId).flatten()
         assertTrue("GPS points recorded: ${pts.size}", pts.isNotEmpty())
         val nearWifi = pts.count { Geo.distance(it.lat, it.lon, inLat, inLon) < 60 }
