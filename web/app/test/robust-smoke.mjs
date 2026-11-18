@@ -336,19 +336,51 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   // the same wait once the routing data is here (no card): the wait box – its km bar, a running stripe, the calm line.
   // Cancel stopped the worker (its downloads went with it): Calculate fetches them again; then Reverse plans the same
   // points on the data that is now here
-  await p.waitForSelector('#planAnyway', { timeout: 10_000 }).catch(() => {});
-  await p.click('#planAnyway');
-  await p.waitForFunction(() => window.__state.plan && document.body.dataset.planning !== '1' && !document.querySelector('#mapnotes .mapnote.load'), null, { timeout: 120_000 }).catch(() => {});
-  await p.click('#reverse');
-  const boxHint = await p.waitForFunction(() => /few minutes/.test(document.querySelector('#msgcards .msgcard[data-id="routing"] .msgproghint')?.textContent ?? ''), null, { timeout: 60_000 })
-    .then(() => true, () => false);
+  // what the page showed from here on, for the failure message (CI 2026-11-19: no wait box at all, only there)
+  await p.evaluate(() => {
+    window.__waits = []; const t0 = performance.now();
+    window.__waitsTimer = setInterval(() => {
+      const box = document.querySelector('#msgcards .msgcard'), card = document.querySelector('#mapnotes .mapnote.load');
+      const now = `${box ? 'box[' + box.dataset.id + ']:' + (box.querySelector('.msgtitle')?.textContent ?? '') + '/' + (box.querySelector('.msgprogline')?.textContent ?? '') : 'no box'}`
+        + ` | ${card ? 'card:' + (card.querySelector('.title')?.textContent ?? '') + '/' + (card.dataset.pct ?? '') : 'no card'}`
+        + ` | planning=${document.body.dataset.planning ?? ''} wait=${document.body.dataset.wait ?? ''} plan=${!!window.__state.plan}`;
+      if (window.__waits.at(-1)?.s !== now) window.__waits.push({ t: Math.round(performance.now() - t0), s: now });
+    }, 100);
+  });
+  const steps = [];
+  steps.push('planAnyway ' + await p.waitForSelector('#planAnyway', { timeout: 10_000 }).then(() => 'there', () => 'missing'));
+  await p.click('#planAnyway', { timeout: 10_000 }).catch((e) => steps.push('planAnyway click failed: ' + String(e).slice(0, 80)));
+  steps.push('route ' + await p.waitForFunction(() => window.__state.plan && document.body.dataset.planning !== '1' && !document.querySelector('#mapnotes .mapnote.load'), null, { timeout: 120_000 })
+    .then(() => 'in', () => 'not in after 120 s'));
+  // the map at rest first: tiles still loading (the route's fit, a slow GPU – CI's software renderer) open the load card,
+  // and the calculation then rightly joins the card instead of the box (one wait at a time). A card that still came
+  // for the tiles: once more, at rest again
+  let boxHint = false;
+  for (let k = 0; k < 3 && !boxHint; k++) {
+    await p.waitForTimeout(1000); // the route's fit starts 500 ms after the plan
+    steps.push('map ' + await p.waitForFunction(() => !window.__map.isMoving() && window.__map.areTilesLoaded() && !document.querySelector('#mapnotes .mapnote.load')
+      && document.body.dataset.planning !== '1', null, { timeout: 60_000 }).then(() => 'at rest', () => 'not at rest after 60 s'));
+    steps.push('reverse ' + await p.evaluate(() => (document.getElementById('reverse')?.disabled ? 'disabled' : 'enabled')));
+    const from = await p.evaluate(() => window.__waits.length);
+    await p.click('#reverse', { timeout: 10_000 }).catch((e) => steps.push('reverse click failed: ' + String(e).slice(0, 80)));
+    steps.push('plan ' + await p.waitForFunction(() => document.body.dataset.planning === '1', null, { timeout: 10_000, polling: 50 }).then(() => 'started', () => 'not started in 10 s'));
+    boxHint = await p.waitForFunction(() => /few minutes/.test(document.querySelector('#msgcards .msgcard[data-id="routing"] .msgproghint')?.textContent ?? '')
+      || document.body.dataset.planning !== '1', null, { timeout: 60_000, polling: 100 })
+      .then(() => p.evaluate(() => /few minutes/.test(document.querySelector('#msgcards .msgcard[data-id="routing"] .msgproghint')?.textContent ?? '')), () => false);
+    const tilesCard = await p.evaluate((n) => window.__waits.slice(n).some((w) => /card:Loading the map/.test(w.s)), from);
+    steps.push(`attempt ${k + 1}: ${boxHint ? 'box with the calm line' : tilesCard ? 'the tiles brought the card' : 'no box'}`);
+    if (!boxHint && !tilesCard) break; // not the tiles: a real failure
+    if (!boxHint) await p.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 60_000 }).catch(() => {});
+  }
   const wb = await p.evaluate(() => { const b = document.querySelector('#msgcards .msgcard[data-id="routing"]');
     const s = b?.querySelector('.msgbar.running b'); const r = s?.getBoundingClientRect(), t = b?.querySelector('.msgproghint')?.getBoundingClientRect(),
       l = b?.querySelector('.msgprogline')?.getBoundingClientRect();
     return b ? { line: b.querySelector('.msgprogline').textContent, anim: s ? getComputedStyle(s).animationName : '', w: Math.round(r?.width ?? 0),
       apart: !!t && !!l && t.top >= l.bottom - 1, card: !!document.querySelector('#mapnotes .mapnote.load') } : null; });
-  check(boxHint && wb && /^\d+ of \d+ km · \d+:\d\d$/.test(wb.line) && wb.anim === 'loadrun' && wb.w > 0 && wb.apart && !wb.card,
-    `long plan without downloads: the wait box – km and clock, a running stripe, the calm line under it (${JSON.stringify(wb)})`);
+  const waits = await p.evaluate(() => { clearInterval(window.__waitsTimer); return window.__waits; });
+  const okBox = boxHint && wb && /^\d+ of \d+ km · \d+:\d\d$/.test(wb.line) && wb.anim === 'loadrun' && wb.w > 0 && wb.apart && !wb.card;
+  check(okBox, `long plan without downloads: the wait box – km and clock, a running stripe, the calm line under it (${JSON.stringify(wb)})`);
+  if (!okBox) console.log(`(steps: ${steps.join('; ')}\n page: ${waits.map((w) => w.t + ' ' + w.s).join('\n       ')})`);
   await p.click('#msgcards .msgcard[data-id="routing"] .msgbtn').catch(() => {});
   await p.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 10_000 }).catch(() => {});
   check(errs.length === 0, `long plan: no page error (${errs.join(' | ')})`);
