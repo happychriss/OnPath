@@ -147,7 +147,7 @@ class MainThreadMeasure : E2EBase() {
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { RecordingService.state.value?.nav != null }
-        pause(8_000, "the start (camera flight, first route state, notification) is not the steady tour") // the start (camera flight, first route state, notification) is not the steady tour
+        pause(8_000, "the start (camera flight, first route state, notification) is not the steady tour")
 
         scenario.onActivity { a -> a.window.addOnFrameMetricsAvailableListener(frameListener, Handler(frameThread.looper)) }
         onMain {
@@ -188,7 +188,7 @@ class MainThreadMeasure : E2EBase() {
         p.endNs = System.nanoTime()
         p.pointsAtEnd = storedPoints()
         if (gfx) gfxText = device.executeShellCommand("dumpsys gfxinfo com.onpath.app")
-        pause(500, "violations and frames still on their way to the listeners") // violations and frames still on their way to the listeners
+        pause(500, "violations and frames still on their way to the listeners")
         return p
     }
 
