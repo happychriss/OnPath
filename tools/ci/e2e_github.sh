@@ -2,7 +2,8 @@
 # Run the E2E tests on GitHub's emulator from any session (cloud sessions have no KVM; donald runs them locally with
 # tools/dev/device.sh). Dispatches .github/workflows/e2e.yml by REST (`gh issue`/GraphQL is blocked in cloud sessions).
 #   tools/ci/e2e_github.sh [--tests Class[,Class#method]] [--ref main] [--wait] [--out DIR] [--force]
-#     --tests  only these classes (empty = all but the Release-Rundgang, on four emulators; the Rundgang: com.onpath.app.e2e.ReleaseRundgang)
+#     --tests  only this class or Class#method – ONE entry: of a comma list only the first runs and the run goes red
+#              (empty = all but the Release-Rundgang, on four emulators; the Rundgang: com.onpath.app.e2e.ReleaseRundgang)
 #     --wait   poll every 60 s until the run ends, then download the report(s) "e2e-report*" into --out
 #              (default ${TMPDIR:-/tmp}/e2e-<run id>) and list the failed tests
 #     --force  dispatch even when an E2E run already waits on the ref (that waiting run is then cancelled)

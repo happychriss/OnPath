@@ -42,5 +42,6 @@ paths:
 - **Cloud session (no computer):** `tools/cloud/session_setup.sh` once (Android SDK, local.properties, Maven Central mirror –
   the environment's setup script runs it at start), then `tools/ci/gate.sh` as usual; E2E on GitHub's emulator:
   `tools/ci/e2e_github.sh --tests <Class> --wait` (dispatch, wait, report + failed tests; no gh → MCP `actions_run_trigger`).
-- **The full E2E run of one commit** (a checkpoint, before a release): `tools/ci/e2e_shards.sh [--sha REF]` – four GitHub runs
-  side by side on `ci/` refs, ~20 min.
+- **The full E2E run of one commit** (a checkpoint, before a release): push it to a `ci/<unit>-<topic>` branch, then
+  `tools/ci/e2e_github.sh --ref ci/<unit>-<topic> --wait` (no `--tests`) – e2e.yml splits it over four emulators. A `--tests`
+  list takes ONE class (or Class#method): a comma list runs only its first entry (seen 2026-11-18).
