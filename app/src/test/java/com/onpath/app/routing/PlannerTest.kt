@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Geo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -144,6 +145,38 @@ class PlannerTest {
         assertEquals(setOf(3), r.skipped)
         assertEquals(6, e.n) // one request per leg – nothing routed twice
         assertTrue((0..6).filter { it != 3 }.all { WaypointSnap.distToLine(wps[it], r.points) < 1.0 })
+    }
+
+    /**
+     * Field bug (planner, Meraner Höhenweg, 2026-11-18): the plan's top line read ↑ 5891 m ↓ 5420 m for a ring whose
+     * days added up to ↑ 5422 m – the top summed BRouter's per-leg ascent (its own 5 m filter on fine elevation data,
+     * descent counted with 10 m). The plan's ascent / descent are its line's ([Planner.climb]), as the days count them.
+     */
+    @Test fun aRingClimbsAsMuchAsItDescendsAndTheDaysAddUpToTheTop() {
+        // a ring of 4 legs with noisy elevations (5 m wiggles BRouter's 5 m filter would count); the router reports
+        // per leg an ascent its own filter gave (10 m too much) and descent with 10 m
+        val eles = listOf(500.0, 506.0, 501.0, 540.0, 534.0, 580.0, 575.0, 600.0, 570.0, 576.0, 540.0, 545.0, 500.0)
+        val ring = eles.indices.map { i ->
+            val a = 2 * Math.PI * i / (eles.size - 1)
+            GeoPoint(46.7 + 0.01 * Math.sin(a), 11.1 + 0.015 * (1 - Math.cos(a)), eles[i])
+        }.let { it.dropLast(1) + it[0] }
+        val wps = listOf(ring[0], ring[3], ring[6], ring[9], ring[12])
+        val e = object : RoutingEngine {
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+                val from = wps.indexOf(waypoints.first()) * 3
+                val piece = ring.subList(from, from + 4)
+                val (up, down) = Planner.climb(piece)
+                return RouteResult(piece, Geo.length(piece), up + 10.0, down, 60.0)
+            }
+        }
+        val r = Planner(e).plan(wps, Activity.HIKE, 3)
+        val (up, down) = Planner.climb(r.points)
+        assertEquals(up, r.ascentM, 0.0)
+        assertEquals(down, r.descentM, 0.0)
+        assertEquals("a ring: up ≈ down (the filter's buffer)", r.ascentM, r.descentM, Planner.ELE_FILTER_M)
+        val days = DayLine.of(r.points, Activity.HIKE)
+        assertEquals("the days add up to the top", r.ascentM, days.upM.last(), 0.0)
+        assertEquals(r.descentM, days.downM.last(), 0.0)
     }
 
     @Test fun climbMirrorsBRoutersTenMetreFilter() {

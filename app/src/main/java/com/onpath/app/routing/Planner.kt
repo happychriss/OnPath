@@ -214,8 +214,7 @@ class Planner(
                 planned += PlannedLeg(l.points, false)
                 val gone = l.cut.sumOf { it.dist }
                 dist += (l.r.distanceM - gone).coerceAtLeast(0.0)
-                up += (l.r.ascentM - l.cut.sumOf { it.up }).coerceAtLeast(0.0)
-                down += (l.r.descentM - l.cut.sumOf { it.down }).coerceAtLeast(0.0)
+                up += l.r.ascentM; down += l.r.descentM // only without elevations on the line ([lineClimb])
                 time += l.r.durationS * if (l.r.distanceM > 0.0) ((l.r.distanceM - gone) / l.r.distanceM).coerceIn(0.0, 1.0) else 1.0
                 ways += l.cut.fold(l.r.wayTypes) { s, p -> p.minus(s, p.ways) }
                 surf += l.cut.fold(l.r.surfaces) { s, p -> p.minus(s, p.surf) }
@@ -227,13 +226,27 @@ class Planner(
                 planned += PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
-        val route = PlannedRoute(planned, dist, up, down, time, error, RouteSummary.mergeShares(ways), RouteSummary.mergeShares(surf),
-            snapped.toList())
+        val route = lineClimb(PlannedRoute(planned, dist, up, down, time, error, RouteSummary.mergeShares(ways),
+            RouteSummary.mergeShares(surf), snapped.toList()))
         if (!all) return route
         // every leg routed: where each point lies on the whole line, as for one request (the matched spot when the line
         // passes it, else the point projected onto the line), and the points whose spot the line still misses
         val line = route.points
         return route.copy(snapped = WaypointSnap.onRoute(waypoints, line, matched), skipped = WaypointSnap.skipped(waypoints, line, matched))
+    }
+
+    /**
+     * Ascent and descent of the joined line itself ([climb], one 10 m filter over the whole line – what the days of a
+     * multi-day tour, the big profile's range and Navigate's "remaining ascent" count), not the legs' router numbers:
+     * BRouter's own ascent uses a 5 m filter on fine elevation data (descent was counted with 10 m), so a ring on the
+     * Meraner Höhenweg read ↑ 5891 m ↓ 5420 m while its days added up to ↑ 5422 m. The legs' sum only when the line
+     * carries no elevations at all (an engine without them).
+     */
+    private fun lineClimb(r: PlannedRoute): PlannedRoute {
+        val line = r.points
+        if (line.none { it.ele != null }) return r
+        val (up, down) = climb(line)
+        return r.copy(ascentM = up, descentM = down)
     }
 
     /**
@@ -270,10 +283,10 @@ class Planner(
 
     /**
      * The numbers of a piece of a routed line, to take it out of its leg's ([trimSpike]): metres ([scale] = BRouter's
-     * metres per drawn metre), filtered ascent / descent ([climb]) and metres per way type / surface from the points' way
+     * metres per drawn metre) and metres per way type / surface from the points' way
      * attributes ([GeoPoint.way] = the way to the next point); [unknown] = metres without attributes.
      */
-    private class Piece(val dist: Double, val up: Double, val down: Double,
+    private class Piece(val dist: Double,
                         val ways: Map<String, Double>, val surf: Map<String, Double>, val unknown: Double) {
         /** [shares] (a route's breakdown) without this piece's metres per key ([ways] or [surf]); [unknown] in proportion. */
         fun minus(shares: List<Share>, known: Map<String, Double>): List<Share> {
@@ -293,8 +306,7 @@ class Planner(
                     val w = line[i - 1].way
                     if (w == null) unknown += d else { ways.merge(w.wayType, d, Double::plus); surf.merge(w.surface, d, Double::plus) }
                 }
-                val (up, down) = climb(line)
-                return Piece(dist, up, down, ways, surf, unknown)
+                return Piece(dist, ways, surf, unknown)
             }
         }
     }
@@ -392,7 +404,10 @@ class Planner(
         /** Line points on each side of a trimmed join checked for the point's spot ([trimSpike]). */
         private const val NEAR_POINTS = 30
 
-        /** BRouter's hysteresis for ascent / descent (10 m, as [BRouterEngine] mirrors it for descent). */
+        /**
+         * The plan's hysteresis for ascent / descent (10 m, as [BRouterEngine] counts descent; BRouter's own ascent filter
+         * is 5 m on fine elevation data, so a plan's totals come from its line – [lineClimb]).
+         */
         const val ELE_FILTER_M = 10.0
 
         /** Filtered ascent and descent of [line]'s elevations (BRouter's hysteresis, [ELE_FILTER_M]). */
