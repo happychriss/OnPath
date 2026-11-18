@@ -35,9 +35,9 @@ class CorePointsListE2ETest : E2EBase() {
     private fun size(): PlanSize { var s = PlanSize.COMPACT; scenario.onActivity { s = vm(it).planSize }; return s }
 
     private fun settle() {
-        Thread.sleep(300)
+        pause(300, "the edit's routing starts")
         waitUntil("route calculated", 30_000) { !routing() }
-        Thread.sleep(700)
+        pause(700, "snapping + camera settle")
     }
 
     /** Three points by holds, then the sheet at full size (handle taps: summary → profile → points). */
@@ -51,7 +51,7 @@ class CorePointsListE2ETest : E2EBase() {
         // the grab handle: summary → profile → full
         for (i in 0 until 4) {
             if (size() == PlanSize.FULL) break
-            sheetHandle().click(); Thread.sleep(500)
+            sheetHandle().click(); pause(500, "the sheet steps")
         }
         waitUntil("full sheet") { size() == PlanSize.FULL }
         // the rows' ✕ (content descriptions), looked for afresh each time: UiAutomator's cache can keep the tree
@@ -72,14 +72,7 @@ class CorePointsListE2ETest : E2EBase() {
      * release line of the last swipe ("Sheet let go at … px (steps …) → step N", StepSheet).
      */
     private fun waitForSize(what: String, want: PlanSize) {
-        val end = System.currentTimeMillis() + 10_000
-        while (size() != want) {
-            if (System.currentTimeMillis() > end) {
-                shot("size-${want.name.lowercase()}")
-                throw AssertionError("timeout: $what – size ${size()} – ${state()}")
-            }
-            Thread.sleep(100)
-        }
+        waitUntil(what, 10_000, onTimeout = { shot("size-${want.name.lowercase()}"); "size ${size()} – ${state()}" }) { size() == want }
     }
 
     private fun desc(text: String) = findFresh(By.desc(text), 5_000)
@@ -215,17 +208,17 @@ class CorePointsListE2ETest : E2EBase() {
         // writes the first line)
         dragHandle((h * 0.3f).toInt())
         waitForSize("rolled up after a swipe down", PlanSize.COLLAPSED)
-        Thread.sleep(600)
+        pause(600, "the sheet settles between swipes")
         // the summary again: past the midpoint to it, well before the midpoint summary ↔ profile
         dragHandle(travel(PlanSize.COLLAPSED, PlanSize.MINI))
         waitForSize("summary after a swipe up", PlanSize.MINI)
-        Thread.sleep(600)
+        pause(600, "the sheet settles between swipes")
         // first swipe up: the profile, not yet the points
         dragHandle(travel(PlanSize.MINI, PlanSize.COMPACT))
         waitForSize("profile step after the first swipe up", PlanSize.COMPACT)
         assertNotNull("profile shown", findFresh(By.desc("Elevation profile"), 5_000))
         assertTrue("no points list in the profile step", goneFresh(By.descStartsWith("Delete point"), 3_000))
-        Thread.sleep(600)
+        pause(600, "the sheet settles between swipes")
         // second swipe up: the points – the top step, so a long swipe only rubber-bands
         dragHandle(travel(PlanSize.COMPACT, PlanSize.FULL))
         waitForSize("full sheet after the second swipe up", PlanSize.FULL)
@@ -233,7 +226,7 @@ class CorePointsListE2ETest : E2EBase() {
             shot("no-points-full")
             throw AssertionError("points shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")
         }
-        Thread.sleep(600)
+        pause(600, "the sheet settles between swipes")
         // swipe down to the profile: nearer to it than to the points (above the midpoint) and than to the summary
         dragHandle(travel(PlanSize.FULL, PlanSize.COMPACT))
         waitForSize("half sheet after a swipe down", PlanSize.COMPACT)
@@ -252,11 +245,11 @@ class CorePointsListE2ETest : E2EBase() {
             m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(
                 org.maplibre.android.geometry.LatLng(target.lat + 0.05, target.lon + 0.05)))
         }
-        Thread.sleep(500)
+        pause(500, "the camera move lands")
         (findFresh(By.descStartsWith("Show point 2 on the map"), 5_000)
             ?: throw AssertionError("row of point 2 shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")).click()
         waitUntil("half sheet after the tap") { size() == PlanSize.COMPACT }
-        Thread.sleep(1_200) // camera glide
+        pause(1_200, "camera glide") // camera glide
         var highlight: GeoPoint? = null
         scenario.onActivity { highlight = vm(it).highlight }
         assertEquals("point highlighted", target, highlight)

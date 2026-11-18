@@ -147,7 +147,7 @@ class MainThreadMeasure : E2EBase() {
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { RecordingService.state.value?.nav != null }
-        Thread.sleep(8_000) // the start (camera flight, first route state, notification) is not the steady tour
+        pause(8_000, "the start (camera flight, first route state, notification) is not the steady tour") // the start (camera flight, first route state, notification) is not the steady tour
 
         scenario.onActivity { a -> a.window.addOnFrameMetricsAvailableListener(frameListener, Handler(frameThread.looper)) }
         onMain {
@@ -158,7 +158,7 @@ class MainThreadMeasure : E2EBase() {
 
         val fg = run("Navigate on screen", fgS, gfx = true)
         device.pressHome()
-        Thread.sleep(3_000)
+        pause(3_000, "the app goes to the background")
         val bg = run("app left (Home), service only", bgS, gfx = false)
 
         onMain { Looper.getMainLooper().setMessageLogging(null); StrictMode.setThreadPolicy(StrictMode.ThreadPolicy.LAX) }
@@ -172,7 +172,7 @@ class MainThreadMeasure : E2EBase() {
         try { onMain { DemoLocation.stop("measurement ended") } } catch (_: Exception) {} // expected: nothing running
         try { scenario.onActivity { vm(it).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
         val end = System.currentTimeMillis() + 10_000
-        while (RecordingService.state.value != null && System.currentTimeMillis() < end) Thread.sleep(200)
+        while (RecordingService.state.value != null && System.currentTimeMillis() < end) pause(200, "poll interval of the cleanup")
     }
 
     private var gfxText = ""
@@ -183,12 +183,12 @@ class MainThreadMeasure : E2EBase() {
         p.pointsAtStart = storedPoints()
         p.startNs = System.nanoTime()
         phase = p
-        Thread.sleep(seconds * 1000L)
+        pause(seconds * 1000L, "the measured phase itself")
         phase = null
         p.endNs = System.nanoTime()
         p.pointsAtEnd = storedPoints()
         if (gfx) gfxText = device.executeShellCommand("dumpsys gfxinfo com.onpath.app")
-        Thread.sleep(500) // violations and frames still on their way to the listeners
+        pause(500, "violations and frames still on their way to the listeners") // violations and frames still on their way to the listeners
         return p
     }
 

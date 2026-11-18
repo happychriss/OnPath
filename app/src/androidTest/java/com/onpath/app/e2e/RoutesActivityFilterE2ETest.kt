@@ -37,7 +37,7 @@ class RoutesActivityFilterE2ETest : E2EBase() {
         shown("Filter hike"); gone("Filter bike"); gone("Filter ebike")
         fun pick(now: Activity, next: Activity) {
             device.wait(androidx.test.uiautomator.Until.findObject(By.desc(Txt.s(Res.string.routes_act_chip_desc, now.chip))), 5_000)!!.click()
-            Thread.sleep(400)
+            pause(400, "the chip's menu opens")
             clickText(next.label)
         }
         pick(Activity.HIKE, Activity.BIKE_TOURING)

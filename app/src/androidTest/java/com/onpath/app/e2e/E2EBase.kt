@@ -27,6 +27,10 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
 /** Shared steps of the emulator tests (finger holds, app state, generated map data). */
+/** The one place a test sleeps (besides [E2EBase.waitUntil]'s poll); [why] documents it. Also for tests that do not extend E2EBase. */
+@Suppress("UNUSED_PARAMETER")
+fun e2ePause(ms: Long, why: String) { Thread.sleep(ms) }
+
 abstract class E2EBase {
     @get:Rule val permissions: GrantPermissionRule = if (Build.VERSION.SDK_INT >= 33)
         GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -99,7 +103,7 @@ abstract class E2EBase {
         // which lies over our (shown-when-locked) window and swallows every touch.
         val km = InstrumentationRegistry.getInstrumentation().targetContext.getSystemService(android.app.KeyguardManager::class.java)
         if (km?.isDeviceSecure == false) device.executeShellCommand("wm dismiss-keyguard")
-        Thread.sleep(300)
+        pause(300, "the screen wake / keyguard dismissal takes effect")
     }
 
     /** The app's window over the (secure) lock screen, screen kept on – test only, the app itself does not do this. */
@@ -132,7 +136,7 @@ abstract class E2EBase {
         waitUntil("first point") { waypointCount() == 1 }
         hold(w * 0.65f, h * 0.45f)
         waitUntil("second point by a hold") { waypointCount() == 2 }
-        Thread.sleep(800) // route (straight line) + camera settle
+        pause(800, "route (straight line) + camera settle: no observable idle signal") // route (straight line) + camera settle
     }
 
     protected fun holdOnWaypoint(index: Int) {
@@ -162,13 +166,13 @@ abstract class E2EBase {
         var p: LatLng? = null
         scenario.onActivity { a -> vm(a).followMe = false; vm(a).waypoints[index].let { p = LatLng(it.lat, it.lon) } }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(p!!)) }
-        Thread.sleep(600)
+        pause(600, "the camera move lands")
         // the point is now at the centre (h/2): shift the map by pixels until it sits at (w/2, 0.32 h), measured each time
         repeat(3) {
             val (x, y) = waypointOnScreen(index)
             if (open(x to y)) return
             onMap { m -> m.scrollBy(w / 2f - x, h * 0.32f - y) }
-            Thread.sleep(600)
+            pause(600, "the camera move lands")
         }
     }
 
@@ -193,7 +197,7 @@ abstract class E2EBase {
             device.waitForIdle(500)
             if (device.findObject(selector) == null) return true
             if (System.currentTimeMillis() > end) return false
-            Thread.sleep(250)
+            pause(250, "poll interval of goneFresh")
         }
     }
 
@@ -210,7 +214,7 @@ abstract class E2EBase {
             device.waitForIdle(500)
             device.findObject(selector)?.let { return it }
             if (System.currentTimeMillis() > end) return null
-            Thread.sleep(250)
+            pause(250, "poll interval of findFresh")
         }
     }
 
@@ -288,9 +292,9 @@ abstract class E2EBase {
         }
         val down = android.os.SystemClock.uptimeMillis()
         send(android.view.MotionEvent.ACTION_DOWN, down, down)
-        Thread.sleep(ms.toLong())
+        pause(ms.toLong(), "the finger rests for the hold's duration")
         send(android.view.MotionEvent.ACTION_UP, down, android.os.SystemClock.uptimeMillis())
-        Thread.sleep(400)
+        pause(400, "gap so the next tap is not a double tap")
     }
 
     /**
@@ -309,14 +313,14 @@ abstract class E2EBase {
             ua.injectInputEvent(e, false)
             e.recycle()
         }
-        Thread.sleep(300)
+        pause(300, "the injected tap gets through")
     }
 
     /** A finger resting [ms] at a screen point (the app's hold is 0.3 s; MapLibre's long press ~0.5 s). */
     protected fun hold(x: Float, y: Float, ms: Int = 900, takeAddMenu: Boolean = true) {
         dismissSystemDialogs()
         device.swipe(x.toInt(), y.toInt(), x.toInt(), y.toInt(), ms / 5) // one step ≈ 5 ms
-        Thread.sleep(400)
+        pause(400, "gap after the swipe hold")
         // a hold beside a plan is measured on the paths first (owner 2026-11-17, HoldPaths – at most its time limit): wait
         // for its decision
         if (launched) waitHoldMeasured()
@@ -336,7 +340,7 @@ abstract class E2EBase {
             var busy = false
             scenario.onActivity { a -> busy = vm(a).holdMeasuring != null }
             if (!busy) break
-            Thread.sleep(50)
+            pause(50, "poll interval of waitHoldMeasured")
         }
         return android.os.SystemClock.elapsedRealtime() - t0
     }
@@ -349,7 +353,7 @@ abstract class E2EBase {
         device.executeShellCommand("am broadcast -a android.intent.action.CLOSE_SYSTEM_DIALOGS")
         for (label in listOf("Wait", "Close app", "OK")) {
             val anr = device.findObject(By.textContains("isn't responding")) ?: break
-            device.findObject(By.text(label))?.click(); Thread.sleep(500)
+            device.findObject(By.text(label))?.click(); pause(500, "the dialog closes")
             if (anr.let { device.findObject(By.textContains("isn't responding")) } == null) break
         }
     }
@@ -359,7 +363,7 @@ abstract class E2EBase {
         if (o == null) { dismissSystemDialogs(); o = device.wait(Until.findObject(By.text(text)), 2_000) }
         if (o == null) { shot("missing-${text.filter { it.isLetter() }}"); fail("\"$text\" not shown – ${state()}"); return }
         o.click()
-        Thread.sleep(300)
+        pause(300, "the click gets through")
     }
 
     // ------------------------------------------------------------------------------------------------ app access
@@ -415,7 +419,7 @@ abstract class E2EBase {
     protected fun drawnPoiSymbol(id: String, lat: Double, lon: Double, layer: String, zoom: Double = 16.0): Pair<Float, Float> {
         scenario.onActivity { vm(it).followMe = false }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom)) }
-        Thread.sleep(800)
+        pause(800, "the camera move lands")
         val (w, h) = mapSize()
         onMap { m -> m.projection.toScreenLocation(LatLng(lat, lon)).let { s -> m.scrollBy(w * 0.40f - s.x, h * 0.32f - s.y) } }
         fun drawnAt(): Pair<Float, Float>? {
@@ -436,9 +440,9 @@ abstract class E2EBase {
         }
         var hit: Pair<Float, Float>? = null
         val end = System.currentTimeMillis() + 20_000
-        while (hit == null && System.currentTimeMillis() < end) { Thread.sleep(500); hit = drawnAt() }
+        while (hit == null && System.currentTimeMillis() < end) { pause(500, "poll interval while the symbol is drawn"); hit = drawnAt() }
         if (hit == null) { shot("no-poi-symbol"); fail("the symbol of POI $id is not drawn (layer $layer) – ${state()}") }
-        Thread.sleep(2_000) // the app reads the shown POIs on the map idle after the camera stopped
+        pause(2_000, "the app reads the shown POIs on the map idle after the camera stopped") // the app reads the shown POIs on the map idle after the camera stopped
         return hit!!
     }
 
@@ -459,16 +463,27 @@ abstract class E2EBase {
             scenario.onActivity { a -> ok = mapView(a)?.let { it.width > 0 } == true }
             ok
         }
-        Thread.sleep(if (reloaded) 2_500 else 3_000) // style + app layers
+        pause(if (reloaded) 2_500 else 3_000, "style + app layers: no observable map-idle signal without a hook in main") // style + app layers
     }
 
-    protected fun waitUntil(what: String, timeoutMs: Long = 10_000, cond: () -> Boolean) {
+    /**
+     * Waits (polling every 100 ms) until [cond] holds; fails after [timeoutMs] with [what]. [onTimeout] runs only then:
+     * it may take a screenshot and returns extra text for the message (where the app stood).
+     */
+    protected fun waitUntil(what: String, timeoutMs: Long = 10_000, onTimeout: () -> String = { "" }, cond: () -> Boolean) {
         val end = System.currentTimeMillis() + timeoutMs
         while (!cond()) {
-            if (System.currentTimeMillis() > end) fail("timeout: $what (points: ${waypointCount()})")
+            if (System.currentTimeMillis() > end) fail("timeout: $what (points: ${waypointCount()})${onTimeout().let { if (it.isEmpty()) "" else " – $it" }}")
             Thread.sleep(100)
         }
     }
+
+    /**
+     * Time that is part of the test itself, not a wait for app state: a finger resting, a gap between two taps, proof that
+     * something does NOT happen, a debounce to pass, a poll interval of a helper. [why] documents it. A wait for something
+     * the test can observe belongs in [waitUntil].
+     */
+    protected fun pause(ms: Long, why: String) = e2ePause(ms, why)
 
     // ------------------------------------------------------------------------------------------------ test data
 
