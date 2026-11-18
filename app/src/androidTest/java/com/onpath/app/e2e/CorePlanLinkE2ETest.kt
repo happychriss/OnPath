@@ -93,7 +93,7 @@ class CorePlanLinkE2ETest : E2EBase() {
             pinned = setOf(0, 1, 2)))
         open(frozenLink)
         waitUntil("first link's plan") { waypointCount() == 2 }
-        pause(1_500, "routed and snapped, still unchanged") // routed and snapped – still "unchanged"
+        pause(1_500, "routed and snapped, still unchanged")
         open(second)
         waitUntil("second link's plan, no question – ${state()}") { waypointCount() == 3 }
         scenario.onActivity { assertEquals(Activity.MTB, vm(it).activity) }

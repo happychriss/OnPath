@@ -26,11 +26,11 @@ import java.io.File
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
 
-/** Shared steps of the emulator tests (finger holds, app state, generated map data). */
 /** The one place a test sleeps (besides [E2EBase.waitUntil]'s poll); [why] documents it. Also for tests that do not extend E2EBase. */
 @Suppress("UNUSED_PARAMETER")
 fun e2ePause(ms: Long, why: String) { Thread.sleep(ms) }
 
+/** Shared steps of the emulator tests (finger holds, app state, generated map data). */
 abstract class E2EBase {
     @get:Rule val permissions: GrantPermissionRule = if (Build.VERSION.SDK_INT >= 33)
         GrantPermissionRule.grant(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -136,7 +136,7 @@ abstract class E2EBase {
         waitUntil("first point") { waypointCount() == 1 }
         hold(w * 0.65f, h * 0.45f)
         waitUntil("second point by a hold") { waypointCount() == 2 }
-        pause(800, "route (straight line) + camera settle: no observable idle signal") // route (straight line) + camera settle
+        pause(800, "route (straight line) + camera settle: no observable idle signal")
     }
 
     protected fun holdOnWaypoint(index: Int) {
@@ -442,7 +442,7 @@ abstract class E2EBase {
         val end = System.currentTimeMillis() + 20_000
         while (hit == null && System.currentTimeMillis() < end) { pause(500, "poll interval while the symbol is drawn"); hit = drawnAt() }
         if (hit == null) { shot("no-poi-symbol"); fail("the symbol of POI $id is not drawn (layer $layer) – ${state()}") }
-        pause(2_000, "the app reads the shown POIs on the map idle after the camera stopped") // the app reads the shown POIs on the map idle after the camera stopped
+        pause(2_000, "the app reads the shown POIs on the map idle after the camera stopped")
         return hit!!
     }
 
@@ -463,7 +463,7 @@ abstract class E2EBase {
             scenario.onActivity { a -> ok = mapView(a)?.let { it.width > 0 } == true }
             ok
         }
-        pause(if (reloaded) 2_500 else 3_000, "style + app layers: no observable map-idle signal without a hook in main") // style + app layers
+        pause(if (reloaded) 2_500 else 3_000, "style + app layers: no observable map-idle signal without a hook in main")
     }
 
     /**

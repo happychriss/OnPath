@@ -127,7 +127,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
-        pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the sheet ignores a press in its first half second") // the sheet ignores a press in its first half second
+        pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the sheet ignores a press in its first half second")
         assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
         clickText(Txt.s(Res.string.nav_end_tour))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
@@ -182,7 +182,7 @@ class ReleaseRundgang : E2EBase() {
         // Plan: a hold between here and the start → the new point 1, the lead redone to it
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
-        pause(2_000, "Plan's own camera move first") // Plan's own camera move first
+        pause(2_000, "Plan's own camera move first")
         val near = GeoPoint(FAR.lat + (THEATRE.lat - FAR.lat) * 0.25, FAR.lon + (THEATRE.lon - FAR.lon) * 0.25)
         showOnMap(FAR, near)
         holdAt(near)
@@ -204,7 +204,7 @@ class ReleaseRundgang : E2EBase() {
         scenario.onActivity { vm(it).continueNavigation(force = true) }
         waitUntil("Undo: the lead is back", 60_000) { nav()?.line?.let { sameLine(it, lead) } == true }
         shot("5-lead-back")
-        pause(20_000, "standing far away: never a junction cue") // standing far away: never a junction cue
+        pause(20_000, "standing far away: never a junction cue")
         assertTrue("no junction cue while far away: ${cues()}", cues().isEmpty())
     }
 
@@ -339,7 +339,7 @@ class ReleaseRundgang : E2EBase() {
             val n = java.util.concurrent.atomic.AtomicInteger()
             val out = SyncRound(keys, mailbox.box(keys), { ByteArray(12) { (n.incrementAndGet() and 0x7f).toByte() } }).run(browser)
             assertTrue("browser round: $out", out is SyncRound.Outcome.Done)
-            pause(11_000, "My routes passes at once when opened, not within 10 s of the pairing pass") // My routes passes at once when opened, not within 10 s of the pairing pass
+            pause(11_000, "My routes passes at once when opened, not within 10 s of the pairing pass")
             scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
             assertNotNull("\"$title\" arrived", findFresh(By.text(title), 90_000))
             assertNotNull("tag \"New\"", findFresh(By.text(Txt.s(Res.string.routes_tag_new)), 10_000))
@@ -568,7 +568,7 @@ class ReleaseRundgang : E2EBase() {
         shot("2-switch-question")
         clickText(NavText.TAKE)
         waitUntil("navigated as Hike", 20_000) { nav()?.let { it.prompt == null && it.session?.activity == Activity.HIKE } == true }
-        pause(3_000, "the service must not load the old session back (the bug did at once)") // the service must not load the old session back (the bug did at once)
+        pause(3_000, "the service must not load the old session back (the bug did at once)")
         assertEquals("still Hike in the service", Activity.HIKE, nav()?.session?.activity)
         assertEquals("the app follows", Activity.HIKE, read { it.activity })
         assertFalse("the Bike line is not followed any more", sameLine(before, nav()!!.line))
@@ -596,7 +596,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("the way to ① followed", 90_000) { nav()?.let { it.session?.lead == true && it.session.rerouted && it.prompt == null } == true }
         val led = nav()!!.version
         shot("2-led-to-one")
-        pause(20_000, "standing beside the plan's own line: the field flipped back after ~2 s, four times") // standing beside the plan's own line: the field flipped back after ~2 s, four times
+        pause(20_000, "standing beside the plan's own line: the field flipped back after ~2 s, four times")
         assertFalse("never the question again: ${nav()?.prompt}", nav()?.prompt is NavPrompt.MidStart)
         assertTrue("the way to ① is still followed", nav()?.session?.rerouted == true)
         assertEquals("the followed line did not change", led, nav()!!.version)
