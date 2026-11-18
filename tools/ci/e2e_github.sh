@@ -2,8 +2,8 @@
 # Run the E2E tests on GitHub's emulator from any session (cloud sessions have no KVM; donald runs them locally with
 # tools/dev/device.sh). Dispatches .github/workflows/e2e.yml by REST (`gh issue`/GraphQL is blocked in cloud sessions).
 #   tools/ci/e2e_github.sh [--tests Class[,Class#method]] [--ref main] [--wait] [--out DIR] [--force]
-#     --tests  only these classes (empty = all but the Release-Rundgang, ~20 min; the Rundgang: com.onpath.app.e2e.ReleaseRundgang)
-#     --wait   poll every 60 s until the run ends, then download the report "e2e-report" into --out
+#     --tests  only these classes (empty = all but the Release-Rundgang, on four emulators; the Rundgang: com.onpath.app.e2e.ReleaseRundgang)
+#     --wait   poll every 60 s until the run ends, then download the report(s) "e2e-report*" into --out
 #              (default ${TMPDIR:-/tmp}/e2e-<run id>) and list the failed tests
 #     --force  dispatch even when an E2E run already waits on the ref (that waiting run is then cancelled)
 # Exit: 0 dispatched / green, 1 red or cancelled, 2 usage or GitHub error.
@@ -61,10 +61,13 @@ concl=${st#completed }
 echo "e2e_github: $concl after $(( ($(date +%s) - t0) / 60 )) min – $url"
 
 OUT=${OUT:-${TMPDIR:-/tmp}/e2e-$id}
-art=$(gh api "repos/$REPO/actions/runs/$id/artifacts" --jq '.artifacts[] | select(.name == "e2e-report") | .id' 2>/dev/null | head -1)
-if [ -n "$art" ]; then
-  mkdir -p "$OUT" && gh api "repos/$REPO/actions/artifacts/$art/zip" > "$OUT/report.zip" 2>/dev/null &&
-    (cd "$OUT" && unzip -qo report.zip && rm report.zip) && echo "e2e_github: report in $OUT (screenshots: e2e-out/, logcat on failure)"
+# one report per emulator: "e2e-report" (one emulator) or "e2e-report-<shard>" (the full run on four)
+arts=$(gh api "repos/$REPO/actions/runs/$id/artifacts" --jq '.artifacts[] | select(.name | startswith("e2e-report")) | "\(.id) \(.name)"' 2>/dev/null)
+if [ -n "$arts" ]; then
+  while read -r art name; do
+    mkdir -p "$OUT/$name" && gh api "repos/$REPO/actions/artifacts/$art/zip" > "$OUT/$name/report.zip" 2>/dev/null &&
+      (cd "$OUT/$name" && unzip -qo report.zip && rm report.zip) && echo "e2e_github: report in $OUT/$name (screenshots: e2e-out/, logcat on failure)"
+  done <<< "$arts"
   python3 - "$OUT" <<'PY'
 import glob, sys, xml.etree.ElementTree as ET
 n = bad = 0
