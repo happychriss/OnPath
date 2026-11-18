@@ -254,6 +254,68 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   await c.close();
 }
 
+// ---- 9: a long plan's calculation (owner 2026-11-18, Neuss → München: „98 % sehr lange – hängt das?“) – after the
+//      downloads the load card leaves its percent: the line says the calculation („Calculating section 2 of 3…“, the
+//      app's PlanStatus text), the bar runs (moving, no number), the section counter advances, after ~10 s the calm
+//      line „A long tour can take a few minutes.“; the percent never goes back, never a number held for long, Cancel
+//      still stops it. A slow router: ?slowRoute (worker.ts hold – the worker blocked like BRouter on a long plan) ----
+{
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  // slow routing data, so the card comes up (the calculation alone only joins a card that is up)
+  await c.route('**/segments/**', async (r) => { await new Promise((res) => setTimeout(res, 1500)); return r.continue(); });
+  await c.addInitScript(() => {
+    window.__card = [];
+    setInterval(() => {
+      const el = document.querySelector('#mapnotes .mapnote.load');
+      const last = window.__card.at(-1);
+      const now = el ? { pct: Number(el.dataset.pct), running: !!el.querySelector('.bar.running'), num: el.querySelector('.pct')?.textContent ?? '',
+        title: el.querySelector('.title')?.textContent ?? '', lines: [...el.querySelectorAll('.line')].map((l) => l.textContent).join(' | ') } : null;
+      const key = JSON.stringify(now);
+      if (!last || last.key !== key) window.__card.push({ key, t: performance.now(), ...(now ?? { gone: true }) });
+    }, 50);
+  });
+  const p = await c.newPage();
+  const errs = [];
+  p.on('pageerror', (e) => errs.push(String(e)));
+  await p.goto(url + 'index.html');
+  await p.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  const code = await p.evaluate(() => window.__engine.encode({ points: [[46.6700, 11.1600], [46.6773, 11.1302], [46.6400, 11.1500], [46.6879, 11.1111]],
+    activity: 'BIKE_TOURING', sac: 2, pinned: [], names: {}, title: null }));
+  await p.goto(url + 'index.html?slowRoute=3500#p=' + code);
+  await p.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  // the calm line comes ~10 s into the calculation (the router held 3.5 s before it routes and at each section)
+  const hint = await p.waitForFunction(() => /few minutes/.test(document.querySelector('#mapnotes .mapnote.load')?.textContent ?? ''), null, { timeout: 60_000 })
+    .then(() => true, () => false);
+  const { log, now } = await p.evaluate(() => ({ log: window.__card, now: performance.now() }));
+  const open = log.filter((x) => !x.gone);
+  const calc = open.filter((x) => x.running);
+  console.log('(the card: ' + open.map((x) => `${Math.round(x.t)} ${x.running ? 'run' : x.num} ${x.title}${x.lines ? ' / ' + x.lines : ''}`).join(' ; ') + ')');
+  check(open.some((x) => !x.running && /^\d{1,3}\s?%$/.test(x.num)), 'long plan: the downloads show their percent');
+  check(calc.length > 0 && calc.every((x) => x.num === '' && /Calculating/.test(x.title)),
+    `long plan: then the calculation – its line, the running bar, no number (${calc.map((x) => x.title).join(' · ')})`);
+  const sections = [...new Set(calc.map((x) => x.title.match(/section (\d) of 3/)?.[1]).filter(Boolean))];
+  check(sections.length >= 2, `long plan: the section counter advances (${sections.join(' → ')})`);
+  check(open.every((x, i) => i === 0 || x.pct >= open[i - 1].pct), `long plan: the percent never goes back (${open.map((x) => x.pct).join(' ')})`);
+  // never a number held: while the card shows a percent, it changes (or the card goes over to the calculation) within 6 s
+  const held = log.filter((x, i) => {
+    if (x.gone || x.running || (i > 0 && !log[i - 1].gone && !log[i - 1].running && log[i - 1].pct === x.pct)) return false;
+    let j = i + 1;
+    while (j < log.length && !log[j].gone && !log[j].running && log[j].pct === x.pct) j++;
+    return (log[j]?.t ?? now) - x.t > 6000;
+  });
+  check(held.length === 0, `long plan: no percent held for more than 6 s (${held.map((x) => x.num + ' ' + x.title).join(' | ')})`);
+  check(hint, 'long plan: after ~10 s the calm line „A long tour can take a few minutes.“');
+  const anim = await p.evaluate(() => { const i = document.querySelector('#mapnotes .mapnote.load .bar.running > i'); return i ? getComputedStyle(i).animationName : ''; });
+  check(anim && anim !== 'none', `long plan: the running bar moves (animation "${anim}")`);
+  // Cancel still stops the calculation (the worker is stopped – client.ts dropPlans)
+  await p.click('#mapnotes .mapnote.load button.act').catch(() => {});
+  await p.waitForFunction(() => !document.querySelector('#mapnotes .mapnote.load') && document.body.dataset.planning !== '1', null, { timeout: 10_000 }).catch(() => {});
+  const after = await p.evaluate(() => ({ plan: !!window.__state.plan, line: document.getElementById('summary').textContent, card: !!document.querySelector('#mapnotes .mapnote.load') }));
+  check(!after.plan && !after.card && /calculation stopped/.test(after.line), `long plan: Cancel in the card stops the calculation (${JSON.stringify(after).slice(0, 160)})`);
+  check(errs.length === 0, `long plan: no page error (${errs.join(' | ')})`);
+  await c.close();
+}
+
 // ---- 4: no WasmGC ----
 for (const [locale, want] of [['de-DE', 'zu alt'], ['en-US', 'too old']]) {
   const c = await browser.newContext({ locale });

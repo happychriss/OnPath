@@ -104,6 +104,10 @@ let base = '';
 let segments = '';
 let lang = 'en'; // the text language (Txt.setLanguage), from the page's config before the engine loads
 let packed = false; // preview host: rd5 published as <name>.b64.txt (see packed.ts)
+/** Tests only (?slowRoute=ms): the router held this long before it routes and at every leg – a slow router, blocking the
+ * worker like BRouter on a 600 km plan (robust-smoke 9: the load card's calculation phase, Cancel). 0 = off. */
+let slowMs = 0;
+const hold = () => { if (!slowMs) return; const end = performance.now() + slowMs; while (performance.now() < end) { /* expected: a test's slow router */ } };
 const loadMs = { engine: 0 };
 
 /**
@@ -349,7 +353,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   if (req.type === 'drop') { dropped.add(req.target); return; } // no answer: the page already stopped waiting
   try {
     if (req.type === 'config') {
-      base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en';
+      base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en'; slowMs = req.slowMs ?? 0;
       let e: WasmEngine;
       try { e = await getEngine(); } catch (err) {
         // the browser cannot compile the engine (Safari < 18.2 has no WasmGC): no reload helps – the page says so
@@ -433,9 +437,11 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     g.onpathPlanProgress = req.type === 'plan' ? (text) => {
       const j = JSON.parse(text) as { text: string | null; doneM: number; totalM: number };
       reply({ id: req.id, ok: true, progress: { phase: 'legs', text: j.text ?? '', doneM: j.doneM, totalM: j.totalM } });
+      hold();
     } : undefined;
     let json: string;
     try {
+      if (req.type === 'plan') hold();
       json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '', req.rounds ?? 0) : e.route(req.points, req.activity, req.sac);
     } finally { g.onpathPlanProgress = undefined; }
     const t2 = performance.now();

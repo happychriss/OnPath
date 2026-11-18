@@ -431,7 +431,10 @@ dialog.pair .check b { letter-spacing: .08em; }
 .mapnote.load .line { margin-left: 0; }
 .mapnote.load .act { display: block; margin: 8px 0 -4px auto; border: none; background: none; color: var(--green-fg, var(--plan)); font: inherit; font-size: 14px;
   font-weight: 600; padding: 4px 2px; cursor: pointer; }
-@media (prefers-reduced-motion: reduce) { .mapnote.load .bar > i { transition: none; } }
+/* the route calculation (the router says no fraction, owner 2026-11-18): a running bar – a stripe that keeps moving, no number */
+.mapnote.load .bar.running > i { width: 35%; transition: none; animation: loadrun 1.4s ease-in-out infinite; }
+@keyframes loadrun { from { transform: translateX(-100%); } to { transform: translateX(290%); } }
+@media (prefers-reduced-motion: reduce) { .mapnote.load .bar > i { transition: none; } .mapnote.load .bar.running > i { animation-duration: 4s; } }
 /* one wait at a time (onewait.ts, owner 2026-11-13): body[data-wait] names the one that shows – the others step back */
 body[data-wait]:not([data-wait=""]):not([data-wait="box"]) #msgcards .msgcard[data-id="routing"],
 body[data-wait]:not([data-wait=""]):not([data-wait="strip"]) #mapnotes .mapnote.busy:not(.load),

@@ -1065,7 +1065,15 @@ keeps today's peek (§24): the sheet stays collapsed, the card is over the map.
 When work is added while the card is up (a new part, the route's map areas, tiles after the route is fitted) the bar
 does not jump back: the part still to go is shared by all open work from that moment (`LoadProgress` rebase). Nothing
 sits at 99 % for ever: every part ends – downloaded, failed (counted as done; the plain error line says it) or dropped
-(Cancel, a new plan). Percent in the page's language (`Intl.NumberFormat`: „43 %“ / „43%“). No new strings: the line is
+(Cancel, a new plan).
+**The calculation phase** (owner 2026-11-18, Neuss → München: „98 % sehr lange – hängt das?“; the fixed 1 MB share made
+the bar stop just below 100 % for minutes): once the route calculation is all that is left (`JobLook.running`) the card
+drops the number – its line is the engine's („Route wird berechnet…“, „Abschnitt 2 von 5 wird berechnet…“: the counter
+advances leg by leg), the bar runs (a moving stripe, indeterminate for screen readers), and after 10 s (`HINT_MS`) the
+calm line `plan_from_track_busy_text` („Bei einer langen Tour kann das ein paar Minuten dauern.“). The percent stays
+underneath (never back); BRouter says nothing within a leg, so no number is made up. Cancel as before. Test:
+`robust-smoke` 9 (a slow router, `?slowRoute=ms` – worker.ts holds before routing and at each leg; red before: 96 %
+for 13 s). Percent in the page's language (`Intl.NumberFormat`: „43 %“ / „43%“). No new strings: the line is
 `maps_load_loading`, `plan_calculating`, the area strip's `maps_card_preparing*`; „· about 10 MB“ is no longer shown
 (the percent says it better).
 
