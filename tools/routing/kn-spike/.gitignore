@@ -1,0 +1,8 @@
+work/
+build/
+.gradle/
+.kotlin/
+*.rd5
+*.kexe
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
