@@ -62,10 +62,10 @@ class OverviewSwipeE2ETest : E2EBase() {
         device.pressBack()
         val again = findFresh(By.text("Swipe 3"), 10_000)
         assertNotNull("the list again", again)
-        Thread.sleep(1_100) // a new picture would have a later time
+        pause(1_100, "a new picture would have a later file time") // a new picture would have a later time
         again!!.click()
         assertNotNull(findFresh(By.text(Txt.s(Res.string.routes_overview_position, 1, 3)), 10_000))
-        Thread.sleep(3_000)
+        pause(3_000, "the map picture")
         shot("overview-1-again")
         assertEquals("the stored picture is shown again, not drawn anew", made, keyFile.lastModified())
     }

@@ -54,7 +54,7 @@ class DoneTourReviewE2ETest : E2EBase() {
             row!!.click()
             assertNotNull("its longest pause", findFresh(By.text(Txt.s(Res.string.routes_review_longest_pause)), 15_000))
             assertNotNull("its highest point", findFresh(By.text(Txt.s(Res.string.routes_review_highest)), 5_000))
-            Thread.sleep(3_000) // the map picture
+            pause(3_000, "the map picture") // the map picture
             shot("1-look-back")
             clickText(Txt.s(Res.string.routes_review_details))
             assertNotNull("the Details sheet", findFresh(By.text(Txt.s(Res.string.routes_review_on_the_way)), 5_000))

@@ -44,7 +44,7 @@ class MultiDayTourE2ETest : E2EBase() {
     private fun <T> onVm(f: (AppViewModel) -> T): T { var out: T? = null; scenario.onActivity { out = f(vm(it)) }; @Suppress("UNCHECKED_CAST") return out as T }
 
     private fun routeSettled(maxMs: Long = 60_000) {
-        Thread.sleep(300)
+        pause(300, "the edit's routing starts")
         waitUntil("route settled", maxMs) {
             onVm { v -> !v.routing && v.route != null && v.route!!.legs.size >= v.waypoints.size - 1 }
         }
@@ -64,7 +64,7 @@ class MultiDayTourE2ETest : E2EBase() {
             // My routes: the row says "3 Tage · …" (and "Karten fehlen" while its map areas are not on the phone)
             scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
             assertNotNull("the multi-day route in My routes", findFresh(By.text("E2E Drei Tage"), 8_000))
-            Thread.sleep(1_500)
+            pause(1_500, "the rows are drawn")
             shot("0-my-routes")
             scenario.onActivity { a -> vm(a).routesOpen = false }
             scenario.onActivity { a -> vm(a).openTour(db.getTour(t.id)!!) }
@@ -72,10 +72,10 @@ class MultiDayTourE2ETest : E2EBase() {
             routeSettled(); night = onVm { it.waypoints.getOrNull(2) } ?: night // the router may move the points onto their ways
             waitUntil("the overview shows its days", 20_000) { onVm { it.multiDay.daysUi()?.rows?.size == 3 } }
             // the maps question (first opening, once): shown, then "later" – the test map package has no server behind it
-            try { waitUntil("the maps question", 10_000) { onVm { it.multiDay.tourMapsAsk != null } }; Thread.sleep(800); shot("1-maps-question") }
+            try { waitUntil("the maps question", 10_000) { onVm { it.multiDay.tourMapsAsk != null } }; pause(800, "the question is drawn"); shot("1-maps-question") }
             catch (_: AssertionError) {} // expected: every map area of the corridor already on the emulator – no question
             scenario.onActivity { a -> vm(a).multiDay.answerTourMaps(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER); vm(a).planSize = PlanSize.FULL }
-            Thread.sleep(1_000)
+            pause(1_000, "the sheet grows to full")
             shot("1-overview")
             // pick day 2 in the rows (its number), then "Tag 2 fahren"
             val two = findFresh(By.text("2"), 8_000)

@@ -42,7 +42,7 @@ class CoreBackupE2ETest : E2EBase() {
             sh("cmd location providers set-test-provider-enabled $p true")
         }
         fix()
-        thread(isDaemon = true) { while (walking) { lat += 0.00002; lon += 0.00003; fix(); Thread.sleep(500) } }
+        thread(isDaemon = true) { while (walking) { lat += 0.00002; lon += 0.00003; fix(); pause(500, "walker thread: a fix every 0.5 s") } }
         launch()
         waitUntil("GPS fix in the app", 20_000) { var ok = false; scenario.onActivity { ok = vm(it).tracker.location.value != null }; ok }
     }
@@ -61,7 +61,7 @@ class CoreBackupE2ETest : E2EBase() {
         // 1. record a short tour and end it
         scenario.onActivity { vm(it).startRecording() }
         waitUntil("recording", 20_000) { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; r }
-        Thread.sleep(12_000) // ~20 fixes, a few hundred metres
+        pause(12_000, "~20 fixes, a few hundred metres") // ~20 fixes, a few hundred metres
         scenario.onActivity { vm(it).stopRecording() }
         var tourId = -1L
         waitUntil("tour finished", 20_000) { scenario.onActivity { tourId = vm(it).finishedTour?.id ?: -1L }; tourId >= 0 }
@@ -77,7 +77,7 @@ class CoreBackupE2ETest : E2EBase() {
             file = sh("grep -rl ${tour.uuid} /sdcard/Documents/OnPath").trim() // no shell globbing here: recursive grep
             file.lines().any { it.endsWith(".gpx") && "/Deleted/" !in it }
         }
-        Thread.sleep(3_000) // a place name may still rename the tour – and its file
+        pause(3_000, "a place name may still rename the tour and its file") // a place name may still rename the tour – and its file
 
         // 3. "wipe": no tours, no backup index, no folder settings (like a reinstall)
         (db.listTours() + db.listDeleted()).forEach { db.deleteTour(it.id) }

@@ -76,7 +76,7 @@ class CoreFieldE2ETest : E2EBase() {
         fix()
         // a walker: a fix every 0.5 s, ~1.4 m/s north-east
         thread(isDaemon = true) {
-            while (walking) { lat += 0.0000045; lon += 0.0000065; fix(); Thread.sleep(500) }
+            while (walking) { lat += 0.0000045; lon += 0.0000065; fix(); pause(500, "walker thread: a fix every 0.5 s") }
         }
         launch()
         waitUntil("GPS fix in the app", 20_000) { var ok = false; scenario.onActivity { ok = vm(it).tracker.location.value != null }; ok }
@@ -92,7 +92,7 @@ class CoreFieldE2ETest : E2EBase() {
 
     private companion object { val PROVIDERS = listOf("gps", "network") }
 
-    private fun follow() { scenario.onActivity { vm(it).followMe = true }; Thread.sleep(1_500) }
+    private fun follow() { scenario.onActivity { vm(it).followMe = true }; pause(1_500, "the camera follows me") }
 
     /** "Go here" from my location, a stop added, then both deleted by holding them – while the map follows me. */
     @Test fun goHereFromMyLocationThenDeleteWhileFollowing() {
@@ -108,7 +108,7 @@ class CoreFieldE2ETest : E2EBase() {
         holdOnWaypoint(1)
         clickText("Delete")
         waitUntil("stop deleted", 15_000) { waypointCount() == 2 }
-        Thread.sleep(1_500)
+        pause(1_500, "the camera follows after the delete")
         holdOnWaypoint(1) // the destination
         clickText("Delete")
         waitUntil("destination deleted", 15_000) { waypointCount() == 1 }
@@ -123,7 +123,7 @@ class CoreFieldE2ETest : E2EBase() {
         routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
-        Thread.sleep(2_000)
+        pause(2_000, "Navigate's camera move")
         assertPositionDotOnTop("navigate")
         // Navigate shows the plan's numbered points while the tour follows the plan (owner 2026-11-01: "sonst weiß man
         // gar nicht, wo man einen Punkt gemacht hat") – not editable there (MapHost edits only when canEditMap)
@@ -132,7 +132,7 @@ class CoreFieldE2ETest : E2EBase() {
         assertFalse("plan points not editable in Navigate", editable)
         scenario.onActivity { vm(it).switchToPlan() }
         waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.PLAN }
-        Thread.sleep(2_000)
+        pause(2_000, "Plan's camera move")
         assertPositionDotOnTop("plan during a tour")
         waitUntil("plan markers back in Plan", 10_000) { drawnMarkers() > 0 }
         holdOnWaypoint(1)
@@ -158,7 +158,7 @@ class CoreFieldE2ETest : E2EBase() {
      * that gets no route goes on after [maxMs], as the fixed sleep did.
      */
     private fun routeSettled(maxMs: Long = 30_000) {
-        Thread.sleep(300) // the edit's routing starts
+        pause(300, "the edit's routing starts") // the edit's routing starts
         val end = System.currentTimeMillis() + maxMs
         while (System.currentTimeMillis() < end) {
             var done = false
@@ -168,9 +168,9 @@ class CoreFieldE2ETest : E2EBase() {
                 done = !v.routing && (v.waypoints.size < 2 || (r != null && r.legs.size >= v.waypoints.size - 1))
             }
             if (done) break
-            Thread.sleep(100)
+            pause(100, "poll interval of routeSettled")
         }
-        Thread.sleep(700) // snapping + camera, as before
+        pause(700, "snapping + camera, as before") // snapping + camera, as before
     }
 
     /**
@@ -188,7 +188,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         scenario.onActivity { vm(it).deletePointFromList(1) }
         waitUntil("one point left", 10_000) { waypointCount() == 1 }
-        Thread.sleep(1_500)
+        pause(1_500, "the camera follows after the delete")
         scenario.onActivity { vm(it).deletePointFromList(0) }
         waitUntil("plan empty", 10_000) { waypointCount() == 0 }
         scenario.onActivity { vm(it).continueNavigation() }
@@ -342,7 +342,7 @@ class CoreFieldE2ETest : E2EBase() {
             }
         }
         waitUntil("the new tour records", 10_000) { com.onpath.app.recording.RecordingService.state.value?.tourId.let { it != null && it != oldId } }
-        Thread.sleep(3_000) // a stop meant for the old tour would have ended the service by now
+        pause(3_000, "a stop meant for the old tour would have ended the service by now") // a stop meant for the old tour would have ended the service by now
         val st = com.onpath.app.recording.RecordingService.state.value
         assertNotNull("the service still records the new tour (not stopped by the old tour's end)", st)
         assertTrue("a new tour, not the ended one", st!!.tourId != oldId)
@@ -414,7 +414,7 @@ class CoreFieldE2ETest : E2EBase() {
         var tourId = -1L
         scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).endTourAndDelete() }
         waitUntil("the tour has ended", 20_000) { !recording() }
-        Thread.sleep(1_500)
+        pause(1_500, "no Save dialog may appear after the tour has ended")
         scenario.onActivity { assertTrue("no Save dialog after Löschen", vm(it).saveAsk == null) }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         assertTrue("the tour is in the bin", (db.getTour(tourId)?.deletedMs ?: 0L) > 0L)
@@ -432,7 +432,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun arrivalEndTourBringsTheStartScreen() {
         walking = false
-        Thread.sleep(800)
+        pause(800, "the walker thread stops feeding")
         val start = GeoPoint(lat, lon)
         val goal = GeoPoint(lat + 0.0035, lon + 0.0020)    // ~430 m away
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -458,7 +458,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
             assertNotNull("Tour beenden", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
             shot("arrival-box")
-            Thread.sleep(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS) // the box ignores a press in its first half second
+            pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the box ignores a press in its first half second") // the box ignores a press in its first half second
             clickText(Txt.s(Res.string.nav_end_tour))
             waitUntil("the tour has ended", 30_000) { !recording() }
             waitUntil("the tour is saved", 15_000) { db.getTour(tourId)?.state == "done" }
@@ -999,33 +999,33 @@ class CoreFieldE2ETest : E2EBase() {
             startPlanWithTwoPoints()
             routeSettled()
             // NORTH: a hand rotation, then "whole route" → north up
-            turnByHand(); Thread.sleep(500)
+            turnByHand(); pause(500, "the hand rotation settles")
             scenario.onActivity { vm(it).showWholeRoute() }
-            Thread.sleep(1_500)
+            waitUntil("whole route turns north", 15_000) { near(0.0, bearing()) }
             assertTrue("north: whole route turns north (${bearing()})", near(0.0, bearing()))
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
-            Thread.sleep(2_000)
+            pause(2_000, "Navigate's camera move")
             assertTrue("north: Navigate north up (${bearing()})", near(0.0, bearing()))
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-            Thread.sleep(2_000)
+            pause(2_000, "Plan's camera move")
             assertTrue("north: back in Plan north up (${bearing()})", near(0.0, bearing()))
             scenario.onActivity { vm(it).locate() }
-            Thread.sleep(1_500)
+            pause(1_500, "locate's camera move")
             assertTrue("north: locate in Plan north up (${bearing()})", near(0.0, bearing()))
             // TRAVEL: Navigate, looked around by hand, back in Plan – the bearing stays; a fit keeps it too
             scenario.onActivity { vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = true)) }
             scenario.onActivity { vm(it).continueNavigation(force = true) }
             waitUntil("Navigate again", 20_000) { mode() == AppMode.NAVIGATE }
-            Thread.sleep(2_000)
-            turnByHand(); Thread.sleep(800)
+            pause(2_000, "Navigate's camera move")
+            turnByHand(); pause(800, "the hand rotation settles")
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan again", 10_000) { mode() == AppMode.PLAN }
-            Thread.sleep(2_000)
+            pause(2_000, "Plan's camera move")
             assertTrue("travel: leaving Navigate keeps the bearing (${bearing()})", near(137.0, bearing()))
             scenario.onActivity { vm(it).showWholeRoute() }
-            Thread.sleep(1_500)
+            pause(1_500, "the fit's camera move")
             assertTrue("travel: whole route keeps the bearing (${bearing()})", near(137.0, bearing()))
         } finally {
             scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording(); before?.let { s -> vm(it).updateSettings(s) } }
@@ -1058,13 +1058,18 @@ class CoreFieldE2ETest : E2EBase() {
         try {
             scenario.onActivity { vm(it).refreshTours(); vm(it).openTour(db.getTour(id)!!) }
             waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
-            Thread.sleep(3_000) // the plan is framed; my position is ~25 km south, off the map
+            pause(3_000, "the plan is framed; my position is ~25 km south, off the map") // the plan is framed; my position is ~25 km south, off the map
             val prefix = Txt.s(Res.string.plan_locate_far_cd, "").substringBefore(" ").ifBlank { "Du" }
             val label = findFresh(By.desc(java.util.regex.Pattern.compile(
                 java.util.regex.Pattern.quote(prefix) + ".*km.*", java.util.regex.Pattern.DOTALL)), 8_000)
             assertNotNull("the locate button tells the distance while I am off the map", label)
             label!!.click()
-            Thread.sleep(2_500) // fit animation
+            waitUntil("the fit shows my position and the plan", 30_000) {
+                var inView = false
+                onMap { m -> m.projection.visibleRegion.latLngBounds.let { inView = it.contains(org.maplibre.android.geometry.LatLng(lat, lon)) &&
+                    it.contains(org.maplibre.android.geometry.LatLng(lat + 0.23, lon + 0.005)) } }
+                inView
+            }
             var bounds: org.maplibre.android.geometry.LatLngBounds? = null
             onMap { m -> bounds = m.projection.visibleRegion.latLngBounds }
             val b = bounds!!
@@ -1093,11 +1098,11 @@ class CoreFieldE2ETest : E2EBase() {
                 scenario.onActivity { if (!vm(it).headingUp) vm(it).onCompass(false) }
                 waitUntil("walking direction up", 5_000) { var h = false; scenario.onActivity { a -> h = vm(a).headingUp }; h }
             }
-            Thread.sleep(2_500)
+            pause(2_500, "Navigate's camera move")
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-            Thread.sleep(3_000) // settle + fit animation
-            Thread.sleep(3_000) // a following camera would have pulled the map back to the position by now
+            pause(3_000, "settle + fit animation") // settle + fit animation
+            pause(3_000, "a following camera would have pulled the map back to the position by now") // a following camera would have pulled the map back to the position by now
             var at: org.maplibre.android.geometry.LatLng? = null
             onMap { m -> at = m.cameraPosition.target }
             val c = at!!
@@ -1120,12 +1125,12 @@ class CoreFieldE2ETest : E2EBase() {
         routeSettled()
         scenario.onActivity { vm(it).startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
-        Thread.sleep(1_000)
+        pause(1_000, "the tour's first state")
         var tourId = -1L
         scenario.onActivity { tourId = vm(it).recState.value!!.tourId }
         repeat(2) {
             device.pressBack()
-            Thread.sleep(1_500)
+            pause(1_500, "proving that Back does not leave Navigate")
             assertEquals("still in Navigate", AppMode.NAVIGATE, mode())
             assertEquals("the app is still in front", androidx.lifecycle.Lifecycle.State.RESUMED, scenario.state)
         }
@@ -1230,7 +1235,7 @@ class CoreFieldE2ETest : E2EBase() {
                 if (hintSeen != null) break
             }
             assertNotNull("a short tap shows the hint", hintSeen)
-            Thread.sleep(1_500)
+            pause(1_500, "proving that a short tap does not pause")
             assertTrue("a short tap does not pause", com.onpath.app.recording.RecordingService.state.value?.paused != true)
             holdButton(Txt.s(Res.string.nav_action_pause), ms = holdMs + 1_000)
             waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
@@ -1254,7 +1259,7 @@ class CoreFieldE2ETest : E2EBase() {
                 if (resumeHint != null) break
             }
             assertNotNull("a short tap on Weiter outside the window shows the hint", resumeHint)
-            Thread.sleep(1_000)
+            pause(1_000, "proving that a short tap does not resume")
             assertTrue("a short tap on Weiter outside the window does not resume", com.onpath.app.recording.RecordingService.state.value?.paused == true)
             holdButton(Txt.s(Res.string.nav_end_tour), ms = holdMs + 1_000)
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
@@ -1433,7 +1438,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun leavingTheRouteShowsAndSaysBothStepsAndTheCardGoesBackOnTheRoute() {
         walking = false
-        Thread.sleep(800)
+        pause(800, "the walker thread stops feeding")
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         com.onpath.app.data.Prefs(ctx).voiceHeard = com.onpath.app.setup.Felt.YES
         scenario.onActivity {
@@ -1461,7 +1466,7 @@ class CoreFieldE2ETest : E2EBase() {
             while (driving) {
                 if (path !== mine) { mine = path; i = 0 }
                 if (i < mine.size) { lat = mine[i].lat; lon = mine[i].lon; i++ }
-                fix(); Thread.sleep(500)
+                fix(); pause(500, "driver thread: one fix per 0.5 s")
             }
         }
         val offRoute = Txt.s(Res.string.nav_off_route)
