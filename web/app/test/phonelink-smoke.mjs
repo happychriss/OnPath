@@ -58,7 +58,7 @@ function watchWaits(every = 50) {
     if (load) {
       const p = Number(load.dataset.pct);
       const last = L.pct.at(-1);
-      if (!last || last.s !== L.sessions || last.p !== p) L.pct.push({ s: L.sessions, p, text: load.querySelector('.pct')?.textContent ?? '' });
+      if (!last || last.s !== L.sessions || last.p !== p) L.pct.push({ s: L.sessions, p, text: load.querySelector('.pct')?.textContent ?? '', running: !!load.querySelector('.bar.running') });
     }
   }, every);
 }
@@ -70,7 +70,8 @@ function checkPercent(log, who) {
   check(first.length >= 3, `${who}: the percent moved through several steps (${first.join(' → ')})`);
   check(!back, `${who}: the percent never goes back (${log.pct.map((x) => x.s + ':' + x.p).join(' ')})`);
   check(first.at(-1) === 100, `${who}: the percent reaches 100`);
-  check(log.pct.every((x) => /^\d{1,3}\s?%$/.test(x.text)), `${who}: the percent reads "45 %" (${log.pct.at(-1)?.text})`);
+  // the route calculation (owner 2026-11-18): a running bar, no number – robust-smoke 9
+  check(log.pct.every((x) => x.running ? x.text === '' : /^\d{1,3}\s?%$/.test(x.text)), `${who}: the percent reads "45 %" (${log.pct.at(-1)?.text})`);
 }
 
 /**

@@ -13,6 +13,10 @@
 // - not measurable, weighted by a fixed share and done in one step: the routing engine starting (ENGINE_UNITS), a shared
 //   link before its routing data size is known (LINK_UNITS, replaced by the real bytes once known), the route
 //   calculation (CALC_UNITS – the router cannot say how far it is).
+// The route calculation itself (owner 2026-11-18, Neuss → München: „98 % sehr lange – hängt das?“): once it is all that
+// is left (a look with [running]) the card drops the number and shows its phase – the engine's line („Abschnitt 2 von 5
+// wird berechnet…“, the counter advances leg by leg), a running bar that visibly moves, after HINT_MS a calm line. The
+// percent is kept underneath (never back); BRouter says nothing within a leg, so no number is made up for it.
 import type * as maplibregl from 'maplibre-gl';
 import type { MapNotices, Notice } from './mapnotice';
 
@@ -21,6 +25,8 @@ export const BUILD_UNITS = 20_000_000; // a map area being prepared takes minute
 export const ENGINE_UNITS = 3_000_000; // the Wasm engine and its profiles
 export const LINK_UNITS = 4_000_000; // a link's routing data before its size is known (a typical 10 km corridor)
 export const CALC_UNITS = 1_000_000; // the route calculation, the last phase
+/** The calculation running this long: the card adds its look's calm [JobLook.hint] line. */
+export const HINT_MS = 10_000;
 
 /**
  * Jobs with done / total units → one fraction 0..1 that never goes back. When the work grows (a job added, a total
@@ -75,6 +81,10 @@ export interface JobLook {
   lines?: string[];
   close?: Notice['close'];
   action?: Notice['action'];
+  /** Not measurable (the route calculation): while only such jobs are open the card shows a running bar, no number. */
+  running?: boolean;
+  /** A calm line once the running phase took [HINT_MS] („A long tour can take a few minutes.“). */
+  hint?: string;
 }
 
 export class LoadOverlay {
@@ -85,6 +95,9 @@ export class LoadOverlay {
   private hideTimer = 0;
   private renderTimer = 0;
   private lastPct = -1;
+  /** When the running phase (only the calculation left) began; 0 = not in it. */
+  private runningSince = 0;
+  private hintTimer = 0;
 
   /** [delayMs]: a wait shorter than this shows nothing (no flash); [onVisible]: the page's other waits step back. */
   constructor(private notices: MapNotices, private delayMs: number, private onVisible: (on: boolean) => void,
@@ -142,6 +155,7 @@ export class LoadOverlay {
     const open = this.progress.openIds();
     const f = this.progress.fraction();
     if (!open.length) {
+      this.endRunning();
       // done: the full bar for a moment, then the card goes by itself
       this.put(1, this.lastLook ?? { title: '', prio: 0, opens: false });
       if (!this.hideTimer) this.hideTimer = window.setTimeout(() => this.hide(), 350);
@@ -149,24 +163,32 @@ export class LoadOverlay {
     }
     const look = open.map((id) => this.looks.get(id)!).filter(Boolean).sort((a, b) => b.prio - a.prio)[0];
     this.lastLook = look;
-    this.put(f, look, open);
+    const running = open.every((id) => this.looks.get(id)?.running);
+    if (running && !this.runningSince) {
+      this.runningSince = performance.now();
+      this.hintTimer = window.setTimeout(() => { this.hintTimer = 0; this.render(); }, HINT_MS);
+    } else if (!running) this.endRunning();
+    this.put(f, look, open, running);
   }
   private lastLook: JobLook | null = null;
 
-  private put(f: number, look: JobLook, open: string[] = []) {
+  private put(f: number, look: JobLook, open: string[] = [], running = false) {
     const looks = open.map((id) => this.looks.get(id)).filter((l): l is JobLook => !!l);
     const pct = Math.max(this.lastPct, Math.floor(f * 100));
     this.lastPct = pct;
+    const hint = running && look.hint && performance.now() - this.runningSince >= HINT_MS - 50 ? [look.hint] : [];
     this.notices.set('load', {
-      kind: 'busy', title: look.title, lines: look.lines, progress: pct, progressText: this.percent(pct / 100),
-      close: look.close, action: looks.find((l) => l.action)?.action,
+      kind: 'busy', title: look.title, lines: hint.length ? [...(look.lines ?? []), ...hint] : look.lines, progress: pct,
+      progressText: this.percent(pct / 100), running, close: look.close, action: looks.find((l) => l.action)?.action,
     });
   }
+  private endRunning() { this.runningSince = 0; clearTimeout(this.hintTimer); this.hintTimer = 0; }
 
   private hide() {
     this.hideTimer = 0;
     if (this.progress.open) { this.render(); return; }
     this.visible = false;
+    this.endRunning();
     this.notices.set('load', null);
     this.progress.restart();
     for (const id of [...this.looks.keys()]) if (!this.progress.isOpen(id)) this.looks.delete(id);

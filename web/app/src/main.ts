@@ -405,7 +405,8 @@ status(t('web_engine_loading'), 'busy');
 /** The engine, loaded with two more tries on a failed download (a network blip at start must not need a reload). */
 async function configureEngine() {
   for (let i = 0; ; i++) {
-    const r = await engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang);
+    // ?slowRoute=ms: the tests' slow router (worker.ts hold – robust-smoke 9)
+    const r = await engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang, Number(params.get('slowRoute') ?? 0) || 0);
     if (r.ok || r.unsupported || i >= 2) return r;
     problem('engine', 'routing engine not loaded – trying again', r.error);
     await new Promise((res) => setTimeout(res, 3000 * (i + 1)));
@@ -1579,7 +1580,9 @@ async function planRun(rounds: number) {
   // While the map of a new area loads (its routing data here, its tiles, a map area being prepared) the load overlay
   // says it with a percent and takes this wait over as its last phase (owner 2026-11-13) – one wait at a time.
   let wait = t('plan_calculating');
-  const calcLook = (title: string): JobLook => ({ title, prio: 0, opens: false, action: cancelLook() });
+  // running: the router says no fraction – the card shows the line and a running bar, after a while the calm line
+  // (owner 2026-11-18: 98 % for minutes on Neuss → München; the app's words: PlanStatus, the long tour's busy text)
+  const calcLook = (title: string): JobLook => ({ title, prio: 0, opens: false, action: cancelLook(), running: true, hint: t('plan_from_track_busy_text') });
   overlay.job('calc', 0, CALC_UNITS, calcLook(wait));
   const show = () => {
     if (id !== state.latest || !state.planning) return;

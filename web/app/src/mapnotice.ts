@@ -15,6 +15,8 @@ export interface Notice {
   /** The load overlay (loadoverlay.ts): 0..100 and its text ("45 %") – a bar under the title. */
   progress?: number;
   progressText?: string;
+  /** The route calculation (the router says no fraction): a running bar, no number – [progress] stays the last percent. */
+  running?: boolean;
   /** One text button (the route's Cancel). */
   action?: { label: string; act: () => void };
 }
@@ -68,11 +70,13 @@ export class MapNotices {
         const row = document.createElement('div');
         row.className = 'progress';
         const bar = document.createElement('div');
-        bar.className = 'bar';
+        bar.className = n.running ? 'bar running' : 'bar';
         bar.setAttribute('role', 'progressbar');
-        bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100'); bar.setAttribute('aria-valuenow', String(n.progress));
-        bar.append(Object.assign(document.createElement('i'), { style: `width: ${n.progress}%` }));
-        row.append(bar, Object.assign(document.createElement('span'), { className: 'pct', textContent: n.progressText ?? `${n.progress} %` }));
+        bar.setAttribute('aria-valuemin', '0'); bar.setAttribute('aria-valuemax', '100');
+        if (!n.running) bar.setAttribute('aria-valuenow', String(n.progress)); // running: no value = indeterminate
+        bar.append(Object.assign(document.createElement('i'), n.running ? {} : { style: `width: ${n.progress}%` }));
+        row.append(bar);
+        if (!n.running) row.append(Object.assign(document.createElement('span'), { className: 'pct', textContent: n.progressText ?? `${n.progress} %` }));
         el.append(row);
       }
       for (const l of n.lines ?? []) el.append(Object.assign(document.createElement('div'), { className: 'line', textContent: l }));
