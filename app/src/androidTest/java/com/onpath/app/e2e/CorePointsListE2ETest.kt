@@ -249,7 +249,7 @@ class CorePointsListE2ETest : E2EBase() {
         (findFresh(By.descStartsWith("Show point 2 on the map"), 5_000)
             ?: throw AssertionError("row of point 2 shown – UiAutomator sees: ${seenDescriptions()} – ${state()}")).click()
         waitUntil("half sheet after the tap") { size() == PlanSize.COMPACT }
-        pause(1_200, "camera glide") // camera glide
+        pause(1_200, "camera glide")
         var highlight: GeoPoint? = null
         scenario.onActivity { highlight = vm(it).highlight }
         assertEquals("point highlighted", target, highlight)

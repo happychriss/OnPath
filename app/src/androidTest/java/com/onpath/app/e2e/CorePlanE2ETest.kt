@@ -428,12 +428,7 @@ class CorePlanE2ETest : E2EBase() {
         var piece: List<com.onpath.app.routing.GeoPoint> = emptyList()
         scenario.onActivity { piece = vm(it).spotLine.orEmpty() }
         assertTrue("the section ends at ②", com.onpath.app.data.Geo.distance(piece.last(), mutkopf) < 150)
-        waitUntil("the camera flies to the section", 30_000) {
-            var centre: LatLng? = null
-            onMap { m -> centre = m.cameraPosition.target }
-            val cc = com.onpath.app.routing.GeoPoint(centre!!.latitude, centre!!.longitude)
-            piece.any { com.onpath.app.data.Geo.distance(it, cc) < 1_500 }
-        }
+        pause(2_500, "the camera flies there")
         var centre: LatLng? = null
         onMap { m -> centre = m.cameraPosition.target }
         val c = com.onpath.app.routing.GeoPoint(centre!!.latitude, centre!!.longitude)
@@ -462,7 +457,7 @@ class CorePlanE2ETest : E2EBase() {
         var line = emptyList<com.onpath.app.routing.GeoPoint>()
         scenario.onActivity { line = vm(it).route!!.points; vm(it).saveRoute(name) }
         waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
-        pause(1_500, "the legs under the points moved onto the line are written (one small file each)") // the legs under the points moved onto the line are written (one small file each)
+        pause(1_500, "the legs under the points moved onto the line are written (one small file each)")
         scenario.onActivity { vm(it).clearPlan(); vm(it).forgetLegsInMemoryForTest() }
         waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
         val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)

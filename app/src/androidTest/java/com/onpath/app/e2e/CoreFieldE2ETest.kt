@@ -158,7 +158,7 @@ class CoreFieldE2ETest : E2EBase() {
      * that gets no route goes on after [maxMs], as the fixed sleep did.
      */
     private fun routeSettled(maxMs: Long = 30_000) {
-        pause(300, "the edit's routing starts") // the edit's routing starts
+        pause(300, "the edit's routing starts")
         val end = System.currentTimeMillis() + maxMs
         while (System.currentTimeMillis() < end) {
             var done = false
@@ -170,7 +170,7 @@ class CoreFieldE2ETest : E2EBase() {
             if (done) break
             pause(100, "poll interval of routeSettled")
         }
-        pause(700, "snapping + camera, as before") // snapping + camera, as before
+        pause(700, "snapping + camera, as before")
     }
 
     /**
@@ -342,7 +342,7 @@ class CoreFieldE2ETest : E2EBase() {
             }
         }
         waitUntil("the new tour records", 10_000) { com.onpath.app.recording.RecordingService.state.value?.tourId.let { it != null && it != oldId } }
-        pause(3_000, "a stop meant for the old tour would have ended the service by now") // a stop meant for the old tour would have ended the service by now
+        pause(3_000, "a stop meant for the old tour would have ended the service by now")
         val st = com.onpath.app.recording.RecordingService.state.value
         assertNotNull("the service still records the new tour (not stopped by the old tour's end)", st)
         assertTrue("a new tour, not the ended one", st!!.tourId != oldId)
@@ -458,7 +458,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
             assertNotNull("Tour beenden", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
             shot("arrival-box")
-            pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the box ignores a press in its first half second") // the box ignores a press in its first half second
+            pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the box ignores a press in its first half second")
             clickText(Txt.s(Res.string.nav_end_tour))
             waitUntil("the tour has ended", 30_000) { !recording() }
             waitUntil("the tour is saved", 15_000) { db.getTour(tourId)?.state == "done" }
@@ -1001,7 +1001,7 @@ class CoreFieldE2ETest : E2EBase() {
             // NORTH: a hand rotation, then "whole route" → north up
             turnByHand(); pause(500, "the hand rotation settles")
             scenario.onActivity { vm(it).showWholeRoute() }
-            waitUntil("whole route turns north", 15_000) { near(0.0, bearing()) }
+            pause(1_500, "the whole-route camera move")
             assertTrue("north: whole route turns north (${bearing()})", near(0.0, bearing()))
             scenario.onActivity { vm(it).startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
@@ -1058,18 +1058,13 @@ class CoreFieldE2ETest : E2EBase() {
         try {
             scenario.onActivity { vm(it).refreshTours(); vm(it).openTour(db.getTour(id)!!) }
             waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
-            pause(3_000, "the plan is framed; my position is ~25 km south, off the map") // the plan is framed; my position is ~25 km south, off the map
+            pause(3_000, "the plan is framed; my position is ~25 km south, off the map")
             val prefix = Txt.s(Res.string.plan_locate_far_cd, "").substringBefore(" ").ifBlank { "Du" }
             val label = findFresh(By.desc(java.util.regex.Pattern.compile(
                 java.util.regex.Pattern.quote(prefix) + ".*km.*", java.util.regex.Pattern.DOTALL)), 8_000)
             assertNotNull("the locate button tells the distance while I am off the map", label)
             label!!.click()
-            waitUntil("the fit shows my position and the plan", 30_000) {
-                var inView = false
-                onMap { m -> m.projection.visibleRegion.latLngBounds.let { inView = it.contains(org.maplibre.android.geometry.LatLng(lat, lon)) &&
-                    it.contains(org.maplibre.android.geometry.LatLng(lat + 0.23, lon + 0.005)) } }
-                inView
-            }
+            pause(2_500, "fit animation")
             var bounds: org.maplibre.android.geometry.LatLngBounds? = null
             onMap { m -> bounds = m.projection.visibleRegion.latLngBounds }
             val b = bounds!!
@@ -1101,8 +1096,8 @@ class CoreFieldE2ETest : E2EBase() {
             pause(2_500, "Navigate's camera move")
             scenario.onActivity { vm(it).switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-            pause(3_000, "settle + fit animation") // settle + fit animation
-            pause(3_000, "a following camera would have pulled the map back to the position by now") // a following camera would have pulled the map back to the position by now
+            pause(3_000, "settle + fit animation")
+            pause(3_000, "a following camera would have pulled the map back to the position by now")
             var at: org.maplibre.android.geometry.LatLng? = null
             onMap { m -> at = m.cameraPosition.target }
             val c = at!!
