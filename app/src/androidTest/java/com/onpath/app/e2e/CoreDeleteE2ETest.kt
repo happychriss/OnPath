@@ -38,9 +38,9 @@ class CoreDeleteE2ETest : E2EBase() {
 
     /** Route calculated and points snapped (they move onto ways), map settled. */
     private fun settle() {
-        Thread.sleep(300)
+        pause(300, "the edit's routing starts")
         waitUntil("route calculated", 30_000) { !routing() }
-        Thread.sleep(700)
+        pause(700, "snapping + camera settle")
     }
 
     private fun closeMenu() {
@@ -106,7 +106,7 @@ class CoreDeleteE2ETest : E2EBase() {
         assertTrue("a route was being calculated at the delete", wasRouting)
         waitUntil("deleted while routing") { waypointCount() == 2 }
         settle()
-        Thread.sleep(1_500)
+        pause(1_500, "proving that no later route result brings the point back")
         assertEquals("still 2 points after every route result – ${state()}", 2, waypointCount())
         assertFalse(points().contains(held))
     }
@@ -121,7 +121,7 @@ class CoreDeleteE2ETest : E2EBase() {
         holdOnWaypoint(2)
         val before = points()
         scenario.onActivity { vm(it).deletePointFromList(0) }
-        Thread.sleep(300)
+        pause(300, "the list deletion lands")
         clickText("Delete")
         waitUntil("the held point deleted – ${state()}") { waypointCount() == 1 }
         val left = points().single()

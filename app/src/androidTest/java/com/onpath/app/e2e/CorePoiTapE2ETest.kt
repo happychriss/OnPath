@@ -157,15 +157,10 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     }
 
     private fun waitFor(what: String, cond: () -> Boolean) {
-        val end = System.currentTimeMillis() + 8_000
-        while (!cond()) {
-            if (System.currentTimeMillis() > end) {
-                shot("fail")
-                throw AssertionError("timeout: $what – POI ${read { it.selectedPoi?.id }} / menu ${read { it.poiMenu?.id }} / " +
-                    "first-point menu ${read { it.firstPointMenu }} – ${state()}")
-            }
-            Thread.sleep(100)
-        }
+        waitUntil(what, 10_000, onTimeout = {
+            shot("fail")
+            "POI ${read { it.selectedPoi?.id }} / menu ${read { it.poiMenu?.id }} / first-point menu ${read { it.firstPointMenu }} – ${state()}"
+        }, cond)
     }
 
     private fun at(p: Pair<Float, Float>) = "(${p.first.toInt()}, ${p.second.toInt()})"

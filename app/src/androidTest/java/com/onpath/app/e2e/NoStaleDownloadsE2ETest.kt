@@ -60,7 +60,7 @@ class NoStaleDownloadsE2ETest : E2EBase() {
         scenario.close()
         scenario = ActivityScenario.launch(MainActivity::class.java)
         waitForMap()
-        Thread.sleep(3_000)
+        pause(3_000, "proving that nothing is queued after a restart")
         assertTrue("no corridor region queued after the restart", corridorInQueue().isEmpty())
         var installed = -1
         scenario.onActivity { installed = vm(it).cells.installed.value.size }

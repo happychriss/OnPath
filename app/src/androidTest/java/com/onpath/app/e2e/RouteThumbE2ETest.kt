@@ -42,7 +42,7 @@ class RouteThumbE2ETest : E2EBase() {
         var timings = emptyList<Long>()
         waitUntil("their timings", 10_000) { scenario.onActivity { timings = vm(it).thumbTimings }; timings.size >= 3 }
         // the list with the pictures, and one picture as stored (diagnostics: /sdcard/e2e)
-        Thread.sleep(1_500)
+        pause(1_500, "the list shows the pictures")
         shot("list")
         ctx.getExternalFilesDir(null)?.let { ext -> files.first().copyTo(java.io.File(ext, "thumb-sample.webp"), overwrite = true) }
         device.executeShellCommand("sh -c 'cp /sdcard/Android/data/com.onpath.app/files/thumb-sample.webp /sdcard/e2e/ 2>/dev/null'")
@@ -50,7 +50,7 @@ class RouteThumbE2ETest : E2EBase() {
         assertTrue("each well under the snapshot's 15 s limit: $timings", timings.size >= 3 && timings.all { it < 15_000 })
         // nothing again for the same lines
         scenario.onActivity { vm(it).refreshTours() }
-        Thread.sleep(3_000)
+        pause(3_000, "proving that no picture is made twice")
         var after = emptyList<Long>()
         scenario.onActivity { after = vm(it).thumbTimings }
         assertTrue("no picture made twice: $after", after.size == timings.size)

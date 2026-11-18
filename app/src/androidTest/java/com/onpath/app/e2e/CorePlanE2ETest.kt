@@ -76,7 +76,7 @@ class CorePlanE2ETest : E2EBase() {
             assertTrue("$own exists", own in ids)
         // layers the app adds later (search mark, highlight) go below it too
         scenario.onActivity { a -> vm(a).highlight = vm(a).waypoints.first() }
-        Thread.sleep(1_000)
+        pause(1_000, "the highlight layer is added")
         assertPositionDotOnTop("with a highlight")
     }
 
@@ -150,7 +150,7 @@ class CorePlanE2ETest : E2EBase() {
             map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
                 org.maplibre.android.camera.CameraPosition.Builder().target(mid).bearing(137.0).build()))
         }
-        Thread.sleep(500)
+        pause(500, "the rotated camera settles")
         holdOnWaypoint(0)
         assertNotNull("point menu on a turned map", device.wait(Until.findObject(By.text("Delete")), 5_000))
     }
@@ -293,7 +293,7 @@ class CorePlanE2ETest : E2EBase() {
                 if (plan != null) return plan
             }
             if (System.currentTimeMillis() > end) return null
-            Thread.sleep(250)
+            pause(250, "poll interval")
         }
     }
 
@@ -328,7 +328,7 @@ class CorePlanE2ETest : E2EBase() {
                 if (rec) break
                 if (guide) device.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter")))?.click()
                 device.findObject(By.text(Txt.s(Res.string.plan_navigate_anyway)))?.click()
-                Thread.sleep(500)
+                pause(500, "the Navigate click goes through")
             }
             waitUntil("a tour records – ${state()}", 5_000) { var r = false; scenario.onActivity { a -> r = vm(a).recState.value != null }; r }
             val loaded = pts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }
@@ -373,7 +373,7 @@ class CorePlanE2ETest : E2EBase() {
         item!!.click()
         // the phone check before the first tour may open (vibration / voice): "Later" goes on to the tour, as a user does
         repeat(3) {
-            Thread.sleep(800)
+            pause(800, "the phone check may open")
             var open = false
             scenario.onActivity { a -> open = vm(a).setupGuide != null }
             if (open) device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter"))), 5_000)?.click()
@@ -390,7 +390,7 @@ class CorePlanE2ETest : E2EBase() {
     @Test fun aTapOnTheHandleStepsTheSheet() {
         startPlanWithTwoPoints()
         scenario.onActivity { vm(it).planSize = PlanSize.COMPACT }
-        Thread.sleep(800)
+        pause(800, "the sheet settles at the compact step")
         val bigger = findFresh(By.desc(Txt.s(Res.string.plan_sheet_bigger)), 10_000)
         assertNotNull("the handle says what a tap does", bigger)
         bigger!!.click()
@@ -428,7 +428,12 @@ class CorePlanE2ETest : E2EBase() {
         var piece: List<com.onpath.app.routing.GeoPoint> = emptyList()
         scenario.onActivity { piece = vm(it).spotLine.orEmpty() }
         assertTrue("the section ends at ②", com.onpath.app.data.Geo.distance(piece.last(), mutkopf) < 150)
-        Thread.sleep(2_500) // the camera flies there
+        waitUntil("the camera flies to the section", 30_000) {
+            var centre: LatLng? = null
+            onMap { m -> centre = m.cameraPosition.target }
+            val cc = com.onpath.app.routing.GeoPoint(centre!!.latitude, centre!!.longitude)
+            piece.any { com.onpath.app.data.Geo.distance(it, cc) < 1_500 }
+        }
         var centre: LatLng? = null
         onMap { m -> centre = m.cameraPosition.target }
         val c = com.onpath.app.routing.GeoPoint(centre!!.latitude, centre!!.longitude)
@@ -457,7 +462,7 @@ class CorePlanE2ETest : E2EBase() {
         var line = emptyList<com.onpath.app.routing.GeoPoint>()
         scenario.onActivity { line = vm(it).route!!.points; vm(it).saveRoute(name) }
         waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
-        Thread.sleep(1_500) // the legs under the points moved onto the line are written (one small file each)
+        pause(1_500, "the legs under the points moved onto the line are written (one small file each)") // the legs under the points moved onto the line are written (one small file each)
         scenario.onActivity { vm(it).clearPlan(); vm(it).forgetLegsInMemoryForTest() }
         waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
         val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
