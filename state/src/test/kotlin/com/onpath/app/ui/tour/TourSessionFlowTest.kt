@@ -937,6 +937,28 @@ class TourSessionFlowTest {
         assertTrue(map.startModeKnown)
         assertNull(ctl.unfinished)
         assertFalse(ctl.unfinishedPending)
+        assertEquals("exactly the mode command of the success path, no START / STOP / CONTINUE", listOf("NAVIGATING"), actions())
+        assertEquals(mapOf<String, Any>(RecordingWire.EXTRA_ON to true), client.sent.last().extras)
+    }
+
+    /** L2: an interrupted row exists but cannot be read – no question, the row is not touched, no command; asked at the next start. */
+    @Test fun anInterruptedTourThatCouldNotBeReadIsAskedAtTheNextStart() {
+        val id = unfinishedId
+        create()
+        rows.failOn += "findActiveRecording"
+        assertFalse("the opposite first", map.startModeKnown)
+        ui { session.start() }
+        stepIo(); advance(5_000)
+        assertTrue(map.startModeKnown)
+        assertNull("no question for a tour that could not be read", ctl.unfinished)
+        assertEquals("the row is still active", "active", db.getTour(id)!!.state)
+        assertEquals("no command", emptyList<String>(), actions())
+        assertFalse(ctl.unfinishedPending)
+        // the next start (the failure is over): the question for that tour comes
+        rows.failOn -= "findActiveRecording"
+        ui { session.start() }
+        stepIo(); advance(1_500)
+        assertEquals("asked at the next start", id, ctl.unfinished!!.id)
     }
 
     /** L2: `enter(start)` itself throws – reported, and the start mode is still known. */
@@ -948,18 +970,46 @@ class TourSessionFlowTest {
         stepIo()
         assertTrue(map.startModeKnown)
         assertFalse(ctl.unfinishedPending)
-        assertTrue("reported", problems.said("app").isNotEmpty())
+        assertTrue("reported by the new catch", problems.said("app").any { it.contains("Entering the start mode failed") })
+        assertEquals("the mode is the one `enter` had set before it threw", AppMode.PLAN, session.mode)
     }
 
-    /** L2: the read ends in a cancellation (the job is cancelled while it is pending; the scope itself stays alive here, so only the rethrow keeps `enter` away) – nothing reported, nothing entered, not known (a cancellation is not a failure); the hold still goes. */
-    @Test fun aCancelledStartUpCheckReportsNothingAndEntersNothing() {
+    /** L2: `enter` throws at start with an interrupted tour – the sticky wait and the question still come. */
+    @Test fun aThrowingEnterAtStartStillAsksForTheInterruptedTour() {
+        val id = unfinishedId
         create()
-        onFindActive = { throw java.util.concurrent.CancellationException("cancelled while reading") }
+        failClearHints = true
+        ui { session.start() }
+        stepIo()
+        assertTrue(map.startModeKnown)
+        assertNull(ctl.unfinished)
+        assertTrue("still held while it waits", ctl.unfinishedPending)
+        advance(1_500)
+        assertEquals(id, ctl.unfinished!!.id)
+        assertFalse(ctl.unfinishedPending)
+    }
+
+    /** L2: a stray CancellationException with a live job (from a lower layer) is a failure like any other – reported, the app still starts. */
+    @Test fun aStrayCancellationExceptionWithALiveJobIsReportedAndTheAppStillStarts() {
+        create()
+        onFindActive = { throw java.util.concurrent.CancellationException("stray, from a lower layer") }
+        assertFalse("the opposite first", map.startModeKnown)
+        ui { session.start() }
+        stepIo()
+        assertTrue(map.startModeKnown)
+        assertTrue(problems.said("app").any { it.contains("stray cancellation") })
+        assertFalse(ctl.unfinishedPending)
+    }
+
+    /** L2: a real cancellation (the scope is cancelled while the read is pending) – nothing reported, nothing entered, not known; the hold still goes. */
+    @Test fun aRealCancellationOfTheStartUpCheckReportsNothingAndEntersNothing() {
+        create()
+        onFindActive = { scope.cancel(); throw java.util.concurrent.CancellationException("cancelled while reading") }
         assertFalse("the opposite first", map.startModeKnown)
         ui { session.start() }
         stepIo()
         assertFalse(map.startModeKnown)
-        assertTrue(problems.said("app").none { it.contains("Active tour could not be read") })
+        assertTrue(problems.said("app").none { it.contains("could not be read") || it.contains("Entering the start mode") })
         assertTrue(log.none { it.startsWith("clearHints") })
         assertFalse("`finally` still releases the hold", ctl.unfinishedPending)
     }

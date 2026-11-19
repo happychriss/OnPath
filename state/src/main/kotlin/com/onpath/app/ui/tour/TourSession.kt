@@ -28,6 +28,8 @@ import com.onpath.app.ui.routes.SaveSlice
 import com.onpath.app.ui.routes.ToursStore
 import com.onpath.strings.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -73,8 +75,7 @@ interface TourSessionHost {
  * pass of the `state` collector runs inline on `Main.immediate` during construction (paper risk 1; at a process restart during a
  * tour it meets the same world as before) and the mode flip comes after `recalc()` (risk 2: the initial mode is Plan).
  *
- * Latent bugs kept as they were: L4 (a failed
- * start can show two boxes), and (fixed 2026-11-19) L2: a failing `findActiveRecording` at start is reported and read as "no active tour", `startModeKnown` is always set; L1: each pass of the `startFailed` and `state` collectors is guarded – a throw is reported and the collector goes on (a failed activity switch is repeated by the next state, at most [MAX_SYNC_RETRIES] times in a row).
+ * Latent bugs kept as they were: L4 (a failed start can show two boxes), and (fixed 2026-11-19) L2: a failing `findActiveRecording` at start is reported and read as "no active tour", `startModeKnown` is always set; L1: each pass of the `startFailed` and `state` collectors is guarded – a throw is reported and the collector goes on (a failed activity switch is repeated by the next state, at most [MAX_SYNC_RETRIES] times in a row).
  */
 class TourSession(
     private val plan: PlanDocument,
@@ -162,7 +163,9 @@ class TourSession(
                 val active = try {
                     rows.findActiveRecording()
                 } catch (e: CancellationException) {
-                    throw e
+                    currentCoroutineContext().ensureActive() // our own cancellation propagates; a stray one is a failure like any other (reported without the throwable: Problems drops cancellations)
+                    Problems.error("app", "Active tour could not be read at start (stray cancellation); started as if none was found: ${e.message}")
+                    null
                 } catch (e: Throwable) {
                     Problems.error("app", "Active tour could not be read at start; started as if none was found", e)
                     null
@@ -173,7 +176,8 @@ class TourSession(
                     try {
                         enter(start)
                     } catch (e: CancellationException) {
-                        throw e
+                        currentCoroutineContext().ensureActive() // a stray cancellation is a failure like any other
+                        Problems.error("app", "Entering the start mode failed (stray cancellation); the start mode is known all the same: ${e.message}")
                     } catch (e: Throwable) {
                         Problems.error("app", "Entering the start mode failed; the start mode is known all the same", e)
                     }
