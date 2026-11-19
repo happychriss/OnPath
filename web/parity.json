@@ -194,6 +194,15 @@
       "blob": "f82d95a4a48b5f4d8f5af68958471d39f7072a1b"
     },
     {
+      "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt",
+      "what": "recalc's head: the long-route ask (RouteRun.Event.Recalc -> LongAsked, nothing routed or loaded until the answer: the planner's longroute.ts / allowLongRoute in main.ts) – moved here from AppViewModel, rebuild phase 2 piece 9b; the rest (the router coroutine on its threads, the wait card, snapToRoute's history and saved link, the tour's follow after a result) is the phone's",
+      "web": [
+        "web/app/src/main.ts",
+        "web/app/src/longroute.ts"
+      ],
+      "blob": "c694c55271d9cfd4ffe518c6e98816654b18ce8d"
+    },
+    {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt",
       "what": "planFromShown / planFromLine: a track made a plan (an exported plan GPX comes back with its own points, pins and names; else TrackToPlan fits our router to the line) – gpximport.ts / WebImport / WebApi (moved here from AppViewModel, rebuild phase 2 piece 13); the rest of the slice (My routes' list read again, open a route or tour, the shown track, Delete into the bin) is the phone's – the planner's bin is recent.ts",
       "web": [
@@ -223,7 +232,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc long-route ask / answerLongRoute; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
+      "what": "recalc's long-route ask and answerLongRoute moved to PlanRecalcSlice / PlanRunSlice (rebuild phase 2 piece 9b / 9); the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -232,7 +241,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "ee4edc1200ec104142a5d93c51ee315e017338d8"
+      "blob": "2877c1df8c262d9cd289a8585a93e3c3678ee779"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt",
@@ -588,7 +597,12 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "c5df0c042795f97c091e36e2a008840b65d53f4d"
+      "blob": "5b793761f2427bc6edcdef961d017c2360dcd7c0"
+    },
+    {
+      "app": "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt",
+      "why": "the plan sheet rises by itself once per plan after its first route (moved here from PlanPanel.kt, rebuild phase 2 piece 9b; the planner's sheet does not)",
+      "blob": "491cc1bf96edf04d6296847c06b1a3011bea48da"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/PlanSize.kt",

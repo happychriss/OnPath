@@ -48,7 +48,7 @@ class RoutesWiringTest {
             "override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = setSaved(name, id, points)",
             "override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)",
             "override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncRoutingCheck(t, pts)",
-            "this@AppViewModel.standIn = StandIn(pts, act, level, preview)",
+            "planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)",
             "override fun withMaps(t: Tour) = multiDay.withMaps(t)",
             "override fun kickThumbs() = this@AppViewModel.kickThumbs()",
             "override fun clearHighlight() { highlight = null }",

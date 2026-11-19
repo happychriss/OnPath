@@ -622,12 +622,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mapData.pointsSet(before, after)
     }
 
-    /** After a route was computed in Plan: newer map areas along it ([MapDataFlow.freshenAlong]) and newer routing data. */
-    private fun freshenAfterRoute(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, act: com.onpath.app.routing.Activity) {
-        mapData.freshenAlong(line, corridor, act)
-        checkRoutingData(line)
-    }
-
     /**
      * Main thread: routing data arrived – the plan is computed again at once (no question: this is planning, not
      * re-routing a tour), so the straight line becomes a route with elevation.
@@ -955,20 +949,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var planReach by mutableStateOf<com.onpath.app.routing.PlanReach?>(null)
         private set
 
-    /** [com.onpath.app.routing.PlanReach.find] for [g] (routing thread); null when it could not be worked out. */
-    private fun findReach(g: PlanGap, act: Activity, level: Int, cancel: com.onpath.app.routing.RouteCancel): com.onpath.app.routing.PlanReach? {
-        val t0 = android.os.SystemClock.elapsedRealtime()
-        return try {
-            com.onpath.app.routing.PlanReach.find(routingEngine(), g, act, level, cancel).also { r ->
-                Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$level: " +
-                    "${r?.fix ?: "search cancelled / not done"} after ${android.os.SystemClock.elapsedRealtime() - t0} ms")
-            }
-        } catch (e: Exception) {
-            Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
-            null
-        }
-    }
-
     /** The last route result applied ([recalc]; routing/PlanResult – the same computation as the web planner's). */
     private var planResult: com.onpath.app.routing.PlanResult? = null
 
@@ -1013,7 +993,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     val slowPlanAsk: Int? get() = planRun.slowPlanAsk
 
-    private val ROUTING_SLOW_MS = 2_500L
     /** The route has been calculating for a while: the plan sheet offers Cancel. */
     val routingSlow: Boolean get() = planRun.routingSlow
     /**
@@ -1031,8 +1010,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var routeShare: Float?
         get() = planRun.routeShare
         private set(v) { planRun.routeShare = v }
-    /** How often the wait bar asks the router how far it is (ms). */
-    private val WAIT_POLL_MS = 250L
     /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
     val longRouteAsk: Double? get() = planRun.longRouteAsk
     /** The points before the edit that made the plan very long: its maps load only after "Plan anyway". */
@@ -1146,7 +1123,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)
         override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncRoutingCheck(t, pts)
         override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: com.onpath.app.routing.StoredLine.Preview) {
-            this@AppViewModel.standIn = StandIn(pts, act, level, preview)
+            planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)
         }
         override fun withMaps(t: Tour) = multiDay.withMaps(t)
         override fun kickThumbs() = this@AppViewModel.kickThumbs()
@@ -1281,13 +1258,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         set(v) { planRoute.engine = v }
     private fun routingEngine(): RoutingEngine = planRoute.routingEngine()
     private val legCache get() = planRoute.legCache
-
-    /**
-     * A loaded route's stand-in line ([com.onpath.app.routing.StoredLine]), taken by the next [recalc] for exactly these
-     * points, activity and T level: on the map at once while the run routes the legs it could not reuse.
-     */
-    private class StandIn(val points: List<GeoPoint>, val activity: Activity, val sac: Int, val preview: com.onpath.app.routing.StoredLine.Preview)
-    private var standIn: StandIn? = null
 
     private var routeJob: Job?
         get() = planRun.routeJob
@@ -1455,6 +1425,53 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun resumeNavigation() = tourSession.continueNavigation()
         },
         say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,
+    )
+
+    /**
+     * The route run's coroutine ([com.onpath.app.ui.plan.PlanRecalcSlice] in `:state`, rebuild phase 2 piece 9b): `recalc` with its
+     * head, the result taken (`snapToRoute`), the failure said, what the tour does next. Declared after [tourEdits] (it reaches
+     * `followCancel`) and above the small `init` and the big one that calls `recalc()`; its adapters touch `mapData` only when called.
+     */
+    private val planRecalc: com.onpath.app.ui.plan.PlanRecalcSlice = com.onpath.app.ui.plan.PlanRecalcSlice(
+        plan = plan, planRun = planRun, planRoute = planRoute, planEdit = planEdit, tourEdits = tourEdits, tourFollow = tourFollow,
+        map = map, links = links, recording = recording,
+        mapData = object : com.onpath.app.ui.plan.MapDataPort {
+            override fun postRoute(r: PlannedRoute, pts: List<GeoPoint>, activity: Activity?): com.onpath.app.ui.plan.MapDataPort.PostRoute =
+                mapData.postRoute(r, pts, activity).let { com.onpath.app.ui.plan.MapDataPort.PostRoute(it.routingKeys, it.tilesMissing, it.cells) }
+            override fun routingForLine(keys: List<String>) { mapData.routingForLine(keys) }
+            override val routingLoading: Boolean get() = mapData.routingLoading
+            override fun corridorFollowsPlan(line: List<GeoPoint>?, activity: Activity?) = mapData.corridorFollowsPlan(line, activity)
+            override fun routeComputed(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, dest: GeoPoint?, activity: Activity?) =
+                mapData.routeComputed(line, corridor, dest, activity)
+            override fun freshenAlong(line: List<GeoPoint>, corridor: List<com.onpath.app.cells.CellId>?, activity: Activity?) =
+                mapData.freshenAlong(line, corridor, activity)
+        },
+        searchProgress = com.onpath.app.ui.plan.RouteSearchProgress { eng, t -> (eng as? com.onpath.app.routing.BRouterEngine)?.searchProgress(t) },
+        say = notices,
+        host = object : com.onpath.app.ui.plan.PlanRecalcHost {
+            override var route: PlannedRoute?
+                get() = this@AppViewModel.route
+                set(v) { this@AppViewModel.route = v }
+            override var routeError: String?
+                get() = this@AppViewModel.routeError
+                set(v) { this@AppViewModel.routeError = v }
+            override var highlight: GeoPoint?
+                get() = this@AppViewModel.highlight
+                set(v) { this@AppViewModel.highlight = v }
+            override var planReach: com.onpath.app.routing.PlanReach?
+                get() = this@AppViewModel.planReach
+                set(v) { this@AppViewModel.planReach = v }
+            override var planResult: com.onpath.app.routing.PlanResult?
+                get() = this@AppViewModel.planResult
+                set(v) { this@AppViewModel.planResult = v }
+            override val mode: AppMode get() = this@AppViewModel.mode
+            override fun nameOfStop(p: GeoPoint): String? = this@AppViewModel.stopName(p)
+            override val multiDayOverview: Boolean get() = multiDay.overview
+            override fun menuFollowsSnap(moves: Map<GeoPoint, GeoPoint>) = placeMenus.followSnapped(moves)
+            override fun checkRoutingDataFor(line: List<GeoPoint>) = this@AppViewModel.checkRoutingData(line)
+        },
+        scope = viewModelScope, routingDispatcher = routingDispatcher, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,
+        elapsedMs = { android.os.SystemClock.elapsedRealtime() },
     )
 
     init {
@@ -2000,165 +2017,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Cancel while a route is calculated (owner): [PlanRunSlice.cancelRouting]. */
     fun cancelRouting() = planRun.cancelRouting()
 
-    /**
-     * From the planning thread ([Planner]'s progress): the wait card's legs done / to route ([routeProgress]) – only while
-     * the run [gen] is the current one.
-     */
-    private fun showProgress(gen: Int, done: Int, total: Int) {
-        viewModelScope.launchSafe("app", "showProgress", Dispatchers.Main) { if (routeRun.isCurrent(gen) && routing) routeProgress = done to total }
-    }
-
-    private fun recalc() {
-        runCauses.start()
-        routeJob?.cancel(); routeJob = null
-        highlight = null; spotLine = null; spotsOpen = false
-        val pts = waypoints.toList()
-        val pins = pinnedIndices()
-        val stand = standIn?.takeIf { it.points == pts && it.activity == activity && it.sac == sac }; standIn = null
-        routeCancel?.cancel(); routeCancel = null // an older request stops at once
-        planReach = null
-        routeProgress = null; routeShare = null
-        tourEdits.followCancel?.cancel(); tourEdits.followCancel = null // the tour's follow line of the old plan: a new one comes with this run
-        val act = activity; val level = sac
-        // what this run is ([RouteRun.Event.Recalc]): fewer than two points → no route; a plan far beyond a day (a point in
-        // another country by mistake, owner) is asked about first – nothing is routed or loaded until the answer; else
-        // it is routed. A new run (an edit, an activity change …) starts at one time-limit period and drops an open
-        // "Weiter warten?"; in Plan the time limit asks (SlowPlan), a run for Navigate keeps the straight lines
-        val effects = routeEvent(RouteRun.Event.Recalc(pts, act, planMode = mode == AppMode.PLAN, newPlan = SheetRise.resets(pts.size)))
-        perform(effects)
-        val start = effects.filterIsInstance<RouteRun.Effect.StartRouting>().firstOrNull() ?: return
-        val gen = start.gen; val rounds = start.rounds; val askAtLimit = start.askAtLimit
-        // the route before an activity / T level change, compared with this run's result ("Route changed for …")
-        val changeBefore = activityBefore.takeIf { start.compareActivity }
-        val f = planFactors(act)
-        // a loaded route (owner 2026-11-07): its stored line at once while this run routes the legs it could not reuse;
-        // replaced by the run's line (said only when the way differs) – never no line while routing
-        val standBefore = stand?.let { s ->
-            route = withModelTime(s.preview.route, act, f)
-            Problems.trace("routing", "Route #$gen: the stored line shown at once (${s.preview.stale} legs on older routing data, " +
-                "${s.preview.fromLine} from the saved line) – routed again")
-            route?.points
-        }
-        val started = android.os.SystemClock.elapsedRealtime()
-        val cancel = com.onpath.app.routing.RouteCancel().also { routeCancel = it }
-        routeJob = viewModelScope.launchSafe("app", "recalc") {
-            delay(150) // debounce quick taps
-            // the Cancel button appears only when it takes a while (no flicker for normal routes)
-            val slow = launch { delay(ROUTING_SLOW_MS); routeEvent(RouteRun.Event.Slow(gen)) }
-            // the wait bar within a leg (owner 2026-11-05): the router's search, polled off the main thread
-            val planThread = java.util.concurrent.atomic.AtomicReference<Thread?>(null)
-            val bar = WaitBar()
-            val poll = launch(Dispatchers.Default) {
-                while (isActive) {
-                    delay(WAIT_POLL_MS)
-                    val t = planThread.get() ?: continue
-                    val legs = routeProgress ?: continue
-                    val share = bar.next(legs.first, legs.second, (engine as? com.onpath.app.routing.BRouterEngine)?.searchProgress(t))
-                    withContext(Dispatchers.Main) { if (routeRun.isCurrent(gen) && routing) routeShare = share }
-                }
-            }
-            var planner: Planner? = null
-            var reach: com.onpath.app.routing.PlanReach? = null
-            val result = withContext(routingDispatcher) {
-                exceptions {
-                    val eng = routingEngine()
-                    // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
-                    // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
-                    // askAtLimit: in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines
-                    com.onpath.app.routing.PlanResult.plan(Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache,
-                        progress = { done, total -> planThread.set(Thread.currentThread()); showProgress(gen, done, total) }).also { planner = it },
-                        pts, act, level, pins, emptySet(), f)
-                }.also { r ->
-                    // a stop not reached: what does reach it ("② erst ab T2 erreichbar") – only the missing piece,
-                    // after the plan route, on the same thread; the next edit cancels it with the route ([cancel])
-                    r.getOrNull()?.gaps?.firstOrNull()?.let { g -> reach = findReach(g, act, level, cancel) }
-                }
-            }
-            slow.cancel(); poll.cancel(); routeShare = null // every leg routed: the wait window checks the route (RouteShares)
-            // the corridor work of a result off the main thread
-            val post = result.getOrNull()?.let { r -> withContext(Dispatchers.Default) { mapData.postRoute(r.route, pts, act) } }
-            val back = routeEvent(RouteRun.Event.Returned(gen, isActive))
-            if (RouteRun.Effect.ClearProgress in back) { routeProgress = null; routeShare = null }
-            if (RouteRun.Effect.Superseded in back) { // superseded or cleared
-                Problems.trace("routing", "Route #$gen for ${pts.size} points superseded – result ignored")
-                return@launchSafe
-            }
-            // one line per route: distance, size, profile, each try's time and outcome
-            val done = result.getOrNull()?.route
-            Problems.trace("routing", "Route #$gen for ${pts.size} points " + (if (result.isSuccess) "ready" else "failed") +
-                " after ${android.os.SystemClock.elapsedRealtime() - started} ms (plan now ${waypoints.size} points): " +
-                "${act.name}, ${"%.1f".format(Locale.ROOT, com.onpath.app.routing.RouteTimeLimit.straightKm(pts))} km straight" +
-                (done?.let { ", ${"%.1f".format(Locale.ROOT, it.distanceM / 1000)} km routed, ${it.points.size} line points, " +
-                    "${it.legs.count { l -> l.straight }} straight legs" } ?: "") +
-                (planner?.describeTries()?.takeIf { it.isNotEmpty() }?.let { "; tries: $it" } ?: ""))
-            // what the tour does with this result, after it is taken ([RouteRun.Effect.FollowNewRoute] / FollowEditedPlan)
-            var after = emptyList<RouteRun.Effect>()
-            result.onSuccess { res ->
-                val it = res.route
-                route = it; planReach = reach; snapToRoute(pts, res)
-                // the plan's first route: the sheet rises once to its middle step (owner 2026-11-08, [SheetRise] – once per
-                // plan is the run's: [RouteRun.sheetRisen])
-                after = routeEvent(RouteRun.Event.Succeeded(gen, planMode = mode == AppMode.PLAN,
-                    sheetCanRise = SheetRise.rises(risen = false, planSize, mode == AppMode.PLAN, recState.value != null)))
-                val take = after.filterIsInstance<RouteRun.Effect.TakeRoute>().firstOrNull() ?: return@onSuccess
-                if (take.rises) {
-                    planSize = SheetRise.TO
-                    Problems.trace("plan", "First route of the plan: the sheet rises to ${SheetRise.TO}")
-                }
-                // a rising sheet: the fit waits until its new height is known (MapScreen hears it once it rests)
-                if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)
-                // the route warnings of this result (computed with it, off the main thread): routeSpots reads them
-                spotsMemo = Triple(it.points, act, level) to res.spots
-                if (changeBefore != null) {
-                    activityBefore = null
-                    if (RouteWarnings.changedNoticeably(changeBefore.points, changeBefore.distanceM, changeBefore.ascentM,
-                            it.points, it.distanceM, it.ascentM)) routeChangedNotice = RouteWarnings.changedText(act, level)
-                }
-                // routing data missing in the route's corridor (hike 10 km, bike 20 km – OfflineCorridor): it loads now; the notice (plain words, no path)
-                // only when a part under a planned point is missing – those make the straight line
-                post?.routingKeys?.let { k -> mapData.routingForLine(k) }
-                routeError = RoutingDataNotice.forRoute(it.error, post?.tilesMissing == true, mapData.routingLoading)
-                // T4: the corridor – named after the plan's destination (round trip: its start) in the loading chip
-                // the last point: a round trip closes at its ① (also with stops on the way before the loop)
-                val dest = pts.lastOrNull()
-                if (multiDay.overview) mapData.corridorFollowsPlan(it.points, act) else mapData.routeComputed(it.points, post?.cells, dest, act) // a multi-day tour: its map question (§7)
-                if (take.freshen) freshenAfterRoute(it.points, post?.cells, act)
-                if (take.viaData) routingDataRouteChanged(it)
-                else if (standBefore != null && com.onpath.app.data.RoutingDataCheck.differs(standBefore, it.points))
-                    routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
-                // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
-                if (take.adoptBaseline) planBaseline = it.points
-            }
-                .onFailure {
-                    if (it is com.onpath.app.routing.SlowPlan.TimeLimit) {
-                        // the time limit in Plan: ask (the box stays until answered); the points and the line stay as
-                        // they are – no straight lines, no error line
-                        Problems.info("routing", "Plan reached its time limit after ${it.rounds} period(s) – asking to wait on")
-                        routeEvent(RouteRun.Event.TimeLimit(gen, it.rounds))
-                        return@launchSafe
-                    }
-                    // no fit of a later route: the points were fitted when they came (link) or are where the user held
-                    after = routeEvent(RouteRun.Event.Failed(gen))
-                    if (RouteRun.Effect.ShowFailure !in after) return@onFailure
-                    Problems.error("routing", "Route calculation failed", it)
-                    // during a tour one failed run must not take the whole plan line off the map (fix-tour-edit-line.md)
-                    if (recState.value == null) route = null
-                    // our own routing texts only – never an exception's raw text (review Arch 4)
-                    routeError = com.onpath.app.debug.UserText.of(it, Txt.s(Res.string.msg_routing_failed))
-                    mapData.corridorFollowsPlan(null)
-                }
-            for (fx in after) when (fx) {
-                // "Continue navigation" waited for this result
-                RouteRun.Effect.FollowNewRoute ->
-                    if (route != null) followPlanned(checkNow = true) else sayError(Txt.s(Res.string.msg_no_new_route), NoticePlace.MAP)
-                // an edit of the plan during a tour: the tour follows the new plan (owner rule, no question) – not a plan
-                // re-computed for an activity switched while navigating (its baseline)
-                RouteRun.Effect.FollowEditedPlan -> tourEdits.followEditedPlan()
-                else -> Unit
-            }
-            routeEvent(RouteRun.Event.Done(gen)) // "calculating" ends once the result is taken
-        }
-    }
+    /** The route run's coroutine and what takes its result: [com.onpath.app.ui.plan.PlanRecalcSlice] (rebuild phase 2 piece 9b). */
+    private fun recalc(): Unit = planRecalc.recalc()
 
     // ---------------- time estimate (docs/plan-time-estimate.md): [PlanRouteSlice] (rebuild phase 2 piece 8) ----------------
 
@@ -2175,49 +2035,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun retime() = planRoute.retime()
     private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) = planRoute.storePlanTimes(id, r, a)
     private fun withModelTime(t: Tour): Tour = planRoute.withModelTime(t)
-
-    /** Indices of the named stops of [pts] (they keep their coordinates when the route is snapped). */
-    private fun namedStops(pts: List<GeoPoint>): Set<Int> = pts.indices.filter { stopName(pts[it]) != null }.toSet()
-
-    /**
-     * Takes the snapped plan points of [res0] ([com.onpath.app.routing.PlanResult.snap]: free points onto the way the
-     * router used – owner: no off-road guidance – so marker, stored plan and route line agree; POI-pinned and named
-     * stops and a stop the route does not reach or skips keep their coordinates, its gap is shown). Amends the current
-     * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
-     * belongs to the snapped points. Only for the newest result of exactly these points.
-     */
-    private fun snapToRoute(routed: List<GeoPoint>, res0: com.onpath.app.routing.PlanResult) {
-        if (waypoints.toList() != routed) { planResult = res0; return }
-        // the named stops keep their place: their names are read here, on the main thread (a stop named while the
-        // route was calculated counts too)
-        val res = res0.withNamed(namedStops(routed)).also { planResult = it }
-        val far = res.far
-        if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
-        val snapped = res.points.takeIf { res.moved } ?: return
-        plan.moveSnapped(routed, snapped)
-        aliasSnappedLegs(routed, snapped, res.activity, res.sac)
-        if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
-        links.snapped(routed, snapped)
-        val moves = WaypointSnap.moves(routed, snapped)
-        plan.snappedHistory(moves)
-        // an open menu follows its point to the snapped position (it must still find it for Delete)
-        placeMenus.followSnapped(moves)
-    }
-
-    /**
-     * The points were moved onto the line ([snapToRoute]): the run's legs under the moved points too
-     * ([com.onpath.app.routing.LegCache.alias]) – the plan as saved now loads its legs, and the next edit routes only its
-     * new legs (before, the first edit after a snap routed every leg again from the moved points).
-     */
-    private fun aliasSnappedLegs(routed: List<GeoPoint>, snapped: List<GeoPoint>, act: Activity, level: Int) {
-        if (routed.size != snapped.size) return
-        val moved = (0 until routed.size - 1).filter { snapped[it] != routed[it] || snapped[it + 1] != routed[it + 1] }
-        if (moved.isEmpty()) return
-        viewModelScope.launchSafe("app", "aliasSnappedLegs", Dispatchers.IO) {
-            val n = moved.count { legCache.alias(routed[it], routed[it + 1], snapped[it], snapped[it + 1], act, level) }
-            Problems.trace("routing", "$n of ${moved.size} legs kept under their points moved onto the line")
-        }
-    }
 
     /**
      * The router reaches a point only by its nearest allowed way (up to 1 km away): a summit above the T level, a
@@ -2757,13 +2574,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun followSyncedSavedPlan() = syncedRouting.followSyncedSavedPlan()
     private fun routeSyncedPlans(ids: List<Long>) = syncedRouting.routeSyncedPlans(ids)
 
-    /**
-     * Like runCatching, but only for exceptions (review Arch 9): a cancellation goes on to the coroutine, an Error
-     * (OutOfMemoryError) is not taken for a failed route.
-     */
-    private inline fun <T> exceptions(block: () -> T): Result<T> = try { Result.success(block()) }
-        catch (e: kotlinx.coroutines.CancellationException) { throw e } catch (e: Exception) { Result.failure(e) }
-
     // ---------------- plan links (A-005: routing/PlanLinks, docs/core-features/C15-plan-links.md) ----------------
 
     /**
@@ -2906,8 +2716,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- routing data freshness (owner: routing matters most – a changed way must reroute) ----
 
-    /** Route before that recalculation (to tell the user only when the way changed). */
-    private var routingDataBefore: List<GeoPoint>? = null
     @Volatile private var routingDataBusy = false
 
     /**
@@ -2965,19 +2773,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                     Problems.info("routing", "Newer routing data installed ($got file(s)); plan computed again")
                     engine = null // new engine: no cached routes from the old data
                     if (mode == AppMode.PLAN && recState.value == null && waypoints.size >= 2) {
-                        routingDataBefore = route?.points; routeEvent(RouteRun.Event.NewerData); recalc()
+                        planRecalc.routingDataBefore = route?.points; routeEvent(RouteRun.Event.NewerData); recalc()
                     }
                 }
             }
         }
-    }
-
-    /** The plan computed again on newer routing data: say so only when the way changed. */
-    private fun routingDataRouteChanged(r: com.onpath.app.routing.PlannedRoute) {
-        val before = routingDataBefore ?: return
-        routingDataBefore = null
-        // the plan sheet's grey "changed" line (a tap shows the whole route), not a message (owner)
-        if (com.onpath.app.data.RoutingDataCheck.differs(before, r.points)) routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
     }
 
     // Last in the class: every property it touches is initialised by now.

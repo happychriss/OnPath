@@ -92,7 +92,8 @@ class NoticesTest {
         // results that are visible anyway are not said (owner example: "Track saved to My routes.")
         assertTrue("msg_track_saved" !in vm && "msg_track_to_bin" !in vm && "msg_round_trip_already" !in vm)
         // newer routing data changed the route: the plan sheet's grey line, a tap shows the route
-        assertTrue(vm.contains("routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)"))
+        // (the lines are in `recalc`, which moved to PlanRecalcSlice, piece 9b)
+        assertTrue(src.getValue("PlanRecalcSlice.kt").contains("routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)"))
     }
 
     @Test fun errorCardAndLines() = paparazzi.snapshot {

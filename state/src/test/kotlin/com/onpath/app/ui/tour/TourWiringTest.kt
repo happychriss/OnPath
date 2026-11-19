@@ -165,7 +165,7 @@ class TourWiringTest {
             "say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,",
         )) assertTrue("the constructor says: $line", end.contains(line))
         assertTrue(vm.contains("val tour = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))"))
-        assertEquals("the end and the session (piece 19) name the main part, nothing else does", 2, count(vm, "main = Dispatchers.Main,"))
+        assertEquals("the end, the session (piece 19) and the route run (piece 9b) name the main part, nothing else does", 3, count(vm, "main = Dispatchers.Main,"))
     }
 
     /** Each host call hands over to the member the old body used, with the old arguments (each on the thread the slice calls it on). */
@@ -450,6 +450,8 @@ class TourWiringTest {
     // ---------------- piece 18b: what a plan edit means for the tour ----------------
 
     private val editsSlice = sourceFile("ui/tour/TourEdits.kt").readText()
+    /** The route run's coroutine (`recalc`, piece 9b): it cancels `followCancel` and asks the tour to follow the edited plan. */
+    private val recalcSlice = sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
     private val edits get() = between("private val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(", "\n    )\n")
     private val editsHost get() = between("host = object : com.onpath.app.ui.tour.TourEditsHost {", "        },\n")
 
@@ -500,13 +502,13 @@ class TourWiringTest {
             "override fun loadedOnTheWay(on: Boolean) { tourEdits.loadedOnTheWay = on }",
             "override fun followShownNow() = tourEdits.followShownNow()",
             "override fun invalidateSplits() = tourEdits.splitRequests.invalidate()",
-            "RouteRun.Effect.FollowEditedPlan -> tourEdits.followEditedPlan()",
-            "tourEdits.followCancel?.cancel(); tourEdits.followCancel = null // the tour's follow line of the old plan",
             "unlessUnsaved(\"Follow the shown track during the tour\") { tourEdits.followShownNow() }",
         )) assertTrue("the view model says: $line", vm.contains(line))
         assertEquals("wayThereFrom is the slice's for both hosts", 2, count(vm, "override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()"))
         assertEquals("the one field, volatile, is the slice's", 1, count(editsSlice, "@Volatile var followCancel: com.onpath.app.routing.RouteCancel? = null"))
-        assertEquals("recalc is the only code that touches it in the view model", 1, count(vm, "tourEdits.followCancel?.cancel(); tourEdits.followCancel = null"))
+        assertEquals("recalc (piece 9b: the slice) is the only code that touches it", 1, count(recalcSlice, "tourEdits.followCancel?.cancel(); tourEdits.followCancel = null // the tour's follow line of the old plan"))
+        assertEquals("…and the view model no longer does", 0, count(vm, "followCancel?.cancel()"))
+        assertEquals("the run asks the tour to follow the edited plan", 1, count(recalcSlice, "RouteRun.Effect.FollowEditedPlan -> tourEdits.followEditedPlan()"))
         assertEquals(0, count(vm, "\n        followCancel"))
         for (gone in listOf("pendingSplit", "splitBefore", "passedPoints", "passedTourId", "private var loadedOnTheWay", "private fun splitOf", "private fun followAhead",
             "private fun followEditedPlan", "private fun oneLeftGoesFromHere", "private fun endGuidanceIfPlanEmpty", "private fun wayThereFrom", "private fun followShownNow",

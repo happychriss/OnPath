@@ -22,8 +22,12 @@ class BackgroundRoutingRuleTest {
         assertTrue("anchor", slice.contains("TrackToPlan.fit("))
         assertTrue(slice.substringBefore("TrackToPlan.fit(").takeLast(400).contains("withContext(planRoute.threads.background)"))
         // the user's plan and the tour's position → ahead stay on the interactive thread
-        // (the plan run's in the view model's recalc; the position → ahead route moved to TourEdits, piece 18b: given the routing thread by name)
-        assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
+        // (the plan run's in `recalc`, which moved to PlanRecalcSlice, piece 9b; the position → ahead route moved to TourEdits, piece 18b: both given
+        // the routing thread by name – PlanRecalcFlowTest sees the router called on the held routing thread only)
+        val recalcSlice = com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
+        assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(recalcSlice).count())
+        assertEquals(0, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
+        assertTrue(vm.contains("scope = viewModelScope, routingDispatcher = routingDispatcher, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,"))
         val edits = com.onpath.app.testkit.sourceFile("ui/tour/TourEdits.kt").readText()
         assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(edits).count())
         assertTrue(vm.contains("say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,"))

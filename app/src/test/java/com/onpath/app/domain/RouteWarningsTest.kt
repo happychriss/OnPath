@@ -323,8 +323,11 @@ class RouteWarningsTest {
         if (!vmFile.exists()) return
         val vm = vmFile.readText()
         // (that activity and T level ask the rule, with the mode and the tour, is asserted by PlanRouteFlowTest on the real slice)
+        // the two newer-data lines are in `recalc`, which moved to PlanRecalcSlice (piece 9b; PlanRecalcFlowTest shows both say the note)
+        val slice = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt").readText()
         assertEquals(2, Regex("""differs\([^)]*\)\)\s*routeChangedNotice = Txt\.s\(Res\.string\.msg_route_updated_newer_data\)""")
-            .findAll(vm).count())
+            .findAll(slice).count())
+        assertEquals(0, Regex("""routeChangedNotice = Txt\.s\(Res\.string\.msg_route_updated_newer_data\)""").findAll(vm).count())
     }
 
     /** The slice asks the host whether a tour runs (PlanRouteFlowTest asserts what it does with it): the view model's answer is the recording's state. */

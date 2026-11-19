@@ -190,7 +190,7 @@ class WholeRouteTest {
         // the first route asks the fit in change(): PlanEditFlowTest.theFirstTwoPointsAreStoredAtOnceAndTheFirstRouteAsksTheFit
         // (fitNext false after one point, true after the second; aLaterEditNeverAsksTheFitAgain)
         // once per order: RouteRunTest.theFirstRouteIsFittedOnce
-        assertTrue(vm.contains("if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)"))
+        assertTrue(sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)")) // recalc moved to PlanRecalcSlice (piece 9b)
         // a plan link: following stops, the start camera keeps away, the route is fitted once computed
         // (moved to RoutesGoSlice, piece 14; the ORDER is also a flow: RoutesFlowTest.aPlanFromALinkBecomesTheNewUnsavedPlanInTheOrderTheMapNeeds)
         val go = sourceFile("ui/routes/RoutesGoSlice.kt").readText()
@@ -216,7 +216,7 @@ class WholeRouteTest {
         // thePlaceCardsRoles…, aFoundPlacePinGoesIntoThePlan… (the adds moved to PlaceAddSlice, rebuild phase 2 piece 11)
         // the same fit as the first route: following stopped, the user's touch wins
         // once per order: RouteRunTest.theFirstRouteIsFittedOnce
-        assertTrue(vm.contains("if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)"))
+        assertTrue(sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)")) // recalc moved to PlanRecalcSlice (piece 9b)
     }
 
     /** The view model's adapters of [MapViewSlice] (no unit test drives them): what the camera port turns into, the clocks, the position. */
