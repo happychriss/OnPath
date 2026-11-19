@@ -295,11 +295,10 @@ class TourWiringTest {
     }
 
     /**
-     * The old names are one-line forwards; the state is read from and written to the slice. `followLine` keeps its private
-     * setter, `guidanceEndedByEmptyPlan` too (the plan-edit code of piece 18b writes them through the view model).
+     * What the follow slice took away from the view model stays away (piece 21: the one-line forwards of its names are gone, screens
+     * read `vm.tourFollow.x`); the state collector of piece 19 reads and writes the slice directly.
      */
-    @Test fun theFollowNamesForwardToTheSlice() {
-        val all = flat(vm)
+    @Test fun theMovedFollowCodeIsNotInTheViewModelAnyMore() {
         // the forwards only the moved plan-edit code used went with it (piece 18b): the slice calls the follow slice itself
         for (gone in listOf("private val followOriginal", "private fun recopyFollowedPlan", "private fun copyFollowedPlan", "private fun setFollow",
             "private fun followAgain", "tourFollow.followAgain(",
@@ -344,7 +343,9 @@ class TourWiringTest {
         val bigAt = vm.indexOf("    init {\n        recalc()\n")
         val between = vm.substring(initAt + init.length, bigAt)
         assertEquals("no other init between the small init and the big one", 0, count(between, "\n    init {"))
-        assertFalse("the big init does not start it", bigInit.contains("tourFollow.start()"))
+        assertEquals("the big init only reads the follow state for its trace", setOf("tourFollow.followName", "tourFollow.followLine"),
+            Regex("""tourFollow\.\w+""").findAll(bigInit).map { it.value }.toSet())
+        assertFalse(Regex("""with\(tourFollow\)|tourFollow\.(run|apply|let|also)\b""").containsMatchIn(bigInit))
         for (dep in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = ", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = ", "private val recording: RecordingClient", "private val followStore = FollowStore(",
             "private val tourRows = ", "private val db = TourDb.get(", "val prefs = Prefs(")) {
             assertEquals("declared once: $dep", 1, count(vm, dep))

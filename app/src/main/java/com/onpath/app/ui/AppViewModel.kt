@@ -234,16 +234,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                              paddingPx: Int, under: List<GeoPoint> = emptyList()): com.onpath.app.map.RouteSnapshot.Shot? =
         pictures.overviewShot(t, segments, tint, widthPx, heightPx, paddingPx, under)
 
+    /** My routes list (☰ → My routes) is open. */
+    var routesOpen: Boolean
+        get() = routes.open
+        set(v) { routes.open = v }
     /** My routes' order (owner 2026-11-12, [com.onpath.app.domain.routes.RouteSort]): one for both tabs, kept across app starts. */
     var routesSort: com.onpath.app.domain.routes.RouteSort.Choice
         get() = routes.sort
         set(v) { routes.sort = v } // while My routes is open only: "Neueste zuerst" at each opening (owner 2026-11-13)
     /** My routes' "☆ Favoriten" pill (owner 2026-11-13, favourites C): on = only the starred ones; kept while the app runs. */
     var routesFavouritesOnly = false
-    /** My routes list (☰ → My routes) is open. */
-    var routesOpen: Boolean
-        get() = routes.open
-        set(v) { routes.open = v }
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     val mode: AppMode get() = tourSession.mode
     /** Map taps may add, move or insert points (Plan with no track shown). */
@@ -257,7 +257,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * with the last chosen ones, owner; fresh install Hike T2), the routing engine with its leg cache and threads, the time
      * estimate, the route warnings. Declared here – above the init that calls `recalc()` and every property that reads it – because
      * `recalc()` runs in the init; the ports read the lazies and the later properties only when called (ViewModelInitOrderTest).
-     *
      */
     val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = com.onpath.app.ui.plan.PlanRouteSlice(
         prefs = object : com.onpath.app.ui.plan.PlanRoutePrefs {
@@ -330,9 +329,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun recordingSettingsChanged() = recording.settingsChanged()
     }
     val settingsSlice: com.onpath.app.ui.SettingsSlice = com.onpath.app.ui.SettingsSlice(notices, settingsStore, settingsHost, viewModelScope, Dispatchers.IO)
-    var showSettings: Boolean
-        get() = settingsSlice.showSettings
-        set(v) { settingsSlice.showSettings = v }
     /**
      * A pairing was just made (first browser or another one, A-017) or ended here: the Plan map shows "Paired. …" /
      * "Unpaired. …" with OK at the top (owner 2026-10-30) until OK or the next Pair / Unpair; never for "already
@@ -340,6 +336,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     var syncNote by mutableStateOf<SyncNote?>(null)
         private set
+
+    var showSettings: Boolean
+        get() = settingsSlice.showSettings
+        set(v) { settingsSlice.showSettings = v }
 
     private val routingFingerprint by lazy {
         com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } })
@@ -1009,7 +1009,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * ONE serial thread [planCopyDispatcher], in the order the plan changed; a failure is loud in the problem log and tried
      * again), the service's other activity taken over. Declared with the other tour slices; the `init` below starts its tour-id
      * collector (what lay between that collector's old place and this one are declarations only: lazies and plain properties).
-     *
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val planCopyDispatcher = Dispatchers.IO.limitedParallelism(1)
@@ -1667,11 +1666,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- follow / record ----------------
 
-    /**
-     * The tour follows the plan's route. Its name (lock screen "Back to …", the tour log) is the saved route's while the
-     * plan belongs to one ([savedName]), else "Route <date>".
-     */
-
     /** Any answer in "Unfinished tour" ends the "Tour interrupted" notification (Meran pictures bug 2). */
     private fun clearInterruptedNote() = com.onpath.app.recording.TourInterruptedReceiver.cancelNote(getApplication())
 
@@ -1779,7 +1773,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launchSafe("app", "start-up work") {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
-                while (errorCard != null) delay(500) // after the current error box
+                while (notices.errorCard != null) delay(500) // after the current error box
                 notices.sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }

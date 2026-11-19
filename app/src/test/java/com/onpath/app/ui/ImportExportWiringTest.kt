@@ -27,7 +27,7 @@ class ImportExportWiringTest {
         has(vm, """val importExport: ImportExport by lazy \{\s+ImportExport\(app, viewModelScope, Dispatchers\.IO, db, object : ImportExportHost""", true)
     }
 
-    @Test fun everyMemberIsForwardedUnderItsOldName() {
+    @Test fun theOneForwardThatIsNotAPlainCallStays() {
         // (piece 21: the one-line forwards `importData`, `checkRestoreOffer`, `exportAll`, `exportTour`, `importGpx`, `restoreFrom` are gone: the
         // screens call `vm.importExport.x`; what stays is the one that is not a plain forward, `share`, which `exportFollowedPlan` still calls)
         for (f in listOf(

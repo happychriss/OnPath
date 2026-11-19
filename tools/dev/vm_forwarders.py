@@ -21,14 +21,23 @@ Modes (stdlib only, run from anywhere inside the repo; idempotent, driven by the
                        `read { }`, the view model's own unqualified reads) – at the positions the log names, never at a position
                        already reached through its slice (a follow-up error of an inference cascade)
 
-After a rebase onto a newer main (other sessions keep writing `vm.x` in screens):
-    python3 tools/dev/vm_forwarders.py plan           # what would change
-    python3 tools/dev/vm_forwarders.py apply          # the persisted table knows forwarders that are gone from the view model
-    tools/dev/gradle_slot.sh -- ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin :state:compileTestKotlin \
-        :core:compileTestKotlin :app:compileDebugAndroidTestKotlin -Ponpath.e2e=true --continue > /tmp/c.log 2>&1
-    python3 tools/dev/vm_forwarders.py fix /tmp/c.log     # repeat compile + fix until the log has no "Unresolved reference"
-By hand then: a local named like a slice that shadows it (`plan: Boolean` -> `this.plan.points`), a named argument whose slice
-parameter has another name, a new text pin of a deleted forwarder in a test.
+RE-RUN AFTER A REBASE onto a newer main (other sessions keep writing `vm.x` in screens and tests):
+  1. No TSV name may be a member again (only the kept forwarders may print - routesOpen, showSettings, mode, searchOpen, errorCard,
+     sayError). `plan` / `apply` / `fix` also check this and stop with exit 2 naming the members:
+       grep -v '^#' tools/dev/vm_forwarders.tsv | cut -f1 | while read n; do grep -nE "^    ((private|internal|override) )*(val|var|fun) $n\\b" app/src/main/java/com/onpath/app/ui/AppViewModel.kt; done
+  2. Receiver census (who is a view model in the new code? `vm`, `vm(it)`, a lambda parameter of `read { }` / `onVm { }`, `this@AppViewModel`):
+       grep -rnoE "\\b\\w+ *: *(com\\.onpath\\.app\\.ui\\.)?AppViewModel\\b" app/src | sed 's/.*: *//' | sort | uniq -c
+       grep -rhoE "\\b(read|onVm) *\\{ *\\w+ *->" app/src/androidTest | sort | uniq -c
+     a receiver that is not in that list is not rewritten by `fix` (it prints REFUSED) - look at it by hand.
+  3. python3 tools/dev/vm_forwarders.py plan        # what would change
+     python3 tools/dev/vm_forwarders.py apply       # the persisted table knows forwarders that are gone from the view model
+     tools/dev/gradle_slot.sh -- ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin :state:compileTestKotlin \\
+         :core:compileTestKotlin :app:compileDebugAndroidTestKotlin -Ponpath.e2e=true --continue > /tmp/c.log 2>&1
+     python3 tools/dev/vm_forwarders.py fix /tmp/c.log   # repeat compile + fix until the log has no "Unresolved reference"
+  4. By hand afterwards: a local named like a slice that shadows it (`plan: Boolean` -> `this.plan.points`), a named argument whose slice
+     parameter has another name, a bound reference `::x` evaluated at construction (use a lambda), a new text pin of a deleted
+     forwarder in a test (re-point it at the call site).
+Self-test: python3 tools/dev/test_vm_forwarders.py
 """
 import os
 import re
@@ -344,9 +353,30 @@ def save_persisted(table):
     write(TABLE, "\n".join(rows) + "\n")
 
 
-def full_table():
+def persisted_conflicts(persisted, table, members):
+    """Names of the persisted table that exist as a member of the current view model and are neither one of the kept forwarders (KEEP)
+    nor an exact pass-through to the same target: the member was re-added with new logic (a guard, a conversion ...), renaming its call
+    sites would silently bypass it."""
+    bad = []
+    for name, val in sorted(persisted.items()):
+        if name in KEEP or not any(m.name == name for m in members):
+            continue
+        cur = table.get(name)
+        if cur is None or (cur[0], cur[1]) != (val[0], val[1]):
+            bad.append(name)
+    return bad
+
+
+def full_table(strict=False):
     t, kept, members, fwds = build_table()
     p = load_persisted()
+    if strict:
+        bad = persisted_conflicts(p, t, members)
+        if bad:
+            print("STOP: these names are in tools/dev/vm_forwarders.tsv but are members of the view model again and not an exact "
+                  "pass-through to the same slice member: %s\nLook at them (new logic?), then delete their rows from the tsv or "
+                  "restore the pass-through. Nothing was changed." % ", ".join(bad), file=sys.stderr)
+            raise SystemExit(2)
     for k, v in p.items():
         t.setdefault(k, v)
     return t, kept, members, fwds
@@ -420,7 +450,7 @@ def rewrite_file_lines(t, table, vmfile, roots):
 
 
 def plan_or_apply(apply, delete):
-    table, kept, members, fwds = full_table()
+    table, kept, members, fwds = full_table(strict=True)
     total = 0
     changed = {}
     roots = set()
@@ -521,8 +551,30 @@ def roots_of(table):
     return sorted({v[0] for v in table.values()})
 
 
+VM_RECEIVER = re.compile(r"(?:\bvm|\bviewModel|this@AppViewModel)(?:\([^()]*\))?$")
+
+
+def receiver_ok(line, before):
+    """May an unresolved name at the end of `before` be a view-model read? `before` is the text left of the name on its line.
+    Unqualified: yes. After a dot: the receiver must be `vm`, `vm(...)`, `this@AppViewModel`, or the lambda parameter of a
+    `read { }` / `onVm { }` block (`it` or a named one) on this line - anything else (`t.waypoints` on a Tour) is not ours."""
+    if not before.endswith(".") or before.endswith("::"):
+        return True
+    recv = before[:-1]
+    if VM_RECEIVER.search(recv):
+        return True
+    m = re.search(r"(\w+)$", recv)
+    if not m:
+        return False
+    name = m.group(1)
+    if re.search(r"\b(?:read|onVm)\s*\{\s*" + re.escape(name) + r"\s*->", line):
+        return True
+    return name == "it" and bool(re.search(r"\b(?:read|onVm)\s*\{", line)) and not re.search(r"\{\s*\w+\s*->", line.split("it.")[0][-40:])
+
+
 def fix_from_log(log):
-    table, kept, members, fwds = full_table()
+    table, kept, members, fwds = full_table(strict=True)
+    refused = []
     errs = {}
     for m in re.finditer(r"^e: (?:file://)?(/\S+?\.kt):(\d+):(\d+)\s+Unresolved reference[: ]+'?(\w+)'?", read(log), re.M):
         p, ln, col, name = m.group(1), int(m.group(2)), int(m.group(3)), m.group(4)
@@ -539,6 +591,9 @@ def fix_from_log(log):
             # already reached through the slice (a follow-up error of an inference cascade): leave it
             if before.endswith(tuple(r + "." for r in roots_of(table))) or before.endswith(("." + ".".join(path[:-1]) + ".") if len(path) > 1 else "\0"):
                 continue
+            if not receiver_ok(l, before):
+                refused.append("%s:%d:%d %s" % (os.path.relpath(p, ROOT), ln, col, l.strip()[:120]))
+                continue
             if before.endswith("::"):  # a bound reference: ::x -> slice::x
                 lines[ln - 1] = before[:-2] + ".".join([root] + path[:-1]) + "::" + path[-1] + l[col - 1 + len(name):]
                 continue
@@ -547,6 +602,8 @@ def fix_from_log(log):
         print("%5d  %s" % (len(set(lst)), os.path.relpath(p, ROOT)))
     if not errs:
         print("nothing to do")
+    for r in refused:
+        print("REFUSED (receiver is not a view model - fix by hand): " + r)
 
 
 # ---------------------------------------------------------------- the inventory

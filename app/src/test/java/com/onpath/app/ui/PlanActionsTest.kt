@@ -24,7 +24,8 @@ class PlanActionsTest {
 
     /** Owner 2026-11-06: ✕ asks nothing any more (also during a tour) – the plan goes under Zuletzt, one Undo brings it back. */
     @Test fun closePlanAsksNothing() {
-        assertTrue(src("ui/MapScreen.kt").contains("onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null")) // piece 21: the ✕ calls the edit slice's clearPlan itself, the forwarder `requestClear` is gone
+        assertTrue(src("ui/MapScreen.kt").contains("onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null"))
+        assertTrue(src("ui/MapScreen.kt").contains("onClear = vm.planEdit::clearPlan")) // piece 21: the ✕ calls the edit slice's clearPlan itself, the forwarder `requestClear` is gone
         // the plan is kept under Zuletzt first, before it leaves the map: PlanEditFlowTest.clearKeepsThePlanForZuletztFirstThenEmptiesInOneUndoStepAndNeverAsks
         // unsaved = a new plan of two points, or a saved one changed since (it decides what goes under Zuletzt)
         assertTrue(RouteRules.isUnsaved(listOf(a, b), null))
