@@ -476,6 +476,8 @@ function showCellTrouble() {
   const s = useCells ? cells.baseTrouble(map) : null;
   const now = notices.get('cells');
   const want = s === 'broken' ? t('web_maps_cell_failed') : s === 'busy' ? t('maps_err_unreachable') : null;
+  // the map cannot be loaded: the wait for it ends (the window goes – never „loading map“ beside the red line)
+  if (s === 'broken') { firstMap = false; overlay.fail('tiles'); }
   if ((now?.title ?? null) === want) return;
   notices.set('cells', want ? { kind: s === 'broken' ? 'error' : 'info', title: want } : null);
 }
@@ -505,7 +507,7 @@ overlay.onDue = () => waits.decide();
 // a window over the map's middle for every pan would stand between the user and the map
 let firstMap = true;
 map.once('idle', () => { firstMap = false; });
-watchTiles(map, overlay, () => firstMap && !map.isMoving());
+watchTiles(map, overlay, () => firstMap && !map.isMoving(), () => useCells && cells.baseTrouble(map) === 'broken');
 overlay.job('engine', 0, ENGINE_UNITS, 'engine', false);
 ready.then(() => overlay.finish('engine'), () => overlay.remove('engine'));
 // the window's own engine (waitengine.ts): a second instance of the Wasm engine on this thread, from the start – the

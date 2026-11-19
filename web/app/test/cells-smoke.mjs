@@ -98,7 +98,12 @@ const MSG_BUSY = 'Map server not reachable';
   const red = await page.waitForFunction((t) => { const e = document.querySelector('#mapnotes .mapnote.error');
     return !!e && e.getClientRects().length > 0 && e.innerText.includes(t); }, MSG_FAILED, { timeout: 40_000 }).then(() => true, () => false);
   check(red, 'B base 404: a red line (ERROR) "The detailed map for this area could not be loaded … Reload the page", visible');
-  check(!(await page.evaluate(() => !!document.getElementById('waitwin'))), 'B base 404: no wait window beside the red line');
+  // the map's load failed: its wait is over – the window closes (never „loading map 88 %“ beside the red line, never stuck)
+  const ww = await page.evaluate(() => { const w = document.getElementById('waitwin');
+    return w && { shown: w.getClientRects().length > 0 && getComputedStyle(w).display !== 'none', cls: w.className, text: w.innerText, loadover: document.body.dataset.loadover, wait: document.body.dataset.wait }; });
+  check(!ww || !ww.shown, `B base 404: no wait window beside the red line (${JSON.stringify(ww)})`);
+  const gone = await page.waitForFunction(() => !document.getElementById('waitwin'), null, { timeout: 20_000 }).then(() => true, () => false);
+  check(gone, 'B base 404: the wait for that map ends – no window left (not stuck)');
   const since = Date.now();
   await pan(page);
   await idle(page);

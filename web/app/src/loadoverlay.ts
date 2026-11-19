@@ -99,6 +99,16 @@ export class LoadOverlay {
   }
   finish(id: string) { const j = this.jobs.get(id); if (j) { j.done = j.total; this.update(); } }
   remove(id: string) { if (this.jobs.delete(id)) this.update(); }
+  /**
+   * The load of [id] failed (a map that cannot be loaded – its red line says so): its step is over. Nothing else open:
+   * the wait ends at once – no full bar (nothing came), no window beside the red line, never stuck at 88 %.
+   */
+  fail(id: string) {
+    if (!this.jobs.delete(id)) return;
+    this.failing = true;
+    try { this.update(); } finally { this.failing = false; }
+  }
+  private failing = false;
   isOpen(id: string) { const j = this.jobs.get(id); return !!j && j.done < j.total; }
 
   /** The map areas the server prepares that this wait waits for (the user's own point / search; [] = none). */
@@ -125,7 +135,7 @@ export class LoadOverlay {
   private get open() { return this.openJobs().length > 0 || this.areasOpen() || !!this.planIn; }
 
   private update() {
-    if (!this.open) { if (this.active) this.end(true); this.dismissed = false; return; }
+    if (!this.open) { if (this.active) this.end(!this.failing); this.dismissed = false; return; }
     if (!this.active) this.begin();
     // a new measurement: the bar follows it soon (not only on the half-second tick – bytes come in steps)
     else if (!this.soon) this.soon = window.setTimeout(() => { this.soon = 0; this.tick(); }, 100);
@@ -191,7 +201,9 @@ export class LoadOverlay {
       jobs.some((j) => j.kind === 'map') || this.areaList.length > 0, jobs.some((j) => j.kind === 'routing'),
       // the routing data is written into the engine before the route: its join step waits while it downloads
       p ? (p.join ?? -1) : jobs.some((j) => j.kind === 'routing' && j.done < j.total) ? 0 : -1,
-      p?.done ?? 0, p ? p.total : -1, !!p?.checking, p?.names ?? '', p?.points ?? 0, typeof navigator !== 'undefined' && navigator.onLine === false);
+      // offline (the browser, or the map server not reachable for an area): the bar stands grey and says why
+      p?.done ?? 0, p ? p.total : -1, !!p?.checking, p?.names ?? '', p?.points ?? 0,
+      (typeof navigator !== 'undefined' && navigator.onLine === false) || this.areaList.some((a) => a.state === 'offline'));
     this.ui = ui ?? this.fallback(jobs, p);
     // the engine came while the plain bar showed: never back from what was drawn
     if (this.ui.percent < this.drawn) this.ui = { ...this.ui, percent: this.drawn };
@@ -298,12 +310,14 @@ export class LoadOverlay {
  * there (or failed, or no longer in the view – then nobody waits for it). Read from maplibre's tile managers (no public
  * API for the tiles in view); without them the job is just "loading / loaded".
  */
-export function watchTiles(map: maplibregl.Map, overlay: LoadOverlay, opens: () => boolean) {
+export function watchTiles(map: maplibregl.Map, overlay: LoadOverlay, opens: () => boolean, failed: () => boolean = () => false) {
   const seen = new Set<string>();
   const done = new Set<string>();
   let timer = 0;
   const tick = () => {
     timer = 0;
+    // the view's detailed map cannot be loaded (cells.ts: left out, the red line says so): nothing to wait for
+    if (failed()) { overlay.fail('tiles'); seen.clear(); done.clear(); return; }
     type Tile = { state: string; tileID?: { key?: string } };
     const managers = (map as unknown as { style?: { tileManagers?: Record<string, { _inViewTiles?: { getAllTiles?: () => Tile[] } }> } }).style?.tileManagers;
     const inView = new Set<string>();
