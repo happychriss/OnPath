@@ -1,5 +1,6 @@
 package com.onpath.app.testkit
 
+import com.onpath.app.data.MultiDay
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourJson
 import com.onpath.app.data.TourKind
@@ -38,16 +39,23 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         s.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").use { r -> buildList { while (r.next()) add(r.getString(1)) } }
     }
 
-    /** [TourDb.insertTour]: the tour row and its points in one transaction; returns the id. */
+    /**
+     * [TourDb.insertTour]: the tour row and its points in one transaction; returns the id. The columns written are
+     * TourDb's (TourDbMirrorTest compares the two lists): what a saved plan carries – stats, pins, difficulty, days
+     * ([days] null leaves the column NULL, as TourDb does).
+     */
     fun insertTour(kind: TourKind, name: String, activity: String?, sac: Int, segments: List<List<TrackPoint>> = emptyList(),
                    waypoints: List<GpxWaypoint> = emptyList(), state: String = "done", distance: Double = 0.0,
-                   uuid: String = java.util.UUID.randomUUID().toString(), createdMs: Long = System.currentTimeMillis(), draft: Boolean = false): Long {
+                   uuid: String = java.util.UUID.randomUUID().toString(), createdMs: Long = System.currentTimeMillis(), draft: Boolean = false,
+                   ascent: Double = 0.0, descent: Double = 0.0, duration: Double = 0.0, pinned: Set<Int> = emptySet(),
+                   difficulty: String? = null, favourite: Boolean = false, days: MultiDay? = null): Long {
         write()
         db.autoCommit = false
         try {
-            exec("INSERT INTO tours(kind, name, created, uuid, pinned, activity, sac, distance, ascent, descent, duration, state, waypoints, draft, favourite) " +
-                "VALUES (?,?,?,?,?,?,?,?,0,0,0,?,?,?,0)", kind.name, name, createdMs, uuid, TourJson.pinnedToJson(emptySet()), activity, sac,
-                distance, state, TourJson.waypointsToJson(waypoints), if (draft) 1 else 0)
+            exec("INSERT INTO tours(kind, name, created, uuid, pinned, activity, sac, distance, ascent, descent, duration, state, waypoints, draft, " +
+                "difficulty, favourite, days) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", kind.name, name, createdMs, uuid, TourJson.pinnedToJson(pinned),
+                activity, sac, distance, ascent, descent, duration, state, TourJson.waypointsToJson(waypoints), if (draft) 1 else 0, difficulty,
+                if (favourite) 1 else 0, days?.toJson())
             val id = db.createStatement().use { s -> s.executeQuery("SELECT last_insert_rowid()").use { r -> r.next(); r.getLong(1) } }
             var seq = 0
             segments.forEachIndexed { seg, pts -> pts.forEach { point(id, seq++, seg, it, null) } }
@@ -55,6 +63,36 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
             return id
         } catch (e: Exception) { db.rollback(); throw e } finally { db.autoCommit = true }
     }
+
+    /**
+     * [TourDb.replacePlanned]: a saved planned route overwritten in place, in one transaction – stats, via points, pins,
+     * difficulty, line; name and date stay. False when the route is gone, in the recycle bin or not a planned one (nothing
+     * changed). [days] null keeps the stored days, [clearDays] removes them – as TourDb.
+     */
+    fun replacePlanned(id: Long, activity: String?, sac: Int, distance: Double, ascent: Double, descent: Double, duration: Double,
+                       segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>, pinned: Set<Int> = emptySet(),
+                       difficulty: String? = null, days: MultiDay? = null, clearDays: Boolean = false): Boolean {
+        write()
+        db.autoCommit = false
+        try {
+            val args = mutableListOf<Any?>(activity, sac, distance, ascent, descent, duration, TourJson.waypointsToJson(waypoints),
+                TourJson.pinnedToJson(pinned), difficulty)
+            if (days != null) args += days.toJson()
+            args += id; args += TourKind.PLANNED.name
+            val n = exec("UPDATE tours SET activity=?, sac=?, distance=?, ascent=?, descent=?, duration=?, waypoints=?, pinned=?, difficulty=?" +
+                (if (days != null) ", days=?" else if (clearDays) ", days=NULL" else "") +
+                " WHERE id=? AND kind=? AND deleted_at IS NULL", *args.toTypedArray())
+            if (n == 0) { db.rollback(); return false }
+            exec("DELETE FROM points WHERE tour_id=?", id)
+            var seq = 0
+            segments.forEachIndexed { seg, pts -> pts.forEach { point(id, seq++, seg, it, null) } }
+            db.commit()
+            return true
+        } catch (e: Exception) { db.rollback(); throw e } finally { db.autoCommit = true }
+    }
+
+    /** [TourDb.setFavourite]: false when the tour is gone. */
+    fun setFavourite(id: Long, favourite: Boolean): Boolean { write(); return exec("UPDATE tours SET favourite=? WHERE id=?", if (favourite) 1 else 0, id) > 0 }
 
     private fun point(id: Long, seq: Int, seg: Int, p: TrackPoint, acc: Float?) =
         exec("INSERT INTO points(tour_id, seq, seg, lat, lon, ele, time, acc) VALUES (?,?,?,?,?,?,?,?)", id, seq, seg, p.lat, p.lon, p.ele, p.timeMs,
@@ -100,7 +138,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                     pinned = TourJson.jsonToPinned(r.getString("pinned")),
                     deletedMs = r.getLong("deleted_at").takeIf { !r.wasNull() },
                     draft = r.getInt("draft") == 1, hasPlan = r.getInt("has_plan") == 1,
-                    difficulty = r.getString("difficulty"), favourite = r.getInt("favourite") == 1,
+                    difficulty = r.getString("difficulty"), favourite = r.getInt("favourite") == 1, days = MultiDay.fromJson(r.getString("days")),
                 ))
             }
         }
