@@ -14,13 +14,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts); HoldAddOverlay / HoldAddMenu (the hold menu „Einfügen“ / „Neues Ziel“ beside a ring at the spot, no title, the cheaper first and tinted, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd)",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Einfügen“ / „Neues Ziel“ beside a ring at the spot, no title, the cheaper first and tinted, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "032d364f15e395ef6cb3e71326b8b17adb64f811"
+      "blob": "4e0bf47478b83436f19262ccdb7e1375d1e143f7"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -468,12 +468,12 @@
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt",
-      "what": "the found place's menu (app 6714ad6f, owner 2026-11-13 „A mit Ausweich B“): PinMenuPlace.decide / cardPan (above the pin, the map moved down; under it; else a card at the bottom), PinMenuItems.of (the rows' order, Remove pin last; no „⋯ Mehr“ since 2026-11-15); FAVOURITE / HOME after the route rows (keep, owner 2026-11-15 „Orte merken“)",
+      "what": "the found place's menu (app 6714ad6f, owner 2026-11-13 „A mit Ausweich B“): PinMenuPlace.decide / cardPan (above the pin, the map moved down; under it; else a card at the bottom), PinMenuItems.of (the rows' order, Remove pin last; no „⋯ Mehr“ since 2026-11-15); FAVOURITE / HOME after the route rows (keep, owner 2026-11-15 „Orte merken“; HOME not shown while „Zuhause“ is off, owner 2026-11-19 – pinmenu.ts shownMenuRows); PanOnce (one move per opened menu – app-only, a Compose effect relaunch; the planner pans once in search.ts showMenu)",
       "web": [
         "web/app/src/pinmenu.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "8f5d908fcc71f2b640e7b31fcf1e077968f46dbc"
+      "blob": "c3c02f77b3e04ef59682a6b64458cff813431f7d"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/cells/PoiDensity.kt",
@@ -998,7 +998,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": {
-      "blob": "8f5d908fcc71f2b640e7b31fcf1e077968f46dbc",
+      "blob": "c3c02f77b3e04ef59682a6b64458cff813431f7d",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": {

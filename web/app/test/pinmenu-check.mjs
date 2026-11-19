@@ -27,6 +27,11 @@ eq(P.pinRows(['ADD_STOP', 'NEW_DESTINATION'], true), ['ADD_STOP', 'NEW_DESTINATI
 eq(P.pinRows(['NEW_DESTINATION', 'ADD_STOP'], true), ['NEW_DESTINATION', 'ADD_STOP', 'GOOGLE', 'REMOVE_PIN'], 'far: both, New destination first');
 eq(P.pinRows(['ADD_STOP', 'NEW_DESTINATION'], false), ['ADD_STOP', 'NEW_DESTINATION', 'GOOGLE'], 'a map POI: no Remove pin');
 eq(P.pinRows(['START_HERE', 'GO_HERE'], true, true), ['START_HERE', 'GO_HERE', 'FAVOURITE', 'HOME', 'GOOGLE', 'REMOVE_PIN'], 'kept places (owner 2026-11-15): after the route rows, before Google');
+// „⌂ Zuhause“ off for now (owner 2026-11-19, the app's HOME_ROW_SHOWN = false, HomeRowHiddenTest): pinRows still knows
+// the row, the shown rows drop it – „★ Merken“ stays
+eq(P.HOME_ROW_SHOWN, false, 'the Zuhause switch is off');
+eq(P.shownMenuRows(P.pinRows(['START_HERE', 'GO_HERE'], true, true)), ['START_HERE', 'GO_HERE', 'FAVOURITE', 'GOOGLE', 'REMOVE_PIN'], 'no „Als Zuhause festlegen“, „Merken“ stays');
+eq(P.shownMenuRows(P.pinRows(['ADD_STOP', 'NEW_DESTINATION'], false, true)), ['ADD_STOP', 'NEW_DESTINATION', 'FAVOURITE', 'GOOGLE'], 'a map POI: no „Als Zuhause festlegen“ either');
 // the likelier row is tinted (PlaceAddMenu.Menu.emphasised)
 eq(P.emphasised(['ADD_STOP', 'NEW_DESTINATION']), 'ADD_STOP', 'Insert first: Insert tinted');
 eq(P.emphasised(['NEW_DESTINATION', 'ADD_STOP']), 'NEW_DESTINATION', 'New destination first: it is tinted');

@@ -439,6 +439,46 @@ check(await page.isHidden('#points'), 'phone: the handle folds them away');
 await page.click('#handle');
 check(await page.isVisible('#points'), 'phone: the handle shows the Points again');
 
+// 10b. Undo / Redo also in the full points sheet (the app's UndoPill inSheet at „Punkte“, owner 2026-11-18 answer 4): the
+// phone's sheet pulled up hides the map's pill – the same ↶ ↷ at the Points title, the one that cannot act greyed
+{
+  const up = await ctx.newPage();
+  up.on('pageerror', (e) => errors.push(String(e)));
+  await up.setViewportSize({ width: 412, height: 860 });
+  // six points: a list long enough that the pulled-up sheet reaches the map's pill
+  await up.goto(url + 'index.html?lang=en');
+  await up.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+  const six = await up.evaluate(() => window.__engine.encode({ points: [[46.6705, 11.1605], [46.6740, 11.1560], [46.6780, 11.1520],
+    [46.6820, 11.1480], [46.6860, 11.1440], [46.6890, 11.1400]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null }));
+  await up.goto(url + 'index.html?lang=en#p=' + six);
+  await up.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
+  // a link opens the phone's sheet small: pulled up to the full points sheet
+  if (await up.isHidden('#points')) await up.click('#handle');
+  await up.waitForSelector('#points li .del', { state: 'visible', timeout: 10_000 });
+  await up.waitForTimeout(500); // the sheet's transition
+  const n = () => up.evaluate(() => document.querySelectorAll('#points li').length);
+  const before = await n();
+  check(await up.isHidden('#sheetUndoPill'), 'full sheet: nothing to undo – no undo at the Points title');
+  await up.click('#points li:nth-child(2) .del');
+  await up.waitForFunction((k) => document.querySelectorAll('#points li').length < k, before, { timeout: 15_000 }).catch(() => {});
+  await up.waitForTimeout(400);
+  const st = await up.evaluate(() => ({ crowded: document.body.classList.contains('undo-crowded'),
+    head: document.querySelector('#pointsSection .pointshead').getBoundingClientRect().height,
+    pill: document.getElementById('sheetUndoPill').getBoundingClientRect(), map: document.getElementById('undoPill').getBoundingClientRect().width }));
+  console.log('sheet undo:', JSON.stringify(st));
+  check(st.crowded && st.map === 0 && st.head >= 48 && st.pill.width === 96 && st.pill.height === 48,
+    'full sheet: the map\'s undo pill steps back, ↶ ↷ (2 × 48 px) at the Points title instead');
+  check(!(await up.isDisabled('#sheetUndo')) && await up.isDisabled('#sheetRedo'), 'full sheet: Undo active, Redo greyed');
+  const after = await n();
+  await up.click('#sheetUndo');
+  await up.waitForFunction((k) => document.querySelectorAll('#points li').length === k, before, { timeout: 15_000 }).catch(() => {});
+  check(await n() === before && after < before && !(await up.isDisabled('#sheetRedo')), `full sheet ↶: the deleted point is back (${after} → ${await n()}), Redo active`);
+  await up.click('#sheetRedo');
+  await up.waitForFunction((k) => document.querySelectorAll('#points li').length === k, after, { timeout: 15_000 }).catch(() => {});
+  check(await n() === after, 'full sheet ↷: deleted again');
+  await up.close();
+}
+
 // pace remembered across a reload (localStorage, like the app's Prefs hikePaceLevel)
 await page.evaluate(() => { localStorage.setItem('onpath.hikePaceLevel', 'FIT'); localStorage.setItem('onpath.bikePaceLevel', 'FIT'); });
 await page.reload();

@@ -1,6 +1,7 @@
 // Kept places (owner 2026-11-15, „Orte merken“ – the app's b2504c3d, F-PLAN-14; web-planner.md §32): a held place's /
-// found place's menu „☆ Merken“ / „★ Gemerkt“ and „⌂ Als Zuhause festlegen“ / „Zuhause entfernen“ after the route rows;
-// the empty search shows ⌂ Zuhause on top, ★ Favoriten (five, then „Alle Favoriten ›“), Zuletzt gesucht without repeats;
+// found place's menu „☆ Merken“ / „★ Gemerkt“ after the route rows; the empty search shows ★ Favoriten (five, then
+// „Alle Favoriten ›“), Zuletzt gesucht without repeats. „⌂ Zuhause“ is off for now (owner 2026-11-19, the app's
+// HOME_ROW_SHOWN = false): no „Als Zuhause festlegen“ in any menu, no Zuhause row although a home is stored (it stays);
 // a row there is picked like a search hit; kept across a reload; a blocked store never breaks the search.
 // Usage: node test/kept-smoke.mjs [segmentsDir] [mapStoreDir] [shotDir]
 import path from 'node:path';
@@ -91,8 +92,9 @@ const emptySearch = async (page) => {
 
   const vellau = await pickFirst(page, 'Vellau');
   let rows = await menuRows(page);
-  check(rows.join('|') === 'Start here|Round trip from here|Go here|Add to favourites|Set as home|Open in Google Maps|Remove pin',
-    `found place's menu: the kept-place rows after the route rows, before Google (${rows.join(' · ')})`);
+  check(rows.join('|') === 'Start here|Round trip from here|Go here|Add to favourites|Open in Google Maps|Remove pin',
+    `found place's menu: the kept-place row after the route rows, before Google (${rows.join(' · ')})`);
+  check(!rows.includes('Set as home') && !rows.includes('Remove home'), 'Zuhause off: no „Set as home“ in the found place\'s menu');
   check(await page.evaluate((sel) => [...document.querySelectorAll(sel)].some((d) =>
     d.nextElementSibling?.textContent.includes('Add to favourites')), '.pointmenu .menudivider'), 'a thin line before „Merken“');
   await clickRow(page, 'Add to favourites');
@@ -108,20 +110,17 @@ const emptySearch = async (page) => {
   check(!s.recent.some((r) => r.name === vellau), 'a favourite is not repeated under Recent');
   check(s.favs[0].h >= 47.5 && s.favs[0].oneLine, `one-line row ≥ 48 px (${s.favs[0].h})`);
 
-  // Zuhause: on top, the name „Home“ and the place grey beside it
+  // Zuhause off (owner 2026-11-19): no „Set as home“ for another place either; it shows under Recent only
   const ifinger = await pickFirst(page, 'Ifinger');
-  await clickRow(page, 'Set as home');
-  await page.waitForTimeout(300);
-  check((await menuRows(page)).includes('Remove home'), 'Als Zuhause festlegen: the row becomes „Zuhause entfernen“');
+  rows = await menuRows(page);
+  check(!rows.includes('Set as home') && rows.includes('Add to favourites'), `Zuhause off: „Merken“ only (${rows.join(' · ')})`);
   s = await emptySearch(page);
-  const first = await page.$eval('#results .startlists > *', (e) => e.textContent);
-  check(s.home?.name === 'Home' && s.home.line.startsWith(ifinger + ' · ') && /^Home/.test(first.trim()), `Home on top: "Home ${s.home?.line}"`);
-  check(s.recent.some((r) => r.name === vellau) === false && !s.recent.some((r) => r.name === ifinger), 'Recent without the places shown above');
+  check(!s.home && s.recent.some((r) => r.name === ifinger) && !s.recent.some((r) => r.name === vellau), 'no Home row; Recent without the favourite shown above');
 
   // a row of the empty search is picked like a search hit: the pin and its menu
-  await page.click('#results .hit.compact');
+  await page.locator('#results .hit.compact', { has: page.locator('.sign.fav') }).first().click();
   await page.waitForSelector(MENU, { timeout: 30_000 });
-  check(await page.isVisible('.candidate') && (await menuRows(page)).includes('Remove home'), 'picking Home: the pin and its menu (Remove home there)');
+  check(await page.isVisible('.candidate') && (await menuRows(page)).includes('In favourites'), 'picking a favourite: the pin and its menu (In favourites there)');
 
   // a place only searched: under Recent
   const partschins = await pickFirst(page, 'Partschins');
@@ -135,18 +134,22 @@ const emptySearch = async (page) => {
   console.log('favourites:', s.favs.map((f) => f.name), 'more:', s.more, 'recent:', s.recent.map((r) => r.name));
   check(s.favs.length === 5 && s.more === 'All favourites ›', `${1 + more.length} favourites: five shown, then „All favourites ›“`);
   check(s.favs[0].name === more.at(-1), 'the newest favourite first');
-  const names = [s.home?.name, ...s.favs.map((f) => f.name), ...s.recent.map((r) => r.name)];
   check(new Set(s.recent.map((r) => r.name)).size === s.recent.length, `Recent: no place twice (${s.recent.map((r) => r.name).join(', ')})`);
   await page.click('#results .allfavs');
   await page.waitForTimeout(400);
   const all = await page.$$eval('#results .hit.compact .sign.fav', (e) => e.length);
   check(all === 1 + more.length && await page.locator('#results .allfavs').count() === 0, `„All favourites ›“: all ${all} shown`);
 
+  // a home stored before (or synced from the phone) stays – it is only not shown (the app's KeptPlacesE2ETest)
+  const homeCode = await page.evaluate(() => {
+    const k = JSON.parse(localStorage.getItem('onpath.keptPlaces'));
+    k.home = k.favourites[0]; localStorage.setItem('onpath.keptPlaces', JSON.stringify(k)); return k.home;
+  });
   // across a reload
   await page.reload();
   await ready(page);
   s = await emptySearch(page);
-  check(s.home?.line.startsWith(ifinger) && s.favs.length === 5 && s.more, 'after a reload: Home and the favourites are still there');
+  check(!s.home && s.favs.length === 5 && s.more, 'after a reload: the favourites are still there, a stored home shows no Zuhause row');
   check(s.recent.some((r) => r.name === partschins), `after a reload: Recent too (${s.recent.map((r) => r.name).join(', ')})`);
   await page.click('#results .allfavs');
   await page.waitForTimeout(400);
@@ -157,15 +160,12 @@ const emptySearch = async (page) => {
   await clickRow(page, 'In favourites');
   await page.waitForTimeout(300);
   check((await menuRows(page)).includes('Add to favourites'), '„Gemerkt“ clicked: back to „Merken“');
-  await page.keyboard.press('Escape');
-  await pickFirst(page, 'Ifinger');
-  await clickRow(page, 'Remove home');
-  await page.waitForTimeout(300);
   s = await emptySearch(page);
   const allNow = await page.evaluate(() => JSON.parse(localStorage.getItem('onpath.keptPlaces')));
-  check(!s.home && !s.favs.some((f) => f.name === vellau) && allNow.favourites.length === more.length && allNow.home === null,
-    'unkept and Home removed: gone from the empty search and the store');
-  check(s.recent.some((r) => r.name === vellau) && s.recent.some((r) => r.name === ifinger), 'no longer kept: they show under Recent again');
+  check(!s.home && !s.favs.some((f) => f.name === vellau) && allNow.favourites.length === more.length,
+    'unkept: gone from the empty search and the store');
+  check(allNow.home === homeCode, 'the stored home stays in the store (hidden, not removed)');
+  check(s.recent.some((r) => r.name === vellau), 'no longer kept: it shows under Recent again');
 
   // a map POI's menu has the rows too (clicked on the map, not searched)
   // the search list closed (a map click beside it would only close it), no menu open
@@ -183,7 +183,7 @@ const emptySearch = async (page) => {
     await page.mouse.click(mb.x + poi.x, mb.y + poi.y);
     await page.waitForSelector('.holdpopup:not(.pinmenu) .pointmenu', { timeout: 15_000 }).catch(() => {});
     const pr = await page.$$eval('.holdpopup:not(.pinmenu) .pointmenu button', (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim()));
-    check(pr.slice(-3).join('|') === 'Add to favourites|Set as home|Open in Google Maps', `a map POI (${poi.name}): the same rows (${pr.join(' · ')})`);
+    check(pr.slice(-2).join('|') === 'Add to favourites|Open in Google Maps' && !pr.includes('Set as home'), `a map POI (${poi.name}): the same rows, no „Set as home“ (${pr.join(' · ')})`);
   } else console.log('note: no named POI in view – the map POI check skipped');
   await ctx.close();
 }
@@ -211,8 +211,7 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 860 }
   ['pixel7', { viewport: { width: 412, height: 915 }, deviceScaleFactor: 2.625, isMobile: true, hasTouch: true }]]) {
   const ctx = await browser.newContext({ ...opts, locale: 'de-DE' });
   const page = await open(ctx, '?lang=de&at=11.16,46.67,12');
-  const home = await pickFirst(page, 'Algund');
-  await clickRow(page, 'Als Zuhause festlegen');
+  await pickFirst(page, 'Algund');
   for (const q of ['Vellau', 'Ifinger', 'Meran', 'Lana', 'Tirol', 'Hochmuth']) {
     await pickFirst(page, q);
     if ((await menuRows(page)).includes('Merken')) await clickRow(page, 'Merken');
@@ -222,7 +221,7 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 860 }
   // the menu of a kept place (Gemerkt) and of a new one (Merken)
   await pickFirst(page, 'Vellau');
   let rows = await menuRows(page);
-  if (name === 'desktop') check(rows.includes('Gemerkt') && rows.includes('Als Zuhause festlegen'), `German menu: „Gemerkt“, „Als Zuhause festlegen“ (${rows.join(' · ')})`);
+  if (name === 'desktop') check(rows.includes('Gemerkt') && !rows.includes('Als Zuhause festlegen'), `German menu: „Gemerkt“, no „Als Zuhause festlegen“ (${rows.join(' · ')})`);
   if (shotDir) await page.screenshot({ path: path.join(shotDir, `kept-menu-kept-${name}.png`) });
   await pickFirst(page, 'Partschins').catch(() => {});
   rows = await menuRows(page);
@@ -230,7 +229,7 @@ for (const [name, opts] of [['desktop', { viewport: { width: 1280, height: 860 }
   if (shotDir) await page.screenshot({ path: path.join(shotDir, `kept-menu-keep-${name}.png`) });
   const s = await emptySearch(page);
   if (name === 'desktop') {
-    check(s.home?.name === 'Zuhause' && s.home.line.startsWith(home), `German: „Zuhause“ on top (${s.home?.name} ${s.home?.line})`);
+    check(!s.home, 'German: no „Zuhause“ row (off for now)');
     check(s.heads.join('|') === 'FAVORITEN|ZULETZT GESUCHT' && s.more === 'Alle Favoriten ›', `German heads: ${s.heads.join(' · ')}, „${s.more}“`);
   }
   if (shotDir) await page.screenshot({ path: path.join(shotDir, `kept-search-${name}.png`) });

@@ -780,6 +780,14 @@ dialog.plans > .row.spread { margin-top: 16px; }
 
 /* ---- plan sheet A (owner 2026-11-07, „Punkte zuerst“): the points list on top, + Ziel hinzufügen, the facts in one row ---- */
 #pointsSection .pointshead { display: none; } /* the numbered rows say it – like Google Maps' route panel */
+/* the phone's full sheet (the map's undo pill stepped back, body.undo-crowded): the „Punkte“ title with ↶ ↷ at its right
+   – the app's PointsSection + UndoPill inSheet (owner 2026-11-18, answer 4): 48 px round buttons side by side on the
+   deeper sage, no shadow; only while one can act, the other greyed */
+body.undo-crowded #pointsSection .pointshead { display: flex; min-height: 48px; }
+.sheetundo { display: flex; flex-direction: row; align-items: center; background: var(--paper-deep); border-radius: 24px; }
+.sheetundo[hidden] { display: none; }
+.sheetundo .tool { width: 48px; height: 48px; border-radius: 24px; color: var(--plan); }
+.sheetundo .tool:hover:not(:disabled) { background: var(--edge-line); }
 .adddest { display: flex; align-items: center; gap: 10px; border: 0; background: none; color: var(--plan); font: inherit; font-weight: 600;
   padding: 8px 2px; min-height: 40px; cursor: pointer; border-radius: var(--r-small); text-align: left; }
 .adddest .ic { width: 26px; height: 26px; box-sizing: border-box; padding: 3px; border: 1.5px dashed var(--plan); border-radius: 50%; fill: currentColor; flex: none; }

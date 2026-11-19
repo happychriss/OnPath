@@ -16,7 +16,7 @@ import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
 import { holdMenu, type MenuItem } from './menus';
 import { problem } from './diag';
 import type { KeptStore, SearchRecent } from './keptplaces';
-import { cardPan, decidePinMenu, MENU_GAP, pinRows, TIP_ROOM, type PinMenuDecision } from './pinmenu';
+import { cardPan, decidePinMenu, HOME_ROW_SHOWN, MENU_GAP, pinRows, shownMenuRows, TIP_ROOM, type PinMenuDecision } from './pinmenu';
 
 export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
 
@@ -137,7 +137,8 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     const rows: Hit[] = [];
     const add = (h: Hit) => { rows.push(h); return String(rows.length - 1); };
     let html = '';
-    if (s.home) html += compactRow(add(s.home), `<span class="sign home">${icon('home')}</span>`, t('search_home'), s.home.subtitle) + '<div class="menudivider"></div>';
+    // the app's shownHome: no Zuhause row while HOME_ROW_SHOWN is off (the stored home stays)
+    if (s.home && HOME_ROW_SHOWN) html += compactRow(add(s.home), `<span class="sign home">${icon('home')}</span>`, t('search_home'), s.home.subtitle) + '<div class="menudivider"></div>';
     if (s.favourites.length) {
       html += `<div class="smallhead"><span class="sign fav">${icon('star', 14)}</span><span role="heading" aria-level="3">${esc(t('search_favourites'))}</span></div>`;
       html += s.favourites.map((h) => compactRow(add(h), `<span class="sign fav">${icon('star')}</span>`, h.title, h.subtitle)).join('');
@@ -252,7 +253,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     const remove: MenuItem = { icon: 'wrongLocation', label: t('plan_remove_pin'), act: () => removePin() };
     // an add takes the place: its pin goes (the app: the mark stays until the place is added)
     const adds = (m: MenuItem): MenuItem => ({ ...m, act: (b) => { removePin(); m.act(b); } });
-    const items = pinRows(rows.main.map((m) => m.key ?? ''), true, rows.keep.length > 0).map((r) =>
+    const items = shownMenuRows(pinRows(rows.main.map((m) => m.key ?? ''), true, rows.keep.length > 0)).map((r) =>
       r === 'GOOGLE' ? rows.google : r === 'REMOVE_PIN' ? remove : r === 'FAVOURITE' ? rows.keep[0] : r === 'HOME' ? rows.keep[1]
         : adds(byKey.get(r)!));
     const map = host.map, c = map.getContainer();

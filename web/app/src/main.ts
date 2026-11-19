@@ -20,7 +20,7 @@ import { STEEP_COLOURS } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
 import { PIN_CHIP_HALF_W, setupSearch, type PinRows, type PlaceCard, type PlaceRole } from './search';
-import { emphasised } from './pinmenu';
+import { emphasised, HOME_ROW_SHOWN } from './pinmenu';
 import { NO_PADDING, roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
@@ -243,7 +243,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <ul id="spots" class="spots" hidden></ul>
     <!-- the points after facts, plan row and lines (owner 2026-11-07, the phone's order; Google Maps' list): handles, + Ziel hinzufügen -->
     <div id="pointsSection" hidden>
-      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b></div>
+      <!-- the phone's full sheet hides the map's undo pill: the same ↶ ↷ at the „Punkte“ title (the app's UndoPill inSheet,
+           owner 2026-11-18 answer 4) – shown with the title only while the map's pill steps back (body.undo-crowded) -->
+      <div class="pointshead"><b>${escapeHtml(t('plan_points'))}</b><div id="sheetUndoPill" class="sheetundo" role="group" hidden>
+        <button id="sheetUndo" class="tool" aria-label="${escapeHtml(t('plan_undo'))}" title="${escapeHtml(t('web_undo_title'))}" disabled>${icon('undo')}</button>
+        <button id="sheetRedo" class="tool" aria-label="${escapeHtml(t('plan_redo'))}" title="${escapeHtml(t('web_redo_title'))}" disabled>${icon('redo')}</button></div></div>
       <ol id="points"></ol>
       <button id="addDest" class="adddest">${icon('add', 18)}<span>${escapeHtml(t('web_add_destination'))}</span></button>
     </div>
@@ -1237,7 +1241,8 @@ const FAVOURITE = '#B07D00';
 
 /**
  * A held place's kept-place rows (the app's PoiMenu FAVOURITE / HOME): after the route rows and a thin line, „☆ Merken“
- * (set: the gold „★ Gemerkt“, a click removes it) and „⌂ Als Zuhause festlegen“ (on the home place „Zuhause entfernen“);
+ * (set: the gold „★ Gemerkt“, a click removes it) and „⌂ Als Zuhause festlegen“ (on the home place „Zuhause entfernen“ –
+ * both off while HOME_ROW_SHOWN is, pinmenu.ts);
  * the menu stays open and shows the new state. None for a place without its line (nothing to keep).
  */
 async function keepRows(code: string | undefined): Promise<MenuItem[]> {
@@ -1247,7 +1252,7 @@ async function keepRows(code: string | undefined): Promise<MenuItem[]> {
   const fav = (on: boolean) => (on ? { icon: 'star' as const, label: t('place_favourite_on'), iconColor: FAVOURITE }
     : { icon: 'starOutline' as const, label: t('place_favourite_add') });
   const home = (on: boolean) => ({ icon: 'home' as const, label: t(on ? 'place_home_remove' : 'place_home_set') });
-  return [
+  const rows: MenuItem[] = [
     { ...fav(st.favourite), key: 'FAVOURITE', divider: true, stay: true, act: (b) => {
       st.favourite = !st.favourite; setRow(b, fav(st.favourite));
       void (st.favourite ? kept.keep(code) : kept.unkeep(code));
@@ -1257,6 +1262,8 @@ async function keepRows(code: string | undefined): Promise<MenuItem[]> {
       void (st.home ? kept.setHome(code) : kept.clearHome());
     } },
   ];
+  // the app's shownMenuRows: no „Als Zuhause festlegen“ while HOME_ROW_SHOWN is off (owner 2026-11-19)
+  return HOME_ROW_SHOWN ? rows : rows.filter((r) => r.key !== 'HOME');
 }
 
 /** Place menu → „Einfügen“: at [index] (the engine's stopOnly place – never behind the goal), pinned with its name. */
@@ -2051,6 +2058,9 @@ function renderFabs() {
   // the app's MapControlsEnabled.undoPill: the pill only while one of them can act (owner 2026-11-08)
   const undoPill = state.canUndo || state.canRedo;
   $('undoPill').hidden = !undoPill;
+  $('sheetUndoPill').hidden = !undoPill; // the full points sheet's own pill (UndoPill inSheet)
+  $<HTMLButtonElement>('sheetUndo').disabled = !state.canUndo;
+  $<HTMLButtonElement>('sheetRedo').disabled = !state.canRedo;
   document.body.classList.toggle('undo-shown', undoPill);
   const l = $('locate');
   // Plan is quiet about GPS (the app's PlanGps, owner 2026-11-06 23:35): no colour dot; greyed without a position, still
@@ -2076,6 +2086,8 @@ map.on('rotate', () => renderFabs());
 $('compass').onclick = () => map.easeTo(terrain3d.on ? { bearing: 0 } : { bearing: 0, pitch: 0 }, { keepFollow: true });
 $('undo').onclick = () => step('undo');
 $('redo').onclick = () => step('redo');
+$('sheetUndo').onclick = () => step('undo');
+$('sheetRedo').onclick = () => step('redo');
 // Locate while my position is off the map (the app's LocateDistance, owner 2026-11-07): the distance under the icon
 // („790 km“) and a tap frames the plan and me together; in view / without a position the tap does what it did
 async function updateLocateLabel() {
