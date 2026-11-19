@@ -22,7 +22,8 @@ import java.util.Locale
 /**
  * „Orte merken“ (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): the empty search with ⌂ Zuhause, ★ Favoriten
  * (five, then „Alle Favoriten ›“) and Zuletzt gesucht – one-line rows; the held place's menu with „☆ Merken“ /
- * „⌂ Als Zuhause festlegen“ and its set state. English, German, German at a larger font.
+ * „⌂ Als Zuhause festlegen“ and its set state – both Zuhause rows hidden since 2026-11-19 (HOME_ROW_SHOWN = false).
+ * English, German, German at a larger font.
  */
 object KeptPlacesShots {
     private fun hit(p: Place, d: Double) = SearchHit(p, 0.0, 0, d, false)

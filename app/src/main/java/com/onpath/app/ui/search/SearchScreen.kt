@@ -57,6 +57,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
+import com.onpath.app.domain.PinMenuItems
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
@@ -64,6 +65,22 @@ import com.onpath.app.ui.OnPathColors
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import com.onpath.strings.*
+
+/**
+ * „⌂ Zuhause“ shown – OFF for now (owner 2026-11-19, via the captain: „so wichtig ist das Zuhause eigentlich auch nicht.
+ * Können wir das erstmal abschalten, bis wir eine saubere Lösung haben“). false: no Zuhause row in the empty search
+ * ([shownHome]) and no „Als Zuhause festlegen“ / „Zuhause entfernen“ in a place's menu ([shownMenuRows]), so nothing
+ * leads to the hidden feature. The stored home place, its backup and its browser sync stay untouched, „★ Gemerkt“ stays.
+ * true brings both rows back.
+ */
+const val HOME_ROW_SHOWN = false
+
+/** The Zuhause row of the empty search: none while [HOME_ROW_SHOWN] is off (the stored home stays). */
+internal fun shownHome(ui: SearchUi): SearchHit? = if (HOME_ROW_SHOWN) ui.home else null
+
+/** A place menu's rows ([PinMenuItems.of]) without „⌂ Als Zuhause festlegen“ while [HOME_ROW_SHOWN] is off. */
+fun shownMenuRows(rows: List<PinMenuItems.Row>): List<PinMenuItems.Row> =
+    if (HOME_ROW_SHOWN) rows else rows.filter { it != PinMenuItems.Row.HOME }
 
 /** Callbacks of the search view. */
 data class SearchActions(
@@ -131,18 +148,20 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
 }
 
 /**
- * The empty search (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): „⌂ Zuhause“ (one row, only when set),
+ * The empty search (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): „⌂ Zuhause“ (one row, only when set and
+ * [HOME_ROW_SHOWN] – off since 2026-11-19),
  * „★ FAVORITEN“ (at most five, then „Alle Favoriten ›“), „ZULETZT GESUCHT“ – one-line rows of 48 dp, small upper-case
  * heads. A tap opens the place's menu like any search pick.
  */
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
-    if (ui.recent.isEmpty() && ui.home == null && ui.favourites.isEmpty()) {
+    val home = shownHome(ui)
+    if (ui.recent.isEmpty() && home == null && ui.favourites.isEmpty()) {
         item {
             Hint(str(Res.string.search_intro))
         }
         return
     }
-    ui.home?.let { h ->
+    home?.let { h ->
         item {
             CompactRow(h, str(Res.string.search_home), compactLine(h, withTitle = true), actions.onPick) {
                 Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit)
