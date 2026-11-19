@@ -341,6 +341,85 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   await c.close();
 }
 
+// ---- 10: the wait window's end (review 2026-11-19): (a) a plan that fails never shows 100 % and teaches no shares;
+//      (b) a shared link's job ends when the engine is not there (the window does not stay for good); (c) after Cancel a late
+//      progress callback of the stopped run does not start the wait again, and a new route gets its window although another
+//      job (here a held map job) is still open ----
+const LINK = 'AQUDAsTcuQTwjYgBqBnjPAIBB1dhYWx3ZWcCBwFWZWxsYXU'; // Hike T3, Meran → Vellau
+const winTracker = () => {
+  window.__pcts = [];
+  setInterval(() => { const el = document.getElementById('waitwin'); if (el) window.__pcts.push(Number(el.dataset.pct)); }, 30);
+};
+const learned = (p) => p.evaluate(() => Object.keys(localStorage).filter((k) => k.startsWith('onpath.progress.')).map((k) => k + '=' + localStorage.getItem(k)));
+const planFromLink = async (c) => {
+  const p = await c.newPage();
+  await p.goto(url + 'index.html#p=' + LINK);
+  await p.waitForFunction(() => document.body.dataset.engine === 'ready' && document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
+  await p.waitForFunction(() => !document.getElementById('waitwin') && !window.__wait.overlay().active, null, { timeout: 60_000 }).catch(() => {}); // the first map's wait is over too
+  await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('onpath.progress.')) localStorage.removeItem(k); });
+  return p;
+};
+{ // (a)
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await c.addInitScript(winTracker);
+  const p = await planFromLink(c);
+  await p.evaluate(() => { window.__pcts = []; // the plan is asked, the window comes, the plan then fails
+    window.__engine.plan = (pts, a, s, pin, onProgress) => new Promise((res) => { onProgress({ phase: 'download', done: 10, bytes: 1000 }); setTimeout(() => res({ ok: false, error: 'boom' }), 3000); }); });
+  await p.click('#reverse');
+  const came = await p.waitForSelector('#waitwin', { timeout: 10_000 }).then(() => true, () => false);
+  await p.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 10_000 }).catch(() => {});
+  await p.waitForTimeout(1000);
+  const r = await p.evaluate(() => ({ max: Math.max(0, ...window.__pcts), left: !!document.getElementById('waitwin'), err: document.getElementById('status').classList.contains('error') }));
+  const ls = await learned(p);
+  check(came && r.max < 100 && !r.left, `a failed plan: the window never shows 100 % (${JSON.stringify(r)}, came ${came})`);
+  check(ls.length === 0, `a failed plan: no learned shares written (${ls.join(' ')})`);
+  await c.close();
+}
+{ // (b)
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  await c.route('**/engine/*.wasm*', (r) => r.abort('connectionrefused')); // no engine at all: the link cannot be opened
+  const p = await c.newPage();
+  await p.goto(url + 'index.html#p=' + LINK);
+  const err = await p.waitForFunction(() => /routing engine could not be loaded/.test(document.getElementById('status').textContent), null, { timeout: 60_000 }).then(() => true, () => false);
+  await p.waitForTimeout(3000);
+  const r = await p.evaluate(() => ({ win: !!document.getElementById('waitwin'), line: document.getElementById('status').textContent }));
+  check(err && !r.win, `engine not there: the error line shows and the link's wait window is gone (${JSON.stringify(r)})`);
+  await c.close();
+}
+for (const hold of [false, true]) { // (c) [hold]: another job (the map's tiles, say) is still open when Cancel is pressed
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const p = await planFromLink(c);
+  if (hold) await p.evaluate(() => window.__wait.overlay().job('hold', 0, 100, 'map', false));
+  await p.evaluate(() => { // Cancel's answer from the worker is late, and the stopped run reports once more meanwhile
+    const e = window.__engine, call = e.call.bind(e);
+    window.__late = 0; window.__realPlan = e.plan.bind(e);
+    e.plan = (pts, a, s, pin, cb) => { window.__cb = cb; cb({ phase: 'download', done: 10, bytes: 1000 }); return new Promise(() => {}); }; // routes for good
+    e.call = (fn, ...a) => fn === 'planCancel' ? new Promise((ok, no) => {
+      setTimeout(() => { window.__cb({ phase: 'download', done: 50, bytes: 1000 }); window.__late++; }, 500);
+      setTimeout(() => call(fn, ...a).then(ok, no), 1500);
+    }) : call(fn, ...a);
+  });
+  // another plan opened from a link (an opened plan is no edit, Cancel does not undo it – it keeps the points and says so)
+  const code2 = await p.evaluate(() => window.__engine.encode({ points: [[46.6700, 11.1600], [46.6879, 11.1111]], activity: 'HIKE', sac: 3, pinned: [], names: {}, title: null }));
+  await p.evaluate((c2) => { location.hash = '#p=' + c2; }, code2);
+  await p.waitForSelector('#waitwin .wwcancel', { timeout: 30_000 });
+  await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('onpath.progress.')) localStorage.removeItem(k); });
+  await p.click('#waitwin .wwcancel');
+  await p.waitForFunction(() => window.__late > 0, null, { timeout: 5000 }).catch(() => {});
+  await p.waitForTimeout(150); // Cancel's answer is still on its way (planning goes on): the stopped run's late report is in
+  const ghost = await p.evaluate(() => ({ active: window.__wait.overlay().active, late: window.__late, planning: window.__state.planning }));
+  await p.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 10_000 }).catch(() => {});
+  await p.waitForTimeout(500);
+  const ls = await learned(p);
+  if (!hold) check(ghost.late > 0 && !ghost.active, `Cancel: a late report of the stopped run does not start the wait again (${JSON.stringify(ghost)})`);
+  check(ls.length === 0, `Cancel${hold ? ' with another job open' : ''}: nothing learned from the stopped run (${ls.join(' ')})`);
+  await p.evaluate(() => { window.__engine.plan = (pts, a, s, pin, cb) => { cb({ phase: 'download', done: 10, bytes: 1000 }); return new Promise(() => {}); }; });
+  await p.click('#planAnyway', { timeout: 10_000 });
+  const again = await p.waitForSelector('#waitwin', { timeout: 20_000 }).then(() => true, () => false);
+  check(again, `Cancel, then Calculate${hold ? ' with another job still open' : ''}: the new route gets its window`);
+  await c.close();
+}
+
 // ---- 4: no WasmGC ----
 for (const [locale, want] of [['de-DE', 'zu alt'], ['en-US', 'too old']]) {
   const c = await browser.newContext({ locale });

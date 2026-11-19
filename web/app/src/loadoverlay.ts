@@ -109,6 +109,8 @@ export class LoadOverlay {
     try { this.update(); } finally { this.failing = false; }
   }
   private failing = false;
+  /** The route run ended without a route (plan(null) not [routed]): the wait ends unfinished. */
+  private unfinished = false;
   isOpen(id: string) { const j = this.jobs.get(id); return !!j && j.done < j.total; }
 
   /** The map areas the server prepares that this wait waits for (the user's own point / search; [] = none). */
@@ -122,8 +124,17 @@ export class LoadOverlay {
     this.update();
   }
 
-  /** The route run of this wait (null = none / over); [onCancel] = Cancel stops it (the app's cancelRouting). */
-  plan(p: PlanIn | null, onCancel?: () => void) {
+  /**
+   * The route run of this wait (null = none / over); [onCancel] = Cancel stops it (the app's cancelRouting). A run that
+   * is over without a route ([routed] false: failed, too slow, stopped, superseded) ends the wait unfinished – never a
+   * full bar, nothing learned.
+   */
+  plan(p: PlanIn | null, onCancel?: () => void, routed = false) {
+    // a new route the user starts after Cancel brings its window although another job still held the wait open
+    // a new route the user starts after Cancel brings its window although another job still held the wait open
+    if (p && !this.planIn && this.dismissed) this.dismissed = false;
+    if (p) this.unfinished = false;
+    else if (this.planIn && !routed) this.unfinished = true;
     this.planIn = p;
     if (onCancel) this.onCancelPlan = onCancel;
     if (!p) this.onCancelPlan = null;
@@ -135,7 +146,7 @@ export class LoadOverlay {
   private get open() { return this.openJobs().length > 0 || this.areasOpen() || !!this.planIn; }
 
   private update() {
-    if (!this.open) { if (this.active) this.end(!this.failing); this.dismissed = false; return; }
+    if (!this.open) { if (this.active) this.end(!this.failing && !this.unfinished); this.dismissed = false; return; }
     if (!this.active) this.begin();
     // a new measurement: the bar follows it soon (not only on the half-second tick – bytes come in steps)
     else if (!this.soon) this.soon = window.setTimeout(() => { this.soon = 0; this.tick(); }, 100);
@@ -167,6 +178,7 @@ export class LoadOverlay {
   /** The wait is over ([finished]: everything is there – a moment at 100 %, and what it teaches is kept). */
   private end(finished: boolean) {
     this.active = false;
+    this.unfinished = false;
     clearInterval(this.tickTimer); this.tickTimer = 0;
     clearTimeout(this.soon); this.soon = 0;
     clearTimeout(this.showTimer); this.showTimer = 0;

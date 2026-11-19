@@ -440,7 +440,10 @@ const paceReady: Promise<void> = ready.then(async (ok) => {
     pace.hike = r.hike; pace.bike = r.bike; // unknown names → the app's rule (Pace.of)
   } catch (e) { console.warn('pace not set – the default (Average) is used', e); }
 });
-ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchView(); } });
+ready.then(async (ok) => {
+  if (ok) { await paceReady; openFromLink(); prefetchView(); }
+  else overlay.remove('link'); // no engine: the link cannot be opened – its wait ends (the engine's error line says why)
+});
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 syncRef = sync;
@@ -513,7 +516,7 @@ ready.then(() => overlay.finish('engine'), () => overlay.remove('engine'));
 // the window's own engine (waitengine.ts): a second instance of the Wasm engine on this thread, from the start – the
 // page's first map waits for it (the browser's HTTP cache serves the one download to both)
 void loadWaitEngine(base, lang);
-(window as unknown as { __wait: unknown }).__wait = { loadMs: () => waitLoadMs, ready: waitEngineReady, now: () => overlay.now, beside: () => beside.shown }; // for the browser tests
+(window as unknown as { __wait: unknown }).__wait = { loadMs: () => waitLoadMs, ready: waitEngineReady, now: () => overlay.now, overlay: () => overlay, beside: () => beside.shown }; // for the browser tests
 // a shared link: its routing data is not known before the engine read the link – a share of the bar until then
 if (/[#&?]p=/.test(location.href)) overlay.job('link', 0, LINK_UNITS, 'routing');
 if (areas) {
@@ -1329,6 +1332,12 @@ async function google(name: string, lat: number, lon: number, label: string) {
 /** A plan in the address (#p=…, from a QR code or a shared link) replaces the current one. */
 let linkChecked = false; // until then the address may still hold a plan to open – do not overwrite it
 async function openFromLink() {
+  try { await openLink(); } catch (e) {
+    problem('link', 'opening the plan link failed', e, 'error');
+    status(t('msg_plan_link_unreadable'), 'error');
+  } finally { overlay.finish('link'); } // whatever happened to the link, its wait is over (also when it threw)
+}
+async function openLink() {
   const first = !linkChecked;
   linkChecked = true;
   if (!/[#&?]p=/.test(location.href)) { overlay.remove('link'); if (!draftsOn) restoreDraft(); return; }
@@ -1489,10 +1498,10 @@ async function restoreDraft() {
 
 // ---- planning ----
 /** Planning or not – also for the page's tests (body[data-planning]); off takes the wait box away. */
-function setPlanning(on: boolean) {
+function setPlanning(on: boolean, routed = false) {
   state.planning = on;
   document.body.dataset.planning = on ? '1' : '';
-  if (!on) { linkOpened(); overlay.finish('route'); overlay.plan(null); }
+  if (!on) { linkOpened(); overlay.finish('route'); overlay.plan(null, undefined, routed); } // [routed]: only a route that came ends the wait at 100 %
   sheetWait();
 }
 /** The sheet's wait line („Calculating the route…“) wants to show while a plan runs (onewait.ts decides whether it does). */
@@ -1616,7 +1625,7 @@ async function planRun(rounds: number) {
     if (id === state.latest && state.planning) overlay.plan(run);
   }, namesText(), rounds);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
-  setPlanning(false);
+  setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
   if (!r.ok || !r.plan || r.plan.failed) {
     // with what was asked (points, activity, rounds): the next failure tells which plan it was
@@ -1735,6 +1744,7 @@ let activityBefore: { a: Activity; sac: number } | null = null;
 async function cancelLongRoute() {
   engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   overlay.finish('link'); // a link's plan stopped: nothing more to wait for
+  state.latest++; // from now on the stopped run's reports are ignored (planRun) – not only after the answer below
   const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
   state.latest++; state.plan = null; setPlanning(false);
   const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
