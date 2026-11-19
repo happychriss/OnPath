@@ -79,6 +79,58 @@ class RouteMoreTest {
         assertEquals("↓640 m", m.descent); assertEquals("Hike T2", m.note)
     }
 
+    private fun span(a: Long, b: Long) = TourReview.Span(start + a * 60_000L, start + b * 60_000L)
+
+    @Test fun aPauseAtTheVeryStartAndAtTheVeryEndFillsTheBarsEdges() {
+        val c = More.of(done, review.copy(pauseSpans = listOf(span(0, 10), span(265, 275))))!!.clock!!
+        assertEquals(2, c.gaps.size)
+        assertEquals(0f, c.gaps[0].first, 0.0001f); assertEquals(10f / 275, c.gaps[0].second, 0.001f)
+        assertEquals(265f / 275, c.gaps[1].first, 0.001f); assertEquals(1f, c.gaps[1].second, 0.0001f)
+    }
+
+    @Test fun pausesOutsideOrBackwardsOrEmptyNeverDrawNegativeOrPastTheEnd() {
+        val odd = listOf(span(-30, -5), span(300, 320), span(-10, 20), span(250, 400), span(50, 50), span(80, 60))
+        val c = More.of(done, review.copy(pauseSpans = odd))!!.clock!!
+        // before the start and after the end: nothing; partly outside: cut to the bar; empty / backwards: nothing
+        assertEquals(2, c.gaps.size)
+        assertEquals(0f, c.gaps[0].first, 0.0001f); assertEquals(20f / 275, c.gaps[0].second, 0.001f)
+        assertEquals(250f / 275, c.gaps[1].first, 0.001f); assertEquals(1f, c.gaps[1].second, 0.0001f)
+        c.gaps.forEach { (a, b) -> assertEquals(true, a >= 0f && b <= 1f && b > a) }
+    }
+
+    @Test fun aTourWithOddTimesAndNoTimesDrawsNoBarOrOnlyOneInsideItsLength() {
+        val t0 = start
+        fun pt(i: Int, ms: Long?) = com.onpath.app.gpx.TrackPoint(47.0, 11.0 + i * 0.0001, null, ms)
+        // equal times: no length, no bar
+        val same = TourReview.of(listOf((0 until 5).map { pt(it, t0) }), null, 0.0, 100.0)
+        assertNull(More.of(done.copy(activity = null, descentM = 0.0), same))
+        // out of order: whatever comes out stays inside 0..1
+        val odd = TourReview.of(listOf((0 until 40).map { pt(it, t0 + (if (it in 10..20) 30 - it else it) * 10_000L) }), null, 0.0, 400.0)
+        More.of(done, odd)?.clock?.gaps?.forEach { (a, b) -> assertEquals(true, a >= 0f && b <= 1f && b > a) }
+        // no times (GPX import without times): no time bar
+        val none = TourReview.of(listOf((0 until 40).map { pt(it, null) }), null, 3600.0, 400.0)
+        assertNull(More.of(done.copy(activity = null, descentM = 0.0), none))
+        assertNull(More.of(done, TourReview.of(emptyList(), null, 0.0, 0.0))?.clock)
+    }
+
+    @Test fun aTourAcrossMidnightAndASummerTimeChangeHasTheSameBarInEveryZoneOnlyTheLabelsDiffer() {
+        val startUtc = java.time.ZonedDateTime.of(2026, 10, 24, 23, 30, 0, 0, java.time.ZoneId.of("Europe/Berlin")).toInstant().toEpochMilli()
+        val rv = TourReview(totalS = 5 * 3600.0, movingS = 4 * 3600.0, pauseS = 3600.0, pauseCount = 1, startMs = startUtc,
+            endMs = startUtc + 5 * 3600_000L, pauseSpans = listOf(TourReview.Span(startUtc + 3600_000L, startUtc + 2 * 3600_000L)))
+        val saved = java.util.TimeZone.getDefault()
+        try {
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("Europe/Berlin"))
+            val berlin = More.of(done, rv)!!.clock!!
+            java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone("UTC"))
+            val utc = More.of(done, rv)!!.clock!!
+            // Berlin: 23:30 → (clock back at 03:00) 03:30 local, 5 h later in real time; UTC: 21:30 → 02:30
+            assertEquals("23:30", berlin.from); assertEquals("03:30", berlin.to)
+            assertEquals("21:30", utc.from); assertEquals("02:30", utc.to)
+            assertEquals(berlin.gaps, utc.gaps)
+            assertEquals(1f / 5, berlin.gaps.single().first, 0.0001f); assertEquals(2f / 5, berlin.gaps.single().second, 0.0001f)
+        } finally { java.util.TimeZone.setDefault(saved) }
+    }
+
     @Test fun nothingLeftMeansNoMore() {
         val flat = planned.copy(kind = TourKind.IMPORTED, activity = null, descentM = 0.0)
         assertNull(More.of(flat, null))

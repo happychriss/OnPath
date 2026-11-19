@@ -158,4 +158,99 @@ class TourReviewTest {
         assertEquals(10_000.0, p.last().atM, 30.0)
         assertNotNull(p.maxByOrNull { it.ele })
     }
+
+    // ---- „Mehr“'s time bar: the pause spans at their edges (owner 2026-11-19) ----
+
+    @Test fun aStopRightAtTheStartIsAGapThatBeginsWithTheTour() {
+        val s = stand(t0, 0.0, 30)                          // 5 min standing, then walking on
+        val w = walk(t0 + 300_000L, 0.0, 60)
+        val r = TourReview.of(listOf(s + w), null, 0.0, 600.0)
+        val span = r.pauseSpans.single()
+        assertEquals(t0, span.startMs)
+        assertTrue("ends about when walking starts: ${span.endMs - t0}", span.endMs - t0 in 280_000L..320_000L)
+        assertEquals(1, r.pauseCount)
+        assertEquals(t0, r.startMs)
+    }
+
+    @Test fun aStopRightAtTheEndIsAGapThatEndsWithTheTour() {
+        val w = walk(t0, 0.0, 60)
+        val s = stand(t0 + 600_000L, 590.0, 30)             // 5 min standing, the recording stops there
+        val r = TourReview.of(listOf(w + s), null, 0.0, 600.0)
+        val span = r.pauseSpans.single()
+        assertEquals(r.endMs!!, span.endMs)
+        assertTrue("starts at the stop: ${span.startMs - t0}", span.startMs - t0 in 580_000L..620_000L)
+    }
+
+    @Test fun aTourWithoutPausesDrawsNoGapAndCountsZero() {
+        val r = TourReview.of(listOf(walk(t0, 0.0, 200)), null, 0.0, 2000.0)
+        assertEquals(emptyList<TourReview.Span>(), r.pauseSpans)
+        assertEquals(0, r.pauseCount)
+    }
+
+    @Test fun onePointOrNoPointsOrNoTimesDrawNoGapAndNeverThrow() {
+        assertEquals(emptyList<TourReview.Span>(),
+            TourReview.of(listOf(listOf(TrackPoint(47.0, 11.0, null, t0))), null, 0.0, 0.0).pauseSpans)
+        assertEquals(emptyList<TourReview.Span>(), TourReview.of(emptyList(), null, 0.0, 0.0).pauseSpans)
+        val untimed = TourReview.of(listOf(walk(t0, 0.0, 100).map { it.copy(timeMs = null) }), null, 3600.0, 1000.0)
+        assertEquals(emptyList<TourReview.Span>(), untimed.pauseSpans)
+        assertNull(untimed.startMs); assertNull(untimed.endMs)
+    }
+
+    @Test fun aStopReportedInManyStepsIsOneGapStartingAtItsFirstFix() {
+        // a fix every 10 s for 20 min: the detector extends one running break with every fix
+        val a = walk(t0, 0.0, 61)                                   // 600 s
+        val s = stand(t0 + 610_000L, 600.0, 120)                      // 1190 s of standing
+        val b = walk(t0 + 610_000L + 1_200_000L, 800.0, 30)
+        val r = TourReview.of(listOf(a + s + b), null, 0.0, 900.0)
+        val span = r.pauseSpans.single()
+        assertEquals(1, r.pauseCount)
+        assertTrue("starts at the first standing fix: ${span.startMs - t0}", span.startMs - t0 in 590_000L..620_000L)
+        assertTrue("ends at the last standing fix: ${span.endMs - t0}", span.endMs - t0 in 1_780_000L..1_820_000L)
+        assertEquals(r.longestPause!!.value * 1000, (span.endMs - span.startMs).toDouble(), 1000.0)
+    }
+
+    @Test fun aStopAcrossARecordingGapIsGapsThatNeverOverlapAndKeepTheGap() {
+        // standing 4 min, the recording is paused 10 min (Anhalten), standing 4 min more at the same place
+        val a = walk(t0, 0.0, 31)
+        val s1 = stand(t0 + 310_000L, 300.0, 24)
+        val s2 = stand(t0 + 310_000L + 240_000L + 600_000L, 300.0, 24)
+        val r = TourReview.of(listOf(a + s1, s2), null, 0.0, 300.0)
+        val spans = r.pauseSpans
+        assertTrue("the stop(s) and the gap: $spans", spans.size >= 2)
+        spans.forEach { assertTrue("no negative width: $it", it.endMs > it.startMs) }
+        spans.sortedBy { it.startMs }.zipWithNext { x, y -> assertTrue("no overlap: $x $y", y.startMs >= x.endMs - 1000) }
+        assertTrue(spans.any { it.startMs <= t0 + 550_000L && it.endMs >= t0 + 1_130_000L })
+        assertEquals(spans.size, r.pauseCount)
+    }
+
+    @Test fun fixesOutOfOrderOrWithEqualTimesNeverThrowAndGiveNoNegativeGap() {
+        val w = walk(t0, 0.0, 40)
+        val back = w.mapIndexed { i, p -> if (i in 10..20) p.copy(timeMs = t0 + (30 - i) * 10_000L) else p }
+        val same = w.map { it.copy(timeMs = t0) }
+        val shuffled = (stand(t0 + 500_000L, 300.0, 20) + stand(t0, 300.0, 20)).shuffled(java.util.Random(7))
+        for (pts in listOf(back, same, shuffled, back.reversed())) {
+            val r = TourReview.of(listOf(pts), null, 0.0, 400.0)
+            r.pauseSpans.forEach { assertTrue("no negative width: $it", it.endMs >= it.startMs) }
+            r.totalS?.let { assertTrue(it > 0) }
+            r.movingS?.let { assertTrue(it > 0) }
+        }
+    }
+
+    @Test fun theSpansAndDurationsOfATourAcrossMidnightAndASummerTimeChangeDoNotDependOnTheZone() {
+        // Berlin: summer time ends 2026-10-25 03:00 local; the tour starts 23:30 local on the night of it
+        val startUtc = java.time.ZonedDateTime.of(2026, 10, 24, 23, 30, 0, 0, java.time.ZoneId.of("Europe/Berlin")).toInstant().toEpochMilli()
+        val a = walk(startUtc, 0.0, 61)
+        val s = stand(startUtc + 610_000L, 600.0, 120)
+        val b = walk(startUtc + 610_000L + 1_200_000L, 600.0, 60)
+        val pts = listOf(a + s + b)
+        val saved = java.util.TimeZone.getDefault()
+        try {
+            val results = listOf("UTC", "Europe/Berlin", "America/New_York", "Pacific/Auckland").map { z ->
+                java.util.TimeZone.setDefault(java.util.TimeZone.getTimeZone(z))
+                TourReview.of(pts, null, 0.0, 1200.0).let { Triple(it.pauseSpans, it.totalS, it.pauseS) }
+            }
+            assertEquals(1, results.first().first.size)
+            results.forEach { assertEquals(results.first(), it) }
+        } finally { java.util.TimeZone.setDefault(saved) }
+    }
 }
