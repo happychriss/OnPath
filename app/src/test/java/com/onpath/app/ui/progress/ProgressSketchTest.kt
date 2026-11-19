@@ -54,6 +54,7 @@ import com.onpath.app.ui.ScreenshotTest
 import com.onpath.app.ui.SheetWithFooter
 import com.onpath.app.ui.planTopBarDp
 import org.junit.After
+import org.junit.Assert.assertEquals
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -89,21 +90,41 @@ abstract class ProgressSketchShots(private val locale: Locale, fontScale: Float)
         SketchStep(t("einfügen", "add to the map"), SketchStepState.LATER),
     ), t("noch etwa 3 Minuten", "about 3 minutes left"))
 
-    /** A2: the same window while it downloads (34 %), routing data missing = a fourth step. */
+    /**
+     * A2: the same window while it downloads (34 %); routing data missing is no 4th row (owner: never more than 3 ticks)
+     * – it is part of "lädt", its bytes inside the same share of the bar.
+     */
     protected val a2 get() = WaitWindowSketch(SketchWaitKind.MAP, mapTitle, 34, listOf(
         SketchStep(t("vorbereitet", "prepared"), SketchStepState.DONE),
-        SketchStep(t("lädt …", "loading …"), SketchStepState.NOW),
+        SketchStep(t("lädt Karte + Routendaten", "loading map + routing data"), SketchStepState.NOW, short = t("lädt", "loading")),
         SketchStep(t("einfügen", "add to the map"), SketchStepState.LATER),
-        SketchStep(t("Routendaten", "routing data"), SketchStepState.LATER),
     ), t("noch etwa 20 Sekunden", "about 20 seconds left"))
 
-    /** A3: route calculation – the same frame, the legs as the steps, the check last. */
-    protected val a3 get() = WaitWindowSketch(SketchWaitKind.ROUTE, t("Route wird berechnet", "Calculating the route"), 58, listOf(
+    /** A3's steps: 4 legs and the check, the 3rd leg runs. */
+    protected val a3Steps get() = listOf(
         SketchStep("Algund → Stopp 2", SketchStepState.DONE),
-        SketchStep("Stopp 2 → Leiter Alm", SketchStepState.NOW),
-        SketchStep("Leiter Alm → Meran", SketchStepState.LATER),
+        SketchStep("Stopp 2 → Leiter Alm", SketchStepState.DONE),
+        SketchStep("Leiter Alm → Vellau", SketchStepState.NOW),
+        SketchStep("Vellau → Meran", SketchStepState.LATER),
         SketchStep(t("prüfen", "check"), SketchStepState.LATER),
-    ), t("noch etwa 10 Sekunden", "about 10 seconds left"))
+    )
+
+    /**
+     * A3: route calculation – the same frame, the legs as the steps; with more than 3 a window of 3 moves along (last
+     * done, running, next), the check comes in last.
+     */
+    protected val a3 get() = WaitWindowSketch(SketchWaitKind.ROUTE, t("Route wird berechnet", "Calculating the route"), 55,
+        a3Steps, t("noch etwa 10 Sekunden", "about 10 seconds left"))
+
+    /** Never more than 3 rows; the window moves along the legs, the check comes in as the last window. */
+    @Test fun threeTicksAtMost() {
+        assertEquals(listOf("Stopp 2 → Leiter Alm", "Leiter Alm → Vellau", "Vellau → Meran"), SketchSteps.shown(a3Steps).map { it.label })
+        val checking = a3Steps.map { if (it.label == t("prüfen", "check")) it.copy(state = SketchStepState.NOW) else it.copy(state = SketchStepState.DONE) }
+        assertEquals(listOf("Leiter Alm → Vellau", "Vellau → Meran", t("prüfen", "check")), SketchSteps.shown(checking).map { it.label })
+        val first = a3Steps.mapIndexed { i, s -> s.copy(state = if (i == 0) SketchStepState.NOW else SketchStepState.LATER) }
+        assertEquals(listOf("Algund → Stopp 2", "Stopp 2 → Leiter Alm", "Leiter Alm → Vellau"), SketchSteps.shown(first).map { it.label })
+        assertEquals(3, SketchSteps.shown(a2.steps).size)
+    }
 
     @Test fun a1FirstMap() = shot(points = 0) { Scrim(); Window(a1) }
     @Test fun a2LoadingWithRoutingData() = shot(points = 0) { Scrim(); Window(a2) }
@@ -145,13 +166,13 @@ abstract class ProgressSketchShots(private val locale: Locale, fontScale: Float)
 
 /** B and today: German and English (the order asks large font for A only). */
 abstract class ProgressSketchBesideShots(locale: Locale) : ProgressSketchShots(locale, 1f) {
-    /** B1: one load beside the map (maps along a long tour): the ring with its %, "lädt 34 %". */
-    @Test fun b1Sign() = shot(points = 3) { Sign(BesideSignSketch(t("lädt 34 %", "loading 34 %"), 34)) }
+    /**
+     * B1: beside the map, just the percent (owner 2026-11-19) – ONE number over the whole action (every area of a
+     * multi-day tour together = one 0–100), no count, no words.
+     */
+    @Test fun b1Sign() = shot(points = 3) { Sign(BesideSignSketch(34)) }
 
-    /** B2: several loads = the same sign with a count. */
-    @Test fun b2SignCount() = shot(points = 3) { Sign(BesideSignSketch(t("lädt 34 %", "loading 34 %"), 34, count = 3)) }
-
-    /** B3: the details after a tap – a bottom sheet, one row per load, each with the three texts. */
+    /** B3: the details after a tap – the same one number, then what loads (one line each, no number of its own). */
     @Test fun b3Details() = shot(points = 3) {
         Scrim()
         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.BottomCenter) {
@@ -160,10 +181,10 @@ abstract class ProgressSketchBesideShots(locale: Locale) : ProgressSketchShots(l
                     Box(Modifier.fillMaxWidth().padding(vertical = 16.dp), contentAlignment = Alignment.Center) {
                         Box(Modifier.width(32.dp).height(4.dp).background(OnPathColors.InkMuted.copy(alpha = 0.4f), RoundedCornerShape(2.dp)))
                     }
-                    BesideDetailsSketchView(t("Lädt im Hintergrund", "Loading in the background"), listOf(
-                        BesideRowSketch(t("Etappe 2 · Brixen – Klausen", "Stage 2 · Brixen – Klausen"), t("lädt 34 %", "loading 34 %"), 34),
-                        BesideRowSketch(t("Etappe 3 · Klausen – Bozen", "Stage 3 · Klausen – Bozen"), t("wird vorbereitet", "being prepared"), null),
-                        BesideRowSketch(t("Routendaten", "Routing data"), t("fast fertig", "almost done"), null),
+                    BesideDetailsSketchView(t("Lädt im Hintergrund", "Loading in the background"), 34, listOf(
+                        BesideRowSketch(t("Etappe 1 · Meran – Brixen", "Stage 1 · Meran – Brixen"), t("fertig", "done")),
+                        BesideRowSketch(t("Etappe 2 · Brixen – Klausen", "Stage 2 · Brixen – Klausen"), t("lädt", "loading")),
+                        BesideRowSketch(t("Etappe 3 · Klausen – Bozen", "Stage 3 · Klausen – Bozen"), t("wird vorbereitet", "being prepared")),
                     ), onCancelAll = {}, onClose = {})
                     Box(Modifier.height(24.dp))
                 }

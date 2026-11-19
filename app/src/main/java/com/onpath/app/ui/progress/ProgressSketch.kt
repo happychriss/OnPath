@@ -49,8 +49,11 @@ import com.onpath.strings.*
 /** Where a step of the wait window stands. */
 enum class SketchStepState { DONE, NOW, LATER }
 
-/** One step under the bar: "✓ vorbereitet", "● lädt …", "○ einfügen" (or one leg of a route). */
-data class SketchStep(val label: String, val state: SketchStepState)
+/**
+ * One step under the bar: "✓ vorbereitet", "● lädt …", "○ einfügen" (or one leg of a route). [short]: the label at a
+ * large font when [label] would not fit on one line ("lädt" for "lädt Karte + Routendaten").
+ */
+data class SketchStep(val label: String, val state: SketchStepState, val short: String? = null)
 
 /** What the window waits for: the map (cloud) or a route (route sign). */
 enum class SketchWaitKind { MAP, ROUTE }
@@ -69,6 +72,21 @@ data class WaitWindowSketch(
     /** "noch etwa 20 Sekunden"; null = not estimated yet (no line). */
     val timeLeft: String?,
 )
+
+/**
+ * Never more than 3 ticks (owner 2026-11-19, „nie mehr als 3 Häkchen"): with more steps (a route's legs + the check) a
+ * window of 3 moves along – the last done, the one running, the next. Pure.
+ */
+object SketchSteps {
+    const val MAX = 3
+
+    fun shown(steps: List<SketchStep>): List<SketchStep> {
+        if (steps.size <= MAX) return steps
+        val now = steps.indexOfFirst { it.state != SketchStepState.DONE }.let { if (it < 0) steps.lastIndex else it }
+        val from = (now - 1).coerceIn(0, steps.size - MAX)
+        return steps.subList(from, from + MAX)
+    }
+}
 
 /** At this font scale and above the time left gets its own line. */
 const val WAIT_WINDOW_LARGE_FONT = 1.5f
@@ -91,7 +109,7 @@ fun WaitWindowSketchView(ui: WaitWindowSketch, onCancel: () -> Unit, modifier: M
                     color = OnPathColors.Ink, softWrap = false, modifier = Modifier.padding(start = 12.dp))
             }
             Column(Modifier.padding(top = 12.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                ui.steps.forEach { StepLine(it) }
+                SketchSteps.shown(ui.steps).forEach { StepLine(it) }
             }
             // time left beside Cancel; at a large font on its own line, Cancel under it (never squeezed)
             val cancel: @Composable () -> Unit = {
@@ -126,7 +144,8 @@ private fun StepLine(step: SketchStep) {
             }
         }
         Spacer(Modifier.width(10.dp))
-        Text(step.label, style = MaterialTheme.typography.bodyMedium,
+        val large = LocalDensity.current.fontScale >= WAIT_WINDOW_LARGE_FONT
+        Text(if (large) step.short ?: step.label else step.label, style = MaterialTheme.typography.bodyMedium,
             fontWeight = if (step.state == SketchStepState.NOW) FontWeight.SemiBold else FontWeight.Normal,
             color = when (step.state) {
                 SketchStepState.NOW -> OnPathColors.Ink
@@ -137,16 +156,13 @@ private fun StepLine(step: SketchStep) {
 }
 
 /**
- * Form B ("ich kann weitermachen"): one small sign beside the map – a ring (with its % while bytes flow, else running)
- * and one of the three texts; several loads = the same sign with a count on the ring. Tap → the details.
+ * Form B ("ich kann weitermachen"): one small sign beside the map – a ring and its percent, nothing else (owner
+ * 2026-11-19, „einfach nur Prozent"). The percent is ONE number over the whole action – every load together (all areas
+ * of a multi-day tour = one 0–100). Tap → the details.
  */
 data class BesideSignSketch(
-    /** "lädt 34 %", "wird vorbereitet", "fast fertig". */
-    val text: String,
-    /** null = no measurable progress: the ring runs. */
+    /** 0..100 over everything that loads; null = nothing measurable yet: the ring runs, no number. */
     val percent: Int?,
-    /** How many loads run; 1 = no count. */
-    val count: Int = 1,
 )
 
 @Composable
@@ -155,41 +171,45 @@ fun BesideSignSketchView(ui: BesideSignSketch, onClick: () -> Unit, modifier: Mo
         Surface(shape = OnPathShapes.Pill, color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
             modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
             Row(Modifier.padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                // the ring a little taller than the text (grows with the phone's font size); several loads: their count inside
-                val ring = with(LocalDensity.current) { MaterialTheme.typography.labelMedium.fontSize.toDp() } + 8.dp
+                // the ring a little taller than the text (grows with the phone's font size)
+                val ring = with(LocalDensity.current) { MaterialTheme.typography.labelMedium.fontSize.toDp() } + 6.dp
                 val track = OnPathColors.TagInk.copy(alpha = 0.18f)
-                Box(Modifier.size(ring), contentAlignment = Alignment.Center) {
-                    if (ui.percent != null) CircularProgressIndicator(progress = { ui.percent / 100f }, modifier = Modifier.size(ring),
-                        color = OnPathColors.TagInk, trackColor = track, strokeWidth = 2.dp, gapSize = 0.dp)
-                    else CircularProgressIndicator(Modifier.size(ring), color = OnPathColors.TagInk, trackColor = track, strokeWidth = 2.dp)
-                    if (ui.count > 1) Text("${ui.count}", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold,
-                        color = OnPathColors.TagInk, softWrap = false)
+                if (ui.percent != null) CircularProgressIndicator(progress = { ui.percent / 100f }, modifier = Modifier.size(ring),
+                    color = OnPathColors.TagInk, trackColor = track, strokeWidth = 2.dp, gapSize = 0.dp)
+                else CircularProgressIndicator(Modifier.size(ring), color = OnPathColors.TagInk, trackColor = track, strokeWidth = 2.dp)
+                if (ui.percent != null) {
+                    Spacer(Modifier.width(7.dp))
+                    Text("${ui.percent} %", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
                 }
-                Spacer(Modifier.width(7.dp))
-                Text(ui.text, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
             }
         }
     }
 }
 
-/** One load in the details: its name, one of the three texts, a bar only while bytes flow. */
-data class BesideRowSketch(val name: String, val state: String, val percent: Int?)
+/** One load in the details: its name and where it stands (one of the three texts). */
+data class BesideRowSketch(val name: String, val state: String)
 
-/** Form B's details (a bottom sheet's content): title, one row per load with its own bar, Cancel all · Close. */
+/**
+ * Form B's details (a bottom sheet's content): title, the ONE bar with the sign's percent over the whole action, then
+ * what loads – one line each, no number of its own –, Cancel all · Close.
+ */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-fun BesideDetailsSketchView(title: String, rows: List<BesideRowSketch>, onCancelAll: () -> Unit, onClose: () -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+fun BesideDetailsSketchView(title: String, percent: Int, rows: List<BesideRowSketch>, onCancelAll: () -> Unit, onClose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, color = OnPathColors.Ink, modifier = Modifier.padding(end = 8.dp))
-        rows.forEach { r ->
-            Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Row(Modifier.padding(end = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            LinearProgressIndicator(progress = { percent / 100f }, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.weight(1f).clip(CircleShape))
+            Text("$percent %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
+                color = OnPathColors.Ink, softWrap = false, modifier = Modifier.padding(start = 12.dp))
+        }
+        Column(Modifier.padding(end = 8.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            rows.forEach { r ->
                 androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(r.name, style = MaterialTheme.typography.bodyLarge, color = OnPathColors.Ink, modifier = Modifier.padding(end = 12.dp))
                     Text(r.state, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.InkMuted, softWrap = false)
                 }
-                // a bar only while bytes flow; "wird vorbereitet" / "fast fertig" say it in words (an empty bar would look stuck)
-                if (r.percent != null) LinearProgressIndicator(progress = { r.percent / 100f }, color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.fillMaxWidth().clip(CircleShape))
             }
         }
         androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
