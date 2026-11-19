@@ -344,12 +344,9 @@ class TourWiringTest {
             "private val followIsTrack: Boolean get() = tourFollow.followIsTrack",
             "val planGuides: Boolean get() = tourFollow.planGuides",
             "private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)",
-            "fun followPlanned(checkNow: Boolean = false) = tourFollow.followPlanned(checkNow)",
-            "fun followShown() = tourFollow.followShown()",
             "var followLine: List<GeoPoint>? get() = tourFollow.followLine private set(v) { tourFollow.followLine = v }",
             "private var followFromPlan: Boolean get() = tourFollow.followFromPlan set(v) { tourFollow.followFromPlan = v }",
             "var guidanceEndedByEmptyPlan: Boolean get() = tourFollow.guidanceEndedByEmptyPlan private set(v) { tourFollow.guidanceEndedByEmptyPlan = v }",
-            "private var planBaseline: List<GeoPoint>? get() = tourFollow.planBaseline set(v) { tourFollow.planBaseline = v }",
         )) assertEquals("the view model says: $line", 1, count(all, line))
         assertEquals(1, count(vm, "\n    fun clearFollow() = tourFollow.clearFollow()\n"))
         // the forwards only the moved plan-edit code used went with it (piece 18b): the slice calls the follow slice itself

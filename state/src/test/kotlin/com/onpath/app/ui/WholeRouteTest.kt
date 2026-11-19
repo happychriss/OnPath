@@ -183,10 +183,9 @@ class WholeRouteTest {
         assertTrue(!WholeRoute.firstRoute(2, 3)) // later edits never move the map
         assertTrue(!WholeRoute.firstRoute(3, 2))
         assertTrue(!WholeRoute.firstRoute(0, 1))
-        val vm = sourceFile("ui/AppViewModel.kt").readText()
         // the same fit as "Show whole route", following stopped first; a touch meanwhile keeps the user's view:
         // MapViewFlowTest.theFirstRouteIsFittedOnceTheSheetHasSettledWithFollowingStoppedFirst / aHandOnTheMapMeanwhileKeepsTheUsersView
-        assertTrue(vm.contains("private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>, extraMs: Long = 0L) = map.fitFirstRoute(line, pts, extraMs)"))
+        assertTrue(sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>, extraMs: Long = 0L) = map.fitFirstRoute(line, pts, extraMs)")) // the view model's forwarder went in piece 21: the slice's own line is the fit
         // the first route asks the fit in change(): PlanEditFlowTest.theFirstTwoPointsAreStoredAtOnceAndTheFirstRouteAsksTheFit
         // (fitNext false after one point, true after the second; aLaterEditNeverAsksTheFitAgain)
         // once per order: RouteRunTest.theFirstRouteIsFittedOnce

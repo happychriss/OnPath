@@ -75,7 +75,6 @@ class PlanEditAdaptersTest {
             "fun movePointInList(from: Int, to: Int) = planEdit.movePointInList(from, to)",
             "fun deletePointFromList(index: Int) = planEdit.deletePointFromList(index)",
             "fun deletePointFromMenu() = planEdit.deletePointFromMenu()",
-            "fun makeDestination(index: Int) = planEdit.makeDestination(index)",
             "fun canReverse(): Boolean = planEdit.canReverse()",
             "fun reverseRoute() = planEdit.reverseRoute()",
             "fun canRoundTrip(): Boolean = planEdit.canRoundTrip()",

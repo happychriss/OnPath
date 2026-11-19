@@ -969,9 +969,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var spotLine: List<GeoPoint>?
         get() = planRoute.spotLine
         private set(v) { planRoute.spotLine = v }
-    private var spotsMemo: Pair<Triple<List<GeoPoint>, Activity, Int>, List<RouteSpot>>?
-        get() = planRoute.spotsMemo
-        set(v) { planRoute.spotsMemo = v }
 
     // Bursts → one action; declared before init {} (ViewModelInitOrderTest).
     /** Map style reload after new map store generations: once per quiet period, never while the user drags. */
@@ -982,11 +979,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var arrivalGateJob: kotlinx.coroutines.Job? = null
     private val arrivedNames = ArrayList<String>()
 
-    // declared before init {}: init restores the saved plan and routes it at once (declared below, they are still null then)
-    /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
-    private var routeCancel: com.onpath.app.routing.RouteCancel?
-        get() = planRun.routeCancel
-        set(v) { planRun.routeCancel = v }
     /**
      * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]):
      * the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" – the periods of the run that asked; null = none.
@@ -1021,9 +1013,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** What started the routing run: Cancel takes back only that ([PlanRouteSlice.runCauses]). */
     private val runCauses get() = planRoute.runCauses
     // --- saved state of the plan (menus / Manage routes) ---
-    /** Name, tour id and points the plan was last saved or loaded as ([com.onpath.app.ui.plan.PlanDocument]: stored, linked, unsaved). */
-    private val linkName: String? get() = plan.linkName
-    private val linkId: Long get() = plan.linkId
     private val savedPoints: List<GeoPoint>? get() = plan.savedPoints
     /** Name the plan was saved / loaded as, while it still belongs to that route. */
     val savedName: String? get() = plan.savedName
@@ -1177,10 +1166,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var freeLookAt: GeoPoint?
         get() = map.freeLookAt
         set(v) { map.freeLookAt = v }
-    /** Last finger-down on the map (MapHost). */
-    var lastMapTouchMs: Long
-        get() = map.lastMapTouchMs
-        set(v) { map.lastMapTouchMs = v }
     /** Finger down on the map ([MapViewSlice.onMapTouch]). */
     fun onMapTouch() = map.onMapTouch()
     /** MapLibre stopped following ([MapViewSlice.onMapGesture]). */
@@ -1259,9 +1244,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingEngine(): RoutingEngine = planRoute.routingEngine()
     private val legCache get() = planRoute.legCache
 
-    private var routeJob: Job?
-        get() = planRun.routeJob
-        set(v) { planRun.routeJob = v }
     /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
     private var followFromPlan: Boolean
         get() = tourFollow.followFromPlan
@@ -1962,7 +1944,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         searchFlow.openSharedMenuIfArrived(cameraLat, cameraLon, metersPerPx, arrivedPx)
     private fun holdCameraForSharedPlace() = searchFlow.holdCameraForSharedPlace()
 
-    fun makeDestination(index: Int) = planEdit.makeDestination(index)
     /** "⇅ Umkehren" changes the plan ([PlanEditSlice.canReverse]). */
     fun canReverse(): Boolean = planEdit.canReverse()
     fun reverseRoute() = planEdit.reverseRoute()
@@ -2079,8 +2060,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The whole plan in front at a [PlanCamera.Moment] (owner 2026-11-06) – [MapViewSlice.showPlanWhole]. */
     fun showPlanWhole(moment: PlanCamera.Moment) = map.showPlanWhole(moment)
 
-    /** The plan's first route is there: the map shows it whole – [MapViewSlice.fitFirstRoute]. */
-    private fun fitFirstRoute(line: List<GeoPoint>, pts: List<GeoPoint>, extraMs: Long = 0L) = map.fitFirstRoute(line, pts, extraMs)
 
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
     fun showSpot(s: RouteSpot) {
@@ -2365,10 +2344,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** The check-and-switch sheet (Navigate → tap the activity icon); null = closed. Stays until a choice is made. */
     val activityCheck: ActivityCheckUi? get() = activityCheckSlice.activityCheck
-    /** Plan line computed for an activity switched while navigating: counts as followed (not an edit) ([com.onpath.app.ui.tour.TourFollow.planBaseline]). */
-    private var planBaseline: List<GeoPoint>?
-        get() = tourFollow.planBaseline
-        set(v) { tourFollow.planBaseline = v }
 
     /** Opens the sheet with every other activity, nothing routed yet ([com.onpath.app.ui.tour.ActivityCheckSlice.openActivityCheck]). */
     fun openActivityCheck() = activityCheckSlice.openActivityCheck()
@@ -2431,9 +2406,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The tour follows the plan's route. Its name (lock screen "Back to …", the tour log) is the saved route's while the
      * plan belongs to one ([savedName]), else "Route <date>".
      */
-    fun followPlanned(checkNow: Boolean = false) = tourFollow.followPlanned(checkNow)
 
-    fun followShown() = tourFollow.followShown()
 
     fun clearFollow() = tourFollow.clearFollow()
 
