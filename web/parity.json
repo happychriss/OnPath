@@ -232,7 +232,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask and answerLongRoute moved to PlanRecalcSlice / PlanRunSlice (rebuild phase 2 piece 9b / 9); the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -597,7 +597,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "5b793761f2427bc6edcdef961d017c2360dcd7c0"
+      "blob": "c5df0c042795f97c091e36e2a008840b65d53f4d"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt",
