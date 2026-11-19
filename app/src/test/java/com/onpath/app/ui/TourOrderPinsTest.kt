@@ -74,59 +74,13 @@ class TourOrderPinsTest {
     // ---- Edit rides, Rückgängig: rules 7–12, 26, 27, 35) are gone: piece 17 moved the functions to TourEndSlice and TourEndFlowTest
     // ---- proves each rule on the real slice (the commit message maps pin -> flow) ----
 
-    // ---- P16–P18: what a plan edit means for the tour (rules 16, 17, 36) ----
+    // ---- P16–P18 (what a plan edit means for the tour: rules 16, 17, 36) are gone: piece 18b moved the functions to TourEdits and
+    // ---- TourEditsFlowTest proves each rule on the real slice (the commit message maps pin -> flow -> proof) ----
 
-    private val neverStop = "the tour is stopped or its guidance kept by an edit (the recording must never stop by an edit); or Undo no longer brings the guidance back"
+    // ---- P25, P26: single texts of rules 30, 34 ----
 
-    @Test fun p16a_endGuidanceIfPlanEmpty_clearThenFlag() = ordered("P16", "17",
-        scope("P16", "private fun endGuidanceIfPlanEmpty()", BLOCK_END), neverStop,
-        "clearFollow()", "guidanceEndedByEmptyPlan = true")
-
-    @Test fun p16b_answerRouteBack_staleThenPlanThenEventThenRecalc_andTheNoBranchEndsTheGuidanceAfterClear() = ordered("P16", "17",
-        scope("P16", "fun answerRouteBack(", BLOCK_END), neverStop,
-        "splitRequests.invalidate()",
-        "if (recState.value == null) return",
-        "this.plan.replace(back)",
-        "routeEvent(RouteRun.Event.PlanEdited)",
-        "recalc()",
-        "{ clearFollow(); guidanceEndedByEmptyPlan = true }")
-
-    @Test fun p16c_oneLeftGoesFromHere_everyGuidanceEndClearsThenSetsTheFlagAfterTheSplitIsForgotten() {
-        val s = scope("P16", "private fun oneLeftGoesFromHere(", BLOCK_END)
-        val pair = Regex("""pendingSplit = null\s+clearFollow\(\)\s+guidanceEndedByEmptyPlan = true""")
-        assertEquals("P16 (rule 17): `pendingSplit = null` / `clearFollow()` / `guidanceEndedByEmptyPlan = true` exactly twice, in this order. " +
-            "If this breaks the user sees: $neverStop", 2, pair.findAll(s).count())
-        assertEquals("P16: clearFollow() twice in oneLeftGoesFromHere", 2, count(s, "clearFollow()"))
-        assertEquals("P16: guidanceEndedByEmptyPlan = true twice in oneLeftGoesFromHere", 2, count(s, "guidanceEndedByEmptyPlan = true"))
-    }
-
-    @Test fun p17_followAhead_staleBeforeTheRouteAndOnlyTheNewestResultIsApplied() = ordered("P17", "16",
-        scope("P17", "private fun followAhead(", "\n    fun followShown()"),
-        "deleted points come back in the guidance; the tour follows a plan the map does not show",
-        "val gen = splitRequests.next(waypoints)",
-        "followCancel?.cancel()",
-        "if (cancel.isCancelled) {",
-        "if (!splitRequests.isCurrent(gen, waypoints.toList()) || recState.value == null) return@launchSafe",
-        "setFollow(name, line, isTrack = false, checkNow = true,",
-        "copyFollowedPlan(act, level)")
-
-    @Test fun p18_followShownNow_thePlanLeavesTheMapBeforeTheTrackIsFollowed() = ordered("P18", "36",
-        scope("P18", "private fun followShownNow() {", BLOCK_END),
-        "the plan and the track both followed; Undo brings nothing back",
-        "if (recState.value == null) return",
-        "clearPlan()",
-        "followShown(); closeShown(); continueNavigation()")
-
-    // ---- P23-P26: single texts of rules 20, 23, 30, 34 ----
-
-    @Test fun p23_followEditedPlan_theSessionIsRememberedBeforeItIsReplacedInBothPlaces() {
-        val s = scope("P23", "private fun followEditedPlan() {", BLOCK_END)
-        val rem = "followHistory.remember"; val again = "followAgain(back, r.points, now?.version ?: 0)"
-        assertEquals("P23: remember twice", 2, count(s, rem)); assertEquals("P23: followAgain twice", 2, count(s, again))
-        val r1 = s.indexOf(rem); val a1 = s.indexOf(again); val r2 = s.indexOf(rem, r1 + 1); val a2 = s.indexOf(again, a1 + 1)
-        assertTrue("P23, rule 20: `$rem` must come before `$again` in both places (a session replaced before it is remembered is lost; " +
-            "Undo then routes anew and loses \"Guide me\")", r1 < a1 && a1 < r2 && r2 < a2)
-    }
+    // P23 (followEditedPlan: the session is remembered before it is replaced, rule 20) is gone with its function: piece 18b,
+    // TourEditsFlowTest.undoAndRedoFollowTheSessionsExactly… (two tests, one per place) prove it on the real slice.
 
     @Test fun p25_sayEvent_onlyDuringATour() = ordered("P25", "30",
         scope("P25", "private fun sayEvent(what: String) {", BLOCK_END),

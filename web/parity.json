@@ -232,7 +232,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "bc90446ba40fe8732edcf39ab7afee782f2925bb"
+      "blob": "22779334d2f514bc9744f1e84ab8d2c08f823cc1"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt",

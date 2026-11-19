@@ -22,7 +22,12 @@ class BackgroundRoutingRuleTest {
         assertTrue("anchor", slice.contains("TrackToPlan.fit("))
         assertTrue(slice.substringBefore("TrackToPlan.fit(").takeLast(400).contains("withContext(planRoute.threads.background)"))
         // the user's plan and the tour's position → ahead stay on the interactive thread
-        assertEquals(2, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
+        // (the plan run's in the view model's recalc; the position → ahead route moved to TourEdits, piece 18b: given the routing thread by name)
+        assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
+        val edits = com.onpath.app.testkit.sourceFile("ui/tour/TourEdits.kt").readText()
+        assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(edits).count())
+        assertTrue(vm.contains("say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,"))
+        assertTrue(vm.contains("private val routingDispatcher get() = planRoute.threads.routing"))
         // field bug 2026-11-07 (tour 207): the activity check's row request has its own thread – six 15 s checks on the
         // plan's thread held plan edits up to ~90 s
         // (moved with the check to ActivityCheckSlice, piece 16b; the flow `ActivityCheckFlowTest.aTapRoutesThatRowAloneFromThePositionOnTheCheckThread`

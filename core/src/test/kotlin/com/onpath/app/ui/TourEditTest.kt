@@ -33,8 +33,10 @@ class TourEditTest {
     @Test fun theRecordingGoesOnAndTheFollowedLineGoes() {
         assertTrue(PlanGuidance.endsGuidance(planPoints = 0, recording = true, following = true, followIsTrack = false))
         assertFalse("a followed GPX track is not the plan", PlanGuidance.endsGuidance(0, true, true, followIsTrack = true))
-        val end = vm.substringAfter("private fun endGuidanceIfPlanEmpty()").substringBefore("\n    }\n")
-        assertTrue(end, end.contains("clearFollow()") && end.contains("guidanceEndedByEmptyPlan = true"))
+        // (the slice's own body since piece 18b; TourEditsFlowTest shows the files go, the flag is set after and STOP is never sent)
+        val end = src("ui/tour/TourEdits.kt").substringAfter("fun endGuidanceIfPlanEmpty()").substringBefore("\n    }\n")
+        assertTrue(end, end.contains("follow.clearFollow()") && end.contains("follow.guidanceEndedByEmptyPlan = true"))
+        assertFalse(end, end.contains("stopRecording") || end.contains("recording.stop") || end.contains("STOP"))
         // clearPlan never stops the recording itself
         // (the slice's own body since piece 10; its host has no way to stop a recording – PlanEditHost – and the flow
         // PlanEditFlowTest.clearDuringATourEndsTheGuidanceAndNeverTheRecording shows only the follow is touched)

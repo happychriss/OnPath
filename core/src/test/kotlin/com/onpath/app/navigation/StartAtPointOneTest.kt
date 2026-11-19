@@ -163,8 +163,10 @@ class StartAtPointOneTest {
         // the flag is set in RoutesSlice.openTour (piece 13; RoutesFlowTest pins both values) and written by the view model's host
         val routes = File("../state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt").readText()
         assertTrue(routes.contains("host.loadedOnTheWay(duringTour && host.touring)"))
-        assertTrue(vm.contains("override fun loadedOnTheWay(on: Boolean) { this@AppViewModel.loadedOnTheWay = on }"))
-        val split = vm.substringAfter("private fun splitOf(").substringBefore("\n    }\n")
+        assertTrue(vm.contains("override fun loadedOnTheWay(on: Boolean) { tourEdits.loadedOnTheWay = on }"))
+        val slice = File("../state/src/main/kotlin/com/onpath/app/ui/tour/TourEdits.kt").readText()
+        val split = slice.substringAfter("fun splitOf(").substringBefore("\n    }\n")
+        assertTrue("the slice's splitOf was found", split.contains("val fresh = loadedOnTheWay; loadedOnTheWay = false"))
         assertTrue(split, split.contains("val passed = if (fresh) emptySet() else tourPassed(before)"))
     }
 

@@ -44,7 +44,7 @@ class PlaceMenusAdaptersTest {
             "override fun activity(): Activity = this@AppViewModel.activity",
             "override fun sac(): Int = this@AppViewModel.sac",
             "override fun route(): PlannedRoute? = this@AppViewModel.route",
-            "override fun wayThereFrom(): GeoPoint? = this@AppViewModel.wayThereFrom()",
+            "override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()",
             "override fun routeIndexOf(place: com.onpath.app.search.Place): Int? = this@AppViewModel.routeIndexOf(place)",
             "override var searchMark: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchMark\n                set(v) { this@AppViewModel.searchMark = v }",
             "override var searchPlace: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchPlace\n                set(v) { this@AppViewModel.searchPlace = v }",
