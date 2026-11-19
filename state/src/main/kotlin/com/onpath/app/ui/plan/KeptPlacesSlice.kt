@@ -4,6 +4,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import com.onpath.app.debug.Problems
+import com.onpath.app.domain.HomeRule
 import com.onpath.app.search.Place
 import com.onpath.app.search.SavedPlaces
 
@@ -55,6 +56,20 @@ class KeptPlacesSlice(private val store: PlacesStore, private val host: KeptPlac
     fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isFavourite(placeOf(poi))
     fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isHome(placeOf(poi))
 
+    /** The place picked in the search after Zuhause ⋮ „Ändern“ – its menu offers the home row for this one change. */
+    private var homeChangeFor by mutableStateOf<Place?>(null)
+
+    /** A search pick: [changing] = the picked place when „Ändern“ was chosen before, else null. */
+    fun picked(changing: Place?) { homeChangeFor = changing }
+
+    /** The home row of a held place's menu ([HomeRule.menuRow], owner 2026-11-18 „like Google Maps“). */
+    fun homeRow(poi: com.onpath.app.poi.Poi): HomeRule.MenuRow {
+        val p = placeOf(poi)
+        val s = saved()
+        return HomeRule.menuRow(homeSet = s.home != null, isHome = s.isHome(p),
+            changing = homeChangeFor?.let { SavedPlaces.same(it, p) } == true)
+    }
+
     /** „☆ Merken“ / „★ Gemerkt“ in a held place's menu: one tap sets / removes; the menu stays and shows the new state. */
     fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) {
         val p = placeOf(poi)
@@ -68,7 +83,14 @@ class KeptPlacesSlice(private val store: PlacesStore, private val host: KeptPlac
         val p = placeOf(poi)
         val remove = saved().isHome(p)
         keepPlaces { s -> s.withHome(if (remove) null else p) }
+        homeChangeFor = null
         Problems.trace("search", "Place menu: \"${p.title()}\" ${if (remove) "no longer home" else "set as home"}")
+    }
+
+    /** Zuhause ⋮ „Entfernen“ in the empty search: the row turns into „⌂ Zuhause festlegen“ (the view model reloads the search). */
+    fun removeHome() {
+        keepPlaces { s -> s.withHome(null) }
+        Problems.trace("search", "Search: home removed (its ⋮ menu)")
     }
 
     /**

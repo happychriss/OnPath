@@ -61,6 +61,10 @@ data class SearchUi(
     /** „★ Favoriten“: at most [SavedPlaces.SHOWN_FAVOURITES] until „Alle Favoriten ›“ ([moreFavourites] > 0). */
     val favourites: List<SearchHit> = emptyList(),
     val moreFavourites: Int = 0,
+    /** „⌂ Zuhause festlegen“ was tapped: the line how to set it shows under the row (ANZEIGE), until the search closes. */
+    val homeHint: Boolean = false,
+    /** Zuhause ⋮ „Ändern“: the line under the row; the next pick's menu offers „Als Zuhause festlegen“. */
+    val homeChange: Boolean = false,
     val hasRoute: Boolean = false,
     /**
      * The list on screen, kept by [SearchSession]: ranked once per text ([shownFor]); later answers for the same text
@@ -134,7 +138,7 @@ class SearchSession(
     fun onOpen() {
         val ctx = context()
         allFavourites = false
-        ui = startLists(ui.copy(query = "", category = null, hasRoute = ctx.route != null), ctx)
+        ui = startLists(ui.copy(query = "", category = null, hasRoute = ctx.route != null, homeHint = false, homeChange = false), ctx)
         run() // clears the old results and stops a search still on its way
         // the address files opened now (one per map cell, each reads its towns), not on the first letter
         scope.launch(Dispatchers.IO) {
@@ -176,6 +180,15 @@ class SearchSession(
     fun showAllFavourites() { allFavourites = true; ui = startLists(ui, context()) }
 
     private var allFavourites = false
+
+    /** „⌂ Zuhause festlegen“ tapped (no home yet): show how. */
+    fun showHomeHint() { ui = ui.copy(homeHint = true) }
+
+    /** Zuhause ⋮ „Ändern“: the next pick is the new home's candidate. */
+    fun changeHome() { ui = ui.copy(homeChange = true) }
+
+    /** The kept places changed while the search is open (Zuhause ⋮ „Entfernen“): its lists again. */
+    fun reloadStart() { ui = startLists(ui.copy(homeChange = false), context()) }
 
     /** Zuhause, the favourites and „Zuletzt gesucht“ of the empty search ([SavedPlaces.start]). */
     private fun startLists(u: SearchUi, ctx: SearchContext): SearchUi {

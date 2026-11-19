@@ -1,6 +1,7 @@
 package com.onpath.app.ui.plan
 
 import com.onpath.app.data.Geo
+import com.onpath.app.domain.HomeRule
 import com.onpath.app.domain.NotRouted
 import com.onpath.app.domain.PlaceAddMenu
 import com.onpath.app.domain.PlanStatus
@@ -777,6 +778,29 @@ class PlaceMenusFlowTest {
         assertEquals("Place menu: \"Café Ost\" no longer home", problems.traced("search").last())
         assertEquals(3, app.log.count { it.startsWith("backup") })
         assertEquals(3, app.log.count { it.startsWith("sync") })
+    }
+
+    @Test fun theHomeRowIsOfferedLikeGoogleMapsAndTheSearchsMenuRemovesIt() {
+        // owner 2026-11-18 (F-PLAN-14, HomeRule): set only while none is set, remove on the home, nothing on any other place
+        val app = App(listOf(a))
+        assertEquals(HomeRule.MenuRow.SET, app.kept.homeRow(hut))
+        app.kept.toggleHomePlace(hut)
+        assertEquals(HomeRule.MenuRow.REMOVE, app.kept.homeRow(hut))
+        assertEquals(HomeRule.MenuRow.NONE, app.kept.homeRow(cafe))
+        // Zuhause ⋮ „Ändern“, then the café picked in the search: its menu offers the set row once
+        app.kept.picked(Place.fromPoi(cafe))
+        assertEquals(HomeRule.MenuRow.SET, app.kept.homeRow(cafe))
+        assertEquals(HomeRule.MenuRow.REMOVE, app.kept.homeRow(hut))
+        app.kept.toggleHomePlace(cafe)
+        assertEquals("n2", app.stored.home?.id)
+        assertEquals(HomeRule.MenuRow.NONE, app.kept.homeRow(hut)) // the one change is used up
+        app.kept.picked(null) // a plain pick ends a pending change too
+        app.log.clear()
+        app.kept.removeHome()
+        assertNull(app.stored.home)
+        assertEquals(listOf("store.update → home=- favs=-", "backup home=- favs=-", "sync home=- favs=-"), app.log)
+        assertEquals("Search: home removed (its ⋮ menu)", problems.traced("search").last())
+        assertEquals(HomeRule.MenuRow.SET, app.kept.homeRow(hut))
     }
 
     @Test fun theFoundPlacesPinIsKeptWithItsAddressAndIsAskedAboutOnlyWhenThereIsOne() {

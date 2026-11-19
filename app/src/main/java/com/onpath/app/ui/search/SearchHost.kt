@@ -33,6 +33,7 @@ fun SearchHost(vm: AppViewModel) {
                 onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
                 onClearRecent = s::clearRecent,
                 onAllFavourites = s::showAllFavourites,
+                onSetHome = s::showHomeHint, onChangeHome = s::changeHome, onRemoveHome = vm::removeHome,
             ),
             modifier = Modifier.statusBarsPadding(),
         )

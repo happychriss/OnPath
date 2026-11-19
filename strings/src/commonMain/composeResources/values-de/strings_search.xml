@@ -67,4 +67,8 @@
     <string name="place_favourite_on">Gemerkt</string>
     <string name="place_home_set">Als Zuhause festlegen</string>
     <string name="place_home_remove">Zuhause entfernen</string>
+    <string name="search_home_set">Zuhause festlegen</string>
+    <string name="search_home_hint">Ort suchen oder auf der Karte halten → „Als Zuhause festlegen“</string>
+    <string name="search_home_change">Ändern</string>
+    <string name="search_home_change_hint">Neuen Ort suchen → „Als Zuhause festlegen“</string>
 </resources>

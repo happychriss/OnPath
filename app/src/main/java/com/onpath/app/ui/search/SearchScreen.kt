@@ -25,12 +25,15 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.History
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Search
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -44,7 +47,10 @@ import androidx.compose.material3.TextField
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -57,6 +63,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.onpath.app.data.Format
+import com.onpath.app.domain.HomeRule
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
@@ -76,6 +83,11 @@ data class SearchActions(
     val onClearRecent: () -> Unit = {},
     /** „Alle Favoriten ›“. */
     val onAllFavourites: () -> Unit = {},
+    /** „⌂ Zuhause festlegen“ (no home yet): shows the line how. */
+    val onSetHome: () -> Unit = {},
+    /** Zuhause ⋮ „Ändern“ / „Entfernen“. */
+    val onChangeHome: () -> Unit = {},
+    val onRemoveHome: () -> Unit = {},
 )
 
 /**
@@ -136,26 +148,35 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
  * heads. A tap opens the place's menu like any search pick.
  */
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
-    if (ui.recent.isEmpty() && ui.home == null && ui.favourites.isEmpty()) {
-        item {
-            Hint(str(Res.string.search_intro))
-        }
-        return
-    }
-    ui.home?.let { h ->
-        item {
-            CompactRow(h, str(Res.string.search_home), compactLine(h, withTitle = true), actions.onPick) {
-                Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit)
+    // Zuhause (owner 2026-11-18, HomeRule): none yet → „⌂ Zuhause festlegen“, a tap shows the line how; set → the place
+    // with a small ⋮ (Ändern / Entfernen)
+    item {
+        val h = ui.home
+        when (HomeRule.searchRow(h != null)) {
+            HomeRule.SearchRow.SET -> {
+                CompactRow(str(Res.string.search_home_set), "", actions.onSetHome) { Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit) }
+                if (ui.homeHint) HomeLine(str(Res.string.search_home_hint))
             }
-            HorizontalDivider()
+            HomeRule.SearchRow.HOME -> if (h != null) {
+                CompactRow(str(Res.string.search_home), compactLine(h, withTitle = true), { actions.onPick(h.place) },
+                    trailing = { HomeMenu(actions.onChangeHome, actions.onRemoveHome) }) {
+                    Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit)
+                }
+                if (ui.homeChange) HomeLine(str(Res.string.search_home_change_hint))
+            }
         }
+        HorizontalDivider()
+    }
+    if (ui.recent.isEmpty() && ui.favourites.isEmpty()) {
+        if (ui.home == null) item { Hint(str(Res.string.search_intro)) }
+        return
     }
     if (ui.favourites.isNotEmpty()) {
         item {
             SmallHead(str(Res.string.search_favourites), star = true)
         }
         items(ui.favourites) { h ->
-            CompactRow(h, h.place.title(), compactLine(h), actions.onPick) {
+            CompactRow(h.place.title(), compactLine(h), { actions.onPick(h.place) }) {
                 Icon(Icons.Filled.Star, null, tint = OnPathColors.Favourite)
             }
         }
@@ -173,7 +194,7 @@ private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
             }
         }
         items(ui.recent) { h ->
-            CompactRow(h, h.place.title(), compactLine(h), actions.onPick) {
+            CompactRow(h.place.title(), compactLine(h), { actions.onPick(h.place) }) {
                 // shared into OnPath (Google Maps → Share): the share sign instead of the clock (owner 2026-11-02)
                 if (h.place.shared) Icon(Icons.Outlined.Share, contentDescription = str(Res.string.search_recent_shared),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -206,9 +227,12 @@ internal fun compactLine(h: SearchHit, withTitle: Boolean = false): String = bui
  * when it alone does not fit.
  */
 @Composable
-private fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place) -> Unit, icon: @Composable () -> Unit) {
+private fun CompactRow(name: String, line: String, onClick: () -> Unit, trailing: (@Composable () -> Unit)? = null,
+                       icon: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().clickable(onClick = onClick).heightIn(min = 48.dp)
+            .padding(start = 16.dp, end = if (trailing != null) 4.dp else 16.dp, top = if (trailing != null) 0.dp else 4.dp,
+                bottom = if (trailing != null) 0.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() }
@@ -219,6 +243,38 @@ private fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place)
         Spacer(Modifier.width(8.dp))
         Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        trailing?.invoke()
+    }
+}
+
+/** The grey line under the Zuhause row, where the user acted (ANZEIGE: no box, while the search is open). */
+@Composable
+private fun HomeLine(text: String) =
+    Text(text, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(start = 56.dp, end = 16.dp, bottom = 10.dp))
+
+/** The small ⋮ beside „⌂ Zuhause“: Ändern, Entfernen ([HomeRule.searchMenu]). */
+@Composable
+private fun HomeMenu(onChange: () -> Unit, onRemove: () -> Unit) {
+    var open by remember { mutableStateOf(false) }
+    Box {
+        IconButton(onClick = { open = true }, Modifier.size(48.dp)) {
+            Icon(Icons.Filled.MoreVert, str(Res.string.common_more), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            HomeMenuItems(onChange, onRemove) { open = false }
+        }
+    }
+}
+
+/** The items of the Zuhause ⋮ (also drawn on their own by the screenshot tests). */
+@Composable
+internal fun HomeMenuItems(onChange: () -> Unit, onRemove: () -> Unit, close: () -> Unit) {
+    for (m in HomeRule.searchMenu(homeSet = true)) when (m) {
+        HomeRule.SearchMenu.CHANGE -> DropdownMenuItem(text = { Text(str(Res.string.search_home_change)) },
+            onClick = { close(); onChange() }, modifier = Modifier.heightIn(min = 48.dp))
+        HomeRule.SearchMenu.REMOVE -> DropdownMenuItem(text = { Text(str(Res.string.common_remove)) },
+            onClick = { close(); onRemove() }, modifier = Modifier.heightIn(min = 48.dp))
     }
 }
 

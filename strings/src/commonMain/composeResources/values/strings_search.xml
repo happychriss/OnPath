@@ -68,4 +68,8 @@
     <string name="place_favourite_on">In favourites</string>
     <string name="place_home_set">Set as home</string>
     <string name="place_home_remove">Remove home</string>
+    <string name="search_home_set">Set home</string>
+    <string name="search_home_hint">Search for a place or hold it on the map → “Set as home”</string>
+    <string name="search_home_change">Change</string>
+    <string name="search_home_change_hint">Search for the new place → “Set as home”</string>
 </resources>

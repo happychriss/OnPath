@@ -70,11 +70,12 @@ object PinMenuItems {
      * @param pin the found place's pin: the menu ends with "Nadel entfernen"
      * @param keep the place can be kept (owner 2026-11-15, „Orte merken“): after the route rows, behind a thin line,
      *   „☆ Merken“ and „⌂ Als Zuhause festlegen“ – what is about the place itself
+     * @param home which home row [keep] brings ([HomeRule.menuRow]); NONE = „☆ Merken“ alone
      * @param roundTrip the tour suggestions are on (developer switch, tour-suggestions.md §7 stage 4): „Rundtour von hier“
      *   right after „Hier starten“ – wherever that row is offered (owner 2026-11-15)
      */
     fun of(emptyPlan: Boolean, startHere: Boolean, menu: PlaceAddMenu.Menu?, pin: Boolean, keep: Boolean = false,
-           roundTrip: Boolean = false): List<Row> {
+           roundTrip: Boolean = false, home: HomeRule.MenuRow = HomeRule.MenuRow.SET): List<Row> {
         fun row(i: PlaceAddMenu.Item) = when (i) {
             PlaceAddMenu.Item.ADD_STOP -> Row.ADD_STOP
             PlaceAddMenu.Item.NEW_DESTINATION -> Row.NEW_DESTINATION
@@ -88,9 +89,40 @@ object PinMenuItems {
             menu == null -> rows += Row.ADD
             else -> menu.main.mapTo(rows, ::row)
         }
-        if (keep) { rows += Row.FAVOURITE; rows += Row.HOME }
+        if (keep) { rows += Row.FAVOURITE; if (home != HomeRule.MenuRow.NONE) rows += Row.HOME }
         rows += Row.GOOGLE
         if (pin) rows += Row.REMOVE_PIN
         return rows
     }
+}
+
+/**
+ * Where Zuhause is set, changed and removed (owner 2026-11-18, „like Google Maps“ – before, „⌂ Als Zuhause festlegen“
+ * stood in every place's menu although it is set once). Pure.
+ */
+object HomeRule {
+    /** The home row of a held place's menu. */
+    enum class MenuRow { NONE, SET, REMOVE }
+
+    /**
+     * @param homeSet a home exists; [isHome] this place is it
+     * @param changing the place was picked in the search after Zuhause ⋮ „Ändern“ – this one menu offers the row again
+     * @return on the home „⌂ Zuhause entfernen“; „⌂ Als Zuhause festlegen“ only while no home is set (or for the one
+     *   change); any other place while a home exists: no home row
+     */
+    fun menuRow(homeSet: Boolean, isHome: Boolean, changing: Boolean = false): MenuRow = when {
+        homeSet && isHome -> MenuRow.REMOVE
+        !homeSet || changing -> MenuRow.SET
+        else -> MenuRow.NONE
+    }
+
+    /** The top row of the empty search: „⌂ Zuhause festlegen“ (a tap shows the hint how) or „⌂ Zuhause“ with its ⋮. */
+    enum class SearchRow { SET, HOME }
+
+    /** The entries of the ⋮ beside „⌂ Zuhause“. */
+    enum class SearchMenu { CHANGE, REMOVE }
+
+    fun searchRow(homeSet: Boolean): SearchRow = if (homeSet) SearchRow.HOME else SearchRow.SET
+
+    fun searchMenu(homeSet: Boolean): List<SearchMenu> = if (homeSet) listOf(SearchMenu.CHANGE, SearchMenu.REMOVE) else emptyList()
 }

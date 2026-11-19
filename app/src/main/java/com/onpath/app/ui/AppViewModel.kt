@@ -2029,14 +2029,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         set(v) { searchFlow.searchMark = v }
     fun openSearch() = searchFlow.openSearch()
     fun closeSearch() = searchFlow.closeSearch()
-    fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
+    fun pickSearchResult(place: com.onpath.app.search.Place) { val changing = search.ui.homeChange; searchFlow.pickSearchResult(place); keptPlaces.picked(searchMark.takeIf { changing }) }
     /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
     fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
 
-    // --- kept places: Zuhause + favourites (owner 2026-11-15, „Orte merken“; SavedPlaces) ---
-
+    // --- kept places: Zuhause + favourites (owner 2026-11-15, „Orte merken“; SavedPlaces); Zuhause like Google Maps (2026-11-18, HomeRule) ---
     fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isFavouritePlace(poi)
-    fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isHomePlace(poi)
+    fun homeRow(poi: com.onpath.app.poi.Poi): com.onpath.app.domain.HomeRule.MenuRow = keptPlaces.homeRow(poi)
+    fun removeHome() { keptPlaces.removeHome(); search.reloadStart() }
     /** „☆ Merken“ / „★ Gemerkt“ in a held place's menu ([KeptPlacesSlice.toggleFavouritePlace]). */
     fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleFavouritePlace(poi)
     /** „⌂ Als Zuhause festlegen“ / „⌂ Zuhause entfernen“ ([KeptPlacesSlice.toggleHomePlace]). */

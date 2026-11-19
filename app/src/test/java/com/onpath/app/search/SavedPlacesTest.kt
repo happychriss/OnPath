@@ -3,6 +3,7 @@ package com.onpath.app.search
 import com.onpath.app.backup.BackupCodec
 import com.onpath.app.backup.BackupRestore
 import com.onpath.app.backup.PlacesBackup
+import com.onpath.app.domain.HomeRule
 import com.onpath.app.domain.PinMenuItems
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -106,5 +107,43 @@ class SavedPlacesTest {
             PinMenuItems.Row.HOME, PinMenuItems.Row.GOOGLE, PinMenuItems.Row.REMOVE_PIN),
             PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = true, keep = true))
         assertFalse(PinMenuItems.Row.FAVOURITE in PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false))
+    }
+
+    // --- Zuhause „like Google Maps“ (owner 2026-11-18): set once, not offered in every place's menu ---
+
+    private fun homeRowOf(saved: SavedPlaces, p: Place, changing: Boolean = false) =
+        HomeRule.menuRow(homeSet = saved.home != null, isHome = saved.isHome(p), changing = changing)
+
+    @Test fun theMenuOffersToSetAHomeOnlyWhileNoneIsSet() {
+        assertEquals(HomeRule.MenuRow.SET, homeRowOf(SavedPlaces(), cafe))
+        val withHome = SavedPlaces().withHome(cafe)
+        assertEquals("on the home: remove", HomeRule.MenuRow.REMOVE, homeRowOf(withHome, cafe))
+        assertEquals("another place while a home exists: no home row", HomeRule.MenuRow.NONE, homeRowOf(withHome, ruin))
+        assertEquals("a favourite is not the home", HomeRule.MenuRow.NONE, homeRowOf(withHome.toggleFavourite(ruin), ruin))
+        assertEquals("removed: every place offers it again", HomeRule.MenuRow.SET, homeRowOf(withHome.withHome(null), ruin))
+    }
+
+    @Test fun afterAendernThePickedPlaceOffersTheHomeRowOnce() {
+        val withHome = SavedPlaces().withHome(cafe)
+        assertEquals(HomeRule.MenuRow.SET, homeRowOf(withHome, ruin, changing = true))
+        assertEquals("picking the home itself: still remove", HomeRule.MenuRow.REMOVE, homeRowOf(withHome, cafe, changing = true))
+    }
+
+    @Test fun theMenusRowsFollowTheHomeRule() {
+        fun rows(home: HomeRule.MenuRow) = PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false, keep = true, home = home)
+        val keepOnly = listOf(PinMenuItems.Row.START_HERE, PinMenuItems.Row.GO_HERE, PinMenuItems.Row.FAVOURITE, PinMenuItems.Row.GOOGLE)
+        assertEquals("Merken stays, the home row goes", keepOnly, rows(HomeRule.MenuRow.NONE))
+        val both = keepOnly.toMutableList().apply { add(3, PinMenuItems.Row.HOME) }
+        assertEquals(both, rows(HomeRule.MenuRow.SET))
+        assertEquals(both, rows(HomeRule.MenuRow.REMOVE))
+        assertFalse("not a keepable place: no home row either",
+            PinMenuItems.Row.HOME in PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false, home = HomeRule.MenuRow.SET))
+    }
+
+    @Test fun theEmptySearchShowsSetHomeOrTheHomeWithItsMenu() {
+        assertEquals(HomeRule.SearchRow.SET, HomeRule.searchRow(homeSet = false))
+        assertEquals(emptyList<HomeRule.SearchMenu>(), HomeRule.searchMenu(homeSet = false))
+        assertEquals(HomeRule.SearchRow.HOME, HomeRule.searchRow(homeSet = true))
+        assertEquals(listOf(HomeRule.SearchMenu.CHANGE, HomeRule.SearchMenu.REMOVE), HomeRule.searchMenu(homeSet = true))
     }
 }

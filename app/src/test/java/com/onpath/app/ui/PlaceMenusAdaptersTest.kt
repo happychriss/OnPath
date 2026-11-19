@@ -87,7 +87,10 @@ class PlaceMenusAdaptersTest {
             "val pointMenuTarget: PointMenuTarget? get() = placeMenus.pointMenuTarget",
             "val pointMenu: Int? get() = placeMenus.pointMenu",
             "fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isFavouritePlace(poi)",
-            "fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isHomePlace(poi)",
+            "fun homeRow(poi: com.onpath.app.poi.Poi): com.onpath.app.domain.HomeRule.MenuRow = keptPlaces.homeRow(poi)",
+            // Zuhause like Google Maps (owner 2026-11-18): ⋮ „Entfernen“ reloads the open search; a pick after „Ändern“ is told
+            "fun removeHome() { keptPlaces.removeHome(); search.reloadStart() }",
+            "fun pickSearchResult(place: com.onpath.app.search.Place) { val changing = search.ui.homeChange; searchFlow.pickSearchResult(place); keptPlaces.picked(searchMark.takeIf { changing }) }",
             "fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleFavouritePlace(poi)",
             "fun toggleHomePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleHomePlace(poi)",
             "fun googleFromMenu(): GeoPoint? = placeMenus.menuAction(\"Open in Google Maps\")?.let { waypoints[it] }",

@@ -1,5 +1,6 @@
 package com.onpath.app.ui
 
+import com.onpath.app.domain.HomeRule
 import com.onpath.app.domain.MapGestures
 import com.onpath.app.domain.PinMenuItems
 import com.onpath.app.domain.PinMenuPlace
@@ -164,7 +165,7 @@ fun MapOverlayHost(
                 menu = vm.placeMenu(poi),
                 onAddStop = { vm.addPoiAsStop(poi) },
                 onNewDestination = { vm.poiAsNewDestination(poi) },
-                favourite = vm.isFavouritePlace(poi), home = vm.isHomePlace(poi),
+                favourite = vm.isFavouritePlace(poi), home = vm.homeRow(poi),
                 onFavourite = { vm.toggleFavouritePlace(poi) }, onHome = { vm.toggleHomePlace(poi) },
                 onGoogle = {
                     vm.closeMapOverlays()
@@ -467,9 +468,10 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             card: Boolean = false,
             /**
              * Kept places (owner 2026-11-15, „Orte merken“): null = not offered; else whether the place is a favourite
-             * („★ Gemerkt“) – „☆ Merken“ / „⌂ Als Zuhause festlegen“ ([home] = it is home: „⌂ Zuhause entfernen“).
+             * („★ Gemerkt“) – „☆ Merken“; [home] = the home row ([HomeRule.menuRow], owner 2026-11-18): „⌂ Als Zuhause
+             * festlegen“ only while none is set, „⌂ Zuhause entfernen“ on the home, else none.
              */
-            favourite: Boolean? = null, home: Boolean = false,
+            favourite: Boolean? = null, home: HomeRule.MenuRow = HomeRule.MenuRow.SET,
             onFavourite: () -> Unit = {}, onHome: () -> Unit = {},
             /** „Rundtour von hier“ right after „Hier starten“ (tour suggestions on, [PinMenuItems]); null = not offered. */
             onRoundTrip: (() -> Unit)? = null) {
@@ -487,7 +489,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // the rows in their order (PinMenuItems): the same for a hold and for a picked search result (owner 2026-11-13)
-        for (r in PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null)) when (r) {
+        for (r in PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null, home = home)) when (r) {
             PinMenuItems.Row.START_HERE -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             PinMenuItems.Row.ROUND_TRIP -> HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = { onRoundTrip?.invoke() })
             PinMenuItems.Row.GO_HERE -> HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
@@ -502,7 +504,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
                 else HoldMenuItem(Icons.Outlined.StarOutline, str(Res.string.place_favourite_add), onClick = onFavourite)
             }
             PinMenuItems.Row.HOME -> HoldMenuItem(Icons.Outlined.Home,
-                str(if (home) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
+                str(if (home == HomeRule.MenuRow.REMOVE) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
             PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
             PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })
         }

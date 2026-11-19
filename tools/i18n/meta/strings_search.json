@@ -60,5 +60,9 @@
   "place_favourite_add": {"area": "Place menu", "context": "Row in a held place's menu: keep the place as a favourite (owner's word „Merken“)", "priority": 1, "confidence": "sicher", "max": 24},
   "place_favourite_on": {"area": "Place menu", "context": "The same row when the place is a favourite; a tap removes it (owner's word „Gemerkt“)", "priority": 1, "confidence": "sicher", "max": 24},
   "place_home_set": {"area": "Place menu", "context": "Row in a held place's menu: this place becomes Home", "priority": 1, "confidence": "sicher", "max": 28},
-  "place_home_remove": {"area": "Place menu", "context": "The same row on the place that is Home: forget it as Home", "priority": 2, "confidence": "sicher", "max": 28}
+  "place_home_remove": {"area": "Place menu", "context": "The same row on the place that is Home: forget it as Home", "priority": 2, "confidence": "sicher", "max": 28},
+  "search_home_set": {"area": "Search", "context": "Top row of the empty search while no home is set (owner 2026-11-18, like Google Maps); a tap shows search_home_hint", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_home_hint": {"area": "Search", "context": "Grey line under 'Set home' after a tap: how to set it (quotes the place menu's place_home_set)", "priority": 2, "confidence": "sicher"},
+  "search_home_change": {"area": "Search", "context": "Entry of the small ⋮ menu beside the home row: pick another place as home", "priority": 1, "confidence": "sicher", "max": 16},
+  "search_home_change_hint": {"area": "Search", "context": "Grey line under the home row after 'Change': search the new place, then 'Set as home' in its menu", "priority": 2, "confidence": "sicher"}
 }
