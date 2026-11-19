@@ -706,6 +706,7 @@ class TourEndFlowTest {
         val row = tour(interruptedId)
         assertEquals(RideChoice.SPLIT, row.rides!!.choice)
         assertEquals(s.rides, row.rides!!.rides)
+        assertTrue("the split's own stats stay: the recorded stats are written before the choice is applied, not over it", row.distanceM < 8_200.0)
         val parts = db.listTours().filter { it.id != interruptedId && it.createdMs > 0 && it.uuid.isNotEmpty() && it.id !in listOf(hike, shortTour, busTour, partA, partB) }
         assertEquals("one part after the ride", 1, parts.size)
         assertEquals(listOf("tourChanged($interruptedId) io [box=null]", "tourChanged(${parts.single().id}) io [box=null]"), log.filter { it.startsWith("tourChanged") })
@@ -765,8 +766,10 @@ class TourEndFlowTest {
     @Test fun askSaveOfATourTheServiceRecordsAgainGoesToNavigateAndWritesNothing() {
         val t = interrupted()
         touring(interruptedId)
+        ctl.showUnfinished(t, emptyList())
         ui { slice.askSaveUnfinished(t) }
-        assertEquals(listOf("enterMode(NAVIGATE) [rec=$interruptedId arrival=false unfinished=null rides=false]"), log)
+        assertEquals("the question is closed before the look at the service",
+            listOf("enterMode(NAVIGATE) [rec=$interruptedId arrival=false unfinished=null rides=false]"), log)
         assertEquals(0, ioEx.size)
     }
 

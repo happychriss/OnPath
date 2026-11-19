@@ -25,7 +25,8 @@ import kotlinx.coroutines.withContext
 /**
  * What [TourEndSlice] asks from the rest of the app. Every call is made at the point of the old code's sequence, with the
  * old arguments, on the thread the old code was on: the main thread, except [tourChanged] (called on io where the old code
- * told the backup inside `withContext(io)` / a launch on io, and on main in the Rückgängig).
+ * told the backup inside `withContext(io)` / a launch on io, and on main in the Rückgängig), [tourTimes] (io) and the reads
+ * of [activity] / [activityOrNull] in the ride checks and in the save of an unfinished tour (io, as before).
  */
 interface TourEndHost {
     /** The plan's activity (the one the user chose; the fall-back of a tour that names none). */
