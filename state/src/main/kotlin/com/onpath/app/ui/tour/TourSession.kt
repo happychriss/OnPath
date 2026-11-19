@@ -73,8 +73,8 @@ interface TourSessionHost {
  * pass of the `state` collector runs inline on `Main.immediate` during construction (paper risk 1; at a process restart during a
  * tour it meets the same world as before) and the mode flip comes after `recalc()` (risk 2: the initial mode is Plan).
  *
- * Latent bugs kept as they were: L2 (the start-up check: a failing `findActiveRecording` never sets `startModeKnown`), L4 (a failed
- * start can show two boxes), and (fixed 2026-11-19) L1: each pass of the `startFailed` and `state` collectors is guarded – a throw is reported and the collector goes on (a failed activity switch is repeated by the next state, at most [MAX_SYNC_RETRIES] times in a row).
+ * Latent bugs kept as they were: L4 (a failed
+ * start can show two boxes), and (fixed 2026-11-19) L2: a failing `findActiveRecording` at start is reported and read as "no active tour", `startModeKnown` is always set; L1: each pass of the `startFailed` and `state` collectors is guarded – a throw is reported and the collector goes on (a failed activity switch is repeated by the next state, at most [MAX_SYNC_RETRIES] times in a row).
  */
 class TourSession(
     private val plan: PlanDocument,
@@ -157,9 +157,28 @@ class TourSession(
         tour.unfinishedPending = true
         scope.launchSafe("app", "start-up work", io) {
             try {
-                val active = rows.findActiveRecording()
+                // L2 (fixed 2026-11-19): a read that fails is "no active tour found" (nothing is invented, nothing written) –
+                // the start mode is entered and known all the same; a cancellation is not a failure
+                val active = try {
+                    rows.findActiveRecording()
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Throwable) {
+                    Problems.error("app", "Active tour could not be read at start; started as if none was found", e)
+                    null
+                }
                 val start = AppMode.onStart(recording.state.value != null, active != null)
-                withContext(main) { enter(start); map.startModeKnown = true }
+                withContext(main) {
+                    // the same order as always (enter, then known); a throwing enter is reported and the mode still becomes known
+                    try {
+                        enter(start)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Throwable) {
+                        Problems.error("app", "Entering the start mode failed; the start mode is known all the same", e)
+                    }
+                    map.startModeKnown = true
+                }
                 if (active != null && recording.state.value == null) {
                     delay(stickyWaitMs) // the service may be restarting by itself (sticky)
                     if (recording.state.value == null) {

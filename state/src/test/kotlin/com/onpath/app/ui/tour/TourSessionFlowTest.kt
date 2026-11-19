@@ -198,9 +198,11 @@ class TourSessionFlowTest {
     private val ctl = TourController(tourRecorder(client))
     private val history = FollowHistory()
     /** What a read of the tour rows may throw (the name of the row call → once). */
-    private val rows = JdbcTourRows(db) { name -> if (name == "findActiveRecording") assertIo("TourRows.$name") }
+    private val rows = JdbcTourRows(db) { name -> if (name == "findActiveRecording") { assertIo("TourRows.$name"); onFindActive?.invoke() } }
+    private var onFindActive: (() -> Unit)? = null
     private val followPrefs = object : FollowPrefs { override var followIsTrack: Boolean = false }
     private var failSegments = false
+    private var failClearHints = false
     private val tours = object : ToursStore {
         override fun getTour(id: Long): Tour? { assertIo("tours.getTour"); return db.getTour(id) }
         override fun loadSegments(id: Long): List<List<TrackPoint>> {
@@ -277,6 +279,7 @@ class TourSessionFlowTest {
         override val hasGpsFix: Boolean get() = gpsFix
         override fun clearHints() {
             assertMain("clearHints")
+            if (failClearHints) error("hints broke")
             log += "clearHints [${st()} followMe=${map.followMe} size=${planEdit.planSize}]"
         }
         override fun closeMenusForNavigate() {
@@ -904,16 +907,61 @@ class TourSessionFlowTest {
         assertFalse("`finally` is not cancellable", ctl.unfinishedPending)
     }
 
-    /** L2 (kept, shown): a failing read of the active tour never reaches `enter` / `startModeKnown`; the hold is released (finally). */
-    @Test fun L2_aFailingActiveTourReadNeverSetsStartModeKnownButTheHoldIsReleased() {
+    /** L2 (fixed 2026-11-19): a failing read of the active tour is reported and read as "none found" – the start mode is entered and known. */
+    @Test fun aFailingActiveTourReadIsReportedAndTheAppStillStartsInItsStartMode() {
         create()
         rows.failOn += "findActiveRecording"
+        assertFalse("the opposite first", map.startModeKnown)
         ui { session.start() }
         assertTrue(ctl.unfinishedPending)
         stepIo()
-        assertFalse("L2: the start mode is never known in this process", map.startModeKnown)
+        assertTrue("known", map.startModeKnown)
+        assertEquals("the start mode of the nothing-found case", AppMode.PLAN, session.mode)
+        assertTrue("`enter(Plan)` ran", log.any { it.startsWith("clearHints [mode=PLAN") })
+        assertNull("no question for a tour that could not be read", ctl.unfinished)
         assertFalse("the hold is released", ctl.unfinishedPending)
+        assertTrue("reported", problems.said("app").any { it.contains("Active tour could not be read") })
+        assertEquals("nothing sent to the service", emptyList<String>(), actions())
+        advance(5_000)
+        assertNull(ctl.unfinished)
+    }
+
+    /** L2: the read fails while a service records: Navigate, known, the running tour is not disturbed (no question). */
+    @Test fun aFailingActiveTourReadWhileTheServiceRecordsStaysInNavigate() {
+        create(); routeNow = routeFor(plan.points.toList())
+        serviceTakes()
+        rows.failOn += "findActiveRecording"
+        ui { session.start() }
+        stepIo(); advance(5_000)
+        assertEquals(AppMode.NAVIGATE, session.mode)
+        assertTrue(map.startModeKnown)
+        assertNull(ctl.unfinished)
+        assertFalse(ctl.unfinishedPending)
+    }
+
+    /** L2: `enter(start)` itself throws – reported, and the start mode is still known. */
+    @Test fun aThrowingEnterAtStartStillMakesTheStartModeKnown() {
+        create()
+        failClearHints = true
+        assertFalse("the opposite first", map.startModeKnown)
+        ui { session.start() }
+        stepIo()
+        assertTrue(map.startModeKnown)
+        assertFalse(ctl.unfinishedPending)
         assertTrue("reported", problems.said("app").isNotEmpty())
+    }
+
+    /** L2: the read ends in a cancellation (the job is cancelled while it is pending; the scope itself stays alive here, so only the rethrow keeps `enter` away) – nothing reported, nothing entered, not known (a cancellation is not a failure); the hold still goes. */
+    @Test fun aCancelledStartUpCheckReportsNothingAndEntersNothing() {
+        create()
+        onFindActive = { throw java.util.concurrent.CancellationException("cancelled while reading") }
+        assertFalse("the opposite first", map.startModeKnown)
+        ui { session.start() }
+        stepIo()
+        assertFalse(map.startModeKnown)
+        assertTrue(problems.said("app").none { it.contains("Active tour could not be read") })
+        assertTrue(log.none { it.startsWith("clearHints") })
+        assertFalse("`finally` still releases the hold", ctl.unfinishedPending)
     }
 
     /** Rule 6: an empty plan and a followed line left over, no active tour in the database, nothing recording → the line goes. */
