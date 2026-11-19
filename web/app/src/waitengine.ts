@@ -25,16 +25,21 @@ declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: Exports }
 
 let ex: Exports | null = null;
 let failed = false;
+/** How long the instance took to load (ms; −1 = not yet) – for the tests and the diagnostics. */
+export let loadMs = -1;
 
 /** Loads the instance once (after the page's engine, so the two do not compete for the first second). */
 export async function loadWaitEngine(base: string, lang: string): Promise<void> {
   if (ex || failed) return;
+  const t0 = performance.now();
   try {
     const g = globalThis as unknown as { TeaVM?: unknown };
     if (!g.TeaVM) await import(/* @vite-ignore */ new URL('engine/onpath-web-engine.wasm-runtime.js?v=' + BUILD, base).href);
     const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm?v=' + BUILD, base).href);
     exports.setLanguage(lang);
     ex = exports;
+    loadMs = Math.round(performance.now() - t0);
+    console.info(`[wait] the window's engine ready in ${loadMs} ms`);
   } catch (e) {
     failed = true;
     problem('progress', 'The wait window engine did not load – the window shows a plain bar', e);

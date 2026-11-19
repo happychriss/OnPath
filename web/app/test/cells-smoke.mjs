@@ -4,15 +4,17 @@
 // backoff), no console errors, the overview's cover off the cell while its map does not draw (never a blank map), the
 // map strip says it in plain words, and the problem log (window.__diag) has it once.
 // A. healthy: the cell draws, the cover is on, no strip line.
-// B. base.pmtiles 404 (file gone): current.json read once more (same version) → red "could not be loaded – reload",
-//    the cover off, base.pmtiles asked at most twice while the user pans.
+// B. base.pmtiles 404 (file gone): current.json read once more (same version) → red "could not be loaded – reload"
+//    (while the first map's wait window shows it steps back – one message at a time – and comes back after it), the
+//    cover off, base.pmtiles asked at most twice while the user pans.
 // C. base.pmtiles 503 twice (server busy): grey "Map server not reachable – trying again." → tried again after 5 s →
 //    the cell draws, the line goes, the cover is back.
 // D. base.pmtiles 429 always (the host's per-IP limit): grey line, the next try waits a minute (≤ 2 reads in 30 s).
 // E. a new generation while the page is open (current.json → v2, the v1 folder gone): the page reads current.json
 //    again once and draws from v2, no line.
 // F. current.json 503 for 8 s: grey line, current.json not asked on every tile (≤ 4 reads), then the cell draws.
-// G. every /data answer 2 s slow: "Loading the map for your area" with a spinner, then the cell draws, nothing failed.
+// G. every /data answer 2 s slow: the wait window (form A, owner 2026-11-19) – "Map for your area", its bar and
+//    percent, the row "loading map" – while the page's first map comes, then the cell draws, nothing failed.
 // H. ?debug shows "Copy diagnostics"; window.__diag() returns the report with the problem lines.
 // Usage: node test/cells-smoke.mjs [segmentsDir]
 import fs from 'node:fs';
@@ -92,8 +94,11 @@ const MSG_BUSY = 'Map server not reachable';
 {
   fault = (key, req, res) => { if (key.endsWith('test-s1/base.pmtiles')) { res.writeHead(404).end(); return true; } return false; };
   const page = await open();
-  check(await waitStrip(page, MSG_FAILED), 'B base 404: red line "The detailed map for this area could not be loaded … Reload the page"');
-  check(await page.evaluate(() => !!document.querySelector('#mapnotes .mapnote.error')), 'B base 404: the line is an error (red)');
+  // the line may come while the first map's wait window shows: then it waits for the window (one message at a time)
+  const red = await page.waitForFunction((t) => { const e = document.querySelector('#mapnotes .mapnote.error');
+    return !!e && e.getClientRects().length > 0 && e.innerText.includes(t); }, MSG_FAILED, { timeout: 40_000 }).then(() => true, () => false);
+  check(red, 'B base 404: a red line (ERROR) "The detailed map for this area could not be loaded … Reload the page", visible');
+  check(!(await page.evaluate(() => !!document.getElementById('waitwin'))), 'B base 404: no wait window beside the red line');
   const since = Date.now();
   await pan(page);
   await idle(page);
@@ -182,7 +187,10 @@ const MSG_BUSY = 'Map server not reachable';
   };
   const page = await open();
   await page.evaluate(() => window.__map.jumpTo({ zoom: 13.5 }));
-  check(await waitStrip(page, 'Loading the map', 10_000), 'G slow: "Loading the map for your area" while the tiles come');
+  const w = await page.waitForFunction(() => { const e = document.getElementById('waitwin');
+    return e && /\d+ %/.test(e.querySelector('.wwpct').textContent) && [...e.querySelectorAll('.wwsteps li')].some((l) => /loading map/.test(l.textContent))
+      ? e.querySelector('.wwtitle').textContent : null; }, null, { timeout: 30_000 }).then((h) => h.jsonValue(), () => null);
+  check(w === 'Map for your area', `G slow: the wait window "Map for your area" with its percent and "loading map" while the tiles come (${w})`);
   check(await waitBase(page, 45_000), 'G slow: the cell draws');
   const d = await diag(page);
   check(!/\[cells\]/.test(d), 'G slow: nothing failed (no cells problem)');

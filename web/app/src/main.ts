@@ -42,7 +42,7 @@ import { PlanGapsLayer } from './plangaps';
 import { MapNotices } from './mapnotice';
 import { LoadOverlay, watchTiles, ENGINE_UNITS, LINK_UNITS, type PlanIn } from './loadoverlay';
 import { BesideSign } from './besidesign';
-import { loadWaitEngine, waitEngineReady } from './waitengine';
+import { loadWaitEngine, waitEngineReady, loadMs as waitLoadMs } from './waitengine';
 import { MapAreas, type MapTexts } from './areas';
 import { t, tp, lang, languages, switchLanguage, number, distance, locale } from './i18n';
 import { appHint } from './apphint';
@@ -508,9 +508,10 @@ map.once('idle', () => { firstMap = false; });
 watchTiles(map, overlay, () => firstMap && !map.isMoving());
 overlay.job('engine', 0, ENGINE_UNITS, 'engine', false);
 ready.then(() => overlay.finish('engine'), () => overlay.remove('engine'));
-// the window's own engine (waitengine.ts): a second instance of the Wasm engine on this thread, once the first is in
-ready.then(() => loadWaitEngine(base, lang));
-(window as unknown as { __wait: unknown }).__wait = { ready: waitEngineReady, now: () => overlay.now, beside: () => beside.shown }; // for the browser tests
+// the window's own engine (waitengine.ts): a second instance of the Wasm engine on this thread, from the start – the
+// page's first map waits for it (the browser's HTTP cache serves the one download to both)
+void loadWaitEngine(base, lang);
+(window as unknown as { __wait: unknown }).__wait = { loadMs: () => waitLoadMs, ready: waitEngineReady, now: () => overlay.now, beside: () => beside.shown }; // for the browser tests
 // a shared link: its routing data is not known before the engine read the link – a share of the bar until then
 if (/[#&?]p=/.test(location.href)) overlay.job('link', 0, LINK_UNITS, 'routing');
 if (areas) {

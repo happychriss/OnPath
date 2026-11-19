@@ -69,6 +69,8 @@ export class LoadOverlay {
   private since = 0;
   /** The engine's WebWait got this wait's learned shares (the engine may load while a first wait runs). */
   private started = false;
+  /** A new wait takes the window over that is up (a map area joined a wait that had none). */
+  private carry = false;
   private el: HTMLElement | null = null;
 
   /**
@@ -104,7 +106,8 @@ export class LoadOverlay {
     const open = (l: AreaIn[]) => l.some((a) => a.state !== 'ready' && a.state !== 'failed');
     // a map area to prepare joins a wait that had none (the page's first map, tiles): a wait of its own – its
     // „vorbereiten“ step would otherwise stand before steps already done (the app's MapWait is one per place)
-    if (this.active && open(list) && !open(this.areaList)) { this.end(false); this.dismissed = false; }
+    // A window already up stays up (no gap, no second window: the user sees one wait) and its number never goes back
+    if (this.active && open(list) && !open(this.areaList)) { this.carry = this.visible; this.end(false); this.dismissed = false; }
     this.areaList = list;
     this.update();
   }
@@ -139,10 +142,14 @@ export class LoadOverlay {
 
   private begin() {
     // the last wait's full bar still shows: it goes now – the new wait gets its own window (never 100 → 0 in one)
-    if (this.visible) { clearTimeout(this.hideTimer); this.hideTimer = 0; this.hide(); }
+    const carry = this.carry && this.visible;
+    this.carry = false;
+    if (this.visible && !carry) { clearTimeout(this.hideTimer); this.hideTimer = 0; this.hide(); }
     this.active = true;
     this.since = performance.now();
-    this.ui = null; this.fallbackPct = 0; this.drawn = 0; this.started = false;
+    // a carried window keeps its picture and its number until the new wait's first tick (never back from it)
+    if (!carry) { this.ui = null; this.drawn = 0; }
+    this.fallbackPct = this.drawn; this.started = false;
     this.tick();
     this.tickTimer = window.setInterval(() => this.tick(), TICK_MS);
   }
@@ -158,7 +165,7 @@ export class LoadOverlay {
     this.areaList = this.areaList.filter((a) => a.state !== 'ready' && a.state !== 'failed');
     if (finished) writeProgress({ shares: r.shares, check: r.check, part: r.part });
     for (const [id, j] of this.jobs) if (j.done >= j.total) this.jobs.delete(id);
-    if (!this.visible) return;
+    if (!this.visible || this.carry) return;
     if (finished && (r.full || this.ui)) {
       this.ui = r.full ?? { ...this.ui!, percent: 100, line: null, late: false };
       this.draw();

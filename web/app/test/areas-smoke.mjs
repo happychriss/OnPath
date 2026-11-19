@@ -125,11 +125,18 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   const { page, ctx, server, log } = await open({ geolocation: { ...MUNICH, accuracy: 20 }, permissions: ['geolocation'] }, '11.16,46.67,12',
     { maps: (req) => { if (req.method === 'POST') ids.push(req.headers.get('x-onpath-browser')); return handleMaps(req, { MAP_KEY: 'k', DOORMAN: doorman }); } });
   await page.click('#locate');
+  // what the page did meanwhile, for a failure message (CI: the window late on two cores)
+  await page.evaluate(() => { window.__bLog = []; const t0 = performance.now(); window.__bTimer = setInterval(() => {
+    const w = document.getElementById('waitwin');
+    const s = `win=${!!w} rows=${w?.querySelectorAll('.wwsteps li').length ?? 0} title=${w?.querySelector('.wwtitle')?.textContent ?? ''} engine=${window.__wait.ready()}/${window.__wait.loadMs()} strip=${document.getElementById('mapnotes').innerText.slice(0, 40)} moving=${window.__map.isMoving()}`;
+    if (window.__bLog.at(-1)?.s !== s) window.__bLog.push({ t: Math.round(performance.now() - t0), s }); }, 100); });
   const win = () => page.evaluate(() => { const w = document.getElementById('waitwin'); return w ? { title: w.querySelector('.wwtitle').textContent, pct: +w.dataset.pct,
     rows: [...w.querySelectorAll('.wwsteps li')].map((l) => l.className + ':' + l.textContent), line: w.querySelector('.wwline').textContent } : null; });
   const came = await page.waitForFunction(() => !!document.getElementById('waitwin') && document.querySelectorAll('#waitwin .wwsteps li').length > 0, null, { timeout: 30_000 }).then(() => true, () => false);
   const w1 = await win();
   check(came && w1?.title === 'Map for your area' && w1.rows[0] === 'now:being prepared', `the own area is requested: the wait window ${JSON.stringify(w1)}`);
+  const bLog = await page.evaluate(() => { clearInterval(window.__bTimer); return window.__bLog; });
+  if (!came) console.log('(page: ' + bLog.map((x) => `${x.t} ${x.s}`).join('\n       ') + ')');
   check(!(await strip(page)).includes('Preparing map'), 'one wait: no strip line beside the window');
   const left = await page.waitForFunction(() => /minutes? left/.test(document.querySelector('#waitwin .wwline')?.textContent ?? ''), null, { timeout: 10_000 }).then(() => true, () => false);
   check(left, `the time left from the server's estimate ("${(await win())?.line}")`);
@@ -231,8 +238,13 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   // the route's fit zooms in where no detailed map is yet: the user then waits for it (form A, the app's
   // MapLoadWait – a job while the view has no detailed map); zoomed out the view has its map – A turns into B by itself
   await page.waitForFunction(() => window.__state.plan && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
-  await page.waitForTimeout(1500);
-  await page.evaluate(() => window.__map.jumpTo({ zoom: 9 }));
+  // the route's fit first (it may come late on a slow machine – CI's two cores), then out to zoom 9, and stay there
+  await page.waitForFunction(() => window.__map.getZoom() >= 10 && !window.__map.isMoving(), null, { timeout: 30_000 }).catch(() => {});
+  for (let k = 0; k < 5; k++) {
+    await page.evaluate(() => window.__map.jumpTo({ zoom: 9 }));
+    await page.waitForTimeout(1500);
+    if (await page.evaluate(() => window.__map.getZoom() < 10 && !window.__map.isMoving())) break;
+  }
   const came = await page.waitForFunction(() => window.__wait.beside() >= 0, null, { timeout: 60_000 }).then(() => true, () => false);
   const pcts = [];
   for (let k = 0; k < 12; k++) { pcts.push(await page.evaluate(() => window.__wait.beside())); await page.waitForTimeout(1000); } // the page polls every 5 s at the most

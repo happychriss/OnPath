@@ -117,8 +117,8 @@ if (flag('--probe')) {
 /** The words the picture must show, checked in the page's text (DE / EN) – a missing word stops the run. Nothing half
  *  on screen either: no wait box or routing message left over. */
 async function expectWords(page, words, name) {
-  // a map note (map loading …) or a wait box goes by itself: wait for it, then none may be left
-  const notes = () => [...document.querySelectorAll('#mapnotes .mapnote, #msgcards .msgcard.busy')].filter((c) => c.offsetParent && !c.hidden)
+  // a map note, the wait window (form A) or a wait box goes by itself: wait for it, then none may be left
+  const notes = () => [...document.querySelectorAll('#mapnotes .mapnote, #msgcards .msgcard.busy, #waitwin')].filter((c) => (c.offsetParent || c.id === 'waitwin') && !c.hidden)
     .map((c) => c.innerText.replace(/\s+/g, ' '));
   await page.waitForFunction(`(${notes})().length === 0`, null, { timeout: 60_000 }).catch(() => {});
   const left = await page.evaluate(notes);

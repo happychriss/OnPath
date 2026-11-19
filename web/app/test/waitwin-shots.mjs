@@ -75,8 +75,13 @@ for (const lang of ['de', 'en']) {
       activity: 'BIKE_TOURING', sac: 2, pinned: [], names: {}, title: null }));
     await p.evaluate((cd) => { location.hash = 'p=' + cd; }, code);
     await p.waitForFunction(() => window.__state.plan && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
-    await p.waitForTimeout(1500);
+  // the route's fit first (it may come late on a slow machine – CI's two cores), then out to zoom 9, and stay there
+  await p.waitForFunction(() => window.__map.getZoom() >= 10 && !window.__map.isMoving(), null, { timeout: 30_000 }).catch(() => {});
+  for (let k = 0; k < 5; k++) {
     await p.evaluate(() => window.__map.jumpTo({ zoom: 9 }));
+    await p.waitForTimeout(1500);
+    if (await p.evaluate(() => window.__map.getZoom() < 10 && !window.__map.isMoving())) break;
+  }
     const came = await p.waitForFunction(() => window.__wait.beside() > 0, null, { timeout: 60_000 }).then(() => true, () => false);
     if (!came) { bad++; console.log(`FAIL ${lang} ${name}: no sign beside the map`); await c.close(); continue; }
     await p.waitForTimeout(1200);

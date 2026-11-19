@@ -200,13 +200,13 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const t0 = Date.now();
   const box = await p.waitForSelector('#waitwin .wwcancel', { timeout: 30_000 }).then(() => true, () => false);
   const at = Date.now() - t0;
-  const card = box ? await p.evaluate(() => { const c = document.getElementById('waitwin'), r = c.getBoundingClientRect(),
+  const card = box ? await p.evaluate(() => { const c = document.getElementById('waitwin'); if (!c) return null; const r = c.getBoundingClientRect(),
     sheet = document.getElementById('sheet').getBoundingClientRect();
     return { text: c.textContent, bar: !!c.querySelector('.wwbar > i'), pct: c.querySelector('.wwpct').textContent, rows: c.querySelectorAll('.wwsteps li').length,
       cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth, clock: document.getElementById('status').classList.contains('busy') }; }) : null;
-  check(box && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area/.test(card.text),
+  check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area/.test(card.text),
     `the wait window: title, bar, "${card?.pct}", ${card?.rows} rows, Cancel ("${card?.text}")`);
-  check(box && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
+  check(box && !!card && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
   await p.click('#waitwin .wwcancel');
   await p.waitForFunction(() => !document.getElementById('waitwin') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
   const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
