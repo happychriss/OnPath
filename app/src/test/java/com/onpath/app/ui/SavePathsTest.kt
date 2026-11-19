@@ -48,7 +48,7 @@ class SavePathsTest {
         assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
         // the plan saved at Los geht's and unchanged is no draft (it is in My routes); changed on the way → Zuletzt
         assertFalse(Drafts.keeps(points = 2, unsaved = false)); assertTrue(Drafts.keeps(points = 2, unsaved = true))
-        assertTrue("a mode switch still closes Save's dialog", vm.contains("if (save.ask != null) save.cancel()"))
+        // a mode switch closes Save's dialog: TourSessionFlowTest.enteringAModeClosesSavesDialogAndTheHintsBeforeAnythingElse (piece 19; the old source line is gone)
     }
 
     /**

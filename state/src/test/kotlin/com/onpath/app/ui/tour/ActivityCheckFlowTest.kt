@@ -203,6 +203,7 @@ class ActivityCheckFlowTest {
 
     private val tourId = db.insertTour(TourKind.RECORDED, "Tour", "HIKE", 2, state = "active")
     private val rows = object : TourRows {
+        override fun findActiveRecording(): com.onpath.app.data.Tour? = error("the activity check does not look for an active tour")
         override fun updateActivity(id: Long, activity: String, sac: Int) {
             check(inIo) { "TourRows.updateActivity must run on the io thread" }
             log += "updateActivity($id, $activity, T$sac)"

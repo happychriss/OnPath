@@ -20,7 +20,8 @@ class PlanAutoSaveTest {
     @Test fun aSavedPlanChangedSinceUpdatesTheOriginal() =
         assertEquals(PlanAutoSave.AtStart.SAVE_OVERWRITE, PlanAutoSave.atStart(points = 3, unsaved = true, changesASavedPlan = true))
 
-    private val vm = File("../app/src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+    // the start moved to the tour session slice (piece 19); the flow is :state TourSessionFlowTest.losGehtsOnAPlanFollowsItSecuresTheCorridorSavesThenSendsSTART
+    private val vm = File("../state/src/main/kotlin/com/onpath/app/ui/tour/TourSession.kt").readText()
 
     @Test fun losGehtsSavesTheNewPlan() =
         assertTrue(vm.contains("PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); save.atTourStart() }"))

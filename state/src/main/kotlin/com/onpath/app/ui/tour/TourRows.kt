@@ -9,6 +9,9 @@ import com.onpath.app.rides.RideStore
  * with named arguments (pinned in `TourWiringTest`); tests implement it over the JDBC tables (`JdbcTours`).
  */
 interface TourRows {
+    /** The tour still marked as recording (a restart mid-tour; piece 19's start-up check), null = none. */
+    fun findActiveRecording(): com.onpath.app.data.Tour?
+
     /** The activity switched during a recording: stored on the tour row (activity name, T level). */
     fun updateActivity(id: Long, activity: String, sac: Int)
 

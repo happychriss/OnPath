@@ -59,6 +59,7 @@ class TourWiringTest {
             "override fun updateActivity(id: Long, activity: String, sac: Int) = db.updateActivity(tourId = id, activity = activity, sac = sac)",
             "db.updateStats(tourId = id, distance = distance, ascent = ascent, descent = descent, duration = duration, state = state)",
             "override fun setDeleted(id: Long, deletedMs: Long?) = db.setDeleted(id = id, deletedMs = deletedMs)",
+            "override fun findActiveRecording() = db.findActiveRecording()",
             "override fun setTourPlan(id: Long, plan: com.onpath.app.data.TourPlan) = db.setTourPlan(tourId = id, plan = plan)",
             "override fun rides(): com.onpath.app.rides.RideStore = com.onpath.app.rides.TourDbRides(db)",
         )) assertTrue("the adapter says: $line", rowsAdapter.replace(Regex("\\s+"), " ").contains(line))
@@ -164,7 +165,7 @@ class TourWiringTest {
             "say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,",
         )) assertTrue("the constructor says: $line", end.contains(line))
         assertTrue(vm.contains("val tour = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))"))
-        assertEquals("one view model scope for the end, the main part is named", 1, count(vm, "main = Dispatchers.Main,"))
+        assertEquals("the end and the session (piece 19) name the main part, nothing else does", 2, count(vm, "main = Dispatchers.Main,"))
     }
 
     /** Each host call hands over to the member the old body used, with the old arguments (each on the thread the slice calls it on). */
@@ -235,10 +236,11 @@ class TourWiringTest {
         val init = bigInit
         assertTrue("inside the big init, as its last statement", init.trimEnd().endsWith("        tourEnd.start()"))
         val before = init.substringBefore("tourEnd.start()")
-        assertTrue("right after the state collector (only its one comment line between)",
-            before.substringBeforeLast("        // the tour's end").trimEnd().endsWith("syncNavActivity(n.session)\n            }\n        }"))
-        assertEquals("the collectors before it, in their old order: start-up check, left-over line, startFailed, state",
-            listOf("recording.startFailed.collect", "recording.state.collect"), Regex("recording\\.(startFailed|state)\\.collect").findAll(before).map { it.value }.toList())
+        // piece 19: the start-up work, the startFailed and the state collector are the session's now (`tourSession.start()` stands where they stood, right
+        // before the one comment line of the end collector); the old order of the two collectors is the slice's (TourSessionWiringTest part below)
+        assertTrue("right after the session's start (only the end collector's one comment line between)",
+            before.substringBeforeLast("        // the tour's end").trimEnd().endsWith("tourSession.start()"))
+        assertEquals("no collector of the service's state left in the big init", 0, count(before, ".collect"))
         assertEquals("no finished collector in the view model any more", 0, count(vm, "recording.finished"))
         assertEquals("the one collector of `finished` is the slice's", 1, count(endSlice, "recording.finished.collect"))
         val at = vm.indexOf("    init {\n        recalc()\n")
@@ -341,27 +343,26 @@ class TourWiringTest {
             "val followName: String? get() = tourFollow.followName",
             "private val followIsTrack: Boolean get() = tourFollow.followIsTrack",
             "val planGuides: Boolean get() = tourFollow.planGuides",
-            "private fun planFollowed(planLine: List<GeoPoint>?): Boolean = tourFollow.planFollowed(planLine)",
-            "private fun planReplacesTrack(): Boolean = tourFollow.planReplacesTrack()",
-            "private fun syncNavActivity(s: NavSession?) = tourFollow.syncNavActivity(s)",
             "private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)",
             "fun followPlanned(checkNow: Boolean = false) = tourFollow.followPlanned(checkNow)",
             "fun followShown() = tourFollow.followShown()",
             "var followLine: List<GeoPoint>? get() = tourFollow.followLine private set(v) { tourFollow.followLine = v }",
-            "private var navVersion: Int get() = tourFollow.navVersion set(v) { tourFollow.navVersion = v }",
             "private var followFromPlan: Boolean get() = tourFollow.followFromPlan set(v) { tourFollow.followFromPlan = v }",
             "var guidanceEndedByEmptyPlan: Boolean get() = tourFollow.guidanceEndedByEmptyPlan private set(v) { tourFollow.guidanceEndedByEmptyPlan = v }",
             "private var planBaseline: List<GeoPoint>? get() = tourFollow.planBaseline set(v) { tourFollow.planBaseline = v }",
-            "private var navActivitySeen: Activity? get() = tourFollow.navActivitySeen set(v) { tourFollow.navActivitySeen = v }",
         )) assertEquals("the view model says: $line", 1, count(all, line))
         assertEquals(1, count(vm, "\n    fun clearFollow() = tourFollow.clearFollow()\n"))
         // the forwards only the moved plan-edit code used went with it (piece 18b): the slice calls the follow slice itself
         for (gone in listOf("private val followOriginal", "private fun recopyFollowedPlan", "private fun copyFollowedPlan", "private fun setFollow",
-            "private fun followAgain", "tourFollow.followAgain(")) assertEquals("gone from the view model: $gone", 0, count(vm, gone))
-        // the state collector of piece 19 keeps its lines (P21 pins them): it reads / writes through the forwarders
-        assertTrue(vm.contains("val n = st?.nav ?: run { navActivitySeen = null; return@collect }"))
-        assertTrue(vm.contains("if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }"))
-        assertTrue(vm.contains("syncNavActivity(n.session)"))
+            "private fun followAgain", "tourFollow.followAgain(",
+            // piece 19: the state collector and the start / continue code were their last readers
+            "private fun planFollowed", "private fun planReplacesTrack", "private fun syncNavActivity", "private var navVersion", "private var navActivitySeen",
+        )) assertEquals("gone from the view model: $gone", 0, count(vm, gone))
+        // the state collector of piece 19 is the session's: it reads / writes the follow slice directly
+        val session = sourceFile("ui/tour/TourSession.kt").readText()
+        assertTrue(session.contains("val n = st?.nav ?: run { follow.navActivitySeen = null; return@collect }"))
+        assertTrue(session.contains("if (n.version != follow.navVersion) { follow.navVersion = n.version; if (followLine != n.line) follow.followLine = n.line }"))
+        assertTrue(session.contains("follow.syncNavActivity(n.session)"))
         // what is left of the old block in the view model is nothing but forwards: no file write, no plan copy, no token
         assertEquals("the files are written by the slice only", 0, count(vm, "followStore.appFollows") + count(vm, "followStore.appEnds"))
         assertEquals("no plan copy in the view model", 0, count(vm, "planCopy {") + count(vm, "tourPlanCopy"))
@@ -387,8 +388,9 @@ class TourWiringTest {
         // is that one declaration – no init, no launch, no collect, no start().
         val followEnd = vm.indexOf("\n    )\n", declared) + "\n    )\n".length
         val between0 = vm.substring(followEnd, initAt)
-        assertTrue("only the edits slice's declaration lies between",
-            between0.trim().startsWith("/**") && count(between0, "private val tourEdits: com.onpath.app.ui.tour.TourEdits = ") == 1)
+        assertTrue("only the edits slice's and (piece 19) the session's declarations lie between",
+            between0.trim().startsWith("/**") && count(between0, "private val tourEdits: com.onpath.app.ui.tour.TourEdits = ") == 1 &&
+                count(between0, "private val tourSession: com.onpath.app.ui.tour.TourSession = ") == 1)
         assertTrue("and it ends right before the init", between0.endsWith("\n    )\n\n"))
         for (bad in listOf("init {", "launch", ".collect", ".start(")) assertEquals("`$bad` between the follow slice and its init", 0, count(between0, bad))
         val bigAt = vm.indexOf("    init {\n        recalc()\n")
@@ -477,7 +479,7 @@ class TourWiringTest {
             "override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)",
             "override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }",
             "override fun closeShownTrack() = closeShown()",
-            "override fun resumeNavigation() = continueNavigation()",
+            "override fun resumeNavigation() = tourSession.continueNavigation()",
         )) assertTrue("the host says: $line", editsHost.contains(line))
         assertEquals("no Android class in the slice", 0, count(editsSlice, "android.") + count(editsSlice, "getApplication") + count(editsSlice, "Backups"))
     }
@@ -537,5 +539,146 @@ class TourWiringTest {
     /** Rule 1 stays the follow slice's: the edits slice never writes the follow files nor sends a command itself. */
     @Test fun theEditsSliceTellsTheServiceOnlyThroughTheFollowSlice() {
         assertEquals(0, count(editsSlice, "followChanged") + count(editsSlice, "files.") + count(editsSlice, "recording.send") + count(editsSlice, "recording.say"))
+    }
+    // ---------------- piece 19: the tour's session ----------------
+
+    private val sessionSlice = sourceFile("ui/tour/TourSession.kt").readText()
+    private val session get() = between("private val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(", "\n    )\n")
+    private val sessionHost get() = between("host = object : com.onpath.app.ui.tour.TourSessionHost {", "        },\n")
+
+    /** The slice gets the view model's own objects; the two waits are the slice's defaults (6 s, 1.5 s), the view model names none. */
+    @Test fun theSessionGetsTheViewModelsOwnObjects() {
+        for (line in listOf(
+            "plan = plan, planEdit = planEdit, planRun = planRun, planRoute = planRoute, save = save, map = map, tour = tour,",
+            "follow = tourFollow, recording = recording, rows = tourRows, tours = toursStore, followHistory = followHistory,",
+            "say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,",
+        )) assertTrue("the constructor says: $line", session.contains(line))
+        assertFalse("the waits are the slice's defaults", session.contains("startTimeoutMs") || session.contains("stickyWaitMs"))
+        assertTrue(sessionSlice.contains("private val startTimeoutMs: Long = 6_000L,"))
+        assertTrue(sessionSlice.contains("private val stickyWaitMs: Long = 1_500L,"))
+        assertEquals("one follow history, the edits slice's and the session's", 1, count(vm, "FollowHistory()"))
+    }
+
+    /** Each host call hands over to the member the old body used; the menus line is the old one, statement by statement, without `followMe`. */
+    @Test fun theSessionHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
+        val host = flat(sessionHost)
+        for (line in listOf(
+            "override val errorCard: String? get() = this@AppViewModel.errorCard",
+            "override val route: PlannedRoute? get() = this@AppViewModel.route",
+            "override var shown: ShownTrack? get() = this@AppViewModel.shown set(v) { this@AppViewModel.shown = v }",
+            "override val headingUp: Boolean get() = this@AppViewModel.headingUp",
+            "override val hasGpsFix: Boolean get() = tracker.location.value != null",
+            "override fun clearHints() { tapHoldHint = false; offlineInfo = false }",
+            "override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu(\"mode change to Navigate\"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }",
+            "override fun secureTourCorridor(line: List<GeoPoint>, last: GeoPoint?, activity: Activity) = mapData.secureTourCorridor(line, last, activity)",
+        )) assertTrue("the host says: $line", host.contains(line))
+        assertEquals("nothing of the Android world in the slice", 0, count(sessionSlice, "android.") + count(sessionSlice, "getApplication") + count(sessionSlice, "Backups"))
+        assertEquals("the fix is the tracker's own value, not the tour's last point (`myPosition`)", 0, count(sessionHost, "myPosition"))
+    }
+
+    /** The old names are one-line forwards (same signatures and defaults); the state objects are the slice's. */
+    @Test fun theSessionNamesForwardToTheSlice() {
+        val all = flat(vm)
+        for (line in listOf(
+            "val mode: AppMode get() = tourSession.mode",
+            "var navStartZoom: Double? get() = tourSession.navStartZoom set(v) { tourSession.navStartZoom = v }",
+            "var straightAsk: Boolean get() = tourSession.straightAsk set(v) { tourSession.straightAsk = v }",
+            "private fun enter(m: AppMode) = tourSession.enter(m)",
+            "fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) = tourSession.startNavigation(force, recordOnly)",
+            "fun straightConfirmed() = tourSession.straightConfirmed()",
+            "fun continueNavigation(force: Boolean = false) = tourSession.continueNavigation(force)",
+            "fun switchToPlan() = tourSession.switchToPlan()",
+            "fun startRecording() = tourSession.startRecording()",
+            "fun takeNewRoute(questionId: Int) = tourSession.takeNewRoute(questionId)",
+            "fun takeViaRoute(questionId: Int) = tourSession.takeViaRoute(questionId)",
+            "fun keepOriginalRoute(questionId: Int) = tourSession.keepOriginalRoute(questionId)",
+            "fun leadToStart(questionId: Int) = tourSession.leadToStart(questionId)",
+            "fun justRecord(questionId: Int) = tourSession.justRecord(questionId)",
+            "fun joinHere(questionId: Int) = tourSession.joinHere(questionId)",
+            "fun leadFailedOk(questionId: Int) = tourSession.leadFailedOk(questionId)",
+            "override fun resumeNavigation() = tourSession.continueNavigation()",
+        )) assertEquals("the view model says: $line", 1, count(all, line))
+        // what moved is gone from the view model (the forwards nobody uses any more went with it)
+        for (gone in listOf("private var startJob", "START_TIMEOUT_MS", "private fun secureTourCorridor", "private fun planHasStraightLegs", "private fun checkNow",
+            "private fun onArrived", "mutableStateOf(AppMode.PLAN)", "val straightAsk by", "recording.startFailed", "recording.state.collect", "recording.state.filterNotNull",
+            "unfinishedPending")) assertEquals("gone from the view model: $gone", 0, count(vm, gone))
+        assertEquals("one place sets the mode: the slice", 0, count(vm, " mode = "))
+    }
+
+    /**
+     * The start-up work keeps its place (tour paper risks 1 and 2): `recalc()` is the first statement of the big `init` and the plan
+     * is routed as "in Plan"; `tourSession.start()` stands after `refreshTours()` – where the left-over line check, the mode flip, the
+     * start-up check and the two collectors stood – and right before the end collector's `tourEnd.start()`, the last statement. Nothing
+     * else is launched in between, and everything the first pass of the `state` collector reads is declared above that `init`
+     * (`ViewModelInitOrderTest` also walks what the `init` reaches). The slice is declared right after the follow slice, above the
+     * edits slice and the small `init` (the edits host reaches it through `resumeNavigation`; the walk follows that edge) – what lies
+     * between the follow slice and the small `init` is these two declarations and nothing else.
+     */
+    @Test fun theStartUpWorkStartsWhereItAlwaysWasInTheBigInitAfterRecalc() {
+        assertEquals("started exactly once", 1, count(vm, "tourSession.start()"))
+        val init = bigInit
+        assertTrue("recalc() first", init.startsWith("    init {\n        recalc()\n"))
+        val at = { t: String -> assertEquals("once in the big init: $t", 1, count(init, t)); init.indexOf(t) }
+        assertTrue("refreshTours() before the session's start", at("        refreshTours()") < at("        tourSession.start()"))
+        assertTrue("the session before the end collector", at("        tourSession.start()") < at("        tourEnd.start()"))
+        val between = init.substring(at("        refreshTours()"), at("        tourSession.start()"))
+        for (bad in listOf("launch", ".collect", ".start(", "mode", "enter(")) assertEquals("`$bad` between refreshTours() and the session's start", 0, count(between.substringAfter("\n"), bad))
+        assertEquals("no collector and no launch left in the big init besides the slices'", 0, count(init, "launchSafe") + count(init, ".collect"))
+        val declared = vm.indexOf("private val tourSession: com.onpath.app.ui.tour.TourSession = ")
+        assertEquals(1, count(vm, "private val tourSession: com.onpath.app.ui.tour.TourSession = "))
+        for (dep in listOf("private val plan = ", "private val planEdit: ", "val planRun = ", "private val planRoute = ", "private val save = ", "private val map = ",
+            "val tour = ", "private val tourFollow = ", "private val recording: RecordingClient", "private val tourRows = ", "private val toursStore = ", "private val followHistory = ",
+            "val notices = ", "val tracker = LocationTracker(", "private val mapData by lazy")) {
+            assertEquals("declared once: $dep", 1, count(vm, dep))
+            assertTrue("$dep must be declared above the session", vm.indexOf(dep) < declared)
+        }
+        assertTrue("above the edits slice", declared < vm.indexOf("private val tourEdits: com.onpath.app.ui.tour.TourEdits = "))
+        assertTrue("above the big init", declared < vm.indexOf("    init {\n        recalc()\n"))
+    }
+
+    /**
+     * Where the slice's launches run and what sits between a decision and its command. Nothing names a dispatcher object; the start-up
+     * check runs on `io` by the launch's own context and returns to main by name; the hold (`unfinishedPending = true`) is set directly
+     * before that launch and the mode flip directly before the hold (the flows' held io cannot show a swap of these: a launch dispatched
+     * to a held executor runs after both either way – in the app io is a real thread, so a hold set AFTER the launch could be cleared
+     * before it was set); the start's decision (`followPlanned`, `save.atTourStart`, `START`) is one main turn.
+     */
+    @Test fun theSessionRunsOnTheThreadsItIsGivenAndTheStartIsOneMainTurn() {
+        assertFalse(sessionSlice.contains("init {"))
+        assertEquals(0, count(sessionSlice, "Dispatchers."))
+        assertEquals("the left-over check, the start-up check, startFailed, state, startJob", 5, count(sessionSlice, "scope.launchSafe("))
+        assertEquals(1, count(sessionSlice, "scope.launchSafe(\"app\", \"start-up work\", io) {"))
+        assertEquals(2, count(sessionSlice, ".collect"))
+        assertEquals("two returns to main by name, one non-cancellable", 2, count(sessionSlice, "withContext(main)"))
+        assertEquals(1, count(sessionSlice, "withContext(NonCancellable + main)"))
+        assertEquals("the left-over check's read is on io by name", 1, count(sessionSlice, "withContext(io) {"))
+        assertEquals("no GlobalScope, no own scope", 0, count(sessionSlice, "GlobalScope") + count(sessionSlice, "CoroutineScope("))
+        val sl = flat(sessionSlice)
+        assertTrue("the hold is set directly before the launch, the flip before it", sl.contains(
+            "if (recording.state.value != null) mode = AppMode.NAVIGATE // no new tour until this check has decided (TourController.canStartNew); cleared whatever happens – a stuck // flag would refuse every tour for good tour.unfinishedPending = true scope.launchSafe(\"app\", \"start-up work\", io) {"))
+        assertTrue("the hold is cleared in `finally`, non-cancellable", sl.contains("} finally { withContext(NonCancellable + main) { tour.unfinishedPending = false } }"))
+        val startBody = body(sessionSlice, "fun startNavigation(")
+        val decision = startBody.substringBefore("startJob?.cancel()")
+        for (bad in listOf("launch", "withContext(", "delay(")) assertFalse("`$bad` between the decision and START", decision.contains(bad))
+        assertTrue("follow, corridor, save, START in this order", flat(decision).contains("PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); save.atTourStart() }") &&
+            decision.indexOf("PlanStart.NAVIGATE_PLAN") < decision.indexOf("\n        startRecording()\n"))
+        assertTrue("the wait is cancelled by the next start only", startBody.contains("startJob?.cancel()\n        startJob = scope.launchSafe(\"app\", \"startNavigation\") {"))
+        assertEquals("startFailed does not cancel it (L4)", 0, count(body(sessionSlice, "fun start() {"), "startJob"))
+        for (fn in listOf("fun enter(m: AppMode) {", "fun continueNavigation(force: Boolean = false) {")) {
+            val b = body(sessionSlice, fn)
+            for (bad in listOf("launch", "withContext(", "delay(")) assertFalse("`$bad` inside $fn", b.contains(bad))
+        }
+        assertTrue("the mode is set first", body(sessionSlice, "fun enter(m: AppMode) {").contains("val was = mode\n        mode = m\n        host.clearHints()"))
+        assertTrue("the service is told last", body(sessionSlice, "fun enter(m: AppMode) {").trimEnd().endsWith("if (recState.value != null) recording.navigating(m == AppMode.NAVIGATE)"))
+        assertTrue("the decision, then Navigate last", body(sessionSlice, "fun continueNavigation(force: Boolean = false) {").trimEnd().endsWith("enter(AppMode.NAVIGATE)"))
+    }
+
+    /** The slice reads and starts nothing at construction: the state is plain `mutableStateOf` (initial values as before: Plan, no zoom, no question). */
+    @Test fun theSessionReadsAndStartsNothingAtConstruction() {
+        assertEquals(1, count(sessionSlice, "var mode by mutableStateOf(AppMode.PLAN)"))
+        assertEquals(1, count(sessionSlice, "var navStartZoom by mutableStateOf<Double?>(null)"))
+        assertEquals(1, count(sessionSlice, "var straightAsk by mutableStateOf(false)"))
+        assertFalse(sessionSlice.contains("snapshotFlow"))
+        assertEquals("only start() collects", 2, count(body(sessionSlice, "fun start() {"), ".collect"))
     }
 }

@@ -25,6 +25,8 @@ class JdbcTourRows(val db: JdbcTours, private val onCall: (String) -> Unit = {})
         if (failOn.remove(name)) throw java.sql.SQLException("database or disk is full ($name)")
     }
 
+    override fun findActiveRecording(): Tour? { gate("findActiveRecording"); return db.findActiveRecording() }
+
     override fun updateActivity(id: Long, activity: String, sac: Int) { gate("updateActivity"); db.updateActivity(id, activity, sac) }
 
     override fun updateStats(id: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String): Int {

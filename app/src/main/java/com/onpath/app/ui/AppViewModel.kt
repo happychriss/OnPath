@@ -266,13 +266,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** My routes' "☆ Favoriten" pill (owner 2026-11-13, favourites C): on = only the starred ones; kept while the app runs. */
     var routesFavouritesOnly = false
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
-    var mode by mutableStateOf(AppMode.PLAN)
-        private set
+    val mode: AppMode get() = tourSession.mode
     /**
      * Zoom the map takes when Navigate starts or locate is tapped in Navigate ([AppMode.navStartZoom],
      * [AppMode.locateZoom]); null once taken (then the user's zoom stays).
      */
-    var navStartZoom by mutableStateOf<Double?>(null)
+    var navStartZoom: Double?
+        get() = tourSession.navStartZoom
+        set(v) { tourSession.navStartZoom = v }
     /** Map taps may add, move or insert points (Plan with no track shown). */
     val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
     /** "You have arrived – end tour?" is open. */
@@ -1188,10 +1189,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var followLine: List<GeoPoint>?
         get() = tourFollow.followLine
         private set(v) { tourFollow.followLine = v }
-    /** Last navigation line version seen from the service ([com.onpath.app.ui.tour.TourFollow.navVersion]). */
-    private var navVersion: Int
-        get() = tourFollow.navVersion
-        set(v) { tourFollow.navVersion = v }
 
     // --- position / camera: the slice is `map` ([MapViewSlice]); the names below forward to it ---
     var followMe: Boolean
@@ -1368,6 +1365,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * name (pinned in `TourWiringTest`). Shared by the activity check (below), the tour's end and the follow.
      */
     private val tourRows = object : com.onpath.app.ui.tour.TourRows {
+        override fun findActiveRecording() = db.findActiveRecording()
         override fun updateActivity(id: Long, activity: String, sac: Int) = db.updateActivity(tourId = id, activity = activity, sac = sac)
         override fun updateStats(id: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String) =
             db.updateStats(tourId = id, distance = distance, ascent = ascent, descent = descent, duration = duration, state = state)
@@ -1409,6 +1407,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     )
 
     /**
+     * The tour's session ([com.onpath.app.ui.tour.TourSession] in `:state`, rebuild phase 2 piece 19): the mode and what entering
+     * one does, Start / Continue, the seven answers to the service's questions, and the start-up work with the collectors of the
+     * service's state (`startFailed`, `state`). Declared right after the follow slice (the edits slice's host reaches it through
+     * `resumeNavigation`, and `ViewModelInitOrderTest` follows that edge from the small `init`); the big `init` starts it
+     * ([com.onpath.app.ui.tour.TourSession.start]) at the place that code always stood. The names below forward to it.
+     */
+    private val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(
+        plan = plan, planEdit = planEdit, planRun = planRun, planRoute = planRoute, save = save, map = map, tour = tour,
+        follow = tourFollow, recording = recording, rows = tourRows, tours = toursStore, followHistory = followHistory,
+        host = object : com.onpath.app.ui.tour.TourSessionHost {
+            override val errorCard: String? get() = this@AppViewModel.errorCard
+            override val route: PlannedRoute? get() = this@AppViewModel.route
+            override var shown: ShownTrack?
+                get() = this@AppViewModel.shown
+                set(v) { this@AppViewModel.shown = v }
+            override val headingUp: Boolean get() = this@AppViewModel.headingUp
+            override val hasGpsFix: Boolean get() = tracker.location.value != null
+            override fun clearHints() { tapHoldHint = false; offlineInfo = false }
+            override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure("mode change to Navigate"); highlight = null }
+            override fun secureTourCorridor(line: List<GeoPoint>, last: GeoPoint?, activity: Activity) =
+                mapData.secureTourCorridor(line, last, activity)
+        },
+        say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,
+    )
+
+    /**
      * What a plan edit means for the tour ([com.onpath.app.ui.tour.TourEdits] in `:state`, rebuild phase 2 piece 18b): the passed
      * points, the split of an edit, the tour following the edited plan, the position → ahead route, the question "Route back to the
      * start?", one point left right here, a track followed during the tour. Declared between the follow slice and the small `init`
@@ -1427,7 +1451,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)
             override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
             override fun closeShownTrack() = closeShown()
-            override fun resumeNavigation() = continueNavigation()
+            override fun resumeNavigation() = tourSession.continueNavigation()
         },
         say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,
     )
@@ -1478,71 +1502,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         Problems.trace("plan", "Plan restored at app start: ${waypoints.size} points" +
             (followName?.let { ", following \"$it\" (${followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
         refreshTours() // "Load route" is enabled only when something is saved
-        // an empty plan with a followed line left and no tour in the database (Pixel 2026-11-01: a blue line without points
-        // that nothing could remove): the line goes – never while a tour is recording (the service may come back)
-        if (waypoints.isEmpty() && followLine != null && !followIsTrack) viewModelScope.launchSafe("app", "start-up work") {
-            val active = withContext(Dispatchers.IO) {
-                runCatching { db.findActiveRecording() != null }
-                    .onFailure { Problems.warn("db", "Active tour not checked at start; the followed line stays", it) }.getOrDefault(true)
-            }
-            if (!active && waypoints.isEmpty() && recState.value == null && followLine != null && !followIsTrack) {
-                Problems.trace("plan", "Empty plan, no tour: the followed line left from before is removed")
-                clearFollow()
-            }
-        }
-        // Set directly (enter() touches properties declared below); the check after the DB read
-        // calls enter() and so also tells a running service which mode we are in.
-        if (recording.state.value != null) mode = AppMode.NAVIGATE
-        // no new tour until this check has decided (TourController.canStartNew); cleared whatever happens – a stuck
-        // flag would refuse every tour for good
-        tour.unfinishedPending = true
-        viewModelScope.launchSafe("app", "start-up work", Dispatchers.IO) {
-            try {
-                val active = db.findActiveRecording()
-                val start = AppMode.onStart(recording.state.value != null, active != null)
-                withContext(Dispatchers.Main) { enter(start); startModeKnown = true }
-                if (active != null && recording.state.value == null) {
-                    delay(1500) // the service may be restarting by itself (sticky)
-                    if (recording.state.value == null) {
-                        // drawn behind the question, so the user sees which tour it is (field bug 2026-10-31: empty map)
-                        val line = runCatching { db.loadSegments(active.id).map { seg -> seg.map { GeoPoint(it.lat, it.lon) } } }
-                            .onFailure { Problems.warn("db", "Track of the unfinished tour could not be read – not drawn", it) }
-                            .getOrDefault(emptyList())
-                        withContext(Dispatchers.Main) { tour.showUnfinished(active, line) }
-                    }
-                }
-            } finally {
-                withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { tour.unfinishedPending = false }
-            }
-        }
-        // The service stopped by itself (permission gone, foreground refused, database broken): say why, in the app too.
-        viewModelScope.launchSafe("app", "start-up work") {
-            recording.startFailed.collect { why ->
-                if (why != null) { recording.startFailedSeen(); sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }
-            }
-        }
-        // Re-routing (service): follow the line the service navigates now (new route taken / original again).
-        viewModelScope.launchSafe("app", "start-up work") {
-            var saveFailedShown = false
-            var recordingSeen: Long? = null
-            recording.state.collect { st ->
-                if (st?.tourId != recordingSeen) {
-                    followHistory.clear() // Undo brings back a followed route only within its own tour
-                    if (st != null) Problems.trace("tour", "Tour ${st.tourId} recording (plan ${waypoints.size} points, " +
-                        (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
-                    else { Problems.trace("tour", "Tour $recordingSeen recording ended"); guidanceEndedByEmptyPlan = false }
-                    recordingSeen = st?.tourId
-                }
-                if (st?.saveFailed == true && !saveFailedShown) {
-                    saveFailedShown = true
-                    sayError(Txt.s(Res.string.msg_track_save_failing), NoticePlace.BACKGROUND)
-                } else if (st?.saveFailed == false) saveFailedShown = false
-                onArrived(st?.arrived == true)
-                val n = st?.nav ?: run { navActivitySeen = null; return@collect }
-                if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }
-                syncNavActivity(n.session)
-            }
-        }
+        // the start-up work of the tour session (its class comment names it), at the place that code always stood: after recalc()
+        tourSession.start()
         // the tour's end (the `finished` collector) – TourEndSlice, launched at the place the collector always was
         tourEnd.start()
     }
@@ -2503,27 +2464,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- modes: Plan <-> Navigate ----------------
 
-    /** Switches mode; the recording goes on either way, only off-route checks pause in Plan. */
-    private fun enter(m: AppMode) {
-        val was = mode
-        mode = m
-        tapHoldHint = false
-        offlineInfo = false
-        if (save.ask != null) save.cancel() // Save's dialog does not stay open behind another mode
-        // the start zoom of Navigate, once per start (owner); the map takes it when it follows
-        if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
-        else if (m != AppMode.NAVIGATE) navStartZoom = null
-        if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure("mode change to Navigate"); highlight = null; followMe = true }
-        // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
-        // map); north up stops following
-        else followMe = headingUp && followMe && tracker.location.value != null
-        // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
-        if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planSize = PlanSize.backInPlan(planSize, recState.value != null)
-        // Navigate → Plan (also the end of a tour): the plan in front, not the position (owner 2026-11-06, PlanCamera)
-        if (m == AppMode.PLAN && was == AppMode.NAVIGATE && waypoints.isNotEmpty())
-            showPlanWhole(if (recState.value == null) PlanCamera.Moment.TOUR_END else PlanCamera.Moment.FROM_NAVIGATE)
-        if (recState.value != null) recording.navigating(m == AppMode.NAVIGATE)
-    }
+    /** Switches mode; the recording goes on either way ([com.onpath.app.ui.tour.TourSession.enter]). */
+    private fun enter(m: AppMode) = tourSession.enter(m)
 
     /**
      * Plan's primary action (location permission is checked by the caller). Follows the shown track, else the planned
@@ -2531,82 +2473,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     /**
      * [recordOnly]: ☰ → "Nur aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
-     * nothing is followed, the plan stays as it is.
+     * nothing is followed, the plan stays as it is ([com.onpath.app.ui.tour.TourSession.startNavigation]).
      */
-    fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) {
-        if (recState.value != null) { continueNavigation(force); return }
-        // an interrupted tour still checked / asked about: its question decides first (TourController.canStartNew) –
-        // nothing started, the plan untouched; the question shows or is already there
-        if (!tour.canStartNew) { Problems.trace("tour", "Tour start held: an interrupted tour is still checked / asked about"); return }
-        val s = shown
-        if (!recordOnly && s == null && !force && planHasStraightLegs()) { straightAsk = true; return }
-        // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
-        when (if (recordOnly) PlanStart.RECORD_ONLY else PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
-            PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
-            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); save.atTourStart() }
-            // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
-            // A shown track without a line closes, like ☰ → Start recording.
-            PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
-        }
-        startRecording()
-        // Navigate only once the service really records (R-01): a refused foreground service, a missing
-        // permission or a broken database must not leave the user in Navigate with nothing being recorded.
-        startJob?.cancel()
-        startJob = viewModelScope.launchSafe("app", "startNavigation") {
-            val started = withTimeoutOrNull(START_TIMEOUT_MS) { recording.state.filterNotNull().first() } != null
-            if (started) enter(AppMode.NAVIGATE)
-            else if (errorCard == null) sayError(Txt.s(Res.string.msg_recording_not_started), NoticePlace.MAP)
-        }
-    }
-
-    private var startJob: Job? = null
-
-    /**
-     * A tour starts on the plan's route (F-OFF-02 "started route", owner: "new route – even without signal"): map areas
-     * and routing parts of its corridor (hike 10 km, bike 20 km either side – OfflineCorridor) still missing – loading
-     * cancelled, server failed, waited – are asked for again, quietly (background chip; Wi-Fi-only rule as for the plan).
-     * Geometry off the main thread.
-     */
-    private fun secureTourCorridor() {
-        val line = route?.points?.takeIf { it.size >= 2 } ?: return
-        val pts = waypoints.toList()
-        mapData.secureTourCorridor(line, pts.lastOrNull(), activity) // a round trip closes at its ①
-    }
-
-    /** How long Start waits for the service's first state before saying that recording did not start. */
-    private val START_TIMEOUT_MS = 6_000L
+    fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) = tourSession.startNavigation(force, recordOnly)
 
     /** A plan with legs the router could not find (drawn dashed): "Navigate anyway?" is open. */
-    var straightAsk by mutableStateOf(false)
-
-    private fun planHasStraightLegs(): Boolean =
-        (!followIsTrack || planReplacesTrack()) && waypoints.size >= 2 && route?.legs?.any { it.straight } == true
-
-    /** A followed track and a plan edited since: Continue follows the plan, the track is drawn grey (owner). */
-    private fun planReplacesTrack(): Boolean = tourFollow.planReplacesTrack()
+    var straightAsk: Boolean
+        get() = tourSession.straightAsk
+        set(v) { tourSession.straightAsk = v }
 
     /** The user wants to navigate the plan although parts of it are straight lines. */
-    fun straightConfirmed() { straightAsk = false; startNavigation(force = true) }
+    fun straightConfirmed() = tourSession.straightConfirmed()
 
-    /**
-     * Back to Navigate while a tour runs (no new recording). The plan's waypoints are **not** changed (owner):
-     * when the plan was edited, its route becomes the new navigation session; otherwise the running session (and a
-     * new route already taken) stays. Either way the service checks the next fix at once and, when the user is away
-     * from the line, asks the same "Take new route / Keep original" question as when leaving the route.
-     */
-    fun continueNavigation(force: Boolean = false) {
-        if ((!followIsTrack || planReplacesTrack()) && waypoints.size >= 2) {
-            val planLine = if (routing) null else route?.points
-            // an edited plan with straight legs would become the navigated line: ask first (same as Start)
-            if (!force && planLine != null && !planFollowed(planLine) && planHasStraightLegs()) { straightAsk = true; return }
-            when {
-                planLine != null && !planFollowed(planLine) -> followPlanned(checkNow = true)
-                routing -> { routeEvent(RouteRun.Event.FollowNext) } // follows the plan when the result is there
-                else -> checkNow()
-            }
-        } else checkNow()
-        enter(AppMode.NAVIGATE)
-    }
+    /** Back to Navigate while a tour runs, no new recording ([com.onpath.app.ui.tour.TourSession.continueNavigation]). */
+    fun continueNavigation(force: Boolean = false) = tourSession.continueNavigation(force)
 
     /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
     val planGuides: Boolean get() = tourFollow.planGuides
@@ -2618,38 +2498,34 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun trackLook(): com.onpath.app.map.MapController.TrackLook =
         gpxLine(mode == AppMode.NAVIGATE, shown?.segments, followLine).look
 
-    private fun checkNow() {
-        if (recState.value != null && followLine != null) recording.checkNow()
-    }
-
     /** Off-route question in Navigate: take the new route the service found. */
-    fun takeNewRoute(questionId: Int) = recording.takeRoute(questionId)
+    fun takeNewRoute(questionId: Int) = tourSession.takeNewRoute(questionId)
 
     /** "Off route – re-plan?" in Navigate – Yes: take the new route via the stop in question. */
-    fun takeViaRoute(questionId: Int) = recording.takeVia(questionId)
+    fun takeViaRoute(questionId: Int) = tourSession.takeViaRoute(questionId)
 
     /** Off-route question in Navigate: keep following the original route. */
-    fun keepOriginalRoute(questionId: Int) = recording.keepRoute(questionId)
+    fun keepOriginalRoute(questionId: Int) = tourSession.keepOriginalRoute(questionId)
 
     /** "Route starts 31 km away" (never on the route yet) – Guide me: a route from here via the start and all points. */
-    fun leadToStart(questionId: Int) = recording.leadThere(questionId)
+    fun leadToStart(questionId: Int) = tourSession.leadToStart(questionId)
 
     /** "Route starts 31 km away" – Just record: quiet until the route is reached. */
-    fun justRecord(questionId: Int) = recording.justRecord(questionId)
+    fun justRecord(questionId: Int) = tourSession.justRecord(questionId)
 
     /** "Du stehst mitten auf der Route" – Hier einsteigen: start here, the points before count as passed (owner 2026-11-03). */
-    fun joinHere(questionId: Int) = recording.joinHere(questionId)
+    fun joinHere(questionId: Int) = tourSession.joinHere(questionId)
 
     /** OK on "No way to the route found – recording continues". */
-    fun leadFailedOk(questionId: Int) = recording.leadFailedOk(questionId)
+    fun leadFailedOk(questionId: Int) = tourSession.leadFailedOk(questionId)
 
     // ---------------- activity check while navigating (owner: a wrong activity is a disaster) ----------------
 
     /**
      * The activity check ([com.onpath.app.ui.tour.ActivityCheckSlice] in `:state`, rebuild phase 2 piece 16b): the sheet, the
      * row routing on its own thread, what a found switch does. The service gets its one command through [recording] (the
-     * proposal file first, [followStore]); the names below forward to it. The follow state ([navActivitySeen],
-     * [planBaseline], [syncNavActivity]) stays here (piece 18a).
+     * proposal file first, [followStore]); the names below forward to it. The follow state lives in
+     * [tourFollow] (piece 18a).
      */
     private val activityCheckSlice = com.onpath.app.ui.tour.ActivityCheckSlice(
         planRoute = planRoute, recording = recording, follow = followStore,
@@ -2677,13 +2553,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = tourFollow.planBaseline
         set(v) { tourFollow.planBaseline = v }
 
-    /** Session activity last seen from the service (switch taken → the app follows) ([com.onpath.app.ui.tour.TourFollow.navActivitySeen]). */
-    private var navActivitySeen: Activity?
-        get() = tourFollow.navActivitySeen
-        set(v) { tourFollow.navActivitySeen = v }
-
-    private fun planFollowed(planLine: List<GeoPoint>?): Boolean = tourFollow.planFollowed(planLine)
-
     /** Opens the sheet with every other activity, nothing routed yet ([com.onpath.app.ui.tour.ActivityCheckSlice.openActivityCheck]). */
     fun openActivityCheck() = activityCheckSlice.openActivityCheck()
 
@@ -2696,11 +2565,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
     fun closeActivityCheck() = activityCheckSlice.closeActivityCheck()
 
-    /** The service navigates another activity now (switch taken, also from the notification): the app follows. */
-    private fun syncNavActivity(s: NavSession?) = tourFollow.syncNavActivity(s)
-
     /** The slide switch in Navigate. Recording continues. */
-    fun switchToPlan() = enter(AppMode.PLAN)
+    fun switchToPlan() = tourSession.switchToPlan()
 
     // ---- the tour's end: TourEndSlice (rebuild phase 2 piece 17); the names forward to it ----
 
@@ -2746,7 +2612,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The service found the end of the followed line (RecState.arrived, review H2 – also with the phone in the pocket;
      * it says "arrived" itself): the arrival question once per arrival this app instance sees.
      */
-    private fun onArrived(arrived: Boolean) = tour.onArrived(arrived)
 
     // ---------------- follow / record ----------------
 
@@ -2760,13 +2625,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun clearFollow() = tourFollow.clearFollow()
 
-    fun startRecording() {
-        Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +
-            (if (followLine != null) "following ${followName ?: "a route"}" else "nothing followed") + ")")
-        tour.start(activity.name, sac)
-        // no followMe here: in Plan it briefly turned the map with the compass before Navigate took over (owner
-        // 2026-11-07: the map never turns by itself) – entering Navigate starts the following
-    }
+    fun startRecording() = tourSession.startRecording()
 
     /** Any answer in "Unfinished tour" ends the "Tour interrupted" notification (Meran pictures bug 2). */
     private fun clearInterruptedNote() = com.onpath.app.recording.TourInterruptedReceiver.cancelNote(getApplication())

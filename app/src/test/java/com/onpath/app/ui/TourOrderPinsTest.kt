@@ -7,10 +7,10 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * The order of the tour's statements in `AppViewModel.kt`, pinned as source text until the tour pieces 16b–19 move the
- * functions (docs/design/umbau-phase-2-tour.md §3 = the 36 order rules, §4.2 = these pins P1–P22). The tour code cannot
- * run on the JVM, so no behaviour test sees a swap of two lines in it – and the one thing a swap breaks is a tour: the
- * guidance follows the old route, a finished tour is handled twice, the service is told before the file it must read.
+ * The order of the tour's statements in `AppViewModel.kt`, pinned as source text until the tour pieces 16b–19 moved the
+ * functions (docs/design/umbau-phase-2-tour.md §3 = the 36 order rules, §4.2 = these pins P1–P26). The tour code cannot
+ * run on the JVM, so no behaviour test saw a swap of two lines in it. All the tour pieces are out of the view model now and
+ * their flows prove the rules; what is left here is P25 and P26, two code lines that stay in the view model (reasons at the end).
  *
  * A pin = a scope (from an anchor to an anchor, both found exactly once) and texts that must occur in that order inside
  * it (each exactly once, unless written [last]). Every pin is deleted in the piece that moves its function and replaced
@@ -58,11 +58,6 @@ class TourOrderPinsTest {
                 "If this order breaks the user sees: $broken", found[i - 1].second < found[i].second)
     }
 
-    /** [text] is the last statement of the scope's body. */
-    private fun endsWith(pin: String, rule: String, scope: String, text: String, broken: String) =
-        assertTrue("$pin, rule $rule: `$text` must be the LAST statement of the function. If this breaks the user sees: $broken",
-            scope.trimEnd().endsWith(text))
-
     // ---- P1–P3 (the follow files are written before the command: rules 1, 18, 19, 20) and P13–P15 (the plan the tour follows:
     // ---- rules 21, 25) are gone: piece 18a moved the functions to TourFollow and TourFollowFlowTest proves each rule on the real
     // ---- slice (the commit message maps pin -> flow -> proof) ----
@@ -95,72 +90,11 @@ class TourOrderPinsTest {
         "asked = ask",
         "tracker.setFusedWanted(ask)")
 
-    // ---- P19–P22: start, start-up, the service's answers, mode, continue (rules 2–6, 13, 14, 15, 22) ----
+    // ---- P19–P22 (start, start-up, the service's two collectors, enter, continue: rules 2–6, 13, 14, 15, 22) are gone: piece 19 moved
+    // ---- the functions to TourSession and TourSessionFlowTest proves each rule on the real slice (the commit message maps pin -> flow
+    // ---- -> proof; the orders no flow can see are named in TourWiringTest) ----
 
-    @Test fun p19_startNavigation_guardsThenWhatIsFollowedThenSTARTThenWaitThenNavigate() {
-        ordered("P19", "2, 3", scope("P19", "fun startNavigation(", BLOCK_END),
-            "a second tour beside the interrupted one; a tour that follows nothing; the plan not saved at \"Los geht's\"; Navigate with nothing recorded, or never in Navigate",
-            "if (recState.value != null) { continueNavigation(force); return }",
-            "if (!tour.canStartNew)",
-            "straightAsk = true; return",
-            "PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); save.atTourStart() }",
-            "startRecording()",
-            "startJob?.cancel()",
-            "withTimeoutOrNull(START_TIMEOUT_MS) { recording.state.filterNotNull().first() }",
-            "if (started) enter(AppMode.NAVIGATE)",
-            "else if (errorCard == null) sayError(Txt.s(Res.string.msg_recording_not_started), NoticePlace.MAP)")
-        assertEquals("P19 (rule 3): the six-second wait", 1, count(src, "private val START_TIMEOUT_MS = 6_000L"))
-    }
-
-    @Test fun p20_theStartUpWork_modeStaysPlanThroughRecalcThenTheCheckInItsOrder() = ordered("P20", "4, 5, 6",
-        scope("P20", "    init {\n        recalc()", "// The service stopped by itself"),
-        "the stored plan is routed as \"not in Plan\"; a new tour beside an interrupted one; the \"interrupted tour\" question although the tour runs; every start refused for good (the flag stuck); a blue line nothing can remove",
-        "recalc()",
-        "refreshTours()",
-        "if (!active && waypoints.isEmpty() && recState.value == null && followLine != null && !followIsTrack) {",
-        "if (recording.state.value != null) mode = AppMode.NAVIGATE",
-        "tour.unfinishedPending = true",
-        "viewModelScope.launchSafe(\"app\", \"start-up work\", Dispatchers.IO) {",
-        "val active = db.findActiveRecording()",
-        "withContext(Dispatchers.Main) { enter(start); startModeKnown = true }",
-        "delay(1500)",
-        "if (recording.state.value == null) {",
-        "withContext(Dispatchers.Main) { tour.showUnfinished(active, line) }",
-        "} finally {",
-        "withContext(kotlinx.coroutines.NonCancellable + Dispatchers.Main) { tour.unfinishedPending = false }")
-
-    @Test fun p21a_theStartFailedCollector_seenThenErrorThenBackToPlanOnlyFromNavigate() = ordered("P21", "13",
-        scope("P21", "recording.startFailed.collect { why ->", "// Re-routing (service)"),
-        "the reason shown again and again; Navigate with nothing recording",
-        "if (why != null) { recording.startFailedSeen(); sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }")
-
-    @Test fun p21b_theStateCollector_newTourClearsHistoryThenArrivalThenTheServicesLine() = ordered("P21", "14",
-        scope("P21", "recording.state.collect { st ->", "tourEnd.start()"),
-        "a taken re-route not drawn; Undo brings a route of another tour; the arrival question twice",
-        "followHistory.clear()",
-        "guidanceEndedByEmptyPlan = false }",
-        "onArrived(st?.arrived == true)",
-        "val n = st?.nav ?: run { navActivitySeen = null; return@collect }",
-        "if (n.version != navVersion) { navVersion = n.version; if (followLine != n.line) followLine = n.line }",
-        "syncNavActivity(n.session)")
-
-    @Test fun p22a_enter_modeFirstDialogClosesAndTheServiceIsToldLast() {
-        val s = scope("P22", "private fun enter(m: AppMode) {", BLOCK_END)
-        ordered("P22", "15", s, "off-route questions in Plan / none in Navigate; a dialog behind the other mode",
-            "mode = m",
-            "if (save.ask != null) save.cancel()",
-            "if (recState.value != null) recording.navigating(m == AppMode.NAVIGATE)")
-        endsWith("P22", "15", s, "if (recState.value != null) recording.navigating(m == AppMode.NAVIGATE)",
-            "the service is told the mode before the app has settled in it")
-    }
-
-    @Test fun p22b_continueNavigation_straightLegsAskThenFollowThenNavigateLast() {
-        val s = scope("P22", "fun continueNavigation(force: Boolean = false) {", BLOCK_END)
-        ordered("P22", "22", s, "back in Navigate on the old route; no off-route check after Continue",
-            "straightAsk = true; return",
-            "followPlanned(checkNow = true)",
-            "routeEvent(RouteRun.Event.FollowNext)",
-            "enter(AppMode.NAVIGATE)")
-        endsWith("P22", "22", s, "enter(AppMode.NAVIGATE)", "back in Navigate on the old route")
-    }
+    // What is left in this file, and why: P25 and P26 are single texts of rules 30 and 34 whose code STAYS in the view model –
+    // `sayEvent` (the plan edit's host says "no destination" through it) and the provisional-position collector (it asks the
+    // location tracker, which is Android-bound: `tracker.setFusedWanted`). Neither belongs to a tour slice.
 }

@@ -119,7 +119,10 @@ class PlaceMenusAdaptersTest {
         assertTrue(vm.contains("            override fun placesChanged() { keptPlaces.savedPlaces = null }"))
         // a snapped route: the open point menu follows its point; entering Navigate closes the menus (through the forwarders)
         assertTrue(vm.contains("        placeMenus.followSnapped(moves)\n"))
-        assertTrue(vm.contains("if (m == AppMode.NAVIGATE) { planPoi = null; poiMenu = null; closePointMenu(\"mode change to Navigate\"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure(\"mode change to Navigate\"); highlight = null; followMe = true }"))
+        // (piece 19: `enter` is TourSession's; its menus line is the host's `closeMenusForNavigate` – the same seven statements in the
+        // same order, `followMe = true` right after it in the slice; TourSessionFlowTest shows each menu closed on entering Navigate)
+        assertTrue(vm.contains("override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu(\"mode change to Navigate\"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }"))
+        assertTrue(com.onpath.app.testkit.sourceFile("ui/tour/TourSession.kt").readText().contains("if (m == AppMode.NAVIGATE) { host.closeMenusForNavigate(); map.followMe = true }"))
         // the search flow's host reaches the menus through the view model's forwarders
         assertTrue(vm.contains("            override val mapOverlayOpen: Boolean get() = this@AppViewModel.mapOverlayOpen\n"))
         assertTrue(vm.contains("            override fun openPoiMenu(poi: com.onpath.app.poi.Poi) = this@AppViewModel.openPoiMenu(poi)\n"))
