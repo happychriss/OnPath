@@ -218,9 +218,9 @@ class SuggestPanelCallbacks(
 )
 
 /** How far the next card looks in at the right edge of the row (sketch 8). */
-private val PEEK = 16.dp
-private val ROW_PAD = 14.dp
-private val CARD_GAP = 8.dp
+internal val PEEK = 16.dp
+internal val ROW_PAD = 14.dp
+internal val CARD_GAP = 8.dp
 
 /**
  * The suggestions in the plan sheet's place (like the place card). The cards (sketch 8, owner 2026-11-18 „Ja, so
@@ -276,7 +276,7 @@ fun SuggestPanel(ui: SuggestPanelUi, cb: SuggestPanelCallbacks, modifier: Modifi
 }
 
 /** The sheet's shape: rounded at the top, flush with the screen's bottom edge (sketch 8). */
-private val SheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+internal val SheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
 
 @Composable
 private fun Summary(text: String) {
@@ -364,7 +364,7 @@ fun SuggestCardView(c: SuggestCard, chosen: Boolean, taking: Boolean = false, on
 
 /** „Übernehmen“ in the card's top row: filled on the chosen card, outlined on the others (sketch 8). */
 @Composable
-private fun Take(chosen: Boolean, taking: Boolean, onTake: () -> Unit) {
+internal fun Take(chosen: Boolean, taking: Boolean, onTake: () -> Unit) {
     val pad = PaddingValues(horizontal = 14.dp)
     if (chosen) Button(colors = ActionButtons.edit(), onClick = onTake, enabled = !taking, contentPadding = pad) {
         if (taking) {
@@ -380,7 +380,7 @@ private fun Take(chosen: Boolean, taking: Boolean, onTake: () -> Unit) {
 
 /** „Ausgeschildert · Traumpfad“ (blue) or „Vorschlag“ (green), small. */
 @Composable
-private fun Badge(badge: String?) {
+internal fun Badge(badge: String?) {
     val (bg, fg) = if (badge != null) SuggestColours.SignedBg to SuggestColours.SignedInk else SuggestColours.OwnBg to SuggestColours.OwnInk
     Surface(color = bg, shape = RoundedCornerShape(8.dp)) {
         Text(if (badge != null) str(Res.string.suggest_ui_badge_signed, badge) else str(Res.string.suggest_ui_badge_own),
@@ -391,7 +391,7 @@ private fun Badge(badge: String?) {
 
 /** A sketch-7 pill: light green (strength) or light yellow (weakness / hint), three intensities. */
 @Composable
-private fun Pill(p: SuggestPill) {
+internal fun Pill(p: SuggestPill) {
     val bg = SuggestColours.pill(p.strength, p.level)
     Surface(color = bg, shape = RoundedCornerShape(50)) {
         Text(p.text, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
