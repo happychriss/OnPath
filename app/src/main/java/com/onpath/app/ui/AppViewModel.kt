@@ -213,7 +213,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Zuletzt and the recycle bin as the user's actions ([com.onpath.app.ui.routes.RecentPlans], cleanup piece 4): a plan
      * that leaves the map is kept, Zuletzt → Speichern / Löschen, the bin's list, Restore, Delete now. The names below
-     * ([keepAsDraft], [saveDraft], [recycleBin] …) forward to it.
+     * ([SaveSlice.keepAsDraft], [saveDraft], [recycleBin] …) forward to it.
      */
     private val recent = com.onpath.app.ui.routes.RecentPlans(routes, routesStore, object : com.onpath.app.ui.routes.RecentPlansHost {
         override fun insertDraft(row: com.onpath.app.ui.routes.RecentPlans.DraftRow) =
@@ -1082,13 +1082,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private val savedId: Long get() = plan.savedId
     /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
     val planUnsaved: Boolean get() = plan.unsaved
+    /**
+     * Save (C18, [SaveSlice] in `:state`, rebuild phase 2 piece 3): the name dialog, the writes after it, Rename / star in
+     * My routes, a plan that leaves the map unsaved, the save at "Los geht's". The database behind [saveStore], the rest of
+     * the app behind [saveHost]. Declared after [plan], [routes] and [recent] (which it works on); the names below
+     * ([saveAsk], [routesProblem], [requestSave] …) forward to it.
+     */
+    private val saveStore = object : com.onpath.app.ui.routes.SaveStore {
+        override fun getTour(id: Long) = db.getTour(id)
+        override fun loadSegments(id: Long) = db.loadSegments(id)
+        override fun insertPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) =
+            db.insertTour(TourKind.PLANNED, name, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS,
+                row.segments, row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)
+        override fun replacePlanned(id: Long, row: com.onpath.app.ui.routes.PlannedRow) =
+            db.replacePlanned(id, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS,
+                row.segments, row.stops, row.pins, difficulty = row.difficulty, days = row.days)
+        override fun rename(id: Long, name: String) = db.rename(id, name)
+        override fun setFavourite(id: Long, favourite: Boolean) = db.setFavourite(id, favourite)
+    }
+    private val saveHost = object : com.onpath.app.ui.routes.SaveHost {
+        override val route: PlannedRoute? get() = this@AppViewModel.route
+        override val activity: Activity get() = this@AppViewModel.activity
+        override val sac: Int get() = this@AppViewModel.sac
+        override fun stops(points: List<GeoPoint>) = savedStops(points)
+        override fun difficulty(route: PlannedRoute?, activity: Activity) = difficultyOf(route, activity)
+        override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
+        override fun keepWhole() = multiDay.keepWhole()
+        override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
+        override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
+        override fun datedName() = defaultName(Txt.s(Res.string.msg_name_route))
+        override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = storePlanTimes(id, route, activity)
+        override fun forgetTimes(id: Long) { plannedTimes.remove(id) }
+        override fun copyTimes(from: Long, to: Long, distanceM: Double) { planTimes.get(from, distanceM)?.let { planTimes.put(to, distanceM, it) } }
+        override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
+        override fun syncChanged(why: String) = sync.changed(why)
+        override fun refreshTours() = this@AppViewModel.refreshTours()
+        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = setSaved(name, id, points)
+        override fun shownRenamed(id: Long, name: String) { shown?.let { if (it.tourId == id) shown = it.copy(name = name) } }
+        override fun say(text: String, kind: NoticeKind, place: NoticePlace) = notices.say(text, kind, place)
+    }
+    private val save = com.onpath.app.ui.routes.SaveSlice(plan, routes, recent, saveStore, saveHost, viewModelScope, Dispatchers.IO)
     /** Save's name dialog while open (owner 2026-10-31: Save always asks for the name; [requestSave], [requestCopyRoute]). */
-    var saveAsk by mutableStateOf<SaveAsk?>(null)
-        private set
-    /** A save runs (the DB write): a second tap on Save does not make a second route. */
-    private var saving = false
+    val saveAsk: SaveAsk? get() = save.ask
     /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
-    var routesProblem by mutableStateOf<String?>(null)
+    var routesProblem: String?
+        get() = save.problem
+        set(v) { save.problem = v }
 
     // --- shown track / follow ---
     /** `nav-session.json` + `follow.json`, shared with the service: the app's writes are one locked step each ([FollowStore]). */
@@ -2661,7 +2700,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Clear the plan right away (owner): one Undo step brings it back, so no question. */
     /**
      * ✕ / ☰ Neu planen: the plan leaves the map at once – no question, also during a tour (owner 2026-11-06): a plan not
-     * saved as it is goes under My routes → Zuletzt ([keepAsDraft]), one Undo step brings it back, and during a tour the
+     * saved as it is goes under My routes → Zuletzt ([SaveSlice.keepAsDraft]), one Undo step brings it back, and during a tour the
      * empty sheet says "Tour läuft weiter – …" (the recording goes on, the guidance ends).
      */
     fun requestClear() = clearPlan()
@@ -2673,7 +2712,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * A followed copy of this plan goes too, unless a recording is using it right now.
      */
     fun clearPlan() {
-        keepAsDraft("cleared")
+        save.keepAsDraft("cleared")
         Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (recState.value != null) " (tour running)" else "")
         val planLine = route?.points
         if (waypoints.isNotEmpty()) change { clear() } else recalc()
@@ -3301,107 +3340,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         else showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))
     }
 
+    // ---------------- Save (C18) – the slice is `save` ([SaveSlice]); the names below forward to it ----------------
+
     /**
      * Save – the sheet's green Save, ☰ "Save route", sheet ⋯ → Save route – always opens the name dialog (owner
-     * 2026-10-31, replaces "save at once"): a plan that belongs to a saved route that still exists ([RouteRules.saveMode])
-     * shows that route's name and is overwritten on Save – renamed when the name changed, still ONE route; else the
-     * proposed name ([RouteRules.newRouteName]: plan link title / "Vellau → Leiteralm", else "Route 31 Oct, 10:12") and
-     * a new route. The sheet then shows "Saved as …" (no message).
+     * 2026-10-31, replaces "save at once"; [SaveSlice.request]).
      */
-    fun requestSave() = askSave(null)
+    fun requestSave() = save.request(null)
 
-    /**
-     * My routes → ⋮ → Save as copy (planned routes; owner 2026-10-31, was the plan sheet's ⋯): the same dialog with
-     * "<name> (2)" ([RouteRules.copyName]); Save copies the stored route ([copyRoute]) – the plan stays as it is.
-     */
-    fun requestCopyRoute(t: Tour) {
-        if (t.kind != TourKind.PLANNED || saving) return
-        saveAsk = com.onpath.app.domain.routes.SaveFlow.askCopy(t.name, t.id, plannedNames())
-    }
-
-    /** Opens Save's dialog; [then] runs after a successful save ("Save first" before loading another route). */
-    private fun askSave(then: (() -> Unit)?) {
-        val pts = waypoints.toList()
-        if (pts.size < 2 || saving) return
-        val dated = defaultName(Txt.s(Res.string.msg_name_route))
-        val taken = plannedNames()
-        val ask = com.onpath.app.domain.routes.SaveFlow.ask(currentSaveMode(), savedName, savedId, proposal = null, dated, taken, then)
-        saveAsk = ask
-        if (ask.kind == SaveAsk.Kind.OVERWRITE) return
-        // the proposal (plan link title / "Vellau → Leiteralm") replaces the date name in the field until the user types
-        val r = route
-        viewModelScope.launchSafe("app", "askSave") {
-            val proposed = withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) } ?: return@launchSafe
-            if (saveAsk === ask) saveAsk = ask.copy(name = RouteRules.newRouteName(proposed, dated, taken))
-        }
-    }
+    /** My routes → ⋮ → Save as copy (planned routes; owner 2026-10-31): the same dialog with "<name> (2)" ([SaveSlice.requestCopy]). */
+    fun requestCopyRoute(t: Tour) = save.requestCopy(t)
 
     /** Save's dialog → Cancel / Back / a tap outside: nothing is saved, "Save first" does not load. */
-    fun cancelSave() { saveAsk = null }
+    fun cancelSave() = save.cancel()
 
-    /**
-     * Save's dialog → Save with [input]: a blank name keeps the proposal / old name ([RouteRules.cleanName]). A new
-     * route or a copy is inserted; the saved route is overwritten in place and renamed if the name changed.
-     */
-    fun confirmSave(input: String) {
-        val ask = saveAsk ?: return
-        saveAsk = null
-        val then = ask.then
-        when (val w = com.onpath.app.domain.routes.SaveFlow.confirm(ask, input, savedId)) {
-            is com.onpath.app.domain.routes.SaveFlow.Write.Copy -> copyRoute(w.routeId, w.name)
-            is com.onpath.app.domain.routes.SaveFlow.Write.Overwrite -> overwriteSaved(w.name, then)
-            is com.onpath.app.domain.routes.SaveFlow.Write.New -> saveRoute(w.name, then)
-        }
-    }
+    /** Save's dialog → Save with [input] ([SaveSlice.confirm]). */
+    fun confirmSave(input: String) = save.confirm(input)
 
-    /** Save as copy from My routes: a new planned route [name] with the stored line, points and pins of route [id]. */
-    private fun copyRoute(id: Long, name: String) {
-        if (saving) return
-        saving = true
-        viewModelScope.launchSafe("app", "copyRoute") {
-            try {
-                val newId = withContext(Dispatchers.IO) {
-                    runCatching {
-                        val t = db.getTour(id) ?: return@runCatching null
-                        db.insertTour(TourKind.PLANNED, name, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM, t.durationS,
-                            db.loadSegments(id), t.waypoints, pinned = t.pinned, difficulty = t.difficulty)
-                            .also { n -> planTimes.get(id, t.distanceM)?.let { planTimes.put(n, t.distanceM, it) } }
-                    }.onFailure { Problems.error("db", "Copying a planned route failed", it) }.getOrNull()
-                }
-                if (newId == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return@launchSafe }
-                Backups.tourChanged(getApplication(), newId)
-                sync.changed("route copied")
-                refreshTours()
-            } finally { saving = false }
-        }
-    }
+    /** Saves the plan as a new planned route named [name] ([SaveSlice.saveRoute]). */
+    fun saveRoute(name: String, then: (() -> Unit)? = null) = save.saveRoute(name, then)
 
-    /** How long the dialog waits for the place proposal of a new route's name (it shows the date name meanwhile). */
-    private val NAME_WAIT_MS = com.onpath.app.ui.routes.RecentPlans.NAME_WAIT_MS
+    /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name ([SaveSlice.rename]). */
+    fun renameTour(t: Tour, input: String) = save.rename(t, input)
 
-    // a plan from "Zuletzt" is no saved route: Save makes a new one (and the draft goes – [insertPlanned])
-    private fun currentSaveMode() =
-        RouteRules.saveMode(savedId, savedName, tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.id })
-
-    private fun plannedNames() = tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.name }
-
-    /** The plan on the map was loaded from "Zuletzt" (a draft) and still belongs to it. */
-    private val linkedDraft: Tour? get() = if (planLinked && linkId >= 0) tours.firstOrNull { it.id == linkId && it.draft } else null
-
-    // ---------------- "Zuletzt" (owner 2026-11-06: no "Nicht gespeichert", like Komoot + recent plans) ----------------
-
-    /**
-     * A plan worth keeping that leaves the map unsaved ([planUnsaved]: never saved, or a saved plan changed – its original
-     * stays as it is) goes under My routes → Zuletzt, no question: written at once, before it leaves the map
-     * ([com.onpath.app.ui.routes.RecentPlans.keep]).
-     */
-    private fun keepAsDraft(why: String) {
-        val pts = waypoints.toList()
-        if (pts.size < 2 || multiDay.keepWhole()) return // a followed day: the whole multi-day tour goes under Zuletzt
-        val r = route; val act = activity
-        recent.keep(com.onpath.app.ui.routes.RecentPlans.Leaving(pts, planUnsaved, savedId, r, act, sac, savedStops(pts), pinnedIndices(),
-            defaultName(Txt.s(Res.string.msg_name_route)), multiDay.daysFor(pts)) { difficultyOf(r, act) }, why)
-    }
+    /** My routes → ☆ on a row (owner 2026-11-13, favourites C; [SaveSlice.setFavourite]). */
+    fun setFavourite(t: Tour, favourite: Boolean) = save.setFavourite(t, favourite)
 
     /** My routes → Zuletzt → Speichern: the plan becomes saved (backup, browser sync); it shows "✓ Gerade gespeichert". */
     fun saveDraft(t: Tour) = recent.saveDraft(t)
@@ -3490,143 +3453,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = routes.justSavedId
         set(v) { routes.justSavedId = v }
 
-    /**
-     * Saves the plan as a new planned route named [name]. The sheet then shows "Saved as …" (no message). Without a
-     * route line yet (still calculating / failed) the points are stored as the line, so nothing is lost; opening it
-     * re-routes. [then] runs on success only.
-     */
-    fun saveRoute(name: String, then: (() -> Unit)? = null) {
-        val pts = waypoints.toList()
-        if (pts.size < 2 || saving) return
-        saving = true
-        val r = route
-        viewModelScope.launchSafe("app", "saveRoute") { try { insertPlanned(name, pts, r, then) } finally { saving = false } }
-    }
-
-    private suspend fun insertPlanned(name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
-        val title = name.trim().ifBlank { defaultName(Txt.s(Res.string.msg_name_route)) }
-        // saved from a plan under "Zuletzt": the saved route takes its place there (no second entry)
-        val fromDraft = linkedDraft
-        val act = activity; val level = sac
-        val stops = savedStops(pts); val pins = pinnedIndices()
-        val id = withContext(Dispatchers.IO) {
-            runCatching {
-                db.insertTour(
-                    TourKind.PLANNED, title, act.name, level,
-                    r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                    listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                    stops, pinned = pins, difficulty = difficultyOf(r, act), days = multiDay.daysFor(pts),
-                ).also { storePlanTimes(it, r, act) }
-            }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
-        }
-        if (id == null) { routesProblem = Txt.s(Res.string.msg_route_save_failed); return }
-        // the saved route takes the place of its draft and of any draft with the same points (never a second entry)
-        withContext(Dispatchers.IO) {
-            runCatching { routes.afterSaved(id, fromDraft?.id ?: -1L, pts.map { it.lat to it.lon }) }
-                .onFailure { Problems.warn("db", "The plan under Zuletzt stays after it was saved", it) }
-        }
-        Backups.tourChanged(getApplication(), id)
-        sync.changed("route saved")
-        setSaved(title, id, pts)
-        refreshTours()
-        then?.invoke()
-    }
-
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
     private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
-
-    /**
-     * Save of a plan that belongs to a saved route: overwrite it in place under [name] (renamed when it differs – still
-     * one route). A new entry with that name if it is gone meanwhile.
-     */
-    private fun overwriteSaved(name: String, then: (() -> Unit)?) {
-        val pts = waypoints.toList()
-        val old = savedName
-        val id = savedId
-        if (pts.size < 2 || multiDay.overwriteWhole(name, then) || saving) return // a followed day: the whole multi-day tour
-        if (old == null || id < 0) { saveRoute(name, then); return }
-        saving = true
-        val r = route
-        val act = activity; val level = sac
-        val stops = savedStops(pts); val pins = pinnedIndices()
-        val opened = savedPoints?.let { p -> com.onpath.app.sync.SaveRule.pointsKey(p.map { it.lat to it.lon }) }
-        viewModelScope.launchSafe("app", "overwriteSaved") {
-            try {
-                // changed by sync since it was opened here (review sync H3): save as a copy, the other edit stays
-                val stored = withContext(Dispatchers.IO) {
-                    runCatching { db.getTour(id)?.waypoints?.map { it.lat to it.lon } }
-                        .onFailure { Problems.warn("db", "Saved route not read before overwriting; overwritten as before", it) }.getOrNull()
-                }
-                if (com.onpath.app.sync.SaveRule.keepsOtherEdit(opened, stored?.let(com.onpath.app.sync.SaveRule::pointsKey))) {
-                    val copy = RouteRules.copyName(name, plannedNames())
-                    Problems.trace("plan", "Save over \"$old\": changed elsewhere since opened (browser sync) – saved as \"$copy\"")
-                    sayInfo(Txt.s(Res.string.msg_route_changed_elsewhere, copy), NoticePlace.MAP)
-                    insertPlanned(copy, pts, r, then)
-                    return@launchSafe
-                }
-                val ok = withContext(Dispatchers.IO) {
-                    runCatching {
-                        db.replacePlanned(
-                            id, act.name, level,
-                            r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-                            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                            stops, pins, difficulty = difficultyOf(r, act), days = multiDay.daysFor(pts),
-                        ).also {
-                            if (it) { plannedTimes.remove(id); storePlanTimes(id, r, act) }
-                            if (it && name != old) db.rename(id, name)
-                            // a draft with the route's new points goes (RoutesState: never a draft with a saved route's points)
-                            if (it) routes.afterSaved(id, -1L, pts.map { p -> p.lat to p.lon })
-                        }
-                    }
-                }
-                val replaced = ok.getOrElse {
-                    Problems.error("db", "Overwriting a saved route failed", it)
-                    routesProblem = Txt.s(Res.string.msg_route_save_failed)
-                    return@launchSafe
-                }
-                if (replaced) {
-                    Backups.tourChanged(getApplication(), id); sync.changed("route overwritten")
-                    setSaved(name, id, pts)
-                    shown?.let { if (it.tourId == id) shown = it.copy(name = name) }
-                    refreshTours(); then?.invoke()
-                } else insertPlanned(name, pts, r, then) // deleted meanwhile: keep the work as a new route with that name
-            } finally { saving = false }
-        }
-    }
-
-    /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name. */
-    fun renameTour(t: Tour, input: String) {
-        val name = RouteRules.cleanName(input, t.name)
-        if (name == t.name) return
-        viewModelScope.launchSafe("app", "renameTour") {
-            val ok = withContext(Dispatchers.IO) { runCatching { db.rename(t.id, name) }
-                .onFailure { Problems.error("db", "Renaming a route failed", it) }.isSuccess }
-            if (!ok) { routesProblem = Txt.s(Res.string.msg_route_rename_failed); return@launchSafe }
-            Backups.tourChanged(getApplication(), t.id)
-            sync.changed("renamed")
-            if (linkId == t.id) setSaved(name, linkId, savedPoints)
-            shown?.let { if (it.tourId == t.id) shown = it.copy(name = name) }
-            refreshTours()
-        }
-    }
-
-    /**
-     * My routes → ☆ on a row (owner 2026-11-13, favourites C): the star on or off at once in the list, then stored, the
-     * backup file written again (its record keeps the star) and the browser told (sync field 9). A failure puts the
-     * row back and says so in My routes.
-     */
-    fun setFavourite(t: Tour, favourite: Boolean) {
-        if (t.id == LivePlanRows.LIVE_ID || t.favourite == favourite) return
-        Problems.trace("routes", "Tour ${t.id} ${if (favourite) "starred" else "unstarred"}")
-        routes.show(routes.tours.map { if (it.id == t.id) it.copy(favourite = favourite) else it })
-        viewModelScope.launchSafe("app", "setFavourite") {
-            val ok = withContext(Dispatchers.IO) { runCatching { db.setFavourite(t.id, favourite) }
-                .onFailure { Problems.error("db", "Starring a route failed", it) }.getOrDefault(false) }
-            if (!ok) routesProblem = Txt.s(Res.string.msg_route_star_failed)
-            else { Backups.tourChanged(getApplication(), t.id); sync.changed("starred") }
-            refreshTours()
-        }
-    }
 
     private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
         plan.setSaved(name, id, points)
@@ -3823,7 +3651,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Something else takes the plan's place (a track or a plan followed during a tour, "Als Plan
-     * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([keepAsDraft]).
+     * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([SaveSlice.keepAsDraft]).
      */
     private fun unlessUnsaved(what: String, go: () -> Unit) { Problems.trace("plan", "$what: the plan on the map goes under Zuletzt if not saved"); go() }
 
@@ -3914,7 +3742,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         mode = m
         tapHoldHint = false
         offlineInfo = false
-        if (saveAsk != null) cancelSave() // Save's dialog does not stay open behind another mode
+        if (save.ask != null) save.cancel() // Save's dialog does not stay open behind another mode
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
         else if (m != AppMode.NAVIGATE) navStartZoom = null
@@ -3948,7 +3776,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // PlanStart: the sheet's button says "Start recording" exactly when nothing is followed here
         when (if (recordOnly) PlanStart.RECORD_ONLY else PlanStart.of(trackPoints = s?.points?.size, hasRoute = route != null, pointCount = waypoints.size)) {
             PlanStart.FOLLOW_TRACK -> { followShown(); shown = null }
-            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); saveNewPlanAtStart() }
+            PlanStart.NAVIGATE_PLAN -> { followPlanned(); secureTourCorridor(); save.atTourStart() }
             // the button waits for the line; reached anyway: record (a tour is never refused), nothing followed.
             // A shown track without a line closes, like ☰ → Start recording.
             PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
@@ -3965,53 +3793,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     private var startJob: Job? = null
-
-    /**
-     * "Los geht's" with a plan that was never saved (owner 2026-11-06: the tour and the plan are two things – like Komoot,
-     * the plan is in My routes → Planned from the start, so the end of the tour never has to ask about it): saved at once
-     * under the name the Save dialog would propose, no dialog. A saved plan changed since updates that route in place, like
-     * ☰ Plan speichern (owner 2026-11-07: no "Name (2)" copies) – its version before goes under Zuletzt
-     * ([updateSavedAtStart]). Renaming / deleting: My routes.
-     */
-    private fun saveNewPlanAtStart() {
-        val pts = waypoints.toList()
-        val draft = linkedDraft
-        val how = PlanAutoSave.atStart(pts.size, planUnsaved, currentSaveMode() == SaveMode.OVERWRITE, draft != null)
-        if (how == PlanAutoSave.AtStart.NOTHING || saving) return
-        if (how == PlanAutoSave.AtStart.SAVE_OVERWRITE) { updateSavedAtStart(pts); return }
-        saving = true
-        val r = route
-        val dated = defaultName(Txt.s(Res.string.msg_name_route))
-        val taken = plannedNames()
-        viewModelScope.launchSafe("app", "saveNewPlanAtStart") {
-            try {
-                // a plan from Zuletzt keeps its name
-                val name = draft?.name?.let { RouteRules.newRouteName(it, dated, taken) }
-                    ?: RouteRules.newRouteName(withTimeoutOrNull(NAME_WAIT_MS) { proposeName(pts, r) }, dated, taken)
-                Problems.trace("plan", "Plan saved at the tour start as \"$name\" (${how.name.lowercase()}, ${pts.size} points)")
-                insertPlanned(name, pts, r, null)
-            } finally { saving = false }
-        }
-    }
-
-    /**
-     * "Los geht's" with a loaded saved route changed since (owner 2026-11-07): the route is updated in place under its
-     * name ([overwriteSaved], the same write as ☰ Plan speichern), then its version before – read first – is kept under
-     * Zuletzt ([com.onpath.app.ui.routes.RoutesState.keepReplaced]), so nothing is lost and no "Name (2)" appears.
-     */
-    private fun updateSavedAtStart(pts: List<GeoPoint>) {
-        val id = savedId
-        val name = savedName ?: return
-        viewModelScope.launchSafe("app", "updateSavedAtStart") {
-            val before = withContext(Dispatchers.IO) {
-                runCatching { db.getTour(id)?.let { it to db.loadSegments(id) } }
-                    .onFailure { Problems.warn("db", "The saved route's version before the tour start not read – not kept under Zuletzt", it) }
-                    .getOrNull()
-            }
-            Problems.trace("plan", "Plan saved at the tour start as \"$name\" (save_overwrite, ${pts.size} points)")
-            overwriteSaved(name) { before?.let { (old, segments) -> recent.keepReplaced(old, segments) } }
-        }
-    }
 
     /**
      * A tour starts on the plan's route (F-OFF-02 "started route", owner: "new route – even without signal"): map areas
@@ -4341,7 +4122,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The tour has ended – saved or deleted, from the end sheet, the ride summary or the arrival box (owner 2026-11-07:
      * "Tour beenden" → the track is saved, the plan is saved as always, and the app is back at the start as after
      * "✕ Neu planen"): the plan goes the one clear way ([clearPlan]) – a plan saved as it is (at "Los geht's" or by
-     * Save) stays in My routes, one changed on the way goes under Zuletzt ([keepAsDraft]), one Undo brings it back on the
+     * Save) stays in My routes, one changed on the way goes under Zuletzt ([SaveSlice.keepAsDraft]), one Undo brings it back on the
      * map; the empty sheet shows its guide. The tour and the plan stay two things (owner 2026-11-06): nothing about the
      * plan is asked at the end.
      */
@@ -4873,7 +4654,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 // as a stand-in while the run routes; a route routed before is no "very long plan" question again
                 if (!duringTour) loadStoredLine(t, pts, segs)
                 if (!duringTour) routeEvent(RouteRun.Event.NewPlan) // a new plan: its first route may raise the sheet ([SheetRise])
-                keepAsDraft("replaced by \"${t.name}\"")
+                save.keepAsDraft("replaced by \"${t.name}\"")
                 change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
                 // a stand-in (no stored route behind it): an unsaved plan – Los geht's saves it like every new plan
@@ -5152,7 +4933,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         sac = plan.sac.coerceIn(1, 5); prefs.sac = sac
         // pins before the points: the first route already passes them exactly (recalc reads them at once)
         if (load.pinned.isNotEmpty()) this.plan.pin(load.pinned)
-        keepAsDraft("replaced by a plan link")
+        save.keepAsDraft("replaced by a plan link")
         change { clear(); addAll(load.points) }
         load.names.forEach { (p, n) -> rememberPlaceName(p, n) }
         setSaved(null, -1, null) // not in My routes yet: Save asks for a name
@@ -5232,7 +5013,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             closeShown()
             // pinned route points come back pinned (review routing L1)
             plan.pin(com.onpath.app.gpx.PlanGpx.pinnedOf(stops).map { pts[it] })
-            keepAsDraft("replaced by a track's plan")
+            save.keepAsDraft("replaced by a track's plan")
             change { clear(); addAll(pts) }
             stops.forEachIndexed { i, w -> w.name?.let { rememberPlaceName(pts[i], it) } }
             return
@@ -5268,7 +5049,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows ${(r.follows * 100).toInt()} %, " +
                 "${r.calls} routing calls, ${r.failedLegs} legs without a route, ${android.os.SystemClock.elapsedRealtime() - t0} ms")
             done(true)
-            keepAsDraft("replaced by a track's plan")
+            save.keepAsDraft("replaced by a track's plan")
             change { clear(); addAll(r.points) }
         }
     }

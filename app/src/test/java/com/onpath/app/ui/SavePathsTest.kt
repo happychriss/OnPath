@@ -41,22 +41,23 @@ class SavePathsTest {
         val after = body("private fun afterTourEnded() {")
         assertTrue("no parallel path: the Neu planen clear", after.contains("clearPlan()"))
         assertFalse("nothing asked about the plan", after.contains("requestSave") || after.contains("saveAsk"))
-        assertTrue("clearPlan keeps an unsaved plan under Zuletzt first", body("fun clearPlan() {").trimStart().startsWith("keepAsDraft(\"cleared\")"))
+        assertTrue("clearPlan keeps an unsaved plan under Zuletzt first", body("fun clearPlan() {").trimStart().startsWith("save.keepAsDraft(\"cleared\")"))
         assertFalse(body("fun endTourAndDelete() {").contains("requestSave"))
         assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
         // the plan saved at Los geht's and unchanged is no draft (it is in My routes); changed on the way → Zuletzt
         assertFalse(Drafts.keeps(points = 2, unsaved = false)); assertTrue(Drafts.keeps(points = 2, unsaved = true))
-        assertTrue("a mode switch still closes Save's dialog", vm.contains("if (saveAsk != null) cancelSave()"))
+        assertTrue("a mode switch still closes Save's dialog", vm.contains("if (save.ask != null) save.cancel()"))
     }
 
     /**
      * Tester review 2026-11-07: the draft is written BEFORE the plan leaves the map – not after a wait of up to 5 s for a
      * place name in the background (a kill in that window lost the plan). The write, its order and the name that follows
      * are behaviour tests now (RecentPlansTest.theDraftIsWrittenBeforeThePlanLeavesTheMapAndTheNameFollows,
-     * .aNameThatNeverComesLosesNothing); here only that the view model hands the plan over on the calling thread.
+     * .aNameThatNeverComesLosesNothing); (SaveFlowTest.aReplacedUnsavedPlanIsKeptUnderZuletztAtOnce…); here only that the slice hands the plan over on the calling thread.
      */
     @Test fun thePlanIsHandedToZuletztBeforeItLeavesTheMap() {
-        val keep = body("private fun keepAsDraft(why: String) {")
+        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveSlice.kt").readText() // keepAsDraft moved there (piece 3)
+        val keep = slice.substringAfter("fun keepAsDraft(why: String) {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("recent.keep("))
         assertFalse("handed over at once, no background work before it", keep.contains("launch"))
     }

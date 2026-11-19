@@ -158,8 +158,27 @@
       "blob": "18275cc0eac06353053d3382b71ab90d51c61df3"
     },
     {
+      "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveDialog.kt",
+      "what": "Save's name dialog (C18): request (every Save asks; a saved route shows its name, else the date name until the place proposal replaces it), requestCopy (\"<name> (2)\"), cancel, confirm (SaveFlow: blank keeps the name; copy / overwrite / new) – plans.ts save dialog (moved here from AppViewModel.requestSave / confirmSave / cancelSave, rebuild phase 2 piece 3)",
+      "web": [
+        "web/app/src/plans.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "a2a5f5db25c8c2ce4c497bacb27515f768e3f8b7"
+    },
+    {
+      "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveSlice.kt",
+      "what": "Save's writes (C18): request / saveRoute / overwriteSaved (sync changed the stored route → a copy and a line; deleted meanwhile → a new route) / copyRoute / rename / setFavourite – plans.ts save, overwrite, copy (moved here from AppViewModel, rebuild phase 2 piece 3); the app-only parts (backup file, the tour start's save, Zuletzt) are not in the planner",
+      "web": [
+        "web/app/src/plans.ts",
+        "web/app/src/main.ts",
+        "web/app/src/recent.ts"
+      ],
+      "blob": "f8cda7b50a66306dea9e32d446f941e60506a470"
+    },
+    {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; poiAsNewDestination (appends while planning – PlaceAddMenu.keepsOldGoal; the planner has no tour, main.ts placeAsNewDestination); requestSave; suggestName; pinnedPoiKinds / refreshPinnedKinds; holdOnMap (F-PLAN-15: on the line / new goal / stop at once, else the hold menu – PlaceAddMenu.planningHold, the engine's WebApi.holdOnMap; a round trip by the zone) and placeMenu while planning = PlaceAddMenu.planningMenu (WebApi.placeMenu); holdAsStop / holdAsNewDestination (main.ts holdAddMenu); keepPlaces / placesChanged = the kept-places sync (keptplaces.ts / sync.ts); the done tours' Ø speed is not in the planner (no recorded tours)",
+      "what": "recalc long-route ask / answerLongRoute / cancelRun; importGpx (its note is the shared GpxData.skippedNote), planFromShown; withModelTime; addPlace; poiAsNewDestination (appends while planning – PlaceAddMenu.keepsOldGoal; the planner has no tour, main.ts placeAsNewDestination); suggestName; pinnedPoiKinds / refreshPinnedKinds; holdOnMap (F-PLAN-15: on the line / new goal / stop at once, else the hold menu – PlaceAddMenu.planningHold, the engine's WebApi.holdOnMap; a round trip by the zone) and placeMenu while planning = PlaceAddMenu.planningMenu (WebApi.placeMenu); holdAsStop / holdAsNewDestination (main.ts holdAddMenu); keepPlaces / placesChanged = the kept-places sync (keptplaces.ts / sync.ts); the done tours' Ø speed is not in the planner (no recorded tours)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -169,7 +188,7 @@
         "web/app/src/plans.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "6412e065b4abf8b2709e84de102b82a0f49e8332"
+      "blob": "8985bc05cd6bf0b64c504426a9ee2a6641b93a51"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",

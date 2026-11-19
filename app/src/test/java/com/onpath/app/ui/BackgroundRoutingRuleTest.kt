@@ -25,10 +25,15 @@ class BackgroundRoutingRuleTest {
         assertTrue(check.contains("withContext(checkRouting)"))
     }
 
-    /** Review sync H3: Save over a saved route checks first whether sync changed it since it was opened. */
+    /**
+     * Review sync H3: Save over a saved route checks first whether sync changed it since it was opened. (The behaviour is
+     * `SaveFlowTest.syncChangedTheStoredRouteSoSaveMakesACopyAndSaysSo` on the real slice; this pin is the review's, it
+     * moved with the code to SaveSlice.)
+     */
     @Test fun overwriteChecksTheStoredRouteFirst() {
-        val over = vm.substringAfter("private fun overwriteSaved(").substringBefore("\n    }\n")
-        assertTrue(over.indexOf("SaveRule.keepsOtherEdit") in 0 until over.indexOf("db.replacePlanned("))
+        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveSlice.kt").readText()
+        val over = slice.substringAfter("private fun overwriteSaved(").substringBefore("\n    }\n")
+        assertTrue(over.indexOf("SaveRule.keepsOtherEdit") in 0 until over.indexOf("store.replacePlanned("))
     }
 
     // Close plan without a tour takes every plan line along: ClearPlanDuringTourTest (ClearRule)

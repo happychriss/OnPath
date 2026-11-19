@@ -3,3 +3,4 @@
 # com.onpath.app.* (of :core / :state), com.onpath.strings.*, java.* / kotlin.* and the five Compose runtime names
 # (mutableStateOf, getValue, setValue, mutableStateListOf, mutableIntStateOf) – and no coroutine anywhere in the file.
 ui/routes/RoutesState.kt
+ui/routes/SaveDialog.kt
