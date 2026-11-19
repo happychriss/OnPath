@@ -17,12 +17,15 @@ class MapLoadServiceTest {
         assertFalse(MapLoadService.loading(CellState.Offline("no connection")))
     }
 
-    @Test fun percentOverAllAreas() {
+    /** The number is the real bytes of what downloads now; no number while nothing downloads ([com.onpath.app.ui.PercentStallTest]). */
+    @Test fun percentOnlyWhileItDownloads() {
         assertNull(MapLoadService.percent(listOf(CellState.Ready("v1"))))
-        assertEquals(0, MapLoadService.percent(listOf(CellState.Requested)))
-        assertEquals(85, MapLoadService.percent(listOf(CellState.Downloading(50, 100))))
-        // one built, one half downloaded
-        assertEquals(42, MapLoadService.percent(listOf(CellState.Requested, CellState.Downloading(50, 100), CellState.Ready("v1"))))
-        assertEquals(99, MapLoadService.percent(listOf(CellState.Installing)))
+        assertNull("prepared on the server: the bar runs", MapLoadService.percent(listOf(CellState.Requested)))
+        assertEquals(50, MapLoadService.percent(listOf(CellState.Downloading(50, 100))))
+        assertEquals(50, MapLoadService.percent(listOf(CellState.Requested, CellState.Downloading(50, 100), CellState.Ready("v1"))))
+        assertEquals(100, MapLoadService.percent(listOf(CellState.Downloading(100, 100))))
+        assertNull("joined into the map: no 99 % that stands", MapLoadService.percent(listOf(CellState.Installing)))
+        assertTrue(MapLoadService.finishing(listOf(CellState.Installing, CellState.Ready("v1"))))
+        assertFalse(MapLoadService.finishing(listOf(CellState.Installing, CellState.Queued(1, 60))))
     }
 }

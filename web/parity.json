@@ -28,7 +28,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "8b28d0eeac067308bfa74d1447949aa40b43d88b"
+      "blob": "d28cbb6e040f086adbcea92cac82a02844d13736"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchSession.kt",
@@ -232,7 +232,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "f4419510173fe2e66d6c532726323abe8abdd7a0"
+      "blob": "db05adb0bf277d526c8c618eb36c400ee2a15286"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt",
@@ -984,17 +984,6 @@
         "const val TIMEOUT_MS = 1_500L"
       ]
     },
-    "core/src/main/kotlin/com/onpath/app/domain/LoadSmoother.kt": {
-      "blob": "2e2e2b649553da6584c58177b173c1a632885501",
-      "perf": [
-        "*   up to [CREEP_CAP] – the user sees that it is still working.",
-        "* - It does not jump either: at most [MAX_STEP_PER_S] per second towards the target.",
-        "target > shown -> min(target, shown + MAX_STEP_PER_S * max(dt, 1.0))",
-        "else -> if (shown < CREEP_CAP) min(CREEP_CAP, shown + CREEP_PER_S * dt) else shown",
-        "const val CREEP_CAP = 95.0",
-        "const val MAX_STEP_PER_S = 4.0"
-      ]
-    },
     "core/src/main/kotlin/com/onpath/app/domain/LocateDistance.kt": {
       "blob": "a4fb4972052cf96e2dec5d5af6cdf29bc5b0cad0",
       "perf": []
@@ -1059,9 +1048,12 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt": {
-      "blob": "8b28d0eeac067308bfa74d1447949aa40b43d88b",
+      "blob": "d28cbb6e040f086adbcea92cac82a02844d13736",
       "perf": [
-        "* route. Keeps the highest value it gave – a new search inside the same leg (a retry) or a leg from the cache never"
+        "* route. Keeps the highest value it gave – a new search inside the same leg (a retry) or a leg from the cache never",
+        "* null = \"show the running bar\" when the share has not moved for [STALL_MS] (the search is at the goal but not done, a",
+        "return if (nowMs - movedAt >= STALL_MS) null else last",
+        "const val STALL_MS = 3_000L"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/domain/PointsDeleteGuard.kt": {

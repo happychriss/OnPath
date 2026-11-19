@@ -24,23 +24,25 @@ class BackgroundDownloadsTest {
         )
         val items = BackgroundProgress.cellItems(states, waitedFor = setOf(b)) { if (it == b) 8 * mb else null }
         assertEquals(listOf("cell:${a.id}"), items.map { it.key })
-        assertEquals(BackgroundProgress.Item("cell:${a.id}", 2 * mb, 10 * mb), items.single())
+        assertEquals(BackgroundProgress.Item("cell:${a.id}", 2 * mb, 10 * mb, LoadPhase.LOADING), items.single())
         assertTrue(BackgroundProgress.cellItems(mapOf(a to CellState.Ready("v1"), b to CellState.Failed("x")), emptySet()) { null }.isEmpty())
     }
 
     /**
-     * While the server prepares areas the strip must not stand at 0 %: the preparing time moves the % (as in the loading
-     * window), not only downloaded bytes.
+     * While the server prepares areas the chip stands at no number (owner 2026-11-18: no time-based guess that races and
+     * then stands): its ring spins and the details say "being prepared"; only downloaded bytes are a percent.
      */
-    @Test fun preparingOnTheServerMovesThePercent() {
-        val progress = HashMap<CellId, MapLoadProgress>()
+    @Test fun preparingOnTheServerHasNoPercent() {
         val p = BackgroundProgress()
-        val states = mapOf(a to CellState.Queued(1, 600), b to CellState.Building("base", 0.0, 600))
-        fun at(now: Long) = p.update(BackgroundProgress.cellItems(states, emptySet(), progress = progress, now = now) { 20 * mb }, 2, 0)!!.percent
-        assertEquals(0, at(0))
-        val later = at(300_000) // half the server's estimate
-        assertTrue("moves while the server prepares: $later", later in 30..60)
-        assertTrue(at(900_000) < 80) // never done before the download
+        val states = mapOf(a to CellState.Queued(1, 600), b to CellState.Building("base", 0.5, 600))
+        val ui = p.update(BackgroundProgress.cellItems(states, emptySet()) { 20 * mb }, 2, 0)!!
+        assertFalse(ui.hasPercent)
+        assertEquals(LoadPhase.PREPARING, ui.phase)
+        assertEquals("2 areas · 40 MB · being prepared", ui.line)
+        // one downloads: its real bytes over both
+        val dl = p.update(BackgroundProgress.cellItems(states + (a to CellState.Downloading(10 * mb, 20 * mb)), emptySet()) { 20 * mb }, 2, 0)!!
+        assertTrue(dl.hasPercent)
+        assertEquals(25, dl.percent)
     }
 
     /** A check for a newer version of an installed area (just asked, the server has not answered) is no loading. */

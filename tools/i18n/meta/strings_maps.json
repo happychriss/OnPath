@@ -632,6 +632,19 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "maps_load_finishing": {
+    "area": "Loading window",
+    "context": "Title of the loading window when everything is downloaded and the map is joined in (no percent, the bar runs); same words as maps_phase_finishing",
+    "priority": 2,
+    "confidence": "bitte prüfen",
+    "doubt": "\"fast fertig\" as in the map area state; alternative \"wird eingerichtet\""
+  },
+  "maps_load_totals_done": {
+    "area": "Loading window",
+    "context": "Line under the title when several map areas load and some are there: %1$d = areas on the phone, %2$d = all areas, %3$d = MB",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "maps_about_mb": {
     "area": "Map loading window",
     "context": "Line: only route-planning data loads, %1$d = MB",
@@ -720,6 +733,12 @@
   "maps_notif_preparing": {
     "area": "Notification",
     "context": "Same while the server still prepares",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "maps_notif_finishing": {
+    "area": "Notification",
+    "context": "Same while the downloaded map is joined in (no percent; same words as maps_phase_finishing)",
     "priority": 2,
     "confidence": "sicher"
   },

@@ -229,6 +229,12 @@
     "confidence": "sicher",
     "decided": "Owner 2026-11-05 asked for e.g. 'Route wird berechnet · Abschnitt 2 von 4'; shortened so it stays one line beside Abbrechen"
   },
+  "plan_finishing": {
+    "area": "Plan sheet",
+    "context": "Wait line with Cancel when every section is routed and times / warnings are worked out (the bar runs, no progress)",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "plan_progress_km": {
     "area": "Plan sheet",
     "context": "Planner's routing wait box, under a thin progress bar: %1$s = km of the legs already routed, %2$s = the plan's whole length in km (routed legs real, the rest estimated), %3$s = time since the calculation started (m:ss, ticking)",

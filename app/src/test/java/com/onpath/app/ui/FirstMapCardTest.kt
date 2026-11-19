@@ -50,6 +50,7 @@ class FirstMapCardTest {
     @Test fun preparedOnTheServerHasNoPercentYet() {
         val ui = of(states = mapOf(own to CellState.Building("base", 0.4, 60), east to CellState.Requested)) as FirstMapCard.Ui.Loading
         assertNull(ui.percent)
+        assertEquals(LoadPhase.PREPARING, ui.phase)
     }
 
     @Test fun onlyTheMapForHere_notAPointSearchOrRoute() {

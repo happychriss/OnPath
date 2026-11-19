@@ -159,6 +159,8 @@
     <string name="maps_load_preparing">Karte für deine Gegend wird vorbereitet</string>
     <string name="maps_load_failed">Die Karte für deine Gegend konnte nicht geladen werden</string>
     <string name="maps_load_loading">Karte für deine Gegend wird geladen</string>
+    <string name="maps_load_finishing">Karte für deine Gegend ist fast fertig</string>
+    <string name="maps_load_totals_done">%1$d von %2$d Kartengebieten · etwa %3$d MB</string>
     <string name="maps_about_mb">etwa %1$d MB</string>
     <plurals name="maps_load_totals">
         <item quantity="one">%1$d Kartengebiet</item>
@@ -183,6 +185,7 @@
     <string name="maps_notif_channel">Karten laden</string>
     <string name="maps_notif_progress">%1$d % – du kannst das Handy weglegen</string>
     <string name="maps_notif_preparing">Wird vorbereitet – du kannst das Handy weglegen</string>
+    <string name="maps_notif_finishing">Fast fertig – du kannst das Handy weglegen</string>
 
     <!-- Zustand eines Kartengebiets -->
     <string name="maps_state_not_on_phone">nicht auf dem Handy</string>

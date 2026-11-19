@@ -40,8 +40,12 @@ import com.onpath.app.cells.CellWhy
  */
 object FirstMapCard {
     sealed interface Ui {
-        /** [percent] null = nothing downloaded yet (the server prepares it): the bar moves without a value. */
-        data class Loading(val percent: Int?, val bytes: Long) : Ui
+        /**
+         * [percent] = the real bytes downloaded, only while an area downloads; null = no measurable progress – the
+         * server prepares it ([phase] PREPARING) or the downloaded map is joined in (FINISHING): the bar moves without a
+         * value and the line says what happens (owner 2026-11-18: no number that stands).
+         */
+        data class Loading(val percent: Int?, val bytes: Long, val phase: LoadPhase = LoadPhase.LOADING) : Ui
         data object Offline : Ui
     }
 
@@ -73,8 +77,13 @@ object FirstMapCard {
                 else -> if (ready(x) || x == CellState.Installing) MapLoads.knownBytes(states[c], sizes[c]) ?: MapLoads.ESTIMATED_REGION_BYTES else 0L
             }
         }
-        val percent = if (done <= 0 || bytes <= 0) null else (done * 100 / bytes).toInt().coerceIn(0, 99)
-        return Ui.Loading(percent, bytes)
+        val phase = when {
+            going.any { s[it] is CellState.Downloading } -> LoadPhase.LOADING
+            going.all { s[it] == CellState.Installing } -> LoadPhase.FINISHING
+            else -> LoadPhase.PREPARING
+        }
+        val percent = if (phase != LoadPhase.LOADING || done <= 0 || bytes <= 0) null else (done * 100 / bytes).toInt().coerceIn(0, 100)
+        return Ui.Loading(percent, bytes, phase)
     }
 }
 
@@ -82,8 +91,9 @@ object FirstMapCard {
 const val FIRST_MAP_CARD_LARGE_FONT = 1.5f
 
 /**
- * The card: cloud icon (20 dp), the title, under it the thin bar and "34 % · ca. 18 MB" (offline: "Lädt, sobald du online
- * bist"). At a large font ([FIRST_MAP_CARD_LARGE_FONT]) the title is set smaller, bar and "34 %" share one line, no MB.
+ * The card: cloud icon (20 dp), the title, under it the thin bar and "34 % · ca. 18 MB" while it downloads – before
+ * (the server prepares it) and after (joined into the map) the bar runs and the line says "wird vorbereitet" / "fast
+ * fertig", no number (offline: "Lädt, sobald du online bist"). At a large font ([FIRST_MAP_CARD_LARGE_FONT]) the title is set smaller, bar and "34 %" share one line, no MB.
  */
 @Composable
 fun FirstMapCardView(ui: FirstMapCard.Ui, modifier: Modifier = Modifier) {
@@ -92,8 +102,10 @@ fun FirstMapCardView(ui: FirstMapCard.Ui, modifier: Modifier = Modifier) {
     val title = str(if (loading != null) Res.string.maps_first_loading else Res.string.maps_first_offline)
     val detail = when {
         loading == null -> str(Res.string.maps_first_offline_line)
-        large -> "${loading.percent ?: 0} %"
-        else -> str(Res.string.maps_first_progress, loading.percent ?: 0, mb(loading.bytes))
+        // no number without measurable progress: what happens instead ("being prepared", "almost ready")
+        loading.percent == null -> loading.phase.text
+        large -> "${loading.percent} %"
+        else -> str(Res.string.maps_first_progress, loading.percent, mb(loading.bytes))
     }
     // over the map: paper (owner 2026-11-06); narrow at normal font, wider at a large font (no map controls there then)
     Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper.copy(alpha = 0.97f),

@@ -40,9 +40,22 @@ class RoutingLoadsTest {
         assertEquals(25, ui.percent)
     }
 
-    @Test fun neverBackwardsNever100Early() {
+    @Test fun neverBackwardsAndNoNumberWhileTheFileIsWritten() {
         assertEquals(40, RoutingLoads.combine(null, routing(10 * mb, 200 * mb), held = 40)!!.percent)
-        assertEquals(99, RoutingLoads.combine(null, routing(200 * mb, 200 * mb))!!.percent)
+        // every byte is here and the routing file is written: the window says so, no 99 % that stands
+        val writing = RoutingLoads.combine(null, routing(200 * mb, 200 * mb).copy(writing = true))!!
+        assertEquals(MapLoadUi.Kind.FINISHING, writing.kind)
+        assertFalse(writing.hasPercent)
+    }
+
+    /** The phase of both: bytes flowing on either side show the %, else what the map waits for. */
+    @Test fun thePhaseOverMapAndRoutingData() {
+        val preparing = MapLoadUi(MapLoadUi.Kind.PREPARING, 0, 60, regions = 1, bytes = 10 * mb)
+        assertEquals(MapLoadUi.Kind.LOADING, RoutingLoads.combine(preparing, routing(5 * mb, 10 * mb))!!.kind)
+        assertEquals(MapLoadUi.Kind.PREPARING, RoutingLoads.combine(preparing, routing(10 * mb, 10 * mb).copy(writing = true))!!.kind)
+        val finishing = MapLoadUi(MapLoadUi.Kind.FINISHING, 100, null, regions = 1, bytes = 10 * mb)
+        assertEquals(MapLoadUi.Kind.LOADING, RoutingLoads.combine(finishing, routing(5 * mb, 10 * mb))!!.kind)
+        assertEquals(MapLoadUi.Kind.FINISHING, RoutingLoads.combine(finishing, routing(10 * mb, 10 * mb).copy(writing = true))!!.kind)
     }
 
     @Test fun offlineAndFailure() {

@@ -45,7 +45,7 @@ class MapLoadService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         // every startForegroundService() must be answered with startForeground()
         try {
-            ServiceCompat.startForeground(this, NOTE_ID, note(null),
+            ServiceCompat.startForeground(this, NOTE_ID, note(emptyList()),
                 if (Build.VERSION.SDK_INT >= 29) ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC else 0)
         } catch (e: Exception) {
             Problems.warn("cells", "Map loading in the background could not start; it goes on while the app is open", e)
@@ -64,13 +64,13 @@ class MapLoadService : Service() {
             val until = System.currentTimeMillis() + MAX_MS
             var idleSince = 0L
             while (isActive) {
-                val p = progress(cells)
-                val busy = p != null || routingLoading()
+                val states = cells.states.value.values
+                val busy = states.any(::loading) || routingLoading()
                 val now = System.currentTimeMillis()
                 if (RecordingService.state.value != null) break // the tour keeps the app alive now
                 if (!busy) { if (idleSince == 0L) idleSince = now; if (now - idleSince >= IDLE_STOP_MS) break } else idleSince = 0L
                 if (now > until) { Problems.info("cells", "Map loading in the background stopped after ${MAX_MS / 60_000} min"); break }
-                try { nm().notify(NOTE_ID, note(p)) } catch (e: Exception) { Problems.warn("cells", "Map loading notification not updated", e) }
+                try { nm().notify(NOTE_ID, note(states)) } catch (e: Exception) { Problems.warn("cells", "Map loading notification not updated", e) }
                 delay(TICK_MS)
             }
             stopSelf()
@@ -98,7 +98,8 @@ class MapLoadService : Service() {
 
     private fun nm() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    private fun note(percent: Int?): Notification {
+    private fun note(states: Collection<CellState>): Notification {
+        val percent = percent(states)
         if (Build.VERSION.SDK_INT >= 26) nm().createNotificationChannel(
             NotificationChannel(CHANNEL, Txt.s(Res.string.maps_notif_channel), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
@@ -106,7 +107,7 @@ class MapLoadService : Service() {
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(Txt.s(Res.string.maps_load_loading))
-            .setContentText(if (percent != null) Txt.s(Res.string.maps_notif_progress, percent) else Txt.s(Res.string.maps_notif_preparing))
+            .setContentText(text(states))
             .setProgress(100, percent ?: 0, percent == null)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
             .setContentIntent(open)
@@ -125,22 +126,24 @@ class MapLoadService : Service() {
         fun loading(s: CellState) = s is CellState.Requested || s is CellState.Queued || s is CellState.Building ||
             s is CellState.Downloading || s is CellState.Installing
 
-        /** Rough overall percent of the areas on their way (null = none). Pure, unit tested. */
+        /**
+         * The notification's number: the real bytes of the areas downloading now, 0..100 – null while nothing
+         * downloads (areas prepared on the server, the downloaded map joined in: [finishing] tells which; the bar then
+         * runs without a value – owner 2026-11-18: no number that stands at 99). Pure, unit tested.
+         */
         fun percent(states: Collection<CellState>): Int? {
-            val on = states.filter(::loading)
-            if (on.isEmpty()) return null
-            val each = on.map { s ->
-                when (s) {
-                    is CellState.Requested, is CellState.Queued -> 0.0
-                    is CellState.Building -> 0.1 + 0.6 * s.progress.coerceIn(0.0, 1.0)
-                    is CellState.Downloading -> 0.7 + 0.3 * (if (s.totalBytes > 0) s.doneBytes.toDouble() / s.totalBytes else 0.0)
-                    else -> 0.99
-                }
-            }
-            return (each.average() * 100).toInt().coerceIn(0, 99)
+            val dl = states.filterIsInstance<CellState.Downloading>().filter { it.totalBytes > 0 }
+            if (dl.isEmpty()) return null
+            return (dl.sumOf { it.doneBytes } * 100 / dl.sumOf { it.totalBytes }).toInt().coerceIn(0, 100)
         }
 
-        private fun progress(cells: MapCells): Int? = percent(cells.states.value.values)
+        /** Everything on its way is downloaded and joined into the map now ("almost ready"). */
+        fun finishing(states: Collection<CellState>): Boolean =
+            states.filter(::loading).let { on -> on.isNotEmpty() && on.all { it is CellState.Installing } }
+
+        /** The notification's line: "34 % – …" while it downloads, else what happens. */
+        fun text(states: Collection<CellState>): String = percent(states)?.let { Txt.s(Res.string.maps_notif_progress, it) }
+            ?: Txt.s(if (finishing(states)) Res.string.maps_notif_finishing else Res.string.maps_notif_preparing)
 
         /**
          * Start it when map areas start loading (called from the app while it is on screen – Android does not allow

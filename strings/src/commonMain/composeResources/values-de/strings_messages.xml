@@ -5,6 +5,7 @@
     <string name="msg_routing_data_stopped">Download der Routing-Daten angehalten. Tippe noch einmal, um fortzufahren.</string>
     <string name="msg_routing_data_offline">Keine Internetverbindung – die Routing-Daten laden, sobald du online bist.</string>
     <string name="msg_routing_data_progress">Routing-Daten werden geladen: %1$d % von %2$d MB</string>
+    <string name="msg_routing_data_writing">Routing-Daten geladen – fast fertig…</string>
     <string name="msg_routing_data_present">Die Routing-Daten für dieses Gebiet sind schon auf dem Handy.</string>
     <string name="msg_routing_data_busy">Routing-Daten werden geladen…</string>
     <string name="msg_maps_remove_failed">Die Kartengebiete konnten nicht entfernt werden. Deine Karten sind so weit wie möglich unverändert – versuche es später noch einmal.</string>

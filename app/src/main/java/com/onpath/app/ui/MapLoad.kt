@@ -29,19 +29,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.cells.CellId
 import com.onpath.app.cells.CellState
-import kotlin.math.max
-import kotlin.math.min
 
 /**
  * The one modal while the user waits for the map of their area: a point set / searched / tapped where there is no
- * detailed map (T1), a route computed while the visible map has none ([MapLoadWait]). Plain words, one bar with %, the
- * time left, one button. Closes by itself only when the map is there; Cancel stops it ([MapLoadCancel]).
+ * detailed map (T1), a route computed while the visible map has none ([MapLoadWait]). Plain words, the time left, one
+ * button; each phase shows its own progress (owner 2026-11-18: a % that races and then stands at 98 looks hung):
+ * preparing on the server and joining the map in have no measurable progress – the title says what happens and the bar
+ * runs, no number; only the download has a % – the real bytes. Closes by itself only when the map is there; Cancel stops
+ * it ([MapLoadCancel]).
  * Background loads (the map for here when the app opens – also the first start –, route corridor, on tour, newer
  * versions) never show it.
  */
 data class MapLoadUi(
     val kind: Kind,
-    /** 0..100, never backwards, 100 only when the map is there. */
+    /**
+     * 0..100: the bytes downloaded of everything this window waits for – real bytes, never a guess, never backwards.
+     * Shown only while bytes can flow ([hasPercent]); the other phases show no number.
+     */
     val percent: Int,
     /** Estimated seconds left; null = unknown (no line). */
     val secondsLeft: Int?,
@@ -56,20 +60,31 @@ data class MapLoadUi(
      * screen (it is all "the map for your area").
      */
     val routing: Boolean = false,
+    /** Of [regions]: already on the phone ("2 of 4 map areas"). */
+    val regionsDone: Int = 0,
 ) {
-    enum class Kind { PREPARING, LOADING, OFFLINE, WIFI, FAILED }
+    /** FINISHING: everything is downloaded and is joined into the map / written into the routing file. */
+    enum class Kind { PREPARING, LOADING, FINISHING, OFFLINE, WIFI, FAILED }
 
     val title: String get() = when (kind) {
         Kind.PREPARING -> Txt.s(Res.string.maps_load_preparing)
+        Kind.FINISHING -> Txt.s(Res.string.maps_load_finishing)
         Kind.FAILED -> Txt.s(Res.string.maps_load_failed)
         else -> Txt.s(Res.string.maps_load_loading)
     }
+
+    /**
+     * A bar with a number: while it downloads, and while a download waits (offline / Wi-Fi: the bar stands, grey, the
+     * line says why). Preparing and finishing have no measurable progress: the bar runs, no number.
+     */
+    val hasPercent: Boolean get() = kind == Kind.LOADING || kind == Kind.OFFLINE || kind == Kind.WIFI
 
     /** The line under the bar: time left, or why it waits. */
     val line: String? get() = when (kind) {
         Kind.OFFLINE -> OFFLINE_TEXT
         Kind.WIFI -> WIFI_TEXT
         Kind.FAILED -> reason
+        Kind.FINISHING -> null
         else -> secondsLeft?.let { timeLeft(it) }
     }
 
@@ -77,6 +92,9 @@ data class MapLoadUi(
 
     /** "3 map areas · about 27 MB" (routing data included, not named); only routing data missing: "about 10 MB". */
     val totals: String get() = if (regions == 0) bytes?.let { Txt.s(Res.string.maps_about_mb, mb(it)) } ?: ""
+        // several areas, some there: "2 of 4 map areas · about 27 MB" – the count moves while a bar cannot
+        else if (regions > 1 && regionsDone in 1 until regions && bytes != null)
+            Txt.s(Res.string.maps_load_totals_done, regionsDone, regions, mb(bytes))
         else if (bytes == null) Txt.p(Res.plurals.maps_load_totals, regions, regions)
         else Txt.p(Res.plurals.maps_load_totals_mb, regions, regions, mb(bytes))
 
@@ -95,18 +113,18 @@ data class MapLoadUi(
 }
 
 /**
- * One overall % for the map of the user's area from the server / download states, updated about every second:
- * preparing (queued + building) = 0–[BUILD_END] %, using the server's progress and ETA and moving on
- * by elapsed time between polls; download = [BUILD_END]–99 % by bytes; added to the map = 100 %. Never backwards, never
- * 100 before the map is there. Pure (time passed in), unit-tested.
+ * One map region on its way, from the server / download states, updated about every second – each phase its own
+ * progress (owner 2026-11-18): preparing (queued + building) has the server's time left and no %; the download has the
+ * real bytes (0–100 %); joining it into the map ([CellState.Installing]) has neither. Pure (time passed in), unit-tested.
  */
 class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
-    private var shown = 0.0
+    /** Bytes downloaded in % – stays where it was while offline / waiting. */
+    private var shown = 0
     private var last: CellState? = null
-    /** Interpolation anchor of the preparing phase. */
+    /** When the preparing state last changed, and the server's time left then. */
     private var anchorAt = 0L
-    private var anchorP = 0.0
     private var anchorRemainS = defaultBuildS.toDouble()
+    private var preparing = false
     /** Download rate measurement. */
     private var dlAt: Long? = null
     private var dlBytes = 0L
@@ -116,47 +134,39 @@ class MapLoadProgress(private val defaultBuildS: Int = DEFAULT_BUILD_S) {
         last = s
         return when (s) {
             CellState.None, CellState.Requested, is CellState.Queued, is CellState.Building -> {
-                if (changed) {
-                    val server = if (s is CellState.Building) BUILD_END * s.progress.coerceIn(0.0, 1.0) else 0.0
-                    val eta = when (s) { is CellState.Queued -> s.etaS; is CellState.Building -> s.etaS; else -> null }
-                    anchorAt = now
-                    anchorP = max(shown, server)
-                    anchorRemainS = (eta ?: defaultBuildS).coerceAtLeast(1).toDouble()
-                }
-                val elapsed = (now - anchorAt) / 1000.0
-                val f = min(elapsed / anchorRemainS, MAX_INTERPOLATION)
-                shown = min(max(shown, anchorP + (BUILD_END - anchorP) * f), BUILD_END - 1)
-                val left = (anchorRemainS - elapsed).coerceAtLeast(0.0).toInt()
-                MapLoadUi(MapLoadUi.Kind.PREPARING, shown.toInt(), left)
+                val eta = when (s) { is CellState.Queued -> s.etaS; is CellState.Building -> s.etaS; else -> null }
+                // a new estimate from the server re-anchors; without one the first estimate runs down
+                if (!preparing || (changed && eta != null)) { anchorAt = now; anchorRemainS = (eta ?: defaultBuildS).coerceAtLeast(1).toDouble() }
+                preparing = true
+                val left = (anchorRemainS - (now - anchorAt) / 1000.0).coerceAtLeast(0.0).toInt()
+                MapLoadUi(MapLoadUi.Kind.PREPARING, shown, left)
             }
             is CellState.Downloading -> {
-                val p = if (s.totalBytes > 0) BUILD_END + (99 - BUILD_END) * s.doneBytes.toDouble() / s.totalBytes else BUILD_END
-                shown = min(max(shown, p), 99.0)
+                preparing = false
+                if (s.totalBytes > 0) shown = maxOf(shown, (s.doneBytes * 100 / s.totalBytes).toInt().coerceIn(0, 100))
                 val start = dlAt
                 if (start == null || s.doneBytes < dlBytes) { dlAt = now; dlBytes = s.doneBytes }
                 val dt = (now - (dlAt ?: now)) / 1000.0
                 val rate = if (dt >= 2 && s.doneBytes > dlBytes) (s.doneBytes - dlBytes) / dt else null
                 val left = if (rate != null && s.totalBytes > 0) ((s.totalBytes - s.doneBytes) / rate).toInt() else null
-                MapLoadUi(MapLoadUi.Kind.LOADING, shown.toInt(), left)
+                MapLoadUi(MapLoadUi.Kind.LOADING, shown, left)
             }
-            CellState.Installing -> { shown = max(shown, 99.0); MapLoadUi(MapLoadUi.Kind.LOADING, 99, 0) }
+            // all bytes are here; the map is joined in – no progress to measure, so no number
+            CellState.Installing -> { preparing = false; shown = 100; MapLoadUi(MapLoadUi.Kind.FINISHING, 100, null) }
             // downloaded during a tour: on the phone, joined after it – as far as the loading window goes, it is done
-            CellState.Downloaded -> { shown = 100.0; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
-            is CellState.Ready -> { shown = 100.0; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
-            is CellState.Offline -> MapLoadUi(MapLoadUi.Kind.OFFLINE, shown.toInt(), null)
-            is CellState.WaitingForWifi -> MapLoadUi(MapLoadUi.Kind.WIFI, shown.toInt(), null)
-            is CellState.Failed -> MapLoadUi(MapLoadUi.Kind.FAILED, shown.toInt(), null,
+            CellState.Downloaded -> { shown = 100; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
+            is CellState.Ready -> { shown = 100; MapLoadUi(MapLoadUi.Kind.LOADING, 100, 0) }
+            is CellState.Offline -> MapLoadUi(MapLoadUi.Kind.OFFLINE, shown, null)
+            is CellState.WaitingForWifi -> MapLoadUi(MapLoadUi.Kind.WIFI, shown, null)
+            is CellState.Failed -> MapLoadUi(MapLoadUi.Kind.FAILED, shown, null,
                 reason = if (s.retryable) Txt.s(Res.string.maps_load_failed_retry) else s.message,
                 retryable = s.retryable)
         }
     }
 
     companion object {
-        const val BUILD_END = 80.0
         /** Assumed preparing time when the server gives no ETA. */
         const val DEFAULT_BUILD_S = 180
-        /** Between polls the bar moves at most this share of the way to [BUILD_END] (never reaches it by itself). */
-        const val MAX_INTERPOLATION = 0.9
     }
 }
 
@@ -181,8 +191,10 @@ object MapLoads {
 
     /**
      * One [MapLoadUi] for the regions [focus]: [progress] holds one [MapLoadProgress] per region (kept by the caller),
-     * [sizes] the installed regions' sizes. The % is the mean over the regions (ready = 100), never below [held] (the
-     * last value shown) and below 100 until all are there. Null when every region is there.
+     * [sizes] the installed regions' sizes. The % is the bytes downloaded over all regions (a region on the phone
+     * counts in full, one still prepared with 0), never below [held] (the last value shown). The kind is the phase:
+     * LOADING while a region downloads, else PREPARING while the server works on one, else FINISHING (all downloaded,
+     * joined into the map). Null when every region is there.
      */
     fun aggregate(
         focus: Collection<CellId>, states: Map<CellId, CellState>, sizes: Map<CellId, Long>,
@@ -194,18 +206,21 @@ object MapLoads {
         if (open.isEmpty()) return null
         val per = open.map { c -> progress.getOrPut(c) { MapLoadProgress() }.update(states[c] ?: CellState.Requested, now) }
         val total = focus.size
-        val mean = (per.sumOf { it.percent } + 100 * (total - open.size)) / total
-        val pct = maxOf(held, mean).coerceAtMost(99)
         val bytes = estimate(focus, states, sizes)
+        fun size(c: CellId) = knownBytes(states[c], sizes[c]) ?: ESTIMATED_REGION_BYTES
+        val got = focus.sumOf { c -> if (ready(c)) size(c) else size(c) * per[open.indexOf(c)].percent / 100 }
+        val pct = maxOf(held, if (bytes > 0) (got * 100 / bytes).toInt() else 0).coerceIn(0, 100)
+        val there = total - open.size
         val kinds = per.map { it.kind }
         val left = per.mapNotNull { it.secondsLeft }.maxOrNull()
         return when {
             kinds.all { it == MapLoadUi.Kind.FAILED } ->
-                per.first().copy(percent = pct, regions = total, bytes = bytes, retryable = per.any { it.retryable })
-            MapLoadUi.Kind.OFFLINE in kinds -> MapLoadUi(MapLoadUi.Kind.OFFLINE, pct, null, regions = total, bytes = bytes)
-            MapLoadUi.Kind.LOADING in kinds -> MapLoadUi(MapLoadUi.Kind.LOADING, pct, left, regions = total, bytes = bytes)
-            MapLoadUi.Kind.PREPARING in kinds -> MapLoadUi(MapLoadUi.Kind.PREPARING, pct, left, regions = total, bytes = bytes)
-            else -> MapLoadUi(MapLoadUi.Kind.WIFI, pct, null, regions = total, bytes = bytes)
+                per.first().copy(percent = pct, regions = total, bytes = bytes, retryable = per.any { it.retryable }, regionsDone = there)
+            MapLoadUi.Kind.OFFLINE in kinds -> MapLoadUi(MapLoadUi.Kind.OFFLINE, pct, null, regions = total, bytes = bytes, regionsDone = there)
+            MapLoadUi.Kind.LOADING in kinds -> MapLoadUi(MapLoadUi.Kind.LOADING, pct, left, regions = total, bytes = bytes, regionsDone = there)
+            MapLoadUi.Kind.PREPARING in kinds -> MapLoadUi(MapLoadUi.Kind.PREPARING, pct, left, regions = total, bytes = bytes, regionsDone = there)
+            MapLoadUi.Kind.FINISHING in kinds -> MapLoadUi(MapLoadUi.Kind.FINISHING, pct, null, regions = total, bytes = bytes, regionsDone = there)
+            else -> MapLoadUi(MapLoadUi.Kind.WIFI, pct, null, regions = total, bytes = bytes, regionsDone = there)
         }
     }
 }
@@ -306,13 +321,15 @@ fun MapLoadPanel(ui: MapLoadUi, cb: MapLoadCallbacks) {
             Text(ui.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             Text(ui.totals, style = MaterialTheme.typography.bodyMedium, color = variant)
             if (ui.kind != MapLoadUi.Kind.FAILED) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                // the download: the real bytes with their number; preparing / finishing: the bar runs, no number
+                if (ui.hasPercent) Row(verticalAlignment = Alignment.CenterVertically) {
                     LinearProgressIndicator(progress = { ui.percent / 100f },
                         color = if (ui.paused) variant else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.weight(1f).clip(CircleShape))
                     Text("${ui.percent} %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium,
                         modifier = Modifier.padding(start = 12.dp))
-                }
+                } else LinearProgressIndicator(color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp).clip(CircleShape))
             }
             ui.line?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = variant) }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {

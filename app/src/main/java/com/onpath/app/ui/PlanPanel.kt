@@ -400,7 +400,7 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
             Column(Modifier.weight(1f)) {
                 Text(PlanStatus.calculating(ui.routeProgress), style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant)
-                RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
+                RoutingBar(ui.routeShare, Modifier.fillMaxWidth().padding(top = 4.dp).height(3.dp).clip(CircleShape))
             }
             androidx.compose.material3.TextButton(onClick = cb.onCancelRouting) { Text(str(Res.string.common_cancel)) }
         }
@@ -460,7 +460,7 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     // the hairline under the plan row; while a route is calculated the bar runs in its place (same 7 dp – nothing moves)
     if (ui.pointCount >= 1) Box(Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 1.dp).height(3.dp), contentAlignment = Alignment.Center) {
         if (PlanCalculating.barInHairline(ui.routing, ui.routingSlow))
-            RoutingBar(ui.routeProgress, ui.routeShare, Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
+            RoutingBar(ui.routeShare, Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
         else HorizontalDivider(thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
     }
     val route = ui.route
@@ -642,15 +642,15 @@ private fun GoButton(ui: PlanUi, cb: PlanCallbacks) {
 
 /**
  * The bar while a route is calculated (owner 2026-11-05): [share] = legs done + the running leg's search ([WaitBar]) –
- * it moves within one long leg too; without it legs done / legs to route ([PlanStatus.hasLegs]); else the running bar.
+ * it moves within one long leg too. Without a share (not known yet, the search stands, every leg routed) the bar runs –
+ * never a bar that stands (owner 2026-11-18).
  */
 @Composable
-private fun RoutingBar(progress: Pair<Int, Int>?, share: Float?, modifier: Modifier) {
+private fun RoutingBar(share: Float?, modifier: Modifier) {
     // planning is blue (owner's colour rule 2026-11-06) – not the walnut base colour
     val c = OnPathColors.ActionEdit; val t = OnPathColors.ActionEdit.copy(alpha = 0.18f)
     when {
         share != null -> LinearProgressIndicator(progress = { share }, modifier = modifier, color = c, trackColor = t)
-        PlanStatus.hasLegs(progress) -> LinearProgressIndicator(progress = { PlanStatus.share(progress!!) }, modifier = modifier, color = c, trackColor = t)
         else -> LinearProgressIndicator(modifier, color = c, trackColor = t)
     }
 }

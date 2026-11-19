@@ -44,7 +44,9 @@ import com.onpath.app.cells.CellState
 /**
  * What loads in the background right now (owner: downloads must be visible and stoppable): map regions along
  * the plan's route, the map ahead on a tour, newer versions, routing data – anything the user is not waiting for in the
- * big loading modal. [percent] over everything loading since the strip appeared (never backwards).
+ * big loading modal. [percent] = the real bytes downloaded of everything loading since the chip appeared (never
+ * backwards), shown only while bytes flow ([phase] LOADING); while areas are prepared on the server or the downloaded
+ * data is joined in, the chip's ring spins and the details say what happens – no number that stands (owner 2026-11-18).
  */
 data class BackgroundDownloadUi(
     /** Map regions loading (never called "cells" on screen). */
@@ -60,15 +62,20 @@ data class BackgroundDownloadUi(
     val newerEtaMin: Int? = null,
     /** What loads, by name ("around Bad Waldsee", "along your route to …"), most important first. */
     val groups: List<LoadGroup> = emptyList(),
+    /** What happens now: LOADING while something downloads, else PREPARING (server) before FINISHING (joined in). */
+    val phase: LoadPhase = LoadPhase.LOADING,
 ) {
     /** The chip's name ("Bad Waldsee") and how many other names load ("+1"). */
     val chip: Pair<String, Int> get() = LoadNames.chip(groups)
 
     /**
-     * A percent to show: something moved. 0 % = nothing has a percent yet (areas still being prepared on the server) –
-     * the chip's ring spins and no "0 %" is shown.
+     * A percent to show: bytes flow and some are here. Else (areas still being prepared on the server, the downloaded
+     * map being joined in) the chip's ring spins and no number is shown.
      */
-    val hasPercent: Boolean get() = percent > 0
+    val hasPercent: Boolean get() = phase == LoadPhase.LOADING && percent > 0
+
+    /** "34 % done" while it downloads, else what happens ("being prepared", "almost ready"). */
+    val doneText: String get() = if (hasPercent) Txt.s(Res.string.maps_bg_done, percent) else phase.text
 
     /** "Bad Waldsee +1 · 34 %" – what the chip says (accessibility, tests); without a percent yet only the names. */
     val chipText: String get() = chip.let { (n, more) -> n + (if (more > 0) " +$more" else "") + (if (hasPercent) " · $percent %" else "") }
@@ -84,7 +91,7 @@ data class BackgroundDownloadUi(
     /** "3 areas · 24 MB · 40 %" (the strip); "24 MB · 40 %" when only the route planning part of the map loads (never named). */
     val line: String get() {
         val what = if (regions > 0) Txt.p(Res.plurals.maps_areas_count, regions, regions) else null
-        return listOfNotNull(what, if (bytes > 0) "${mb(bytes)} MB" else null, "$percent %").joinToString(" · ")
+        return listOfNotNull(what, if (bytes > 0) "${mb(bytes)} MB" else null, if (hasPercent) "$percent %" else phase.text).joinToString(" · ")
     }
 }
 
@@ -96,8 +103,8 @@ class BackgroundProgress {
     private val items = LinkedHashMap<String, LongArray>() // key → [done, total]
     private var held = 0
 
-    /** One item loading now: [done] of [total] bytes (total 0 = unknown, counted with an estimate). */
-    data class Item(val key: String, val done: Long, val total: Long)
+    /** One item loading now: [done] of [total] bytes downloaded (total 0 = unknown, counted with an estimate), in [phase]. */
+    data class Item(val key: String, val done: Long, val total: Long, val phase: LoadPhase = LoadPhase.LOADING)
 
     fun update(active: List<Item>, regions: Int, routingParts: Int, newer: Int = 0, newerEtaMin: Int? = null,
                groups: List<LoadGroup> = emptyList()): BackgroundDownloadUi? {
@@ -111,9 +118,15 @@ class BackgroundProgress {
         }
         val total = items.values.sumOf { it[1] }
         val done = items.values.sumOf { it[0] }
-        val pct = if (total <= 0) 0 else (done * 100 / total).toInt().coerceIn(0, 99)
+        val pct = if (total <= 0) 0 else (done * 100 / total).toInt().coerceIn(0, 100)
         held = maxOf(held, pct)
-        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held, newer, newerEtaMin, groups)
+        val phases = active.map { it.phase }
+        val phase = when {
+            LoadPhase.LOADING in phases -> LoadPhase.LOADING
+            phases.all { it == LoadPhase.FINISHING } -> LoadPhase.FINISHING
+            else -> LoadPhase.PREPARING
+        }
+        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.total }, held, newer, newerEtaMin, groups, phase)
     }
 
     companion object {
@@ -125,26 +138,29 @@ class BackgroundProgress {
             s is CellState.Downloading || s == CellState.Installing
 
         /**
-         * The background items of the cell [states] (those in [waitedFor] are the modal's, not the strip's). An
+         * The background items of the cell [states] (those in [waitedFor] are the modal's, not the chip's). An
          * [installed] area only asked for a newer version ([CellState.Requested]: the server has not answered) is no
-         * loading yet. With [progress] (one [MapLoadProgress] per cell, kept by the caller; [now] uptime ms) the
-     * server's preparing time counts too, as in the loading window (else the strip stands at 0 % while the server
-         * prepares); without it only downloaded bytes count.
+         * loading yet. Only downloaded bytes count; an area still prepared on the server has none and says so by its
+         * phase (the chip spins) – no time-based guess.
          */
         fun cellItems(
-            states: Map<CellId, CellState>, waitedFor: Set<CellId>, installed: Set<CellId> = emptySet(),
-            progress: MutableMap<CellId, MapLoadProgress>? = null, now: Long = 0L, size: (CellId) -> Long?,
+            states: Map<CellId, CellState>, waitedFor: Set<CellId>, installed: Set<CellId> = emptySet(), size: (CellId) -> Long?,
         ): List<Item> {
             val items = states.filter { (c, s) -> c !in waitedFor && loading(s) && !(c in installed && s == CellState.Requested) }
-            progress?.keys?.retainAll(items.keys)
             return items.map { (c, s) ->
                 val d = s as? CellState.Downloading
                 val total = d?.totalBytes?.takeIf { it > 0 } ?: size(c) ?: 0L
-                val done = if (progress == null) d?.doneBytes ?: 0L else {
-                    val pct = progress.getOrPut(c) { MapLoadProgress() }.update(s, now).percent
-                    (if (total > 0) total else ESTIMATE_BYTES) * pct / 100
+                val done = when {
+                    d != null -> d.doneBytes
+                    s == CellState.Installing -> if (total > 0) total else ESTIMATE_BYTES // every byte is here
+                    else -> 0L
                 }
-                Item("cell:${c.id}", done, total)
+                val phase = when (s) {
+                    is CellState.Downloading -> LoadPhase.LOADING
+                    CellState.Installing -> LoadPhase.FINISHING
+                    else -> LoadPhase.PREPARING
+                }
+                Item("cell:${c.id}", done, total, phase)
             }
         }
     }
@@ -213,8 +229,7 @@ fun BackgroundDownloadDetailsContent(ui: BackgroundDownloadUi, onCancelAll: () -
             if (fresh > 0) Text(plural(Res.plurals.maps_bg_fresh, fresh, fresh), style = MaterialTheme.typography.bodyLarge)
             ui.newerLine?.let { Text(it, style = MaterialTheme.typography.bodyLarge) }
         }
-        Text(listOfNotNull(if (ui.bytes > 0) str(Res.string.maps_bg_total, mb(ui.bytes)) else null,
-            str(Res.string.maps_bg_done, ui.percent)).joinToString(" · "),
+        Text(listOfNotNull(if (ui.bytes > 0) str(Res.string.maps_bg_total, mb(ui.bytes)) else null, ui.doneText).joinToString(" · "),
             style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, color = OnPathColors.Ink)
         Text(str(Res.string.maps_bg_maps_stay), style = MaterialTheme.typography.bodyMedium, color = OnPathColors.InkMuted)
         // the two buttons wrap (right-aligned) when they do not fit side by side – never a word broken in a button

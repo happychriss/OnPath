@@ -6,7 +6,9 @@ import com.onpath.app.data.RoutingDataLoader
 
 /**
  * One loading modal for map + routing data: "Loading the map for your area · 4 regions · about 60 MB" with one % over
- * both by bytes (routing data weighted by its size, included in the MB), or "Loading the map for your area · about
+ * both by the real bytes downloaded (routing data weighted by its size, included in the MB) – shown only while bytes
+ * flow; while the server prepares or the downloaded data is written the window says so and its bar runs
+ * ([MapLoadUi.Kind]), or "Loading the map for your area · about
  * 10 MB" when only routing data is missing – routing data is never named (owner: it is all "the map for your area").
  */
 object RoutingLoads {
@@ -16,15 +18,16 @@ object RoutingLoads {
      * there, or not waited for). [held] = the last % shown (never backwards). Null = nothing to wait for.
      */
     fun combine(map: MapLoadUi?, routing: RoutingDataLoader.Status?, held: Int = 0): MapLoadUi? {
-        if (routing == null) return map?.let { it.copy(percent = maxOf(it.percent, held).coerceAtMost(99)) }
+        if (routing == null) return map?.let { it.copy(percent = maxOf(it.percent, held).coerceAtMost(100)) }
         val rKind = when (routing.phase) {
-            RoutingDataLoader.Phase.LOADING -> MapLoadUi.Kind.LOADING
+            // all its bytes are here and the routing file is rewritten: nothing to measure
+            RoutingDataLoader.Phase.LOADING -> if (routing.writing) MapLoadUi.Kind.FINISHING else MapLoadUi.Kind.LOADING
             RoutingDataLoader.Phase.OFFLINE -> MapLoadUi.Kind.OFFLINE
             RoutingDataLoader.Phase.WIFI -> MapLoadUi.Kind.WIFI
             RoutingDataLoader.Phase.FAILED -> MapLoadUi.Kind.FAILED
         }
         if (map == null) {
-            return MapLoadUi(rKind, maxOf(held, routing.percent).coerceAtMost(99),
+            return MapLoadUi(rKind, maxOf(held, routing.percent).coerceAtMost(100),
                 routing.secondsLeft.takeIf { rKind == MapLoadUi.Kind.LOADING },
                 reason = if (rKind == MapLoadUi.Kind.FAILED) FAILED_TEXT else null,
                 retryable = rKind == MapLoadUi.Kind.FAILED,
@@ -36,10 +39,12 @@ object RoutingLoads {
         val kind = when {
             map.kind == MapLoadUi.Kind.FAILED -> MapLoadUi.Kind.FAILED
             map.kind == MapLoadUi.Kind.OFFLINE || rKind == MapLoadUi.Kind.OFFLINE -> MapLoadUi.Kind.OFFLINE
+            // bytes flow on either side: the download with its %; else what the map waits for
+            map.kind == MapLoadUi.Kind.LOADING || rKind == MapLoadUi.Kind.LOADING -> MapLoadUi.Kind.LOADING
             else -> map.kind
         }
         val left = listOfNotNull(map.secondsLeft, routing.secondsLeft).maxOrNull()
-        return map.copy(kind = kind, percent = maxOf(held, pct).coerceAtMost(99),
+        return map.copy(kind = kind, percent = maxOf(held, pct).coerceAtMost(100),
             secondsLeft = left.takeIf { kind == MapLoadUi.Kind.LOADING || kind == MapLoadUi.Kind.PREPARING },
             bytes = total, routing = true)
     }

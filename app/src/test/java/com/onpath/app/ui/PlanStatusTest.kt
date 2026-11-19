@@ -8,6 +8,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.LongRoute
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -101,23 +102,23 @@ class PlanStatusTest {
         assertFalse(PlanStatus.hasLegs(0 to 1))
         assertTrue(PlanStatus.hasLegs(0 to 2))
         assertEquals("Calculating section 2 of 4…", PlanStatus.calculating(1 to 4))
-        assertEquals("the last leg done: still 4 of 4", "Calculating section 4 of 4…", PlanStatus.calculating(4 to 4))
+        assertEquals("the last leg is routed: the result is checked, not 'section 4 of 4'", "Checking the route…", PlanStatus.calculating(4 to 4))
         assertEquals(0.25f, PlanStatus.share(1 to 4), 0.0001f)
         assertEquals(1f, PlanStatus.share(5 to 4), 0.0001f)
     }
 
-    /** The bar moves within one long leg and never goes back (owner 2026-11-05). */
+    /** The bar moves within one long leg and never goes back (owner 2026-11-05); it never stands ([PercentStallTest]). */
     @Test fun theWaitBarMovesWithinALegAndNeverBack() {
         val one = WaitBar()
-        assertEquals(0f, one.next(0, 1, null), 0.0001f)
-        assertEquals(0.4f, one.next(0, 1, 0.4), 0.0001f)
-        assertEquals("a retry inside the leg starts its search again: the bar stays", 0.4f, one.next(0, 1, 0.1), 0.0001f)
-        assertEquals(1f, one.next(1, 1, null), 0.0001f)
+        assertEquals(0f, one.next(0, 1, null, 0)!!, 0.0001f)
+        assertEquals(0.4f, one.next(0, 1, 0.4, 250)!!, 0.0001f)
+        assertEquals("a retry inside the leg starts its search again: the bar stays", 0.4f, one.next(0, 1, 0.1, 500)!!, 0.0001f)
+        assertNull("the leg is routed, the result is worked out: the bar runs", one.next(1, 1, null, 750))
         val four = WaitBar()
-        assertEquals("leg 2 of 4 half done", 0.375f, four.next(1, 4, 0.5), 0.0001f)
-        assertEquals("the next leg starts: no step back", 0.5f, four.next(2, 4, 0.0), 0.0001f)
-        assertEquals(0.5f, four.next(1, 4, null), 0.0001f)
-        assertEquals(1f, four.next(4, 4, 0.7), 0.0001f)
-        assertEquals("no legs to route", 0f, WaitBar().next(0, 0, 0.5), 0.0001f)
+        assertEquals("leg 2 of 4 half done", 0.375f, four.next(1, 4, 0.5, 0)!!, 0.0001f)
+        assertEquals("the next leg starts: no step back", 0.5f, four.next(2, 4, 0.0, 250)!!, 0.0001f)
+        assertEquals(0.5f, four.next(1, 4, null, 500)!!, 0.0001f)
+        assertNull(four.next(4, 4, 0.7, 750))
+        assertNull("no legs to route", WaitBar().next(0, 0, 0.5, 0))
     }
 }

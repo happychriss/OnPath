@@ -2,58 +2,48 @@ package com.onpath.app.ui
 
 import com.onpath.app.cells.CellState
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** One overall % for the map of the user's area: 0–80 preparing, 80–99 download, 100 done. */
+/**
+ * The map of the user's area on its way, each phase its own progress (owner 2026-11-18, [PercentStallTest]): preparing =
+ * the server's time left, no %; download = the real bytes; joined in = neither.
+ */
 class MapLoadProgressTest {
     private val mb = 1_048_576L
 
-    @Test fun preparingMovesOnByElapsedTimeBetweenPolls() {
+    @Test fun preparingCountsTheServersTimeDownAndHasNoPercent() {
         val p = MapLoadProgress()
         val b = CellState.Building("base", 0.0, 100)
-        assertEquals(0, p.update(b, 0).percent)
-        val at25 = p.update(b, 25_000)
-        assertEquals(20, at25.percent)                  // a quarter of the ETA → a quarter of 0–80
-        assertEquals(75, at25.secondsLeft)
-        assertEquals(40, p.update(b, 50_000).percent)
-        assertEquals(MapLoadUi.Kind.PREPARING, at25.kind)
+        val start = p.update(b, 0)
+        assertEquals(MapLoadUi.Kind.PREPARING, start.kind)
+        assertFalse(start.hasPercent)
+        assertEquals(100, start.secondsLeft)
+        assertEquals(75, p.update(b, 25_000).secondsLeft)
+        // the server is slower than it said: the line stays at "less than a minute", nothing is made up
+        assertEquals("Less than a minute left", p.update(b, 3_600_000).line)
+        // a new estimate from the server counts from now
+        assertEquals(200, p.update(CellState.Building("tiles", 0.5, 200), 3_601_000).secondsLeft)
     }
 
-    @Test fun neverReachesTheEndOfPreparingByItself() {
-        val p = MapLoadProgress()
-        val b = CellState.Building("base", 0.0, 60)
-        p.update(b, 0)
-        val late = p.update(b, 3_600_000)
-        assertTrue(late.percent < 80)
-        assertEquals("Less than a minute left", late.line)
-    }
-
-    @Test fun serverProgressAndNewEtaReAnchorWithoutGoingBack() {
-        val p = MapLoadProgress()
-        p.update(CellState.Queued(2, 200), 0)
-        val before = p.update(CellState.Queued(2, 200), 50_000).percent   // 20
-        // the server says building 10 % (= 8 overall), lower than shown: the bar does not go back
-        val after = p.update(CellState.Building("base", 0.1, 100), 51_000).percent
-        assertTrue(after >= before)
-        // and moves on from there towards 80 with the new ETA
-        assertTrue(p.update(CellState.Building("base", 0.1, 100), 101_000).percent > after)
-        // a server progress above the shown value jumps forward
-        assertEquals(64, p.update(CellState.Building("tiles", 0.8, 20), 102_000).percent)
-    }
-
-    @Test fun downloadIsEightyToNinetyNineByBytes() {
+    @Test fun downloadIsTheRealBytes() {
         val p = MapLoadProgress()
         p.update(CellState.Building("base", 0.5, 30), 0)
-        assertEquals(80, p.update(CellState.Downloading(0, 0), 1_000).percent)
-        assertEquals(80, p.update(CellState.Downloading(0, 20 * mb), 2_000).percent)
+        assertEquals(0, p.update(CellState.Downloading(0, 0), 1_000).percent)
+        assertEquals(0, p.update(CellState.Downloading(0, 20 * mb), 2_000).percent)
         val half = p.update(CellState.Downloading(10 * mb, 20 * mb), 7_000)
-        assertEquals(89, half.percent)
+        assertEquals(50, half.percent)
         assertEquals(MapLoadUi.Kind.LOADING, half.kind)
+        assertTrue(half.hasPercent)
         assertEquals(6, half.secondsLeft)                // 10 MB in 6 s (since the first byte count) → 10 MB more ≈ 6 s
-        assertEquals(99, p.update(CellState.Downloading(20 * mb, 20 * mb), 8_000).percent)
-        assertEquals(99, p.update(CellState.Installing, 9_000).percent)
+        assertEquals(100, p.update(CellState.Downloading(20 * mb, 20 * mb), 8_000).percent)
+        // joined into the map: no number, no time left
+        val joining = p.update(CellState.Installing, 9_000)
+        assertEquals(MapLoadUi.Kind.FINISHING, joining.kind)
+        assertFalse(joining.hasPercent)
+        assertNull(joining.line)
         assertEquals(100, p.update(CellState.Ready("v"), 10_000).percent)
     }
 
@@ -67,20 +57,20 @@ class MapLoadProgressTest {
         for (s in seq) for (k in 0 until 5) {
             val pc = p.update(s, t).percent
             assertTrue("$s at $t: $pc < $last", pc >= last)
-            assertTrue(pc < 100)
             last = pc; t += 7_000
         }
     }
 
     @Test fun offlinePausesAndSaysWhy() {
         val p = MapLoadProgress()
-        p.update(CellState.Building("base", 0.5, 30), 0)
+        p.update(CellState.Downloading(4 * mb, 10 * mb), 0)
         val off = p.update(CellState.Offline("No connection"), 10_000)
         assertEquals(MapLoadUi.Kind.OFFLINE, off.kind)
         assertEquals(40, off.percent)
         assertEquals(40, p.update(CellState.Offline("No connection"), 60_000).percent)
         assertEquals(MapLoadUi.OFFLINE_TEXT, off.line)
         assertTrue(off.paused)
+        assertTrue("the bar stands, grey, with its number – the line says why", off.hasPercent)
     }
 
     @Test fun failureIsPlain() {
@@ -97,23 +87,36 @@ class MapLoadProgressTest {
 
     @Test fun regionsAndSizeOverAll() {
         val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
-        val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Downloading(0, 12 * mb), b to CellState.Building("base", 0.0, 60)),
+        val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Downloading(6 * mb, 12 * mb), b to CellState.Building("base", 0.0, 60)),
             emptyMap(), progress, 0, 0)!!
         assertEquals(2, ui.regions)
         assertEquals(12 * mb + MapLoads.ESTIMATED_REGION_BYTES, ui.bytes)
         assertEquals("2 map areas · about 21 MB", ui.totals)
         assertEquals(MapLoadUi.Kind.LOADING, ui.kind)       // something is downloading
-        assertEquals(40, ui.percent)                         // (80 + 0) / 2
+        assertEquals(28, ui.percent)                         // 6 of about 21 MB – the real bytes
         assertEquals("1 map area · ≈ 9 MB", MapLoads.askText(1, MapLoads.ESTIMATED_REGION_BYTES))
     }
 
-    @Test fun oneRegionThereCountsAsHundredAndAllThereEndsIt() {
+    @Test fun oneRegionThereCountsInFullAndAllThereEndsIt() {
         val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
         val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Ready("v"), b to CellState.Downloading(0, 0)),
             mapOf(a to 10 * mb), progress, 0, 0)!!
-        assertEquals(90, ui.percent)
+        assertEquals(52, ui.percent)                         // 10 of about 19 MB
+        assertEquals(1, ui.regionsDone)
+        assertEquals("1 of 2 map areas · about 19 MB", ui.totals)
         assertEquals(10 * mb + MapLoads.ESTIMATED_REGION_BYTES, ui.bytes)
         assertNull(MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Ready("v"), b to CellState.Ready("v")), emptyMap(), progress, 90, 1))
+    }
+
+    /** All downloaded, joined into the map: the window says "almost ready" – never a 99 % that stands. */
+    @Test fun allDownloadedIsFinishing() {
+        val progress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
+        val ui = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Ready("v"), b to CellState.Installing), mapOf(a to 10 * mb), progress, 0, 0)!!
+        assertEquals(MapLoadUi.Kind.FINISHING, ui.kind)
+        assertFalse(ui.hasPercent)
+        // one still prepared on the server: that is what the window waits for
+        val waits = MapLoads.aggregate(listOf(a, b), mapOf(a to CellState.Installing, b to CellState.Queued(1, 60)), emptyMap(), progress, 0, 0)!!
+        assertEquals(MapLoadUi.Kind.PREPARING, waits.kind)
     }
 
     @Test fun neverBackwardsWhenARegionJoins() {

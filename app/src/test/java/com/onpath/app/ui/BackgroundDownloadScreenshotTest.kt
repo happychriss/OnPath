@@ -48,7 +48,10 @@ abstract class BackgroundDownloadScreenshotTest {
     @Test fun planChip() = planWith(ui)
 
     /** Nothing has a percent yet (areas being prepared on the server): the ring spins, no "0 %". */
-    @Test fun planChipPreparing() = planWith(ui.copy(percent = 0))
+    @Test fun planChipPreparing() = planWith(ui.copy(percent = 0, phase = LoadPhase.PREPARING))
+
+    /** Everything downloaded, joined into the map: the ring spins, no "99 %" that stands (owner 2026-11-18). */
+    @Test fun planChipFinishing() = planWith(ui.copy(percent = 100, phase = LoadPhase.FINISHING))
 
     /** A long name is cut with "…" at about half the width; the % always shows. */
     @Test fun planChipLongName() = planWith(longName)
@@ -81,6 +84,10 @@ abstract class BackgroundDownloadScreenshotTest {
 
     /** Tap on the chip: what loads, Cancel all (red) · Close – a bottom sheet over the map (drawn as the sheet looks). */
     @Test fun details() = sheet(ui)
+
+    /** The same while nothing downloads: "… · wird vorbereitet" / "… · fast fertig" in place of the percent. */
+    @Test fun detailsPreparing() = sheet(ui.copy(percent = 0, phase = LoadPhase.PREPARING))
+    @Test fun detailsFinishing() = sheet(ui.copy(percent = 100, phase = LoadPhase.FINISHING))
 
     /** The bottom sheet as ModalBottomSheet draws it (white, 28 dp top corners, drag handle, scrim) – Paparazzi has no popups. */
     @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)

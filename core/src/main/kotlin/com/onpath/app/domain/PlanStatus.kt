@@ -19,11 +19,16 @@ object PlanStatus {
 
     /**
      * The wait card's line (owner 2026-11-05): "Abschnitt 2 von 4 wird berechnet…" while legs are routed one by
-     * one ([progress] = legs done / legs to route, only the legs the router works on), else [CALCULATING].
+     * one ([progress] = legs done / legs to route, only the legs the router works on), else [CALCULATING]. Every leg
+     * routed ([finishing]): "Route wird geprüft…" – times, warnings, what reaches a stop; not "Abschnitt 4 von 4".
      */
     fun calculating(progress: Pair<Int, Int>?): String =
-        if (hasLegs(progress)) Txt.s(Res.string.plan_calculating_leg, minOf(progress!!.first + 1, progress.second), progress.second)
+        if (finishing(progress)) Txt.s(Res.string.plan_finishing)
+        else if (hasLegs(progress)) Txt.s(Res.string.plan_calculating_leg, minOf(progress!!.first + 1, progress.second), progress.second)
         else CALCULATING
+
+    /** All legs are routed and the result is worked out (nothing to measure: the bar runs). */
+    fun finishing(progress: Pair<Int, Int>?): Boolean = progress != null && progress.second > 0 && progress.first >= progress.second
 
     /** A determinate bar: two or more legs to route ([calculating]); one leg (or none known) = the running bar. */
     fun hasLegs(progress: Pair<Int, Int>?): Boolean = progress != null && progress.second >= 2
@@ -86,15 +91,34 @@ object PlanStatus {
  * The wait bar of one plan run (owner 2026-11-05: it must move within one long leg too, never back): legs done plus the
  * running leg's search share (`BRouterEngine.searchProgress`, null = not known) over the legs to
  * route. Keeps the highest value it gave – a new search inside the same leg (a retry) or a leg from the cache never
- * moves it back. One per run; not thread-safe (one poller).
+ * moves it back.
+ *
+ * It never stands (owner 2026-11-18: „bleibt dann bei 98 % stehen – da denkt jeder, es hängt sich auf“): [next] gives
+ * null = "show the running bar" when the share has not moved for [STALL_MS] (the search is at the goal but not done, a
+ * second search runs, the track is built) and when every leg is routed (the result is worked out). It is a share
+ * again as soon as it moves. One per run; not thread-safe (one poller).
  */
 class WaitBar {
     private var last = 0f
+    private var movedAt = -1L
 
-    fun next(done: Int, total: Int, leg: Double?): Float {
-        if (total <= 0) return last
+    /** The bar's share 0..1 at [nowMs] (any steady clock), or null = no measurable progress now: the bar runs. */
+    fun next(done: Int, total: Int, leg: Double?, nowMs: Long): Float? {
+        if (total <= 0) return null
+        if (done >= total) return null
         val v = ((done.coerceIn(0, total) + (leg ?: 0.0).coerceIn(0.0, 1.0)) / total).toFloat().coerceIn(0f, 1f)
-        if (v > last) last = v
-        return last
+        if (movedAt < 0) movedAt = nowMs
+        if (v > last + MOVE) { last = v; movedAt = nowMs }
+        return if (nowMs - movedAt >= STALL_MS) null else last
+    }
+
+    /** The steady clock for [next] (ms). */
+    fun now(): Long = System.nanoTime() / 1_000_000
+
+    companion object {
+        /** No visible movement for this long: the running bar instead of a standing one. */
+        const val STALL_MS = 3_000L
+        /** A step smaller than this is not seen on the bar (about 1 dp). */
+        const val MOVE = 0.003f
     }
 }

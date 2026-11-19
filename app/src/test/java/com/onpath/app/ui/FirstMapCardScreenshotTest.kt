@@ -38,6 +38,10 @@ abstract class FirstMapCardScreenshotTest(private val locale: Locale, fontScale:
     @After fun back() = Locale.setDefault(before)
 
     @Test fun loading() = frame(FirstMapCard.Ui.Loading(34, 18L * 1_048_576))
+    /** The server still prepares the map: no number, the bar runs, "wird vorbereitet" (owner 2026-11-18). */
+    @Test fun preparing() = frame(FirstMapCard.Ui.Loading(null, 18L * 1_048_576, LoadPhase.PREPARING))
+    /** Downloaded, joined into the map: "fast fertig", the bar runs – no 99 % that stands. */
+    @Test fun finishing() = frame(FirstMapCard.Ui.Loading(null, 18L * 1_048_576, LoadPhase.FINISHING))
     @Test fun offline() = frame(FirstMapCard.Ui.Offline)
 
     /** Plan with an empty plan, as ScreenshotTest's Frame (map = placeholder); the card where MapScreen puts it. */

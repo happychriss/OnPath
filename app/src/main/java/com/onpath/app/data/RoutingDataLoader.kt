@@ -93,8 +93,16 @@ class RoutingDataLoader(
     enum class Phase { LOADING, OFFLINE, WIFI, FAILED }
 
     /** What is loading: [names] still missing, bytes over all of them (unknown sizes estimated). */
-    data class Status(val names: List<String>, val phase: Phase, val doneBytes: Long, val totalBytes: Long, val bytesPerSecond: Double?) {
-        val percent: Int get() = if (totalBytes <= 0) 0 else (doneBytes * 100 / totalBytes).toInt().coerceIn(0, 99)
+    data class Status(
+        val names: List<String>, val phase: Phase, val doneBytes: Long, val totalBytes: Long, val bytesPerSecond: Double?,
+        /**
+         * The running batch is downloaded and is written into its routing file now (a big file: up to minutes, nothing
+         * to measure) – the UI says so and shows no % (owner 2026-11-18: no number that stands at 99).
+         */
+        val writing: Boolean = false,
+    ) {
+        /** The real bytes downloaded, 0..100. */
+        val percent: Int get() = if (totalBytes <= 0) 0 else (doneBytes * 100 / totalBytes).toInt().coerceIn(0, 100)
         val secondsLeft: Int? get() = bytesPerSecond?.takeIf { it > 0 }?.let { ((totalBytes - doneBytes) / it).toInt() }
     }
 
@@ -113,6 +121,8 @@ class RoutingDataLoader(
     private var rateAt = 0L
     private var rateBytes = 0L
     private var rate: Double? = null
+    /** The running batch has all its bytes and is written into its file ([Status.writing]); guarded by [lock]. */
+    private var writing = false
 
     /** [name] is on the phone: a part key (in the local rd5), or a whole 5° file name. */
     fun exists(name: String): Boolean = Rd5Parts.Part.parse(name)?.let { store.has(it) }
@@ -126,7 +136,7 @@ class RoutingDataLoader(
         val p = phase ?: return null
         val open = wanted.toList()
         if (open.isEmpty()) return null
-        Status(open, p, open.sumOf { done[it] ?: partSize(it) }, open.sumOf { sizeOf(it) }, rate)
+        Status(open, p, open.sumOf { done[it] ?: partSize(it) }, open.sumOf { sizeOf(it) }, rate, writing = writing && p == Phase.LOADING)
     }
 
     val loading: Boolean get() = status?.phase == Phase.LOADING
@@ -290,14 +300,14 @@ class RoutingDataLoader(
                 if (batch.isEmpty()) continue
                 val name = batch.joinToString()
                 try {
-                    synchronized(lock) { rateAt = System.currentTimeMillis(); rateBytes = batch.sumOf { partSize(it) }; rate = null }
+                    synchronized(lock) { rateAt = System.currentTimeMillis(); rateBytes = batch.sumOf { partSize(it) }; rate = null; writing = false }
                     val why = if (synchronized(lock) { batch.all { it in corridorOnly } }) "corridor" else "point"
                     val t0 = System.currentTimeMillis()
                     Problems.trace("routing", "Routing download start: $name ($why), ${batch.sumOf { sizeOf(it) } / 1_048_576} MB" +
                         (if (network.unmetered()) "" else " on mobile data"))
                     // dropped meanwhile ([keepCorridor]) or Cancel: stops at once (the partial file stays)
                     download(batch, segmentsDir, { d, t -> progress(batch, d, t) }, { cancelled || synchronized(lock) { batch.any { it !in wanted } } })
-                    synchronized(lock) { wanted.removeAll(batch.toSet()); batch.forEach { done.remove(it); corridorOnly.remove(it) } }
+                    synchronized(lock) { writing = false; wanted.removeAll(batch.toSet()); batch.forEach { done.remove(it); corridorOnly.remove(it) } }
                     Problems.info("routing", "Routing data $name installed in ${segmentsDir.absolutePath}")
                     Problems.trace("routing", "Routing download finished: $name ($why) in ${System.currentTimeMillis() - t0} ms")
                     got += batch
@@ -317,7 +327,7 @@ class RoutingDataLoader(
         } finally {
             // asked again while a cancelled run was ending: go on
             val again = synchronized(lock) {
-                running = false
+                running = false; writing = false
                 if (wanted.isEmpty()) { phase = null; wifiOverride = false }
                 wanted.isNotEmpty() && phase == Phase.LOADING && !cancelled
             }
@@ -332,6 +342,7 @@ class RoutingDataLoader(
         synchronized(lock) {
             batch.forEachIndexed { i, n -> done[n] = if (i == 0) d else 0L }
             if (t > 0 && batch.size == 1) sizes[batch[0]] = t
+            writing = t > 0 && d >= t // every byte is here: the file is written next (no progress events until it is done)
             val now = System.currentTimeMillis()
             val dt = (now - rateAt) / 1000.0
             if (dt >= 2 && d > rateBytes) rate = (d - rateBytes) / dt

@@ -11,7 +11,6 @@ import com.onpath.app.data.RoutingDataNotice
 import com.onpath.app.data.TourDb
 import com.onpath.app.debug.Problems
 import com.onpath.app.domain.AppMode
-import com.onpath.app.domain.LoadSmoother
 import com.onpath.app.domain.OfflineReady
 import com.onpath.app.recording.LocationTracker
 import com.onpath.app.recording.RecState
@@ -324,8 +323,6 @@ class MapDataFlow(
     /** The open card's job was waited for in the modal: when it is all there it simply goes – no "Map ready" card. */
     private var jobWaited by mutableStateOf(false)
     private val loadProgress = mutableMapOf<com.onpath.app.cells.CellId, MapLoadProgress>()
-    /** The loading window's time-based % (one per window, reset when it closes). */
-    private val loadSmoother = LoadSmoother()
     /** Last % shown (never backwards). */
     private var loadHeld = 0
     /** A search / shared place opened (or joined) the modal: Cancel also removes its ring ([MapLoadCancel]). */
@@ -348,14 +345,9 @@ class MapDataFlow(
                 .also { if (it == null) loadModalFor = emptySet() else loadHeld = it.percent } // null: the map is there
         // routing data in the same modal: one % over both, closes when both are there
         val r = if (routingModal) routingData.status.also { if (it == null) routingModal = false } else null
-        val raw = RoutingLoads.combine(map, r, combinedHeld)
-        // the % follows the time, not the bytes (owner: quick routing data would race to 50 % and stand)
-        val ui = when {
-            raw == null -> { loadSmoother.reset(); null }
-            raw.kind == MapLoadUi.Kind.LOADING || raw.kind == MapLoadUi.Kind.PREPARING ->
-                raw.copy(percent = maxOf(combinedHeld, loadSmoother.next(now, raw.secondsLeft)))
-            else -> raw.copy(percent = combinedHeld) // offline / Wi-Fi / failed: the bar stays where it was
-        }
+        // each phase its own progress (owner 2026-11-18, [MapLoadUi.Kind]): the % is the real bytes and shows only while
+        // they flow – no time-based guess that races ahead and then stands at 98 while the map is joined in
+        val ui = RoutingLoads.combine(map, r, combinedHeld)
         combinedHeld = ui?.percent ?: 0
         return ui
     }
@@ -488,7 +480,9 @@ class MapDataFlow(
                 else sayError(Txt.s(Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
             s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING ->
-                dataBusy = Txt.s(Res.string.msg_routing_data_progress, s.percent, mb(s.totalBytes))
+                // downloaded, written into the routing file now: no % that stands at 99 (owner 2026-11-18)
+                dataBusy = if (s.writing) Txt.s(Res.string.msg_routing_data_writing)
+                    else Txt.s(Res.string.msg_routing_data_progress, s.percent, mb(s.totalBytes))
             else -> {
                 manualRouting = null; dataBusy = null
                 sayError(Txt.s(if (s.phase == com.onpath.app.data.RoutingDataLoader.Phase.OFFLINE) Res.string.msg_routing_data_offline
@@ -764,8 +758,6 @@ class MapDataFlow(
     // ---------------- background downloads: visible and stoppable (owner) ----------------
 
     private val bgProgress = BackgroundProgress()
-    /** Per map region of the strip: its time-based % while the server prepares it ([MapLoadProgress]). */
-    private val bgCellProgress = HashMap<com.onpath.app.cells.CellId, MapLoadProgress>()
     /** The strip / chip was tapped: what loads in the background, with "Cancel all". */
     var downloadDetailsOpen by mutableStateOf(false)
     /** Plan: a message box, the quiet pill or the download chip is on screen (hints below the search bar move down). */
@@ -781,11 +773,11 @@ class MapDataFlow(
         val modal = loadModalFor.isNotEmpty() || routingModal
         // newer versions of installed areas: told in the strip / its details (no second indicator on the map)
         val installed = if (modal) emptySet() else cells.installed.value.map { it.id }.toSet()
-        // the server's preparing time moves the % too (else it stands at 0 % for the minutes an area is prepared)
-        val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), installed, bgCellProgress,
-            android.os.SystemClock.elapsedRealtime(), cells::knownSize)
+        val cellItems = if (modal) emptyList() else BackgroundProgress.cellItems(states, emptySet(), installed, cells::knownSize)
         val r = if (modal) null else routingData.status?.takeIf { it.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING }
-        val items = cellItems + listOfNotNull(r?.let { BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes) })
+        val items = cellItems + listOfNotNull(r?.let {
+            BackgroundProgress.Item("routing", it.doneBytes, it.totalBytes, if (it.writing) LoadPhase.FINISHING else LoadPhase.LOADING)
+        })
         val newer = if (modal) 0 else states.count { (c, s) ->
             c in installed && BackgroundProgress.loading(s) && s != com.onpath.app.cells.CellState.Requested
         }

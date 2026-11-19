@@ -58,6 +58,7 @@
     <string name="plan_warn_show_spots">Stellen anzeigen</string>
     <string name="plan_calculating">Route wird berechnet…</string>
     <string name="plan_calculating_leg">Abschnitt %1$d von %2$d wird berechnet…</string>
+    <string name="plan_finishing">Route wird geprüft…</string>
     <string name="plan_progress_km">%1$s von %2$s km · %3$s</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
     <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>

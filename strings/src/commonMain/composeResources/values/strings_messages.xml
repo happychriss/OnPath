@@ -6,6 +6,7 @@
     <string name="msg_routing_data_stopped">Routing data download stopped. Tap again to resume.</string>
     <string name="msg_routing_data_offline">No internet connection – the routing data loads as soon as you're online.</string>
     <string name="msg_routing_data_progress">Downloading routing data: %1$d % of %2$d MB</string>
+    <string name="msg_routing_data_writing">Routing data downloaded – almost ready…</string>
     <string name="msg_routing_data_present">Routing data for this area is already on the phone.</string>
     <string name="msg_routing_data_busy">Downloading routing data…</string>
     <string name="msg_maps_remove_failed">The map areas could not be removed. Your maps are unchanged as far as possible – try again later.</string>
