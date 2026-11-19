@@ -4,6 +4,9 @@ import android.database.sqlite.SQLiteDatabase
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.routing.DayLimits
+import com.onpath.app.routing.Hotel
+import com.onpath.app.routing.NightMark
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,9 +18,11 @@ import org.junit.runner.RunWith
 /**
  * Schema upgrades: 3 = `points.acc` (GPS accuracy per point), 4 = `tours.rides`, 5 = `tours.draft` (Zuletzt, 2026-11-06),
  * 6 = `tour_plan` (the plan a recorded tour followed, 2026-11-07), 7 = `tours.difficulty` (2026-11-12), 8 = `tours.favourite`
- * (2026-11-13: starred in My routes; every old tour 0, the recycle bin keeps the star). An existing version-2 … -7
- * database keeps every tour and point; old points read back as unknown accuracy, new ones store it, the tour has no rides,
- * is no draft (a saved route stays saved) and has no difficulty (null), a draft can be marked and a difficulty stored.
+ * (2026-11-13: starred in My routes; every old tour 0, the recycle bin keeps the star), 9 = `tours.days` (multi-day tours,
+ * stage 4: the days as JSON; every old tour null = a normal route). An existing version-2 … -8 database keeps every tour
+ * and point; old points read back as unknown accuracy, new ones store it, the tour has no rides,
+ * is no draft (a saved route stays saved), has no difficulty (null) and no days (null), a draft can be marked, a difficulty
+ * and the days of a multi-day tour stored.
  */
 @RunWith(AndroidJUnit4::class)
 class TourDbMigrationTest {
@@ -33,7 +38,7 @@ class TourDbMigrationTest {
             db.execSQL("""CREATE TABLE tours(id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL,
                 created INTEGER NOT NULL, activity TEXT, sac INTEGER NOT NULL DEFAULT 3, distance REAL NOT NULL DEFAULT 0,
                 ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 7) ", difficulty TEXT" else ""})""")
+                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 7) ", difficulty TEXT" else ""}${if (version >= 8) ", favourite INTEGER NOT NULL DEFAULT 0" else ""})""")
             db.execSQL("""CREATE TABLE points(tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
                 lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER${if (version >= 3) ", acc REAL" else ""})""")
             db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (1, 'RECORDED', 'Old', 0, 'active', 'u1')")
@@ -54,7 +59,7 @@ class TourDbMigrationTest {
             assertEquals(12.5, acc[1]!!, 0.01)
             assertNull(acc[2])
             assertEquals(TourSchema.VERSION, tdb.readableDatabase.version)
-            assertEquals(8, TourSchema.VERSION) // a new schema version gets its own case here
+            assertEquals(9, TourSchema.VERSION) // a new schema version gets its own case here
             val t = tdb.getTour(1)!!
             assertEquals("u1", t.uuid)
             assertNull(t.rides)
@@ -79,6 +84,19 @@ class TourDbMigrationTest {
             assertTrue("an overwrite keeps the star", tdb.getTour(2)!!.favourite)
             assertTrue(tdb.getTour(tdb.insertTour(TourKind.PLANNED, "Starred", "HIKE", 2, 1.0, 0.0, 0.0, 1.0, emptyList(), favourite = true))!!.favourite)
             assertTrue(tdb.setFavourite(2, false))
+            // 9: tours.days – no old tour has days (a normal route); a multi-day tour stores them, an overwrite without days
+            // keeps them, the recycle bin keeps them, clearDays drops them
+            assertNull(saved.days); assertNull(tdb.getTour(1)!!.days); assertNull(tdb.getTour(2)!!.days)
+            val md = MultiDay(3, DayLimits(maxTimeMin = 360, maxAscentM = 1200),
+                mapOf(4 to NightMark.OVERNIGHT, 9 to NightMark(Hotel("Hütte", "Weg 1", null))), "Drei Tage")
+            val multi = tdb.insertTour(TourKind.PLANNED, "Multi", "HIKE", 3, 30_000.0, 2000.0, 2000.0, 12.0, emptyList(), days = md)
+            assertEquals(md, tdb.getTour(multi)!!.days)
+            assertTrue(tdb.replacePlanned(multi, "HIKE", 3, 31_000.0, 2000.0, 2000.0, 12.0, emptyList(), emptyList()))
+            assertEquals("an overwrite without days keeps them", md, tdb.getTour(multi)!!.days)
+            assertTrue(tdb.setDeleted(multi, 700L)); assertEquals(md, tdb.listDeleted().single().days); assertTrue(tdb.setDeleted(multi, null))
+            assertTrue(tdb.replacePlanned(multi, "HIKE", 3, 31_000.0, 2000.0, 2000.0, 12.0, emptyList(), emptyList(), clearDays = true))
+            assertNull(tdb.getTour(multi)!!.days)
+            tdb.deleteTour(multi)
             assertTrue(tdb.setDraft(2, true))
             assertTrue(tdb.getTour(2)!!.draft)
             // a draft replaced under Zuletzt goes to the recycle bin and comes back (owner 2026-11-12, RoutesState.takePlace)
@@ -122,4 +140,22 @@ class TourDbMigrationTest {
     @Test fun version6DatabaseGetsDifficultyAndKeepsToursAndPoints() { writeOld(6); checkUpgraded() }
 
     @Test fun version7DatabaseGetsFavouriteAndKeepsToursAndPoints() { writeOld(7); checkUpgraded() }
+
+    @Test fun version8DatabaseGetsDaysAndKeepsToursPointsAndStars() {
+        writeOld(8)
+        // a starred version-8 route with a difficulty keeps both through the upgrade and reads as a normal route
+        SQLiteDatabase.openDatabase(ctx.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("INSERT INTO tours(id, kind, name, created, uuid, difficulty, favourite) VALUES (3, 'PLANNED', 'Starred', 2, 'u3', 'MEDIUM', 1)")
+            db.execSQL("INSERT INTO points(tour_id, seq, seg, lat, lon, ele, time) VALUES (3, 0, 0, 46.80, 11.30, 1600, NULL)")
+            db.version = 8
+        }
+        checkUpgraded()
+        val tdb = TourDb(ctx, name)
+        try {
+            val t = tdb.getTour(3)!!
+            assertEquals("Starred", t.name); assertEquals("u3", t.uuid)
+            assertTrue(t.favourite); assertEquals("MEDIUM", t.difficulty); assertNull(t.days); assertFalse(t.draft)
+            assertEquals(1, tdb.pointAccuracies(3).size)
+        } finally { tdb.close() }
+    }
 }
