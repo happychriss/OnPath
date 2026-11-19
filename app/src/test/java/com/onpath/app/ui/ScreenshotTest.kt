@@ -990,6 +990,24 @@ class ScreenshotTest {
         }
     }
 
+    /**
+     * Hold on a POI in Plan (owner 2026-11-15, variant A; 2026-11-17): in doubt „Insert“ and „New destination“, one line
+     * each, the cheaper first and tinted; in a clear case only the matching row ([PlaceAddMenu.planningRows]).
+     * Not a test of its own any more (the rows are cells of [PlaceMenusGalleryTest]); drawn by
+     * [PlaceAddMenuLargeFontGermanTest] for the placement at the largest font.
+     */
+    fun placeAddMenu(vararg items: PlaceAddMenu.Item) = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Rec, androidx.compose.ui.unit.DpOffset(110.dp, 400.dp)) {
+                PoiMenu(com.onpath.app.poi.Poi("n1", "cafe", "Waldcafé", 46.68, 11.25), onAdd = {}, onGoogle = {},
+                    menu = PlaceAddMenu.Menu(items.toList()))
+            }
+        }
+    }
+
+    /** In doubt (both about equal), inserting the cheaper: „Insert“ first and tinted, „New destination“ plain under it. */
+    fun poiMenu() = placeAddMenu(PlaceAddMenu.Item.ADD_STOP, PlaceAddMenu.Item.NEW_DESTINATION)
+
     /** A hold on the empty map in doubt (owner 2026-11-15): only the two rows, the likelier first and tinted, no title. */
     fun holdAddMenuShot(stopFirst: Boolean = true) = paparazzi.snapshot {
         OnPathTheme {
@@ -1289,11 +1307,10 @@ class ScreenshotTest {
 
     /**
      * The activity filter (owner 2026-11-13): the L1 list with mixed activities (+ a gravel route; Gemacht: recorded tours
-     * of three activities); [act] = the chip's choice (null = "Alle"); [menuTop] / [menuStart] = where its menu opens
-     * (drawn in place – popups are not drawn), null = closed.
+     * of three activities); [act] = the chip's choice (null = "Alle"). The chip's menu itself is a cell of
+     * [RoutesMenusGalleryTest].
      */
-    fun activityFilter(act: Activity?, menuTop: androidx.compose.ui.unit.Dp? = null, menuStart: androidx.compose.ui.unit.Dp = 0.dp,
-                       tab: RoutesTab = RoutesTab.PLANNED) = paparazzi.snapshot {
+    fun activityFilter(act: Activity?, tab: RoutesTab = RoutesTab.PLANNED) = paparazzi.snapshot {
         val gravel = Tour(16, TourKind.PLANNED, "Marlinger Waalweg", 1_791_000_000_000, "BIKE_TREKKING", 2, 18_200.0, 260.0, 260.0,
             1.3 * 3600, "done", viaPts, uuid = "u-16")
         val done = listOf(tourList[1].copy(uuid = "u-2"), tourList[3].copy(uuid = "u-4"),
@@ -1304,9 +1321,6 @@ class ScreenshotTest {
         Box(Modifier.fillMaxSize()) {
             OnPathTheme { RoutesScreen(listOf(oneDraft.copy(uuid = "u-100")) + list, {}, {}, {}, {}, {}, recentId = 100L, thumbs = picSource,
                 initialTab = tab, initialActivity = act) }
-            if (menuTop != null) OnPathTheme {
-                MenuCard(Modifier.padding(top = menuTop, start = menuStart)) { com.onpath.app.ui.routes.ActivityFilterItems(act) {} }
-            }
         }
     }
 

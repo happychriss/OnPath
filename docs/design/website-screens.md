@@ -106,7 +106,7 @@ C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsS
 | --- | --- | --- | --- | --- | --- |
 | D01 | `D01-handy-leerer-plan` | empty start sheet "Ziel finden › · Route anpassen · Los geht's", map of Meran | leer · erste-schritte | `planEmpty` | `ui/PlanPanel.kt`, `ui/MapScreen.kt` |
 | D02 | `D02-handy-aktivitaet-waehlen` | activity button open: activities, T1–T5 under Wandern | aktivitaet · route-planen | `pickerHikeT2` | activity sheet, `ui/PlanPanel.kt` |
-| D03 | `D03-handy-karte-halten-hierhin` | map held: "Hier starten" · "Hierhin" | halten · erste-schritte, home (step 1) | `firstPointMenuAndNoGps` (menu rows) `pointMenuMiddlePoi` (menu on the map) | `ui/MapOverlays.kt` |
+| D03 | `D03-handy-karte-halten-hierhin` | map held: "Hier starten" · "Hierhin" | halten · erste-schritte, home (step 1) | `planEmpty` `firstPointMenuAndNoGps` (menu rows) `pointMenuMiddlePoi` (menu on the map) | `ui/MapOverlays.kt` |
 | D04 | `D04-handy-start-gesetzt` | start set, waiting for the goal | punkt1 · route-planen | `planOnePoint` | `ui/PlanPanel.kt`, `ui/MapHost.kt` |
 | D05 | `D05-handy-route-fertig-los-gehts` | route ready: "PLANEN · Ohne Netz ✓", length · ↑ · ↓, profile, big green "Los geht's" | fertig · erste-schritte, home, store S1 | `plan` | `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
 | D06 | `D06-handy-plan-wandern-t2` | the whole hike on the map, steep parts marked (hero picture) | plan (help), plan-wandern (home) · home hero, route-planen, store S5 | `planWholeRoute` | `ui/PlanPanel.kt`, `domain/RouteWarnings.kt`, map style |

@@ -9,10 +9,11 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The hold menu of a spot ([HoldAddOverlay], owner 2026-11-15) in German at the phone's largest font (2.0): the menu sits
- * beside the spot and its labels wrap rather than being cut – the arrangement at the largest font, so this one stays a
- * whole-screen picture. Same picture as the [ScreenshotTest] test of the same name, drawn with this class's Paparazzi.
- * The rows of the add menus per language and font (1.0 / 1.3 / 2.0) are in [PlaceMenusGalleryTest].
+ * The held place's and the held spot's add menus in German at the phone's largest font (2.0). These two stay whole-screen
+ * pictures for the PLACEMENT at the largest font: holdAddMenu = the menu beside the ring ([HoldAddOverlay]); poiMenu = the
+ * tall menu that fits neither above nor below the held spot and is clamped to the top bound ([AnchoredOverlay]). Same
+ * pictures as the [ScreenshotTest] scenes of the same name, drawn with this class's Paparazzi. The rows' text fit per
+ * language and font (1.0 / 1.3 / 2.0) is in [PlaceMenusGalleryTest].
  */
 class PlaceAddMenuLargeFontGermanTest {
     @get:Rule
@@ -26,5 +27,6 @@ class PlaceAddMenuLargeFontGermanTest {
         it.javaClass.getDeclaredField("paparazzi").apply { isAccessible = true }.set(it, paparazzi)
     }
 
+    @Test fun poiMenu() = shots.poiMenu()
     @Test fun holdAddMenu() = shots.holdAddMenu()
 }

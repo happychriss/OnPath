@@ -40,8 +40,8 @@ abstract class RoutesMenusGalleryTest(fontScale: Float = 1f) {
     }
 
     /**
-     * My routes → ⋮ of a planned route (owner 2026-10-31): "Planen" (blue) and "Los geht's" (green) on top (owner
-     * 2026-11-07), then Rename, Save as copy, Export GPX, Share plan, Delete.
+     * My routes → ⋮ of a planned route (owner 2026-10-31): "Planen" and "Los geht's" on top, both in the plan blue (owner
+     * 2026-11-07 asked for them on top; 2026-11-13 made every go in Plan blue), then Rename, Save as copy, Export GPX, Share plan, Delete.
      */
     @Composable
     private fun PlannedMenu() = OnPathTheme {
@@ -54,7 +54,7 @@ abstract class RoutesMenusGalleryTest(fontScale: Float = 1f) {
     }
 
     /**
-     * Gemacht → ⋮ of a recorded tour that followed a plan (owner 2026-11-07): "Planen" (blue) and "Los geht's" (green) on
+     * Gemacht → ⋮ of a recorded tour that followed a plan (owner 2026-11-07): "Planen" and "Los geht's" (both plan blue) on
      * top as for a saved planned route, then Rename, Export GPX, Edit rides, Delete – no "Als Plan übernehmen".
      */
     @Composable

@@ -7,7 +7,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.onpath.app.domain.PlaceAddMenu
+import com.onpath.app.domain.MapGestures
 import com.onpath.app.poi.Poi
+import com.onpath.app.recording.GpsStatus
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -27,8 +29,9 @@ import java.util.Locale
  * Replaces whole-screen pictures (spot, dot and map placeholder were the test's frame) of: firstPointMenu,
  * firstPointMenuNoGps, poiMenu, poiMenuClearGoal, poiMenuClearStop, poiMenuEmptyPlan, pointMenuStart (English),
  * poiMenu, poiMenuClearGoal, poiMenuClearStop, holdAddMenu, holdAddMenuGoalFirst (German) and poiMenu, poiMenuClearGoal,
- * poiMenuClearStop, holdAddMenu at the fonts 1.3 (German) and 2.0 (German): [PlaceAddMenuMidFontGermanTest] is gone,
- * [PlaceAddMenuLargeFontGermanTest] keeps only holdAddMenu. The font sizes 1.3 / 2.0 are device configs of their own
+ * poiMenuClearStop, holdAddMenu at the font 1.3 (German; [PlaceAddMenuMidFontGermanTest] is gone) and poiMenuClearGoal,
+ * poiMenuClearStop at 2.0 (German). [PlaceAddMenuLargeFontGermanTest] keeps poiMenu and holdAddMenu at 2.0 as whole
+ * screens (the placement: clamp to the top bound, beside the ring); their cells here check the rows' text fit. The font sizes 1.3 / 2.0 are device configs of their own
  * ([ShotGallery.paparazzi]), the cells of the other classes are drawn at 1.0.
  */
 abstract class PlaceMenusGalleryTest(fontScale: Float = 1f) {
@@ -102,7 +105,7 @@ abstract class PlaceMenusGalleryFullTest : PlaceMenusGalleryTest() {
     @Test fun firstPointMenuAndNoGps() = paparazzi.snapshot {
         Gallery {
             cell("firstPointMenu") { InOverlay { FirstPointMenu(null, onStartHere = {}, onFromMe = {}) } }
-            cell("firstPointMenuNoGps") { InOverlay { FirstPointMenu("Searching GPS…", onStartHere = {}, onFromMe = {}) } }
+            cell("firstPointMenuNoGps") { InOverlay { FirstPointMenu(MapGestures.fromMeBlocked(GpsStatus.SEARCHING, false), onStartHere = {}, onFromMe = {}) } }
         }
     }
 
