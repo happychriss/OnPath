@@ -1,3 +1,8 @@
+// The two lines below let other files of this package carry @JSExport functions too (WebState.kt): TeaVM exports only
+// the main class's static methods, and @JvmMultifileClass makes those files part of this class (see WebState.kt's comment).
+@file:JvmName("WebApiKt")
+@file:JvmMultifileClass
+
 package com.onpath.web
 
 import com.onpath.app.data.Format
