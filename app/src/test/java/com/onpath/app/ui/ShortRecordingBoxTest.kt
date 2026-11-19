@@ -25,30 +25,10 @@ class ShortRecordingBoxTest {
         assertFalse("never a timed line", vm.contains("ACTION_MS") || src("ui/Notices.kt").contains("NoticeAction"))
     }
 
-    /** The decision reads the points of every piece and the distance as recorded – never RideView.stats of a choice. */
-    @Test fun theDecisionReadsThePointsAndTheRecordedDistance() {
-        val check = vm.substringAfter("private suspend fun isShortRecording(t: Tour)").substringBefore("\n    }\n")
-        assertTrue(check.contains("db.loadSegments(t.id)"))
-        assertTrue(check.contains("t.rides?.recorded?.distanceM ?: t.distanceM"))
-        assertTrue(check.contains("rides = t.rides?.rides?.isNotEmpty() == true"))
-        assertTrue("a read that fails keeps the tour", check.contains(".getOrDefault(false)"))
-        val finished = vm.substringAfter("recording.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue("the tour is read once, before the decision", finished.indexOf("val done = withContext(Dispatchers.IO) { db.getTour(id) }") < finished.indexOf("tour.finishedOutcome("))
-        assertTrue("the bin write's result decides box or saved box", finished.contains("tour.afterShortBin(done, binned = ok,"))
-        // the saved path is as before: place names for the tour and the split parts
-        assertTrue(finished.contains("done?.let { nameRecordedTour(it) }"))
-        assertTrue(finished.contains("parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }"))
-    }
-
-    /** Rückgängig: the one restore path of the bin (RoutesState.restore), the backup file back, then the saved box + name. */
-    @Test fun rueckgaengigRestoresAsANormalTourWithItsSavedBox() {
-        val undo = vm.substringAfter("fun undoShortRecording() {").substringBefore("\n    }\n")
-        assertTrue(undo.contains("tour.takeShortBinned() ?: return"))
-        assertTrue(undo.contains("routes.restore(t.id)"))
-        assertTrue(undo.contains("Backups.tourChanged(getApplication(), t.id)"))
-        assertTrue(undo.indexOf("tour.showFinished(done,") < undo.indexOf("nameRecordedTour(done)"))
-        assertTrue("a failed restore is said; the tour stays in the bin", undo.contains("msg_tour_restore_failed"))
-        val ok = vm.substringAfter("fun closeShortRecording() {").substringBefore("\n    }\n")
-        assertTrue("OK leaves it in the bin, nothing else", ok.contains("tour.takeShortBinned()") && !ok.contains("restore") && !ok.contains("deleteTour"))
-    }
+    // The decision (the points of every piece, the distance as recorded, a ride part, a read that fails keeps the tour), the tour read once
+    // before it, the bin write's result deciding box or saved box, and Rückgängig / OK are behaviour flows since piece 17 – TourEndFlowTest:
+    // aShortRecordingIsBinnedWithItsBoxNotSaved, aShortRecordingWhoseBinWriteFailsIsKeptWithTheSavedBox, aReadThatFailsForTheShortCheckKeepsTheTour,
+    // aShortLookingTourWithAFoundRideIsNeverBinned, theDistanceBeforeTheRideChoiceDecidesNotTheChosenOne, aGapPieceFarAwayKeepsTheTour,
+    // undoBringsTheShortTourBackAsANormalTourInTheOrderOfTheRule, aFailedRestoreSaysSoKeepsTheTourInTheBinAndReadsTheList,
+    // okOnTheShortBoxLeavesTheTourInTheBin.
 }

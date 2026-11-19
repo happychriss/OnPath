@@ -38,9 +38,9 @@ class ArrivalBoxTest {
         assertTrue(call, call.contains("onEnd = { vm.askEndTour(saveIfNoRides = true) }"))
         assertTrue(call, call.contains("onDelete = vm::endTourAndDelete"))
         assertTrue(call, call.contains("onKeepRecording = { vm.keepRecordingAfterArrival() }"))
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        val vm = File("../state/src/main/kotlin/com/onpath/app/ui/tour/TourEndSlice.kt").readText() // moved there in piece 17
         val keep = vm.substringAfter("fun keepRecordingAfterArrival() {").substringBefore("\n    }\n")
-        assertTrue(keep.contains("arrivalAsk = false"))
+        assertTrue(keep, keep.contains("tour.arrivalAsk = false"))
         assertFalse("the recording goes on", keep.contains("stop") || keep.contains("end("))
     }
 

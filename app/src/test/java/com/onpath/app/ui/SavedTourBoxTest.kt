@@ -23,12 +23,9 @@ class SavedTourBoxTest {
         assertTrue(box.contains("Res.string.routes_track_saved") && box.contains("StatsRow(") && box.contains("TourTimesText(it)"))
         assertTrue(box.contains("Res.string.common_ok") && box.contains("Res.string.routes_saved_open"))
         assertFalse("no delete, no export in it", box.contains("common_delete") || box.contains("export"))
-        // the tour still gets its place name and is still the one just saved (backups / E2E read it)
-        val finished = vm.substringAfter("recording.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished.contains("val done = withContext(Dispatchers.IO) { db.getTour(id) }"))
-        assertTrue(finished.contains("tour.showFinished(done,"))
-        assertTrue(finished.contains("done?.let { nameRecordedTour(it) }"))
-        assertTrue(finished.contains("parts.forEach { p -> withContext(Dispatchers.IO) { db.getTour(p) }?.let { nameRecordedTour(it) } }"))
+        // the tour still gets its place name and is still the one just saved (backups / E2E read it): a behaviour flow since piece 17 –
+        // TourEndFlowTest.aSavedTourIsHandledInTheOrderOfTheRulesBehindTheIoHopWithNoTourRecording (the tour read on io, the saved box,
+        // its name and its split parts' names asked for, each with the box already showing)
     }
 
     // "In Meine Touren ›" opens My routes → Gemacht with the tour marked (field bug 2026-11-06 22:30) – checked for real in

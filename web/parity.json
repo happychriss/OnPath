@@ -232,7 +232,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "bdeed5fa62c17cf79b50fa36c2d735e7db0e1e8f"
+      "blob": "4db4bc71f9fbabd15a58d3a25c567d7fbfc82017"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt",
@@ -3113,6 +3113,10 @@
     },
     "core/src/main/kotlin/com/onpath/app/recording/RecordingClient.kt": {
       "blob": "c589c060b8dbd754b50cc33826a94da31c35a1c1",
+      "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/rides/RideApply.kt": {
+      "blob": "e8d7d7838b8f75775a38f178eb44dc6196ec7be0",
       "perf": []
     }
   }

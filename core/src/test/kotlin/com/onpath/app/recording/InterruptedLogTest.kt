@@ -35,8 +35,9 @@ class InterruptedLogTest {
         val svc = java.io.File("../app/src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.substringAfter("if (existing != null) {").substringBefore("} else {")
             .contains("TourInterruptedReceiver.cancelNote(this)"))
-        val vm = java.io.File("../app/src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertEquals(3, Regex("InterruptedLog\\.Choice\\.[A-Z]+, ::clearInterruptedNote\\)").findAll(vm).count())
+        // the three answers moved to the slice (piece 17); TourEndFlowTest also shows the note cleared before the command / the mode
+        val end = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/tour/TourEndSlice.kt").readText()
+        assertEquals(3, Regex("InterruptedLog\\.Choice\\.[A-Z]+, host::clearInterruptedNote\\)").findAll(end).count())
     }
 
     @Test fun aFailingClearIsReportedNotThrown() {

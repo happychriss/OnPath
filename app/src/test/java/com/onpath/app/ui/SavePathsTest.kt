@@ -21,6 +21,9 @@ import java.io.File
 class SavePathsTest {
     private val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
     private fun body(start: String) = vm.substringAfter(start).substringBefore("\n    }\n")
+    /** The tour's end moved to the slice (piece 17); its order is proven by TourEndFlowTest. */
+    private val end = com.onpath.app.testkit.sourceFile("ui/tour/TourEndSlice.kt").readText()
+    private fun endBody(start: String) = end.substringAfter(start).substringBefore("\n    }\n")
 
     private val a = GeoPoint(51.17, 6.93)
     private val b = GeoPoint(51.20, 6.77)
@@ -33,17 +36,15 @@ class SavePathsTest {
      * .arrivalEndTourBringsTheStartScreen).
      */
     @Test fun theEndOfATourGoesBackToTheStartTheNeuPlanenWay() {
-        val finished = vm.substringAfter("recording.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished, finished.contains("afterTourEnded()"))
-        // after the tour bookkeeping (saved box / bin, the list refreshed, Plan entered) – never before the tour is stored
-        assertTrue(finished.indexOf("refreshTours()") < finished.indexOf("afterTourEnded()"))
-        assertTrue(finished.indexOf("tour.showFinished(") < finished.indexOf("afterTourEnded()"))
-        val after = body("private fun afterTourEnded() {")
-        assertTrue("no parallel path: the Neu planen clear", after.contains("clearPlan()"))
+        // after the tour bookkeeping (saved box / bin, the list refreshed, Plan entered) – never before the tour is stored:
+        // TourEndFlowTest.aSavedTourIsHandledInTheOrderOfTheRules… (the host log: refreshTours … enterMode(PLAN), clearPlan, …)
+        val after = endBody("private fun afterTourEnded() {")
+        assertTrue("no parallel path: the Neu planen clear (the host's clearPlan is the view model's one clearPlan, pinned below)", after.contains("host.clearPlan()"))
         assertFalse("nothing asked about the plan", after.contains("requestSave") || after.contains("saveAsk"))
+        assertTrue(vm.contains("override fun clearPlan() = this@AppViewModel.clearPlan()"))
         // clearPlan keeps an unsaved plan under Zuletzt first: PlanEditFlowTest.clearKeepsThePlanForZuletztFirstThenEmptiesInOneUndoStepAndNeverAsks
         assertTrue(vm.contains("fun clearPlan() = planEdit.clearPlan()"))
-        assertFalse(body("fun endTourAndDelete() {").contains("requestSave"))
+        assertFalse(endBody("fun endTourAndDelete() {").contains("requestSave"))
         assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
         // the plan saved at Los geht's and unchanged is no draft (it is in My routes); changed on the way → Zuletzt
         assertFalse(Drafts.keeps(points = 2, unsaved = false)); assertTrue(Drafts.keeps(points = 2, unsaved = true))
@@ -65,8 +66,9 @@ class SavePathsTest {
 
     /** Pixel review 2026-11-06: the demo ride ends with its tour – "DEMO" / "Sim" do not stay (DemoLocationTest). */
     @Test fun theDemoRideEndsWithTheTour() {
-        val finished = vm.substringAfter("recording.finished.collect { id ->").substringBefore("fun initialCamera()")
-        assertTrue(finished, finished.contains("DemoLocation.endWithTour()"))
+        // the slice calls the host once (TourEndFlowTest: demoEndedWithTour is in the host log, after clearFollow, before enterMode(PLAN));
+        // the view model's adapter is the old line, the `if` inside
+        assertTrue(vm.contains("override fun demoEndedWithTour() { if (com.onpath.app.recording.DemoLocation.endWithTour()) demo.navSimLine = null }"))
     }
 
     /** Way 2: the ride summary has no plan part – nor does any end sheet now. */

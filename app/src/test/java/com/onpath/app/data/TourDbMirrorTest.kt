@@ -58,4 +58,28 @@ class TourDbMirrorTest {
         assertEquals(setOf("favourite"), columns(body("    fun setFavourite(", "    /** Moves a tour to the recycle bin")))
         assertTrue(jdbc.contains("UPDATE tours SET favourite=? WHERE id=?"))
     }
+
+    /** The end of a tour writes (piece 17): an interrupted tour's stats and state, the bin, the rides' record – the same columns, the same WHERE. */
+    @Test fun theEndOfATourWritesTheSameColumnsAsTourDb() {
+        val stats = body("    fun updateStats(", "    /**\n     * Review recording M7")
+        assertEquals(setOf("distance", "ascent", "descent", "duration", "state"), columns(stats))
+        assertTrue(stats.contains("\"id=?\", arrayOf(tourId.toString())"))
+        assertTrue(jdbc.contains("UPDATE tours SET distance=?, ascent=?, descent=?, duration=?, state=? WHERE id=?"))
+
+        val bin = body("    fun setDeleted(", "    /** Removes recycle-bin entries")
+        assertEquals(setOf("deleted_at"), columns(bin))
+        assertTrue(bin.contains("\"id=?\", arrayOf(id.toString())"))
+        assertTrue(jdbc.contains("UPDATE tours SET deleted_at=? WHERE id=?"))
+
+        val rides = body("    fun setRides(", "    /** Returns (next seq, last seg)")
+        assertEquals(setOf("rides", "distance", "ascent", "descent", "duration"), columns(rides))
+        assertTrue(rides.contains("rides.toJson().toString()"))
+        assertTrue(rides.contains("\"id=?\", arrayOf(tourId.toString())"))
+        assertTrue(jdbc.contains("UPDATE tours SET rides=?, distance=?, ascent=?, descent=?, duration=? WHERE id=?"))
+        assertTrue(jdbc.contains("rides?.toJson()?.toString()"))
+        // the ride store the app hands RideApply: the part split off is a recorded tour with the original's activity and the part's stats
+        val store = sourceFile("rides/TourDbRides.kt").readText().replace(Regex("\\s+"), " ")
+        assertTrue(store, store.contains("db.setRides(id, rec, stats.distanceM, stats.ascentM, stats.descentM, stats.durationS)"))
+        assertTrue(store, store.contains("db.insertTour(TourKind.RECORDED, name, from.activity, from.sac, stats.distanceM, stats.ascentM, stats.descentM, stats.durationS, segments, createdMs = createdMs)"))
+    }
 }

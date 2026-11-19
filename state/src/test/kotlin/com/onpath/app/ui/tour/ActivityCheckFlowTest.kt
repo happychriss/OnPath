@@ -208,6 +208,11 @@ class ActivityCheckFlowTest {
             log += "updateActivity($id, $activity, T$sac)"
             db.updateActivity(id, activity, sac)
         }
+        // the tour's end (piece 17) writes through the same port; the activity check never does
+        override fun updateStats(id: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String): Int =
+            error("the activity check does not write stats")
+        override fun setDeleted(id: Long, deletedMs: Long?): Boolean = error("the activity check does not bin a tour")
+        override fun rides(): com.onpath.app.rides.RideStore = error("the activity check does not touch the rides")
     }
 
     private lateinit var slice: ActivityCheckSlice

@@ -7,6 +7,7 @@ import com.onpath.app.data.TourKind
 import com.onpath.app.data.TourSchema
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.rides.RideRecord
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -110,6 +111,16 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
     /** [TourDb.updateActivity]: the activity switched during a recording (the tour row's activity name and T level). */
     fun updateActivity(tourId: Long, activity: String, sac: Int) { write(); exec("UPDATE tours SET activity=?, sac=? WHERE id=?", activity, sac, tourId) }
 
+    /**
+     * [TourDb.setRides]: how to read the rides of a recorded tour (null = none) and the stats of one tour, in one step;
+     * false when the tour is gone. The points are never touched.
+     */
+    fun setRides(tourId: Long, rides: RideRecord?, distance: Double, ascent: Double, descent: Double, duration: Double): Boolean {
+        write()
+        return exec("UPDATE tours SET rides=?, distance=?, ascent=?, descent=?, duration=? WHERE id=?",
+            rides?.toJson()?.toString(), distance, ascent, descent, duration, tourId) > 0
+    }
+
     fun setDeleted(id: Long, deletedMs: Long?): Boolean { write(); return exec("UPDATE tours SET deleted_at=? WHERE id=?", deletedMs, id) == 1 }
 
     /** [TourDb.setDraft]: a plan under Zuletzt ↔ a saved route. */
@@ -139,6 +150,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                     durationS = r.getDouble("duration"), state = r.getString("state") ?: "done",
                     waypoints = TourJson.jsonToWaypoints(r.getString("waypoints")), uuid = r.getString("uuid") ?: "",
                     pinned = TourJson.jsonToPinned(r.getString("pinned")),
+                    rides = RideRecord.fromJson(r.getString("rides")),
                     deletedMs = r.getLong("deleted_at").takeIf { !r.wasNull() },
                     draft = r.getInt("draft") == 1, hasPlan = r.getInt("has_plan") == 1,
                     difficulty = r.getString("difficulty"), favourite = r.getInt("favourite") == 1, days = MultiDay.fromJson(r.getString("days")),

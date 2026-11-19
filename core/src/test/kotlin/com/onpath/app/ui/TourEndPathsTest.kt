@@ -47,13 +47,7 @@ class TourEndPathsTest {
         assertFalse(TourEndFlow.arrivalBoxShows(asked = false, recording = true, navigate = true))
     }
 
-    /**
-     * Wiring pin (no JVM harness for TourDb): deleting an interrupted tour marks it "done" FIRST – restored from the
-     * recycle bin it is a normal tour, never "unfinished" again.
-     */
-    @Test fun deletingAnInterruptedTourMarksItDoneFirst() {
-        val vm = java.io.File("../app/src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        val del = vm.substringAfter("fun deleteUnfinished(").substringBefore("\n    }\n")
-        assertTrue(del, del.indexOf("\"done\"") in 0 until del.indexOf("setDeleted"))
-    }
+    // Deleting an interrupted tour marks it "done" FIRST (restored from the recycle bin it is a normal tour, never "unfinished" again):
+    // a behaviour flow since piece 17 – TourEndFlowTest.deleteMarksTheTourDoneThenBinsItThenTellsTheBackupAndTheList (the bin write
+    // sees the row already "done"), deleteWhenTheStatsWriteFailsDoesNotBin.
 }

@@ -124,100 +124,9 @@ class TourOrderPinsTest {
     // ---- P4–P6 and P24 (the activity check: rules 1, 23, 24) are gone: piece 16b moved the functions to ActivityCheckSlice and
     // ---- ActivityCheckFlowTest proves each rule on the real slice (the commit message maps pin → flow) ----
 
-    // ---- P7: the end of a tour (rules 7, 8, 9) ----
-
-    @Test fun p7_theFinishedCollector_seenThenReadThenOutcomeThenCleanUp() = ordered("P7", "7, 8, 9",
-        scope("P7", "recording.finished.collect { id ->", "fun initialCamera(): Triple"),
-        "the end handled twice; the followed line of the ended tour stays; the app stays in Navigate; the plan is cleared before the tour is listed; \"DEMO\" stays on the map",
-        "recording.finishedSeen()",
-        "val done = withContext(Dispatchers.IO) { db.getTour(id) }",
-        "tour.finishedOutcome(",
-        "tour.showFinished(done,",
-        "val parts = recording.takeFinishedParts()",
-        "refreshTours()",
-        "clearFollow()",
-        "demo.navSimLine = null",
-        "enter(AppMode.PLAN)",
-        "tour.afterFinished()",
-        "afterTourEnded()")
-
-    // ---- P8: stop, delete decision, ride choice (rules 10, 11, 32); one test per scope ----
-
-    @Test fun p8a_endTourWith_theRideChoiceIsStoredBeforeTheTourEnds() = ordered("P8", "11",
-        scope("P8", "fun endTourWith(", BLOCK_END),
-        "\"Save only until …\" is ignored: wrong km / time (the service applies the stored choice when it finishes)",
-        "RideApply.choose(", "endTour()")
-
-    @Test fun p8b_endTour_theDecisionIsSetBeforeSTOP() = ordered("P8", "10",
-        scope("P8", "fun endTour() {", BLOCK_END),
-        "\"Save\" deletes the tour – or the next tour is binned",
-        "tour.end(delete = false)", "stopRecording()")
-
-    @Test fun p8c_endTourAndDelete_theDecisionIsSetBeforeSTOP() = ordered("P8", "10",
-        scope("P8", "fun endTourAndDelete() {", BLOCK_END),
-        "\"Löschen\" saves the tour – or the next tour is binned",
-        "tour.end(delete = true)", "stopRecording()")
-
-    @Test fun p8d_stopRecording_theQuestionIsClosedBeforeSTOP() = ordered("P8", "32",
-        scope("P8", "fun stopRecording() {", BLOCK_END),
-        "a question of the old tour (\"route back\") in the next one",
-        "routeBackAsk = false", "tour.stop()")
-
-    // ---- P9–P12: the end question, interrupted tours, edit rides, Rückgängig (rules 12, 26, 27, 35) ----
-
-    @Test fun p9_askEndTour_aRideCheckOfAnEndedTourIsDropped() = ordered("P9", "12",
-        scope("P9", "fun askEndTour(", BLOCK_END),
-        "an end sheet for a tour that already ended",
-        "arrivalAsk = false",
-        "val s = withContext(Dispatchers.IO) {",
-        "if (recState.value?.tourId != id) return@launchSafe",
-        "TourEndFlow.afterRideCheck(")
-
-    private val interruptedBroken = "the \"Tour interrupted\" notification stays; a restored tour is \"unfinished\" again; or a tour the service records is closed under it"
-
-    @Test fun p10_saveUnfinished_logThenQuestionThenStickyCheckThenWrites() = ordered("P10", "26",
-        scope("P10", "fun saveUnfinished(", BLOCK_END), interruptedBroken,
-        "InterruptedLog.Choice.SAVE, ::clearInterruptedNote)",
-        "tour.closeUnfinished()",
-        "if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }",
-        "enter(AppMode.PLAN)",
-        "db.updateStats(",
-        "RideApply.choose(",
-        "RideApply.finish(",
-        "Backups.tourChanged(getApplication(), t.id)",
-        "withContext(Dispatchers.Main) { refreshTours() }")
-
-    @Test fun p11a_deleteUnfinished_logThenQuestionThenStickyCheckThenDoneThenBin() = ordered("P11", "26",
-        scope("P11", "fun deleteUnfinished(", BLOCK_END), interruptedBroken + "; a deleted tour comes back as \"unfinished\" from the recycle bin",
-        "InterruptedLog.Choice.DELETE, ::clearInterruptedNote)",
-        "tour.closeUnfinished()",
-        "if (recState.value?.tourId == t.id) { enter(AppMode.NAVIGATE); return }",
-        "enter(AppMode.PLAN)",
-        "db.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, \"done\")",
-        "db.setDeleted(",
-        "if (ok) Backups.tourChanged(")
-
-    @Test fun p11b_continueRecording_logAndNoteBeforeTheStart() = ordered("P11", "26",
-        scope("P11", "fun continueRecording(", BLOCK_END), interruptedBroken,
-        "InterruptedLog.Choice.CONTINUE, ::clearInterruptedNote)", "tour.continueTour(t)")
-
-    @Test fun p12a_applyEditRides_closedThenEditThenBackupThenListThenReopen() = ordered("P12", "35",
-        scope("P12", "fun applyEditRides(", BLOCK_END),
-        "the map shows the tour as before the edit; a backup of a failed edit",
-        "editRides = null",
-        "RideApply.edit(",
-        ".also { if (it) Backups.tourChanged(",
-        "refreshTours()",
-        "openTour(it)")
-
-    @Test fun p12b_undoShortRecording_restoreThenBackupThenBoxThenNameThenList() = ordered("P12", "27",
-        scope("P12", "fun undoShortRecording() {", BLOCK_END),
-        "a short tour gone without its box; the saved box shows no name",
-        "routes.restore(t.id)",
-        "Backups.tourChanged(getApplication(), t.id)",
-        "tour.showFinished(done,",
-        "nameRecordedTour(done)",
-        Last("refreshTours()"))
+    // ---- P7–P12 (the end of a tour: the finished collector, stop / delete decision / ride choice, End tour, the interrupted tour,
+    // ---- Edit rides, Rückgängig: rules 7–12, 26, 27, 35) are gone: piece 17 moved the functions to TourEndSlice and TourEndFlowTest
+    // ---- proves each rule on the real slice (the commit message maps pin -> flow) ----
 
     // ---- P13–P15: the plan the tour follows (rules 21, 25) ----
 
@@ -358,7 +267,7 @@ class TourOrderPinsTest {
         "if (why != null) { recording.startFailedSeen(); sayError(why, NoticePlace.BACKGROUND); if (mode == AppMode.NAVIGATE) enter(AppMode.PLAN) }")
 
     @Test fun p21b_theStateCollector_newTourClearsHistoryThenArrivalThenTheServicesLine() = ordered("P21", "14",
-        scope("P21", "recording.state.collect { st ->", "recording.finished.collect"),
+        scope("P21", "recording.state.collect { st ->", "tourEnd.start()"),
         "a taken re-route not drawn; Undo brings a route of another tour; the arrival question twice",
         "followHistory.clear()",
         "guidanceEndedByEmptyPlan = false }",
