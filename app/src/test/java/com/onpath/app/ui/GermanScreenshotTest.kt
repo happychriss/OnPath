@@ -33,14 +33,7 @@ class GermanScreenshotTest {
     private val shots get() = borrow(ScreenshotTest())
 
     @Test fun plan() = shots.plan()
-    // the held place's add menu (owner 2026-11-15 / 2026-11-17): „Einfügen“ · „Neues Ziel“ in doubt, else only the one
-    @Test fun poiMenu() = shots.poiMenu()
-    @Test fun poiMenuClearStop() = shots.poiMenuClearStop()
     @Test fun routesOverviewSwipe() = shots.routesOverviewSwipe()
-    @Test fun poiMenuClearGoal() = shots.poiMenuClearGoal()
-    // a hold on the empty map in doubt (owner 2026-11-15): the same two rows, no title
-    @Test fun holdAddMenu() = shots.holdAddMenu()
-    @Test fun holdAddMenuGoalFirst() = shots.holdAddMenuGoalFirst()
     @Test fun planLocateFar() = shots.planLocateFar()
     @Test fun overviewHint() = shots.overviewHint()
     @Test fun planReliefOffNote() = shots.planReliefOffNote()
@@ -87,7 +80,6 @@ class GermanScreenshotTest {
     @Test fun planSaved() = shots.planSaved()
     @Test fun planSaveDialog() = shots.planSaveDialog()
     @Test fun planSaveCopyDialog() = shots.planSaveCopyDialog()
-    @Test fun routesItemMenuPlanned() = shots.routesItemMenuPlanned()
     @Test fun routesSearch() = shots.routesSearch()
     @Test fun routesSearchNothing() = shots.routesSearchNothing()
     @Test fun planChangedNotSaved() = shots.planChangedNotSaved()
@@ -136,7 +128,6 @@ class GermanScreenshotTest {
     /** The activity filter (owner 2026-11-13). */
     @Test fun routesActivityHike() = shots.routesActivityHike()
     @Test fun routesActivityBike() = shots.routesActivityBike()
-    @Test fun routesActivityMenu() = shots.routesActivityMenu()
     @Test fun routesActivityAll() = shots.routesActivityAll()
     @Test fun toursDoneActivityHike() = shots.toursDoneActivityHike()
     @Test fun toursRecent() = shots.toursRecent()
@@ -149,7 +140,6 @@ class GermanScreenshotTest {
     @Test fun routesOverviewDoneMore() = shots.routesOverviewDoneMore()
     @Test fun routesOverviewDoneMoreNoPauses() = shots.routesOverviewDoneMoreNoPauses()
     @Test fun routesOverviewPlannedMore() = shots.routesOverviewPlannedMore()
-    @Test fun routesItemMenuDoneWithPlan() = shots.routesItemMenuDoneWithPlan()
     @Test fun routesOverviewTouring() = shots.routesOverviewTouring()
     @Test fun toursDone() = shots.toursDone()
     @Test fun toursFromBrowser() = shots.toursFromBrowser()

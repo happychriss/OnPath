@@ -54,13 +54,14 @@ object ShotGallery {
      * A Paparazzi for a gallery: two cells in a row, at most as high as the phone's screen; the picture shrinks to what
      * is drawn. Not bigger on purpose: Paparazzi stores every picture scaled to 1000 px on its longer side, so a gallery
      * larger than a whole-screen picture (2400 px) would store its cells smaller than before and a cut letter could
-     * slip through. [Gallery] fails when its cells do not fit.
+     * slip through. [fontScale] = the device's font size (a phone scales large fonts non-linearly, so it is not a cell's
+     * density). [Gallery] fails when its cells do not fit.
      */
-    fun paparazzi() = Paparazzi(
+    fun paparazzi(fontScale: Float = 1f) = Paparazzi(
         deviceConfig = DeviceConfig.PIXEL_5.copy(
             // + a few px: Compose rounds every dp size on its own
             screenWidth = px(COLUMNS * CELL_DP + (COLUMNS + 1) * GAP_DP) + 4, screenHeight = 2400,
-            xdpi = 428, ydpi = 428, density = ScreenDensity.create(420),
+            xdpi = 428, ydpi = 428, density = ScreenDensity.create(420), fontScale = fontScale,
         ),
         showSystemUi = false,
         renderingMode = SessionParams.RenderingMode.SHRINK,

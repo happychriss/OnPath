@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import org.junit.After
@@ -31,7 +30,6 @@ abstract class RouteSortLargeFontTest {
     @Test fun routesFavouritesNone() = shots.routesFavouritesNone()
     /** The activity filter (owner 2026-11-13) at the largest font; its menu under the chip row. */
     @Test fun routesActivityHike() = shots.routesActivityHike()
-    @Test fun routesActivityMenu() = shots.activityFilter(com.onpath.app.routing.Activity.HIKE, menuTop = 240.dp, menuStart = 100.dp)
     @Test fun routesActivityAll() = shots.routesActivityAll()
     @Test fun tours() = shots.tours()
     /** Gemacht with the average (owner 2026-11-16): „MTB · 3 h 12 min“ and „… · 10,3 km/h“ wrap between pieces, never cut. */
