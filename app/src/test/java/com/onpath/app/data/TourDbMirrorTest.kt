@@ -46,6 +46,14 @@ class TourDbMirrorTest {
             "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)"))
     }
 
+    /** The activity switched during a recording (piece 16b's flows write it through JdbcTours): the same two columns, the same WHERE. */
+    @Test fun theActivityOfARecordingIsTwoColumnsOfTheTourRow() {
+        val app = body("    fun updateActivity(", "    /** Returns the rows changed")
+        assertEquals(setOf("activity", "sac"), columns(app))
+        assertTrue(app.contains("\"id=?\", arrayOf(tourId.toString())"))
+        assertTrue(jdbc.contains("UPDATE tours SET activity=?, sac=? WHERE id=?"))
+    }
+
     @Test fun theStarIsTheOneColumnOfTheTourRow() {
         assertEquals(setOf("favourite"), columns(body("    fun setFavourite(", "    /** Moves a tour to the recycle bin")))
         assertTrue(jdbc.contains("UPDATE tours SET favourite=? WHERE id=?"))

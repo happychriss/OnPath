@@ -25,8 +25,12 @@ class BackgroundRoutingRuleTest {
         assertEquals(2, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
         // field bug 2026-11-07 (tour 207): the activity check's row request has its own thread – six 15 s checks on the
         // plan's thread held plan edits up to ~90 s
-        val check = vm.substringAfter("private suspend fun checkRow(").substringBefore("\n    }\n")
+        // (moved with the check to ActivityCheckSlice, piece 16b; the flow `ActivityCheckFlowTest.aTapRoutesThatRowAloneFromThePositionOnTheCheckThread`
+        // sees the engine called only when the held check thread runs; this pin is the field bug's)
+        val checkSlice = com.onpath.app.testkit.sourceFile("ui/tour/ActivityCheckSlice.kt").readText()
+        val check = checkSlice.substringAfter("private suspend fun checkRow(").substringBefore("\n    }\n")
         assertTrue(check.contains("withContext(checkRouting)"))
+        assertTrue(checkSlice.contains("private val checkRouting: CoroutineDispatcher get() = planRoute.threads.check"))
     }
 
     /**

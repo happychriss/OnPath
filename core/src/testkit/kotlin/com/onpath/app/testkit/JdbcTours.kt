@@ -107,6 +107,9 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         return exec("UPDATE tours SET distance=?, ascent=?, descent=?, duration=?, state=? WHERE id=?", distance, ascent, descent, duration, state, tourId)
     }
 
+    /** [TourDb.updateActivity]: the activity switched during a recording (the tour row's activity name and T level). */
+    fun updateActivity(tourId: Long, activity: String, sac: Int) { write(); exec("UPDATE tours SET activity=?, sac=? WHERE id=?", activity, sac, tourId) }
+
     fun setDeleted(id: Long, deletedMs: Long?): Boolean { write(); return exec("UPDATE tours SET deleted_at=? WHERE id=?", deletedMs, id) == 1 }
 
     /** [TourDb.setDraft]: a plan under Zuletzt ↔ a saved route. */

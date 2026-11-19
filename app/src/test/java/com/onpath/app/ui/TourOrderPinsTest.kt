@@ -24,9 +24,6 @@ class TourOrderPinsTest {
     /** The text meant is the LAST one in the scope (the same statement also stands earlier, on a failure path). */
     private class Last(val text: String)
 
-    /** The text meant is the FIRST one in the scope (the same statement stands again further down, after a later step). */
-    private class First(val text: String)
-
     private val BLOCK_END = "\n    }\n"
 
     private fun count(hay: String, needle: String): Int {
@@ -46,9 +43,9 @@ class TourOrderPinsTest {
     }
 
     private fun idx(pin: String, scope: String, t: Any): Pair<String, Int> {
-        val text = when (t) { is Last -> t.text; is First -> t.text; else -> t as String }
+        val text = when (t) { is Last -> t.text; else -> t as String }
         val n = count(scope, text)
-        if (t is Last || t is First) assertTrue("$pin: not found in the scope: $text", n >= 1)
+        if (t is Last) assertTrue("$pin: not found in the scope: $text", n >= 1)
         else assertEquals("$pin: must occur exactly once in the scope: $text", 1, n)
         return text to (if (t is Last) scope.lastIndexOf(text) else scope.indexOf(text))
     }
@@ -124,45 +121,8 @@ class TourOrderPinsTest {
         "followLine = null",
         "if (recState.value != null) recording.followChanged()")
 
-    // ---- P4–P6: the activity check (rules 1, 23, 24) ----
-
-    @Test fun p4_applySwitch_sheetClosedThenProposalFileThenTheCommand() {
-        val s = scope("P4", "private fun applySwitch(", BLOCK_END)
-        noSuspensionBetween("P4", s, "followStore.propose(proposed)", "recording.proposeSwitch(fit.timeS)")
-        p4(s)
-    }
-
-    private fun p4(s: String) = ordered("P4", "1, 24", s,
-        "the activity question never appears (the service finds no proposal file), or the sheet stays open behind Navigate",
-        "closeActivityCheck()",
-        "switchPlanActivity(a, fit.sac)",
-        "followStore.propose(proposed)",
-        "recording.proposeSwitch(fit.timeS)",
-        "if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)")
-
-    @Test fun p5_switchPlanActivity_levelThenFollowNextThenActivityThenTheRow() = ordered("P5", "24",
-        scope("P5", "private fun switchPlanActivity(", BLOCK_END),
-        "the plan is re-routed but not followed, or the tour keeps the old activity in My routes",
-        "prefs.sac = sac",
-        "routeEvent(RouteRun.Event.FollowNext)",
-        "selectActivity(a, userChange = false)",
-        "db.updateActivity(id, a.name, storedSac)")
-
-    @Test fun p6_startCheck_stopTheOldOneThenRowThenApply() = ordered("P6", "23",
-        scope("P6", "private fun startCheck(", BLOCK_END),
-        "six rows routed for 90 s, or a switch the user did not choose (the result of a stopped check is applied)",
-        "cancelCheck()",
-        "activityCheck = ActivityCheckRules.checking(ui, a, level)",
-        First("if (!isActive || cancel.isCancelled) return@launchSafe"),
-        "val st = checkRow(rest, a, level, cancel)",
-        Last("if (!isActive || cancel.isCancelled) return@launchSafe"),   // the guard that matters: after the row, before it is applied
-        "if (st is ActivityRowState.Ready) applySwitch(st.fit)")
-
-    @Test fun p6b_startCheck_theCancelGuardStandsTwice() {
-        val s = scope("P6", "private fun startCheck(", BLOCK_END)
-        assertEquals("P6 (rule 23): the guard `if (!isActive || cancel.isCancelled) return@launchSafe` stands twice (before and after the row)",
-            2, count(s, "if (!isActive || cancel.isCancelled) return@launchSafe"))
-    }
+    // ---- P4–P6 and P24 (the activity check: rules 1, 23, 24) are gone: piece 16b moved the functions to ActivityCheckSlice and
+    // ---- ActivityCheckFlowTest proves each rule on the real slice (the commit message maps pin → flow) ----
 
     // ---- P7: the end of a tour (rules 7, 8, 9) ----
 
@@ -344,11 +304,6 @@ class TourOrderPinsTest {
         assertTrue("P23, rule 20: `$rem` must come before `$again` in both places (a session replaced before it is remembered is lost; " +
             "Undo then routes anew and loses \"Guide me\")", r1 < a1 && a1 < r2 && r2 < a2)
     }
-
-    @Test fun p24_cancelCheck_theRouterStopsBeforeTheJob() = ordered("P24", "23",
-        scope("P24", "private fun cancelCheck() {", BLOCK_END),
-        "six rows routed for 90 s: the job ends but BRouter keeps calculating",
-        "checkCancel?.cancel()", "checkJob?.cancel()")
 
     @Test fun p25_sayEvent_onlyDuringATour() = ordered("P25", "30",
         scope("P25", "private fun sayEvent(what: String) {", BLOCK_END),

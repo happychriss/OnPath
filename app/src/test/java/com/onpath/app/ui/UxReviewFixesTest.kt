@@ -22,8 +22,10 @@ class UxReviewFixesTest {
         assertTrue(plan, plan.contains("onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }"))
         assertTrue(map.contains("ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck"))
         // a proposal is answered in Navigate (Take new route / Keep)
-        val choose = body(vm, "fun chooseActivity(") + body(vm, "private fun applySwitch(")
-        assertTrue(choose, choose.contains("if (mode == AppMode.PLAN) enter(AppMode.NAVIGATE)"))
+        // (moved to ActivityCheckSlice in piece 16b; `ActivityCheckFlowTest.chosenInPlanDuringATourTheQuestionIsAskedInNavigateAfterTheCommand` runs it)
+        val slice = com.onpath.app.testkit.sourceFile("ui/tour/ActivityCheckSlice.kt").readText()
+        val choose = body(slice, "fun chooseActivity(") + body(slice, "private fun applySwitch(")
+        assertTrue(choose, choose.contains("if (host.mode == AppMode.PLAN) host.enterNavigate()"))
         assertFalse(choose, choose.contains("selectActivity(a)\n"))
     }
 
