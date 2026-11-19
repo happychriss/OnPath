@@ -54,6 +54,13 @@ class TourDbMirrorTest {
         assertTrue(jdbc.contains("UPDATE tours SET activity=?, sac=? WHERE id=?"))
     }
 
+    /** The plan a recorded tour followed (piece 18a's flows store it through JdbcTours): the same upsert statement with the same arguments. */
+    @Test fun theFollowedPlanIsTheSameUpsertWithTheSameArguments() {
+        val app = body("    fun setTourPlan(", "    /** The points of the plan tour")
+        assertTrue(app.contains("writableDatabase.execSQL(TourSchema.PLAN_UPSERT, TourSchema.planArgs(tourId, plan))"))
+        assertTrue(jdbc.contains("exec(TourSchema.PLAN_UPSERT, *TourSchema.planArgs(tourId, plan))"))
+    }
+
     @Test fun theStarIsTheOneColumnOfTheTourRow() {
         assertEquals(setOf("favourite"), columns(body("    fun setFavourite(", "    /** Moves a tour to the recycle bin")))
         assertTrue(jdbc.contains("UPDATE tours SET favourite=? WHERE id=?"))

@@ -18,6 +18,9 @@ interface TourRows {
     /** A tour into the recycle bin ([deletedMs]) or back (null); false when the tour is gone. */
     fun setDeleted(id: Long, deletedMs: Long?): Boolean
 
+    /** The plan a recorded tour followed: the newest version replaces the one before (throws on failure; the caller reports it). */
+    fun setTourPlan(id: Long, plan: com.onpath.app.data.TourPlan)
+
     /** The rides' store ([com.onpath.app.rides.RideApply] reads and writes the tour's rides through it). */
     fun rides(): RideStore
 }

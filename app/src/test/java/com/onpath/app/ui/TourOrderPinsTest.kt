@@ -58,68 +58,14 @@ class TourOrderPinsTest {
                 "If this order breaks the user sees: $broken", found[i - 1].second < found[i].second)
     }
 
-    /**
-     * Rule 1's real hazard: a SUSPENSION (a launch, a hop of dispatcher) between the file write and its command - the
-     * command would then reach the service before the file is written. The text between [write] and [command] holds none.
-     */
-    private fun noSuspensionBetween(pin: String, scope: String, write: String, command: String) {
-        val a = scope.indexOf(write); val b = scope.indexOf(command, a + 1)
-        assertTrue("$pin: `$write` and `$command` must both be in the scope", a >= 0 && b > a)
-        val between = scope.substring(scope.lastIndexOf('\n', a) + 1, b)   // from the start of the write's line: a launch AROUND it counts
-        for (bad in listOf("launch", "withContext(")) assertFalse(
-            "$pin, rule 1: no `$bad` between the file write `$write` and the command `$command` - the service reads the file when the command " +
-                "arrives, so a suspension between them lets it read the old route (or none)", between.contains(bad))
-    }
-
     /** [text] is the last statement of the scope's body. */
     private fun endsWith(pin: String, rule: String, scope: String, text: String, broken: String) =
         assertTrue("$pin, rule $rule: `$text` must be the LAST statement of the function. If this breaks the user sees: $broken",
             scope.trimEnd().endsWith(text))
 
-    // ---- P1–P3: the follow files are written before the command that makes the service read them (rule 1) ----
-
-    private val oldRoute = "the guidance keeps following the old route, or a deleted route comes back (the service reads the files when the command arrives)"
-
-    @Test fun p1_setFollow_filesThenStateThenTheCommand() {
-        val s = scope("P1", "private fun setFollow(", BLOCK_END)
-        noSuspensionBetween("P1", s, "followStore.appFollows(session, name, points)", "recording.followChanged(checkNow)")
-        p1(s)
-    }
-
-    private fun p1(s: String) = ordered("P1", "1, 18", s,
-        "a late re-route of the old line overwrites the new route; voice and cues keep the old line, or $oldRoute",
-        "guidanceEndedByEmptyPlan = false",
-        ".copy(token = newSessionToken(), version = (recState.value?.nav?.version ?: navVersion).coerceAtLeast(0) + 1,",
-        "followStore.appFollows(session, name, points)",
-        "followLine = points",
-        "if (recState.value != null) recording.followChanged(checkNow)")
-
-    @Test fun p2_followAgain_filesThenStateThenTheCommand() {
-        val s = scope("P2", "private fun followAgain(", BLOCK_END)
-        noSuspensionBetween("P2", s, "followStore.appFollows(session, session.name, session.active)", "recording.followChanged()")
-        p2(s)
-    }
-
-    private fun p2(s: String) = ordered("P2", "1, 20", s,
-        "Undo routes anew and loses \"Guide me\", or $oldRoute",
-        "s.copy(version = maxOf(s.version, versionNow) + 1, token = newSessionToken())",
-        "followStore.appFollows(session, session.name, session.active)",
-        "followOriginal = session.original",
-        "recording.followChanged()")
-
-    @Test fun p3_clearFollow_requestsStaleThenFilesGoneThenTheCommand() {
-        val s = scope("P3", "fun clearFollow() {", BLOCK_END)
-        noSuspensionBetween("P3", s, "followStore.appEnds()", "recording.followChanged()")
-        p3(s)
-    }
-
-    private fun p3(s: String) = ordered("P3", "1, 19", s,
-        "a slow route result re-follows after the guidance ended, or a deleted route comes back",
-        "splitRequests.invalidate()",
-        "planCopy { notFollowed() }",
-        "followStore.appEnds()",
-        "followLine = null",
-        "if (recState.value != null) recording.followChanged()")
+    // ---- P1–P3 (the follow files are written before the command: rules 1, 18, 19, 20) and P13–P15 (the plan the tour follows:
+    // ---- rules 21, 25) are gone: piece 18a moved the functions to TourFollow and TourFollowFlowTest proves each rule on the real
+    // ---- slice (the commit message maps pin -> flow -> proof) ----
 
     // ---- P4–P6 and P24 (the activity check: rules 1, 23, 24) are gone: piece 16b moved the functions to ActivityCheckSlice and
     // ---- ActivityCheckFlowTest proves each rule on the real slice (the commit message maps pin → flow) ----
@@ -127,38 +73,6 @@ class TourOrderPinsTest {
     // ---- P7–P12 (the end of a tour: the finished collector, stop / delete decision / ride choice, End tour, the interrupted tour,
     // ---- Edit rides, Rückgängig: rules 7–12, 26, 27, 35) are gone: piece 17 moved the functions to TourEndSlice and TourEndFlowTest
     // ---- proves each rule on the real slice (the commit message maps pin -> flow) ----
-
-    // ---- P13–P15: the plan the tour follows (rules 21, 25) ----
-
-    private val oldPlan = "\"Gemacht → Planen\" brings an old plan or none; the plan and the track both followed"
-
-    @Test fun p13a_followPlanned_followThenFlagThenCopy() = ordered("P13", "21",
-        scope("P13", "fun followPlanned(", BLOCK_END), oldPlan,
-        "setFollow(", "followFromPlan = true", "copyFollowedPlan(activity, sac)")
-
-    @Test fun p13b_followShown_followThenFlagThenCopyStaysThenBaseline() = ordered("P13", "21",
-        scope("P13", "fun followShown() {", BLOCK_END), oldPlan,
-        "setFollow(s.name, s.points, isTrack = true)",
-        "followFromPlan = false",
-        "planCopy { notFollowed() }",
-        "planAtTrackFollow = waypoints.toList()")
-
-    @Test fun p14_thePlanCopy_oneSerialThreadTheTourIdCollectorAndTheSavedRouteCopy() {
-        ordered("P14", "21", src, oldPlan,
-            "private val planCopyDispatcher = Dispatchers.IO.limitedParallelism(1)",
-            "recState.map { it?.tourId }.distinctUntilChanged()",
-            ".collect { id -> planCopy { tour(id) } }")
-        ordered("P14", "21", scope("P14", "private fun setSaved(", BLOCK_END), oldPlan,
-            "plan.setSaved(name, id, points)", "recopyFollowedPlan()")
-    }
-
-    @Test fun p15_syncNavActivity_originalThenBaselineThenTheActivity() = ordered("P15", "25",
-        scope("P15", "private fun syncNavActivity(", BLOCK_END),
-        "a switch taken from the notification makes the app \"follow the edited plan\" and resets the session",
-        "navActivitySeen = a",
-        "followOriginal = s.original",
-        "routeEvent(RouteRun.Event.AdoptBaseline)",
-        "selectActivity(a, userChange = false)")
 
     // ---- P16–P18: what a plan edit means for the tour (rules 16, 17, 36) ----
 

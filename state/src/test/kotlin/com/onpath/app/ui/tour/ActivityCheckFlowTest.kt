@@ -212,6 +212,7 @@ class ActivityCheckFlowTest {
         override fun updateStats(id: Long, distance: Double, ascent: Double, descent: Double, duration: Double, state: String): Int =
             error("the activity check does not write stats")
         override fun setDeleted(id: Long, deletedMs: Long?): Boolean = error("the activity check does not bin a tour")
+        override fun setTourPlan(id: Long, plan: com.onpath.app.data.TourPlan) = error("the activity check does not copy a plan")
         override fun rides(): com.onpath.app.rides.RideStore = error("the activity check does not touch the rides")
     }
 

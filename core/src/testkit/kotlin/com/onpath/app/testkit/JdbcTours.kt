@@ -4,6 +4,7 @@ import com.onpath.app.data.MultiDay
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourJson
 import com.onpath.app.data.TourKind
+import com.onpath.app.data.TourPlan
 import com.onpath.app.data.TourSchema
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
@@ -119,6 +120,21 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         write()
         return exec("UPDATE tours SET rides=?, distance=?, ascent=?, descent=?, duration=? WHERE id=?",
             rides?.toJson()?.toString(), distance, ascent, descent, duration, tourId) > 0
+    }
+
+    /** [TourDb.setTourPlan]: the newest version of the plan a recorded tour followed replaces the one before (the same SQL and arguments). */
+    fun setTourPlan(tourId: Long, plan: TourPlan) { write(); exec(TourSchema.PLAN_UPSERT, *TourSchema.planArgs(tourId, plan)) }
+
+    /** [TourDb.getTourPlan] (the columns the tour pieces' flows compare); null = none. */
+    fun getTourPlan(tourId: Long): TourPlan? = db.prepareStatement("SELECT * FROM tour_plan WHERE tour_id=?").use { st ->
+        st.setLong(1, tourId)
+        st.executeQuery().use { r ->
+            if (!r.next()) null else TourPlan(name = r.getString("name"), activity = r.getString("activity") ?: "HIKE", sac = r.getInt("sac"),
+                waypoints = TourJson.jsonToWaypoints(r.getString("waypoints")), pinned = TourJson.jsonToPinned(r.getString("pinned")),
+                line = TourPlan.lineFromJson(r.getString("line")), distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"),
+                descentM = r.getDouble("descent"), durationS = r.getDouble("duration"), sourceUuid = r.getString("source_uuid"),
+                updatedMs = r.getLong("updated"))
+        }
     }
 
     fun setDeleted(id: Long, deletedMs: Long?): Boolean { write(); return exec("UPDATE tours SET deleted_at=? WHERE id=?", deletedMs, id) == 1 }

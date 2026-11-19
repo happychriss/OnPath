@@ -35,6 +35,8 @@ class JdbcTourRows(val db: JdbcTours, private val onCall: (String) -> Unit = {})
         gate("setDeleted"); beforeSetDeleted(id, deletedMs); return db.setDeleted(id, deletedMs)
     }
 
+    override fun setTourPlan(id: Long, plan: com.onpath.app.data.TourPlan) { gate("setTourPlan"); db.setTourPlan(id, plan) }
+
     override fun rides(): RideStore = object : RideStore {
         override fun tour(id: Long): Tour? { gate("rides.tour"); return db.getTour(id) }
         override fun segments(id: Long): List<List<TrackPoint>> { gate("rides.segments"); return db.loadSegments(id) }
