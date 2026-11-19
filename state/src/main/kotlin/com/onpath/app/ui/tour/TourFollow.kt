@@ -67,10 +67,12 @@ interface TourFollowHost {
  * written through [rows] on [planCopyDispatcher], the ONE serial dispatcher the view model made (two would break the
  * order of the writes). The property initialisers restore the state from [files] and [prefs] as the view model's did (rule 33).
  *
- * [start] launches the tour-id collector (rule 21): the view model calls it exactly where the collector stood in its small
- * `init`. Latent bugs kept as they were: L7 ([followAgain] sends its command without the `recState != null` guard of its
- * siblings), L3 (the baseline and the seen activity are initialised at construction now, before the big `init`'s first state pass
- * – harmless: the next state repeats it).
+ * [start] launches the tour-id collector (rule 21): the view model calls it in a small `init` right after this slice is
+ * built, above the big `init` as before (some declarations lower than the old collector – nothing between reads the follow
+ * state or launches). Latent bug kept as it was: L7 ([followAgain] sends its command without the `recState != null` guard of
+ * its siblings). L3: the seen activity is initialised at construction now, before the big `init`'s first state pass – the old
+ * initialiser stood below that init and set it back to null, so a view model rebuilt during a tour took the service's
+ * activity once more with the next state (within a second); now it keeps what the first pass saw, as in the steady state.
  */
 class TourFollow(
     private val plan: PlanDocument,

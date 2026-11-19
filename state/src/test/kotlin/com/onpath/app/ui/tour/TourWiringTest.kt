@@ -395,6 +395,10 @@ class TourWiringTest {
         }
         assertTrue("the end slice is declared after it", vm.indexOf("private val tourEnd = ") > initAt)
         assertEquals("the old collector is gone from the view model", 0, count(vm, "recState.map { it?.tourId }"))
+        // the follow state is reached through forwarder properties now: an init above the slice that read one would crash at
+        // the app's start (the old plain fields gave their defaults) and ViewModelInitOrderTest does not follow property getters
+        assertEquals("only the two known inits stand above the slice – a new one must not read the follow state (review 2026-11-19)",
+            2, count(vm.substring(0, declared), "\n    init {"))
     }
 
     /** The slice does no work in its constructor and has no `init`; its two launches are the collector (in `start`) and the copy's thread. */
