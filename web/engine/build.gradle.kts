@@ -18,6 +18,9 @@ val stubs = root.resolve("tools/routing/jvm-test/stubs")
 //     - web/engine/core-excludes.txt (explicit, each with its reason; SharedFilesRuleTest and core_move.py read it too);
 //  2. the few files still in :app, named one by one in app/web-shared-files.txt [files];
 //  3. the app's own unit tests for them (they run on the plain JVM here, so web CI checks them too): [tests].
+//  4. the files of module :state named in state/web-ready.txt (the slices the planner takes as they are,
+//     docs/design/web-ready-status.md; WebReadyRuleTest in :state guards the list on every gate): each one as it is,
+//     with the Compose stand-in src/main/kotlin/androidx/compose/runtime/ for the five runtime names they may import.
 // ONE list for app and web, read by web/parity/check.mjs too; the app's SharedFilesRuleTest guards it on every gate.
 fun sharedList(section: String): List<String> {
     var current = ""
@@ -45,6 +48,21 @@ appFiles.forEach { rel ->
     if (coreMain.resolve("com/onpath/app/$rel").isFile) error("app/web-shared-files.txt lists $rel, which lives in core/ now – the folder covers it, delete the line")
     if (!app.resolve(rel).isFile) error("app/web-shared-files.txt lists $rel, but it is not in app/")
 }
+
+// :state (4. above): paths below state/src/main/kotlin/com/onpath/app/, one per line, '#' starts a comment. A listed
+// file that is not there fails the build with its name – never skipped silently. [stateLeftOut] = listed files TeaVM
+// cannot compile (path to the construct it fails on), left out of this build together with every listed file that
+// needs them; empty = every listed file is compiled.
+val stateMain = root.resolve("state/src/main/kotlin/com/onpath/app")
+val stateLeftOut = mapOf<String, String>()
+val stateListed = pathList(root.resolve("state/web-ready.txt"))
+stateListed.forEach { rel ->
+    if (!stateMain.resolve(rel).isFile) error("state/web-ready.txt lists $rel, but it is not in state/src/main/kotlin/com/onpath/app/")
+    if (coreMain.resolve("com/onpath/app/$rel").isFile || app.resolve(rel).isFile || rel in overrides)
+        error("state/web-ready.txt lists $rel, but a file with this path is in core/, app/ or a stand-in of web/engine too – one class twice")
+}
+stateLeftOut.keys.forEach { rel -> if (rel !in stateListed) error("web/engine/build.gradle.kts stateLeftOut names $rel, which state/web-ready.txt does not list – delete the entry") }
+val stateFiles = stateListed.filter { it !in stateLeftOut }
 
 sourceSets {
     main {
@@ -178,6 +196,7 @@ kotlin.sourceSets["main"].kotlin.srcDir(generateStrings)
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
     source(fileTree(coreMain) { exclude((overrides + coreExcludes).map { "com/onpath/app/$it" }) })
     source(appFiles.map { app.resolve(it) })
+    source(stateFiles.map { stateMain.resolve(it) })
 }
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     source(appTests.map { inModules(it, root.resolve("core/src/test/kotlin/com/onpath/app"), root.resolve("core/src/testkit/kotlin/com/onpath/app"), root.resolve("app/src/test/java/com/onpath/app")) })
