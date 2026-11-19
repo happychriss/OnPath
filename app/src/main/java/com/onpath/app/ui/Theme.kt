@@ -47,12 +47,12 @@ object OnPathColors {
      * The paper of every surface – menus, dialogs, sheets, what floats over the map (search pill, message boxes,
      * Navigate's cards): the website's `#FAFAF6`.
      */
-    val Paper = Color(0xFFFAFAF6)
+    val Paper = Color(0xFFF3F4EE)
     /**
      * Cards in lists (Settings, Meine Touren): the same paper as [Paper] – they lift off the sage page ([PaperDim], 1.1:1)
      * with the warm low shadow.
      */
-    val CardPaper = Color(0xFFFAFAF6)
+    val CardPaper = Color(0xFFF3F4EE)
     /**
      * A deeper sage for groups inside a paper surface: the plan sheet's pill row, filled fields, a lifted row (the theme's
      * surfaceContainerHighest), 1.2:1 against [Paper]; plan blue on it 5.7:1.
