@@ -49,7 +49,6 @@ class ActivityCheckRulesTest {
         val idle = listOf(Activity.BIKE_TOURING, Activity.MTB, Activity.HIKE).map { ActivityRow(it, 1, ActivityRowState.Idle) }
         val ui = ActivityCheckUi(Activity.BIKE_TREKKING, 1, idle)
         assertTrue("plain rows can be chosen", ui.rows.all { it.choosable })
-        assertEquals("no pre-check text", "", activityRowStatus(ActivityRowState.Idle))
         val mtb = ActivityCheckRules.checking(ui, Activity.MTB, 1)
         assertEquals(listOf(ActivityRowState.Idle, ActivityRowState.Checking, ActivityRowState.Idle), mtb.rows.map { it.state })
         assertTrue("a row being routed is not chosen twice", !mtb.rows[1].choosable)

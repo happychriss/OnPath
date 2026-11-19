@@ -41,6 +41,7 @@ class ActivityLabelsTest {
         assertEquals("⚠ 1.4 km not suited for gravel bikes, steps 40 m · +1.2 km", activityRowStatus(ActivityRowState.Ready(bad)))
         assertEquals("✓ fits · −500 m", activityRowStatus(ActivityRowState.Ready(fits.copy(extraM = -500.0))))
         assertEquals("No route found for it", activityRowStatus(ActivityRowState.Failed("No route found for it")))
+        assertEquals("no pre-check text (moved here from ActivityCheckRulesTest)", "", activityRowStatus(ActivityRowState.Idle))
     }
 
     /** Clear bike names, each with one short line in the picker (owner); the enum names stay (stored). */
