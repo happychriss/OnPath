@@ -92,12 +92,12 @@ Keep the column right: a new snapshot test for a screen of a step → add its na
 | C02 | `C02-web-koppel-code` | "Handy verbinden": QR (blurred), the way in the app, check digits | web-koppeln · route-planen (koppeln) | – | `plans.ts` (`pairDialog`) |
 | C03 | `C03-handy-menue-koppeln` | app ☰ open: "Mit Browser koppeln" | app-koppeln · route-planen (koppeln) | `planMenuStates` `plan` | `ui/PlanTopBar.kt` |
 | C04 | `C04-handy-pruefziffern` | "Mit diesem Browser verbinden? Prüfe: …" · Verbinden | – | `settingsSyncAsk` | `ui/SyncSettings.kt` |
-| C05 | `C05-handy-verbunden` | paired: what you save in the browser comes to the phone | app-verbunden · route-planen (koppeln) | `planPairedNote` | `ui/SyncSettings.kt`, plan note |
+| C05 | `C05-handy-verbunden` | paired: what you save in the browser comes to the phone | app-verbunden · route-planen (koppeln) | `planPairedNoteAndUnpairedNote` `planUnpairedOfflineNote` | `ui/SyncSettings.kt`, plan note |
 | C06 | `C06-web-aufs-handy-sichern` | browser paired: phone name + dot, "Aufs Handy sichern" → "✓ Auf dem Handy" | – | – | `main.ts` (header), `plans.ts` |
 | C07 | `C07-handy-plan-aus-browser` | Meine Touren with the plan from the browser, "Neu" (top part) | app-routen · route-planen (koppeln) | `toursFromBrowser` | `ui/Screens.kt`, `ui/RouteTag.kt` |
 | C08 | `C08-handy-trennen` | Einstellungen → Browser-Abgleich paired, "Trennen" (top part) | app-trennen · route-planen (koppeln) | `settingsSyncPaired` | `ui/SyncSettings.kt` |
 
-C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsSyncAsk`, `_planPairedNote`,
+C04, C05, C07, C08 may stay Paparazzi snapshots (`GermanScreenshotTest_settingsSyncAsk`, `PlanMessagesGalleryGermanTest_planPairedNoteAndUnpairedNote` (the box) + `GermanScreenshotTest_planUnpairedOfflineNote` (the plan around it),
 `_toursFromBrowser`, `_settingsSyncPaired`; English `ScreenshotTest_…`) – they need no real browser.
 
 ## D – Plan the hike on the phone (app)

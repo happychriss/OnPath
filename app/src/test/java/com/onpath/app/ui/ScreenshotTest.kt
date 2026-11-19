@@ -1608,16 +1608,6 @@ class ScreenshotTest {
     }
 
     /** Save beside ⋯ on a long day hike: time and distance still in full (their own line when they do not fit). */
-    /** Right after Pair (owner 2026-10-30): back on the Plan map, "Paired. …" with OK at the top until OK. */
-    fun planPairedNote() = paparazzi.snapshot {
-        Frame(top = { MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
-    }
-
-    /** Right after Unpair (owner 2026-10-30, as simple as pairing): back on the Plan map, "Unpaired. …" with OK. */
-    fun planUnpairedNote() = paparazzi.snapshot {
-        Frame(top = { MessageCard(syncNoteMessage(SyncNote.UNPAIRED, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
-    }
-
     /** Unpaired, the server not reached: the same strip asks to unpair the browser there too. */
     fun planUnpairedOfflineNote() = paparazzi.snapshot {
         Frame(top = { MessageCard(syncNoteMessage(SyncNote.UNPAIRED_OFFLINE, onOk = {})) }) { PlanPanel(planUi(), PlanCallbacks()) }
@@ -1652,29 +1642,22 @@ class ScreenshotTest {
     private val release = com.onpath.app.update.AppUpdater.Release(
         "0.4.1", "- Trail names along the paths\n- Update button in Settings", "https://x/onpath.apk", 32_000_000, "https://x")
 
-    @Test fun updateBanner() = paparazzi.snapshot {
-        Frame(top = { MessageCard(updateMessage(release.version, {}, {})) }) {
-            PlanPanel(planUi(n = 0, r = null), PlanCallbacks())
-        }
-    }
-
     @Test fun updateSettings() = paparazzi.snapshot {
         Frame { Column(Modifier.padding(16.dp)) { UpdateSectionContent(AppViewModel.UpdateState.Available(release), "0.4.0", {}, {}) } }
     }
 
     // ---------------- map cells: card in the plan sheet, overview hint, Settings → Offline maps (map-cells.md §9) ----
 
-    private val cOwn = com.onpath.app.cells.CellId(543, 361)
-    private val cEast = com.onpath.app.cells.CellId(544, 361)
-    private val cNorth = com.onpath.app.cells.CellId(543, 360)
-    private val cSouth = com.onpath.app.cells.CellId(543, 362)
-    private val cJob = com.onpath.app.cells.CellJob(listOf(cOwn, cEast, cNorth, cSouth, com.onpath.app.cells.CellId(544, 360)), cOwn,
-        com.onpath.app.cells.CellWhy.PLANNED)
-    private val mbB = 1_048_576L
+    private val cOwn = CellCardShots.own
+    private val cEast = CellCardShots.east
+    private val cNorth = CellCardShots.north
+    private val cSouth = CellCardShots.south
+    private val cJob = CellCardShots.job
+    private val mbB = CellCardShots.mb
     private fun cellCard(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, sizes: Map<com.onpath.app.cells.CellId, Long> = emptyMap(),
                          job: com.onpath.app.cells.CellJob = cJob, declined: Boolean = false, available: Boolean = true,
                          wifiOnly: Boolean = false) =
-        CellCards.build(job, states, sizes, available, wifiOnly = wifiOnly, mobileDeclined = declined)
+        CellCardShots.card(states, sizes, job, declined, available, wifiOnly)
 
     private fun planWithCard(n: Int = 1, r: PlannedRoute? = null, size: PlanSize = PlanSize.COMPACT) = planUi(n = n, r = r, size = size)
 
@@ -1715,31 +1698,9 @@ class ScreenshotTest {
                 ).copy(error = "Routes can't be calculated right now – straight lines shown."))
     }
 
-    /** Mobile data: own area loaded, the others ask once with their size – stays until answered. T3 (own position). */
-    @Test fun cellCardMobileQuestion() = paparazzi.snapshot {
-        val job = com.onpath.app.cells.CellJob(listOf(cOwn, cEast, cNorth, cSouth), cOwn, com.onpath.app.cells.CellWhy.HERE)
-        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
-                cEast to com.onpath.app.cells.CellState.WaitingForWifi(9 * mbB), cNorth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB),
-                cSouth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)), sizes = mapOf(cOwn to 10 * mbB), job = job), planWithCard(n = 0), gps = GpsStatus.GOOD)
-    }
-
-    /** "Maps only on Wi-Fi" on: the strip says the areas wait and offers to load them once over mobile data (owner Q6). */
-    @Test fun cellCardWifiOnlyWaiting() = paparazzi.snapshot {
-        val job = com.onpath.app.cells.CellJob(listOf(cOwn, cEast, cNorth), cOwn, com.onpath.app.cells.CellWhy.HERE)
-        CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
-                cEast to com.onpath.app.cells.CellState.WaitingForWifi(9 * mbB), cNorth to com.onpath.app.cells.CellState.WaitingForWifi(8 * mbB)),
-                sizes = mapOf(cOwn to 10 * mbB), job = job, wifiOnly = true), planWithCard(n = 0))
-    }
-
     @Test fun cellCardOffline() = paparazzi.snapshot {
         val off = com.onpath.app.cells.CellState.Offline("No connection – the detailed map for this area will load when you are online.")
         CardFrame(cellCard(cJob.cells.associateWith { off }), planWithCard())
-    }
-
-    @Test fun cellCardFailed() = paparazzi.snapshot {
-        CardFrame(cellCard(cJob.cells.associateWith { com.onpath.app.cells.CellState.Ready("v") } +
-                (cEast to com.onpath.app.cells.CellState.Failed("Map for this area failed")),
-                sizes = cJob.cells.associateWith { 9 * mbB }), planWithCard(n = 3, r = route))
     }
 
     @Test fun cellCardDone() = paparazzi.snapshot {
@@ -1751,10 +1712,6 @@ class ScreenshotTest {
     @Test fun cellCardMini() = paparazzi.snapshot {
         CardFrame(cellCard(mapOf(cOwn to com.onpath.app.cells.CellState.Ready("v"),
                 cEast to com.onpath.app.cells.CellState.Downloading(2 * mbB, 9 * mbB))), planWithCard(n = 3, r = route, size = PlanSize.MINI))
-    }
-
-    @Test fun cellCardNotAvailable() = paparazzi.snapshot {
-        CardFrame(cellCard(emptyMap(), available = false), planWithCard())
     }
 
     /** Fresh install, no map yet, location not allowed: the card says what brings the detailed map (no timeout). */

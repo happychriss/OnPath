@@ -9,9 +9,11 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * "Paired. …" / "Unpaired. …" with OK at the top of the Plan map (owner 2026-10-30) at the phone's largest font (2.0): the whole
- * sentence wraps, OK stays a 48 dp target. Same picture as [ScreenshotTest.planPairedNote], drawn with this class's
- * Paparazzi.
+ * "Unpaired. …" (the server not reached) with OK at the top of the Plan map (owner 2026-10-30) at the phone's largest font
+ * (2.0): the whole sentence wraps, OK stays a 48 dp target. Same picture as [ScreenshotTest.planUnpairedOfflineNote], drawn
+ * with this class's Paparazzi. The tallest note box at 2.0 in the top slot (title + four lines + OK on its own row): it keeps
+ * the box's placement at this font whole-screen; "Paired." and "Unpaired." (not unreachable) are cells of
+ * [PlanMessagesGalleryGermanLargeFontTest] (their texts and fit).
  */
 /** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
 abstract class PairedNoteLargeFontTest {
@@ -23,8 +25,6 @@ abstract class PairedNoteLargeFontTest {
         it.javaClass.getDeclaredField("paparazzi").apply { isAccessible = true }.set(it, paparazzi)
     }
 
-    @Test fun planPairedNote() = shots.planPairedNote()
-    @Test fun planUnpairedNote() = shots.planUnpairedNote()
     @Test fun planUnpairedOfflineNote() = shots.planUnpairedOfflineNote()
 }
 

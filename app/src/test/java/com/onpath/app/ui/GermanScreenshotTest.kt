@@ -84,8 +84,6 @@ class GermanScreenshotTest {
     @Test fun routesSearchNothing() = shots.routesSearchNothing()
     @Test fun planChangedNotSaved() = shots.planChangedNotSaved()
     @Test fun planUnsavedLongHike() = shots.planUnsavedLongHike()
-    @Test fun planPairedNote() = shots.planPairedNote()
-    @Test fun planUnpairedNote() = shots.planUnpairedNote()
     @Test fun planUnpairedOfflineNote() = shots.planUnpairedOfflineNote()
     @Test fun planPairHint() = shots.planPairHint()
     @Test fun navigateNewPlan() = shots.navigateNewPlan()
