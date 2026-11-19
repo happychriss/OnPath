@@ -1,6 +1,7 @@
 // Promise API around the engine worker. Newer requests supersede older ones in the UI (the caller keeps the last id).
-import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, Progress, SharedPlan } from './types';
+import type { Activity, EngineReply, EngineRequest, Hit, PlacePreview, PointRows, Progress, RouteStats, SharedPlan } from './types';
 import { t } from '../i18n';
+import { problem } from '../diag';
 
 type NoId<T> = T extends unknown ? Omit<T, 'id'> : never;
 
@@ -21,6 +22,9 @@ export class EngineClient {
   private history = '';
   /** For the tests and the diagnostics: how often a long plan was stopped, and how long the last fresh worker took. */
   readonly restarts = { count: 0, lastMs: 0 };
+  /** For the tests: the last answered plan's stats (its legs routed / from the browser's store – legcache-smoke). */
+  lastPlanStats: RouteStats | null = null;
+  lastPlan: unknown = null;
 
   constructor() { this.spawn(); }
 
@@ -30,6 +34,7 @@ export class EngineClient {
     w.onmessage = (ev: MessageEvent<EngineReply>) => {
       if (w !== this.worker) return; // a stopped worker's last words
       const r = ev.data;
+      for (const n of r.notes ?? []) problem(n.area, n.message, n.detail || undefined);
       if (r.progress) {
         if (r.progress.phase !== 'download' && this.plans.get(r.id) === 0) this.plans.set(r.id, performance.now());
         this.rearm.get(r.id)?.();
@@ -142,7 +147,8 @@ export class EngineClient {
    *  [rounds] ≥ 1 = a plan the user started: at the time limit the reply's plan is {slow: rounds} (SlowPlan); 0 = never asks. */
   plan(points: [number, number][], activity: Activity, sac: number, pinned: number[] = [], onProgress?: (p: Progress) => void, names = '', rounds = 0) {
     this.dropPlans(); // a new plan supersedes every running one (the page keeps the newest)
-    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names, rounds }, onProgress);
+    return this.ask({ type: 'plan', points: enc(points), activity, sac, pinned: pinned.join(','), names, rounds }, onProgress)
+      .then((r) => { if (r.ok && r.stats && r.plan) { this.lastPlanStats = r.stats; this.lastPlan = r.plan; } return r; });
   }
 
   /** The plan code (QR code, link) – the app's PlanCode. */

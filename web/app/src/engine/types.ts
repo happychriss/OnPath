@@ -69,7 +69,10 @@ export interface RouteResult {
   points: [number, number, number | null][];
 }
 
-export interface RouteStats { engineLoadMs: number; fetchMs: number; storeMs?: number; routeMs: number; bytesFetched: number }
+export interface RouteStats { engineLoadMs: number; fetchMs: number; storeMs?: number; routeMs: number; bytesFetched: number;
+  /** A plan's legs (WebLegStore): routed by the router, not routed (memory or the browser's store), of them fresh from
+   * the browser's store; read = legs read from IndexedDB in readMs (fresh or not). */
+  legs?: { routed: number; cached: number; stored: number; read: number; readMs: number } }
 
 export interface EngineReply { id: number; ok: boolean; result?: RouteResult; plan?: PlanResult; index?: number; code?: string; text?: string; shared?: SharedPlan | null; stats?: RouteStats; problems?: string[]; error?: string;
   /** Sent before the answer while a request waits (worker → page): routing data to download, then routing. */
@@ -79,7 +82,9 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
   /** A plan the page dropped (superseded): never routed, or its worker was stopped (client.ts restart). */
   cancelled?: boolean;
   /** After a call that changed the undo / redo history: the history as text (Engine.historyExport), for a fresh worker. */
-  history?: string }
+  history?: string;
+  /** Problems the worker met itself (the leg store's IndexedDB) – for the page's problem log (diag.ts). */
+  notes?: { area: string; message: string; detail: string }[] }
 /** What a plan waits for: the routing data under it ([bytes] still to download when it started, [done] of them
  * received so far – sizes from the rd5 files' index), then the router. */
 export type Progress = { phase: 'download'; bytes: number; done: number } | { phase: 'route' }

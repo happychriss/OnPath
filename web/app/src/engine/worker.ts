@@ -5,6 +5,7 @@
 import type { EngineRequest, EngineReply, RouteStats } from './types';
 import { fetchPacked } from '../b64';
 import { tourText } from '../tourtext';
+import { LegStoreIdb } from './legstore';
 
 declare const __BUILD_ID__: string;
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
@@ -60,6 +61,11 @@ interface WasmEngine {
   mapTexts(): string;
   suggest(op: string, json: string): string;
   planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string): string;
+  legsWanted(points: string, activity: string, sac: number): string;
+  legGive(name: string, text: string): void;
+  legsTaken(): string;
+  legText(name: string): string;
+  legsLast(): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
@@ -343,6 +349,35 @@ function indexArea(e: WasmEngine, key: string, dir: string): Promise<void> {
   return p;
 }
 
+// ---- the finished legs in the browser (legstore.ts – IndexedDB; the engine's WebLegStore decides what counts) ----
+/** Problems of this worker's own (the leg store), sent with the next answer to the page's problem log. */
+const notes: { area: string; message: string; detail: string }[] = [];
+const note = (area: string, message: string, e?: unknown) => {
+  notes.push({ area, message, detail: e == null ? '' : e instanceof Error ? `${e.name}: ${e.message}` : String(e) });
+};
+const legStore = new LegStoreIdb((m, e) => note('routing', m, e));
+
+/** Before a plan: its legs not in the engine's memory, read from the browser and handed over (fresh or not – the engine checks). */
+async function legsIn(e: WasmEngine, points: string, activity: string, sac: number): Promise<number> {
+  try {
+    const names: string[] = JSON.parse(e.legsWanted(points, activity, sac));
+    const got = await legStore.read(names);
+    for (const [n, text] of got) e.legGive(n, text);
+    return got.size;
+  } catch (err) { note('routing', 'Leg store: legs not handed over – routed again', err); return 0; }
+}
+
+/** After an answer: the legs the engine routed (or kept under snapped points) into the browser. */
+let legsWriting: Promise<void> = Promise.resolve();
+function legsOut(e: WasmEngine) {
+  try {
+    const names: string[] = JSON.parse(e.legsTaken());
+    if (!names.length) return;
+    const legs = names.map((n) => [n, e.legText(n)] as [string, string]).filter(([, t]) => t);
+    legsWriting = legsWriting.then(() => legStore.write(legs));
+  } catch (err) { note('routing', 'Leg store: routed legs not taken – routed again next time', err); }
+}
+
 /** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
 const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
@@ -394,6 +429,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
       const out = fn(...req.args);
       reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined });
+      if (req.fn === 'historySnap') legsOut(e); // the legs kept under the snapped points (the plan as saved)
       return;
     }
     if (req.type === 'prefetch') {
@@ -428,6 +464,12 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       } finally { gp.onpathPlanProgress = undefined; }
       return;
     }
+    // the plan's legs kept in the browser (a reopened tour, a reload): read before routing – they count as done at once
+    // in the wait box's km (WebPlanProgress asks the engine's leg cache, which reads them)
+    const tl = performance.now();
+    const legsRead = req.type === 'plan' ? await legsIn(e, req.points, req.activity, req.sac) : 0;
+    const legsMs = performance.now() - tl;
+    if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; }
     const t1 = performance.now();
     e.writeParts(); // new parts into the local rd5 files (once per plan, not per part)
     const storeMs = performance.now() - t1;
@@ -445,11 +487,13 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       json = req.type === 'plan' ? e.plan(req.points, req.activity, req.sac, req.pinned ?? '', req.names ?? '', req.rounds ?? 0) : e.route(req.points, req.activity, req.sac);
     } finally { g.onpathPlanProgress = undefined; }
     const t2 = performance.now();
+    const legs = req.type === 'plan' ? { ...JSON.parse(e.legsLast()), read: legsRead, readMs: Math.round(legsMs) } : undefined;
     reply({
       id: req.id, ok: true, [req.type === 'plan' ? 'plan' : 'result']: JSON.parse(json),
-      stats: { engineLoadMs: loadMs.engine, fetchMs: t1 - t0, storeMs, routeMs: t2 - t1 - storeMs, bytesFetched: fetched },
+      stats: { engineLoadMs: loadMs.engine, fetchMs: t1 - t0 - legsMs, storeMs, routeMs: t2 - t1 - storeMs, bytesFetched: fetched, legs },
       problems: JSON.parse(e.problems()),
     });
+    if (req.type === 'plan') legsOut(e);
   } catch (err) {
     reply({ id: req.id, ok: false, error: String(err) });
   }
@@ -514,4 +558,7 @@ async function suggest(e: WasmEngine, req: Extract<EngineRequest, { type: 'sugge
     problems: JSON.parse(e.problems()) });
 }
 
-function reply(r: EngineReply) { (self as unknown as DedicatedWorkerGlobalScope).postMessage(r); }
+function reply(r: EngineReply) {
+  if (notes.length) r = { ...r, notes: notes.splice(0) }; // the worker's own problems ride along to the page's log
+  (self as unknown as DedicatedWorkerGlobalScope).postMessage(r);
+}

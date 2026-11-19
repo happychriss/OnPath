@@ -50,7 +50,35 @@ object Engine {
      * engine, as the app keeps one beside its router – an edit routes only the legs it changed. Only routed legs are kept,
      * so a leg that failed while its routing data was still loading is routed again.
      */
-    private val legCache = LegCache()
+    private val legCache = LegCache(store = WebLegStore({ routingFingerprint() }, ::partVersion, ::partMissing).also { legStore = it })
+    /** The legs kept in the browser (IndexedDB, carried in and out by the worker – [WebLegStore], owner 2026-11-18). */
+    internal lateinit var legStore: WebLegStore
+        private set
+
+    /** A part's routing data version for the leg store: its tile's creation time; "-" = no such tile (or not known). */
+    private fun partVersion(p: Rd5Parts.Part): String = tileCreated(p.tile)?.toString() ?: "-"
+
+    /** The part has data in its tile but it is not loaded (its download failed) – a leg routed now went round it. */
+    private fun partMissing(p: Rd5Parts.Part): Boolean =
+        p !in have && (layouts[p.tile]?.first?.let { it.size(p.index) > 0 } ?: false)
+
+    /**
+     * The legs of [points] the worker should read from the browser's store before planning them (names, JSON): the plan's
+     * legs not in memory now. What was handed over for an earlier plan is dropped.
+     */
+    fun legsWanted(points: String, activity: String, sac: Int): String = try {
+        val wps = parsePoints(points)
+        val act = Activity.valueOf(activity)
+        legStore.wanted(emptyList())
+        val keys = (0 until wps.size - 1).filter { legCache.lookup(wps[it], wps[it + 1], act, sac) == null }
+            .map { LegCache.key(wps[it], wps[it + 1], act, sac) }
+        legStore.wanted(keys).joinToString(",", "[", "]") { str(it) }
+    } catch (e: Exception) {
+        Problems.warn("routing", "Stored legs not looked up – the plan routes them", e); "[]"
+    }
+
+    /** The last plan's legs: routed by the router, taken from memory, taken from the browser's store (the smokes' hook). */
+    internal var lastLegs = "{}"
 
     /** Where a plan's progress text goes: the page in the Wasm build ([planProgress]); null on the JVM (JvmRun, tests). */
     internal var progressSink: ((String) -> Unit)? = null
@@ -267,6 +295,8 @@ object Engine {
                 return "{\"slow\":${e.rounds},\"legs\":[]}"
             }
             lastResult = res
+            val n = wps.size - 1
+            lastLegs = "{\"routed\":${n - planner.cachedLegs},\"cached\":${planner.cachedLegs},\"stored\":${legStore.hits}}"
             // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
             // 2026-11-07) – only the missing piece is routed (~40 ms a try), as AppViewModel.findReach does
             val reach = res.gaps.firstOrNull()?.takeIf { !it.skipped }?.let { g ->
@@ -353,7 +383,22 @@ object Engine {
      * snapshot gets the same values, without a step (the app's PlanHistory.replacePoints with WaypointSnap.moves).
      */
     fun historySnap(routed: String, snapped: String) {
-        history.replacePoints(com.onpath.app.routing.WaypointSnap.moves(parsePoints(routed), parsePoints(snapped)))
+        val r = parsePoints(routed); val s = parsePoints(snapped)
+        history.replacePoints(com.onpath.app.routing.WaypointSnap.moves(r, s))
+        aliasSnapped(r, s)
+    }
+
+    /**
+     * The points were moved onto the line (the page took the plan's snapped points): the run's legs under the moved
+     * points too ([LegCache.alias], the app's AppViewModel.aliasSnappedLegs) – the plan as saved now opens with its legs
+     * (memory and the browser's store), and the next edit routes only its new legs.
+     */
+    private fun aliasSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>) {
+        if (routed.size != snapped.size) return
+        val res = lastResultFor(routed) ?: return
+        val moved = (0 until routed.size - 1).filter { snapped[it] != routed[it] || snapped[it + 1] != routed[it + 1] }
+        // no trace line (the app writes one): the engine's log reaches the page as console errors, which smokes count
+        for (i in moved) legCache.alias(routed[i], routed[i + 1], snapped[i], snapped[i + 1], res.activity, res.sac)
     }
 
     /**
@@ -841,6 +886,13 @@ external fun planProgress(text: String)
 }
 
 @JSExport fun historySnap(routed: String, snapped: String) = Engine.historySnap(routed, snapped)
+
+// the browser's leg store (WebLegStore, worker.ts legs*): which legs to read, hand them over, take the new ones
+@JSExport fun legsWanted(points: String, activity: String, sac: Int): String = Engine.legsWanted(points, activity, sac)
+@JSExport fun legGive(name: String, text: String) = Engine.legStore.give(name, text)
+@JSExport fun legsTaken(): String = Engine.legStore.taken().joinToString(",", "[", "]") { Engine.str(it) }
+@JSExport fun legText(name: String): String = Engine.legStore.text(name)
+@JSExport fun legsLast(): String = Engine.lastLegs
 
 /** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
 @JSExport fun routingInfo(): String = Engine.routingInfo()

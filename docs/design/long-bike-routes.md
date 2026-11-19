@@ -169,6 +169,18 @@ matched the cached legs – even in the same process.
   after that ("unknown version": shown, routed again, kept). The saved line counts only when the tour's activity and T
   level are the plan's. A route that was routed before is no "very long plan" question again (`longRouteOk`).
 - **Edit** after a load: the existing leg-cache path – only the changed legs are routed (`LegFilesTest`).
+- **The browser planner** (owner 2026-11-18, „München–Venedig opened again routes every leg for minutes"): the same
+  store in IndexedDB (`web/app/src/engine/legstore.ts`, db `onpath-legs`, ≤ 3 000 legs / 40 MB, LRU down to 80 %),
+  behind the engine's `LegCache` as `WebLegStore` (`web/engine/…/WebLegs.kt`) – the phone's key and rule exactly: both
+  points, activity, (Hike) T level; the engine's routing fingerprint; the version of each 1° part within 2 km (the
+  tile's creation time from its tail, "-" = no tile). The engine cannot wait for IndexedDB, so the worker carries the
+  legs: before a plan it asks `legsWanted` (the legs not in memory), reads them and hands them over (`legGive`); after
+  the answer it takes the newly routed legs (`legsTaken` / `legText`) into IndexedDB; the snapped points keep their
+  legs too (`historySnap` → `LegCache.alias`, as the app). A leg routed while a part under it failed to download is not
+  stored. Stored legs count as done at once in the wait box's km. Text with every number as its exact bits – the same
+  plan bit for bit (`WebLegStoreTest`, `web/app/test/legcache-smoke.mjs`: reload → no router run, the same plan as a
+  fresh browser; newer tile or other profiles → all legs routed again). Innsbruck → Venedig, 387 km bike, 15 legs
+  (local Chromium): routing 8.2 s → 0.36 s from the store. Any IndexedDB failure: the legs are routed (problem log).
 - **Not built**: the owner's invisible shape points (a hint with tolerance when the data is newer) – a later fallback.
 - **Tests**: `LegFilesTest` (restart → zero calls, the same line and attributes; one point changed → its two legs;
   another activity / T level → all; newer / newly loaded data → stand-in, then only that leg; other fingerprint; damaged
