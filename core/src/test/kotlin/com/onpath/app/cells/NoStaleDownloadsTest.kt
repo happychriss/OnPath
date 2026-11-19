@@ -109,6 +109,41 @@ class NoStaleDownloadsTest {
     }
 
     /**
+     * BUG (check-then-act, found 2026-11-20 as the rare runner failure of [runningCorridorDownloadStops]): the worker
+     * takes its list of requests, THEN the plan drops the corridor cell, THEN the worker starts the download from its
+     * stale list. The progress check ([MapCells] `queued(c)`) fires only every 256 KB, so a small cell was downloaded
+     * and installed although the plan no longer needed it. Forced without sleeps: the network status is asked by the
+     * worker right after it took its list ([MapCells.allowed]) – there the "plan change" happens.
+     */
+    @Test fun planDropsTheCellBetweenTheWorkersListAndItsDownload() {
+        server.publish(a, "v1"); server.publish(b, "v1"); server.buildPolls = 0
+        val hookArmed = java.util.concurrent.atomic.AtomicBoolean(true)
+        val asks = java.util.concurrent.atomic.AtomicInteger()
+        lateinit var mc: MapCells
+        val net = object : NetworkStatus {
+            override fun connected() = true
+            override fun unmetered(): Boolean {
+                // the worker holds its list with a and is about to download it: only now the plan changes
+                // 1st ask: the round that learned "ready" (anyReadyAllowed); 2nd: the next round's list → download
+                if (mc.state(a) is CellState.Downloading && asks.incrementAndGet() == 2 && hookArmed.compareAndSet(true, false)) mc.keepCorridor(emptyList())
+                return true
+            }
+        }
+        mc = cells(net, start = false)
+        mc.start()
+        mc.keepCorridor(listOf(a))
+        mc.request(listOf(a), CellReason.CORRIDOR, ownPoint = false)
+        waitFor("the plan change happened inside the worker's round") { !hookArmed.get() }
+        // b is a sentinel: the worker is serial, so b is ready only after its round with a is over
+        mc.request(listOf(b), CellReason.POINT)
+        waitFor("b loaded") { mc.state(b) == CellState.Ready("v1") }
+        assertFalse("a never downloaded", server.log.any { it.contains("/files/cells/f2/${a.path}/") })
+        assertEquals(CellState.None, mc.state(a))
+        assertEquals(listOf(b), mc.installed.value.map { it.id })
+        assertTrue(queued(mc).isEmpty())
+    }
+
+    /**
      * App start: corridor requests from an old plan wait for the restored plan's route – not sent, not
      * downloaded; dropped when the plan has no route. Point requests older than a day go; fresh ones and refreshes of
      * installed areas stay.

@@ -1095,6 +1095,8 @@ class MapCells(
         val api = api ?: return
         val c = p.id
         try {
+            // the worker's list may be stale: the plan / the user may have dropped the request since it was taken
+            if (!queued(c)) throw Cancelled()
             val m = api.manifest(c)
             if (m.cell != c) throw IllegalStateException("manifest is for ${m.cell}")
             if (m.format != CellApi.FORMAT) { set(c, CellState.Failed(Txt.s(Res.string.maps_err_other_version), false)); dequeue(c); return }
@@ -1142,6 +1144,7 @@ class MapCells(
             for (f in m.files) {
                 if (f.name in skip) continue
                 val dest = File(part, f.name)
+                if (!queued(c)) throw Cancelled() // the progress check below fires only every 256 KB: small files never reach it
                 if (!have(f)) {
                     dest.delete()
                     val tmp = File(part, f.name + ".part")
@@ -1154,6 +1157,7 @@ class MapCells(
                 }
                 before += f.size
             }
+            if (!queued(c)) throw Cancelled() // dropped during the last file: not installed (the part folder stays for a later ask)
             // the manifest makes the folder complete: with what it leaves to the installed version in the same file, synced
             store.writeManifest(part, m, kept)
             askedAs[c] = p.reason
