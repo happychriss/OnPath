@@ -28,8 +28,9 @@ Not in the browser on purpose: navigation and recording (weak GPS, stops in the 
   `Rd5Parts`, `Planner`, `WaypointInsertion`, `PlanEdits`, `RouteSummary`, `RouteTimes`, `PaceModel`, `Geo`,
   turn/junction helpers + the BRouter jars of `app/libs`. TeaVM 0.16 → one Wasm GC module. `WebApi.kt` is the
   only API (init, putLayout/putPart for rd5 1° parts, route, plan, insertIndex). Web-only stand-ins: `Problems`,
-  `UserText` (routing part), and three tiny class replacements: single-thread `ReentrantLock`,
-  `java.lang.Package` manifest getters (BRouter's GPX header version), no-op BRouter debug `StackSampler`.
+  `UserText` (routing part), and four class replacements: single-thread `ReentrantLock`,
+  `java.lang.Package` manifest getters (BRouter's GPX header version), no-op BRouter debug `StackSampler`, and BRouter's
+  `OsmNodesMap` with its peninsula cleanup (`minVisitIdInSubtree`) walked with an explicit stack instead of recursion.
 - `web/app/` – Vite + TypeScript + maplibre-gl 6 + pmtiles. Engine in a Web Worker; fetches profiles and the rd5
   parts the plan needs (part choice = the phone's `Rd5Parts.forCorridor`) by HTTP range (falls back to a whole file
   on hosts without ranges). Planner page: click → point (WaypointInsertion), drag / click to move / delete,
@@ -913,6 +914,13 @@ Problems found while making the browser plan exactly like the phone, and the spe
   (`javax.xml` / SAX mapped to a small stand-in, `WebImportTest`), java.time via ThreeTen backport, only `en_US` /
   `de_DE` number data, single-thread `ReentrantLock`, `java.lang.Package` getters, no-op BRouter `StackSampler` (§7, §10,
   §15, §18.1).
+- **No catchable stack overflow in Wasm**: BRouter's peninsula cleanup (`OsmNodesMap.minVisitIdInSubtree`) recursed once
+  per node of a chain and caught `StackOverflowError` on the JVM; in the browser worker's small stack that is an
+  uncatchable `RangeError` – every plan near München failed at once (2026-11-19, live too). The web build's copy of
+  `OsmNodesMap` (`web/engine/src/main/java/btools/mapaccess`, otherwise the jar's class) uses its own stack: same
+  result as the JVM without overflow (`OsmNodesMapTest` compares it with the jar's class), `test/deep-smoke.mjs`.
+  A Wasm stack overflow names its function only in a build with names (`obfuscated = false; debugInformation = true`
+  in `wasmGC {}`, then `node --stack-size=200 …` reproduces it outside the browser).
 - **Node never exits after loading the TeaVM Wasm engine** – run engine tests in a child process.
 - **Engine loaded twice** on early calls lost rd5 parts stored in the other copy – the worker keeps one loading promise
   (§11.2).
