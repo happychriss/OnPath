@@ -41,6 +41,15 @@ overrides.forEach { rel ->
 coreExcludes.forEach { rel ->
     if (!coreMain.resolve("com/onpath/app/$rel").isFile) error("web/engine/core-excludes.txt names $rel, which is not in core/ – delete the line")
 }
+// 4. the web-ready slices of :state, named one by one in state/web-ready.txt (docs/design/umbau-phase-2.md §2.2: only
+//    :core / :state / strings / java / kotlin and five Compose runtime names – the stand-in in src/main/kotlin/androidx –,
+//    no coroutine; the app's WebReadyRuleTest guards it). A new line there comes in here by itself; a listed file that
+//    is not in state/ fails the build. The page drives them (WebState.kt, in the wait window's instance).
+val stateMain = root.resolve("state/src/main/kotlin")
+val webReady = pathList(root.resolve("state/web-ready.txt"))
+webReady.forEach { rel ->
+    if (!stateMain.resolve("com/onpath/app/$rel").isFile) error("state/web-ready.txt lists $rel, but it is not in state/")
+}
 appFiles.forEach { rel ->
     if (coreMain.resolve("com/onpath/app/$rel").isFile) error("app/web-shared-files.txt lists $rel, which lives in core/ now – the folder covers it, delete the line")
     if (!app.resolve(rel).isFile) error("app/web-shared-files.txt lists $rel, but it is not in app/")
@@ -178,6 +187,7 @@ kotlin.sourceSets["main"].kotlin.srcDir(generateStrings)
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileKotlin") {
     source(fileTree(coreMain) { exclude((overrides + coreExcludes).map { "com/onpath/app/$it" }) })
     source(appFiles.map { app.resolve(it) })
+    source(webReady.map { stateMain.resolve("com/onpath/app/$it") })
 }
 tasks.named<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>("compileTestKotlin") {
     source(appTests.map { inModules(it, root.resolve("core/src/test/kotlin/com/onpath/app"), root.resolve("core/src/testkit/kotlin/com/onpath/app"), root.resolve("app/src/test/java/com/onpath/app")) })

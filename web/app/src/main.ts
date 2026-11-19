@@ -30,7 +30,8 @@ import { keptStore, searchRecent, type KeptPlaces, type KeptRules } from './kept
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
-import { keepRecent, afterSaved, takePlace, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
+import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
+import { slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, cancelCamera, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -444,8 +445,9 @@ ready.then(async (ok) => { if (ok) { await paceReady; openFromLink(); prefetchVi
 // plan sync (docs/design/web-sync.md): My plans in this browser, paired with the phone through the mailbox
 const sync = new PlanSync(engine, params.get('syncApi') ?? base + 'sync/v1/');
 syncRef = sync;
-// Zuletzt at the start: the bin's old entries go, once the drafts beyond the one go to the bin (recent.ts, app 2923a3e7)
-try { zuletztStartUp(); } catch (e) { problem('routes', 'Zuletzt: the start-up clean-up failed – tried again at the next start', e); }
+// Zuletzt at the start: the bin's old entries go, once the drafts beyond the one go to the bin (recent.ts – the app's
+// RoutesState.trimDrafts, once the slices' instance is there; failures are reported there)
+void zuletztStartUp();
 (window as unknown as { __sync: PlanSync }).__sync = sync; // for the browser tests
 syncBadge(); // the header entry with its full tooltip at once – sync.init waits for the engine (CI race in sync-smoke)
 const syncReady = ready.then(async (ok) => {
@@ -2289,36 +2291,38 @@ async function keepAsRecent(why: string) {
   const savedId = state.savedId && !planUnsaved ? state.savedId : null, savedFolder = state.savedFolder;
   const pts = enc(state.points), plan = { ...sharedPlan(), points: [...state.points] }, n = state.points.length;
   const own = state.title || plansHost.linkTitle();
+  await slicesReady(); // the plan is read; the slice decides (loaded with the page – without it the plan is still kept)
+  // what is kept is the app's RoutesState.keepDraft (recent.ts → the slice); this looks up what its store asks: the
+  // saved route the plan is as it is – still there, in this browser's recycle bin, or gone (deleted here or on the
+  // phone: then the plan is kept as a draft, never lost) – and a saved route with exactly its points
+  let saved: 'there' | 'binned' | 'gone' | undefined;
   if (savedId) {
-    // saved as it is: that saved route takes the Zuletzt place (the „Gespeichert“ tag, app 2923a3e7) – unless it is
-    // gone meanwhile (deleted here or on the phone): then the plan is kept as a draft, never lost
     let there = true;
     try {
       await syncReady;
       const folders = [...new Set([sync.open, savedFolder].filter((f): f is string => !!f))];
       there = (await Promise.all(folders.map((f) => sync.list(f)))).some((l) => l.some((p) => p.id === savedId));
     } catch (e) { there = false; problem('routes', 'Zuletzt: the saved routes could not be read – the plan is kept as a draft too (never lost)', e); }
-    if (there) { takePlace({ kind: 'saved', id: savedId }); return; }
-    // deleted without a phone: this browser's recycle bin holds it, the plan is in it – nothing twice (the app's keepDraft)
     let binned = false;
-    try { binned = (await sync.binnedRoutes()).some((e) => e.id === savedId); }
-    catch (e) { problem('routes', 'Zuletzt: the recycle bin could not be read – the plan is kept as a draft too (never lost)', e); }
-    if (binned) { console.info('[Problems] TRACE routes: Zuletzt: the plan is a saved route in the recycle bin – nothing kept twice'); return; }
-    console.info('[Problems] TRACE routes: Zuletzt: the plan\'s saved route is gone – kept as a new plan');
+    if (!there) {
+      try { binned = (await sync.binnedRoutes()).some((e) => e.id === savedId); }
+      catch (e) { problem('routes', 'Zuletzt: the recycle bin could not be read – the plan is kept as a draft too (never lost)', e); }
+    }
+    saved = there ? 'there' : binned ? 'binned' : 'gone';
+    // saved as it is: that saved route takes the Zuletzt place (the „Gespeichert“ tag); in the bin: nothing twice
+    if (saved !== 'gone') { keepPlan({ code: '', title: '', points: pts, savedId, saved }); return; }
   }
   if (!(await ready)) return;
   // changed (or new) but exactly the points of a saved route of the open folder: that route takes the Zuletzt place –
-  // never a twin draft beside it (the app's RoutesState.keepDraft, RouteRules.isUnsaved: points only)
+  // never a twin draft beside it (RouteRules.isUnsaved: points only – the page compares them, the slice decides)
   const twin = await savedTwin(plan.points);
-  if (twin) {
-    takePlace({ kind: 'saved', id: twin.id });
-    console.info(`[Problems] TRACE routes: Zuletzt: the plan has the points of the saved route "${twin.title ?? ''}" – it takes the place, no draft`);
-    return;
-  }
   const code = await engine.encode(plan);
   const dated = datedName();
-  const id = keepRecent(code, own || dated, pts, fromRecent);
-  if (!id) return;
+  const id = keepPlan({ code, title: own || dated, points: pts, replaces: fromRecent, savedId, saved, twin: twin?.id ?? null });
+  if (!id) {
+    if (twin) console.info(`[Problems] TRACE routes: Zuletzt: the plan has the points of the saved route "${twin.title ?? ''}" – it takes the place, no draft`);
+    return;
+  }
   keepPlanStats(code); // Zuletzt's numbers and line (Meine Touren's preview) – the plan is still the routed one here
   console.info(`[Problems] TRACE plan: kept under Zuletzt (${why}), ${n} points`);
   if (own) return;

@@ -1,7 +1,7 @@
 // Web ⇄ app parity check (docs/design/web-planner.md §14). The web never drifts silently from the app:
 // - mirrors (web/parity.json): app logic the web re-implements. If the app file changed since the mirror was last
 //   checked (git blob hash), this FAILS – look at the app change, adjust the web, then record it with --update.
-// - shared: every file the engine compiles as it is (the :core folder minus stand-ins / excludes, the app files in app/web-shared-files.txt, its tests), the string
+// - shared: every file the engine compiles as it is (the :core folder minus stand-ins / excludes, the app files in app/web-shared-files.txt, its tests, the slices in state/web-ready.txt), the string
 //   files, BRouter's jars and profiles. They reach the web by merging main; changes are listed as warnings, and lines
 //   that matter for performance / memory (caches, limits, timeouts, buffers – the phone's memory work) are shown
 //   added / removed, so the web side (Wasm heap, worker, prefetch) can be checked too.
@@ -75,7 +75,14 @@ function sharedFiles() {
   const main = rows.filter(([s]) => s === '[files]').map(([, f]) => home(['app/src/main/java/com/onpath/app/'], f));
   const tests = rows.filter(([s]) => s === '[tests]').map(([, f]) => home(['core/src/test/kotlin/com/onpath/app/', 'core/src/testkit/kotlin/com/onpath/app/', 'app/src/test/java/com/onpath/app/'], f));
   const dir = (d, re) => fs.readdirSync(path.join(repo, d)).filter((f) => re.test(f)).sort().map((f) => `${d}/${f}`);
-  return [...coreCompiled(), ...main, ...tests, 'app/src/main/java/btools/router/OnPathHints.java',
+  // the web-ready slices of :state (state/web-ready.txt – the engine compiles them as they are, the page drives them)
+  const state = fs.readFileSync(path.join(repo, 'state/web-ready.txt'), 'utf8').split('\n').map((l) => l.replace(/#.*/, '').trim()).filter(Boolean)
+    .map((f) => {
+      const p = 'state/src/main/kotlin/com/onpath/app/' + f;
+      if (!fs.existsSync(path.join(repo, p))) throw new Error(`state/web-ready.txt lists ${f}, but it is not in state/`);
+      return p;
+    });
+  return [...coreCompiled(), ...main, ...tests, ...state, 'app/src/main/java/btools/router/OnPathHints.java',
     ...dir('strings/src/commonMain/composeResources/values', /\.xml$/), ...dir('strings/src/commonMain/composeResources/values-de', /\.xml$/),
     ...dir('app/libs', /\.jar$/),
     ...dir('app/src/main/assets/brouter', /\.(brf|dat)$/), 'app/src/main/assets/style/f2/onpath.json'];

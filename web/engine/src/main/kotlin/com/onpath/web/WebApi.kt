@@ -1,3 +1,5 @@
+// the page's slice calls live in WebState.kt (WebStateApi): exported beside these as the module's "WebStateApi"
+@file:org.teavm.jso.JSExportClasses(WebStateApi::class)
 package com.onpath.web
 
 import com.onpath.app.data.Format

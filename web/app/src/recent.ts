@@ -1,18 +1,15 @@
-// "Zuletzt" in Meine Touren – the app's one-plan rule (app 2923a3e7 / 6f4b47d3, owner 2026-11-12: "exactly one plan
-// under Zuletzt – the one worked on last, saved or not"; RouteRules.kt Drafts.MAX = 1, routes/RoutesState.kt,
-// domain/plan/LivePlan.kt LivePlanRows). No "Plan speichern?" question (owner 2026-11-06): a plan worth keeping (≥ 2
-// points) that leaves the map while not saved as it is (Neu, another plan / link / GPX opened) is kept here as the one
-// draft; a plan saved as it is takes the place as that saved route (the "Gespeichert" tag – it stays under Gespeichert
-// too). Whatever takes the place sends every other draft to this browser's recycle bin – never gone for good (robust
-// first); the bin keeps them [BIN_DAYS] days like the app's (RecycleBin.DAYS), Wiederherstellen brings one back as the
-// Zuletzt plan. The place survives a reload (the app's prefs.zuletztId); once, the drafts an older planner collected
-// beyond the newest [MAX] go to the bin (the app's trimDrafts / prefs.zuletztTrimmed). Like the app's drafts these are
-// never synced (this browser only) and get no backup.
-// A plan opened from Zuletzt still belongs to its entry: leaving it again updates that entry; saving it moves it to the
-// saved plans (the entry goes for good – the saved route holds it – "✓ Gerade gespeichert" on the new row).
+// "Zuletzt" in Meine Touren – the app's one-plan rule (owner 2026-11-12: "exactly one plan under Zuletzt – the one
+// worked on last, saved or not"), decided by the app's own slice: state/…/ui/routes/RoutesState.kt (keepDraft,
+// takePlace, afterSaved, toBin, restore, trimDrafts, renameDraft) and :core's LivePlanRows, run on the page
+// (slices.ts, WebState.kt). This file is the slice's store (the port RoutesStore): the drafts in this browser's
+// localStorage, the Zuletzt place (the app's prefs.zuletztId), the one-time trim mark (prefs.zuletztTrimmed) and the
+// recycle bin's [BIN_DAYS] days (the app's RecycleBin.DAYS). Each action hands the slice the stored plans as lines
+// and writes back what it decided. Like the app's drafts these are never synced (this browser only) and get no backup.
+// A plan opened from Zuletzt still belongs to its entry: leaving it again updates that entry (the store writes the
+// draft under the entry's id); saving it moves it to the saved plans.
+import { slice, slicesReady, numOf, keyOf, tourLine, type RoutesAnswer } from './slices';
+import { problem } from './diag';
 
-/** How many drafts stay outside the recycle bin (the app's Drafts.MAX). */
-export const MAX = 1;
 /** Days a draft stays in the recycle bin (the app's RecycleBin.DAYS), then the next page start removes it. */
 export const BIN_DAYS = 30;
 const DAY_MS = 24 * 3600 * 1000;
@@ -74,8 +71,6 @@ export function binnedPlans(): RecentPlan[] {
   return read().filter((r) => r.deletedAt != null).sort((a, b) => b.deletedAt! - a.deletedAt!);
 }
 
-export function recentById(id: string): RecentPlan | null { return read().find((r) => r.id === id) ?? null; }
-
 export function zuletztPlace(): Place | null {
   try {
     const v = JSON.parse(localStorage.getItem(PLACE) ?? 'null');
@@ -83,45 +78,88 @@ export function zuletztPlace(): Place | null {
   } catch (e) { warn('the Zuletzt place could not be read', e); return null; }
 }
 
-/**
- * [place] takes the Zuletzt place (the app's RoutesState.takePlace): every other draft goes to the recycle bin – the
- * replaced plan stays recoverable; a saved route is never touched. Returns how many drafts went.
- */
-export function takePlace(place: Place, now = Date.now()): number {
-  const list = read();
-  let gone = 0;
-  const out = list.map((r) => {
-    if (r.deletedAt != null || (place.kind === 'draft' && r.id === place.id)) return r;
-    gone++;
-    return { ...r, deletedAt: now };
-  });
-  if (gone) { write(out); console.info(`[Problems] TRACE routes: Zuletzt: ${gone} plan(s) replaced by ${place.kind} ${place.id} – into the recycle bin`); }
-  try { localStorage.setItem(PLACE, JSON.stringify(place)); } catch (e) { warn('the Zuletzt place could not be stored', e); }
-  return gone;
-}
+// ---------------- the store the slice reads and writes ----------------
+
+const draftKey = (id: string) => 'd:' + id;
+const savedKey = (id: string) => 's:' + id;
+/** The Zuletzt place as the slice's number (-1 = none known). */
+const placeNum = (p = zuletztPlace()) => (p ? numOf(p.kind === 'draft' ? draftKey(p.id) : savedKey(p.id)) : -1);
+
+/** A saved route as the store shows it to the slice: [points] its key (empty = never the same points), [deletedAt] in the bin. */
+interface SavedLine { id: string; points?: string; deletedAt?: number | null; at?: number }
 
 /**
- * Keeps a plan as the Zuletzt draft ([replaces]: the entry it was opened from – updated, not doubled, back out of the
- * bin when another plan took the place meanwhile). The same points as another draft: that one becomes the plan there,
- * name and all, and null is returned; else the entry's id. Either way it takes the place – the draft before it goes to
- * the bin.
+ * The store's list: the saved routes first (a saved twin wins over a draft – never a draft beside it), then the drafts
+ * newest first. [blank] = a draft whose points never count as the same (the entry a plan was opened from: leaving it
+ * again updates it, the app's keepDraft is not asked to find it).
  */
-export function keepRecent(code: string, title: string, points: string, replaces: string | null = null, now = Date.now()): string | null {
-  const list = read();
-  const same = list.find((r) => r.deletedAt == null && r.points === points && r.id !== replaces);
-  if (same) {
-    write(list.map((r) => (r.id === same.id ? { ...r, at: now } : r)));
-    takePlace({ kind: 'draft', id: same.id }, now);
-    return null;
+function lines(list: RecentPlan[], saved: SavedLine[] = [], blank: string | null = null): string {
+  const drafts = [...list].sort((a, b) => b.at - a.at);
+  return [
+    ...saved.map((s) => tourLine(savedKey(s.id), false, s.deletedAt, s.at ?? 0, '', s.points ?? '')),
+    ...drafts.map((r) => tourLine(draftKey(r.id), true, r.deletedAt, r.at, r.title, r.id === blank ? '' : r.points)),
+  ].join('\n');
+}
+
+/** Writes what the slice decided: the drafts' writes (the saved routes are the sync's – written by the caller) and the place. */
+function apply<R>(a: RoutesAnswer<R>, list = read()): RecentPlan[] {
+  let out = list;
+  for (const w of a.writes) {
+    const k = keyOf(w.id);
+    if (!k?.startsWith('d:')) continue;
+    const id = k.slice(2);
+    if (w.op === 'gone') out = out.filter((r) => r.id !== id);
+    else out = out.map((r) => {
+      if (r.id !== id) return r;
+      if (w.op === 'bin') return { ...r, deletedAt: w.ms };
+      if (w.op === 'unbin') { const back = { ...r }; delete back.deletedAt; return back; }
+      if (w.op === 'rename') return { ...r, title: w.name };
+      return r;
+    });
   }
-  const id = replaces && list.some((r) => r.id === replaces) ? replaces : newId();
-  write([{ id, code, title, points, at: now }, ...list.filter((r) => r.id !== id)]);
-  takePlace({ kind: 'draft', id }, now);
-  return id;
+  if (a.writes.length) write(out);
+  const k = keyOf(a.recent);
+  const place: Place | null = k ? { kind: k.startsWith('d:') ? 'draft' : 'saved', id: k.slice(2) } : null;
+  const was = zuletztPlace();
+  if (place && (place.kind !== was?.kind || place.id !== was?.id)) {
+    try { localStorage.setItem(PLACE, JSON.stringify(place)); } catch (e) { warn('the Zuletzt place could not be stored', e); }
+  }
+  return out;
 }
 
-/** Saved (Zuletzt → Speichern, or the plan saved from it): the entry goes for good – the saved route holds it now. */
-export function dropRecent(id: string) { write(read().filter((r) => r.id !== id)); }
+/**
+ * The plan leaves the map (the app's RoutesState.keepDraft): [savedId] = the saved route it is as it is ([saved]
+ * 'there' / 'binned' / 'gone' – the caller looked), [twin] = a saved route with exactly its points, [replaces] = the
+ * Zuletzt entry it was opened from (updated, not doubled – back out of the bin when another plan took the place
+ * meanwhile). Returns the draft's id when one was written, else null (the place went to an existing plan). Without the
+ * slice the plan is still kept as a draft (never lost), nothing else changes.
+ */
+export function keepPlan(p: { code: string; title: string; points: string; replaces?: string | null; savedId?: string | null;
+  saved?: 'there' | 'binned' | 'gone'; twin?: string | null }, now = Date.now()): string | null {
+  const list = read();
+  const id = p.replaces && list.some((r) => r.id === p.replaces) ? p.replaces : newId();
+  const savedLines: SavedLine[] = [];
+  if (p.savedId && p.saved === 'there') savedLines.push({ id: p.savedId });
+  if (p.savedId && p.saved === 'binned') savedLines.push({ id: p.savedId, deletedAt: now });
+  if (p.twin) savedLines.push({ id: p.twin, points: p.points });
+  const entry = (): RecentPlan => ({ id, code: p.code, title: p.title, points: p.points, at: now });
+  const a = slice<RoutesAnswer<number>>('routesKeep', lines(list, savedLines, p.replaces ?? null), placeNum(), now, p.points,
+    !p.savedId, p.savedId ? numOf(savedKey(p.savedId)) : -1, numOf(draftKey(id)));
+  if (!a) {
+    if (p.points.split(';').length < 2 || (p.savedId && p.saved !== 'gone')) return null;
+    write([entry(), ...list.filter((r) => r.id !== id)]); // robust first: kept, the bin and the place wait for the slice
+    return id;
+  }
+  const out = apply(a, list);
+  if (a.result === numOf(draftKey(id))) {
+    write([entry(), ...out.filter((r) => r.id !== id)]);
+    return id;
+  }
+  // the same points as the draft there: that one is the plan worked on last (its date moves up, as the store's touch)
+  const k = keyOf(a.recent);
+  if (k?.startsWith('d:')) write(out.map((r) => (r.id === k.slice(2) ? { ...r, at: now } : r)));
+  return null;
+}
 
 /**
  * A plan was saved as the route [savedId] with the points [points] (the app's RoutesState.afterSaved): the draft it
@@ -130,16 +168,20 @@ export function dropRecent(id: string) { write(read().filter((r) => r.id !== id)
  */
 export function afterSaved(savedId: string, fromId: string | null, points: string | null, now = Date.now()) {
   const list = read();
-  write(list.filter((r) => !(r.deletedAt == null && (r.id === fromId || (points != null && r.points === points)))));
-  takePlace({ kind: 'saved', id: savedId }, now);
+  const a = slice<RoutesAnswer<number>>('routesAfterSaved', lines(list), placeNum(), now, numOf(savedKey(savedId)),
+    fromId ? numOf(draftKey(fromId)) : -1, points ?? '');
+  if (a) apply(a, list);
 }
 
 /** Zuletzt → Löschen: into the recycle bin at once, no question (the app's RoutesState.toBin). */
 export function toBin(id: string, now = Date.now()): boolean {
   const list = read();
-  if (!list.some((r) => r.id === id && r.deletedAt == null)) return false;
-  write(list.map((r) => (r.id === id ? { ...r, deletedAt: now } : r)));
-  console.info(`[Problems] TRACE plan: Zuletzt → recycle bin: "${list.find((r) => r.id === id)!.title}"`);
+  const e = list.find((r) => r.id === id && r.deletedAt == null);
+  if (!e) return false;
+  const a = slice<RoutesAnswer<boolean>>('routesToBin', lines(list), placeNum(), now, numOf(draftKey(id)));
+  if (!a?.result) return false;
+  apply(a, list);
+  console.info(`[Problems] TRACE plan: Zuletzt → recycle bin: "${e.title}"`);
   return true;
 }
 
@@ -150,24 +192,28 @@ export function toBin(id: string, now = Date.now()): boolean {
 export function restoreRecent(id: string, now = Date.now()): boolean {
   const list = read();
   if (!list.some((r) => r.id === id && r.deletedAt != null)) return false;
-  write(list.map((r) => (r.id === id ? { id: r.id, code: r.code, title: r.title, points: r.points, at: r.at } : r)));
-  takePlace({ kind: 'draft', id }, now);
+  const a = slice<RoutesAnswer<boolean>>('routesRestore', lines(list), placeNum(), now, numOf(draftKey(id)));
+  if (!a?.result) return false;
+  apply(a, list);
   return true;
 }
 
 /**
- * A saved route came back from the recycle bin (the app's RoutesState.restore): it goes back under Gespeichert as it
- * was; the drafts [twins] with its points (planned again while it was in the bin) go to the bin – never a draft beside
- * a saved route with the same points – and the saved route takes the Zuletzt place when one of them held it.
+ * A saved route came back from the recycle bin (the sync restored it; the app's RoutesState.restore decides the rest):
+ * the drafts [twins] with its points (planned again while it was in the bin) go to the bin – never a draft beside a
+ * saved route with the same points – and the saved route takes the Zuletzt place when one of them held it.
  */
 export function savedRestored(savedId: string, twins: string[], now = Date.now()) {
   if (!twins.length) return;
-  const held = recentRow(null, recentPlans(), new Set(), zuletztPlace());
-  const heldTwin = !!held && 'draft' in held && twins.includes(held.draft.id);
   const list = read();
-  write(list.map((r) => (r.deletedAt == null && twins.includes(r.id) ? { ...r, deletedAt: now } : r)));
+  // the twins' points are the route's (the caller compared them): the route's key = theirs
+  const points = list.find((r) => r.id === twins[0])?.points ?? '';
+  const marked = list.map((r) => (twins.includes(r.id) ? { ...r, points } : r));
+  const a = slice<RoutesAnswer<boolean>>('routesRestore', lines(marked, [{ id: savedId, points, deletedAt: now }]), placeNum(), now,
+    numOf(savedKey(savedId)));
+  if (!a) return;
+  apply(a, list);
   console.info(`[Problems] TRACE routes: recycle bin: a restored route's ${twins.length} twin draft(s) → recycle bin`);
-  if (heldTwin) takePlace({ kind: 'saved', id: savedId }, now);
 }
 
 /** Whole days until a bin entry is removed (0 = at the next start; the app's RecycleBin.daysLeft). */
@@ -175,47 +221,53 @@ export function daysLeft(deletedAt: number, now = Date.now()): number {
   return Math.floor(Math.max(0, deletedAt + KEEP_MS - now) / DAY_MS);
 }
 
+let started: Promise<{ trimmed: number; removed: number }> | null = null;
+/** The page start's clean-up has run (Meine Touren waits for it). */
+export const zuletztReady = () => started ?? Promise.resolve({ trimmed: 0, removed: 0 });
+
 /**
  * At every page start: bin entries older than [BIN_DAYS] days go (the app removes them at its start); once, the drafts
- * an older planner kept beyond the newest [MAX] go to the bin (the app's trimDrafts, guarded by prefs.zuletztTrimmed).
- * Returns { trimmed, removed }.
+ * an older planner kept beyond the newest one go to the bin (the slice's trimDrafts, guarded by prefs.zuletztTrimmed –
+ * tried again at the next start when the slice is not there). Returns { trimmed, removed }.
  */
-export function startUp(now = Date.now()): { trimmed: number; removed: number } {
-  let list = read();
-  const before = list.length;
-  list = list.filter((r) => r.deletedAt == null || now - r.deletedAt < KEEP_MS);
-  const removed = before - list.length;
-  let trimmed = 0;
-  let done = false;
-  try { done = localStorage.getItem(TRIMMED) === '1'; } catch { /* expected: storage blocked – the trim is idempotent anyway */ }
-  if (!done) {
-    const drafts = list.filter((r) => r.deletedAt == null).sort((a, b) => b.at - a.at);
-    const gone = new Set(drafts.slice(MAX).map((r) => r.id));
-    trimmed = gone.size;
-    list = list.map((r) => (gone.has(r.id) ? { ...r, deletedAt: now } : r));
-  }
-  if (removed || trimmed) write(list);
-  if (!done) {
+export function startUp(now = Date.now()): Promise<{ trimmed: number; removed: number }> {
+  started = (async () => {
+    let list = read();
+    const before = list.length;
+    list = list.filter((r) => r.deletedAt == null || now - r.deletedAt < KEEP_MS);
+    const removed = before - list.length;
+    if (removed) {
+      write(list);
+      console.info(`[Problems] TRACE routes: recycle bin: ${removed} plan(s) older than ${BIN_DAYS} days removed`);
+    }
+    let done = false;
+    try { done = localStorage.getItem(TRIMMED) === '1'; } catch { /* expected: storage blocked – the trim is idempotent anyway */ }
+    if (done || !(await slicesReady())) return { trimmed: 0, removed };
+    list = read();
+    const a = slice<RoutesAnswer<number>>('routesTrim', lines(list), placeNum(), now);
+    if (!a) return { trimmed: 0, removed };
+    apply(a, list);
     try { localStorage.setItem(TRIMMED, '1'); } catch (e) { warn('the Zuletzt clean-up mark could not be stored – tried again at the next start', e); }
-    console.info(trimmed ? `[Problems] INFO routes: Zuletzt keeps one plan now (owner 2026-11-12): ${trimmed} older plan(s) moved to the recycle bin`
+    console.info(a.result ? `[Problems] INFO routes: Zuletzt keeps one plan now (owner 2026-11-12): ${a.result} older plan(s) moved to the recycle bin`
       : '[Problems] TRACE routes: Zuletzt keeps one plan now: nothing older to move');
-  }
-  if (removed) console.info(`[Problems] TRACE routes: recycle bin: ${removed} plan(s) older than ${BIN_DAYS} days removed`);
-  return { trimmed, removed };
+    return { trimmed: a.result, removed };
+  })().catch((e) => { problem('routes', 'Zuletzt: the start-up clean-up failed – tried again at the next start', e); return { trimmed: 0, removed: 0 }; });
+  return started;
 }
 
 /**
- * The place name for an entry kept under its date name (the app's RoutesState.renameDraft, 21b4a7b1): only while the
- * entry is still under Zuletzt under [from] – never over a user rename, a save or a delete meanwhile.
+ * The place name for an entry kept under its date name (the app's RoutesState.renameDraft): only while the entry is
+ * still under Zuletzt under [from] – never over a user rename, a save or a delete meanwhile.
  */
 export function renameRecentIf(id: string, from: string, to: string): boolean {
-  const list = read(), e = list.find((r) => r.id === id);
-  if (!e || e.deletedAt != null || e.title !== from) return false;
-  write(list.map((r) => (r.id === id ? { ...r, title: to } : r)));
+  const list = read();
+  const a = slice<RoutesAnswer<boolean>>('routesRenameDraft', lines(list), placeNum(), numOf(draftKey(id)), from, to);
+  if (!a?.result) return false;
+  apply(a, list);
   return true;
 }
 
-/** Zuletzt → ⋮ → Umbenennen: the entry keeps its place, only its name changes. */
+/** Zuletzt → ⋮ → Umbenennen: the entry keeps its place, only its name changes (the store's rename). */
 export function renameRecent(id: string, title: string) {
   write(read().map((r) => (r.id === id ? { ...r, title } : r)));
 }
@@ -224,20 +276,21 @@ export function renameRecent(id: string, title: string) {
 export type RecentRow = { live: true; saved: boolean } | { live: false; draft: RecentPlan } | { live: false; savedId: string } | null;
 
 /**
- * The app's LivePlanRows.of: the plan on the map is the row whenever there is one ([saved] = a saved route as it is –
- * "In Bearbeitung" + "Gespeichert"). An empty map: what [place] names, if still there – unless a draft outside the bin
- * is newer than it or the place is a saved route and any draft is there (a draft never hides); no place known → the
- * newest draft; else nothing. [drafts] newest first, [savedIds] = the saved routes in the list shown.
+ * The app's LivePlanRows.of: the plan on the map is the row whenever there is one ([live.savedId] = the saved route it is,
+ * [live.unsaved] = changed since – "Gespeichert" only as it is). An empty map: what the place names, if still there –
+ * unless a draft outside the bin is newer, or the place is a saved route and a draft is there (a draft never hides);
+ * no place known → the newest draft; else nothing. [drafts] newest first, [savedIds] = the saved routes in the list shown.
+ * Without the slice: the plan on the map, else the newest draft.
  */
-export function recentRow(live: { savedHere: boolean; unsaved: boolean } | null, drafts: RecentPlan[], savedIds: Set<string>, place: Place | null): RecentRow {
-  if (live) return { live: true, saved: live.savedHere && !live.unsaved };
-  const newest = drafts[0] ?? null;
-  const pointedDraft = place?.kind === 'draft' ? drafts.find((r) => r.id === place.id) ?? null : null;
-  const pointedSaved = place?.kind === 'saved' && savedIds.has(place.id) ? place.id : null;
-  if (newest) {
-    // a saved route holding the place gives way to any draft; a pointed draft to a newer one
-    if (pointedDraft && pointedDraft.at >= newest.at) return { live: false, draft: pointedDraft };
-    return { live: false, draft: newest };
-  }
-  return pointedSaved ? { live: false, savedId: pointedSaved } : null;
+export function recentRow(live: { savedId: string | null; unsaved: boolean } | null, drafts: RecentPlan[], savedIds: string[]): RecentRow {
+  const tours = lines(drafts, savedIds.map((id) => ({ id })));
+  const r = slice<{ live: boolean; id: number; saved: boolean }>('routesRow', tours, placeNum(), live ? 1 : 0,
+    live?.savedId ? numOf(savedKey(live.savedId)) : -1, !!live?.unsaved);
+  if (!r) return live ? { live: true, saved: false } : drafts[0] ? { live: false, draft: drafts[0] } : null;
+  if (r.live) return { live: true, saved: r.saved };
+  const k = keyOf(r.id);
+  if (!k) return null;
+  if (k.startsWith('s:')) return { live: false, savedId: k.slice(2) };
+  const d = drafts.find((x) => x.id === k.slice(2));
+  return d ? { live: false, draft: d } : null;
 }

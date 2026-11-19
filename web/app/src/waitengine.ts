@@ -1,7 +1,8 @@
 // The wait window's engine: the app's shared progress math (core domain/WaitProgress.kt via WebWait.kt) in a second
 // instance of the Wasm engine on the page's own thread. The routing worker cannot do it: BRouter blocks it while it
 // routes, and the window's bar must move every half second meanwhile (never standing). Only the wait calls are used
-// here – the instance holds no routing data. Robust first: until it is loaded, or when it cannot load, the window still
+// here – the instance holds no routing data. The app's screen-state slices run in it too (WebState.kt, slices.ts): the
+// page's thread is where My routes and Save's dialog live. Robust first: until it is loaded, or when it cannot load, the window still
 // shows a bar that never goes back (fallback below), and a failed call is reported, never thrown at the page.
 import { problem } from './diag';
 
@@ -20,11 +21,18 @@ interface Exports {
   waitEnd(now: number, finished: boolean): string;
   signTick(now: number, areas: string): number;
   signSeed(percent: number): void;
+  /** The app's screen-state slices (WebState.kt) – slices.ts drives them. */
+  WebStateApi: unknown;
 }
 declare const TeaVM: { wasmGC: { load(url: string): Promise<{ exports: Exports }> } };
 
 let ex: Exports | null = null;
 let failed = false;
+let settle: (ok: boolean) => void = () => {};
+/** Resolves once the instance loaded (true) or could not load (false). */
+export const waitEngineLoaded: Promise<boolean> = new Promise((r) => { settle = r; });
+/** The instance's slice exports (WebState.kt, slices.ts), null until it loaded. */
+export const sliceExports = (): unknown => ex?.WebStateApi ?? null;
 /** How long the instance took to load (ms; −1 = not yet) – for the tests and the diagnostics. */
 export let loadMs = -1;
 
@@ -40,9 +48,11 @@ export async function loadWaitEngine(base: string, lang: string): Promise<void> 
     ex = exports;
     loadMs = Math.round(performance.now() - t0);
     console.info(`[wait] the window's engine ready in ${loadMs} ms`);
+    settle(true);
   } catch (e) {
     failed = true;
     problem('progress', 'The wait window engine did not load – the window shows a plain bar', e);
+    settle(false);
   }
 }
 

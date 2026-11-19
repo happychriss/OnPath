@@ -1,9 +1,9 @@
 // The order of Meine Touren (the app's ui/routes/RouteSort + RouteSortChips, owner 2026-11-12 variant C; owner
 // 2026-11-13: "Der Planer braucht auch dieselben Suchen und Sortieren-Einstellungen wie das Handy"). Mirrored – the app's
 // RouteSort works on its database Tour, which the engine does not compile (web/parity.json). Same chips in the same
-// order with the app's strings, the same tap rule, the same ties, the same text form ("LENGTH:down"). Not kept any more
-// (app 82167d11, owner 2026-11-13): Meine Touren opens with Neueste zuerst every time, a choice holds while it is open
-// (plans.ts). One addition the app does not need: a plan this browser never routed
+// order with the app's strings, the same ties, the same text form ("LENGTH:down"). The tap rule and „Neueste zuerst“ at
+// each opening (app 82167d11, owner 2026-11-13; a choice holds while it is open) are the app's own slice now
+// (RoutesState.sort / open, run on the page – slices.ts, plans.ts). One addition the app does not need: a plan this browser never routed
 // has no numbers (planstats.ts) – it goes after those with numbers, in either direction, newest first among themselves.
 import { t } from './i18n';
 import { icon } from './icons';
@@ -19,13 +19,6 @@ export const SORT_KEYS: readonly { key: SortKey; dir: boolean; label: string }[]
 ];
 export interface SortChoice { key: SortKey; biggestFirst: boolean }
 export const SORT_DEFAULT: SortChoice = { key: 'NEWEST', biggestFirst: true };
-const hasDir = (k: SortKey) => SORT_KEYS.some((s) => s.key === k && s.dir);
-
-/** RouteSort.tap: the chosen one with a direction turns round, any other is chosen biggest first. */
-export function tapSort(c: SortChoice, key: SortKey): SortChoice {
-  if (key !== c.key) return { key, biggestFirst: true };
-  return hasDir(key) ? { key, biggestFirst: !c.biggestFirst } : c;
-}
 
 /** What the sort reads of a row: its date (the list's date), id and numbers (null = not known in this browser). */
 export interface SortFacts { at: number; id: string; m: number | null; s: number | null; up: number | null }

@@ -57,14 +57,6 @@
       "blob": "7301c5f0ca06814840aa55f5d45fd83bdf5bcc94"
     },
     {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/RouteRules.kt",
-      "what": "saveMode (OVERWRITE / NEW_ROUTE: Save at once, \"wie Word\") – the names are shared now (routing/PlanNames.kt, engine planNewRouteName / planCopyName)",
-      "web": [
-        "web/app/src/plans.ts"
-      ],
-      "blob": "064dc3bf82ef7f70707371772d74bbb1dd267a1e"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
       "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible)",
       "web": [
@@ -156,15 +148,6 @@
         "web/app/src/longroute.ts"
       ],
       "blob": "18275cc0eac06353053d3382b71ab90d51c61df3"
-    },
-    {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveDialog.kt",
-      "what": "Save's name dialog (C18): request (every Save asks; a saved route shows its name, else the date name until the place proposal replaces it), requestCopy (\"<name> (2)\"), cancel, confirm (SaveFlow: blank keeps the name; copy / overwrite / new) – plans.ts save dialog (moved here from AppViewModel.requestSave / confirmSave / cancelSave, rebuild phase 2 piece 3)",
-      "web": [
-        "web/app/src/plans.ts",
-        "web/app/src/main.ts"
-      ],
-      "blob": "a2a5f5db25c8c2ce4c497bacb27515f768e3f8b7"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveSlice.kt",
@@ -363,7 +346,7 @@
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt",
-      "what": "Meine Touren's order: keys and their order, tap rule, ties (newest, then id), encode / decode (web: localStorage onpath.routesSort; a row without numbers goes last)",
+      "what": "Meine Touren's order: keys and their order, ties (newest, then id), encode / decode (a row without numbers goes last) – the tap rule and „Neueste zuerst“ at each opening are the slice's now (RoutesState.sort / open via WebState.kt, slices.ts)",
       "web": [
         "web/app/src/routesort.ts"
       ],
@@ -386,25 +369,6 @@
         "web/app/src/plans.ts"
       ],
       "blob": "4d4409dc64ad66fa6fd75a3af5919f1696670876"
-    },
-    {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/plan/LivePlan.kt",
-      "what": "LivePlanRows.of / RecentRow – the one Zuletzt row: the plan on the map („In Bearbeitung“, + „Gespeichert“ when saved as it is), else the pointed draft / saved route, a draft never hides",
-      "web": [
-        "web/app/src/recent.ts",
-        "web/app/src/plans.ts"
-      ],
-      "blob": "4b036fb8e916363c705bbb62424338809c899908"
-    },
-    {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt",
-      "what": "Zuletzt: keepDraft / takePlace (other drafts → recycle bin) / afterSaved / saveDraft / toBin / restore / trimDrafts (one-time); open: Neueste zuerst at each opening (no stored sort – plans.ts openSort)",
-      "web": [
-        "web/app/src/recent.ts",
-        "web/app/src/main.ts",
-        "web/app/src/plans.ts"
-      ],
-      "blob": "99beddb6c557e0d55a10ea46998ce23421650f1f"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RouteThumbImages.kt",
@@ -3188,6 +3152,135 @@
     "core/src/main/kotlin/com/onpath/app/recording/RecordedActivity.kt": {
       "blob": "47d96d2b3ea2ed8f96d75562ef26ac03cb627ac1",
       "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt": {
+      "blob": "99beddb6c557e0d55a10ea46998ce23421650f1f",
+      "perf": [
+        "* recycle bin), Zuletzt ↔ saved, the recycle bin, the draft limit and a tour's line."
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/routes/SaveDialog.kt": {
+      "blob": "a2a5f5db25c8c2ce4c497bacb27515f768e3f8b7",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/plan/KeptPlacesSlice.kt": {
+      "blob": "9d2168e49df3a475023755c08caf10afc4ac3704",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/NoticeBoard.kt": {
+      "blob": "8ec32994377f88ea908f071a31703e8f41e040ef",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MultiDayFlow.kt": {
+      "blob": "b31038907401f83717582e4c5f4dd3e8b1009d19",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt": {
+      "blob": "5260af0cde29ae8ee68776e88f60912738295107",
+      "perf": [
+        "/** The plan run reached its time limit: the periods of the run that asked; null = none. */"
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/NoticeTypes.kt": {
+      "blob": "c94783a779c8611d347063c6ba1782e137be90fa",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/ShownTrack.kt": {
+      "blob": "ad51b9b44e9c56cf0eaacae6b4537ea2c8e6241d",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/TrackThen.kt": {
+      "blob": "ee36442ecb2f63243602b2dbd40d79a371aafd01",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/SyncNote.kt": {
+      "blob": "019e08db2b4cd8b7ade14a5890ce3856ed6c2c93",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/TimeDetailsUi.kt": {
+      "blob": "bb0a4da742fb89c2c781f31f1493041954994f0c",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/search/PlaceCardUi.kt": {
+      "blob": "da69b83be53830ae38418b552eb5823589013f6a",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MultiDayUi.kt": {
+      "blob": "74973a843214eddb0ccab152efb869e30b17b5fb",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/SettingsPage.kt": {
+      "blob": "427e1c6ca78865eb06874579fe92795c18851f5e",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/Ports.kt": {
+      "blob": "896e70760eb2b3fe8792c1d4ff833ca661b1f531",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MultiDayPorts.kt": {
+      "blob": "ef6a81c7b22e7bab7eae08e673706fab0b180727",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/WholeRoute.kt": {
+      "blob": "fb9a93ccb01fdb1b8c470cb2210cf1bbc885e699",
+      "perf": [
+        "const val SETTLE_MS = 500L"
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/LongRouteCancelCamera.kt": {
+      "blob": "0ae700e453477dc5c2b59f3ff3e1b73d3de1e90d",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/ImportRules.kt": {
+      "blob": "be877a35dc67b0a6035c9b6fbc5e21021a23c2be",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/LoadNames.kt": {
+      "blob": "424815b0481b80ea75d67c9803d002b961aa9d11",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/PlanGps.kt": {
+      "blob": "990d3e3106799b6232d0dc1b7504ed4820440f22",
+      "perf": [
+        "const val NOTE_MS = 4_000L",
+        "Note.SEARCHING, Note.TURN_NEEDS_POSITION -> NOTE_MS",
+        "Note.ROUTE_BACK_NO_POSITION, Note.ONE_POINT_NO_POSITION -> LONG_NOTE_MS",
+        "const val LONG_NOTE_MS = 8_000L"
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/PlanSize.kt": {
+      "blob": "24edfb104baf5def2420104fcd395dd2c695e4d9",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/ExpandGesture.kt": {
+      "blob": "1f0e0758d8e4fb93ab715b3058d0a93d98cff809",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MapControlsEnabled.kt": {
+      "blob": "03dcf009d31331dd6459f55e94308331a907f711",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MessagePlacement.kt": {
+      "blob": "fd4bdfcaa2c771081cb199a7ed6df4b8bf3227d0",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MapDimens.kt": {
+      "blob": "ee29136fa3ae626217d54f3d1ddfddb719d11dba",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MapSizes.kt": {
+      "blob": "1ec0895ad34794cdab112225328f1f3e5f20d547",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/OverviewPillPlace.kt": {
+      "blob": "449f7aafd810bb8dd736cfa26c57750e2a3bd82f",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt": {
+      "blob": "491cc1bf96edf04d6296847c06b1a3011bea48da",
+      "perf": [
+        "const val FIT_WAIT_MS = 500L"
+      ]
     }
   }
 }

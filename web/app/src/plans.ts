@@ -8,8 +8,9 @@ import { t, tp, locale, distance } from './i18n';
 import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
-import { recentPlans, binnedPlans, afterSaved, toBin, restoreRecent, savedRestored, renameRecent, recentRow, zuletztPlace, daysLeft, BIN_DAYS, type RecentPlan } from './recent';
-import { sortRoutes, tapSort, sortChipsHtml, SORT_DEFAULT, type SortKey, type SortChoice } from './routesort';
+import { recentPlans, binnedPlans, afterSaved, toBin, restoreRecent, savedRestored, renameRecent, recentRow, daysLeft, zuletztReady, BIN_DAYS, type RecentPlan } from './recent';
+import { sortRoutes, sortChipsHtml, decodeSort, SORT_DEFAULT, type SortChoice } from './routesort';
+import { slice, slicesReady, numOf, type SaveAsk, type SaveWrite } from './slices';
 import { filterSaved, favouritesPill, favChipHtml, actChipHtml, actMenuHtml, starHtml, activityLineHtml } from './routefilter';
 import { thumbKey, type RouteThumbs } from './routethumbs';
 import type { Activity } from './engine/types';
@@ -273,7 +274,11 @@ let openAct: Activity | null = null;
 export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = false) {
   // each opening the same way (app 82167d11): Neueste zuerst, the activity filter on the planning activity; [again] = the
   // list comes back by itself while it is open (a copy saved, a Zuletzt plan saved) – what was chosen holds
-  if (!again) { openSort = SORT_DEFAULT; openAct = host.activity?.() ?? null; }
+  // the sort is the app's slice's (RoutesState.open: Neueste zuerst at each opening; a choice holds while it is open)
+  await Promise.all([zuletztReady(), slicesReady()]); // the page start's Zuletzt clean-up first, the slices there
+  const sorted = slice<string>('routesOpen', !again);
+  openSort = sorted ? decodeSort(sorted) : again ? openSort : SORT_DEFAULT;
+  if (!again) openAct = host.activity?.() ?? null;
   const actRows = () => host.activityRows?.() ?? [];
   const d = dialog('plans', `
     <h2 id="plansTitle">${esc(t('routes_title'))}</h2>
@@ -331,7 +336,8 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
     }
     const b = el.closest<HTMLButtonElement>('.sortchip[data-key]');
     if (!b) return;
-    openSort = tapSort(openSort, b.dataset.key as SortKey);
+    const tapped = slice<string>('routesTapSort', b.dataset.key!); // RouteSort.tap on the slice's sort
+    if (tapped) openSort = decodeSort(tapped);
     drawChips(); chips.querySelector<HTMLButtonElement>(`[data-key="${openSort.key}"]`)?.focus();
     toTop();
   });
@@ -602,7 +608,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
     // exactly one row under Zuletzt (app 2923a3e7 / 6f4b47d3, owner 2026-11-12, recent.ts recentRow = LivePlanRows): the plan
     // on the map, else the draft or the saved route worked on last – searched like every row
     const drafts = recentPlans();
-    const rr = recentRow(live ? { savedHere: !!liveMarkedId, unsaved: live.unsaved } : null, drafts, new Set(all.map((p) => p.id)), zuletztPlace());
+    const rr = recentRow(live ? { savedId: liveMarkedId, unsaved: live.unsaved } : null, drafts, all.map((p) => p.id));
     const liveItem: Item | null = rr?.live && live && searchPlans([{ title: live.title ?? t('routes_live_name') }], query).length
       ? { section: 'live', id: 'live', kind: 'plan', title: live.title ?? t('routes_live_name'), at: Date.now(), stats: live.stats, segs: live.segs, code: null,
         lineKey: null, facts: null } // the app's live row has no activity line (its Tour carries none) and no picture (its line moves)
@@ -774,10 +780,6 @@ function storedTitle(name: string): string {
   return n.endsWith(label) ? n.slice(0, -label.length).trimEnd() + ' (copy)' : n;
 }
 
-/** The app's PlanNames.newRouteName (shared, routing/PlanNames.kt – was mirrored here): [taken] names get " (2)", " (3)" … */
-const newRouteName = (host: PlanHost, proposed: string | null | undefined, dated: string, taken: string[]) =>
-  host.engineCall('planNewRouteName', proposed ?? '', dated, taken.join('\n'));
-
 /** The app's date name (AppViewModel.defaultName): msg_name_route + msg_name_date_pattern ("d MMM, HH:mm" / "d. MMM, HH:mm"). */
 export function datedName(ms = Date.now()): string {
   const d = new Date(ms), month = shortMonth(d);
@@ -790,14 +792,11 @@ export function datedName(ms = Date.now()): string {
 /** The app's PlanNames.copyName (shared): "Name (2)", the next free number; a copy of "Name (2)" is "Name (3)". */
 const copyName = (host: PlanHost, name: string, taken: string[]) => host.engineCall('planCopyName', name, taken.join('\n'));
 
-/** The app's RouteRules.cleanName: trimmed; blank keeps [old] (the proposal / old name). */
-export const cleanName = (input: string, old: string) => input.trim() || old;
-
 /**
- * Save's name dialog (the app's SaveNameDialog, owner 2026-10-31 "Save always asks for the name"): title Save route /
- * Save as copy, the name field with [name] fully selected, Cancel · Save; Enter saves, Escape cancels. [later] (the
- * place proposal, arriving after the dialog opened) replaces the field until the user types. Resolves the typed name
- * (blank kept as blank – [cleanName] decides) or null on Cancel.
+ * Save's name dialog's look (the app's SaveNameDialog, owner 2026-10-31 "Save always asks for the name"): title Save
+ * route / Save as copy, the name field with [name] fully selected, Cancel · Save; Enter saves, Escape cancels. [later]
+ * (the place proposal, arriving after the dialog opened) replaces the field until the user types. Resolves what the
+ * field holds, or null on Cancel. What it asks and what Save decides are the app's SaveDialog ([askName]).
  */
 type MaybeName = Promise<string | null>;
 function nameDialog(kind: boolean | 'as', name: string, later?: MaybeName): MaybeName {
@@ -822,13 +821,43 @@ function nameDialog(kind: boolean | 'as', name: string, later?: MaybeName): Mayb
 /** How long the dialog waits for the place proposal of a new route's name (the app's NAME_WAIT_MS; the date name meanwhile). */
 const NAME_WAIT_MS = 5_000;
 
+// ---- Save's dialog = the app's SaveDialog slice (state/…/ui/routes/SaveDialog.kt, slices.ts): it opens the dialog
+// (RouteRules.saveMode: overwrite the open saved route, else a new route under the date name; a copy "<name> (2)"),
+// takes the place proposal (RouteRules.newRouteName), and decides on Save (SaveFlow.confirm: a blank name keeps the
+// proposal / old name). Without the slice (the instance did not load) Save still works – a new route under the typed
+// name, else the date name; never an overwrite – and the problem is reported.
+const savedNum = (id: string | null | undefined) => (id ? numOf('s:' + id) : -1);
+/** The dialog for a plan: [savedId] / [savedName] = the saved route it is (its name; "" none), [ids] = the folder's routes. */
+function requestSave(savedId: string | null, savedName: string, ids: string[], dated: string, taken: string[]): SaveAsk {
+  return slice<SaveAsk>('saveRequest', savedNum(savedId), savedName, ids.map((i) => numOf('s:' + i)).join('\n'), dated, taken.join('\n'))
+    ?? { no: -1, kind: 'NEW', name: dated, routeId: -1 };
+}
+/** The dialog for a copy of the route [id] named [name]. */
+function requestCopy(name: string, id: string, taken: string[]): SaveAsk {
+  return slice<SaveAsk>('saveRequestCopy', name, savedNum(id), taken.join('\n')) ?? { no: -1, kind: 'NEW', name, routeId: -1 };
+}
+/** The proposal [name] for the open dialog [ask] (null = none): the dialog's name now, null when it is not open any more. */
+const propose = (ask: SaveAsk, name: string | null): string | null =>
+  name && ask.no >= 0 ? slice<SaveAsk | null>('saveProposed', ask.no, name)?.name ?? null : null;
+/** The place proposal for a new route's name, waited for [NAME_WAIT_MS] at most (the app's proposeName). */
+const placeProposal = (host: PlanHost) =>
+  Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), NAME_WAIT_MS))]);
+type Decided = Promise<SaveWrite | null>;
+/** Shows [ask]; Save → what the slice decided ([linked] = the saved route the plan is linked to now), Cancel → null. */
+async function askName(kind: boolean | 'as', ask: SaveAsk, linked: string | null, later?: ReturnType<typeof placeProposal>): Decided {
+  const input = await nameDialog(kind, ask.name, later?.then((p) => propose(ask, p)));
+  if (ask.no < 0) return input == null ? null : { write: ask.kind, routeId: ask.routeId, name: input.trim() || ask.name };
+  if (input == null) { slice('saveCancel'); return null; }
+  return slice<SaveWrite | null>('saveConfirm', input, savedNum(linked));
+}
+
 /**
- * Save – the header's Save, ⋯ → Save route – as the app does it since 2026-10-31 (RouteRules.saveMode, AppViewModel.askSave
- * / confirmSave): always the name dialog first. The shown route belongs to a saved route that still exists → that route's
- * name, and Save overwrites it – renamed when the name changed, still ONE route; else the proposal ([newRouteName]: the
- * plan link's title while unchanged, else the place proposal "Vellau → Leiteralm" – shown when it arrives – else
- * "Route 31 Oct, 10:12") and a new route, the open one from then on. Cancel saves nothing. [then] runs after a save
- * (paired: everything waiting goes to the phone).
+ * Save – the header's Save, ⋯ → Save route – as the app does it since 2026-10-31 (RouteRules.saveMode, SaveSlice.request
+ * / confirm): always the name dialog first. The shown route belongs to a saved route that still exists → that route's
+ * name, and Save overwrites it – renamed when the name changed, still ONE route; else the proposal (the plan link's
+ * title while unchanged, else the place proposal "Vellau → Leiteralm" – shown when it arrives – else "Route 31 Oct,
+ * 10:12") and a new route, the open one from then on. Cancel saves nothing. [then] runs after a save (paired:
+ * everything waiting goes to the phone).
  */
 /**
  * Room for one more NEW tour in [folder] (250 per phone, the shared SyncLimits – owner 2026-11-07)? If not: Save turns
@@ -846,40 +875,42 @@ export async function saveRoute(sync: PlanSync, host: PlanHost, then?: () => voi
   saving = true;
   try {
     const cur = await host.current();
+    await slicesReady(); // Save's dialog is the slice's (loaded with the page)
     if (!cur) { then?.(); return; }
     const id = host.openId(), folder = host.openFolder();
     const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
     const existing = id ? plans.find((p) => p.id === id) : undefined;
+    const taken = plans.map((p) => titleOf(p));
     // sync/SaveRule (review sync H3, shared): the stored route changed meanwhile (the phone's edit came in) – an
     // overwrite would lose that edit, so the work is saved as a copy; the other version stays
     if (existing && (await host.engineCall('saveKeepsOtherEdit', host.openedCode() ?? '', existing.plan)) === 'true') {
       if (!(await roomFor(sync, host, folder))) return;
-      const first = await copyName(host, titleOf(existing), plans.map((p) => titleOf(p)));
-      const input = await nameDialog(false, first);
-      if (input == null) return;
-      const name = cleanName(input, first), title = storedTitle(name);
+      const w = await askName(false, requestCopy(titleOf(existing), existing.id, taken), null);
+      if (!w) return;
+      const title = storedTitle(w.name);
       const newId = await sync.save(cur.code, title, undefined, folder);
       askPersist();
       host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, folder);
-      host.note(t('web_route_changed_elsewhere', name));
-    } else if (existing) { // OVERWRITE: a new version of the open saved route, renamed when the name changed
-      const old = titleOf(existing);
-      const input = await nameDialog(false, old);
-      if (input == null) return;
-      const name = cleanName(input, old), title = name === old ? existing.title : storedTitle(name);
+      host.note(t('web_route_changed_elsewhere', w.name));
+      then?.();
+      return;
+    }
+    const link = host.linkTitle();
+    const ask = requestSave(existing ? existing.id : null, existing ? titleOf(existing) : '', plans.map((p) => p.id), datedName(), taken);
+    if (ask.kind !== 'OVERWRITE') {
+      // NEW_ROUTE: room first; the link's title while unchanged at once, else the place proposal when it arrives
+      if (!(await roomFor(sync, host, sync.open))) { if (ask.no >= 0) slice('saveCancel'); return; }
+      if (link) ask.name = propose(ask, link) ?? ask.name;
+    }
+    const w = await askName(false, ask, existing ? existing.id : null, ask.kind === 'OVERWRITE' || link ? undefined : placeProposal(host));
+    if (!w) return;
+    if (w.write === 'OVERWRITE' && existing) { // a new version of the open saved route, renamed when the name changed
+      const old = titleOf(existing), title = w.name === old ? existing.title : storedTitle(w.name);
       await sync.save(cur.code, title, existing.id, folder);
       askPersist();
       host.saved({ ...existing, title, plan: cur.code, updatedAt: Date.now(), mine: true }, folder);
-    } else { // NEW_ROUTE
-      if (!(await roomFor(sync, host, sync.open))) return;
-      const dated = datedName(), taken = plans.map((p) => titleOf(p)), link = host.linkTitle();
-      const first = await newRouteName(host, link, dated, taken);
-      // the app's proposeName: the link's title while unchanged, else the place proposal (waited for 5 s at most)
-      const later = link ? undefined : Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), NAME_WAIT_MS))])
-        .then((p) => (p ? newRouteName(host, p, dated, taken) : null));
-      const input = await nameDialog(false, first, later);
-      if (input == null) return;
-      const title = storedTitle(cleanName(input, first));
+    } else {
+      const title = storedTitle(w.name);
       const into = sync.open;
       const newId = await sync.save(cur.code, title, undefined, into);
       askPersist();
@@ -900,16 +931,18 @@ export async function saveRouteAs(sync: PlanSync, host: PlanHost, then?: () => v
   try {
     const cur = await host.current();
     if (!cur) return;
+    await slicesReady();
     const folder = sync.open;
     if (!(await roomFor(sync, host, folder))) return;
     const plans = (await sync.list(folder)).filter((p) => p.kind === 'plan');
     const taken = plans.map((p) => titleOf(p)), open = host.openId() ? plans.find((p) => p.id === host.openId()) : undefined;
-    const first = open ? await copyName(host, titleOf(open), taken) : await newRouteName(host, host.linkTitle(), datedName(), taken);
-    const later = open || host.linkTitle() ? undefined : Promise.race([host.suggestName().catch(() => ''), new Promise<string>((r) => setTimeout(() => r(''), NAME_WAIT_MS))])
-      .then((p) => (p ? newRouteName(host, p, datedName(), taken) : null));
-    const input = await nameDialog('as', first, later);
-    if (input == null) return;
-    const title = storedTitle(cleanName(input, first));
+    const link = host.linkTitle();
+    // a copy's name for the open route, else a new route's (never an overwrite: no saved route given)
+    const ask = open ? requestCopy(titleOf(open), open.id, taken) : requestSave(null, '', [], datedName(), taken);
+    if (!open && link) ask.name = propose(ask, link) ?? ask.name;
+    const w = await askName('as', ask, null, open || link ? undefined : placeProposal(host));
+    if (!w) return;
+    const title = storedTitle(w.name);
     const newId = await sync.save(cur.code, title, undefined, folder);
     askPersist();
     host.saved({ id: newId, kind: 'plan', title, plan: cur.code, track: '', updatedAt: Date.now(), device: '', mine: true, dirty: true, onPhone: false }, folder);
@@ -919,18 +952,19 @@ export async function saveRouteAs(sync: PlanSync, host: PlanHost, then?: () => v
 
 /**
  * My routes → ⋮ → Save as copy (planned routes; the app's requestCopyRoute, owner 2026-10-31 – was the plan sheet's ⋯):
- * the name dialog with "<name> (2)" ([copyName]); Save stores a copy of the saved route – the shown plan stays as it is.
+ * the name dialog with "<name> (2)" (SaveDialog.requestCopy); Save stores a copy of the saved route – the shown plan
+ * stays as it is.
  */
 async function copyRoute(sync: PlanSync, host: PlanHost, p: SavedPlan, folder: string): Promise<boolean> {
   if (saving || p.kind !== 'plan') return false;
   saving = true;
   try {
+    await slicesReady();
     if (!(await roomFor(sync, host, folder))) return false;
     const taken = (await sync.list(folder)).filter((x) => x.kind === 'plan').map((x) => titleOf(x));
-    const first = await copyName(host, titleOf(p), taken);
-    const input = await nameDialog(true, first);
-    if (input == null) return false;
-    await sync.save(p.plan, storedTitle(cleanName(input, first)), undefined, folder);
+    const w = await askName(true, requestCopy(titleOf(p), p.id, taken), null);
+    if (!w) return false;
+    await sync.save(p.plan, storedTitle(w.name), undefined, folder);
     return true;
   } finally { saving = false; }
 }

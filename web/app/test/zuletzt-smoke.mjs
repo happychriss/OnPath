@@ -1,6 +1,7 @@
 // Meine Touren → Zuletzt = the app's one-plan rule (app 2923a3e7 / 6f4b47d3, owner 2026-11-12 / laptop 2026-11-13):
-// exactly one plan under Zuletzt – the one worked on last, saved or not. (1) recent.ts on its own (Node, a storage
-// stand-in): the place, the bin, the one-time trim, restore, the app's LivePlanRows choice. (2) The page: an older
+// exactly one plan under Zuletzt – the one worked on last, saved or not – the app's RoutesState slice
+// run on the page (its decisions: WebStateTest). (1) recent.ts in Node without that slice: nothing lost, nothing
+// throws. (2) The page: an older
 // planner's 3 drafts → 1 under Zuletzt + 2 in the Papierkorb; Wiederherstellen swaps; + Neu over an unsaved plan keeps
 // it (the draft before → bin); Löschen → bin; the plan on the map is the row („In Bearbeitung“, + „Gespeichert“ when
 // saved as it is), the saved route under Gespeichert as a plain row; a saved route left as it is holds the place
@@ -22,63 +23,30 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const fails = [];
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails.push(what); };
 
-// ---------------- (1) recent.ts in Node ----------------
+// ---------------- (1) recent.ts in Node: the store without its slice ----------------
+// The decisions (the place, the bin, the one-time trim, restore, LivePlanRows) are the app's RoutesState, run on the
+// page – tested as such in web/engine/…/WebStateTest.kt. Here: without the slices' instance (it did not load) nothing
+// is lost and nothing throws – a plan leaving the map is still kept, the rest waits.
 {
   const mem = new Map();
   globalThis.localStorage = { getItem: (k) => (mem.has(k) ? mem.get(k) : null), setItem: (k, v) => mem.set(k, String(v)), removeItem: (k) => mem.delete(k) };
-  const quiet = console.info; console.info = () => {};
+  const quiet = console.info, warn = console.warn; console.info = () => {}; console.warn = () => {};
+  // the page's imports name no extension (the bundler's resolution): Node finds them as .ts
+  (await import('node:module')).registerHooks({ resolve: (spec, ctx, next) => {
+    try { return next(spec, ctx); } catch (e) { if (spec.startsWith('.') && !/\.[a-z]+$/.test(spec)) return next(spec + '.ts', ctx); throw e; }
+  } });
   const R = await import('../src/recent.ts');
-  const DAY = 86_400_000, T0 = 1_800_000_000_000;
-  // an older planner's 3 drafts, no trim mark
-  mem.set('onpath.recent', JSON.stringify([
-    { id: 'a', code: A, title: 'Alt A', points: '1,1;2,2', at: T0 - 3000 },
-    { id: 'b', code: B, title: 'Alt B', points: '3,3;4,4', at: T0 - 1000 },
-    { id: 'c', code: C, title: 'Alt C', points: '5,5;6,6', at: T0 - 2000 }]));
-  let r = R.startUp(T0);
-  check(r.trimmed === 2 && R.recentPlans().map((x) => x.id).join() === 'b' && R.binnedPlans().length === 2, `unit: the one-time trim keeps the newest, 2 to the bin (${JSON.stringify(r)})`);
-  mem.set('onpath.recent', JSON.stringify([...JSON.parse(mem.get('onpath.recent')), { id: 'd', code: A, title: 'D', points: '7,7;8,8', at: T0 }]));
-  r = R.startUp(T0 + 1);
-  check(r.trimmed === 0 && R.recentPlans().length === 2, 'unit: the trim runs once only (the mark)');
-  // keep: a new draft takes the place, every other draft → bin
-  const id = R.keepRecent(A, 'Neu', '9,9;10,10', null, T0 + 10);
-  check(R.recentPlans().map((x) => x.id).join() === id && R.binnedPlans().length === 4 && R.zuletztPlace()?.id === id, 'unit: a kept plan is the one draft, the drafts before it in the bin');
-  // the same points again: no second entry
-  check(R.keepRecent(A, 'Neu 2', '9,9;10,10', null, T0 + 20) === null && R.recentPlans().length === 1, 'unit: the same points twice – one entry');
-  // restore: the binned one takes the place, the one there → bin; nothing lost
-  const total = () => R.recentPlans().length + R.binnedPlans().length;
-  const n0 = total();
-  check(R.restoreRecent('b', T0 + 30) && R.recentPlans().map((x) => x.id).join() === 'b' && R.zuletztPlace()?.id === 'b' && total() === n0, 'unit: Restore swaps – the restored draft is the Zuletzt plan, the other in the bin, nothing lost');
-  // to the bin, no place left
-  check(R.toBin('b', T0 + 40) && R.recentPlans().length === 0 && total() === n0, 'unit: Löschen → bin');
-  // a saved route takes the place; a draft never hides behind it
-  R.takePlace({ kind: 'saved', id: 'S1' }, T0 + 50);
-  let row = R.recentRow(null, R.recentPlans(), new Set(['S1']), R.zuletztPlace());
-  check(row && 'savedId' in row && row.savedId === 'S1', 'unit: an empty map – the saved route holding the place is the row');
-  check(R.recentRow(null, [], new Set(), R.zuletztPlace()) === null, 'unit: the saved route gone (deleted) – no row');
-  R.restoreRecent('a', T0 + 60);
-  row = R.recentRow(null, R.recentPlans(), new Set(['S1']), { kind: 'saved', id: 'S1' });
-  check(row && 'draft' in row && row.draft.id === 'a', 'unit: a draft outside the bin wins over a saved route holding the place (a draft never hides)');
-  check(JSON.stringify(R.recentRow({ savedHere: true, unsaved: false }, R.recentPlans(), new Set(), null)) === '{"live":true,"saved":true}'
-    && JSON.stringify(R.recentRow({ savedHere: true, unsaved: true }, [], new Set(), null)) === '{"live":true,"saved":false}', 'unit: the plan on the map is the row; „Gespeichert“ only when saved as it is');
-  // saved from the draft: the draft goes for good, the saved route holds the place
-  R.afterSaved('S2', 'a', null, T0 + 70);
-  check(!R.recentById('a') && R.zuletztPlace()?.id === 'S2' && R.zuletztPlace()?.kind === 'saved', 'unit: saved from Zuletzt – the draft goes, the saved route holds the place');
-  // a saved route back from the bin (the app's RoutesState.restore): its twin draft goes to the bin, the route takes
-  // the place the twin held
-  const tw = R.keepRecent(A, 'Twin', '11,11;12,12', null, T0 + 75);
-  R.savedRestored('S3', [tw], T0 + 76);
-  check(R.recentById(tw)?.deletedAt === T0 + 76 && R.zuletztPlace()?.kind === 'saved' && R.zuletztPlace()?.id === 'S3', 'unit: a restored saved route – its twin draft to the bin, the route holds the place');
-  // 30 days in the bin, then removed at a start; the days left
-  const old = R.binnedPlans().at(-1);
-  check(R.daysLeft(old.deletedAt, old.deletedAt) === 30 && R.daysLeft(old.deletedAt, old.deletedAt + 29.5 * DAY) === 0, 'unit: the days left (30 → 0 = at the next start)');
-  const before = R.binnedPlans().length;
-  r = R.startUp(old.deletedAt + 30 * DAY);
-  check(r.removed >= 1 && R.binnedPlans().length < before, `unit: after 30 days a start removes them (${r.removed})`);
+  const T0 = 1_800_000_000_000;
+  mem.set('onpath.recent', JSON.stringify([{ id: 'b', code: B, title: 'Alt B', points: '3,3;4,4', at: T0 - 1000 }]));
+  const id = R.keepPlan({ code: A, title: 'Neu', points: '9,9;10,10' }, T0);
+  check(!!id && R.recentPlans().length === 2 && R.binnedPlans().length === 0, 'unit: no slice – a plan leaving the map is still kept, nothing goes to the bin');
+  check(!R.toBin('b', T0) && R.recentPlans().length === 2, 'unit: no slice – Löschen changes nothing (nothing lost)');
+  const row = R.recentRow(null, R.recentPlans(), []);
+  check(row && 'draft' in row, 'unit: no slice – Zuletzt still shows the newest draft');
   // storage blocked: nothing throws
   globalThis.localStorage = { getItem: () => { throw new Error('blocked'); }, setItem: () => { throw new Error('blocked'); } };
-  const warn = console.warn; console.warn = () => {};
   let threw = false;
-  try { R.startUp(T0); R.keepRecent(A, 'x', '1,2;3,4'); R.recentRow(null, R.recentPlans(), new Set(), R.zuletztPlace()); } catch { threw = true; }
+  try { R.keepPlan({ code: A, title: 'x', points: '1,2;3,4' }); R.afterSaved('S', null, null); R.recentRow(null, R.recentPlans(), []); } catch { threw = true; }
   console.warn = warn; console.info = quiet;
   check(!threw, 'unit: storage blocked – nothing throws');
   delete globalThis.localStorage;
