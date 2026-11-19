@@ -33,7 +33,7 @@ class RoutesActivityFilterE2ETest : E2EBase() {
         val stops = listOf(GpxWaypoint(MERAN_LAT, MERAN_LON, null), GpxWaypoint(MERAN_LAT + 0.01, MERAN_LON + 0.01, null))
         for ((name, a) in listOf("Filter hike" to Activity.HIKE, "Filter bike" to Activity.BIKE_TOURING, "Filter ebike" to Activity.EBIKE))
             db.insertTour(TourKind.PLANNED, name, a.name, 2, 1500.0, 10.0, 10.0, 600.0, listOf(line), stops)
-        scenario.onActivity { vm(it).selectActivity(Activity.HIKE); vm(it).openRoutes() }
+        scenario.onActivity { vm(it).planRoute.selectActivity(Activity.HIKE); vm(it).routesGo.openRoutes() }
         shown("Filter hike"); gone("Filter bike"); gone("Filter ebike")
         fun pick(now: Activity, next: Activity) {
             device.wait(androidx.test.uiautomator.Until.findObject(By.desc(Txt.s(Res.string.routes_act_chip_desc, now.chip))), 5_000)!!.click()

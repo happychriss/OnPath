@@ -19,9 +19,9 @@ import com.onpath.app.ui.AppViewModel
 /** Full-screen search view while [AppViewModel.searchOpen] (Plan mode). Back closes it. */
 @Composable
 fun SearchHost(vm: AppViewModel) {
-    if (vm.searchOpen) BackHandler { vm.closeSearch() }
+    if (vm.searchFlow.searchOpen) BackHandler { vm.searchFlow.closeSearch() }
     // fades in and out like the other full pages (PageFade, owner 2026-11-12)
-    com.onpath.app.ui.PageFade(vm.searchOpen) {
+    com.onpath.app.ui.PageFade(vm.searchFlow.searchOpen) {
         val ctx = LocalContext.current
         val s = vm.search
         SearchScreen(
@@ -29,7 +29,7 @@ fun SearchHost(vm: AppViewModel) {
             SearchActions(
                 // a plan link pasted into the box opens the plan (A-005); anything else is searched
                 onQuery = { q -> if (!vm.pastedPlanLink(q)) s.onQuery(q) }, onCategory = s::onCategory, onClear = s::clear,
-                onBack = vm::closeSearch, onPick = vm::pickSearchResult,
+                onBack = vm.searchFlow::closeSearch, onPick = vm.searchFlow::pickSearchResult,
                 onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
                 onClearRecent = s::clearRecent,
                 onAllFavourites = s::showAllFavourites,
@@ -42,7 +42,7 @@ fun SearchHost(vm: AppViewModel) {
 /** The place card for the POI / search result in [AppViewModel.planPoi] (Plan mode). */
 @Composable
 fun PlaceCardHost(vm: AppViewModel) {
-    val place = vm.cardPlace ?: return
+    val place = vm.placeMenus.cardPlace ?: return
     val ctx = LocalContext.current
     // Marker for the place while its card is open (search results may have no map symbol).
     DisposableEffect(place.id) {
@@ -51,7 +51,7 @@ fun PlaceCardHost(vm: AppViewModel) {
         onDispose { if (vm.highlight == p) vm.highlight = null }
     }
     PlaceCard(
-        vm.placeCardUi(place),
+        vm.placeMenus.placeCardUi(place),
         PlaceCardActions(
             onAdd = { vm.addPlace(place, AppViewModel.PlaceRole.SMART) },
             onRemove = { vm.removePlace(place) },
@@ -59,7 +59,7 @@ fun PlaceCardHost(vm: AppViewModel) {
             onDestination = { vm.addPlace(place, AppViewModel.PlaceRole.DESTINATION) },
             onGoogle = { com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, place.poi?.let(PoiLinks::googleMaps)
                 ?: PoiLinks.googleMaps(place.name, place.lat, place.lon, label = place.title())) },
-            onClose = vm::closePlaceCard,
+            onClose = vm.placeMenus::closePlaceCard,
         ),
     )
 }

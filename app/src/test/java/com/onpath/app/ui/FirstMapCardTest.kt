@@ -85,6 +85,6 @@ class FirstMapCardTest {
         assertTrue(map.contains("mapNoticeKind(it) == null && firstCard == null }"))
         assertTrue(map.contains("message == null && notice == null && firstCard == null"))
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertTrue(vm.contains("FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, viewWithoutDetail, setupOpen,"))
+        assertTrue(vm.contains("FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, mapData.viewWithoutDetail, setup.setupOpen,"))
     }
 }

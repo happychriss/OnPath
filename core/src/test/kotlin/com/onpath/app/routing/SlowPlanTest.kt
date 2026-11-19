@@ -64,8 +64,7 @@ class SlowPlanTest {
     }
 
     @Test fun theAppAsksOnlyInPlanAndCancelIsTheUsualCancel() {
-        // `recalc` is in PlanRecalcSlice (rebuild phase 2 piece 9b); the forwarder `answerSlowPlan` stays in the view model
-        val vmFile = File("../app/src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
+        // `recalc` is in PlanRecalcSlice (rebuild phase 2 piece 9b); the screen calls `vm.planRun.answerSlowPlan` itself (piece 21)
         val vm = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt").readText()
         // only a run started in Plan asks; Cancel is the usual Cancel; "Weiter warten" runs again for the same cause with
         // one more period and a new run starts at one period: the route run's rules (RouteRunTest
@@ -84,8 +83,7 @@ class SlowPlanTest {
         assertTrue(perform, perform.contains("is RouteRun.Effect.Cancel -> host.cancelRun(fx.why)"))
         // RunCause.again (PlanStatusTest.eachTriggerSetsTheCauseOfTheNextRun)
         assertTrue(perform, perform.contains("is RouteRun.Effect.Rerun -> { if (fx.sameCause) runCauses.again(); host.recalc() }"))
-        assertTrue(vmFile.contains("fun answerSlowPlan(answer: com.onpath.app.routing.SlowPlan.Answer) = planRun.answerSlowPlan(answer)"))
         val screen = File("../app/src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("vm.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm::answerSlowPlan) }"))
+        assertTrue(screen.contains("vm.planRun.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm.planRun::answerSlowPlan) }"))
     }
 }

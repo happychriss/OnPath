@@ -65,6 +65,6 @@ class ActivityFilterTest {
     /** The app opens My routes with the planning activity as the preset (owner 2026-11-13). */
     @Test fun thePresetIsThePlanningActivity() {
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue(main.substringAfter("RoutesScreen(").contains("initialActivity = vm.activity"))
+        assertTrue(main.substringAfter("RoutesScreen(").contains("initialActivity = vm.planRoute.activity"))
     }
 }

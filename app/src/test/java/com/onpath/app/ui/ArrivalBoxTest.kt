@@ -34,10 +34,10 @@ class ArrivalBoxTest {
 
     /** "Tour beenden" goes the End tour way: the ride check, then saved at once (no second question). */
     @Test fun endTourSavesThroughTheRideCheckAndKeepRecordingOnlyClosesTheBox() {
-        val call = screen.substringAfter("ArrivalDialog(").substringBefore("activity = vm.activity")
-        assertTrue(call, call.contains("onEnd = { vm.askEndTour(saveIfNoRides = true) }"))
-        assertTrue(call, call.contains("onDelete = vm::endTourAndDelete"))
-        assertTrue(call, call.contains("onKeepRecording = { vm.keepRecordingAfterArrival() }"))
+        val call = screen.substringAfter("ArrivalDialog(").substringBefore("activity = vm.planRoute.activity")
+        assertTrue(call, call.contains("onEnd = { vm.tourEnd.askEndTour(saveIfNoRides = true) }"))
+        assertTrue(call, call.contains("onDelete = vm.tourEnd::endTourAndDelete"))
+        assertTrue(call, call.contains("onKeepRecording = { vm.tourEnd.keepRecordingAfterArrival() }"))
         val vm = File("../state/src/main/kotlin/com/onpath/app/ui/tour/TourEndSlice.kt").readText() // moved there in piece 17
         val keep = vm.substringAfter("fun keepRecordingAfterArrival() {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("tour.arrivalAsk = false"))

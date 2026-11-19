@@ -136,8 +136,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         catch (e: Exception) { Problems.warn("time", "Old learned pace could not be removed; it is not used", e) }
     }
 
-    /** Model times of saved planned routes, by tour id ([PlanRouteSlice.plannedTimes]). */
-    private val plannedTimes get() = planRoute.plannedTimes
     val tracker = LocationTracker(app)
 
     // --- data check ---
@@ -167,32 +165,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // --- the tour's lifecycle state (audit package 4 stage 2: a focused state holder, the VM forwards) ---
     /** End sheet, arrival box, saved box, interrupted tour, "Neuer Plan" line – see [TourController]. */
-    val tour = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))
+    val tour: com.onpath.app.ui.tour.TourController = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))
 
     // --- screens and mode ---
     // messages (declared before routesOpen / showSettings, whose setters clear their lines) – see [say]
     /**
      * The messages the screens show ([NoticeBoard], in `:state`): the red error box, the lines in My routes / Settings, the
-     * quiet map line, the spinner. The names below forward to it. It reads the screens through lambdas, when a message is said.
+     * quiet map line, the spinner. It reads the screens through lambdas, when a message is said.
      */
-    val notices = NoticeBoard(routesOpen = { routesOpen }, settingsOpen = { showSettings }, mapShown = { mode == AppMode.PLAN && !searchOpen })
+    val notices: NoticeBoard = NoticeBoard(routesOpen = { routesOpen }, settingsOpen = { showSettings }, mapShown = { mode == AppMode.PLAN && !searchOpen })
     /** The red error box (MessageCard HINWEIS_ERROR: ⚠, red edge, OK) on the screen shown; null = none. Never cleared by itself. */
     var errorCard: String? get() = notices.errorCard; set(v) { notices.errorCard = v }
-    /** The line at the top of My routes; goes when My routes is left. */
-    var routesNote: Notice? get() = notices.routesNote; set(v) { notices.routesNote = v }
-    /**
-     * A plan or a done tour was tapped in My routes during a tour and is followed now – no question (owner 2026-11-06
-     * 22:05, "super verwirrend"): Navigate says "Neuer Plan – deine Aufnahme läuft weiter" at the bottom for a few
-     * seconds ([NewPlanLine]), with "Rückgängig" when a plan was replaced ([undoNewPlan]). Null = no line.
-     */
-    val newPlanNote: NewPlanNote? get() = tour.newPlanNote
-    fun dropNewPlanNote() = tour.dropNewPlanNote()
 
-    /** The line at the top of the open Settings page; goes when the page changes or Settings closes. */
-    var settingsNote: Notice? get() = notices.settingsNote; set(v) { notices.settingsNote = v }
     /**
      * My routes' state and decisions ([com.onpath.app.ui.routes.RoutesState], audit package 4 stage 3): open, tab, the
-     * list, Zuletzt, the "✓ Gerade gespeichert" mark; the database behind a small store. The names below forward to it.
+     * list, Zuletzt, the "✓ Gerade gespeichert" mark; the database behind a small store.
      */
     private val routesStore = object : com.onpath.app.ui.routes.RoutesStore {
         override fun listTours() = db.listTours()
@@ -203,8 +190,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun deleteForGood(id: Long) { db.deleteTour(id) }
         override fun rename(id: Long, name: String) = db.rename(id, name)
     }
-    private val routes = com.onpath.app.ui.routes.RoutesState(routesStore, recent = prefs.zuletztId).also {
-        it.onClosed = { routesNote = null } // the line at the top lasts until My routes is left
+    val routes: com.onpath.app.ui.routes.RoutesState = com.onpath.app.ui.routes.RoutesState(routesStore, recent = prefs.zuletztId).also {
+        it.onClosed = { notices.routesNote = null } // the line at the top lasts until My routes is left
         it.onRecent = { id -> prefs.zuletztId = id } // the Zuletzt row survives an app start
     }
     /**
@@ -212,74 +199,55 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * that leaves the map is kept, Zuletzt → Speichern / Löschen, the bin's list, Restore, Delete now. The names below
      * ([SaveSlice.keepAsDraft], [saveDraft], [recycleBin] …) forward to it.
      */
-    private val recent = com.onpath.app.ui.routes.RecentPlans(routes, routesStore, object : com.onpath.app.ui.routes.RecentPlansHost {
+    val recent: com.onpath.app.ui.routes.RecentPlans = com.onpath.app.ui.routes.RecentPlans(routes, routesStore, object : com.onpath.app.ui.routes.RecentPlansHost {
         override fun insertDraft(row: com.onpath.app.ui.routes.RecentPlans.DraftRow) =
             db.insertTour(TourKind.PLANNED, row.name, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS,
                 row.segments, row.waypoints, pinned = row.pinned, draft = true, difficulty = row.difficulty, days = row.days)
-        override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = storePlanTimes(id, route, activity)
+        override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = planRoute.storePlanTimes(id, route, activity)
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
         override fun purged(uuid: String) = Backups.purge(getApplication(), listOf(uuid))
         override fun syncChanged(why: String) = sync.changed(why)
-        override fun refreshTours() = this@AppViewModel.refreshTours()
-        override fun problem(text: String) { routesProblem = text }
+        override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
+        override fun problem(text: String) { save.problem = text }
         override var trimmed: Boolean
             get() = prefs.zuletztTrimmed
             set(v) { prefs.zuletztTrimmed = v }
     }, viewModelScope, Dispatchers.IO)
     /**
      * My routes' row pictures and the large overviews' map pictures (owner 2026-11-13 / 2026-11-15): files, makers and the
-     * snapshot live in [RoutePictures] (`:app`); the names below forward to it.
+     * snapshot live in [RoutePictures] (`:app`); the screens read it as `vm.<slice>` (piece 21).
      */
-    private val pictures by lazy {
+    val pictures: RoutePictures by lazy {
         RoutePictures(getApplication(), viewModelScope, Dispatchers.IO, db, routes, object : RoutePicturesHost {
-            override val mode: AppMode get() = this@AppViewModel.mode
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
             override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState
-            override val settings: AppSettings get() = this@AppViewModel.settings
+            override val settings: AppSettings get() = this@AppViewModel.settingsSlice.settings
             override val dataFiles: DataFiles get() = this@AppViewModel.dataFiles
-            override val devToolsShown: Boolean get() = this@AppViewModel.devToolsShown
-            override fun detailedAreas() = this@AppViewModel.detailedAreas()
-            override fun packageAreas() = this@AppViewModel.packageAreas()
+            override val devToolsShown: Boolean get() = this@AppViewModel.settingsSlice.devToolsShown
+            override fun detailedAreas() = this@AppViewModel.mapData.detailedAreas()
+            override fun packageAreas() = this@AppViewModel.mapData.packageAreas()
             override suspend fun followedPlanLine(t: Tour) = this@AppViewModel.followedPlanLine(t)
         })
     }
-    val thumbs get() = pictures.thumbs
-    val thumbVersion: Int get() = pictures.thumbVersion
-    val overviewPictures get() = pictures.overviewPictures
     suspend fun overviewShot(t: Tour, segments: List<List<GeoPoint>>, tint: RouteShape.Tint, widthPx: Int, heightPx: Int,
                              paddingPx: Int, under: List<GeoPoint> = emptyList()): com.onpath.app.map.RouteSnapshot.Shot? =
         pictures.overviewShot(t, segments, tint, widthPx, heightPx, paddingPx, under)
-    val thumbTimings: List<Long> get() = pictures.thumbTimings
 
-    /** My routes list (☰ → My routes) is open. */
-    var routesOpen: Boolean
-        get() = routes.open
-        set(v) { routes.open = v }
-    /** My routes' last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
-    var routesTab: RoutesTab
-        get() = routes.tab
-        set(v) { routes.tab = v }
     /** My routes' order (owner 2026-11-12, [com.onpath.app.domain.routes.RouteSort]): one for both tabs, kept across app starts. */
     var routesSort: com.onpath.app.domain.routes.RouteSort.Choice
         get() = routes.sort
         set(v) { routes.sort = v } // while My routes is open only: "Neueste zuerst" at each opening (owner 2026-11-13)
     /** My routes' "☆ Favoriten" pill (owner 2026-11-13, favourites C): on = only the starred ones; kept while the app runs. */
     var routesFavouritesOnly = false
+    /** My routes list (☰ → My routes) is open. */
+    var routesOpen: Boolean
+        get() = routes.open
+        set(v) { routes.open = v }
     /** Plan (home) or Navigate; see AppMode and docs/ux-two-modes.md. */
     val mode: AppMode get() = tourSession.mode
-    /**
-     * Zoom the map takes when Navigate starts or locate is tapped in Navigate ([AppMode.navStartZoom],
-     * [AppMode.locateZoom]); null once taken (then the user's zoom stays).
-     */
-    var navStartZoom: Double?
-        get() = tourSession.navStartZoom
-        set(v) { tourSession.navStartZoom = v }
     /** Map taps may add, move or insert points (Plan with no track shown). */
-    val canEditMap: Boolean get() = mode == AppMode.PLAN && shown == null
-    /** "You have arrived – end tour?" is open. */
-    var arrivalAsk: Boolean
-        get() = tour.arrivalAsk
-        set(v) { tour.arrivalAsk = v }
+    val canEditMap: Boolean get() = tourSession.mode == AppMode.PLAN && routesFlow.shown == null
     /** POI whose details sheet is open (F-MAP-09). */
     var selectedPoi by mutableStateOf<com.onpath.app.poi.Poi?>(null)
 
@@ -289,9 +257,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * with the last chosen ones, owner; fresh install Hike T2), the routing engine with its leg cache and threads, the time
      * estimate, the route warnings. Declared here – above the init that calls `recalc()` and every property that reads it – because
      * `recalc()` runs in the init; the ports read the lazies and the later properties only when called (ViewModelInitOrderTest).
-     * The names below forward to it.
+     *
      */
-    private val planRoute = com.onpath.app.ui.plan.PlanRouteSlice(
+    val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = com.onpath.app.ui.plan.PlanRouteSlice(
         prefs = object : com.onpath.app.ui.plan.PlanRoutePrefs {
             override var activity: Activity
                 get() = prefs.activity
@@ -315,32 +283,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).get(id)
         },
         host = object : com.onpath.app.ui.plan.PlanRouteHost {
-            override val settings: AppSettings get() = this@AppViewModel.settings
+            override val settings: AppSettings get() = this@AppViewModel.settingsSlice.settings
             override var route: PlannedRoute?
                 get() = this@AppViewModel.route
                 set(v) { this@AppViewModel.route = v }
-            override val routing: Boolean get() = this@AppViewModel.routing
-            override val longRouteAsk: Double? get() = this@AppViewModel.longRouteAsk
-            override val mode: AppMode get() = this@AppViewModel.mode
+            override val routing: Boolean get() = this@AppViewModel.planRun.routing
+            override val longRouteAsk: Double? get() = this@AppViewModel.planRun.longRouteAsk
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
             override val touring: Boolean get() = recState.value != null
             override fun recalc() = this@AppViewModel.recalc()
-            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
-            override fun refreshTours() = this@AppViewModel.refreshTours()
-            override fun clearShownNote() { shown?.let { if (it.note != null) shown = it.copy(note = null) } }
-            override fun showWhole(points: List<GeoPoint>) { followMe = false; events += UiEvent.Fit(points) }
+            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
+            override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
+            override fun clearShownNote() { routesFlow.shown?.let { if (it.note != null) routesFlow.shown = it.copy(note = null) } }
+            override fun showWhole(points: List<GeoPoint>) { map.followMe = false; events += UiEvent.Fit(points) }
         },
     )
-    var activity: Activity
-        get() = planRoute.activity
-        private set(v) { planRoute.activity = v }
-    var sac: Int
-        get() = planRoute.sac
-        private set(v) { planRoute.sac = v }
     // --- settings (Settings page) ---
     /**
      * Settings ([com.onpath.app.ui.SettingsSlice] in `:state`, rebuild phase 2 piece 4): the settings, open / page / back / the
      * on-the-way list, relief auto, developer tools, the last visit to Diagnostics, the routing fingerprint. The preferences and
-     * files behind [settingsStore], the rest of the app behind [settingsHost]; the names below forward to it.
+     * files behind [settingsStore], the rest of the app behind [settingsHost]; the screens read it as `vm.<slice>` (piece 21).
      */
     private val settingsStore = object : com.onpath.app.ui.SettingsStore {
         override var settings: AppSettings
@@ -359,16 +321,18 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun fingerprint(): String = routingFingerprint
     }
     private val settingsHost = object : com.onpath.app.ui.SettingsHost {
-        override val planMapShown: Boolean get() = mode == AppMode.PLAN && !searchOpen
-        override fun clearOfflineResult() { offlineResult = null }
+        override val planMapShown: Boolean get() = tourSession.mode == AppMode.PLAN && !searchFlow.searchOpen
+        override fun clearOfflineResult() { mapData.offlineResult = null }
         override fun syncEndedSeen() = sync.endedSeen()
         override fun mapsWifiOnly(on: Boolean) { cells.wifiOnly = on }
-        override fun retime() = this@AppViewModel.retime()
+        override fun retime() = this@AppViewModel.planRoute.retime()
         override val tourRecording: Boolean get() = recState.value != null
         override fun recordingSettingsChanged() = recording.settingsChanged()
     }
-    private val settingsSlice = com.onpath.app.ui.SettingsSlice(notices, settingsStore, settingsHost, viewModelScope, Dispatchers.IO)
-    val settings: AppSettings get() = settingsSlice.settings
+    val settingsSlice: com.onpath.app.ui.SettingsSlice = com.onpath.app.ui.SettingsSlice(notices, settingsStore, settingsHost, viewModelScope, Dispatchers.IO)
+    var showSettings: Boolean
+        get() = settingsSlice.showSettings
+        set(v) { settingsSlice.showSettings = v }
     /**
      * A pairing was just made (first browser or another one, A-017) or ended here: the Plan map shows "Paired. …" /
      * "Unpaired. …" with OK at the top (owner 2026-10-30) until OK or the next Pair / Unpair; never for "already
@@ -377,107 +341,52 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var syncNote by mutableStateOf<SyncNote?>(null)
         private set
 
-    var showSettings: Boolean
-        get() = settingsSlice.showSettings
-        set(v) { settingsSlice.showSettings = v }
-    /** Settings opened from Navigate's ⚙ (owner 2026-11-07): the on-the-way list; see [com.onpath.app.ui.SettingsSlice]. */
-    val settingsOnTheWay: Boolean get() = settingsSlice.settingsOnTheWay
-    /** Open topic of Settings (list of topics → pages); null = the list. */
-    var settingsPage: SettingsPage?
-        get() = settingsSlice.settingsPage
-        set(v) { settingsSlice.settingsPage = v }
-    /** Settings → Diagnostics: the routing fingerprint and the routing data's dates (RoutingFingerprint); null = not read yet. */
-    val routingInfo: String? get() = settingsSlice.routingInfo
     private val routingFingerprint by lazy {
         com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } })
     }
-    /** Developer tools in Diagnostics (owner): after 7 taps on the version (remembered) – also in debug builds (Arch H1). */
-    val devToolsShown: Boolean get() = settingsSlice.devToolsShown
-    fun unlockDevTools() = settingsSlice.unlockDevTools()
 
     /** Round trips („Rundtour von hier“, tour-suggestions.md §7 stage 4) – ui/suggest/SuggestSlice; Übernehmen → [planFromLine]. */
     val suggest = com.onpath.app.ui.suggest.SuggestSlice(viewModelScope, com.onpath.app.ui.suggest.AppSuggestHost(app, prefs, { mapData.routingData },
-        fit = { followMe = false; freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> if (a != activity) selectActivity(a); selectSac(l)
-            planFromLine(pts, com.onpath.app.data.RoutingTiles.forLine(pts, 1_000.0), a, l, done) }), prefs.suggestTest) { prefs.suggestTest = it }
-    /** Last visit to Diagnostics: a serious problem after it shows red on the Settings list (owner). */
-    val diagnosticsSeenMs: Long get() = settingsSlice.diagnosticsSeenMs
-
-    /** Opens Settings, at [page] if given (map credits → About). */
-    fun openSettings(page: SettingsPage? = null) = settingsSlice.openSettings(page)
-    /** Navigate → ⚙ (owner 2026-11-07): Settings in the on-the-way list; back returns to Navigate, the tour runs on. */
-    fun openSettingsOnTheWay() = settingsSlice.openSettingsOnTheWay()
-    /** On-the-way list → "Alle Einstellungen": the whole topic list (back from it closes Settings). */
-    fun showAllSettings() = settingsSlice.showAllSettings()
-    /** Back in Settings: a topic page returns to the list, the list closes Settings. */
-    fun settingsBack() = settingsSlice.settingsBack()
+        fit = { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> if (a != planRoute.activity) planRoute.selectActivity(a); planRoute.selectSac(l)
+            routesFlow.planFromLine(pts, com.onpath.app.data.RoutingTiles.forLine(pts, 1_000.0), a, l, done) }), prefs.suggestTest) { prefs.suggestTest = it }
 
     // --- Navigate orientation + next turn (see NavigateScreen, MapController.setCamera) ---
-    /** Navigate: heading-up (walking direction up) or north-up; persisted in settings. */
-    val navHeadingUp: Boolean get() = settings.navHeadingUp
 
-    /**
-     * The session's one map orientation (owner 2026-11-07, domain/map/MapOrientation): walking direction up or north up,
-     * the same in Plan and Navigate; only the compass tap / the setting change it.
-     */
-    val headingUp: Boolean get() = navHeadingUp
-    /** Camera, compass, scrub, the fits and the start camera's flags (rebuild phase 2 piece 5); the names below forward to it. */
+    /** Camera, compass, scrub, the fits and the start camera's flags (rebuild phase 2 piece 5); the screens read it as `vm.<slice>` (piece 21). */
     private val mapCamera = object : com.onpath.app.ui.Camera {
         override fun fit(points: List<GeoPoint>) { events += UiEvent.Fit(points) }
         override fun centerOn(point: GeoPoint, zoom: Double) { events += UiEvent.CenterOn(point, zoom) }
         override fun panTo(point: GeoPoint) { events += UiEvent.PanTo(point) }
     }
     private val mapHost = object : com.onpath.app.ui.MapViewHost {
-        override val mode: AppMode get() = this@AppViewModel.mode
-        override val activity: com.onpath.app.routing.Activity get() = this@AppViewModel.activity
-        override val headingUp: Boolean get() = this@AppViewModel.headingUp
+        override val mode: AppMode get() = this@AppViewModel.tourSession.mode
+        override val activity: com.onpath.app.routing.Activity get() = this@AppViewModel.planRoute.activity
+        override val headingUp: Boolean get() = this@AppViewModel.settingsSlice.settings.navHeadingUp
         override fun setHeadingUp(on: Boolean) {
-            if (settings.navHeadingUp != on) { settingsSlice.put(settings.copy(navHeadingUp = on)) }
+            if (settingsSlice.settings.navHeadingUp != on) { settingsSlice.put(settingsSlice.settings.copy(navHeadingUp = on)) }
         }
         override var navStartZoom: Double?
-            get() = this@AppViewModel.navStartZoom
-            set(v) { this@AppViewModel.navStartZoom = v }
+            get() = this@AppViewModel.tourSession.navStartZoom
+            set(v) { this@AppViewModel.tourSession.navStartZoom = v }
         override val routePoints: List<GeoPoint>? get() = route?.points
-        override val waypoints: List<GeoPoint> get() = this@AppViewModel.waypoints
-        override val shown: ShownTrack? get() = this@AppViewModel.shown
-        override val followLine: List<GeoPoint>? get() = this@AppViewModel.followLine
+        override val waypoints: List<GeoPoint> get() = this@AppViewModel.plan.points
+        override val shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown
+        override val followLine: List<GeoPoint>? get() = this@AppViewModel.tourFollow.followLine
         override val navOriginal: List<GeoPoint>? get() = recState.value?.nav?.original
         override val touring: Boolean get() = recState.value != null
         override val keepCameraUntilMs: Long get() = searchFlow.keepCameraUntil
         override fun highlight(at: GeoPoint?) { this@AppViewModel.highlight = at }
-        override fun closeSpots() { spotsOpen = false }
-        override fun spotLine(piece: List<GeoPoint>) { this@AppViewModel.spotLine = piece }
+        override fun closeSpots() { planRoute.spotsOpen = false }
+        override fun spotLine(piece: List<GeoPoint>) { this@AppViewModel.planRoute.spotLine = piece }
         override fun appReturned(inPlan: Boolean) {
             mapData.onReturn(inPlan = inPlan) // T3 in Plan: the next usable fix checks the own area
             sync.request("back in the app")
         }
         override fun appLeft() { mapData.onLeave() }
     }
-    private val map = com.onpath.app.ui.MapViewSlice(notices, mapCamera,
+    val map: com.onpath.app.ui.MapViewSlice = com.onpath.app.ui.MapViewSlice(notices, mapCamera,
         { tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) } }, mapHost, viewModelScope,
         uptimeMs = { android.os.SystemClock.uptimeMillis() }, elapsedMs = { android.os.SystemClock.elapsedRealtime() })
-    /** Bumped to turn the map north (MapScreen → MapController.northUp). */
-    val northTick: Int get() = map.northTick
-    /** Bumped when the camera must follow the position again although [followMe] did not change. */
-    val recentreTick: Int get() = map.recentreTick
-    /** Locate button: follow the position again ([MapViewSlice.locate]). */
-    fun locate() = map.locate()
-    /** Plan's neutral GPS note after a tap of the user's ([PlanGps]); null = none. */
-    var planGpsNote: PlanGps.Note?
-        get() = map.planGpsNote
-        set(v) { map.planGpsNote = v }
-    val planGpsNoteTick: Int get() = map.planGpsNoteTick
-    private fun noPositionForEdit(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) = map.noPositionForEdit(note, text)
-    fun showPlanGpsNote(note: PlanGps.Note) = map.showPlanGpsNote(note)
-    fun onCompass(mapTurned: Boolean) = map.onCompass(mapTurned)
-    /** Navigate: a finger on the elevation profile ([MapViewSlice.navScrub]). */
-    fun navScrub(p: GeoPoint) = map.navScrub(p)
-    fun navScrubEnd() = map.navScrubEnd()
-    /** The app is on screen again ([MapViewSlice.onReturnToApp]). */
-    fun onReturnToApp() = map.onReturnToApp()
-    /** The app left the screen ([MapViewSlice.onLeaveApp]). */
-    fun onLeaveApp() = map.onLeaveApp()
-    /** The app is on screen (Compose state: MapHost catches up with newer map data on return). */
-    val appOnScreen: Boolean get() = map.appOnScreen
 
     // ---------------- map cells (docs/design/map-cells.md §9, §19) ----------------
 
@@ -488,52 +397,44 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * The developer-tools demo rides ([DemoRides] in `:app`; the decisions are [DemoRules] in `:state`): "Demo: ride",
-     * Navigate's "▶ Sim", a recorded tour ridden again, the map centre. The names below forward to it.
+     * Navigate's "▶ Sim", a recorded tour ridden again, the map centre.
      */
-    private val demo by lazy {
+    val demo: DemoRides by lazy {
         DemoRides(viewModelScope, Dispatchers.IO, db, object : DemoRidesHost {
             override val route: PlannedRoute? get() = this@AppViewModel.route
-            override val shown: ShownTrack? get() = this@AppViewModel.shown
-            override val activity: Activity get() = this@AppViewModel.activity
+            override val shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown
+            override val activity: Activity get() = this@AppViewModel.planRoute.activity
             override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState
-            override val tours: List<Tour> get() = this@AppViewModel.tours
-            override fun planFactors() = this@AppViewModel.planFactors()
-            override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.sayInfo(text, place)
-            override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.sayError(text, place)
+            override val tours: List<Tour> get() = this@AppViewModel.routes.tours
+            override fun planFactors() = this@AppViewModel.planRoute.planFactors()
+            override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.notices.sayInfo(text, place)
+            override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.notices.sayError(text, place)
             override fun initialCamera() = this@AppViewModel.initialCamera()
         })
     }
-    fun demoLine(): Pair<String, List<GeoPoint>>? = demo.demoLine()
-    fun startDemoRide() = demo.startDemoRide()
-    fun startNavSim(line: List<GeoPoint>?) = demo.startNavSim(line)
-    fun recentRecordedTours(): List<Tour> = demo.recentRecordedTours()
-    fun demoTourLabel(t: Tour): String = demo.demoTourLabel(t)
-    fun startDemoTour(t: Tour) = demo.startDemoTour(t)
-    fun navSimFollow(line: List<GeoPoint>?) = demo.navSimFollow(line)
-    fun startDemoAtMapCentre() = demo.startDemoAtMapCentre()
 
     /** Settings → Diagnostics → "Map cells (debug)": request the cell under the map centre (own-point rule). */
     fun requestCellAtMapCentre() {
         val (lat, lon, _) = initialCamera()
         val c = com.onpath.app.cells.CellId.at(lat, lon) ?: return
         val added = cells.request(listOf(c), com.onpath.app.cells.CellReason.POINT)
-        sayInfo(if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see the list below.",
+        notices.sayInfo(if (added.isEmpty()) "Cell ${c.id} is already on the phone or requested." else "Cell ${c.id} requested – see the list below.",
             NoticePlace.SETTINGS)
     }
 
     /** Map cells + routing data on the phone: [MapDataFlow], forwarded member by member (the UI and the E2E tests use these). */
-    private val mapData by lazy {
+    val mapData: MapDataFlow by lazy {
         MapDataFlow(getApplication(), db, helperScope, { cells }, object : MapDataFlow.Host {
-            override val mode: AppMode get() = this@AppViewModel.mode
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
             override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState
-            override val waypoints: List<GeoPoint> get() = this@AppViewModel.waypoints
+            override val waypoints: List<GeoPoint> get() = this@AppViewModel.plan.points
             override val route: PlannedRoute? get() = this@AppViewModel.route
             override val tracker: LocationTracker get() = this@AppViewModel.tracker
-            override val settings: AppSettings get() = this@AppViewModel.settings
+            override val settings: AppSettings get() = this@AppViewModel.settingsSlice.settings
             override val missing: List<DataFiles.Check> get() = this@AppViewModel.missing
-            override val startModeKnown: Boolean get() = this@AppViewModel.startModeKnown
-            override val searchMark: com.onpath.app.search.Place? get() = this@AppViewModel.searchMark
-            override val activity: com.onpath.app.routing.Activity get() = this@AppViewModel.activity
+            override val startModeKnown: Boolean get() = this@AppViewModel.map.startModeKnown
+            override val searchMark: com.onpath.app.search.Place? get() = this@AppViewModel.searchFlow.searchMark
+            override val activity: com.onpath.app.routing.Activity get() = this@AppViewModel.planRoute.activity
             override var routeError: String?
                 get() = this@AppViewModel.routeError
                 set(v) { this@AppViewModel.routeError = v }
@@ -541,84 +442,31 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 get() = this@AppViewModel.dataBusy
                 set(v) { this@AppViewModel.dataBusy = v }
             override fun initialCamera() = this@AppViewModel.initialCamera()
-            override fun clearSearchRing() { this@AppViewModel.searchMark = null; searchPlace = null }
-            override fun placeName(at: GeoPoint): String? = stopName(at) ?: nearbyNames[at]
+            override fun clearSearchRing() { this@AppViewModel.searchFlow.searchMark = null; searchFlow.searchPlace = null }
+            override fun placeName(at: GeoPoint): String? = searchFlow.stopName(at) ?: planEdit.nearbyNames[at]
             override suspend fun offlineIndex() = search.offlineIndex()
-            override fun invalidateEngine() { engine = null }
+            override fun invalidateEngine() { planRoute.engine = null }
             override fun routingDataArrived(names: List<String>) = this@AppViewModel.routingDataArrived(names)
-            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)
+            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)
         })
     }
-    fun onMapStyleLoaded(dir: java.io.File?) = mapData.onMapStyleLoaded(dir)
-    fun rollbackMapCells(dir: java.io.File?): Boolean = mapData.rollbackMapCells(dir)
-    val cellJob: com.onpath.app.cells.CellJob? get() = mapData.cellJob
-    val hereAsk: MapDataFlow.HereAsk? get() = mapData.hereAsk
-    fun answerHereAsk(load: Boolean) = mapData.answerHereAsk(load)
-    fun cellCardUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
-                   installed: List<com.onpath.app.cells.CellStore.InstalledCell>): CellCardUi? = mapData.cellCardUi(states, installed)
-    var viewWithoutDetail: Boolean
-        get() = mapData.viewWithoutDetail
-        set(v) { mapData.viewWithoutDetail = v }
-    fun mapLoadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>, now: Long): MapLoadUi? = mapData.mapLoadUi(states, now)
     /** The first-map card on the map (owner 2026-11-08): the map for here still loading / offline after the setup. */
     fun firstMapCard(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
                      installed: List<com.onpath.app.cells.CellStore.InstalledCell>): FirstMapCard.Ui? =
-        FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, viewWithoutDetail, setupOpen,
-            plan = mode == AppMode.PLAN, available = cells.downloadsAvailable)
-    fun hideLoadModal() = mapData.hideLoadModal()
-    fun cancelLoadModal() = mapData.cancelLoadModal()
-    val loadAsk: MapDataFlow.LoadAsk? get() = mapData.loadAsk
-    fun mapTapped(p: GeoPoint) = mapData.mapTapped(p)
-    fun answerLoadAsk(load: Boolean) = mapData.answerLoadAsk(load)
-    fun cellCardMobileYes() = mapData.cellCardMobileYes()
-    fun loadModalOnMobile() = mapData.loadModalOnMobile()
-    fun cellCardWifiOnly() = mapData.cellCardWifiOnly()
-    fun cellCardRetry() = mapData.cellCardRetry()
-    fun closeCellCard() = mapData.closeCellCard()
-    fun cancelCellLoading() = mapData.cancelCellLoading()
-    fun clearAllMaps() = mapData.clearAllMaps()
-    var offlineResult: String?
-        get() = mapData.offlineResult
-        set(v) { mapData.offlineResult = v }
-    var cleanupPreview: CleanupPreview?
-        get() = mapData.cleanupPreview
-        set(v) { mapData.cleanupPreview = v }
-    fun prepareCleanup() = mapData.prepareCleanup()
-    fun confirmCleanup() = mapData.confirmCleanup()
-    fun detailedAreas(): List<DoubleArray> = mapData.detailedAreas()
-    fun packageAreas(): List<DoubleArray> = mapData.packageAreas()
-    fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = mapData.overviewOnly(south, west, north, east)
-    var downloadDetailsOpen: Boolean
-        get() = mapData.downloadDetailsOpen
-        set(v) { mapData.downloadDetailsOpen = v }
-    var backgroundStripShown: Boolean
-        get() = mapData.backgroundStripShown
-        set(v) { mapData.backgroundStripShown = v }
-    var backgroundStripBottomDp: Int
-        get() = mapData.backgroundStripBottomDp
-        set(v) { mapData.backgroundStripBottomDp = v }
-    fun backgroundDownloadUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>): BackgroundDownloadUi? =
-        mapData.backgroundDownloadUi(states)
-    fun cancelAllDownloads() = mapData.cancelAllDownloads()
-    fun loadAreaNames() = mapData.loadAreaNames()
-    fun offlineMapsUi(states: Map<com.onpath.app.cells.CellId, com.onpath.app.cells.CellState>,
-                      installed: List<com.onpath.app.cells.CellStore.InstalledCell>): OfflineMapsUi = mapData.offlineMapsUi(states, installed)
-    fun updateMapsNow() = mapData.updateMapsNow()
-    fun deleteMapArea(id: String) = mapData.deleteMapArea(id)
-    /** Settings → Diagnostics → "Download routing data" (normally routing data comes by itself with the map). */
-    fun downloadRoutingData() = mapData.downloadRoutingData()
+        FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, mapData.viewWithoutDetail, setup.setupOpen,
+            plan = tourSession.mode == AppMode.PLAN, available = cells.downloadsAvailable)
 
     /**
      * T1: the user set these points – a point that makes the plan very long (owner) loads nothing until the long-plan
      * question is answered: Plan anyway → it loads then; Cancel → nothing was loaded.
      */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
-        if (after.size >= 2 && after.toList() != routeRun.longOk && com.onpath.app.routing.LongRoute.needsAsk(after.toList(), activity)) {
-            longRouteDeferred = before.toList()
+        if (after.size >= 2 && after.toList() != planRun.routeRun.longOk && com.onpath.app.routing.LongRoute.needsAsk(after.toList(), planRoute.activity)) {
+            planRun.longRouteDeferred = before.toList()
             Problems.trace("cells", "Very long plan: maps and routing data for the new point wait for the answer")
             return
         }
-        longRouteDeferred = null
+        planRun.longRouteDeferred = null
         mapData.pointsSet(before, after)
     }
 
@@ -629,13 +477,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingDataArrived(names: List<String>) {
         Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
         recheckData()
-        engine = null // a new engine reads the new tile
+        planRoute.engine = null // a new engine reads the new tile
         // once after the batch, not per arriving part (a recalc can take up to a minute on a long plan)
         arrivedNames += names
         arrivalGateJob = gated(routingArrivalGate, arrivalGateJob, busy = { mapData.routingLoading }) {
             val n = arrivedNames.size; arrivedNames.clear()
             syncedRouting.routeWaiting()
-            if (RoutingLoads.recalcOnArrival(mode, recState.value != null, waypoints.size)) {
+            if (RoutingLoads.recalcOnArrival(tourSession.mode, recState.value != null, plan.points.size)) {
                 Problems.trace("routing", "Plan computed again after $n routing part(s) arrived")
                 recalc()
             }
@@ -664,14 +512,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         }
     }
 
-    /** The user drags the map (true) / the map came to rest (false): new map areas are not joined meanwhile. */
-    /** The quiet line on the Plan map ([NoticeSurface.MAP_LINE], goes after [MapNote.MS]); [mapNoteTick] restarts its time. */
-    var mapNote: Notice? get() = notices.mapNote; set(v) { notices.mapNote = v }
-    val mapNoteTick: Int get() = notices.mapNoteTick
-
-    /** One map gesture is over with its frame times (MapHost): relief auto – see [com.onpath.app.ui.SettingsSlice.mapGestureMeasured]. */
-    fun mapGestureMeasured(kind: com.onpath.app.map.ReliefAuto.Kind, stats: com.onpath.app.debug.FrameStats) = settingsSlice.mapGestureMeasured(kind, stats)
-
     fun mapGesture(on: Boolean) {
         // the map moved by hand during the flight to a shared place: its menu no longer opens by itself
         if (on) searchFlow.mapMovedByHand()
@@ -688,31 +528,27 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The plan on the map as one object ([com.onpath.app.ui.plan.PlanDocument], cleanup piece 4): its points, Undo / Redo,
      * the pinned points and the saved route it belongs to – written to the preferences as it changes, read back at start.
      */
-    private val plan = com.onpath.app.ui.plan.PlanDocument(com.onpath.app.ui.plan.PrefsPlanStore(prefs))
-    /** The plan's points ([com.onpath.app.ui.plan.PlanDocument.points]). */
-    val waypoints get() = plan.points
-    /** Pinned (POI) points, kept by value ([com.onpath.app.ui.plan.PlanDocument.pinned]). */
-    private val pinned: Set<GeoPoint> get() = plan.pinned
+    val plan: com.onpath.app.ui.plan.PlanDocument = com.onpath.app.ui.plan.PlanDocument(com.onpath.app.ui.plan.PrefsPlanStore(prefs))
     /**
      * Plan links in and out ([com.onpath.app.ui.sync.PlanLinkFlow], cleanup piece 4): a link opened in OnPath, what the
      * last link brought (its name, its points), a plan sent as a link. [receivePlanLink] … forward to it.
      * Declared up here, above the init blocks: a route result at start reaches it ([com.onpath.app.ui.sync.PlanLinkFlow.snapped]).
      */
-    private val links = com.onpath.app.ui.sync.PlanLinkFlow(object : com.onpath.app.ui.sync.PlanLinkHost {
+    val links: com.onpath.app.ui.sync.PlanLinkFlow = com.onpath.app.ui.sync.PlanLinkFlow(object : com.onpath.app.ui.sync.PlanLinkHost {
         override fun backToMap() {
-            routesOpen = false; showSettings = false; offlineResult = null; timeDetails = null; routeDetailsOpen = false; searchOpen = false
-            closeMapOverlays()
+            routes.open = false; settingsSlice.showSettings = false; mapData.offlineResult = null; planRoute.timeDetails = null; planEdit.routeDetailsOpen = false; searchFlow.searchOpen = false
+            placeMenus.closeMapOverlays()
         }
-        override fun sayError(text: String, place: NoticePlace) { this@AppViewModel.sayError(text, place) }
-        override fun receivePairing(secret: ByteArray, via: String) { this@AppViewModel.receivePairing(secret, via) }
-        override fun openSyncSettings() { openSettings(SettingsPage.SYNC) }
+        override fun sayError(text: String, place: NoticePlace) { this@AppViewModel.notices.sayError(text, place) }
+        override fun receivePairing(secret: ByteArray, via: String) { this@AppViewModel.pairing.receivePairing(secret, via) }
+        override fun openSyncSettings() { settingsSlice.openSettings(SettingsPage.SYNC) }
         override suspend fun startModeKnown() {
-            if (!this@AppViewModel.startModeKnown) androidx.compose.runtime.snapshotFlow { this@AppViewModel.startModeKnown }.first { it }
+            if (!this@AppViewModel.map.startModeKnown) androidx.compose.runtime.snapshotFlow { this@AppViewModel.map.startModeKnown }.first { it }
         }
-        override fun navigating(): Boolean = navigating(recState.value != null)
-        override fun planPoints(): List<GeoPoint> = waypoints.toList()
-        override fun savedPoints(): List<GeoPoint>? = this@AppViewModel.savedPoints
-        override fun open(plan: com.onpath.app.routing.SharedPlan, via: String) { if (shown != null) closeShown(); openSharedPlan(plan, via) }
+        override fun navigating(): Boolean = routesGo.navigating(recState.value != null)
+        override fun planPoints(): List<GeoPoint> = plan.points.toList()
+        override fun savedPoints(): List<GeoPoint>? = this@AppViewModel.plan.savedPoints
+        override fun open(plan: com.onpath.app.routing.SharedPlan, via: String) { if (routesFlow.shown != null) routesFlow.closeShown(); routesGo.openSharedPlan(plan, via) }
         override fun share(link: String, title: String?) {
             val send = Intent(Intent.ACTION_SEND).apply {
                 type = "text/plain"
@@ -725,19 +561,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             get() = prefs.planLinkPoints
             set(v) { prefs.planLinkPoints = v }
     }, viewModelScope)
-    fun pinnedIndices(): Set<Int> = plan.pinnedIndices()
-    /** Kind by point index for the pinned points that sit on a POI the map draws ([PlaceMenusSlice.pinnedPoiKinds]). */
-    fun pinnedPoiKinds(): Map<Int, String> = placeMenus.pinnedPoiKinds()
-    /** Looks up the POI under each pinned point without a known kind ([PlaceMenusSlice.refreshPinnedKinds]). */
-    fun refreshPinnedKinds() = placeMenus.refreshPinnedKinds()
     /** Followed routes replaced by plan edits during the tour (Undo takes them back exactly, Bug 02). */
     private val followHistory = FollowHistory()
-    val canUndo: Boolean get() = plan.canUndo
-    val canRedo: Boolean get() = plan.canRedo
-    /** Plan panel size, kept while the app runs ([PlanEditSlice.planSize]). */
-    var planSize: PlanSize
-        get() = planEdit.planSize
-        set(v) { planEdit.planSize = v }
 
     /**
      * A tap on the open map in Plan (owner 2026-11-03, novice fix): the plan sheet says "Gedrückt halten, um hier einen
@@ -748,7 +573,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun showTapHoldHint() {
         if (!tapHoldHint) com.onpath.app.debug.Problems.trace("plan", "Tap on the map: 'hold to set a point' shown")
         tapHoldHint = true
-        if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
+        if (planEdit.planSize == PlanSize.COLLAPSED) planEdit.planSize = PlanSize.MINI // the line sits in the summary step
     }
     /**
      * The plan's route offline ("Ohne Netz ✓ / ⟳ / ⚠" in the mode pill, owner 2026-11-03, [OfflineReady]); null = no
@@ -761,30 +586,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         offlineInfo = !offlineInfo && offlineReady != null
         if (offlineInfo) {
             com.onpath.app.debug.Problems.trace("plan", "Offline state explained: ${offlineReady?.state}")
-            if (planSize == PlanSize.COLLAPSED) planSize = PlanSize.MINI // the line sits in the summary step
+            if (planEdit.planSize == PlanSize.COLLAPSED) planEdit.planSize = PlanSize.MINI // the line sits in the summary step
         }
     }
     /** Blocking: what [OfflineReady] says for [line] (MapScreen calls it on Dispatchers.IO). */
-    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line, activity)
+    fun computeOfflineReady(line: List<GeoPoint>): OfflineReady.Result? = mapData.offlineReady(line, planRoute.activity)
 
-    /** The route point whose point menu is open ([PlaceMenusSlice.pointMenuTarget]). */
-    val pointMenuTarget: PointMenuTarget? get() = placeMenus.pointMenuTarget
-    /** Index of that point in the plan now, or null (no menu, or its point is gone). */
-    val pointMenu: Int? get() = placeMenus.pointMenu
     var route by mutableStateOf<PlannedRoute?>(null)
         private set
     /**
      * The plan's route run ([PlanRunSlice], rebuild phase 2 piece 9): the [RouteRun] state (changed only by [routeEvent]), its
      * effects, the run's job / cancel signal / wait card progress, Cancel and the two answers. Declared before init {}
-     * (recalc() runs there, ViewModelInitOrderTest); the run's coroutine itself is [recalc]. The names below forward to it.
+     * (recalc() runs there, ViewModelInitOrderTest); the run's coroutine itself is [recalc].
      */
-    val planRun = com.onpath.app.ui.plan.PlanRunSlice(
+    val planRun: com.onpath.app.ui.plan.PlanRunSlice = com.onpath.app.ui.plan.PlanRunSlice(
         runCauses = planRoute.runCauses,
         host = object : com.onpath.app.ui.plan.PlanRunHost {
-            override fun points(): List<GeoPoint> = waypoints.toList()
+            override fun points(): List<GeoPoint> = plan.points.toList()
             override fun clearRoute() { route = null; routeError = null }
             override fun noCorridor() = mapData.corridorFollowsPlan(null)
-            override fun loadDeferredMaps(before: List<GeoPoint>) = cellsForNewPoints(before, waypoints)
+            override fun loadDeferredMaps(before: List<GeoPoint>) = cellsForNewPoints(before, plan.points)
             override fun recalc() = this@AppViewModel.recalc()
             override fun cancelRun(why: NotRouted) = planEdit.cancelRun(why)
         },
@@ -795,11 +616,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * hooks (what an edit means for a tour in progress) stay below behind [com.onpath.app.ui.plan.PlanEditHost]. Declared
      * before init {} and before [multiDay] (which gets [change]).
      */
-    private val planEdit: com.onpath.app.ui.plan.PlanEditSlice = com.onpath.app.ui.plan.PlanEditSlice(
+    val planEdit: com.onpath.app.ui.plan.PlanEditSlice = com.onpath.app.ui.plan.PlanEditSlice(
         plan = plan, planRun = planRun, runCauses = planRoute.runCauses,
         host = object : com.onpath.app.ui.plan.PlanEditHost {
             override fun cancelHoldMeasure(why: String) = placeAdd.cancelHoldMeasure(why)
-            override fun stopFollowingWhenMapTurns() { if (mode == AppMode.PLAN && headingUp && followMe) followMe = false }
+            override fun stopFollowingWhenMapTurns() { if (tourSession.mode == AppMode.PLAN && settingsSlice.settings.navHeadingUp && map.followMe) map.followMe = false }
             override fun closePointMenu(why: String) = placeMenus.closePointMenu(why)
             override fun clearFirstPointMenu() { placeAdd.firstPointMenu = null }
             override fun clearHoldAddMenu() { placeAdd.holdAddMenu = null }
@@ -807,25 +628,25 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun removePin(why: String) = placeMenus.removePin(why)
             override fun menuAction(what: String): Int? = placeMenus.menuAction(what)
             override fun setRoutingSpot(spot: GeoPoint?) { routingSpot = spot }
-            override fun loadMapsForNewPoints(before: List<GeoPoint>) = cellsForNewPoints(before, waypoints)
+            override fun loadMapsForNewPoints(before: List<GeoPoint>) = cellsForNewPoints(before, plan.points)
             override fun keepAsDraft(why: String) = save.keepAsDraft(why)
             override fun routeLine(): List<GeoPoint>? = route?.points
             override fun recalc() = this@AppViewModel.recalc()
             override fun restoreActivity(c: PlanStatus.Cause.ActivityChange) = this@AppViewModel.restoreActivity(c)
-            override fun planChanged() = this@AppViewModel.planChanged()
+            override fun planChanged() = this@AppViewModel.planRoute.planChanged()
             override fun myPosition(): GeoPoint? = this@AppViewModel.myPosition()
             override fun touring(): Boolean = recState.value != null
-            override fun following(): Boolean = followLine != null
-            override fun followIsTrack(): Boolean = this@AppViewModel.followIsTrack
-            override fun followsLine(line: List<GeoPoint>): Boolean = followLine == line
-            override fun followFromPlan(): Boolean = this@AppViewModel.followFromPlan
+            override fun following(): Boolean = tourFollow.followLine != null
+            override fun followIsTrack(): Boolean = this@AppViewModel.tourFollow.followIsTrack
+            override fun followsLine(line: List<GeoPoint>): Boolean = tourFollow.followLine == line
+            override fun followFromPlan(): Boolean = this@AppViewModel.tourFollow.followFromPlan
             override fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? = tourEdits.splitOf(before, after)
             override fun sayNoDestination() = sayEvent(RecordingService.SAY_NO_DESTINATION)
             override fun oneLeftGoesFromHere(before: List<GeoPoint>, mayEmpty: Boolean) = tourEdits.oneLeftGoesFromHere(before, mayEmpty)
             override fun endGuidanceIfPlanEmpty() = tourEdits.endGuidanceIfPlanEmpty()
-            override fun clearFollow() = this@AppViewModel.clearFollow()
-            override fun guidanceEndedByEmptyPlan() { this@AppViewModel.guidanceEndedByEmptyPlan = true }
-            override fun stopName(p: GeoPoint): String? = this@AppViewModel.stopName(p)
+            override fun clearFollow() = this@AppViewModel.tourFollow.clearFollow()
+            override fun guidanceEndedByEmptyPlan() { this@AppViewModel.tourFollow.guidanceEndedByEmptyPlan = true }
+            override fun stopName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override suspend fun pointNames(): com.onpath.app.ui.plan.PointNames {
                 val index = search.offlineIndex()
                 return com.onpath.app.ui.plan.PointNames { p ->
@@ -833,8 +654,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
             override var searchMark: com.onpath.app.search.Place?
-                get() = this@AppViewModel.searchMark
-                set(v) { this@AppViewModel.searchMark = v }
+                get() = this@AppViewModel.searchFlow.searchMark
+                set(v) { this@AppViewModel.searchFlow.searchMark = v }
         },
         scope = viewModelScope, io = Dispatchers.IO,
     )
@@ -847,29 +668,29 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     /** The router the hold and a held place's menu measure on (the engine, its leg cache and the Planner stay here, [routedLength]). */
     private val holdRouter = com.onpath.app.ui.plan.HoldRouter { a, b, act, level, cancel -> routedLength(a, b, act, level, cancel) }
-    private val placeAdd = PlaceAddSlice(
+    val placeAdd: PlaceAddSlice = PlaceAddSlice(
         plan = plan, planEdit = planEdit, planRun = planRun,
         host = object : com.onpath.app.ui.plan.PlaceAddHost {
             override fun closeMapOverlays(why: String) = placeMenus.closeMapOverlays(why)
             override fun openPointMenu(index: Int, via: String) = placeMenus.openPointMenu(index, via = via)
             override fun closePlaceCard() = placeMenus.closePlaceCard()
-            override fun planMode(): Boolean = mode == AppMode.PLAN
+            override fun planMode(): Boolean = tourSession.mode == AppMode.PLAN
             override fun canEditMap(): Boolean = this@AppViewModel.canEditMap
-            override fun activity(): Activity = this@AppViewModel.activity
-            override fun sac(): Int = this@AppViewModel.sac
+            override fun activity(): Activity = this@AppViewModel.planRoute.activity
+            override fun sac(): Int = this@AppViewModel.planRoute.sac
             override fun routeLine(): List<GeoPoint>? = route?.points
             override fun touring(): Boolean = recState.value != null
             override fun myPosition(): GeoPoint? = this@AppViewModel.myPosition()
             override fun tourPassed(plan: List<GeoPoint>): Set<Int> = tourEdits.tourPassed(plan)
-            override fun followLine(): List<GeoPoint>? = this@AppViewModel.followLine
+            override fun followLine(): List<GeoPoint>? = this@AppViewModel.tourFollow.followLine
             override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()
             override fun gpsPoint(): GeoPoint? = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
-            override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchMark
+            override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchFlow.searchMark
             override fun takePin(lat: Double, lon: Double): com.onpath.app.search.Place? = this@AppViewModel.takePin(lat, lon)
-            override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.isCandidate(poi)
-            override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.rememberPlaceName(p, name)
+            override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.searchFlow.isCandidate(poi)
+            override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.searchFlow.rememberPlaceName(p, name)
             override fun rememberPoiKind(p: GeoPoint, kind: String?) = placeMenus.rememberPoiKind(p, kind)
-            override fun stopIndexAt(lat: Double, lon: Double): Int = waypoints.indexOfFirst { sameSpot(it, lat, lon) }
+            override fun stopIndexAt(lat: Double, lon: Double): Int = plan.points.indexOfFirst { sameSpot(it, lat, lon) }
             override fun routeIndexOf(place: com.onpath.app.search.Place): Int? = this@AppViewModel.routeIndexOf(place)
         },
         router = holdRouter,
@@ -881,22 +702,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * the hold), closing every map menu, what the card says. The hold's own state stays in [placeAdd]; the search's pin and
      * picked place in the search flow. Declared right after [placeAdd] (its host calls it) and above the init blocks.
      */
-    private val placeMenus: com.onpath.app.ui.plan.PlaceMenusSlice = com.onpath.app.ui.plan.PlaceMenusSlice(
+    val placeMenus: com.onpath.app.ui.plan.PlaceMenusSlice = com.onpath.app.ui.plan.PlaceMenusSlice(
         plan = plan, planRun = planRun, placeAdd = placeAdd,
         host = object : com.onpath.app.ui.plan.PlaceMenusHost {
-            override fun planMode(): Boolean = mode == AppMode.PLAN
+            override fun planMode(): Boolean = tourSession.mode == AppMode.PLAN
             override fun touring(): Boolean = recState.value != null
-            override fun activity(): Activity = this@AppViewModel.activity
-            override fun sac(): Int = this@AppViewModel.sac
+            override fun activity(): Activity = this@AppViewModel.planRoute.activity
+            override fun sac(): Int = this@AppViewModel.planRoute.sac
             override fun route(): PlannedRoute? = this@AppViewModel.route
             override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()
             override fun routeIndexOf(place: com.onpath.app.search.Place): Int? = this@AppViewModel.routeIndexOf(place)
             override var searchMark: com.onpath.app.search.Place?
-                get() = this@AppViewModel.searchMark
-                set(v) { this@AppViewModel.searchMark = v }
+                get() = this@AppViewModel.searchFlow.searchMark
+                set(v) { this@AppViewModel.searchFlow.searchMark = v }
             override var searchPlace: com.onpath.app.search.Place?
-                get() = this@AppViewModel.searchPlace
-                set(v) { this@AppViewModel.searchPlace = v }
+                get() = this@AppViewModel.searchFlow.searchPlace
+                set(v) { this@AppViewModel.searchFlow.searchPlace = v }
             override suspend fun offlineIndex(): com.onpath.app.ui.plan.PlaceLookup {
                 val index = search.offlineIndex()
                 return com.onpath.app.ui.plan.PlaceLookup { minLat, minLon, maxLat, maxLon, kinds -> index.placesIn(minLat, minLon, maxLat, maxLon, kinds) }
@@ -909,7 +730,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * file, `Backups`, the browser sync) stays here behind [com.onpath.app.ui.plan.PlacesStore]; each member passes the old
      * arguments on unchanged.
      */
-    private val keptPlaces: com.onpath.app.ui.plan.KeptPlacesSlice = com.onpath.app.ui.plan.KeptPlacesSlice(
+    val keptPlaces: com.onpath.app.ui.plan.KeptPlacesSlice = com.onpath.app.ui.plan.KeptPlacesSlice(
         store = object : com.onpath.app.ui.plan.PlacesStore {
             override fun saved(): com.onpath.app.search.SavedPlaces = searchStore.saved()
             override fun update(change: (com.onpath.app.search.SavedPlaces) -> com.onpath.app.search.SavedPlaces): com.onpath.app.search.SavedPlaces =
@@ -918,12 +739,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun syncChanged() = sync.changed("kept places")
         },
         host = object : com.onpath.app.ui.plan.KeptPlacesHost {
-            override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchMark
-            override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.isCandidate(poi)
+            override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchFlow.searchMark
+            override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.searchFlow.isCandidate(poi)
         },
     )
-    private val routeRun get() = planRun.routeRun
-    val routing: Boolean get() = planRun.routing
     /** The point the last edit added or moved: the map's spinner turns there while its route is computed ([RoutingSpot]). */
     var routingSpot by mutableStateOf<GeoPoint?>(null)
         private set
@@ -935,8 +754,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * one red line in the plan sheet – while it holds, never dismissed. Derived from the route of exactly these points.
      */
     val planGaps: List<PlanGap>
-        get() = route?.takeIf { !routing }?.let { r ->
-            val w = waypoints.toList()
+        get() = route?.takeIf { !planRun.routing }?.let { r ->
+            val w = plan.points.toList()
             // the gaps of the last plan result (routing/PlanResult, the web's too) while it still describes these points
             planResult?.takeIf { it.route.snapped === r.snapped && it.route.skipped === r.skipped && it.points == w }?.gaps
                 ?: PlanGaps.of(w, r.snapped, r.skipped)
@@ -952,24 +771,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** The last route result applied ([recalc]; routing/PlanResult – the same computation as the web planner's). */
     private var planResult: com.onpath.app.routing.PlanResult? = null
 
-    // route warnings (RouteWarnings): declared before init {} – recalc() touches them (ViewModelInitOrderTest)
-    // The state of the route warnings lives in [PlanRouteSlice] (declared above `activity`, so above the init that calls `recalc()`)
-    var routeChangedNotice: String?
-        get() = planRoute.routeChangedNotice
-        private set(v) { planRoute.routeChangedNotice = v }
-    var syncRoutingNote: String?
-        get() = planRoute.syncRoutingNote
-        private set(v) { planRoute.syncRoutingNote = v }
-    private var activityBefore: PlannedRoute?
-        get() = planRoute.activityBefore
-        set(v) { planRoute.activityBefore = v }
-    var spotsOpen: Boolean
-        get() = planRoute.spotsOpen
-        private set(v) { planRoute.spotsOpen = v }
-    var spotLine: List<GeoPoint>?
-        get() = planRoute.spotLine
-        private set(v) { planRoute.spotLine = v }
-
     // Bursts → one action; declared before init {} (ViewModelInitOrderTest).
     /** Map style reload after new map store generations: once per quiet period, never while the user drags. */
     private val styleGate = QuietGate(STYLE_QUIET_MS, STYLE_MAX_WAIT_MS)
@@ -979,46 +780,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private var arrivalGateJob: kotlinx.coroutines.Job? = null
     private val arrivedNames = ArrayList<String>()
 
-    /**
-     * The plan run reached its time limit (owner 2026-11-03, onpath.private#21 B, [com.onpath.app.routing.SlowPlan]):
-     * the box "Die Route ist lang, die Berechnung dauert. Weiter warten?" – the periods of the run that asked; null = none.
-     */
-    val slowPlanAsk: Int? get() = planRun.slowPlanAsk
-
-    /** The route has been calculating for a while: the plan sheet offers Cancel. */
-    val routingSlow: Boolean get() = planRun.routingSlow
-    /**
-     * The wait card's progress (owner 2026-11-05): legs done / legs to route in the running plan run – only legs the
-     * router works on count (legs from the cache are there at once); null = none known yet (the bar runs).
-     */
-    var routeProgress: Pair<Int, Int>?
-        get() = planRun.routeProgress
-        private set(v) { planRun.routeProgress = v }
-    /**
-     * The wait bar's share 0..1 (owner 2026-11-05: it moves within one long leg too): legs done + the running leg's
-     * search ([com.onpath.app.routing.BRouterEngine.searchProgress]) over the legs to route, never back ([WaitBar]);
-     * null = not known yet, or every leg routed (the wait window then checks the route, [com.onpath.app.domain.RouteShares]).
-     */
-    var routeShare: Float?
-        get() = planRun.routeShare
-        private set(v) { planRun.routeShare = v }
-    /** Estimated duration (s) of a plan longer than a day: "Plan it anyway?" (null = no question). */
-    val longRouteAsk: Double? get() = planRun.longRouteAsk
-    /** The points before the edit that made the plan very long: its maps load only after "Plan anyway". */
-    private var longRouteDeferred: List<GeoPoint>?
-        get() = planRun.longRouteDeferred
-        set(v) { planRun.longRouteDeferred = v }
-    /** The plan is left without a route on purpose (Cancel with nothing to take back); the sheet offers to calculate. */
-    val notRouted: NotRouted? get() = planRun.notRouted
-    /** What started the routing run: Cancel takes back only that ([PlanRouteSlice.runCauses]). */
-    private val runCauses get() = planRoute.runCauses
     // --- saved state of the plan (menus / Manage routes) ---
-    private val savedPoints: List<GeoPoint>? get() = plan.savedPoints
-    /** Name the plan was saved / loaded as, while it still belongs to that route. */
-    val savedName: String? get() = plan.savedName
-    private val savedId: Long get() = plan.savedId
-    /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
-    val planUnsaved: Boolean get() = plan.unsaved
     /**
      * Save (C18, [SaveSlice] in `:state`, rebuild phase 2 piece 3): the name dialog, the writes after it, Rename / star in
      * My routes, a plan that leaves the map unsaved, the save at "Los geht's". The database behind [toursStore], the rest of
@@ -1047,46 +809,40 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun tourTimes() =
             com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).all()
     }
-    /** Routes from the browser on the phone ([com.onpath.app.ui.sync.SyncedRoutingSlice], rebuild phase 2 piece 15); the names forward to it (declared here: `recalc()` of the init reaches it). */
-    private val syncedRouting = com.onpath.app.ui.sync.SyncedRoutingSlice(plan, planRoute, toursStore,
+    /** Routes from the browser on the phone ([com.onpath.app.ui.sync.SyncedRoutingSlice], rebuild phase 2 piece 15); screens read it as `vm.<slice>` (declared here: `recalc()` of the init reaches it). */
+    private val syncedRouting: com.onpath.app.ui.sync.SyncedRoutingSlice = com.onpath.app.ui.sync.SyncedRoutingSlice(plan, planRoute, toursStore,
         object : com.onpath.app.ui.sync.SyncedRoutingHost {
             override fun opened(uuid: String, points: List<GeoPoint>) = sync.opened(uuid, points)
             override fun refreshRoutingTiles(tiles: List<String>, why: String) = this@AppViewModel.refreshRoutingTiles(tiles, why)
-            override fun refreshTours() = this@AppViewModel.refreshTours()
-            override fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = this@AppViewModel.setSaved(name, id, points)
+            override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
+            override fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = this@AppViewModel.tourFollow.setSaved(name, id, points)
             override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
         }, viewModelScope, Dispatchers.IO)
 
     internal val multiDay = com.onpath.app.ui.plan.MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs), mapCamera,
-        com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, ::change, ::setSaved, ::rememberPlaceName, { nearbyNames }, viewModelScope, Dispatchers.IO, Dispatchers.Default) // :state, piece 20; after toursStore
+        com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { b -> planEdit.change(b) }, { n, i, p -> tourFollow.setSaved(n, i, p) }, { p, n -> searchFlow.rememberPlaceName(p, n) }, { planEdit.nearbyNames }, viewModelScope, Dispatchers.IO, Dispatchers.Default) // :state, piece 20; after toursStore
     private val saveHost = object : com.onpath.app.ui.routes.SaveHost {
         override val route: PlannedRoute? get() = this@AppViewModel.route
-        override val activity: Activity get() = this@AppViewModel.activity
-        override val sac: Int get() = this@AppViewModel.sac
+        override val activity: Activity get() = this@AppViewModel.planRoute.activity
+        override val sac: Int get() = this@AppViewModel.planRoute.sac
         override fun stops(points: List<GeoPoint>) = savedStops(points)
-        override fun difficulty(route: PlannedRoute?, activity: Activity) = difficultyOf(route, activity)
+        override fun difficulty(route: PlannedRoute?, activity: Activity) = planRoute.difficultyOf(route, activity)
         override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
         override fun keepWhole() = multiDay.keepWhole()
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun datedName() = defaultName(Txt.s(Res.string.msg_name_route))
-        override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = storePlanTimes(id, route, activity)
-        override fun forgetTimes(id: Long) { plannedTimes.remove(id) }
+        override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = planRoute.storePlanTimes(id, route, activity)
+        override fun forgetTimes(id: Long) { planRoute.plannedTimes.remove(id) }
         override fun copyTimes(from: Long, to: Long, distanceM: Double) { planTimes.get(from, distanceM)?.let { planTimes.put(to, distanceM, it) } }
         override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
         override fun syncChanged(why: String) = sync.changed(why)
-        override fun refreshTours() = this@AppViewModel.refreshTours()
-        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = setSaved(name, id, points)
-        override fun shownRenamed(id: Long, name: String) { shown?.let { if (it.tourId == id) shown = it.copy(name = name) } }
+        override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
+        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)
+        override fun shownRenamed(id: Long, name: String) { routesFlow.shown?.let { if (it.tourId == id) routesFlow.shown = it.copy(name = name) } }
         override fun say(text: String, kind: NoticeKind, place: NoticePlace) = notices.say(text, kind, place)
     }
-    private val save = com.onpath.app.ui.routes.SaveSlice(plan, routes, recent, toursStore, saveHost, viewModelScope, Dispatchers.IO)
-    /** Save's name dialog while open (owner 2026-10-31: Save always asks for the name; [requestSave], [requestCopyRoute]). */
-    val saveAsk: SaveAsk? get() = save.ask
-    /** A save failed: shown in a dialog until OK (no message that disappears by itself). */
-    var routesProblem: String?
-        get() = save.problem
-        set(v) { save.problem = v }
+    val save: com.onpath.app.ui.routes.SaveSlice = com.onpath.app.ui.routes.SaveSlice(plan, routes, recent, toursStore, saveHost, viewModelScope, Dispatchers.IO)
 
     // --- shown track / follow ---
     /** `nav-session.json` + `follow.json`, shared with the service: the app's writes are one locked step each ([FollowStore]). */
@@ -1094,28 +850,28 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /**
      * Routes I ([com.onpath.app.ui.routes.RoutesSlice], rebuild phase 2 piece 13): My routes' list read again, a tour or route
      * opened on the map, the shown track, a track made a plan, Delete. The database behind [toursStore] (the one Save uses),
-     * the rest of the app behind [routesHost]; the names ([refreshTours], [openTour], [closeShown], [deleteTour] …) forward to it.
+     * the rest of the app behind [routesHost]; screens read it as `vm.<slice>` (piece 21).
      */
     private val routesHost = object : com.onpath.app.ui.routes.RoutesHost {
         override val touring: Boolean get() = recState.value != null
         override val recordingTourId: Long? get() = recState.value?.tourId
-        override val mode: AppMode get() = this@AppViewModel.mode
-        override fun enterMode(m: AppMode) = enter(m)
+        override val mode: AppMode get() = this@AppViewModel.tourSession.mode
+        override fun enterMode(m: AppMode) = tourSession.enter(m)
         override fun syncMarkSeen(t: Tour) = this@AppViewModel.syncMarkSeen(t)
         override fun rememberActivity(a: Activity) { prefs.activity = a }
         override fun rememberSac(level: Int) { prefs.sac = level }
         override fun loadedOnTheWay(on: Boolean) { tourEdits.loadedOnTheWay = on }
-        override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
-        override fun change(block: MutableList<GeoPoint>.() -> Unit) = this@AppViewModel.change(block)
-        override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.rememberPlaceName(p, name)
-        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = setSaved(name, id, points)
+        override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
+        override fun change(block: MutableList<GeoPoint>.() -> Unit) = this@AppViewModel.planEdit.change(block)
+        override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.searchFlow.rememberPlaceName(p, name)
+        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)
         override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)
-        override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncRoutingCheck(t, pts)
+        override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncedRouting.syncRoutingCheck(t, pts)
         override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: com.onpath.app.routing.StoredLine.Preview) {
             planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)
         }
         override fun withMaps(t: Tour) = multiDay.withMaps(t)
-        override fun kickThumbs() = this@AppViewModel.kickThumbs()
+        override fun kickThumbs() = this@AppViewModel.pictures.kickThumbs()
         override fun clearHighlight() { highlight = null }
         override fun followShownNow() = tourEdits.followShownNow()
         override fun ensureRoutingData(parts: List<String>) = mapData.routingData.ensure(parts)
@@ -1124,93 +880,37 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun syncForget(uuid: String) { sync.files.marks.remove(uuid) }
         override fun syncChanged(why: String) = sync.changed(why)
         override val route: PlannedRoute? get() = this@AppViewModel.route
-        override val routing: Boolean get() = this@AppViewModel.routing
-        override val followIsTrack: Boolean get() = this@AppViewModel.followIsTrack
-        override fun undoStep() = this@AppViewModel.undoStep()
-        override fun continueNavigation() = this@AppViewModel.continueNavigation()
+        override val routing: Boolean get() = this@AppViewModel.planRun.routing
+        override val followIsTrack: Boolean get() = this@AppViewModel.tourFollow.followIsTrack
+        override fun undoStep() = this@AppViewModel.planEdit.undoStep()
+        override fun continueNavigation() = this@AppViewModel.tourSession.continueNavigation()
         override suspend fun share(name: String, gpx: () -> com.onpath.app.gpx.GpxFile) = this@AppViewModel.share(name, gpx)
-        override fun stopName(p: GeoPoint) = this@AppViewModel.stopName(p)
-        override fun holdCameraForSharedPlace() = this@AppViewModel.holdCameraForSharedPlace()
+        override fun stopName(p: GeoPoint) = this@AppViewModel.searchFlow.stopName(p)
+        override fun holdCameraForSharedPlace() = this@AppViewModel.searchFlow.holdCameraForSharedPlace()
         override var followMe: Boolean
-            get() = this@AppViewModel.followMe
-            set(v) { this@AppViewModel.followMe = v }
+            get() = this@AppViewModel.map.followMe
+            set(v) { this@AppViewModel.map.followMe = v }
         override var freeLookAt: GeoPoint?
-            get() = this@AppViewModel.freeLookAt
-            set(v) { this@AppViewModel.freeLookAt = v }
+            get() = this@AppViewModel.map.freeLookAt
+            set(v) { this@AppViewModel.map.freeLookAt = v }
         override fun say(text: String, kind: NoticeKind, place: NoticePlace) = notices.say(text, kind, place)
     }
-    private val routesFlow = com.onpath.app.ui.routes.RoutesSlice(plan, routes, save, tour, planRoute, toursStore, mapCamera, routesHost,
+    val routesFlow: com.onpath.app.ui.routes.RoutesSlice = com.onpath.app.ui.routes.RoutesSlice(plan, routes, save, tour, planRoute, toursStore, mapCamera, routesHost,
         viewModelScope, Dispatchers.IO, Dispatchers.Main, elapsedMs = { android.os.SystemClock.elapsedRealtime() })
     /**
      * Routes II ([com.onpath.app.ui.routes.RoutesGoSlice], rebuild phase 2 piece 14): what a tap / "Los geht's" in My routes does,
      * a tour's followed plan, the review, plan links in and out. Same host and store as [routesFlow]; starting or changing a
      * tour's following stays here (`startNavigation`, `continueNavigation` …), reached through [routesHost].
      */
-    private val routesGo = com.onpath.app.ui.routes.RoutesGoSlice(plan, routes, tour, planRoute, save, toursStore, links, routesFlow, mapCamera,
+    val routesGo: com.onpath.app.ui.routes.RoutesGoSlice = com.onpath.app.ui.routes.RoutesGoSlice(plan, routes, tour, planRoute, save, toursStore, links, routesFlow, mapCamera,
         routesHost, viewModelScope, Dispatchers.IO)
-    /** The track shown on the map ([com.onpath.app.ui.routes.RoutesSlice.shown]); the view model sets it where it ends or follows one. */
-    var shown: ShownTrack?
-        get() = routesFlow.shown
-        private set(v) { routesFlow.shown = v }
-    val followName: String? get() = tourFollow.followName
-    /** Line currently followed (drawn on the map while browsing); after a re-route the new line (from the service). */
-    var followLine: List<GeoPoint>?
-        get() = tourFollow.followLine
-        private set(v) { tourFollow.followLine = v }
 
-    // --- position / camera: the slice is `map` ([MapViewSlice]); the names below forward to it ---
-    var followMe: Boolean
-        get() = map.followMe
-        set(v) { map.followMe = v }
-    /** Navigate free look ([MapViewSlice.freeLookAt]). */
-    private var freeLookAt: GeoPoint?
-        get() = map.freeLookAt
-        set(v) { map.freeLookAt = v }
-    /** Finger down on the map ([MapViewSlice.onMapTouch]). */
-    fun onMapTouch() = map.onMapTouch()
-    /** MapLibre stopped following ([MapViewSlice.onMapGesture]). */
-    fun onMapGesture() = map.onMapGesture()
-    /** Every fix: back to following after free look once the walker moved on. */
-    fun checkFreeLook(lat: Double, lon: Double) = map.checkFreeLook(lat, lon)
-    /** The start mode (Plan / Navigate) is decided (database checked for an unfinished tour). */
-    var startModeKnown: Boolean
-        get() = map.startModeKnown
-        private set(v) { map.startModeKnown = v }
-    /** The user moved or held the map since the app started (StartCamera never jumps after that). */
-    var userMovedMap: Boolean
-        get() = map.userMovedMap
-        set(v) { map.userMovedMap = v }
-    /** StartCamera ran (centred or gave up) – reset each time the app comes to the front ([onAppStart]). */
-    var startCameraDone: Boolean
-        get() = map.startCameraDone
-        set(v) { map.startCameraDone = v }
-    /** Bumped by [onAppStart]: restarts the start-camera check in MapScreen. */
-    val startCameraGen: Int get() = map.startCameraGen
-    /** App goes to the background (Activity.onStop). */
-    fun onAppStop() = map.onAppStop()
-    /** App comes to the front (Activity.onStart) – [MapViewSlice.onAppStart]. */
-    fun onAppStart() = map.onAppStart()
+    // --- position / camera: the slice is `map` ([MapViewSlice]); screens read it as `vm.<slice>` (piece 21) ---
 
     // --- dialogs / messages ---
-    /** Says [text] where it belongs: a line where the user acted, the red box for an error, else only the log ([NoticeBoard.say]). */
-    fun say(text: String, kind: NoticeKind, place: NoticePlace) = notices.say(text, kind, place)
     fun sayError(text: String, place: NoticePlace) = notices.sayError(text, place)
-    fun sayInfo(text: String, place: NoticePlace) = notices.sayInfo(text, place)
     /** Settings → Updates, or the update banner on the map. */
-    private fun updatePlace() = if (showSettings) NoticePlace.SETTINGS else NoticePlace.MAP
-
-    /** Work the user started that takes a moment: a spinner where it was started. */
-    var busy: Busy? get() = notices.busy; set(v) { notices.busy = v }
-    val unfinished: Tour? get() = tour.unfinished
-    /** The track of [unfinished], drawn on the map while its question shows (no service runs then). */
-    val unfinishedTrack: List<List<GeoPoint>> get() = tour.unfinishedTrack
-    /**
-     * The tour just saved by "Tour speichern": the slim box "Tour gespeichert" while it is set (owner 2026-11-06,
-     * onpath.private#35: the box is clearer than a line in the plan sheet – name, numbers, "In Meine Touren ›", OK).
-     */
-    val finishedTour: Tour? get() = tour.finishedTour
-    /** Moving time / breaks / planned vs. needed of [finishedTour] (null = not known). */
-    val finishedTimes: com.onpath.app.time.TourTimes? get() = tour.finishedTimes
+    private fun updatePlace() = if (settingsSlice.showSettings) NoticePlace.SETTINGS else NoticePlace.MAP
 
     /**
      * The box "Tour gespeichert" → "In Meine Touren ›": the box goes and My routes opens on Gemacht with the tour marked
@@ -1220,7 +920,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun openSavedTour() {
         val t = tour.closeFinished() ?: return
         Problems.trace("tour", "Saved box: In Meine Touren → My routes → Gemacht, tour ${t.id} marked")
-        refreshTours()
+        routesFlow.refreshTours()
         routes.showSaved(t.id)
     }
 
@@ -1228,34 +928,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun closeSavedTour() {
         tour.closeFinished()?.let { Problems.trace("tour", "Saved box: OK (tour ${it.id})") }
     }
-    /** The tours My routes shows ([com.onpath.app.ui.routes.RoutesState.tours]). */
-    val tours: List<Tour> get() = routes.tours
     var events = mutableStateListOf<UiEvent>()
         private set
 
     val recState: StateFlow<RecState?> = recording.state
-
-    // The four routing threads, the engine and the leg cache: [PlanRouteSlice] (rebuild phase 2 piece 8). Created with the
-    // slice (declared at `activity` above), closed in [onCleared] where they always were.
-    private val routingDispatcher get() = planRoute.threads.routing
-    private var engine: RoutingEngine?
-        get() = planRoute.engine
-        set(v) { planRoute.engine = v }
-    private fun routingEngine(): RoutingEngine = planRoute.routingEngine()
-    private val legCache get() = planRoute.legCache
-
-    /** The followed line was taken from this plan ("Start navigation"), so Clear removes it too. */
-    private var followFromPlan: Boolean
-        get() = tourFollow.followFromPlan
-        set(v) { tourFollow.followFromPlan = v }
-    /** All plan points were deleted during the tour, which ended the guidance; points back → followed again (PlanGuidance). */
-    /** The route guidance was ended in the tour (all points deleted / "Just record"): the status says "Recording only". */
-    var guidanceEndedByEmptyPlan: Boolean
-        get() = tourFollow.guidanceEndedByEmptyPlan
-        private set(v) { tourFollow.guidanceEndedByEmptyPlan = v }
-
-    /** The followed line is a shown track: "Continue navigation" keeps it instead of re-planning. */
-    private val followIsTrack: Boolean get() = tourFollow.followIsTrack
 
     // `by lazy` used from init (also from its IO jobs: refreshTours → withModelTime → planTimes) is declared here,
     // above that init – below it the delegate is still null (ViewModelInitOrderTest)
@@ -1275,41 +951,41 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             // Position when known and near what the user looks at, else the map centre.
             val usePos = loc != null && Geo.distance(loc.latitude, loc.longitude, cLat, cLon) < 30_000
             com.onpath.app.ui.search.SearchContext(if (usePos) loc!!.latitude else cLat, if (usePos) loc!!.longitude else cLon,
-                if (shown == null) route?.points else null)
+                if (routesFlow.shown == null) route?.points else null)
         }
     }
     /** Search + shared places: [SearchFlow], forwarded member by member below
      * (the UI and the E2E tests use these); declared above the init that calls recalc() (stopName). */
-    private val searchFlow by lazy {
+    val searchFlow: SearchFlow by lazy {
         SearchFlow(helperScope, { search }, { searchStore }, object : SearchFlow.Host {
-            override val mode: AppMode get() = this@AppViewModel.mode
-            override val startModeKnown: Boolean get() = this@AppViewModel.startModeKnown
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
+            override val startModeKnown: Boolean get() = this@AppViewModel.map.startModeKnown
             override val canEditMap: Boolean get() = this@AppViewModel.canEditMap
-            override val mapOverlayOpen: Boolean get() = this@AppViewModel.mapOverlayOpen
-            override val routesOpen: Boolean get() = this@AppViewModel.routesOpen
-            override val showSettings: Boolean get() = this@AppViewModel.showSettings
-            override val loadModalOpen: Boolean get() = this@AppViewModel.loadModalOpen
-            override val waypoints: List<GeoPoint> get() = this@AppViewModel.waypoints
+            override val mapOverlayOpen: Boolean get() = this@AppViewModel.placeMenus.mapOverlayOpen
+            override val routesOpen: Boolean get() = this@AppViewModel.routes.open
+            override val showSettings: Boolean get() = this@AppViewModel.settingsSlice.showSettings
+            override val loadModalOpen: Boolean get() = this@AppViewModel.mapData.loadModalOpen
+            override val waypoints: List<GeoPoint> get() = this@AppViewModel.plan.points
             override fun historyPoints(): Set<GeoPoint> = plan.historyPoints()
-            override fun enter(m: AppMode) = this@AppViewModel.enter(m)
-            override fun closeMapOverlays(why: String) = this@AppViewModel.closeMapOverlays(why)
+            override fun enter(m: AppMode) = this@AppViewModel.tourSession.enter(m)
+            override fun closeMapOverlays(why: String) = this@AppViewModel.placeMenus.closeMapOverlays(why)
             override fun backToMap() {
-                this@AppViewModel.routesOpen = false; this@AppViewModel.showSettings = false
-                offlineResult = null; timeDetails = null; routeDetailsOpen = false
+                this@AppViewModel.routes.open = false; this@AppViewModel.settingsSlice.showSettings = false
+                mapData.offlineResult = null; planRoute.timeDetails = null; planEdit.routeDetailsOpen = false
             }
-            override fun closeShownTrack() { if (shown != null) closeShown() }
+            override fun closeShownTrack() { if (routesFlow.shown != null) routesFlow.closeShown() }
             override fun flyTo(at: GeoPoint, zoom: Double) {
-                followMe = false; freeLookAt = null
+                map.followMe = false; map.freeLookAt = null
                 // an intended fly to a found place: the start camera must not jump back to a late first fix afterwards
                 // (field 2026-11-07, S10: the far destination left the screen once its map had loaded)
-                startCameraDone = true; userMovedMap = true
+                map.startCameraDone = true; map.userMovedMap = true
                 events += UiEvent.CenterOn(at, zoom)
             }
             override fun loadMapsFor(at: GeoPoint, name: String) = mapData.placeSearched(at, name)
-            override fun stopFollowing() { followMe = false }
-            override fun holdStartCamera() { startCameraDone = true; userMovedMap = true }
-            override fun openPoiMenu(poi: com.onpath.app.poi.Poi) = this@AppViewModel.openPoiMenu(poi)
-            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)
+            override fun stopFollowing() { map.followMe = false }
+            override fun holdStartCamera() { map.startCameraDone = true; map.userMovedMap = true }
+            override fun openPoiMenu(poi: com.onpath.app.poi.Poi) = this@AppViewModel.placeMenus.openPoiMenu(poi)
+            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)
         })
     }
 
@@ -1333,11 +1009,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * ONE serial thread [planCopyDispatcher], in the order the plan changed; a failure is loud in the problem log and tried
      * again), the service's other activity taken over. Declared with the other tour slices; the `init` below starts its tour-id
      * collector (what lay between that collector's old place and this one are declarations only: lazies and plain properties).
-     * The names below ([followPlanned], [clearFollow], [followShown] …) forward to it.
+     *
      */
     @OptIn(kotlinx.coroutines.ExperimentalCoroutinesApi::class)
     private val planCopyDispatcher = Dispatchers.IO.limitedParallelism(1)
-    private val tourFollow = com.onpath.app.ui.tour.TourFollow(
+    val tourFollow: com.onpath.app.ui.tour.TourFollow = com.onpath.app.ui.tour.TourFollow(
         plan = plan, planRoute = planRoute, recording = recording, files = followStore,
         prefs = object : com.onpath.app.ui.tour.FollowPrefs {
             override var followIsTrack: Boolean
@@ -1347,13 +1023,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         rows = tourRows,
         host = object : com.onpath.app.ui.tour.TourFollowHost {
             override val route: PlannedRoute? get() = this@AppViewModel.route
-            override val shown: ShownTrack? get() = this@AppViewModel.shown
-            override fun placeName(p: GeoPoint): String? = this@AppViewModel.stopName(p)
+            override val shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown
+            override fun placeName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)
             override fun stopsAsSaved(pts: List<GeoPoint>) = this@AppViewModel.savedStops(pts)
             override fun savedTourUuid(id: Long): String? = db.getTour(id)?.uuid?.takeIf { it.isNotEmpty() }
             override fun invalidateSplits() = tourEdits.splitRequests.invalidate()
-            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
+            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
             override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
         },
         scope = viewModelScope, planCopyDispatcher = planCopyDispatcher,
@@ -1364,21 +1040,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * one does, Start / Continue, the seven answers to the service's questions, and the start-up work with the collectors of the
      * service's state (`startFailed`, `state`). Declared right after the follow slice (the edits slice's host reaches it through
      * `resumeNavigation`, and `ViewModelInitOrderTest` follows that edge from the small `init`); the big `init` starts it
-     * ([com.onpath.app.ui.tour.TourSession.start]) at the place that code always stood. The names below forward to it.
+     * ([com.onpath.app.ui.tour.TourSession.start]) at the place that code always stood.
      */
-    private val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(
+    val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(
         plan = plan, planEdit = planEdit, planRun = planRun, planRoute = planRoute, save = save, map = map, tour = tour,
         follow = tourFollow, recording = recording, rows = tourRows, tours = toursStore, followHistory = followHistory,
         host = object : com.onpath.app.ui.tour.TourSessionHost {
-            override val errorCard: String? get() = this@AppViewModel.errorCard
+            override val errorCard: String? get() = this@AppViewModel.notices.errorCard
             override val route: PlannedRoute? get() = this@AppViewModel.route
             override var shown: ShownTrack?
-                get() = this@AppViewModel.shown
-                set(v) { this@AppViewModel.shown = v }
-            override val headingUp: Boolean get() = this@AppViewModel.headingUp
+                get() = this@AppViewModel.routesFlow.shown
+                set(v) { this@AppViewModel.routesFlow.shown = v }
+            override val headingUp: Boolean get() = this@AppViewModel.settingsSlice.settings.navHeadingUp
             override val hasGpsFix: Boolean get() = tracker.location.value != null
             override fun clearHints() { tapHoldHint = false; offlineInfo = false }
-            override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu("mode change to Navigate"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure("mode change to Navigate"); highlight = null }
+            override fun closeMenusForNavigate() { placeMenus.planPoi = null; placeMenus.poiMenu = null; placeMenus.closePointMenu("mode change to Navigate"); placeAdd.firstPointMenu = null; placeAdd.holdAddMenu = null; placeAdd.cancelHoldMeasure("mode change to Navigate"); highlight = null }
             override fun secureTourCorridor(line: List<GeoPoint>, last: GeoPoint?, activity: Activity) =
                 mapData.secureTourCorridor(line, last, activity)
         },
@@ -1392,21 +1068,21 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * that starts it (the follow slice's host reaches `splitRequests` through it, and `ViewModelInitOrderTest` follows that edge).
      * The hosts of the plan edit, the place menus and My routes answer from it; `recalc` calls its `followCancel` / `followEditedPlan`.
      */
-    private val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(
+    val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(
         plan = plan, planEdit = planEdit, planRoute = planRoute, follow = tourFollow, recording = recording,
         position = com.onpath.app.ui.Position { myPosition() }, followHistory = followHistory,
         host = object : com.onpath.app.ui.tour.TourEditsHost {
             override val route: PlannedRoute? get() = this@AppViewModel.route
             override fun replan() = recalc()
             override fun mapsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) = cellsForNewPoints(before, after)
-            override fun noPositionNote(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) = noPositionForEdit(note, text)
-            override fun placeName(p: GeoPoint): String? = this@AppViewModel.stopName(p)
+            override fun noPositionNote(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) = map.noPositionForEdit(note, text)
+            override fun placeName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)
-            override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
-            override fun closeShownTrack() = closeShown()
+            override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
+            override fun closeShownTrack() = routesFlow.closeShown()
             override fun resumeNavigation() = tourSession.continueNavigation()
         },
-        say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,
+        say = notices, scope = viewModelScope, routingDispatcher = planRoute.threads.routing,
     )
 
     /**
@@ -1446,13 +1122,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override var planResult: com.onpath.app.routing.PlanResult?
                 get() = this@AppViewModel.planResult
                 set(v) { this@AppViewModel.planResult = v }
-            override val mode: AppMode get() = this@AppViewModel.mode
-            override fun nameOfStop(p: GeoPoint): String? = this@AppViewModel.stopName(p)
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
+            override fun nameOfStop(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override val multiDayOverview: Boolean get() = multiDay.overview
             override fun menuFollowsSnap(moves: Map<GeoPoint, GeoPoint>) = placeMenus.followSnapped(moves)
             override fun checkRoutingDataFor(line: List<GeoPoint>) = this@AppViewModel.checkRoutingData(line)
         },
-        scope = viewModelScope, routingDispatcher = routingDispatcher, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,
+        scope = viewModelScope, routingDispatcher = planRoute.threads.routing, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,
         elapsedMs = { android.os.SystemClock.elapsedRealtime() },
     )
 
@@ -1465,32 +1141,32 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * The tour's end ([com.onpath.app.ui.tour.TourEndSlice] in `:state`, rebuild phase 2 piece 17): the `finished` collector,
      * the end sheet's questions and writes, the short recording, Edit rides, the interrupted tour (Continue · Save · Delete).
      * Declared above the big `init` that starts its collector ([com.onpath.app.ui.tour.TourEndSlice.start], where the collector
-     * always was); the names below the big `init` forward to it. The follow state, the mode and the plan stay here behind its host.
+     * always was); the screens read it as `vm.<slice>`. The follow state, the mode and the plan stay here behind its host.
      */
-    private val tourEnd = com.onpath.app.ui.tour.TourEndSlice(
+    val tourEnd: com.onpath.app.ui.tour.TourEndSlice = com.onpath.app.ui.tour.TourEndSlice(
         tour = tour, routes = routes, recording = recording, tours = toursStore, rows = tourRows,
         host = object : com.onpath.app.ui.tour.TourEndHost {
-            override val activity: Activity get() = this@AppViewModel.activity
-            override fun activityOrNull(name: String?): Activity? = this@AppViewModel.activityOrNull(name)
-            override fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = this@AppViewModel.tourTimes(t)
+            override val activity: Activity get() = this@AppViewModel.planRoute.activity
+            override fun activityOrNull(name: String?): Activity? = this@AppViewModel.planRoute.activityOrNull(name)
+            override fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = this@AppViewModel.planRoute.tourTimes(t)
             override fun nameRecordedTour(t: Tour) = this@AppViewModel.nameRecordedTour(t)
-            override fun refreshTours() = this@AppViewModel.refreshTours()
+            override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
             override fun clearFollow() = tourFollow.clearFollow()
-            override fun enterMode(m: AppMode) = enter(m)
+            override fun enterMode(m: AppMode) = tourSession.enter(m)
             override fun endGuidanceFlag() { tourFollow.guidanceEndedByEmptyPlan = false }
-            override fun kickThumbs() = this@AppViewModel.kickThumbs()
+            override fun kickThumbs() = this@AppViewModel.pictures.kickThumbs()
             override fun demoEndedWithTour() { if (com.onpath.app.recording.DemoLocation.endWithTour()) demo.navSimLine = null }
             override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
             override fun clearInterruptedNote() = this@AppViewModel.clearInterruptedNote()
-            override val planPoints: Int get() = waypoints.size
-            override fun clearPlan() = this@AppViewModel.clearPlan()
+            override val planPoints: Int get() = plan.points.size
+            override fun clearPlan() = this@AppViewModel.planEdit.clearPlan()
             override var routeBackAsk: Boolean
-                get() = this@AppViewModel.routeBackAsk
-                set(v) { this@AppViewModel.routeBackAsk = v }
+                get() = this@AppViewModel.planEdit.routeBackAsk
+                set(v) { this@AppViewModel.planEdit.routeBackAsk = v }
             override var planSize: PlanSize
-                get() = this@AppViewModel.planSize
-                set(v) { this@AppViewModel.planSize = v }
-            override val shownTourId: Long? get() = shown?.tourId
+                get() = this@AppViewModel.planEdit.planSize
+                set(v) { this@AppViewModel.planEdit.planSize = v }
+            override val shownTourId: Long? get() = routesFlow.shown?.tourId
             override fun reopenShownTour(t: Tour) = this@AppViewModel.openTour(t)
         },
         say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,
@@ -1499,9 +1175,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     init {
         recalc()
         // every plan change is traced, so the diagnostics show what the user did
-        Problems.trace("plan", "Plan restored at app start: ${waypoints.size} points" +
-            (followName?.let { ", following \"$it\" (${followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
-        refreshTours() // "Load route" is enabled only when something is saved
+        Problems.trace("plan", "Plan restored at app start: ${plan.points.size} points" +
+            (tourFollow.followName?.let { ", following \"$it\" (${tourFollow.followLine?.size ?: 0} line points)" } ?: ", nothing followed"))
+        routesFlow.refreshTours() // "Load route" is enabled only when something is saved
         // the start-up work of the tour session (its class comment names it), at the place that code always stood: after recalc()
         tourSession.start()
         // the tour's end (the `finished` collector) – TourEndSlice, launched at the place the collector always was
@@ -1516,17 +1192,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val rec = recState.value
         val loc = tracker.location.value
         org.json.JSONObject()
-            .put("mode", mode.name).put("activity", activity.name).put("sac", sac)
-            .put("waypoints", waypoints.size).put("routeMeters", route?.distanceM)
+            .put("mode", tourSession.mode.name).put("activity", planRoute.activity.name).put("sac", planRoute.sac)
+            .put("waypoints", plan.points.size).put("routeMeters", route?.distanceM)
             .put("routeLegsStraight", route?.legs?.count { it.straight })
             .put("routeError", routeError)
-            .put("followName", followName).put("followPoints", followLine?.size)
+            .put("followName", tourFollow.followName).put("followPoints", tourFollow.followLine?.size)
             .put("recording", rec?.let { org.json.JSONObject().put("tourId", it.tourId).put("paused", it.paused)
                 .put("distanceM", it.distanceM).put("elapsedS", it.elapsedS).put("gpsLost", it.gpsLost)
                 .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
                 .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
             .put("gps", tracker.status().name)
-            .put("phone", com.onpath.app.setup.PhoneCheck.describe(phone))
+            .put("phone", com.onpath.app.setup.PhoneCheck.describe(setup.phone))
             .put("voice", prefs.voiceDetail)
             .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
                 .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
@@ -1574,24 +1250,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     /** App updates (F-OFF-06): [AppUpdates] – created on first use (nothing in the start-up reaches it). */
-    private val updates by lazy {
+    val updates: AppUpdates by lazy {
         AppUpdates(getApplication(), helperScope, prefs, recording = { recState.value != null },
-            say = { text, kind -> say(text, kind, updatePlace()) })
+            say = { text, kind -> notices.say(text, kind, updatePlace()) })
     }
-    val update: UpdateState get() = updates.update
-    /** Release the user dismissed on the home screen (no nagging; still visible in Settings). */
-    var updateDismissed: String?
-        get() = updates.updateDismissed
-        set(v) { updates.updateDismissed = v }
-    /** Hidden when Google Play installed the app – Play handles updates then. */
-    val updatesEnabled: Boolean get() = updates.updatesEnabled
-    /** A tour is recording and the user tapped Install: ask first (installing closes OnPath, recording stops). */
-    var askUpdateDuringTour: Boolean
-        get() = updates.askUpdateDuringTour
-        set(v) { updates.askUpdateDuringTour = v }
-    fun checkForUpdates(manual: Boolean) = updates.check(manual)
-    /** Downloads the update and opens the Android installer (the user confirms there). */
-    fun installUpdate(duringTourOk: Boolean = false) = updates.install(duringTourOk)
 
     /** Progress text while importing / downloading map data, null when idle. */
     var dataBusy by mutableStateOf<String?>(null)
@@ -1603,9 +1265,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** Reload the map style as after a map update (emulator test of the core features, CorePlanE2ETest). */
     @androidx.annotation.VisibleForTesting
     fun reloadMapStyleForTest() { styleVersion++ }
-
-    /** E2E: the legs routed in this process are forgotten, as after an app restart – only the phone's leg store keeps them. */
-    fun forgetLegsInMemoryForTest() = legCache.clear()
 
     /** Settings → Diagnostics → Developer tools → "Reload map style" (after tools/dev/push_style.sh). */
     fun reloadMapStyle() {
@@ -1621,9 +1280,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /**
      * Import, export and backup ([ImportExport] in `:app`; the decisions are [ImportRules] in `:state`): GPX and map-data
-     * import, "Export all" / Export GPX, "Restore from folder", the first-start restore offer. The names below forward to it.
+     * import, "Export all" / Export GPX, "Restore from folder", the first-start restore offer.
      */
-    private val importExport by lazy {
+    val importExport: ImportExport by lazy {
         ImportExport(app, viewModelScope, Dispatchers.IO, db, object : ImportExportHost {
             override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState
             override val dataFiles: DataFiles get() = this@AppViewModel.dataFiles
@@ -1631,8 +1290,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override val cells: com.onpath.app.cells.MapCells get() = this@AppViewModel.cells
             override val sync: com.onpath.app.plansync.PlanSync get() = this@AppViewModel.sync
             override val events: MutableList<UiEvent> get() = this@AppViewModel.events
-            override val activity: Activity get() = this@AppViewModel.activity
-            override val showSettings: Boolean get() = this@AppViewModel.showSettings
+            override val activity: Activity get() = this@AppViewModel.planRoute.activity
+            override val showSettings: Boolean get() = this@AppViewModel.settingsSlice.showSettings
             override var dataBusy: String?
                 get() = this@AppViewModel.dataBusy
                 set(v) { this@AppViewModel.dataBusy = v }
@@ -1649,48 +1308,33 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 get() = this@AppViewModel.styleVersion
                 set(v) { this@AppViewModel.styleVersion = v }
             override var busy: Busy?
-                get() = this@AppViewModel.busy
-                set(v) { this@AppViewModel.busy = v }
+                get() = this@AppViewModel.notices.busy
+                set(v) { this@AppViewModel.notices.busy = v }
             override var sac: Int
-                get() = this@AppViewModel.sac
-                set(v) { this@AppViewModel.sac = v }
+                get() = this@AppViewModel.planRoute.sac
+                set(v) { this@AppViewModel.planRoute.sac = v }
             override var routesOpen: Boolean
-                get() = this@AppViewModel.routesOpen
-                set(v) { this@AppViewModel.routesOpen = v }
+                get() = this@AppViewModel.routes.open
+                set(v) { this@AppViewModel.routes.open = v }
             override var savedPlaces: com.onpath.app.search.SavedPlaces?
                 get() = keptPlaces.savedPlaces
                 set(v) { keptPlaces.savedPlaces = v }
             override fun recheckData() = this@AppViewModel.recheckData()
             override fun packageNote() = this@AppViewModel.packageNote()
-            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)
-            override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.sayInfo(text, place)
-            override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.sayError(text, place)
-            override fun refreshTours() = this@AppViewModel.refreshTours()
-            override fun planFactors(a: Activity) = this@AppViewModel.planFactors(a)
+            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)
+            override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.notices.sayInfo(text, place)
+            override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.notices.sayError(text, place)
+            override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()
+            override fun planFactors(a: Activity) = this@AppViewModel.planRoute.planFactors(a)
             override fun defaultName(prefix: String) = this@AppViewModel.defaultName(prefix)
-            override fun selectActivity(a: Activity, userChange: Boolean) = this@AppViewModel.selectActivity(a, userChange)
-            override fun showTrack(s: ShownTrack) = this@AppViewModel.showTrack(s)
+            override fun selectActivity(a: Activity, userChange: Boolean) = this@AppViewModel.planRoute.selectActivity(a, userChange)
+            override fun showTrack(s: ShownTrack) = this@AppViewModel.routesFlow.showTrack(s)
         })
     }
 
-    /** Imports the onpath-data zip or a single data/style file picked by the user. */
-    fun importData(uri: Uri) = importExport.importData(uri)
-
     // ---------------- activity: [PlanRouteSlice] (rebuild phase 2 piece 8) ----------------
 
-    /** The activity chosen in the picker: the route is planned again (see [PlanRouteSlice.selectActivity]). */
-    fun selectActivity(a: Activity, userChange: Boolean = true) = planRoute.selectActivity(a, userChange)
-    /** A stored activity name; null for none or an unknown / old one (expected: the caller falls back). */
-    private fun activityOrNull(name: String?): Activity? = planRoute.activityOrNull(name)
-    /** T level from the activity picker (Hike): remembered, the route is planned again at once. */
-    fun selectSac(level: Int) = planRoute.selectSac(level)
-
     // ---------------- planning ----------------
-
-    fun updateSettings(s: AppSettings) = settingsSlice.updateSettings(s)
-
-    /** One undoable change of the planned points ([PlanEditSlice.change]). */
-    private fun change(block: MutableList<GeoPoint>.() -> Unit) = planEdit.change(block)
 
     /** A tour event for the spoken directions (the service says it when they are on). */
     private fun sayEvent(what: String) {
@@ -1702,165 +1346,50 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }
             ?: recState.value?.track?.lastOrNull()?.lastOrNull()
 
-    /** The plan points passed in the running tour ([TourEdits.tourPassed]). */
-    fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> = tourEdits.tourPassed(plan)
-
-    /** "Route back to the start?" is asked ([PlanEditSlice.routeBackAsk]); the tour's answer below sets it too. */
-    var routeBackAsk: Boolean
-        get() = planEdit.routeBackAsk
-        private set(v) { planEdit.routeBackAsk = v }
-
-    /** The tour's answer to "Route back to the start?" ([TourEdits.answerRouteBack]). */
-    fun answerRouteBack(yes: Boolean) = tourEdits.answerRouteBack(yes)
-
-    /** Adds a held point where it most likely belongs ([PlaceAddSlice.addPoint]). */
-    fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) = placeAdd.addPoint(p, lineSnapM, onPoi)
-
-    /** The add entries of a held place's menu ([PlaceMenusSlice.placeMenu]). */
-    fun placeMenu(poi: com.onpath.app.poi.Poi): PlaceAddMenu.Menu = placeMenus.placeMenu(poi)
-
-    /** Place menu → „Einfügen“ ([PlaceAddSlice.addPoiAsStop]). */
-    fun addPoiAsStop(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeAdd.addPoiAsStop(poi, lineSnapM)
-
-    /** Place menu → „Neues Ziel“ ([PlaceAddSlice.poiAsNewDestination]). */
-    fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = placeAdd.poiAsNewDestination(poi)
-
-    /** The open „Einfügen“ / „Neues Ziel“ menu of a hold on the empty map; null = none ([PlaceAddSlice.holdAddMenu]). */
-    var holdAddMenu: PlaceAddSlice.HoldAdd?
-        get() = placeAdd.holdAddMenu
-        set(v) { placeAdd.holdAddMenu = v }
-
-    /** A hold beside the plan being measured on the paths ([PlaceAddSlice.holdMeasuring]): the spot, a ring turns on it; null = none. */
-    var holdMeasuring: GeoPoint?
-        get() = placeAdd.holdMeasuring
-        private set(v) { placeAdd.holdMeasuring = v }
-
-    /** A hold on the empty map in Plan ([PlaceAddSlice.holdOnMap], core feature C1). */
-    fun holdOnMap(p: GeoPoint, lineSnapM: Double) = placeAdd.holdOnMap(p, lineSnapM)
-
-    /** Stops a running measure of a hold ([PlaceAddSlice.cancelHoldMeasure]). */
-    private fun cancelHoldMeasure(why: String) = placeAdd.cancelHoldMeasure(why)
-
     /**
      * The routed length [a] → [b] for [act] / [level] in metres (on the hold's thread): from [legCache], else one leg by the
      * [Planner] (as a plan run routes it – then in the cache for the run after the decision). Throws when the leg has
      * no route (a straight leg: no routing data, no way near the spot, an island) or [cancel] fired.
      */
     private fun routedLength(a: GeoPoint, b: GeoPoint, act: Activity, level: Int, cancel: com.onpath.app.routing.RouteCancel): Double {
-        legCache.lookup(a, b, act, level)?.let { return it.leg.distanceM }
-        val r = Planner(routingEngine(), cancel, legs = legCache).plan(listOf(a, b), act, level)
+        planRoute.legCache.lookup(a, b, act, level)?.let { return it.leg.distanceM }
+        val r = Planner(planRoute.routingEngine(), cancel, legs = planRoute.legCache).plan(listOf(a, b), act, level)
         if (r.legs.any { it.straight }) throw com.onpath.app.routing.RoutingException(r.error ?: "no route for the leg")
         return r.distanceM
     }
 
-    /** The hold menu's „Einfügen“ ([PlaceAddSlice.holdAsStop]). */
-    fun holdAsStop() = placeAdd.holdAsStop()
-
-    /** The hold menu's „Neues Ziel“ ([PlaceAddSlice.holdAsNewDestination]). */
-    fun holdAsNewDestination() = placeAdd.holdAsNewDestination()
-
-    /** The candidate marker's dashed preview line ([PlaceAddSlice.candidateJoin]). */
-    fun candidateJoin(): Pair<GeoPoint, GeoPoint>? = placeAdd.candidateJoin()
-
-    /** Plan point [index] deleted (map menu, search card): a round trip stays closed, as in the Points list. */
-    fun removePoint(index: Int) = planEdit.removePoint(index)
-
-    /** Search result shown in the place card ([PlaceMenusSlice.planPoi]). */
-    var planPoi: com.onpath.app.poi.Poi?
-        get() = placeMenus.planPoi
-        set(v) { placeMenus.planPoi = v }
     /** Eye button held: route lines and markers are hidden (position and recorded track stay). */
     var routePeek by mutableStateOf(false)
 
     // ---------------- map hold menus (MapGestures, ui/MapOverlays) ----------------
-    /** POI held on the map in Plan: its menu "Add to route · Open in Google Maps" ([PlaceMenusSlice.poiMenu]). */
-    var poiMenu: com.onpath.app.poi.Poi?
-        get() = placeMenus.poiMenu
-        set(v) { placeMenus.poiMenu = v }
 
-    /** First hold on an empty plan: the held spot, its menu "Start here · Go here (from my location)" is open ([PlaceAddSlice.firstPointMenu]). */
-    var firstPointMenu: GeoPoint?
-        get() = placeAdd.firstPointMenu
-        set(v) { placeAdd.firstPointMenu = v }
-
-    val mapOverlayOpen: Boolean get() = placeMenus.mapOverlayOpen
-
-    /** Closes every map menu ([PlaceMenusSlice.closeMapOverlays]). */
-    fun closeMapOverlays(why: String = "closed") = placeMenus.closeMapOverlays(why)
-
-    /** Closes the point menu (if open) ([PlaceMenusSlice.closePointMenu]). */
-    fun closePointMenu(why: String) = placeMenus.closePointMenu(why)
-
-    fun openFirstPointMenu(p: GeoPoint) = placeAdd.openFirstPointMenu(p)
-
-    /** First-point menu → "Start here" ([PlaceAddSlice.startHere]). */
-    fun startHere(p: GeoPoint) = placeAdd.startHere(p)
-
-    /** First-point menu → "Go here" ([PlaceAddSlice.routeFromMyLocation]). */
-    fun routeFromMyLocation(p: GeoPoint) = placeAdd.routeFromMyLocation(p)
-    /** Opens a held place's menu ([PlaceMenusSlice.openPoiMenu]). */
-    fun openPoiMenu(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeMenus.openPoiMenu(poi, lineSnapM)
-
-    /** The pin's name chip tapped ([PlaceMenusSlice.openPinMenu]). */
-    fun openPinMenu() = placeMenus.openPinMenu()
-
-    /** The found place's pin goes ([PlaceMenusSlice.removePin]). */
-    fun removePin(why: String) = placeMenus.removePin(why)
-
-    /** POI menu on an empty plan → "Go here" ([PlaceAddSlice.poiFromMyLocation]). */
-    fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) = placeAdd.poiFromMyLocation(poi)
-    /** Opens the menu of route point [index] ([PlaceMenusSlice.openPointMenu]). */
-    fun openPointMenu(index: Int, distDp: Int? = null, via: String = "hold") = placeMenus.openPointMenu(index, distDp, via)
-
-    /** What the POI menu's add action says ([PlaceMenusSlice.poiAddLabel]). */
-    fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String = placeMenus.poiAddLabel(poi, lineSnapM)
-
-    fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeAdd.addPoiPoint(poi, lineSnapM)
-
-    /** Point menu → "Start here" ([PlaceMenusSlice.makeStartFromMenu]). */
-    fun makeStartFromMenu() = placeMenus.makeStartFromMenu()
-
-    fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(waypoints)
+    fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(plan.points)
     /** Index of the round trip's ① (stops on the way before it), null without a loop ([PlanEdits.loopStart]). */
-    fun loopStart(): Int? = PlanEdits.loopStart(waypoints)
+    fun loopStart(): Int? = PlanEdits.loopStart(plan.points)
 
     // ---------------- Points section of the full plan sheet (PointsSection, routing/PlanPoints) ----------------
 
     /** Rows of the Points section ([PlanEditSlice.planPointRows]). */
     fun planPointRows(): List<com.onpath.app.routing.PlanPointRow> = planEdit.planPointRows(route)
-    /** Names the route points from the offline place index ([PlanEditSlice.refreshPointNames]). */
-    fun refreshPointNames() = planEdit.refreshPointNames()
-    /** Route details open ([PlanEditSlice.routeDetailsOpen]). */
-    var routeDetailsOpen: Boolean
-        get() = planEdit.routeDetailsOpen
-        set(v) { planEdit.routeDetailsOpen = v }
-    private val nearbyNames: Map<GeoPoint, String> get() = planEdit.nearbyNames
-    /** Points list: row dropped at another row ([PlanEditSlice.movePointInList]). */
-    fun movePointInList(from: Int, to: Int) = planEdit.movePointInList(from, to)
-    /** Points list → ✕ ([PlanEditSlice.deletePointFromList]). */
-    fun deletePointFromList(index: Int) = planEdit.deletePointFromList(index)
 
     /**
      * Points list → row tapped: the map shows that point (following stopped first – CLAUDE.md map camera rule) with a
      * short highlight; the sheet goes to half size so list and map are both visible.
      */
     fun showPointFromList(index: Int) {
-        val p = waypoints.getOrNull(index) ?: return
-        followMe = false
-        planSize = PlanSize.COMPACT
+        val p = plan.points.getOrNull(index) ?: return
+        map.followMe = false
+        planEdit.planSize = PlanSize.COMPACT
         highlight = p
         events += UiEvent.PanTo(p)
         viewModelScope.launchSafe("app", "showPointFromList") { delay(3_000); if (highlight == p) highlight = null }
     }
 
-    /** Point menu → "Delete" ([PlanEditSlice.deletePointFromMenu]). */
-    fun deletePointFromMenu() = planEdit.deletePointFromMenu()
-
     /** Point menu → "Open in Google Maps" (closes the menu; the caller opens the link). */
-    fun googleFromMenu(): GeoPoint? = placeMenus.menuAction("Open in Google Maps")?.let { waypoints[it] }
+    fun googleFromMenu(): GeoPoint? = placeMenus.menuAction("Open in Google Maps")?.let { plan.points[it] }
     // ---------------- end map hold menus ----------------
 
-    fun isStop(poi: com.onpath.app.poi.Poi): Boolean = waypoints.any { sameSpot(it, poi.lat, poi.lon) }
+    fun isStop(poi: com.onpath.app.poi.Poi): Boolean = plan.points.any { sameSpot(it, poi.lat, poi.lon) }
 
     /** [p] is at [lat] / [lon] (a POI, place or search mark that became a route point keeps its exact coordinate). */
     private fun sameSpot(p: GeoPoint, lat: Double, lon: Double) =
@@ -1875,48 +1404,19 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     var searchOpen: Boolean
         get() = searchFlow.searchOpen
         private set(v) { searchFlow.searchOpen = v }
-    /** The picked search result (address, kind) behind planPoi; null for a POI tapped on the map. */
-    private var searchPlace: com.onpath.app.search.Place?
-        get() = searchFlow.searchPlace
-        set(v) { searchFlow.searchPlace = v }
-    /** Search result / shared place marked on the map (the candidate marker). */
-    var searchMark: com.onpath.app.search.Place?
-        get() = searchFlow.searchMark
-        set(v) { searchFlow.searchMark = v }
-    fun openSearch() = searchFlow.openSearch()
-    fun closeSearch() = searchFlow.closeSearch()
-    fun pickSearchResult(place: com.onpath.app.search.Place) = searchFlow.pickSearchResult(place)
-    /** [poi] is the found place's pin (its menu then ends with "Nadel entfernen"). */
-    fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = searchFlow.isCandidate(poi)
 
     // --- kept places: Zuhause + favourites (owner 2026-11-15, „Orte merken“; SavedPlaces) ---
 
-    fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isFavouritePlace(poi)
-    fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isHomePlace(poi)
-    /** „☆ Merken“ / „★ Gemerkt“ in a held place's menu ([KeptPlacesSlice.toggleFavouritePlace]). */
-    fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleFavouritePlace(poi)
-    /** „⌂ Als Zuhause festlegen“ / „⌂ Zuhause entfernen“ ([KeptPlacesSlice.toggleHomePlace]). */
-    fun toggleHomePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleHomePlace(poi)
-    private fun clearSearchMarkAt(lat: Double, lon: Double) = searchFlow.clearSearchMarkAt(lat, lon)
-
     /** The found place at ([lat], [lon]) goes into the plan: its pin goes; returns that place (null = no pin there). */
     private fun takePin(lat: Double, lon: Double): com.onpath.app.search.Place? {
-        val m = searchMark?.takeIf { sameSpot(GeoPoint(it.lat, it.lon), lat, lon) }
-        clearSearchMarkAt(lat, lon)
+        val m = searchFlow.searchMark?.takeIf { sameSpot(GeoPoint(it.lat, it.lon), lat, lon) }
+        searchFlow.clearSearchMarkAt(lat, lon)
         if (m != null) Problems.trace("plan", "Pin taken into the plan: \"${m.title()}\"")
         return m
     }
 
-    /** Place shown in the card: the search result, or the tapped POI ([PlaceMenusSlice.cardPlace]). */
-    val cardPlace: com.onpath.app.search.Place? get() = placeMenus.cardPlace
-
-    fun closePlaceCard() = placeMenus.closePlaceCard()
-
     private fun routeIndexOf(place: com.onpath.app.search.Place) =
-        waypoints.indexOfFirst { sameSpot(it, place.lat, place.lon) }.takeIf { it >= 0 }
-
-    /** Card content incl. what "Add to route" will do ([PlaceMenusSlice.placeCardUi]). */
-    fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi = placeMenus.placeCardUi(place)
+        plan.points.indexOfFirst { sameSpot(it, place.lat, place.lon) }.takeIf { it >= 0 }
 
     /** Adds the place as a pinned stop (passed exactly), named after the place ([PlaceAddSlice.addPlace]). */
     fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) = placeAdd.addPlace(place, when (role) {
@@ -1925,96 +1425,50 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         PlaceRole.DESTINATION -> AddRole.DESTINATION
     })
 
-    fun removePlace(place: com.onpath.app.search.Place) { routeIndexOf(place)?.let { removePoint(it) }; closePlaceCard() }
+    fun removePlace(place: com.onpath.app.search.Place) { routeIndexOf(place)?.let { planEdit.removePoint(it) }; placeMenus.closePlaceCard() }
 
-    /** Name of a route point added from a place, or null (UI: "Leiter Alm" instead of "Point 3"). */
-    fun stopName(p: GeoPoint): String? = searchFlow.stopName(p)
-    private fun rememberPlaceName(p: GeoPoint, name: String) = searchFlow.rememberPlaceName(p, name)
     // ---------------- end search ----------------
 
     // ---------------- shared places (another app → OnPath): [SearchFlow] ----------------
-    val sharedLookup: Boolean get() = searchFlow.sharedLookup
-    fun receiveSharedPlace(shared: com.onpath.app.search.SharedPlace) = searchFlow.receiveSharedPlace(shared)
-    val sharedUnsure: String? get() = searchFlow.sharedUnsure
-    fun searchSharedUnsure() = searchFlow.searchSharedUnsure()
-    val sharedMenuWaiting: Boolean get() = searchFlow.sharedMenuWaiting
-    val cameraIdleTick: Int get() = searchFlow.cameraIdleTick
-    fun cameraIdle() = searchFlow.cameraIdle()
-    fun openSharedMenuIfArrived(cameraLat: Double?, cameraLon: Double?, metersPerPx: Double, arrivedPx: Double) =
-        searchFlow.openSharedMenuIfArrived(cameraLat, cameraLon, metersPerPx, arrivedPx)
-    private fun holdCameraForSharedPlace() = searchFlow.holdCameraForSharedPlace()
-
-    /** "⇅ Umkehren" changes the plan ([PlanEditSlice.canReverse]). */
-    fun canReverse(): Boolean = planEdit.canReverse()
-    fun reverseRoute() = planEdit.reverseRoute()
-    /** "↻ Rundtour" can be switched ([PlanEditSlice.canRoundTrip]). */
-    fun canRoundTrip(): Boolean = planEdit.canRoundTrip()
-    fun roundTrip() = planEdit.roundTrip()
-    fun undoStep() = planEdit.undoStep()
-    fun redoStep() = planEdit.redoStep()
-    /** ✕ / ☰ Neu planen: the plan leaves the map at once, no question ([PlanEditSlice.clearPlan]). */
-    fun requestClear() = planEdit.clearPlan()
-    fun clearPlan() = planEdit.clearPlan()
 
     fun answerLongRoute(plan: Boolean) {
-        val effects = routeEvent(RouteRun.Event.LongAnswer(plan, waypoints.toList()))
+        val effects = planRun.routeEvent(RouteRun.Event.LongAnswer(plan, this.plan.points.toList()))
         // Plan anyway: not asked again for these points, now the new point's maps load, the run again
-        if (plan) { perform(effects); return }
+        if (plan) { planRun.perform(effects); return }
         // points kept unrouted: "Plan anyway" later loads them (an undo replaces it)
-        if (longRouteDeferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
+        if (planRun.longRouteDeferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
         // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
         // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
         // with nothing running
-        perform(effects) // [cancelRun]
+        planRun.perform(effects) // [cancelRun]
         // the map goes back to what was planned before the far point (owner 2026-11-13): the point / the whole plan, during
         // a tour my position; the found place's pin and its chip stay (cancelRun)
-        val target = LongRouteCancelCamera.after(waypoints.toList(), route?.points, touring = recState.value != null,
+        val target = LongRouteCancelCamera.after(this.plan.points.toList(), route?.points, touring = recState.value != null,
             hasPosition = tracker.location.value != null)
         Problems.trace("map", "Very long plan cancelled: camera → ${target::class.simpleName}" +
             ((target as? LongRouteCancelCamera.Target.Fit)?.let { " (${it.points.size} points)" } ?: ""))
         when (target) {
-            LongRouteCancelCamera.Target.Me -> locate()
-            is LongRouteCancelCamera.Target.Fit -> { followMe = false; freeLookAt = null; events += UiEvent.Fit(target.points) }
+            LongRouteCancelCamera.Target.Me -> map.locate()
+            is LongRouteCancelCamera.Target.Fit -> { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(target.points) }
             LongRouteCancelCamera.Target.Stay -> Unit
         }
     }
 
     /** The activity and T level from before the cancelled change; the route is planned for them again (no undo step). */
     private fun restoreActivity(c: PlanStatus.Cause.ActivityChange) {
-        activity = c.activity; prefs.activity = c.activity
-        sac = c.sac; prefs.sac = c.sac
-        routeChangedNotice = null; activityBefore = null; routeEvent(RouteRun.Event.CompareActivity(false))
-        runCauses.other()
+        planRoute.activity = c.activity; prefs.activity = c.activity
+        planRoute.sac = c.sac; prefs.sac = c.sac
+        planRoute.routeChangedNotice = null; planRoute.activityBefore = null; planRun.routeEvent(RouteRun.Event.CompareActivity(false))
+        planRoute.runCauses.other()
         recalc()
     }
-
-    // The route run's state, its effects and its entry points: [PlanRunSlice] (rebuild phase 2 piece 9); the run's coroutine is [recalc].
-    /** The answer to [slowPlanAsk]: wait one more period (the run again, longer) or stop like Cancel. */
-    fun answerSlowPlan(answer: com.onpath.app.routing.SlowPlan.Answer) = planRun.answerSlowPlan(answer)
-    /** "Plan anyway" / "Calculate" of the not-routed notice. */
-    fun planAnyway() = planRun.planAnyway()
-    private fun routeEvent(e: RouteRun.Event): List<RouteRun.Effect> = planRun.routeEvent(e)
-    private fun perform(effects: List<RouteRun.Effect>) = planRun.perform(effects)
-    /** Cancel while a route is calculated (owner): [PlanRunSlice.cancelRouting]. */
-    fun cancelRouting() = planRun.cancelRouting()
 
     /** The route run's coroutine and what takes its result: [com.onpath.app.ui.plan.PlanRecalcSlice] (rebuild phase 2 piece 9b). */
     private fun recalc(): Unit = planRecalc.recalc()
 
     // ---------------- time estimate (docs/plan-time-estimate.md): [PlanRouteSlice] (rebuild phase 2 piece 8) ----------------
 
-    /** The pace setting for planning with [a] (learning per tour only: nothing from earlier tours). */
-    fun planFactors(a: Activity = activity): com.onpath.app.time.Factors = planRoute.planFactors(a)
-    /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
-    var timeDetails: TimeDetailsUi?
-        get() = planRoute.timeDetails
-        set(v) { planRoute.timeDetails = v }
-    fun openTimeDetails(technical: Boolean = false) = planRoute.openTimeDetails(technical)
     private fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute = planRoute.withModelTime(r, a, f)
-    private fun difficultyOf(r: PlannedRoute?, a: Activity): String? = planRoute.difficultyOf(r, a)
-    private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = planRoute.tourTimes(t)
-    private fun retime() = planRoute.retime()
-    private fun storePlanTimes(id: Long, r: PlannedRoute?, a: Activity) = planRoute.storePlanTimes(id, r, a)
     private fun withModelTime(t: Tour): Tour = planRoute.withModelTime(t)
 
     /**
@@ -2025,50 +1479,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
         if (gaps.isEmpty()) return null
         PlanGaps.reachText(gaps, planReach)?.let { return it }
-        val pts = waypoints.toList()
-        return PlanGaps.text(gaps, activity) { i -> pts.getOrNull(i)?.let { stopName(it) ?: nearbyNames[it] } }
+        val pts = plan.points.toList()
+        return PlanGaps.text(gaps, planRoute.activity) { i -> pts.getOrNull(i)?.let { searchFlow.stopName(it) ?: planEdit.nearbyNames[it] } }
     }
 
     // ---------------- route warnings: [PlanRouteSlice] (rebuild phase 2 piece 8) ----------------
 
-    private fun planChanged() = planRoute.planChanged()
-    /** Spots worth knowing on the current route ([RouteWarnings.detect]); none while it is being calculated. */
-    val routeSpots: List<RouteSpot> get() = planRoute.routeSpots
-    /** The amber line of the plan sheet: spots on the way only (pushing, steps, above T, steep). */
-    fun warningLineText(): String? = planRoute.warningLineText()
-    /** How many hints the amber line sums up: the ⚠ count of the rolled-up sheet. */
-    fun warningCount(): Int = planRoute.warningCount()
-    /** Grey INFO line "New route for … – check it" (activity / T level change during a tour or from elsewhere, newer map data). */
-    fun routeChangedLineText(): String? = planRoute.routeChangedLineText()
-    /** Tap on the "New route for …" line: it goes, the map shows the whole route. */
-    fun tapRouteChangedLine() = planRoute.tapRouteChangedLine()
-    /** Tap on the amber line: the notice goes; the list of spots opens (none: the map shows the whole route). */
-    fun tapWarningLine() = planRoute.tapWarningLine()
-    fun closeSpots() = planRoute.closeSpots()
-
     /** What the map column's greyed buttons need to know ([MapControlsEnabled]). */
     internal fun controlsIn(layer: AppMode, pointsOpen: Boolean) = MapControlsEnabled.In(layer, pointsOpen,
-        planLine = map.hasPlanLine(), shownLine = map.hasShownLine(), shownOpen = shown != null, followLine = map.hasFollowLine(),
-        canUndo = canUndo, canRedo = canRedo)
-
-    /** "Show whole route" (map button, owner 2026-10-31) – [MapViewSlice.showWholeRoute]. */
-    fun showWholeRoute() = map.showWholeRoute()
-
-    /** Locate while I am off the map in Plan ([LocateDistance], owner 2026-11-07) – [MapViewSlice.showPlanAndMe]. */
-    fun showPlanAndMe() = map.showPlanAndMe()
-
-    /** The whole plan in front at a [PlanCamera.Moment] (owner 2026-11-06) – [MapViewSlice.showPlanWhole]. */
-    fun showPlanWhole(moment: PlanCamera.Moment) = map.showPlanWhole(moment)
-
+        planLine = map.hasPlanLine(), shownLine = map.hasShownLine(), shownOpen = routesFlow.shown != null, followLine = map.hasFollowLine(),
+        canUndo = plan.canUndo, canRedo = plan.canRedo)
 
     /** A spot in the list tapped: the list closes, following stops, the map shows that piece (drawn amber). */
     fun showSpot(s: RouteSpot) {
         val pts = route?.points ?: return
-        showPiece(RouteWarnings.showPoints(pts, s), RouteWarnings.centerFor(pts, s))
+        map.showPiece(RouteWarnings.showPoints(pts, s), RouteWarnings.centerFor(pts, s))
     }
-
-    /** One section on the map (a spot of the list, the way to a point not reached): drawn amber, the map goes there. */
-    private fun showPiece(piece: List<GeoPoint>, center: Pair<GeoPoint, Double>?) = map.showPiece(piece, center)
 
     /**
      * Tap on the red line of a point the route does not reach – like a steep section (owner 2026-11-07): the section
@@ -2078,11 +1504,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     fun showPlanGap() {
         val g = planGaps.firstOrNull() ?: return
         val way = planReach?.takeIf { it.index == g.index && !g.skipped }?.way
-        if (way != null) showPiece(way + g.point, null)
-        else showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))
+        if (way != null) map.showPiece(way + g.point, null)
+        else map.showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))
     }
 
-    // ---------------- Save (C18) – the slice is `save` ([SaveSlice]); the names below forward to it ----------------
+    // ---------------- Save (C18) – the slice is `save` ([SaveSlice]); screens read it as `vm.<slice>` (piece 21) ----------------
 
     /**
      * Save – the sheet's green Save, ☰ "Save route", sheet ⋯ → Save route – always opens the name dialog (owner
@@ -2090,41 +1516,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun requestSave() = save.request(null)
 
-    /** My routes → ⋮ → Save as copy (planned routes; owner 2026-10-31): the same dialog with "<name> (2)" ([SaveSlice.requestCopy]). */
-    fun requestCopyRoute(t: Tour) = save.requestCopy(t)
-
-    /** Save's dialog → Cancel / Back / a tap outside: nothing is saved, "Save first" does not load. */
-    fun cancelSave() = save.cancel()
-
-    /** Save's dialog → Save with [input] ([SaveSlice.confirm]). */
-    fun confirmSave(input: String) = save.confirm(input)
-
-    /** Saves the plan as a new planned route named [name] ([SaveSlice.saveRoute]). */
-    fun saveRoute(name: String, then: (() -> Unit)? = null) = save.saveRoute(name, then)
-
-    /** Manage routes → Rename. The plan's "Saved as …" and a shown track follow the new name ([SaveSlice.rename]). */
-    fun renameTour(t: Tour, input: String) = save.rename(t, input)
-
-    /** My routes → ☆ on a row (owner 2026-11-13, favourites C; [SaveSlice.setFavourite]). */
-    fun setFavourite(t: Tour, favourite: Boolean) = save.setFavourite(t, favourite)
-
-    /** My routes → Zuletzt → Speichern: the plan becomes saved (backup, browser sync); it shows "✓ Gerade gespeichert". */
-    fun saveDraft(t: Tour) = recent.saveDraft(t)
-
-    /** My routes → Zuletzt → Löschen: to the recycle bin at once, no question (owner 2026-11-06). */
-    fun deleteDraft(t: Tour) = recent.deleteDraft(t)
-
     /**
      * The plan on the map for My routes (owner 2026-11-06 23:00: "unter Zuletzt ‚gerade in Bearbeitung', dann weiß ich, dass
      * immer gespeichert wird"): [LivePlanRows] makes it the one Zuletzt row ("In Bearbeitung"). Null = empty map.
      */
     val livePlan: LivePlan?
         get() {
-            if (waypoints.isEmpty()) return null
+            if (plan.points.isEmpty()) return null
             val r = route
-            return LivePlan(name = savedName, points = waypoints.size, distanceM = r?.distanceM ?: 0.0,
-                ascentM = r?.ascentM ?: 0.0, durationS = r?.durationS ?: 0.0, linkedId = savedId,
-                key = waypoints.map { it.lat to it.lon }, unsaved = planUnsaved)
+            return LivePlan(name = plan.savedName, points = plan.points.size, distanceM = r?.distanceM ?: 0.0,
+                ascentM = r?.ascentM ?: 0.0, durationS = r?.durationS ?: 0.0, linkedId = plan.savedId,
+                key = plan.points.map { it.lat to it.lon }, unsaved = plan.unsaved)
         }
 
     /**
@@ -2132,7 +1534,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * a recorded track, an imported GPX), else its via points / GPX waypoints. Empty when nothing can be read (reported).
      */
     suspend fun tourLine(t: Tour): List<List<GeoPoint>> {
-        val live = route?.points ?: waypoints.toList() // read on the main thread
+        val live = route?.points ?: plan.points.toList() // read on the main thread
         return withContext(Dispatchers.IO) { routes.line(t) { live } }
     }
 
@@ -2140,63 +1542,30 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                               paddingPx: Int, under: List<GeoPoint> = emptyList()): com.onpath.app.map.RouteSnapshot.Shot? =
         pictures.routeSnapshot(segments, tint, widthPx, heightPx, paddingPx, under)
 
-    fun kickThumbs(firstUuid: String? = null) = pictures.kickThumbs(firstUuid)
-
     /** My routes → the plan "In Bearbeitung" tapped: back to it on the map – nothing is loaded again. */
     fun backToLivePlan() {
-        Problems.trace("routes", "My routes → the plan in progress (${waypoints.size} points, linked ${savedId}): back to the map, nothing reloaded")
-        routesOpen = false
+        Problems.trace("routes", "My routes → the plan in progress (${plan.points.size} points, linked ${plan.savedId}): back to the map, nothing reloaded")
+        routes.open = false
     }
 
     /** My routes → the plan "In Bearbeitung" → Speichern: the same as ☰ Plan speichern (the name dialog). */
     fun saveLivePlan() {
-        Problems.trace("routes", "My routes → the plan in progress → Speichern (${waypoints.size} points)")
+        Problems.trace("routes", "My routes → the plan in progress → Speichern (${plan.points.size} points)")
         requestSave()
     }
 
-    /** The tour under Zuletzt while the map is empty ([com.onpath.app.ui.routes.RoutesState.recentId]). */
-    val zuletztId: Long get() = routes.recentId
-
-    /** The plan just moved from Zuletzt to saved: "✓ Gerade gespeichert" on it until My routes closes. */
-    var justSavedId: Long
-        get() = routes.justSavedId
-        set(v) { routes.justSavedId = v }
-
     /** The plan's stops as saved: with their place names (backup / restore keeps them). */
-    private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { stopName(pts[it]) }
+    private fun savedStops(pts: List<GeoPoint>) = com.onpath.app.gpx.PlanGpx.stops(pts) { searchFlow.stopName(pts[it]) }
 
-    private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)
-
-    // Routes II ([RoutesGoSlice], rebuild phase 2 piece 14): go from My routes, the followed plan, the review; the names forward to it.
-    /** Navigate mode or a tour recording: no loading into the plan, no Clear. */
-    fun navigating(recording: Boolean): Boolean = routesGo.navigating(recording)
-    fun menuState(recording: Boolean): RouteMenuState = routesGo.menuState(recording)
-    fun openRoutes(): Unit = routesGo.openRoutes()
-    fun requestOpen(t: Tour, why: String = "My routes tapped"): Unit = routesGo.requestOpen(t, why)
-    fun undoNewPlan(): Unit = routesGo.undoNewPlan()
-    fun goFromRoutes(t: Tour, lineOf: List<List<TrackPoint>>? = null, start: () -> Unit): Unit = routesGo.goFromRoutes(t, lineOf, start)
-    fun planFollowedPlan(t: Tour): Unit = routesGo.planFollowedPlan(t)
-    fun goFollowedPlan(t: Tour, start: () -> Unit): Unit = routesGo.goFollowedPlan(t, start)
     suspend fun followedPlanLine(t: Tour): List<GeoPoint> = routesGo.followedPlanLine(t)
     suspend fun tourReview(t: Tour): com.onpath.app.time.TourReview? = routesGo.tourReview(t)
-    fun exportFollowedPlan(t: Tour): Unit = routesGo.exportFollowedPlan(t)
-    fun planFromTour(t: Tour): Unit = routesGo.planFromTour(t)
-
-    /**
-     * Something else takes the plan's place (a track or a plan followed during a tour, "Als Plan
-     * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([SaveSlice.keepAsDraft]).
-     */
-    private fun unlessUnsaved(what: String, go: () -> Unit): Unit = routesFlow.unlessUnsaved(what, go)
 
     /**
      * A shown track followed during a tour (the track sheet's "Tour nachfahren", F1's "Folgen" – flow map M1, owner rule
      * "what Plan shows = what Navigate follows"): the plan leaves the map (one Undo step, like ✕ Neu planen), the tour
      * follows the track, Navigate. An unsaved plan asks first ([unlessUnsaved]).
      */
-    fun followShownDuringTour() = unlessUnsaved("Follow the shown track during the tour") { tourEdits.followShownNow() }
-
-    /** The end question closed without ending the tour. */
-    fun dismissEndAsk() = tour.dismissEndAsk()
+    fun followShownDuringTour() = routesFlow.unlessUnsaved("Follow the shown track during the tour") { tourEdits.followShownNow() }
 
     /**
      * Proposed name of a new route: a plan from a link keeps its title while its points are unchanged, else
@@ -2206,8 +1575,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (pts.size < 2) return null
         links.title(pts)?.let { return it }
         val line = r?.points?.takeIf { it.size >= 2 } ?: pts
-        val startName = stopName(pts.first()); val endName = stopName(pts.last())
-        val via = pts.subList(1, pts.size - 1).mapNotNull { stopName(it) }
+        val startName = searchFlow.stopName(pts.first()); val endName = searchFlow.stopName(pts.last())
+        val via = pts.subList(1, pts.size - 1).mapNotNull { searchFlow.stopName(it) }
         val index = try { search.offlineIndex() } catch (e: kotlinx.coroutines.CancellationException) {
             throw e
         } catch (e: Exception) { Problems.warn("search", "Place index unavailable; route name from stop names only", e); null }
@@ -2250,7 +1619,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             if (!ok) return@launchSafe
             Backups.tourChanged(getApplication(), t.id) // the file follows the new name
             tour.finishedTour?.let { if (it.id == t.id) tour.finishedTour = it.copy(name = name) }
-            refreshTours()
+            routesFlow.refreshTours()
         }
     }
 
@@ -2260,70 +1629,22 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     // ---------------- modes: Plan <-> Navigate ----------------
 
-    /** Switches mode; the recording goes on either way ([com.onpath.app.ui.tour.TourSession.enter]). */
-    private fun enter(m: AppMode) = tourSession.enter(m)
-
-    /**
-     * Plan's primary action (location permission is checked by the caller). Follows the shown track, else the planned
-     * route, else nothing (free recording – the button then reads "Start recording · …", [PlanStart]), and starts recording.
-     */
-    /**
-     * [recordOnly]: ☰ → "Nur aufzeichnen" (owner 2026-11-06, flow map H1): a plain recording whatever the plan holds –
-     * nothing is followed, the plan stays as it is ([com.onpath.app.ui.tour.TourSession.startNavigation]).
-     */
-    fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) = tourSession.startNavigation(force, recordOnly)
-
-    /** A plan with legs the router could not find (drawn dashed): "Navigate anyway?" is open. */
-    var straightAsk: Boolean
-        get() = tourSession.straightAsk
-        set(v) { tourSession.straightAsk = v }
-
-    /** The user wants to navigate the plan although parts of it are straight lines. */
-    fun straightConfirmed() = tourSession.straightConfirmed()
-
-    /** Back to Navigate while a tour runs, no new recording ([com.onpath.app.ui.tour.TourSession.continueNavigation]). */
-    fun continueNavigation(force: Boolean = false) = tourSession.continueNavigation(force)
-
-    /** A tour is guided along the plan (not a followed GPX track): Navigate shows the plan's points (owner 2026-11-01). */
-    val planGuides: Boolean get() = tourFollow.planGuides
-
     /**
      * Look of the followed / shown line on the map (see MapController.setTrackLook): a shown track its own colour, else
      * route blue – in Navigate the followed line stays blue while a track is shown ([gpxLine]).
      */
     fun trackLook(): com.onpath.app.map.MapController.TrackLook =
-        gpxLine(mode == AppMode.NAVIGATE, shown?.segments, followLine).look
-
-    /** Off-route question in Navigate: take the new route the service found. */
-    fun takeNewRoute(questionId: Int) = tourSession.takeNewRoute(questionId)
-
-    /** "Off route – re-plan?" in Navigate – Yes: take the new route via the stop in question. */
-    fun takeViaRoute(questionId: Int) = tourSession.takeViaRoute(questionId)
-
-    /** Off-route question in Navigate: keep following the original route. */
-    fun keepOriginalRoute(questionId: Int) = tourSession.keepOriginalRoute(questionId)
-
-    /** "Route starts 31 km away" (never on the route yet) – Guide me: a route from here via the start and all points. */
-    fun leadToStart(questionId: Int) = tourSession.leadToStart(questionId)
-
-    /** "Route starts 31 km away" – Just record: quiet until the route is reached. */
-    fun justRecord(questionId: Int) = tourSession.justRecord(questionId)
-
-    /** "Du stehst mitten auf der Route" – Hier einsteigen: start here, the points before count as passed (owner 2026-11-03). */
-    fun joinHere(questionId: Int) = tourSession.joinHere(questionId)
-
-    /** OK on "No way to the route found – recording continues". */
-    fun leadFailedOk(questionId: Int) = tourSession.leadFailedOk(questionId)
+        gpxLine(tourSession.mode == AppMode.NAVIGATE, routesFlow.shown?.segments, tourFollow.followLine).look
 
     // ---------------- activity check while navigating (owner: a wrong activity is a disaster) ----------------
 
     /**
      * The activity check ([com.onpath.app.ui.tour.ActivityCheckSlice] in `:state`, rebuild phase 2 piece 16b): the sheet, the
      * row routing on its own thread, what a found switch does. The service gets its one command through [recording] (the
-     * proposal file first, [followStore]); the names below forward to it. The follow state lives in
+     * proposal file first, [followStore]); the screens read it as `vm.<slice>`. The follow state lives in
      * [tourFollow] (piece 18a).
      */
-    private val activityCheckSlice = com.onpath.app.ui.tour.ActivityCheckSlice(
+    val activityCheckSlice: com.onpath.app.ui.tour.ActivityCheckSlice = com.onpath.app.ui.tour.ActivityCheckSlice(
         planRoute = planRoute, recording = recording, follow = followStore,
         rows = tourRows,
         fixes = object : com.onpath.app.ui.tour.Fixes {
@@ -2332,73 +1653,17 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override suspend fun first(): GeoPoint = point(tracker.location.filterNotNull().first())
         },
         host = object : com.onpath.app.ui.tour.ActivityCheckHost {
-            override val mode: AppMode get() = this@AppViewModel.mode
-            override fun enterNavigate() = enter(AppMode.NAVIGATE)
-            override val followFromPlan: Boolean get() = this@AppViewModel.followFromPlan
-            override val planPoints: Int get() = waypoints.size
-            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }
+            override val mode: AppMode get() = this@AppViewModel.tourSession.mode
+            override fun enterNavigate() = tourSession.enter(AppMode.NAVIGATE)
+            override val followFromPlan: Boolean get() = this@AppViewModel.tourFollow.followFromPlan
+            override val planPoints: Int get() = plan.points.size
+            override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
             override fun rememberSac(level: Int) { prefs.sac = level }
         },
         scope = viewModelScope, io = Dispatchers.IO, cpu = Dispatchers.Default,
     )
 
-    /** The check-and-switch sheet (Navigate → tap the activity icon); null = closed. Stays until a choice is made. */
-    val activityCheck: ActivityCheckUi? get() = activityCheckSlice.activityCheck
-
-    /** Opens the sheet with every other activity, nothing routed yet ([com.onpath.app.ui.tour.ActivityCheckSlice.openActivityCheck]). */
-    fun openActivityCheck() = activityCheckSlice.openActivityCheck()
-
-    /** The check sheet's T1–T5 chips under Hike ([com.onpath.app.ui.tour.ActivityCheckSlice.chooseHikeLevel]). */
-    fun chooseHikeLevel(level: Int) = activityCheckSlice.chooseHikeLevel(level)
-
-    /** A row was chosen: free recording → switch at once; navigating → routed, then switched. */
-    fun chooseActivity(a: Activity) = activityCheckSlice.chooseActivity(a)
-
-    /** "Keep <activity>" (or Back): close the sheet, stop the checks. Nothing changes. */
-    fun closeActivityCheck() = activityCheckSlice.closeActivityCheck()
-
-    /** The slide switch in Navigate. Recording continues. */
-    fun switchToPlan() = tourSession.switchToPlan()
-
-    // ---- the tour's end: TourEndSlice (rebuild phase 2 piece 17); the names forward to it ----
-
-    /** The short recording's box ("Kurze Aufzeichnung (12 m)" – Rückgängig · OK) while set. */
-    val shortBinnedTour: Tour? get() = tour.shortBinned
-
-    /** The short box → Rückgängig ([com.onpath.app.ui.tour.TourEndSlice.undoShortRecording]). */
-    fun undoShortRecording() = tourEnd.undoShortRecording()
-
-    /** The short box → OK: it stays in the recycle bin (30 days). */
-    fun closeShortRecording() = tourEnd.closeShortRecording()
-
-    /** The arrival box → "Weiter aufzeichnen": the box goes, the recording goes on. */
-    fun keepRecordingAfterArrival() = tourEnd.keepRecordingAfterArrival()
-
-    /** "End tour" in Plan (after confirmation) or "Tour beenden" on arrival: stop and save. */
-    fun endTour() = tourEnd.endTour()
-
-    /** What "End tour" shows now (null = nothing): see [askEndTour]. */
-    var endAsk: EndAsk?
-        get() = tour.endAsk
-        set(v) { tour.endAsk = v }
-
-    /** "End tour" tapped: the ride check, then the summary or the short question ([com.onpath.app.ui.tour.TourEndSlice.askEndTour]). */
-    fun askEndTour(saveIfNoRides: Boolean = false) = tourEnd.askEndTour(saveIfNoRides)
-
-    /** Save from the ride summary: the choice is stored on the tour first, the recording service applies it at the end. */
-    fun endTourWith(a: EndAsk.Rides, choice: com.onpath.app.rides.RideChoice) = tourEnd.endTourWith(a, choice)
-
-    /** My routes → ⋮ → Edit rides: the same summary for a saved tour (no split, no delete there). */
-    var editRides: Pair<Tour, com.onpath.app.rides.RideView.Summary>?
-        get() = tourEnd.editRides
-        set(v) { tourEnd.editRides = v }
-
-    fun openEditRides(t: Tour) = tourEnd.openEditRides(t)
-
-    fun applyEditRides(t: Tour, choice: com.onpath.app.rides.RideChoice) = tourEnd.applyEditRides(t, choice)
-
-    /** End sheet / arrival → Löschen: the TOUR goes straight to the recycle bin, no summary. */
-    fun endTourAndDelete() = tourEnd.endTourAndDelete()
+    // ---- the tour's end: TourEndSlice (rebuild phase 2 piece 17); screens read it as `vm.<slice>` ----
 
     // ---------------- follow / record ----------------
 
@@ -2407,38 +1672,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * plan belongs to one ([savedName]), else "Route <date>".
      */
 
-
-    fun clearFollow() = tourFollow.clearFollow()
-
-    fun startRecording() = tourSession.startRecording()
-
     /** Any answer in "Unfinished tour" ends the "Tour interrupted" notification (Meran pictures bug 2). */
     private fun clearInterruptedNote() = com.onpath.app.recording.TourInterruptedReceiver.cancelNote(getApplication())
 
-    fun continueRecording(t: Tour) = tourEnd.continueRecording(t)
-
-    /** "Unfinished tour" → Save with a bus / car / lift found: the ride summary for it (null = none). */
-    val unfinishedRides: Pair<Tour, com.onpath.app.rides.RideView.Summary>? get() = tour.unfinishedRides
-
-    /** "Unfinished tour" → Save: like End tour ([com.onpath.app.ui.tour.TourEndSlice.askSaveUnfinished]). */
-    fun askSaveUnfinished(t: Tour) = tourEnd.askSaveUnfinished(t)
-
-    /** Ride summary of the unfinished tour → Cancel: back to its question (Continue · Delete · Save). */
-    fun backToUnfinished() = tour.backToUnfinished()
-
-    /** Saves the interrupted tour ([com.onpath.app.ui.tour.TourEndSlice.saveUnfinished]). */
-    fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) = tourEnd.saveUnfinished(t, choice)
-
-    /** "Unfinished tour" → Delete (asked again in the dialog): saved as done, then into the recycle bin (30 days). */
-    fun deleteUnfinished(t: Tour) = tourEnd.deleteUnfinished(t)
-
-    fun pauseRecording(pause: Boolean) = tourEnd.pauseRecording(pause)
-
-    fun stopRecording() = tourEnd.stopRecording()
-
     // ---------------- tours ----------------
-
-    fun refreshTours(): Unit = routesFlow.refreshTours()
 
     /** My routes → a tour or route opened on the map ([RoutesSlice.openTour]). */
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW,
@@ -2452,14 +1689,14 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * back in the app, after a change here, when the network is back, about every 15 s while the app stays open on
      * My routes / Browser sync ([syncDriver]), on pull to refresh in My routes → Planned ([pullSync]) and right away when one of them opens – never during a recording (after the tour).
      */
-    val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planFactors(a) },
-        recording = { recState.value != null }, onReport = ::syncReport)
+    val sync = com.onpath.app.plansync.PlanSync(app, com.onpath.app.plansync.DbTourStore(app, db) { a -> planRoute.planFactors(a) },
+        recording = { recState.value != null }, onReport = { r -> syncDriver.onReport(r) })
 
     /**
      * When the sync runs and what follows a pass ([com.onpath.app.ui.sync.SyncDriver], cleanup piece 4): the triggers
-     * while the app is open, pull to refresh, the "New / Changed" marks, a pass's report. The names below forward to it.
+     * while the app is open, pull to refresh, the "New / Changed" marks, a pass's report.
      */
-    private val syncDriver = com.onpath.app.ui.sync.SyncDriver(
+    val syncDriver: com.onpath.app.ui.sync.SyncDriver = com.onpath.app.ui.sync.SyncDriver(
         engine = object : com.onpath.app.ui.sync.SyncEngine {
             override val state get() = sync.state
             override val marks get() = sync.files.marks.state
@@ -2473,201 +1710,77 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         },
         host = object : com.onpath.app.ui.sync.SyncHost {
             override val screen = androidx.compose.runtime.snapshotFlow {
-                appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routesOpen, showSettings, settingsPage == SettingsPage.SYNC)
+                map.appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage == SettingsPage.SYNC)
             }
             override val shown = androidx.compose.runtime.snapshotFlow {
-                com.onpath.app.plansync.SyncPoll.shown(appOnScreen, routesOpen, routesTab == RoutesTab.PLANNED, showSettings,
-                    settingsPage == SettingsPage.SYNC)
+                com.onpath.app.plansync.SyncPoll.shown(map.appOnScreen, routes.open, routes.tab == RoutesTab.PLANNED, settingsSlice.showSettings,
+                    settingsSlice.settingsPage == SettingsPage.SYNC)
             }
-            override fun ended() { sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS) }
+            override fun ended() { notices.sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS) }
             override fun placesChanged() { keptPlaces.savedPlaces = null }
-            override fun toursChanged(toRoute: List<Long>) { refreshTours(); followSyncedSavedPlan(); routeSyncedPlans(toRoute) }
+            override fun toursChanged(toRoute: List<Long>) { routesFlow.refreshTours(); syncedRouting.followSyncedSavedPlan(); syncedRouting.routeSyncedPlans(toRoute) }
             override fun newerData(tiles: List<String>) { refreshRoutingTiles(tiles, "a plan from the browser was routed with newer data") }
         },
         recording = recState.map { it != null }, isRecording = { recState.value != null },
         scope = viewModelScope, io = Dispatchers.IO, clock = { android.os.SystemClock.elapsedRealtime() })
 
-    /** Routes from the browser not opened yet (My routes → Planned: a "New" / "Changed" tag – RouteTag); read once at start. */
-    val syncMarks: kotlinx.coroutines.flow.StateFlow<Map<String, com.onpath.app.plansync.SyncMark>> get() = syncDriver.marks
-
     /** Opened (load as plan / open the track): the route's "New from / Changed in the browser" mark goes. */
     private fun syncMarkSeen(t: Tour) = syncDriver.markSeen(t.uuid)
-
-    /** Pull to refresh in My routes → Planned runs: the spinner shows until its pass reports. */
-    val syncPulling: Boolean get() = syncDriver.pulling
-
-    /** My routes → Planned pulled down (owner 2026-11-13, only offered when paired): a pass now, the spinner until it ends. */
-    fun pullSync() = syncDriver.pull()
 
     init { syncDriver.start() }
 
     /** Pairing with a browser: [PairingFlow] (the pairing half of the sync), forwarded member by member. */
-    private val pairing by lazy {
+    val pairing: PairingFlow by lazy {
         PairingFlow(sync, prefs, helperScope, object : PairingFlow.Screens {
             override var showSettings: Boolean
-                get() = this@AppViewModel.showSettings
-                set(v) { this@AppViewModel.showSettings = v }
+                get() = this@AppViewModel.settingsSlice.showSettings
+                set(v) { this@AppViewModel.settingsSlice.showSettings = v }
             override var settingsPage: SettingsPage?
-                get() = this@AppViewModel.settingsPage
-                set(v) { this@AppViewModel.settingsPage = v }
+                get() = this@AppViewModel.settingsSlice.settingsPage
+                set(v) { this@AppViewModel.settingsSlice.settingsPage = v }
             override var routesOpen: Boolean
-                get() = this@AppViewModel.routesOpen
-                set(v) { this@AppViewModel.routesOpen = v }
+                get() = this@AppViewModel.routes.open
+                set(v) { this@AppViewModel.routes.open = v }
             override var syncNote: SyncNote?
                 get() = this@AppViewModel.syncNote
                 set(v) { this@AppViewModel.syncNote = v }
-            override fun openSettings(page: SettingsPage?) = this@AppViewModel.openSettings(page)
-            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)
+            override fun openSettings(page: SettingsPage?) = this@AppViewModel.settingsSlice.openSettings(page)
+            override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)
         })
     }
-    /** A pairing link was opened: the secret, until Pair / Cancel in Settings → Browser sync; null = no question. */
-    val pairAsk: ByteArray? get() = pairing.pairAsk
-    fun syncNoteOk() = pairing.syncNoteOk()
-    /** ☰ → Pair with browser, the first time: the step line + Open camera as a question box on the Plan map ([PairEntry]). */
-    val pairHint: Boolean get() = pairing.pairHint
-    /** ☰ → Pair with browser: camera at once (paired / a problem → Settings → Browser sync; first time the step line). */
-    fun startPairing(start: (String) -> Unit) = pairing.startPairing(start)
-    fun pairHintCamera(start: (String) -> Unit) = pairing.pairHintCamera(start)
-    fun pairHintCancel() = pairing.pairHintCancel()
     /** The camera for the pairing code (no camera app: Settings → Browser sync with the line). */
     fun openPairCamera(start: (String) -> Unit, fromSettings: Boolean) = pairing.openPairCamera(start, fromSettings)
-    /** Pair with another browser runs (A-017): the check digits stay, a spinner instead of Pair / Cancel. */
-    val pairJoining: Boolean get() = pairing.pairJoining
-    /** "Pair" (first browser) or another browser into this phone's mailbox (A-017). */
-    fun confirmPair() = pairing.confirmPair()
-    fun cancelPair() = pairing.cancelPair()
-    /** Settings → Unpair (after the question): the mailbox ends for both sides; the routes stay everywhere. */
-    fun unpair() = pairing.unpair()
-    private fun receivePairing(secret: ByteArray, via: String) = pairing.receivePairing(secret, via)
-
-    /** A sync pass ended (main thread): new / changed routes into My routes, plans from the browser routed ([syncDriver]). */
-    private fun syncReport(r: com.onpath.app.plansync.SyncReport) { syncDriver.onReport(r) }
-
-    private fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = syncedRouting.syncRoutingCheck(t, pts)
-    private fun followSyncedSavedPlan() = syncedRouting.followSyncedSavedPlan()
-    private fun routeSyncedPlans(ids: List<Long>) = syncedRouting.routeSyncedPlans(ids)
 
     // ---------------- plan links (A-005: routing/PlanLinks, docs/core-features/C15-plan-links.md) ----------------
-
-    /**
-     * A plan link opened in OnPath (camera / QR code, a tapped link, shared text, pasted into the search box; [via] for
-     * the log): back to the map in Plan and loaded like a saved route. During a tour it is not loaded (the followed route
-     * stays) and a line says so. A broken link changes nothing and says so in one red line.
-     */
-    fun receivePlanLink(found: com.onpath.app.routing.PlanLinks.Found, via: String) = links.receive(found, via)
 
     /** Text pasted into the search box: a plan link opens the plan (true); anything else is a search (false). */
     fun pastedPlanLink(text: String): Boolean = links.pasted(text) { search.clear() }
 
-    private fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking"): Unit = routesGo.openSharedPlan(plan, via)
-    fun sharePlan(): Unit = routesGo.sharePlan()
-    fun shareRoute(t: Tour): Unit = routesGo.shareRoute(t)
-
-    // Routes I ([RoutesSlice], rebuild phase 2 piece 13): the shown track, a track made a plan, Delete; the names forward to it.
-    private fun showTrack(s: ShownTrack): Unit = routesFlow.showTrack(s)
-    fun closeShown(): Unit = routesFlow.closeShown()
-    /** A track is being turned into a plan ([planFromShown]): a modal box with Cancel over everything. */
-    val planFromTrackBusy: Boolean get() = routesFlow.planFromTrackBusy
-    fun cancelPlanFromTrack(): Unit = routesFlow.cancelPlanFromTrack()
-    fun planFromShown(): Unit = routesFlow.planFromShown()
-    private fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, done: (Boolean) -> Unit): Unit =
-        routesFlow.planFromLine(track, parts, act, level, done)
-    fun deleteTour(t: Tour): Unit = routesFlow.deleteTour(t)
-
     // ---------------- recycle bin + backup (docs/core-features/C11-backup.md) ----------------
-
-    /** Recycle bin list (My routes → ⋮ → Recycle bin); null = closed. */
-    var recycleBin: List<Tour>?
-        get() = recent.bin
-        set(v) { recent.bin = v }
-
-    fun openRecycleBin() = recent.openBin()
-
-    /** Recycle bin → Restore: back into My routes (and its file out of Deleted/); a draft becomes the Zuletzt plan. */
-    fun restoreFromBin(t: Tour) = recent.restore(t)
-
-    /** Recycle bin → Delete now (asked first): gone for good, its backup file too. */
-    fun deleteForever(t: Tour) = recent.deleteForever(t)
-
-    /** "Export all": one ZIP with every tour and plan as GPX, handed to the share sheet (Files, Drive, mail …). */
-    fun exportAll() = importExport.exportAll()
 
     /** First start with an empty database: "Earlier tours found? Restore from Documents/OnPath" (asked once). */
     var restoreOffer by mutableStateOf(false)
     /** The system's location permission request is open (MainActivity); the restore offer waits ([RestoreOfferRule]). */
     var locationAsking by mutableStateOf(false)
-    /** The loading modal waits for the map / routing data of the user's area. */
-    val loadModalOpen: Boolean get() = mapData.loadModalOpen
     // ---------------- Phone setup (docs/design/onboarding-phone-check.md) ----------------
     /** Phone setup (docs/design/onboarding-phone-check.md): [PhoneSetupState], forwarded member by member. */
-    private val setup = PhoneSetupState(prefs) { settings }
-    /** The phone as last read by MainActivity (every return to the app, every system answer). */
-    val phone: com.onpath.app.setup.PhoneState get() = setup.phone
-    /** Android's unused-app reset for OnPath (read off the main thread at start). */
-    var unusedReset: com.onpath.app.setup.ResetStatus
-        get() = setup.unusedReset
-        set(v) { setup.unusedReset = v }
-    /** What the phone or the user removed since the last use (the guide and Settings say so calmly). */
-    var phoneTaken: Map<com.onpath.app.setup.CheckId, com.onpath.app.setup.Taken>
-        get() = setup.phoneTaken
-        set(v) { setup.phoneTaken = v }
-    /** The first-start welcome ("Set up now / Later"). */
-    var setupWelcome: Boolean
-        get() = setup.setupWelcome
-        set(v) { setup.setupWelcome = v }
-    /** The open step-by-step guide; null = none. */
-    val setupGuide: com.onpath.app.setup.SetupGuide? get() = setup.setupGuide
-    val setupOpen: Boolean get() = setup.setupOpen
-    /** The tour whose "Notifications off" chip was confirmed with OK (in memory: the next tour shows it again). */
-    var notificationsOkTour: Long?
-        get() = setup.notificationsOkTour
-        set(v) { setup.notificationsOkTour = v }
-    /** Navigation vibrations in use: the vibration step applies only then. */
-    val vibrationUsed: Boolean get() = setup.vibrationUsed
-    /** Spoken directions switched on for bike or hike: the voice step applies only then. */
-    val voiceUsed: Boolean get() = setup.voiceUsed
-    fun updatePhone(s: com.onpath.app.setup.PhoneState) = setup.updatePhone(s)
-    /**
-     * Opens the guide for [purpose] with what is missing; nothing missing → [then] runs at once. Before a tour and for
-     * the locate button [then] runs when the guide ends and what it needs is there.
-     */
-    fun openSetup(purpose: com.onpath.app.setup.Purpose, then: (() -> Unit)? = null) = setup.openSetup(purpose, then)
-    /** Settings → Phone setup → a row: that one step. */
-    fun openSetupStep(id: com.onpath.app.setup.CheckId) = setup.openSetupStep(id)
-    fun setupWelcomeNow() = setup.setupWelcomeNow()
-    /** "Later": before a tour a recommended step stays quiet for a week. */
-    fun setupLater() = setup.setupLater()
-    /** The system dialog for [id] came back without it. */
-    fun setupDenied(id: com.onpath.app.setup.CheckId) = setup.setupDenied(id)
-    fun setupVibrationPlayed() = setup.setupVibrationPlayed()
-    fun setupVibrationAnswer(f: com.onpath.app.setup.Felt) = setup.setupVibrationAnswer(f)
-    /** The voice test found the phone's speech output in this [status] (recording/Speaker). */
-    fun setupVoiceStatus(status: com.onpath.app.setup.VoiceStatus, fix: com.onpath.app.setup.VoiceSetup.Fix?) =
-        setup.setupVoiceStatus(status, fix)
-    /** What the last tap on the voice step's Test did (shown under the step); null = not tapped. */
-    val voiceTest: com.onpath.app.setup.VoiceSetup.VoiceTest? get() = setup.voiceTest
-    fun setupVoiceTest(t: com.onpath.app.setup.VoiceSetup.VoiceTest?) = setup.setupVoiceTest(t)
-    fun setupBrandDone() = setup.setupBrandDone()
-    /** Closes the welcome / guide (Back, Close, Later on the welcome). */
-    fun closeSetup() = setup.closeSetup()
+    val setup: PhoneSetupState = PhoneSetupState(prefs) { settingsSlice.settings }
 
     /** A restore is running: its progress line ("Restoring 5 / 28"); null = none. */
     var restoreProgress by mutableStateOf<String?>(null)
         private set
 
-    private fun checkRestoreOffer() = importExport.checkRestoreOffer()
-
     init {
         Backups.init(app)
         Backups.purgeAndSync(app) // 30-day recycle bin, files for tours that have none yet
-        checkRestoreOffer()
+        importExport.checkRestoreOffer()
         recent.trimOnce()
         // a failed backup is said until OK is tapped (no silent loss); then it counts as seen
         viewModelScope.launchSafe("app", "start-up work") {
             Backups.failure.collect { text ->
                 if (text == null) return@collect
                 while (errorCard != null) delay(500) // after the current error box
-                sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
+                notices.sayError(Txt.s(Res.string.msg_backup_failed, text), NoticePlace.BACKGROUND)
                 Backups.failureSeen(getApplication())
             }
         }
@@ -2675,17 +1788,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun restoreOfferAnswered() { restoreOffer = false; Backups.setRestoreOffered(getApplication()) }
 
-    /** The folder the user confirmed in the picker: import every OnPath backup in it (off the main thread). */
-    fun restoreFrom(tree: Uri) = importExport.restoreFrom(tree)
-
-    fun exportTour(t: Tour) = importExport.exportTour(t)
-
     /** Writes the GPX [gpx] builds (off the main thread) into the export folder and opens the share sheet. */
     private suspend fun share(name: String, gpx: () -> com.onpath.app.gpx.GpxFile) = importExport.share(name, gpx)
 
     // ---------------- GPX import ----------------
-
-    fun importGpx(uri: Uri) = importExport.importGpx(uri)
 
     // ---------------- routing data freshness (owner: routing matters most – a changed way must reroute) ----
 
@@ -2704,7 +1810,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         val due = names.map { java.io.File(dataFiles.segmentsDir, it) }
             .filter { it.isFile && t - it.lastModified() > ROUTING_MAX_AGE_DAYS * 86_400_000L }
         prefs.routingDataCheckedAt = t
-        if (due.isEmpty() || (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered())) return
+        if (due.isEmpty() || (settingsSlice.settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered())) return
         refreshRd5(due.map { it.name })
     }
 
@@ -2720,7 +1826,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         if (routingDataBusy || recState.value != null) return
         val due = syncRoutingThrottle.take(tiles.filter { java.io.File(dataFiles.segmentsDir, "$it.rd5").isFile }, System.currentTimeMillis())
         if (due.isEmpty()) return
-        if (settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered()) {
+        if (settingsSlice.settings.mapsWifiOnly && !com.onpath.app.cells.AndroidNetworkStatus(getApplication()).unmetered()) {
             Problems.info("routing", "Routing data ${due.joinToString()}: newer data not checked ($why) – maps only on Wi-Fi"); return
         }
         Problems.info("routing", "Routing data ${due.joinToString()}: checking for newer data now ($why)")
@@ -2744,9 +1850,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 routingDataBusy = false
                 if (got > 0) {
                     Problems.info("routing", "Newer routing data installed ($got file(s)); plan computed again")
-                    engine = null // new engine: no cached routes from the old data
-                    if (mode == AppMode.PLAN && recState.value == null && waypoints.size >= 2) {
-                        planRecalc.routingDataBefore = route?.points; routeEvent(RouteRun.Event.NewerData); recalc()
+                    planRoute.engine = null // new engine: no cached routes from the old data
+                    if (tourSession.mode == AppMode.PLAN && recState.value == null && plan.points.size >= 2) {
+                        planRecalc.routingDataBefore = route?.points; planRun.routeEvent(RouteRun.Event.NewerData); recalc()
                     }
                 }
             }

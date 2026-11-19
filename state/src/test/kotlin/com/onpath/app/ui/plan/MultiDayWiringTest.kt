@@ -40,7 +40,7 @@ class MultiDayWiringTest {
     @Test fun theSliceGetsTheViewModelsOwnObjects() {
         assertTrue(construction, construction.replace(Regex("\\s+"), " ").contains(
             "MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs), mapCamera, " +
-                "com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, ::change, ::setSaved, ::rememberPlaceName, { nearbyNames }, " +
+                "com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { b -> planEdit.change(b) }, { n, i, p -> tourFollow.setSaved(n, i, p) }, { p, n -> searchFlow.rememberPlaceName(p, n) }, { planEdit.nearbyNames }, " +
                 "viewModelScope, Dispatchers.IO, Dispatchers.Default)"))
         assertEquals("one slice", 1, count(vm, "com.onpath.app.ui.plan.MultiDaySlice("))
         assertEquals("the screens and the E2E tests reach it as vm.multiDay", 1, count(vm, "internal val multiDay ="))
@@ -49,7 +49,7 @@ class MultiDayWiringTest {
     /** Declared after what it is built from (a property below it would be null at construction) and above the hosts that call it. */
     @Test fun theSliceIsDeclaredAfterWhatItIsBuiltFromAndBeforeTheHostsThatReachIt() {
         val at = vm.indexOf("internal val multiDay =")
-        for (need in listOf("private val plan = com.onpath.app.ui.plan.PlanDocument(", "private val planRoute", "private val toursStore = object", "private val mapCamera = object", "val prefs = Prefs(app)"))
+        for (need in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = com.onpath.app.ui.plan.PlanDocument(", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice", "private val toursStore = object", "private val mapCamera = object", "val prefs = Prefs(app)"))
             assertTrue("$need above multiDay", vm.indexOf(need).let { it in 0 until at })
         for (user in listOf("private val saveHost = object", "private val routesHost = object"))
             assertTrue("$user below multiDay", vm.indexOf(user) > at)
@@ -79,14 +79,14 @@ class MultiDayWiringTest {
     @Test fun theHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
         val h = host.replace(Regex("\\s+"), " ")
         for (line in listOf(
-            "override val mode: AppMode get() = vm.mode",
+            "override val mode: AppMode get() = vm.tourSession.mode",
             "override val route: PlannedRoute? get() = vm.route",
             "override val touring: Boolean get() = vm.recState.value != null",
             "override val cells: MapCells get() = vm.cells",
-            "override fun placeNameOf(p: GeoPoint): String? = vm.stopName(p)",
+            "override fun placeNameOf(p: GeoPoint): String? = vm.searchFlow.stopName(p)",
             "override fun reopenTour(t: Tour) = vm.openTour(t)",
-            "override fun reloadTourList() = vm.refreshTours()",
-            "override fun showSaveProblem(text: String) { vm.routesProblem = text }",
+            "override fun reloadTourList() = vm.routesFlow.refreshTours()",
+            "override fun showSaveProblem(text: String) { vm.save.problem = text }",
             "override fun tourChanged(id: Long) = Backups.tourChanged(vm.getApplication(), id)",
             "override fun syncChanged(why: String) = vm.sync.changed(why)",
             "val index = vm.search.offlineIndex()",

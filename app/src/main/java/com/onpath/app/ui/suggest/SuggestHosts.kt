@@ -30,7 +30,7 @@ fun SuggestHostPanel(vm: AppViewModel) {
     val s = vm.suggest
     val phase = s.phase ?: return
     BackHandler { s.close() }
-    val planned = vm.waypoints.isNotEmpty()
+    val planned = vm.plan.points.isNotEmpty()
     LaunchedEffect(planned) { if (planned && !s.taking) s.close() }
     // the fit on a card's tap uses the sheet's height of that moment; once the panel has grown, fit again above it
     // (also when a card's whole text opens or closes: the loop stays in sight above the grown card)

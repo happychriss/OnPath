@@ -52,11 +52,11 @@ object MapNote {
 @Composable
 fun androidx.compose.foundation.layout.BoxScope.ScreenMessageHost(vm: AppViewModel) {
     val screen = when {
-        vm.showSettings -> MessageScreen.SETTINGS
-        vm.routesOpen -> MessageScreen.ROUTES
+        vm.settingsSlice.showSettings -> MessageScreen.SETTINGS
+        vm.routes.open -> MessageScreen.ROUTES
         else -> return
     }
-    val error = vm.errorCard?.let { errorMessage(it) { vm.errorCard = null } }
+    val error = vm.notices.errorCard?.let { errorMessage(it) { vm.notices.errorCard = null } }
     MessageSlot(Messages.pick(listOf(error)), MessagePlacement.topDp(screen))
 }
 

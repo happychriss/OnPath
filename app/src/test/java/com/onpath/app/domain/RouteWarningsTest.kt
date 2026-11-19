@@ -340,7 +340,7 @@ class RouteWarningsTest {
         assertTrue("the PlanRouteHost object is not found", vm.contains("PlanRouteHost {"))
         val host = vm.substringAfter("PlanRouteHost {").substringBefore("object : ")
         assertEquals(1, Regex("""override val touring: Boolean get\(\) = recState\.value != null""").findAll(host).count())
-        assertTrue(host.contains("override val mode: AppMode get() = this@AppViewModel.mode"))
+        assertTrue(host.contains("override val mode: AppMode get() = this@AppViewModel.tourSession.mode"))
     }
 
     // ---------------- "route changed" ----------------

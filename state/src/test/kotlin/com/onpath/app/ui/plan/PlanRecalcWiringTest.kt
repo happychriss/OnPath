@@ -45,14 +45,14 @@ class PlanRecalcWiringTest {
 
     @Test fun theSliceSitsAfterTheEditsSliceItReachesAndAboveEveryInit() {
         val at = vm.indexOf("private val planRecalc: com.onpath.app.ui.plan.PlanRecalcSlice")
-        val edits = vm.indexOf("private val tourEdits: com.onpath.app.ui.tour.TourEdits = ")
+        val edits = vm.indexOf("val tourEdits: com.onpath.app.ui.tour.TourEdits = ")
         val firstInitAfterEdits = vm.indexOf("    init {\n", edits)
         val big = vm.indexOf("    init {\n        recalc()\n")
         assertTrue("after tourEdits (followCancel, followEditedPlan)", edits in 0 until at)
         assertTrue("above the small init that follows tourEdits", at < firstInitAfterEdits)
         assertTrue("above the big init", at < big)
-        for (dep in listOf("private val plan = ", "val planRun = ", "private val planRoute = ", "private val planEdit: ", "private val tourFollow = ",
-            "private val map = ", "private val links = ", "val recState: StateFlow<RecState?> = recording.state", "private val mapData by lazy"))
+        for (dep in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = ", "val planRun: com.onpath.app.ui.plan.PlanRunSlice = ", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = ", "val planEdit: ", "val tourFollow: com.onpath.app.ui.tour.TourFollow = ",
+            "val map: com.onpath.app.ui.MapViewSlice = ", "val links: com.onpath.app.ui.sync.PlanLinkFlow = ", "val recState: StateFlow<RecState?> = recording.state", "val mapData: MapDataFlow by lazy"))
             assertTrue("declared above the slice: $dep", vm.indexOf(dep) in 0 until at)
     }
 
@@ -61,7 +61,7 @@ class PlanRecalcWiringTest {
             "plan = plan, planRun = planRun, planRoute = planRoute, planEdit = planEdit, tourEdits = tourEdits, tourFollow = tourFollow,",
             "map = map, links = links, recording = recording,",
             "say = notices,",
-            "scope = viewModelScope, routingDispatcher = routingDispatcher, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,",
+            "scope = viewModelScope, routingDispatcher = planRoute.threads.routing, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,",
             "elapsedMs = { android.os.SystemClock.elapsedRealtime() },",
             "searchProgress = com.onpath.app.ui.plan.RouteSearchProgress { eng, t -> (eng as? com.onpath.app.routing.BRouterEngine)?.searchProgress(t) },",
         )) assertTrue("the constructor says: $line", ctor.contains(line))
@@ -83,8 +83,8 @@ class PlanRecalcWiringTest {
 
     @Test fun theHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
         for (line in listOf(
-            "override val mode: AppMode get() = this@AppViewModel.mode",
-            "override fun nameOfStop(p: GeoPoint): String? = this@AppViewModel.stopName(p)",
+            "override val mode: AppMode get() = this@AppViewModel.tourSession.mode",
+            "override fun nameOfStop(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)",
             "override val multiDayOverview: Boolean get() = multiDay.overview",
             "override fun menuFollowsSnap(moves: Map<GeoPoint, GeoPoint>) = placeMenus.followSnapped(moves)",
             "override fun checkRoutingDataFor(line: List<GeoPoint>) = this@AppViewModel.checkRoutingData(line)",
@@ -96,7 +96,7 @@ class PlanRecalcWiringTest {
     }
 
     @Test fun otherPlacesCallTheForwarderOrTheSliceAndTheOneThatSetsTheNewerDataFlagUsesTheSlice() {
-        assertTrue(vm.contains("planRecalc.routingDataBefore = route?.points; routeEvent(RouteRun.Event.NewerData); recalc()"))
+        assertTrue(vm.contains("planRecalc.routingDataBefore = route?.points; planRun.routeEvent(RouteRun.Event.NewerData); recalc()"))
         assertTrue(vm.contains("planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)"))
         assertEquals("the three hosts of other slices and the tour's re-plan keep their forwarders", 3, count(vm, "override fun recalc() = this@AppViewModel.recalc()"))
         assertEquals(1, count(vm, "override fun replan() = recalc()"))

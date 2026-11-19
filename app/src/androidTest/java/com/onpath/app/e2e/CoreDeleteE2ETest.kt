@@ -32,9 +32,9 @@ class CoreDeleteE2ETest : E2EBase() {
         hold(x, y - dp * density)
     }
 
-    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).routing }; return r }
-    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).waypoints.toList() }; return p }
-    private fun overlayOpen(): Boolean { var o = false; scenario.onActivity { o = vm(it).mapOverlayOpen }; return o }
+    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).planRun.routing }; return r }
+    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).plan.points.toList() }; return p }
+    private fun overlayOpen(): Boolean { var o = false; scenario.onActivity { o = vm(it).placeMenus.mapOverlayOpen }; return o }
 
     /** Route calculated and points snapped (they move onto ways), map settled. */
     private fun settle() {
@@ -96,12 +96,12 @@ class CoreDeleteE2ETest : E2EBase() {
         var wasRouting = false
         scenario.onActivity { a ->
             val vm = vm(a)
-            vm.selectActivity(if (vm.activity == com.onpath.app.routing.Activity.HIKE) com.onpath.app.routing.Activity.MTB
+            vm.planRoute.selectActivity(if (vm.planRoute.activity == com.onpath.app.routing.Activity.HIKE) com.onpath.app.routing.Activity.MTB
                 else com.onpath.app.routing.Activity.HIKE)
             // in the same main-thread step, so the route for 3 points is certainly still running: what the Delete
             // button does (MapOverlays → deletePointFromMenu); the button itself is tapped in the other tests
-            wasRouting = vm.routing
-            vm.deletePointFromMenu()
+            wasRouting = vm.planRun.routing
+            vm.planEdit.deletePointFromMenu()
         }
         assertTrue("a route was being calculated at the delete", wasRouting)
         waitUntil("deleted while routing") { waypointCount() == 2 }
@@ -120,7 +120,7 @@ class CoreDeleteE2ETest : E2EBase() {
         settle()
         holdOnWaypoint(2)
         val before = points()
-        scenario.onActivity { vm(it).deletePointFromList(0) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(0) }
         pause(300, "the list deletion lands")
         clickText("Delete")
         waitUntil("the held point deleted – ${state()}") { waypointCount() == 1 }

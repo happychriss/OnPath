@@ -63,15 +63,15 @@ class MainActivity : ComponentActivity() {
         vm.locationAsking = false
         vm.tracker.start()
         refreshPhone()
-        val id = vm.setupGuide?.current
-        if (id == com.onpath.app.setup.CheckId.LOCATION || id == com.onpath.app.setup.CheckId.PRECISE) vm.setupDenied(id)
+        val id = vm.setup.setupGuide?.current
+        if (id == com.onpath.app.setup.CheckId.LOCATION || id == com.onpath.app.setup.CheckId.PRECISE) vm.setup.setupDenied(id)
         if (!vm.tracker.hasPermission()) com.onpath.app.debug.Problems.info("gps", "Location access not given in the system dialog")
     }
 
     /** Android 13+: the notification dialog (phone setup step). */
     private val notificationLauncher = registerForActivityResult(ActivityResultContracts.RequestPermission()) {
         refreshPhone()
-        vm.setupDenied(com.onpath.app.setup.CheckId.NOTIFICATIONS)
+        vm.setup.setupDenied(com.onpath.app.setup.CheckId.NOTIFICATIONS)
     }
 
     /** Settings screens opened from the guide that report back (unused-app restrictions needs ForResult). */
@@ -82,16 +82,16 @@ class MainActivity : ComponentActivity() {
 
     /** Map data / style import from the phone itself (no adb). */
     private val openData = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.importData(uri)
+        if (uri != null) vm.importExport.importData(uri)
     }
 
     private val openGpx = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) vm.importGpx(uri)
+        if (uri != null) vm.importExport.importGpx(uri)
     }
 
     /** Restore: the folder with the backup files (a reinstalled app may read it only after this picker). */
     private val pickRestoreFolder = registerForActivityResult(ActivityResultContracts.OpenDocumentTree()) { uri ->
-        if (uri != null) vm.restoreFrom(uri)
+        if (uri != null) vm.importExport.restoreFrom(uri)
     }
 
     /** Settings → Backup → Choose another folder (synced Drive / Nextcloud folder …). */
@@ -102,13 +102,13 @@ class MainActivity : ComponentActivity() {
     /** Android 8–9 only: Documents/OnPath needs the storage permission there. */
     private val storagePermission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { ok ->
         if (ok) com.onpath.app.backup.Backups.backupAll(this)
-        else vm.sayError(Txt.s(Res.string.msg_no_storage_permission), com.onpath.app.ui.NoticePlace.SETTINGS)
+        else vm.notices.sayError(Txt.s(Res.string.msg_no_storage_permission), com.onpath.app.ui.NoticePlace.SETTINGS)
     }
 
     private fun launchTreePicker(launcher: androidx.activity.result.ActivityResultLauncher<Uri?>) {
         try { launcher.launch(com.onpath.app.backup.BackupFolder.initialUri) } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("backup", "No folder picker available", e)
-            vm.sayError(Txt.s(Res.string.msg_no_folder_picker), com.onpath.app.ui.NoticePlace.SETTINGS)
+            vm.notices.sayError(Txt.s(Res.string.msg_no_folder_picker), com.onpath.app.ui.NoticePlace.SETTINGS)
         }
     }
 
@@ -140,15 +140,15 @@ class MainActivity : ComponentActivity() {
             // Navigate over the lock screen (owner): while a tour runs in Navigate, a short press of the power button
             // shows the navigation without unlocking; Plan (routes, settings) asks to unlock first.
             val recNow by vm.recState.collectAsState()
-            val overLock = com.onpath.app.domain.LockScreenNav.shows(vm.mode == com.onpath.app.domain.AppMode.NAVIGATE, recNow != null)
+            val overLock = com.onpath.app.domain.LockScreenNav.shows(vm.tourSession.mode == com.onpath.app.domain.AppMode.NAVIGATE, recNow != null)
             LaunchedEffect(overLock) { showOverLockScreen(overLock) }
             // A new serious problem (error / crash) is said once per run – nothing stays unseen (owner).
             val problemCount by com.onpath.app.debug.Problems.count.collectAsState()
             val serious by com.onpath.app.debug.Problems.newSerious.collectAsState()
-            LaunchedEffect(serious, vm.errorCard == null) {
+            LaunchedEffect(serious, vm.notices.errorCard == null) {
                 if (serious == null) return@LaunchedEffect
-                if (vm.errorCard != null) return@LaunchedEffect // wait until the current error box is gone
-                vm.sayError(Txt.s(Res.string.msg_something_wrong), com.onpath.app.ui.NoticePlace.BACKGROUND)
+                if (vm.notices.errorCard != null) return@LaunchedEffect // wait until the current error box is gone
+                vm.notices.sayError(Txt.s(Res.string.msg_something_wrong), com.onpath.app.ui.NoticePlace.BACKGROUND)
                 com.onpath.app.debug.Problems.announcedSerious()
             }
             OnPathTheme {
@@ -164,62 +164,62 @@ class MainActivity : ComponentActivity() {
                             onRetry = { vm.recheckData() }, // the list on the screen updates – no extra message
                             onContinue = { vm.dataScreenDismissed = true },
                             onImport = { openData.launch(arrayOf("*/*")) },
-                            onDownloadRouting = { vm.downloadRoutingData() },
+                            onDownloadRouting = { vm.mapData.downloadRoutingData() },
                             busy = vm.dataBusy,
                         )
                     } else {
                         MapScreen(
                             vm = vm,
-                            onRequestLocation = { vm.openSetup(com.onpath.app.setup.Purpose.LOCATE) { vm.tracker.start() } },
+                            onRequestLocation = { vm.setup.openSetup(com.onpath.app.setup.Purpose.LOCATE) { vm.tracker.start() } },
                             onStartNavigation = {
-                                vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourSession.startNavigation() }
                             },
                             pairCamera = ::startPairCamera,
                         )
                         // full pages fade in and out (PageFade, owner 2026-11-12); Back only while the page is open
-                        if (vm.routesOpen) BackHandler { vm.routesOpen = false }
-                        PageFade(vm.routesOpen) {
+                        if (vm.routes.open) BackHandler { vm.routes.open = false }
+                        PageFade(vm.routes.open) {
                             val recNow = vm.recState.collectAsState().value
                             RoutesScreen(
-                                tours = vm.tours,
+                                tours = vm.routes.tours,
                                 recordingId = recNow?.tourId ?: -1L,
-                                onBack = { vm.routesOpen = false },
+                                onBack = { vm.routes.open = false },
                                 onImport = { launchImport() },
-                                onOpen = { vm.requestOpen(it) },
+                                onOpen = { vm.routesGo.requestOpen(it) },
                                 // Los geht's (owner 2026-11-07): loaded as the plan, then the plan sheet's own start (phone check first)
-                                onGo = { t -> vm.goFromRoutes(t) {
-                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                onGo = { t -> vm.routesGo.goFromRoutes(t) {
+                                    vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourSession.startNavigation() }
                                 } },
                                 // a recorded tour's followed plan (owner 2026-11-07): Planen / Los geht's load it
-                                onPlanFollowed = { vm.planFollowedPlan(it) },
-                                onGoFollowed = { t -> vm.goFollowedPlan(t) {
-                                    vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.startNavigation() }
+                                onPlanFollowed = { vm.routesGo.planFollowedPlan(it) },
+                                onGoFollowed = { t -> vm.routesGo.goFollowedPlan(t) {
+                                    vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourSession.startNavigation() }
                                 } },
                                 loadPlanLine = { vm.followedPlanLine(it) },
                                 // a done tour's look back and its share (owner 2026-11-15, round 3 of the tour analysis)
                                 loadReview = { vm.tourReview(it) },
-                                onExportPlan = { vm.exportFollowedPlan(it) },
-                                onExport = { vm.exportTour(it) },
-                                onDelete = { vm.deleteTour(it) },
-                                onRename = { t, name -> vm.renameTour(t, name) },
-                                onCopy = { vm.requestCopyRoute(it) },
-                                onShare = { vm.shareRoute(it) },
-                                onExportAll = { vm.exportAll() },
-                                busy = vm.busy,
-                                note = vm.routesNote,
-                                onRecycleBin = { vm.openRecycleBin() },
-                                onEditRides = { vm.openEditRides(it) },
-                                onPlanFrom = { vm.planFromTour(it) },
-                                initialTab = vm.routesTab,
-                                onTab = { vm.routesTab = it },
+                                onExportPlan = { vm.routesGo.exportFollowedPlan(it) },
+                                onExport = { vm.importExport.exportTour(it) },
+                                onDelete = { vm.routesFlow.deleteTour(it) },
+                                onRename = { t, name -> vm.save.rename(t, name) },
+                                onCopy = { vm.save.requestCopy(it) },
+                                onShare = { vm.routesGo.shareRoute(it) },
+                                onExportAll = { vm.importExport.exportAll() },
+                                busy = vm.notices.busy,
+                                note = vm.notices.routesNote,
+                                onRecycleBin = { vm.recent.openBin() },
+                                onEditRides = { vm.tourEnd.openEditRides(it) },
+                                onPlanFrom = { vm.routesGo.planFromTour(it) },
+                                initialTab = vm.routes.tab,
+                                onTab = { vm.routes.tab = it },
                                 initialSort = vm.routesSort,
                                 onSort = { vm.routesSort = it },
-                                marks = vm.syncMarks.collectAsState().value,
-                                onSaveDraft = { vm.saveDraft(it) },
-                                onDeleteDraft = { vm.deleteDraft(it) },
-                                justSavedId = vm.justSavedId,
+                                marks = vm.syncDriver.marks.collectAsState().value,
+                                onSaveDraft = { vm.recent.saveDraft(it) },
+                                onDeleteDraft = { vm.recent.deleteDraft(it) },
+                                justSavedId = vm.routes.justSavedId,
                                 live = vm.livePlan,
-                                recentId = vm.zuletztId,
+                                recentId = vm.routes.recentId,
                                 onLiveOpen = { vm.backToLivePlan() },
                                 onLiveSave = { vm.saveLivePlan() },
                                 loadLine = { vm.tourLine(it) },
@@ -239,83 +239,83 @@ class MainActivity : ComponentActivity() {
                                 },
                                 touring = recNow != null,
                                 // pull to refresh on Planned (owner 2026-11-13): only when paired
-                                onPull = if (vm.sync.state.collectAsState().value.paired) ({ vm.pullSync() }) else null,
-                                pulling = vm.syncPulling,
+                                onPull = if (vm.sync.state.collectAsState().value.paired) ({ vm.syncDriver.pull() }) else null,
+                                pulling = vm.syncDriver.pulling,
                                 // L1 map pictures (owner 2026-11-13): read from files/thumbs, made in the background
-                                thumbs = androidx.compose.runtime.remember { com.onpath.app.ui.routes.FileThumbSource(vm.thumbs) },
-                                thumbVersion = vm.thumbVersion,
-                                onFavourite = { t, on -> vm.setFavourite(t, on) },
+                                thumbs = androidx.compose.runtime.remember { com.onpath.app.ui.routes.FileThumbSource(vm.pictures.thumbs) },
+                                thumbVersion = vm.pictures.thumbVersion,
+                                onFavourite = { t, on -> vm.save.setFavourite(t, on) },
                                 initialFavouritesOnly = vm.routesFavouritesOnly,
                                 onFavouritesOnly = { vm.routesFavouritesOnly = it },
                                 // the activity filter: the planning activity each time My routes opens (owner 2026-11-13)
-                                initialActivity = vm.activity,
+                                initialActivity = vm.planRoute.activity,
                             )
                         }
-                        vm.editRides?.let { (t, s) ->
-                            com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.applyEditRides(t, it) }, onDelete = null,
-                                onDismiss = { vm.editRides = null }, title = str(Res.string.msg_rides_title, t.name), initial = t.rides?.choice)
+                        vm.tourEnd.editRides?.let { (t, s) ->
+                            com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.tourEnd.applyEditRides(t, it) }, onDelete = null,
+                                onDismiss = { vm.tourEnd.editRides = null }, title = str(Res.string.msg_rides_title, t.name), initial = t.rides?.choice)
                         }
-                        if (vm.recycleBin != null) BackHandler { vm.recycleBin = null }
-                        PageFadeOf(vm.recycleBin) { bin ->
-                            com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recycleBin = null },
-                                onRestore = { vm.restoreFromBin(it) }, onDeleteForever = { vm.deleteForever(it) })
+                        if (vm.recent.bin != null) BackHandler { vm.recent.bin = null }
+                        PageFadeOf(vm.recent.bin) { bin ->
+                            com.onpath.app.ui.RecycleBinScreen(bin, onBack = { vm.recent.bin = null },
+                                onRestore = { vm.recent.restore(it) }, onDeleteForever = { vm.recent.deleteForever(it) })
                         }
                         // one dialog after the other on a first start: location first, then the map, then this
                         if (com.onpath.app.ui.RestoreOfferRule.show(vm.restoreOffer, vm.recState.collectAsState().value != null,
-                                vm.locationAsking || vm.setupOpen, vm.loadModalOpen)) {
+                                vm.locationAsking || vm.setup.setupOpen, vm.mapData.loadModalOpen)) {
                             com.onpath.app.ui.RestoreOfferDialog(
                                 onRestore = { vm.restoreOfferAnswered(); launchTreePicker(pickRestoreFolder) },
                                 onNotNow = { vm.restoreOfferAnswered() })
                         }
                     }
-                    val detailsRoute = vm.route?.takeIf { vm.routeDetailsOpen }
-                    if (detailsRoute != null) BackHandler { vm.routeDetailsOpen = false }
+                    val detailsRoute = vm.route?.takeIf { vm.planEdit.routeDetailsOpen }
+                    if (detailsRoute != null) BackHandler { vm.planEdit.routeDetailsOpen = false }
                     PageFadeOf(detailsRoute) { r ->
-                        com.onpath.app.ui.RouteDetailsScreen(r, vm.activity, onBack = { vm.routeDetailsOpen = false })
+                        com.onpath.app.ui.RouteDetailsScreen(r, vm.planRoute.activity, onBack = { vm.planEdit.routeDetailsOpen = false })
                     }
-                    if (vm.showSettings) BackHandler { vm.settingsBack() }
-                    PageFade(vm.showSettings) {
+                    if (vm.settingsSlice.showSettings) BackHandler { vm.settingsSlice.settingsBack() }
+                    PageFade(vm.settingsSlice.showSettings) {
                         // Offline maps: what loads – the sign beside the map's number and its details sheet (form B)
                         val loads = com.onpath.app.ui.rememberBackgroundDownload(vm)
                         var loadsOpen by remember { mutableStateOf(false) }
                         if (loadsOpen && loads != null) com.onpath.app.ui.BackgroundDownloadSheet(loads,
-                            onCancelAll = { vm.cancelAllDownloads(); loadsOpen = false }, onClose = { loadsOpen = false })
+                            onCancelAll = { vm.mapData.cancelAllDownloads(); loadsOpen = false }, onClose = { loadsOpen = false })
                         SettingsScreen(
-                            page = vm.settingsPage,
-                            onPage = { vm.settingsPage = it },
-                            onTheWay = vm.settingsOnTheWay,
-                            onAllSettings = vm::showAllSettings,
-                            settings = vm.settings,
-                            onChange = vm::updateSettings,
-                            activity = vm.activity,
-                            phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.phone, vm.vibrationUsed, vm.phoneTaken, vm.voiceUsed),
-                            phone = vm.phone,
-                            onPhoneFix = vm::openSetupStep,
+                            page = vm.settingsSlice.settingsPage,
+                            onPage = { vm.settingsSlice.settingsPage = it },
+                            onTheWay = vm.settingsSlice.settingsOnTheWay,
+                            onAllSettings = vm.settingsSlice::showAllSettings,
+                            settings = vm.settingsSlice.settings,
+                            onChange = vm.settingsSlice::updateSettings,
+                            activity = vm.planRoute.activity,
+                            phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.setup.phone, vm.setup.vibrationUsed, vm.setup.phoneTaken, vm.setup.voiceUsed),
+                            phone = vm.setup.phone,
+                            onPhoneFix = vm.setup::openSetupStep,
                             checks = remember(vm.missing) { vm.dataFiles.check() },
                             mapPackage = vm.packageCheck,
                             diagnostics = true,
-                            devTools = vm.devToolsShown,
-                            onUnlockDevTools = vm::unlockDevTools,
+                            devTools = vm.settingsSlice.devToolsShown,
+                            onUnlockDevTools = vm.settingsSlice::unlockDevTools,
                             testStyle = com.onpath.app.ui.TestStyleUi(
                                 // a file check per composition: cheap, and fresh after a push or reload
-                                status = com.onpath.app.map.StyleLoader.devStyleStatus(vm.dataFiles.dir, vm.devToolsShown),
+                                status = com.onpath.app.map.StyleLoader.devStyleStatus(vm.dataFiles.dir, vm.settingsSlice.devToolsShown),
                                 onRemove = vm::removeTestStyle,
                                 onReload = vm::reloadMapStyle,
                             ),
-                            suggestTest = if (!vm.devToolsShown) null else com.onpath.app.ui.SuggestTestUi(vm.suggest.on, vm.suggest::switch),
-                            demo = if (!vm.devToolsShown) null else com.onpath.app.ui.DemoUi(
+                            suggestTest = if (!vm.settingsSlice.devToolsShown) null else com.onpath.app.ui.SuggestTestUi(vm.suggest.on, vm.suggest::switch),
+                            demo = if (!vm.settingsSlice.devToolsShown) null else com.onpath.app.ui.DemoUi(
                                 state = com.onpath.app.recording.DemoLocation.state.collectAsState().value,
-                                rideLabel = vm.demoLine()?.first,
-                                onRide = vm::startDemoRide,
-                                onPlace = vm::startDemoAtMapCentre,
+                                rideLabel = vm.demo.demoLine()?.first,
+                                onRide = vm.demo::startDemoRide,
+                                onPlace = vm.demo::startDemoAtMapCentre,
                                 onFactor = com.onpath.app.recording.DemoLocation::setFactor,
                                 onPause = com.onpath.app.recording.DemoLocation::setPaused,
                                 onStop = { com.onpath.app.recording.DemoLocation.stop() },
-                                recorded = vm.recentRecordedTours().map { t -> vm.demoTourLabel(t) to { vm.startDemoTour(t) } },
+                                recorded = vm.demo.recentRecordedTours().map { t -> vm.demo.demoTourLabel(t) to { vm.demo.startDemoTour(t) } },
                             ),
-                            diagnosticsSeenMs = vm.diagnosticsSeenMs,
-                            routingInfo = vm.routingInfo,
-                            diagnosticsBusy = vm.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
+                            diagnosticsSeenMs = vm.settingsSlice.diagnosticsSeenMs,
+                            routingInfo = vm.settingsSlice.routingInfo,
+                            diagnosticsBusy = vm.notices.busy == com.onpath.app.ui.Busy.DIAGNOSTICS,
                             onExportDiagnostics = ::exportDiagnostics,
                             problems = remember(problemCount) { com.onpath.app.debug.Problems.snapshot() },
                             onClearProblems = { com.onpath.app.debug.Problems.clear() },
@@ -338,52 +338,52 @@ class MainActivity : ComponentActivity() {
                                 val installed by vm.cells.installed.collectAsState()
                                 val states by vm.cells.states.collectAsState()
                                 vm.recState.collectAsState().value // Clear all is blocked while a tour runs
-                                LaunchedEffect(installed) { vm.loadAreaNames() }
-                                vm.offlineMapsUi(states, installed).copy(action = loads?.percent)
+                                LaunchedEffect(installed) { vm.mapData.loadAreaNames() }
+                                vm.mapData.offlineMapsUi(states, installed).copy(action = loads?.percent)
                             },
                             offlineMapsCb = com.onpath.app.ui.OfflineMapsCallbacks(
-                                onDelete = vm::deleteMapArea,
-                                onWifiOnly = { on -> vm.updateSettings(vm.settings.copy(mapsWifiOnly = on)) },
-                                onUpdateNow = vm::updateMapsNow,
-                                onCancelAll = vm::cancelAllDownloads,
-                                onCleanUp = vm::prepareCleanup,
-                                onCleanUpConfirm = vm::confirmCleanup,
-                                onCleanUpCancel = { vm.cleanupPreview = null },
-                                onClearAll = vm::clearAllMaps,
+                                onDelete = vm.mapData::deleteMapArea,
+                                onWifiOnly = { on -> vm.settingsSlice.updateSettings(vm.settingsSlice.settings.copy(mapsWifiOnly = on)) },
+                                onUpdateNow = vm.mapData::updateMapsNow,
+                                onCancelAll = vm.mapData::cancelAllDownloads,
+                                onCleanUp = vm.mapData::prepareCleanup,
+                                onCleanUpConfirm = vm.mapData::confirmCleanup,
+                                onCleanUpCancel = { vm.mapData.cleanupPreview = null },
+                                onClearAll = vm.mapData::clearAllMaps,
                                 onLoads = { loadsOpen = true },
                             ),
                             dataDir = vm.dataFiles.dir.absolutePath,
                             version = "${BuildConfig.VERSION_NAME} (build ${BuildConfig.VERSION_CODE})",
-                            onBack = { vm.settingsPage = null; vm.showSettings = false },
+                            onBack = { vm.settingsSlice.settingsPage = null; vm.settingsSlice.showSettings = false },
                             themes = remember(vm.styleVersion) { com.onpath.app.map.StyleLoader.themes(this@MainActivity, vm.dataFiles.dir) },
                             onImportData = { openData.launch(arrayOf("*/*")) },
-                            onDownloadRouting = { vm.downloadRoutingData() },
-                            onTimeFormulas = if (vm.route != null) ({ vm.openTimeDetails(technical = true) }) else null,
+                            onDownloadRouting = { vm.mapData.downloadRoutingData() },
+                            onTimeFormulas = if (vm.route != null) ({ vm.planRoute.openTimeDetails(technical = true) }) else null,
                             dataBusy = vm.dataBusy,
-                            note = vm.settingsNote,
-                            update = vm.update.takeIf { vm.updatesEnabled },
-                            onCheckUpdate = { vm.checkForUpdates(manual = true) },
-                            onInstallUpdate = { vm.installUpdate() },
+                            note = vm.notices.settingsNote,
+                            update = vm.updates.update.takeIf { vm.updates.updatesEnabled },
+                            onCheckUpdate = { vm.updates.check(manual = true) },
+                            onInstallUpdate = { vm.updates.install() },
                             backup = run {
                                 val b by com.onpath.app.backup.Backups.status.collectAsState()
                                 com.onpath.app.ui.BackupUi(b.folder, b.lastMs, b.count, b.lastError, b.custom, vm.restoreProgress,
                                     needsStorageAccess = remember(b) { needsStorageAccess() },
-                                    backingUp = vm.busy == com.onpath.app.ui.Busy.BACKUP)
+                                    backingUp = vm.notices.busy == com.onpath.app.ui.Busy.BACKUP)
                             },
                             sync = com.onpath.app.ui.SyncUi.of(vm.sync.state.collectAsState().value,
-                                vm.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairJoining),
+                                vm.pairing.pairAsk?.let { com.onpath.app.sync.SyncKeys(it).check }, vm.pairing.pairJoining),
                             syncCb = com.onpath.app.ui.SyncCallbacks(
                                 onOpenCamera = { vm.openPairCamera(::startPairCamera, fromSettings = true) },
-                                onPair = vm::confirmPair,
-                                onCancelPair = vm::cancelPair,
-                                onUnpair = vm::unpair,
+                                onPair = vm.pairing::confirmPair,
+                                onCancelPair = vm.pairing::cancelPair,
+                                onUnpair = vm.pairing::unpair,
                             ),
                             backupCb = com.onpath.app.ui.BackupCallbacks(
                                 onBackupNow = {
-                                    vm.busy = com.onpath.app.ui.Busy.BACKUP
+                                    vm.notices.busy = com.onpath.app.ui.Busy.BACKUP
                                     com.onpath.app.backup.Backups.backupAll(this@MainActivity) { _ ->
                                         // a failure says itself (Backups.failure); success shows in "Last backup: … · N files"
-                                        runOnUiThread { if (vm.busy == com.onpath.app.ui.Busy.BACKUP) vm.busy = null }
+                                        runOnUiThread { if (vm.notices.busy == com.onpath.app.ui.Busy.BACKUP) vm.notices.busy = null }
                                     }
                                 },
                                 onChooseFolder = { launchTreePicker(pickBackupFolder) },
@@ -394,20 +394,20 @@ class MainActivity : ComponentActivity() {
                         )
                     }
                     // over Settings too: Diagnostics → Developer tools opens the technical view
-                    if (vm.timeDetails != null) BackHandler { vm.timeDetails = null }
-                    PageFadeOf(vm.timeDetails) { td ->
-                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.timeDetails = null })
+                    if (vm.planRoute.timeDetails != null) BackHandler { vm.planRoute.timeDetails = null }
+                    PageFadeOf(vm.planRoute.timeDetails) { td ->
+                        com.onpath.app.ui.TimeDetailsScreen(td, onBack = { vm.planRoute.timeDetails = null })
                     }
                     // Back in Plan during a tour (owner 2026-11-05): the same as "‹ Zur Tour" – back to Navigate. Composed
                     // first, so a map overlay / shown track (below) and every open screen still close first.
                     val touring = vm.recState.collectAsState().value != null
-                    BackHandler(enabled = touring && vm.mode == AppMode.PLAN && !vm.routesOpen && !vm.showSettings &&
-                        vm.shown == null && !vm.mapOverlayOpen && !vm.searchOpen && !vm.setupOpen && vm.timeDetails == null &&
-                        !vm.routeDetailsOpen && vm.recycleBin == null) { vm.continueNavigation() }
+                    BackHandler(enabled = touring && vm.tourSession.mode == AppMode.PLAN && !vm.routes.open && !vm.settingsSlice.showSettings &&
+                        vm.routesFlow.shown == null && !vm.placeMenus.mapOverlayOpen && !vm.searchFlow.searchOpen && !vm.setup.setupOpen && vm.planRoute.timeDetails == null &&
+                        !vm.planEdit.routeDetailsOpen && vm.recent.bin == null) { vm.tourSession.continueNavigation() }
                     // Back in Plan closes a map overlay / place card or a shown track. Navigate is left only by the slide switch.
-                    BackHandler(enabled = !vm.routesOpen && !vm.showSettings && vm.mode == AppMode.PLAN &&
-                        (vm.shown != null || vm.mapOverlayOpen)) {
-                        if (vm.mapOverlayOpen) vm.closeMapOverlays() else vm.closeShown()
+                    BackHandler(enabled = !vm.routes.open && !vm.settingsSlice.showSettings && vm.tourSession.mode == AppMode.PLAN &&
+                        (vm.routesFlow.shown != null || vm.placeMenus.mapOverlayOpen)) {
+                        if (vm.placeMenus.mapOverlayOpen) vm.placeMenus.closeMapOverlays() else vm.routesFlow.closeShown()
                     }
 
                     // My routes / Settings: the one message box (MessageCard) under the title / tabs – "End the running
@@ -417,47 +417,47 @@ class MainActivity : ComponentActivity() {
                 }
 
                 RouteDialogs(vm)
-                if (vm.setupOpen) BackHandler { vm.closeSetup() }
-                PageFade(vm.setupOpen) {
-                    com.onpath.app.ui.setup.SetupGuideScreen(vm.setupGuide, vm.setupWelcome, vm.phone, vm.phoneTaken, setupCallbacks(), vm.voiceTest)
+                if (vm.setup.setupOpen) BackHandler { vm.setup.closeSetup() }
+                PageFade(vm.setup.setupOpen) {
+                    com.onpath.app.ui.setup.SetupGuideScreen(vm.setup.setupGuide, vm.setup.setupWelcome, vm.setup.phone, vm.setup.phoneTaken, setupCallbacks(), vm.setup.voiceTest)
                 }
                 vm.restoreProgress?.let { com.onpath.app.ui.RestoreProgressDialog(it) }
                 // "Allow all the time" is never asked (owner) – only the quiet hint in Settings → Navigation
-                if (vm.askUpdateDuringTour) {
+                if (vm.updates.askUpdateDuringTour) {
                     AlertDialog(
-                        onDismissRequest = { vm.askUpdateDuringTour = false },
+                        onDismissRequest = { vm.updates.askUpdateDuringTour = false },
                         title = { Text(str(Res.string.msg_update_tour_title)) },
                         text = { com.onpath.app.ui.DialogText(str(Res.string.msg_update_tour_text)) },
-                        confirmButton = { TextButton(onClick = { vm.askUpdateDuringTour = false }) { Text(str(Res.string.msg_update_after_tour)) } },
-                        dismissButton = { TextButton(onClick = { vm.installUpdate(duringTourOk = true) }) { Text(str(Res.string.msg_update_install_now)) } },
+                        confirmButton = { TextButton(onClick = { vm.updates.askUpdateDuringTour = false }) { Text(str(Res.string.msg_update_after_tour)) } },
+                        dismissButton = { TextButton(onClick = { vm.updates.install(duringTourOk = true) }) { Text(str(Res.string.msg_update_install_now)) } },
                     )
                 }
                 // Continue may open the phone setup guide (a required step missing): the modal dialog steps aside while
                 // the guide is open – in front of it, it swallowed every touch (crash hunt 2026-11-12: a dead end). Back
                 // from the guide closes it and the question is back (vm.unfinished stays); finishing the guide
                 // continues the recording (openSetup's "then"), which clears the question.
-                if (!vm.setupOpen) vm.unfinished?.let { t ->
-                    UnfinishedDialog(t, onContinue = { vm.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.continueRecording(t) } }, onSave = { vm.askSaveUnfinished(t) },
-                        onDelete = { vm.deleteUnfinished(t) })
+                if (!vm.setup.setupOpen) vm.tour.unfinished?.let { t ->
+                    UnfinishedDialog(t, onContinue = { vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourEnd.continueRecording(t) } }, onSave = { vm.tourEnd.askSaveUnfinished(t) },
+                        onDelete = { vm.tourEnd.deleteUnfinished(t) })
                 }
-                vm.unfinishedRides?.let { (t, s) ->
-                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.saveUnfinished(t, it) }, onDelete = { vm.deleteUnfinished(t) },
-                        onDismiss = { vm.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
+                vm.tour.unfinishedRides?.let { (t, s) ->
+                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.tourEnd.saveUnfinished(t, it) }, onDelete = { vm.tourEnd.deleteUnfinished(t) },
+                        onDismiss = { vm.tour.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
                 }
                 // "Tour gespeichert" after the end sheet (owner 2026-11-06, onpath.private#35): slim – the numbers,
                 // "In Meine Touren ›" and OK; export and delete are in My routes
-                vm.finishedTour?.let { t ->
-                    com.onpath.app.ui.SavedTourDialog(t, vm.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)
+                vm.tour.finishedTour?.let { t ->
+                    com.onpath.app.ui.SavedTourDialog(t, vm.tour.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)
                 }
                 // a short recording went to the recycle bin instead (owner 2026-11-12): Rückgängig · OK, until answered
-                vm.shortBinnedTour?.let { t ->
-                    com.onpath.app.ui.ShortRecordingDialog(t, onUndo = vm::undoShortRecording, onOk = vm::closeShortRecording)
+                vm.tour.shortBinned?.let { t ->
+                    com.onpath.app.ui.ShortRecordingDialog(t, onUndo = vm.tourEnd::undoShortRecording, onOk = vm.tourEnd::closeShortRecording)
                 }
             }
         }
         if (!vm.prefs.setupWelcomeSeen) {
             if (com.onpath.app.ui.setup.PhoneStateReader.location(this) != com.onpath.app.setup.LocationGrant.NONE) vm.prefs.setupWelcomeSeen = true
-            else vm.setupWelcome = true
+            else vm.setup.setupWelcome = true
         }
     }
 
@@ -549,7 +549,7 @@ class MainActivity : ComponentActivity() {
         if (stoodDown) return // finishing: no view model, no tracker
         vm.tracker.start()
         vm.recheckData()
-        vm.onAppStart() // owner: the app always opens at the current location (when nothing is running)
+        vm.map.onAppStart() // owner: the app always opens at the current location (when nothing is running)
         com.onpath.app.debug.Health.attach(window) // janky frames + main-thread watchdog while on screen
     }
 
@@ -564,9 +564,9 @@ class MainActivity : ComponentActivity() {
     override fun onStop() {
         if (stoodDown) { super.onStop(); return }
         com.onpath.app.debug.Health.noteLeaving() // a stall from here on is "while leaving the app" (MainStall)
-        if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.phone),
+        if (phoneRead) vm.prefs.lastSeen = com.onpath.app.setup.LastSeen(com.onpath.app.setup.PhoneCheck.okNow(vm.setup.phone),
             System.currentTimeMillis())
-        vm.onAppStop()
+        vm.map.onAppStop()
         vm.prefs.flushLazy() // camera + last seen to disk now, on a background thread – onStop never waits for it
         com.onpath.app.debug.Health.detach(window)
         vm.tracker.stop()
@@ -606,12 +606,12 @@ class MainActivity : ComponentActivity() {
         // a plan link (plan.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
         planLinkOf(intent)?.let { found ->
             vm.dataScreenDismissed = true
-            vm.receivePlanLink(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
+            vm.links.receive(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
             return
         }
         sharedPlaceOf(intent)?.let { place ->
             vm.dataScreenDismissed = true
-            vm.receiveSharedPlace(place)
+            vm.searchFlow.receiveSharedPlace(place)
             return
         }
         val uri: Uri? = when (intent.action) {
@@ -625,10 +625,10 @@ class MainActivity : ComponentActivity() {
             // the data folder too: getExternalFilesDir is null while the storage is not ready after a restart (DataStorage)
             val private = listOfNotNull(filesDir.parentFile, filesDir, cacheDir, getExternalFilesDir(null)?.parentFile,
                 vm.dataFiles.dir.parentFile?.parentFile)
-            if (IncomingUri.importable(uri.scheme, uri.path, private)) vm.importGpx(uri)
+            if (IncomingUri.importable(uri.scheme, uri.path, private)) vm.importExport.importGpx(uri)
             else {
                 com.onpath.app.debug.Problems.warn("gpx", "Import refused: ${uri.scheme} URI to an app-private path or not a file")
-                vm.sayError(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.msg_gpx_import_failed), com.onpath.app.ui.NoticePlace.MAP)
+                vm.notices.sayError(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.msg_gpx_import_failed), com.onpath.app.ui.NoticePlace.MAP)
             }
         }
     }
@@ -657,13 +657,13 @@ class MainActivity : ComponentActivity() {
                 IntentCompat.getParcelableExtra(intent, Intent.EXTRA_STREAM, Uri::class.java) == null ->
                 com.onpath.app.search.SharedPlaceParser.fromText(intent.getStringExtra(Intent.EXTRA_TEXT),
                     intent.getStringExtra(Intent.EXTRA_SUBJECT)).also {
-                    if (it == null) vm.sayError(Txt.s(Res.string.msg_shared_no_place), com.onpath.app.ui.NoticePlace.MAP)
+                    if (it == null) vm.notices.sayError(Txt.s(Res.string.msg_shared_no_place), com.onpath.app.ui.NoticePlace.MAP)
                 }
             else -> null
         }
     } catch (e: Exception) {
         com.onpath.app.debug.Problems.warn("search", "Shared place could not be read", e)
-        vm.sayError(Txt.s(Res.string.msg_shared_unreadable), com.onpath.app.ui.NoticePlace.MAP)
+        vm.notices.sayError(Txt.s(Res.string.msg_shared_unreadable), com.onpath.app.ui.NoticePlace.MAP)
         null
     }
 
@@ -679,7 +679,7 @@ class MainActivity : ComponentActivity() {
             openGpx.launch(arrayOf("application/gpx+xml", "application/octet-stream", "text/xml", "application/xml", "*/*"))
         } catch (e: Exception) {
             com.onpath.app.debug.Problems.warn("ui", "No file picker available for GPX import", e)
-            vm.sayError(Txt.s(Res.string.msg_no_file_picker), com.onpath.app.ui.NoticePlace.ROUTES)
+            vm.notices.sayError(Txt.s(Res.string.msg_no_file_picker), com.onpath.app.ui.NoticePlace.ROUTES)
         }
     }
 
@@ -710,7 +710,7 @@ class MainActivity : ComponentActivity() {
         val prefs = com.onpath.app.data.Prefs(this)
         val crash = com.onpath.app.debug.Problems.lastCrash(prefs.crashShownUntil + 1) ?: return
         prefs.crashShownUntil = crash.last
-        if (vm.errorCard == null) vm.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
+        if (vm.notices.errorCard == null) vm.notices.sayError(Txt.s(Res.string.msg_crash_last_time), com.onpath.app.ui.NoticePlace.BACKGROUND)
     }
 
     /**
@@ -725,22 +725,22 @@ class MainActivity : ComponentActivity() {
             com.onpath.app.debug.Problems.warn("ui", "Diagnostics: loaded style not readable", e); null
         }
         val state = vm.diagnosticsState()
-        vm.busy = com.onpath.app.ui.Busy.DIAGNOSTICS
+        vm.notices.busy = com.onpath.app.ui.Busy.DIAGNOSTICS
         Thread {
             val result = runCatching { com.onpath.app.debug.Diagnostics.export(this, mapPart, styleJson, state) }
             runOnUiThread {
-                vm.busy = null
+                vm.notices.busy = null
                 result.onSuccess { f ->
                     val uri = androidx.core.content.FileProvider.getUriForFile(this, "$packageName.files", f)
                     val send = Intent(Intent.ACTION_SEND).setType("application/zip").putExtra(Intent.EXTRA_STREAM, uri)
                         .putExtra(Intent.EXTRA_SUBJECT, f.name).addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     try { startActivity(Intent.createChooser(send, "Send diagnostics")) } catch (e: Exception) {
                         com.onpath.app.debug.Problems.warn("ui", "No app to share the diagnostics file", e)
-                        vm.sayError("No app found to send the file with.", com.onpath.app.ui.NoticePlace.SETTINGS)
+                        vm.notices.sayError("No app found to send the file with.", com.onpath.app.ui.NoticePlace.SETTINGS)
                     }
                 }.onFailure {
                     com.onpath.app.debug.Problems.error("ui", "Diagnostics export failed", it)
-                    vm.sayError("Diagnostics could not be created – the phone's storage may be full. Please try again.", com.onpath.app.ui.NoticePlace.SETTINGS)
+                    vm.notices.sayError("Diagnostics could not be created – the phone's storage may be full. Please try again.", com.onpath.app.ui.NoticePlace.SETTINGS)
                 }
             }
         }.start()
@@ -755,7 +755,7 @@ class MainActivity : ComponentActivity() {
         val notifBlocked = Build.VERSION.SDK_INT >= 33 && vm.prefs.asks("notifications") > 0 &&
             !com.onpath.app.ui.setup.PhoneStateReader.granted(this, Manifest.permission.POST_NOTIFICATIONS) &&
             !shouldShowRequestPermissionRationale(Manifest.permission.POST_NOTIFICATIONS)
-        vm.updatePhone(com.onpath.app.ui.setup.PhoneStateReader.read(this, vm.prefs, locBlocked, notifBlocked, vm.unusedReset))
+        vm.setup.updatePhone(com.onpath.app.ui.setup.PhoneStateReader.read(this, vm.prefs, locBlocked, notifBlocked, vm.setup.unusedReset))
         phoneRead = true
     }
 
@@ -764,13 +764,13 @@ class MainActivity : ComponentActivity() {
         Thread {
             val r = com.onpath.app.ui.setup.PhoneStateReader.readUnusedReset(applicationContext)
             runOnUiThread {
-                vm.unusedReset = r
+                vm.setup.unusedReset = r
                 refreshPhone()
                 if (!takenChecked) {
                     takenChecked = true
-                    vm.phoneTaken = com.onpath.app.setup.PhoneCheck.takenAway(vm.prefs.lastSeen, vm.phone, System.currentTimeMillis())
-                    if (vm.phoneTaken.isNotEmpty()) com.onpath.app.debug.Problems.info("setup",
-                        "Removed since the last use: ${vm.phoneTaken.entries.joinToString { "${it.key} (${it.value})" }}")
+                    vm.setup.phoneTaken = com.onpath.app.setup.PhoneCheck.takenAway(vm.prefs.lastSeen, vm.setup.phone, System.currentTimeMillis())
+                    if (vm.setup.phoneTaken.isNotEmpty()) com.onpath.app.debug.Problems.info("setup",
+                        "Removed since the last use: ${vm.setup.phoneTaken.entries.joinToString { "${it.key} (${it.value})" }}")
                 }
             }
         }.apply { name = "phone-check" }.start()
@@ -781,12 +781,12 @@ class MainActivity : ComponentActivity() {
 
     private fun setupCallbacks() = com.onpath.app.ui.setup.SetupCallbacks(
         onContinue = ::setupContinue,
-        onLater = vm::setupLater,
+        onLater = vm.setup::setupLater,
         onTestVibration = {
             com.onpath.app.recording.Cues.vibrate(this, com.onpath.app.recording.Cues.TEST_PATTERN, "test")
-            vm.setupVibrationPlayed()
+            vm.setup.setupVibrationPlayed()
         },
-        onVibrationAnswer = vm::setupVibrationAnswer,
+        onVibrationAnswer = vm.setup::setupVibrationAnswer,
         onTestVoice = ::testVoice,
         onLoadVoice = ::loadVoice,
         onTtsSettings = ::openTtsSettings,
@@ -795,14 +795,14 @@ class MainActivity : ComponentActivity() {
         onAppSettings = ::openAppSettings,
         // owner 2026-11-08: the detailed brand help is on onpath.earth, in the app language (failures → Problems.warn)
         onMoreHelp = { _ -> com.onpath.app.ui.OnPathLinks.open(this, com.onpath.app.ui.OnPathLinks.phoneSetupHelp()) },
-        onBrandDone = vm::setupBrandDone,
-        onClose = vm::closeSetup,
-        onWelcomeNow = vm::setupWelcomeNow,
+        onBrandDone = vm.setup::setupBrandDone,
+        onClose = vm.setup::closeSetup,
+        onWelcomeNow = vm.setup::setupWelcomeNow,
     )
 
     /** The guide's main button: the system dialog where Android still shows it, else the right settings screen. */
     private fun setupContinue(id: com.onpath.app.setup.CheckId) {
-        val p = vm.phone
+        val p = vm.setup.phone
         when (id) {
             com.onpath.app.setup.CheckId.LOCATION, com.onpath.app.setup.CheckId.PRECISE ->
                 if (p.locationAskBlocked) openAppSettings() else try {
@@ -845,7 +845,7 @@ class MainActivity : ComponentActivity() {
      */
     private fun testVoice() {
         val s = voiceSpeaker()
-        s.sayTest(com.onpath.app.navigation.VoiceText.test()) { t -> runOnUiThread { vm.setupVoiceTest(t) } }
+        s.sayTest(com.onpath.app.navigation.VoiceText.test()) { t -> runOnUiThread { vm.setup.setupVoiceTest(t) } }
     }
 
     private fun voiceSpeaker(): com.onpath.app.recording.Speaker =
@@ -854,7 +854,7 @@ class MainActivity : ComponentActivity() {
             s.onState = { st ->
                 runOnUiThread {
                     com.onpath.app.recording.Speaker.remember(vm.prefs, s)
-                    vm.setupVoiceStatus(com.onpath.app.recording.Speaker.status(st, s.online), s.result?.let(com.onpath.app.setup.VoiceSetup::fix))
+                    vm.setup.setupVoiceStatus(com.onpath.app.recording.Speaker.status(st, s.online), s.result?.let(com.onpath.app.setup.VoiceSetup::fix))
                 }
             }
         }
@@ -864,8 +864,8 @@ class MainActivity : ComponentActivity() {
      * quietly – the step turns to "Test" by itself (principle 5, docs/design/onboarding-phone-check.md).
      */
     private fun recheckVoice() {
-        if (vm.setupGuide?.current != com.onpath.app.setup.CheckId.VOICE) return
-        if (vm.phone.voice == com.onpath.app.setup.VoiceStatus.READY) return
+        if (vm.setup.setupGuide?.current != com.onpath.app.setup.CheckId.VOICE) return
+        if (vm.setup.phone.voice == com.onpath.app.setup.VoiceStatus.READY) return
         val s = voiceSpeaker()
         if (s.state == com.onpath.app.recording.Speaker.State.READY && !s.online) return
         if (s.state == com.onpath.app.recording.Speaker.State.READY) s.stop() // an online voice: an offline one may be there now
@@ -874,7 +874,7 @@ class MainActivity : ComponentActivity() {
 
     /** "Load voice": the voice download of the engine OnPath would speak with (Google's when the phone's own has none). */
     private fun loadVoice() {
-        val pkg = vm.phone.voiceFix?.enginePkg
+        val pkg = vm.setup.phone.voiceFix?.enginePkg
         val intent = Intent(android.speech.tts.TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA)
         if (pkg != null) intent.setPackage(pkg)
         try { startActivity(intent) } catch (e: Exception) {

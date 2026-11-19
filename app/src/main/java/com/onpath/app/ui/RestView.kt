@@ -134,10 +134,10 @@ object ScreenTouch {
  * Something needs the user (owner: then the full map) – a dialog, sheet or the error box over Navigate. The
  * navigation states (off route, arrival question, GPS) are added by NavigateMode.
  */
-internal fun AppViewModel.restBlocked(): Boolean = arrivalAsk || endAsk != null || routeBackAsk || longRouteAsk != null ||
-    selectedPoi != null || activityCheck != null || downloadDetailsOpen || errorCard != null ||
-    askUpdateDuringTour || unfinished != null || finishedTour != null || setupOpen || showSettings || routesOpen ||
-    timeDetails != null
+internal fun AppViewModel.restBlocked(): Boolean = tour.arrivalAsk || tour.endAsk != null || planEdit.routeBackAsk || planRun.longRouteAsk != null ||
+    selectedPoi != null || activityCheckSlice.activityCheck != null || mapData.downloadDetailsOpen || errorCard != null ||
+    updates.askUpdateDuringTour || tour.unfinished != null || tour.finishedTour != null || setup.setupOpen || settingsSlice.showSettings || routes.open ||
+    planRoute.timeDetails != null
 
 /**
  * The rest view decision for this Navigate screen ([SmartScreen], re-checked on every input change and when a hold

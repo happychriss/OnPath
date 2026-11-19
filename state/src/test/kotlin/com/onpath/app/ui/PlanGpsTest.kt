@@ -70,7 +70,7 @@ class PlanGpsTest {
         // the GPS note and the map's INFO line use the one rule (MapScreen) – one at a time, never stacked
         val screen = sourceFile("ui/MapScreen.kt").readText()
         assertEquals(2, Regex("""start = PlanGps\.noteStartDp\(""").findAll(screen).count())
-        assertTrue(screen.contains("vm.mapNote?.takeIf { vm.mode == AppMode.PLAN && !vm.searchOpen && vm.planGpsNote == null }"))
+        assertTrue(screen.contains("vm.notices.mapNote?.takeIf { vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen && vm.map.planGpsNote == null }"))
     }
 
     @Test fun anEditWithoutAPositionIsANeutralNoteThatStaysLongerThanATapNote() {

@@ -44,14 +44,14 @@ class OverviewSwipeE2ETest : E2EBase() {
                 listOf(GpxWaypoint(line.first().lat, line.first().lon, null), GpxWaypoint(line.last().lat, line.last().lon, null)))
             db.getTour(id)!!.uuid
         }
-        scenario.onActivity { vm(it).openRoutes() }
+        scenario.onActivity { vm(it).routesGo.openRoutes() }
         // newest first: „Swipe 3“ is the first row
         val row = findFresh(By.text("Swipe 3"), 15_000)
         assertNotNull("the newest row", row)
         row!!.click()
         assertNotNull("the pill on the first page", findFresh(By.text(position(1)), 10_000))
         var file: java.io.File? = null
-        scenario.onActivity { file = vm(it).overviewPictures.file(uuids[2]) }
+        scenario.onActivity { file = vm(it).pictures.overviewPictures.file(uuids[2]) }
         waitUntil("the first overview's picture stored", 60_000) { file!!.isFile && file!!.length() > 0 }
         // the key file is written only when a picture is made (a stored one read marks just the picture as used)
         val keyFile = java.io.File(file!!.parentFile, "${uuids[2]}.key")

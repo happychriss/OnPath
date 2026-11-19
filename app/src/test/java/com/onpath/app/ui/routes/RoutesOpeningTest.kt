@@ -47,7 +47,7 @@ class RoutesOpeningTest {
         assertFalse("the sort is not read from the prefs any more", vm.contains("RouteSort.decode(prefs.routesSort)"))
         assertFalse("nor written", vm.contains("prefs.routesSort ="))
         val main = File(src, "MainActivity.kt").readText().substringAfter("RoutesScreen(")
-        assertTrue("the activity chip: the planning activity", main.contains("initialActivity = vm.activity"))
+        assertTrue("the activity chip: the planning activity", main.contains("initialActivity = vm.planRoute.activity"))
         // the chip row opens at the chip chosen – with "Neueste zuerst" (the first sort key) that is its left end
         assertEquals(0, RouteSort.Key.entries.indexOf(RouteSort.DEFAULT.key))
     }

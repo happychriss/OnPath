@@ -16,10 +16,10 @@ import org.junit.Test
  */
 class PlaceMenusAdaptersTest {
     private val vm = sourceFile("ui/AppViewModel.kt").readText()
-    private val menusHead = "    private val placeMenus: com.onpath.app.ui.plan.PlaceMenusSlice = com.onpath.app.ui.plan.PlaceMenusSlice("
-    private val keptHead = "    private val keptPlaces: com.onpath.app.ui.plan.KeptPlacesSlice = com.onpath.app.ui.plan.KeptPlacesSlice("
+    private val menusHead = "    val placeMenus: com.onpath.app.ui.plan.PlaceMenusSlice = com.onpath.app.ui.plan.PlaceMenusSlice("
+    private val keptHead = "    val keptPlaces: com.onpath.app.ui.plan.KeptPlacesSlice = com.onpath.app.ui.plan.KeptPlacesSlice("
     private val keptDoc = "    /**\n     * The kept places: Zuhause + favourites ([KeptPlacesSlice]"
-    private val keptEnd = "\n    private val routeRun get() = planRun.routeRun"
+    private val keptEnd = "\n    )\n    /** The point the last edit added or moved: the map's spinner" // the forwarder `routeRun` that stood here went in piece 21
     private val menusBlock = vm.substringAfter(menusHead).substringBefore(keptDoc)
     private val keptBlock = vm.substringAfter(keptHead).substringBefore(keptEnd)
 
@@ -31,7 +31,7 @@ class PlaceMenusAdaptersTest {
         assertTrue("the placeMenus block", menusBlock.length > 1000 && menusBlock.contains("object : com.onpath.app.ui.plan.PlaceMenusHost"))
         assertTrue("the keptPlaces block", keptBlock.length > 600 && keptBlock.contains("object : com.onpath.app.ui.plan.PlacesStore"))
         // the menus after the add slice they read, both before the init blocks and before the slices that follow; the kept places after
-        assertTrue(vm.indexOf("    private val placeAdd = PlaceAddSlice(") < vm.indexOf(menusHead))
+        assertTrue(vm.indexOf("    val placeAdd: PlaceAddSlice = PlaceAddSlice(") < vm.indexOf(menusHead))
         assertTrue(vm.indexOf(menusHead) < vm.indexOf(keptHead))
         assertTrue(vm.indexOf(keptHead) < vm.indexOf("internal val multiDay ="))
         assertTrue(vm.indexOf(keptHead) < vm.indexOf("\n    init {\n        recalc()"))
@@ -39,15 +39,15 @@ class PlaceMenusAdaptersTest {
 
     @Test fun theMenusHostAnswersFromTheViewModelsOwnMembers() {
         listOf(
-            "override fun planMode(): Boolean = mode == AppMode.PLAN",
+            "override fun planMode(): Boolean = tourSession.mode == AppMode.PLAN",
             "override fun touring(): Boolean = recState.value != null",
-            "override fun activity(): Activity = this@AppViewModel.activity",
-            "override fun sac(): Int = this@AppViewModel.sac",
+            "override fun activity(): Activity = this@AppViewModel.planRoute.activity",
+            "override fun sac(): Int = this@AppViewModel.planRoute.sac",
             "override fun route(): PlannedRoute? = this@AppViewModel.route",
             "override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()",
             "override fun routeIndexOf(place: com.onpath.app.search.Place): Int? = this@AppViewModel.routeIndexOf(place)",
-            "override var searchMark: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchMark\n                set(v) { this@AppViewModel.searchMark = v }",
-            "override var searchPlace: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchPlace\n                set(v) { this@AppViewModel.searchPlace = v }",
+            "override var searchMark: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchFlow.searchMark\n                set(v) { this@AppViewModel.searchFlow.searchMark = v }",
+            "override var searchPlace: com.onpath.app.search.Place?\n                get() = this@AppViewModel.searchFlow.searchPlace\n                set(v) { this@AppViewModel.searchFlow.searchPlace = v }",
             "override suspend fun offlineIndex(): com.onpath.app.ui.plan.PlaceLookup {\n                val index = search.offlineIndex()\n",
             "return com.onpath.app.ui.plan.PlaceLookup { minLat, minLon, maxLat, maxLon, kinds -> index.placesIn(minLat, minLon, maxLat, maxLon, kinds) }",
             // the collaborators: the plan, the run, the add slice, the hold's router (the same one), the IO thread, the main scope
@@ -62,44 +62,20 @@ class PlaceMenusAdaptersTest {
             "searchStore.update(change = change)",
             "override fun backupChanged() = com.onpath.app.backup.Backups.placesChanged(getApplication())",
             "override fun syncChanged() = sync.changed(\"kept places\")",
-            "override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchMark",
-            "override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.isCandidate(poi)",
+            "override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchFlow.searchMark",
+            "override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.searchFlow.isCandidate(poi)",
         ).forEach(::keptHas)
     }
 
     @Test fun theOldNamesForwardToTheSlices() {
         listOf(
-            "fun pinnedPoiKinds(): Map<Int, String> = placeMenus.pinnedPoiKinds()",
-            "fun refreshPinnedKinds() = placeMenus.refreshPinnedKinds()",
-            "fun placeMenu(poi: com.onpath.app.poi.Poi): PlaceAddMenu.Menu = placeMenus.placeMenu(poi)",
-            "val mapOverlayOpen: Boolean get() = placeMenus.mapOverlayOpen",
-            "fun closeMapOverlays(why: String = \"closed\") = placeMenus.closeMapOverlays(why)",
-            "fun closePointMenu(why: String) = placeMenus.closePointMenu(why)",
-            "fun openPoiMenu(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeMenus.openPoiMenu(poi, lineSnapM)",
-            "fun openPinMenu() = placeMenus.openPinMenu()",
-            "fun removePin(why: String) = placeMenus.removePin(why)",
-            "fun openPointMenu(index: Int, distDp: Int? = null, via: String = \"hold\") = placeMenus.openPointMenu(index, distDp, via)",
-            "fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String = placeMenus.poiAddLabel(poi, lineSnapM)",
-            "fun makeStartFromMenu() = placeMenus.makeStartFromMenu()",
-            "fun closePlaceCard() = placeMenus.closePlaceCard()",
-            "fun placeCardUi(place: com.onpath.app.search.Place): com.onpath.app.ui.search.PlaceCardUi = placeMenus.placeCardUi(place)",
-            "val cardPlace: com.onpath.app.search.Place? get() = placeMenus.cardPlace",
-            "val pointMenuTarget: PointMenuTarget? get() = placeMenus.pointMenuTarget",
-            "val pointMenu: Int? get() = placeMenus.pointMenu",
-            "fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isFavouritePlace(poi)",
-            "fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = keptPlaces.isHomePlace(poi)",
-            "fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleFavouritePlace(poi)",
-            "fun toggleHomePlace(poi: com.onpath.app.poi.Poi) = keptPlaces.toggleHomePlace(poi)",
-            "fun googleFromMenu(): GeoPoint? = placeMenus.menuAction(\"Open in Google Maps\")?.let { waypoints[it] }",
+            "fun googleFromMenu(): GeoPoint? = placeMenus.menuAction(\"Open in Google Maps\")?.let { plan.points[it] }",
         ).forEach { assertTrue("forwarder: $it", vm.contains("    $it\n")) }
-        // the two state holders the screens and the E2E tests set: read and written through the slice
-        assertTrue(vm.contains("    var planPoi: com.onpath.app.poi.Poi?\n        get() = placeMenus.planPoi\n        set(v) { placeMenus.planPoi = v }\n"))
-        assertTrue(vm.contains("    var poiMenu: com.onpath.app.poi.Poi?\n        get() = placeMenus.poiMenu\n        set(v) { placeMenus.poiMenu = v }\n"))
     }
 
     @Test fun theOtherSlicesAndTheViewModelsOwnLinesGoToTheSlices() {
         // the add slice's host calls the menus directly (they lived here before piece 12)
-        val add = vm.substringAfter("    private val placeAdd = PlaceAddSlice(").substringBefore("\n    /**\n     * The menus of a held place / a route point")
+        val add = vm.substringAfter("    val placeAdd: PlaceAddSlice = PlaceAddSlice(").substringBefore("\n    /**\n     * The menus of a held place / a route point")
         listOf(
             "override fun closeMapOverlays(why: String) = placeMenus.closeMapOverlays(why)",
             "override fun openPointMenu(index: Int, via: String) = placeMenus.openPointMenu(index, via = via)",
@@ -107,7 +83,7 @@ class PlaceMenusAdaptersTest {
             "override fun rememberPoiKind(p: GeoPoint, kind: String?) = placeMenus.rememberPoiKind(p, kind)",
         ).forEach { assertTrue("the placeAdd host must have: $it", add.contains(it)) }
         // the edit slice's host too
-        val edit = vm.substringAfter("private val planEdit: com.onpath.app.ui.plan.PlanEditSlice = com.onpath.app.ui.plan.PlanEditSlice(")
+        val edit = vm.substringAfter("val planEdit: com.onpath.app.ui.plan.PlanEditSlice = com.onpath.app.ui.plan.PlanEditSlice(")
             .substringBefore("scope = viewModelScope, io = Dispatchers.IO,")
         listOf(
             "override fun closePointMenu(why: String) = placeMenus.closePointMenu(why)",
@@ -123,11 +99,11 @@ class PlaceMenusAdaptersTest {
         assertTrue(com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("        host.menuFollowsSnap(moves)\n"))
         // (piece 19: `enter` is TourSession's; its menus line is the host's `closeMenusForNavigate` – the same seven statements in the
         // same order, `followMe = true` right after it in the slice; TourSessionFlowTest shows each menu closed on entering Navigate)
-        assertTrue(vm.contains("override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu(\"mode change to Navigate\"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }"))
+        assertTrue(vm.contains("override fun closeMenusForNavigate() { placeMenus.planPoi = null; placeMenus.poiMenu = null; placeMenus.closePointMenu(\"mode change to Navigate\"); placeAdd.firstPointMenu = null; placeAdd.holdAddMenu = null; placeAdd.cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }"))
         assertTrue(com.onpath.app.testkit.sourceFile("ui/tour/TourSession.kt").readText().contains("if (m == AppMode.NAVIGATE) { host.closeMenusForNavigate(); map.followMe = true }"))
         // the search flow's host reaches the menus through the view model's forwarders
-        assertTrue(vm.contains("            override val mapOverlayOpen: Boolean get() = this@AppViewModel.mapOverlayOpen\n"))
-        assertTrue(vm.contains("            override fun openPoiMenu(poi: com.onpath.app.poi.Poi) = this@AppViewModel.openPoiMenu(poi)\n"))
+        assertTrue(vm.contains("            override val mapOverlayOpen: Boolean get() = this@AppViewModel.placeMenus.mapOverlayOpen\n"))
+        assertTrue(vm.contains("            override fun openPoiMenu(poi: com.onpath.app.poi.Poi) = this@AppViewModel.placeMenus.openPoiMenu(poi)\n"))
     }
 
     @Test fun theMovedBodiesAreNotInTheViewModelAnyMore() {

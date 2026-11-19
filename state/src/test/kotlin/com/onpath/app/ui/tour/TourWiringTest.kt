@@ -33,7 +33,7 @@ class TourWiringTest {
 
     // ---------------- piece 16b: the activity check ----------------
 
-    private val check get() = between("private val activityCheckSlice = com.onpath.app.ui.tour.ActivityCheckSlice(", "\n    )\n")
+    private val check get() = between("val activityCheckSlice: com.onpath.app.ui.tour.ActivityCheckSlice = com.onpath.app.ui.tour.ActivityCheckSlice(", "\n    )\n")
     private val rowsAdapter get() = between("private val tourRows = object : com.onpath.app.ui.tour.TourRows {", "\n    }\n")
     private val fixesAdapter get() = between("fixes = object : com.onpath.app.ui.tour.Fixes {", "        },")
     private val hostAdapter get() = between("host = object : com.onpath.app.ui.tour.ActivityCheckHost {", "        },")
@@ -78,24 +78,13 @@ class TourWiringTest {
 
     @Test fun theHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
         for (line in listOf(
-            "override val mode: AppMode get() = this@AppViewModel.mode",
-            "override fun enterNavigate() = enter(AppMode.NAVIGATE)",
-            "override val followFromPlan: Boolean get() = this@AppViewModel.followFromPlan",
-            "override val planPoints: Int get() = waypoints.size",
-            "override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }",
+            "override val mode: AppMode get() = this@AppViewModel.tourSession.mode",
+            "override fun enterNavigate() = tourSession.enter(AppMode.NAVIGATE)",
+            "override val followFromPlan: Boolean get() = this@AppViewModel.tourFollow.followFromPlan",
+            "override val planPoints: Int get() = plan.points.size",
+            "override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }",
             "override fun rememberSac(level: Int) { prefs.sac = level }",
         )) assertTrue("the host says: $line", hostAdapter.contains(line))
-    }
-
-    /** The screens and tests call these names: each is a one-line forward; the sheet's state is read from the slice. */
-    @Test fun theOldNamesForwardToTheSlice() {
-        for (line in listOf(
-            "val activityCheck: ActivityCheckUi? get() = activityCheckSlice.activityCheck",
-            "fun openActivityCheck() = activityCheckSlice.openActivityCheck()",
-            "fun chooseHikeLevel(level: Int) = activityCheckSlice.chooseHikeLevel(level)",
-            "fun chooseActivity(a: Activity) = activityCheckSlice.chooseActivity(a)",
-            "fun closeActivityCheck() = activityCheckSlice.closeActivityCheck()",
-        )) assertEquals("the view model says: $line", 1, count(vm, line))
     }
 
     /** The follow state the check sheet once left to piece 18a is the follow slice's now; the check slice does not touch it. */
@@ -133,8 +122,8 @@ class TourWiringTest {
 
     /** Declared where its readers are (no work at construction, so any place after its constructor arguments); the init blocks never touch it. */
     @Test fun theSliceIsDeclaredAfterWhatItIsGiven() {
-        val at = vm.indexOf("private val activityCheckSlice = ")
-        for (dep in listOf("private val planRoute = ", "private val followStore = FollowStore(", "private val recording: RecordingClient", "val tracker = LocationTracker(",
+        val at = vm.indexOf("val activityCheckSlice: com.onpath.app.ui.tour.ActivityCheckSlice = ")
+        for (dep in listOf("val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = ", "private val followStore = FollowStore(", "private val recording: RecordingClient", "val tracker = LocationTracker(",
             "val prefs = Prefs(", "private val db = TourDb.get(")) {
             assertEquals("declared once: $dep", 1, count(vm, dep))
             assertTrue("$dep must be declared before the slice", vm.indexOf(dep) < at)
@@ -153,7 +142,7 @@ class TourWiringTest {
     // ---------------- piece 17: the tour's end ----------------
 
     private val endSlice = sourceFile("ui/tour/TourEndSlice.kt").readText()
-    private val end get() = between("private val tourEnd = com.onpath.app.ui.tour.TourEndSlice(", "\n    )\n")
+    private val end get() = between("val tourEnd: com.onpath.app.ui.tour.TourEndSlice = com.onpath.app.ui.tour.TourEndSlice(", "\n    )\n")
     private val endHost get() = between("host = object : com.onpath.app.ui.tour.TourEndHost {", "        },\n")
     /** The view model's big `init`, whose collectors start the follow of the service: from its first line to its end. */
     private val bigInit get() = between("    init {\n        recalc()\n", "\n    }\n")
@@ -164,65 +153,37 @@ class TourWiringTest {
             "tour = tour, routes = routes, recording = recording, tours = toursStore, rows = tourRows,",
             "say = notices, scope = viewModelScope, io = Dispatchers.IO, main = Dispatchers.Main,",
         )) assertTrue("the constructor says: $line", end.contains(line))
-        assertTrue(vm.contains("val tour = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))"))
+        assertTrue(vm.contains("val tour: com.onpath.app.ui.tour.TourController = com.onpath.app.ui.tour.TourController(com.onpath.app.ui.tour.tourRecorder(recording))"))
         assertEquals("the end, the session (piece 19) and the route run (piece 9b) name the main part, nothing else does", 3, count(vm, "main = Dispatchers.Main,"))
     }
 
     /** Each host call hands over to the member the old body used, with the old arguments (each on the thread the slice calls it on). */
     @Test fun theEndHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
         for (line in listOf(
-            "override val activity: Activity get() = this@AppViewModel.activity",
-            "override fun activityOrNull(name: String?): Activity? = this@AppViewModel.activityOrNull(name)",
-            "override fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = this@AppViewModel.tourTimes(t)",
+            "override val activity: Activity get() = this@AppViewModel.planRoute.activity",
+            "override fun activityOrNull(name: String?): Activity? = this@AppViewModel.planRoute.activityOrNull(name)",
+            "override fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = this@AppViewModel.planRoute.tourTimes(t)",
             "override fun nameRecordedTour(t: Tour) = this@AppViewModel.nameRecordedTour(t)",
-            "override fun refreshTours() = this@AppViewModel.refreshTours()",
+            "override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()",
             "override fun clearFollow() = tourFollow.clearFollow()",
-            "override fun enterMode(m: AppMode) = enter(m)",
+            "override fun enterMode(m: AppMode) = tourSession.enter(m)",
             "override fun endGuidanceFlag() { tourFollow.guidanceEndedByEmptyPlan = false }",
-            "override fun kickThumbs() = this@AppViewModel.kickThumbs()",
+            "override fun kickThumbs() = this@AppViewModel.pictures.kickThumbs()",
             "override fun demoEndedWithTour() { if (com.onpath.app.recording.DemoLocation.endWithTour()) demo.navSimLine = null }",
             "override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)",
             "override fun clearInterruptedNote() = this@AppViewModel.clearInterruptedNote()",
-            "override val planPoints: Int get() = waypoints.size",
-            "override fun clearPlan() = this@AppViewModel.clearPlan()",
-            "get() = this@AppViewModel.routeBackAsk",
-            "set(v) { this@AppViewModel.routeBackAsk = v }",
-            "get() = this@AppViewModel.planSize",
-            "set(v) { this@AppViewModel.planSize = v }",
-            "override val shownTourId: Long? get() = shown?.tourId",
+            "override val planPoints: Int get() = plan.points.size",
+            "override fun clearPlan() = this@AppViewModel.planEdit.clearPlan()",
+            "get() = this@AppViewModel.planEdit.routeBackAsk",
+            "set(v) { this@AppViewModel.planEdit.routeBackAsk = v }",
+            "get() = this@AppViewModel.planEdit.planSize",
+            "set(v) { this@AppViewModel.planEdit.planSize = v }",
+            "override val shownTourId: Long? get() = routesFlow.shown?.tourId",
             "override fun reopenShownTour(t: Tour) = this@AppViewModel.openTour(t)",
         )) assertTrue("the host says: $line", endHost.contains(line))
         // the view model's own members behind it are the old ones
         assertTrue(vm.contains("private fun clearInterruptedNote() = com.onpath.app.recording.TourInterruptedReceiver.cancelNote(getApplication())"))
-        assertTrue(vm.contains("private fun tourTimes(t: Tour): com.onpath.app.time.TourTimes? = planRoute.tourTimes(t)"))
         assertEquals("Backups.tourChanged is told through the host only (no call of the slice names it)", 0, count(endSlice, "Backups"))
-    }
-
-    /** The screens, `MainActivity` and the E2E tests call these names: each is a one-line forward. */
-    @Test fun theEndNamesForwardToTheSlice() {
-        for (line in listOf(
-            "fun undoShortRecording() = tourEnd.undoShortRecording()",
-            "fun closeShortRecording() = tourEnd.closeShortRecording()",
-            "fun keepRecordingAfterArrival() = tourEnd.keepRecordingAfterArrival()",
-            "fun endTour() = tourEnd.endTour()",
-            "fun askEndTour(saveIfNoRides: Boolean = false) = tourEnd.askEndTour(saveIfNoRides)",
-            "fun endTourWith(a: EndAsk.Rides, choice: com.onpath.app.rides.RideChoice) = tourEnd.endTourWith(a, choice)",
-            "fun openEditRides(t: Tour) = tourEnd.openEditRides(t)",
-            "fun applyEditRides(t: Tour, choice: com.onpath.app.rides.RideChoice) = tourEnd.applyEditRides(t, choice)",
-            "fun endTourAndDelete() = tourEnd.endTourAndDelete()",
-            "fun continueRecording(t: Tour) = tourEnd.continueRecording(t)",
-            "fun askSaveUnfinished(t: Tour) = tourEnd.askSaveUnfinished(t)",
-            "fun saveUnfinished(t: Tour, choice: com.onpath.app.rides.RideChoice? = null) = tourEnd.saveUnfinished(t, choice)",
-            "fun deleteUnfinished(t: Tour) = tourEnd.deleteUnfinished(t)",
-            "fun pauseRecording(pause: Boolean) = tourEnd.pauseRecording(pause)",
-            "fun stopRecording() = tourEnd.stopRecording()",
-            "get() = tourEnd.editRides",
-            "set(v) { tourEnd.editRides = v }",
-        )) assertEquals("the view model says: $line", 1, count(vm, line))
-        // what stays a forward to the controller (state of the controller, nothing to move)
-        for (line in listOf("val shortBinnedTour: Tour? get() = tour.shortBinned", "fun backToUnfinished() = tour.backToUnfinished()",
-            "val unfinishedRides: Pair<Tour, com.onpath.app.rides.RideView.Summary>? get() = tour.unfinishedRides"))
-            assertEquals("still the view model's: $line", 1, count(vm, line))
     }
 
     /**
@@ -244,8 +205,8 @@ class TourWiringTest {
         assertEquals("no finished collector in the view model any more", 0, count(vm, "recording.finished"))
         assertEquals("the one collector of `finished` is the slice's", 1, count(endSlice, "recording.finished.collect"))
         val at = vm.indexOf("    init {\n        recalc()\n")
-        for (dep in listOf("private val tourEnd = ", "private val tourRows = ", "val tour = ", "private val routes = ", "private val toursStore = ",
-            "val notices = ", "private val recording: RecordingClient")) {
+        for (dep in listOf("val tourEnd: com.onpath.app.ui.tour.TourEndSlice = ", "private val tourRows = ", "val tour: com.onpath.app.ui.tour.TourController = ", "val routes: com.onpath.app.ui.routes.RoutesState = ", "private val toursStore = ",
+            "val notices: NoticeBoard = ", "private val recording: RecordingClient")) {
             assertEquals("declared once: $dep", 1, count(vm, dep))
             assertTrue("$dep must be declared above the big init", vm.indexOf(dep) < at)
         }
@@ -290,7 +251,7 @@ class TourWiringTest {
     // ---------------- piece 18a: what the tour follows ----------------
 
     private val followSlice = sourceFile("ui/tour/TourFollow.kt").readText()
-    private val follow get() = between("private val tourFollow = com.onpath.app.ui.tour.TourFollow(", "\n    )\n")
+    private val follow get() = between("val tourFollow: com.onpath.app.ui.tour.TourFollow = com.onpath.app.ui.tour.TourFollow(", "\n    )\n")
     private val followHost get() = between("host = object : com.onpath.app.ui.tour.TourFollowHost {", "        },\n")
     private val followPrefsAdapter get() = between("prefs = object : com.onpath.app.ui.tour.FollowPrefs {", "        },\n")
     private fun body(src: String, fn: String): String {
@@ -320,13 +281,13 @@ class TourWiringTest {
         assertTrue(flat(followPrefsAdapter).contains("override var followIsTrack: Boolean get() = prefs.followIsTrack set(v) { prefs.followIsTrack = v }"))
         for (line in listOf(
             "override val route: PlannedRoute? get() = this@AppViewModel.route",
-            "override val shown: ShownTrack? get() = this@AppViewModel.shown",
-            "override fun placeName(p: GeoPoint): String? = this@AppViewModel.stopName(p)",
+            "override val shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown",
+            "override fun placeName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)",
             "override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)",
             "override fun stopsAsSaved(pts: List<GeoPoint>) = this@AppViewModel.savedStops(pts)",
             "override fun savedTourUuid(id: Long): String? = db.getTour(id)?.uuid?.takeIf { it.isNotEmpty() }",
             "override fun invalidateSplits() = tourEdits.splitRequests.invalidate()",
-            "override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }",
+            "override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }",
             "override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)",
         )) assertTrue("the host says: $line", followHost.contains(line))
         assertEquals("Backups is told through the host only", 0, count(followSlice, "Backups"))
@@ -339,16 +300,6 @@ class TourWiringTest {
      */
     @Test fun theFollowNamesForwardToTheSlice() {
         val all = flat(vm)
-        for (line in listOf(
-            "val followName: String? get() = tourFollow.followName",
-            "private val followIsTrack: Boolean get() = tourFollow.followIsTrack",
-            "val planGuides: Boolean get() = tourFollow.planGuides",
-            "private fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)",
-            "var followLine: List<GeoPoint>? get() = tourFollow.followLine private set(v) { tourFollow.followLine = v }",
-            "private var followFromPlan: Boolean get() = tourFollow.followFromPlan set(v) { tourFollow.followFromPlan = v }",
-            "var guidanceEndedByEmptyPlan: Boolean get() = tourFollow.guidanceEndedByEmptyPlan private set(v) { tourFollow.guidanceEndedByEmptyPlan = v }",
-        )) assertEquals("the view model says: $line", 1, count(all, line))
-        assertEquals(1, count(vm, "\n    fun clearFollow() = tourFollow.clearFollow()\n"))
         // the forwards only the moved plan-edit code used went with it (piece 18b): the slice calls the follow slice itself
         for (gone in listOf("private val followOriginal", "private fun recopyFollowedPlan", "private fun copyFollowedPlan", "private fun setFollow",
             "private fun followAgain", "tourFollow.followAgain(",
@@ -375,7 +326,7 @@ class TourWiringTest {
      */
     @Test fun theTourIdCollectorStartsInTheSmallInitRightAfterTheSlice() {
         assertEquals("started exactly once", 1, count(vm, "tourFollow.start()"))
-        val declared = vm.indexOf("private val tourFollow = com.onpath.app.ui.tour.TourFollow(")
+        val declared = vm.indexOf("val tourFollow: com.onpath.app.ui.tour.TourFollow = com.onpath.app.ui.tour.TourFollow(")
         val init = "    init {\n        // the recording tour's id: a new tour takes the plan followed at its start, its end writes the last version\n        tourFollow.start()\n    }\n"
         assertEquals(1, count(vm, init))
         val initAt = vm.indexOf(init)
@@ -386,20 +337,20 @@ class TourWiringTest {
         val followEnd = vm.indexOf("\n    )\n", declared) + "\n    )\n".length
         val between0 = vm.substring(followEnd, initAt)
         assertTrue("only the edits slice's and (piece 19) the session's declarations lie between",
-            between0.trim().startsWith("/**") && count(between0, "private val tourEdits: com.onpath.app.ui.tour.TourEdits = ") == 1 &&
-                count(between0, "private val tourSession: com.onpath.app.ui.tour.TourSession = ") == 1)
+            between0.trim().startsWith("/**") && count(between0, "val tourEdits: com.onpath.app.ui.tour.TourEdits = ") == 1 &&
+                count(between0, "val tourSession: com.onpath.app.ui.tour.TourSession = ") == 1)
         assertTrue("and it ends right before the init", between0.endsWith("\n    )\n\n"))
         for (bad in listOf("init {", "launch", ".collect", ".start(")) assertEquals("`$bad` between the follow slice and its init", 0, count(between0, bad))
         val bigAt = vm.indexOf("    init {\n        recalc()\n")
         val between = vm.substring(initAt + init.length, bigAt)
         assertEquals("no other init between the small init and the big one", 0, count(between, "\n    init {"))
-        assertFalse("the big init does not start it", bigInit.contains("tourFollow"))
-        for (dep in listOf("private val plan = ", "private val planRoute = ", "private val recording: RecordingClient", "private val followStore = FollowStore(",
+        assertFalse("the big init does not start it", bigInit.contains("tourFollow.start()"))
+        for (dep in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = ", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = ", "private val recording: RecordingClient", "private val followStore = FollowStore(",
             "private val tourRows = ", "private val db = TourDb.get(", "val prefs = Prefs(")) {
             assertEquals("declared once: $dep", 1, count(vm, dep))
             assertTrue("$dep must be declared before the slice", vm.indexOf(dep) < declared)
         }
-        assertTrue("the end slice is declared after it", vm.indexOf("private val tourEnd = ") > initAt)
+        assertTrue("the end slice is declared after it", vm.indexOf("val tourEnd: com.onpath.app.ui.tour.TourEndSlice = ") > initAt)
         assertEquals("the old collector is gone from the view model", 0, count(vm, "recState.map { it?.tourId }"))
         // the follow state is reached through forwarder properties now: an init above the slice that read one would crash at
         // the app's start (the old plain fields gave their defaults) and ViewModelInitOrderTest does not follow property getters
@@ -449,7 +400,7 @@ class TourWiringTest {
     private val editsSlice = sourceFile("ui/tour/TourEdits.kt").readText()
     /** The route run's coroutine (`recalc`, piece 9b): it cancels `followCancel` and asks the tour to follow the edited plan. */
     private val recalcSlice = sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
-    private val edits get() = between("private val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(", "\n    )\n")
+    private val edits get() = between("val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(", "\n    )\n")
     private val editsHost get() = between("host = object : com.onpath.app.ui.tour.TourEditsHost {", "        },\n")
 
     /** The slice gets the view model's own plan, edit slice, route slice, follow slice, client, history, notice board, scope and routing thread. */
@@ -457,12 +408,12 @@ class TourWiringTest {
         for (line in listOf(
             "plan = plan, planEdit = planEdit, planRoute = planRoute, follow = tourFollow, recording = recording,",
             "position = com.onpath.app.ui.Position { myPosition() }, followHistory = followHistory,",
-            "say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,",
+            "say = notices, scope = viewModelScope, routingDispatcher = planRoute.threads.routing,",
         )) assertTrue("the constructor says: $line", edits.contains(line))
         assertEquals("one follow history, kept in the view model (the state collector clears it)", 1, count(vm, "FollowHistory()"))
         assertEquals("the requests are the slice's now", 0, count(vm, "SplitRequests()"))
         assertEquals(1, count(editsSlice, "val splitRequests = SplitRequests()"))
-        assertTrue("the routing thread is the plan route's", vm.contains("private val routingDispatcher get() = planRoute.threads.routing"))
+        assertTrue("the routing thread is the plan route's", vm.contains("routingDispatcher = planRoute.threads.routing"))
         assertTrue("myPosition is the old body: the phone's fix, else the tour's last point", flat(vm).contains(
             "private fun myPosition(): GeoPoint? = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) } ?: recState.value?.track?.lastOrNull()?.lastOrNull()"))
     }
@@ -473,11 +424,11 @@ class TourWiringTest {
             "override val route: PlannedRoute? get() = this@AppViewModel.route",
             "override fun replan() = recalc()",
             "override fun mapsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) = cellsForNewPoints(before, after)",
-            "override fun noPositionNote(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) = noPositionForEdit(note, text)",
-            "override fun placeName(p: GeoPoint): String? = this@AppViewModel.stopName(p)",
+            "override fun noPositionNote(note: PlanGps.Note, text: org.jetbrains.compose.resources.StringResource) = map.noPositionForEdit(note, text)",
+            "override fun placeName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)",
             "override fun newRouteName(prefix: String) = this@AppViewModel.defaultName(prefix)",
-            "override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.routeEvent(e) }",
-            "override fun closeShownTrack() = closeShown()",
+            "override fun routeRunEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }",
+            "override fun closeShownTrack() = routesFlow.closeShown()",
             "override fun resumeNavigation() = tourSession.continueNavigation()",
         )) assertTrue("the host says: $line", editsHost.contains(line))
         assertEquals("no Android class in the slice", 0, count(editsSlice, "android.") + count(editsSlice, "getApplication") + count(editsSlice, "Backups"))
@@ -490,8 +441,6 @@ class TourWiringTest {
      */
     @Test fun theViewModelAndItsHostsAnswerFromTheEditsSlice() {
         for (line in listOf(
-            "    fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> = tourEdits.tourPassed(plan)\n",
-            "    fun answerRouteBack(yes: Boolean) = tourEdits.answerRouteBack(yes)\n",
             "override fun splitOf(before: List<GeoPoint>, after: List<GeoPoint>): TourSplit.Outcome? = tourEdits.splitOf(before, after)",
             "override fun oneLeftGoesFromHere(before: List<GeoPoint>, mayEmpty: Boolean) = tourEdits.oneLeftGoesFromHere(before, mayEmpty)",
             "override fun endGuidanceIfPlanEmpty() = tourEdits.endGuidanceIfPlanEmpty()",
@@ -542,7 +491,7 @@ class TourWiringTest {
     // ---------------- piece 19: the tour's session ----------------
 
     private val sessionSlice = sourceFile("ui/tour/TourSession.kt").readText()
-    private val session get() = between("private val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(", "\n    )\n")
+    private val session get() = between("val tourSession: com.onpath.app.ui.tour.TourSession = com.onpath.app.ui.tour.TourSession(", "\n    )\n")
     private val sessionHost get() = between("host = object : com.onpath.app.ui.tour.TourSessionHost {", "        },\n")
 
     /** The slice gets the view model's own objects; the two waits are the slice's defaults (6 s, 1.5 s), the view model names none. */
@@ -562,13 +511,13 @@ class TourWiringTest {
     @Test fun theSessionHostHandsEachCallToTheViewModelMemberTheOldBodyUsed() {
         val host = flat(sessionHost)
         for (line in listOf(
-            "override val errorCard: String? get() = this@AppViewModel.errorCard",
+            "override val errorCard: String? get() = this@AppViewModel.notices.errorCard",
             "override val route: PlannedRoute? get() = this@AppViewModel.route",
-            "override var shown: ShownTrack? get() = this@AppViewModel.shown set(v) { this@AppViewModel.shown = v }",
-            "override val headingUp: Boolean get() = this@AppViewModel.headingUp",
+            "override var shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown set(v) { this@AppViewModel.routesFlow.shown = v }",
+            "override val headingUp: Boolean get() = this@AppViewModel.settingsSlice.settings.navHeadingUp",
             "override val hasGpsFix: Boolean get() = tracker.location.value != null",
             "override fun clearHints() { tapHoldHint = false; offlineInfo = false }",
-            "override fun closeMenusForNavigate() { planPoi = null; poiMenu = null; closePointMenu(\"mode change to Navigate\"); firstPointMenu = null; holdAddMenu = null; cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }",
+            "override fun closeMenusForNavigate() { placeMenus.planPoi = null; placeMenus.poiMenu = null; placeMenus.closePointMenu(\"mode change to Navigate\"); placeAdd.firstPointMenu = null; placeAdd.holdAddMenu = null; placeAdd.cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }",
             "override fun secureTourCorridor(line: List<GeoPoint>, last: GeoPoint?, activity: Activity) = mapData.secureTourCorridor(line, last, activity)",
         )) assertTrue("the host says: $line", host.contains(line))
         assertEquals("nothing of the Android world in the slice", 0, count(sessionSlice, "android.") + count(sessionSlice, "getApplication") + count(sessionSlice, "Backups"))
@@ -580,21 +529,6 @@ class TourWiringTest {
         val all = flat(vm)
         for (line in listOf(
             "val mode: AppMode get() = tourSession.mode",
-            "var navStartZoom: Double? get() = tourSession.navStartZoom set(v) { tourSession.navStartZoom = v }",
-            "var straightAsk: Boolean get() = tourSession.straightAsk set(v) { tourSession.straightAsk = v }",
-            "private fun enter(m: AppMode) = tourSession.enter(m)",
-            "fun startNavigation(force: Boolean = false, recordOnly: Boolean = false) = tourSession.startNavigation(force, recordOnly)",
-            "fun straightConfirmed() = tourSession.straightConfirmed()",
-            "fun continueNavigation(force: Boolean = false) = tourSession.continueNavigation(force)",
-            "fun switchToPlan() = tourSession.switchToPlan()",
-            "fun startRecording() = tourSession.startRecording()",
-            "fun takeNewRoute(questionId: Int) = tourSession.takeNewRoute(questionId)",
-            "fun takeViaRoute(questionId: Int) = tourSession.takeViaRoute(questionId)",
-            "fun keepOriginalRoute(questionId: Int) = tourSession.keepOriginalRoute(questionId)",
-            "fun leadToStart(questionId: Int) = tourSession.leadToStart(questionId)",
-            "fun justRecord(questionId: Int) = tourSession.justRecord(questionId)",
-            "fun joinHere(questionId: Int) = tourSession.joinHere(questionId)",
-            "fun leadFailedOk(questionId: Int) = tourSession.leadFailedOk(questionId)",
             "override fun resumeNavigation() = tourSession.continueNavigation()",
         )) assertEquals("the view model says: $line", 1, count(all, line))
         // what moved is gone from the view model (the forwards nobody uses any more went with it)
@@ -618,20 +552,20 @@ class TourWiringTest {
         val init = bigInit
         assertTrue("recalc() first", init.startsWith("    init {\n        recalc()\n"))
         val at = { t: String -> assertEquals("once in the big init: $t", 1, count(init, t)); init.indexOf(t) }
-        assertTrue("refreshTours() before the session's start", at("        refreshTours()") < at("        tourSession.start()"))
+        assertTrue("refreshTours() before the session's start", at("        routesFlow.refreshTours()") < at("        tourSession.start()"))
         assertTrue("the session before the end collector", at("        tourSession.start()") < at("        tourEnd.start()"))
-        val between = init.substring(at("        refreshTours()"), at("        tourSession.start()"))
+        val between = init.substring(at("        routesFlow.refreshTours()"), at("        tourSession.start()"))
         for (bad in listOf("launch", ".collect", ".start(", "mode", "enter(")) assertEquals("`$bad` between refreshTours() and the session's start", 0, count(between.substringAfter("\n"), bad))
         assertEquals("no collector and no launch left in the big init besides the slices'", 0, count(init, "launchSafe") + count(init, ".collect"))
-        val declared = vm.indexOf("private val tourSession: com.onpath.app.ui.tour.TourSession = ")
-        assertEquals(1, count(vm, "private val tourSession: com.onpath.app.ui.tour.TourSession = "))
-        for (dep in listOf("private val plan = ", "private val planEdit: ", "val planRun = ", "private val planRoute = ", "private val save = ", "private val map = ",
-            "val tour = ", "private val tourFollow = ", "private val recording: RecordingClient", "private val tourRows = ", "private val toursStore = ", "private val followHistory = ",
-            "val notices = ", "val tracker = LocationTracker(", "private val mapData by lazy")) {
+        val declared = vm.indexOf("val tourSession: com.onpath.app.ui.tour.TourSession = ")
+        assertEquals(1, count(vm, "val tourSession: com.onpath.app.ui.tour.TourSession = "))
+        for (dep in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = ", "val planEdit: ", "val planRun: com.onpath.app.ui.plan.PlanRunSlice = ", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice = ", "val save: com.onpath.app.ui.routes.SaveSlice = ", "val map: com.onpath.app.ui.MapViewSlice = ",
+            "val tour: com.onpath.app.ui.tour.TourController = ", "val tourFollow: com.onpath.app.ui.tour.TourFollow = ", "private val recording: RecordingClient", "private val tourRows = ", "private val toursStore = ", "private val followHistory = ",
+            "val notices: NoticeBoard = ", "val tracker = LocationTracker(", "val mapData: MapDataFlow by lazy")) {
             assertEquals("declared once: $dep", 1, count(vm, dep))
             assertTrue("$dep must be declared above the session", vm.indexOf(dep) < declared)
         }
-        assertTrue("above the edits slice", declared < vm.indexOf("private val tourEdits: com.onpath.app.ui.tour.TourEdits = "))
+        assertTrue("above the edits slice", declared < vm.indexOf("val tourEdits: com.onpath.app.ui.tour.TourEdits = "))
         assertTrue("above the big init", declared < vm.indexOf("    init {\n        recalc()\n"))
     }
 

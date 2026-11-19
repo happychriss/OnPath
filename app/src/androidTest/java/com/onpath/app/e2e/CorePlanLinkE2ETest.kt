@@ -39,21 +39,21 @@ class CorePlanLinkE2ETest : E2EBase() {
         pause(500, "the link's activity opens")
     }
 
-    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).waypoints.toList() }; return p }
+    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).plan.points.toList() }; return p }
 
     @Test fun linkBecomesThePlan() {
         open(frozenLink)
         waitUntil("plan from the link – ${state()}") { waypointCount() == 2 }
         scenario.onActivity { a ->
             val vm = vm(a)
-            assertEquals(Activity.HIKE, vm.activity)
-            assertEquals(3, vm.sac)
-            assertEquals(setOf(1), vm.pinnedIndices())
+            assertEquals(Activity.HIKE, vm.planRoute.activity)
+            assertEquals(3, vm.planRoute.sac)
+            assertEquals(setOf(1), vm.plan.pinnedIndices())
             // the pinned, named point keeps its place exactly (never snapped)
-            assertEquals(GeoPoint(46.6879, 11.1111), vm.waypoints[1])
-            assertEquals("Vellau", vm.stopName(vm.waypoints[1]))
-            assertNull("a link is not a saved route", vm.savedName)
-            assertNull(vm.errorCard)
+            assertEquals(GeoPoint(46.6879, 11.1111), vm.plan.points[1])
+            assertEquals("Vellau", vm.searchFlow.stopName(vm.plan.points[1]))
+            assertNull("a link is not a saved route", vm.plan.savedName)
+            assertNull(vm.notices.errorCard)
         }
     }
 
@@ -76,7 +76,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         val before = points()
         open(frozenLink)
         waitUntil("replaced by the link's plan, no question") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
-        scenario.onActivity { assertEquals(Activity.HIKE, vm(it).activity) }
+        scenario.onActivity { assertEquals(Activity.HIKE, vm(it).planRoute.activity) }
         waitUntil("the old plan is under Zuletzt") { drafts().any { it.waypoints.size == before.size } }
         cleanDrafts()
     }
@@ -96,10 +96,10 @@ class CorePlanLinkE2ETest : E2EBase() {
         pause(1_500, "routed and snapped, still unchanged")
         open(second)
         waitUntil("second link's plan, no question – ${state()}") { waypointCount() == 3 }
-        scenario.onActivity { assertEquals(Activity.MTB, vm(it).activity) }
+        scenario.onActivity { assertEquals(Activity.MTB, vm(it).planRoute.activity) }
         // changed on the phone → the next link replaces it too, the changed plan is kept under Zuletzt
         pause(1_500, "the second plan is routed and snapped")
-        scenario.onActivity { vm(it).deletePointFromList(2) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(2) }
         waitUntil("point deleted") { waypointCount() == 2 }
         open(frozenLink)
         waitUntil("first link's plan again, no question – ${state()}") { points().getOrNull(1) == GeoPoint(46.6879, 11.1111) }
@@ -113,7 +113,7 @@ class CorePlanLinkE2ETest : E2EBase() {
         var link: String? = null
         scenario.onActivity { a ->
             val vm = vm(a)
-            vm.sharePlan()
+            vm.routesGo.sharePlan()
             val chooser = vm.events.filterIsInstance<UiEvent.Share>().last().intent
             @Suppress("DEPRECATION") val send = chooser.getParcelableExtra<Intent>(Intent.EXTRA_INTENT)!!
             link = send.getStringExtra(Intent.EXTRA_TEXT)

@@ -41,14 +41,14 @@ import androidx.compose.ui.text.input.TextFieldValue
  */
 @Composable
 fun RouteDialogs(vm: AppViewModel) {
-    vm.saveAsk?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave) }
-    if (vm.straightAsk) StraightLegsDialog(onNavigate = vm::straightConfirmed, onCancel = { vm.straightAsk = false })
-    vm.routesProblem?.let { msg ->
+    vm.save.ask?.let { ask -> SaveNameDialog(ask.kind, ask.name, onSave = vm.save::confirm, onCancel = vm.save::cancel) }
+    if (vm.tourSession.straightAsk) StraightLegsDialog(onNavigate = vm.tourSession::straightConfirmed, onCancel = { vm.tourSession.straightAsk = false })
+    vm.save.problem?.let { msg ->
         AlertDialog(
-            onDismissRequest = { vm.routesProblem = null },
+            onDismissRequest = { vm.save.problem = null },
             title = { Text(str(Res.string.plan_something_wrong)) },
             text = { DialogText(msg) },
-            confirmButton = { TextButton(onClick = { vm.routesProblem = null }) { Text(str(Res.string.common_ok)) } },
+            confirmButton = { TextButton(onClick = { vm.save.problem = null }) { Text(str(Res.string.common_ok)) } },
         )
     }
 }

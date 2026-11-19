@@ -34,8 +34,8 @@ class FoundPlacePinTest {
         assertTrue(menu, google >= 0 && remove > google)
         assertTrue(menu, menu.contains("PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })"))
         val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        assertTrue(host.contains("val pin = vm.isCandidate(poi)"))
-        assertTrue(host.contains("onRemovePin = if (pin) { { vm.closeMapOverlays(\"pin removed\"); vm.removePin("))
+        assertTrue(host.contains("val pin = vm.searchFlow.isCandidate(poi)"))
+        assertTrue(host.contains("onRemovePin = if (pin) { { vm.placeMenus.closeMapOverlays(\"pin removed\"); vm.placeMenus.removePin("))
         for (dir in listOf("values", "values-de")) {
             val xml = File("../strings/src/commonMain/composeResources/$dir/strings_plan.xml").readText()
             assertTrue(dir, xml.contains("name=\"plan_remove_pin\""))
@@ -48,8 +48,7 @@ class FoundPlacePinTest {
     /** Rule 1: the chip opens the same menu a hold on the pin opens. */
     @Test fun theChipOpensThePinsMenu() {
         val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        assertTrue(host, host.contains("PinChip(m.title(), onClick = vm::openPinMenu)"))
-        assertTrue("the view model forwards the chip's tap", vm.contains("    fun openPinMenu() = placeMenus.openPinMenu()\n"))
+        assertTrue(host, host.contains("PinChip(m.title(), onClick = vm.placeMenus::openPinMenu)"))
         assertTrue("the slice's openPinMenu was found", menus.contains("    fun openPinMenu() {"))
         val open = body(menus, "    fun openPinMenu() {")
         assertTrue(open, open.contains("openPoiMenu(m.toPoi())"))
@@ -81,7 +80,7 @@ class FoundPlacePinTest {
      */
     @Test fun theChipIsTheNameOnly() {
         val host = overlays.substringAfter("fun MapOverlayHost(").substringBefore("\n}\n")
-        assertTrue(host, host.contains("vm.searchMark?.takeIf { vm.poiMenu?.let(vm::isCandidate) != true }"))
+        assertTrue(host, host.contains("vm.searchFlow.searchMark?.takeIf { vm.placeMenus.poiMenu?.let(vm.searchFlow::isCandidate) != true }"))
         val chip = overlays.substringAfter("fun PinChip(").substringBefore("\n}\n")
         assertTrue(chip, chip.contains("str(Res.string.plan_pin_chip_desc, name)"))
         assertFalse("no action buttons any more: $chip", chip.contains("plan_go_here") || chip.contains("plan_pin_add"))

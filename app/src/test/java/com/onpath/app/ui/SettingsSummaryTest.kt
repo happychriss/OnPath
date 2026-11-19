@@ -101,7 +101,7 @@ class SettingsSummaryTest {
         val screen = java.io.File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
         assertTrue(screen.contains("    devTools: Boolean = false,\n"))
         assertTrue(screen.contains("private fun AboutSection(version: String, devTools: Boolean = false,"))
-        assertTrue(java.io.File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.devToolsShown,"))
+        assertTrue(java.io.File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.settingsSlice.devToolsShown,"))
     }
 
     /** "Your settings" first, then the smaller "App" group. */

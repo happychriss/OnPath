@@ -19,14 +19,14 @@ import com.onpath.app.ui.TourMapAreas
  * (`Backups`, the offline index, the map data). The slice itself knows neither this class nor the view model.
  */
 class AppMultiDayHost(private val vm: AppViewModel, private val mapData: () -> MapDataFlow) : MultiDayHost {
-    override val mode: AppMode get() = vm.mode
+    override val mode: AppMode get() = vm.tourSession.mode
     override val route: PlannedRoute? get() = vm.route
     override val touring: Boolean get() = vm.recState.value != null
     override val cells: MapCells get() = vm.cells
-    override fun placeNameOf(p: GeoPoint): String? = vm.stopName(p)
+    override fun placeNameOf(p: GeoPoint): String? = vm.searchFlow.stopName(p)
     override fun reopenTour(t: Tour) = vm.openTour(t)
-    override fun reloadTourList() = vm.refreshTours()
-    override fun showSaveProblem(text: String) { vm.routesProblem = text }
+    override fun reloadTourList() = vm.routesFlow.refreshTours()
+    override fun showSaveProblem(text: String) { vm.save.problem = text }
     override fun tourChanged(id: Long) = Backups.tourChanged(vm.getApplication(), id)
     override fun syncChanged(why: String) = vm.sync.changed(why)
     override suspend fun endNamer(): EndNamer {

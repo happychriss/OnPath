@@ -27,11 +27,10 @@ class BackgroundRoutingRuleTest {
         val recalcSlice = com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
         assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(recalcSlice).count())
         assertEquals(0, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
-        assertTrue(vm.contains("scope = viewModelScope, routingDispatcher = routingDispatcher, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,"))
+        assertTrue(vm.contains("scope = viewModelScope, routingDispatcher = planRoute.threads.routing, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,"))
         val edits = com.onpath.app.testkit.sourceFile("ui/tour/TourEdits.kt").readText()
         assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(edits).count())
-        assertTrue(vm.contains("say = notices, scope = viewModelScope, routingDispatcher = routingDispatcher,"))
-        assertTrue(vm.contains("private val routingDispatcher get() = planRoute.threads.routing"))
+        assertTrue(vm.contains("say = notices, scope = viewModelScope, routingDispatcher = planRoute.threads.routing,"))
         // field bug 2026-11-07 (tour 207): the activity check's row request has its own thread – six 15 s checks on the
         // plan's thread held plan edits up to ~90 s
         // (moved with the check to ActivityCheckSlice, piece 16b; the flow `ActivityCheckFlowTest.aTapRoutesThatRowAloneFromThePositionOnTheCheckThread`

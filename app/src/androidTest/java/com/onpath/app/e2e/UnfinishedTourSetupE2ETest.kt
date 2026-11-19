@@ -69,11 +69,11 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
         device.pressBack()
         waitUntil("Back closes the guide", 10_000) { guideStep() == null }
         assertNotNull("the question is back after Back", findFresh(By.text(title), 5_000))
-        assertTrue("the tour still waits", read { it.unfinished?.id == tourId })
+        assertTrue("the tour still waits", read { it.tour.unfinished?.id == tourId })
         assertNull("no recording started by Back", RecordingService.state.value)
         // a new tour must not start beside the interrupted one while its question waits (checked at the end: the
         // active recording is still the interrupted tour)
-        scenario.onActivity { vm(it).startNavigation(recordOnly = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(recordOnly = true) }
         assertNull("the start is held while the question waits", RecordingService.state.value)
 
         // Continue again, the guide finished with real taps (Later on every recommended step – the bug was that the
@@ -89,14 +89,14 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
             waitUntil("the step $step is answered", 10_000) { guideStep() != step }
         }
         waitUntil("the recording continues in the interrupted tour", 20_000) {
-            RecordingService.state.value?.tourId == tourId && read { it.unfinished == null && it.setupGuide == null }
+            RecordingService.state.value?.tourId == tourId && read { it.tour.unfinished == null && it.setup.setupGuide == null }
         }
-        assertEquals(AppMode.NAVIGATE, read { it.mode })
+        assertEquals(AppMode.NAVIGATE, read { it.tourSession.mode })
         assertTrue("the question is gone", goneFresh(By.text(title), 5_000))
         assertEquals("the same tour, no second recording", tourId, TourDb.get(ctx).findActiveRecording()?.id)
     }
 
-    private fun guideStep(): CheckId? = read { it.setupGuide?.current }
+    private fun guideStep(): CheckId? = read { it.setup.setupGuide?.current }
 
     private fun <T> read(block: (com.onpath.app.ui.AppViewModel) -> T): T {
         var r: T? = null

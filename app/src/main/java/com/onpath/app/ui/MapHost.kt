@@ -87,10 +87,10 @@ fun MapHost(
             when (event) {
                 // timed (2026-11-07: 0.5–0.8 s main-thread stalls at onStop / on return; MapLibre's GL thread is waited for
                 // here) – a slow call says so in the log, with how long it took
-                Lifecycle.Event.ON_START -> { MapLifecycleTiming.timed("onStart") { mapView.onStart() }; started = true; vm.onReturnToApp() }
+                Lifecycle.Event.ON_START -> { MapLifecycleTiming.timed("onStart") { mapView.onStart() }; started = true; vm.map.onReturnToApp() }
                 Lifecycle.Event.ON_RESUME -> { MapLifecycleTiming.timed("onResume") { mapView.onResume() }; resumed = true }
                 Lifecycle.Event.ON_PAUSE -> { MapLifecycleTiming.timed("onPause") { mapView.onPause() }; resumed = false }
-                Lifecycle.Event.ON_STOP -> { MapLifecycleTiming.timed("onStop") { mapView.onStop() }; started = false; vm.onLeaveApp() }
+                Lifecycle.Event.ON_STOP -> { MapLifecycleTiming.timed("onStop") { mapView.onStop() }; started = false; vm.map.onLeaveApp() }
                 else -> {}
             }
         }
@@ -122,7 +122,7 @@ fun MapHost(
 
     DisposableEffect(mapView) {
         // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
-        val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm::mapGestureMeasured) }
+        val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm.settingsSlice::mapGestureMeasured) }
         var idleListener: MapView.OnDidBecomeIdleListener? = null
         mapView.getMapAsync { map ->
             idleListener = MapView.OnDidBecomeIdleListener { shownPois.onMapIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
@@ -152,7 +152,7 @@ fun MapHost(
                         "${android.os.SystemClock.elapsedRealtime() - t0} ms, native heap " +
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
                     com.onpath.app.debug.Health.noteStyleLoad(n, loadedFrom?.name, MapMemory.geoJsonBytes(style))
-                    vm.onMapStyleLoaded(loadedFrom)
+                    vm.mapData.onMapStyleLoaded(loadedFrom)
                     try {
                         val c = MapController(context, map, style)
                         myCtrl[0] = c
@@ -178,8 +178,8 @@ fun MapHost(
             // reload wins (an older build that finishes later is dropped)
             var buildSeq = 0
             fun reloadStyle() {
-                val dataDir = vm.dataFiles.dir; val theme = vm.settings.mapTheme; val mapDir = vm.dataFiles.mapDir()
-                val cover = vm.detailedAreas(); val dev = vm.devToolsShown; val packages = vm.packageAreas()
+                val dataDir = vm.dataFiles.dir; val theme = vm.settingsSlice.settings.mapTheme; val mapDir = vm.dataFiles.mapDir()
+                val cover = vm.mapData.detailedAreas(); val dev = vm.settingsSlice.devToolsShown; val packages = vm.mapData.packageAreas()
                 val seq = ++buildSeq
                 styleScope.launch {
                     val json = try {
@@ -199,14 +199,14 @@ fun MapHost(
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
                 gestureFrames?.idle()
-                vm.cameraIdle()
+                vm.searchFlow.cameraIdle()
                 onCamera(map)
             }
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
-                    vm.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
+                    vm.map.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
                 }
             }
             // a pinch makes the gesture a zoom (else a pan – moving / turning the map)
@@ -229,9 +229,9 @@ fun MapHost(
                 if (vm.suggest.searching) { com.onpath.app.debug.Problems.trace("map", "Press ignored: round-trip search runs"); return true }
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
                 // would close the menu just opened ("held spot left the visible map").
-                if (press == MapGestures.Press.HOLD) { vm.userMovedMap = true; vm.tapHoldHint = false }
+                if (press == MapGestures.Press.HOLD) { vm.map.userMovedMap = true; vm.tapHoldHint = false }
                 val edit = vm.canEditMap
-                val pts = vm.waypoints.toList()
+                val pts = vm.plan.points.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
                 val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(pts, toScreen, screen.x, screen.y,
                     press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
@@ -241,10 +241,10 @@ fun MapHost(
                     val near = pts.indices.minByOrNull { i -> c.toScreen(pts[i])?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
                     com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
-                        "follow ${vm.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.mapOverlayOpen}")
+                        "follow ${vm.map.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.placeMenus.mapOverlayOpen}")
                 }
                 // A marked search result (pin) counts as a POI: holding it – the place or the pin's head – opens the POI menu.
-                val mark = vm.searchMark?.takeIf { m ->
+                val mark = vm.searchFlow.searchMark?.takeIf { m ->
                     c?.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
                         val dp = c.dpToPx(1f)
                         com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
@@ -255,22 +255,22 @@ fun MapHost(
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(PlaceAddMenu.LINE_SNAP_DP.toFloat()) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
-                return when (val a = MapGestures.decide(edit, press, vm.mapOverlayOpen, marker, poi != null, vm.waypoints.isEmpty())) {
-                    is MapGestures.Action.PointMenu -> { vm.openPointMenu(a.index, dpOf(a.index)); true }
-                    MapGestures.Action.PoiMenu -> { poi?.let { vm.openPoiMenu(it, snap) }; true }
-                    MapGestures.Action.FirstPointMenu -> { vm.openFirstPointMenu(p); true }
+                return when (val a = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, poi != null, vm.plan.points.isEmpty())) {
+                    is MapGestures.Action.PointMenu -> { vm.placeMenus.openPointMenu(a.index, dpOf(a.index)); true }
+                    MapGestures.Action.PoiMenu -> { poi?.let { vm.placeMenus.openPoiMenu(it, snap) }; true }
+                    MapGestures.Action.FirstPointMenu -> { vm.placeAdd.openFirstPointMenu(p); true }
                     // set at once in a clear case, the small „Einfügen“ / „Neues Ziel“ menu in doubt (owner 2026-11-15)
-                    MapGestures.Action.AddPoint -> { vm.holdOnMap(p, snap); true }
-                    MapGestures.Action.CloseMenu -> { vm.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
+                    MapGestures.Action.AddPoint -> { vm.placeAdd.holdOnMap(p, snap); true }
+                    MapGestures.Action.CloseMenu -> { vm.placeMenus.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> {
-                        if (vm.mapOverlayOpen) vm.closeMapOverlays("tap on a POI (its details instead)")
+                        if (vm.placeMenus.mapOverlayOpen) vm.placeMenus.closeMapOverlays("tap on a POI (its details instead)")
                         vm.selectedPoi = poi; true
                     }
                     MapGestures.Action.None -> {
                         // a tap on the open map in Plan: "hold to set a point here" in the sheet (owner 2026-11-03)
                         if (MapGestures.tapShowsHoldHint(edit, press, MapGestures.Action.None, poi != null, marker, pts.isEmpty())) vm.showTapHoldHint()
                         // a short tap on the world map where there is no detailed map: ask to load it
-                        if (press == MapGestures.Press.TAP && poi == null) vm.mapTapped(p)
+                        if (press == MapGestures.Press.TAP && poi == null) vm.mapData.mapTapped(p)
                         edit
                     }
                 }
@@ -286,18 +286,18 @@ fun MapHost(
             }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
-                if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.onMapTouch()
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.map.onMapTouch()
                 hold.track(ev, slopPx = 8 * density)
                 if (!hold.pressing) holdAt.value = null
                 else if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
                     // Decide once per press what an armed hold feels like: 2× on a route point, 1× elsewhere.
                     val at = PointF(hold.downX, hold.downY)
                     val edit = vm.canEditMap && !vm.routePeek
-                    val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.waypoints.toList()) ?: -1 else -1
+                    val marker = if (edit) myCtrl[0]?.waypointAt(at, vm.plan.points.toList()) ?: -1 else -1
                     downMarker = marker
                     // only where the buzz depends on a POI (MapGestures.buzzNeedsPoi); from the shown POIs, never waits
-                    val poi = MapGestures.buzzNeedsPoi(edit, vm.mapOverlayOpen, marker) && shownPois.at(map, at.x, at.y) != null
-                    holdBuzz.value = MapGestures.buzz(edit, vm.mapOverlayOpen, marker, poi)
+                    val poi = MapGestures.buzzNeedsPoi(edit, vm.placeMenus.mapOverlayOpen, marker) && shownPois.at(map, at.x, at.y) != null
+                    holdBuzz.value = MapGestures.buzz(edit, vm.placeMenus.mapOverlayOpen, marker, poi)
                     holdAt.value = if (holdBuzz.value != MapGestures.Buzz.NONE) Offset(hold.downX, hold.downY) else null
                 }
                 false
@@ -308,11 +308,11 @@ fun MapHost(
                 if (StyleLoader.noteFailure(msg ?: "?")) {
                     reloadStyle()
                 // a new generation of downloaded map cells that does not load: back to the previous one (R-16)
-                } else if (vm.rollbackMapCells(StyleLoader.lastMapDir)) {
+                } else if (vm.mapData.rollbackMapCells(StyleLoader.lastMapDir)) {
                     reloadStyle()
                 } else if (!fallbackUsed) { fallbackUsed = true; load(StyleLoader.fallback(vm.dataFiles.mapDir())) }
             }
-            myTheme[0] = vm.settings.mapTheme
+            myTheme[0] = vm.settingsSlice.settings.mapTheme
             // this host's own reload (MapReload: two activities' hosts may live at once)
             host.ready { reloadStyle() }
             reloadStyle()
@@ -330,8 +330,8 @@ fun MapHost(
     // run): load it now – on every return to the app and on every new generation. Per host: another
     // activity's map having loaded the new data says nothing about this one.
     val generation = vm.cells.generation.collectAsState().value
-    LaunchedEffect(generation, vm.appOnScreen) {
-        if (!vm.appOnScreen || !host.behind(vm.dataFiles.mapDir())) return@LaunchedEffect
+    LaunchedEffect(generation, vm.map.appOnScreen) {
+        if (!vm.map.appOnScreen || !host.behind(vm.dataFiles.mapDir())) return@LaunchedEffect
         kotlinx.coroutines.delay(MAP_CATCH_UP_MS) // the normal path (styleVersion, quiet gate) usually comes first
         val shown = host.shown
         if (!host.behind(vm.dataFiles.mapDir())) return@LaunchedEffect
@@ -341,19 +341,19 @@ fun MapHost(
 
     // Switching the map theme in Settings reloads the style; the app layers are re-added in onReady.
     // An imported style file (Settings → Map data) or a new map store generation bumps styleVersion and reloads too.
-    LaunchedEffect(vm.settings.mapTheme, vm.styleVersion) {
+    LaunchedEffect(vm.settingsSlice.settings.mapTheme, vm.styleVersion) {
         // null: this host's map is not ready yet – its first load takes the current theme and data
-        if (myTheme[0] != null && (myTheme[0] != vm.settings.mapTheme || vm.styleVersion > 0)) {
-            myTheme[0] = vm.settings.mapTheme
+        if (myTheme[0] != null && (myTheme[0] != vm.settingsSlice.settings.mapTheme || vm.styleVersion > 0)) {
+            myTheme[0] = vm.settingsSlice.settings.mapTheme
             if (!host.reload()) Problems.warn("map", "Map style reload skipped: the map was not ready (version ${vm.styleVersion})")
         }
     }
     // other POI kinds shown (Settings → POIs): the shown POIs are read again at the next map idle
-    LaunchedEffect(vm.settings.hiddenPoiKinds) { shownPois.changed() }
+    LaunchedEffect(vm.settingsSlice.settings.hiddenPoiKinds) { shownPois.changed() }
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        HoldRing(holdAt.value, onArmed = { Haptics.play(mapView.context, holdBuzz.value, vm.settings.planVibrate) })
+        HoldRing(holdAt.value, onArmed = { Haptics.play(mapView.context, holdBuzz.value, vm.settingsSlice.settings.planVibrate) })
     }
 }
 

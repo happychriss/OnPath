@@ -54,7 +54,7 @@ class RoundTripSuggestE2ETest : E2EBase() {
         }
         val (w, h) = mapSize()
         hold(w * 0.45f, h * 0.35f, takeAddMenu = false)
-        waitUntil("the first-point menu", 5_000) { read { it.firstPointMenu } != null }
+        waitUntil("the first-point menu", 5_000) { read { it.placeAdd.firstPointMenu } != null }
         clickText(Txt.s(Res.string.suggest_ui_from_here))
         waitUntil("the wish sheet", 5_000) { read { it.suggest.wishOpen } }
         shot("suggest-wish")
@@ -105,7 +105,7 @@ class RoundTripSuggestE2ETest : E2EBase() {
         } else {
             // no routing data in this run: TrackToPlan cannot fit – the cards stay (or the plan is there), no crash
             waitUntil("Übernehmen answered", 30_000) { !read { it.suggest.taking } }
-            assertTrue(read { it.suggest.phase == SuggestPhase.CARDS || it.waypoints.size >= 2 })
+            assertTrue(read { it.suggest.phase == SuggestPhase.CARDS || it.plan.points.size >= 2 })
         }
         shot("suggest-taken")
     }
@@ -133,7 +133,7 @@ class RoundTripSuggestE2ETest : E2EBase() {
         }
         val (w, h) = mapSize()
         hold(w * 0.45f, h * 0.35f, takeAddMenu = false)
-        waitUntil("the first-point menu", 5_000) { read { it.firstPointMenu } != null }
+        waitUntil("the first-point menu", 5_000) { read { it.placeAdd.firstPointMenu } != null }
         clickText(Txt.s(Res.string.suggest_ui_from_here))
         waitUntil("the wish sheet", 5_000) { read { it.suggest.wishOpen } }
         val start = read { it.suggest.wish!!.at }
@@ -149,7 +149,7 @@ class RoundTripSuggestE2ETest : E2EBase() {
         assertTrue("still searching", read { it.suggest.searching })
         assertEquals("the start stays", start, read { it.suggest.wish!!.at })
         assertEquals("no point set", 0, waypointCount())
-        assertEquals("no menu opened", null, read { it.firstPointMenu })
+        assertEquals("no menu opened", null, read { it.placeAdd.firstPointMenu })
         assertEquals("one run", 1, asks.size)
 
         clickText(Txt.s(Res.string.common_cancel))

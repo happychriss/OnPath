@@ -24,17 +24,13 @@ class ImportExportWiringTest {
     }
 
     @Test fun theViewModelBuildsTheHelperLazilyWithItsScopeIoAndStore() {
-        has(vm, """private val importExport by lazy \{\s+ImportExport\(app, viewModelScope, Dispatchers\.IO, db, object : ImportExportHost""", true)
+        has(vm, """val importExport: ImportExport by lazy \{\s+ImportExport\(app, viewModelScope, Dispatchers\.IO, db, object : ImportExportHost""", true)
     }
 
     @Test fun everyMemberIsForwardedUnderItsOldName() {
-        for (f in listOf("fun importData(uri: Uri) = importExport.importData(uri)",
-            "fun exportAll() = importExport.exportAll()",
-            "private fun checkRestoreOffer() = importExport.checkRestoreOffer()",
-            "fun restoreFrom(tree: Uri) = importExport.restoreFrom(tree)",
-            "fun exportTour(t: Tour) = importExport.exportTour(t)",
-            "fun importGpx(uri: Uri) = importExport.importGpx(uri)",
-            // exportFollowedPlan (Routes) still calls it
+        // (piece 21: the one-line forwards `importData`, `checkRestoreOffer`, `exportAll`, `exportTour`, `importGpx`, `restoreFrom` are gone: the
+        // screens call `vm.importExport.x`; what stays is the one that is not a plain forward, `share`, which `exportFollowedPlan` still calls)
+        for (f in listOf(
             "private suspend fun share(name: String, gpx: () -> com.onpath.app.gpx.GpxFile) = importExport.share(name, gpx)")) has(vm, f)
     }
 
@@ -48,22 +44,23 @@ class ImportExportWiringTest {
             "override val cells: com.onpath.app.cells.MapCells get() = this@AppViewModel.cells",
             "override val sync: com.onpath.app.plansync.PlanSync get() = this@AppViewModel.sync",
             "override val events: MutableList<UiEvent> get() = this@AppViewModel.events",
-            "override val activity: Activity get() = this@AppViewModel.activity",
-            "override val showSettings: Boolean get() = this@AppViewModel.showSettings",
+            "override val activity: Activity get() = this@AppViewModel.planRoute.activity",
+            "override val showSettings: Boolean get() = this@AppViewModel.settingsSlice.showSettings",
             "override fun recheckData() = this@AppViewModel.recheckData()",
             "override fun packageNote() = this@AppViewModel.packageNote()",
-            "override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.say(text, kind, place)",
-            "override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.sayInfo(text, place)",
-            "override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.sayError(text, place)",
-            "override fun refreshTours() = this@AppViewModel.refreshTours()",
-            "override fun planFactors(a: Activity) = this@AppViewModel.planFactors(a)",
+            "override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)",
+            "override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.notices.sayInfo(text, place)",
+            "override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.notices.sayError(text, place)",
+            "override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()",
+            "override fun planFactors(a: Activity) = this@AppViewModel.planRoute.planFactors(a)",
             "override fun defaultName(prefix: String) = this@AppViewModel.defaultName(prefix)",
-            "override fun selectActivity(a: Activity, userChange: Boolean) = this@AppViewModel.selectActivity(a, userChange)",
-            "override fun showTrack(s: ShownTrack) = this@AppViewModel.showTrack(s)")) has(b, l)
+            "override fun selectActivity(a: Activity, userChange: Boolean) = this@AppViewModel.planRoute.selectActivity(a, userChange)",
+            "override fun showTrack(s: ShownTrack) = this@AppViewModel.routesFlow.showTrack(s)")) has(b, l)
         for (v in listOf("dataBusy: String?", "restoreProgress: String?", "restoreOffer: Boolean", "restartForData: Boolean",
             "styleVersion: Int", "busy: Busy?", "sac: Int", "routesOpen: Boolean")) {
             val name = v.substringBefore(":")
-            has(b, "override var $v\n                get() = this@AppViewModel.$name\n                set(v) { this@AppViewModel.$name = v }")
+            val target = mapOf("busy" to "notices.busy", "sac" to "planRoute.sac", "routesOpen" to "routes.open")[name] ?: name // the slice each one is read from (piece 21)
+            has(b, "override var $v\n                get() = this@AppViewModel.$target\n                set(v) { this@AppViewModel.$target = v }")
         }
         // the kept places live in their slice (piece 12): a restore sets its cache to null through the host
         has(b, "override var savedPlaces: com.onpath.app.search.SavedPlaces?\n                get() = keptPlaces.savedPlaces\n                set(v) { keptPlaces.savedPlaces = v }")

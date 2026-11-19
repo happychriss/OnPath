@@ -14,7 +14,7 @@ import org.junit.Test
  */
 class PlaceAddAdaptersTest {
     private val vm = sourceFile("ui/AppViewModel.kt").readText()
-    private val head = "    private val placeAdd = PlaceAddSlice("
+    private val head = "    val placeAdd: PlaceAddSlice = PlaceAddSlice("
     private val endAnchor = "\n    /**\n     * The menus of a held place / a route point"
     private val block = vm.substringAfter(head).substringBefore(endAnchor)
 
@@ -27,23 +27,23 @@ class PlaceAddAdaptersTest {
             "override fun closeMapOverlays(why: String) = placeMenus.closeMapOverlays(why)",
             "override fun openPointMenu(index: Int, via: String) = placeMenus.openPointMenu(index, via = via)",
             "override fun closePlaceCard() = placeMenus.closePlaceCard()",
-            "override fun planMode(): Boolean = mode == AppMode.PLAN",
+            "override fun planMode(): Boolean = tourSession.mode == AppMode.PLAN",
             "override fun canEditMap(): Boolean = this@AppViewModel.canEditMap",
-            "override fun activity(): Activity = this@AppViewModel.activity",
-            "override fun sac(): Int = this@AppViewModel.sac",
+            "override fun activity(): Activity = this@AppViewModel.planRoute.activity",
+            "override fun sac(): Int = this@AppViewModel.planRoute.sac",
             "override fun routeLine(): List<GeoPoint>? = route?.points",
             "override fun touring(): Boolean = recState.value != null",
             "override fun myPosition(): GeoPoint? = this@AppViewModel.myPosition()",
             "override fun tourPassed(plan: List<GeoPoint>): Set<Int> = tourEdits.tourPassed(plan)",
-            "override fun followLine(): List<GeoPoint>? = this@AppViewModel.followLine",
+            "override fun followLine(): List<GeoPoint>? = this@AppViewModel.tourFollow.followLine",
             "override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()",
             "override fun gpsPoint(): GeoPoint? = tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) }",
-            "override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchMark",
+            "override fun searchMark(): com.onpath.app.search.Place? = this@AppViewModel.searchFlow.searchMark",
             "override fun takePin(lat: Double, lon: Double): com.onpath.app.search.Place? = this@AppViewModel.takePin(lat, lon)",
-            "override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.isCandidate(poi)",
-            "override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.rememberPlaceName(p, name)",
+            "override fun isCandidate(poi: com.onpath.app.poi.Poi): Boolean = this@AppViewModel.searchFlow.isCandidate(poi)",
+            "override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.searchFlow.rememberPlaceName(p, name)",
             "override fun rememberPoiKind(p: GeoPoint, kind: String?) = placeMenus.rememberPoiKind(p, kind)",
-            "override fun stopIndexAt(lat: Double, lon: Double): Int = waypoints.indexOfFirst { sameSpot(it, lat, lon) }",
+            "override fun stopIndexAt(lat: Double, lon: Double): Int = plan.points.indexOfFirst { sameSpot(it, lat, lon) }",
             "override fun routeIndexOf(place: com.onpath.app.search.Place): Int? = this@AppViewModel.routeIndexOf(place)",
         ).forEach(::blockHas)
     }
@@ -56,8 +56,8 @@ class PlaceAddAdaptersTest {
         assertTrue("the hold's router is built before the slice", vm.indexOf("    private val holdRouter =") < vm.indexOf(head))
         blockHas("        holdWorker = planRoute.threads.hold, scope = viewModelScope,\n")
         val routed = vm.substringAfter("    private fun routedLength(").substringBefore("\n    }\n")
-        assertTrue(routed, routed.contains("legCache.lookup(a, b, act, level)?.let { return it.leg.distanceM }"))
-        assertTrue(routed, routed.contains("val r = Planner(routingEngine(), cancel, legs = legCache).plan(listOf(a, b), act, level)"))
+        assertTrue(routed, routed.contains("planRoute.legCache.lookup(a, b, act, level)?.let { return it.leg.distanceM }"))
+        assertTrue(routed, routed.contains("val r = Planner(planRoute.routingEngine(), cancel, legs = planRoute.legCache).plan(listOf(a, b), act, level)"))
         assertTrue(routed, routed.contains("if (r.legs.any { it.straight }) throw com.onpath.app.routing.RoutingException(r.error ?: \"no route for the leg\")"))
         // built after the edit slice it edits through and before the slice that takes `change`
         assertTrue(vm.indexOf("private val planEdit:") < vm.indexOf(head))
@@ -66,27 +66,8 @@ class PlaceAddAdaptersTest {
         assertTrue(vm.contains("        placeAdd.close()\n        planRoute.close() // the four routing threads\n"))
     }
 
-    @Test fun theOldNamesForwardToTheSlice() {
-        listOf(
-            "fun addPoint(p: GeoPoint, lineSnapM: Double = 30.0, onPoi: Boolean = false) = placeAdd.addPoint(p, lineSnapM, onPoi)",
-            "fun addPoiAsStop(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeAdd.addPoiAsStop(poi, lineSnapM)",
-            "fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = placeAdd.poiAsNewDestination(poi)",
-            "fun holdOnMap(p: GeoPoint, lineSnapM: Double) = placeAdd.holdOnMap(p, lineSnapM)",
-            "private fun cancelHoldMeasure(why: String) = placeAdd.cancelHoldMeasure(why)",
-            "fun holdAsStop() = placeAdd.holdAsStop()",
-            "fun holdAsNewDestination() = placeAdd.holdAsNewDestination()",
-            "fun candidateJoin(): Pair<GeoPoint, GeoPoint>? = placeAdd.candidateJoin()",
-            "fun openFirstPointMenu(p: GeoPoint) = placeAdd.openFirstPointMenu(p)",
-            "fun startHere(p: GeoPoint) = placeAdd.startHere(p)",
-            "fun routeFromMyLocation(p: GeoPoint) = placeAdd.routeFromMyLocation(p)",
-            "fun poiFromMyLocation(poi: com.onpath.app.poi.Poi) = placeAdd.poiFromMyLocation(poi)",
-            "fun addPoiPoint(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) = placeAdd.addPoiPoint(poi, lineSnapM)",
-        ).forEach { assertTrue("forwarder: $it", vm.contains("    $it\n")) }
-        // the three state holders: read and written through the slice (the map's overlay closes the menus by `vm.x = null`)
-        assertTrue(vm.contains("    var holdAddMenu: PlaceAddSlice.HoldAdd?\n        get() = placeAdd.holdAddMenu\n        set(v) { placeAdd.holdAddMenu = v }\n"))
-        assertTrue(vm.contains("    var holdMeasuring: GeoPoint?\n        get() = placeAdd.holdMeasuring\n        private set(v) { placeAdd.holdMeasuring = v }\n"))
-        assertTrue(vm.contains("    var firstPointMenu: GeoPoint?\n        get() = placeAdd.firstPointMenu\n        set(v) { placeAdd.firstPointMenu = v }\n"))
-        // the card's roles map one to one
+    @Test fun theCardsRolesMapOneToOne() {
+        // the forwarders of piece 11 are gone (piece 21: screens read `vm.placeAdd.x`); the one that converts stays
         assertTrue(vm.contains("    fun addPlace(place: com.onpath.app.search.Place, role: PlaceRole) = placeAdd.addPlace(place, when (role) {\n" +
             "        PlaceRole.SMART -> AddRole.SMART\n        PlaceRole.START -> AddRole.START\n        PlaceRole.DESTINATION -> AddRole.DESTINATION\n    })\n"))
     }

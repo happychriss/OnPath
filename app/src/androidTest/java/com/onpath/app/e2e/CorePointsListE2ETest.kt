@@ -30,9 +30,9 @@ class CorePointsListE2ETest : E2EBase() {
 
     @Before fun setUp() = launch()
 
-    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).routing }; return r }
-    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).waypoints.toList() }; return p }
-    private fun size(): PlanSize { var s = PlanSize.COMPACT; scenario.onActivity { s = vm(it).planSize }; return s }
+    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).planRun.routing }; return r }
+    private fun points(): List<GeoPoint> { var p = emptyList<GeoPoint>(); scenario.onActivity { p = vm(it).plan.points.toList() }; return p }
+    private fun size(): PlanSize { var s = PlanSize.COMPACT; scenario.onActivity { s = vm(it).planEdit.planSize }; return s }
 
     private fun settle() {
         pause(300, "the edit's routing starts")

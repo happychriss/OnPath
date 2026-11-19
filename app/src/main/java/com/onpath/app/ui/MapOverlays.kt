@@ -107,7 +107,7 @@ fun MapOverlayHost(
     // during a tour a held spot is never a new start ("Hier starten"), only where to go (field 2026-11-07)
     val startHere = MapGestures.offersStartHere(touring = vm.recState.collectAsState().value != null)
     // the route for the point just added / moved is computed: a spinner around it (Bug 02), after a short delay
-    RoutingSpot.shown(vm.routing, vm.routingSpot, vm.waypoints)?.let { p ->
+    RoutingSpot.shown(vm.planRun.routing, vm.routingSpot, vm.plan.points)?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
         LaunchedEffect(p) { kotlinx.coroutines.delay(RoutingSpot.DELAY_MS); late = true }
         if (late) {
@@ -117,7 +117,7 @@ fun MapOverlayHost(
     }
     // a hold beside the plan measured on the paths (owner 2026-11-17, HoldPaths): the same ring on the held spot, no menu
     // yet – after the same short delay (a quick measure shows nothing)
-    vm.holdMeasuring?.let { p ->
+    vm.placeAdd.holdMeasuring?.let { p ->
         var late by remember(p) { mutableStateOf(false) }
         LaunchedEffect(p) { kotlinx.coroutines.delay(RoutingSpot.DELAY_MS); late = true }
         if (late) {
@@ -125,54 +125,54 @@ fun MapOverlayHost(
             c.toScreen(p)?.let { s -> RoutingRing(Offset(s.x, s.y)) }
         }
     }
-    vm.firstPointMenu?.let { p ->
-        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.firstPointMenu = null }) {
+    vm.placeAdd.firstPointMenu?.let { p ->
+        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { com.onpath.app.debug.Problems.trace("plan", "First-point menu closed: held spot left the visible map (onGone)"); vm.placeAdd.firstPointMenu = null }) {
             FirstPointMenu(MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onStartHere = { vm.startHere(p) }, onFromMe = { vm.routeFromMyLocation(p) }, startHere = startHere,
-                onRoundTrip = if (vm.suggest.on) { { vm.closeMapOverlays("round trip from here"); vm.suggest.open(p, vm.activity, vm.sac) } } else null)
+                onStartHere = { vm.placeAdd.startHere(p) }, onFromMe = { vm.placeAdd.routeFromMyLocation(p) }, startHere = startHere,
+                onRoundTrip = if (vm.suggest.on) { { vm.placeMenus.closeMapOverlays("round trip from here"); vm.suggest.open(p, vm.planRoute.activity, vm.planRoute.sac) } } else null)
         }
     }
-    vm.holdAddMenu?.let { a ->
+    vm.placeAdd.holdAddMenu?.let { a ->
         cameraTick() // re-read the projection on every camera move
         val s = c.toScreen(a.p)
-        if (s == null) LaunchedEffect(a) { vm.holdAddMenu = null }
+        if (s == null) LaunchedEffect(a) { vm.placeAdd.holdAddMenu = null }
         else HoldAddOverlay(Offset(s.x, s.y), topPx, bottomPx,
-            onGone = { com.onpath.app.debug.Problems.trace("plan", "Hold menu closed: held spot left the visible map (onGone)"); vm.holdAddMenu = null }) {
-            HoldAddMenu(a.menu, onAddStop = vm::holdAsStop, onNewDestination = vm::holdAsNewDestination)
+            onGone = { com.onpath.app.debug.Problems.trace("plan", "Hold menu closed: held spot left the visible map (onGone)"); vm.placeAdd.holdAddMenu = null }) {
+            HoldAddMenu(a.menu, onAddStop = vm.placeAdd::holdAsStop, onNewDestination = vm.placeAdd::holdAsNewDestination)
         }
     }
     // the found place's name chip "Name ›" under its pin (owner 2026-11-02; since 2026-11-13 the name only – the menu
     // itself opens with the pick): only where the plan can be edited – this host draws nothing in Navigate or while a
     // track is shown (the pin itself stays there, MapScreen hides it in Navigate); hidden while the pin's menu is open
-    vm.searchMark?.takeIf { vm.poiMenu?.let(vm::isCandidate) != true }?.let { m ->
+    vm.searchFlow.searchMark?.takeIf { vm.placeMenus.poiMenu?.let(vm.searchFlow::isCandidate) != true }?.let { m ->
         cameraTick() // re-read the projection on every camera move
         c.toScreen(GeoPoint(m.lat, m.lon))?.let { s ->
-            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) { PinChip(m.title(), onClick = vm::openPinMenu) }
+            PinChipAt(Offset(s.x, s.y), topPx, bottomPx) { PinChip(m.title(), onClick = vm.placeMenus::openPinMenu) }
         }
     }
-    vm.poiMenu?.let { poi ->
-        val pin = vm.isCandidate(poi)
-        val gone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.poiMenu = null }
+    vm.placeMenus.poiMenu?.let { poi ->
+        val pin = vm.searchFlow.isCandidate(poi)
+        val gone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.placeMenus.poiMenu = null }
         @Composable fun menu(card: Boolean) =
-            PoiMenu(poi, card = card, address = if (card) vm.searchMark?.let { it.address ?: it.town } else null,
+            PoiMenu(poi, card = card, address = if (card) vm.searchFlow.searchMark?.let { it.address ?: it.town } else null,
                 modifier = if (card) Modifier.fillMaxWidth() else Modifier,
-                emptyPlan = vm.waypoints.isEmpty(),
+                emptyPlan = vm.plan.points.isEmpty(),
                 startHere = startHere,
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onFromMe = { vm.poiFromMyLocation(poi) },
-                onAdd = { vm.addPoiPoint(poi) },
-                addLabel = vm.poiAddLabel(poi),
-                menu = vm.placeMenu(poi),
-                onAddStop = { vm.addPoiAsStop(poi) },
-                onNewDestination = { vm.poiAsNewDestination(poi) },
-                favourite = vm.isFavouritePlace(poi), home = vm.isHomePlace(poi),
-                onFavourite = { vm.toggleFavouritePlace(poi) }, onHome = { vm.toggleHomePlace(poi) },
+                onFromMe = { vm.placeAdd.poiFromMyLocation(poi) },
+                onAdd = { vm.placeAdd.addPoiPoint(poi) },
+                addLabel = vm.placeMenus.poiAddLabel(poi),
+                menu = vm.placeMenus.placeMenu(poi),
+                onAddStop = { vm.placeAdd.addPoiAsStop(poi) },
+                onNewDestination = { vm.placeAdd.poiAsNewDestination(poi) },
+                favourite = vm.keptPlaces.isFavouritePlace(poi), home = vm.keptPlaces.isHomePlace(poi),
+                onFavourite = { vm.keptPlaces.toggleFavouritePlace(poi) }, onHome = { vm.keptPlaces.toggleHomePlace(poi) },
                 onGoogle = {
-                    vm.closeMapOverlays()
+                    vm.placeMenus.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
                 },
-                onRemovePin = if (pin) { { vm.closeMapOverlays("pin removed"); vm.removePin("its menu: Remove pin") } } else null,
-                onRoundTrip = if (vm.suggest.on) { { vm.closeMapOverlays("round trip from a place"); vm.suggest.open(GeoPoint(poi.lat, poi.lon), vm.activity, vm.sac) } } else null)
+                onRemovePin = if (pin) { { vm.placeMenus.closeMapOverlays("pin removed"); vm.placeMenus.removePin("its menu: Remove pin") } } else null,
+                onRoundTrip = if (vm.suggest.on) { { vm.placeMenus.closeMapOverlays("round trip from a place"); vm.suggest.open(GeoPoint(poi.lat, poi.lon), vm.planRoute.activity, vm.planRoute.sac) } } else null)
         if (pin) {
             // the found place (owner 2026-11-13, "A mit Ausweich B"): above the pin, the map moved down when needed – else
             // the same rows as a card at the bottom
@@ -180,25 +180,25 @@ fun MapOverlayHost(
             val s = c.toScreen(GeoPoint(poi.lat, poi.lon))
             if (s == null) LaunchedEffect(poi) { gone() }
             else PinMenuOverlay(poi, Offset(s.x, s.y), c.dpToPx(com.onpath.app.map.CandidateMarker.PIN_HEIGHT_DP), topPx, bottomPx,
-                onGone = gone, onPan = c::panBy, mayPan = !vm.followMe) { menu(it) }
+                onGone = gone, onPan = c::panBy, mayPan = !vm.map.followMe) { menu(it) }
         } else {
             Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = gone) { menu(false) }
         }
     }
-    vm.pointMenuTarget?.let { t ->
+    vm.placeMenus.pointMenuTarget?.let { t ->
         // the point the menu was opened for, wherever it is in the plan now (PointMenuTarget)
-        val i = vm.pointMenu
-        val p = i?.let { vm.waypoints.getOrNull(it) }
-        if (i == null || p == null) { LaunchedEffect(t) { vm.closePointMenu("its point is no longer in the plan") }; return@let }
-        val name = vm.stopName(p)
-        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.closePointMenu("point left the visible map (onGone)") }) {
-            PointMenu(i, vm.waypoints.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0) { a ->
+        val i = vm.placeMenus.pointMenu
+        val p = i?.let { vm.plan.points.getOrNull(it) }
+        if (i == null || p == null) { LaunchedEffect(t) { vm.placeMenus.closePointMenu("its point is no longer in the plan") }; return@let }
+        val name = vm.searchFlow.stopName(p)
+        Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.placeMenus.closePointMenu("point left the visible map (onGone)") }) {
+            PointMenu(i, vm.plan.points.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0) { a ->
                 when (a) {
-                    PointAction.MAKE_START, PointAction.LOOP_START -> vm.makeStartFromMenu()
+                    PointAction.MAKE_START, PointAction.LOOP_START -> vm.placeMenus.makeStartFromMenu()
                     PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
                         com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, g.lat, g.lon))
                     }
-                    PointAction.DELETE -> vm.deletePointFromMenu()
+                    PointAction.DELETE -> vm.planEdit.deletePointFromMenu()
                 }
             }
         }

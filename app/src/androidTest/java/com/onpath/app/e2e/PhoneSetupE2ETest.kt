@@ -27,18 +27,18 @@ class PhoneSetupE2ETest : E2EBase() {
         var hasVibrator = true
         scenario.onActivity { a ->
             val vm = vm(a)
-            hasVibrator = vm.phone.hasVibrator
-            vm.openSetup(Purpose.BEFORE_TOUR) { started = true }
+            hasVibrator = vm.setup.phone.hasVibrator
+            vm.setup.openSetup(Purpose.BEFORE_TOUR) { started = true }
         }
         if (!hasVibrator) { assertTrue("no vibrator: nothing to ask, the tour starts", started); return }
         var current: CheckId? = null
-        scenario.onActivity { current = vm(it).setupGuide?.current }
+        scenario.onActivity { current = vm(it).setup.setupGuide?.current }
         assertEquals(CheckId.VIBRATION, current)
         // every recommended step offers Later: the vibration, then (voice on, its test sentence not heard yet) the voice
         val seen = ArrayList<CheckId?>()
         repeat(3) {
             var step: CheckId? = null
-            scenario.onActivity { step = vm(it).setupGuide?.current }
+            scenario.onActivity { step = vm(it).setup.setupGuide?.current }
             if (step == null) return@repeat
             seen += step
             // "Continue" where nothing can be done (no speech engine on the phone)
@@ -49,11 +49,11 @@ class PhoneSetupE2ETest : E2EBase() {
         }
         assertTrue("$seen", seen.all { it == CheckId.VIBRATION || it == CheckId.VOICE })
         var open = true
-        scenario.onActivity { open = vm(it).setupGuide != null }
+        scenario.onActivity { open = vm(it).setup.setupGuide != null }
         assertTrue("the tour starts after Later", started && !open)
         // a week of quiet for that step: the next start goes straight on
         var again = false
-        scenario.onActivity { vm(it).openSetup(Purpose.BEFORE_TOUR) { again = true } }
+        scenario.onActivity { vm(it).setup.openSetup(Purpose.BEFORE_TOUR) { again = true } }
         assertTrue(again)
     }
 }

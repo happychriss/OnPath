@@ -18,19 +18,15 @@ class RoutePicturesWiringTest {
         assertTrue("not found: $what", if (regex) Regex(what).containsMatchIn(src) else src.contains(what))
 
     @Test fun theViewModelBuildsThePicturesLazilyWithItsScopeIoStoreAndRoutes() {
-        has(vm, """private val pictures by lazy \{\s+RoutePictures\(getApplication\(\), viewModelScope, Dispatchers\.IO, db, routes, object : RoutePicturesHost""", true)
-        for (f in listOf("val thumbs get() = pictures.thumbs", "val thumbVersion: Int get() = pictures.thumbVersion",
-            "val overviewPictures get() = pictures.overviewPictures", "val thumbTimings: List<Long> get() = pictures.thumbTimings",
-            "fun kickThumbs(firstUuid: String? = null) = pictures.kickThumbs(firstUuid)")) has(vm, f)
+        has(vm, """val pictures: RoutePictures by lazy \{\s+RoutePictures\(getApplication\(\), viewModelScope, Dispatchers\.IO, db, routes, object : RoutePicturesHost""", true)
+        // (piece 21: the one-line forwards `thumbs`, `thumbVersion`, `kickThumbs` … are gone, the screens read `vm.pictures.x`)
         has(vm, "pictures.overviewShot(t, segments, tint, widthPx, heightPx, paddingPx, under)")
         has(vm, "pictures.routeSnapshot(segments, tint, widthPx, heightPx, paddingPx, under)")
     }
 
     @Test fun theViewModelBuildsTheDemoRidesLazilyAndForwardsEveryMember() {
-        has(vm, """private val demo by lazy \{\s+DemoRides\(viewModelScope, Dispatchers\.IO, db, object : DemoRidesHost""", true)
-        for (f in listOf("demo.demoLine()", "demo.startDemoRide()", "demo.startNavSim(line)", "demo.recentRecordedTours()",
-            "demo.demoTourLabel(t)", "demo.startDemoTour(t)", "demo.navSimFollow(line)", "demo.startDemoAtMapCentre()"))
-            has(vm, "= $f")
+        has(vm, """val demo: DemoRides by lazy \{\s+DemoRides\(viewModelScope, Dispatchers\.IO, db, object : DemoRidesHost""", true)
+        // (piece 21: the forwards of the members are gone, the screens read `vm.demo.x`)
         has(vm, "if (com.onpath.app.recording.DemoLocation.endWithTour()) demo.navSimLine = null")
     }
 
@@ -65,13 +61,13 @@ class RoutePicturesWiringTest {
     @Test fun thePicturesHostAdapterForwardsEachMemberToItsOwn() {
         val b = block("object : RoutePicturesHost {")
         for (l in listOf(
-            "override val mode: AppMode get() = this@AppViewModel.mode",
+            "override val mode: AppMode get() = this@AppViewModel.tourSession.mode",
             "override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState",
-            "override val settings: AppSettings get() = this@AppViewModel.settings",
+            "override val settings: AppSettings get() = this@AppViewModel.settingsSlice.settings",
             "override val dataFiles: DataFiles get() = this@AppViewModel.dataFiles",
-            "override val devToolsShown: Boolean get() = this@AppViewModel.devToolsShown",
-            "override fun detailedAreas() = this@AppViewModel.detailedAreas()",
-            "override fun packageAreas() = this@AppViewModel.packageAreas()",
+            "override val devToolsShown: Boolean get() = this@AppViewModel.settingsSlice.devToolsShown",
+            "override fun detailedAreas() = this@AppViewModel.mapData.detailedAreas()",
+            "override fun packageAreas() = this@AppViewModel.mapData.packageAreas()",
             "override suspend fun followedPlanLine(t: Tour) = this@AppViewModel.followedPlanLine(t)")) has(b, l)
     }
 
@@ -79,13 +75,13 @@ class RoutePicturesWiringTest {
         val b = block("object : DemoRidesHost {")
         for (l in listOf(
             "override val route: PlannedRoute? get() = this@AppViewModel.route",
-            "override val shown: ShownTrack? get() = this@AppViewModel.shown",
-            "override val activity: Activity get() = this@AppViewModel.activity",
+            "override val shown: ShownTrack? get() = this@AppViewModel.routesFlow.shown",
+            "override val activity: Activity get() = this@AppViewModel.planRoute.activity",
             "override val recState: StateFlow<RecState?> get() = this@AppViewModel.recState",
-            "override val tours: List<Tour> get() = this@AppViewModel.tours",
-            "override fun planFactors() = this@AppViewModel.planFactors()",
-            "override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.sayInfo(text, place)",
-            "override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.sayError(text, place)",
+            "override val tours: List<Tour> get() = this@AppViewModel.routes.tours",
+            "override fun planFactors() = this@AppViewModel.planRoute.planFactors()",
+            "override fun sayInfo(text: String, place: NoticePlace) = this@AppViewModel.notices.sayInfo(text, place)",
+            "override fun sayError(text: String, place: NoticePlace) = this@AppViewModel.notices.sayError(text, place)",
             "override fun initialCamera() = this@AppViewModel.initialCamera()")) has(b, l)
     }
 }

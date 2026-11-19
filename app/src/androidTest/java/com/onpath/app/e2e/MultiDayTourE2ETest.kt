@@ -39,14 +39,14 @@ class MultiDayTourE2ETest : E2EBase() {
     @org.junit.After fun language() =
         com.onpath.app.data.AppLanguage.set(InstrumentationRegistry.getInstrumentation().targetContext, com.onpath.app.data.LanguageChoice.SYSTEM)
 
-    private fun mode(): AppMode? { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; return m }
+    private fun mode(): AppMode? { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; return m }
     private fun recording(): Boolean { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; return r }
     private fun <T> onVm(f: (AppViewModel) -> T): T { var out: T? = null; scenario.onActivity { out = f(vm(it)) }; @Suppress("UNCHECKED_CAST") return out as T }
 
     private fun routeSettled(maxMs: Long = 60_000) {
         pause(300, "the edit's routing starts")
         waitUntil("route settled", maxMs) {
-            onVm { v -> !v.routing && v.route != null && v.route!!.legs.size >= v.waypoints.size - 1 }
+            onVm { v -> !v.planRun.routing && v.route != null && v.route!!.legs.size >= v.plan.points.size - 1 }
         }
     }
 
@@ -62,19 +62,19 @@ class MultiDayTourE2ETest : E2EBase() {
         assertEquals(3, db.getTour(t.id)?.days?.days)
         try {
             // My routes: the row says "3 Tage · …" (and "Karten fehlen" while its map areas are not on the phone)
-            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
+            scenario.onActivity { a -> vm(a).routes.tab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).routesGo.openRoutes() }
             assertNotNull("the multi-day route in My routes", findFresh(By.text("E2E Drei Tage"), 8_000))
             pause(1_500, "the rows are drawn")
             shot("0-my-routes")
-            scenario.onActivity { a -> vm(a).routesOpen = false }
+            scenario.onActivity { a -> vm(a).routes.open = false }
             scenario.onActivity { a -> vm(a).openTour(db.getTour(t.id)!!) }
-            waitUntil("the tour is the plan", 15_000) { onVm { it.waypoints.size == pts.size } }
-            routeSettled(); night = onVm { it.waypoints.getOrNull(2) } ?: night // the router may move the points onto their ways
+            waitUntil("the tour is the plan", 15_000) { onVm { it.plan.points.size == pts.size } }
+            routeSettled(); night = onVm { it.plan.points.getOrNull(2) } ?: night // the router may move the points onto their ways
             waitUntil("the overview shows its days", 20_000) { onVm { it.multiDay.daysUi()?.rows?.size == 3 } }
             // the maps question (first opening, once): shown, then "later" – the test map package has no server behind it
             try { waitUntil("the maps question", 10_000) { onVm { it.multiDay.tourMapsAsk != null } }; pause(800, "the question is drawn"); shot("1-maps-question") }
             catch (_: AssertionError) {} // expected: every map area of the corridor already on the emulator – no question
-            scenario.onActivity { a -> vm(a).multiDay.answerTourMaps(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER); vm(a).planSize = PlanSize.FULL }
+            scenario.onActivity { a -> vm(a).multiDay.answerTourMaps(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER); vm(a).planEdit.planSize = PlanSize.FULL }
             pause(1_000, "the sheet grows to full")
             shot("1-overview")
             // pick day 2 in the rows (its number), then "Tag 2 starten"
@@ -85,16 +85,16 @@ class MultiDayTourE2ETest : E2EBase() {
             clickText(Txt.s(Res.string.multiday_ride_day, "2"))
             waitUntil("day 2 is the plan", 15_000) { onVm { it.multiDay.flow.following } }
             routeSettled()
-            val dayPts = onVm { it.waypoints.toList() }
+            val dayPts = onVm { it.plan.points.toList() }
             assertTrue("day 2 starts at the night of day 1: ${dayPts.first()} vs $night", com.onpath.app.data.Geo.distance(dayPts.first(), night) < 50.0)
             shot("2-day-two")
-            scenario.onActivity { it.let { a -> vm(a).startNavigation(force = true) } }
+            scenario.onActivity { it.let { a -> vm(a).tourSession.startNavigation(force = true) } }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE && recording() }
             assertNotNull("Navigate says the day", device.wait(androidx.test.uiautomator.Until.findObject(By.textContains("2")), 5_000))
             assertEquals(Txt.s(Res.string.multiday_day_of, "2", "3"), onVm { it.multiDay.dayLabel() })
             shot("3-navigate")
             val tourId = onVm { it.recState.value!!.tourId }
-            scenario.onActivity { vm(it).endTour() }
+            scenario.onActivity { vm(it).tourEnd.endTour() }
             waitUntil("the tour has ended", 20_000) { !recording() }
             assertEquals("the tour is saved", "done", db.getTour(tourId)?.state)
             assertEquals(TourKind.RECORDED, db.getTour(tourId)?.kind)

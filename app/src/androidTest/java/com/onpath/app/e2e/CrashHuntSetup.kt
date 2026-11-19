@@ -30,6 +30,6 @@ class CrashHuntSetup : E2EBase() {
             }
         }
         assertEquals("the saved plan is back", 3, waypointCount())
-        waitUntil("route calculated", 90_000) { var done = false; scenario.onActivity { done = vm(it).route != null && !vm(it).routing }; done }
+        waitUntil("route calculated", 90_000) { var done = false; scenario.onActivity { done = vm(it).route != null && !vm(it).planRun.routing }; done }
     }
 }

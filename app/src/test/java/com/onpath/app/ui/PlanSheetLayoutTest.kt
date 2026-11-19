@@ -73,7 +73,7 @@ class PlanSheetLayoutTest {
     @Test fun clearNeverAsks() {
         assertFalse(Regex("onSave\\w*").containsMatchIn(panel))
         val vm = src("ui/AppViewModel.kt")
-        assertTrue(vm.contains("fun requestClear() = planEdit.clearPlan()"))
+        assertTrue(src("ui/MapScreen.kt").contains("onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null")) // piece 21: the ✕ calls the edit slice's clearPlan itself, the forwarder `requestClear` is gone
         val editSlice = src("ui/plan/PlanEditSlice.kt") // clearPlan lives here since piece 10
         assertTrue(editSlice.contains("fun clearPlan() {"))
         assertFalse(vm.contains("discardSaveFirst") || vm.contains("canSaveBeforeClear") || vm.contains("discardAsk"))

@@ -35,12 +35,12 @@ class RouteThumbE2ETest : E2EBase() {
                 listOf(GpxWaypoint(line.first().lat, line.first().lon, null), GpxWaypoint(line.last().lat, line.last().lon, null)))
             db.getTour(id)!!.uuid
         }
-        scenario.onActivity { vm(it).openRoutes() }
+        scenario.onActivity { vm(it).routesGo.openRoutes() }
         var files = emptyList<java.io.File>()
-        scenario.onActivity { a -> files = uuids.map { u -> vm(a).thumbs.file(u) } }
+        scenario.onActivity { a -> files = uuids.map { u -> vm(a).pictures.thumbs.file(u) } }
         waitUntil("three map pictures", 90_000) { files.all { it.isFile && it.length() > 0 } }
         var timings = emptyList<Long>()
-        waitUntil("their timings", 10_000) { scenario.onActivity { timings = vm(it).thumbTimings }; timings.size >= 3 }
+        waitUntil("their timings", 10_000) { scenario.onActivity { timings = vm(it).pictures.thumbTimings }; timings.size >= 3 }
         // the list with the pictures, and one picture as stored (diagnostics: /sdcard/e2e)
         pause(1_500, "the list shows the pictures")
         shot("list")
@@ -49,10 +49,10 @@ class RouteThumbE2ETest : E2EBase() {
         Log.i("OnPathThumb", "map pictures: ${timings.joinToString()} ms (${files.map { it.length() / 1024 }} KB)")
         assertTrue("each well under the snapshot's 15 s limit: $timings", timings.size >= 3 && timings.all { it < 15_000 })
         // nothing again for the same lines
-        scenario.onActivity { vm(it).refreshTours() }
+        scenario.onActivity { vm(it).routesFlow.refreshTours() }
         pause(3_000, "proving that no picture is made twice")
         var after = emptyList<Long>()
-        scenario.onActivity { after = vm(it).thumbTimings }
+        scenario.onActivity { after = vm(it).pictures.thumbTimings }
         assertTrue("no picture made twice: $after", after.size == timings.size)
     }
 }

@@ -102,7 +102,7 @@ class ReliefAutoTest {
     /** The wiring (MapHost needs Android; the slice's own steps are SettingsFlowTest's flows: a hand change marks the user's choice, the app's own does not). */
     @Test fun wiring() {
         val host = java.io.File("src/main/java/com/onpath/app/ui/MapHost.kt").readText()
-        assertTrue(host.contains("MapGestureFrames(w, vm::mapGestureMeasured)") && host.contains("gestureFrames?.idle()"))
+        assertTrue(host.contains("MapGestureFrames(w, vm.settingsSlice::mapGestureMeasured)") && host.contains("gestureFrames?.idle()"))
     }
 
     @Test fun neverTwice() {

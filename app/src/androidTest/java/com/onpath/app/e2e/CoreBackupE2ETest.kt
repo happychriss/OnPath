@@ -49,7 +49,7 @@ class CoreBackupE2ETest : E2EBase() {
 
     @After fun stopGps() {
         walking = false
-        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() } } catch (_: Exception) {} // expected: app already closed
+        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).tourEnd.stopRecording() } } catch (_: Exception) {} // expected: app already closed
         for (p in PROVIDERS) sh("cmd location providers remove-test-provider $p")
     }
 
@@ -59,12 +59,12 @@ class CoreBackupE2ETest : E2EBase() {
 
     @Test fun finishedTourIsBackedUpAndRestoredAfterAWipe() {
         // 1. record a short tour and end it
-        scenario.onActivity { vm(it).startRecording() }
+        scenario.onActivity { vm(it).tourSession.startRecording() }
         waitUntil("recording", 20_000) { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; r }
         pause(12_000, "~20 fixes, a few hundred metres")
-        scenario.onActivity { vm(it).stopRecording() }
+        scenario.onActivity { vm(it).tourEnd.stopRecording() }
         var tourId = -1L
-        waitUntil("tour finished", 20_000) { scenario.onActivity { tourId = vm(it).finishedTour?.id ?: -1L }; tourId >= 0 }
+        waitUntil("tour finished", 20_000) { scenario.onActivity { tourId = vm(it).tour.finishedTour?.id ?: -1L }; tourId >= 0 }
         scenario.onActivity { vm(it).closeSavedTour() }
         val db = TourDb.get(ctx)
         val tour = db.getTour(tourId)!!
@@ -82,7 +82,7 @@ class CoreBackupE2ETest : E2EBase() {
         // 3. "wipe": no tours, no backup index, no folder settings (like a reinstall)
         (db.listTours() + db.listDeleted()).forEach { db.deleteTour(it.id) }
         Backups.forgetLikeReinstall(ctx)
-        scenario.onActivity { vm(it).refreshTours() }
+        scenario.onActivity { vm(it).routesFlow.refreshTours() }
 
         // 4. restore through the folder picker
         scenario.onActivity { vm(it).restoreOffer = true }

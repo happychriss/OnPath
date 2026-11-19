@@ -18,7 +18,7 @@ class SavedTourBoxTest {
 
     @Test fun theBoxAfterTheEndSheet() {
         val main = src("MainActivity.kt")
-        assertTrue(main.contains("SavedTourDialog(t, vm.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)"))
+        assertTrue(main.contains("SavedTourDialog(t, vm.tour.finishedTimes, onOpen = vm::openSavedTour, onOk = vm::closeSavedTour)"))
         val box = src("ui/Screens.kt").substringAfter("fun SavedTourDialog(").substringBefore("/** The items of")
         assertTrue(box.contains("Res.string.routes_track_saved") && box.contains("StatsRow(") && box.contains("TourTimesText(it)"))
         assertTrue(box.contains("Res.string.common_ok") && box.contains("Res.string.routes_saved_open"))

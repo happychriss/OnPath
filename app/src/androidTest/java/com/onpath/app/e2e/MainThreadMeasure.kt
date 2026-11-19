@@ -139,13 +139,13 @@ class MainThreadMeasure : E2EBase() {
         }
         assertTrue("real routing data needed: push E10_N45.rd5 to /data/local/tmp (main_thread_measure.sh does)", realRouting)
         waitUntil("route calculated – ${state()}", 90_000) {
-            var done = false; scenario.onActivity { done = vm(it).route != null && !vm(it).routing }; done
+            var done = false; scenario.onActivity { done = vm(it).route != null && !vm(it).planRun.routing }; done
         }
         var routeM = 0.0
         scenario.onActivity { a -> routeM = vm(a).route?.distanceM ?: 0.0 }
-        scenario.onActivity { vm(it).startDemoRide() }
-        scenario.onActivity { vm(it).startNavigation(force = true) }
-        waitUntil("Navigate (recording)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
+        scenario.onActivity { vm(it).demo.startDemoRide() }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
+        waitUntil("Navigate (recording)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; m == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { RecordingService.state.value?.nav != null }
         pause(8_000, "the start (camera flight, first route state, notification) is not the steady tour")
 
@@ -170,7 +170,7 @@ class MainThreadMeasure : E2EBase() {
         say("== end")
 
         try { onMain { DemoLocation.stop("measurement ended") } } catch (_: Exception) {} // expected: nothing running
-        try { scenario.onActivity { vm(it).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
+        try { scenario.onActivity { vm(it).tourEnd.endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
         val end = System.currentTimeMillis() + 10_000
         while (RecordingService.state.value != null && System.currentTimeMillis() < end) pause(200, "poll interval of the cleanup")
     }

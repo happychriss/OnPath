@@ -84,7 +84,7 @@ class CoreFieldE2ETest : E2EBase() {
 
     @After fun stopGps() {
         walking = false
-        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() } } catch (_: Exception) {} // expected: app already closed
+        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).tourEnd.stopRecording() } } catch (_: Exception) {} // expected: app already closed
         for (p in PROVIDERS) sh("cmd location providers remove-test-provider $p")
     }
 
@@ -92,7 +92,7 @@ class CoreFieldE2ETest : E2EBase() {
 
     private companion object { val PROVIDERS = listOf("gps", "network") }
 
-    private fun follow() { scenario.onActivity { vm(it).followMe = true }; pause(1_500, "the camera follows me") }
+    private fun follow() { scenario.onActivity { vm(it).map.followMe = true }; pause(1_500, "the camera follows me") }
 
     /** "Go here" from my location, a stop added, then both deleted by holding them – while the map follows me. */
     @Test fun goHereFromMyLocationThenDeleteWhileFollowing() {
@@ -125,8 +125,8 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun navigateThenBackToPlanStillDeletes() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
-        waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; m == AppMode.NAVIGATE }
         pause(2_000, "Navigate's camera move")
         assertPositionDotOnTop("navigate")
         // Navigate shows the plan's numbered points while the tour follows the plan (owner 2026-11-01: "sonst weiß man
@@ -134,8 +134,8 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("plan markers in Navigate (the tour follows the plan)", 10_000) { drawnMarkers() > 0 }
         var editable = true; scenario.onActivity { editable = vm(it).canEditMap }
         assertFalse("plan points not editable in Navigate", editable)
-        scenario.onActivity { vm(it).switchToPlan() }
-        waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.PLAN }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
+        waitUntil("back in Plan", 10_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; m == AppMode.PLAN }
         pause(2_000, "Plan's camera move")
         assertPositionDotOnTop("plan during a tour")
         waitUntil("plan markers back in Plan", 10_000) { drawnMarkers() > 0 }
@@ -147,11 +147,11 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("recording goes on in Plan (core feature C4)", rec)
     }
 
-    private fun mode(): AppMode? { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; return m }
+    private fun mode(): AppMode? { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; return m }
     /** The app draws a followed line and the service navigates one. */
     private fun guided(): Boolean {
         var g = false
-        scenario.onActivity { g = vm(it).followLine != null && vm(it).recState.value?.nav != null }
+        scenario.onActivity { g = vm(it).tourFollow.followLine != null && vm(it).recState.value?.nav != null }
         return g
     }
     private fun recording(): Boolean { var r = false; scenario.onActivity { r = vm(it).recState.value != null }; return r }
@@ -169,7 +169,7 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity {
                 val v = vm(it)
                 val r = v.route
-                done = !v.routing && (v.waypoints.size < 2 || (r != null && r.legs.size >= v.waypoints.size - 1))
+                done = !v.planRun.routing && (v.plan.points.size < 2 || (r != null && r.legs.size >= v.plan.points.size - 1))
             }
             if (done) break
             pause(100, "poll interval of routeSettled")
@@ -185,25 +185,25 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun deletingAllPointsDuringATourEndsTheGuidanceUndoBringsItBack() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-        scenario.onActivity { vm(it).deletePointFromList(1) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(1) }
         waitUntil("one point left", 10_000) { waypointCount() == 1 }
         pause(1_500, "the camera follows after the delete")
-        scenario.onActivity { vm(it).deletePointFromList(0) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(0) }
         waitUntil("plan empty", 10_000) { waypointCount() == 0 }
-        scenario.onActivity { vm(it).continueNavigation() }
+        scenario.onActivity { vm(it).tourSession.continueNavigation() }
         waitUntil("Navigate again", 10_000) { mode() == AppMode.NAVIGATE }
         waitUntil("no route followed any more", 15_000) { !guided() }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: one point back", 10_000) { waypointCount() == 1 }
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: two points back", 10_000) { waypointCount() == 2 }
         waitUntil("the route is followed again", 30_000) { guided() }
         assertTrue(recording())
@@ -224,14 +224,14 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun aSavedRouteTappedDuringATourIsFollowedAtOnceAndUndoBringsThePlanBack() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         var tourId = -1L
         var before: List<GeoPoint> = emptyList()
         var activityBefore: Activity? = null
         scenario.onActivity {
-            tourId = vm(it).recState.value!!.tourId; before = vm(it).waypoints.toList(); activityBefore = vm(it).activity
+            tourId = vm(it).recState.value!!.tourId; before = vm(it).plan.points.toList(); activityBefore = vm(it).planRoute.activity
         }
         // a saved route nearby, for another activity
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
@@ -240,13 +240,13 @@ class CoreFieldE2ETest : E2EBase() {
         val savedId = db.insertTour(TourKind.PLANNED, name, Activity.BIKE_TOURING.name, 2, 350.0, 0.0, 0.0, 90.0,
             listOf(pts.map { TrackPoint(it.lat, it.lon) }), pts)
         try {
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-            scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            scenario.onActivity { vm(it).routes.tab = RoutesTab.PLANNED; vm(it).routesGo.openRoutes() }
             // the list is read on the IO threads (slow on GitHub's emulator); an older read must never hide the route
             // (RoutesState.show – E2E 2026-11-07: the list read at the tour start came back last)
             waitUntil("My routes lists \"$name\"", 20_000) {
-                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == savedId } }; listed
+                var listed = false; scenario.onActivity { listed = vm(it).routes.tours.any { t -> t.id == savedId } }; listed
             }
             // My routes opens on the planning activity (owner 2026-11-13) – during the tour the tour's; the route is for
             // another activity: "Alle" in the activity chip's menu shows it
@@ -258,18 +258,18 @@ class CoreFieldE2ETest : E2EBase() {
             clickText(Txt.s(Res.string.routes_overview_follow))
             waitUntil("Navigate at once, no question", 10_000) { mode() == AppMode.NAVIGATE }
             val loaded = pts.map { GeoPoint(it.lat, it.lon) }
-            waitUntil("the saved route is the plan", 10_000) { var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).waypoints.toList() }; w == loaded }
+            waitUntil("the saved route is the plan", 10_000) { var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).plan.points.toList() }; w == loaded }
             val line = Txt.s(Res.string.plan_new_during_tour)
             assertNotNull("\"$line\" on Navigate", device.wait(Until.findObject(By.text(line)), 5_000))
             scenario.onActivity {
-                assertFalse("My routes closed", vm(it).routesOpen)
-                assertEquals("the activity stays", activityBefore, vm(it).activity)
+                assertFalse("My routes closed", vm(it).routes.open)
+                assertEquals("the activity stays", activityBefore, vm(it).planRoute.activity)
                 assertEquals("the same tour records on", tourId, vm(it).recState.value?.tourId)
             }
             waitUntil("the loaded route is followed", 20_000) { guided() }
             clickText(Txt.s(Res.string.plan_undo))
             waitUntil("Rückgängig: the plan from before is back", 10_000) {
-                var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).waypoints.toList() }; w == before
+                var w: List<GeoPoint> = emptyList(); scenario.onActivity { w = vm(it).plan.points.toList() }; w == before
             }
             waitUntil("the line is gone", 5_000) { device.findObject(By.text(line)) == null }
             waitUntil("the plan from before is followed again", 20_000) { guided() }
@@ -280,7 +280,7 @@ class CoreFieldE2ETest : E2EBase() {
                 assertTrue("\"$step\" traced: ${trace.take(30)}", trace.any { it.startsWith(step) })
             }
         } finally {
-            scenario.onActivity { vm(it).routesOpen = false }
+            scenario.onActivity { vm(it).routes.open = false }
             db.deleteTour(savedId)
         }
     }
@@ -288,7 +288,7 @@ class CoreFieldE2ETest : E2EBase() {
     /** The planned routes in My routes now (id set). */
     private fun plannedIds(): Set<Long> {
         var ids: Set<Long> = emptySet()
-        scenario.onActivity { ids = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED }.map { t -> t.id }.toSet() }
+        scenario.onActivity { ids = vm(it).routes.tours.filter { t -> t.kind == TourKind.PLANNED }.map { t -> t.id }.toSet() }
         return ids
     }
 
@@ -297,11 +297,11 @@ class CoreFieldE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         routeSettled()
         val before = plannedIds()
-        scenario.onActivity { assertTrue("a new plan is not saved yet", vm(it).planUnsaved) }
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { assertTrue("a new plan is not saved yet", vm(it).plan.unsaved) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("Los geht's saved the new plan in My routes → Planned", 15_000) { (plannedIds() - before).size == 1 }
-        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).planUnsaved) }
+        scenario.onActivity { assertFalse("the plan counts as saved now", vm(it).plan.unsaved) }
         return (plannedIds() - before).single()
     }
 
@@ -314,15 +314,15 @@ class CoreFieldE2ETest : E2EBase() {
         val planId = startOnANewPlan()
         val before = waypointList()
         var tourId = -1L
-        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).endTour() }
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).tourEnd.endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         waitUntil("back at the start: the map is empty", 10_000) { waypointCount() == 0 }
-        scenario.onActivity { assertTrue("no Save dialog after the tour", vm(it).saveAsk == null) }
+        scenario.onActivity { assertTrue("no Save dialog after the tour", vm(it).save.ask == null) }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         assertEquals("the tour is saved", "done", db.getTour(tourId)?.state)
         assertTrue("the plan is still in My routes", planId in plannedIds())
         assertEquals(AppMode.PLAN, mode())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo brings the plan back", 10_000) { waypointList() == before }
         db.deleteTour(planId)
     }
@@ -365,21 +365,21 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun losGehtsWithAChangedSavedPlanUpdatesItAndKeepsTheOldUnderZuletzt() {
         val planId = startOnANewPlan()
         val old = waypointList()
-        scenario.onActivity { vm(it).endTour() }
+        scenario.onActivity { vm(it).tourEnd.endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         waitUntil("back at the start (owner 2026-11-07)", 10_000) { waypointCount() == 0 }
-        scenario.onActivity { vm(it).undoStep() } // the saved plan back on the map, as it was
+        scenario.onActivity { vm(it).planEdit.undoStep() } // the saved plan back on the map, as it was
         waitUntil("Undo: the saved plan is back", 10_000) { waypointList() == old }
-        scenario.onActivity { assertFalse("back as saved", vm(it).planUnsaved) }
+        scenario.onActivity { assertFalse("back as saved", vm(it).plan.unsaved) }
         // change the saved plan: one more point beyond the goal
         val goal = old.last()
-        scenario.onActivity { vm(it).addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(GeoPoint(goal.lat + 0.004, goal.lon + 0.004)) }
         waitUntil("the plan has three points", 10_000) { waypointList().size == 3 }
         routeSettled()
         val changed = waypointList()
-        scenario.onActivity { assertTrue("the changed saved plan counts as unsaved", vm(it).planUnsaved) }
+        scenario.onActivity { assertTrue("the changed saved plan counts as unsaved", vm(it).plan.unsaved) }
         val idsBefore = plannedIds()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         fun key(points: List<GeoPoint>) = points.map { it.lat to it.lon }
@@ -391,20 +391,20 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("the version before is still in My routes (Zuletzt)", 15_000) {
             var others: List<List<Pair<Double, Double>>> = emptyList()
             scenario.onActivity {
-                others = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && t.id != planId }
+                others = vm(it).routes.tours.filter { t -> t.kind == TourKind.PLANNED && t.id != planId }
                     .map { t -> t.waypoints.map { w -> w.lat to w.lon } }
             }
             key(old) in others
         }
         var saved: List<Long> = emptyList()
-        scenario.onActivity { saved = vm(it).tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
+        scenario.onActivity { saved = vm(it).routes.tours.filter { t -> t.kind == TourKind.PLANNED && !t.draft }.map { t -> t.id } }
         assertEquals("no new saved route – no \"Name (2)\"", idsBefore.filter { it in saved }.toSet(), saved.toSet())
         // the plan's "saved" mark follows the DB write on the main thread (overwriteSaved → setSaved); when an earlier
         // test's route already holds the old points the Zuletzt wait above passes at once, before that (GitHub 2026-11-07)
-        waitUntil("the plan counts as saved now", 10_000) { var u = true; scenario.onActivity { u = vm(it).planUnsaved }; !u }
-        scenario.onActivity { vm(it).endTour() }
+        waitUntil("the plan counts as saved now", 10_000) { var u = true; scenario.onActivity { u = vm(it).plan.unsaved }; !u }
+        scenario.onActivity { vm(it).tourEnd.endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
-        scenario.onActivity { vm(it).tours.filter { t -> t.draft && t.waypoints.map { w -> w.lat to w.lon } == key(old) }.forEach { t -> db.deleteTour(t.id) } }
+        scenario.onActivity { vm(it).routes.tours.filter { t -> t.draft && t.waypoints.map { w -> w.lat to w.lon } == key(old) }.forEach { t -> db.deleteTour(t.id) } }
         db.deleteTour(planId)
     }
 
@@ -416,15 +416,15 @@ class CoreFieldE2ETest : E2EBase() {
         val planId = startOnANewPlan()
         val before = waypointList()
         var tourId = -1L
-        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).endTourAndDelete() }
+        scenario.onActivity { tourId = vm(it).recState.value!!.tourId; vm(it).tourEnd.endTourAndDelete() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         pause(1_500, "no Save dialog may appear after the tour has ended")
-        scenario.onActivity { assertTrue("no Save dialog after Löschen", vm(it).saveAsk == null) }
+        scenario.onActivity { assertTrue("no Save dialog after Löschen", vm(it).save.ask == null) }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         assertTrue("the tour is in the bin", (db.getTour(tourId)?.deletedMs ?: 0L) > 0L)
         waitUntil("back at the start: the map is empty", 10_000) { waypointCount() == 0 }
         assertTrue("the plan is still in My routes", planId in plannedIds())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo brings the plan back", 10_000) { waypointList() == before }
         db.deleteTour(planId)
     }
@@ -441,10 +441,10 @@ class CoreFieldE2ETest : E2EBase() {
         val goal = GeoPoint(lat + 0.0035, lon + 0.0020)    // ~430 m away
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         val before = plannedIds()
-        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(goal) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(start); vm(it).placeAdd.addPoint(goal) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
         waitUntil("the route", 30_000) { var ok = false; scenario.onActivity { ok = (vm(it).route?.points?.size ?: 0) >= 2 }; ok }
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         waitUntil("Los geht's saved the plan", 15_000) { (plannedIds() - before).size == 1 }
@@ -457,7 +457,7 @@ class CoreFieldE2ETest : E2EBase() {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 com.onpath.app.recording.DemoLocation.startRide(com.onpath.app.recording.DemoPath.constant(line, 1.4)!!, "E2E arrival", 20)
             }
-            waitUntil("\"Du bist angekommen.\"", 120_000) { var a = false; scenario.onActivity { a = vm(it).arrivalAsk }; a }
+            waitUntil("\"Du bist angekommen.\"", 120_000) { var a = false; scenario.onActivity { a = vm(it).tour.arrivalAsk }; a }
             assertNotNull("the arrival box", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
             assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
             assertNotNull("Tour beenden", findFresh(By.text(Txt.s(Res.string.nav_end_tour)), 5_000))
@@ -467,7 +467,7 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("the tour has ended", 30_000) { !recording() }
             waitUntil("the tour is saved", 15_000) { db.getTour(tourId)?.state == "done" }
             waitUntil("in My routes → Gemacht", 15_000) {
-                var ok = false; scenario.onActivity { ok = vm(it).tours.any { t -> t.id == tourId && t.kind == TourKind.RECORDED } }; ok
+                var ok = false; scenario.onActivity { ok = vm(it).routes.tours.any { t -> t.id == tourId && t.kind == TourKind.RECORDED } }; ok
             }
             assertTrue("the plan in My routes → Planned", planId in plannedIds())
             waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
@@ -497,7 +497,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("more than 60 m recorded", 60_000) {
             (com.onpath.app.recording.RecordingService.state.value?.distanceM ?: 0.0) > 60.0
         }
-        scenario.onActivity { vm(it).endTour() }
+        scenario.onActivity { vm(it).tourEnd.endTour() }
         waitUntil("the tour has ended", 20_000) { !recording() }
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         waitUntil("the tour carries the plan it followed", 10_000) { db.getTour(tourId)?.hasPlan == true }
@@ -517,12 +517,12 @@ class CoreFieldE2ETest : E2EBase() {
         device.wait(Until.findObject(By.text(Txt.s(Res.string.common_ok))), 5_000)?.click()
         // the copy outlives the planned route and the plan on the map
         db.deleteTour(planId)
-        scenario.onActivity { vm(it).clearPlan() }
+        scenario.onActivity { vm(it).planEdit.clearPlan() }
         waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
         try {
-            scenario.onActivity { vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
+            scenario.onActivity { vm(it).routes.tab = RoutesTab.DONE; vm(it).routesGo.openRoutes() }
             waitUntil("My routes lists \"$name\"", 20_000) {
-                var listed = false; scenario.onActivity { listed = vm(it).tours.any { t -> t.id == tourId && t.name == name && t.hasPlan } }; listed
+                var listed = false; scenario.onActivity { listed = vm(it).routes.tours.any { t -> t.id == tourId && t.name == name && t.hasPlan } }; listed
             }
             val more = findFresh(By.desc(Txt.s(Res.string.routes_options_desc, name)), 8_000)
             if (more == null) shot("0-no-row-menu")
@@ -536,13 +536,13 @@ class CoreFieldE2ETest : E2EBase() {
                 w.size == followed.size && w.zip(followed).all { (a, b) -> com.onpath.app.data.Geo.distance(a, b) < 5.0 }
             }
             scenario.onActivity {
-                assertFalse("My routes closed", vm(it).routesOpen)
+                assertFalse("My routes closed", vm(it).routes.open)
                 assertFalse("nothing records", vm(it).recState.value != null)
             }
             val trace = com.onpath.app.debug.Problems.events().map { it.message }
             assertTrue("traced: ${trace.takeLast(20)}", trace.any { it.startsWith("Planen on tour \"$name\": its followed plan from the tour's copy") })
         } finally {
-            scenario.onActivity { vm(it).routesOpen = false }
+            scenario.onActivity { vm(it).routes.open = false }
             db.deleteTour(tourId)
         }
     }
@@ -556,17 +556,17 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun deletingTheStartDuringATourRoutesFromHereToTheOnePointLeft() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         var plan: List<GeoPoint> = emptyList()
         var oldLine: List<GeoPoint>? = null
-        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
+        scenario.onActivity { plan = vm(it).plan.points.toList(); oldLine = vm(it).tourFollow.followLine }
         val goal = plan[1]
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         // as in the field: hold on point 1 → Delete
-        scenario.onActivity { vm(it).openPointMenu(0, via = "e2e"); vm(it).deletePointFromMenu() }
+        scenario.onActivity { vm(it).placeMenus.openPointMenu(0, via = "e2e"); vm(it).planEdit.deletePointFromMenu() }
         waitUntil("the plan is position → the point left", 20_000) {
             val w = waypointList(); w.size == 2 && w[1] == goal && w[0] != plan[0]
         }
@@ -574,7 +574,7 @@ class CoreFieldE2ETest : E2EBase() {
         waitUntil("the tour follows position → the point left, not the old line", 30_000) {
             var ok = false
             scenario.onActivity {
-                val l = vm(it).followLine
+                val l = vm(it).tourFollow.followLine
                 val here = vm(it).tracker.location.value?.let { p -> GeoPoint(p.latitude, p.longitude) }
                 ok = l != null && l != oldLine && here != null &&
                     com.onpath.app.data.Geo.distance(l.first(), here) < 150.0 &&
@@ -583,9 +583,9 @@ class CoreFieldE2ETest : E2EBase() {
             ok
         }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: the two points from before", 10_000) { waypointList() == plan }
-        waitUntil("Undo: the old guidance again", 30_000) { var ok = false; scenario.onActivity { ok = vm(it).followLine == oldLine }; ok }
+        waitUntil("Undo: the old guidance again", 30_000) { var ok = false; scenario.onActivity { ok = vm(it).tourFollow.followLine == oldLine }; ok }
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         assertTrue("traced: ${trace.take(30)}", trace.any { it.startsWith("One point left during the tour") })
     }
@@ -610,40 +610,40 @@ class CoreFieldE2ETest : E2EBase() {
             scenario.onActivity { ok = vm(it).tracker.location.value?.let { p -> p.latitude > 51.0 } == true }
             ok
         }
-        scenario.onActivity { vm(it).selectActivity(Activity.HIKE); vm(it).selectSac(1) }
-        scenario.onActivity { vm(it).addPoint(meran); vm(it).addPoint(mutkopf) }
+        scenario.onActivity { vm(it).planRoute.selectActivity(Activity.HIKE); vm(it).planRoute.selectSac(1) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(meran); vm(it).placeAdd.addPoint(mutkopf) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
-        waitUntil("the T1 plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
+        waitUntil("the T1 plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).planRun.routing && vm(it).route != null }; ok }
         var t1End: GeoPoint? = null
         scenario.onActivity { t1End = vm(it).route?.points?.lastOrNull() }
         assertTrue("T1 cannot reach point 2 (ends ${dist(t1End!!, mutkopf).toInt()} m from it)", dist(t1End!!, mutkopf) > 200.0)
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the plan is followed", 20_000) { guided() }
         var reached = true
         scenario.onActivity { reached = vm(it).recState.value?.nav?.session?.reached ?: true }
         assertFalse("700 km away the route was never reached", reached)
 
-        scenario.onActivity { vm(it).openActivityCheck() }
+        scenario.onActivity { vm(it).activityCheckSlice.openActivityCheck() }
         var rows: List<com.onpath.app.ui.ActivityRowState> = emptyList()
-        scenario.onActivity { rows = vm(it).activityCheck?.rows?.map { r -> r.state }.orEmpty() }
+        scenario.onActivity { rows = vm(it).activityCheckSlice.activityCheck?.rows?.map { r -> r.state }.orEmpty() }
         assertTrue("nothing routed before a choice: $rows", rows.isNotEmpty() && rows.all { it == com.onpath.app.ui.ActivityRowState.Idle })
         val t0 = System.currentTimeMillis()
-        scenario.onActivity { vm(it).chooseHikeLevel(5) }
+        scenario.onActivity { vm(it).activityCheckSlice.chooseHikeLevel(5) }
         waitUntil("the tour follows Hike T5 to point 2", 60_000) {
             var ok = false
             scenario.onActivity {
                 val s = vm(it).recState.value?.nav?.session
-                val l = vm(it).followLine
+                val l = vm(it).tourFollow.followLine
                 ok = s != null && s.activity == Activity.HIKE && s.sac == 5 && l != null && dist(l.last(), mutkopf) < 60.0
             }
             ok
         }
         val took = System.currentTimeMillis() - t0
         scenario.onActivity {
-            assertEquals("the plan is Hike T5 now", 5, vm(it).sac)
+            assertEquals("the plan is Hike T5 now", 5, vm(it).planRoute.sac)
             assertTrue("the plan line reaches point 2", vm(it).route?.points?.lastOrNull()?.let { p -> dist(p, mutkopf) < 60.0 } == true)
-            assertTrue("the sheet closed", vm(it).activityCheck == null)
+            assertTrue("the sheet closed", vm(it).activityCheckSlice.activityCheck == null)
         }
         assertTrue("recording goes on", recording())
         assertTrue("one routing of the plan, not six 15 s timeouts ($took ms)", took < 40_000)
@@ -661,24 +661,24 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun aPlaceAddedDuringATourIsAStopBetweenNotANewStart() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         var plan: List<GeoPoint> = emptyList()
         var oldLine: List<GeoPoint>? = null
-        scenario.onActivity { plan = vm(it).waypoints.toList(); oldLine = vm(it).followLine }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { plan = vm(it).plan.points.toList(); oldLine = vm(it).tourFollow.followLine }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         // a place a little beside the middle of the route (a POI menu adds it this way)
         val mid = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0003, (plan[0].lon + plan[1].lon) / 2)
         val poi = com.onpath.app.poi.Poi("e2e-shelter", "shelter", "Unterstand E2E", mid.lat, mid.lon)
         var label = ""
         var menu: com.onpath.app.domain.PlaceAddMenu.Menu? = null
-        scenario.onActivity { label = vm(it).poiAddLabel(poi); menu = vm(it).placeMenu(poi) }
+        scenario.onActivity { label = vm(it).placeMenus.poiAddLabel(poi); menu = vm(it).placeMenus.placeMenu(poi) }
         assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
         // beside the middle: a clear stop – the menu offers „Einfügen“ first (owner 2026-11-07 / 2026-11-15), no start
         assertEquals("the menu: $menu", com.onpath.app.domain.PlaceAddMenu.Item.ADD_STOP, menu?.emphasised)
-        scenario.onActivity { vm(it).addPoiAsStop(poi) }
+        scenario.onActivity { vm(it).placeAdd.addPoiAsStop(poi) }
         waitUntil("3 points, the place between start and goal", 10_000) {
             val w = waypointList()
             w.size == 3 && w[0] == plan[0] && w[2] == plan[1] &&
@@ -686,7 +686,7 @@ class CoreFieldE2ETest : E2EBase() {
         }
         waitUntil("the tour follows the new route", 30_000) {
             var ok = false
-            scenario.onActivity { val l = vm(it).followLine; ok = l != null && l != oldLine }
+            scenario.onActivity { val l = vm(it).tourFollow.followLine; ok = l != null && l != oldLine }
             ok
         }
         assertTrue("the recording goes on", recording())
@@ -700,17 +700,17 @@ class CoreFieldE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         routeSettled()
         var plan: List<GeoPoint> = emptyList()
-        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { plan = vm(it).plan.points.toList() }
         assertEquals("a plan of two points", 2, plan.size)
         val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
         val poi = com.onpath.app.poi.Poi("e2e-hut", "alpine_hut", "Hütte E2E", past.lat, past.lon)
-        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        scenario.onActivity { vm(it).placeAdd.poiAsNewDestination(poi) }
         waitUntil("the plan goes on to the place, the old goal stays as a stop", 10_000) {
             val w = waypointList()
             w.size == 3 && w[0] == plan[0] && w[1] == plan[1] && com.onpath.app.data.Geo.distance(w[2], past) < 5.0
         }
         assertFalse("no tour started", recording())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: the plan before is back", 10_000) { waypointList() == plan }
     }
 
@@ -731,7 +731,7 @@ class CoreFieldE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         routeSettled()
         var plan: List<GeoPoint> = emptyList()
-        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { plan = vm(it).plan.points.toList() }
         assertEquals("a plan of two points", 2, plan.size)
         // ~170 m beside the middle of the route: not on the line, so it is measured
         val spot = GeoPoint((plan[0].lat + plan[1].lat) / 2 + 0.0015, (plan[0].lon + plan[1].lon) / 2)
@@ -739,7 +739,7 @@ class CoreFieldE2ETest : E2EBase() {
         var callMs = 0L
         scenario.onActivity {
             val t0 = android.os.SystemClock.elapsedRealtime()
-            vm(it).holdOnMap(spot, 30.0)
+            vm(it).placeAdd.holdOnMap(spot, 30.0)
             callMs = android.os.SystemClock.elapsedRealtime() - t0
         }
         assertTrue("the hold returns at once: $callMs ms", callMs < 300)
@@ -750,7 +750,7 @@ class CoreFieldE2ETest : E2EBase() {
         assertTrue("the main thread answers during the measure: $answerMs ms", answerMs < 500)
         val measuredMs = waitHoldMeasured()
         var menuOpen = false
-        scenario.onActivity { menuOpen = vm(it).holdAddMenu != null }
+        scenario.onActivity { menuOpen = vm(it).placeAdd.holdAddMenu != null }
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         val line = trace.firstOrNull { it.contains("paths: ") || it.contains("paths failed") }
         android.util.Log.i("OnPathE2E", "hold beside the plan: call $callMs ms, main answered $answerMs ms, decided after " +
@@ -770,27 +770,27 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         var plan: List<GeoPoint> = emptyList()
-        scenario.onActivity { plan = vm(it).waypoints.toList() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { plan = vm(it).plan.points.toList() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         // half the route again beyond the goal, in its direction
         val past = GeoPoint(plan[1].lat + (plan[1].lat - plan[0].lat) / 2, plan[1].lon + (plan[1].lon - plan[0].lon) / 2)
         val poi = com.onpath.app.poi.Poi("e2e-church", "place_of_worship", "Kirche E2E", past.lat, past.lon)
         var menu: com.onpath.app.domain.PlaceAddMenu.Menu? = null
-        scenario.onActivity { menu = vm(it).placeMenu(poi) }
+        scenario.onActivity { menu = vm(it).placeMenus.placeMenu(poi) }
         assertEquals("the menu: $menu", com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION, menu?.main?.firstOrNull())
         assertTrue("„Einfügen“ is shown too: $menu", com.onpath.app.domain.PlaceAddMenu.Item.ADD_STOP in menu!!.main)
-        scenario.onActivity { vm(it).poiAsNewDestination(poi) }
+        scenario.onActivity { vm(it).placeAdd.poiAsNewDestination(poi) }
         waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
             val w = waypointList()
             w.size == 2 && w[0] == plan[0] && com.onpath.app.data.Geo.distance(w[1], past) < 5.0
         }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: the old goal is back", 10_000) { waypointList() == plan }
         assertTrue("the recording goes on after Undo", recording())
     }
@@ -815,20 +815,20 @@ class CoreFieldE2ETest : E2EBase() {
     private fun tourWithAnUnsavedPlan(): Long {
         val planId = startOnANewPlan()
         waitUntil("the plan is followed", 20_000) { guided() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         val (w, h) = mapSize()
         hold(w * 0.50f, h * 0.62f, takeAddMenu = false)
-        scenario.onActivity { vm(it).holdAsStop() } // only when it asks; a clear case was set at once
+        scenario.onActivity { vm(it).placeAdd.holdAsStop() } // only when it asks; a clear case was set at once
         waitUntil("a third point set on the way", 10_000) { waypointCount() == 3 }
         routeSettled()
         var unsaved = false
-        scenario.onActivity { unsaved = vm(it).planUnsaved }
+        scenario.onActivity { unsaved = vm(it).plan.unsaved }
         assertTrue("the plan changed on the way is not saved", unsaved)
         return planId
     }
 
-    private fun followName(): String? { var n: String? = null; scenario.onActivity { n = vm(it).followName }; return n }
+    private fun followName(): String? { var n: String? = null; scenario.onActivity { n = vm(it).tourFollow.followName }; return n }
     private fun drafts(): List<com.onpath.app.data.Tour> =
         TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext).listTours().filter { it.draft }
 
@@ -852,12 +852,12 @@ class CoreFieldE2ETest : E2EBase() {
         val id = insertDoneTour(name)
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
+            scenario.onActivity { vm(it).routesGo.requestOpen(tourWith(id)) }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             assertTrue("the recording goes on", recording())
             waitUntil("the plan is under Zuletzt", 10_000) { drafts().any { it.waypoints.size == 3 } }
-            scenario.onActivity { vm(it).undoStep() }
+            scenario.onActivity { vm(it).planEdit.undoStep() }
             waitUntil("Undo brings the plan back", 10_000) { waypointCount() == 3 }
         } finally {
             db.deleteTour(id); db.deleteTour(planId); drafts().forEach { db.deleteTour(it.id) }
@@ -873,7 +873,7 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun anEmptyDoneTourOpenedDuringATourKeepsTheFollowedLineInNavigate() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         waitUntil("Navigate draws the followed line", 15_000) { followedLineDrawn() }
@@ -881,13 +881,13 @@ class CoreFieldE2ETest : E2EBase() {
         val name = "E2E 0 m tour ${System.currentTimeMillis() % 100_000}"
         val id = db.insertTour(TourKind.RECORDED, name, Activity.BIKE_TOURING.name, 2, 0.0, 0.0, 0.0, 0.0, emptyList(), emptyList())
         try {
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
+            scenario.onActivity { vm(it).routesGo.requestOpen(tourWith(id)) }
             waitUntil("the 0 m tour is shown (nothing to follow)", 10_000) {
-                var s = false; scenario.onActivity { s = vm(it).shown?.tourId == id }; s
+                var s = false; scenario.onActivity { s = vm(it).routesFlow.shown?.tourId == id }; s
             }
-            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
             waitUntil("Navigate again", 10_000) { mode() == AppMode.NAVIGATE }
             assertTrue("the plan is still followed", guided())
             waitUntil("Navigate draws the followed line, not the shown empty tour", 15_000) { followedLineDrawn() }
@@ -895,7 +895,7 @@ class CoreFieldE2ETest : E2EBase() {
                 assertEquals("the followed line is route blue", com.onpath.app.map.MapController.TrackLook.FOLLOW, vm(it).trackLook())
             }
         } finally {
-            scenario.onActivity { vm(it).closeShown() }
+            scenario.onActivity { vm(it).routesFlow.closeShown() }
             db.deleteTour(id)
         }
     }
@@ -925,25 +925,25 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("a third point", 8_000) { waypointCount() == 3 }
             routeSettled()
             val first = waypointList()
-            scenario.onActivity { vm(it).requestClear() }
+            scenario.onActivity { vm(it).planEdit.clearPlan() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
             waitUntil("kept under Zuletzt", 10_000) { draftOf(first) != null }
             val draft = draftOf(first)!!
-            scenario.onActivity { vm(it).saveDraft(draft) }
+            scenario.onActivity { vm(it).recent.saveDraft(draft) }
             waitUntil("saved: no longer a draft", 10_000) { db.getTour(draft.id)?.draft == false }
             // the mark is set on the main thread after the database write the wait above saw (GitHub 2026-11-14: read in
             // between, -1) – wait for it the same way
-            waitUntil("\"✓ Gerade gespeichert\" on it", 5_000) { var id = -1L; scenario.onActivity { id = vm(it).justSavedId }; id == draft.id }
+            waitUntil("\"✓ Gerade gespeichert\" on it", 5_000) { var id = -1L; scenario.onActivity { id = vm(it).routes.justSavedId }; id == draft.id }
             // a second one, deleted from Zuletzt → recycle bin
             startPlanWithTwoPoints()
             hold(w * 0.45f, h * 0.65f)
             waitUntil("another third point", 8_000) { waypointCount() == 3 }
             routeSettled()
             val secondPts = waypointList()
-            scenario.onActivity { vm(it).requestClear() }
+            scenario.onActivity { vm(it).planEdit.clearPlan() }
             waitUntil("the second one under Zuletzt", 10_000) { draftOf(secondPts) != null }
             val second = draftOf(secondPts)!!
-            scenario.onActivity { vm(it).deleteDraft(second) }
+            scenario.onActivity { vm(it).recent.deleteDraft(second) }
             waitUntil("in the recycle bin", 10_000) { (db.getTour(second.id)?.deletedMs ?: 0L) > 0L }
             db.deleteTour(draft.id); db.deleteTour(second.id)
         } finally {
@@ -960,11 +960,11 @@ class CoreFieldE2ETest : E2EBase() {
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
             val changed = waypointList()
-            scenario.onActivity { vm(it).requestClear() }
+            scenario.onActivity { vm(it).planEdit.clearPlan() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
             assertTrue("the recording goes on", recording())
             waitUntil("the changed plan under Zuletzt", 10_000) { draftOf(changed) != null }
-            scenario.onActivity { vm(it).undoStep() }
+            scenario.onActivity { vm(it).planEdit.undoStep() }
             waitUntil("Undo: the plan is back", 10_000) { waypointCount() == 3 }
         } finally {
             drafts().forEach { db.deleteTour(it.id) }
@@ -977,20 +977,20 @@ class CoreFieldE2ETest : E2EBase() {
         val planId = tourWithAnUnsavedPlan()
         val planName = "E2E saved plan ${System.currentTimeMillis() % 100_000}"
         scenario.onActivity { vm(it).requestSave() }
-        waitUntil("Save's dialog", 5_000) { var a = false; scenario.onActivity { a = vm(it).saveAsk != null }; a }
-        scenario.onActivity { vm(it).confirmSave(planName) }
-        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
+        waitUntil("Save's dialog", 5_000) { var a = false; scenario.onActivity { a = vm(it).save.ask != null }; a }
+        scenario.onActivity { vm(it).save.confirm(planName) }
+        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).plan.unsaved }; !s }
         val name = "E2E done tour ${System.currentTimeMillis() % 100_000}"
         val id = insertDoneTour(name)
         val db = TourDb.get(InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { vm(it).requestOpen(tourWith(id)) }
+            scenario.onActivity { vm(it).routesGo.requestOpen(tourWith(id)) }
             waitUntil("the tour follows the track", 10_000) { followName() == name }
             waitUntil("the plan has left the map", 10_000) { waypointCount() == 0 }
         } finally {
             db.deleteTour(id)
             db.deleteTour(planId) // saved at the start, overwritten (renamed) by the Save above
-            scenario.onActivity { vm(it).tours.filter { t -> t.name == planName }.forEach { t -> db.deleteTour(t.id) } }
+            scenario.onActivity { vm(it).routes.tours.filter { t -> t.name == planName }.forEach { t -> db.deleteTour(t.id) } }
         }
     }
 
@@ -1002,7 +1002,7 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun oneOrientationNorthStaysNorthAndTravelKeepsTheBearing() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = false)) }
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHeadingUp = false)) }
         fun bearing(): Double { var b = -1.0; onMap { m -> b = m.cameraPosition.bearing }; return b }
         fun turnByHand() = onMap { m ->
             m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
@@ -1014,35 +1014,35 @@ class CoreFieldE2ETest : E2EBase() {
             routeSettled()
             // NORTH: a hand rotation, then "whole route" → north up
             turnByHand(); pause(500, "the hand rotation settles")
-            scenario.onActivity { vm(it).showWholeRoute() }
+            scenario.onActivity { vm(it).map.showWholeRoute() }
             pause(1_500, "the whole-route camera move")
             assertTrue("north: whole route turns north (${bearing()})", near(0.0, bearing()))
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
             pause(2_000, "Navigate's camera move")
             assertTrue("north: Navigate north up (${bearing()})", near(0.0, bearing()))
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             pause(2_000, "Plan's camera move")
             assertTrue("north: back in Plan north up (${bearing()})", near(0.0, bearing()))
-            scenario.onActivity { vm(it).locate() }
+            scenario.onActivity { vm(it).map.locate() }
             pause(1_500, "locate's camera move")
             assertTrue("north: locate in Plan north up (${bearing()})", near(0.0, bearing()))
             // TRAVEL: Navigate, looked around by hand, back in Plan – the bearing stays; a fit keeps it too
-            scenario.onActivity { vm(it).updateSettings(vm(it).settings.copy(navHeadingUp = true)) }
-            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            scenario.onActivity { vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHeadingUp = true)) }
+            scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
             waitUntil("Navigate again", 20_000) { mode() == AppMode.NAVIGATE }
             pause(2_000, "Navigate's camera move")
             turnByHand(); pause(800, "the hand rotation settles")
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("back in Plan again", 10_000) { mode() == AppMode.PLAN }
             pause(2_000, "Plan's camera move")
             assertTrue("travel: leaving Navigate keeps the bearing (${bearing()})", near(137.0, bearing()))
-            scenario.onActivity { vm(it).showWholeRoute() }
+            scenario.onActivity { vm(it).map.showWholeRoute() }
             pause(1_500, "the fit's camera move")
             assertTrue("travel: whole route keeps the bearing (${bearing()})", near(137.0, bearing()))
         } finally {
-            scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording(); before?.let { s -> vm(it).updateSettings(s) } }
+            scenario.onActivity { if (vm(it).recState.value != null) vm(it).tourEnd.stopRecording(); before?.let { s -> vm(it).settingsSlice.updateSettings(s) } }
         }
     }
 
@@ -1070,7 +1070,7 @@ class CoreFieldE2ETest : E2EBase() {
         val id = db.insertTour(TourKind.PLANNED, name, Activity.HIKE.name, 2, 3_000.0, 0.0, 0.0, 3600.0,
             listOf(far.map { TrackPoint(it.lat, it.lon) }), far)
         try {
-            scenario.onActivity { vm(it).refreshTours(); vm(it).openTour(db.getTour(id)!!) }
+            scenario.onActivity { vm(it).routesFlow.refreshTours(); vm(it).openTour(db.getTour(id)!!) }
             waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
             pause(3_000, "the plan is framed; my position is ~25 km south, off the map")
             val prefix = Txt.s(Res.string.plan_locate_far_cd, "").substringBefore(" ").ifBlank { "Du" }
@@ -1098,17 +1098,17 @@ class CoreFieldE2ETest : E2EBase() {
             listOf(far.map { TrackPoint(it.lat, it.lon) }), far)
         try {
             var t: com.onpath.app.data.Tour? = null
-            scenario.onActivity { vm(it).refreshTours(); t = db.getTour(id); vm(it).openTour(t!!) }
+            scenario.onActivity { vm(it).routesFlow.refreshTours(); t = db.getTour(id); vm(it).openTour(t!!) }
             waitUntil("the far plan is on the map", 10_000) { waypointCount() == 2 }
             // Navigate follows the own position
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate", 20_000) { mode() == AppMode.NAVIGATE }
             if (walkingDirectionUp) {
-                scenario.onActivity { if (!vm(it).headingUp) vm(it).onCompass(false) }
-                waitUntil("walking direction up", 5_000) { var h = false; scenario.onActivity { a -> h = vm(a).headingUp }; h }
+                scenario.onActivity { if (!vm(it).settingsSlice.settings.navHeadingUp) vm(it).map.onCompass(false) }
+                waitUntil("walking direction up", 5_000) { var h = false; scenario.onActivity { a -> h = vm(a).settingsSlice.settings.navHeadingUp }; h }
             }
             pause(2_500, "Navigate's camera move")
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
             pause(3_000, "settle + fit animation")
             pause(3_000, "a following camera would have pulled the map back to the position by now")
@@ -1119,8 +1119,8 @@ class CoreFieldE2ETest : E2EBase() {
             val toMe = com.onpath.app.data.Geo.distance(c.latitude, c.longitude, lat, lon)
             assertTrue("the map shows the plan (${toPlan.toInt()} m from it), not the position (${toMe.toInt()} m)", toPlan < toMe && toPlan < 5_000)
         } finally {
-            scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() }
-            if (walkingDirectionUp) scenario.onActivity { if (vm(it).headingUp) vm(it).onCompass(true) }
+            scenario.onActivity { if (vm(it).recState.value != null) vm(it).tourEnd.stopRecording() }
+            if (walkingDirectionUp) scenario.onActivity { if (vm(it).settingsSlice.settings.navHeadingUp) vm(it).map.onCompass(true) }
             db.deleteTour(id)
         }
     }
@@ -1132,7 +1132,7 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun backInNavigateDuringATourStaysInTheApp() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         pause(1_000, "the tour's first state")
         var tourId = -1L
@@ -1160,37 +1160,37 @@ class CoreFieldE2ETest : E2EBase() {
      */
     @Test fun navigateGearOpensSettingsOnTheWayAndBackReturns() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHoldMs = 0)) }
         try {
             startPlanWithTwoPoints()
             routeSettled()
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val gear = findFresh(By.desc(Txt.s(Res.string.nav_settings_cd)), 10_000)
             assertNotNull("⚙ in Navigate's map controls", gear)
             gear!!.click()
             assertNotNull("the Navigation page's first group", findFresh(By.text(Txt.s(Res.string.settings_group_offroute).uppercase()), 10_000))
             var onTheWay = false
-            scenario.onActivity { onTheWay = vm(it).showSettings && vm(it).settingsOnTheWay }
+            scenario.onActivity { onTheWay = vm(it).settingsSlice.showSettings && vm(it).settingsSlice.settingsOnTheWay }
             assertTrue("settings on the way", onTheWay)
             assertTrue("the tour records on", recording())
             device.pressBack()
-            waitUntil("settings closed", 5_000) { var s = true; scenario.onActivity { s = vm(it).showSettings }; !s }
+            waitUntil("settings closed", 5_000) { var s = true; scenario.onActivity { s = vm(it).settingsSlice.showSettings }; !s }
             assertTrue("back in Navigate", mode() == AppMode.NAVIGATE)
             assertEquals("the app is still in front", androidx.lifecycle.Lifecycle.State.RESUMED, scenario.state)
             assertTrue("still recording", recording())
         } finally {
-            scenario.onActivity { vm(it).updateSettings(before!!) }
+            scenario.onActivity { vm(it).settingsSlice.updateSettings(before!!) }
         }
     }
 
     @Test fun lockOffPauseThenEndOpensTheEndSheet() {
         var before: com.onpath.app.data.AppSettings? = null
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = 0)) }
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHoldMs = 0)) }
         try {
             startPlanWithTwoPoints()
             routeSettled()
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("Anhalten at the bottom, no slider", findFresh(By.text(Txt.s(Res.string.nav_action_pause)), 10_000))
             assertTrue("no Tour beenden before a stop", goneFresh(By.text(Txt.s(Res.string.nav_end_tour)), 2_000))
@@ -1205,7 +1205,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("the end sheet", findFresh(By.text(Txt.s(Res.string.nav_end_tour_title)), 10_000))
             assertTrue("asking does not end the tour", recording())
         } finally {
-            scenario.onActivity { vm(it).updateSettings(before!!) }
+            scenario.onActivity { vm(it).settingsSlice.updateSettings(before!!) }
         }
     }
 
@@ -1221,11 +1221,11 @@ class CoreFieldE2ETest : E2EBase() {
         // The band now fills by the frame clock (HoldRule.fill, HoldFillTest); this test runs with animations off on CI.
         val holdMs = com.onpath.app.data.HoldSetting.MAX_MS
         UnlockWindow.openMsForTests = 1_500 // the 10 s unlock window, short – no test waits 10 s
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHoldMs = holdMs)) }
         try {
             startPlanWithTwoPoints()
             routeSettled()
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             val pause = findFresh(By.desc(Txt.s(Res.string.nav_action_pause)), 10_000)
             assertNotNull("locked: Anhalten at the bottom, no slider", pause)
@@ -1275,7 +1275,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("asking does not end the tour", recording())
         } finally {
             UnlockWindow.openMsForTests = null
-            scenario.onActivity { vm(it).updateSettings(before!!) }
+            scenario.onActivity { vm(it).settingsSlice.updateSettings(before!!) }
         }
     }
 
@@ -1291,7 +1291,7 @@ class CoreFieldE2ETest : E2EBase() {
         // the window long: this test checks what ONE hold opens, not the window's length (UnlockWindowTest) – a loaded
         // GitHub emulator took 13 s from the fired hold to the next step (run 42363890364)
         UnlockWindow.openMsForTests = 60_000
-        scenario.onActivity { before = vm(it).settings; vm(it).updateSettings(vm(it).settings.copy(navHoldMs = holdMs)) }
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHoldMs = holdMs)) }
         val pauseWord = Txt.s(Res.string.nav_action_pause)
         val resumeWord = Txt.s(Res.string.common_resume)
         val endWord = Txt.s(Res.string.nav_end_tour)
@@ -1302,7 +1302,7 @@ class CoreFieldE2ETest : E2EBase() {
         try {
             startPlanWithTwoPoints()
             routeSettled()
-            scenario.onActivity { vm(it).startNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
             waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("locked: Anhalten at the bottom", findFresh(By.desc(pauseWord), 10_000))
             // 1 held Anhalten → stopped, the bar open: Weiter is a plain button – a tap resumes
@@ -1317,7 +1317,7 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("paused again", 10_000) { paused() }
             clickText(planWord)
             waitUntil("Plan", 10_000) { mode() == AppMode.PLAN }
-            scenario.onActivity { vm(it).continueNavigation(force = true) }
+            scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
             waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
             waitUntil("back from Plan the bar is locked: Weiter and Tour beenden held", 5_000) {
                 lockedLook(resumeWord) && lockedLook(endWord)
@@ -1334,7 +1334,7 @@ class CoreFieldE2ETest : E2EBase() {
             assertTrue("asking does not end the tour", recording())
         } finally {
             UnlockWindow.openMsForTests = null
-            scenario.onActivity { vm(it).updateSettings(before!!) }
+            scenario.onActivity { vm(it).settingsSlice.updateSettings(before!!) }
         }
     }
 
@@ -1348,21 +1348,21 @@ class CoreFieldE2ETest : E2EBase() {
         // the field: "Start here" where I stand, a goal far off; on the way point 2 is deleted in the Points list
         val start = GeoPoint(lat, lon)
         val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
-        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(goal) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(start); vm(it).placeAdd.addPoint(goal) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         val plan = waypointList()
-        scenario.onActivity { vm(it).deletePointFromList(1) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(1) }
         // the point left is where I stand: no "position → point" (that looped: delete point 2, it came back, again …)
         waitUntil("the plan is empty", 15_000) { waypointCount() == 0 }
         waitUntil("no route followed any more", 15_000) { !guided() }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: both points back", 10_000) { waypointList() == plan }
     }
 
@@ -1370,20 +1370,20 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun onePointLeftRightHereEmptiesThePlan() {
         val start = GeoPoint(lat + 0.0030, lon - 0.0020)   // ~380 m away
         val near = GeoPoint(lat + 0.0001, lon)             // ~11 m away
-        scenario.onActivity { vm(it).addPoint(start); vm(it).addPoint(near) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(start); vm(it).placeAdd.addPoint(near) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         val plan = waypointList()
-        scenario.onActivity { vm(it).deletePointFromList(0) }
+        scenario.onActivity { vm(it).planEdit.deletePointFromList(0) }
         waitUntil("the plan is empty (the point left is where I stand)", 15_000) { waypointCount() == 0 }
         waitUntil("no route followed any more", 15_000) { !guided() }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: both points back", 10_000) { waypointList() == plan }
     }
 
@@ -1395,20 +1395,20 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun undoDuringATourBackToOnePointHereEndsTheGuidance() {
         val near = GeoPoint(lat + 0.0001, lon)             // ~11 m away
         val goal = GeoPoint(lat + 0.0050, lon + 0.0030)    // ~640 m away
-        scenario.onActivity { vm(it).addPoint(near); vm(it).addPoint(goal) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(near); vm(it).placeAdd.addPoint(goal) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("back in Plan", 10_000) { mode() == AppMode.PLAN }
         val plan = waypointList()
-        scenario.onActivity { vm(it).undoStep() }
+        scenario.onActivity { vm(it).planEdit.undoStep() }
         waitUntil("Undo: the one point stays (Undo never empties)", 10_000) { waypointCount() == 1 }
         waitUntil("no route followed any more (not the old line)", 15_000) { !guided() }
         assertTrue("the recording goes on", recording())
-        scenario.onActivity { vm(it).redoStep() }
+        scenario.onActivity { vm(it).planEdit.redoStep() }
         waitUntil("Redo: both points back", 10_000) { waypointList() == plan }
         waitUntil("the tour follows the plan again", 20_000) { guided() }
     }
@@ -1420,7 +1420,7 @@ class CoreFieldE2ETest : E2EBase() {
     @Test fun theNavigateCardOpensByATapAndClosesByADragUp() {
         startPlanWithTwoPoints()
         routeSettled()
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         val chevron = findFresh(By.desc(Txt.s(Res.string.nav_profile_show)), 10_000)
         assertNotNull("the card with its chevron (closed)", chevron)
@@ -1451,15 +1451,15 @@ class CoreFieldE2ETest : E2EBase() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         com.onpath.app.data.Prefs(ctx).voiceHeard = com.onpath.app.setup.Felt.YES
         scenario.onActivity {
-            vm(it).updateSettings(vm(it).settings.copy(junctionGuide = com.onpath.app.data.JunctionGuide.VOICE,
+            vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(junctionGuide = com.onpath.app.data.JunctionGuide.VOICE,
                 offRouteWarning = true, offRouteM = 40))
-            vm(it).selectActivity(Activity.HIKE)
+            vm(it).planRoute.selectActivity(Activity.HIKE)
         }
         val a = GeoPoint(lat, lon)
-        scenario.onActivity { vm(it).addPoint(a); vm(it).addPoint(GeoPoint(lat + 0.0005, lon + 0.009)) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(a); vm(it).placeAdd.addPoint(GeoPoint(lat + 0.0005, lon + 0.009)) }
         waitUntil("two points", 10_000) { waypointCount() == 2 }
-        waitUntil("the plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        waitUntil("the plan routed", 60_000) { var ok = false; scenario.onActivity { ok = !vm(it).planRun.routing && vm(it).route != null }; ok }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording started)", 20_000) { mode() == AppMode.NAVIGATE }
         waitUntil("the route is followed", 20_000) { guided() }
         val line = navState()!!.line
@@ -1538,5 +1538,5 @@ class CoreFieldE2ETest : E2EBase() {
         return out
     }
 
-    private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).waypoints.toList() }; return l }
+    private fun waypointList(): List<GeoPoint> { var l: List<GeoPoint> = emptyList(); scenario.onActivity { l = vm(it).plan.points.toList() }; return l }
 }

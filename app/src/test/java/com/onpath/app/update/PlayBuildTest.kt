@@ -34,7 +34,7 @@ class PlayBuildTest {
         val updates = src("src/main/java/com/onpath/app/ui/AppUpdates.kt")
         assertTrue(updates.contains("com.onpath.app.BuildConfig.SELF_UPDATE && !com.onpath.app.update.AppUpdater.installedFromPlay(app)"))
         assertTrue(updates.contains("if (!updatesEnabled ||"))
-        assertTrue(src("src/main/java/com/onpath/app/MainActivity.kt").contains("update = vm.update.takeIf { vm.updatesEnabled }"))
+        assertTrue(src("src/main/java/com/onpath/app/MainActivity.kt").contains("update = vm.updates.update.takeIf { vm.updates.updatesEnabled }"))
         // the privacy list names GitHub only where the updater exists
         val privacy = src("src/main/java/com/onpath/app/ui/SettingsScreen.kt").substringAfter("val PRIVACY_FLOWS")
         assertTrue(privacy.contains("\"GitHub\", Txt.s(Res.string.settings_privacy_update_when))\n        .takeIf { com.onpath.app.BuildConfig.SELF_UPDATE }"))

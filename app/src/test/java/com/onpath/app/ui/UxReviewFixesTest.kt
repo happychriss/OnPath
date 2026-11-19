@@ -19,8 +19,8 @@ class UxReviewFixesTest {
     /** Problem 3 (owner Q1): the activity in Plan during a tour opens the same check-and-switch sheet as Navigate. */
     @Test fun activityInPlanDuringATourOpensTheCheckSheet() {
         val plan = map.substringAfter("PlanMode(vm, rec,").substringBefore("navigate = {")
-        assertTrue(plan, plan.contains("onActivity = { if (rec != null) vm.openActivityCheck() else showActivity = true }"))
-        assertTrue(map.contains("ActivitySwitchSheet(it, vm::chooseActivity, vm::closeActivityCheck"))
+        assertTrue(plan, plan.contains("onActivity = { if (rec != null) vm.activityCheckSlice.openActivityCheck() else showActivity = true }"))
+        assertTrue(map.contains("ActivitySwitchSheet(it, vm.activityCheckSlice::chooseActivity, vm.activityCheckSlice::closeActivityCheck"))
         // a proposal is answered in Navigate (Take new route / Keep)
         // (moved to ActivityCheckSlice in piece 16b; `ActivityCheckFlowTest.chosenInPlanDuringATourTheQuestionIsAskedInNavigateAfterTheCommand` runs it)
         val slice = com.onpath.app.testkit.sourceFile("ui/tour/ActivityCheckSlice.kt").readText()
@@ -38,9 +38,9 @@ class UxReviewFixesTest {
         assertFalse("nothing to offer", RestoreOfferRule.show(false, recording = false, locationAsking = false, loadModalOpen = false))
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
         assertTrue(main.contains("RestoreOfferRule.show(vm.restoreOffer"))
-        assertTrue(main.contains("vm.locationAsking || vm.setupOpen, vm.loadModalOpen"))
+        assertTrue(main.contains("vm.locationAsking || vm.setup.setupOpen, vm.mapData.loadModalOpen"))
         // no system dialog at the first screen: the welcome page, location only from the guide after its explanation
-        assertTrue(main.contains("else vm.setupWelcome = true"))
+        assertTrue(main.contains("else vm.setup.setupWelcome = true"))
         assertTrue(main.contains("vm.locationAsking = true\n                    permissionLauncher.launch"))
     }
 

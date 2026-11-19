@@ -53,7 +53,7 @@ class MapFooterCreditTest {
         val footer = File("src/main/java/com/onpath/app/ui/MapFooter.kt").readText()
         assertTrue("the tap still opens the full credits", footer.substringAfter("Text(MAP_CREDIT,").take(400).contains("onClick = onCredits"))
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("onCredits = { vm.openSettings(SettingsPage.ABOUT) }"))
+        assertTrue(screen.contains("onCredits = { vm.settingsSlice.openSettings(SettingsPage.ABOUT) }"))
     }
 
     @Test fun normalFont() = shot(demo = false)

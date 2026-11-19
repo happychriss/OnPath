@@ -110,7 +110,7 @@ class ReleaseRundgang : E2EBase() {
         assertTrue("a route along the ways (${r.points.size} points)", r.points.size > 10)
         val badge = RouteSummary.rating(Activity.BIKE_TOURING, r.distanceM, r.ascentM, r.points).text
         assertNotNull("difficulty badge \"$badge\" shown", findFresh(By.text(badge), 10_000))
-        val hint = read { it.warningLineText() }
+        val hint = read { it.planRoute.warningLineText() }
         assertNotNull("this route has a hint (pushing / steps)", hint)
         assertNotNull("hint line \"$hint\" shown", findFresh(By.text(hint!!), 10_000))
         shot("2-difficulty-and-hint")
@@ -124,14 +124,14 @@ class ReleaseRundgang : E2EBase() {
         rideRoute(factor = 5)
         waitUntil("a junction cue on the way", 180_000) { cues().isNotEmpty() }
         shot("2-after-junction-cue")
-        waitUntil("the arrival question", 180_000) { read { it.arrivalAsk } }
+        waitUntil("the arrival question", 180_000) { read { it.tour.arrivalAsk } }
         assertNotNull("\"You have arrived\" shown", findFresh(By.text(Txt.s(Res.string.nav_arrived_title)), 10_000))
         shot("3-arrived")
         pause(com.onpath.app.domain.tour.EndSheetGuard.GUARD_MS, "the sheet ignores a press in its first half second")
         assertNotNull("Weiter aufzeichnen", findFresh(By.text(Txt.s(Res.string.nav_keep_recording)), 5_000))
         clickText(Txt.s(Res.string.nav_end_tour))
         waitUntil("tour saved", 30_000) { RecordingServiceState.idle() && db.getTour(tourId)?.state == "done" }
-        waitUntil("back at the start (owner 2026-11-07)", 10_000) { read { it.waypoints.isEmpty() } }
+        waitUntil("back at the start (owner 2026-11-07)", 10_000) { read { it.plan.points.isEmpty() } }
         shot("4-saved")
     }
 
@@ -180,28 +180,28 @@ class ReleaseRundgang : E2EBase() {
         assertTrue("the lead starts here", Geo.distance(lead.first(), FAR) < 200)
         shot("2-led")
         // Plan: a hold between here and the start → the new point 1, the lead redone to it
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
         pause(2_000, "Plan's own camera move first")
         val near = GeoPoint(FAR.lat + (THEATRE.lat - FAR.lat) * 0.25, FAR.lon + (THEATRE.lon - FAR.lon) * 0.25)
         showOnMap(FAR, near)
         holdAt(near)
         waitUntil("hold → a point", 15_000) { waypointCount() == 3 }
-        assertTrue("the held point is the new start", Geo.distance(read { it.waypoints[0] }, near) < 100)
+        assertTrue("the held point is the new start", Geo.distance(read { it.plan.points[0] }, near) < 100)
         assertTrue("traced as the new start", traced("New point on the way there"))
         waitRouted()
         shot("3-new-start")
-        scenario.onActivity { vm(it).continueNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
         waitUntil("the lead is redone to the edited plan", 90_000) {
             traced("Plan edited on the way there") && nav()?.let { it.session?.rerouted == true && it.line != lead } == true
         }
         shot("4-lead-redone")
         // Undo → the led route exactly as before
-        scenario.onActivity { vm(it).switchToPlan() }
+        scenario.onActivity { vm(it).tourSession.switchToPlan() }
         waitUntil("Plan again", 10_000) { mode() == AppMode.PLAN }
         undo()
         waitUntil("Undo: two points", 10_000) { waypointCount() == 2 }
-        scenario.onActivity { vm(it).continueNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
         waitUntil("Undo: the lead is back", 60_000) { nav()?.line?.let { sameLine(it, lead) } == true }
         shot("5-lead-back")
         pause(20_000, "standing far away: never a junction cue")
@@ -211,7 +211,7 @@ class ReleaseRundgang : E2EBase() {
     /** 5 · Round trip: delete its start from the map menu → the loop stays closed. */
     @Test fun flow05_roundTripDeleteStartFromMapMenuStaysClosed() {
         planned(THEATRE, STATION, NORTH)
-        scenario.onActivity { vm(it).roundTrip() }
+        scenario.onActivity { vm(it).planEdit.roundTrip() }
         waitUntil("round trip: 4 points", 10_000) { waypointCount() == 4 }
         waitRouted()
         shot("1-round-trip")
@@ -219,7 +219,7 @@ class ReleaseRundgang : E2EBase() {
         shot("2-menu")
         clickText(Txt.s(Res.string.common_delete))
         waitUntil("start deleted", 15_000) { waypointCount() == 3 }
-        val pts = read { it.waypoints.toList() }
+        val pts = read { it.plan.points.toList() }
         assertEquals("the loop stays closed: $pts", pts.first(), pts.last())
         assertTrue(read { it.isRoundTrip() })
         waitRouted()
@@ -234,16 +234,16 @@ class ReleaseRundgang : E2EBase() {
     @Test fun flow06_savedRouteDuringATourIsFollowedAtOnce() {
         planned(THEATRE, STATION)
         val tourId = startTour()
-        val before = read { it.waypoints.toList() }
+        val before = read { it.plan.points.toList() }
         val lineBefore = nav()!!.line
         val pts = listOf(GpxWaypoint(NORTH.lat, NORTH.lon, "Rundgang A"), GpxWaypoint(NORTH.lat + 0.004, NORTH.lon, "Rundgang B"))
         val name = "Rundgang saved route"
         val savedId = db.insertTour(TourKind.PLANNED, name, Activity.HIKE.name, 2, 450.0, 0.0, 0.0, 90.0,
             listOf(pts.map { TrackPoint(it.lat, it.lon) }), pts)
         try {
-            scenario.onActivity { vm(it).switchToPlan() }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
             waitUntil("Plan during the tour", 10_000) { mode() == AppMode.PLAN }
-            scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            scenario.onActivity { vm(it).routes.tab = RoutesTab.PLANNED; vm(it).routesGo.openRoutes() }
             // My routes opens on the planning activity (owner 2026-11-13) – during the tour the tour's (bike); the route is
             // a hike: "Alle" in the activity chip's menu shows it
             device.wait(Until.findObject(By.desc(Txt.s(Res.string.routes_act_chip_desc, Activity.BIKE_TOURING.chip))), 5_000)!!.click()
@@ -251,17 +251,17 @@ class ReleaseRundgang : E2EBase() {
             clickText(name)
             // a row opens its overview first (owner 2026-11-07); during the tour its primary is "Folgen"
             clickText(Txt.s(Res.string.routes_overview_follow))
-            waitUntil("the loaded route is the plan", 15_000) { read { it.waypoints.size == 2 && it.waypoints.first().lat == pts.first().lat } }
+            waitUntil("the loaded route is the plan", 15_000) { read { it.plan.points.size == 2 && it.plan.points.first().lat == pts.first().lat } }
             waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
             assertNotNull("\"Neuer Plan\" line", findFresh(By.text(Txt.s(Res.string.plan_new_during_tour)), 5_000))
             shot("1-new-plan-line")
-            assertTrue("the plan from before differs", before != read { it.waypoints.toList() })
+            assertTrue("the plan from before differs", before != read { it.plan.points.toList() })
             waitUntil("the tour follows the loaded route", 60_000) { nav()?.line?.let { it != lineBefore } == true }
             shot("2-following-the-loaded-route")
-            assertEquals("the activity stays the tour's", Activity.BIKE_TOURING, read { it.activity })
+            assertEquals("the activity stays the tour's", Activity.BIKE_TOURING, read { it.planRoute.activity })
             assertEquals("the same tour records on", tourId, com.onpath.app.recording.RecordingService.state.value?.tourId)
         } finally {
-            scenario.onActivity { vm(it).routesOpen = false }
+            scenario.onActivity { vm(it).routes.open = false }
             db.deleteTour(savedId)
         }
     }
@@ -300,15 +300,15 @@ class ReleaseRundgang : E2EBase() {
         }
         // "In Meine Touren ›" opens My routes on Gemacht with the tour marked – not the tour on the map (field bug
         // 2026-11-06 22:30: a 0 m tour opened with "Als Plan übernehmen")
-        scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED } // the tab it must switch away from
+        scenario.onActivity { vm(it).routes.tab = RoutesTab.PLANNED } // the tab it must switch away from
         clickText(Txt.s(Res.string.routes_saved_open))
-        waitUntil("My routes open on Gemacht", 10_000) { read { it.routesOpen && it.routesTab == RoutesTab.DONE && it.shown == null } }
+        waitUntil("My routes open on Gemacht", 10_000) { read { it.routes.open && it.routes.tab == RoutesTab.DONE && it.routesFlow.shown == null } }
         var listed = findFresh(By.text(name), 10_000)
         if (listed == null) { name = db.getTour(tourId)!!.name; listed = findFresh(By.text(name), 10_000) }
         assertNotNull("\"$name\" listed in Done", listed)
         assertNotNull("marked as just saved", findFresh(By.text(Txt.s(Res.string.routes_just_saved)), 5_000))
         shot("2-listed-in-done")
-        scenario.onActivity { vm(it).routesOpen = false }
+        scenario.onActivity { vm(it).routes.open = false }
     }
 
     /** 8 · Sync: paired with the "browser", a plan saved there arrives in My routes → Planned with the tag "New". */
@@ -340,13 +340,13 @@ class ReleaseRundgang : E2EBase() {
             val out = SyncRound(keys, mailbox.box(keys), { ByteArray(12) { (n.incrementAndGet() and 0x7f).toByte() } }).run(browser)
             assertTrue("browser round: $out", out is SyncRound.Outcome.Done)
             pause(11_000, "My routes passes at once when opened, not within 10 s of the pairing pass")
-            scenario.onActivity { vm(it).routesTab = RoutesTab.PLANNED; vm(it).openRoutes() }
+            scenario.onActivity { vm(it).routes.tab = RoutesTab.PLANNED; vm(it).routesGo.openRoutes() }
             assertNotNull("\"$title\" arrived", findFresh(By.text(title), 90_000))
             assertNotNull("tag \"New\"", findFresh(By.text(Txt.s(Res.string.routes_tag_new)), 10_000))
             shot("3-arrived-new")
         } finally {
             if (launched) {
-                scenario.onActivity { vm(it).routesOpen = false }
+                scenario.onActivity { vm(it).routes.open = false }
                 val done = CountDownLatch(1)
                 scenario.onActivity { vm(it).sync.unpair { done.countDown() } }
                 done.await(10, TimeUnit.SECONDS)
@@ -363,7 +363,7 @@ class ReleaseRundgang : E2EBase() {
      */
     @Test fun flow09_searchStaysStable() {
         launch(extraData = { dir -> java.io.File(dir, "pois.geojson").writeText(SEARCH_POIS) }) { demoAt(THEATRE) }
-        scenario.onActivity { vm(it).openSearch() }
+        scenario.onActivity { vm(it).searchFlow.openSearch() }
         val field = device.wait(androidx.test.uiautomator.Until.findObject(By.clazz("android.widget.EditText")), 10_000)
         assertNotNull("search field", field)
         field!!.click()
@@ -389,9 +389,9 @@ class ReleaseRundgang : E2EBase() {
         // picking the hit (owner 2026-11-13, "A mit Ausweich B"): the pin, and once the map is there the pin's own hold
         // menu opens by itself – no "Hierhin" card
         val hit = read { vm -> vm.search.ui.results.first().place }
-        scenario.onActivity { vm(it).pickSearchResult(hit) }
-        waitUntil("the pick's pin", 10_000) { read { it.searchMark } != null }
-        waitUntil("the pin's menu opens by itself", 30_000) { read { vm -> vm.poiMenu?.let(vm::isCandidate) == true } }
+        scenario.onActivity { vm(it).searchFlow.pickSearchResult(hit) }
+        waitUntil("the pick's pin", 10_000) { read { it.searchFlow.searchMark } != null }
+        waitUntil("the pin's menu opens by itself", 30_000) { read { vm -> vm.placeMenus.poiMenu?.let(vm.searchFlow::isCandidate) == true } }
         assertNotNull("its menu ends with \"Remove pin\"", findFresh(By.text(Txt.s(Res.string.plan_remove_pin)), 5_000))
         shot("3-picked-menu-open")
     }
@@ -410,39 +410,39 @@ class ReleaseRundgang : E2EBase() {
         // b) first, with no history: name + address only
         share("Restaurant Sissi\nGalileistraße 44, 39012 Meran")
         waitUntil("b) the shared place decided (found or \"not clear\")", 45_000) {
-            read { vm -> !vm.sharedLookup && (vm.sharedUnsure != null || vm.searchMark != null) }
+            read { vm -> !vm.searchFlow.sharedLookup && (vm.searchFlow.sharedUnsure != null || vm.searchFlow.searchMark != null) }
         }
-        val mark = read { it.searchMark }
+        val mark = read { it.searchFlow.searchMark }
         shot("1-shared-without-coordinate")
         if (mark != null) {
             val at = GeoPoint(mark.lat, mark.lon)
             assertTrue("b) never the namesake in Bozen (${mark.name} at $at)", Geo.distance(at, BOZEN_NAMESAKE) > 5_000)
             assertTrue("b) in Meran (${mark.name} at $at)", Geo.distance(at, THEATRE) < 5_000)
         }
-        scenario.onActivity { vm(it).poiMenu = null }
+        scenario.onActivity { vm(it).placeMenus.poiMenu = null }
         pause(500, "the menu closes")
         // a) with a ?q=lat,lon link: exactly there (a pin 200 m off the restaurant – the link wins; another spot than b,
         // whose menu already opened once: the menu opens once per shared place)
         share("Restaurant Sissi\nGalileistraße 44, 39012 Meran\nhttps://maps.google.com/?q=${PIN.lat},${PIN.lon}")
         waitUntil("a) the ring at the shared coordinate", 30_000) {
-            read { vm -> !vm.sharedLookup && vm.searchMark?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
+            read { vm -> !vm.searchFlow.sharedLookup && vm.searchFlow.searchMark?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
         }
-        waitUntil("a) its menu opens there", 30_000) { read { it.poiMenu }?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
+        waitUntil("a) its menu opens there", 30_000) { read { it.placeMenus.poiMenu }?.let { Geo.distance(GeoPoint(it.lat, it.lon), PIN) < 30 } == true }
         shot("2-shared-with-coordinate")
         // c) the pin + name chip (owner 2026-11-02): closing the menu keeps the pin; its chip opens the menu again;
         // "Nadel entfernen" removes it
-        val name = read { it.searchMark }!!.title()
+        val name = read { it.searchFlow.searchMark }!!.title()
         assertNotNull("\"Remove pin\" in the pin's menu", findFresh(By.text(Txt.s(Res.string.plan_remove_pin)), 5_000))
-        scenario.onActivity { vm(it).closeMapOverlays("rundgang: tap elsewhere") }
-        waitUntil("c) the menu closed", 5_000) { read { it.poiMenu } == null }
-        assertNotNull("c) the pin stays when its menu closes", read { it.searchMark })
+        scenario.onActivity { vm(it).placeMenus.closeMapOverlays("rundgang: tap elsewhere") }
+        waitUntil("c) the menu closed", 5_000) { read { it.placeMenus.poiMenu } == null }
+        assertNotNull("c) the pin stays when its menu closes", read { it.searchFlow.searchMark })
         val chip = findFresh(By.desc(Txt.s(Res.string.plan_pin_chip_desc, name)), 10_000)
         assertNotNull("c) the name chip \"$name ›\" under the pin – ${seenDescriptions()}", chip)
         shot("3-pin-and-chip")
         chip!!.click()
-        waitUntil("c) the chip opens the pin's menu", 5_000) { read { it.poiMenu } != null }
+        waitUntil("c) the chip opens the pin's menu", 5_000) { read { it.placeMenus.poiMenu } != null }
         clickText(Txt.s(Res.string.plan_remove_pin))
-        waitUntil("c) \"Remove pin\" removes it", 5_000) { read { it.searchMark } == null && read { it.poiMenu } == null }
+        waitUntil("c) \"Remove pin\" removes it", 5_000) { read { it.searchFlow.searchMark } == null && read { it.placeMenus.poiMenu } == null }
         shot("4-pin-removed")
     }
 
@@ -454,14 +454,14 @@ class ReleaseRundgang : E2EBase() {
     @Test fun flow11_tourDeletePointAheadFollowsPositionToTheRest() {
         planned(THEATRE, NORTH, STATION)
         startTour()
-        waitUntil("the start counts as passed", 30_000) { 0 in read { it.tourPassed() } }
+        waitUntil("the start counts as passed", 30_000) { 0 in read { it.tourEdits.tourPassed() } }
         shot("1-tour")
-        scenario.onActivity { vm(it).removePoint(1) }
+        scenario.onActivity { vm(it).planEdit.removePoint(1) }
         waitUntil("position → station followed", 60_000) {
             nav()?.line?.let { Geo.distance(it.last(), STATION) < 80 && Geo.distance(it.first(), position()) < 150 } == true
         }
-        assertFalse("no question", read { it.routeBackAsk })
-        val pts = read { it.waypoints.toList() }
+        assertFalse("no question", read { it.planEdit.routeBackAsk })
+        val pts = read { it.plan.points.toList() }
         assertTrue("the passed start stays, the point ahead is gone: $pts", samePoints(pts, listOf(THEATRE, STATION)))
         shot("2-follows-the-rest")
     }
@@ -474,11 +474,11 @@ class ReleaseRundgang : E2EBase() {
         planned(THEATRE, NORTH, STATION)
         startTour()
         rideRoute(factor = 5)
-        waitUntil("point 2 counts as passed", 180_000) { 1 in read { it.tourPassed() } }
+        waitUntil("point 2 counts as passed", 180_000) { 1 in read { it.tourEdits.tourPassed() } }
         onMain { DemoLocation.stop("Rundgang: stand after point 2") }
         shot("1-past-point-2")
-        scenario.onActivity { vm(it).removePoint(2) }
-        waitUntil("the question", 15_000) { read { it.routeBackAsk } }
+        scenario.onActivity { vm(it).planEdit.removePoint(2) }
+        waitUntil("the question", 15_000) { read { it.planEdit.routeBackAsk } }
         assertNotNull("\"No destination ahead\" shown", findFresh(By.text(Txt.s(Res.string.nav_route_back_title)), 10_000))
         shot("2-no-destination-ahead")
         clickText(Txt.s(Res.string.nav_route_back))
@@ -487,8 +487,8 @@ class ReleaseRundgang : E2EBase() {
         }
         shot("3-back-to-the-start")
         undo()
-        waitUntil("Undo: the destination is back", 15_000) { samePoints(read { it.waypoints.toList() }, listOf(THEATRE, NORTH, STATION)) }
-        assertFalse(read { it.routeBackAsk })
+        waitUntil("Undo: the destination is back", 15_000) { samePoints(read { it.plan.points.toList() }, listOf(THEATRE, NORTH, STATION)) }
+        assertFalse(read { it.planEdit.routeBackAsk })
         shot("4-undo")
     }
 
@@ -531,12 +531,12 @@ class ReleaseRundgang : E2EBase() {
             assertEquals("Phone hello in the browser", 1, browser.devices(web).count { it.role == com.onpath.app.sync.SyncItem.ROLE_PHONE })
             assertTrue("no route sent during the tour", browser.plans().isEmpty())
             assertNotNull("still recording", com.onpath.app.recording.RecordingService.state.value)
-            scenario.onActivity { vm(it).openSettings(com.onpath.app.ui.SettingsPage.SYNC) }
+            scenario.onActivity { vm(it).settingsSlice.openSettings(com.onpath.app.ui.SettingsPage.SYNC) }
             assertNotNull("\"Routes sync after the tour\"", findFresh(By.text(Txt.s(Res.string.sync_during_tour)), 10_000))
             shot("2-routes-after-the-tour")
         } finally {
             if (launched) {
-                scenario.onActivity { vm(it).showSettings = false }
+                scenario.onActivity { vm(it).settingsSlice.showSettings = false }
                 val done = CountDownLatch(1)
                 scenario.onActivity { vm(it).sync.unpair { done.countDown() } }
                 done.await(10, TimeUnit.SECONDS)
@@ -555,14 +555,14 @@ class ReleaseRundgang : E2EBase() {
         startTour()
         waitUntil("on the route", 30_000) { nav()?.shownAlongM != null }
         val before = nav()!!.line
-        scenario.onActivity { vm(it).openActivityCheck() }
+        scenario.onActivity { vm(it).activityCheckSlice.openActivityCheck() }
         // owner 2026-11-07: nothing is routed before a row is chosen – every row plain
         waitUntil("the sheet with plain rows", 10_000) {
-            read { vm -> vm.activityCheck?.rows?.all { it.state == com.onpath.app.ui.ActivityRowState.Idle } } == true
+            read { vm -> vm.activityCheckSlice.activityCheck?.rows?.all { it.state == com.onpath.app.ui.ActivityRowState.Idle } } == true
         }
         shot("1-check-sheet")
         // a tap routes Hike alone and, found, asks the switch question
-        scenario.onActivity { vm(it).chooseActivity(Activity.HIKE) }
+        scenario.onActivity { vm(it).activityCheckSlice.chooseActivity(Activity.HIKE) }
         waitUntil("the switch question", 60_000) { (nav()?.prompt as? NavPrompt.Question)?.switch?.activity == Activity.HIKE }
         assertNotNull("\"${NavText.TAKE}\" in the box", findFresh(By.text(NavText.TAKE), 10_000))
         shot("2-switch-question")
@@ -570,7 +570,7 @@ class ReleaseRundgang : E2EBase() {
         waitUntil("navigated as Hike", 20_000) { nav()?.let { it.prompt == null && it.session?.activity == Activity.HIKE } == true }
         pause(3_000, "the service must not load the old session back (the bug did at once)")
         assertEquals("still Hike in the service", Activity.HIKE, nav()?.session?.activity)
-        assertEquals("the app follows", Activity.HIKE, read { it.activity })
+        assertEquals("the app follows", Activity.HIKE, read { it.planRoute.activity })
         assertFalse("the Bike line is not followed any more", sameLine(before, nav()!!.line))
         assertFalse("no older-line drop", traced("Re-route result of an older line dropped"))
         shot("3-hike")
@@ -615,13 +615,13 @@ class ReleaseRundgang : E2EBase() {
         assertNotNull("\"Hinführen\" in the box", findFresh(By.text(NavText.LEAD), 10_000))
         val asked = (nav()!!.prompt as NavPrompt.FarStart).id
         shot("1-far-start")
-        scenario.onActivity { vm(it).pauseRecording(true) }
+        scenario.onActivity { vm(it).tourEnd.pauseRecording(true) }
         waitUntil("paused", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == true }
         assertNotNull("the stopped head", findFresh(By.textStartsWith(Txt.s(Res.string.nav_status_paused)), 10_000))
         assertTrue("paused: the question is hidden", goneFresh(By.text(NavText.LEAD), 5_000))
         assertTrue("…but not answered or dropped", (nav()?.prompt as? NavPrompt.FarStart)?.id == asked)
         shot("2-paused-calm")
-        scenario.onActivity { vm(it).pauseRecording(false) }
+        scenario.onActivity { vm(it).tourEnd.pauseRecording(false) }
         waitUntil("recording again", 10_000) { com.onpath.app.recording.RecordingService.state.value?.paused == false }
         assertNotNull("Weiter: the question is back", findFresh(By.text(NavText.LEAD), 10_000))
         assertTrue("the stopped head is gone", goneFresh(By.textStartsWith(Txt.s(Res.string.nav_status_paused)), 5_000))
@@ -647,7 +647,7 @@ class ReleaseRundgang : E2EBase() {
         scenario.onActivity { vm(it).selectedPoi = null }
         assertTrue("the details closed", goneFresh(By.text(poi.POI_NAME), 5_000))
         hold(at.first, at.second)
-        waitUntil("the POI menu after a hold on the symbol", 8_000) { read { it.poiMenu?.id } == poi.POI_ID }
+        waitUntil("the POI menu after a hold on the symbol", 8_000) { read { it.placeMenus.poiMenu?.id } == poi.POI_ID }
         assertNotNull("the menu with its name", findFresh(By.text(poi.POI_NAME), 5_000))
         shot("2-menu")
     }
@@ -668,7 +668,7 @@ class ReleaseRundgang : E2EBase() {
         @Suppress("UNCHECKED_CAST") return r as T
     }
 
-    private fun mode(): AppMode = read { it.mode }
+    private fun mode(): AppMode = read { it.tourSession.mode }
 
     /** The same line point by point (within 1 m – the session file keeps coordinates, not every extra). */
     private fun sameLine(a: List<GeoPoint>, b: List<GeoPoint>) = a.size == b.size && a.indices.all { Geo.distance(a[it], b[it]) < 1.0 }
@@ -700,15 +700,15 @@ class ReleaseRundgang : E2EBase() {
     }
 
     private fun waitRouted() {
-        waitUntil("route calculated – ${state()}", 60_000) { read { !it.routing && it.route != null } }
+        waitUntil("route calculated – ${state()}", 60_000) { read { !it.planRun.routing && it.route != null } }
         pause(1_000, "snapping + camera settle")
     }
 
     /** Start navigation as the plan's button does (the phone setup check is its own test); returns the tour id. */
     private fun startTour(): Long {
-        scenario.onActivity { vm(it).startNavigation(force = true) }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
         waitUntil("Navigate (recording)", 20_000) { mode() == AppMode.NAVIGATE }
-        waitUntil("the route is followed", 20_000) { nav() != null && read { it.followLine != null } }
+        waitUntil("the route is followed", 20_000) { nav() != null && read { it.tourFollow.followLine != null } }
         return com.onpath.app.recording.RecordingService.state.value!!.tourId
     }
 
@@ -737,13 +737,13 @@ class ReleaseRundgang : E2EBase() {
 
     private fun undo() {
         val o = findFresh(By.desc(Txt.s(Res.string.plan_undo)), 5_000)
-        if (o != null) o.click() else scenario.onActivity { vm(it).undoStep() }
+        if (o != null) o.click() else scenario.onActivity { vm(it).planEdit.undoStep() }
         pause(500, "the undo lands")
     }
 
     /** The camera shows [a] and [b] in the open middle of the map (following stopped first – map camera rule). */
     private fun showOnMap(a: GeoPoint, b: GeoPoint) {
-        scenario.onActivity { vm(it).followMe = false }
+        scenario.onActivity { vm(it).map.followMe = false }
         pause(300, "following stops")
         val mid = LatLng((a.lat + b.lat) / 2, (a.lon + b.lon) / 2)
         // both points within ±100 dp of the centre: MapLibre's world is 512 dp wide at zoom 0
@@ -802,7 +802,7 @@ class ReleaseRundgang : E2EBase() {
     @After fun endRundgangFlow() {
         try { onMain { DemoLocation.stop("Rundgang flow ended") } } catch (_: Exception) {} // expected: nothing running
         if (launched && com.onpath.app.recording.RecordingService.state.value != null) {
-            try { scenario.onActivity { vm(it).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
+            try { scenario.onActivity { vm(it).tourEnd.endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
             val end = System.currentTimeMillis() + 10_000
             while (com.onpath.app.recording.RecordingService.state.value != null && System.currentTimeMillis() < end) pause(200, "poll interval of the cleanup")
         }

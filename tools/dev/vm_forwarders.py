@@ -3,26 +3,32 @@
 
 A forwarder is a member of AppViewModel that only hands a call / a property on to a slice:
     fun x(a, b) = slice.y(a, b)          val x: T get() = slice.y          var x: T get() = slice.y; set(v) { slice.y = v }
-Only EXACT pass-throughs are renamed (same arguments in the same order, same defaults); everything else is listed and left.
+Only EXACT pass-throughs are renamed (same arguments in the same order, same defaults as the slice's own function; a forward through
+another forwarder is followed: `settings.navHeadingUp` -> `settingsSlice.settings.navHeadingUp`); everything else is listed and left
+(`table` prints it): overloads, defaults that differ, `suspend fun`, a conversion, a guard, two calls.
 
 Modes (stdlib only, run from anywhere inside the repo; idempotent, driven by the table, no line numbers):
-  inventory            every member of the view model by kind, with reader counts
-  dead                 forwarders nobody reads (no screen, E2E, unit test, no code of the view model itself)
-  delete-dead          remove exactly those from the view model (step B)
-  table                print the forwarder table (what the persisted file tools/dev/vm_forwarders.tsv holds)
-  plan                 print what `apply` would rewrite per file; "nothing to do" when there is nothing
-  apply                rewrite `vm.x` -> `vm.slice.y` (also `vm::x`, setters, `this@AppViewModel.x`) in app/src/main,
-                       app/src/androidTest and the tests; with `--delete` also remove the forwarder lines from the view model
-                       and write the table file
-  fix LOGFILE          rewrite reads the compiler reports as "Unresolved reference 'x'" (receiver-less reads inside
-                       `with(vm)`, `it.x` in E2E `read { }` lambdas, reads inside the view model itself) – by the table, at the
-                       positions the compiler names (the position is read from the log, not stored in this script)
-  check                (after apply) names left reads – used by `plan`
+  inventory            every member of the view model by kind, with reader counts (screens / E2E / unit tests / inside the view model)
+  table                the forwarder table (the file tools/dev/vm_forwarders.tsv keeps it after the definitions are gone) + what is kept
+  dead / delete-dead   forwarders nobody reads (step B); `delete-dead --except=a,b` for names the compiler still finds read
+  plan                 what `apply` would rewrite per file; "nothing to do" when there is nothing
+  apply [--delete]     rewrite `vm.x` -> `vm.slice.y` (also `vm::x`, `vm?.x`, setters, `this@AppViewModel.x`) in app/src/main,
+                       app/src/androidTest and the tests (KDoc / // comments untouched); makes the slices that are read from outside
+                       public, writes explicit types on slices (Kotlin: "Type checking has run into a recursive problem" once the
+                       forwarders are gone), writes the table file; with --delete also removes the forwarder definitions
+                       (except KEEP: their reads are renamed, the definition stays; KEEP_ALL: left alone)
+  fix LOGFILE          rewrite the reads the compiler reports as "Unresolved reference 'x'" (`with(vm)`, `it.x` in an E2E
+                       `read { }`, the view model's own unqualified reads) – at the positions the log names, never at a position
+                       already reached through its slice (a follow-up error of an inference cascade)
 
-After a rebase onto a newer main:   python3 tools/dev/vm_forwarders.py apply     (the persisted table knows forwarders that
-are already gone from the view model), then compile; for each "Unresolved reference" the compiler prints:
-  tools/dev/gradle_slot.sh -- ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin \
-      :app:compileDebugAndroidTestKotlin -Ponpath.e2e=true > /tmp/c.log 2>&1 ; python3 tools/dev/vm_forwarders.py fix /tmp/c.log
+After a rebase onto a newer main (other sessions keep writing `vm.x` in screens):
+    python3 tools/dev/vm_forwarders.py plan           # what would change
+    python3 tools/dev/vm_forwarders.py apply          # the persisted table knows forwarders that are gone from the view model
+    tools/dev/gradle_slot.sh -- ./gradlew :app:compileDebugKotlin :app:compileDebugUnitTestKotlin :state:compileTestKotlin \
+        :core:compileTestKotlin :app:compileDebugAndroidTestKotlin -Ponpath.e2e=true --continue > /tmp/c.log 2>&1
+    python3 tools/dev/vm_forwarders.py fix /tmp/c.log     # repeat compile + fix until the log has no "Unresolved reference"
+By hand then: a local named like a slice that shadows it (`plan: Boolean` -> `this.plan.points`), a named argument whose slice
+parameter has another name, a new text pin of a deleted forwarder in a test.
 """
 import os
 import re
@@ -34,6 +40,21 @@ VM = os.path.join(ROOT, "app/src/main/java/com/onpath/app/ui/AppViewModel.kt")
 TABLE = os.path.join(ROOT, "tools/dev/vm_forwarders.tsv")
 SCAN_DIRS = ["app/src/main", "app/src/androidTest", "app/src/test", "state/src/test", "core/src/test", "state/src/main", "core/src/main"]
 RECEIVERS = ["vm", "viewModel", "appVm", "model", r"this@AppViewModel"]
+
+# Forwarders whose reads are renamed everywhere but whose definition stays (name -> why): a guard test that may not change reads them
+KEEP = {
+    "routesOpen": "read by the NoticeBoard lambdas: ViewModelInitOrderTest follows a name into the slice it reaches, `notices` must not reach slices declared below the init",
+    "showSettings": "same: the NoticeBoard lambda (ViewModelInitOrderTest)",
+    "mode": "same: the NoticeBoard lambda (ViewModelInitOrderTest)",
+    "searchOpen": "same: the NoticeBoard lambda (ViewModelInitOrderTest)",
+    "errorCard": "read by the start-up init: ViewModelInitOrderTest would follow `notices` into slices declared below that init",
+    "sayError": "same: the start-up init",
+}
+
+# Forwarders left completely alone (never renamed, never deleted)
+KEEP_ALL = {
+    "recalc": "RecalcStartOrderTest finds `init { recalc() }` and its hosts' `this@AppViewModel.recalc()` lines; ViewModelInitOrderTest walks them",
+}
 
 MOD = r"(?:(?:private|internal|public|override)\s+)*"
 
@@ -172,10 +193,10 @@ def parse_forwarder(m):
                 body = mb.group(1)
         if body is None:
             return None
-        mc = re.match(r"^(\w+)\.(\w+)\(", body)
+        mc = re.match(r"^(\w+(?:\.\w+)*)\.(\w+)\(", body)
         if not mc:
             return None
-        op2 = body.index("(")
+        op2 = body.index("(", mc.end() - 1)
         cl2 = match_paren(body, op2)
         if cl2 != len(body) - 1:
             return None
@@ -190,7 +211,7 @@ def parse_forwarder(m):
             return None
         return Fwd("fun", name, mc.group(1), mc.group(2), params, member=m)
     if m.kind == "val":
-        mm = re.match(r"^val (\w+)\s*(?::\s*.+?)?\s*get\(\)\s*=\s*(\w+)\.(\w+)$", t)
+        mm = re.match(r"^val (\w+)\s*(?::\s*.+?)?\s*get\(\)\s*=\s*(\w+(?:\.\w+)*)\.(\w+)$", t)
         if mm:
             return Fwd("val", mm.group(1), mm.group(2), mm.group(3), member=m)
         mm = re.match(r"^val (\w+)\s*(?::\s*.+?)?\s*get\(\)\s*=\s*(\w+)$", t)
@@ -198,7 +219,7 @@ def parse_forwarder(m):
             return Fwd("val", mm.group(1), None, mm.group(2), member=m)
         return None
     if m.kind == "var":
-        mm = re.match(r"^var (\w+)\s*(?::\s*.+?)?\s*get\(\)\s*=\s*(\w+)\.(\w+)\s*(?:private\s+)?set\((\w+)\)\s*\{\s*(\w+)\.(\w+)\s*=\s*(\w+)\s*\}$", t)
+        mm = re.match(r"^var (\w+)\s*(?::\s*.+?)?\s*get\(\)\s*=\s*(\w+(?:\.\w+)*)\.(\w+)\s*;?\s*(?:private\s+)?set\((\w+)\)\s*\{\s*(\w+(?:\.\w+)*)\.(\w+)\s*=\s*(\w+)\s*\}$", t)
         if mm and mm.group(2) == mm.group(5) and mm.group(3) == mm.group(6) and mm.group(4) == mm.group(7):
             return Fwd("var", mm.group(1), mm.group(2), mm.group(3), member=m, setter=True)
         return None
@@ -252,47 +273,56 @@ def target_defaults(member, nparams):
 
 
 def build_table(lines=None):
-    """(table, kept): table = {vmName: (slice, member, kind, setter)}; kept = [(name, reason)] for the forwarders left alone."""
+    """(table, kept, members, fwds): table = {vmName: (root slice, [path..., member], kind, setter)}; kept = [(name, reason)]."""
     if lines is None:
         lines = read(VM).split("\n")
     members = parse_members(lines)
     fwds = [parse_forwarder(m) for m in members]
     slices = slice_names(members, fwds)
     names = [m.name for m in members]
-    byname = {f.name: f for f in fwds if f}
+    byname = {}
+    for f in fwds:
+        if f:
+            byname.setdefault(f.name, f)
     table, kept = {}, []
-    for m, f in zip(members, fwds):
-        if f is None:
-            continue
-        if names.count(f.name) > 1:
-            kept.append((f.name, "overloaded name in the view model"))
-            continue
-        recv, tgt = f.recv, f.target
-        # chain: a forwarder of a forwarder property (settings.x with settings -> settingsSlice.settings)
-        if recv is None:
-            if tgt in byname and byname[tgt] is not f and byname[tgt].recv:
-                kept.append((f.name, "forwards to another forwarder (%s)" % tgt))
+    pending = [f for f in fwds if f and f.name not in KEEP_ALL]
+    kept += [(n, "left alone: " + why) for n, why in KEEP_ALL.items() if n in byname]
+    kept += [(n, "definition kept on purpose: " + why) for n, why in KEEP.items() if n in byname]
+    # fixed point: a forwarder whose target starts at a slice resolves at once; one that starts at another forwarder
+    # (settings.navHeadingUp, legCache.clear, headingUp -> navHeadingUp) resolves after that one
+    progress = True
+    reasons = {}
+    while progress:
+        progress = False
+        for f in list(pending):
+            if names.count(f.name) > 1:
+                reasons[f.name] = "overloaded name in the view model"
+                pending.remove(f)
+                continue
+            chain = (f.recv.split(".") if f.recv else []) + [f.target]
+            first = chain[0]
+            if first in slices and len(chain) >= 2:
+                root, path = first, chain[1:]
+            elif first in table and first != f.name:
+                root, rest = table[first][0], table[first][1]
+                root, path = root, rest + chain[1:]
             else:
-                kept.append((f.name, "forwards to a real view-model member (%s)" % tgt))
-            continue
-        if recv not in slices and recv in byname and byname[recv].kind == "val" and byname[recv].recv in slices:
-            chain = byname[recv]
-            kept.append((f.name, "forwards through a forwarder (%s.%s)" % (recv, tgt)))
-            continue
-        if recv not in slices:
-            kept.append((f.name, "target %s.%s: %s is not a slice" % (recv, tgt, recv)))
-            continue
-        if f.kind == "fun":
-            if any(p[2] is not None for p in f.params):
-                cands = target_defaults(tgt, len(f.params))
-                ok = False
-                for ps in cands:
-                    if all(a[2] == b[2] for a, b in zip(f.params, ps)):
-                        ok = True
-                if not ok:
-                    kept.append((f.name, "default arguments differ or the slice member was not found"))
+                continue
+            if f.kind == "fun" and any(p[2] is not None for p in f.params):
+                # same defaults as the slice's own function (only a direct slice member can be compared)
+                cands = target_defaults(path[-1], len(f.params))
+                if not any(all(a[2] == b[2] for a, b in zip(f.params, ps)) for ps in cands):
+                    reasons[f.name] = "default arguments differ or the slice member was not found"
+                    pending.remove(f)
                     continue
-        table[f.name] = (recv, tgt, f.kind, f.setter)
+            table[f.name] = (root, path, f.kind, f.setter)
+            pending.remove(f)
+            progress = True
+    for n, why in reasons.items():
+        kept.append((n, why))
+    for f in pending:
+        if True:
+            kept.append((f.name, "forwards to %s.%s, a real member of the view model, not a slice" % (f.recv, f.target) if f.recv else "forwards to a real member (%s)" % f.target))
     return table, kept, members, fwds
 
 
@@ -300,17 +330,17 @@ def load_persisted():
     t = {}
     if os.path.exists(TABLE):
         for l in read(TABLE).split("\n"):
-            if l and not l.startswith("#"):
+            if l and not l.startswith("#") and l.split("\t")[0] not in KEEP_ALL:
                 a = l.split("\t")
-                t[a[0]] = (a[1], a[2], a[3], a[4] == "1")
+                t[a[0]] = (a[1], a[2].split("."), a[3], a[4] == "1")
     return t
 
 
 def save_persisted(table):
-    rows = ["# vm_forwarders.tsv: forwarder name -> slice, member, kind, setter. Written by tools/dev/vm_forwarders.py apply."]
+    rows = ["# vm_forwarders.tsv: forwarder name -> slice, path (member last), kind, setter. Written by tools/dev/vm_forwarders.py apply."]
     for k in sorted(table):
         s, m, kind, st = table[k]
-        rows.append("\t".join([k, s, m, kind, "1" if st else "0"]))
+        rows.append("\t".join([k, s, ".".join(m), kind, "1" if st else "0"]))
     write(TABLE, "\n".join(rows) + "\n")
 
 
@@ -344,11 +374,11 @@ def receivers_for(text):
     return rs
 
 
-def rewrite_text(text, table, vmfile=False):
-    """returns (new text, count)"""
+def rewrite_text(text, table, vmfile=False, roots=None):
+    """returns (new text, count); roots collects the slices the new text reaches"""
     if not any(k in text for k in table):
         return text, 0
-    rs = receivers_for(text)
+    rs = ["this@AppViewModel"] if vmfile else receivers_for(text)
     rs_re = "|".join(sorted((re.escape(r) if r != "this@AppViewModel" else r"this@AppViewModel" for r in rs), key=len, reverse=True))
     names = "|".join(sorted(map(re.escape, table), key=len, reverse=True))
     n = 0
@@ -357,11 +387,14 @@ def rewrite_text(text, table, vmfile=False):
     def sub(m):
         nonlocal n
         recv, op, name = m.group(1), m.group(2), m.group(3)
-        s, mem = table[name][0], table[name][1]
+        root, path = table[name][0], table[name][1]
         n += 1
+        if roots is not None:
+            roots.add(root)
+        head = ".".join([root] + path[:-1])
         if op == "::":
-            return "%s.%s::%s" % (recv, s, mem)
-        return "%s%s%s.%s" % (recv, op, s, mem)
+            return "%s.%s::%s" % (recv, head, path[-1])
+        return "%s%s%s.%s" % (recv, op, head, path[-1])
 
     pat = re.compile(r"(?<![\w.])(" + rs_re + r")(\?\.|\.|::)(" + names + r")\b(?!\s*->)")
     new = pat.sub(sub, text)
@@ -372,40 +405,89 @@ def strip_comments_len(text):
     return text
 
 
+def rewrite_file_lines(t, table, vmfile, roots):
+    out_lines, cnt = [], 0
+    for l in t.split("\n"):
+        st = l.lstrip()
+        if st.startswith("*") or st.startswith("//") or st.startswith("/*"):
+            out_lines.append(l)
+            continue
+        code, sep, cm = l.partition(" //") if '"' not in l else (l, "", "")
+        nl, c = rewrite_text(code, table, vmfile, roots)
+        out_lines.append(nl + sep + cm)
+        cnt += c
+    return "\n".join(out_lines), cnt
+
+
 def plan_or_apply(apply, delete):
     table, kept, members, fwds = full_table()
     total = 0
     changed = {}
+    roots = set()
     for p in scan_files():
-        t = read(p)
-        # skip pure comment / KDoc occurrences by only rewriting code lines
-        out_lines, cnt = [], 0
-        lines = t.split("\n")
-        # rewrite per line, not in comments
-        rs = receivers_for(t)
-        for l in lines:
-            st = l.lstrip()
-            if st.startswith("*") or st.startswith("//") or st.startswith("/*"):
-                out_lines.append(l)
-                continue
-            code, sep, cm = l.partition(" //") if '"' not in l else (l, "", "")
-            nl, c = rewrite_text(code, table)
-            out_lines.append(nl + sep + cm)
-            cnt += c
+        t, cnt = rewrite_file_lines(read(p), table, False, roots if "/src/main/" in p or "/androidTest/" in p else None)
         if cnt:
-            changed[p] = (cnt, "\n".join(out_lines))
+            changed[p] = (cnt, t)
             total += cnt
+    vmt, vcnt = rewrite_file_lines(read(VM), table, True, None)
     for p, (c, t) in sorted(changed.items()):
         print("%5d  %s" % (c, os.path.relpath(p, ROOT)))
         if apply:
             write(p, t)
-    if not changed:
+    if vcnt:
+        print("%5d  %s (this@AppViewModel reads)" % (vcnt, os.path.relpath(VM, ROOT)))
+    if not changed and not vcnt:
         print("nothing to do")
     if apply:
         save_persisted(table)
+        if vcnt:
+            write(VM, vmt)
+        publish(roots)
+        annotate_types({v[0] for v in table.values()})
     if apply and delete:
         delete_forwarders(table)
     return total
+
+
+def annotate_types(roots):
+    """A slice that is read through its own host objects needs its type written down (else Kotlin: "Type checking has run
+    into a recursive problem" once the forwarders are gone): `val x = Type(` / `val x by lazy { Type(` -> `val x: Type ...`."""
+    text = read(VM)
+    lines = text.split("\n")
+    done = []
+    for i, l in enumerate(lines):
+        m = re.match(r"^(    (?:private |internal )?val (\w+))(\s*=\s*|\s+by lazy \{\s*)(\w[\w.]*)?(.*)$", l)
+        if not m or m.group(2) not in roots:
+            continue
+        name = m.group(2)
+        if m.group(3).strip() == "=":
+            typ = m.group(4)
+            if typ and typ.split(".")[-1][:1].isupper() and m.group(5).startswith("("):
+                lines[i] = "%s: %s =%s%s%s" % (m.group(1), typ, m.group(3)[m.group(3).index("=") + 1:], typ, m.group(5))
+                done.append(name)
+        else:  # by lazy { ... on this line or the next
+            nxt = lines[i + 1].strip() if i + 1 < len(lines) else ""
+            mt = re.match(r"^([A-Z][\w.]*)\(", nxt)
+            if mt and not m.group(4):
+                lines[i] = "%s: %s by lazy {" % (m.group(1), mt.group(1))
+                done.append(name)
+    if done:
+        write(VM, "\n".join(lines))
+        print("explicit type written: " + ", ".join(done))
+
+
+def publish(roots):
+    """a slice read by a screen or an E2E class is not `private` any more (`val` / `internal val` stay as they are)"""
+    lines = read(VM).split("\n")
+    done = []
+    for i, l in enumerate(lines):
+        m = re.match(r"^    private (val (\w+)\b.*)$", l)
+        if m and m.group(2) in roots:
+            lines[i] = "    " + m.group(1)
+            done.append(m.group(2))
+    if done:
+        write(VM, "\n".join(lines))
+        print("now public: " + ", ".join(done))
 
 
 def delete_forwarders(table):
@@ -414,7 +496,7 @@ def delete_forwarders(table):
     fwds = [parse_forwarder(m) for m in members]
     kill = []
     for m, f in zip(members, fwds):
-        if f and f.name in table and table[f.name][:2] == (f.recv, f.target) and sum(1 for x in members if x.name == f.name) == 1:
+        if f and f.name in table and f.name not in KEEP and sum(1 for x in members if x.name == f.name) == 1:
             s = m.start
             # attached doc comment above (no blank line between), but never a section header "// ---"
             while s > 0 and re.match(r"^    (/\*\*|\*|\*/|//)", lines[s - 1]) and not re.match(r"^    // ---", lines[s - 1]):
@@ -435,6 +517,10 @@ def delete_forwarders(table):
 ERR = re.compile(r"^e: (?:file://)?(/\S+\.kt):(\d+):(\d+) (?:Unresolved reference|Cannot find a parameter|.*)'?(\w+)?'?", re.M)
 
 
+def roots_of(table):
+    return sorted({v[0] for v in table.values()})
+
+
 def fix_from_log(log):
     table, kept, members, fwds = full_table()
     errs = {}
@@ -448,8 +534,15 @@ def fix_from_log(log):
             l = lines[ln - 1]
             if l[col - 1:col - 1 + len(name)] != name:
                 continue
-            s, mem = table[name][0], table[name][1]
-            lines[ln - 1] = l[:col - 1] + "%s.%s" % (s, mem) + l[col - 1 + len(name):]
+            root, path = table[name][0], table[name][1]
+            before = l[:col - 1]
+            # already reached through the slice (a follow-up error of an inference cascade): leave it
+            if before.endswith(tuple(r + "." for r in roots_of(table))) or before.endswith(("." + ".".join(path[:-1]) + ".") if len(path) > 1 else "\0"):
+                continue
+            if before.endswith("::"):  # a bound reference: ::x -> slice::x
+                lines[ln - 1] = before[:-2] + ".".join([root] + path[:-1]) + "::" + path[-1] + l[col - 1 + len(name):]
+                continue
+            lines[ln - 1] = before + ".".join([root] + path) + l[col - 1 + len(name):]
         write(p, "\n".join(lines))
         print("%5d  %s" % (len(set(lst)), os.path.relpath(p, ROOT)))
     if not errs:
@@ -491,7 +584,7 @@ def inventory(only_dead=False):
         kind = "forwarder" if f and f.name in table else ("forwarder-kept" if f else m.kind)
         tgt = ""
         if f and f.name in table:
-            tgt = "%s.%s" % (table[f.name][0], table[f.name][1])
+            tgt = ".".join([table[f.name][0]] + table[f.name][1])
         elif f:
             tgt = "%s -> %s" % (f.recv or "", f.target)
         r = {c: rc[c][m.name] for c in rc} if m.kind in ("val", "var", "fun") else {}
@@ -529,13 +622,15 @@ def main(argv):
     elif mode == "table":
         t, kept, _, _ = full_table()
         for k in sorted(t):
-            print(k, "->", ".".join(t[k][:2]), t[k][2])
+            print(k, "->", ".".join([t[k][0]] + t[k][1]), t[k][2])
         for n, why in kept:
             print("# kept", n, why)
     elif mode == "plan":
         plan_or_apply(False, False)
     elif mode == "apply":
         plan_or_apply(True, "--delete" in argv)
+    elif mode == "types":
+        annotate_types({v[0] for v in full_table()[0].values()})
     elif mode == "fix":
         fix_from_log(argv[2])
     else:

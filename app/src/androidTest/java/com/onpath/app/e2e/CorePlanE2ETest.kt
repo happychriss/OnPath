@@ -75,7 +75,7 @@ class CorePlanE2ETest : E2EBase() {
         for (own in listOf(com.onpath.app.map.MapController.LAYER_WPT, "planned-route", "recorded-track", "highlight-dot"))
             assertTrue("$own exists", own in ids)
         // layers the app adds later (search mark, highlight) go below it too
-        scenario.onActivity { a -> vm(a).highlight = vm(a).waypoints.first() }
+        scenario.onActivity { a -> vm(a).highlight = vm(a).plan.points.first() }
         pause(1_000, "the highlight layer is added")
         assertPositionDotOnTop("with a highlight")
     }
@@ -87,32 +87,32 @@ class CorePlanE2ETest : E2EBase() {
      */
     @Test fun aFoundPlaceSurvivesAMapReloadAndALongPlanCancel() {
         startPlanWithTwoPoints()
-        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.HIKE) }
+        scenario.onActivity { vm(it).planRoute.selectActivity(com.onpath.app.routing.Activity.HIKE) }
         var centre: LatLng? = null
         onMap { m -> centre = m.cameraPosition.target }
         val near = com.onpath.app.search.Place("e2e:near", "Near place", "place", centre!!.latitude, centre!!.longitude, sub = "village")
-        scenario.onActivity { vm(it).searchMark = near }
+        scenario.onActivity { vm(it).searchFlow.searchMark = near }
         waitUntil("pin drawn") { pinsDrawn() >= 1 }
         scenario.onActivity { vm(it).reloadMapStyleForTest() }
         waitForMap(reloaded = true)
         waitUntil("pin drawn again after a style reload") { pinsDrawn() >= 1 }
         var mark: com.onpath.app.search.Place? = null
-        scenario.onActivity { mark = vm(it).searchMark }
+        scenario.onActivity { mark = vm(it).searchFlow.searchMark }
         assertTrue("the pin stays after a style reload", mark == near)
 
         // a place far beyond a day on foot (~130 km north): adding it asks first; Cancel takes the add back
         val far = com.onpath.app.search.Place("e2e:far", "Far place", "place", MERAN_LAT + 1.2, MERAN_LON, sub = "town")
-        scenario.onActivity { vm(it).searchMark = far; vm(it).addPoiPoint(far.toPoi()) }
-        waitUntil("the very-long-plan question") { var a: Double? = null; scenario.onActivity { a = vm(it).longRouteAsk }; a != null }
-        scenario.onActivity { mark = vm(it).searchMark }
+        scenario.onActivity { vm(it).searchFlow.searchMark = far; vm(it).placeAdd.addPoiPoint(far.toPoi()) }
+        waitUntil("the very-long-plan question") { var a: Double? = null; scenario.onActivity { a = vm(it).planRun.longRouteAsk }; a != null }
+        scenario.onActivity { mark = vm(it).searchFlow.searchMark }
         assertTrue("the pin went into the plan", mark == null)
         scenario.onActivity { vm(it).answerLongRoute(false) }
         waitUntil("the add taken back") { waypointCount() == 2 }
-        scenario.onActivity { mark = vm(it).searchMark }
+        scenario.onActivity { mark = vm(it).searchFlow.searchMark }
         assertTrue("the far place is a pin again, not forgotten (mark $mark)", mark == far)
         // owner 2026-11-13: the map goes back to the plan from before (two points: the whole plan), not to the far place
         var plan: List<com.onpath.app.routing.GeoPoint> = emptyList()
-        scenario.onActivity { plan = vm(it).waypoints.toList() }
+        scenario.onActivity { plan = vm(it).plan.points.toList() }
         val mid = com.onpath.app.routing.GeoPoint((plan[0].lat + plan[1].lat) / 2, (plan[0].lon + plan[1].lon) / 2)
         waitUntil("the camera back on the plan") {
             var c: LatLng? = null
@@ -145,7 +145,7 @@ class CorePlanE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         // turn around the middle of the route, so both points stay above the plan sheet
         var mid: LatLng? = null
-        scenario.onActivity { a -> vm(a).waypoints.let { w -> mid = LatLng((w[0].lat + w[1].lat) / 2, (w[0].lon + w[1].lon) / 2) } }
+        scenario.onActivity { a -> vm(a).plan.points.let { w -> mid = LatLng((w[0].lat + w[1].lat) / 2, (w[0].lon + w[1].lon) / 2) } }
         onMap { map ->
             map.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newCameraPosition(
                 org.maplibre.android.camera.CameraPosition.Builder().target(mid).bearing(137.0).build()))
@@ -163,16 +163,16 @@ class CorePlanE2ETest : E2EBase() {
     @Test fun myRoutesShowsThePlanInProgressAndATapGoesBackToIt() {
         startPlanWithTwoPoints()
         var before = emptyList<com.onpath.app.routing.GeoPoint>()
-        scenario.onActivity { a -> before = vm(a).waypoints.toList() }
+        scenario.onActivity { a -> before = vm(a).plan.points.toList() }
         findFresh(By.desc(Txt.s(Res.string.plan_menu)), 8_000)!!.click()
         findFresh(By.text(Txt.s(Res.string.plan_menu_my_routes)), 5_000)!!.click()
         val tag = findFresh(By.text(Txt.s(Res.string.routes_tag_live)), 8_000)
         assertNotNull("My routes shows the plan \"In Bearbeitung\"", tag)
         assertTrue("only once", device.findObjects(By.text(Txt.s(Res.string.routes_tag_live))).size == 1)
         tag!!.click()
-        waitUntil("My routes closed", 5_000) { var open = true; scenario.onActivity { a -> open = vm(a).routesOpen }; !open }
+        waitUntil("My routes closed", 5_000) { var open = true; scenario.onActivity { a -> open = vm(a).routes.open }; !open }
         var after = emptyList<com.onpath.app.routing.GeoPoint>()
-        scenario.onActivity { a -> after = vm(a).waypoints.toList() }
+        scenario.onActivity { a -> after = vm(a).plan.points.toList() }
         org.junit.Assert.assertEquals("the same plan on the map", before, after)
     }
 
@@ -196,18 +196,18 @@ class CorePlanE2ETest : E2EBase() {
         val older = insert("E2E older route", 0.003, now)
         var newer = -1L
         try {
-            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
+            scenario.onActivity { a -> vm(a).routes.tab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).routesGo.openRoutes() }
             assertNotNull("the older route in My routes", findFresh(By.text("E2E older route"), 8_000))
             newer = insert("E2E newer route", 0.006, now + 1_000)
-            scenario.onActivity { a -> vm(a).refreshTours() }
+            scenario.onActivity { a -> vm(a).routesFlow.refreshTours() }
             waitUntil("the list holds the newer route", 10_000) {
-                var listed = false; scenario.onActivity { a -> listed = vm(a).tours.any { it.id == newer } }; listed
+                var listed = false; scenario.onActivity { a -> listed = vm(a).routes.tours.any { it.id == newer } }; listed
             }
             val row = findFresh(By.text("E2E newer route"), 5_000)
             if (row == null) shot("newer-route-missing")
             assertNotNull("the newer route shows on top of My routes – ${state()}", row)
         } finally {
-            scenario.onActivity { a -> vm(a).routesOpen = false }
+            scenario.onActivity { a -> vm(a).routes.open = false }
             (fillers + older).forEach { db.deleteTour(it) }
             if (newer >= 0) db.deleteTour(newer)
         }
@@ -221,7 +221,7 @@ class CorePlanE2ETest : E2EBase() {
         startPlanWithTwoPoints()
         var before = emptyList<com.onpath.app.routing.GeoPoint>()
         var centre = LatLng(0.0, 0.0)
-        scenario.onActivity { a -> before = vm(a).waypoints.toList(); centre = LatLng(before[0].lat, before[0].lon) }
+        scenario.onActivity { a -> before = vm(a).plan.points.toList(); centre = LatLng(before[0].lat, before[0].lon) }
         val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
         val pts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.003, centre.longitude, "E2E A"),
             com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.005, centre.longitude + 0.003, "E2E B"))
@@ -232,11 +232,11 @@ class CorePlanE2ETest : E2EBase() {
         // overview's "Planen" and "Abbrechen" must be told apart from it (main red 2026-11-08 … 11-12 on exactly this).
         // Since 2026-11-12 the plan on the map is the one Zuletzt row, so the plan is cleared first: it becomes that
         // row (the one draft, with "Planen" on it) and the overview opens over an empty map
-        scenario.onActivity { a -> vm(a).requestClear() }
-        waitUntil("cleared at once, no question", 5_000) { var n = -1; scenario.onActivity { a -> n = vm(a).waypoints.size }; n == 0 }
+        scenario.onActivity { a -> vm(a).planEdit.clearPlan() }
+        waitUntil("cleared at once, no question", 5_000) { var n = -1; scenario.onActivity { a -> n = vm(a).plan.points.size }; n == 0 }
         before = emptyList()
         try {
-            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
+            scenario.onActivity { a -> vm(a).routes.tab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).routesGo.openRoutes() }
             val row = findFresh(By.text(name), 8_000)
             assertNotNull("the saved route in My routes", row)
             // every row that opens the overview carries the preview tile with its badge ("Übersicht vergrößern");
@@ -257,17 +257,17 @@ class CorePlanE2ETest : E2EBase() {
             // the overview is gone when its "Abbrechen" is – a Zuletzt row's own "Planen" (owner 2026-11-07) stays in the list
             waitUntil("overview closed, still in My routes", 5_000) {
                 device.findObject(By.text(Txt.s(Res.string.common_cancel))) == null &&
-                    run { var open = false; scenario.onActivity { a -> open = vm(a).routesOpen }; open }
+                    run { var open = false; scenario.onActivity { a -> open = vm(a).routes.open }; open }
             }
             var still = emptyList<com.onpath.app.routing.GeoPoint>()
-            scenario.onActivity { a -> still = vm(a).waypoints.toList() }
+            scenario.onActivity { a -> still = vm(a).plan.points.toList() }
             org.junit.Assert.assertEquals("Abbrechen changed nothing", before, still)
             findFresh(By.text(name), 5_000)!!.click()
             overviewPlan(5_000)!!.click()
-            waitUntil("My routes closed", 8_000) { var open = true; scenario.onActivity { a -> open = vm(a).routesOpen }; !open }
+            waitUntil("My routes closed", 8_000) { var open = true; scenario.onActivity { a -> open = vm(a).routes.open }; !open }
             val loaded = pts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }
             waitUntil("the route is the plan", 10_000) {
-                var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).waypoints.toList() }; w == loaded
+                var w = emptyList<com.onpath.app.routing.GeoPoint>(); scenario.onActivity { a -> w = vm(a).plan.points.toList() }; w == loaded
             }
         } finally {
             db.deleteTour(id)
@@ -305,7 +305,7 @@ class CorePlanE2ETest : E2EBase() {
     @Test fun losGehtsInMyRoutesStartsTheTourOnThatRoute() {
         startPlanWithTwoPoints()
         var centre = LatLng(0.0, 0.0)
-        scenario.onActivity { a -> val w = vm(a).waypoints; centre = LatLng(w[0].lat, w[0].lon) }
+        scenario.onActivity { a -> val w = vm(a).plan.points; centre = LatLng(w[0].lat, w[0].lon) }
         val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
         val pts = listOf(com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.002, centre.longitude - 0.001, "E2E go A"),
             com.onpath.app.gpx.GpxWaypoint(centre.latitude + 0.004, centre.longitude + 0.002, "E2E go B"))
@@ -313,7 +313,7 @@ class CorePlanE2ETest : E2EBase() {
         val id = db.insertTour(com.onpath.app.data.TourKind.PLANNED, name, com.onpath.app.routing.Activity.HIKE.name, 2, 380.0, 0.0, 0.0,
             300.0, listOf(pts.map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon) }), pts)
         try {
-            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
+            scenario.onActivity { a -> vm(a).routes.tab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).routesGo.openRoutes() }
             findFresh(By.text(name), 8_000)!!.click()
             val go = findFresh(By.text(Txt.s(Res.string.plan_bar_go)), 8_000)
             assertNotNull("the overview offers \"Los geht's\" – ${state()}", go)
@@ -324,7 +324,7 @@ class CorePlanE2ETest : E2EBase() {
             val deadline = System.currentTimeMillis() + 40_000
             while (System.currentTimeMillis() < deadline) {
                 var rec = false; var guide = false
-                scenario.onActivity { a -> rec = vm(a).recState.value != null; guide = vm(a).setupGuide != null }
+                scenario.onActivity { a -> rec = vm(a).recState.value != null; guide = vm(a).setup.setupGuide != null }
                 if (rec) break
                 if (guide) device.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter")))?.click()
                 device.findObject(By.text(Txt.s(Res.string.plan_navigate_anyway)))?.click()
@@ -336,8 +336,8 @@ class CorePlanE2ETest : E2EBase() {
                 var ok = false
                 scenario.onActivity { a ->
                     val v = vm(a)
-                    ok = v.mode == com.onpath.app.domain.AppMode.NAVIGATE && v.waypoints.toList() == loaded && !v.routesOpen &&
-                        v.followLine != null && v.recState.value?.nav != null
+                    ok = v.tourSession.mode == com.onpath.app.domain.AppMode.NAVIGATE && v.plan.points.toList() == loaded && !v.routes.open &&
+                        v.tourFollow.followLine != null && v.recState.value?.nav != null
                 }
                 ok
             }
@@ -348,7 +348,7 @@ class CorePlanE2ETest : E2EBase() {
                 assertTrue("\"$step\" traced: ${trace.takeLast(30)}", trace.any { it.contains(step) })
             }
         } finally {
-            try { scenario.onActivity { a -> vm(a).endTourAndDelete() } } catch (_: Exception) {} // expected: no tour / app closed
+            try { scenario.onActivity { a -> vm(a).tourEnd.endTourAndDelete() } } catch (_: Exception) {} // expected: no tour / app closed
             waitUntil("no tour", 20_000) { var r = true; scenario.onActivity { a -> r = vm(a).recState.value != null }; !r }
             db.deleteTour(id)
         }
@@ -360,7 +360,7 @@ class CorePlanE2ETest : E2EBase() {
      * plain recording (PlanStart.RECORD_ONLY).
      */
     @Test fun anEmptyPlanStartsARecordingWithoutARoute() {
-        scenario.onActivity { a -> if (vm(a).waypoints.isNotEmpty()) vm(a).clearPlan() }
+        scenario.onActivity { a -> if (vm(a).plan.points.isNotEmpty()) vm(a).planEdit.clearPlan() }
         waitUntil("empty plan", 5_000) { waypointCount() == 0 }
         // owner 2026-11-06: no start button in the sheet without a plan – the plain recording is ☰ → "Nur aufzeichnen"
         org.junit.Assert.assertNull("no green start button on an empty plan",
@@ -375,11 +375,11 @@ class CorePlanE2ETest : E2EBase() {
         repeat(3) {
             pause(800, "the phone check may open")
             var open = false
-            scenario.onActivity { a -> open = vm(a).setupGuide != null }
+            scenario.onActivity { a -> open = vm(a).setup.setupGuide != null }
             if (open) device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue|Später|Weiter"))), 5_000)?.click()
         }
         waitUntil("a tour records", 20_000) { var r = false; scenario.onActivity { a -> r = vm(a).recState.value != null }; r }
-        try { scenario.onActivity { a -> vm(a).endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
+        try { scenario.onActivity { a -> vm(a).tourEnd.endTourAndDelete() } } catch (_: Exception) {} // expected: app already closed
         waitUntil("the tour ended", 20_000) { var r = true; scenario.onActivity { a -> r = vm(a).recState.value != null }; !r }
     }
 
@@ -389,7 +389,7 @@ class CorePlanE2ETest : E2EBase() {
      */
     @Test fun aTapOnTheHandleStepsTheSheet() {
         startPlanWithTwoPoints()
-        scenario.onActivity { vm(it).planSize = PlanSize.COMPACT }
+        scenario.onActivity { vm(it).planEdit.planSize = PlanSize.COMPACT }
         pause(800, "the sheet settles at the compact step")
         val bigger = findFresh(By.desc(Txt.s(Res.string.plan_sheet_bigger)), 10_000)
         assertNotNull("the handle says what a tap does", bigger)
@@ -401,7 +401,7 @@ class CorePlanE2ETest : E2EBase() {
         waitUntil("a tap on the largest step: one step back", 5_000) { planSize() == PlanSize.COMPACT }
     }
 
-    private fun planSize(): PlanSize { var s = PlanSize.MINI; scenario.onActivity { s = vm(it).planSize }; return s }
+    private fun planSize(): PlanSize { var s = PlanSize.MINI; scenario.onActivity { s = vm(it).planEdit.planSize }; return s }
 
     /**
      * Owner 2026-11-07 (Pixel, "Meran → Mutkopf" at Hike T1): the route stops 552 m short of ② – the path up is above
@@ -412,21 +412,21 @@ class CorePlanE2ETest : E2EBase() {
         org.junit.Assume.assumeTrue("real routing data needed (E10_N45.rd5 in /data/local/tmp)", realRouting)
         val meran = com.onpath.app.routing.GeoPoint(46.67135, 11.16464)
         val mutkopf = com.onpath.app.routing.GeoPoint(46.71077, 11.13787)
-        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.HIKE); vm(it).selectSac(1) }
-        scenario.onActivity { vm(it).addPoint(meran); vm(it).addPoint(mutkopf) }
-        waitUntil("the plan is routed", 120_000) { var ok = false; scenario.onActivity { ok = !vm(it).routing && vm(it).route != null }; ok }
+        scenario.onActivity { vm(it).planRoute.selectActivity(com.onpath.app.routing.Activity.HIKE); vm(it).planRoute.selectSac(1) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(meran); vm(it).placeAdd.addPoint(mutkopf) }
+        waitUntil("the plan is routed", 120_000) { var ok = false; scenario.onActivity { ok = !vm(it).planRun.routing && vm(it).route != null }; ok }
         val line = Txt.s(Res.string.plan_reach_level, "②", 2)
         var said: String? = null
         waitUntil("the red line says T2 reaches ②", 10_000) { scenario.onActivity { said = vm(it).planGapText() }; said == line }
-        scenario.onActivity { vm(it).planSize = PlanSize.MINI }
+        scenario.onActivity { vm(it).planEdit.planSize = PlanSize.MINI }
         val row = findFresh(By.text(line), 10_000)
         assertNotNull("\"$line\" in the plan sheet", row)
         shot("reach-line")
         row!!.click()
         // the section: drawn (amber, like a steep section) and the map went there – from the route's end up to ②
-        waitUntil("the section is drawn", 5_000) { var s: List<com.onpath.app.routing.GeoPoint>? = null; scenario.onActivity { s = vm(it).spotLine }; (s?.size ?: 0) >= 2 }
+        waitUntil("the section is drawn", 5_000) { var s: List<com.onpath.app.routing.GeoPoint>? = null; scenario.onActivity { s = vm(it).planRoute.spotLine }; (s?.size ?: 0) >= 2 }
         var piece: List<com.onpath.app.routing.GeoPoint> = emptyList()
-        scenario.onActivity { piece = vm(it).spotLine.orEmpty() }
+        scenario.onActivity { piece = vm(it).planRoute.spotLine.orEmpty() }
         assertTrue("the section ends at ②", com.onpath.app.data.Geo.distance(piece.last(), mutkopf) < 150)
         pause(2_500, "the camera flies there")
         var centre: LatLng? = null
@@ -446,23 +446,23 @@ class CorePlanE2ETest : E2EBase() {
         org.junit.Assume.assumeTrue("real routing data needed (E10_N45.rd5 in /data/local/tmp)", realRouting)
         val pts = listOf(com.onpath.app.routing.GeoPoint(46.67135, 11.16464), com.onpath.app.routing.GeoPoint(46.67500, 11.15000),
             com.onpath.app.routing.GeoPoint(46.68000, 11.14000))
-        scenario.onActivity { vm(it).selectActivity(com.onpath.app.routing.Activity.BIKE_TOURING) }
-        scenario.onActivity { a -> pts.forEach { vm(a).addPoint(it) } }
+        scenario.onActivity { vm(it).planRoute.selectActivity(com.onpath.app.routing.Activity.BIKE_TOURING) }
+        scenario.onActivity { a -> pts.forEach { vm(a).placeAdd.addPoint(it) } }
         waitUntil("the plan is routed – ${state()}", 120_000) {
             var ok = false
-            scenario.onActivity { val v = vm(it); ok = !v.routing && v.waypoints.size == 3 && v.route?.legs?.none { l -> l.straight } == true }
+            scenario.onActivity { val v = vm(it); ok = !v.planRun.routing && v.plan.points.size == 3 && v.route?.legs?.none { l -> l.straight } == true }
             ok
         }
         val name = "E2E stored line ${System.currentTimeMillis() % 100_000}"
         var line = emptyList<com.onpath.app.routing.GeoPoint>()
-        scenario.onActivity { line = vm(it).route!!.points; vm(it).saveRoute(name) }
-        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).planUnsaved }; !s }
+        scenario.onActivity { line = vm(it).route!!.points; vm(it).save.saveRoute(name) }
+        waitUntil("the plan is saved", 10_000) { var s = true; scenario.onActivity { s = vm(it).plan.unsaved }; !s }
         pause(1_500, "the legs under the points moved onto the line are written (one small file each)")
-        scenario.onActivity { vm(it).clearPlan(); vm(it).forgetLegsInMemoryForTest() }
+        scenario.onActivity { vm(it).planEdit.clearPlan(); vm(it).planRoute.legCache.clear() }
         waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
         val db = com.onpath.app.data.TourDb.get(androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext)
         try {
-            scenario.onActivity { a -> vm(a).routesTab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).openRoutes() }
+            scenario.onActivity { a -> vm(a).routes.tab = com.onpath.app.domain.RoutesTab.PLANNED; vm(a).routesGo.openRoutes() }
             findFresh(By.text(name), 8_000)!!.click()
             val plan = findFresh(By.text(Txt.s(Res.string.routes_overview_plan)), 8_000)
             assertNotNull("the overview with \"Planen\" – ${state()}", plan)
@@ -471,7 +471,7 @@ class CorePlanE2ETest : E2EBase() {
             var loaded = emptyList<com.onpath.app.routing.GeoPoint>()
             waitUntil("the line is there at once – ${state()}", 5_000) {
                 var ok = false
-                scenario.onActivity { val v = vm(it); ok = v.waypoints.size == 3 && !v.routing && v.route != null; if (ok) loaded = v.route!!.points }
+                scenario.onActivity { val v = vm(it); ok = v.plan.points.size == 3 && !v.planRun.routing && v.route != null; if (ok) loaded = v.route!!.points }
                 ok
             }
             val ms = android.os.SystemClock.elapsedRealtime() - t0
@@ -487,7 +487,7 @@ class CorePlanE2ETest : E2EBase() {
             assertTrue("no router run, both legs from the cache: $run", run!!.contains("tries: 2 legs from the cache") && !run.contains(" pts "))
             android.util.Log.i("OnPath", "E2E stored line: loaded in $ms ms")
         } finally {
-            scenario.onActivity { vm(it).tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
+            scenario.onActivity { vm(it).routes.tours.filter { t -> t.name == name }.forEach { t -> db.deleteTour(t.id) } }
         }
     }
 }

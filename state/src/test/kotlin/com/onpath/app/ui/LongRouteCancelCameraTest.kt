@@ -40,7 +40,7 @@ class LongRouteCancelCameraTest {
     @Test fun onlyTheLongRouteCancelMovesTheMap() {
         val vm = sourceFile("ui/AppViewModel.kt").readText()
         val answer = vm.substringAfter("fun answerLongRoute(").substringBefore("\n    }\n")
-        assertTrue(answer, answer.contains("LongRouteCancelCamera.after(waypoints.toList(), route?.points"))
+        assertTrue(answer, answer.contains("LongRouteCancelCamera.after(this.plan.points.toList(), route?.points"))
         // the shared cancel (slow plan, Stop) leaves the camera alone
         // (cancelRun moved to PlanEditSlice, piece 10)
         val cancel = sourceFile("ui/plan/PlanEditSlice.kt").readText().substringAfter("    fun cancelRun(why: NotRouted) {").substringBefore("\n    }\n")

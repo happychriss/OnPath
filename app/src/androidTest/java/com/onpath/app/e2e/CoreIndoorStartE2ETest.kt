@@ -53,7 +53,7 @@ class CoreIndoorStartE2ETest : E2EBase() {
 
     @After fun stopFeeding() {
         feeding = false
-        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).stopRecording() } } catch (_: Exception) {} // expected: app already closed
+        try { scenario.onActivity { if (vm(it).recState.value != null) vm(it).tourEnd.stopRecording() } } catch (_: Exception) {} // expected: app already closed
         for (p in PROVIDERS) sh("cmd location providers remove-test-provider $p")
     }
 
@@ -65,8 +65,8 @@ class CoreIndoorStartE2ETest : E2EBase() {
     private fun hadGps(): Boolean { var g = true; scenario.onActivity { g = vm(it).recState.value?.hadGpsFix ?: true }; return g }
 
     @Test fun indoorStartShowsTheWifiPositionRecordsOnlyGps() {
-        scenario.onActivity { vm(it).startNavigation(force = true) }
-        waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).mode }; m == AppMode.NAVIGATE }
+        scenario.onActivity { vm(it).tourSession.startNavigation(force = true) }
+        waitUntil("Navigate (recording started)", 20_000) { var m: AppMode? = null; scenario.onActivity { m = vm(it).tourSession.mode }; m == AppMode.NAVIGATE }
         if (findFresh(By.text(APPROX), 15_000) == null) { shot("no-approx-line"); throw AssertionError("no \"Approximate position\" line – ${state()}") }
         assertFalse("no GPS fix yet", hadGps())
         pause(4_000, "time for approximate fixes to be recorded")

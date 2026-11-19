@@ -170,7 +170,7 @@ class WholeRouteTest {
         // fit keeps beside it; the "above the column, full width" room no longer exists in the app (pick() still serves it)
         assertTrue(screen.contains("fabWidthPx = planFab[0],") && screen.contains("fabHeightPx = 0,"))
         // the activity button's measured edges go into the rule (beside or below it; 2026-11-07)
-        assertTrue(screen.contains("activityRightPx = if (vm.shown == null) planActivity[0] else 0"))
+        assertTrue(screen.contains("activityRightPx = if (vm.routesFlow.shown == null) planActivity[0] else 0"))
         assertTrue(screen.contains("onActivityBox(b.right.toInt(), b.bottom.toInt())"))
         assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
@@ -226,7 +226,7 @@ class WholeRouteTest {
         assertTrue(cam.contains("override fun fit(points: List<GeoPoint>) { events += UiEvent.Fit(points) }"))
         assertTrue(cam.contains("override fun centerOn(point: GeoPoint, zoom: Double) { events += UiEvent.CenterOn(point, zoom) }"))
         assertTrue(cam.contains("override fun panTo(point: GeoPoint) { events += UiEvent.PanTo(point) }"))
-        val make = vm.substringAfter("private val map = com.onpath.app.ui.MapViewSlice(", "").substringBefore("\n    /**")
+        val make = vm.substringAfter("val map: com.onpath.app.ui.MapViewSlice = com.onpath.app.ui.MapViewSlice(", "").substringBefore("\n    /**")
         assertTrue("the MapViewSlice construction not found", make.isNotEmpty())
         assertTrue(make.contains("notices, mapCamera,"))
         assertTrue(make.contains("{ tracker.location.value?.let { GeoPoint(it.latitude, it.longitude) } }, mapHost, viewModelScope,"))

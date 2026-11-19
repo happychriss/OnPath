@@ -41,9 +41,8 @@ class SavePathsTest {
         val after = endBody("private fun afterTourEnded() {")
         assertTrue("no parallel path: the Neu planen clear (the host's clearPlan is the view model's one clearPlan, pinned below)", after.contains("host.clearPlan()"))
         assertFalse("nothing asked about the plan", after.contains("requestSave") || after.contains("saveAsk"))
-        assertTrue(vm.contains("override fun clearPlan() = this@AppViewModel.clearPlan()"))
+        assertTrue(vm.contains("override fun clearPlan() = this@AppViewModel.planEdit.clearPlan()"))
         // clearPlan keeps an unsaved plan under Zuletzt first: PlanEditFlowTest.clearKeepsThePlanForZuletztFirstThenEmptiesInOneUndoStepAndNeverAsks
-        assertTrue(vm.contains("fun clearPlan() = planEdit.clearPlan()"))
         assertFalse(endBody("fun endTourAndDelete() {").contains("requestSave"))
         assertEquals(PlanAutoSave.AtStart.SAVE_NEW, PlanAutoSave.atStart(points = 2, unsaved = true, changesASavedPlan = false))
         // the plan saved at Los geht's and unchanged is no draft (it is in My routes); changed on the way → Zuletzt
@@ -87,7 +86,7 @@ class SavePathsTest {
         assertTrue(Drafts.keeps(points = 2, unsaved = true))
         assertFalse("a saved plan as it is stays in My routes", Drafts.keeps(points = 2, unsaved = false))
         assertFalse("one point is no plan worth keeping", Drafts.keeps(points = 1, unsaved = true))
-        assertTrue(vm.contains("fun followShownDuringTour() = unlessUnsaved("))
+        assertTrue(vm.contains("fun followShownDuringTour() = routesFlow.unlessUnsaved("))
         assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
         // (clearPlan keeps the plan first: PlanEditFlowTest; the draft call itself is the slice host line pinned in PlanEditAdaptersTest)
         // every way a plan is replaced: a route opened, a track made a plan (a plan GPX, a fitted track) – RoutesSlice (piece 13; the
@@ -115,10 +114,8 @@ class SavePathsTest {
      * plan is that document on the app's preferences, and every edit goes through it.
      */
     @Test fun thePlanSurvivesTheProcess() {
-        assertTrue(vm.contains("private val plan = com.onpath.app.ui.plan.PlanDocument(com.onpath.app.ui.plan.PrefsPlanStore(prefs))"))
-        assertTrue(vm.contains("val waypoints get() = plan.points"))
+        assertTrue(vm.contains("val plan: com.onpath.app.ui.plan.PlanDocument = com.onpath.app.ui.plan.PlanDocument(com.onpath.app.ui.plan.PrefsPlanStore(prefs))"))
         // every edit is stored at once and read back at the next start: PlanEditFlowTest (restarted() re-reads the store after each edit)
-        assertTrue(vm.contains("private fun change(block: MutableList<GeoPoint>.() -> Unit) = planEdit.change(block)"))
         assertFalse("no second place that writes the plan's preferences", vm.contains("prefs.planWaypoints") || vm.contains("prefs.planSavedPoints"))
     }
 

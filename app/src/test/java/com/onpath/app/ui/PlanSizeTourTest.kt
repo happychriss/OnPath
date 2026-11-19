@@ -40,7 +40,7 @@ class PlanSizeTourTest {
      */
     @Test fun theBottomBarHasPausePlanAndEnd() {
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()
-        assertEquals(true, nav.contains("onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }"))
+        assertEquals(true, nav.contains("onPause = vm.tourEnd::pauseRecording, onEnd = { vm.tourEnd.askEndTour() }"))
         // owner 2026-11-06: one bottom bar where the slider was – Anhalten | Planen, stopped ▶ Weiter · ■ Tour beenden · ✎ Planen
         val bar = java.io.File("src/main/java/com/onpath/app/ui/TourActionBar.kt").readText()
         for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))

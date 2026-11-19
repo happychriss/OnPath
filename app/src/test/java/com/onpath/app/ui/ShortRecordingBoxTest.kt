@@ -17,7 +17,7 @@ class ShortRecordingBoxTest {
 
     @Test fun theBoxBesideTheSavedBox_RueckgaengigAndOk() {
         val main = src("MainActivity.kt")
-        assertTrue(main.contains("ShortRecordingDialog(t, onUndo = vm::undoShortRecording, onOk = vm::closeShortRecording)"))
+        assertTrue(main.contains("ShortRecordingDialog(t, onUndo = vm.tourEnd::undoShortRecording, onOk = vm.tourEnd::closeShortRecording)"))
         val box = src("ui/Screens.kt").substringAfter("fun ShortRecordingDialog(").substringBefore("private fun SavedTourActions(")
         assertTrue("the owner's words and the bin's days", box.contains("routes_short_recording_title") && box.contains("RecycleBin.DAYS"))
         assertTrue("Rückgängig · OK in the saved box's row (≥ 48 dp)", box.contains("SavedTourActions(str(Res.string.plan_undo), onUndo, str(Res.string.common_ok), onOk"))

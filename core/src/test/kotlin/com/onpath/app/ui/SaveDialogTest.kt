@@ -18,11 +18,11 @@ class SaveDialogTest {
         assertTrue(vmSrc.contains("fun requestSave() = save.request(null)"))
         assertFalse("no Replace current plan? any more (owner 2026-11-06, Zuletzt)", vmSrc.contains("fun replaceSaveFirst("))
         val map = File("../app/src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue("☰ Save route – the one Save of the plan", map.contains("onSaveRoute = if (RouteRules.saveInMenu(vm.waypoints.size)) vm::requestSave else null"))
+        assertTrue("☰ Save route – the one Save of the plan", map.contains("onSaveRoute = if (RouteRules.saveInMenu(vm.plan.points.size)) vm::requestSave else null"))
         val main = File("../app/src/main/java/com/onpath/app/MainActivity.kt").readText()
-        assertTrue("My routes ⋮ Save as copy", main.contains("onCopy = { vm.requestCopyRoute(it) }"))
+        assertTrue("My routes ⋮ Save as copy", main.contains("onCopy = { vm.save.requestCopy(it) }"))
         val dialogs = File("../app/src/main/java/com/onpath/app/ui/RouteDialogs.kt").readText()
-        assertTrue(dialogs.contains("SaveNameDialog(ask.kind, ask.name, onSave = vm::confirmSave, onCancel = vm::cancelSave)"))
+        assertTrue(dialogs.contains("SaveNameDialog(ask.kind, ask.name, onSave = vm.save::confirm, onCancel = vm.save::cancel)"))
         assertTrue("the name selected", dialogs.contains("TextFieldValue(name, TextRange(0, name.length))"))
     }
 }

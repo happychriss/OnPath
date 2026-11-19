@@ -28,9 +28,9 @@ class StartSmokeE2ETest : E2EBase() {
         }
         assertEquals("the saved plan is back", 2, waypointCount())
         var mode: AppMode? = null
-        scenario.onActivity { mode = vm(it).mode }
+        scenario.onActivity { mode = vm(it).tourSession.mode }
         assertEquals(AppMode.PLAN, mode)
-        waitUntil("route calculated", 30_000) { var r = true; scenario.onActivity { r = vm(it).routing }; !r }
+        waitUntil("route calculated", 30_000) { var r = true; scenario.onActivity { r = vm(it).planRun.routing }; !r }
         assertPositionDotOnTop("start with a plan")
     }
 
@@ -43,11 +43,11 @@ class StartSmokeE2ETest : E2EBase() {
             val ctx = InstrumentationRegistry.getInstrumentation().targetContext
             Prefs(ctx).planWaypoints = listOf(GeoPoint(MERAN_LAT, MERAN_LON), GeoPoint(53.5511, 9.9937)) // Meran → Hamburg
         }
-        waitUntil("long-route question", 15_000) { var a = false; scenario.onActivity { a = vm(it).longRouteAsk != null }; a }
+        waitUntil("long-route question", 15_000) { var a = false; scenario.onActivity { a = vm(it).planRun.longRouteAsk != null }; a }
         clickText("Cancel")
-        waitUntil("question closed", 5_000) { var a = true; scenario.onActivity { a = vm(it).longRouteAsk != null }; !a }
+        waitUntil("question closed", 5_000) { var a = true; scenario.onActivity { a = vm(it).planRun.longRouteAsk != null }; !a }
         var routing = true; var why: com.onpath.app.domain.NotRouted? = null
-        scenario.onActivity { routing = vm(it).routing; why = vm(it).notRouted }
+        scenario.onActivity { routing = vm(it).planRun.routing; why = vm(it).planRun.notRouted }
         assertEquals("the plan's points stay", 2, waypointCount())
         assertFalse("no routing request runs", routing)
         assertEquals(com.onpath.app.domain.NotRouted.LONG, why)

@@ -19,9 +19,9 @@ class PageMotionTest {
 
     @Test fun everyFullPageFades() {
         val main = File("src/main/java/com/onpath/app/MainActivity.kt").readText()
-        for (page in listOf("PageFade(vm.routesOpen)", "PageFadeOf(vm.recycleBin)", "PageFadeOf(detailsRoute)",
-            "PageFade(vm.showSettings)", "PageFadeOf(vm.timeDetails)", "PageFade(vm.setupOpen)"))
+        for (page in listOf("PageFade(vm.routes.open)", "PageFadeOf(vm.recent.bin)", "PageFadeOf(detailsRoute)",
+            "PageFade(vm.settingsSlice.showSettings)", "PageFadeOf(vm.planRoute.timeDetails)", "PageFade(vm.setup.setupOpen)"))
             assertTrue(page, main.contains(page))
-        assertTrue(File("src/main/java/com/onpath/app/ui/search/SearchHost.kt").readText().contains("PageFade(vm.searchOpen)"))
+        assertTrue(File("src/main/java/com/onpath/app/ui/search/SearchHost.kt").readText().contains("PageFade(vm.searchFlow.searchOpen)"))
     }
 }

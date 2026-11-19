@@ -49,9 +49,9 @@ class MapControlsAlwaysThereTest {
         assertTrue(panel.contains("onUndo = if (full && ui.canUndo) cb.onUndo else null"))
         assertTrue(panel.contains("onRedo = if (full && ui.canRedo) cb.onRedo else null"))
         val screen = File("$ui/MapScreen.kt").readText()
-        assertTrue("the sheet's undo / redo are the map pill's", screen.contains("onUndo = vm::undoStep, onRedo = vm::redoStep"))
-        assertTrue(screen.contains("onUndo = if (MapControlsEnabled.undo(ctl)) vm::undoStep else null"))
-        assertTrue(screen.contains("onRedo = if (MapControlsEnabled.redo(ctl)) vm::redoStep else null"))
+        assertTrue("the sheet's undo / redo are the map pill's", screen.contains("onUndo = vm.planEdit::undoStep, onRedo = vm.planEdit::redoStep"))
+        assertTrue(screen.contains("onUndo = if (MapControlsEnabled.undo(ctl)) vm.planEdit::undoStep else null"))
+        assertTrue(screen.contains("onRedo = if (MapControlsEnabled.redo(ctl)) vm.planEdit::redoStep else null"))
         // in the sheet: 48 dp (the title row's height), no shadow; on the map: 56 dp with the float shadow
         val pill = footer.substringAfter("fun UndoPill(").substringBefore("\n}\n")
         assertTrue(pill, pill.contains("if (inSheet) SHEET_UNDO else MAP_FAB"))

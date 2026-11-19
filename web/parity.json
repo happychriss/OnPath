@@ -20,7 +20,7 @@
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "4e0bf47478b83436f19262ccdb7e1375d1e143f7"
+      "blob": "7451dc218bcfaed5578b0545c26cd83e72e855fa"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -241,7 +241,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "2877c1df8c262d9cd289a8585a93e3c3678ee779"
+      "blob": "1a1c7d86ca7a5b1750b24eb305e8f73dc00d2581"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt",

@@ -60,6 +60,6 @@ class MapLoadWaitTest {
         assertTrue(here, here.contains("?.copy(own = null)"))
         assertTrue(here, here.contains("routingFor(listOf(at), wait = false)"))
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("MapLoadModal(MapLoadWait.shown(loadUi, vm.setupOpen),"))
+        assertTrue(map.contains("MapLoadModal(MapLoadWait.shown(loadUi, vm.setup.setupOpen),"))
     }
 }

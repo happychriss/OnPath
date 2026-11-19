@@ -1012,7 +1012,7 @@ internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Mes
 internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?, mapBearing: () -> Float,
                           onCover: (topDp: Int, bottomDp: Int) -> Unit = { _, _ -> }, footer: @Composable () -> Unit) {
     val nav = rec?.nav?.takeIf { it.line.size >= 2 }
-    val line = nav?.line ?: vm.followLine
+    val line = nav?.line ?: vm.tourFollow.followLine
     val progress = remember(line) { line?.let { FollowProgress(it) } }
     // the clock times ("an 16:35", arrival) are "now + time to go": without a new position nothing recomposed, and a
     // stop's time fell behind the clock (owner's Pixel 2026-11-06: "an 16:35" at 16:36) – recompose at every minute
@@ -1021,13 +1021,13 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     }
     // turns on the followed line, once per line: the junctions the phone vibrates for and the voice names
     // (ScreenTurns: BRouter's hints + JogRule; a GPX track without hints: the geometry, TurnDetector)
-    val hike = (rec?.nav?.session?.activity ?: vm.activity) == com.onpath.app.routing.Activity.HIKE
+    val hike = (rec?.nav?.session?.activity ?: vm.planRoute.activity) == com.onpath.app.routing.Activity.HIKE
     val turns = remember(line, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.of(it, hike) } ?: emptyList() }
     // the way word the voice says at each turn, the same on the card ("Links auf den Radweg", owner idea 2026-11-01)
     val onto = remember(line, turns, hike) { line?.let { com.onpath.app.navigation.ScreenTurns.onto(it, turns, hike) } ?: emptyMap() }
     val total = remember(line) { line?.let { com.onpath.app.data.Geo.length(it) } ?: 0.0 }
     // same time model as the plan sheet (time/RouteTimes): no jump when navigation starts
-    val times = remember(line, vm.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.activity) } }
+    val times = remember(line, vm.planRoute.activity) { line?.let { com.onpath.app.time.RouteTimes.of(it, vm.planRoute.activity) } }
     val hint = remember(line) { intArrayOf(0) }
     val here = location?.let { GeoPoint(it.latitude, it.longitude) }
     // started indoors (owner): until the tour's first GPS fix the app's Wi-Fi / fused fix stands in – here only; the
@@ -1068,7 +1068,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     // provisional: the service knows no position yet – its time state ("no GPS") does not apply, the plain model counts
     val tt = rec?.time?.takeIf { prov == null }
     // the service's calm, learned value while it knows the line; else the plain model from here
-    val toGoS = remaining?.let { r -> tt?.toGoS ?: toGoSeconds(times, r.distanceM, vm.planFactors()) }
+    val toGoS = remaining?.let { r -> tt?.toGoS ?: toGoSeconds(times, r.distanceM, vm.planRoute.planFactors()) }
     val arrive = toGoS?.let { s ->
         tt?.arrivalMs?.takeIf { tt.toGoS != null } ?: com.onpath.app.time.TimeEstimate.arrivalMs(System.currentTimeMillis(), s)
     }?.let { com.onpath.app.time.TimeEstimate.clock(it) }
@@ -1090,7 +1090,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 // the next 2–3 stops (owner 2026-11-05): the same rules as the turn card's stop, the same time model as the clock
                 stops = nav?.session?.let { sess ->
                     val now = maxOf(System.currentTimeMillis(), minute)
-                    val f = vm.planFactors()
+                    val f = vm.planRoute.planFactors()
                     val plainHere = toGoSeconds(times, r.distanceM, f)
                     NextStop.aheadList(sess, (total - r.distanceM).coerceAtLeast(0.0)).map { st ->
                         val mv = NextStop.movingS(toGoS ?: plainHere, plainHere, toGoSeconds(times, (r.distanceM - st.distanceM).coerceAtLeast(0.0), f))
@@ -1129,16 +1129,16 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
                 val stop = remaining?.let { r -> nav?.session?.let { NextStop.ahead(it, (total - r.distanceM).coerceAtLeast(0.0)) } }
                 if (!h.turnRound && NextStop.shown(h.distanceM, stop)) TurnHint(TurnKind.SLIGHT_RIGHT, stop!!.distanceM, stop = stop) else h
             },
-        headingUp = vm.navHeadingUp,
+        headingUp = vm.settingsSlice.settings.navHeadingUp,
         arriveAt = arrive,
         movingS = rec?.time?.movingS, breakS = rec?.time?.breakS,
         paceNote = rec?.time?.learned?.let { paceNote(it) },
         routeNote = rec?.time?.lineNote?.text(),
         // what the service navigates is the truth; free recording: the app's activity
-        activity = rec?.nav?.session?.activity ?: vm.activity,
-        sac = rec?.nav?.session?.sac ?: vm.sac,
-        activityCheck = vm.activityCheck,
-        settingsOpen = vm.showSettings,
+        activity = rec?.nav?.session?.activity ?: vm.planRoute.activity,
+        sac = rec?.nav?.session?.sac ?: vm.planRoute.sac,
+        activityCheck = vm.activityCheckSlice.activityCheck,
+        settingsOpen = vm.settingsSlice.showSettings,
         position = location?.let { l ->
             NavText.position(l.latitude, l.longitude, l.accuracy.takeIf { l.hasAccuracy() }, l.altitude.takeIf { l.hasAltitude() },
                 com.onpath.app.recording.LocationTracker.ageSeconds(l))
@@ -1147,12 +1147,12 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
         approx = prov?.let { approxLine(it) },
         notificationsOff = com.onpath.app.navigation.NotificationsOff.shown(rec?.tourId,
-            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.phone), vm.notificationsOkTour),
+            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.setup.phone), vm.setup.notificationsOkTour),
     )
     // Back on the open sheet = "Keep" (nothing changes)
-    androidx.activity.compose.BackHandler(enabled = vm.activityCheck != null) { vm.closeActivityCheck() }
+    androidx.activity.compose.BackHandler(enabled = vm.activityCheckSlice.activityCheck != null) { vm.activityCheckSlice.closeActivityCheck() }
     // developer tools: the Navigate "Sim" follows a changed line (plan edit, new route) from where it is
-    LaunchedEffect(line) { vm.navSimFollow(line) }
+    LaunchedEffect(line) { vm.demo.navSimFollow(line) }
     val bg = rememberBackgroundDownload(vm)
     val activity = androidx.compose.ui.platform.LocalContext.current as? com.onpath.app.MainActivity
     // Cycling, "Screen while cycling: Smart" (owner): far from the next turn the dim rest view covers the map (RestView.kt)
@@ -1160,34 +1160,34 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
     val restTarget = remember(restEvents, remaining, notOnRoute) {
         RestEvents.next(restEvents, remaining?.takeUnless { notOnRoute }?.let { (total - it.distanceM).coerceAtLeast(0.0) })
     }
-    val restOn = ScreenPolicy.of(vm.settings, ui.activity ?: vm.activity).rest && rec != null && nav != null
+    val restOn = ScreenPolicy.of(vm.settingsSlice.settings, ui.activity ?: vm.planRoute.activity).rest && rec != null && nav != null
     val restWanted = rememberRest(restOn,
         // until the tour's first GPS fix (provisional Wi-Fi / fused position, amber line) always the full map
         attention = SmartScreen.needsUser(paused = rec?.paused == true, gpsLost = rec?.gpsLost == true && rec.gpsStill != true,
             hadGpsFix = rec?.hadGpsFix == true, provisional = prov != null, offRouteAlert = rec?.offRouteAlert == true,
-            prompt = nav?.prompt != null, notOnRoute = notOnRoute, noFix = location == null, notFollowing = !vm.followMe,
+            prompt = nav?.prompt != null, notOnRoute = notOnRoute, noFix = location == null, notFollowing = !vm.map.followMe,
             dialog = vm.restBlocked()),
         target = restTarget, fix = location)
     val rest = restWanted && restTarget != null
     LaunchedEffect(rest) { vm.screenRest = rest }
     DisposableEffect(Unit) { onDispose { vm.screenRest = false } }
     // the hold time of the locked bar (Settings → Navigation, owner 2026-11-06 22:50: 0–2 s in 0,5 s steps)
-    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settings.navHoldMs) {
-        NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm::switchToPlan) ?: vm.switchToPlan() }, onResume = { vm.pauseRecording(false) },
-            newPlan = vm.newPlanNote, onNewPlanUndo = vm::undoNewPlan, onNewPlanGone = vm::dropNewPlanNote,
-            onPause = vm::pauseRecording, onEnd = { vm.askEndTour() }, lock = vm.settings.navLock,
-            onTakeRoute = vm::takeNewRoute, onKeepRoute = vm::keepOriginalRoute, onTakeVia = vm::takeViaRoute,
-            onLeadThere = vm::leadToStart, onJustRecord = vm::justRecord, onJoinHere = vm::joinHere, onLeadFailedOk = vm::leadFailedOk,
-            onActivity = vm::openActivityCheck, onChooseActivity = vm::chooseActivity, onKeepActivity = vm::closeActivityCheck,
-            onHikeLevel = vm::chooseHikeLevel,
-            onProfileScrub = vm::navScrub, onProfileRelease = vm::navScrubEnd,
-            download = bg, onDownload = { vm.downloadDetailsOpen = true },
-            onNotifications = { vm.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
-            onNotificationsOk = { vm.notificationsOkTour = rec?.tourId },
-            error = vm.errorCard, onErrorOk = { vm.errorCard = null }, onCover = onCover,
-            sim = if (!vm.devToolsShown) null else { {
+    Box(Modifier.fillMaxSize()) { androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides vm.settingsSlice.settings.navHoldMs) {
+        NavigateOverlay(ui, footer, onSlideToPlan = { activity?.leaveNavigate(vm.tourSession::switchToPlan) ?: vm.tourSession.switchToPlan() }, onResume = { vm.tourEnd.pauseRecording(false) },
+            newPlan = vm.tour.newPlanNote, onNewPlanUndo = vm.routesGo::undoNewPlan, onNewPlanGone = vm.tour::dropNewPlanNote,
+            onPause = vm.tourEnd::pauseRecording, onEnd = { vm.tourEnd.askEndTour() }, lock = vm.settingsSlice.settings.navLock,
+            onTakeRoute = vm.tourSession::takeNewRoute, onKeepRoute = vm.tourSession::keepOriginalRoute, onTakeVia = vm.tourSession::takeViaRoute,
+            onLeadThere = vm.tourSession::leadToStart, onJustRecord = vm.tourSession::justRecord, onJoinHere = vm.tourSession::joinHere, onLeadFailedOk = vm.tourSession::leadFailedOk,
+            onActivity = vm.activityCheckSlice::openActivityCheck, onChooseActivity = vm.activityCheckSlice::chooseActivity, onKeepActivity = vm.activityCheckSlice::closeActivityCheck,
+            onHikeLevel = vm.activityCheckSlice::chooseHikeLevel,
+            onProfileScrub = vm.map::navScrub, onProfileRelease = vm.map::navScrubEnd,
+            download = bg, onDownload = { vm.mapData.downloadDetailsOpen = true },
+            onNotifications = { vm.setup.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
+            onNotificationsOk = { vm.setup.notificationsOkTour = rec?.tourId },
+            error = vm.notices.errorCard, onErrorOk = { vm.notices.errorCard = null }, onCover = onCover,
+            sim = if (!vm.settingsSlice.devToolsShown) null else { {
                 val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()
-                NavSimChip(demo, onStart = { vm.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
+                NavSimChip(demo, onStart = { vm.demo.startNavSim(line) }, onFactor = com.onpath.app.recording.DemoLocation::setFactor,
                     onStop = { com.onpath.app.recording.DemoLocation.stop("stopped on the Navigate page") },
                     onPause = com.onpath.app.recording.DemoLocation::setPaused)
             } })

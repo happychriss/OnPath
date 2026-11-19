@@ -86,7 +86,7 @@ abstract class E2EBase {
     protected fun waitNoLoadModal(timeoutMs: Long = 90_000) {
         waitUntil("no loading window over the map", timeoutMs) {
             var none = false
-            scenario.onActivity { a -> val vm = vm(a); none = vm.mapLoadUi(vm.cells.states.value, android.os.SystemClock.uptimeMillis()) == null }
+            scenario.onActivity { a -> val vm = vm(a); none = vm.mapData.mapLoadUi(vm.cells.states.value, android.os.SystemClock.uptimeMillis()) == null }
             none
         }
     }
@@ -164,7 +164,7 @@ abstract class E2EBase {
         fun open(s: Pair<Float, Float>) = s.second in h * 0.22f..h * 0.40f && s.first in w * 0.15f..w * 0.75f
         if (open(waypointOnScreen(index))) return
         var p: LatLng? = null
-        scenario.onActivity { a -> vm(a).followMe = false; vm(a).waypoints[index].let { p = LatLng(it.lat, it.lon) } }
+        scenario.onActivity { a -> vm(a).map.followMe = false; vm(a).plan.points[index].let { p = LatLng(it.lat, it.lon) } }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLng(p!!)) }
         pause(600, "the camera move lands")
         // the point is now at the centre (h/2): shift the map by pixels until it sits at (w/2, 0.32 h), measured each time
@@ -257,7 +257,7 @@ abstract class E2EBase {
         scenario.onActivity { a ->
             val vm = vm(a)
             val mv = mapView(a)
-            s = "points ${vm.waypoints.size}, mode ${vm.mode}, menu ${vm.pointMenu}, overlayOpen ${vm.mapOverlayOpen}, " +
+            s = "points ${vm.plan.points.size}, mode ${vm.tourSession.mode}, menu ${vm.placeMenus.pointMenu}, overlayOpen ${vm.placeMenus.mapOverlayOpen}, " +
                 "canEdit ${vm.canEditMap}, peek ${vm.routePeek}, map ${mv?.width}x${mv?.height}"
         }
         val problems = com.onpath.app.debug.Problems.snapshot().take(8).joinToString(" | ") { "${it.level} ${it.area}: ${it.message}" }
@@ -328,8 +328,8 @@ abstract class E2EBase {
         // a hold take the likelier row, as a user following the suggestion does
         if (takeAddMenu && launched) scenario.onActivity { a ->
             val v = vm(a)
-            val m = v.holdAddMenu ?: return@onActivity
-            if (m.menu.emphasised == com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION) v.holdAsNewDestination() else v.holdAsStop()
+            val m = v.placeAdd.holdAddMenu ?: return@onActivity
+            if (m.menu.emphasised == com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION) v.placeAdd.holdAsNewDestination() else v.placeAdd.holdAsStop()
         }
     }
 
@@ -338,7 +338,7 @@ abstract class E2EBase {
         val t0 = android.os.SystemClock.elapsedRealtime()
         while (android.os.SystemClock.elapsedRealtime() - t0 < ms) {
             var busy = false
-            scenario.onActivity { a -> busy = vm(a).holdMeasuring != null }
+            scenario.onActivity { a -> busy = vm(a).placeAdd.holdMeasuring != null }
             if (!busy) break
             pause(50, "poll interval of waitHoldMeasured")
         }
@@ -370,7 +370,7 @@ abstract class E2EBase {
 
     protected fun vm(a: MainActivity) = ViewModelProvider(a)[AppViewModel::class.java]
 
-    protected fun waypointCount(): Int { var n = -1; scenario.onActivity { n = vm(it).waypoints.size }; return n }
+    protected fun waypointCount(): Int { var n = -1; scenario.onActivity { n = vm(it).plan.points.size }; return n }
 
     protected fun mapView(a: MainActivity): MapView? {
         fun find(v: View): MapView? = when (v) {
@@ -398,7 +398,7 @@ abstract class E2EBase {
         var r = 0f to 0f
         val done = CountDownLatch(1)
         scenario.onActivity { a ->
-            val p = vm(a).waypoints[index]
+            val p = vm(a).plan.points[index]
             val mv = mapView(a)!!
             val loc = IntArray(2).also { mv.getLocationOnScreen(it) }
             mv.getMapAsync { m ->
@@ -417,7 +417,7 @@ abstract class E2EBase {
      * camera stopped). Returns the symbol's screen position (device pixels).
      */
     protected fun drawnPoiSymbol(id: String, lat: Double, lon: Double, layer: String, zoom: Double = 16.0): Pair<Float, Float> {
-        scenario.onActivity { vm(it).followMe = false }
+        scenario.onActivity { vm(it).map.followMe = false }
         onMap { m -> m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.newLatLngZoom(LatLng(lat, lon), zoom)) }
         pause(800, "the camera move lands")
         val (w, h) = mapSize()

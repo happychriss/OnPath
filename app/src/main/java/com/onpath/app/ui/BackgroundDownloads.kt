@@ -155,7 +155,7 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
     // the states are collected inside the producer: a download tick does not recompose the caller, only a changed value
     val target by androidx.compose.runtime.produceState<BackgroundDownloadUi?>(null) {
         vm.cells.states.collectLatest { states ->
-            while (true) { value = vm.backgroundDownloadUi(states); kotlinx.coroutines.delay(1000) }
+            while (true) { value = vm.mapData.backgroundDownloadUi(states); kotlinx.coroutines.delay(1000) }
         }
     }
     val gate = androidx.compose.runtime.remember { backgroundGate() }
@@ -165,9 +165,9 @@ internal fun rememberBackgroundDownload(vm: AppViewModel): BackgroundDownloadUi?
 /** The details sheet for [ui] while the user opened it (chip tap). */
 @androidx.compose.runtime.Composable
 internal fun BackgroundDownloadDetails(vm: AppViewModel, ui: BackgroundDownloadUi?) {
-    if (!vm.downloadDetailsOpen) return
-    if (ui == null) { androidx.compose.runtime.LaunchedEffect(Unit) { vm.downloadDetailsOpen = false }; return }
-    BackgroundDownloadSheet(ui, onCancelAll = vm::cancelAllDownloads, onClose = { vm.downloadDetailsOpen = false })
+    if (!vm.mapData.downloadDetailsOpen) return
+    if (ui == null) { androidx.compose.runtime.LaunchedEffect(Unit) { vm.mapData.downloadDetailsOpen = false }; return }
+    BackgroundDownloadSheet(ui, onCancelAll = vm.mapData::cancelAllDownloads, onClose = { vm.mapData.downloadDetailsOpen = false })
 }
 
 /**

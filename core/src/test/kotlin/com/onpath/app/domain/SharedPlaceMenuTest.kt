@@ -78,7 +78,7 @@ class SharedPlaceMenuTest {
         val p = GeoPoint(place.lat, place.lon)
         // empty plan: PoiMenu(emptyPlan = true) → "Start here" · "Go here" · "Open in Google Maps"
         val overlays = File("../app/src/main/java/com/onpath/app/ui/MapOverlays.kt").readText()
-        assertTrue(overlays.contains("emptyPlan = vm.waypoints.isEmpty()"))
+        assertTrue(overlays.contains("emptyPlan = vm.plan.points.isEmpty()"))
         val menu = overlays.substringAfter("fun PoiMenu(").substringBefore("fun PointMenu(")
         assertTrue(menu.contains("Res.string.plan_start_here") && menu.contains("Res.string.plan_go_here") &&
             menu.contains("Res.string.plan_open_google_maps"))

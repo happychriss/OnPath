@@ -72,13 +72,13 @@ class FarDestinationTest {
     @Test fun aFlyToAFoundPlaceEndsTheStartCamera() {
         val vm = src("ui/AppViewModel.kt")
         val fly = vm.substringAfter("override fun flyTo(at: GeoPoint, zoom: Double) {").substringBefore("\n            }\n")
-        assertTrue(fly, fly.contains("startCameraDone = true; userMovedMap = true"))
+        assertTrue(fly, fly.contains("map.startCameraDone = true; map.userMovedMap = true"))
         assertEquals(StartCamera.Step.GIVE_UP, StartCamera.decide(5_000, modeKnown = true, plan = true, userMoved = true, fixAgeS = 1))
     }
 
     /** The pin survives a map style reload: MapScreen sets it again on every new map controller (one per style load). */
     @Test fun thePinIsSetAgainAfterEveryStyleLoad() {
-        assertTrue(src("ui/MapScreen.kt").contains("LaunchedEffect(c, vm.searchMark, vm.mode) {"))
+        assertTrue(src("ui/MapScreen.kt").contains("LaunchedEffect(c, vm.searchFlow.searchMark, vm.tourSession.mode) {"))
         assertTrue(src("ui/MapHost.kt").contains("val c = MapController(context, map, style)"))
     }
 }

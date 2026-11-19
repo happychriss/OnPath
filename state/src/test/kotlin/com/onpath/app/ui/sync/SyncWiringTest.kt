@@ -35,8 +35,8 @@ class SyncWiringTest {
         for (line in listOf(
             "override fun opened(uuid: String, points: List<GeoPoint>) = sync.opened(uuid, points)",
             "override fun refreshRoutingTiles(tiles: List<String>, why: String) = this@AppViewModel.refreshRoutingTiles(tiles, why)",
-            "override fun refreshTours() = this@AppViewModel.refreshTours()",
-            "override fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = this@AppViewModel.setSaved(name, id, points)",
+            "override fun refreshTours() = this@AppViewModel.routesFlow.refreshTours()",
+            "override fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) = this@AppViewModel.tourFollow.setSaved(name, id, points)",
             "override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)",
         )) assertTrue("routing host: $line", routingHost.contains(line))
         assertEquals("nothing else is handed over", 5, Regex("override fun ").findAll(routingHost).count())
@@ -44,13 +44,7 @@ class SyncWiringTest {
 
     @Test fun theForwardersTheScreensAndTheOtherSlicesCallStayAndTheArrivedDataRoutesWhatWaited() {
         for (line in listOf(
-            "private fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = syncedRouting.syncRoutingCheck(t, pts)",
-            "private fun followSyncedSavedPlan() = syncedRouting.followSyncedSavedPlan()",
-            "private fun routeSyncedPlans(ids: List<Long>) = syncedRouting.routeSyncedPlans(ids)",
             "private fun syncMarkSeen(t: Tour) = syncDriver.markSeen(t.uuid)",
-            "fun pullSync() = syncDriver.pull()",
-            "val syncPulling: Boolean get() = syncDriver.pulling",
-            "private fun syncReport(r: com.onpath.app.plansync.SyncReport) { syncDriver.onReport(r) }",
         )) assertTrue("forwarder: $line", vm.contains(line))
         // review routing M5: the routes that waited for routing data are routed after the batch of arriving parts (once)
         val arrived = between("private fun routingDataArrived", "\n    }\n")
@@ -73,7 +67,7 @@ class SyncWiringTest {
             "override fun poll(why: String) = sync.poll(why)",
         )) assertTrue("engine: $line", driverEngine.contains(line))
         assertEquals(9, Regex("override ").findAll(driverEngine).count())
-        assertTrue(vm.contains("recording = { recState.value != null }, onReport = ::syncReport)"))
+        assertTrue(vm.contains("recording = { recState.value != null }, onReport = { r -> syncDriver.onReport(r) })"))
         assertTrue(vm.contains("recording = recState.map { it != null }, isRecording = { recState.value != null },"))
         assertTrue(vm.contains("scope = viewModelScope, io = Dispatchers.IO, clock = { android.os.SystemClock.elapsedRealtime() })"))
     }
@@ -84,12 +78,12 @@ class SyncWiringTest {
      * driver; this pins that the app's host is that).
      */
     @Test fun theDriversHostSaysItInTheSamePlacesAndRunsTheThreeStepsInOrder() {
-        assertTrue(driverHost.contains("override fun ended() { sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS) }"))
+        assertTrue(driverHost.contains("override fun ended() { notices.sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS) }"))
         assertTrue(driverHost.contains("override fun placesChanged() { keptPlaces.savedPlaces = null }"))
-        assertTrue(driverHost.contains("override fun toursChanged(toRoute: List<Long>) { refreshTours(); followSyncedSavedPlan(); routeSyncedPlans(toRoute) }"))
+        assertTrue(driverHost.contains("override fun toursChanged(toRoute: List<Long>) { routesFlow.refreshTours(); syncedRouting.followSyncedSavedPlan(); syncedRouting.routeSyncedPlans(toRoute) }"))
         assertTrue(driverHost.contains("override fun newerData(tiles: List<String>) { refreshRoutingTiles(tiles, \"a plan from the browser was routed with newer data\") }"))
-        assertTrue(driverHost.contains("SyncPoll.routesScreen(routesOpen, showSettings, settingsPage == SettingsPage.SYNC)"))
-        assertTrue(driverHost.contains("SyncPoll.shown(appOnScreen, routesOpen, routesTab == RoutesTab.PLANNED, showSettings,"))
+        assertTrue(driverHost.contains("SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage == SettingsPage.SYNC)"))
+        assertTrue(driverHost.contains("SyncPoll.shown(map.appOnScreen, routes.open, routes.tab == RoutesTab.PLANNED, settingsSlice.showSettings,"))
         assertTrue("the driver starts once, in its own init", vm.contains("init { syncDriver.start() }"))
     }
 

@@ -30,17 +30,17 @@ class KeptPlacesE2ETest : E2EBase() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
         launch(beforeLaunch = { ctx.getSharedPreferences("onpath-places", 0).edit().clear().commit() })
         val cafe = Place("kept-1", "Café Kept", "cafe", MERAN_LAT, MERAN_LON)
-        scenario.onActivity { vm(it).pickSearchResult(cafe) }
-        waitUntil("the picked place's menu", 20_000) { read { it.poiMenu } != null }
+        scenario.onActivity { vm(it).searchFlow.pickSearchResult(cafe) }
+        waitUntil("the picked place's menu", 20_000) { read { it.placeMenus.poiMenu } != null }
 
         clickText(Txt.s(Res.string.place_favourite_add))
         assertNotNull("a tap keeps it: „Gemerkt“", findFresh(By.text(Txt.s(Res.string.place_favourite_on)), 5_000))
         assertTrue("no „Set as home“ while Zuhause is off", goneFresh(By.text(Txt.s(Res.string.place_home_set)), 2_000))
         shot("kept-menu")
         // a home stored before (or synced from the browser) stays – it is only not shown
-        scenario.onActivity { vm(it).let { vm -> vm.poiMenu?.let(vm::toggleHomePlace) } }
+        scenario.onActivity { vm(it).let { vm -> vm.placeMenus.poiMenu?.let(vm.keptPlaces::toggleHomePlace) } }
 
-        scenario.onActivity { vm(it).openSearch() }
+        scenario.onActivity { vm(it).searchFlow.openSearch() }
         assertNotNull("the favourites' head", findFresh(By.text(Txt.s(Res.string.search_favourites).uppercase()), 10_000))
         assertTrue("no ⌂ Home row while Zuhause is off", goneFresh(By.text(Txt.s(Res.string.search_home)), 2_000))
         assertEquals("the place once under the favourites", listOf("kept-1"), read { vm -> vm.search.ui.favourites.map { it.place.id } })

@@ -45,11 +45,11 @@ class DoneTourReviewE2ETest : E2EBase() {
         val stop = (1..71).map { k -> walk[165].copy(timeMs = walk[165].timeMs!! + k * 10_000L) }
         val pts = walk.take(166) + stop + walk.drop(166)
         var activity = "HIKE"; var sac = 2
-        scenario.onActivity { activity = vm(it).activity.name; sac = vm(it).sac }
+        scenario.onActivity { activity = vm(it).planRoute.activity.name; sac = vm(it).planRoute.sac }
         val name = "E2E look back"
         val id = db.insertTour(TourKind.RECORDED, name, activity, sac, 4_000.0, 200.0, 200.0, 3600.0, listOf(pts))
         try {
-            scenario.onActivity { vm(it).routesTab = RoutesTab.DONE; vm(it).openRoutes() }
+            scenario.onActivity { vm(it).routes.tab = RoutesTab.DONE; vm(it).routesGo.openRoutes() }
             val row = findFresh(By.text(name), 20_000)
             assertNotNull("the done tour's row – ${state()}", row)
             row!!.click()

@@ -37,7 +37,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
 
     @Before fun setUp() {
         launch(extraData = { dir -> writePois(dir) })
-        assertEquals("the app opens in Plan", AppMode.PLAN, read { it.mode })
+        assertEquals("the app opens in Plan", AppMode.PLAN, read { it.tourSession.mode })
         symbol = drawnPoiSymbol(POI_ID, POI_LAT, POI_LON, ICON_LAYER)
     }
 
@@ -46,20 +46,20 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         press(symbol.first, symbol.second, 60)
         waitFor("the POI details after a tap on its symbol at ${at(symbol)}") { read { it.selectedPoi?.id } == POI_ID }
         assertNotNull("the details sheet shows the name", findFresh(By.text(POI_NAME), 5_000))
-        assertNull("a tap sets no point", read { vm -> vm.waypoints.firstOrNull() })
+        assertNull("a tap sets no point", read { vm -> vm.plan.points.firstOrNull() })
         shot("details")
     }
 
     /** b) a real hold on the drawn symbol in Plan → the POI menu; „Start here“ there sets the plan's start on the POI. */
     @Test fun holdOnADrawnPoiSymbolOpensItsMenu() {
         hold(symbol.first, symbol.second)
-        waitFor("the POI menu after a hold on its symbol at ${at(symbol)}") { read { it.poiMenu?.id } == POI_ID }
-        assertNull("the POI menu, not the plain first-point menu", read { it.firstPointMenu })
+        waitFor("the POI menu after a hold on its symbol at ${at(symbol)}") { read { it.placeMenus.poiMenu?.id } == POI_ID }
+        assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
         assertNotNull("the menu shows the POI's name", findFresh(By.text(POI_NAME), 5_000))
         shot("menu")
         clickText(Txt.s(Res.string.plan_start_here))
         waitUntil("the start on the POI") { waypointCount() == 1 }
-        val p = read { it.waypoints.first() }
+        val p = read { it.plan.points.first() }
         assertTrue("the start is the POI ($p)", dist(p.lat, p.lon, POI_LAT, POI_LON) < 5.0)
     }
 
@@ -72,14 +72,14 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     @Test fun holdOnADrawnPoiSymbolWhilePlanningShowsOnlyTheMatchingRow() {
         val a = com.onpath.app.routing.GeoPoint(POI_LAT - 0.018, POI_LON)   // ~2 km south
         val b = com.onpath.app.routing.GeoPoint(POI_LAT - 0.0027, POI_LON)  // ~300 m south: the goal
-        scenario.onActivity { vm(it).addPoint(a); vm(it).addPoint(b) }
+        scenario.onActivity { vm(it).placeAdd.addPoint(a); vm(it).placeAdd.addPoint(b) }
         waitUntil("a plan of two points") { waypointCount() == 2 }
-        waitFor("the route drawn") { read { !it.routing && it.route != null } }
+        waitFor("the route drawn") { read { !it.planRun.routing && it.route != null } }
         val s = drawnPoiSymbol(POI_ID, POI_LAT, POI_LON, ICON_LAYER)
         com.onpath.app.debug.Problems.clear()
         hold(s.first, s.second, takeAddMenu = false) // waits for the measure (waitHoldMeasured)
-        waitFor("the POI menu after the measure") { read { it.poiMenu?.id } == POI_ID }
-        val rows = read { vm -> vm.poiMenu?.let(vm::placeMenu)?.main }
+        waitFor("the POI menu after the measure") { read { it.placeMenus.poiMenu?.id } == POI_ID }
+        val rows = read { vm -> vm.placeMenus.poiMenu?.let(vm.placeMenus::placeMenu)?.main }
         val trace = com.onpath.app.debug.Problems.events().map { it.message }
         val line = trace.firstOrNull { it.startsWith("Place menu of a") }
         android.util.Log.i("OnPathE2E", "POI hold while planning: rows $rows, realRouting $realRouting: $line")
@@ -91,7 +91,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         shot("planning-menu")
         clickText(Txt.s(Res.string.plan_make_destination))
         waitUntil("the plan goes on to the POI") { waypointCount() == 3 }
-        val last = read { it.waypoints.last() }
+        val last = read { it.plan.points.last() }
         assertTrue("the new goal is the POI ($last)", dist(last.lat, last.lon, POI_LAT, POI_LON) < 5.0)
     }
 
@@ -100,12 +100,12 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         val dp = android.content.res.Resources.getSystem().displayMetrics.density
         val beside = (symbol.first + 90 * dp) to symbol.second
         hold(beside.first, beside.second)
-        waitFor("the plain hold's first-point menu at ${at(beside)}") { read { it.firstPointMenu } != null }
-        assertNull("no POI menu beside the symbol", read { it.poiMenu })
+        waitFor("the plain hold's first-point menu at ${at(beside)}") { read { it.placeAdd.firstPointMenu } != null }
+        assertNull("no POI menu beside the symbol", read { it.placeMenus.poiMenu })
         shot("plain-hold")
         clickText(Txt.s(Res.string.plan_start_here))
         waitUntil("a point by the plain hold") { waypointCount() == 1 }
-        val p = read { it.waypoints.first() }
+        val p = read { it.plan.points.first() }
         assertTrue("the point is where the finger was, not on the POI ($p)", dist(p.lat, p.lon, POI_LAT, POI_LON) > 30.0)
     }
 
@@ -121,10 +121,10 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         assertTrue("the name is drawn at ${at(onName)} beside the symbol at ${at(s)}", drawnAround(onName, NAMED_LAYER))
         shot("named")
         hold(onName.first, onName.second)
-        waitFor("the plain hold's first-point menu on the name at ${at(onName)}") { read { it.firstPointMenu } != null }
-        assertNull("no POI menu on the name", read { it.poiMenu })
+        waitFor("the plain hold's first-point menu on the name at ${at(onName)}") { read { it.placeAdd.firstPointMenu } != null }
+        assertNull("no POI menu on the name", read { it.placeMenus.poiMenu })
         device.pressBack()
-        waitFor("the menu closed") { read { it.firstPointMenu } == null }
+        waitFor("the menu closed") { read { it.placeAdd.firstPointMenu } == null }
         press(s.first, s.second, 60)
         waitFor("the POI details after a tap on its symbol at ${at(s)} (z 17.5)") { read { it.selectedPoi?.id } == POI_ID }
     }
@@ -159,7 +159,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     private fun waitFor(what: String, cond: () -> Boolean) {
         waitUntil(what, 10_000, onTimeout = {
             shot("fail")
-            "POI ${read { it.selectedPoi?.id }} / menu ${read { it.poiMenu?.id }} / first-point menu ${read { it.firstPointMenu }} – ${state()}"
+            "POI ${read { it.selectedPoi?.id }} / menu ${read { it.placeMenus.poiMenu?.id }} / first-point menu ${read { it.placeAdd.firstPointMenu }} – ${state()}"
         }, cond)
     }
 

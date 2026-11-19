@@ -42,7 +42,7 @@ class RoutingDataFreshInstallE2ETest : E2EBase() {
     }
 
     private fun error(): String? { var e: String? = null; scenario.onActivity { e = vm(it).routeError }; return e }
-    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).routing }; return r }
+    private fun routing(): Boolean { var r = false; scenario.onActivity { r = vm(it).planRun.routing }; return r }
     private fun straight(): Boolean? {
         var s: Boolean? = null
         scenario.onActivity { s = vm(it).route?.legs?.any { l -> l.straight } }
