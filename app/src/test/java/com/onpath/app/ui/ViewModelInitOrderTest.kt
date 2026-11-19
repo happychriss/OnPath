@@ -7,35 +7,14 @@ import java.io.File
 
 /**
  * Declaration order in AppViewModel (a property declared below an init block is still null while it runs):
- * - `init { recalc() }` routes the saved plan at once, so every property recalc() assigns before its background job
- *   must be declared above that init block (else a NullPointerException in the constructor);
+ * - `init { recalc() }` routes the saved plan at once, so every property recalc()'s head touches before its background job
+ *   must be declared above that init block (else a NullPointerException in the constructor): since the route run lives
+ *   in `PlanRecalcSlice` (rebuild phase 2 piece 9b) that guard is [RecalcStartOrderTest] (the owner's yes 2026-11-19);
  * - a `by lazy` property reachable from an init block (directly, through the class's own functions, or from a coroutine
  *   it launches, which may run before the constructor got there) must be declared above that init block.
  */
 class ViewModelInitOrderTest {
     private val lines = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readLines()
-
-    /** Class-level delegated property (`by mutableStateOf` …): null until its line has run – the crash kind. */
-    private fun declLine(name: String): Int =
-        lines.indexOfFirst { Regex("""^    (private |internal )?(var|val) $name\b.* by """).containsMatchIn(it) }
-
-    @Test fun propertiesUsedByRecalcAtStartAreDeclaredBeforeTheInitThatCallsIt() {
-        val initAt = lines.indices.first { lines[it].trim() == "init {" && lines.getOrNull(it + 1)?.trim() == "recalc()" }
-        val start = lines.indexOfFirst { it.contains("private fun recalc()") }
-        assertTrue("recalc() found", start >= 0)
-        // the part that runs synchronously in the constructor: up to the background job
-        val end = (start until lines.size).first { lines[it].contains("routeJob = viewModelScope.launch") }
-        val assigned = (start..end).flatMap { i ->
-            Regex("""(?<![.\w])([a-z][A-Za-z0-9]*)\s*=(?!=)""").findAll(lines[i]).map { it.groupValues[1] }.toList()
-        }.toSet()
-        val declaredLate = assigned.mapNotNull { n -> declLine(n).takeIf { it > initAt }?.let { "$n (line ${it + 1})" } }
-        assertEquals("declared after the init block at line ${initAt + 1}", emptyList<String>(), declaredLate)
-        // the route run's state is written through routeEvent() (no plain assignment in recalc for the check above)
-        assertTrue("recalc() sends the route run its event", (start..end).any { lines[it].contains("routeEvent(RouteRun.Event.Recalc(") })
-        // the route run's state is the slice's (PlanRunSlice, piece 9): a plain property declared above the init that calls recalc()
-        val runAt = lines.indexOfFirst { Regex("""^    (private )?val planRun = com\.onpath\.app\.ui\.plan\.PlanRunSlice\(""").containsMatchIn(it) }
-        assertTrue("planRun declared above the init block", runAt in 0 until initAt)
-    }
 
     /** Index of the line closing the block opened on line [open] (string literals and // comments ignored). */
     private fun blockEnd(open: Int): Int {
