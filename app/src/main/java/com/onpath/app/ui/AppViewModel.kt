@@ -2608,11 +2608,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     /** End sheet / arrival → Löschen: the TOUR goes straight to the recycle bin, no summary. */
     fun endTourAndDelete() = tourEnd.endTourAndDelete()
 
-    /**
-     * The service found the end of the followed line (RecState.arrived, review H2 – also with the phone in the pocket;
-     * it says "arrived" itself): the arrival question once per arrival this app instance sees.
-     */
-
     // ---------------- follow / record ----------------
 
     /**

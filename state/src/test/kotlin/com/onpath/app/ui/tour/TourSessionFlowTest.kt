@@ -774,7 +774,9 @@ class TourSessionFlowTest {
         assertTrue(session.straightAsk)
         assertEquals(emptyList<String>(), actions())
         assertEquals(AppMode.PLAN, session.mode)
-        ui { session.continueNavigation(force = true) }
+        // „Trotzdem navigieren“ is the dialog's own way: straightConfirmed → startNavigation(force) → continue with that force
+        ui { session.straightConfirmed() }
+        assertFalse("the question is answered, not asked again", session.straightAsk)
         assertEquals(listOf("FOLLOW_CHANGED", "NAVIGATING"), actions())
         assertEquals(AppMode.NAVIGATE, session.mode)
     }
