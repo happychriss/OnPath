@@ -67,7 +67,7 @@ interface TourFollowHost {
  * written through [rows] on [planCopyDispatcher], the ONE serial dispatcher the view model made (two would break the
  * order of the writes). The property initialisers restore the state from [files] and [prefs] as the view model's did (rule 33).
  *
- * [start] launches the tour-id collector (rule 21): the view model calls it in a small `init` right after this slice is
+ * [start] launches the tour-id collector (rule 21): the view model calls it in a small `init` after this slice and the edits slice (`TourEdits`, which owns the split requests this slice's host invalidates) are
  * built, above the big `init` as before (some declarations lower than the old collector – nothing between reads the follow
  * state or launches). Latent bug kept as it was: L7 ([followAgain] sends its command without the `recState != null` guard of
  * its siblings). L3: the seen activity is initialised at construction now, before the big `init`'s first state pass – the old
