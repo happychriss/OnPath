@@ -40,7 +40,11 @@ const far = JSON.parse(e.longRoute('46.67,11.16;52.05,11.16', 'HIKE', false));
 check(far.ask && far.title === 'This route is very long' && /days on foot\. Calculating and loading its maps takes long\.$/.test(far.text), `600 km on foot is asked first: "${far.text}"`);
 check(JSON.parse(e.longRoute('46.67,11.16;46.69,11.15', 'HIKE', false)).ask === false, 'a day hike is not asked');
 check(JSON.parse(e.longRoute('46.67,11.16;52.05,11.16', 'HIKE', true)).ask === false, 'a multi-day tour is never asked');
-check(e.planCancel('edit', true, false) === 'UNDO' && e.planCancel('activity', false, false) === 'RESTORE_ACTIVITY', 'Cancel takes back the change (PlanStatus.onCancel)');
+e.historyRecord('46.67,11.16;46.69,11.15', '46.67,11.16;46.68,11.13;46.69,11.15');
+const undone = JSON.parse(e.planCancel('edit', '46.67,11.16;46.68,11.13;46.69,11.15', '', 0));
+check(undone.what === 'UNDO' && undone.points === '46.670000,11.160000;46.690000,11.150000' &&
+  JSON.parse(e.planCancel('activity', '46.67,11.16;46.69,11.15', 'HIKE', 3)).what === 'RESTORE_ACTIVITY',
+  'Cancel takes back the change (the app\'s PlanEditState.cancelRun in the Wasm)');
 
 console.log(fails.length ? 'FAILED' : 'all ok');
 }

@@ -551,20 +551,32 @@ object Engine {
         }
     }
 
-    // ---- undo / redo: the app's PlanHistory (ui/PlanState.kt) on the page's point list ----
+    // ---- undo / redo: the app's PlanDocument + PlanEditState (WebPlanChain) around one PlanHistory ----
     private val history = PlanHistory()
+    /** The app's plan-editing chain on this engine's history (rebuilt after an import: its Undo / Redo flags are read at construction). */
+    private var chain = WebPlanChain(history = history)
 
-    /** Before a change of the points: [points] as they are now (one Undo step). */
-    fun historyRecord(points: String) = history.record(parsePoints(points))
+    /** One undoable change of the points [before] → [after] (PlanEditState.change). */
+    fun historyRecord(before: String, after: String) = chain.record(parsePoints(before), parsePoints(after))
 
-    /** "undo" / "redo": the point list to show, or "null" when there is nothing to take back. */
+    /** "undo" / "redo" on the plan [points] (PlanEditState.undoStep / redoStep): the point list to show, or "null". */
     fun historyStep(op: String, points: String): String {
-        val now = parsePoints(points)
-        val out = (if (op == "redo") history.redo(now) else history.undo(now)) ?: return "null"
+        val out = chain.step(op != "redo", parsePoints(points)) ?: return "null"
         return out.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }
     }
 
     fun historyState(): String = "{\"canUndo\":" + history.canUndo + ",\"canRedo\":" + history.canRedo + "}"
+
+    /**
+     * Cancel of the long-route question / of the wait (PlanEditState.cancelRun(STOPPED)) for the run started by [cause]
+     * on the plan [points]; [activity] / [sac] = the activity before an activity change. `{"what":"UNDO","points":"…"}`
+     * ("UNDO" / "REDO" with the points to show, "RESTORE_ACTIVITY", "KEEP_POINTS").
+     */
+    fun planCancel(cause: String, points: String, activity: String, sac: Int): String {
+        val (what, pts) = chain.cancel(cause, parsePoints(points), activityOrNull(activity), sac)
+        return "{\"what\":" + str(what) + ",\"points\":" +
+            (pts?.let { p -> str(p.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) } ?: "null") + "}"
+    }
 
     /**
      * The undo / redo snapshots as text, for a fresh engine worker (web-planner.md §26: the page stops a long plan that
@@ -581,6 +593,7 @@ object Engine {
         val parts = text.split("#")
         fun list(s: String?) = if (s.isNullOrEmpty()) emptyList() else s.split("|").map { if (it == "~") emptyList() else parsePoints(it) }
         history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
+        chain = WebPlanChain(history = history)
     }
 
     // ---- map gestures: the app's MapGestures (hold rules, point menu) ----
@@ -968,7 +981,7 @@ external fun planProgress(text: String)
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)
 
-@JSExport fun historyRecord(points: String) = Engine.historyRecord(points)
+@JSExport fun historyRecord(before: String, after: String) = Engine.historyRecord(before, after)
 
 @JSExport fun historyStep(op: String, points: String): String = Engine.historyStep(op, points)
 
@@ -1000,7 +1013,7 @@ external fun planProgress(text: String)
 
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
-@JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
+@JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int): String = Engine.planCancel(cause, points, activity, sac)
 /** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
 @JSExport fun planChainProbe(): String = WebPlanChain.probe()
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =

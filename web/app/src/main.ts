@@ -570,7 +570,7 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const fresh = freshHistory; freshHistory = false;
-  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points));
+  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points), enc(points));
   // the tour beside the history: a fresh plan starts with none to undo; else the tour as it was is one undo step
   const tourBefore = state.tour, pointsBefore = state.points, metaBefore = state.meta;
   if (fresh) { tourUndo.length = 0; tourRedo.length = 0; } else { tourUndo.push(tourBefore); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0; }
@@ -646,17 +646,22 @@ function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move'
 function step(op: 'undo' | 'redo') {
   closeMenu();
   pinTaken = null; // the user's own Undo / Redo: a later Cancel brings no pin back (cancelLongRoute reads it first)
-  return queueEdit(async () => {
-    const t = await engine.call('historyStep', op, enc(state.points));
-    runCause = op;
-    state.otherRouting = false;
-    if (t === 'null') return null;
-    // the tour of that step (kept beside the history in commit)
-    const from = op === 'undo' ? tourUndo : tourRedo, to = op === 'undo' ? tourRedo : tourUndo;
-    if (from.length) { to.push(state.tour); state.tour = from.pop()!; }
-    setPoints(dec(t));
-    return { planned: changed() };
-  });
+  return queueEdit(async () => stepTo(op, await engine.call('historyStep', op, enc(state.points))));
+}
+
+/**
+ * The plan after an Undo / Redo [op] the engine took (PlanEditState.undoStep / redoStep – the user's own, or the one a
+ * Cancel asked for): [t] = its points, 'null' = nothing to take back. The tour of that step comes with it.
+ */
+function stepTo(op: 'undo' | 'redo', t: string): { planned: Promise<void> } | null {
+  runCause = op;
+  state.otherRouting = false;
+  if (t === 'null') return null;
+  // the tour of that step (kept beside the history in commit)
+  const from = op === 'undo' ? tourUndo : tourRedo, to = op === 'undo' ? tourRedo : tourUndo;
+  if (from.length) { to.push(state.tour); state.tour = from.pop()!; }
+  setPoints(dec(t));
+  return { planned: changed() };
 }
 
 /**
@@ -1750,12 +1755,18 @@ function newPointsAsked() {
 let runCause = 'other';
 let nextCause: string | null = null;
 let activityBefore: { a: Activity; sac: number } | null = null;
-/** Cancel of "This route is very long" (AppViewModel.cancelRun): undo / redo the change, put the activity back, or keep the points. */
+/**
+ * Cancel of "This route is very long" / of the wait: the app's PlanEditState.cancelRun(STOPPED) in the engine (WebPlanChain)
+ * decides for the run's cause – the change undone / redone (the engine's history took that step), the activity put back,
+ * or the points kept.
+ */
 async function cancelLongRoute() {
   engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   overlay.finish('link'); // a link's plan stopped: nothing more to wait for
   state.latest++; // from now on the stopped run's reports are ignored (planRun) – not only after the answer below
-  const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
+  const before = runCause === 'activity' ? activityBefore : null;
+  const answer = await engine.call('planCancel', runCause, enc(state.points), before?.a ?? '', before?.sac ?? 0) as string;
+  const { what, points } = JSON.parse(answer) as { what: string; points: string | null };
   state.latest++; state.plan = null; setPlanning(false);
   const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
   const pinBack = () => { // TakenPin.back: the place is no point of the plan any more and no other pin is shown
@@ -1763,8 +1774,11 @@ async function cancelLongRoute() {
     if (state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) return;
     placeCard.showPin(taken.hit);
   };
-  if (what === 'UNDO') { await step('undo'); pinBack(); return; }
-  if (what === 'REDO') { await step('redo'); pinBack(); return; }
+  if (what === 'UNDO' || what === 'REDO') {
+    const op = what === 'UNDO' ? 'undo' : 'redo';
+    await queueEdit(async () => stepTo(op, points ?? 'null'));
+    pinBack(); return;
+  }
   if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
   state.notRouted = true;
   render();

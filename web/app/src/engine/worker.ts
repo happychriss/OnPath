@@ -37,7 +37,7 @@ interface WasmEngine {
   keptStart(home: string, favourites: string, recent: string, all: boolean, lat: number, lon: number): string;
   recentAdd(recent: string, code: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
-  historyRecord(points: string): void;
+  historyRecord(before: string, after: string): void;
   historyStep(op: string, points: string): string;
   historyState(): string;
   historyExport(): string;
@@ -51,7 +51,7 @@ interface WasmEngine {
   activities(): string;
   problems(): string;
   longRoute(points: string, activity: string, multiDay: boolean): string;
-  planCancel(cause: string, canUndo: boolean, canRedo: boolean): string;
+  planCancel(cause: string, points: string, activity: string, sac: number): string;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
@@ -381,7 +381,7 @@ function legsOut(e: WasmEngine) {
 /** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
 const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
-const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport']);
+const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel']); // planCancel: its Undo / Redo is a step
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
