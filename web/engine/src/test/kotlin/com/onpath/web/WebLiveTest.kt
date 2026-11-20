@@ -19,7 +19,8 @@ class WebLiveTest {
     private val nonce = b64.encodeToString(ByteArray(12) { 9 })
 
     @Test fun theKeysAreThePhones() {
-        assertEquals("{\"box\":\"0dPnimRkezLc3fCguuX6rg\",\"token\":\"aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo\"}", WebLive.keys(link))
+        // test vector from the dummy secret i*7+1 (or a made-up test token) – not a credential
+        assertEquals("{\"box\":\"0dPnimRkezLc3fCguuX6rg\",\"token\":\"aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo\"}", WebLive.keys(link)) // ggignore
         assertEquals(WebLive.keys(link), WebLive.keys("#" + link.substringAfter('#'))) // what the page passes: location.hash
         assertEquals("null", WebLive.keys("https://plan.onpath.earth/live/"))
         assertEquals("null", WebLive.keys("#t=abc"))

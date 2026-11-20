@@ -252,12 +252,16 @@ class LiveFormatTest {
     }
 
     private companion object {
-        const val FROZEN_CODE = "AQEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa"
-        const val FROZEN_BOX = "0dPnimRkezLc3fCguuX6rg"
-        const val FROZEN_READ = "aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo"
+        // test vector from the dummy secret i*7+1 – not a credential
+        const val FROZEN_CODE = "AQEIDxYdJCsyOUBHTlVcY2pxeH-GjZSboqmwt77FzNPa" // ggignore
+        // test vector from the dummy secret i*7+1 – not a credential
+        const val FROZEN_BOX = "0dPnimRkezLc3fCguuX6rg" // ggignore
+        // test vector from the dummy secret i*7+1 – not a credential
+        const val FROZEN_READ = "aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo" // ggignore
         const val FROZEN_HEAD = "01010101010212c8f7b904a0fe870180a0f1c2b13403e41706040296010502f0600602800507028859080680ea94bdb1340902b8300a0680bbdfc5b1340c012b0d0448494b450e0943687269737469616e0f015f100178"
         const val FROZEN_ROUTE = "01020103c8f7b904a0fe8701e417647810645003"
         const val FROZEN_CHUNK = "0103010300c8f7b904a0fe8701e41780c0e285e368000a0c02c03e011e1c04e0bf0a"
-        const val FROZEN_BLOB = "AQECAwQFBgcICQoLDE_3Q3rz5V0JLGI3QZkonXZtlvD7npf9uIwx4doClVwJXnfFqVzMkIvzaOZC9FMAyAT99prH2vvAbJAo0DKARddqJ4B1K2BRHgDZ79TR5Tx02SQKEJG066brfvQEPfIYeCJR7K1eZEE"
+        // test vector from the dummy secret i*7+1 – not a credential
+        const val FROZEN_BLOB = "AQECAwQFBgcICQoLDE_3Q3rz5V0JLGI3QZkonXZtlvD7npf9uIwx4doClVwJXnfFqVzMkIvzaOZC9FMAyAT99prH2vvAbJAo0DKARddqJ4B1K2BRHgDZ79TR5Tx02SQKEJG066brfvQEPfIYeCJR7K1eZEE" // ggignore
     }
 }
