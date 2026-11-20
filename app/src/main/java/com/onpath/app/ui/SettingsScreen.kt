@@ -863,11 +863,7 @@ private fun PrivacySection() {
                 }
             }
             Text(str(Res.string.settings_privacy_google), style = MaterialTheme.typography.bodySmall)
-            // plan sync (docs/design/web-sync.md §12 – the website's privacy notice says the same)
-            HorizontalDivider()
-            Text(str(Res.string.settings_privacy_sync_title), fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
-            Text(str(Res.string.settings_privacy_sync_text), style = MaterialTheme.typography.bodySmall)
-            HorizontalDivider()
+            PrivacySyncAndLive()
         }
         PrivacyNoticeLink()
     }
@@ -899,6 +895,9 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOfNotNull(
     // plan sync with the web planner (plansync/HttpMailbox → plan.onpath.earth/sync/v1, only when paired)
     PrivacyFlow(Txt.s(Res.string.settings_privacy_sync_what), Txt.s(Res.string.settings_privacy_sync_to),
         Txt.s(Res.string.settings_privacy_sync_when)),
+    // live sharing (live/LiveUploader → the OnPath server, only while a tour is shared)
+    PrivacyFlow(Txt.s(Res.string.settings_privacy_live_what), Txt.s(Res.string.settings_privacy_live_to),
+        Txt.s(Res.string.settings_privacy_live_when)),
 )
 
 /**
