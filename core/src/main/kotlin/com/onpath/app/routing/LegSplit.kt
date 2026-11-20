@@ -1,11 +1,6 @@
-package com.onpath.web
+package com.onpath.app.routing
 
 import com.onpath.app.data.Geo
-import com.onpath.app.routing.Activity
-import com.onpath.app.routing.GeoPoint
-import com.onpath.app.routing.LegCache
-import com.onpath.app.routing.RouteResult
-import com.onpath.app.routing.Share
 
 /**
  * A point put in ON a routed leg's line is no reason to route (owner 2026-11-19: „Übernachtung hier“ at a spot of the
@@ -18,8 +13,9 @@ import com.onpath.app.routing.Share
  * spot, the route's hover point) and not one of its ends; a point beside the line (a click a few metres off, a hotel
  * away from the route) is routed as before – the router may take another way through it.
  *
- * The app routes the two new legs in this case too (state/ PlanRecalcSlice keeps legs only under snapped points,
- * [LegCache.alias]) – this is the planner's own step until the app has one.
+ * One implementation for both (owner 2026-11-20: the app cuts like the planner): the web planner calls [seed] before
+ * each plan (web/engine WebApi), the app before each run of the plan (state/ PlanRecalcSlice). Pure Kotlin – the
+ * planner compiles the core folder as it is.
  */
 object LegSplit {
     /** A point this close to a line point of the leg lies on it (the page's 6 decimals are ≤ 0.08 m). */
@@ -27,9 +23,10 @@ object LegSplit {
 
     /**
      * Before a plan of [wps]: each point [k] whose two legs are not known while the leg [k − 1] → [k + 1] is (the point was
-     * put in on it) – that leg cut at the point ([split]) into the [cache].
+     * put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut.
      */
-    fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int) {
+    fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int): Int {
+        var cut = 0
         for (k in 1 until wps.lastIndex) {
             val a = wps[k - 1]; val p = wps[k]; val c = wps[k + 1]
             if (cache.get(a, p, activity, sac) != null || cache.get(p, c, activity, sac) != null) continue
@@ -37,7 +34,9 @@ object LegSplit {
             val (x, y) = split(whole, p) ?: continue
             cache.put(a, p, activity, sac, x)
             cache.put(p, c, activity, sac, y)
+            cut++
         }
+        return cut
     }
 
     /**
@@ -73,7 +72,7 @@ object LegSplit {
      * metre; metres without attributes spread like the whole), the second part the rest – the two merge to [shares].
      */
     private fun shares(shares: List<Share>, line: List<GeoPoint>, scale: Double,
-                       key: (com.onpath.app.routing.WayAttrs) -> String): Pair<List<Share>, List<Share>> {
+                       key: (WayAttrs) -> String): Pair<List<Share>, List<Share>> {
         val known = HashMap<String, Double>(); var unknown = 0.0
         for (i in 1 until line.size) {
             val d = Geo.distance(line[i - 1], line[i]) * scale

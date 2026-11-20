@@ -303,6 +303,10 @@ class PlanRecalcSlice(
             val result = withContext(routingDispatcher) {
                 exceptions {
                     val eng = routingEngine()
+                    // a point put in ON the routed line (a night, a stop at a line point – owner 2026-11-20, as the
+                    // planner does): its leg cut there from the known line, nothing routed for it
+                    val cut = com.onpath.app.routing.LegSplit.seed(legCache, pts, act, level)
+                    if (cut > 0) Problems.trace("routing", "Route #$gen: $cut leg(s) cut at a point put in on the line – not routed")
                     // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
                     // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
                     // askAtLimit: in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines

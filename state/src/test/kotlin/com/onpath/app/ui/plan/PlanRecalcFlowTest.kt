@@ -893,6 +893,40 @@ class PlanRecalcFlowTest {
         assertEquals("the leg under the moved points is the same line", 0, ioEx.size)
     }
 
+    /**
+     * A point put in ON the routed line (owner 2026-11-20: the app cuts like the planner – a night, a stop at a line point):
+     * the run cuts the known leg there ([com.onpath.app.routing.LegSplit]) – no router call, the same line and numbers, three
+     * points now. A point a few metres beside the line is routed as before (its two legs).
+     */
+    @Test fun aPointPutInOnTheRoutedLineCutsItsLegWithoutRoutingAndOneBesideItIsRouted() {
+        plan(a, b, c); create()
+        recalcNow(); finishRun()
+        val before = routeNow!!
+        val calls = engine.inner.calls.size
+        val spot = before.legs[0].points.let { it[it.size / 2] }
+        ui { planEdit.change { add(1, spot) } }
+        finishRun()
+        assertEquals("no router call", calls, engine.inner.calls.size)
+        assertEquals(listOf("Route #2: 1 leg(s) cut at a point put in on the line – not routed"),
+            problems.traced("routing").filter { it.contains("cut at a point") })
+        assertEquals(listOf(a, spot, b, c), plan.points.toList())
+        assertEquals(before.points, routeNow!!.points)
+        assertEquals(before.distanceM, routeNow!!.distanceM, 1e-6)
+        assertEquals(before.durationS, routeNow!!.durationS, 1e-6)
+        assertEquals(3, routeNow!!.legs.size)
+        // both halves are kept under their own points: the same plan again routes nothing
+        assertNotNull(planRoute.legCache.get(a, spot, Activity.HIKE, 3))
+        assertNotNull(planRoute.legCache.get(spot, b, Activity.HIKE, 3))
+
+        // a point 5 m beside the second leg's line: routed as before
+        val q = routeNow!!.legs[2].points.let { it[it.size / 2] }
+        val beside = GeoPoint(q.lat + 5.0 / 111_195.0, q.lon)
+        ui { planEdit.change { add(3, beside) } }
+        finishRun()
+        assertEquals(listOf(listOf(b, beside), listOf(beside, c)), engine.inner.calls.drop(calls).map { it.waypoints })
+        assertEquals(1, problems.traced("routing").count { it.contains("cut at a point") })
+    }
+
     @Test fun aSnappedPlanThatIsTheSavedOneIsSavedAgainAsSnapped() {
         plan(a, b); create()
         plan.setSaved("Mine", 5L, listOf(a, b))

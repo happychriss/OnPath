@@ -22,6 +22,7 @@ import com.onpath.app.routing.RoutingException
 import com.onpath.app.routing.Share
 import com.onpath.app.routing.SlowPlan
 import com.onpath.app.routing.LegCache
+import com.onpath.app.routing.LegSplit
 import com.onpath.app.routing.OfflineCorridor
 import com.onpath.app.domain.PlanStatus
 import com.onpath.app.time.RouteTimes

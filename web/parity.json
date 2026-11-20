@@ -167,7 +167,7 @@
         "web/app/src/main.ts",
         "web/app/src/longroute.ts"
       ],
-      "blob": "20dc4af8c1130b8a11becfb525cd8d636c59ae1b"
+      "blob": "77a4514b959e8500d6b9db84b6acc65a7c005c60"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt",
@@ -3328,6 +3328,18 @@
     "core/src/main/kotlin/com/onpath/app/live/LiveSnapshot.kt": {
       "blob": "d0072e1a7c4fb1e49cd30ef55847f4ed896bb72c",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/LegSplit.kt": {
+      "blob": "acf67b468f39b16fd458c3f1b3e97f78de1c6ee7",
+      "perf": [
+        "* put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut.",
+        "fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int): Int {",
+        "if (cache.get(a, p, activity, sac) != null || cache.get(p, c, activity, sac) != null) continue",
+        "val whole = cache.get(a, c, activity, sac) ?: continue",
+        "cache.put(a, p, activity, sac, x)",
+        "cache.put(p, c, activity, sac, y)",
+        "var j = -1; var best = Double.MAX_VALUE"
+      ]
     }
   }
 }
