@@ -63,30 +63,27 @@ object WebKept {
     }
 
     /**
-     * One change ([op]: keep, unkeep, setHome, clearHome) made by the app's own [KeptPlacesSlice] (toggleFavouritePlace /
-     * toggleHomePlace) on what is kept now: keep / unkeep when the place is not / is a favourite (every copy of it goes),
-     * setHome when it is not the home (replaces the old one), clearHome on the home. JSON {home, favourites}.
+     * One change ([op]: keep, unkeep, setHome, clearHome) made by the app's own [KeptPlacesSlice] on what is kept now –
+     * the target state (setFavourite / setHome): keep / unkeep (every copy of it goes), setHome replaces the old home,
+     * clearHome removes it. A row drawn before another tab or the sync made the same change changes nothing (the
+     * slice's own rule). JSON {home, favourites}.
      */
     fun apply(home: String, favourites: String, op: String, code: String): String {
         val now = saved(home, favourites)
         val p = decode(code)
-        // the page's four ops are the menu's rows as it showed them: a row that no longer fits what is kept now (another
-        // tab or the sync changed it meanwhile) changes nothing – the slice itself only toggles
-        val target = when (op) {
-            "keep" -> p?.takeIf { !now.isFavourite(it) }
-            "unkeep" -> p?.takeIf { now.isFavourite(it) }
-            "setHome" -> p?.takeIf { !now.isHome(it) }
-            "clearHome" -> now.home
-            else -> null
-        }
-        val s = if (target == null) now else {
+        val s = if (p == null && op != "clearHome") now else {
             val store = PageStore(now)
             val slice = KeptPlacesSlice(store, object : KeptPlacesHost {
-                override fun searchMark(): Place = target // the place itself (address, kind): its menu is about it
-                override fun isCandidate(poi: Poi) = true
+                // the page hands the place itself (address, kind) – the slice's Poi path is the app's, not asked here
+                override fun searchMark(): Place? = p
+                override fun isCandidate(poi: Poi) = false
             })
-            val poi = Poi(target.id, target.kind, target.name, target.lat, target.lon, target.ele)
-            if (op == "keep" || op == "unkeep") slice.toggleFavouritePlace(poi) else slice.toggleHomePlace(poi)
+            when (op) {
+                "keep" -> p?.let { slice.setFavourite(it, true) }
+                "unkeep" -> p?.let { slice.setFavourite(it, false) }
+                "setHome" -> p?.let { slice.setHome(it) }
+                "clearHome" -> slice.setHome(null)
+            }
             store.places
         }
         return "{\"home\":" + (s.home?.let { str(encode(it)) } ?: "null") + ",\"favourites\":" +
