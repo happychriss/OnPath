@@ -17,7 +17,7 @@ import java.util.Map;
  * touring.brf, lookups.dat; optional memoryclass (MB, default 64 = BRouter's own).
  */
 public class PhoneBench {
-    static final double[] START = {51.1686, 6.9390}, GOAL = {51.7385, 7.5234};
+    static final double[] START = {51.1686, 6.9390}, GOAL = {51.7385, 7.5242};
     static final double[] A = {51.3930, 7.0870}, B = {51.4930, 7.4560}, C = {51.4500, 7.2560};
 
     static File dir;

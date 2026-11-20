@@ -19,7 +19,7 @@ fun main() {
     android.content.res.AssetManager.root = File("/home/user/onpath/app/src/main/assets")
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
-    val wps = listOf(GeoPoint(51.16928899999999, 6.925429000000008), GeoPoint(51.16915399999999, 6.929327999999998),
+    val wps = listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16915399999999, 6.929327999999998),
         GeoPoint(51.16826, 6.93204), GeoPoint(51.16830975821202, 6.932520568370819))
     val offset = GeoPoint(51.169673, 6.926565)                                      // the right onto the road
     val crossing = listOf(GeoPoint(51.169562, 6.930661), GeoPoint(51.169426, 6.930797)) // the 18 m crossing piece

@@ -21,7 +21,7 @@ fun main() {
     android.content.res.AssetManager.root = File("/home/user/onpath/app/src/main/assets")
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val e = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
-    val pts = listOf(GeoPoint(51.1686, 6.9390), GeoPoint(51.7385, 7.5234))
+    val pts = listOf(GeoPoint(51.1686, 6.9390), GeoPoint(51.7385, 7.5242))
     var worker: Thread? = null
     val seen = ArrayList<Pair<Long, Double>>()
     var other = false

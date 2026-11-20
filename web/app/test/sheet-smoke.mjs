@@ -23,9 +23,9 @@ const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (
 const errors = [];
 const photon = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [11.2585, 46.7006] },
   properties: { name: 'Ifinger', osm_key: 'natural', osm_value: 'peak', state: 'Trentino-Südtirol', country: 'Italien' } }] };
-// a far result (owner 2026-10-30: "hilden, fabriciusstr. 11" picked online was not centred, its card far from it)
-const far = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [6.9339, 51.1683] },
-  properties: { name: 'Fabriciusstraße', housenumber: '11', osm_key: 'place', osm_value: 'house', city: 'Hilden', country: 'Deutschland' } }] };
+// a far result (owner 2026-10-30: a Hilden address picked online was not centred, its card far from it)
+const far = { type: 'FeatureCollection', features: [{ type: 'Feature', geometry: { type: 'Point', coordinates: [6.9348, 51.1675] },
+  properties: { name: 'Warrington-Platz', osm_key: 'place', osm_value: 'square', city: 'Hilden', country: 'Deutschland' } }] };
 
 const settle = (page) => page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 30_000 }).then(() => page.waitForTimeout(300));
 /** Every route point, the planned line and a shown GPX track (map coordinates) inside the free map room: in the map,
@@ -236,7 +236,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     check(await page.locator(MENU).count() === 0, `${P} Escape closes the menu`);
     // a far result after a move that left a padding behind (spot / gap "show"): in the free room, its menu at it
     await page.evaluate(() => window.__map.easeTo({ padding: { top: 90, bottom: 50, left: 446, right: 90 }, duration: 0 }));
-    await pick('hilden fabriciusstr 11');
+    await pick('hilden warrington-platz');
     g = await menuGeom();
     checkMenu(g, `${P} far result (Hilden):`);
     check(g.tip.x > g.sheet.x + g.sheet.w && g.tip.y > g.bar.y + g.bar.h && g.tip.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.tip)})`);

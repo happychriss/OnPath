@@ -229,7 +229,7 @@ class PlaceAddMenuTest {
 
     /** The 22:57 case from the phone as drawn: inserting ≈ 177 m, appending ≈ 225 m – inserting clearly shorter, a stop. */
     @Test fun theTwoLegCaseFromThePhoneIsAStop() {
-        val plan = listOf(GeoPoint(51.169278, 6.925382), GeoPoint(51.172954, 6.933397), GeoPoint(51.17107966, 6.93123043))
+        val plan = listOf(GeoPoint(51.16985, 6.92581), GeoPoint(51.172954, 6.933397), GeoPoint(51.17107966, 6.93123043))
         val spot = GeoPoint(51.171181, 6.934443)
         val d = PlaceAddMenu.detours(plan, spot)!!
         assertEquals(177.0, d.insertM, 10.0)

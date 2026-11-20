@@ -48,7 +48,7 @@ fun main() {
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
     // the owner's plan (app prefs "plan")
-    val p1 = GeoPoint(51.169296, 6.925455); val p2 = GeoPoint(51.164046, 6.928682)
+    val p1 = GeoPoint(51.16901, 6.92405); val p2 = GeoPoint(51.164046, 6.928682)
     val p3 = GeoPoint(51.160713, 6.926101); val p4 = GeoPoint(51.158100, 6.921517)
     val rosellen = GeoPoint(51.13035, 6.7337)
     var failures = 0

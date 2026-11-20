@@ -25,7 +25,7 @@ class ActivityCheckTest {
     private fun fresh() = NavSession.start(NavKind.PLAN, "Test", Activity.HIKE, 3, route,
         listOf(pt(0.0, 0.0), pt(1000.0, 0.0), pt(1000.0, 1000.0)), names = listOf(null, "Hut", "Peak"))
     /** Field bug 2026-11-07: at home, ~700 km from the plan. */
-    private val home = GeoPoint(51.16926, 6.92544)
+    private val home = GeoPoint(51.16985, 6.92581) // Hilden, a bus stop
 
     private fun result(points: List<GeoPoint>, ways: List<Share> = emptyList(), surfaces: List<Share> = emptyList()) =
         RouteResult(points, Geo.length(points), 0.0, 0.0, 0.0, ways, surfaces)

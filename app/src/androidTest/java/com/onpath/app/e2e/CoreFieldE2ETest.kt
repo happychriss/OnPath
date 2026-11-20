@@ -603,8 +603,8 @@ class CoreFieldE2ETest : E2EBase() {
         val meran = GeoPoint(46.67135, 11.16464)
         val mutkopf = GeoPoint(46.71077, 11.13787)
         fun dist(a: GeoPoint, b: GeoPoint) = com.onpath.app.data.Geo.distance(a, b)
-        // at home, 700 km away
-        lat = 51.16926; lon = 6.92544
+        // in Hilden (the Fabriciusstraße bus stop), 700 km away
+        lat = 51.16985; lon = 6.92581
         waitUntil("the position at home", 20_000) {
             var ok = false
             scenario.onActivity { ok = vm(it).tracker.location.value?.let { p -> p.latitude > 51.0 } == true }

@@ -32,12 +32,12 @@ fun main() {
     val dump = System.getenv("DUMP") != null
     val only = System.getenv("CASE")
     val cases = listOf(
-        "Hilden plan 2026-11-07" to listOf(GeoPoint(51.16928899999999, 6.925429000000008), GeoPoint(51.16915399999999, 6.929327999999998),
+        "Hilden plan 2026-11-07" to listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16915399999999, 6.929327999999998),
             GeoPoint(51.16826, 6.93204), GeoPoint(51.16830975821202, 6.932520568370819)),
         "Hilden Stadtpark" to listOf(GeoPoint(51.167810, 6.925827), GeoPoint(51.166511, 6.927717), GeoPoint(51.165892, 6.928305)),
-        "Hilden -> Schloss Benrath" to listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.16136, 6.87100)),
-        "Hilden -> Haan" to listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.19180, 7.01290)),
-        "Hilden -> Langenfeld" to listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.10990, 6.94820)),
+        "Hilden -> Schloss Benrath" to listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16136, 6.87100)),
+        "Hilden -> Haan" to listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.19180, 7.01290)),
+        "Hilden -> Langenfeld" to listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.10990, 6.94820)),
     )
     val fails = ArrayList<String>()
     var all = 0; var late = 0; var missing = 0

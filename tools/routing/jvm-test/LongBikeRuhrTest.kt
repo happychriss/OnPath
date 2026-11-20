@@ -19,7 +19,7 @@ class FakeCtx(private val dir: File) : android.content.Context() {
 // Hilden → Schloss Nordkirchen (75 km straight); A = a point about a third of the way (Essen-Kupferdreh area),
 // B = a point between A and the goal (Dortmund-Hörde area), C = a point between A and B (Bochum area).
 val START = GeoPoint(51.1686, 6.9390)
-val GOAL = GeoPoint(51.7385, 7.5234)
+val GOAL = GeoPoint(51.7385, 7.5242)
 val A = GeoPoint(51.3930, 7.0870)
 val B = GeoPoint(51.4930, 7.4560)
 val C = GeoPoint(51.4500, 7.2560)

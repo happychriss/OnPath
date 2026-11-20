@@ -18,7 +18,7 @@ import java.util.Map;
 public class ProgressProbe {
     public static void main(String[] args) throws Exception {
         File dir = new File(args[0]);
-        double[] from = {51.1686, 6.9390}, to = {51.7385, 7.5234};
+        double[] from = {51.1686, 6.9390}, to = {51.7385, 7.5242};
         RoutingContext rc = new RoutingContext();
         rc.localFunction = new File(dir, "touring.brf").getAbsolutePath();
         Map<String, String> kv = new HashMap<>();

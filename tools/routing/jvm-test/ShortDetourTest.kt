@@ -37,7 +37,7 @@ fun main() {
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
     val act = Activity.BIKE_TOURING
-    val a = GeoPoint(51.169243, 6.925344); val b = GeoPoint(51.169, 6.93578)
+    val a = GeoPoint(51.16901, 6.92405); val b = GeoPoint(51.169, 6.93578)
 
     val alone = eng.route(listOf(a, b), act, 2)
     println("   BRouter alone: %.0f m for %.0f m straight".format(alone.distanceM, Geo.distance(a, b)))

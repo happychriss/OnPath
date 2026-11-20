@@ -20,11 +20,11 @@ fun main() {
     val files = File("/home/user/build/routing-test/kt-files").apply { deleteRecursively(); mkdirs() }
     val eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
     val cases = listOf(
-        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.16136, 6.87100)), Activity.BIKE_TOURING),
-        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.16136, 6.87100)), Activity.BIKE_TREKKING),
-        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.16136, 6.87100)), Activity.MTB),
-        Triple("Hilden -> Haan", listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.19180, 7.01290)), Activity.BIKE_TOURING),
-        Triple("Hilden -> Langenfeld", listOf(GeoPoint(51.16923, 6.92560), GeoPoint(51.10990, 6.94820)), Activity.BIKE_TOURING),
+        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16136, 6.87100)), Activity.BIKE_TOURING),
+        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16136, 6.87100)), Activity.BIKE_TREKKING),
+        Triple("Hilden -> Schloss Benrath", listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.16136, 6.87100)), Activity.MTB),
+        Triple("Hilden -> Haan", listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.19180, 7.01290)), Activity.BIKE_TOURING),
+        Triple("Hilden -> Langenfeld", listOf(GeoPoint(51.16901, 6.92405), GeoPoint(51.10990, 6.94820)), Activity.BIKE_TOURING),
     )
     val dump = System.getenv("DUMP") != null
     for ((name, wps, act) in cases) {

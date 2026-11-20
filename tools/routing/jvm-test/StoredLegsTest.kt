@@ -17,7 +17,7 @@ class FakeCtx(private val dir: File) : android.content.Context() {
 }
 
 val PLAN = listOf(GeoPoint(51.1686, 6.9390), GeoPoint(51.3930, 7.0870), GeoPoint(51.4500, 7.2560),
-    GeoPoint(51.4930, 7.4560), GeoPoint(51.7385, 7.5234))
+    GeoPoint(51.4930, 7.4560), GeoPoint(51.7385, 7.5242))
 
 fun main() {
     android.content.res.AssetManager.root = File("/home/user/onpath/app/src/main/assets")

@@ -23,7 +23,7 @@ fun check(ok: Boolean, what: String) { println((if (ok) "   ok   " else "   FAIL
 
 val WPS = listOf(
     GeoPoint(51.49275, 7.41772), GeoPoint(51.4906, 7.42465), GeoPoint(51.4872, 7.41724), GeoPoint(51.48471, 7.41236),
-    GeoPoint(51.48362, 7.42875), GeoPoint(51.22429, 6.99459), GeoPoint(51.22052, 6.99428), GeoPoint(51.21558, 6.99643),
+    GeoPoint(51.48371, 7.42789), GeoPoint(51.22429, 6.99459), GeoPoint(51.22052, 6.99428), GeoPoint(51.21558, 6.99643),
     GeoPoint(51.20045, 7.00439), GeoPoint(51.19222, 6.96206), GeoPoint(51.16826, 6.93204),
 )
 val PINS = setOf(0, 1, 10)

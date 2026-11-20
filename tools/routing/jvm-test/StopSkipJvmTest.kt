@@ -88,7 +88,7 @@ fun main() {
     eng = BRouterEngine(FakeCtx(files), File("/home/user/build/routing-test/segments"))
 
     // 1. Hilden round ride: Mitte → Itter → south → Benrath → north-west → Mitte (route points every 1–4 km)
-    val mitte = GeoPoint(51.16923, 6.92560)
+    val mitte = GeoPoint(51.16954, 6.92600)
     val wps = listOf(mitte, GeoPoint(51.16405, 6.92868), GeoPoint(51.15810, 6.92152), GeoPoint(51.16136, 6.87100),
         GeoPoint(51.18000, 6.90000), mitte)
     val plan = eng.route(wps, act, 3)
