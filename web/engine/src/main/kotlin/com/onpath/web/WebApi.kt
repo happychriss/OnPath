@@ -623,29 +623,44 @@ object Engine {
      */
     fun placeMenu(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double = 30.0,
                   activity: String = "", sac: Int = 2): String {
-        val pam = com.onpath.app.domain.PlaceAddMenu
         val w = parsePoints(points)
         val p = GeoPoint(lat, lon)
-        val route = lastPlanFor(w)?.points
-        var why = ""
-        val m = if (!roundTrip && w.size >= 2) {
-            val lineDp = lineDp(w, p, route, lineSnapM)
-            val straight = pam.detours(w, p)!!
-            val act = activityOrNull(activity)
-            if (pam.planningHold(lineDp, straight) == com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE || act == null) {
-                why = "line ${lineDp.toInt()} dp, straight: insert +${straight.insertM.toInt()} m, append ${straight.appendM.toInt()} m"
-                pam.planningPlaceMenu(lineDp, straight)
-            } else {
-                val o = measureOrStraight(w, p, straight, act, sac)
-                why = "line ${lineDp.toInt()} dp, ${o.describe()}"
-                pam.planningPlaceMenu(lineDp, o.detours)
-            }
-        } else pam.menu(w.size, touring = false, zone = if (w.size < 2) null else pam.zone(w, p, loop = roundTrip))
-        val stop = if (w.size < 2) w.size else WaypointInsertion.decide(w, p, route, 30.0, stopOnly = true).index
+        // the app's PlaceMenusState.openPoiMenu → placeMenu: the rows decided (measured on the paths while planning)
+        val q = WebPlaceAdd(w, lastPlanFor(w), activityOrNull(activity), sac)
+        val poi = WebPlaceAdd.poi(lat, lon, "", "")
+        val why = q.traced { q.menus.openPoiMenu(poi, lineSnapM) }
+        val m = q.menus.placeMenu(poi)
+        // where „Einfügen“ puts it: the app's addPoiAsStop (its default 30 m on the line)
+        val stop = if (w.size < 2) w.size else q.add.insertionFor(p, 30.0, stopOnly = true).index
         fun list(items: List<com.onpath.app.domain.PlaceAddMenu.Item>) = items.joinToString(",", "[", "]") { str(it.name) }
-        val keepOld = pam.keepsOldGoal(touring = false)
+        val keepOld = com.onpath.app.domain.PlaceAddMenu.keepsOldGoal(touring = false)
         // "more" stays empty (owner 2026-11-15: every entry in "main") – kept for the planner's reader
         return "{\"main\":" + list(m.main) + ",\"more\":[],\"stop\":" + stop + ",\"keepOld\":" + keepOld + ",\"why\":" + str(why) + "}"
+    }
+
+    /**
+     * An add from a menu or the place card, decided by the app's PlaceAddState on the plan [points] shown now: [op] =
+     * "holdStop" / "holdGoal" (the hold menu's „Einfügen“ / „Neues Ziel“ – holdAsStop / holdAsNewDestination), "poiStop" /
+     * "poiGoal" (a held place's rows – addPoiAsStop / poiAsNewDestination), "SMART" / "START" / "DESTINATION" (the place
+     * card – addPlace). `{"points":"…"}` = the plan to commit (one Undo step), `{"pointMenu":i}` = the place is point i
+     * already (its menu opens instead), `{"points":null}` = nothing changed.
+     */
+    fun placeEdit(op: String, points: String, lat: Double, lon: Double, lineSnapM: Double, title: String, kind: String): String {
+        val w = parsePoints(points)
+        val p = GeoPoint(lat, lon)
+        val q = WebPlaceAdd(w, lastPlanFor(w), null, 2)
+        when (op) {
+            "holdStop", "holdGoal" -> {
+                q.add.holdAddMenu = com.onpath.app.ui.plan.PlaceAddState.HoldAdd(p, com.onpath.app.domain.PlaceAddMenu.Menu(emptyList()), lineSnapM)
+                if (op == "holdStop") q.add.holdAsStop() else q.add.holdAsNewDestination()
+            }
+            "poiStop" -> q.add.addPoiAsStop(WebPlaceAdd.poi(lat, lon, title, kind))
+            "poiGoal" -> q.add.poiAsNewDestination(WebPlaceAdd.poi(lat, lon, title, kind))
+            else -> q.add.addPlace(WebPlaceAdd.place(lat, lon, title, kind), WebPlaceAdd.role(op))
+        }
+        q.pointMenu?.let { return "{\"pointMenu\":$it}" }
+        val after = q.points
+        return "{\"points\":" + (if (after == w) "null" else str(after.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) })) + "}"
     }
 
     /** How far [p] is from the drawn line in dp ([lineSnapM] = metres in 24 dp): the last route for [w], else the straight legs. */
@@ -758,44 +773,19 @@ object Engine {
      */
     fun holdOnMap(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double, activity: String = "",
                   sac: Int = 2): String {
-        val pam = com.onpath.app.domain.PlaceAddMenu
         val w = parsePoints(points)
         val p = GeoPoint(lat, lon)
-        val n = w.size
-        val route = lastPlanFor(w)?.points
-        fun add(i: Int, why: String) = "{\"action\":\"ADD\",\"index\":" + i + ",\"why\":" + str(why) + "}"
-        fun smart() = WaypointInsertion.decide(w, p, route, lineSnapM).index
-        fun ask(m: com.onpath.app.domain.PlaceAddMenu.Menu, why: String) = "{\"action\":\"ASK\",\"main\":" +
-            m.main.joinToString(",", "[", "]") { str(it.name) } + ",\"stop\":" +
-            WaypointInsertion.decide(w, p, route, lineSnapM, stopOnly = true).index + ",\"why\":" + str(why) + "}"
-        if (n < 2) return add(smart(), "plan $n → ${n + 1}")
-        if (roundTrip) {
-            // a round trip: the zone on the plan decides (a loop is never dropped by one hold)
-            val zone = pam.zone(w, p, loop = true)
-            return if (!pam.asksOnHold(zone)) add(smart(), "clear case $zone: set at once")
-            else ask(pam.menu(n, touring = false, zone = zone), "in doubt (zone $zone, $n points)")
+        val q = WebPlaceAdd(w, lastPlanFor(w), activityOrNull(activity), sac)
+        val why = q.traced { q.add.holdOnMap(p, lineSnapM) } // the app's PlaceAddState: a point at once or the small menu
+        q.add.holdAddMenu?.let { a ->
+            val stop = q.add.insertionFor(p, lineSnapM, stopOnly = true).index
+            return "{\"action\":\"ASK\",\"main\":" + a.menu.main.joinToString(",", "[", "]") { str(it.name) } +
+                ",\"stop\":" + stop + ",\"why\":" + str(why) + "}"
         }
-        // planning: „die kürzere gewinnt; nur fast gleich → fragen“ – on the line at once, else on the real paths
-        val lineDp = lineDp(w, p, route, lineSnapM)
-        val straight = pam.detours(w, p)!!
-        if (pam.planningHold(lineDp, straight) == com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE)
-            return add(smart(), "on the line, set at once (line ${lineDp.toInt()} dp, $n points)")
-        val act = activityOrNull(activity)
-        val o = if (act != null) measureOrStraight(w, p, straight, act, sac) else Measured(straight, false, 0, "no activity")
-        val d = o.detours
-        val why = "line ${lineDp.toInt()} dp, ${o.describe()}" +
-            (if (o.onPaths) "; straight +${straight.insertM.toInt()} / ${straight.appendM.toInt()} m" else
-                ", insert +${d.insertM.toInt()} m" + (d.earlyInsertM?.let { " (earlier legs +${it.toInt()} m)" } ?: "") +
-                    ", append ${d.appendM.toInt()} m") + ", $n points"
-        Problems.trace("plan", "Hold beside the plan: $why")
-        return when (pam.planningHold(lineDp, d)) {
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE -> add(smart(), "on the line, set at once ($why)") // not reached: on the line is set before measuring
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.NEW_GOAL -> add(n, "appending clearly shorter, the new goal at once ($why)")
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.STOP ->
-                add(WaypointInsertion.decide(w, p, route, lineSnapM, stopOnly = true).index.coerceIn(0, n),
-                    "inserting clearly shorter, a stop at once ($why)")
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.ASK -> ask(pam.planningMenu(d), "in doubt ($why)")
-        }
+        // the add the shared code made: [p] went in at one place (a new goal is appended while planning)
+        val after = q.points
+        val i = after.indices.firstOrNull { after[it] == p && w.getOrNull(it) != p } ?: w.size
+        return "{\"action\":\"ADD\",\"index\":" + i + ",\"why\":" + str(why) + "}"
     }
 
     /**
@@ -953,6 +943,8 @@ external fun planProgress(text: String)
     Engine.placeMenu(points, lat, lon, roundTrip, lineSnapM, activity, sac)
 @JSExport fun holdOnMap(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double, activity: String, sac: Int): String =
     Engine.holdOnMap(points, lat, lon, roundTrip, lineSnapM, activity, sac)
+@JSExport fun placeEdit(op: String, points: String, lat: Double, lon: Double, lineSnapM: Double, title: String, kind: String): String =
+    Engine.placeEdit(op, points, lat, lon, lineSnapM, title, kind)
 @JSExport fun placeBeside(ax: Double, ay: Double, w: Int, h: Int, left: Int, top: Int, right: Int, bottom: Int, gap: Int, column: Int): String =
     Engine.placeBeside(ax, ay, w, h, left, top, right, bottom, gap, column)
 @JSExport fun locateLabel(located: Boolean, lat: Double, lon: Double, south: Double, west: Double, north: Double, east: Double): String = Engine.locateLabel(located, lat, lon, south, west, north, east)
