@@ -3,8 +3,7 @@
 // run on the page (its decisions: WebStateTest). (1) recent.ts in Node without that slice: nothing lost, nothing
 // throws. (2) The page: an older
 // planner's 3 drafts → 1 under Zuletzt + 2 in the Papierkorb; Wiederherstellen swaps; + Neu over an unsaved plan keeps
-// it (the draft before → bin); a plan from Zuletzt left changed → a new draft, the old entry → bin (owner 2026-11-20);
-// Löschen → bin; the plan on the map is the row („In Bearbeitung“, + „Gespeichert“ when
+// it (the draft before → bin); Löschen → bin; the plan on the map is the row („In Bearbeitung“, + „Gespeichert“ when
 // saved as it is), the saved route under Gespeichert as a plain row; a saved route left as it is holds the place
 // („Gespeichert“, under Gespeichert too) across a reload; a draft never hides behind it; nothing is ever lost. (3) Owner
 // 2026-11-15: a changed plan with exactly a saved route's points lets that route hold Zuletzt (no twin draft); a saved
@@ -139,34 +138,6 @@ await page.click(`#planList .binrow:has(.name:text-is("${kept}")) .r-restore`);
 await page.click('#binBack');
 await page.waitForTimeout(200);
 check(JSON.stringify(await recentNames()) === JSON.stringify([kept]), 'restored from the bin: it is the Recent row again');
-// owner 2026-11-20 („like the app“): a plan opened from Recent and left changed is a NEW draft at the top, the entry it
-// came from goes to the bin (the app's keepDraft) – no longer updated in place; left unchanged, its entry stays
-const entries = () => page.evaluate(() => JSON.parse(localStorage.getItem('onpath.recent') ?? '[]').map((r) => ({ id: r.id, bin: r.deletedAt != null, at: r.at })));
-const keptId = (await entries()).find((r) => !r.bin)?.id;
-await page.click('#planList li.draft .open');
-await planned();
-await page.click('#reverse');
-await planned();
-await page.waitForTimeout(500);
-await page.click('#newPlan');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 });
-await page.waitForTimeout(300);
-const e = await entries();
-const fresh = e.filter((r) => !r.bin);
-s = await store();
-check(fresh.length === 1 && fresh[0].id !== keptId && e.some((r) => r.id === keptId && r.bin) && s.place?.kind === 'draft' && s.place.id === fresh[0].id
-  && fresh[0].at === Math.max(...e.map((r) => r.at)), `a plan from Recent changed and left: a new draft at the top, the old entry in the bin (${JSON.stringify({ keptId, e, place: s.place })})`);
-await openList();
-check(JSON.stringify(await recentNames()) === JSON.stringify([kept]), "Recent: the new draft (the plan's name), nothing doubled");
-await page.click('#planList li.draft .open');
-await planned();
-await page.waitForTimeout(300);
-await page.click('#newPlan');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 });
-await page.waitForTimeout(300);
-const e2 = await entries();
-check(e2.length === e.length && e2.filter((r) => !r.bin).map((r) => r.id).join() === fresh[0].id, `a plan from Recent left unchanged: its entry keeps the place, nothing new (${JSON.stringify(e2)})`);
-await openList();
 // open it, save it: the saved route is the plan on the map – Recent: „In progress“ + „Saved“, Gespeichert: the plain row
 await page.click('#planList li.draft .open');
 await planned();

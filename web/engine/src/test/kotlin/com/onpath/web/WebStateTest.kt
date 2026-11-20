@@ -35,18 +35,6 @@ class WebStateTest {
         assertEquals("-1", field(WebState.keep("", -1.0, T0, "1,1", true, -1.0, 9.0), "result"))
     }
 
-    // owner 2026-11-20 („like the app“): a plan opened from Zuletzt and left changed is a NEW draft, the entry it came from
-    // goes to the bin (the app's keepDraft + takePlace) – no longer updated in place; left unchanged, its own entry keeps
-    // the place (its points are the same) and nothing is written
-    @Test fun aChangedPlanFromZuletztIsANewDraftTheOldOneGoesToTheBin() {
-        val t = line(2, true, 3000, "B", "3,3;4,4")
-        val changed = WebState.keep(t, 2.0, T0, "4,4;3,3", unsaved = true, savedId = -1.0, newId = 7.0)
-        assertEquals("7", field(changed, "result")); assertEquals("7", field(changed, "recent"))
-        assertEquals(listOf("bin 2"), writes(changed))
-        val same = WebState.keep(t, 2.0, T0, "3,3;4,4", unsaved = true, savedId = -1.0, newId = 8.0)
-        assertEquals("-1", field(same, "result")); assertEquals("2", field(same, "recent")); assertEquals(emptyList<String>(), writes(same))
-    }
-
     @Test fun aSavedPlanLeftAsItIsHoldsThePlaceAndATwinNeverMakesADraft() {
         val saved = line(50, false, 100, "S", "")
         // saved as it is: the saved route takes the place, the draft goes to the bin

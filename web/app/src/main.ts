@@ -89,7 +89,7 @@ const state = {
   title: null as string | null,
   /** The saved plan (My plans) the page shows, so "Save" writes a new version of it. */
   savedId: null as string | null,
-  /** The plan was opened from Meine Touren → Zuletzt (recent.ts): saving it moves that entry; left changed, a new draft (the entry → bin). */
+  /** The plan was opened from Meine Touren → Zuletzt (recent.ts) and still belongs to that entry. */
   recentId: null as string | null,
   /** Its name and plan code as saved (the sheet says "Saved as …", and whether the plan changed since). */
   savedTitle: null as string | null,
@@ -2297,7 +2297,8 @@ async function newPlan() { engine.dropPlans(); await keepAsRecent('new plan'); c
  * proposal (waited for in the background), else the date name.
  */
 async function keepAsRecent(why: string) {
-  state.recentId = null; // a plan from Zuletzt is no special case (owner 2026-11-20): changed → a new draft, its entry → bin
+  const fromRecent = state.recentId;
+  state.recentId = null;
   if (state.points.length < 2) return; // one point is no plan
   // the plan itself unsaved (never saved, or changed since) – not Save's dark state, which also counts routes waiting for the phone
   // (read at once, like Save's state was: renderSaved keeps planUnsaved current; no await before the plan is read)
@@ -2331,7 +2332,7 @@ async function keepAsRecent(why: string) {
   const twin = await savedTwin(plan.points);
   const code = await engine.encode(plan);
   const dated = datedName();
-  const id = keepPlan({ code, title: own || dated, points: pts, savedId, saved, twin: twin?.id ?? null });
+  const id = keepPlan({ code, title: own || dated, points: pts, replaces: fromRecent, savedId, saved, twin: twin?.id ?? null });
   if (!id) {
     if (twin) console.info(`[Problems] TRACE routes: Zuletzt: the plan has the points of the saved route "${twin.title ?? ''}" – it takes the place, no draft`);
     return;
@@ -2421,7 +2422,7 @@ const plansHost = {
     render(); // the sheet says "Saved as …" – no message (the app's saveRoute)
   },
   suggestName,
-  /** Meine Touren → Zuletzt → a click: the plan comes back (saving it moves the entry; left changed, a new draft, the old entry → bin). */
+  /** Meine Touren → Zuletzt → a click: the plan comes back, still belonging to its entry (saving it moves it). */
   openRecent: async (r: RecentPlan) => {
     const shared = await engine.parse('p=' + r.code);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
