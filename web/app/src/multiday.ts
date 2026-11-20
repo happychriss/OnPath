@@ -312,9 +312,12 @@ export class MultiDay {
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         if (Date.now() - dragged < 300) return;
+        const days = this.view?.days ?? 0;
         this.h.openMenu(new maplibregl.LngLat(e.lon, e.lat), [
           { icon: 'moon', label: t('days_overnight_here'), act: async () => this.take(await this.rule('addNight', 0, e.lat, e.lon)) },
           { icon: 'bed', label: t('days_set_hotel'), act: () => { void this.hotelDialog(e.night, -1, [e.lat, e.lon]); } },
+          // not needed (owner 2026-11-20: „eigentlich sollte der jetzt ja weg sein“): R5 „−“, the overview's own button
+          { icon: 'close', label: t('days_fewer'), act: async () => this.take(await this.rule('setDays', days - 1), t('days_remove_first')) },
         ], this.head('PROPOSAL', t('days_night_n', e.night), `${this.endOfDay(e.night)} · ${t('days_open_night')}`));
       });
       this.proposals.push(m);

@@ -1,6 +1,13 @@
 package com.onpath.web
 
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.DayEndKind
+import com.onpath.app.routing.DayLine
+import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
+import com.onpath.app.routing.PlanDays
+import com.onpath.app.routing.SharedPlan
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -64,5 +71,40 @@ class WebDaysTest {
         val a = WebDays.hotelText("Via Roma 3, 39012 Meran")
         assertTrue(a, a.contains("\"search\":\"Via Roma 3, 39012 Meran\""))
         assertEquals("null", WebDays.hotelText("   "))
+    }
+
+    /**
+     * The owner's Rhine tour (2026-11-20: a grey moon between Heidelberg and the next blue one, „eigentlich sollte der
+     * jetzt ja weg sein“): 4 days and two nights set leave one grey proposal – the shared rule (R1: N stays, a grey one
+     * goes) spreads it into the longest stretch, here between the two blue moons. Only "−" (R5) takes it away, so the
+     * planner says on every day end which day of how many ends there.
+     */
+    @Test fun aGreyBetweenTwoSetNightsIsTheDayCountsLeftoverNight() {
+        // a straight 190 km northwards, 3 min per km: start (km 0), Heidelberg (30), Mainz (120), Koblenz (190)
+        val pts = (0..190).map { GeoPoint(49.2 + it * 0.009, 8.6) }
+        val line = DayLine(pts, DoubleArray(191) { it * 1000.0 }, DoubleArray(191), DoubleArray(191), DoubleArray(191) { it * 180.0 })
+        val at = intArrayOf(0, 30, 120, 190)
+        val plan = PlanDays.start(SharedPlan(at.map { pts[it] }, Activity.BIKE_TOURING), 4)
+        fun greys(p: SharedPlan) = PlanDays.of(line, at, p.days!!, p.limits, p.nights).proposals
+        assertEquals(3, greys(plan).size)
+        val heidelberg = PlanDays.addNight(plan, pts, at, 30).plan
+        val mainz = PlanDays.addNight(heidelberg, pts, at, 120)
+        assertFalse(mainz.dayAdded)
+        assertEquals(4, mainz.plan.days)
+        val left = greys(mainz.plan)
+        assertEquals("N − 1 − 2 nights = one grey left", 1, left.size)
+        assertTrue("in the longest stretch, Heidelberg – Mainz: ${left[0].lineIndex}", left[0].lineIndex in 31..119)
+        val ends = PlanDays.of(line, at, 4, mainz.plan.limits, mainz.plan.nights).days.mapNotNull { it.end?.kind }
+        assertEquals(listOf(DayEndKind.OVERNIGHT, DayEndKind.PROPOSAL, DayEndKind.OVERNIGHT), ends)
+        // "−" takes exactly that grey one away; then no "−" is left
+        assertTrue(PlanDays.canRemoveDay(mainz.plan))
+        val three = PlanDays.setDays(mainz.plan, 3)!!
+        assertTrue(greys(three).isEmpty())
+        assertFalse(PlanDays.canRemoveDay(three))
+        // the same tour started with 3 days: the second night takes the last grey one, none stays
+        val started3 = PlanDays.start(SharedPlan(at.map { pts[it] }, Activity.BIKE_TOURING), 3)
+        val both = PlanDays.addNight(PlanDays.addNight(started3, pts, at, 30).plan, pts, at, 120).plan
+        assertEquals(3, both.days)
+        assertTrue(greys(both).isEmpty())
     }
 }

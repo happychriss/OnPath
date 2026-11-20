@@ -142,6 +142,9 @@ async function run(lang, viewport, shotPrefix) {
     await page.waitForSelector('.holdpopup .menuhead', { timeout: 10_000 });
     const head = await page.textContent('.holdpopup .menuhead');
     check(head.includes(lang === 'de' ? 'von 3' : 'of 3'), `the grey moon's menu head says the day: "${head}"`);
+    // a grey moon not wanted (owner 2026-11-20: one left between two blue ones): „Ein Tag weniger“ right there (R5)
+    const greyRows = await page.$$eval('.holdpopup .pointmenu button', (bs) => bs.map((b) => b.textContent.trim()));
+    check(greyRows.some((r) => r.includes(lang === 'de' ? 'Ein Tag weniger' : 'One day fewer')), `the grey moon's menu offers one day fewer (${greyRows.join(' | ')})`);
     await shot('3b-grey-menu');
     await page.keyboard.press('Escape');
   }
@@ -252,6 +255,8 @@ async function run(lang, viewport, shotPrefix) {
   check(v.days === 3 && v.ends.filter((k) => k === 'OVERNIGHT').length === 2 && !v.ends.includes('PROPOSAL'),
     `the point is an Übernachtung: N stays 3, the grey one goes (${v.ends})`);
   check(await page.locator('.pin.night .daysym.blue').count() === 2, 'the point is drawn as a blue moon');
+  // the grey one goes from the map too (owner 2026-11-20: a grey moon left between two blue ones) – no stale marker
+  check(await page.locator('.dayend.proposal').count() === 0, 'no grey moon left on the map');
   await page.evaluate(() => document.getElementById('undo').click());
   await waitView(() => window.__days.lastView?.ends.filter((e) => e.kind === 'OVERNIGHT').length === 1, 'undo of the point\'s night');
   await settled();
