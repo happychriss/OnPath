@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- live sharing of a running tour (docs/design/live-tracking.md §2); "Live teilen" / "Teilen beenden" are the owner's words -->
+    <string name="live_share">Live teilen</string>
+    <string name="live_share_again">Link nochmal teilen</string>
+    <string name="live_stop">Teilen beenden</string>
+    <string name="live_sign">Live</string>
+    <string name="live_sign_waiting">Live · wartet auf Netz</string>
+    <string name="live_sign_cd">Live-Teilen: %1$s</string>
+    <string name="live_share_text">Verfolge meine Tour live: %1$s</string>
+    <string name="live_name_title">Dein Name für die Seite</string>
+    <string name="live_name_text">Wer den Link öffnet, sieht „Tour von …“. Du kannst das Feld leer lassen.</string>
+    <string name="live_name_field">Name</string>
+    <string name="live_name_ok">Teilen</string>
+    <string name="live_ended_by_server">Das Live-Teilen wurde beendet. Der Link gilt nicht mehr.</string>
+</resources>
