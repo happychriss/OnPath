@@ -75,7 +75,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/MapController.kt",
-      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge)",
+      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge) – deliberately NOT mirrored: the planner draws such a stop as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“, a planner-only look on a big screen)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts",
@@ -85,7 +85,7 @@
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/poi/PinnedPoiKinds.kt",
-      "what": "which POI kind a pinned point shows: SAME_SPOT_M, isPoiKind, lookup, byIndex",
+      "what": "which POI a pinned point sits on: SAME_SPOT_M, isPoiKind, lookup (the planner: the POI's details in the point's menu – its marker is the plain point, owner 2026-11-20)",
       "web": [
         "web/app/src/poipin.ts",
         "web/app/src/main.ts"
@@ -438,7 +438,7 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceMenusSlice.kt",
-      "what": "pinnedPoiKinds / refreshPinnedKinds (the pinned POI keeps its symbol, a ring + badge – poipin.ts); placeMenu while planning = PlaceAddMenu.planningMenu (WebApi.placeMenu, main.ts) – moved here from AppViewModel, rebuild phase 2 piece 12; the menus' state (POI / point / pin menu), the measuring of a held place's rows on the paths (PlaceMenuMeasure on the hold's router thread) and the place card's tour-aware add label are the phone's: the planner has no router thread and no tour",
+      "what": "pinnedPoiKinds / refreshPinnedKinds (the app: the pinned POI keeps its symbol, a ring + badge; the planner deliberately draws the plain numbered point, owner 2026-11-20 – poipin.ts only finds the POI for the point's menu); placeMenu while planning = PlaceAddMenu.planningMenu (WebApi.placeMenu, main.ts) – moved here from AppViewModel, rebuild phase 2 piece 12; the menus' state (POI / point / pin menu), the measuring of a held place's rows on the paths (PlaceMenuMeasure on the hold's router thread) and the place card's tour-aware add label are the phone's: the planner has no router thread and no tour",
       "web": [
         "web/app/src/poipin.ts",
         "web/app/src/main.ts",

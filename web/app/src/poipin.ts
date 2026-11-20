@@ -1,6 +1,6 @@
-// A route point pinned on a POI keeps the POI's symbol: a ring in route blue around it and a small badge top right with
-// the number (the goal: its flag) – owner 2026-11-10, variant A. Mirrors the app's poi/PinnedPoiKinds (which kind) and
-// map/MapController.poiMarker (the look; sizes in px = the app's dp).
+// The POI a route point sits on (the app's poi/PinnedPoiKinds lookup): its details in the point's menu. The planner draws
+// such a point as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“ – a planner-only look on a big
+// screen); the app keeps the POI's symbol in a blue ring with a badge (map/MapController.poiMarker).
 import type { Map as MlMap, GeoJSONFeature } from 'maplibre-gl';
 import { problem } from './diag';
 
@@ -17,12 +17,6 @@ function metres(lat1: number, lon1: number, lat2: number, lon2: number) {
   return Math.sqrt(x * x + y * y) * 6371000;
 }
 
-/** The nearest POI the map has loaded within [SAME_SPOT_M] of the point (PinnedPoiKinds.lookup); null when none. */
-export function poiKindAt(map: MlMap, lat: number, lon: number): string | null {
-  const f = poiFeatureAt(map, lat, lon);
-  return f ? String(f.properties!.kind) : null;
-}
-
 /**
  * The POI itself (kind, name, elevation) the map has loaded nearest the point within [SAME_SPOT_M] – the one a route
  * point sits on; null when none.
@@ -32,7 +26,7 @@ export function poiFeatureAt(map: MlMap, lat: number, lon: number): GeoJSONFeatu
   if (!src) return null;
   let fs: GeoJSONFeature[];
   try { fs = map.querySourceFeatures('pois', src.type === 'vector' ? { sourceLayer: 'pois' } : undefined); }
-  catch (e) { problem('map', 'POIs under the pinned points not read; plain points shown', e); return null; }
+  catch (e) { problem('map', 'POIs under the pinned points not read; their menus without POI details', e); return null; }
   let best: GeoJSONFeature | null = null, bestM = SAME_SPOT_M;
   for (const f of fs) {
     if (f.geometry.type !== 'Point') continue;
@@ -42,39 +36,4 @@ export function poiFeatureAt(map: MlMap, lat: number, lon: number): GeoJSONFeatu
     if (m <= bestM && isPoiKind(map, kind)) { best = f; bestM = m; }
   }
   return best;
-}
-
-const symbols = new Map<string, string>();
-/** The sprite's "poi-<kind>" as a data URL (once per kind and style); null when the style has none. */
-function symbolUrl(map: MlMap, kind: string): string | null {
-  const id = 'poi-' + kind;
-  const known = symbols.get(id);
-  if (known) return known;
-  try {
-    const img = map.getImage(id);
-    if (!img) return null;
-    const { width, height, data } = img.data;
-    const c = document.createElement('canvas');
-    c.width = width; c.height = height;
-    // a CPU canvas (willReadFrequently): toDataURL on a GPU canvas waits for the GPU process to finish the map's frames
-    // first – with software GL (SwiftShader, no GPU) that held the page for seconds after a POI was added
-    c.getContext('2d', { willReadFrequently: true })!.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0);
-    const url = c.toDataURL();
-    symbols.set(id, url);
-    return url;
-  } catch (e) { problem('map', `POI symbol ${kind} not drawn; plain point shown`, e); return null; }
-}
-
-/**
- * The marker element of a pinned point on a POI of [kind]: the symbol bigger in a blue ring, the [sign] (number, ↺ or
- * the flag) on a small badge in [badge] colour; null when the symbol is missing – the caller draws the plain point.
- */
-export function poiPin(map: MlMap, kind: string, sign: string, badge: string): HTMLDivElement | null {
-  const url = symbolUrl(map, kind);
-  if (!url) return null;
-  const el = document.createElement('div');
-  el.className = 'pin poipin';
-  el.dataset.kind = kind;
-  el.innerHTML = `<img src="${url}" alt="" draggable="false"><span class="badge" style="background:${badge}">${sign}</span>`;
-  return el;
 }

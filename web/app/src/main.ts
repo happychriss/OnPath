@@ -54,7 +54,7 @@ import { watchVersion, BUILD } from './version';
 import { keepStats, planKey, trackKey, statsText } from './planstats';
 import { keepShape } from './routeshape';
 import { RouteReveal } from './routereveal';
-import { isPoiKind, poiFeatureAt, poiKindAt, poiPin } from './poipin';
+import { poiFeatureAt } from './poipin';
 import { installSuggestSwitch, setupSuggest, SUGGEST_LAYERS, suggestOn, type SuggestUi } from './suggest';
 import { MultiDay, endSymbol, type DayPlan } from './multiday';
 import { tourText, type Tour } from './tourtext';
@@ -80,7 +80,7 @@ const lastView = (() => {
 })();
 const startAt = (params.get('at') ?? lastView ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
 
-/** [kind]: the POI a pinned point sits on (poipin.ts – its symbol in a blue ring); not stored, looked up again on load. */
+/** [kind]: the POI a pinned point was picked from (tap / search hit); not stored – the planner draws the plain point (owner 2026-11-20). */
 type Meta = { pinned: boolean; name?: string; kind?: string };
 type LatLon = [number, number];
 const state = {
@@ -683,26 +683,6 @@ const FLAG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"
 const stopSign = (i: number, count: number, loop: boolean) => (loop ? '↺' : count > 1 && i === count - 1 ? FLAG : String(i + 1));
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
-/**
- * The POI kind of pinned point [i] (the app's PinnedPoiKinds): the tap's or search hit's kind, else the map's POI within
- * 5 m (a plan from Meine Touren, a link, the phone) – remembered on the point once found. Null = the plain point.
- */
-function pinnedKind(i: number): string | null {
-  const m = state.meta[i], p = state.points[i];
-  if (!m?.pinned || !p) return null;
-  if (isPoiKind(map, m.kind)) return m.kind;
-  const k = poiKindAt(map, p[0], p[1]);
-  if (k) m.kind = k;
-  return k;
-}
-// a pinned point whose POI was not loaded yet when it was drawn: draw again once the map has it – as soon as the POIs
-// are in, not only when the whole map is idle (a busy map – tiles, terrain – can take a minute to be idle)
-const lateKinds = () => {
-  const late = state.meta.some((m, i) => m.pinned && !isPoiKind(map, m.kind) && state.points[i] && poiKindAt(map, state.points[i][0], state.points[i][1]));
-  if (late) void drawPoints();
-};
-map.on('idle', lateKinds);
-map.on('sourcedata', (e) => { if (e.sourceId === 'pois' && e.isSourceLoaded) lateKinds(); });
 
 /** Markers + the Points list (the app's PlanPoints rows: names, leg distances, a round trip shown once with ↺). */
 async function drawPoints() {
@@ -716,11 +696,12 @@ async function drawPoints() {
     const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
     // a night of a multi-day tour: its blue moon / green bed (owner 2026-11-17, round 3 A) instead of the number
     const night = multiDay?.nightOf(i) ?? null;
-    // pinned on a POI: its symbol in a blue ring with the sign on a badge (owner 2026-11-10, variant A), else the dot
-    const kind = night ? null : pinnedKind(i);
-    const el = (kind ? poiPin(map, kind, sign, color) : null) ?? document.createElement('div');
+    // a point on a POI (a station picked as a stop) is the plain numbered point too – the planner's look on a big screen
+    // (owner 2026-11-20: „ein normaler Punkt reicht“; the app keeps the POI's symbol in a blue ring, MapController.poiMarker);
+    // its name is in the title and the Points list, its details in its menu
+    const el = document.createElement('div');
     if (night) { el.className = 'pin night'; el.innerHTML = endSymbol(night, 28); }
-    else if (!el.classList.contains('poipin')) {
+    else {
       el.className = 'pin';
       el.style.background = color;
       el.innerHTML = sign;
