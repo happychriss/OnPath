@@ -95,6 +95,8 @@ test("search engines kept out until launch: X-Robots-Tag on every answer; INDEXI
     assert.equal((await handle(new Request(H + p), env)).headers.get("x-robots-tag"), "noindex, nofollow", p);
   }
   assert.equal((await handle(new Request(H + "/"), { ...env, INDEXING: "on" })).headers.get("x-robots-tag"), null);
+  // the live tour's page stays out of search engines also after launch (a shared tour is private)
+  assert.equal((await handle(new Request(H + "/live/"), { ...env, INDEXING: "on" })).headers.get("x-robots-tag"), "noindex, nofollow");
 });
 
 test("Android App Links: assetlinks.json, 200, JSON, no redirect (A-016)", async () => {

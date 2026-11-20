@@ -22,7 +22,7 @@ run tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine runJvm parityJvm -Pse
 run node web/app/test/plan-parity.mjs "$SEG"
 ( cd web/app && run npm run build )
 # nowebgl-smoke runs robust-smoke.mjs too (as in CI's "short" group)
-for t in browser-compare ui-smoke share-smoke legcache-smoke edit-smoke snap-smoke version-smoke activity-look-smoke parity-smoke nowebgl-smoke sync-smoke sync-rate-smoke import-smoke overview-smoke stop-smoke sort-smoke zuletzt-smoke phonelink-smoke center-smoke multiday-smoke deep-smoke; do
+for t in browser-compare ui-smoke share-smoke legcache-smoke edit-smoke snap-smoke version-smoke activity-look-smoke parity-smoke nowebgl-smoke sync-smoke sync-rate-smoke live-smoke import-smoke overview-smoke stop-smoke sort-smoke zuletzt-smoke phonelink-smoke center-smoke multiday-smoke deep-smoke; do
   ( cd web/app && run node "test/$t.mjs" "$SEG" )
 done
 ( cd web/app && run node test/search-smoke.mjs "$SEG" "$CELLS" )

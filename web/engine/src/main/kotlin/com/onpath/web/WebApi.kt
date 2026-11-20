@@ -1122,3 +1122,16 @@ fun main() {}
 @JSExport fun waitEnd(now: Double, finished: Boolean): String = WebWait.end(now, finished)
 @JSExport fun signTick(now: Double, areas: String): Int = WebSign.tick(now, areas)
 @JSExport fun signSeed(percent: Int) = WebSign.seed(percent)
+
+// ---- live tracking, the viewer page (WebLive.kt, docs/design/live-tracking.md §14.5) ----
+@JSExport fun liveKeys(link: String): String = WebLive.keys(link)
+@JSExport fun liveOpen(link: String, name: String, blob: String): String = WebLive.open(link, name, blob)
+@JSExport fun liveStatus(link: String, headBlob: String, gone: Boolean, broken: Boolean, sinceLastWriteMs: Double, endedMs: Double): String =
+    WebLive.status(link, headBlob, gone, broken, sinceLastWriteMs, endedMs)
+@JSExport fun liveNext(sinceLastWriteMs: Double, nextS: Int, emptyAsks: Int, over: Boolean, retryAfterMs: Double): Double =
+    WebLive.next(sinceLastWriteMs, nextS, emptyAsks, over, retryAfterMs)
+// the phone's side for live-smoke.mjs (a fake phone) – the page never calls these
+@JSExport fun liveLink(random: String, base: String): String = WebLive.link(random, base)
+@JSExport fun liveSealHead(link: String, fields: String, nonce: String): String = WebLive.sealHead(link, fields, nonce)
+@JSExport fun liveSealRoute(link: String, line: String, nonce: String): String = WebLive.sealRoute(link, line, nonce)
+@JSExport fun liveSealChunk(link: String, n: Int, points: String, nonce: String): String = WebLive.sealChunk(link, n, points, nonce)

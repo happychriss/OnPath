@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The live tour's viewer page (web/app/live/, docs/design/live-tracking.md §3). -->
+<resources>
+    <string name="web_live_page_title">OnPath – Live tour</string>
+    <string name="web_live_title">Live tour</string>
+    <string name="web_live_title_named">%1$s’s tour</string>
+    <string name="web_live_loading">Loading …</string>
+    <string name="web_live_moving">On the way · last heard %1$d min ago</string>
+    <string name="web_live_moving_now">On the way · just now</string>
+    <string name="web_live_pause">Break for %1$s</string>
+    <string name="web_live_off_route">Off the planned route (%1$s)</string>
+    <string name="web_live_no_contact">No contact for %1$s – normal without network. Last place %2$s</string>
+    <string name="web_live_no_contact_plain">No contact for %1$s – normal without network.</string>
+    <string name="web_live_ended">Tour ended %1$s</string>
+    <string name="web_live_ended_arrived">Tour ended %1$s · arrived</string>
+    <string name="web_live_stopped">This tour is no longer shared.</string>
+    <string name="web_live_broken">This link does not work.</string>
+    <string name="web_live_no_data">No data yet – the phone has not reported so far.</string>
+    <string name="web_live_server">Server not reachable – trying again shortly.</string>
+    <string name="web_live_minutes">%1$d min</string>
+    <string name="web_live_hours">%1$d h %2$s min</string>
+    <string name="web_live_to_go">%1$s to go · arrival about %2$s</string>
+    <string name="web_live_battery">Phone battery %1$d %</string>
+    <string name="web_live_last_place">Last place %1$s</string>
+    <string name="web_live_copy">Copy coordinates</string>
+    <string name="web_live_copied">Copied</string>
+    <string name="web_live_open_maps">Open in a map app</string>
+    <string name="web_live_to_position">To the position</string>
+    <string name="web_live_no_rescue">Not an emergency service – in an emergency call 112.</string>
+</resources>

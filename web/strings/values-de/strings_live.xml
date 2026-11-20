@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Die Seite zur Live-Tour (web/app/live/, docs/design/live-tracking.md §3). -->
+<resources>
+    <string name="web_live_page_title">OnPath – Live-Tour</string>
+    <string name="web_live_title">Live-Tour</string>
+    <string name="web_live_title_named">Tour von %1$s</string>
+    <string name="web_live_loading">Lädt …</string>
+    <string name="web_live_moving">Unterwegs · zuletzt vor %1$d Min.</string>
+    <string name="web_live_moving_now">Unterwegs · gerade eben</string>
+    <string name="web_live_pause">Pause seit %1$s</string>
+    <string name="web_live_off_route">Abseits der geplanten Route (%1$s)</string>
+    <string name="web_live_no_contact">Kein Kontakt seit %1$s – ohne Netz normal. Letzter Ort %2$s</string>
+    <string name="web_live_no_contact_plain">Kein Kontakt seit %1$s – ohne Netz normal.</string>
+    <string name="web_live_ended">Tour beendet %1$s</string>
+    <string name="web_live_ended_arrived">Tour beendet %1$s · am Ziel</string>
+    <string name="web_live_stopped">Diese Tour wird nicht mehr geteilt.</string>
+    <string name="web_live_broken">Dieser Link funktioniert nicht.</string>
+    <string name="web_live_no_data">Noch keine Daten – das Handy hat sich noch nicht gemeldet.</string>
+    <string name="web_live_server">Server nicht erreichbar – gleich nochmal.</string>
+    <string name="web_live_minutes">%1$d Min.</string>
+    <string name="web_live_hours">%1$d h %2$s min</string>
+    <string name="web_live_to_go">noch %1$s · Ankunft ca. %2$s</string>
+    <string name="web_live_battery">Handy-Akku %1$d %</string>
+    <string name="web_live_last_place">Letzter Ort %1$s</string>
+    <string name="web_live_copy">Koordinaten kopieren</string>
+    <string name="web_live_copied">Kopiert</string>
+    <string name="web_live_open_maps">In Karten-App öffnen</string>
+    <string name="web_live_to_position">Zur Position</string>
+    <string name="web_live_no_rescue">Kein Notruf-Dienst – im Notfall 112.</string>
+</resources>

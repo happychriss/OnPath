@@ -33,7 +33,8 @@ const UPSTREAM = "https://brouter.de/brouter/segments4/";
 /** Every answer: noindex until launch; at launch (INDEXING = "on") the page's meta robots is taken out instead. */
 export async function handle(request, env, fetchImpl = fetch) {
   const r = await route(request, env, fetchImpl);
-  if (env.INDEXING === "on") {
+  // the live tour's page (/live/) is never for search engines, also after launch: a shared tour is private
+  if (env.INDEXING === "on" && !new URL(request.url).pathname.startsWith("/live")) {
     const html = (r.headers.get("content-type") ?? "").includes("text/html");
     // HTMLRewriter exists on Cloudflare (not in the Node tests)
     return html && typeof HTMLRewriter !== "undefined" ? new HTMLRewriter().on('meta[name="robots"]', { element: (e) => e.remove() }).transform(r) : r;

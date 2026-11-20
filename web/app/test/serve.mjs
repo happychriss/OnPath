@@ -10,23 +10,25 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
 /**
  * [dataDir] = a map store root (cells/f2/10/<x>/<y>/…, like the R2 bucket), served at /data/.
  * [sync] = (Request) => Promise<Response> for /sync/ (the host's mailbox on a fake D1, see sync-smoke.mjs).
+ * [live] = the same for /live/v1/ (the live tracking box, see live-smoke.mjs).
  * [maps] = the same for /maps/ (map areas on demand: the host's proxy with a fake doorman, see areas-smoke.mjs).
  * [log] = an array that gets every request path (what the page fetched).
  * [intercept] = (req, res) => true when it answered the request itself (faults: 404, 429, slow – see cells-smoke.mjs).
  */
-export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, log = null, intercept = null }) {
+export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, live = null, log = null, intercept = null }) {
   const server = http.createServer((req, res) => {
     log?.push(req.url);
     if (intercept?.(req, res)) return;
     if (sync && req.url.startsWith('/sync/')) { forward(sync, req, res); return; }
     if (maps && req.url.startsWith('/maps/')) { forward(maps, req, res); return; }
+    if (live && req.url.startsWith('/live/v1/')) { forward(live, req, res); return; } // the live box (live-smoke.mjs)
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
     let file;
     if (url.startsWith('/segments/')) file = path.join(segments, path.basename(url));
     else if (url.startsWith('/map/') && mapDir) file = path.join(mapDir, path.basename(url));
     else if (url.startsWith('/data/') && dataDir) file = path.join(dataDir, path.normalize(url.slice(6)));
     else if (extra[url]) file = extra[url];
-    else file = path.join(dist, path.normalize(url === '/' ? '/index.html' : url));
+    else file = path.join(dist, path.normalize(url === '/' ? '/index.html' : url.endsWith('/') ? url + 'index.html' : url));
     if (!file.startsWith(dist) && !file.startsWith(segments) && !(mapDir && file.startsWith(mapDir)) && !(dataDir && file.startsWith(dataDir)) && !Object.values(extra).includes(file)) { res.writeHead(403).end(); return; }
     fs.stat(file, (err, st) => {
       if (err || !st.isFile()) { res.writeHead(404).end(); return; }
