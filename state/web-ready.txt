@@ -39,6 +39,8 @@ ui/plan/PlanRunSlice.kt
 #   planSize, followCancel, followEditedPlan, planBaseline, setSaved, followPlanned, fitFirstRoute, linkSnapped, recording), MapDataPort (6), PlanRecalcHost (10), Background (1: run);
 #   stages begin / route (companion, pure) / findReach (companion) / progress / share / slow / legsRouted / taken; PlanRecalcSlice (app) strings them with coroutines
 ui/plan/PlanRecalcState.kt
+# RoutingDataCheck: pure rules (differs: „the route changed noticeably“) – PlanRecalcState.taken asks it by its full name
+data/RoutingDataCheck.kt
 # PlanEditState: port PlanEditPorts (29 members: map menus / camera, the tour, search; PlanEditHost adds the suspend pointNames), PointNames (1: label)
 ui/plan/PlanEditState.kt
 # PlaceAddState: port PlaceAddPorts (21 members: map menus, app facts, tour, search; PlaceAddHost adds none), HoldRouter (1: routedLength) + a HoldPaths (core)

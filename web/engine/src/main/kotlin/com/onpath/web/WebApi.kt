@@ -14,6 +14,8 @@ import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.Planner
+import com.onpath.app.routing.RouteCancel
+import com.onpath.app.ui.plan.PlanRecalcState
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.WaypointInsertion
@@ -285,15 +287,22 @@ object Engine {
             // own, in Plan, with no tour running
             val before = lastResultFor(wps)?.takeIf { (it.activity != act || it.sac != sac) &&
                 RouteWarnings.saysChanged(own = true, inPlan = true, touring = false) }
+            // the run itself is the app's stage 2 (PlanRecalcState.route, umbau's cut 2026-11-20): a point put in on the
+            // routed line cut there from the known line (LegSplit, a night on the route), the Planner with its time limit
+            // (askAtLimit: "Weiter warten?"), PlanResult.plan – the one computation of app and planner. The page's Cancel is
+            // a fresh worker (client.ts dropPlans), so the cancel signal handed in here never fires.
             // the wait window (WebWait, owner 2026-11-19 „Route berechnet ist auch A“): the legs the router works on are its
             // steps – each time a leg is done, {"done":2,"total":5} (the app's RouteWait reads the same Planner report)
-            // a point put in on the routed line (a night on the route, owner 2026-11-19): its leg cut there, not routed
-            LegSplit.seed(legCache, wps, act, sac)
-            val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1), legs = legCache,
-                progress = { done, total -> progressSink?.invoke("{\"done\":$done,\"total\":$total}") })
+            val run = PlanRecalcState.Run(gen = 0, pts = wps, pins = parseIndices(pinned), act = act, level = sac,
+                rounds = rounds.coerceAtLeast(1), askAtLimit = rounds >= 1, f = WebPace.factors(act), started = t0,
+                changeBefore = null, standBefore = null)
+            var planner: Planner? = null
             val res = try {
-                PlanResult.plan(planner, wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
-                    WebPace.factors(act))
+                PlanRecalcState.route(run, engine(), legCache, RouteCancel(),
+                    progress = { done, total -> progressSink?.invoke("{\"done\":$done,\"total\":$total}") },
+                    onPlanner = { planner = it }).result
+                    // the named stops keep their place (the app reads them when the result is taken: PlanResult.withNamed)
+                    .withNamed(nm.filterValues { it.isNotBlank() }.keys)
             } catch (e: SlowPlan.TimeLimit) {
                 // the time limit: the page asks "Weiter warten?" – the points and the last line stay as they are
                 Problems.info("routing", "Plan reached its time limit after ${e.rounds} period(s) – asking to wait on")
@@ -301,18 +310,12 @@ object Engine {
             }
             lastResult = res
             val n = wps.size - 1
-            lastLegs = "{\"routed\":${n - planner.cachedLegs},\"cached\":${planner.cachedLegs},\"stored\":${legStore.hits}}"
+            val cached = planner?.cachedLegs ?: 0
+            lastLegs = "{\"routed\":${n - cached},\"cached\":$cached,\"stored\":${legStore.hits}}"
             // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
-            // 2026-11-07) – only the missing piece is routed (~40 ms a try), as AppViewModel.findReach does
+            // 2026-11-07) – only the missing piece is routed (~40 ms a try): the app's PlanRecalcState.findReach
             val reach = res.gaps.firstOrNull()?.takeIf { !it.skipped }?.let { g ->
-                try {
-                    com.onpath.app.routing.PlanReach.find(engine(), g, act, sac).also { r ->
-                        Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$sac: ${r?.fix ?: "not worked out"}")
-                    }
-                } catch (e: Exception) {
-                    Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
-                    null
-                }
+                PlanRecalcState.findReach(g, act, sac, RouteCancel(), ::engine, System::currentTimeMillis)
             }
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
