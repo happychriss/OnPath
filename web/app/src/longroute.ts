@@ -28,6 +28,9 @@ export type Head = { what: 'ROUTE'; gen: number; rounds: number } | { what: 'NON
  */
 export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false): Promise<Head> {
   try {
+    // said yes to earlier on this page: the run knows it (RouteRun.RoutedBefore) – also on a fresh chain (an opened plan,
+    // a fresh worker), so it is never asked again in this page session, as before the shared run
+    if (allowed.has(keyOf(points))) await engine.call('runRoutedBefore', keyOf(points));
     return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay)) as Head;
   } catch (e) {
     problem('routing', 'the route run\'s head failed – routed without the long-plan question', e);
@@ -37,13 +40,24 @@ export async function runHead(engine: EngineClient, points: LatLon[], activity: 
 
 /** "Plan anyway" / "Calculate" of the not-routed line (the app's PlanRunSlice.planAnyway): after "very long", not asked again. */
 export async function planAnyway(engine: EngineClient, points: LatLon[]) {
+  // the line said "very long": these points are said yes to – kept page-side too, so the yes holds even when the run did
+  // not reach "not routed, too long" (a Cancel whose take-back failed – review 2026-11-20)
+  if (notRoutedLong) allowed.add(keyOf(points));
   try { await engine.call('runPlanAnyway', keyOf(points)); } catch (e) { problem('routing', '„Plan anyway“ not kept – the question may come again', e); }
 }
 
+/**
+ * The plans said yes to ("Plan anyway") in this page session – the page's memory beside the run's own (RouteRun.longOk
+ * keeps one plan and starts empty in a fresh chain).
+ */
+const allowed = new Set<string>();
+
 /** Texts of the not-routed line after Cancel: "Route not calculated – very long plan." + "Plan anyway". */
 export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_anyway') };
+/** Whether the not-routed line is the long plan's (its button = "Plan anyway") rather than a stopped wait's. */
+let notRoutedLong = true;
 /** The not-routed line for another reason (the app's NotRouted.STOPPED after Cancel of the wait). */
-export function setNotRouted(line: string, button: string) { notRoutedTexts = { line, button }; }
+export function setNotRouted(line: string, button: string) { notRoutedTexts = { line, button }; notRoutedLong = false; }
 
 /** The plan before a point edit: its points and their names (for "far from your route"). */
 export interface Before { points: LatLon[]; names: (string | undefined)[] }
@@ -57,11 +71,15 @@ export type LongAnswer = 'plan' | 'cancel' | { fresh: LatLon };
  * again; Cancel = the page's cancel ([why] LONG); a fresh start is a new plan.
  */
 export async function longRouteOk(engine: EngineClient, a: Ask, points: LatLon[], activity: Activity,
-  before?: Before | null): Promise<LongAnswer> {
+  before?: Before | null, stale: () => boolean = () => false): Promise<LongAnswer> {
   notRoutedTexts = { line: a.notRouted ?? notRoutedTexts.line, button: a.again ?? notRoutedTexts.button };
+  notRoutedLong = true;
   const far = before ? await farPoint(engine, points, activity, before) : null;
   const answer: LongAnswer = far ? await farQuestion(a, far) : (await question(a)) ? 'plan' : 'cancel';
   if (answer !== 'cancel' && answer !== 'plan') return answer;
+  if (answer === 'plan') allowed.add(keyOf(points));
+  // a newer question was raised meanwhile (another run of the page): this answer must not close that one in the run
+  if (stale()) return answer;
   try { await engine.call('runLongAnswer', answer === 'plan', keyOf(points)); }
   catch (e) { problem('routing', 'the answer to the long-plan question not kept – it may be asked again', e); }
   return answer;

@@ -57,6 +57,7 @@ interface WasmEngine {
   runEnd(gen: number, outcome: string, rounds: number): void;
   runSlowAnswer(wait: boolean): void;
   runPlanAnyway(points: string): void;
+  runRoutedBefore(points: string): void;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
@@ -84,7 +85,7 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel',
   // the route run's head (the app's PlanRecalcState.begin + RouteRun in WebPlanChain): asked before each run
-  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway',
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
@@ -391,7 +392,7 @@ const dropped = new Set<number>();
 // planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
 // an open „Weiter warten?“ – WebPlanChain.runExport)
 const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
-  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway']);
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;

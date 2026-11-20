@@ -590,8 +590,16 @@ object Engine {
         val (u, r) = history.snapshot()
         fun list(l: List<List<GeoPoint>>) = l.joinToString("|") { s -> if (s.isEmpty()) "~" else s.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) } }
         // + what the route run keeps (WebPlanChain.runExport: "Plan anyway", why not routed, an open "Weiter warten?")
-        return list(u) + "#" + list(r) + "#" + chain.runExport()
+        return list(u) + "#" + list(r) + "#" + chain.runExport() + "#" + epoch
     }
+
+    /**
+     * Which chain a run's number belongs to: every [historyImport] starts a fresh chain whose RouteRun counts from 0 again,
+     * so a number alone could name a run of the chain before (review 2026-11-20: a late result ending the newer run). The
+     * page gets `epoch * EPOCH + gen`; [epoch] grows across fresh chains and fresh workers (it rides in the export).
+     */
+    private var epoch = 0
+    private const val EPOCH = 1_000_000
 
     /** [historyExport]'s text back into this engine's history (replaces it) and into a fresh chain (its route run too). */
     fun historyImport(text: String) {
@@ -600,6 +608,7 @@ object Engine {
         history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
         chain = WebPlanChain(history = history)
         parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
+        epoch = (maxOf(epoch, parts.getOrNull(3)?.toIntOrNull() ?: 0) + 1) % 2000
     }
 
     // ---- the route run's head (the app's PlanRecalcState.begin + RouteRun, WebPlanChain): the page asks before each run
@@ -612,7 +621,7 @@ object Engine {
     fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String {
         val act = Activity.valueOf(activity)
         return when (val h = chain.head(parsePoints(points), act, sac, askLong)) {
-            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + h.gen + ",\"rounds\":" + h.rounds + "}"
+            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds + "}"
             is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longAsk(h.estimateS, act) + "}"
             WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
         }
@@ -622,7 +631,13 @@ object Engine {
     fun runLongAnswer(yes: Boolean, points: String) = chain.longAnswer(yes, parsePoints(points))
 
     /** The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open). */
-    fun runEnd(gen: Int, outcome: String, rounds: Int) = chain.end(gen, outcome, rounds)
+    fun runEnd(gen: Int, outcome: String, rounds: Int) {
+        if (gen / EPOCH != epoch) { Problems.trace("plan", "the end of a run of an earlier chain – ignored ($outcome)"); return }
+        chain.end(gen % EPOCH, outcome, rounds)
+    }
+
+    /** The plan [points] was said yes to earlier on this page (RouteRun.RoutedBefore): not asked again. */
+    fun runRoutedBefore(points: String) = chain.routedBefore(parsePoints(points))
 
     /** The answer to "Weiter warten?" (PlanRunSlice.answerSlowPlan): the next [runHead] has one period more. */
     fun runSlowAnswer(wait: Boolean) = chain.slowAnswer(wait)
@@ -1045,6 +1060,7 @@ external fun planProgress(text: String)
 @JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
 @JSExport fun runPlanAnyway(points: String) = Engine.runPlanAnyway(points)
+@JSExport fun runRoutedBefore(points: String) = Engine.runRoutedBefore(points)
 /** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
 @JSExport fun planChainProbe(): String = WebPlanChain.probe()
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =

@@ -1557,6 +1557,9 @@ async function changed() {
   // a plan still running for the points before is dropped: the one worker must not hold the next calls behind it
   // (a long plan routes for minutes – client.ts dropPlans stops it, the app's cancelRun)
   engine.dropPlans();
+  // the dropped run's late answer is ignored from now on (planRun), not only once the next run starts: it must never end
+  // the newer run in the engine (review 2026-11-20)
+  state.latest++;
   const before = editBefore; editBefore = null; dismiss('slowplan'); // a new edit answers the time-limit question
   placeCard.planChanged(); // the pin card's "+ Zur Route" / "Hierhin" follows the plan
   await drawPoints();
@@ -1574,7 +1577,11 @@ async function changed() {
   const h = JSON.parse(await engine.call('historyState'));
   if (stale()) return;
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
-  if (few) { render(); return; }
+  if (few) {
+    // the run in the engine learns there is nothing to route (RouteRun leaves Routing) – never left „routing“ there
+    void runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+    render(); return;
+  }
   planGaps.clear(); // the last plan's gaps belong to other points
   // the app's run head (PlanRecalcState.begin + RouteRun, in the engine): route now, or the long-route question first –
   // nothing is routed or downloaded until it is answered; a multi-day tour is never asked (owner 2026-11-18)
@@ -1582,7 +1589,7 @@ async function changed() {
   let head = await runHead(engine, state.points, state.activity, state.sac, multiDay);
   if (stale()) return;
   if (head.what === 'ASK') {
-    const answer = await longRouteOk(engine, head, state.points, state.activity, before);
+    const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale);
     if (stale()) return;
     if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
     if (answer !== 'plan') { await startFresh(answer.fresh); return; }
@@ -1621,7 +1628,10 @@ function askSlowPlan(rounds: number) {
       const run = changeRun; // an edit meanwhile starts its own run: this one is not routed then
       try { await engine.call('runSlowAnswer', true); } catch (e) { problem('routing', 'the slow plan\'s answer not told to the engine', e); }
       const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour);
-      if (run === changeRun) planRun(routeHead(head, rounds + 1));
+      // never fewer periods than this answer asked for: an engine that missed the time limit (no end told, a run of an
+      // earlier chain) would give one period again – „Weiter warten?“ at the same limit for ever (review 2026-11-20)
+      const rr = routeHead(head, rounds + 1);
+      if (run === changeRun) planRun({ ...rr, rounds: Math.max(rr.rounds, rounds + 1) });
     } },
   ] });
 }
@@ -1633,7 +1643,12 @@ function askSlowPlan(rounds: number) {
 async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   dismiss('slowplan');
   // a plan needs two points (the engine's Planner requires them): fewer is no route, never a request
-  if (state.points.length < 2) { problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`); return; }
+  if (state.points.length < 2) {
+    problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`);
+    // the run [gen] ends here: the engine's RouteRun must not stay in Routing with nothing running
+    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds).catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
+    return;
+  }
   const id = ++state.latest;
   setPlanning(true);
   render();

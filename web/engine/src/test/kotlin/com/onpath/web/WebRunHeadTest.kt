@@ -36,6 +36,25 @@ class WebRunHeadTest {
         assertEquals(2, rounds(Engine.runHead(day, "HIKE", 2, true)))
     }
 
+    @Test fun theEndOfARunOfAnEarlierChainNeverEndsTheNewerRun() {
+        Engine.historyImport("")
+        val old = Regex("\"gen\":(\\d+)").find(Engine.runHead(day, "HIKE", 2, true))!!.groupValues[1].toInt()
+        Engine.historyImport("#") // an opened plan: a fresh chain whose run counts from 0 again
+        val now = Regex("\"gen\":(\\d+)").find(Engine.runHead(day, "HIKE", 2, true))!!.groupValues[1].toInt()
+        assertTrue("$old vs $now", old != now)
+        Engine.runEnd(old, "slow", 1) // the late answer of the run before: ignored
+        Engine.runSlowAnswer(true)
+        assertEquals("the newer run was not touched: no „Weiter warten“ period added", 1, rounds(Engine.runHead(day, "HIKE", 2, true)))
+    }
+
+    @Test fun aYesOfThisPageHoldsOnAFreshChain() {
+        Engine.historyImport("#")
+        assertEquals("ASK", what(Engine.runHead(long, "HIKE", 2, true)))
+        Engine.historyImport("#")
+        Engine.runRoutedBefore(long) // the page's own memory (longroute.ts allowed)
+        assertEquals("ROUTE", what(Engine.runHead(long, "HIKE", 2, true)))
+    }
+
     @Test fun cancelOfTheQuestionLeavesItLongAndPlanAnywayRoutesUnasked() {
         Engine.historyImport("")
         assertEquals("ASK", what(Engine.runHead(long, "HIKE", 2, true)))

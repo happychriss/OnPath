@@ -259,6 +259,15 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     }
 
     /**
+     * The plan [now] was said yes to earlier on this page ([RouteRun.Event.RoutedBefore] = [RouteRun.longOk]): the page keeps
+     * its yeses for the session (as before the shared run), so a fresh chain – an opened plan, a fresh worker – asks no
+     * more than the old page did.
+     */
+    fun routedBefore(now: List<GeoPoint>) {
+        planRun.routeEvent(RouteRun.Event.RoutedBefore(now))
+    }
+
+    /**
      * What a fresh worker must know of the run (umbau's (b), 2026-11-20): the plan said yes to ([RouteRun.longOk]), why it is
      * left without a route, the open "Weiter warten?" – "points|WHY|rounds", each part may be empty.
      */
