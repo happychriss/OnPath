@@ -469,6 +469,39 @@ for (const hold of [false, true]) { // (c) [hold]: another job (the map's tiles,
   await c.close();
 }
 
+{ // (d) a click queued while the route runs, then Cancel (review 2026-11-20): the take-back runs in edit order – the
+  // click's point is never lost (before, planCancel undid the run's edit at once and the click's commit then cleared Redo)
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const p = await planFromLink(c);
+  await p.evaluate(() => {
+    const e = window.__engine, call = e.call.bind(e);
+    window.__realPlan = e.plan.bind(e);
+    e.plan = (pts, a, s, pin, cb) => { cb({ phase: 'download', done: 10, bytes: 1000 }); return new Promise(() => {}); }; // routes for good
+    e.call = (fn, ...a) => fn === 'holdOnMap' ? new Promise((ok, no) => setTimeout(() => call(fn, ...a).then(ok, no), 1500)) : call(fn, ...a);
+  });
+  await p.click('#reverse'); // an edit: its run is what Cancel would take back
+  await p.waitForSelector('#waitwin .wwcancel', { timeout: 30_000 });
+  const n0 = await p.evaluate(() => window.__state.points.length);
+  await p.evaluate(() => {
+    window.__engine.plan = window.__realPlan; // the click's own run routes for real
+    const m = window.__map, c0 = m.getCenter(), at = { lng: c0.lng + 0.01, lat: c0.lat + 0.01 };
+    m.fire('click', { lngLat: at, point: m.project(at), originalEvent: new MouseEvent('click') });
+  });
+  await p.click('#waitwin .wwcancel');
+  await p.waitForFunction((n) => window.__state.points.length === n + 1, n0, { timeout: 15_000 }).catch(() => {});
+  await p.waitForTimeout(2500);
+  const n1 = await p.evaluate(() => window.__state.points.length);
+  check(n1 === n0 + 1, `a click queued before Cancel: its point stays (${n0} → ${n1})`);
+  await p.click('#undo');
+  await p.waitForTimeout(800);
+  const n2 = await p.evaluate(() => window.__state.points.length);
+  await p.click('#redo').catch(() => {});
+  await p.waitForTimeout(800);
+  const n3 = await p.evaluate(() => window.__state.points.length);
+  check(n2 === n0 && n3 === n0 + 1, `… and Undo / Redo take exactly that click (${n2}, ${n3})`);
+  await c.close();
+}
+
 // ---- 4: no WasmGC ----
 for (const [locale, want] of [['de-DE', 'zu alt'], ['en-US', 'too old']]) {
   const c = await browser.newContext({ locale });

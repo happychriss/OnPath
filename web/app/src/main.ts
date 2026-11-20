@@ -1111,7 +1111,11 @@ async function placeEdit(op: string, at: LatLon, lineSnapM: number, m: Meta, tit
     placeFit = false;
     if (pinTaken?.plan == null) pinTaken = null;
     // the place is a stop already (the app's addPoiWith → openPointMenu „POI that is a stop“): its point menu
-    if (r.pointMenu != null) { const i = r.pointMenu; setTimeout(() => { void pointMenu(i); }, 0); }
+    if (r.pointMenu != null) {
+      // found again by its place when the menu opens: an edit queued behind this one may have moved its index
+      const k = key(state.points[r.pointMenu]);
+      setTimeout(() => { const i = state.points.findIndex((q) => key(q) === k); if (i >= 0) void pointMenu(i); }, 0);
+    }
     return null;
   }
   const was = new Map(state.points.map((q, i) => [key(q), state.meta[i]] as const));
@@ -1751,24 +1755,46 @@ async function cancelLongRoute() {
   engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   overlay.finish('link'); // a link's plan stopped: nothing more to wait for
   state.latest++; // from now on the stopped run's reports are ignored (planRun) – not only after the answer below
-  const before = runCause === 'activity' ? activityBefore : null;
-  const answer = await engine.call('planCancel', runCause, enc(state.points), before?.a ?? '', before?.sac ?? 0) as string;
-  const { what, points } = JSON.parse(answer) as { what: string; points: string | null };
-  state.latest++; state.plan = null; setPlanning(false);
-  const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
-  const pinBack = () => { // TakenPin.back: the place is no point of the plan any more and no other pin is shown
-    if (!taken || placeCard.hasPin()) return;
-    if (state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) return;
-    placeCard.showPin(taken.hit);
-  };
-  if (what === 'UNDO' || what === 'REDO') {
-    const op = what === 'UNDO' ? 'undo' : 'redo';
-    await queueEdit(async () => stepTo(op, points ?? 'null'));
-    pinBack(); return;
+  // what the run was, read at the click: an edit queued meanwhile must not change which step is taken back
+  const cause = runCause, before = cause === 'activity' ? activityBefore : null, clicked = enc(state.points);
+  let restore: { a: Activity; sac: number } | null = null;
+  try {
+    // in edit order (as the user's own Undo): the take-back runs after every edit queued before the click, and the
+    // history step and the shown plan are one queued step – an Undo or a click meanwhile can't interleave with it
+    await queueEdit(async () => {
+      if (enc(state.points) !== clicked) {
+        // a newer edit replaced the stopped run's plan (its own run is already under way): nothing to take back
+        console.info('[Problems] TRACE plan: Cancel of a run whose plan was changed meanwhile – the points stay');
+        return null;
+      }
+      let what = 'KEEP_POINTS', points: string | null = null;
+      try {
+        ({ what, points } = JSON.parse(await engine.call('planCancel', cause, clicked, before?.a ?? '', before?.sac ?? 0) as string) as
+          { what: string; points: string | null });
+      } catch (e) { // the shared cancelRun failed: the points stay, planning stops anyway
+        problem('routing', 'Cancel of a run: the take-back failed – the points stay', e);
+      }
+      state.latest++; state.plan = null; setPlanning(false);
+      const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
+      if (what === 'UNDO' || what === 'REDO') {
+        closeMenu(); // an open point menu holds an index of the plan before the step
+        const r = stepTo(what === 'UNDO' ? 'undo' : 'redo', points ?? 'null');
+        // TakenPin.back: the place is no point of the plan any more and no other pin is shown
+        if (taken && !placeCard.hasPin() &&
+          !state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) placeCard.showPin(taken.hit);
+        return r;
+      }
+      if (what === 'RESTORE_ACTIVITY' && before) { restore = before; return null; }
+      state.notRouted = true;
+      render();
+      return null;
+    });
+  } catch (e) { // never left calculating
+    problem('routing', 'Cancel of a run failed', e, 'error');
+    state.latest++; state.plan = null; setPlanning(false); state.notRouted = true; render();
   }
-  if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
-  state.notRouted = true;
-  render();
+  const back = restore as { a: Activity; sac: number } | null;
+  if (back) setActivity(back.a, back.sac, true); // outside the queue: it queues its own run
 }
 
 const routeReveal = new RouteReveal((legs) => (map.getSource('planned-route') as GeoJSONSource | undefined)?.setData(legs.length ? {
