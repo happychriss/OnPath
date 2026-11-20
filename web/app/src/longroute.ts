@@ -1,22 +1,44 @@
-// The app's long-route question (routing/LongRoute, AppViewModel.recalc / answerLongRoute, ui/TourBar LongRouteDialog;
-// docs/design/web-planner.md §15): a plan far beyond a day – a point in another country by mistake – is asked about
-// before anything is routed or downloaded. Rule and texts come from the engine (WebPlanRules.kt); this module only
-// shows the dialog. "Plan anyway" remembers the points (asked once per plan, like the app's longRouteOk).
+// The app's long-route question (routing/LongRoute, ui/TourBar LongRouteDialog; docs/design/web-planner.md §15): a plan far
+// beyond a day – a point in another country by mistake – is asked about before anything is routed or downloaded. Whether
+// it is asked is the app's run head (PlanRecalcState.begin + RouteRun in the engine's WebPlanChain, [runHead]); the answer
+// goes back to it ([longRouteOk] → runLongAnswer: "Plan anyway" = RouteRun.longOk, these points are not asked again;
+// the not-routed line's button = runPlanAnyway). This module shows the dialog.
 // Web addition (owner 2026-10-30, "war in Meran, suche nach Hilden, gebe als Start"): when one new point is what makes
 // the plan long – it is far from every point the plan already had (a single point left from earlier, or a route in
 // another region the user no longer sees) – the question says so and offers to start a new route there instead.
 import type { EngineClient } from './engine/client';
 import type { Activity } from './engine/types';
 import { t } from './i18n';
+import { problem } from './diag';
 
 type LatLon = [number, number];
 interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string }
 
-let okFor = '';
 const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixed(6)}`).join(';');
 
-/** "Plan anyway" for these points without asking (the not-routed line's button). */
-export function allowLongRoute(points: LatLon[]) { okFor = keyOf(points); }
+/**
+ * What the app's run head decided for a plan (WebApi.runHead = PlanRecalcState.begin): route the run [gen] with [rounds]
+ * time-limit periods, ask first (the question's texts), or nothing to route (fewer than two points).
+ */
+export type Head = { what: 'ROUTE'; gen: number; rounds: number } | { what: 'NONE' } | ({ what: 'ASK' } & Ask);
+
+/**
+ * The run's head for [points]: a multi-day tour is never asked ([multiDay], owner 2026-11-18 – its day rows show a long day).
+ * A head the engine could not answer routes at once (one period, never blocked on a question that can't be put).
+ */
+export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false): Promise<Head> {
+  try {
+    return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay)) as Head;
+  } catch (e) {
+    problem('routing', 'the route run\'s head failed – routed without the long-plan question', e);
+    return { what: 'ROUTE', gen: -1, rounds: 1 };
+  }
+}
+
+/** "Plan anyway" / "Calculate" of the not-routed line (the app's PlanRunSlice.planAnyway): after "very long", not asked again. */
+export async function planAnyway(engine: EngineClient, points: LatLon[]) {
+  try { await engine.call('runPlanAnyway', keyOf(points)); } catch (e) { problem('routing', '„Plan anyway“ not kept – the question may come again', e); }
+}
 
 /** Texts of the not-routed line after Cancel: "Route not calculated – very long plan." + "Plan anyway". */
 export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_anyway') };
@@ -29,21 +51,19 @@ export interface Before { points: LatLon[]; names: (string | undefined)[] }
 export type LongAnswer = 'plan' | 'cancel' | { fresh: LatLon };
 
 /**
- * Route now (short enough, or already allowed), cancelled, or start fresh. Shows the app's question when the plan is
- * very long – or, after a point edit ([before]), "Far from your route" when the one new point alone makes it long;
- * nothing is routed while it is open.
+ * The question the run head [a] asks (the plan [points] is very long): plan anyway, cancelled, or start fresh. After a point
+ * edit ([before]) it is "Far from your route" when the one new point alone makes the plan long (the web's own question);
+ * nothing is routed while it is open. The answer goes to the run (RouteRun.LongAnswer): yes = these points are not asked
+ * again; Cancel = the page's cancel ([why] LONG); a fresh start is a new plan.
  */
-export async function longRouteOk(engine: EngineClient, points: LatLon[], activity: Activity, before?: Before | null,
-  multiDay = false): Promise<LongAnswer> {
-  const k = keyOf(points);
-  if (k === okFor) return 'plan';
-  // a multi-day tour is never asked (owner 2026-11-18, WebPlanRules.longRoute): its day rows show a long day
-  const a = JSON.parse(await engine.call('longRoute', k, activity, multiDay)) as Ask;
-  if (!a.ask) return 'plan';
+export async function longRouteOk(engine: EngineClient, a: Ask, points: LatLon[], activity: Activity,
+  before?: Before | null): Promise<LongAnswer> {
   notRoutedTexts = { line: a.notRouted ?? notRoutedTexts.line, button: a.again ?? notRoutedTexts.button };
   const far = before ? await farPoint(engine, points, activity, before) : null;
   const answer: LongAnswer = far ? await farQuestion(a, far) : (await question(a)) ? 'plan' : 'cancel';
-  if (answer === 'plan') okFor = k;
+  if (answer !== 'cancel' && answer !== 'plan') return answer;
+  try { await engine.call('runLongAnswer', answer === 'plan', keyOf(points)); }
+  catch (e) { problem('routing', 'the answer to the long-plan question not kept – it may be asked again', e); }
   return answer;
 }
 

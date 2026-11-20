@@ -16,7 +16,7 @@ class WebHistoryMoveTest {
         assertEquals("46.670000,11.160000;46.680000,11.200000",
             Engine.historyStep("undo", "46.670000,11.160000;46.680000,11.200000;46.690000,11.210000"))
         val moved = Engine.historyExport()
-        assertEquals("~|46.670000,11.160000#46.670000,11.160000;46.680000,11.200000;46.690000,11.210000", moved)
+        assertEquals("~|46.670000,11.160000#46.670000,11.160000;46.680000,11.200000;46.690000,11.210000#||", moved) // + the route run's memory (none here)
 
         Engine.historyImport("") // what a fresh worker has
         assertEquals("{\"canUndo\":false,\"canRedo\":false}", Engine.historyState())
