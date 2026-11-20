@@ -233,7 +233,10 @@ class LiveUploader(
     /** When the next [step] is due (ms, the caller's clock); null = nothing to do. A step before that does nothing. */
     fun nextDueMs(): Long? {
         val s = current() ?: return null
-        if (failures == 0 && (more || s.stopping)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
+        // the end's final head and a stop's delete do not wait for the 30-s event floor: the recording service lets its
+        // wake lock go at the end, a step half a minute later may not run until the phone next wakes. A failed try
+        // (back-off, the server's retry-after) still holds – that is the branch below.
+        if (failures == 0 && (more || s.stopping || s.ending)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
         return LivePolicy.nextUpload(lastOkMs, lastTryMs, moving, paused, lowBattery, event, failures, retryAfterMs, networkBack)
     }
 

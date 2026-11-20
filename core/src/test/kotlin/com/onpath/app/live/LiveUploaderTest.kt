@@ -502,6 +502,49 @@ class LiveUploaderTest {
     }
 
     /**
+     * Guards: "Tour beendet" must not sit behind the 30-s event floor – the recording service releases its wake lock at
+     * the end, so a final head scheduled half a minute later may wait until the phone next wakes and the page says
+     * "kein Kontakt" for a tour that is over. An end (and a stop's delete) right after an upload goes within seconds.
+     */
+    @Test
+    fun anEndRightAfterAnUploadIsSentAtOnce() {
+        val w = World()
+        w.start()
+        w.run(5 * 60_000)
+        val pushes = w.server.pushes
+        while (w.server.pushes == pushes) w.run(1000) // an upload just went through
+        w.tour.headKnown = false
+        w.uploader.end()
+        assertTrue("due within seconds, not after the event floor", w.uploader.nextDueMs()!! - w.now <= 2000)
+        w.run(3000, walking = false)
+        assertTrue("the final head is there 3 s after End tour", w.server.ended)
+        assertFalse(w.uploader.pending)
+
+        val v = World()
+        v.start()
+        v.run(5 * 60_000)
+        val p2 = v.server.pushes
+        while (v.server.pushes == p2) v.run(1000)
+        v.uploader.stop()
+        v.run(3000, walking = false)
+        assertTrue("the box is deleted 3 s after Stop sharing", v.server.deleted)
+    }
+
+    /** Guards: a busy server is still left alone at the end – its retry-after holds for the final head too. */
+    @Test
+    fun anEndDoesNotHammerABusyServer() {
+        val w = World()
+        w.start()
+        w.run(5 * 60_000)
+        w.server.net = { Net.BUSY }
+        w.tour.headKnown = false
+        w.uploader.end()
+        val calls = w.server.calls
+        w.run(50_000, walking = false)
+        assertTrue("at most one try inside the busy floor: ${w.server.calls - calls}", w.server.calls - calls <= 1)
+    }
+
+    /**
      * Guards: the remembered state survives as text – what was written is read back exactly, a newer version's extra
      * fields are ignored, and a damaged file is "no share" (never a crash at the start of the recording service).
      */
