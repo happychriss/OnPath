@@ -9,8 +9,10 @@ import { handle } from "../src/index.js";
 import { fakeD1 } from "./fake-d1.js";
 
 const H = "https://plan.example.org/live/v1/";
-const BOX = "0dPnimRkezLc3fCguuX6rg";                          // the frozen test box and read token (LiveFormatTest)
-const READ = "aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo";
+// test vector from the dummy secret i*7+1 (or a made-up test token) – not a credential
+const BOX = "0dPnimRkezLc3fCguuX6rg";                          // the frozen test box and read token (LiveFormatTest) // ggignore
+// test vector from the dummy secret i*7+1 (or a made-up test token) – not a credential
+const READ = "aFVOTMzUKm5qEBrhELBD-BkTFhqMML-Q55w9JiKjmjo"; // ggignore
 const WRITE = "W".repeat(43);                                    // the phone's own random token
 const sha = (t) => createHash("sha256").update(t).digest("hex");
 const blob = (n = 60, c = "A") => c.repeat(n);

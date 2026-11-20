@@ -508,7 +508,8 @@ class LiveUploaderTest {
     @Test
     fun theShareTextReadsBackAndGarbageIsNothing() {
         val s = LiveShare(
-            ByteArray(32) { (it * 7 + 1).toByte() }, "wHErkFiAjM3dUXVy18TJETV0arl4vvuSa21gZUBEpjE", 42, "Christian N.", true, 1234, 7, 3,
+            // test vector from the dummy secret i*7+1 – not a credential
+            ByteArray(32) { (it * 7 + 1).toByte() }, "wHErkFiAjM3dUXVy18TJETV0arl4vvuSa21gZUBEpjE", 42, "Christian N.", true, 1234, 7, 3, // ggignore
             99, ending = true, stopping = false, lastHead = LiveItem.head(LiveHead(LiveState.PAUSED, batteryPct = 40)),
         )
         assertEquals(s, LiveShare.parse(s.toText()))
