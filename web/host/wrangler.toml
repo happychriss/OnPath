@@ -9,7 +9,7 @@ preview_urls = false
 [assets]
 directory = "../app/dist"
 binding = "ASSETS"
-run_worker_first = ["/data/*", "/segments/*", "/sync/*", "/maps/*", "/.well-known/*", "/version.json"]
+run_worker_first = ["/data/*", "/segments/*", "/sync/*", "/live/v1/*", "/maps/*", "/.well-known/*", "/version.json"]
 
 # no plain IPs anywhere (owner, doorman 2e851ef): the per-IP limits use a daily salted hash, and no invocation logs
 [observability.logs]
@@ -41,9 +41,16 @@ name = "SYNC_RATE"
 namespace_id = "7301"
 simple = { limit = 300, period = 60 } # owner 2026-11-12: pairing pushes every plan one by one (~110 each side) – 120 locked the home IP out
 
-# daily: delete mailboxes idle for 12 months and old map-area counters
+# daily: delete mailboxes idle for 12 months and old map-area counters; hourly: live tours 12 h after their end
+# (docs/design/live-tracking.md §6 – every firing runs all three clean-ups, they are cheap deletes)
 [env.test.triggers]
-crons = ["17 3 * * *"]
+crons = ["17 3 * * *", "47 * * * *"]
+
+# Live tracking (src/live.js): 120 requests per minute per IP (a phone pushes every 2 min, a viewer asks as often)
+[[env.test.ratelimits]]
+name = "LIVE_RATE"
+namespace_id = "7306"
+simple = { limit = 120, period = 60 }
 
 # Map areas on demand (src/maps.js, docs/design/web-planner.md §17): build requests go to the doorman Worker of the same
 # account through this service binding; the app key comes from the secret MAP_KEY (the deploy step puts it from the
@@ -92,3 +99,5 @@ MAPS_QUOTA_GLOBAL_DAY = "200"
 # the map-area quota). A second device joining an existing pairing does not count. Test site: 50 (owner 2026-10-30 –
 # with A-017 every "Pair phone" claims a fresh mailbox, so testing pairing hit 5 quickly); production: decide at launch.
 SYNC_NEW_PER_IP_DAY = "50"
+# New live tours (boxes) per IP per day (src/live.js, same daily salted hash). Code default 10; the test site allows more.
+LIVE_NEW_PER_IP_DAY = "30"
