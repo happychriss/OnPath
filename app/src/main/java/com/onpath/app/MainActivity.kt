@@ -274,7 +274,7 @@ class MainActivity : ComponentActivity() {
                         com.onpath.app.ui.RouteDetailsScreen(r, vm.planRoute.activity, onBack = { vm.planEdit.routeDetailsOpen = false })
                     }
                     if (vm.settingsSlice.showSettings) BackHandler { vm.settingsSlice.settingsBack() }
-                    PageFade(vm.settingsSlice.showSettings) {
+                    PageFade(vm.settingsSlice.showSettings) { com.onpath.app.ui.LiveShareLayer(vm) {
                         // Offline maps: what loads – the sign beside the map's number and its details sheet (form B)
                         val loads = com.onpath.app.ui.rememberBackgroundDownload(vm)
                         var loadsOpen by remember { mutableStateOf(false) }
@@ -392,7 +392,7 @@ class MainActivity : ComponentActivity() {
                                 onAllowStorage = { storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) },
                             ),
                         )
-                    }
+                    } }
                     // over Settings too: Diagnostics → Developer tools opens the technical view
                     if (vm.planRoute.timeDetails != null) BackHandler { vm.planRoute.timeDetails = null }
                     PageFadeOf(vm.planRoute.timeDetails) { td ->

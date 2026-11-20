@@ -363,8 +363,8 @@ fun NavigateOverlay(
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            // cards glide in and out instead of popping and pushing the status card
-            Appearing(ui.turn) { TurnCard(it) }
+            LocalNavTop.current?.invoke(ui.turn != null) // live sharing's sign when no turn card carries it ([LiveSignLayer])
+            Appearing(ui.turn) { TurnCard(it) } // cards glide in and out instead of popping and pushing the status card
             // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
             // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
             Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
@@ -372,8 +372,8 @@ fun NavigateOverlay(
                 var profileOpen by rememberSaveable { mutableStateOf(false) }
                 NavStatusCard(ui, onResume, profileOpen, onToggleProfile = { profileOpen = !profileOpen }, onActivity = onActivity,
                     onProfileScrub = onProfileScrub, onProfileRelease = onProfileRelease,
-                    // no tour buttons in the card (owner 2026-11-06, [TourBottomBar]); live sharing's row ([LiveShareLayer])
-                    actions = LocalNavCardExtra.current)
+                    // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([TourBottomBar])
+                    actions = null)
             }
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
@@ -476,7 +476,7 @@ private fun TurnCard(t: TurnHint) {
                     style = MaterialTheme.typography.headlineMedium)
                 StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
                     fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }
+            }; LocalTurnCardEnd.current?.invoke() // live sharing's sign at the card's edge ([LiveSignLayer])
         }
     }
 }

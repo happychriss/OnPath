@@ -215,7 +215,7 @@ fun SettingsScreen(
             if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item {
+                    item { LocalSettingsFirst.current?.invoke() // live sharing's rows ([LiveShareLayer]) – first on the way
                         NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
                             onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
                             onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },

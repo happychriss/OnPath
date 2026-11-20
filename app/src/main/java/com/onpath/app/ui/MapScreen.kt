@@ -222,7 +222,7 @@ fun MapScreen(
                     onPanelHeight = { panelHeightPx = it },
                     onActivityBox = { r, b -> planActivity[0] = r; planActivity[1] = b })
             },
-            navigate = { LiveShareLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
+            navigate = { LiveSignLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         // (not over the rest view while cycling)

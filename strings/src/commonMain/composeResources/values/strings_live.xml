@@ -6,7 +6,7 @@
     <string name="live_stop">Stop sharing</string>
     <string name="live_sign">Live</string>
     <string name="live_sign_waiting">Live · waiting for network</string>
-    <string name="live_sign_cd">Live sharing: %1$s</string>
+    <string name="live_name_row">Name on the page</string>
     <string name="live_share_text">Follow my tour live: %1$s</string>
     <string name="live_name_title">Your name for the page</string>
     <string name="live_name_text">Whoever opens the link sees “Tour of …”. You can leave the field empty.</string>
