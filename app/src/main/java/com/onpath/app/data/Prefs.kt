@@ -34,6 +34,13 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getLong("crashShownUntil", 0)
         set(v) = sp.edit().putLong("crashShownUntil", v).apply()
 
+    /** Live sharing: the name on the viewer page ("Tour von …"); null = never asked, "" = asked and left empty. */
+    var liveName: String?
+        get() = try { sp.getString("liveName", null) } catch (e: Exception) {
+            Problems.warn("settings", "Setting liveName unreadable, asked again", e); null
+        }
+        set(v) = sp.edit().putString("liveName", v).apply()
+
     /** The app language override (LanguageChoice name; null = the phone's). */
     var appLanguage: String?
         get() = sp.getString("appLanguage", null)
