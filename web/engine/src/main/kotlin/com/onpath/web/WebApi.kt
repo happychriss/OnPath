@@ -571,12 +571,13 @@ object Engine {
     fun historyState(): String = "{\"canUndo\":" + history.canUndo + ",\"canRedo\":" + history.canRedo + "}"
 
     /**
-     * Cancel of the long-route question / of the wait (PlanEditState.cancelRun(STOPPED)) for the run started by [cause]
-     * on the plan [points]; [activity] / [sac] = the activity before an activity change. `{"what":"UNDO","points":"…"}`
+     * Cancel of the long-route question ([why] "LONG") / of the wait ("STOPPED") – PlanEditState.cancelRun – for the run started
+     * by [cause] on the plan [points]; [activity] / [sac] = the activity before an activity change. `{"what":"UNDO","points":"…"}`
      * ("UNDO" / "REDO" with the points to show, "RESTORE_ACTIVITY", "KEEP_POINTS").
      */
-    fun planCancel(cause: String, points: String, activity: String, sac: Int): String {
-        val (what, pts) = chain.cancel(cause, parsePoints(points), activityOrNull(activity), sac)
+    fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String = "STOPPED"): String {
+        val (what, pts) = chain.cancel(cause, parsePoints(points), activityOrNull(activity), sac,
+            com.onpath.app.domain.NotRouted.entries.firstOrNull { it.name == why } ?: com.onpath.app.domain.NotRouted.STOPPED)
         return "{\"what\":" + str(what) + ",\"points\":" +
             (pts?.let { p -> str(p.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) } ?: "null") + "}"
     }
@@ -588,16 +589,46 @@ object Engine {
     fun historyExport(): String {
         val (u, r) = history.snapshot()
         fun list(l: List<List<GeoPoint>>) = l.joinToString("|") { s -> if (s.isEmpty()) "~" else s.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) } }
-        return list(u) + "#" + list(r)
+        // + what the route run keeps (WebPlanChain.runExport: "Plan anyway", why not routed, an open "Weiter warten?")
+        return list(u) + "#" + list(r) + "#" + chain.runExport()
     }
 
-    /** [historyExport]'s text back into this engine's history (replaces it). */
+    /** [historyExport]'s text back into this engine's history (replaces it) and into a fresh chain (its route run too). */
     fun historyImport(text: String) {
         val parts = text.split("#")
         fun list(s: String?) = if (s.isNullOrEmpty()) emptyList() else s.split("|").map { if (it == "~") emptyList() else parsePoints(it) }
         history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
         chain = WebPlanChain(history = history)
+        parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
     }
+
+    // ---- the route run's head (the app's PlanRecalcState.begin + RouteRun, WebPlanChain): the page asks before each run
+
+    /**
+     * The head of a run of the plan [points] for [activity] / [sac]: `{"what":"ROUTE","gen":3,"rounds":1}`, the long-plan
+     * question first `{"what":"ASK","seconds":…,"title":…,"text":…,"plan":…,"cancel":…,"notRouted":…,"again":…}` (the app's
+     * LongRouteDialog texts), or `{"what":"NONE"}`. [askLong] false: a multi-day tour is never asked (owner 2026-11-18).
+     */
+    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String {
+        val act = Activity.valueOf(activity)
+        return when (val h = chain.head(parsePoints(points), act, sac, askLong)) {
+            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + h.gen + ",\"rounds\":" + h.rounds + "}"
+            is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longAsk(h.estimateS, act) + "}"
+            WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
+        }
+    }
+
+    /** The answer to the long-plan question for the plan [points] (RouteRun.LongAnswer): yes = not asked again for them. */
+    fun runLongAnswer(yes: Boolean, points: String) = chain.longAnswer(yes, parsePoints(points))
+
+    /** The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open). */
+    fun runEnd(gen: Int, outcome: String, rounds: Int) = chain.end(gen, outcome, rounds)
+
+    /** The answer to "Weiter warten?" (PlanRunSlice.answerSlowPlan): the next [runHead] has one period more. */
+    fun runSlowAnswer(wait: Boolean) = chain.slowAnswer(wait)
+
+    /** "Plan anyway" / "Calculate" of the not-routed line (PlanRunSlice.planAnyway) on the plan [points]. */
+    fun runPlanAnyway(points: String) = chain.planAnyway(parsePoints(points))
 
     // ---- map gestures: the app's MapGestures (hold rules, point menu) ----
 
@@ -1008,7 +1039,12 @@ external fun planProgress(text: String)
 
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
-@JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int): String = Engine.planCancel(cause, points, activity, sac)
+@JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
+@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String = Engine.runHead(points, activity, sac, askLong)
+@JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
+@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
+@JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
+@JSExport fun runPlanAnyway(points: String) = Engine.runPlanAnyway(points)
 /** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
 @JSExport fun planChainProbe(): String = WebPlanChain.probe()
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =

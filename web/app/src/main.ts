@@ -35,7 +35,7 @@ import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, type R
 import { fitsFirstRoute, settleMs, slice, slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
-import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
+import { longRouteOk, runHead, planAnyway, notRoutedTexts, setNotRouted, type Before, type Head } from './longroute';
 import { post, dismiss, onShown } from './msgcard';
 import { OneWait } from './onewait';
 import { setupGpxImport } from './gpximport';
@@ -1576,12 +1576,30 @@ async function changed() {
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
   if (few) { render(); return; }
   planGaps.clear(); // the last plan's gaps belong to other points
-  // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
-  const answer = await longRouteOk(engine, state.points, state.activity, before, !!state.tour);
+  // the app's run head (PlanRecalcState.begin + RouteRun, in the engine): route now, or the long-route question first –
+  // nothing is routed or downloaded until it is answered; a multi-day tour is never asked (owner 2026-11-18)
+  const multiDay = !!state.tour;
+  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay);
   if (stale()) return;
-  if (answer === 'cancel') { await cancelLongRoute(); cancelLongRouteCamera(); return; }
-  if (answer !== 'plan') { await startFresh(answer.fresh); return; }
-  await planRun(1);
+  if (head.what === 'ASK') {
+    const answer = await longRouteOk(engine, head, state.points, state.activity, before);
+    if (stale()) return;
+    if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
+    if (answer !== 'plan') { await startFresh(answer.fresh); return; }
+    head = await runHead(engine, state.points, state.activity, state.sac, multiDay); // „Plan anyway“: not asked again
+    if (stale()) return;
+  }
+  await planRun(routeHead(head));
+}
+
+/**
+ * The run a head gives (its generation in the engine's RouteRun and its time-limit periods). Two or more points are always
+ * routed: a head that does not say so (an engine that could not answer) routes with one period – never left waiting.
+ */
+function routeHead(head: Head, rounds = 1): { gen: number; rounds: number } {
+  if (head.what === 'ROUTE') return head;
+  problem('routing', `the run head said ${head.what} for ${state.points.length} points – routed anyway`);
+  return { gen: -1, rounds };
 }
 
 /**
@@ -1592,13 +1610,27 @@ async function changed() {
  */
 function askSlowPlan(rounds: number) {
   post({ id: 'slowplan', kind: 'frage', tone: 'edit', title: t('plan_slow_title'), detail: t('plan_slow_text'), at: mapMiddle, buttons: [
-    { label: t('common_cancel'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`); setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute(); } },
-    { label: t('plan_slow_wait'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`); planRun(rounds + 1); } },
+    { label: t('common_cancel'), act: () => {
+      dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`);
+      engine.call('runSlowAnswer', false).catch((e) => problem('routing', 'the slow plan\'s answer not told to the engine', e));
+      setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute();
+    } },
+    { label: t('plan_slow_wait'), act: async () => {
+      dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`);
+      // the app's answerSlowPlan (RouteRun.SlowAnswer): the run again with one more period – the head knows how many
+      const run = changeRun; // an edit meanwhile starts its own run: this one is not routed then
+      try { await engine.call('runSlowAnswer', true); } catch (e) { problem('routing', 'the slow plan\'s answer not told to the engine', e); }
+      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+      if (run === changeRun) planRun(routeHead(head, rounds + 1));
+    } },
   ] });
 }
 
-/** One plan run of the current points with [rounds] time-limit periods (1, more after "Weiter warten"). */
-async function planRun(rounds: number) {
+/**
+ * One plan run of the current points: the run [gen] of the engine's RouteRun (-1 = none) with [rounds] time-limit periods
+ * (1, more after "Weiter warten"); its end is told back (runEnd: Idle again, or "Weiter warten?" open).
+ */
+async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   dismiss('slowplan');
   // a plan needs two points (the engine's Planner requires them): fewer is no route, never a request
   if (state.points.length < 2) { problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`); return; }
@@ -1630,6 +1662,8 @@ async function planRun(rounds: number) {
     if (id === state.latest && state.planning) overlay.plan(run);
   }, namesText(), rounds);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
+  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds)
+    .catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
   setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
   if (!r.ok || !r.plan || r.plan.failed) {
@@ -1747,11 +1781,11 @@ let runCause = 'other';
 let nextCause: string | null = null;
 let activityBefore: { a: Activity; sac: number } | null = null;
 /**
- * Cancel of "This route is very long" / of the wait: the app's PlanEditState.cancelRun(STOPPED) in the engine (WebPlanChain)
+ * Cancel of "This route is very long" ([why] LONG) / of the wait (STOPPED): the app's PlanEditState.cancelRun in the engine (WebPlanChain)
  * decides for the run's cause – the change undone / redone (the engine's history took that step), the activity put back,
  * or the points kept.
  */
-async function cancelLongRoute() {
+async function cancelLongRoute(why: 'STOPPED' | 'LONG' = 'STOPPED') {
   engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   overlay.finish('link'); // a link's plan stopped: nothing more to wait for
   state.latest++; // from now on the stopped run's reports are ignored (planRun) – not only after the answer below
@@ -1769,7 +1803,7 @@ async function cancelLongRoute() {
       }
       let what = 'KEEP_POINTS', points: string | null = null;
       try {
-        ({ what, points } = JSON.parse(await engine.call('planCancel', cause, clicked, before?.a ?? '', before?.sac ?? 0) as string) as
+        ({ what, points } = JSON.parse(await engine.call('planCancel', cause, clicked, before?.a ?? '', before?.sac ?? 0, why) as string) as
           { what: string; points: string | null });
       } catch (e) { // the shared cancelRun failed: the points stay, planning stops anyway
         problem('routing', 'Cancel of a run: the take-back failed – the points stay', e);
@@ -1827,7 +1861,8 @@ function render() {
     if (state.notRouted && n >= 2) {
       const b = document.createElement('button');
       b.className = 'textbtn'; b.id = 'planAnyway'; b.textContent = notRoutedTexts.button;
-      b.onclick = () => { allowLongRoute(state.points); changed(); };
+      // the app's PlanRunSlice.planAnyway: after "very long" these points are not asked again; then the run
+      b.onclick = async () => { await planAnyway(engine, state.points); changed(); };
       sub.append(b);
     }
     routeProfile.update(null, '');

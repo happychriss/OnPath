@@ -51,7 +51,12 @@ interface WasmEngine {
   activities(): string;
   problems(): string;
   longRoute(points: string, activity: string, multiDay: boolean): string;
-  planCancel(cause: string, points: string, activity: string, sac: number): string;
+  planCancel(cause: string, points: string, activity: string, sac: number, why: string): string;
+  runHead(points: string, activity: string, sac: number, askLong: boolean): string;
+  runLongAnswer(yes: boolean, points: string): void;
+  runEnd(gen: number, outcome: string, rounds: number): void;
+  runSlowAnswer(wait: boolean): void;
+  runPlanAnyway(points: string): void;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
@@ -78,6 +83,8 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   'paceSet', 'paceChoices', 'planTime', 'rangeStats',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel',
+  // the route run's head (the app's PlanRecalcState.begin + RouteRun in WebPlanChain): asked before each run
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
@@ -381,7 +388,10 @@ function legsOut(e: WasmEngine) {
 /** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
 const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
-const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel']); // planCancel: its Undo / Redo is a step
+// planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
+// an open „Weiter warten?“ – WebPlanChain.runExport)
+const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;

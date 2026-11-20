@@ -41,10 +41,40 @@ check(far.ask && far.title === 'This route is very long' && /days on foot\. Calc
 check(JSON.parse(e.longRoute('46.67,11.16;46.69,11.15', 'HIKE', false)).ask === false, 'a day hike is not asked');
 check(JSON.parse(e.longRoute('46.67,11.16;52.05,11.16', 'HIKE', true)).ask === false, 'a multi-day tour is never asked');
 e.historyRecord('46.67,11.16;46.69,11.15', '46.67,11.16;46.68,11.13;46.69,11.15');
-const undone = JSON.parse(e.planCancel('edit', '46.67,11.16;46.68,11.13;46.69,11.15', '', 0));
+const undone = JSON.parse(e.planCancel('edit', '46.67,11.16;46.68,11.13;46.69,11.15', '', 0, 'STOPPED'));
 check(undone.what === 'UNDO' && undone.points === '46.670000,11.160000;46.690000,11.150000' &&
-  JSON.parse(e.planCancel('activity', '46.67,11.16;46.69,11.15', 'HIKE', 3)).what === 'RESTORE_ACTIVITY',
+  JSON.parse(e.planCancel('activity', '46.67,11.16;46.69,11.15', 'HIKE', 3, 'STOPPED')).what === 'RESTORE_ACTIVITY',
   'Cancel takes back the change (the app\'s PlanEditState.cancelRun in the Wasm)');
+
+// the run's head (the app's PlanRecalcState.begin + RouteRun in the Wasm): asked, „Plan anyway“ kept – also across a fresh worker
+const longPlan = '46.67,11.16;52.05,11.16', dayHike = '46.67,11.16;46.69,11.15';
+const ask = JSON.parse(e.runHead(longPlan, 'HIKE', 2, true));
+check(ask.what === 'ASK' && ask.title === 'This route is very long' && ask.seconds > 86400, `the run head asks a very long plan first (${ask.what})`);
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, false)).what === 'ROUTE', 'a multi-day tour is routed without the question');
+const day = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true));
+check(day.what === 'ROUTE' && day.rounds === 1 && day.gen > 0, `a day hike is routed at once (${JSON.stringify(day)})`);
+e.runHead(longPlan, 'HIKE', 2, true);
+e.runLongAnswer(true, longPlan);
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true)).what === 'ROUTE', '„Plan anyway“: the same points are not asked again');
+e.historyImport(e.historyExport()); // a fresh worker gets the history and the run's memory (client.ts restart)
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true)).what === 'ROUTE', '„Plan anyway“ survives a fresh worker');
+// „Weiter warten?“: the time limit, then wait on → the next run has one period more
+const slow = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true));
+e.runEnd(slow.gen, 'slow', 1);
+e.historyImport(e.historyExport()); // the open question survives a fresh worker too
+e.runSlowAnswer(true);
+const again = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true));
+check(again.what === 'ROUTE' && again.rounds === 2, `„Weiter warten“: the run again with 2 periods (${JSON.stringify(again)})`);
+e.runEnd(again.gen, 'ok', 2);
+check(JSON.parse(e.runHead(dayHike, 'HIKE', 2, true)).rounds === 1, 'the next run starts at one period again');
+// Cancel of the question with nothing to take back (a plan opened): left as too long – „Plan anyway“ then plans it unasked
+e.historyImport('#');
+const other = '46.67,11.16;50.05,11.16';
+check(JSON.parse(e.runHead(other, 'HIKE', 2, true)).what === 'ASK', 'a fresh plan is asked');
+e.runLongAnswer(false, other);
+check(JSON.parse(e.planCancel('other', other, '', 0, 'LONG')).what === 'KEEP_POINTS', 'Cancel of the question: the points stay');
+e.runPlanAnyway(other);
+check(JSON.parse(e.runHead(other, 'HIKE', 2, true)).what === 'ROUTE', '„Plan anyway“ of the not-routed line: routed without asking');
 
 console.log(fails.length ? 'FAILED' : 'all ok');
 }

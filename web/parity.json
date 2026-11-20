@@ -151,24 +151,6 @@
       "blob": "b8a0bb961233db1d5e831915a452b176226fcee3"
     },
     {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt",
-      "what": "cancelRouting, planAnyway and perform (LoadDeferredMaps -> Rerun) = the long-route yes: the planner's cancelRouting / allowLongRoute (main.ts, longroute.ts) – moved here from AppViewModel, rebuild phase 2 piece 9; the rest (the run's handles, the slow-plan answer) is the phone's",
-      "web": [
-        "web/app/src/main.ts",
-        "web/app/src/longroute.ts"
-      ],
-      "blob": "5260af0cde29ae8ee68776e88f60912738295107"
-    },
-    {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt",
-      "what": "recalc's head: the long-route ask (RouteRun.Event.Recalc -> LongAsked, nothing routed or loaded until the answer: the planner's longroute.ts / allowLongRoute in main.ts) – moved to PlanRecalcState.begin (listed, rebuild phase 2 piece 9b; PlanRecalcSlice keeps only the coroutines); the rest (the router coroutine on its threads, the wait card, snapToRoute's history and saved link, the tour's follow after a result) is the phone's",
-      "web": [
-        "web/app/src/main.ts",
-        "web/app/src/longroute.ts"
-      ],
-      "blob": "197d5092589dd2940fb837a209f800e897ee36a9"
-    },
-    {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt",
       "what": "planFromShown / planFromLine (now in TrackToPlanState.kt; the slice delegates): a track made a plan (an exported plan GPX comes back with its own points, pins and names; else TrackToPlan fits our router to the line) – gpximport.ts / WebImport / WebApi (moved here from AppViewModel, rebuild phase 2 piece 13); the rest of the slice (My routes' list read again, open a route or tour, the shown track, Delete into the bin) is the phone's – the planner's bin is recent.ts",
       "web": [
@@ -1124,7 +1106,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/plan/RouteRun.kt": {
-      "blob": "2ce2b7499682c74e01115ef3a123dcfd3b5ebca7",
+      "blob": "b8c57a2d8c9ed7e5cd43f45ad466d7b85f5fa965",
       "perf": [
         "*   [Phase.AskLong], nothing routed or loaded. Else → [Phase.Routing] + [Effect.StartRouting]. Always: the time-limit",
         "/** Time-limit periods of the next run: 1, or more after \"Weiter warten\". */",
@@ -3241,6 +3223,10 @@
         "/** For tests and when nothing can be stored: in memory only. */"
       ]
     },
+    "state/src/main/kotlin/com/onpath/app/ui/routes/RouteListRules.kt": {
+      "blob": "cc42fbbe47e2c8fdfa6de2b386d65ab65122a6fe",
+      "perf": []
+    },
     "app/src/main/java/btools/router/OnPathHints.java": {
       "blob": "c218f717edb708c74ea141e96ab2ea4698dfad76",
       "perf": []
@@ -3435,10 +3421,6 @@
     },
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "1c409cb28ff79aaf7c56578053c9e792a41f66c0",
-      "perf": []
-    },
-    "state/src/main/kotlin/com/onpath/app/ui/routes/RouteListRules.kt": {
-      "blob": "cc42fbbe47e2c8fdfa6de2b386d65ab65122a6fe",
       "perf": []
     }
   }

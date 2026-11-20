@@ -21,14 +21,21 @@ object WebPlanRules {
         val pts = Engine.parsePoints(points)
         val act = Activity.valueOf(activity)
         if (multiDay || !LongRoute.needsAsk(pts, act)) return "{\"ask\":false}"
-        val s = LongRoute.estimateS(pts, act)
-        return "{\"ask\":true,\"seconds\":" + Engine.num(s, 0) +
+        return "{\"ask\":true" + longAsk(LongRoute.estimateS(pts, act), act) + "}"
+    }
+
+    /**
+     * The long-plan question's fields for an estimate of [s] seconds (the app's LongRouteDialog: title, text, buttons, and the
+     * not-routed line after its Cancel): `,"seconds":…,"title":…,…` – to be put into a JSON object.
+     */
+    fun longAsk(s: Double, act: Activity): String {
+        return ",\"seconds\":" + Engine.num(s, 0) +
             ",\"title\":" + Engine.str(Txt.s(Res.string.nav_long_route_title)) +
             ",\"text\":" + Engine.str(LongRoute.text(s, act)) +
             ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_plan_anyway)) +
             ",\"cancel\":" + Engine.str(Txt.s(Res.string.common_cancel)) +
             ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.domain.NotRouted.LONG)) +
-            ",\"again\":" + Engine.str(PlanStatus.notRoutedAction(com.onpath.app.domain.NotRouted.LONG)) + "}"
+            ",\"again\":" + Engine.str(PlanStatus.notRoutedAction(com.onpath.app.domain.NotRouted.LONG))
     }
 
     /**
