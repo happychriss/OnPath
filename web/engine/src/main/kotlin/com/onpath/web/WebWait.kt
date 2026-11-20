@@ -313,11 +313,11 @@ class WebWait(private var shares: StepShares, private var check: Double, private
          * The legs' names "Algund → Leiter Alm" (the app's RouteWait.legLabels): from the Points list's names ([names]: plan
          * index → name) when the router works on every leg of the [points] ([total] = points − 1); else null (counted).
          */
-        fun legLabels(names: Map<Int, String>, points: Int, total: Int): List<String>? {
-            if (total != points - 1 || points < 2) return null
-            fun name(i: Int) = (names[i] ?: if (i == points - 1) names[0] else null)?.takeIf { it.isNotBlank() }
-            return (0 until total).map { i -> "${name(i) ?: return null} → ${name(i + 1) ?: return null}" }
-        }
+        fun legLabels(names: Map<Int, String>, points: Int, total: Int): List<String>? =
+            // the app's own rule (web-ready ui/progress/WaitRules.kt): the names as Points list rows (role / length unused)
+            com.onpath.app.ui.progress.RouteWait.legLabels(names.map { (i, n) ->
+                com.onpath.app.routing.PlanPointRow(i, com.onpath.app.routing.PointRole.STOP, n, null, false)
+            }, points, total)
 
         // ---- the page's one wait (one window at a time) ----
         private var current: WebWait? = null
