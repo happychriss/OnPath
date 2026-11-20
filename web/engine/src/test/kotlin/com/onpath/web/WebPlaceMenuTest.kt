@@ -95,6 +95,31 @@ class WebPlaceMenuTest {
         assertTrue(m, m.startsWith("{\"main\":[\"NEW_DESTINATION\"]"))
     }
 
+    // owner 2026-11-20 („Skip the click measure on long legs“): a candidate leg over LONG_LEG_M (30 km straight) → the
+    // straight lines decide at once, no path measure started (on such legs it always ran into its 1.5 s cap and then
+    // decided by straight lines anyway – docs/team/items/2026-11-20-add-point-speed.md); a short leg still measures
+    @Test fun aLongLegDecidesByStraightLinesWithoutMeasuring() {
+        val long = "46.6000,11.2000;46.9600,11.2000" // A → B, ~40 km north
+        val before = Engine.pathMeasures
+        val t0 = System.currentTimeMillis()
+        val j = Engine.holdOnMap(long, 46.7800, 11.2300, false, 24.0, "HIKE", 2) // ~2.3 km east of the middle
+        val ms = System.currentTimeMillis() - t0
+        assertEquals(j, before, Engine.pathMeasures)
+        assertEquals(j, "ADD", action(j)); assertEquals(j, 1, index(j))
+        assertTrue(j, j.contains("leg over 30 km"))
+        assertTrue("$ms ms: $j", ms < 1_000)
+        val m = Engine.placeMenu(long, 46.7800, 11.2300, false, 24.0, "HIKE", 2)
+        assertEquals(m, before, Engine.pathMeasures)
+        assertTrue(m, m.startsWith("{\"main\":[\"ADD_STOP\"]"))
+    }
+
+    @Test fun aShortLegStillMeasuresOnThePaths() {
+        val before = Engine.pathMeasures
+        val j = Engine.holdOnMap(ns, 46.6500, 11.2100, false, 24.0, "HIKE", 2)
+        assertEquals(j, before + 1, Engine.pathMeasures)
+        assertTrue(j, !j.contains("leg over 30 km"))
+    }
+
     @Test fun fewerThanTwoPointsIsTheSmartInsertion() {
         val j = Engine.holdOnMap("46.6,11.2", 46.7, 11.2, false, 24.0)
         assertEquals(j, "ADD", action(j)); assertEquals(j, 1, index(j))

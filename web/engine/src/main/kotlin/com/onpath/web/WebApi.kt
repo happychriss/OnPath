@@ -622,7 +622,7 @@ object Engine {
                 why = "line ${lineDp.toInt()} dp, straight: insert +${straight.insertM.toInt()} m, append ${straight.appendM.toInt()} m"
                 pam.planningPlaceMenu(lineDp, straight)
             } else {
-                val o = measurePaths(w, p, straight, act, sac)
+                val o = measureOrStraight(w, p, straight, act, sac)
                 why = "line ${lineDp.toInt()} dp, ${o.describe()}"
                 pam.planningPlaceMenu(lineDp, o.detours)
             }
@@ -643,6 +643,28 @@ object Engine {
     /** The whole measure of a hold on the paths (the app's HoldPaths.TIMEOUT_MS, owner ~1.5 s): after it the straight lines decide. */
     internal const val HOLD_PATHS_MS = 1_500L
 
+    /**
+     * A leg the hold would measure ([PlaceAddMenu.pathCandidates]) longer than this, straight → no path measure, the
+     * straight lines decide at once (owner 2026-11-20, web only for now: on legs of 200–300 km the measure always ran into
+     * [HOLD_PATHS_MS] and then took the straight lines anyway – 1.5 s lost on every click; measured in
+     * docs/team/items/2026-11-20-add-point-speed.md: routing 25 km takes 0.05–0.1 s, 50 km already 0.15–0.3 s per leg).
+     * Straight-line, not the routed length: it is there for every leg before anything is routed, and a routed leg is never
+     * shorter than its straight line, so no leg the measure could finish in time is skipped by mistake.
+     */
+    internal const val LONG_LEG_M = 30_000.0
+
+    /** How many times [measurePaths] started (for the tests: a long leg starts none). */
+    internal var pathMeasures = 0
+        private set
+
+    /** [measurePaths], unless a candidate leg is over [LONG_LEG_M] – then the [straight] lines at once, nothing routed. */
+    internal fun measureOrStraight(w: List<GeoPoint>, p: GeoPoint, straight: com.onpath.app.domain.PlaceAddMenu.Detours,
+                                   act: Activity, sac: Int): Measured {
+        val longest = com.onpath.app.domain.PlaceAddMenu.pathCandidates(w, p).maxOfOrNull { Geo.distance(w[it], w[it + 1]) } ?: 0.0
+        return if (longest > LONG_LEG_M) Measured(straight, false, 0, "leg over ${(LONG_LEG_M / 1000).toInt()} km (${(longest / 1000).toInt()} km), not measured")
+        else measurePaths(w, p, straight, act, sac)
+    }
+
     /** What [measurePaths] found: the detours on the paths, or the straight ones after [failure] (the app's HoldPaths.Outcome). */
     internal class Measured(val detours: com.onpath.app.domain.PlaceAddMenu.Detours, val onPaths: Boolean, val ms: Long, val failure: String? = null) {
         /** For the trace: "paths: insert +X m, append Y m (Z ms)" or "paths failed: … – straight lines" (HoldPaths' words). */
@@ -650,6 +672,7 @@ object Engine {
             if (onPaths) "paths: insert +${detours.insertM.toInt()} m" +
                 (detours.earlyInsertM?.let { " (earlier legs +${it.toInt()} m)" } ?: "") +
                 ", append ${detours.appendM.toInt()} m ($ms ms)"
+            else if (ms == 0L && failure?.startsWith("leg over") == true) "$failure – straight lines"
             else "paths failed: $failure ($ms ms) – straight lines"
     }
 
@@ -663,6 +686,7 @@ object Engine {
      */
     internal fun measurePaths(w: List<GeoPoint>, p: GeoPoint, straight: com.onpath.app.domain.PlaceAddMenu.Detours, act: Activity,
                               sac: Int, limitMs: Long = HOLD_PATHS_MS): Measured {
+        pathMeasures++
         val t0 = System.currentTimeMillis()
         val deadline = t0 + limitMs
         val cancel = com.onpath.app.routing.RouteCancel()
@@ -743,7 +767,7 @@ object Engine {
         if (pam.planningHold(lineDp, straight) == com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE)
             return add(smart(), "on the line, set at once (line ${lineDp.toInt()} dp, $n points)")
         val act = activityOrNull(activity)
-        val o = if (act != null) measurePaths(w, p, straight, act, sac) else Measured(straight, false, 0, "no activity")
+        val o = if (act != null) measureOrStraight(w, p, straight, act, sac) else Measured(straight, false, 0, "no activity")
         val d = o.detours
         val why = "line ${lineDp.toInt()} dp, ${o.describe()}" +
             (if (o.onPaths) "; straight +${straight.insertM.toInt()} / ${straight.appendM.toInt()} m" else
