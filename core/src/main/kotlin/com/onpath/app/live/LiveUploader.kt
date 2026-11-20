@@ -123,6 +123,25 @@ data class LiveShare(
     }
 }
 
+/**
+ * A stopped share's box that still has to be deleted after another share was started (review 2026-11-20: dropping it
+ * left the first link showing the way up to the stop for up to 48 h). Kept as its own line beside the share.
+ */
+data class LiveLeftover(val boxId: String, val writeToken: String) {
+    fun toText(): String = "$MAGIC $boxId $writeToken"
+
+    companion object {
+        private const val MAGIC = "onpath-live-delete"
+
+        /** The leftover in [line], or null when it is none – never throws. */
+        fun parse(line: String): LiveLeftover? {
+            val f = line.trim().split(' ')
+            return if (f.size >= 3 && f[0] == MAGIC && f[1].isNotEmpty() && f[2].isNotEmpty() &&
+                f[1].all(B64::isCodeChar) && f[2].all(B64::isCodeChar)) LiveLeftover(f[1], f[2]) else null
+        }
+    }
+}
+
 /** What the app shows of the sharing. */
 sealed class LiveStatus {
     /** Not sharing. */
@@ -156,6 +175,8 @@ class LiveUploader(
     private val aead: Aead = AesGcm,
 ) {
     private var share: LiveShare? = null
+    /** Boxes of stopped shares still to delete, oldest first (a share started again while its stop was on the way). */
+    private var leftovers: List<LiveLeftover> = emptyList()
     private var loaded = false
     private var box: LiveBox? = null
 
@@ -178,7 +199,10 @@ class LiveUploader(
     val tourId: Long? get() = current()?.tourId
 
     /** True while there is anything left to do for the server – the lane keeps calling [step] until it is false. */
-    val pending: Boolean get() = current() != null
+    val pending: Boolean get() = current() != null || leftovers.isNotEmpty()
+
+    /** An older share's box is still to be deleted – the next steps do that first, whatever the running share's tour does. */
+    val cleaning: Boolean get() { current(); return leftovers.isNotEmpty() }
 
     /** The link of the running share, or null. */
     val link: String? get() = current()?.takeIf { !it.stopping && !it.ending }?.let { LiveCode.link(it.secret) }
@@ -201,7 +225,10 @@ class LiveUploader(
     fun start(tourId: Long, name: String): String {
         val old = current()
         if (old != null && old.tourId == tourId && !old.stopping && !old.ending) return LiveCode.link(old.secret)
-        // an older share that is still ending or stopping is dropped here: its box goes by the server's own clean-up
+        // an older share that is still stopping keeps its delete (privacy: the old link must not show the way to the stop
+        // for days); one still ending is dropped – its box keeps the way the user meant to share and goes by the
+        // server's own clean-up
+        if (old != null && old.stopping) leftovers = leftovers + LiveLeftover(LiveKeys(old.secret).boxId, old.writeToken)
         val s = LiveShare(random(LiveCode.SECRET_BYTES), B64.encode(random(32)), tourId, name.trim().take(LiveItem.MAX_NAME))
         reset()
         stoppedByServer = false
@@ -232,11 +259,12 @@ class LiveUploader(
 
     /** When the next [step] is due (ms, the caller's clock); null = nothing to do. A step before that does nothing. */
     fun nextDueMs(): Long? {
-        val s = current() ?: return null
+        val s = current()
+        if (s == null && leftovers.isEmpty()) return null
         // the end's final head and a stop's delete do not wait for the 30-s event floor: the recording service lets its
         // wake lock go at the end, a step half a minute later may not run until the phone next wakes. A failed try
         // (back-off, the server's retry-after) still holds – that is the branch below.
-        if (failures == 0 && (more || s.stopping || s.ending)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
+        if (failures == 0 && (more || leftovers.isNotEmpty() || s!!.stopping || s.ending)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
         return LivePolicy.nextUpload(lastOkMs, lastTryMs, moving, paused, lowBattery, event, failures, retryAfterMs, networkBack)
     }
 
@@ -251,9 +279,10 @@ class LiveUploader(
         try {
             if (event) this.event = true
             if (networkBack && failures > 0) this.networkBack = true
-            val s = current() ?: return status
             val due = nextDueMs() ?: return status
             if (nowMs < due) return status
+            leftovers.firstOrNull()?.let { deleteLeftover(it, nowMs); return status }
+            val s = current() ?: return status
             val b = box ?: guard("open the box") { boxes.open(LiveKeys(s.secret).boxId, s.writeToken) }?.also { box = it }
             if (b == null) { failed(nowMs, LiveReply(0)); return status }
             when {
@@ -350,6 +379,13 @@ class LiveUploader(
         if (r.ok || r.gone) forget() else failed(now, r)
     }
 
+    /** A stopped share's box from before the running one: deleted first, retried like the running share's delete. */
+    private fun deleteLeftover(l: LiveLeftover, now: Long) {
+        val b = guard("open an old box") { boxes.open(l.boxId, l.writeToken) }
+        val r = if (b == null) LiveReply(0) else call("delete an old box") { b.delete() }
+        if (r.ok || r.gone) { tried(now); leftovers = leftovers - l; save() } else failed(now, r)
+    }
+
     // ---- bookkeeping ----
 
     private fun tried(now: Long) {
@@ -375,7 +411,7 @@ class LiveUploader(
     private fun forget() {
         share = null
         reset()
-        write(null)
+        save()
     }
 
     private fun reset() {
@@ -388,8 +424,12 @@ class LiveUploader(
         if (!loaded) {
             loaded = true
             val text = guard("read the saved state") { store.read() }
-            share = LiveShare.parse(text)
-            if (share == null && !text.isNullOrBlank()) Problems.warn("live", "Live sharing: the saved state is unreadable – sharing is off")
+            val lines = text.orEmpty().lines().filter { it.isNotBlank() }
+            // the share's line first, then one line per box still to delete (an older state is the share's line alone)
+            share = lines.firstOrNull()?.let(LiveShare::parse)
+            leftovers = lines.mapNotNull(LiveLeftover::parse)
+            if (share == null && leftovers.isEmpty() && !text.isNullOrBlank())
+                Problems.warn("live", "Live sharing: the saved state is unreadable – sharing is off")
         }
         return share
     }
@@ -397,11 +437,12 @@ class LiveUploader(
     /** The memory copy is the truth for this process; the store is written through (a failed write is reported, not fatal). */
     private fun put(s: LiveShare) {
         share = s
-        write(s.toText())
+        save()
     }
 
-    private fun write(text: String?) {
-        guard("save the state") { store.write(text) }
+    private fun save() {
+        val lines = listOfNotNull(share?.toText()) + leftovers.map { it.toText() }
+        guard("save the state") { store.write(lines.joinToString("\n").ifEmpty { null }) }
     }
 
     private fun call(what: String, f: () -> LiveReply): LiveReply = guard(what, f) ?: LiveReply(0)

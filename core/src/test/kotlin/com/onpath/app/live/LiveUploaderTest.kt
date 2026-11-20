@@ -390,6 +390,67 @@ class LiveUploaderTest {
         assertEquals(LiveStatus.Off, w.uploader.status)
     }
 
+    /** A server with many boxes, each with its own items; [down] = no network. */
+    private class Boxes {
+        var down = false
+        val items = HashMap<String, HashMap<String, ByteArray>>()
+        val deleted = HashSet<String>()
+        fun boxes() = LiveBoxes { id, _ ->
+            object : LiveBox {
+                private fun call(f: () -> Unit) = if (down) LiveReply(0) else { f(); LiveReply(200) }
+                override fun claim(readHash: String, writeHash: String) = call { items.getOrPut(id) { HashMap() } }
+                override fun push(items: List<LivePush>, ended: Boolean) = call { items.forEach { this@Boxes.items.getValue(id)[it.name] = it.blob } }
+                override fun delete() = call { this@Boxes.items.remove(id); deleted += id }
+            }
+        }
+    }
+
+    /**
+     * Guards (privacy, review 2026-11-20): "Teilen beenden" without network, then sharing again – the first link's box
+     * is still deleted once the network is back (also after a killed app, also when the second share is stopped too),
+     * instead of showing the way up to the stop for up to 48 h.
+     */
+    @Test
+    fun aStopStillOnTheWayIsNotDroppedBySharingAgain() {
+        val boxes = Boxes(); val tour = Tour(); val store = Store(); val rnd = Random(3)
+        var now = t0
+        fun fresh() = LiveUploader(boxes.boxes(), tour, store, { n -> ByteArray(n).also(rnd::nextBytes) })
+        var u = fresh()
+        fun run(ms: Long) { val end = now + ms; while (now < end) { now += 1000; if (now % 4000 < 1000) tour.walk(1, now); u.step(now) } }
+        fun box(link: String) = LiveKeys.of(link)!!.boxId
+
+        val first = u.start(tour.id, "Christian")
+        run(5 * 60_000)
+        assertTrue("the first share reached the server", boxes.items[box(first)].orEmpty().isNotEmpty())
+        boxes.down = true
+        u.stop()
+        run(60_000)
+        val second = u.start(tour.id, "Christian")
+        assertNotEquals(first, second)
+        assertEquals(second, u.link)
+        run(60_000)
+        u = fresh() // killed while offline
+        boxes.down = false
+        run(5 * 60_000)
+        assertTrue("the first link's box is deleted", box(first) in boxes.deleted)
+        assertNull(boxes.items[box(first)])
+        assertTrue("the second share uploads", boxes.items[box(second)].orEmpty().containsKey(LiveItem.HEAD))
+        assertEquals(second, u.link)
+
+        // both stopped while offline: both go, then nothing is left to do
+        boxes.down = true
+        u.stop()
+        val third = u.start(tour.id, "Christian")
+        run(60_000)
+        u.stop()
+        boxes.down = false
+        run(5 * 60_000)
+        assertTrue(box(second) in boxes.deleted)
+        assertNull(boxes.items[box(third)])
+        assertFalse(u.pending)
+        assertNull(store.text)
+    }
+
     /** Guards: a share stopped before anything reached the server needs no network at all. */
     @Test
     fun stopBeforeTheFirstRequestIsSilent() {

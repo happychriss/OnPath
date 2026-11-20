@@ -87,8 +87,8 @@ class LiveLaneTest {
     private class Box : LiveBoxes, LiveBox {
         @Volatile var hang = false
         @Volatile var code = 200
-        val release = CountDownLatch(1)
-        val entered = CountDownLatch(1)
+        @Volatile var release = CountDownLatch(1)
+        @Volatile var entered = CountDownLatch(1)
         val claims = AtomicInteger(); val deletes = AtomicInteger()
         val pushes = CopyOnWriteArrayList<Pair<List<String>, Boolean>>()
         val blobs = java.util.concurrent.ConcurrentHashMap<String, ByteArray>()
@@ -312,6 +312,64 @@ class LiveLaneTest {
         offset.addAndGet(60_000); l.stateChanged()
         until("the delete landed") { box.deletes.get() >= 2 && store.text == null }
         assertEquals("no upload after stop", n, box.pushes.size)
+    }
+
+    /**
+     * Review 2026-11-20: "Teilen" and "Teilen beenden" change what the app shows at once – the link reaches the share
+     * sheet and the sign goes off before the server answered (a weak network takes up to 25 s a request).
+     */
+    @Test fun startAndStopShowBeforeTheServerAnswers() {
+        val rec = recorder()
+        val tour = rec.insertTour(TourKind.RECORDED, "t", "HIKE", 2, state = "active")
+        rec.appendPoint(tour, 0, 0, point(0), 5f)
+        val points = JdbcLivePoints(dbPath()).also { closers += it }
+        state.set(recState(tour))
+        box.hang = true
+        val l = lane(points)
+        l.start(tour, "")
+        assertTrue("the lane is inside the claim", box.entered.await(5, TimeUnit.SECONDS))
+        assertNotNull("the link is shown while the claim hangs", snapshots.lastOrNull()?.link)
+        assertTrue(snapshots.last().sharing)
+
+        box.release.countDown()
+        until("the first upload") { box.pushes.isNotEmpty() }
+        assertTrue(l.idle())
+        box.release = CountDownLatch(1); box.entered = CountDownLatch(1)
+        l.stop()
+        assertTrue("the lane is inside the delete", box.entered.await(5, TimeUnit.SECONDS))
+        assertFalse("the sign is off while the delete hangs", snapshots.last().sharing)
+        assertNull(snapshots.last().link)
+    }
+
+    /**
+     * Privacy (review 2026-11-20): stopped offline, shared again, then the tour is interrupted – the first link's box is
+     * still deleted when the network is back, although nothing of the running share may be uploaded now.
+     */
+    @Test fun aStopKeptBehindANewShareIsDeletedEvenWhileTheTourIsInterrupted() {
+        val rec = recorder()
+        val tour = rec.insertTour(TourKind.RECORDED, "t", "HIKE", 2, state = "active")
+        rec.appendPoint(tour, 0, 0, point(0), 5f)
+        val points = JdbcLivePoints(dbPath()).also { closers += it }
+        state.set(recState(tour))
+        val l = lane(points)
+        l.start(tour, "")
+        until("the first upload") { box.pushes.isNotEmpty() }
+        val n = box.pushes.size
+
+        box.code = 0
+        l.stop()
+        until("a delete was tried") { box.deletes.get() == 1 }
+        l.start(tour, "")
+        assertTrue(l.idle())
+        state.set(null) // the service is gone, the tour not ended
+        l.stateChanged()
+        box.code = 200
+        net.onBack?.invoke()
+        offset.addAndGet(120_000); l.stateChanged()
+        until("the old box was deleted") { box.deletes.get() >= 2 && store.text?.contains("onpath-live-delete") == false }
+        assertTrue(l.idle())
+        assertEquals("nothing of the interrupted tour uploaded", n, box.pushes.size)
+        assertNotNull("the new share is kept for Continue", snapshots.last().link)
     }
 
     /** A killed process: a new lane reads the stored share and goes on with the same link, no second claim needed. */
