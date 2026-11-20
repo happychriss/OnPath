@@ -132,8 +132,8 @@ class MainActivity : ComponentActivity() {
             return
         }
         incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
-
         announceLastCrash()
+        com.onpath.app.ui.LiveShares.attach(vm, applicationContext) // live sharing's state, kept by the view model
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }

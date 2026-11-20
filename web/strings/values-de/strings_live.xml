@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- Die Seite zur Live-Tour (web/app/live/, docs/design/live-tracking.md §3). -->
 <resources>
-    <string name="web_live_page_title">OnPath – Live-Tour</string>
+    <string name="web_live_page_title">OnPath – geteilter Standort</string>
     <string name="web_live_title">Live-Tour</string>
     <string name="web_live_title_named">Tour von %1$s</string>
     <string name="web_live_loading">Lädt …</string>

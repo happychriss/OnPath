@@ -29,7 +29,7 @@ Sketches only – before anything is built the owner gets real pictures (≤ 3 v
 **Start sharing.** While a tour records, Navigate's menu has **„Live teilen“**. A tap opens Android's share sheet at
 once with one text:
 
-    Verfolge meine Tour live: https://plan.onpath.earth/live/#t=AQEIDxYd…
+    Verfolge meine Tour: https://plan.onpath.earth/live/#t=AQEIDxYd…
 
 He picks Signal or WhatsApp and the person – done. No dialog before, no account, no setup. (Android share sheet =
 `Intent.ACTION_SEND`, text/plain; no Google service involved.) The box on the server is created in the background; if
@@ -39,11 +39,13 @@ there is no network right then, the link still works – it shows „noch keine 
 
 | Sign | Meaning |
 | --- | --- |
-| „Live“ with a green dot | the last upload went through (age < 5 min) |
-| „Live“ with a grey dot + „wartet auf Netz“ | no network; the way is kept and goes up later by itself |
+| „Standort“ with a green dot | the last upload went through (age < 12 min: uploads come every 2 min moving, every 10 min at rest – plus slack; a share from before a killed app is grey until its first upload) |
+| „Standort“ with a grey dot + „wartet auf Netz“ | no network; the way is kept and goes up later by itself |
 | nothing | not sharing |
 
-The tour notification gets „· Live“ in its line. A tap on the sign: **„Link nochmal teilen“** (same link, a second
+(Owner 2026-11-20: no „Live“ as a word – the entry is „Standort teilen“ / „Share location“, the sign „● Standort“ /
+„● Location“, inside the turn card – proposal C; a tour without a turn card gets a pill.) The tour notification gets
+„· Standort“ in its line (not built). A tap on the sign: **„Link nochmal teilen“** (same link, a second
 person) and **„Teilen beenden“**.
 
 **End.** „Teilen beenden“ deletes everything on the server at once; the link then says „Diese Tour wird nicht mehr

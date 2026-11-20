@@ -20,18 +20,15 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The sign on Navigate that the tour is shared (owner 2026-11-20: "oben bei den Richtungen anzeigen – mach Vorschläge"):
- * three proposals, each live (green) and waiting for the network (grey), German, a real phone's size. The app carries
- * [LiveSignLook.IN_TURN_CARD] (C, with the pill on a tour without a turn card); A and B exist for these pictures.
- * Guards: the sign never pushes the turn instruction off its line and nothing is cut off.
+ * The sign on Navigate that the tour is shared (owner 2026-11-20: proposal C – inside the turn card; a tour without a
+ * turn card gets the pill), live (green) and waiting for the network (grey), at a real phone's size in German, English
+ * and the largest font. Guards: the sign never pushes the turn instruction off its line and nothing is cut off.
  */
-class LiveSignScreenshotTest {
-    @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(screenWidth = 1080, screenHeight = 2400, xdpi = 420, ydpi = 420,
-        density = Density.create(420)), showSystemUi = false)
+abstract class LiveSignShots(private val locale: Locale) {
+    abstract val paparazzi: Paparazzi
 
     private val before = Locale.getDefault()
-    @Before fun german() = Locale.setDefault(Locale.GERMANY)
+    @Before fun locale() = Locale.setDefault(locale)
     @After fun back() = Locale.setDefault(before)
 
     private val route = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0), recordedM = 5_320.0, elapsedS = 5025,
@@ -39,34 +36,39 @@ class LiveSignScreenshotTest {
     private val free = NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)
 
     @Composable
-    private fun Frame(ui: NavUi, look: LiveSignLook, sign: LiveSign) {
+    private fun Frame(ui: NavUi, sign: LiveSign) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     CompositionLocalProvider(
-                        LocalTurnCardEnd provides { if (look == LiveSignLook.IN_TURN_CARD) LiveSignInTurnCard(sign) },
-                        LocalNavTop provides { turnCard ->
-                            when (look) {
-                                LiveSignLook.IN_TURN_CARD -> if (!turnCard) LiveSignOnMap(sign, LiveSignLook.PILL)
-                                else -> LiveSignOnMap(sign, look)
-                            }
-                        },
+                        LocalTurnCardEnd provides { LiveSignInTurnCard(sign) },
+                        LocalNavTop provides { turnCard -> if (!turnCard) LiveSignOnMap(sign) },
                     ) { NavigateOverlay(ui, footer = {}, onSlideToPlan = {}) }
                 }
             }
         }
     }
 
-    @Test fun aLive() = paparazzi.snapshot { Frame(route, LiveSignLook.PILL, LiveSign.LIVE) }
-    @Test fun aWaiting() = paparazzi.snapshot { Frame(route, LiveSignLook.PILL, LiveSign.WAITING) }
-    @Test fun bLive() = paparazzi.snapshot { Frame(route, LiveSignLook.DOT, LiveSign.LIVE) }
-    @Test fun bWaiting() = paparazzi.snapshot { Frame(route, LiveSignLook.DOT, LiveSign.WAITING) }
-    @Test fun cLive() = paparazzi.snapshot { Frame(route, LiveSignLook.IN_TURN_CARD, LiveSign.LIVE) }
-    @Test fun cWaiting() = paparazzi.snapshot { Frame(route, LiveSignLook.IN_TURN_CARD, LiveSign.WAITING) }
-    /** A tour without a route has no turn card: C falls back to the pill. */
-    @Test fun cFreeTourLive() = paparazzi.snapshot { Frame(free, LiveSignLook.IN_TURN_CARD, LiveSign.LIVE) }
-    @Test fun cFreeTourWaiting() = paparazzi.snapshot { Frame(free, LiveSignLook.IN_TURN_CARD, LiveSign.WAITING) }
+    @Test fun live() = paparazzi.snapshot { Frame(route, LiveSign.LIVE) }
+    @Test fun waiting() = paparazzi.snapshot { Frame(route, LiveSign.WAITING) }
+    /** A tour without a route has no turn card: the pill. */
+    @Test fun freeTourLive() = paparazzi.snapshot { Frame(free, LiveSign.LIVE) }
+    @Test fun freeTourWaiting() = paparazzi.snapshot { Frame(free, LiveSign.WAITING) }
     /** Not sharing: Navigate is exactly as before. */
-    @Test fun notSharing() = paparazzi.snapshot { Frame(route, LiveSignLook.IN_TURN_CARD, LiveSign.NONE) }
+    @Test fun notSharing() = paparazzi.snapshot { Frame(route, LiveSign.NONE) }
+}
+
+private val signPhone = DeviceConfig.PIXEL_5.copy(screenWidth = 1080, screenHeight = 2400, xdpi = 420, ydpi = 420, density = Density.create(420))
+
+class LiveSignScreenshotTest : LiveSignShots(Locale.GERMANY) {
+    @get:Rule override val paparazzi = Paparazzi(deviceConfig = signPhone, showSystemUi = false)
+}
+
+class LiveSignEnglishScreenshotTest : LiveSignShots(Locale.US) {
+    @get:Rule override val paparazzi = Paparazzi(deviceConfig = signPhone, showSystemUi = false)
+}
+
+class LiveSignLargeFontTest : LiveSignShots(Locale.GERMANY) {
+    @get:Rule override val paparazzi = Paparazzi(deviceConfig = signPhone.copy(fontScale = 2.0f), showSystemUi = false)
 }

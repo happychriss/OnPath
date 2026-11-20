@@ -51,15 +51,28 @@ import com.onpath.strings.*
 /**
  * Live sharing in the Settings opened from Navigate (owner 2026-11-20: "in der Navigation bei den Einstellungen, als
  * erster Eintrag mit Symbol") – the first card of that list, rows like the page's own (symbol, 24 dp gap, the label):
- * not sharing the one row "Live teilen" (a tap → the share sheet); sharing the state ("● Live", grey "● Live · wartet
- * auf Netz") and under it "Link nochmal teilen" and "Teilen beenden"; [name] non-null adds the row to change the name.
- * Nothing when [actions] is empty (no tour records).
+ * not sharing the one row "Standort teilen" (a tap → the share sheet); sharing the state ("● Standort", grey "● Standort
+ * · wartet auf Netz") and under it "Link nochmal teilen" and "Teilen beenden"; [name] non-null adds the row to change the
+ * name. [ended]: the server ended the sharing – a grey line says so first (shown = [onEndedShown]). Nothing when
+ * [actions] is empty and nothing ended (no tour records).
  */
 @Composable
 fun LiveSettingsCard(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAction) -> Unit,
-                     name: String? = null, onName: () -> Unit = {}) {
-    if (actions.isEmpty()) return
+                     name: String? = null, onName: () -> Unit = {}, ended: Boolean = false, onEndedShown: () -> Unit = {}) {
+    if (actions.isEmpty() && !ended) return
+    if (ended) androidx.compose.runtime.LaunchedEffect(Unit) { onEndedShown() }
     SettingsCard {
+        if (ended && sign == LiveSign.NONE) {
+            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 6.dp)
+                .semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
+                    Box(Modifier.size(12.dp).border(2.dp, OnPathColors.Grey, CircleShape))
+                }
+                Spacer(Modifier.width(24.dp))
+                Text(str(Res.string.live_ended_by_server), style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         if (sign != LiveSign.NONE) {
             val live = sign == LiveSign.LIVE
             Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 6.dp)
@@ -73,7 +86,7 @@ fun LiveSettingsCard(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveA
             }
         }
         actions.forEachIndexed { i, a ->
-            if (i > 0 || sign != LiveSign.NONE) HorizontalDivider(Modifier.padding(start = 64.dp))
+            if (i > 0 || sign != LiveSign.NONE || ended) HorizontalDivider(Modifier.padding(start = 64.dp))
             when (a) {
                 LiveAction.SHARE -> LiveRow(Icons.Outlined.Share, str(Res.string.live_share)) { onAction(a) }
                 LiveAction.SHARE_AGAIN -> LiveRow(Icons.Outlined.Share, str(Res.string.live_share_again)) { onAction(a) }
@@ -104,23 +117,13 @@ private fun LiveRow(icon: ImageVector, label: String, sub: String? = null, onCli
     }
 }
 
-/** How the sign on Navigate looks – the app carries [IN_TURN_CARD] (with the pill where no turn card is); the others are proposals for the pictures. */
-enum class LiveSignLook {
-    /** A: a small pill "● Live" at the top right, above the turn card. */
-    PILL,
-    /** B: only a dot in a small round chip at the top right. */
-    DOT,
-    /** C: "● Live" at the right edge inside the green turn card; a tour without a turn card gets the pill. */
-    IN_TURN_CARD,
-}
-
 /**
- * The sign on Navigate that the tour is shared (owner 2026-11-20: "oben bei den Richtungen anzeigen") as a pill or a
- * dot on the map ([LiveSignLook.PILL] / [LiveSignLook.DOT]), at the right of the top column: green = uploads get
- * through, grey = "wartet auf Netz". Nothing when not sharing. A tap opens the two actions ([actions], as in Settings).
+ * The sign on Navigate that the tour is shared while no turn card carries it (a tour without a route): a small pill
+ * "● Standort" at the right of the top column: green = uploads get through, grey = "wartet auf Netz". Nothing when not
+ * sharing. A tap opens the two actions ([actions], as in Settings).
  */
 @Composable
-fun LiveSignOnMap(sign: LiveSign, look: LiveSignLook, actions: List<LiveAction> = emptyList(), onAction: (LiveAction) -> Unit = {}) {
+fun LiveSignOnMap(sign: LiveSign, actions: List<LiveAction> = emptyList(), onAction: (LiveAction) -> Unit = {}) {
     if (sign == LiveSign.NONE) return
     val live = sign == LiveSign.LIVE
     val label = str(if (live) Res.string.live_sign else Res.string.live_sign_waiting)
@@ -129,14 +132,12 @@ fun LiveSignOnMap(sign: LiveSign, look: LiveSignLook, actions: List<LiveAction> 
         Box {
             androidx.compose.material3.Surface(onClick = { open = true }, shape = CircleShape, color = OnPathColors.MapGround,
                 modifier = Modifier.floatShadow(CircleShape).semantics { contentDescription = label }) {
-                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = if (look == LiveSignLook.DOT) 10.dp else 12.dp),
+                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = 12.dp),
                     verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(12.dp).background(if (live) OnPathColors.Green else OnPathColors.Grey, CircleShape))
-                    if (look != LiveSignLook.DOT) {
-                        Spacer(Modifier.width(8.dp))
-                        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
-                            color = if (live) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
+                    Spacer(Modifier.width(8.dp))
+                    Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
+                        color = if (live) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
             LiveSignMenu(open, actions, onAction) { open = false }
@@ -145,8 +146,8 @@ fun LiveSignOnMap(sign: LiveSign, look: LiveSignLook, actions: List<LiveAction> 
 }
 
 /**
- * The sign inside the green turn card ([LiveSignLook.IN_TURN_CARD]), at its right edge: a small dot with a white ring
- * and "Live" in the card's white – quiet beside the arrow and the distance; waiting the dot is hollow and the word dimmed.
+ * The sign inside the green turn card (owner 2026-11-20: proposal C), at its right edge: a small dot with a white ring
+ * and "Standort" in the card's white – quiet beside the arrow and the distance; waiting the dot is hollow and the word dimmed.
  */
 @Composable
 fun LiveSignInTurnCard(sign: LiveSign, actions: List<LiveAction> = emptyList(), onAction: (LiveAction) -> Unit = {}) {
@@ -176,9 +177,9 @@ private fun LiveSignMenu(open: Boolean, actions: List<LiveAction>, onAction: (Li
     }
 }
 
-/** The actions' rows of the sign's drop-down (also drawn on their own by the picture test). */
+/** The actions' rows of the sign's drop-down. */
 @Composable
-fun LiveMenuItems(actions: List<LiveAction>, onAction: (LiveAction) -> Unit) = Column {
+private fun LiveMenuItems(actions: List<LiveAction>, onAction: (LiveAction) -> Unit) = Column {
     actions.forEach { a ->
         androidx.compose.material3.DropdownMenuItem(text = { Text(str(when (a) {
             LiveAction.SHARE -> Res.string.live_share

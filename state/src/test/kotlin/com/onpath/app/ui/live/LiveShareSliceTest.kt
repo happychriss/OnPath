@@ -2,9 +2,7 @@ package com.onpath.app.ui.live
 
 import com.onpath.app.live.LiveSnapshot
 import com.onpath.app.testkit.FakeLiveShareClient
-import com.onpath.app.ui.NoticeKind
-import com.onpath.app.ui.NoticePlace
-import com.onpath.app.ui.Say
+import androidx.compose.runtime.snapshots.Snapshot
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -15,20 +13,33 @@ import org.junit.Test
 class LiveShareSliceTest {
     private val link = "https://plan.onpath.earth/live/#t=CODE"
 
-    private class World(name: String? = null, var recording: Boolean = true) {
+    private class World(name: String? = null, recording: Boolean = true) {
         val client = FakeLiveShareClient()
         val prefs = object : LivePrefs { override var liveName: String? = name }
         val shared = ArrayList<String>()
-        val said = ArrayList<Triple<String, NoticeKind, NoticePlace>>()
         var now = 1_800_000_000_000L
         val slice = LiveShareSlice(client, prefs, object : LiveShareHost {
-            override fun recording() = recording
             override fun shareText(text: String) { shared += text }
             override fun nowMs() = now
-        }, Say { t, k, p -> said += Triple(t, k, p) })
+        }).also { it.onRecording(recording) }
+
+        /** The recording service's state, as the app's collector hands it in. */
+        var recording: Boolean = recording
+            set(v) { field = v; slice.onRecording(v) }
 
         /** The lane answers: the snapshot reaches the client's flow and the slice (the app's collector). */
         fun lane(s: LiveSnapshot) { client.publish(s); slice.onSnapshot(s) }
+    }
+
+    /** True when a screen that read [read] would be drawn again after [change] (Compose's own snapshot bookkeeping). */
+    private fun redrawn(read: () -> Unit, change: () -> Unit): Boolean {
+        Snapshot.sendApplyNotifications()
+        val reads = HashSet<Any>()
+        Snapshot.observe(readObserver = { reads += it }) { read() }
+        var hit = false
+        val h = Snapshot.registerApplyObserver { changed, _ -> if (changed.any { it in reads }) hit = true }
+        try { change(); Snapshot.sendApplyNotifications() } finally { h.dispose() }
+        return hit
     }
 
     /** Guards: the first share asks the name once – and never again, also when it was left empty. */
@@ -102,6 +113,15 @@ class LiveShareSliceTest {
         assertEquals(listOf(LiveAction.SHARE_AGAIN, LiveAction.STOP), w.slice.actions)
     }
 
+    /** Guards (review 2026-11-20): the Settings card goes when the tour ends while Settings is open – not only on the next redraw. */
+    @Test
+    fun theToursEndRedrawsTheActions() {
+        val w = World(name = "")
+        assertEquals(listOf(LiveAction.SHARE), w.slice.actions)
+        assertTrue(redrawn({ w.slice.actions }) { w.recording = false })
+        assertTrue(w.slice.actions.isEmpty())
+    }
+
     /**
      * Guards: the sign tells the truth – green only while uploads get through; grey when the lane says waiting or the
      * last good upload is old (the lane's snapshot does not tick by itself); a rest (uploads every 10 min) stays green.
@@ -110,12 +130,13 @@ class LiveShareSliceTest {
     fun theSignIsGreenOnlyWhileUploadsGetThrough() {
         val w = World(name = "")
         assertEquals(LiveSign.NONE, w.slice.sign)
+        w.slice.share()
         w.lane(LiveSnapshot(sharing = true, link = link))
         assertEquals("just started: live", LiveSign.LIVE, w.slice.sign)
         w.lane(LiveSnapshot(sharing = true, link = link, lastOkMs = w.now))
         w.now += 10 * 60_000L + 30_000
         assertEquals("a rest's ten minutes between uploads is still live", LiveSign.LIVE, w.slice.sign)
-        w.now += 5 * 60_000L
+        assertTrue("the clock alone turns it grey on screen", redrawn({ w.slice.sign }) { w.now += 5 * 60_000L; w.slice.tick() })
         assertEquals(LiveSign.WAITING, w.slice.sign)
         w.lane(LiveSnapshot(sharing = true, waiting = true, link = link, lastOkMs = w.now))
         assertEquals(LiveSign.WAITING, w.slice.sign)
@@ -123,19 +144,57 @@ class LiveShareSliceTest {
         assertEquals(LiveSign.NONE, w.slice.sign)
     }
 
-    /** Guards: a sharing the server ended is said once, quietly, and acknowledged – never an error box during a tour. */
+    /**
+     * Guards (review 2026-11-20): a share from before a killed app, with no good upload in this process yet, is not
+     * green on trust – it waits for the first upload; one started here is green from the start.
+     */
     @Test
-    fun aSharingEndedByTheServerIsSaidOnce() {
+    fun aShareFromAnEarlierProcessIsGreenOnlyAfterAnUpload() {
+        val w = World(name = "")
+        w.lane(LiveSnapshot(sharing = true, link = link, tourId = 7))
+        assertEquals(LiveSign.WAITING, w.slice.sign)
+        w.lane(LiveSnapshot(sharing = true, link = link, tourId = 7, lastOkMs = w.now))
+        assertEquals(LiveSign.LIVE, w.slice.sign)
+    }
+
+    /**
+     * Guards (review 2026-11-20): a sharing the server ended is shown in the sharing's own place – the Settings card –
+     * and only marked seen once that card showed it (Navigate has no line for it); it goes when Settings closes and does
+     * not come back from a snapshot from before the "seen". Never an error box during a tour.
+     */
+    @Test
+    fun aSharingEndedByTheServerIsShownUntilSeen() {
         val w = World(name = "")
         w.slice.share()
         w.lane(LiveSnapshot(sharing = true, link = link))
         w.lane(LiveSnapshot(endedByServer = true))
         assertEquals(LiveSign.NONE, w.slice.sign)
-        assertEquals(1, w.said.size)
-        assertEquals(NoticeKind.INFO, w.said[0].second)
-        assertTrue("seen" in w.client.calls)
+        assertTrue(w.slice.ended)
+        assertTrue("the card offers a new share", LiveAction.SHARE in w.slice.actions)
+        assertFalse("not seen before it was shown", "seen" in w.client.calls)
+        w.lane(LiveSnapshot(endedByServer = true)) // the lane says it again until seen
+        w.slice.endedShown()
+        assertEquals(1, w.client.calls.count { it == "seen" })
+        assertTrue("still there while Settings is open", w.slice.ended)
+        w.slice.settingsClosed()
+        assertFalse(w.slice.ended)
+        w.lane(LiveSnapshot(endedByServer = true)) // late, from before the "seen"
+        assertFalse(w.slice.ended)
         w.lane(LiveSnapshot.OFF)
-        assertEquals(1, w.said.size)
+        w.lane(LiveSnapshot(endedByServer = true)) // a second end, later
+        assertTrue(w.slice.ended)
+    }
+
+    /** Guards (review 2026-11-20): the name question closes with Settings – it never pops up again over Navigate. */
+    @Test
+    fun closingSettingsCancelsTheNameQuestion() {
+        val w = World()
+        w.slice.share()
+        assertTrue(w.slice.askName)
+        w.slice.settingsClosed()
+        assertFalse(w.slice.askName)
+        assertTrue(w.client.calls.isEmpty())
+        assertNull(w.prefs.liveName)
     }
 
     /** Guards: "Teilen beenden" also cancels a share sheet that was still waiting for its link. */

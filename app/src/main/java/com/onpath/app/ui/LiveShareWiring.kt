@@ -1,11 +1,11 @@
 package com.onpath.app.ui
 
+import android.content.Context
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.remember
-import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewModelScope
 import com.onpath.app.debug.launchSafe
 import com.onpath.app.live.EdgeLiveShareClient
@@ -16,7 +16,8 @@ import com.onpath.app.ui.live.LiveShareSlice
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.live_share
-import java.util.WeakHashMap
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
 
 /**
  * What the Settings opened from Navigate show first, above the Navigation section; null = nothing. Live sharing puts
@@ -32,15 +33,17 @@ val LocalTurnCardEnd = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
 /**
  * Live sharing around the Settings page (docs/design/live-tracking.md §2, §14.2): its card is the first entry of the
- * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content]. The one
- * [LiveShareSlice] per view model is kept beside it ([LiveShares] – the view model's file may only shrink).
+ * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content]. Closing Settings (also by
+ * the app) closes the name question and a seen "ended" line.
  */
 @Composable
 fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
-    val slice = liveSlice(vm)
+    val slice = LiveShares.of(vm) ?: return content()
+    DisposableEffect(slice) { onDispose { slice.settingsClosed() } }
     CompositionLocalProvider(LocalSettingsFirst provides {
         LiveSettingsCard(slice.sign, slice.actions, onAction = { slice.act(it) },
-            name = slice.name.takeIf { slice.nameKnown }, onName = slice::editName)
+            name = slice.name.takeIf { slice.nameKnown }, onName = slice::editName,
+            ended = slice.ended, onEndedShown = slice::endedShown)
     }, content = content)
     if (slice.askName) LiveNameDialog(slice.name, onShare = slice::nameGiven, onCancel = slice::nameCancelled, edit = slice.editingName)
 }
@@ -51,17 +54,11 @@ fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
  */
 @Composable
 fun LiveSignLayer(vm: AppViewModel, content: @Composable () -> Unit) {
-    val slice = liveSlice(vm)
+    val slice = LiveShares.of(vm) ?: return content()
     CompositionLocalProvider(
         LocalTurnCardEnd provides { LiveSignInTurnCard(slice.sign, slice.actions) { slice.act(it) } },
-        LocalNavTop provides { turnCard -> if (!turnCard) LiveSignOnMap(slice.sign, LiveSignLook.PILL, slice.actions) { slice.act(it) } },
+        LocalNavTop provides { turnCard -> if (!turnCard) LiveSignOnMap(slice.sign, slice.actions) { slice.act(it) } },
         content = content)
-}
-
-@Composable
-private fun liveSlice(vm: AppViewModel): LiveShareSlice {
-    val app = LocalContext.current.applicationContext
-    return remember(vm) { LiveShares.of(vm) { EdgeLiveShareClient(app) } }
 }
 
 private fun LiveShareSlice.act(a: LiveAction) = when (a) {
@@ -70,28 +67,49 @@ private fun LiveShareSlice.act(a: LiveAction) = when (a) {
     LiveAction.STOP -> stop()
 }
 
-/** The live-sharing slice of each view model (weak: it goes with its view model), fed with the lane's snapshots once. */
-private object LiveShares {
-    private val slices = WeakHashMap<AppViewModel, LiveShareSlice>()
+/**
+ * The live-sharing slice of each view model, kept by the view model itself ([androidx.lifecycle.ViewModel.addCloseable]
+ * – it goes with it; the view model's file may only shrink). Made once by [attach] outside composition; the screens
+ * only read it ([of]).
+ */
+object LiveShares {
+    private const val KEY = "com.onpath.live.share"
 
-    fun of(vm: AppViewModel, client: () -> EdgeLiveShareClient): LiveShareSlice = synchronized(slices) {
-        slices.getOrPut(vm) {
-            val c = client()
-            LiveShareSlice(c, object : LivePrefs {
-                override var liveName: String?
-                    get() = vm.prefs.liveName
-                    set(v) { vm.prefs.liveName = v }
-            }, object : LiveShareHost {
-                override fun recording(): Boolean = vm.recState.value != null
-                override fun shareText(text: String) {
-                    val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
-                    vm.events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.live_share)))
-                }
-                override fun nowMs(): Long = System.currentTimeMillis()
-            }, vm.notices).also { slice ->
-                // one collector per slice, on the main thread, for as long as the view model lives
-                vm.viewModelScope.launchSafe("live", "follow the live sharing") { c.live.collect { slice.onSnapshot(it) } }
+    private class Holder(val slice: LiveShareSlice) : AutoCloseable {
+        override fun close() = Unit // the collectors run in the view model's scope and end with it
+    }
+
+    /** The slice of [vm]; null before [attach] (then nothing of the sharing shows). */
+    fun of(vm: AppViewModel): LiveShareSlice? = vm.getCloseable<Holder>(KEY)?.slice
+
+    /** Makes [vm]'s slice once (the activity's onCreate, main thread) and feeds it: the lane's snapshots, the recording, the clock. */
+    fun attach(vm: AppViewModel, app: Context) {
+        if (of(vm) != null) return
+        val client = EdgeLiveShareClient(app)
+        val slice = LiveShareSlice(client, object : LivePrefs {
+            override var liveName: String?
+                get() = vm.prefs.liveName
+                set(v) { vm.prefs.liveName = v }
+        }, object : LiveShareHost {
+            override fun shareText(text: String) {
+                val send = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, text) }
+                vm.events += UiEvent.Share(Intent.createChooser(send, Txt.s(Res.string.live_share)))
+            }
+            override fun nowMs(): Long = System.currentTimeMillis()
+        })
+        vm.addCloseable(KEY, Holder(slice))
+        // on the main thread, for as long as the view model lives; the clock ticks only while sharing
+        vm.viewModelScope.launchSafe("live", "follow the live sharing") {
+            client.live.collectLatest { s ->
+                slice.onSnapshot(s)
+                if (s.sharing) while (true) { delay(TICK_MS); slice.tick() }
             }
         }
+        vm.viewModelScope.launchSafe("live", "follow the recording for sharing") {
+            vm.recState.collect { slice.onRecording(it != null) }
+        }
     }
+
+    /** How often the sign looks at the clock while sharing (the 12-min rule needs no finer step). */
+    private const val TICK_MS = 30_000L
 }

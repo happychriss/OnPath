@@ -34,7 +34,11 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getLong("crashShownUntil", 0)
         set(v) = sp.edit().putLong("crashShownUntil", v).apply()
 
-    /** Live sharing: the name on the viewer page ("Tour von …"); null = never asked, "" = asked and left empty. */
+    /**
+     * Live sharing: the name on the viewer page ("Tour von …"); null = never asked, "" = asked and left empty. In Android's
+     * backup with the other settings (onpath.xml) – the user's own setting; the share's link secret is never backed up
+     * (live/LiveFiles, not in backup_rules.xml).
+     */
     var liveName: String?
         get() = try { sp.getString("liveName", null) } catch (e: Exception) {
             Problems.warn("settings", "Setting liveName unreadable, asked again", e); null

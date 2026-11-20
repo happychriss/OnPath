@@ -1,16 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!-- live sharing of a running tour (docs/design/live-tracking.md §2) -->
-    <string name="live_share">Share live</string>
+    <string name="live_share">Share location</string>
     <string name="live_share_again">Share link again</string>
     <string name="live_stop">Stop sharing</string>
-    <string name="live_sign">Live</string>
-    <string name="live_sign_waiting">Live · waiting for network</string>
+    <string name="live_sign">Location</string>
+    <string name="live_sign_waiting">Location · waiting for network</string>
     <string name="live_name_row">Name on the page</string>
-    <string name="live_share_text">Follow my tour live: %1$s</string>
+    <string name="live_share_text">Follow my tour: %1$s</string>
     <string name="live_name_title">Your name for the page</string>
     <string name="live_name_text">Whoever opens the link sees “Tour of …”. You can leave the field empty.</string>
     <string name="live_name_field">Name</string>
     <string name="live_name_ok">Share</string>
-    <string name="live_ended_by_server">Live sharing has ended. The link no longer works.</string>
+    <string name="live_ended_by_server">Sharing has ended. The link no longer works.</string>
 </resources>

@@ -362,8 +362,7 @@ fun NavigateOverlay(
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            LocalNavTop.current?.invoke(ui.turn != null) // live sharing's sign when no turn card carries it ([LiveSignLayer])
+        ) { LocalNavTop.current?.invoke(ui.turn != null) // live sharing's sign when no turn card carries it ([LiveSignLayer])
             Appearing(ui.turn) { TurnCard(it) } // cards glide in and out instead of popping and pushing the status card
             // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
             // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
@@ -463,20 +462,21 @@ private fun TurnCard(t: TurnHint) {
         else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
         contentColor = OnPathColors.CardWhite,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }.warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
-            else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
-            else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
-            Spacer(Modifier.width(16.dp))
-            // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
-            // label ends in "…" (owner: nothing jumps)
-            Column(Modifier.weight(1f)) {
-                Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
-                    style = MaterialTheme.typography.headlineMedium)
-                StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }; LocalTurnCardEnd.current?.invoke() // live sharing's sign at the card's edge ([LiveSignLayer])
+            Row(Modifier.weight(1f).clearAndSetSemantics { contentDescription = text }, verticalAlignment = Alignment.CenterVertically) { // one spoken text
+                if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
+                else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
+                else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.width(16.dp))
+                // the way word on the direction's line ("Links auf den Radweg"): the card never grows, a long label ends in "…"
+                Column(Modifier.weight(1f)) {
+                    Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
+                        style = MaterialTheme.typography.headlineMedium)
+                    StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+            }; LocalTurnCardEnd.current?.invoke() // live sharing's sign at the edge, its own button for TalkBack ([LiveSignLayer])
         }
     }
 }

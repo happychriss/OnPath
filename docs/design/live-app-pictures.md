@@ -1,42 +1,28 @@
-# Live teilen – Bilder zum Ansehen (Stand 2026-11-20)
+# Standort teilen – Bilder zum Ansehen (Stand 2026-11-20)
 
-Bilder zum Entwurf `docs/design/live-tracking.md`. Alles hier liegt auf dem Zweig `feat/live-share-ui` und ist noch
-nicht in der App. Die Karte ist auf den App-Bildern ein Platzhalter, Zahlen und Name sind erfunden.
+Bilder zum Entwurf `docs/design/live-tracking.md`, so wie es gebaut ist (Owner 2026-11-20: Zeichen C, „Ja, einbauen“, das
+Wort ist „Standort teilen“ – kein „Live“). Die Karte ist auf den App-Bildern ein Platzhalter, Zahlen und Name sind erfunden.
 
-## Live-Zeichen – Vorschlag A: kleine Pille oben rechts
+## Das Zeichen in der Richtungskarte (Vorschlag C, gewählt)
 
-| Live | Wartet auf Netz |
-| --- | --- |
-| ![A live](img/live-app/zeichen-a-live.png) | ![A wartet](img/live-app/zeichen-a-wartet.png) |
-
-Eigene kleine Pille über der Richtungskarte. Immer an derselben Stelle, auch ohne Route. Kostet eine schmale Zeile Karte.
-
-## Live-Zeichen – Vorschlag B: nur ein Punkt oben rechts
-
-| Live | Wartet auf Netz |
-| --- | --- |
-| ![B live](img/live-app/zeichen-b-live.png) | ![B wartet](img/live-app/zeichen-b-wartet.png) |
-
-Am kleinsten. Grün = es wird gesendet, grau = wartet auf Netz. Ohne Wort muss man wissen, was der Punkt heißt.
-
-## Live-Zeichen – Vorschlag C: in der Richtungskarte (Empfehlung)
-
-| Live | Wartet auf Netz | Freie Tour ohne Route |
+| Geteilt | Wartet auf Netz | Freie Tour ohne Route |
 | --- | --- | --- |
 | ![C live](img/live-app/zeichen-c-live.png) | ![C wartet](img/live-app/zeichen-c-wartet.png) | ![C freie Tour](img/live-app/zeichen-c-freie-tour.png) |
 
-„● Live“ am rechten Rand der grünen Richtungskarte: kein zusätzlicher Platz, die Abbiegeanweisung bleibt groß. Wartet
-das Handy auf Netz, ist der Punkt hohl und das Wort blasser. Eine freie Tour hat keine Richtungskarte – dort steht die
-Pille aus Vorschlag A. Ein Tipp auf das Zeichen öffnet „Link nochmal teilen“ und „Teilen beenden“.
+„● Standort“ am rechten Rand der grünen Richtungskarte: kein zusätzlicher Platz, die Abbiegeanweisung bleibt groß. Wartet
+das Handy auf Netz, ist der Punkt hohl und das Wort blasser. Eine freie Tour hat keine Richtungskarte – dort steht eine
+kleine Pille oben rechts. Ein Tipp auf das Zeichen öffnet „Link nochmal teilen“ und „Teilen beenden“.
 
-## Live teilen in den Einstellungen (⚙ während der Tour)
+## Standort teilen in den Einstellungen (⚙ während der Tour)
 
-| Noch nicht geteilt | Geteilt, live | Geteilt, wartet auf Netz | Größte Schrift |
-| --- | --- | --- | --- |
-| ![Live teilen](img/live-app/einstellungen-live-teilen.png) | ![live](img/live-app/einstellungen-live.png) | ![wartet](img/live-app/einstellungen-wartet.png) | ![große Schrift](img/live-app/einstellungen-grosse-schrift.png) |
+| Noch nicht geteilt | Geteilt | Geteilt, wartet auf Netz | Größte Schrift | Vom Server beendet |
+| --- | --- | --- | --- | --- |
+| ![Standort teilen](img/live-app/einstellungen-live-teilen.png) | ![geteilt](img/live-app/einstellungen-live.png) | ![wartet](img/live-app/einstellungen-wartet.png) | ![große Schrift](img/live-app/einstellungen-grosse-schrift.png) | ![beendet](img/live-app/einstellungen-beendet.png) |
 
-Erster Eintrag der Einstellungen, die sich in der Navigation öffnen – nur während eine Tour läuft. Ein Tipp auf „Live
-teilen“ öffnet (beim ersten Mal nach der Namensfrage) Androids Teilen-Auswahl mit dem Link.
+Erster Eintrag der Einstellungen, die sich in der Navigation öffnen – nur während eine Tour läuft. Ein Tipp auf „Standort
+teilen“ öffnet (beim ersten Mal nach der Namensfrage) Androids Teilen-Auswahl mit „Verfolge meine Tour: ‹Link›“.
+„Vom Server beendet“ (der Link lief nach 48 h ab o. Ä.): eine graue Zeile, bis man sie hier gesehen hat – nie ein Fenster
+während der Tour.
 
 ## Namensfrage (einmal, vor dem ersten Teilen)
 
