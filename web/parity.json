@@ -49,14 +49,6 @@
       "blob": "9dc4f31acc570f7ee817a1fb2d5699e75b97e038"
     },
     {
-      "app": "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt",
-      "what": "dropIndex / shift (Points drag, per pointer move)",
-      "web": [
-        "web/app/src/sortable.ts"
-      ],
-      "blob": "7301c5f0ca06814840aa55f5d45fd83bdf5bcc94"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
       "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible)",
       "web": [

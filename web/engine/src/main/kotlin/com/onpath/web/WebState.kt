@@ -276,6 +276,16 @@ object WebRules {
 
     /** [WholeRoute.SETTLE_MS]: the wait after a route arrived before the first route is fitted (the sheet settles). */
     fun settleMs(): String = WholeRoute.SETTLE_MS.toString()
+
+    /**
+     * The Points list's drag ([com.onpath.app.routing.PlanPoints.dropIndex] / [com.onpath.app.routing.PlanPoints.shift]),
+     * once per pointer move: `{"to":row,"shift":[…]}` – the row a drag of [offsetPx] from row [from] lands on, and for
+     * each of the [count] rows by how many rows it moves aside (-1 up, +1 down, 0).
+     */
+    fun pointsDrag(from: Int, offsetPx: Double, rowPx: Double, count: Int): String {
+        val to = com.onpath.app.routing.PlanPoints.dropIndex(from, offsetPx.toFloat(), rowPx.toFloat(), count)
+        return (0 until count).joinToString(",", "{\"to\":$to,\"shift\":[", "]}") { com.onpath.app.routing.PlanPoints.shift(it, from, to).toString() }
+    }
 }
 
 // ---- the page's exports (web/app/src/slices.ts; WebApi.kt lists this class in @JSExportClasses) ----
@@ -306,4 +316,5 @@ object WebStateApi {
     @JvmStatic @JSExport fun routesSort(rows: String, choice: String): String = WebRoutesOrder.sort(rows, choice)
     @JvmStatic @JSExport fun routesSortChoice(s: String): String = WebRoutesOrder.choice(s)
     @JvmStatic @JSExport fun routesSortKeys(): String = WebRoutesOrder.keys()
+    @JvmStatic @JSExport fun pointsDrag(from: Int, offsetPx: Double, rowPx: Double, count: Int): String = WebRules.pointsDrag(from, offsetPx, rowPx, count)
 }

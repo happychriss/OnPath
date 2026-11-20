@@ -1,29 +1,28 @@
 // Points list reordering like the app's PointsSection (owner 2026-10-28: the dragged row must visibly move): a drag
 // that starts on ≡ lifts that row, it follows the pointer (mouse, finger, pen) and the other rows move aside to show
 // where it lands; near the list's top / bottom edge the list scrolls. The arithmetic is the app's PlanPoints.dropIndex /
-// PlanPoints.shift (routing/PlanPoints.kt, mirrored: it runs on every pointer move, the engine is a worker away).
+// PlanPoints.shift, run as it is in the page's own Wasm instance (WebState.kt WebRules.pointsDrag, slices.ts) – the
+// routing worker is too far away for every pointer move. Without that instance (not loaded) the row follows the
+// pointer but the drop changes nothing (reported once); the keyboard still moves rows.
 // Keyboard: ≡ is a button, Arrow up / down moves its row by one.
-
-/** PlanPoints.dropIndex: the row a drag of [offset] px from row [from] lands on. */
-export const dropIndex = (from: number, offset: number, rowPx: number, count: number) =>
-  rowPx <= 0 || count <= 0 ? from : Math.min(count - 1, Math.max(0, from + Math.round(offset / rowPx)));
-/** PlanPoints.shift: by how many rows row [i] moves aside while row [from] is over row [to]. */
-export const shift = (i: number, from: number, to: number) =>
-  from < to && i > from && i <= to ? -1 : to < from && i >= to && i < from ? 1 : 0;
+import { slice } from './slices';
 
 const EDGE = 40; // px from the list's visible edge where it starts to scroll
 
 /** [onMove] gets the rows' data-i values (point indices) of the dragged row and of the row it lands on. */
 export function sortable(list: HTMLElement, onMove: (from: number, to: number) => void) {
-  let drag: { li: HTMLElement; rows: HTMLElement[]; from: number; to: number; y0: number; top0: number; y: number; rowPx: number; raf: number } | null = null;
+  let drag: { li: HTMLElement; rows: HTMLElement[]; from: number; to: number; y0: number; top0: number; y: number; rowPx: number; raf: number; off: boolean } | null = null;
   let swallowClick = false; // the click the drag's own pointerup makes (dispatched before any timer runs)
 
   const update = () => {
     const d = drag!;
     const offset = d.y - d.y0 + (list.scrollTop - d.top0);
-    d.to = dropIndex(d.from, offset, d.rowPx, d.rows.length);
+    // the app's PlanPoints.dropIndex / shift; null (no instance – reported once per drag): the drop changes nothing
+    const a = d.off ? null : slice<{ to: number; shift: number[] }>('pointsDrag', d.from, offset, d.rowPx, d.rows.length);
+    if (!a) d.off = true;
+    d.to = a?.to ?? d.from;
     d.li.style.transform = `translateY(${offset}px)`;
-    d.rows.forEach((r, k) => { if (k !== d.from) r.style.transform = `translateY(${shift(k, d.from, d.to) * d.rowPx}px)`; });
+    d.rows.forEach((r, k) => { if (k !== d.from) r.style.transform = `translateY(${(a?.shift[k] ?? 0) * d.rowPx}px)`; });
   };
   const autoScroll = () => {
     const d = drag;
@@ -54,7 +53,7 @@ export function sortable(list: HTMLElement, onMove: (from: number, to: number) =
     const from = rows.indexOf(li);
     const next = rows[from + 1] ?? rows[from - 1];
     const rowPx = next ? Math.abs(next.offsetTop - li.offsetTop) : li.offsetHeight;
-    drag = { li, rows, from, to: from, y0: e.clientY, top0: list.scrollTop, y: e.clientY, rowPx, raf: 0 };
+    drag = { li, rows, from, to: from, y0: e.clientY, top0: list.scrollTop, y: e.clientY, rowPx, raf: 0, off: false };
     (grip as HTMLElement).setPointerCapture(e.pointerId);
     list.classList.add('sorting');
     li.classList.add('lifted');

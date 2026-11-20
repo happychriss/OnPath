@@ -35,6 +35,8 @@ interface Slices {
   routesSortChoice(sort: string): string;
   /** RouteSort.Key in its order: `[{ key, dir }]`. */
   routesSortKeys(): string;
+  /** The app's PlanPoints.dropIndex / shift for a drag of the Points list: `{ to, shift: [per row] }`. */
+  pointsDrag(from: number, offsetPx: number, rowPx: number, count: number): string;
 }
 
 /** The slices are there (loaded) or will never be (failed): resolves true / false. */
