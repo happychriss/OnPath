@@ -69,7 +69,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter

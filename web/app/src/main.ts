@@ -1041,22 +1041,14 @@ const HOLD_RING_PX = 12;
  */
 function holdAddMenu(at: maplibregl.LngLat, a: { main: string[]; stop: number }, lineSnapM: number) {
   const p: LatLon = [at.lat, at.lng];
-  const asked = state.points;
   const strong = emphasised(a.main);
   const items = a.main.map((item): MenuItem => item === 'ADD_STOP'
+    // „Einfügen“ / „Neues Ziel“: the app's holdAsStop / holdAsNewDestination on the points as they are then (PlaceAddState)
     ? { icon: 'addLocation', label: t('plan_add_as_stop'), key: item, strong: item === strong, act: () => {
-      void queueEdit(async () => {
-        // the points changed while the menu was open: where the stop goes, worked out again
-        const stop = state.points === asked ? a.stop : (await holdAnswerStop(at, lineSnapM));
-        const pts = state.points.slice(), meta = state.meta.slice();
-        const i = Math.max(0, Math.min(stop, pts.length));
-        pts.splice(i, 0, p); meta.splice(i, 0, { pinned: false });
-        return { planned: commit(pts, meta) };
-      });
+      void queueEdit(() => placeEdit('holdStop', p, lineSnapM, { pinned: false }));
     } }
     : { icon: 'flag', label: t('plan_make_destination'), key: item, strong: item === strong, act: () => {
-      // „Neues Ziel“ while planning: appended, the old goal stays as the last stop (PlaceAddMenu.keepsOldGoal)
-      void queueEdit(async () => ({ planned: commit([...state.points, p], [...state.meta, { pinned: false }]) }));
+      void queueEdit(() => placeEdit('holdGoal', p, lineSnapM, { pinned: false }));
     } });
   closeMenu();
   const box = holdMenu('', items, closeMenu);
@@ -1105,11 +1097,20 @@ function menuRoom(x: number): { top: number; bottom: number } {
   return { top, bottom: Math.max(top, Math.min(st.bottom, under, footTop) - st.top) };
 }
 
-/** Where „Einfügen“ of a held spot goes now (the points changed while its menu was open). */
-async function holdAnswerStop(at: maplibregl.LngLat, lineSnapM: number): Promise<number> {
-  const a = await holdAnswer(at, lineSnapM);
-  return a.action === 'ASK' ? a.stop
-    : (JSON.parse(await engine.call('placeMenu', enc(state.points), at.lat, at.lng, state.roundTrip, lineSnapM, '', 0)) as { stop: number }).stop;
+/**
+ * An add from a menu or the place card, decided by the app's PlaceAddState in the engine (WebApi.placeEdit) on the points as
+ * they are now: [op] = holdStop / holdGoal (the hold menu), poiStop / poiGoal (a held place's rows), SMART / START /
+ * DESTINATION (the place card). The plan it hands back is committed (one Undo step); the new point [at] gets [m], every
+ * other point keeps its name and pin. Call inside queueEdit. Null = nothing changed (the place is a point already).
+ */
+async function placeEdit(op: string, at: LatLon, lineSnapM: number, m: Meta, title = '', kind = '') {
+  const r = JSON.parse(await engine.call('placeEdit', op, enc(state.points), at[0], at[1], lineSnapM, title, kind)) as
+    { points?: string | null; pointMenu?: number };
+  if (r.pointMenu != null || !r.points) return null;
+  const was = new Map(state.points.map((q, i) => [key(q), state.meta[i]] as const));
+  const after = dec(r.points).map((q): LatLon => (key(q) === key(at) && !was.has(key(at)) ? at : q));
+  const meta = after.map((q): Meta => was.get(key(q)) ?? (key(q) === key(at) ? m : { ...(known.get(key(q)) ?? { pinned: false }) }));
+  return { planned: commit(after, meta) };
 }
 
 const position = new Position(map, () => { renderFabs(); locateNotice(); void updateLocateLabel(); });
@@ -1239,8 +1240,8 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const row0 = async (item: string): Promise<MenuItem> => {
     if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => { fromPin(); void addPlace(hit, 'START', pin); } };
     if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind }); });
-    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void addPlaceAt(hit, pm.stop); } };
-    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAsNewDestination(hit, pm.keepOld ?? true); } };
+    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void placeAddAs(hit, 'poiStop'); } };
+    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAddAs(hit, 'poiGoal'); } };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
       act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
@@ -1294,35 +1295,14 @@ async function keepRows(code: string | undefined): Promise<MenuItem[]> {
   return HOME_ROW_SHOWN ? rows : rows.filter((r) => r.key !== 'HOME');
 }
 
-/** Place menu → „Einfügen“: at [index] (the engine's stopOnly place – never behind the goal), pinned with its name. */
-async function addPlaceAt(h: Hit, index: number) {
-  const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-  const asked = state.points;
-  await queueEdit(async () => {
-    // the points changed while waiting (an edit before this one): where the stop goes, worked out again
-    const stop = state.points === asked ? index
-      : (JSON.parse(await engine.call('placeMenu', enc(state.points), p[0], p[1], state.roundTrip, lineSnapAt(p[0]), '', 0)) as { stop: number }).stop;
-    const pts = state.points.slice(), meta = state.meta.slice();
-    const at = Math.max(0, Math.min(stop, pts.length));
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
-    return { planned: commit(pts, meta) };
-  });
-}
-
 /**
- * Place menu → „Neues Ziel“: the route goes on to the place. [keepOld] (the engine's PlaceAddMenu.keepsOldGoal, owner
- * 2026-11-14 „beim Planen anhängen, unterwegs ersetzen“; the planner has no tour, so always true): the old goal stays as
- * the last stop; else it is replaced. One Undo brings the plan before back either way.
+ * Place menu → „Einfügen“ (poiStop: the app's addPoiAsStop – the best place on the route, never behind the goal) or „Neues
+ * Ziel“ (poiGoal: poiAsNewDestination – while planning the old goal stays as the last stop, owner 2026-11-14), pinned with
+ * its name. One Undo brings the plan before back.
  */
-async function placeAsNewDestination(h: Hit, keepOld: boolean) {
+async function placeAddAs(h: Hit, op: 'poiStop' | 'poiGoal') {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-  await queueEdit(async () => {
-    const pts = state.points.slice(), meta = state.meta.slice();
-    const m = { pinned: true, name: h.title, kind: h.kind };
-    if (!pts.length || keepOld) { pts.push(p); meta.push(m); }
-    else { pts[pts.length - 1] = p; meta[meta.length - 1] = m; }
-    return { planned: commit(pts, meta) };
-  });
+  await queueEdit(() => placeEdit(op, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
 }
 
 /** "Open in Google Maps": the app's link (PoiLinks.googleMaps), in a new tab – Google content is never drawn here. */
@@ -2233,22 +2213,11 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   const pv = await engine.placePreview(state.points, p[0], p[1]);
   placeFit = fit; // the edit's commit asks RouteFit.fitAfterPlace (the plan changed and has a route)
-  if (pv.existing != null) {
-    if (role === 'START') await applyEdit('startHere', pv.existing);
-    else if (role === 'DESTINATION') await applyEdit('move', pv.existing, state.points.length - 1);
-    else if (role === 'REMOVE') await deletePoint(pv.existing);
-    return;
-  }
-  const asked = state.points;
-  await queueEdit(async () => {
-    // the points changed while waiting (an edit before this one): where the place goes, worked out again
-    const now = state.points === asked ? pv : await engine.placePreview(state.points, p[0], p[1]);
-    if (now.existing != null) return null; // planned meanwhile
-    const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : now.index ?? state.points.length;
-    const pts = state.points.slice(), meta = state.meta.slice();
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
-    return { planned: commit(pts, meta) };
-  });
+  if (role === 'REMOVE') { if (pv.existing != null) await deletePoint(pv.existing); return; }
+  if (pv.existing != null) closeMenu();
+  // the app's PlaceAddState.addPlace on the points as they are then: a planned place – „As start“ = Start here, „As
+  // destination“ moves it to the end; else a pinned stop where the card said (WaypointInsertion), at the start or the end
+  await queueEdit(() => placeEdit(role, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
 }
 
 // ---- menus, sheet, dialogs ----
