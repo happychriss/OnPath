@@ -321,14 +321,6 @@
       "blob": "aa590937851fe361f89c1d15951e621121a1146d"
     },
     {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/MapViewSlice.kt",
-      "what": "fitFirstRoute: the first route is fitted once the sheet settled – not when the map was touched meanwhile or the plan moved on (main.ts fitNextRoute / lastMapTouch); WholeRoute itself (SETTLE_MS) runs as it is (slices.ts settleMs), the fit rules are shared (routing/RouteFit, engine routeFirst / routeFitAfterPlace)",
-      "web": [
-        "web/app/src/main.ts"
-      ],
-      "blob": "532157ac74ac8e80ca3c12919b903018f5ee5ab3"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RouteSortChips.kt",
       "what": "the sort chip row: labels, ✓ and ↓ / ↑ on the chosen chip, the spoken texts, the chosen chip in view with the one before peeking (40)",
       "web": [
@@ -589,6 +581,11 @@
       "app": "core/src/main/kotlin/com/onpath/app/cells/CellApi.kt",
       "why": "doorman request / status shapes the web proxy and areas.ts use (web/host/src/maps.js)",
       "blob": "a484b612d6ab3b9315d78eca1dc088208a0e76d1"
+    },
+    {
+      "app": "state/src/main/kotlin/com/onpath/app/ui/MapViewSlice.kt",
+      "why": "the map camera's coroutine slice (follow, free look, scrubbing) – its first-route fit decision is shared: WholeRoute.fitsFirstRoute, asked by the planner through slices.ts fitsFirstRoute (main.ts); the fit rules too (routing/RouteFit, WholeRoute)",
+      "blob": "532157ac74ac8e80ca3c12919b903018f5ee5ab3"
     }
   ],
   "shared": {

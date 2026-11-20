@@ -32,7 +32,7 @@ import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
 import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
-import { settleMs, slice, slicesReady } from './slices';
+import { fitsFirstRoute, settleMs, slice, slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
 import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
@@ -1633,7 +1633,7 @@ async function planRun(rounds: number) {
     const asked = fitAskedAt, plan = state.plan;
     // the app's WholeRoute.SETTLE_MS (slices.ts; 500 until its instance is there): a moment for the map; not when the
     // user moved it meanwhile or the plan moved on (MapViewSlice.fitFirstRoute)
-    setTimeout(() => { if (lastMapTouch <= asked && state.plan === plan) fitRoute(); else console.info(`[map] route fit left out: ${lastMapTouch > asked ? 'the map was touched' : 'another plan'}`); }, settleMs());
+    setTimeout(() => { if (fitsFirstRoute(lastMapTouch > asked, state.plan === plan)) fitRoute(); else console.info(`[map] route fit left out: ${lastMapTouch > asked ? 'the map was touched' : 'another plan'}`); }, settleMs());
   }
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   engine.call('routingInfo').then((l) => { routingLine = l; }, (e) => problem('routing', 'routing fingerprint line not read', e));

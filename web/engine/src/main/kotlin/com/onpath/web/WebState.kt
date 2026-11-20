@@ -57,6 +57,8 @@ object WebState {
     class PageStore(tours: List<Tour>) : RoutesStore {
         private val all = tours.toMutableList()
         val writes = ArrayList<String>()
+        /** The page's plans for the next call: what is stored now, no writes yet (the one slice instance reads it). */
+        fun load(tours: List<Tour>) { all.clear(); all.addAll(tours); writes.clear() }
         private fun at(id: Long) = all.indexOfFirst { it.id == id }
         override fun listTours() = all.filter { it.deletedMs == null }
         override fun listDeleted() = all.filter { it.deletedMs != null }.sortedByDescending { it.deletedMs }
@@ -93,12 +95,21 @@ object WebState {
         if (la == null || lo == null) null else la to lo
     }
 
-    /** Runs [action] on a [RoutesState] over [tours] with the Zuletzt place [recent]: `{"result":…,"recent":id,"writes":[…]}`. */
+    /**
+     * The page's one [RoutesState] (as the app has one): its store is loaded with the page's plans before each action
+     * and its Zuletzt place set as stored ([RoutesState.placeIs] – no bin, no onRecent); My routes' sort lives in it too.
+     */
+    private val store = PageStore(emptyList())
+    private var nowMs = 0L
+    private val routesSlice = RoutesState(store, clock = { nowMs })
+
+    /** Runs [action] on the page's [RoutesState] over [tours] with the Zuletzt place [recent]: `{"result":…,"recent":id,"writes":[…]}`. */
     private fun routes(tours: String, recent: Double, now: Double, action: (RoutesState, PageStore) -> String): String {
-        val store = PageStore(parseTours(tours))
-        val s = RoutesState(store, clock = { now.toLong() }, recent = recent.toLong())
-        val result = action(s, store)
-        return "{\"result\":$result,\"recent\":${s.recentId},\"writes\":[${store.writes.joinToString(",")}]}"
+        store.load(parseTours(tours))
+        nowMs = now.toLong()
+        routesSlice.placeIs(recent.toLong())
+        val result = action(routesSlice, store)
+        return "{\"result\":$result,\"recent\":${routesSlice.recentId},\"writes\":[${store.writes.joinToString(",")}]}"
     }
 
     /** RoutesState.keepDraft; [newId] = the id the page writes the draft under ([PageStore.insertDraft]); result = the new id or -1. */
@@ -135,21 +146,18 @@ object WebState {
         return "{\"live\":${r.live},\"id\":${r.tourId},\"saved\":${r.saved}}"
     }
 
-    /** My routes open on the page (its sort while open; RoutesState.open: Neueste zuerst at each opening). */
-    private val shown = RoutesState(PageStore(emptyList()), clock = { 0L })
-
     /** My routes opens ([fresh]) or comes back while open (a copy saved): the sort, RouteSort.encode as a JSON string. */
     fun open(fresh: Boolean): String {
-        if (fresh) shown.open = false
-        shown.open = true
-        return Engine.str(RouteSort.encode(shown.sort))
+        if (fresh) routesSlice.open = false
+        routesSlice.open = true
+        return Engine.str(RouteSort.encode(routesSlice.sort))
     }
 
     /** A tap on the sort chip [key] (RouteSort.tap on the slice's sort): the sort now. */
     fun tapSort(key: String): String {
         val k = RouteSort.Key.entries.firstOrNull { it.name == key }
-        if (k != null) shown.sort = RouteSort.tap(shown.sort, k)
-        return Engine.str(RouteSort.encode(shown.sort))
+        if (k != null) routesSlice.sort = RouteSort.tap(routesSlice.sort, k)
+        return Engine.str(RouteSort.encode(routesSlice.sort))
     }
 
     // ---------------- Save's name dialog: SaveDialog ----------------
@@ -281,6 +289,14 @@ object WebRules {
     fun settleMs(): String = WholeRoute.SETTLE_MS.toString()
 
     /**
+     * [WholeRoute.fitsFirstRoute] (the app's MapViewSlice.fitFirstRoute asks the same): fit the first route after the
+     * settle wait – not when the map was touched meanwhile or the plan moved on. The planner is always in Plan and shows
+     * no track over the plan: mode PLAN, shown false. `"true"` / `"false"`.
+     */
+    fun fitsFirstRoute(touchedSince: Boolean, sameLine: Boolean): String =
+        WholeRoute.fitsFirstRoute(touchedSince, com.onpath.app.domain.AppMode.PLAN, shown = false, sameLine = sameLine).toString()
+
+    /**
      * The Points list's drag ([com.onpath.app.routing.PlanPoints.dropIndex] / [com.onpath.app.routing.PlanPoints.shift]),
      * once per pointer move: `{"to":row,"shift":[…]}` – the row a drag of [offsetPx] from row [from] lands on, and for
      * each of the [count] rows by how many rows it moves aside (-1 up, +1 down, 0).
@@ -354,6 +370,7 @@ object WebStateApi {
     @JvmStatic @JSExport fun saveConfirm(input: String, savedId: Double): String = WebState.saveConfirm(input, savedId)
     @JvmStatic @JSExport fun cancelCamera(points: String, routeLine: String): String = WebRules.cancelCamera(points, routeLine)
     @JvmStatic @JSExport fun wholeRouteSettleMs(): String = WebRules.settleMs()
+    @JvmStatic @JSExport fun wholeRouteFitsFirst(touchedSince: Boolean, sameLine: Boolean): String = WebRules.fitsFirstRoute(touchedSince, sameLine)
     @JvmStatic @JSExport fun routesSearch(names: String, query: String): String = WebRoutesOrder.search(names, query)
     @JvmStatic @JSExport fun routesSort(rows: String, choice: String): String = WebRoutesOrder.sort(rows, choice)
     @JvmStatic @JSExport fun routesSortChoice(s: String): String = WebRoutesOrder.choice(s)
