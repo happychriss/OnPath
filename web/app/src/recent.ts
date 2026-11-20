@@ -5,8 +5,9 @@
 // localStorage, the Zuletzt place (the app's prefs.zuletztId), the one-time trim mark (prefs.zuletztTrimmed) and the
 // recycle bin's [BIN_DAYS] days (the app's RecycleBin.DAYS). Each action hands the slice the stored plans as lines
 // and writes back what it decided. Like the app's drafts these are never synced (this browser only) and get no backup.
-// A plan opened from Zuletzt still belongs to its entry: leaving it again updates that entry (the store writes the
-// draft under the entry's id); saving it moves it to the saved plans.
+// A plan opened from Zuletzt and left changed is a new draft, the entry it came from goes to the bin – the slice's own
+// rule, as in the app (owner 2026-11-20; it was updated in place before); left unchanged, its entry keeps the place;
+// saving it moves it to the saved plans.
 import { slice, slicesReady, numOf, keyOf, tourLine, type RoutesAnswer } from './slices';
 import { problem } from './diag';
 
@@ -88,16 +89,12 @@ const placeNum = (p = zuletztPlace()) => (p ? numOf(p.kind === 'draft' ? draftKe
 /** A saved route as the store shows it to the slice: [points] its key (empty = never the same points), [deletedAt] in the bin. */
 interface SavedLine { id: string; points?: string; deletedAt?: number | null; at?: number }
 
-/**
- * The store's list: the saved routes first (a saved twin wins over a draft – never a draft beside it), then the drafts
- * newest first. [blank] = a draft whose points never count as the same (the entry a plan was opened from: leaving it
- * again updates it, the app's keepDraft is not asked to find it).
- */
-function lines(list: RecentPlan[], saved: SavedLine[] = [], blank: string | null = null): string {
+/** The store's list: the saved routes first (a saved twin wins over a draft – never a draft beside it), then the drafts newest first. */
+function lines(list: RecentPlan[], saved: SavedLine[] = []): string {
   const drafts = [...list].sort((a, b) => b.at - a.at);
   return [
     ...saved.map((s) => tourLine(savedKey(s.id), false, s.deletedAt, s.at ?? 0, '', s.points ?? '')),
-    ...drafts.map((r) => tourLine(draftKey(r.id), true, r.deletedAt, r.at, r.title, r.id === blank ? '' : r.points)),
+    ...drafts.map((r) => tourLine(draftKey(r.id), true, r.deletedAt, r.at, r.title, r.points)),
   ].join('\n');
 }
 
@@ -129,30 +126,31 @@ function apply<R>(a: RoutesAnswer<R>, list = read()): RecentPlan[] {
 
 /**
  * The plan leaves the map (the app's RoutesState.keepDraft): [savedId] = the saved route it is as it is ([saved]
- * 'there' / 'binned' / 'gone' – the caller looked), [twin] = a saved route with exactly its points, [replaces] = the
- * Zuletzt entry it was opened from (updated, not doubled – back out of the bin when another plan took the place
- * meanwhile). Returns the draft's id when one was written, else null (the place went to an existing plan). Without the
- * slice the plan is still kept as a draft (never lost), nothing else changes.
+ * 'there' / 'binned' / 'gone' – the caller looked), [twin] = a saved route with exactly its points. A plan opened from
+ * Zuletzt is no special case (owner 2026-11-20, like the app): changed, it is a new draft and the slice sends its old
+ * entry to the bin; unchanged, that entry has its points and keeps the place. Returns the draft's id when one was
+ * written, else null (the place went to an existing plan). Without the slice the plan is still kept as a draft (never
+ * lost), nothing else changes.
  */
-export function keepPlan(p: { code: string; title: string; points: string; replaces?: string | null; savedId?: string | null;
+export function keepPlan(p: { code: string; title: string; points: string; savedId?: string | null;
   saved?: 'there' | 'binned' | 'gone'; twin?: string | null }, now = Date.now()): string | null {
   const list = read();
-  const id = p.replaces && list.some((r) => r.id === p.replaces) ? p.replaces : newId();
+  const id = newId();
   const savedLines: SavedLine[] = [];
   if (p.savedId && p.saved === 'there') savedLines.push({ id: p.savedId });
   if (p.savedId && p.saved === 'binned') savedLines.push({ id: p.savedId, deletedAt: now });
   if (p.twin) savedLines.push({ id: p.twin, points: p.points });
   const entry = (): RecentPlan => ({ id, code: p.code, title: p.title, points: p.points, at: now });
-  const a = slice<RoutesAnswer<number>>('routesKeep', lines(list, savedLines, p.replaces ?? null), placeNum(), now, p.points,
+  const a = slice<RoutesAnswer<number>>('routesKeep', lines(list, savedLines), placeNum(), now, p.points,
     !p.savedId, p.savedId ? numOf(savedKey(p.savedId)) : -1, numOf(draftKey(id)));
   if (!a) {
     if (p.points.split(';').length < 2 || (p.savedId && p.saved !== 'gone')) return null;
-    write([entry(), ...list.filter((r) => r.id !== id)]); // robust first: kept, the bin and the place wait for the slice
+    write([entry(), ...list]); // robust first: kept, the bin and the place wait for the slice
     return id;
   }
   const out = apply(a, list);
   if (a.result === numOf(draftKey(id))) {
-    write([entry(), ...out.filter((r) => r.id !== id)]);
+    write([entry(), ...out]);
     return id;
   }
   // the same points as the draft there: that one is the plan worked on last (its date moves up, as the store's touch)
