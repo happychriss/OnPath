@@ -1106,7 +1106,14 @@ function menuRoom(x: number): { top: number; bottom: number } {
 async function placeEdit(op: string, at: LatLon, lineSnapM: number, m: Meta, title = '', kind = '') {
   const r = JSON.parse(await engine.call('placeEdit', op, enc(state.points), at[0], at[1], lineSnapM, title, kind)) as
     { points?: string | null; pointMenu?: number };
-  if (r.pointMenu != null || !r.points) return null;
+  if (r.pointMenu != null || !r.points) {
+    // no commit: what the add's click set up for its commit (the pin's TakenPin, the fit after a place) is dropped
+    placeFit = false;
+    if (pinTaken?.plan == null) pinTaken = null;
+    // the place is a stop already (the app's addPoiWith → openPointMenu „POI that is a stop“): its point menu
+    if (r.pointMenu != null) { const i = r.pointMenu; setTimeout(() => { void pointMenu(i); }, 0); }
+    return null;
+  }
   const was = new Map(state.points.map((q, i) => [key(q), state.meta[i]] as const));
   const after = dec(r.points).map((q): LatLon => (key(q) === key(at) && !was.has(key(at)) ? at : q));
   const meta = after.map((q): Meta => was.get(key(q)) ?? (key(q) === key(at) ? m : { ...(known.get(key(q)) ?? { pinned: false }) }));
@@ -2214,7 +2221,6 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   const pv = await engine.placePreview(state.points, p[0], p[1]);
   placeFit = fit; // the edit's commit asks RouteFit.fitAfterPlace (the plan changed and has a route)
   if (role === 'REMOVE') { if (pv.existing != null) await deletePoint(pv.existing); return; }
-  if (pv.existing != null) closeMenu();
   // the app's PlaceAddState.addPlace on the points as they are then: a planned place – „As start“ = Start here, „As
   // destination“ moves it to the end; else a pinned stop where the card said (WaypointInsertion), at the start or the end
   await queueEdit(() => placeEdit(role, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
