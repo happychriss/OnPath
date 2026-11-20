@@ -149,6 +149,22 @@ class LiveShareSliceTest {
         assertEquals(listOf("start:", "stop"), w.client.calls)
     }
 
+    /** Guards: changing the name in Settings never starts a share by itself and never opens the share sheet. */
+    @Test
+    fun editingTheNameSharesNothing() {
+        val w = World(name = "Christian")
+        assertTrue(w.slice.nameKnown)
+        w.slice.editName()
+        assertTrue(w.slice.askName); assertTrue(w.slice.editingName)
+        w.slice.nameGiven("Chris")
+        assertEquals("Chris", w.prefs.liveName); assertEquals("Chris", w.slice.name)
+        assertTrue(w.client.calls.isEmpty()); assertTrue(w.shared.isEmpty())
+        w.slice.editName(); w.slice.nameCancelled()
+        assertEquals("Chris", w.prefs.liveName)
+        assertFalse(w.slice.editingName)
+        assertFalse("never asked: no Name row yet", World().slice.nameKnown)
+    }
+
     /** Guards: a long name cannot blow up the viewer page's title. */
     @Test
     fun aLongNameIsCut() {
