@@ -1,11 +1,11 @@
 package com.onpath.web
 
 import com.onpath.app.data.Format
-import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.search.Place
 import com.onpath.app.search.SavedPlaces
 import com.onpath.app.poi.Poi
+import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchMerge
 import com.onpath.app.ui.plan.KeptPlacesHost
 import com.onpath.app.ui.plan.KeptPlacesSlice
@@ -110,25 +110,26 @@ object WebKept {
     }
 
     /**
-     * The empty search (the app's SearchSession.startLists + SearchScreen.recentSection): Zuhause, the favourites (five
+     * The empty search (the app's SearchState.startLists + SearchScreen.recentSection): Zuhause, the favourites (five
      * unless [all] – „Alle Favoriten ›“), „Zuletzt gesucht“ without the places shown above. Each row: the place's
      * search-row fields (WebSearch's hit), its [code] and the grey part of the one-line row (SearchScreen.compactLine:
      * kind · height · distance; Zuhause: the place's name · distance), distance from ([lat], [lon]).
      */
     fun start(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double): String {
-        val s = saved(home, favourites).start(places(recent), all)
-        fun row(p: Place, withTitle: Boolean = false): String {
-            val d = Geo.distance(lat, lon, p.lat, p.lon)
+        // the lists as the app's SearchState.startLists makes them (SavedPlaces.start, each row with its distance)
+        val u = WebSearch.startLists(saved(home, favourites), places(recent), all, lat, lon)
+        fun row(h: SearchHit, withTitle: Boolean = false): String {
+            val p = h.place
             val line = buildList {
                 add(if (withTitle) p.title() else p.kindInfo.label)
                 if (!withTitle) p.ele?.let { add("$it m") }
-                add(Format.distance(d))
+                add(Format.distance(h.distanceM))
             }.joinToString(" · ")
             return WebSearch.hitJson(p, line).dropLast(1) + ",\"shared\":" + p.shared + "}"
         }
-        return "{\"home\":" + (s.home?.let { row(it, true) } ?: "null") +
-            ",\"favourites\":" + s.favourites.joinToString(",", "[", "]") { row(it) } +
-            ",\"more\":" + s.moreFavourites + ",\"recent\":" + s.recent.joinToString(",", "[", "]") { row(it) } + "}"
+        return "{\"home\":" + (u.home?.let { row(it, true) } ?: "null") +
+            ",\"favourites\":" + u.favourites.joinToString(",", "[", "]") { row(it) } +
+            ",\"more\":" + u.moreFavourites + ",\"recent\":" + u.recent.joinToString(",", "[", "]") { row(it) } + "}"
     }
 
     private fun str(v: String): String = buildString {

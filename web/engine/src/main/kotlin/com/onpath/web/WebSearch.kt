@@ -5,14 +5,17 @@ import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.BaseMapPlaces
 import com.onpath.app.search.OfflineIndex
-import com.onpath.app.search.OnlineRanking
 import com.onpath.app.search.PhotonParser
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
-import com.onpath.app.search.SearchMerge
-import com.onpath.app.search.SearchQuery
+import com.onpath.app.search.SavedPlaces
 import com.onpath.app.search.SearchRanking
+import com.onpath.app.ui.search.Search
+import com.onpath.app.ui.search.SearchContext
+import com.onpath.app.ui.search.SearchPorts
+import com.onpath.app.ui.search.SearchState
+import com.onpath.app.ui.search.SearchUi
 import java.io.File
 
 /**
@@ -25,22 +28,48 @@ import java.io.File
 object WebSearch {
     private val areas = LinkedHashMap<String, List<OfflineIndex.Entry>>()
     private var entries: List<OfflineIndex.Entry> = emptyList()
-    private var lastQuery: SearchQuery? = null
-    private var lastOffline: List<SearchHit> = emptyList()
-    /** Online rows on screen (also kept from an earlier text that still matches), as the app's SearchUi.online. */
-    private var lastOnline: List<SearchHit> = emptyList()
-    /** The list on screen and what it was ranked for (normalised text + category) – the app's SearchUi.shown / shownFor. */
-    private var shown: List<SearchHit>? = null
-    private var shownFor: String? = null
-    /** Where the last online search was centred (scores online rows kept for the next text). */
-    private var onlineCentre: Pair<Double, Double>? = null
 
-    private fun keyOf(text: String, cat: SearchKinds.Category?) = com.onpath.app.search.SearchText.normalize(text) + "|" + (cat?.name ?: "")
+    /** Where the user is and what is planned for the run being started (the page passes them with each search). */
+    private var ctx = SearchContext(0.0, 0.0, null)
 
-    /** [next] as the list on screen: for the text already shown, rows on screen stay and new ones go below (keepShown). */
-    private fun shownList(key: String, next: List<SearchHit>): List<SearchHit> {
-        val s = shown
-        return (if (s != null && shownFor == key) SearchRanking.keepShown(s, next) else next).also { shown = it; shownFor = key }
+    /** What the page keeps (keptplaces.ts) for the empty search's lists: Zuhause, the favourites, „Zuletzt gesucht“. */
+    private var kept = SavedPlaces()
+    private var recents: List<Place> = emptyList()
+
+    /**
+     * The app's [SearchState] driven by the page (web-ready, umbau 2026-11-20): the planner has no coroutines, so the
+     * page is the driver – its search() is [SearchState.begin] + the offline stage, its Photon answer the online stage
+     * ([SearchState.onlineDone]); the 350 ms wait and the fetch stay the page's (SearchSession.DEBOUNCE_MS). Kept places
+     * and recent picks are the page's ([WebKept]); [SearchPorts] reads what the page passed with the call.
+     */
+    private object State : SearchState(Ports, hasOnline = true, context = { ctx }) {
+        /** The last run started; the online answer belongs to it only while it is the latest ([current]). */
+        var last: Search? = null
+
+        override fun run() {} // expected: the page drives the stages (search / online below), never this hook
+
+        /** The text and chip as typed (the app's onQuery / onCategory without starting a run – the page starts it). */
+        fun set(text: String, cat: SearchKinds.Category?) { ui = ui.copy(query = text, category = cat) }
+
+        /** The search closed (or text and chip emptied): the next one starts afresh, as the app's inactive search. */
+        fun reset() { ui = SearchUi(); last = null }
+
+        /** The empty search's lists ([SearchState.startLists]); [all] = „Alle Favoriten ›“. */
+        fun lists(all: Boolean): SearchUi { allFavourites = all; return startLists(SearchUi(), ctx) }
+    }
+
+    private object Ports : SearchPorts {
+        override fun saved() = kept
+        override fun recent() = recents
+        override fun addRecent(p: Place) {} // expected: the page keeps „Zuletzt gesucht“ (WebKept.addRecent, keptplaces.ts)
+        override fun clearRecent() {} // expected: the page clears its own list (keptplaces.ts)
+        override fun indexedPlace(id: String): Place? = entries.firstOrNull { it.place.id == id }?.place
+    }
+
+    /** The empty search's lists ([WebKept.start]): what the app's SearchState shows for these kept places. */
+    internal fun startLists(saved: SavedPlaces, recent: List<Place>, all: Boolean, lat: Double, lon: Double): SearchUi {
+        kept = saved; recents = recent; ctx = SearchContext(lat, lon, null)
+        return State.lists(all)
     }
 
     private fun categoryOf(name: String): SearchKinds.Category? = SearchKinds.Category.entries.firstOrNull { it.name == name }
@@ -54,7 +83,7 @@ object WebSearch {
     }
 
     /** The search closed (or the text and chip emptied): the next one starts afresh, as the app's inactive search. */
-    fun reset() { shown = null; shownFor = null; lastOnline = emptyList(); lastOffline = emptyList(); lastQuery = null }
+    fun reset() = State.reset()
 
     /** Indexes one map area from the files in [dir] (pois.geojson, base.pmtiles, overlays.pmtiles). Returns its entries. */
     fun addArea(key: String, dir: String): Int {
@@ -90,42 +119,31 @@ object WebSearch {
         val line = route.split(';').filter { it.isNotBlank() }.map { p ->
             val (a, b) = p.split(','); GeoPoint(a.toDouble(), b.toDouble())
         }.takeIf { it.size >= 2 }
-        val cat = categoryOf(category)
-        val q = SearchQuery(text, cat, lat, lon, line)
-        val key = keyOf(text, cat)
-        lastQuery = q
-        lastOffline = SearchRanking.rank(entries, q)
-        val t = text.trim()
-        val kinds = cat?.kinds
-        val keep = if (t.length < 3) emptyList()
-            else SearchRanking.stillMatching(lastOnline.map { it.place }, t).filter { kinds == null || it.kind in kinds }
-        lastOnline = if (keep.isEmpty()) emptyList() else {
-            val towns = OnlineRanking.queryTowns(t, emptyList())
-            val (cLat, cLon) = onlineCentre ?: (lat to lon)
-            SearchRanking.onlineHits(SearchMerge.onlineExtras(lastOffline.map { it.place }, keep), q, towns, cLat, cLon)
-        }
-        return json(shownList(key, SearchRanking.mix(lastOffline, lastOnline)))
+        ctx = SearchContext(lat, lon, line)
+        State.set(text, categoryOf(category))
+        val run = State.begin()
+        State.last = run
+        if (run == null) return "[]"
+        // the offline stage (the app's SearchSession on its thread): the index ranked, online rows of the text before that
+        // still match carried over; offline house numbers are not in the planner yet (no address files: no towns named)
+        val hits = SearchRanking.rank(entries, run.q)
+        State.offlineDone(run, hits, State.carried(run, hits, State.offlineKeep(run), emptyList()))
+        return json(State.ui.results)
     }
 
     /**
-     * Online answer for the last query: Photon's GeoJSON → places → the app's re-ranking, minus places already listed,
-     * scored on the offline scale and added – the rows on screen stay where they are (keepShown). Returns the list.
+     * Online answer for the last query: Photon's GeoJSON → places → the app's re-ranking ([SearchState.onlineAnswer]),
+     * added below the rows on screen ([SearchState.onlineDone], keepShown). Returns the list.
      */
     fun online(text: String, photonJson: String, category: String = ""): String {
-        val cat = categoryOf(category)
         // a late answer for another text or chip (asked before a chip click, back after it – owner's bug 2026-11-19:
         // „München“ + „Orte“ still showed everything) changes nothing; the app cancels it (SearchSession.run)
-        val q = lastQuery?.takeIf { it.text == text && it.category == cat } ?: return json(shown ?: lastOffline)
-        val key = keyOf(text, cat)
-        val kinds = cat?.kinds
-        val towns = OnlineRanking.queryTowns(text, emptyList())
-        val ranked = OnlineRanking.rank(PhotonParser.parse(photonJson), q.refLat, q.refLon, null, towns, text).take(10)
-        val offline = if (shownFor == key) lastOffline else emptyList()
-        val extras = SearchMerge.onlineExtras(offline.map { it.place } + lastOnline.map { it.place }, ranked)
-            .filter { kinds == null || it.kind in kinds }
-        onlineCentre = q.refLat to q.refLon
-        lastOnline = lastOnline + SearchRanking.onlineHits(extras, q, towns, q.refLat, q.refLon)
-        return json(shownList(key, SearchRanking.mix(offline, lastOnline)))
+        val run = State.last?.takeIf { it.query == text && it.q.category == categoryOf(category) && State.current(it) }
+            ?: return json(State.ui.results)
+        if (!State.onlineLoading(run)) return json(State.ui.results)
+        val (lat, lon) = State.searchCentre(run, emptyList())
+        State.onlineDone(run, State.onlineAnswer(run, PhotonParser.parse(photonJson), lat, lon, null, emptyList()))
+        return json(State.ui.results)
     }
 
     private fun json(hits: List<SearchHit>): String = hits.joinToString(",", "[", "]") { h -> hitJson(h.place, subtitle(h)) }
