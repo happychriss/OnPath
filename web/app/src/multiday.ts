@@ -242,7 +242,7 @@ export class MultiDay {
     void this.h.searchAreas().catch((e) => console.warn('[Problems] WARN days: no place names for the day ends', e)).then(() => this.days()).then((v) => {
       if (my !== this.viewAsk) return;
       this.view = v; this.viewFor = v ? key : '';
-      this.overview(); this.symbols(); this.borders();
+      this.overview(); this.symbols(); this.borders(); this.nightTitles();
     }, (e) => console.warn('[Problems] WARN days: the days were not worked out', e));
   }
 
@@ -301,7 +301,10 @@ export class MultiDay {
       const el = document.createElement('div');
       el.className = 'dayend proposal';
       el.innerHTML = endSymbol('PROPOSAL');
-      el.title = `${t('days_night_n', e.night)} · ${t('days_open_night')}`;
+      // which day of how many ends here (owner 2026-11-20): a grey one left between two blue moons is the day count's
+      // – „Ende Tag 2 von 4“ says so; the click (a phone: the tap) shows it in the menu's head too
+      const label = `${this.endOfDay(e.night)} · ${t('days_open_night')}`;
+      el.title = label; el.setAttribute('aria-label', label); el.dataset.night = String(e.night);
       const m = new maplibregl.Marker({ element: el, draggable: true }).setLngLat([e.lon, e.lat]).addTo(this.h.map);
       let dragged = 0;
       // R7 (owner 2026-11-17: „Wird dort blau“): dropped = an Übernachtung there
@@ -312,10 +315,38 @@ export class MultiDay {
         this.h.openMenu(new maplibregl.LngLat(e.lon, e.lat), [
           { icon: 'moon', label: t('days_overnight_here'), act: async () => this.take(await this.rule('addNight', 0, e.lat, e.lon)) },
           { icon: 'bed', label: t('days_set_hotel'), act: () => { void this.hotelDialog(e.night, -1, [e.lat, e.lon]); } },
-        ], `${endSymbol('PROPOSAL', 22)}<b>${esc(t('days_night_n', e.night))}</b>`);
+        ], this.head('PROPOSAL', t('days_night_n', e.night), `${this.endOfDay(e.night)} · ${t('days_open_night')}`));
       });
       this.proposals.push(m);
     }
+  }
+
+  /** „Ende Tag n von N“ – the day that ends at night [night] (night k ends day k). */
+  private endOfDay(night: number): string { return t('web_days_end_of_day', night, this.view?.days ?? night + 1); }
+
+  /** A night menu's head: the symbol, [title] and a small line under it. */
+  private head(kind: EndKind, title: string, line: string): string {
+    return `${endSymbol(kind, 22)}<span class="txt"><b>${esc(title)}</b><span class="muted small">${esc(line)}</span></span>`;
+  }
+
+  /**
+   * What a plan point's night says on the map (title, aria-label – main.ts draws the blue moon / green bed): „Ende Tag 2
+   * von 4 · Übernachtung“ / „… · Hotel: name“; null when it is no night or the days are not worked out yet.
+   */
+  nightLabel(i: number): string | null {
+    const kind = this.nightOf(i), night = this.nightNo(i);
+    if (!kind || !night) return null;
+    const hotel = this.h.tour()?.nights[String(i)]?.hotel;
+    return `${this.endOfDay(night)} · ${kind === 'HOTEL' ? t('days_hotel') + (hotel?.name ? `: ${hotel.name}` : '') : t('days_overnight')}`;
+  }
+
+  /** The night points' labels once the days are worked out (the points are drawn before the view is there). */
+  private nightTitles() {
+    document.querySelectorAll<HTMLElement>('.pin.night[data-plan]').forEach((el) => {
+      const label = this.nightLabel(Number(el.dataset.plan));
+      if (!label) return;
+      el.title = t('web_marker_title', label); el.setAttribute('aria-label', label);
+    });
   }
 
   private clearSymbols() { this.proposals.splice(0).forEach((m) => m.remove()); }
@@ -364,7 +395,8 @@ export class MultiDay {
       { icon: 'delete', label: t('days_remove_overnight'), danger: true, act: async () => this.take(await this.rule('removeNight', i)) },
     ];
     const title = hotel?.name || (night ? t('days_night_n', night) : t(kind === 'HOTEL' ? 'days_hotel' : 'days_overnight'));
-    return { items, head: `${endSymbol(kind, 22)}<b>${esc(title)}</b>` };
+    const line = night ? `${this.endOfDay(night)} · ${t(kind === 'HOTEL' ? 'days_hotel' : 'days_overnight')}` : '';
+    return { items, head: line ? this.head(kind, title, line) : `${endSymbol(kind, 22)}<b>${esc(title)}</b>` };
   }
 
   /** ✕ on a hotel's point (scenario N: „with a hotel it asks first“): true = remove it. */

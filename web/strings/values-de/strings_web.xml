@@ -267,4 +267,5 @@
     <string name="web_to_phone">Aufs Handy</string>
     <string name="web_to_phone_pair">Handy verbinden, dann kommt der Plan darauf</string>
     <string name="web_phone_menu">Handy-Verbindung …</string>
+    <string name="web_days_end_of_day">Ende Tag %1$d von %2$d</string>
 </resources>

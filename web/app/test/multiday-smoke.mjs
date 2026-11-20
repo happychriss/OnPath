@@ -101,6 +101,13 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.days === 3, 'the overview with 3 days');
   check(await page.locator('#tourOverview .today').count() === 3, 'the overview: one row per day');
   check(await page.locator('.dayend.proposal').count() === 2, 'two grey moons on the map');
+  // each day end says which day of how many ends there (owner 2026-11-20): „Ende Tag 1 von 3“, „Ende Tag 2 von 3“
+  const endDays = (sel) => page.$$eval(sel, (els) => els.map((e) => {
+    const m = /(\d+)\D+(\d+)/.exec(e.title ?? ''); return m && (e.getAttribute('aria-label') ?? '').includes(m[0]) ? [Number(m[1]), Number(m[2])] : null; }));
+  const greyDays = await endDays('.dayend.proposal');
+  check(JSON.stringify(greyDays) === '[[1,3],[2,3]]', `the grey moons' title / aria-label: end of day 1 and 2 of 3 (${JSON.stringify(greyDays)})`);
+  const word = lang === 'de' ? 'Ende Tag 1 von 3' : 'End of day 1 of 3';
+  check(await page.$eval('.dayend.proposal', (e, w) => e.title.startsWith(w), word), `the words: „${word}“`);
   check(await page.$eval('#tourGuide', (g) => g.hidden), 'the guide closes with Fertig');
   await shot('3-overview');
 
@@ -125,6 +132,19 @@ async function run(lang, viewport, shotPrefix) {
   let v = await view();
   check(v.days === 3 && v.ends.filter((k) => k === 'PROPOSAL').length === 1, `Übernachtung hier: N stays 3, one grey left (${v.ends})`);
   check(await page.locator('.pin.night .daysym.blue').count() === 1, 'the night point is drawn as a blue moon');
+  await page.waitForFunction(() => /\d/.test(document.querySelector('.pin.night')?.getAttribute('aria-label') ?? ''), null, { timeout: 10_000 }).catch(() => {});
+  const blueAt = v.ends.indexOf('OVERNIGHT') + 1;
+  const dayEnds = [...await endDays('.dayend.proposal'), ...await endDays('.pin.night')].map((x) => x && x[0]).sort();
+  check(JSON.stringify((await endDays('.pin.night'))) === JSON.stringify([[blueAt, 3]]) && JSON.stringify(dayEnds) === '[1,2]',
+    `the blue moon says its day too: end of day ${blueAt} of 3 (${JSON.stringify(dayEnds)})`);
+  if (viewport.width > 700) { // the grey one's click: the same words in the menu's head (a phone: the tap)
+    await page.click('.dayend.proposal');
+    await page.waitForSelector('.holdpopup .menuhead', { timeout: 10_000 });
+    const head = await page.textContent('.holdpopup .menuhead');
+    check(head.includes(lang === 'de' ? 'von 3' : 'of 3'), `the grey moon's menu head says the day: "${head}"`);
+    await shot('3b-grey-menu');
+    await page.keyboard.press('Escape');
+  }
   const split = await lineOf();
   const legs5 = await page.evaluate(() => window.__engine.lastPlanStats?.legs);
   check(await page.evaluate(() => window.__state.points.length) === pointsBefore + 1 && legs5?.routed === 0,
@@ -294,8 +314,12 @@ async function run(lang, viewport, shotPrefix) {
   check(savedStats.filter((s) => daysRe(3).test(s)).length === 1 && savedStats.filter((s) => !daysRe(3).test(s)).every((s) => !/ (Tage|days)/.test(s)), `the saved multi-day route's row: „3 ${lang === 'de' ? 'Tage' : 'days'} · …“ (${savedStats.join(' | ')})`);
   if (viewport.width > 700) await shot('6-my-routes');
   await page.click('#closePlans');
+  if (viewport.width <= 700) { // the overview is in the full sheet (step 11 left it small)
+    for (let k = 0; k < 3 && await page.$eval('#sheet', (s) => s.dataset.step) !== 'points'; k++) await page.click('#sheetStep');
+  }
   await page.click('#toPlus');
   await waitView(() => window.__days.lastView?.days === 4, '4 days before + New');
+  if (viewport.width <= 700) await page.click('#menuBtn'); // a phone: Neu is in Plan ▾
   await page.click('#newPlan');
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
   await page.waitForTimeout(300);

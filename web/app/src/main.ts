@@ -700,13 +700,16 @@ async function drawPoints() {
     // (owner 2026-11-20: „ein normaler Punkt reicht“; the app keeps the POI's symbol in a blue ring, MapController.poiMarker);
     // its name is in the title and the Points list, its details in its menu
     const el = document.createElement('div');
-    if (night) { el.className = 'pin night'; el.innerHTML = endSymbol(night, 28); }
+    if (night) { el.className = 'pin night'; el.innerHTML = endSymbol(night, 28); el.dataset.plan = String(i); }
     else {
       el.className = 'pin';
       el.style.background = color;
       el.innerHTML = sign;
     }
-    el.title = t('web_marker_title', stopLabel(i, n, state.meta[i]?.name));
+    // a night says which day of how many ends there (owner 2026-11-20); multiday.ts sets it again once the days are there
+    const nightLabel = night ? multiDay?.nightLabel(i) ?? null : null;
+    el.title = t('web_marker_title', nightLabel ?? stopLabel(i, n, state.meta[i]?.name));
+    if (nightLabel) el.setAttribute('aria-label', nightLabel);
     el.style.visibility = hidden ? 'hidden' : '';
     const m = new maplibregl.Marker({ element: el, draggable: !terrain3d.on }).setLngLat([lon, lat]).addTo(map); // 3D: view only
     // a dragged point is a new place: no longer pinned or named (as in the app); a loop's start moves its end too
