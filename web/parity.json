@@ -151,16 +151,6 @@
       "blob": "b8a0bb961233db1d5e831915a452b176226fcee3"
     },
     {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt",
-      "what": "planFromShown / planFromLine (now in TrackToPlanState.kt; the slice delegates): a track made a plan (an exported plan GPX comes back with its own points, pins and names; else TrackToPlan fits our router to the line) – gpximport.ts / WebImport / WebApi (moved here from AppViewModel, rebuild phase 2 piece 13); the rest of the slice (My routes' list read again, open a route or tour, the shown track, Delete into the bin) is the phone's – the planner's bin is recent.ts",
-      "web": [
-        "web/app/src/gpximport.ts",
-        "web/engine/src/main/kotlin/com/onpath/web/WebImport.kt",
-        "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt"
-      ],
-      "blob": "cc4d45605819af86aa2f12d69e30b9cf4eded0de"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
       "what": "importGpx (its note is the shared GpxData.skippedNote; the activity from the file's sport, the one import stats, the name rule ImportRules.gpxName) = gpximport.ts / WebImport.kt – moved here from AppViewModel, rebuild phase 2 piece 7; the rest (map-data import, Export all, restore, the GPX share sheet) is the phone's",
       "web": [

@@ -76,5 +76,18 @@ check(JSON.parse(e.planCancel('other', other, '', 0, 'LONG')).what === 'KEEP_POI
 e.runPlanAnyway(other);
 check(JSON.parse(e.runHead(other, 'HIKE', 2, true)).what === 'ROUTE', '„Plan anyway“ of the not-routed line: routed without asking');
 
+// the track panel's „Als Plan übernehmen“ = the app's TrackToPlanState (WebTrackToPlan): an exported plan GPX comes back with
+// its own points, names and pins (no routing); the plan it replaces goes under Zuletzt only when it has a route's worth of points
+const planLine = [[[46.67, 11.16], [46.675, 11.15], [46.68, 11.14], [46.685, 11.145], [46.69, 11.15]]];
+const planWpts = [{ lat: 46.67, lon: 11.16, name: 'Start', type: null }, { lat: 46.68, lon: 11.14, name: null, type: 'pinned' },
+  { lat: 46.69, lon: 11.15, name: 'Ziel', type: null }];
+const back = JSON.parse(e.trackToPlan('46.60,11.10;46.61,11.11', JSON.stringify(planLine), JSON.stringify(planWpts), 'HIKE', 2));
+check(back.points?.length === 3 && back.names?.[0] === 'Start' && back.names?.[2] === 'Ziel' && back.pinned?.[1] === true && back.pinned?.[0] === false &&
+  back.keepDraft === true, `a plan GPX: its 3 points, names and the pin back; the replaced plan under Zuletzt (${JSON.stringify(back)})`);
+check(JSON.parse(e.trackToPlan('', JSON.stringify(planLine), JSON.stringify(planWpts), 'HIKE', 2)).keepDraft === false,
+  'an empty plan replaced by a track: nothing under Zuletzt');
+const none = JSON.parse(e.trackToPlan('', JSON.stringify([[[46.67, 11.16]]]), '[]', 'HIKE', 2));
+check(none.error !== undefined && none.points === undefined, `a one-point track: no plan (${JSON.stringify(none)})`);
+
 console.log(fails.length ? 'FAILED' : 'all ok');
 }

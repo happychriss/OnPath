@@ -2664,6 +2664,9 @@ const gpxImport = setupGpxImport({
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
+  // the app's TrackToPlanState decides on the plan's points whether it goes under Zuletzt (keepAsDraft), after the fit
+  points: () => state.points.slice(),
+  keepAsDraft: async () => { await keepAsRecent('replaced by a track\'s plan'); },
   // multi-day tours (stage 3): trim handles while the guide is open; „An die Route anhängen“ once it has a route
   tourMode: () => multiDay?.gpxMode() ?? 'off',
   append: async (points) => { await appendRoute(points); },

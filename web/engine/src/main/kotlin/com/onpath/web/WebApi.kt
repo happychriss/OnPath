@@ -1068,6 +1068,9 @@ external fun planProgress(text: String)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String =
     // the wait box's share done (TrackToPlan's calls of its most calls, multi-day tours stage 3): "37 %" via planProgress
     WebImport.planFromTrack(track, activity, sac) { done, max -> planProgress("${(100 * done / max.coerceAtLeast(1)).coerceIn(0, 100)} %") }
+// the track panel's „Als Plan übernehmen“: the app's TrackToPlanState on the page's points (WebTrackToPlan.kt)
+@JSExport fun trackToPlan(plan: String, segments: String, waypoints: String, activity: String, sac: Int): String =
+    WebTrackToPlan.plan(plan, segments, waypoints, activity, sac) { done, max -> planProgress("${(100 * done / max.coerceAtLeast(1)).coerceIn(0, 100)} %") }
 // the app's texts for map areas on demand and waits (WebMaps.kt, web-planner.md §17)
 @JSExport fun mapTexts(): String = WebMaps.texts()
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----

@@ -218,8 +218,16 @@ export class EngineClient {
   }
 
   /** The app's TrackToPlan for [track] (routing data along it fetched first): {points} or {error}. */
-  async planFromTrack(track: [number, number][], activity: Activity, sac: number, onProgress?: (p: Progress) => void): Promise<string> {
-    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac }, onProgress);
+  /**
+   * A track → plan points: [track] fitted with our router ({points} or {error}); with [panel] the track panel's „Als Plan
+   * übernehmen“ – the app's TrackToPlanState on the page's [panel.plan] points (WebTrackToPlan: {points, names, pinned,
+   * keepDraft} or {error}).
+   */
+  async planFromTrack(track: [number, number][], activity: Activity, sac: number, onProgress?: (p: Progress) => void,
+    panel?: { plan: [number, number][]; segments: [number, number][][]; waypoints: object[]; isPlan: boolean }): Promise<string> {
+    const r = await this.ask({ type: 'planFromTrack', points: enc(track), activity, sac, ...(panel ? {
+      plan: enc(panel.plan), segments: JSON.stringify(panel.segments), waypoints: JSON.stringify(panel.waypoints), isPlan: panel.isPlan } : {}) },
+    onProgress);
     if (r.cancelled) return JSON.stringify({ cancelled: true });
     if (!r.ok || r.text == null) throw new Error(r.error ?? 'track not planned');
     return r.text;

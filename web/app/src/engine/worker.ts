@@ -60,6 +60,7 @@ interface WasmEngine {
   runRoutedBefore(points: string): void;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
+  trackToPlan(plan: string, segments: string, waypoints: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
   paceChoices(activity: string): string;
   planTime(points: string, activity: string, sac: number): string;
@@ -459,6 +460,12 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     if (req.type === 'suggest') { await suggest(e, req); return; }
+    if (req.type === 'planFromTrack' && req.segments != null && req.isPlan) {
+      // an exported plan GPX: the app's TrackToPlanState takes its own points – nothing to route, no routing data
+      reply({ id: req.id, ok: true, text: e.trackToPlan(req.plan ?? '', req.segments, req.waypoints ?? '[]', req.activity, req.sac),
+        problems: JSON.parse(e.problems()) });
+      return;
+    }
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes, done) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes, done } }));
     if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; } // superseded while downloading
@@ -470,7 +477,9 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const gp = globalThis as unknown as { onpathPlanProgress?: (text: string) => void };
       gp.onpathPlanProgress = (text) => reply({ id: req.id, ok: true, progress: { phase: 'legs', text } }); // "37 %"
       try {
-      reply({ id: req.id, ok: true, text: e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
+      reply({ id: req.id, ok: true, text: req.segments != null
+        ? e.trackToPlan(req.plan ?? '', req.segments, req.waypoints ?? '[]', req.activity, req.sac)
+        : e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
         problems: JSON.parse(e.problems()) });
       } finally { gp.onpathPlanProgress = undefined; }
       return;

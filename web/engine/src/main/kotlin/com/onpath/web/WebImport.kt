@@ -56,7 +56,8 @@ object WebImport {
             append(",\"close\":").append(Engine.str(Txt.s(Res.string.plan_close_track))).append('}')
             append(",\"segments\":").append(geo.joinToString(",", "[", "]") { s -> buildString { with(Engine) { pointsJson(s) } } })
             append(",\"waypoints\":").append(data.waypoints.joinToString(",", "[", "]") { w ->
-                "{\"lat\":" + Engine.num(w.lat, 6) + ",\"lon\":" + Engine.num(w.lon, 6) + ",\"name\":" + (w.name?.let { Engine.str(it) } ?: "null") + "}"
+                "{\"lat\":" + Engine.num(w.lat, 6) + ",\"lon\":" + Engine.num(w.lon, 6) + ",\"name\":" + (w.name?.let { Engine.str(it) } ?: "null") +
+                    ",\"type\":" + (w.type?.let { Engine.str(it) } ?: "null") + "}"
             })
             // the track panel's profile = the app's (ElevationProfile → routing/ProfileData), null = no elevation
             append(",\"profile\":"); with(Engine) { profileJson(com.onpath.app.routing.ProfileData.of(geo.flatten())) }

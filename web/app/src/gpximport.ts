@@ -31,6 +31,10 @@ export interface GpxHost {
    * unlessUnsaved, save paths P3, 2026-11-06); false = cancelled, nothing changes.
    */
   mayReplacePlan?(): Promise<boolean>;
+  /** The plan's points now (the app's TrackToPlanState decides on them whether the replaced plan goes under Zuletzt). */
+  points?(): LatLon[];
+  /** The plan that the track replaces goes under Zuletzt (the app's SaveState.keepAsDraft, asked by TrackToPlanState). */
+  keepAsDraft?(): Promise<void>;
   status(msg: string, kind?: 'info' | 'error'): void;
   /**
    * Multi-day tours (docs/design/multi-day-tours.md §3.2 / §3.3, stage 3): 'first' = the guide's step 1 has no route yet,
@@ -311,23 +315,27 @@ export function setupGpxImport(h: GpxHost) {
     const planBtn = p.querySelector<HTMLButtonElement>('#planFromTrack');
     const appendBtn = p.querySelector<HTMLButtonElement>('#appendTrack');
     /** TrackToPlan on the trimmed track with the busy box (progress, Cancel stops it); null = cancelled / failed (said). */
-    const fit = async (btn: HTMLButtonElement): Promise<LatLon[] | null> => {
+    type Fitted = { points: LatLon[]; names?: (string | null)[]; pinned?: boolean[]; keepDraft?: boolean };
+    async function fit(btn: HTMLButtonElement): Promise<LatLon[] | null>;
+    async function fit(btn: HTMLButtonElement, panel: { plan: LatLon[]; segments: LatLon[][]; waypoints: object[]; isPlan: boolean }): Promise<Fitted | null>;
+    async function fit(btn: HTMLButtonElement, panel?: { plan: LatLon[]; segments: LatLon[][]; waypoints: object[]; isPlan: boolean }): Promise<LatLon[] | Fitted | null> {
       btn.disabled = true; btn.classList.add('busy');
       const err = p.querySelector<HTMLDivElement>('#trackError')!;
       err.hidden = true;
       const { activity, sac } = h.activity();
       let cancelled = false;
-      const box = busyBox(() => { cancelled = true; h.engine.dropPlans(); });
-      let r: { points?: LatLon[]; error?: string; cancelled?: boolean };
+      // a plan GPX is no fit: no box (it comes back at once)
+      const box = panel?.isPlan ? null : busyBox(() => { cancelled = true; h.engine.dropPlans(); });
+      let r: { points?: LatLon[]; names?: (string | null)[]; pinned?: boolean[]; keepDraft?: boolean; error?: string; cancelled?: boolean };
       try {
-        r = JSON.parse(await h.engine.planFromTrack(await trimmed(track), activity, sac, (pr) => { if (pr.phase === 'legs') box.progress(pr.text); }));
+        r = JSON.parse(await h.engine.planFromTrack(await trimmed(track), activity, sac, (pr) => { if (pr.phase === 'legs') box?.progress(pr.text); }, panel));
       } catch (e) { r = { error: text('plan_from_track_failed') }; console.warn(e); }
-      box.close();
+      box?.close();
       btn.disabled = false; btn.classList.remove('busy');
       if (cancelled || r.cancelled || shown !== t) return null;
       if (!r.points || r.points.length < 2) { err.textContent = r.error ?? ''; err.hidden = false; return null; }
-      return r.points;
-    };
+      return panel ? { points: r.points, names: r.names, pinned: r.pinned, keepDraft: r.keepDraft } : r.points;
+    }
     if (appendBtn) appendBtn.onclick = async () => {
       if (appendBtn.disabled) return;
       const pts = await fit(appendBtn);
@@ -335,17 +343,26 @@ export function setupGpxImport(h: GpxHost) {
     };
     if (planBtn) planBtn.onclick = async () => {
       if (planBtn.disabled) return;
-      if (h.mayReplacePlan && !(await h.mayReplacePlan())) return;
-      // a plan GPX (exported by OnPath, app or web): the plan comes back exactly, with its names – no fitting
-      // (the app's planFromShown with PlanGpx.stopsOf)
-      if (t.stops) { close(); await h.plan(t.stops.map((w) => [w.lat, w.lon] as LatLon), t.name, t.stops.map((w) => w.name), t.stops.map((w) => !!w.pinned)); return; }
-      // the app's PlanFromTrackDialog (owner 2026-11-01): a modal box with Cancel over everything while the track is
-      // routed – nothing else at the same time. Cancel stops the engine's run (multi-day tours stage 3: a 564 km track
-      // takes minutes – client.ts dropPlans starts a fresh worker); the box shows how far it is.
-      const pts = await fit(planBtn);
-      if (!pts) return; // cancelled, failed (said), or closed / replaced meanwhile
+      if (!h.points || !h.keepAsDraft) { // a host without the plan's points (none today): the old way
+        if (h.mayReplacePlan && !(await h.mayReplacePlan())) return;
+        if (t.stops) { close(); await h.plan(t.stops.map((w) => [w.lat, w.lon] as LatLon), t.name, t.stops.map((w) => w.name), t.stops.map((w) => !!w.pinned)); return; }
+        const pts = await fit(planBtn);
+        if (!pts) return;
+        close(); await h.plan(pts, t.name); return;
+      }
+      // the app's RoutesSlice.planFromShown → TrackToPlanState (WebTrackToPlan in the worker): a plan GPX (exported by
+      // OnPath) comes back exactly with its names and pins, any other track is re-traced; the replaced plan goes under
+      // Zuletzt when the state says so (keepAsDraft). A fit shows the app's PlanFromTrackDialog (owner 2026-11-01): a modal
+      // box with Cancel over everything – Cancel stops the engine's run (client.ts dropPlans starts a fresh worker).
+      // the whole file for a plan GPX (its <wpt> sit on the whole line), else the trimmed track (multi-day trim handles)
+      const segments = t.stops ? t.segments.map((s) => s.map(([la, lo]) => [la, lo] as LatLon)) : [await trimmed(track)];
+      const r = await fit(planBtn, { plan: h.points(), segments, waypoints: t.waypoints, isPlan: !!t.stops });
+      if (!r) return; // cancelled, failed (said), or closed / replaced meanwhile
+      if (r.keepDraft) await h.keepAsDraft();
       close();
-      await h.plan(pts, t.name);
+      // names / pins only when the state brought some (a plan GPX); a fitted track is plain points, as before
+      const any = !!(r.names?.some((n) => n != null) || r.pinned?.some((x) => x));
+      await h.plan(r.points, t.name, any ? r.names : undefined, any ? r.pinned : undefined);
     };
   }
 
