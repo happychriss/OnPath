@@ -408,15 +408,6 @@
       "blob": "8cf36ab390dde82bfaf06cd5bf93499d1c6db016"
     },
     {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt",
-      "what": "the found place's menu (app 6714ad6f, owner 2026-11-13 „A mit Ausweich B“): PinMenuPlace.decide / cardPan (above the pin, the map moved down; under it; else a card at the bottom), PinMenuItems.of (the rows' order, Remove pin last; no „⋯ Mehr“ since 2026-11-15); FAVOURITE / HOME after the route rows (keep, owner 2026-11-15 „Orte merken“; HOME not shown while „Zuhause“ is off, owner 2026-11-19 – pinmenu.ts shownMenuRows); PanOnce (one move per opened menu – app-only, a Compose effect relaunch; the planner pans once in search.ts showMenu)",
-      "web": [
-        "web/app/src/pinmenu.ts",
-        "web/app/src/search.ts"
-      ],
-      "blob": "c3c02f77b3e04ef59682a6b64458cff813431f7d"
-    },
-    {
       "app": "core/src/main/kotlin/com/onpath/app/cells/PoiDensity.kt",
       "what": "the density limit for city POIs (app b71b1df9): KINDS / CAP / ALL_FROM / PROP and firstZooms; PoiTiles.densityZooms (one cell's POIs, \"dz\" only when later than the kind) – the web sets \"dz\" on each cell's pois.geojson (cells.ts loadPois)",
       "web": [
@@ -436,8 +427,9 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchScreen.kt",
-      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead",
+      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead; HOME_ROW_SHOWN / shownMenuRows (Zuhause off since 2026-11-19: no Zuhause row, no „Als Zuhause festlegen“ in a place menu) – pinmenu.ts",
       "web": [
+        "web/app/src/pinmenu.ts",
         "web/app/src/search.ts",
         "web/app/src/style.css",
         "web/engine/src/main/kotlin/com/onpath/web/WebKept.kt"

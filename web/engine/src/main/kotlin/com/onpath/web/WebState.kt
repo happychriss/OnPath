@@ -4,6 +4,9 @@ import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.domain.RouteRules
 import com.onpath.app.domain.RoutesTab
+import com.onpath.app.domain.PinMenuItems
+import com.onpath.app.domain.PinMenuPlace
+import com.onpath.app.domain.PlaceAddMenu
 import com.onpath.app.domain.SaveAsk
 import com.onpath.app.domain.plan.LivePlan
 import com.onpath.app.domain.plan.LivePlanRows
@@ -286,6 +289,45 @@ object WebRules {
         val to = com.onpath.app.routing.PlanPoints.dropIndex(from, offsetPx.toFloat(), rowPx.toFloat(), count)
         return (0 until count).joinToString(",", "{\"to\":$to,\"shift\":[", "]}") { com.onpath.app.routing.PlanPoints.shift(it, from, to).toString() }
     }
+
+    // ---- the found place's menu (search.ts, main.ts): the app's PinMenuPlace / PinMenuItems / PlaceAddMenu.Menu ----
+
+    /** [PinMenuPlace.GAP_DP] and [PinMenuPlace.TIP_ROOM_DP] (the page's px = the app's dp): `{"gap":22,"tipRoom":24}`. */
+    fun pinMenuSizes(): String = "{\"gap\":${PinMenuPlace.GAP_DP},\"tipRoom\":${PinMenuPlace.TIP_ROOM_DP}}"
+
+    /** [PinMenuPlace.decide]: `{"kind":"ABOVE"|"BELOW"|"CARD","panPx":n}`. */
+    fun pinMenuDecide(headY: Double, tipY: Double, menuH: Int, top: Int, bottom: Int, gap: Int, tipRoom: Int, mayPan: Boolean): String =
+        PinMenuPlace.decide(headY.toFloat(), tipY.toFloat(), menuH, top, bottom, gap, tipRoom, mayPan)
+            .let { "{\"kind\":\"${it.kind.name}\",\"panPx\":${it.panPx}}" }
+
+    /** [PinMenuPlace.cardPan]: how far the map moves its content up (≤ 0) so the pin stays above the card. */
+    fun pinMenuCardPan(headY: Double, tipY: Double, cardTop: Int, top: Int, tipRoom: Int): String =
+        PinMenuPlace.cardPan(headY.toFloat(), tipY.toFloat(), cardTop, top, tipRoom).toString()
+
+    /**
+     * The add entries by name; "ADD" (the page's row key for SET_DESTINATION – PinMenuItems.Row.ADD) is SET_DESTINATION;
+     * a row that is no add entry (the page's „Rundtour von hier“, ROUND_TRIP_HERE) is not one of them.
+     */
+    private fun addMenu(names: List<String>) = PlaceAddMenu.Menu(names.mapNotNull { n ->
+        if (n == "ADD") PlaceAddMenu.Item.SET_DESTINATION else PlaceAddMenu.Item.entries.firstOrNull { it.name == n }
+    })
+    private fun names(main: String) = main.split(',').filter { it.isNotBlank() }
+
+    /**
+     * [PinMenuItems.of]: a held place's rows in their order – [main] = the rows the page built from the engine's placeMenu
+     * ("ADD_STOP,NEW_DESTINATION"; an empty plan's "START_HERE,ROUND_TRIP_HERE,GO_HERE"), [pin] = the found place's pin
+     * (ends with REMOVE_PIN), [keep] = the place can be kept. Row names are the page's keys (ROUND_TRIP = ROUND_TRIP_HERE).
+     */
+    fun pinMenuRows(main: String, pin: Boolean, keep: Boolean): String {
+        val n = names(main)
+        val menu = addMenu(n)
+        val emptyPlan = menu.main.any { it == PlaceAddMenu.Item.START_HERE || it == PlaceAddMenu.Item.GO_HERE }
+        return PinMenuItems.of(emptyPlan, startHere = "START_HERE" in n, menu = menu, pin = pin, keep = keep, roundTrip = "ROUND_TRIP_HERE" in n)
+            .joinToString(",", "[", "]") { "\"${if (it == PinMenuItems.Row.ROUND_TRIP) "ROUND_TRIP_HERE" else it.name}\"" }
+    }
+
+    /** [PlaceAddMenu.Menu.emphasised]: the likelier add row (tinted), or null. */
+    fun addMenuEmphasised(main: String): String = addMenu(names(main)).emphasised?.let { "\"${it.name}\"" } ?: "null"
 }
 
 // ---- the page's exports (web/app/src/slices.ts; WebApi.kt lists this class in @JSExportClasses) ----
@@ -317,4 +359,11 @@ object WebStateApi {
     @JvmStatic @JSExport fun routesSortChoice(s: String): String = WebRoutesOrder.choice(s)
     @JvmStatic @JSExport fun routesSortKeys(): String = WebRoutesOrder.keys()
     @JvmStatic @JSExport fun pointsDrag(from: Int, offsetPx: Double, rowPx: Double, count: Int): String = WebRules.pointsDrag(from, offsetPx, rowPx, count)
+    @JvmStatic @JSExport fun pinMenuSizes(): String = WebRules.pinMenuSizes()
+    @JvmStatic @JSExport fun pinMenuDecide(headY: Double, tipY: Double, menuH: Int, top: Int, bottom: Int, gap: Int, tipRoom: Int, mayPan: Boolean): String =
+        WebRules.pinMenuDecide(headY, tipY, menuH, top, bottom, gap, tipRoom, mayPan)
+    @JvmStatic @JSExport fun pinMenuCardPan(headY: Double, tipY: Double, cardTop: Int, top: Int, tipRoom: Int): String =
+        WebRules.pinMenuCardPan(headY, tipY, cardTop, top, tipRoom)
+    @JvmStatic @JSExport fun pinMenuRows(main: String, pin: Boolean, keep: Boolean): String = WebRules.pinMenuRows(main, pin, keep)
+    @JvmStatic @JSExport fun addMenuEmphasised(main: String): String = WebRules.addMenuEmphasised(main)
 }

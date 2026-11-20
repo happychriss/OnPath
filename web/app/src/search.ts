@@ -16,7 +16,8 @@ import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
 import { holdMenu, type MenuItem } from './menus';
 import { problem } from './diag';
 import type { KeptStore, SearchRecent } from './keptplaces';
-import { cardPan, decidePinMenu, HOME_ROW_SHOWN, MENU_GAP, pinRows, shownMenuRows, TIP_ROOM, type PinMenuDecision } from './pinmenu';
+import { HOME_ROW_SHOWN, shownMenuRows } from './pinmenu';
+import { cardPan, decidePinMenu, pinRows, pinSizes, type PinMenuDecision } from './pinplace';
 
 export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
 
@@ -240,7 +241,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     const map = host.map, c = map.getContainer(), w = c.clientWidth, hh = c.clientHeight;
     const [tx, mid] = pointTarget(host.fitPadding(), w, hh, 0, false);
     const room = host.menuRoom(tx);
-    const ty = phone() ? mid : Math.max(room.top, Math.min(room.bottom - UNDER_TIP, room.top + MENU_GAP + PIN_HEAD + MENU_ROOM));
+    const ty = phone() ? mid : Math.max(room.top, Math.min(room.bottom - underTip(), room.top + pinSizes().gap + PIN_HEAD + MENU_ROOM));
     let byHand = false;
     const hand = () => { byHand = true; };
     const events = ['mousedown', 'touchstart', 'wheel'] as const;
@@ -290,7 +291,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
       // the room under the tip for the name chip when the map moves (it shows again when the menu closes); where that
       // leaves no room above, the app's own TIP_ROOM – close() then moves the chip clear
       const mh = p.getElement().offsetHeight;
-      decision = decided ?? [decidePinMenu(head, tip, mh, top, bottom, MENU_GAP, UNDER_TIP)].map((d) =>
+      decision = decided ?? [decidePinMenu(head, tip, mh, top, bottom, pinSizes().gap, underTip())].map((d) =>
         d.kind === 'ABOVE' ? d : decidePinMenu(head, tip, mh, top, bottom))[0];
       if (!decided) console.info(`[search] found place menu: ${decision.kind}${decision.panPx ? `, map moved ${decision.panPx} px` : ''} (menu ${p.getElement().offsetHeight} px, map ${Math.round(top)}..${Math.round(bottom)} px)`);
       if (decision.kind === 'ABOVE') { popup = p; if (decision.panPx) map.panBy([0, -decision.panPx], { duration: 300 }); return; }
@@ -309,12 +310,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     // spans the width; the planner's on a wide screen stands beside the plan sheet), else the free map's bottom
     const cb = card.getBoundingClientRect(), mb = c.getBoundingClientRect(), x = map.project([h.lon, h.lat]).x + mb.left;
     const under = x >= cb.left - PIN_HALF_W && x <= cb.right + PIN_HALF_W;
-    const pan = cardPan(head, tip, under ? Math.min(cb.top - mb.top, bottom) : bottom, top, UNDER_TIP);
+    const pan = cardPan(head, tip, under ? Math.min(cb.top - mb.top, bottom) : bottom, top, underTip());
     if (pan) map.panBy([0, -pan], { duration: 300 });
   };
   /** The menu as a popup above the pin's head (A) or under its tip; it moves with the map. */
   const pinPopup = (el: HTMLElement, kind: 'ABOVE' | 'BELOW', h: Hit) =>
-    new maplibregl.Popup({ anchor: kind === 'ABOVE' ? 'bottom' : 'top', offset: kind === 'ABOVE' ? [0, -(PIN_HEAD + MENU_GAP)] : [0, MENU_GAP],
+    new maplibregl.Popup({ anchor: kind === 'ABOVE' ? 'bottom' : 'top', offset: kind === 'ABOVE' ? [0, -(PIN_HEAD + pinSizes().gap)] : [0, pinSizes().gap],
       closeButton: false, closeOnClick: false, maxWidth: '320px', className: 'holdpopup pinmenu' })
       .setDOMContent(el).setLngLat([h.lon, h.lat]).addTo(host.map);
   // the place leaves the visible map: its menu closes (the app's onGone)
@@ -419,7 +420,7 @@ export const PIN_CHIP_HALF_W = 120;
  * Room kept under the pin's tip when the map moves it: the app's TIP_ROOM_DP, but at least the name chip under it – it
  * shows again when the menu closes and must not end up under the footer (credits) or the sheet.
  */
-const UNDER_TIP = Math.max(TIP_ROOM, CHIP_GAP + CHIP_H + 4);
+const underTip = () => Math.max(pinSizes().tipRoom, CHIP_GAP + CHIP_H + 4);
 /** From the pin's tip up to the top of its head (the app's CandidateMarker.PIN_HEIGHT_DP). */
 const PIN_HEAD = TIP + HEAD + OUTLINE;
 /** Half the pin's width. */

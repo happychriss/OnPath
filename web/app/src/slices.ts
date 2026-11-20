@@ -37,6 +37,16 @@ interface Slices {
   routesSortKeys(): string;
   /** The app's PlanPoints.dropIndex / shift for a drag of the Points list: `{ to, shift: [per row] }`. */
   pointsDrag(from: number, offsetPx: number, rowPx: number, count: number): string;
+  /** The app's PinMenuPlace.GAP_DP / TIP_ROOM_DP: `{ gap, tipRoom }`. */
+  pinMenuSizes(): string;
+  /** The app's PinMenuPlace.decide: `{ kind, panPx }`. */
+  pinMenuDecide(headY: number, tipY: number, menuH: number, top: number, bottom: number, gap: number, tipRoom: number, mayPan: boolean): string;
+  /** The app's PinMenuPlace.cardPan. */
+  pinMenuCardPan(headY: number, tipY: number, cardTop: number, top: number, tipRoom: number): string;
+  /** The app's PinMenuItems.of for the add entries ("ADD_STOP,NEW_DESTINATION"): the rows' names in order. */
+  pinMenuRows(main: string, pin: boolean, keep: boolean): string;
+  /** The app's PlaceAddMenu.Menu.emphasised: the tinted row's name or null. */
+  addMenuEmphasised(main: string): string;
 }
 
 /** The slices are there (loaded) or will never be (failed): resolves true / false. */
