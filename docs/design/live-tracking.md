@@ -297,7 +297,12 @@ OnPath app.
 | Show the phone's battery level to the viewer? | **Yes** – it explains a silent phone | [tracking]'s recommendation, night 19→20 Nov (`docs/team/items/2026-11-20-night-answers.md`) – the owner may overrule |
 | The name on the page? | **Asked once at the first share** (may stay empty → „Live-Tour“), changeable in Settings | [tracking]'s recommendation, same night – the owner may overrule |
 
-Still the owner's before anything is built on screen: the real pictures of the app's share sign / menu and of the viewer
+| Where „Live teilen“ really sits (Navigate has no menu) | **First entry with a symbol in the ⚙ Settings opened from Navigate** | owner, chat 2026-11-20 |
+| The sign that sharing is on | **„● Live“ inside the turn card at the top** (proposal C); a tour without a route: a small pill above the status card | owner, chat 2026-11-20 |
+| The word (not „Live“) | **„Standort teilen“ / „Share location“**, sign „● Standort“ / „● Location“ (his pick of five proposals) | owner, chat 2026-11-20 |
+| May the share UI go into the app? | **„Ja, einbauen“** – after a review of the branch | owner, chat 2026-11-20 |
+
+Was the owner's before anything was built on screen: the real pictures of the app's share sign / menu and of the viewer
 page (sketch before build).
 
 ## 13. Privacy text (proposal)

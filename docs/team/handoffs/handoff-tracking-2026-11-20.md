@@ -20,8 +20,14 @@ dann `docs/design/live-tracking.md` (Design, Entscheidungen §12, Bauplan §14 m
   2. The sign that sharing is on **„oben bei den Richtungen“**: three proposals pictured (A pill above the turn card, B a
      dot chip, C „● Live“ inside the turn card – recommended, the branch's code carries C; a free tour falls back to A).
   Gallery for the owner (public repo): https://github.com/happychriss/OnPath/blob/feat/live-share-ui-2/docs/design/live-app-pictures.md
-  – also linked in the cloud doc. **He has not chosen yet.** The UI goes to main only after his yes (sketch before
-  build); merging makes sharing reachable for every user. Before the merge: a big-model review of the branch (recording
+  – also linked in the cloud doc. **Owner 2026-11-20 afternoon (chat boxes): the sign is C** (in the turn card; free tour = A's pill) **and „Ja,
+  einbauen“** – the Settings entry as pictured goes to main so donald can ship it; merging makes sharing reachable for
+  every user. In work: the review, then the merge.
+  **Owner 2026-11-20 (chat, his pick 3 of five names): no „Live“ as a word – the entry is „Standort teilen“ / „Share
+  location“, the sign „● Standort“ / „● Location“** (waiting: „Standort · wartet auf Netz“). „Link nochmal teilen“ /
+  „Teilen beenden“ stay. [tracking]'s own follow-ups, told to him: share text „Verfolge meine Tour: ‹link›“ / „Follow my
+  tour: ‹link›“, viewer page title „OnPath – geteilter Standort“ / „OnPath – shared location“. Change on the branch
+  before the merge (strings `strings_live.xml`, web `strings_live.xml`, pictures re-recorded). Before the merge: a big-model review of the branch (recording
   is a core feature), the non-chosen variants removed. After it: `node web/parity/check.mjs --update` is the laptop's
   (Prefs.kt mirror + two new strings files) – a line for him; then a line for donald „ready to ship“. Known gaps: the
   Settings card stays if the tour ends while the page is open; the Android glue (share sheet, collector) has no test.
@@ -34,7 +40,6 @@ dann `docs/design/live-tracking.md` (Design, Entscheidungen §12, Bauplan §14 m
 - His remarks on the viewer page's look (he answered „Passt, aber Kleinigkeiten“ **before he could see the pictures** –
   not a yes). Cloud doc with links: https://claude.ai/artifact/PbX86VASovbaNPWDXY2FYn (complete: gallery link, the three sign proposals, the Settings pictures).
 - Pull request 17.
-- His choice of the Live sign (A / B / C) and his yes to the Settings entry.
 
 ## Still to do (design §10 / §14.7)
 - Pixel walk before any release of the feature: screen-off network for hours, battery beside a walk without sharing,

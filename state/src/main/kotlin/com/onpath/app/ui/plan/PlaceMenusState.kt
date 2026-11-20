@@ -133,9 +133,17 @@ open class PlaceMenusState(
      * map (owner 2026-11-17, [PlaceMenuMeasure]): on the line at once, else measured on the paths with the ring on the
      * place ([PlaceAddSlice.holdMeasuring], same time limit, fallback and cancel as the hold's measure) – the menu opens with
      * its rows, nothing jumps. [lineSnapM] = metres in [PlaceAddMenu.LINE_SNAP_DP] on screen (30 m when the caller has no map at hand).
+     * A result for a plan no longer shown (the first route snapped its points, another activity or level, a tour started)
+     * is never applied: the menu is decided again on the plan now shown – measured once more, after a second such change
+     * opened with its rows on the straight lines – so it always opens; only leaving Plan drops it (the hold's rule, 62e7064c5).
      */
     fun openPoiMenu(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) {
         closeMapOverlays("POI menu opened")
+        decidePoiMenu(poi, lineSnapM, again = false)
+    }
+
+    /** [openPoiMenu]'s decision on the plan shown now; [again] = this is the second measure after the plan changed under the first. */
+    private fun decidePoiMenu(poi: com.onpath.app.poi.Poi, lineSnapM: Double, again: Boolean) {
         val p = GeoPoint(poi.lat, poi.lon)
         val pts = waypoints.toList()
         if (pts.size < 2 || host.touring() || PlanEdits.isRoundTrip(waypoints) || !host.planMode()) { poiMenu = poi; return }
@@ -143,8 +151,19 @@ open class PlaceMenusState(
         val measuring = PlaceMenuMeasure.start(placeAdd.holdPaths, pts, p, placeAdd.lineDpOf(p, lineSnapM), PlaceAddMenu.detours(pts, p)!!,
             { a, b, cancel -> router.routedLength(a, b, act, level, cancel) }) { r ->
             placeAdd.holdMeasuring = null
-            if (waypoints.toList() != pts || !host.planMode() || host.touring() || host.activity() != act || host.sac() != level) {
-                Problems.trace("plan", "Place menu: measured for a plan no longer shown – not opened (${r.how})")
+            if (!host.planMode()) {
+                Problems.trace("plan", "Place menu: measured, but Plan was left – not opened (${r.how})")
+                return@start
+            }
+            if (waypoints.toList() != pts || host.touring() || host.activity() != act || host.sac() != level) {
+                if (!again) {
+                    Problems.trace("plan", "Place menu: measured for a plan no longer shown – measured again on the plan now shown (${r.how})")
+                    decidePoiMenu(poi, lineSnapM, again = true)
+                } else {
+                    Problems.trace("plan", "Place menu: measured again for a plan no longer shown – opened, its rows on the straight lines (${r.how})")
+                    poiMenuRows = null
+                    poiMenu = poi
+                }
                 return@start
             }
             Problems.trace("plan", "Place menu of a ${poi.kind}: ${r.action} → ${r.menu.main.joinToString(" / ")} (${r.how}, ${pts.size} points)")

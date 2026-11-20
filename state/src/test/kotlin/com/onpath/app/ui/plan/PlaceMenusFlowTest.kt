@@ -380,12 +380,13 @@ class PlaceMenusFlowTest {
         assertTrue(app.trace().last(), app.trace().last().contains("paths failed: timeout after 1500 ms"))
     }
 
-    /** Each thing that makes the plan on screen a different one drops a finished measure unapplied: the menu does not open. */
-    @Test fun aMeasureForAPlanNoLongerShownIsNotApplied() {
+    /**
+     * The hold's rule for the place menu too (owner: never lose the user's input silently; the hold's fix 62e7064c5): a
+     * measure for a plan no longer shown is not applied – the menu is decided again on the plan now shown and opens.
+     */
+    @Test fun aMeasureForAPlanChangedMeanwhileIsMeasuredAgainAndTheMenuOpens() {
         val changes = mapOf<String, (App) -> Unit>(
             "the plan changed" to { x -> x.plan.edit { add(c) } },
-            "left Plan" to { x -> x.planMode = false },
-            "a tour started" to { x -> x.touring = true },
             "another activity" to { x -> x.activity = Activity.BIKE_TOURING },
             "another T level" to { x -> x.sac = 4 },
         )
@@ -393,13 +394,60 @@ class PlaceMenusFlowTest {
             val app = App(listOf(a, b, c))
             app.scriptPaths(beside, append = 900.0, insert = 300.0)
             app.menus.openPoiMenu(cafe, 30.0)
-            assertEquals(why, beside, app.add.holdMeasuring)
             change(app)
-            app.measure()
+            app.worker.runNext() // the first measure finds its plan gone: measured again, the ring stays on the place
             assertNull(why, app.menus.poiMenu)
+            assertEquals("$why: the ring stays while measuring again", beside, app.add.holdMeasuring)
+            assertTrue("$why: ${app.trace()}", app.trace().last().startsWith(
+                "Place menu: measured for a plan no longer shown – measured again on the plan now shown ("))
+            app.measure()
+            assertEquals(why, cafe, app.menus.poiMenu)
             assertNull(why, app.add.holdMeasuring)
-            assertTrue("$why: ${app.trace()}", app.trace().last().startsWith("Place menu: measured for a plan no longer shown – not opened ("))
+            assertEquals(why, listOf(PlaceAddMenu.Item.ADD_STOP), app.menus.placeMenu(cafe).main)
+            assertTrue("$why: ${app.trace().last()}", app.trace().last().startsWith("Place menu of a cafe: "))
+            // the second measure asked the router for the plan now shown
+            assertEquals("$why: ${app.routed}", "c→S ${app.activity.name} T${app.sac}", app.routed.last { it.startsWith("c→S") })
         }
+        // a tour started meanwhile: the tour's zone decides at once (no second measure)
+        val tour = App(listOf(a, b, c))
+        tour.scriptPaths(beside, append = 900.0, insert = 300.0)
+        tour.menus.openPoiMenu(cafe, 30.0)
+        tour.touring = true
+        tour.measure()
+        assertEquals(cafe, tour.menus.poiMenu)
+        assertNull(tour.add.holdMeasuring)
+        assertEquals(0, tour.worker.size)
+    }
+
+    /** The plan changes again while it is measured again: the menu opens with its rows on the straight lines. */
+    @Test fun aSecondRaceStillOpensTheMenuOnTheStraightLines() {
+        val app = App(listOf(a, b, c))
+        app.scriptPaths(beside, append = 900.0, insert = 300.0) // the paths would say: a stop – the straight lines say: the new goal
+        app.menus.openPoiMenu(cafe, 30.0)
+        app.activity = Activity.BIKE_TOURING
+        app.worker.runNext()
+        assertEquals(beside, app.add.holdMeasuring)
+        app.sac = 4
+        app.measure()
+        assertEquals(cafe, app.menus.poiMenu)
+        assertNull(app.add.holdMeasuring)
+        assertEquals(0, app.worker.size)
+        assertEquals(listOf(PlaceAddMenu.Item.NEW_DESTINATION), app.menus.placeMenu(cafe).main)
+        assertTrue(app.trace().last(), app.trace().last().startsWith(
+            "Place menu: measured again for a plan no longer shown – opened, its rows on the straight lines ("))
+    }
+
+    /** Leaving Plan while the measure ran: the menu does not open (the user went elsewhere), and the trace says so. */
+    @Test fun aMeasureAfterLeavingPlanOpensNoMenu() {
+        val app = App(listOf(a, b, c))
+        app.scriptPaths(beside, append = 900.0, insert = 300.0)
+        app.menus.openPoiMenu(cafe, 30.0)
+        app.planMode = false
+        app.measure()
+        assertNull(app.menus.poiMenu)
+        assertNull(app.add.holdMeasuring)
+        assertEquals(0, app.worker.size)
+        assertTrue(app.trace().last(), app.trace().last().startsWith("Place menu: measured, but Plan was left – not opened ("))
     }
 
     @Test fun onATourOrARoundTripOrOutsidePlanThePlaceMenuOpensAtOnceOnTheZone() {

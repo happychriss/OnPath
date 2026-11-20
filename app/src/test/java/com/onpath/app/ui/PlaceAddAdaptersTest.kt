@@ -77,7 +77,8 @@ class PlaceAddAdaptersTest {
         // slice there (PlaceMenusAdaptersTest pins the view model's side); the anchors must be found
         val menus = sourceFile("ui/plan/PlaceMenusState.kt").readText()
         fun body(start: String): String { assertTrue("$start was found", menus.contains(start)); return menus.substringAfter(start).substringBefore("\n    }\n") }
-        val poiMenu = body("    fun openPoiMenu(")
+        assertTrue(body("    fun openPoiMenu(").contains("decidePoiMenu(poi, lineSnapM, again = false)"))
+        val poiMenu = body("    private fun decidePoiMenu(")
         assertTrue(poiMenu, poiMenu.contains("PlaceMenuMeasure.start(placeAdd.holdPaths, pts, p, placeAdd.lineDpOf(p, lineSnapM), PlaceAddMenu.detours(pts, p)!!,"))
         assertTrue(poiMenu, poiMenu.contains("{ a, b, cancel -> router.routedLength(a, b, act, level, cancel) }) { r ->"))
         val menu = body("    fun placeMenu(")

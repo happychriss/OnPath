@@ -436,7 +436,7 @@
         "web/app/src/main.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt"
       ],
-      "blob": "b9ae384e3ff0e6df9351abe867b4f840b1c33a7c"
+      "blob": "2abc637fe7b169b1f25c10d18205dca4a1ba0fda"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
