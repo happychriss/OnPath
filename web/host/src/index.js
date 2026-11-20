@@ -16,6 +16,7 @@
 import { serveFile } from "../../../tools/cloud/worker/src/api.js";
 import { handleSync, purgeIdle } from "./sync.js";
 import { handleMaps, purgeQuota, ipHash } from "./maps.js";
+import { handleLive, purgeLive } from "./live.js";
 
 // Android App Links (A-016): the app's signing certificate (release key, public – not a secret). A later Play Store
 // signing key is added as a second fingerprint in the same list.
@@ -59,6 +60,7 @@ async function route(request, env, fetchImpl) {
   }
   if (p.startsWith("/.well-known/")) return new Response("not found", { status: 404 });
   if (p.startsWith("/sync/")) return handleSync(request, env);
+  if (p.startsWith("/live/v1/")) return handleLive(request, env); // the live tracking box (src/live.js); /live/ itself is a page
   if (p.startsWith("/maps/")) return handleMaps(request, env, fetchImpl);
   if (p.startsWith("/data/")) return serveFile({ BUCKET: env.MAPS }, request, decodeURIComponent(p.slice(6)));
   if (p.startsWith("/segments/")) {
@@ -88,5 +90,5 @@ async function route(request, env, fetchImpl) {
 
 export default {
   fetch: (request, env) => handle(request, env),
-  scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([purgeIdle(env), purgeQuota(env)])),
+  scheduled: (_event, env, ctx) => ctx.waitUntil(Promise.all([purgeIdle(env), purgeQuota(env), purgeLive(env)])),
 };
