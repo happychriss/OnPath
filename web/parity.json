@@ -189,15 +189,6 @@
       "blob": "499622447c9e20301ee5411c5c22c96397a8669f"
     },
     {
-      "app": "state/src/main/kotlin/com/onpath/app/ui/plan/PlanEditState.kt",
-      "what": "cancelRun: Cancel of the long-route question / of a running calculation takes back the change that started it (a point edit is undone, Undo / Redo the other way, an activity change restored) = the planner's cancelRouting / cancelLongRoute (main.ts, longroute.ts) – moved here from AppViewModel, rebuild phase 2 piece 10; the rest of the slice (change, the Points list, reverse / round trip, Undo / Redo, Clear, names) is the phone's: the planner edits through the engine (WebApi)",
-      "web": [
-        "web/app/src/main.ts",
-        "web/app/src/longroute.ts"
-      ],
-      "blob": "4374855aca4fb2f6d89f1c6cfed82b08de749a1d"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
       "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
       "web": [

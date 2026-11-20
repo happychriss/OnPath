@@ -59,19 +59,4 @@ object WebPlanRules {
                 Engine.num(at.lon, 6) + "," + Engine.num(zoom, 1) + "]}"
         } + "}"
     }
-
-    /**
-     * Cancel of the long-route question for a run started by [cause] ("edit", "undo", "redo", "activity", other):
-     * "UNDO" / "REDO" / "RESTORE_ACTIVITY" / "KEEP_POINTS" ([PlanStatus.onCancel]).
-     */
-    fun onCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String {
-        val c = when (cause) {
-            "edit" -> PlanStatus.Cause.PointEdit
-            "undo" -> PlanStatus.Cause.Undo
-            "redo" -> PlanStatus.Cause.Redo
-            "activity" -> PlanStatus.Cause.ActivityChange(Activity.HIKE, 2) // only the kind matters here
-            else -> PlanStatus.Cause.Other
-        }
-        return PlanStatus.onCancel(c, canUndo, canRedo).name
-    }
 }

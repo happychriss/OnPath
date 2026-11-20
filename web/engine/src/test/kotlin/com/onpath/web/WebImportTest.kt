@@ -60,9 +60,6 @@ class WebImportTest {
         assertEquals("{\"ask\":false}", WebPlanRules.longRoute("46.67,11.16;46.69,11.15", "HIKE"))
         // a multi-day tour (owner 2026-11-18): never asked – the day rows show a long day
         assertEquals("{\"ask\":false}", WebPlanRules.longRoute("46.67,11.16;52.05,11.16", "HIKE", multiDay = true))
-        assertEquals("UNDO", WebPlanRules.onCancel("edit", true, false))
-        assertEquals("RESTORE_ACTIVITY", WebPlanRules.onCancel("activity", false, false))
-        assertEquals("KEEP_POINTS", WebPlanRules.onCancel("other", true, true))
     }
 
     /** SAX events as text: the JDK parser and the web stand-in must agree on every fixture (up to the first error). */

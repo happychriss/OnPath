@@ -1,6 +1,8 @@
 package com.onpath.web
 
 import com.onpath.app.domain.NotRouted
+import com.onpath.app.domain.PlanHistory
+import com.onpath.app.routing.Activity
 import com.onpath.app.domain.PlanStatus
 import com.onpath.app.domain.plan.RunCause
 import com.onpath.app.navigation.TourSplit
@@ -18,15 +20,11 @@ import com.onpath.app.ui.plan.PlanStore
  * §6): [PlanDocument] → [PlanRunSlice] → [PlanEditState], over ports with the planner's facts (always Plan, no tour, no
  * GPS track). The ports record what the slice asks the host to do ([did]) – the page would apply those.
  *
- * Today only [probe] uses it: it proves that TeaVM builds and runs PlanEditState (`cause::class.simpleName` in cancelRun)
- * before the page's plan moves onto it – the page's plan and its undo history still live in the routing worker's engine
- * (WebApi.history*). PlaceAddState / PlaceMenusState are not here: PlaceAddState takes core's HoldPaths, and TeaVM cannot
- * build kotlinx.coroutines' launch / withTimeoutOrNull (threads, locks, atomic arrays – laptop 2026-11-20, the build's
- * „AtomicReferenceArray / LockSupport / ReentrantReadWriteLock was not found“); the measure would also have to wait for
- * the routing worker, which a blocking router on the page cannot – they need a `HoldMeasure` port (start / cancel, the
- * outcome handed back later) in place of HoldPaths.
+ * It lives in the routing worker (WebApi's chain) around the engine's one [PlanHistory], so the undo history still survives
+ * a fresh worker (historyExport / historyImport, web-planner.md §26): the page's commit, Undo / Redo and Cancel go through
+ * [record], [step] and [cancel] – the shared PlanEditState decides (Cancel takes back the change that started the run).
  */
-class WebPlanChain(points: List<GeoPoint> = emptyList()) {
+class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = PlanHistory()) {
     /** What the slice asked the host, in order (one word each, e.g. "recalc", "restoreActivity"). */
     val did = ArrayList<String>()
     var line: List<GeoPoint>? = null
@@ -38,7 +36,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList()) {
         override var savedId: Long = -1L
         override var savedPoints: List<GeoPoint>? = null
     }
-    val plan = PlanDocument(store)
+    val plan = PlanDocument(store, history)
     val runCauses = RunCause()
     val planRun = PlanRunSlice(runCauses, object : PlanRunHost {
         override fun points() = plan.points.toList()
@@ -52,7 +50,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList()) {
     private var mark: Place? = null
 
     val edit: PlanEditState = PlanEditState(plan, planRun, runCauses, object : PlanEditPorts {
-        override fun cancelHoldMeasure(why: String) { did += "cancelHoldMeasure" }
+        override fun cancelHoldMeasure(why: String) { did += if (why == "Undo" || why == "Redo") why.lowercase() else "cancelHoldMeasure" }
         override fun stopFollowingWhenMapTurns() = Unit // the planner's map never turns with a heading
         override fun closePointMenu(why: String) { did += "closePointMenu" }
         override fun clearFirstPointMenu() { did += "clearFirstPointMenu" }
@@ -85,6 +83,53 @@ class WebPlanChain(points: List<GeoPoint> = emptyList()) {
             get() = mark
             set(v) { mark = v }
     })
+
+    // ---- the page's plan edits (WebApi: the plan and its undo history live here, in the routing worker; the page holds
+    // the shown copy and sends what it is now with each call – the worker never routes on these ports, it only records)
+
+    /** One undoable change [before] → [after] (the page's commit; PlanEditState.change). */
+    fun record(before: List<GeoPoint>, after: List<GeoPoint>) {
+        plan.replace(before)
+        did.clear()
+        edit.set(after)
+    }
+
+    /**
+     * Undo / Redo on the plan [now] (PlanEditState.undoStep / redoStep): the points to show, or null when there is
+     * nothing to take back.
+     */
+    fun step(undo: Boolean, now: List<GeoPoint>): List<GeoPoint>? {
+        plan.replace(now)
+        did.clear()
+        if (undo) edit.undoStep() else edit.redoStep()
+        return if ((if (undo) "undo" else "redo") in did) plan.points.toList() else null
+    }
+
+    /**
+     * Cancel of the long-route question or of the wait (PlanEditState.cancelRun(STOPPED)) for the run the page started for
+     * [cause] ("edit", "undo", "redo", "activity" with the activity / level before it, else other) on the plan [now]:
+     * "UNDO" / "REDO" with the points to show, "RESTORE_ACTIVITY", or "KEEP_POINTS".
+     */
+    fun cancel(cause: String, now: List<GeoPoint>, activityBefore: Activity?, sacBefore: Int): Pair<String, List<GeoPoint>?> {
+        plan.replace(now)
+        when (cause) {
+            "edit" -> runCauses.pointEdit()
+            "undo" -> runCauses.step(undo = true)
+            "redo" -> runCauses.step(undo = false)
+            "activity" -> if (activityBefore != null) runCauses.activity(PlanStatus.Cause.ActivityChange(activityBefore, sacBefore))
+                else runCauses.other()
+            else -> runCauses.other()
+        }
+        runCauses.start()
+        did.clear()
+        edit.cancelRun(NotRouted.STOPPED)
+        return when {
+            "undo" in did -> "UNDO" to plan.points.toList()
+            "redo" in did -> "REDO" to plan.points.toList()
+            "restoreActivity" in did -> "RESTORE_ACTIVITY" to null
+            else -> "KEEP_POINTS" to null
+        }
+    }
 
     companion object {
         /**
