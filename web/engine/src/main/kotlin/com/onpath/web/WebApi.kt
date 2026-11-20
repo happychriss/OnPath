@@ -1001,6 +1001,8 @@ external fun planProgress(text: String)
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
 @JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
+/** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
+@JSExport fun planChainProbe(): String = WebPlanChain.probe()
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
     WebImport.read(data.copyToJavaArray(), fileName, activity, sac)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String =
