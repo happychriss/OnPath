@@ -27,6 +27,14 @@ interface Slices {
   cancelCamera(points: string, routeLine: string): string;
   /** The app's WholeRoute.SETTLE_MS (WebRules). */
   wholeRouteSettleMs(): string;
+  /** The app's RoutesTab.search (WebRoutesOrder): the indices of the names (one per line) the query finds. */
+  routesSearch(names: string, query: string): string;
+  /** The app's RouteSort.sort: the rows' ("rank\tat\tm\ts\tup") indices in the order of the sort ("LENGTH:down"). */
+  routesSort(rows: string, sort: string): string;
+  /** The app's RouteSort.decode: `{ key, biggestFirst }`. */
+  routesSortChoice(sort: string): string;
+  /** RouteSort.Key in its order: `[{ key, dir }]`. */
+  routesSortKeys(): string;
 }
 
 /** The slices are there (loaded) or will never be (failed): resolves true / false. */

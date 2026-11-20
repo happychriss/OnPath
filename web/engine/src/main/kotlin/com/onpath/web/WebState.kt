@@ -3,6 +3,7 @@ package com.onpath.web
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourKind
 import com.onpath.app.domain.RouteRules
+import com.onpath.app.domain.RoutesTab
 import com.onpath.app.domain.SaveAsk
 import com.onpath.app.domain.plan.LivePlan
 import com.onpath.app.domain.plan.LivePlanRows
@@ -206,6 +207,55 @@ object WebState {
     }
 }
 
+// ---------------- My routes' search and order: the app's RoutesTab.search and RouteSort, called as they are ----------------
+
+/** The search box and the sort chips of My routes (plans.ts) – the app's own code; the page passes what it reads. */
+object WebRoutesOrder {
+    private fun tour(i: Int, rank: Long, name: String, at: Long, m: Double, s: Double, up: Double) =
+        Tour(rank, TourKind.PLANNED, name, at, null, 0, m, up, 0.0, s, "done", emptyList(), uuid = i.toString())
+
+    /**
+     * [RoutesTab.search]: the indices (in the given order) of the [names] – one per line – that have every word of
+     * [query] (case, accents and ß folded); a blank query = all.
+     */
+    fun search(names: String, query: String): String {
+        val tours = names.split('\n').mapIndexed { i, n -> tour(i, i.toLong(), n, 0L, 0.0, 0.0, 0.0) }
+        return RoutesTab.search(tours, query).joinToString(",", "[", "]") { it.uuid }
+    }
+
+    /**
+     * [RouteSort.sort] in the order of [choice] ([RouteSort.encode]'s form; unknown = the default): the indices of [rows]
+     * in their new order. A row: "rank<TAB>atMs<TAB>metres<TAB>seconds<TAB>ascent" – rank = the plan's place among the
+     * ids (ties: the newest, then the higher id), a number left empty = not known in this browser. The one web addition
+     * (a plan this browser never routed has no numbers): for Länge / Dauer / Anstieg those go after the ones with
+     * numbers, in either direction, newest first among themselves.
+     */
+    fun sort(rows: String, choice: String): String {
+        val c = RouteSort.decode(choice)
+        val known = ArrayList<Tour>(); val unknown = ArrayList<Tour>()
+        rows.split('\n').forEachIndexed { i, l ->
+            if (l.isEmpty()) return@forEachIndexed
+            val f = l.split('\t')
+            fun n(k: Int) = f.getOrNull(k)?.toDoubleOrNull()
+            val t = tour(i, f[0].toLong(), "", f[1].toDouble().toLong(), n(2) ?: 0.0, n(3) ?: 0.0, n(4) ?: 0.0)
+            val v = when (c.key) {
+                RouteSort.Key.LENGTH -> n(2)
+                RouteSort.Key.DURATION -> n(3)
+                RouteSort.Key.ASCENT -> n(4)
+                RouteSort.Key.NEWEST, RouteSort.Key.OLDEST -> 0.0
+            }
+            (if (v != null) known else unknown) += t
+        }
+        return (RouteSort.sort(known, c) + RouteSort.sort(unknown, RouteSort.DEFAULT)).joinToString(",", "[", "]") { it.uuid }
+    }
+
+    /** [RouteSort.decode] of a stored / the slice's sort: `{"key":"LENGTH","biggestFirst":true}`. */
+    fun choice(s: String): String = RouteSort.decode(s).let { "{\"key\":\"${it.key.name}\",\"biggestFirst\":${it.biggestFirst}}" }
+
+    /** The chips' keys in [RouteSort.Key]'s order, [RouteSort.Key.hasDirection] as "dir". */
+    fun keys(): String = RouteSort.Key.entries.joinToString(",", "[", "]") { "{\"key\":\"${it.name}\",\"dir\":${it.hasDirection}}" }
+}
+
 // ---------------- Pure rules of :state the page asks (no state held) ----------------
 
 /** The app's map rules (state/web-ready.txt "rules") for the page – called as they are, never copied into TypeScript. */
@@ -252,4 +302,8 @@ object WebStateApi {
     @JvmStatic @JSExport fun saveConfirm(input: String, savedId: Double): String = WebState.saveConfirm(input, savedId)
     @JvmStatic @JSExport fun cancelCamera(points: String, routeLine: String): String = WebRules.cancelCamera(points, routeLine)
     @JvmStatic @JSExport fun wholeRouteSettleMs(): String = WebRules.settleMs()
+    @JvmStatic @JSExport fun routesSearch(names: String, query: String): String = WebRoutesOrder.search(names, query)
+    @JvmStatic @JSExport fun routesSort(rows: String, choice: String): String = WebRoutesOrder.sort(rows, choice)
+    @JvmStatic @JSExport fun routesSortChoice(s: String): String = WebRoutesOrder.choice(s)
+    @JvmStatic @JSExport fun routesSortKeys(): String = WebRoutesOrder.keys()
 }

@@ -9,7 +9,7 @@ import { problem } from './diag';
 import { planKey, trackKey, statsOf, statsText, type PlanStats } from './planstats';
 import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
 import { recentPlans, binnedPlans, afterSaved, toBin, restoreRecent, savedRestored, renameRecent, recentRow, daysLeft, zuletztReady, BIN_DAYS, type RecentPlan } from './recent';
-import { sortRoutes, sortChipsHtml, decodeSort, SORT_DEFAULT, type SortChoice } from './routesort';
+import { sortRoutes, sortChipsHtml, sortChoice, searchNames, type SortText } from './routesort';
 import { slice, slicesReady, numOf, type SaveAsk, type SaveWrite } from './slices';
 import { filterSaved, favouritesPill, favChipHtml, actChipHtml, actMenuHtml, starHtml, activityLineHtml } from './routefilter';
 import { thumbKey, type RouteThumbs } from './routethumbs';
@@ -191,14 +191,8 @@ export function phonePill(s: SyncStatus, now = Date.now()): { kind: PhoneState['
   return { kind, name, sub };
 }
 
-/** Lower case without accents, ß → ss – the app's RoutesTab.fold ("koln" finds "Köln", "strasse" finds "Straße"). */
-export const foldName = (s: string) => s.toLowerCase().normalize('NFD').replace(/\p{Mn}+/gu, '').replace(/ß/g, 'ss');
-/** The app's RoutesTab.search: every word of [query] is in the name; blank = everything (the list's order kept). */
-export function searchPlans<T extends { title: string | null }>(plans: T[], query: string): T[] {
-  const words = foldName(query).split(' ').filter((w) => w.trim());
-  if (!words.length) return plans;
-  return plans.filter((p) => { const n = foldName(titleOf(p)); return words.every((w) => n.includes(w)); });
-}
+/** The app's RoutesTab.search (routesort.ts – the slice): every word of [query] is in the name; blank = everything. */
+export const searchPlans = <T extends { title: string | null }>(plans: T[], query: string): T[] => searchNames(plans, query, titleOf);
 
 /**
  * The app's RouteRowActions (owner 2026-11-07 09:40): every action in exactly one place. Zuletzt: Planen · Speichern ·
@@ -259,7 +253,7 @@ interface Item {
  * and the activity filter, preset with the planning activity at each opening. The Favoriten pill is kept while the page
  * is open (the app: while it runs – routefilter.ts).
  */
-let openSort: SortChoice = SORT_DEFAULT;
+let openSort: SortText = '';
 let openAct: Activity | null = null;
 
 /**
@@ -277,7 +271,7 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
   // the sort is the app's slice's (RoutesState.open: Neueste zuerst at each opening; a choice holds while it is open)
   await Promise.all([zuletztReady(), slicesReady()]); // the page start's Zuletzt clean-up first, the slices there
   const sorted = slice<string>('routesOpen', !again);
-  openSort = sorted ? decodeSort(sorted) : again ? openSort : SORT_DEFAULT;
+  openSort = sorted ?? (again ? openSort : '');
   if (!again) openAct = host.activity?.() ?? null;
   const actRows = () => host.activityRows?.() ?? [];
   const d = dialog('plans', `
@@ -337,8 +331,8 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
     const b = el.closest<HTMLButtonElement>('.sortchip[data-key]');
     if (!b) return;
     const tapped = slice<string>('routesTapSort', b.dataset.key!); // RouteSort.tap on the slice's sort
-    if (tapped) openSort = decodeSort(tapped);
-    drawChips(); chips.querySelector<HTMLButtonElement>(`[data-key="${openSort.key}"]`)?.focus();
+    if (tapped) openSort = tapped;
+    drawChips(); chips.querySelector<HTMLButtonElement>(`[data-key="${sortChoice(openSort)?.key ?? b.dataset.key}"]`)?.focus();
     toTop();
   });
   actMenu.addEventListener('click', (e) => {

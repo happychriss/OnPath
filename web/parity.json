@@ -337,14 +337,6 @@
       "blob": "c932b369ee2dbeef52707472e921ba769e82dc72"
     },
     {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt",
-      "what": "Meine Touren's order: keys and their order, ties (newest, then id), encode / decode (a row without numbers goes last) – the tap rule and „Neueste zuerst“ at each opening are the slice's now (RoutesState.sort / open via WebState.kt, slices.ts)",
-      "web": [
-        "web/app/src/routesort.ts"
-      ],
-      "blob": "088806ada7877188bbe747d1b8d9e3e55c0cf969"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RouteSortChips.kt",
       "what": "the sort chip row: labels, ✓ and ↓ / ↑ on the chosen chip, the spoken texts, the chosen chip in view with the one before peeking (40)",
       "web": [
@@ -353,14 +345,6 @@
         "web/app/src/style.css"
       ],
       "blob": "534a18d1117d673ae6e21b12a8529245cfa6e36a"
-    },
-    {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/RoutesTab.kt",
-      "what": "search (every word in the name, case / accents / ß folded)",
-      "web": [
-        "web/app/src/plans.ts"
-      ],
-      "blob": "4d4409dc64ad66fa6fd75a3af5919f1696670876"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/routes/RouteThumbImages.kt",
