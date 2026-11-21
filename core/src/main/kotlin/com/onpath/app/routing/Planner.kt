@@ -192,9 +192,10 @@ class Planner(
                 // expected: RoutingException = no route for this leg (a straight dashed line); anything else is an engine bug
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
                 val from = cur.expandedIndex(v); val to = cur.expandedIndex(v + 1)
-                if (e is RoutingException && !e.timedOut && (e.kind == RoutingException.Kind.OTHER || e.kind == RoutingException.Kind.START_POINT) && to - from > 1) {
+                if (isNoRoute(e) && to - from > 1 && (from until i).none { results[it] == null }) {
                     // an anchor never makes a route worse (§8.5): this visible leg once more in full, without its anchors.
-                    // Only for a real "no route" – missing data, memory, a busy or missing engine are no reason to change the line.
+                    // Only for a real "no route" ([isNoRoute]), and not when an earlier sub-leg of this leg already failed for
+                    // another reason: that leg keeps its straight piece and its true error.
                     Problems.warn("routing", "Leg ${v + 1} → ${v + 2}: no route through its detour anchors – routed without them", e)
                     cur = cur.withoutAnchorsOfLeg(v)
                     // what the run holds stays, by index: the legs before the visible leg, the legs after it (shifted), the full leg new
@@ -229,6 +230,16 @@ class Planner(
             i++
         }
         return join(cur, results, activity, error)
+    }
+
+    /**
+     * A failure that means "no route here" (a route through the anchors may still exist without them): not a timeout, kind
+     * OTHER or START_POINT, and not the engine's own memory-limit or unexpected-error texts (they are OTHER too).
+     */
+    private fun isNoRoute(e: Exception): Boolean {
+        if (e !is RoutingException || e.timedOut) return false
+        if (e.kind != RoutingException.Kind.OTHER && e.kind != RoutingException.Kind.START_POINT) return false
+        return e.message != Txt.s(Res.string.plan_err_too_long) && e.message != Txt.s(Res.string.plan_err_unexpected)
     }
 
     /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetour]); [index] = visible index of the leg's start. */

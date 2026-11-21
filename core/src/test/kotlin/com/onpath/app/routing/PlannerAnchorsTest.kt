@@ -2,6 +2,7 @@ package com.onpath.app.routing
 
 import com.onpath.app.debug.Problems
 import com.onpath.app.time.Factors
+import com.onpath.strings.*
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -283,6 +284,34 @@ class PlannerAnchorsTest {
         val e = Engine(throwing = { if (it == pair(a, v1)) RoutingException("x", timedOut = true, kind = RoutingException.Kind.OTHER) else null })
         Planner(e).plan(expanded(), act, 2)
         assertFalse(e.calls.contains(pair(v0, v1)))
+    }
+
+    @Test fun theEnginesOwnMemoryAndUnexpectedErrorsAreNoRoute() {
+        for (text in listOf(Txt.s(Res.string.plan_err_too_long), Txt.s(Res.string.plan_err_unexpected))) {
+            val e = Engine(throwing = { if (it == pair(a, v1)) RoutingException(text) else null })
+            val r = Planner(e).plan(expanded(), act, 2)
+            assertFalse(text, e.calls.contains(pair(v0, v1)))
+            assertTrue(r.legs[1].straight)
+            assertNotNull(r.error)
+        }
+    }
+
+    @Test fun anEarlierFailedSubLegOfTheSameLegKeepsItsErrorAndNoFallback() {
+        val a1 = GeoPoint(51.1, 7.0); val a2 = GeoPoint(51.2, 7.0)
+        val w1 = GeoPoint(51.4, 7.0); val w2 = GeoPoint(51.6, 7.0); val w3 = GeoPoint(51.8, 7.0)
+        val plan = PlanAnchors.expand(listOf(v0, w1, w2, w3), mapOf(1 to Anchors(listOf(a1, a2), emptyList())), emptySet())
+        val noData = "No detailed map here yet"
+        val e = Engine(throwing = {
+            when (it) {
+                pair(v0, a1) -> RoutingException(noData, kind = RoutingException.Kind.NO_DATA)
+                pair(a1, a2) -> RoutingException("No route found.")
+                else -> null
+            }
+        })
+        val r = Planner(e).plan(plan, act, 2)
+        assertFalse("no fallback: the leg keeps its straight piece", e.calls.contains(pair(v0, w1)))
+        assertEquals(noData, r.error)
+        assertTrue(r.legs[0].straight)
     }
 
     // ---- a restart never asks again ----
