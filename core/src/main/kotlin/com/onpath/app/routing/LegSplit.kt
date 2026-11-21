@@ -61,13 +61,9 @@ object LegSplit {
         var stored = 0
         for (span in 2..MAX_SPAN) for (i in 0 until pts.size - span) {
             val j = i + span
-            var cutParent = false
-            var parent: RouteResult? = null
-            if (plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0) {
-                parent = cache.inMemory(pts[i], pts[j], activity, sac, cut = true)
-                cutParent = parent != null
-            }
-            parent = parent ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
+            val cutOne = if (plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0) cache.inMemory(pts[i], pts[j], activity, sac, cut = true) else null
+            val cutParent = cutOne != null
+            val parent = cutOne ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
             val inner = pts.subList(i + 1, j)
             val at = positionsOn(parent.points, inner)
             var rest = parent
