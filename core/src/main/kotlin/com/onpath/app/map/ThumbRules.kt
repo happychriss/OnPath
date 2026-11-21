@@ -68,7 +68,18 @@ object ThumbRules {
      * The key a picture is made for: "[sig]|line" – line = the stored points' summary ("count:sumLat:sumLon", TourDb.lineKey;
      * null = no stored points → its via points, as the list's line does).
      */
-    fun key(t: Tour, points: String?): String = sig(t) + "|" + (points ?: "none")
+    fun key(t: Tour, points: String?): String = sig(t) + "|" + (points ?: "none") + rideTag(t)
+
+    /**
+     * What a ride choice ("Fahrten bearbeiten", 2026-11-21) does to the drawn line, part of every line key: the stored
+     * points stay the same under every choice, the line drawn from them does not. Empty without a record and for "as
+     * recorded" – those tours keep the keys (and pictures) they had.
+     */
+    fun rideTag(t: Tour): String {
+        val r = t.rides ?: return ""
+        if (r.choice == com.onpath.app.rides.RideChoice.AS_RECORDED) return ""
+        return " r${r.choice.name}:${r.rides.size}:${r.rides.sumOf { it.from + it.to }}"
+    }
 
     /** What a pass does: [make] these pictures (in this order), only [rekey] these (same line, new signature); [queried] = line keys read. */
     data class Plan(val make: List<Pair<Tour, String>>, val rekey: List<Pair<Tour, String>>, val queried: Int)
