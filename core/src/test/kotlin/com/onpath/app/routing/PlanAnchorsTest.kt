@@ -78,6 +78,27 @@ class PlanAnchorsTest {
         assertTrue(s.before.isNotEmpty() && s.after.isNotEmpty())
     }
 
+    @Test fun anchorsArePlainCoordinates() {
+        val way = WayAttrs("path", "gravel", 0, -1)
+        val l = line(100).mapIndexed { i, g -> g.copy(ele = 500.0 + i, way = way) }
+        val s = PlanAnchors.forInsert(l, l.first(), l.last(), GeoPoint(47.009, l[50].lon))!!
+        val all = s.before + s.after
+        assertTrue(all.isNotEmpty() && all.all { it.ele == null && it.way == null })
+        val back = PlanCode.decode(PlanCode.encode(SharedPlan(listOf(l.first(), GeoPoint(47.009, l[50].lon), l.last()), Activity.HIKE, anchors = mapOf(1 to s))))!!
+        assertEquals(s, back.anchors[1])
+    }
+
+    @Test fun anAnchorIsNeverALegEnd() {
+        // a ferry: only the two ends 70 km apart and one point near the middle; P is on the long first piece
+        val a = GeoPoint(47.0, 11.0); val m = GeoPoint(47.0, 11.0 + 35_000.0 / Geo.mPerDegLon(47.0)); val z = GeoPoint(47.0, 11.0 + 70_000.0 / Geo.mPerDegLon(47.0))
+        val l = listOf(a, m, z)
+        val s = PlanAnchors.forInsert(l, a, z, GeoPoint(47.0, 11.0 + 30_000.0 / Geo.mPerDegLon(47.0)))
+        assertTrue(s == null || (a !in s.before + s.after && z !in s.before + s.after))
+        assertEquals(listOf(m), s!!.before + s.after) // the one inner point is the only choice
+        // two points only: nothing to pick, no stitch
+        assertNull(PlanAnchors.forInsert(listOf(a, z), a, z, GeoPoint(47.0, 11.0 + 30_000.0 / Geo.mPerDegLon(47.0))))
+    }
+
     @Test fun legLengthThreshold() {
         val p59 = line(59); val p61 = line(61)
         assertNull(PlanAnchors.forInsert(p59, p59.first(), p59.last(), p59[30]))

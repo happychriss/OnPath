@@ -67,7 +67,8 @@ object PlanAnchors {
      * longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line
      * point about [ANCHOR_M] before p's nearest position, `after` = about [ANCHOR_M] behind it; a side stays empty when
      * its leg end is closer than [ANCHOR_M] + [SIDE_MARGIN_M] along the line. An anchor is always an exact point of
-     * [legLine], never interpolated.
+     * [legLine] (same lat / lon, but a plain [GeoPoint] without elevation or way data), never interpolated and never the
+     * line's first or last point (that would be a zero-length leg).
      */
     @Suppress("UNUSED_PARAMETER")
     fun forInsert(legLine: List<GeoPoint>, prev: GeoPoint, next: GeoPoint, p: GeoPoint): Anchors? {
@@ -86,8 +87,8 @@ object PlanAnchors {
         }
         if (best > MAX_OFF_M) return null
         val at = cum[seg] + bestT * (cum[seg + 1] - cum[seg])
-        val before = if (at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, 0..seg, at - ANCHOR_M) else null
-        val after = if (total - at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, seg + 1..legLine.lastIndex, at + ANCHOR_M) else null
+        val before = if (at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, 1..seg, at - ANCHOR_M) else null
+        val after = if (total - at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, seg + 1..legLine.lastIndex - 1, at + ANCHOR_M) else null
         if (before == null && after == null) return null
         return Anchors(listOfNotNull(before), listOfNotNull(after))
     }
@@ -96,7 +97,8 @@ object PlanAnchors {
     private fun pick(cum: DoubleArray, line: List<GeoPoint>, range: IntRange, target: Double): GeoPoint? {
         var bi = -1
         for (i in range) if (bi < 0 || abs(cum[i] - target) < abs(cum[bi] - target)) bi = i
-        return if (bi < 0) null else line[bi]
+        // a plain coordinate (no ele / way): equal to itself after a code round trip
+        return if (bi < 0) null else GeoPoint(line[bi].lat, line[bi].lon)
     }
 
     /**

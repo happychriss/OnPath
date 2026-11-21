@@ -85,7 +85,7 @@ data class Hotel(val name: String? = null, val address: String? = null, val link
  *   tag, length, UTF-8: 1 = name, 2 = address, 3 = link; unknown ones skipped, an unknown kind reads as Übernachtung),
  *   6 = description (UTF-8, line breaks kept).
  * - detour anchors (docs/design/detour-stitch.md §3, §8.10; written only when the plan has one, an older app skips it):
- *   7 = first, for every point, its remainder to 1e-6° (lat, lon: zigzag varints, each −5…+5), so the points come back
+ *   7 = first the point count (varint; a different one ignores the tag), then for every point, its remainder to 1e-6° (lat, lon: zigzag varints, each −5…+5), so the points come back
  *   exactly; then per point with anchors: varint index, varint count before, varint count after, each anchor as zigzag
  *   deltas in 1e-6° (the first to the point's exact value, then to the previous anchor of that entry, before list
  *   first). The reader drops the whole tag when it is damaged (remainder out of range, cut off, over 500 anchors) and
@@ -107,6 +107,8 @@ object PlanCode {
     private const val MAX_LIMIT_MIN = 24 * 60
     private const val MAX_LIMIT_ASCENT = 20_000
     private const val MAX_TEXT = 16_000
+    /** Room kept in [MAX_TEXT] for the link's base URL when anchors are added. */
+    private const val LINK_ROOM = 256
     private const val SCALE = 100_000.0
     private const val SCALE6 = 1_000_000.0
     /** Anchors: at most this many per side, per plan, and this far (m) from their point. */
@@ -185,8 +187,12 @@ object PlanCode {
             out.field(TAG_NIGHT, b.toArray())
         }
         cleanText(plan.description)?.let { out.field(TAG_DESCRIPTION, it.encodeToByteArray()) }
-        anchorsField(pts, plan.anchors)?.let { out.field(TAG_ANCHORS, it) }
-        return Base64Url.encode(out.toArray())
+        val plain = Base64Url.encode(out.toArray())
+        val field = anchorsField(pts, plan.anchors) ?: return plain
+        out.field(TAG_ANCHORS, field)
+        val full = Base64Url.encode(out.toArray())
+        // a plan must stay openable ([parse] refuses over MAX_TEXT): too long with anchors = without them
+        return if (full.length > MAX_TEXT - LINK_ROOM) plain else full
     }
 
     /** Tag 7's payload, or null when there is nothing to write (no anchor survives the caps). */
@@ -200,6 +206,7 @@ object PlanCode {
         }
         if (entries.isEmpty()) return null
         val b = Bytes()
+        b.varint(pts.size.toLong())
         for (p in pts) {
             val rl = micro(p.lat, 90.0) - (p.lat.coerceIn(-90.0, 90.0) * SCALE).roundToLong() * 10
             val ro = micro(p.lon, 180.0) - (p.lon.coerceIn(-180.0, 180.0) * SCALE).roundToLong() * 10
@@ -228,6 +235,7 @@ object PlanCode {
     private fun readAnchors(f: Reader, la5: LongArray, lo5: LongArray): Pair<List<GeoPoint>, Map<Int, Anchors>>? {
         return try {
             val n = la5.size
+            if (f.varint() != n.toLong()) return null
             val la = LongArray(n); val lo = LongArray(n)
             for (i in 0 until n) {
                 val rl = f.zigzag(); val ro = f.zigzag()
@@ -235,6 +243,7 @@ object PlanCode {
                 la[i] = la5[i] * 10 + rl; lo[i] = lo5[i] * 10 + ro
             }
             val pts = List(n) { GeoPoint(la[it] / SCALE6, lo[it] / SCALE6) }
+            if (pts.any { it.lat !in -90.0..90.0 || it.lon !in -180.0..180.0 }) return null
             val out = HashMap<Int, Anchors>()
             var total = 0L
             while (f.more()) {
@@ -407,7 +416,10 @@ object PlanCode {
         private var pos = 0
         fun more() = pos < b.size
         fun left() = b.size - pos
-        fun byte(): Int = b[pos++].toInt() and 0xff
+        fun byte(): Int {
+            if (pos >= b.size) throw IndexOutOfBoundsException() // explicit: the web build need not raise it by itself
+            return b[pos++].toInt() and 0xff
+        }
         fun varint(): Long {
             var result = 0L
             var shift = 0

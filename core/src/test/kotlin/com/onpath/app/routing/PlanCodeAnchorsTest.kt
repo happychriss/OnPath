@@ -50,7 +50,8 @@ class PlanCodeAnchorsTest {
         return b64(base + tag + payload)
     }
 
-    private fun rem(w: W, points: List<GeoPoint>, bad: Boolean = false) {
+    private fun rem(w: W, points: List<GeoPoint>, bad: Boolean = false, count: Int = pts.size) {
+        w.varint(count.toLong())
         for ((i, q) in points.withIndex()) {
             w.zz(((q.lat * 1e6).roundToLong() - (q.lat * 1e5).roundToLong() * 10) + if (bad && i == 1) 11 else 0)
             w.zz((q.lon * 1e6).roundToLong() - (q.lon * 1e5).roundToLong() * 10)
@@ -167,6 +168,44 @@ class PlanCodeAnchorsTest {
         assertEquals((1..31).toList(), b.anchors.keys.sorted())
         assertEquals(496, b.anchors.values.sumOf { it.size })
         assertEquals(long, b.points)
+    }
+
+    @Test fun aWrongPointCountDropsTheWholeTag() {
+        val w = W(); rem(w, pts, count = pts.size + 1); entry(w, 2, anchors[2]!!.before, anchors[2]!!.after)
+        assertPlainPoints(withTag7(w.l.toByteArray()))
+        val ok = W(); rem(ok, pts); entry(ok, 2, anchors[2]!!.before, anchors[2]!!.after)
+        assertEquals(mapOf(2 to anchors[2]!!), PlanCode.decode(withTag7(ok.l.toByteArray()))!!.anchors)
+    }
+
+    @Test fun remaindersThatLeaveTheValidRangeDropTheWholeTag() {
+        // 90.00000° + remainder 5 = 90.000005°
+        val top = listOf(GeoPoint(90.0, 10.0), GeoPoint(89.9, 10.0))
+        val base = b64(PlanCode.encode(SharedPlan(top, Activity.HIKE)))
+        val w = W().varint(2).zz(5).zz(0).zz(0).zz(0)
+        val code = b64(base + W().varint(7).varint(w.l.size.toLong()).l.toByteArray() + w.l.toByteArray())
+        val back = PlanCode.decode(code)!!
+        assertEquals(90.0, back.points[0].lat, 0.0)
+        assertTrue(back.anchors.isEmpty())
+        // the same with remainder 0 is read (exact points)
+        val ok = W().varint(2).zz(0).zz(0).zz(0).zz(0)
+        val okCode = b64(base + W().varint(7).varint(ok.l.size.toLong()).l.toByteArray() + ok.l.toByteArray())
+        assertEquals(top, PlanCode.decode(okCode)!!.points)
+    }
+
+    @Test fun aPlanNearTheLimitLosesItsAnchorsNotItself() {
+        val long = List(300) { GeoPoint(46.0 + it * 0.001, 11.0 + it * 0.001) }
+        val names = (0 until 300).associateWith { "Name of point number ${it.toString().padStart(3, '0')}" } // 28 chars
+        val an = (1..30).associateWith { i ->
+            Anchors(List(8) { j -> GeoPoint(46.0 + i * 0.001 - (j + 1) * 0.01, 11.0 + i * 0.001 - (j + 1) * 0.01) },
+                List(8) { j -> GeoPoint(46.0 + i * 0.001 + (j + 1) * 0.01, 11.0 + i * 0.001 + (j + 1) * 0.01) })
+        }
+        val code = PlanCode.encode(SharedPlan(long, Activity.HIKE, names = names, anchors = an))
+        assertTrue("code ${code.length}", code.length in 12_000..15_744)
+        val back = PlanCode.parse("https://planner.example/#p=$code")!!
+        assertEquals(300, back.points.size); assertEquals(names, back.names)
+        assertTrue(back.anchors.isEmpty())
+        // a smaller plan keeps its anchors
+        assertEquals(an.size, PlanCode.decode(PlanCode.encode(SharedPlan(long.take(40), Activity.HIKE, anchors = an)))!!.anchors.size)
     }
 
     @Test fun outOfRangeEntriesAreNotWritten() {
