@@ -39,7 +39,7 @@ object WebSearch {
     /**
      * The app's [SearchState] driven by the page (web-ready, umbau 2026-11-20): the planner has no coroutines, so the
      * page is the driver – its search() is [SearchState.begin] + the offline stage, its Photon answer the online stage
-     * ([SearchState.onlineDone]); the 350 ms wait and the fetch stay the page's (SearchSession.DEBOUNCE_MS). Kept places
+     * ([SearchState.onlineDone]); the 350 ms wait and the fetch stay the page's (SearchState.DEBOUNCE_MS). Kept places
      * and recent picks are the page's ([WebKept]); [SearchPorts] reads what the page passed with the call.
      */
     private object State : SearchState(Ports, hasOnline = true, context = { ctx }) {

@@ -32,7 +32,7 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/search/SearchState.kt",
-      "what": "DEBOUNCE_MS (the wait before the online search; the driver of SearchState's stages – the rules are in state/.../SearchState.kt) – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
+      "what": "DEBOUNCE_MS (the wait before the online search; the driver of SearchState's stages – the rules are in state/.../SearchState.kt) – shared code since 2026-11-20 ([umbau]) – stays a mirror (laptop 2026-11-21): the keystroke timer needs the number at once, the engine answers only asynchronously",
       "web": [
         "web/app/src/search.ts"
       ],
@@ -93,7 +93,7 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapCredits.kt",
-      "what": "MAP_CREDITS (About) – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
+      "what": "MAP_CREDITS (About) – shared code since 2026-11-20 ([umbau]) – stays a mirror (laptop 2026-11-21): the planner's About lists more (Photon, its MapLibre line, the font licence), so it takes the keys, not the list",
       "web": [
         "web/app/src/main.ts"
       ],
@@ -126,7 +126,7 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/ProfileRules.kt",
-      "what": "the profile's look: ProfileFill (route colour fading, steeper a bit stronger), columnIndices, ProfileAxis – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
+      "what": "the profile's look: ProfileFill (route colour fading, steeper a bit stronger), columnIndices, ProfileAxis – shared code since 2026-11-20 ([umbau]) – stays a mirror (laptop 2026-11-21): profile.ts draws on the page's canvas at once on every resize / hover; the engine answers only asynchronously",
       "web": [
         "web/app/src/profile.ts"
       ],
@@ -257,7 +257,7 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/CellCards.kt",
-      "what": "CellCards.build / name / rowState – the map-area strip (title, rows, more, failed, offline) – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
+      "what": "CellCards.build / name / rowState – the map-area strip (title, rows, more, failed, offline) – shared code since 2026-11-20 ([umbau]) – stays a mirror (laptop 2026-11-21): areas.ts builds the strip on the page on every download tick, synchronously",
       "web": [
         "web/app/src/areas.ts"
       ],
@@ -317,7 +317,7 @@
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/map/ThumbRules.kt",
-      "what": "ThumbRules: VERSION, TILE_DP 84, MARGIN, marker sizes, LINE_SCALE, region (square in Web Mercator) / project – the web keys pictures by line, not by sig / lineKey – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
+      "what": "ThumbRules: VERSION, TILE_DP 84, MARGIN, marker sizes, LINE_SCALE, region (square in Web Mercator) / project – the web keys pictures by line, not by sig / lineKey – shared code since 2026-11-20 ([umbau]) – stays a mirror (laptop 2026-11-21): the sizes are CSS / MapLibre numbers on the page, used at once",
       "web": [
         "web/app/src/routethumbs.ts"
       ],
