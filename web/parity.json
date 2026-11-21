@@ -1983,9 +1983,10 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanCode.kt": {
-      "blob": "4d11652b07aa053a1a2e6c5930d2df5807d15b4f",
+      "blob": "a58eb260aba8abdee7ad9808eabb89cbd45df0f0",
       "perf": [
         "/** Limits per day of a multi-day tour (owner 2026-11-17: \"Natürlich bleiben die Grenzen pro Tag\"); null = no limit. */",
+        "*   is empty, it has over 8 anchors on a side or an anchor's lat or lon is over [MAX_ANCHOR_DELTA] (30°) from its point.",
         "const val MAX_POINTS = 500",
         "const val MAX_NAME = 100",
         "const val MAX_DAYS = 99",
@@ -1995,12 +1996,24 @@
         "private const val MAX_LIMIT_MIN = 24 * 60",
         "private const val MAX_LIMIT_ASCENT = 20_000",
         "private const val MAX_TEXT = 16_000",
+        "/** Room kept in [MAX_TEXT] for the link's base URL when anchors are added. */",
+        "const val MAX_ANCHORS_SIDE = 8",
+        "const val MAX_ANCHORS = 500",
+        "const val MAX_ANCHOR_DELTA = 30_000_000L",
         "/** The code for [plan] (without \"p=\"). Points beyond [MAX_POINTS] and over-long names are cut. */",
         "val pts = plan.points.take(MAX_POINTS)",
+        "// a plan must stay openable ([parse] refuses over MAX_TEXT): too long with anchors = without them",
+        "return if (full.length > MAX_TEXT - LINK_ROOM) write(plan, pts, null) else full",
         "plan.days?.let { out.field(TAG_DAYS, Bytes().apply { varint(it.coerceIn(1, MAX_DAYS).toLong()) }.toArray()) }",
         "varint(limit(plan.limits.maxTimeMin, MAX_LIMIT_MIN).toLong()); varint(limit(plan.limits.maxAscentM, MAX_LIMIT_ASCENT).toLong())",
         "clean(h.address, MAX_ADDRESS)?.let { b.field(HOTEL_ADDRESS, it.encodeToByteArray()) }",
         "clean(h.link, MAX_LINK)?.let { b.field(HOTEL_LINK, it.encodeToByteArray()) }",
+        "if (i !in pts.indices || a.isEmpty || a.before.size > MAX_ANCHORS_SIDE || a.after.size > MAX_ANCHORS_SIDE) continue",
+        "if (all.any { abs(micro(it.lat, 90.0) - la) > MAX_ANCHOR_DELTA || abs(micro(it.lon, 180.0) - lo) > MAX_ANCHOR_DELTA }) continue",
+        "if (total + a.size > MAX_ANCHORS) break",
+        "if (total > MAX_ANCHORS) return null",
+        "if (nb + na == 0L || i !in 0 until n.toLong() || nb > MAX_ANCHORS_SIDE || na > MAX_ANCHORS_SIDE) continue",
+        "if (abs(lat - la[ix]) > MAX_ANCHOR_DELTA || abs(lon - lo[ix]) > MAX_ANCHOR_DELTA) ok = false",
         "if (t.isEmpty() || t.length > MAX_TEXT) return null",
         "if (n < 0 || n > MAX_POINTS) return null",
         "TAG_DAYS -> days = f.varint().takeIf { it in 1..MAX_DAYS }?.toInt()",
@@ -2013,7 +2026,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDays.kt": {
-      "blob": "94fa7638cf8ade64a86a2e91a46268df9e99398b",
+      "blob": "0bf2f3afb3cce83834d65b2571e1eca85d3c5d63",
       "perf": [
         "/** A limit per day a day is above (R8: its row turns orange with that value). */",
         "* a limit where that is possible, otherwise about equal by time (owner 2026-11-17). A day above a limit is flagged",
@@ -3461,6 +3474,15 @@
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "1c409cb28ff79aaf7c56578053c9e792a41f66c0",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanAnchors.kt": {
+      "blob": "478fb202d4151cb63c7207c1ef25686c5f94d701",
+      "perf": [
+        "const val MAX_OFF_M = 2_000.0",
+        "* longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line",
+        "var best = Double.MAX_VALUE",
+        "if (best > MAX_OFF_M) return null"
+      ]
     }
   }
 }
