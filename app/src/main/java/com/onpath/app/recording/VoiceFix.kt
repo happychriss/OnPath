@@ -25,7 +25,7 @@ class VoiceFix {
         val speed = if (loc.hasSpeed()) loc.speed.toDouble() else null
         heading = GoalSide.heading(lastTrack, here, speed)
         off.onFix(here, if (loc.hasAccuracy()) loc.accuracy.toDouble() else null,
-            if (loc.hasBearing()) loc.bearing.toDouble() else null, speed, SystemClock.elapsedRealtime())
+            if (loc.hasBearing()) loc.bearing.toDouble() else null, speed, SystemClock.elapsedRealtime(), ageMs)
     }
 
     /** The fix could not be read: nothing is known about it. */

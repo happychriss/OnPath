@@ -191,6 +191,48 @@ class FarStartTest {
         assertFalse((nav.prompt as NavPrompt.FarStart).searching)
     }
 
+    /** Review 2026-11-21: Abbrechen + „Ohne Route weiter“ – the next plan edit must not start the search he just declined. */
+    @Test fun aDeclinedLeadIsNotStartedAgainByAPlanEdit() {
+        val led = session().copy(lead = true, current = line(-30_000.0 to 0.0, 0.0 to 0.0), version = 1)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        val nav = Navigator(NavSession.afterPlanEdit(led, edited))
+        val from = fix(-30_000.0, 0.0, 0)
+        nav.leadAgain(from).job!!
+        val p = nav.prompt as NavPrompt.FarStart
+        val cancelled = nav.cancelLead(p.id)
+        nav.justRecord(p.id)
+        val again = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.drop(1))
+        val next = Navigator(NavSession.afterPlanEdit(nav.session, again))
+        assertNull("no search he did not ask for", next.leadAgain(from).job)
+        assertNull(next.prompt)
+        assertTrue("Abbrechen is saved", cancelled.sessionChanged)
+        assertFalse(nav.session.lead)
+    }
+
+    @Test fun justRecordWithdrawsGuideMeAndIsSaved() {
+        val led = session().copy(lead = true)
+        val nav = Navigator(led)
+        val job = nav.leadAgain(fix(-30_000.0, 0.0, 0)).job
+        assertNotNull(job)
+        val p = nav.prompt as NavPrompt.FarStart
+        val s = nav.justRecord(p.id)
+        assertTrue(s.sessionChanged); assertTrue("the running search stops", s.cancelJob)
+        assertFalse(nav.session.lead)
+    }
+
+    /** Declined once, „Guide me“ later still counts: found → remembered for the next plan edit. */
+    @Test fun guideMeAfterACancelSetsTheLeadAgain() {
+        val r = Run(Navigator(session().copy(lead = true)))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        r.nav.leadThere(p.id)
+        r.nav.cancelLead(p.id)
+        assertFalse(r.nav.session.lead)
+        val job = r.nav.leadThere(p.id).job!!
+        r.nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request))
+        assertTrue(r.nav.session.lead)
+    }
+
     @Test fun walkingToTheRouteAfterCancelStillClearsTheQuestion() {
         val r = Run(Navigator(session()))
         r.feed(drift(-500.0))
