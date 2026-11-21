@@ -159,8 +159,9 @@ private fun DayRow(r: DayRowUi, picked: Boolean, onTap: () -> Unit, onHold: () -
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(DayRowText.day(r.n), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
-                Spacer(Modifier.weight(1f))
+                // the weight: the values are measured first and never cut, at the largest font the day's word gives way
+                Text(DayRowText.day(r.n), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1,
+                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
                 // R8: a day above a limit per day – its values orange
                 Text(instrument(values, MaterialTheme.typography.bodySmall), style = MaterialTheme.typography.bodySmall,
                     color = if (r.over) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,

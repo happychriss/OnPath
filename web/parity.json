@@ -3233,7 +3233,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_multiday.xml": {
-      "blob": "217f0974922f85a09e836610a156341461aca8d5",
+      "blob": "8e2c3f8f7c199385f096c3203d1f2ea42d900e24",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
@@ -3305,7 +3305,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_multiday.xml": {
-      "blob": "cdbd422ff7be992659bc515b3fd4933b8e71996c",
+      "blob": "797158310d0c9bba640884b2cb4a737d87a4c325",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {

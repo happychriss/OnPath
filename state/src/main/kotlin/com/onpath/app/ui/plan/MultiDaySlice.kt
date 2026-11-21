@@ -358,8 +358,9 @@ class MultiDaySlice(
         val total = v.days.days.lastOrNull()?.toM?.takeIf { it > 0 } ?: return null
         val pts = waypoints.toList()
         // a place name or null; a night's hotel counts as its end's place before the nearby lookup
-        fun nameAt(p: GeoPoint): String? = (stopName(p) ?: flow.marks[p]?.hotel?.let { h -> h.name ?: h.address }
-            ?: nearbyNames()[p] ?: endNames[p.lat to p.lon])?.trim()?.takeIf { it.isNotEmpty() }
+        fun known(s: String?) = s?.trim()?.takeIf { it.isNotEmpty() }
+        fun nameAt(p: GeoPoint): String? = known(stopName(p)) ?: flow.marks[p]?.hotel?.let { h -> known(h.name) ?: known(h.address) }
+            ?: known(nearbyNames()[p]) ?: known(endNames[p.lat to p.lon])
         val ends = listOf(pts.firstOrNull()) + v.days.days.map { d -> d.end?.let { e -> e.planIndex?.let { pts.getOrNull(it) } ?: e.point } ?: pts.lastOrNull() }
         val rows = v.days.days.mapIndexed { i, d ->
             val places = com.onpath.app.routing.DayRowText.places(ends[i]?.let(::nameAt), ends[i + 1]?.let(::nameAt))
