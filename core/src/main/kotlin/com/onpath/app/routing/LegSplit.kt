@@ -42,9 +42,11 @@ object LegSplit {
     /**
      * [leg] cut at its line point nearest [at] (within [ON_LINE_M], never an end): the two legs, their numbers in
      * proportion to the line's length on each side (the second takes the rest, so the two add up to the whole), the way
-     * types and surfaces by the line points' own way attributes. Null = [at] is not on the leg's line.
+     * types and surfaces by the line points' own way attributes. Null = [at] is not on the leg's line ([maxOffM]: with
+     * [Double.MAX_VALUE] the cut is at the line point nearest [at], however far – the planner's route past an unreachable
+     * stop, [Planner.passUnreachable]).
      */
-    fun split(leg: RouteResult, at: GeoPoint): Pair<RouteResult, RouteResult>? {
+    fun split(leg: RouteResult, at: GeoPoint, maxOffM: Double = ON_LINE_M): Pair<RouteResult, RouteResult>? {
         val pts = leg.points
         if (pts.size < 3) return null
         var j = -1; var best = Double.MAX_VALUE
@@ -52,7 +54,7 @@ object LegSplit {
             val d = Geo.distance(pts[i], at)
             if (d < best) { best = d; j = i }
         }
-        if (j < 0 || best > ON_LINE_M) return null
+        if (j < 0 || best > maxOffM) return null
         val a = pts.subList(0, j + 1).toList(); val b = pts.subList(j, pts.size).toList()
         val len = Geo.length(pts)
         val f = if (len > 0.0) (Geo.length(a) / len).coerceIn(0.0, 1.0) else 0.5

@@ -4,6 +4,8 @@ import com.onpath.strings.*
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.debug.UserText
+import com.onpath.app.domain.PlanGap
+import com.onpath.app.domain.PlanGaps
 
 /** One leg of a planned route; [straight] = routing failed, drawn dashed (R-12/R-13). */
 data class PlannedLeg(val points: List<GeoPoint>, val straight: Boolean)
@@ -165,7 +167,84 @@ class Planner(
             done++
             progress?.invoke(done, total)
         }
+        if (!timedOut && error == null && n >= 2 && results.all { it != null }) passUnreachable(waypoints, results, activity, sac)
         return join(waypoints, results, activity, pinned, error)
+    }
+
+    /**
+     * A stop the chosen level cannot reach no longer pulls the route on a long detour (owner 2026-11-21, field case Hike T1
+     * Vellau → Mutkopf → Leiteralm: 30 km, 38 % of the line twice, the stop still 552 m off – round the mountain to the
+     * nearest T1 way under it and back). For a run of **interior** plan points that the legs do not reach (≥ [PlanGaps.FAR_M]
+     * from where the router put them; mostly one stop) the leg a → b over the run's reached neighbours is routed directly
+     * ([routeLeg], kept in [legs] – the whole leg a plan without the run has) and cut at its line points nearest the stops
+     * ([LegSplit.split]), the pieces replacing the run's legs (and kept in [legs] under their plan points) – one leg per
+     * pair of plan points stays. Only when all hold: the way via the run is a real detour ([isPastDetour]); something else
+     * reaches every stop of it ([PlanReach.find] is not [PlanReach.Fix.None]: a higher level, a rougher bike, on foot – a
+     * stop nothing reaches keeps today's line, and so does a useful short spur); the direct leg can be cut. A failure (no
+     * direct route, a timeout, the time budget used up) keeps the legs as they are. The stops stay gaps: red line "② erst
+     * ab T2 erreichbar", the grey dashed piece from the cut point. [results] is changed in place; all legs are routed.
+     */
+    private fun passUnreachable(waypoints: List<GeoPoint>, results: Array<RouteResult?>, activity: Activity, sac: Int) {
+        val n = results.size
+        // where the router put each plan point (the start / the end of the leg beside it); empty = not known → no gap
+        fun spot(i: Int): GeoPoint? =
+            if (i < n) results[i]?.matched?.firstOrNull() else results[n - 1]?.matched?.takeIf { it.size >= 2 }?.last()
+        val gap = BooleanArray(n + 1) { i -> spot(i)?.let { Geo.distance(waypoints[i], it) >= PlanGaps.FAR_M } == true }
+        if ((1 until n).none { gap[it] }) return
+        val t0 = now()
+        val budget = RouteTimeLimit.forRoute(waypoints, activity) * rounds.coerceAtLeast(1)
+        var k = 1
+        while (k < n) {
+            if (!gap[k]) { k++; continue }
+            var m = k
+            while (m + 1 < n && gap[m + 1]) m++
+            val run = k..m
+            k = m + 1
+            val a = waypoints[run.first - 1]; val b = waypoints[run.last + 1]
+            val old = (run.first - 1)..run.last // the legs of the run's points
+            val via = old.sumOf { results[it]!!.distanceM }
+            val straight = Geo.distance(a, b)
+            // the way via the run is at least the direct way, the direct way at least the straight line: no detour
+            // without this much – saves the direct route for the common short spur
+            if (straight < MIN_PAST_M || via < PAST_FACTOR * straight || via - straight < PAST_MIN_EXTRA_M) continue
+            if (now() - t0 > budget) { Problems.trace("routing", "Point ${run.first + 1}: time budget used – no route past it tried"); break }
+            stopIfCancelled()
+            val direct = try {
+                legs?.get(a, b, activity, sac) ?: routeLeg(a, b, activity, sac, run.first - 1).also { legs?.put(a, b, activity, sac, it) }
+            } catch (e: Exception) {
+                stopIfCancelled()
+                // expected: RoutingException = no direct route (an island, a timeout) – the legs via the stop stay
+                if (e !is RoutingException) Problems.error("routing", "Route past point ${run.first + 1} threw unexpectedly; kept the route via it", e)
+                Problems.trace("routing", "Point ${run.first + 1}: no direct route past it (${e.message}) – kept the route via it")
+                if (e is RoutingException && e.timedOut) break
+                continue
+            }
+            if (!isPastDetour(via, direct.distanceM)) continue
+            var fix: PlanReach.Fix? = null
+            val reached = run.all { i ->
+                val s = spot(i) ?: return@all false
+                val r = PlanReach.find(engine, PlanGap(i, waypoints[i], s, Geo.distance(waypoints[i], s)), activity, sac, cancel)
+                stopIfCancelled()
+                fix = r?.fix
+                r != null && r.fix != PlanReach.Fix.None
+            }
+            if (!reached) continue
+            // the direct leg cut at each stop's nearest line point, in order (each cut inside what is left of the line)
+            val pieces = ArrayList<RouteResult>()
+            var rest = direct
+            for (i in run) {
+                val (x, y) = LegSplit.split(rest, waypoints[i], Double.MAX_VALUE) ?: break
+                pieces += x; rest = y
+            }
+            if (pieces.size != run.count()) continue
+            pieces += rest
+            for ((j, i) in old.withIndex()) {
+                results[i] = pieces[j]
+                legs?.put(waypoints[i], waypoints[i + 1], activity, sac, pieces[j])
+            }
+            Problems.trace("routing", "Points ${run.first + 1}..${run.last + 1} not reached at ${activity.name} T$sac ($fix): " +
+                "route past them, ${via.toInt()} → ${direct.distanceM.toInt()} m")
+        }
     }
 
     /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetour]); [index] = index of [a]. */
@@ -396,6 +475,17 @@ class Planner(
 
         /** The middle of the straight line [a] → [b] (short legs: the flat mean is exact enough). */
         fun midpoint(a: GeoPoint, b: GeoPoint) = GeoPoint((a.lat + b.lat) / 2.0, (a.lon + b.lon) / 2.0)
+
+        /** Route past an unreachable stop ([passUnreachable]): the way via it must be at least this many times the direct way … */
+        const val PAST_FACTOR = 1.5
+        /** … and at least this much (metres) longer – a short spur to the stop stays as it is. */
+        const val PAST_MIN_EXTRA_M = 2_000.0
+        /** The two neighbours of the stop must be at least this far apart (straight, metres): a there-and-back has no "past". */
+        const val MIN_PAST_M = 500.0
+
+        /** The way [via] a stop [direct] metres otherwise: a real detour worth routing past the stop. */
+        fun isPastDetour(via: Double, direct: Double): Boolean =
+            direct > 0.0 && via >= PAST_FACTOR * direct && via - direct >= PAST_MIN_EXTRA_M
 
         /** Two legs meet at a plan point when their ends are this close (m) – else nothing is trimmed there. */
         const val JOIN_M = 5.0
