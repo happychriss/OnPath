@@ -153,6 +153,7 @@ fun MapHost(
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
                     com.onpath.app.debug.Health.noteStyleLoad(n, loadedFrom?.name, MapMemory.geoJsonBytes(style))
                     vm.mapData.onMapStyleLoaded(loadedFrom)
+                    shownPois.styleLoaded(map)
                     try {
                         val c = MapController(context, map, style)
                         myCtrl[0] = c
@@ -194,7 +195,7 @@ fun MapHost(
                 }
             }
             map.addOnCameraIdleListener {
-                shownPois.cameraIdle()
+                shownPois.cameraIdle(map)
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)

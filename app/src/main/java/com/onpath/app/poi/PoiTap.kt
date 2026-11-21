@@ -53,8 +53,13 @@ object PoiHit {
         /** What the map shows changed without a camera move: a new style or map data, other POI settings. */
         fun changed() { wanted = true }
 
-        /** The map became idle: true = read now (once). */
-        fun mapIdle(): Boolean = wanted.also { wanted = false }
+        /**
+         * The map became idle: true = read now (once). [ready] = the style is fully loaded, so a read can work: an idle
+         * while it is not (the new style still loading after a reload) keeps the wish for the next idle – it must not
+         * use it up and leave the list empty until the next camera move (owner's Pixel 2026-11-21, 0.18.6: a tap on
+         * a drawn symbol showed nothing).
+         */
+        fun mapIdle(ready: Boolean = true): Boolean = (wanted && ready).also { if (it) wanted = false }
     }
 }
 
@@ -74,8 +79,19 @@ class ShownPois {
     private val trigger = PoiHit.ReadTrigger()
     private var seq = 0
 
-    /** The camera stopped: the next map idle reads. */
-    fun cameraIdle() = trigger.cameraIdle()
+    /**
+     * The camera stopped: the next map idle reads. One repaint is asked for, so that idle really comes AFTER this
+     * call: when the last frame was already drawn and its idle came before the camera's idle event (a fast phone with
+     * cached tiles), a still map would never idle again and the list would stay that of the previous view.
+     */
+    fun cameraIdle(map: MapLibreMap) { trigger.cameraIdle(); repaintOnce(map, "camera stop") }
+
+    /** The new style is loaded: read at the next idle – and make sure one comes on a still map. */
+    fun styleLoaded(map: MapLibreMap) { trigger.changed(); repaintOnce(map, "style loaded") }
+
+    private fun repaintOnce(map: MapLibreMap, why: String) {
+        try { map.triggerRepaint() } catch (e: Exception) { Problems.warn("poi", "Repaint after $why failed", e) }
+    }
 
     /** A new style / map data: forget the old list (it belongs to another style); the next map idle reads. */
     fun styleChanged() { entries = emptyList(); seq++; trigger.changed() }
@@ -84,7 +100,10 @@ class ShownPois {
     fun changed() = trigger.changed()
 
     /** The map became idle (render thread done, all tiles in): read what it shows when the trigger says so. */
-    fun onMapIdle(map: MapLibreMap, view: View) { if (trigger.mapIdle()) read(map, view) }
+    fun onMapIdle(map: MapLibreMap, view: View) {
+        val ready = try { map.style?.isFullyLoaded == true } catch (e: Exception) { Problems.warn("poi", "Style state not readable", e); false }
+        if (trigger.mapIdle(ready)) read(map, view)
+    }
 
     /** The POI under [x], [y] (pixels), from what the map showed at the last read; null when none. */
     fun at(map: MapLibreMap, x: Float, y: Float, boxDp: Float = 24f): Poi? = try {

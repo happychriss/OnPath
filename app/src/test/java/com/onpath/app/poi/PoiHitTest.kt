@@ -93,6 +93,23 @@ class PoiHitTest {
         assertFalse(t.mapIdle())
     }
 
+    /**
+     * Owner's Pixel 2026-11-21 (0.18.6): an idle while the new style is still loading must not use up the wish to read –
+     * else the list stays empty (every drawn symbol "nothing") until the next camera move.
+     */
+    @Test fun anIdleWhileTheStyleLoadsKeepsTheWishToRead() {
+        val t = PoiHit.ReadTrigger()
+        assertTrue(t.mapIdle())
+        t.changed() // style reload
+        assertFalse("idle, style not fully loaded: no read", t.mapIdle(ready = false))
+        assertFalse(t.mapIdle(ready = false))
+        assertTrue("the first idle with the style loaded reads", t.mapIdle(ready = true))
+        assertFalse("and only once", t.mapIdle(ready = true))
+        t.cameraIdle()
+        assertFalse(t.mapIdle(ready = false))
+        assertTrue(t.mapIdle(ready = true))
+    }
+
     @Test fun readRunsNoTimer() {
         val tap = File("src/main/java/com/onpath/app/poi/PoiTap.kt").readText()
         for (timer in listOf("postDelayed", "Timer(", "schedule", "delay(")) assertFalse(timer, tap.contains(timer))
