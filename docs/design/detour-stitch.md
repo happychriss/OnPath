@@ -50,7 +50,7 @@ Anchors follow their point like pins / names / nights (`PlanEdits.follow`, `keep
 | Undo / redo | the history snapshot holds the anchors (`PlanHistory` / page undo) – legs from the cache, nothing routed |
 | Move P | P is a new point → anchors dropped; a move that stays ≤ 2 km of the current line is stitched again against it (Q3) |
 | Insert N between `prev` and a `before` anchor (by line position) | P keeps its anchors (the route still passes them) |
-| Insert N between an anchor and its P | **transfer**: the anchors between N and P move from P's `before` to N's `before` (N on the line: zero routing; N off the line: N gets its own stitch, the transferred anchors beyond N's 10 km anchor are dropped and the cut leg is concatenated – same invariant) |
+| Insert N between an anchor and its P | **transfer** (`PlanAnchors.followInsert`): every anchor keeps its place on the line and belongs to the leg it now lies in (mirrored on the `after` side). N on the line: zero routing. N off the line, up to 2 km: N gets its own stitch; old anchors between N's own anchors and N go, those farther out stay, so no legs are concatenated. N farther off: the facing sides are dropped |
 | Delete / move / replace a neighbour | the facing side of P's anchors is dropped (the new neighbour's natural way need not pass them) |
 | Reverse | `before` ⇄ `after`, lists reversed |
 | Round trip / loopStart | no special case (the closing leg is a leg) |
@@ -81,7 +81,7 @@ Other devices only read data – no device-dependent geometry decides a route.
 - **core/routing** (shared, the planner compiles it): `PlanAnchors.kt` – `Anchors`, `expand(points, anchors, pinned)`
   → expanded list + index map back; `forInsert(legLine, prev, next, p)` (stitch / cut rule, the thresholds as constants);
   `follow(before, after, …)` (§2). `Planner` and `PlanResult` take an `ExpandedPlan` (§8.1) and map `snapped` / `skipped` / gaps back to visible indices. `LegSplit.seed` learns to cut any
-  line point of a known **chain** of legs and to concatenate two legs (for transfers). `PlanCode` tag 7, `SharedPlan.anchors`.
+  line point of a known **chain** of legs. `PlanCode` tag 7, `SharedPlan.anchors`.
   No `PLANNER_VERSION` bump (plans without anchors route as before).
 - **core/data, gpx, plansync**: storage fields (§3).
 - **state** (app): `PlanDocument` / `PlanHistory` hold anchors; the add-point flow calls `forInsert`; `PlanRecalcSlice`
@@ -131,6 +131,8 @@ Other devices only read data – no device-dependent geometry decides a route.
 10. **Exact points (found while building).** `PlanCode` stores points in 1e-5°, the leg cache and anchors work in 1e-6°: after a link or sync a cold device would route `a→P` to a point up to ~0.7 m away, under another key. A plan with anchors therefore carries, first in tag 7, each point's remainder to 1e-6° (two small zigzag values, each −5…+5; out of range = the whole tag is dropped). Older readers skip it.
 11. **`follow` never guesses.** Outside the common start and end, a point is matched by value only when that value occurs once on each side; otherwise it counts as new and loses its anchors. Losing anchors is safe (full routing), a wrong anchor is not. A rotated closed loop keeps its edges' anchors; a rotation with stops before the loop loses those of the affected sides (accepted).
 12. **For the web wiring (laptop).** `WebApi.planParse` writes points with 5 decimals, which throws away the exact values of tag 7: it must keep 6. `web/app/src/share.ts` calls `qr.make()` without a guard and anchors make the link longer: check what it does on overflow before writers ship.
+13. **A short trip with a long detour is never cut (found in the review of piece 2b).** The Planner retries such a leg through its middle (`Planner.isShortDetour`), so a cut piece of a hairpin would differ from what a cold device routes (5 % in the reviewer's case). `LegSplit.seed` leaves that piece to the router on every device.
+14. **For the web wiring (laptop), before the Wasm part of `SameRouteTest`.** `WebLegs` has no cut key: a cut leg is written under the plain name, and a cut lookup on a plain leg removes that leg from `given`. It needs `_cut` in the name and the flag through encode and decode, as `LegFiles` does; `MAX_PENDING` follows §8.8.
 
 ## Questions for the owner
 1. Do speed-up 3's cut points also count for „Ganz neu berechnen" (row shows whenever the route keeps any point of an
