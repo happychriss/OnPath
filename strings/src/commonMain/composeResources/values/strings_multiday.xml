@@ -5,6 +5,7 @@
         <item quantity="one">%1$d day</item>
         <item quantity="other">%1$d days</item>
     </plurals>
+    <string name="multiday_day_n">Day %1$s</string>
     <string name="multiday_day_of">Day %1$s of %2$s</string>
     <string name="multiday_days_of">Days %1$s–%2$s of %3$s</string>
     <string name="multiday_ride_day">Start day %1$s</string>

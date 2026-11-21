@@ -357,12 +357,13 @@ class MultiDaySlice(
         val v = flow.view ?: return null
         val total = v.days.days.lastOrNull()?.toM?.takeIf { it > 0 } ?: return null
         val pts = waypoints.toList()
-        fun nameAt(p: GeoPoint): String = stopName(p) ?: nearbyNames()[p] ?: endNames[p.lat to p.lon] ?: ""
+        // a place name or null; a night's hotel counts as its end's place before the nearby lookup
+        fun nameAt(p: GeoPoint): String? = (stopName(p) ?: flow.marks[p]?.hotel?.let { h -> h.name ?: h.address }
+            ?: nearbyNames()[p] ?: endNames[p.lat to p.lon])?.trim()?.takeIf { it.isNotEmpty() }
         val ends = listOf(pts.firstOrNull()) + v.days.days.map { d -> d.end?.let { e -> e.planIndex?.let { pts.getOrNull(it) } ?: e.point } ?: pts.lastOrNull() }
         val rows = v.days.days.mapIndexed { i, d ->
-            val from = ends[i]?.let(::nameAt).orEmpty().ifEmpty { com.onpath.app.data.Format.distance(d.fromM) }
-            val to = ends[i + 1]?.let(::nameAt).orEmpty().ifEmpty { com.onpath.app.data.Format.distance(d.toM) }
-            DayRowUi(d.number, from, to, d.distanceM, d.ascentM, d.end?.kind, d.over.isNotEmpty())
+            val places = com.onpath.app.routing.DayRowText.places(ends[i]?.let(::nameAt), ends[i + 1]?.let(::nameAt))
+            DayRowUi(d.number, places, d.distanceM, d.ascentM, d.end?.kind, d.over.isNotEmpty())
         }
         lookUpEndNames(ends.filterNotNull())
         return DaysUi(t.name, v.days.days.size, v.line, v.days.days.mapNotNull { d -> d.end?.let { (it.alongM / total).toFloat() to it.kind } },
@@ -394,7 +395,7 @@ class MultiDaySlice(
         endNamesJob = scope.launchSafe("app", "dayEndNames") {
             val namer = try { host.endNamer() }
                 catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (e: Exception) { Problems.info("plan", "No place index for the day ends; their km shown", e); return@launchSafe }
+                catch (e: Exception) { Problems.info("plan", "No place index for the day ends; their rows without places", e); return@launchSafe }
             val names = withContext(io) {
                 todo.associate { p -> (p.lat to p.lon) to (namer.label(p) ?: "") }
             }

@@ -77,8 +77,8 @@ class MultiDayTourE2ETest : E2EBase() {
             scenario.onActivity { a -> vm(a).multiDay.answerTourMaps(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER); vm(a).planEdit.planSize = PlanSize.FULL }
             pause(1_000, "the sheet grows to full")
             shot("1-overview")
-            // pick day 2 in the rows (its number), then "Tag 2 starten"
-            val two = findFresh(By.text("2"), 8_000)
+            // pick day 2 in the rows (its "Tag 2" line), then "Tag 2 starten"
+            val two = findFresh(By.text(com.onpath.app.routing.DayRowText.day(2)), 8_000)
             assertNotNull("day row 2 – ${state()}", two)
             two!!.click()
             waitUntil("day 2 picked", 5_000) { onVm { it.multiDay.flow.selected == 2..2 } }

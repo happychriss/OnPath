@@ -1,5 +1,6 @@
 {
   "multiday_days_count": {"area": "Multi-day tour", "context": "Number of days of a multi-day tour: My routes row (\"6 Tage · 564 km · Fahrrad\") and the plan sheet's overview title", "priority": 1, "confidence": "sicher", "max": 12},
+  "multiday_day_n": {"area": "Multi-day tour", "context": "First line of a day row in the plan sheet's overview, bold: %1$s = day number (\"Tag 1\")", "priority": 1, "confidence": "sicher", "max": 12},
   "multiday_day_of": {"area": "Multi-day tour", "context": "Navigate's top card and the day's plan sheet while one day is followed: %1$s = day, %2$s = number of days (\"Tag 4 von 6\", sketch round 2)", "priority": 1, "confidence": "sicher", "max": 20},
   "multiday_days_of": {"area": "Multi-day tour", "context": "As multiday_day_of for several days in a row: %1$s–%2$s of %3$s", "priority": 2, "confidence": "sicher", "max": 24},
   "multiday_ride_day": {"area": "Multi-day tour", "context": "The plan sheet's one button in the overview: the picked day becomes the plan (sketch round 2: \"Tag 4 fahren\")", "priority": 1, "confidence": "sicher", "max": 22},

@@ -3087,7 +3087,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/MultiDayUi.kt": {
-      "blob": "74973a843214eddb0ccab152efb869e30b17b5fb",
+      "blob": "16aaf81e190ff6723c2d35c89c782b2c7703ba84",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/SettingsPage.kt": {
@@ -3440,6 +3440,10 @@
         "/** [p] first, the same place not twice, at most [MAX_RECENT]. */",
         "(listOf(p) + recent.filter { it.id != p.id && !SearchMerge.samePlace(it, p) }).take(MAX_RECENT)"
       ]
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/DayRowText.kt": {
+      "blob": "339cf06b986e7742a504ebfd8069261124482a24",
+      "perf": []
     }
   }
 }

@@ -41,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.onpath.app.data.Format
 import com.onpath.app.routing.DayEndKind
+import com.onpath.app.routing.DayRowText
 import com.onpath.app.routing.GeoPoint
 import com.onpath.strings.*
 
@@ -154,15 +155,23 @@ private fun DayRow(r: DayRowUi, picked: Boolean, onTap: () -> Unit, onHold: () -
         .background(if (picked) OnPathColors.Route.copy(alpha = 0.10f) else Color.Transparent)
         .combinedClickable(role = Role.Button, onClick = onTap, onLongClick = onHold)
         .semantics { selected = picked }
-        .padding(horizontal = 8.dp),
+        .padding(horizontal = 8.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        Text("${r.n}", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, modifier = Modifier.widthIn(min = 20.dp))
-        Text("${r.from} – ${r.to}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.weight(1f).padding(start = 6.dp))
-        // R8: a day above a limit per day – its values orange
-        Text(instrument(values, MaterialTheme.typography.bodySmall), style = MaterialTheme.typography.bodySmall,
-            color = if (r.over) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
-            modifier = Modifier.padding(start = 8.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(DayRowText.day(r.n), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false)
+                Spacer(Modifier.weight(1f))
+                // R8: a day above a limit per day – its values orange
+                Text(instrument(values, MaterialTheme.typography.bodySmall), style = MaterialTheme.typography.bodySmall,
+                    color = if (r.over) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
+                    modifier = Modifier.padding(start = 8.dp))
+            }
+            // the grey line: only when the place is known at both ends of the day
+            r.places?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+        }
         Spacer(Modifier.width(8.dp))
         DayEndSign(r.end, 20.dp)
     }

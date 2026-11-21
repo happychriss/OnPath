@@ -1176,20 +1176,30 @@ class MultiDaySliceTest {
 
     // ---------------------------------------------------------------- 9. what the screens show
 
-    @Test fun theOverviewsRowsNameTheEndsAndFallBackToDistances() {
+    @Test fun theOverviewsRowsShowFromToOnlyWhereBothPlacesAreKnown() {
         val app = App(); app.openOverview()
         ui { app.multiDay.tapDay(2) }
         val shown = app.multiDay.daysUi()!!
         assertEquals("Drei Tage", shown.name); assertEquals(3, shown.count); assertEquals(2..2, shown.selected)
         assertEquals(listOf(1, 2, 3), shown.rows.map { it.n })
-        assertEquals("a stop with a name of its own", "Gasthof Post", shown.rows[1].to)
-        assertEquals("and the next day starts there", "Gasthof Post", shown.rows[2].from)
-        assertEquals("no name anywhere: the distance", com.onpath.app.data.Format.distance(shown.rows[0].distanceM), shown.rows[0].to)
-        assertEquals(com.onpath.app.data.Format.distance(0.0), shown.rows[0].from)
+        assertEquals("no name at the start or the first end: no second line, no km", listOf(null, null, null), shown.rows.map { it.places })
+        app.names[A] = "Start"; app.names[C] = "Bad Tölz"
+        val named = app.multiDay.daysUi()!!.rows
+        assertEquals("Start – Bad Tölz", named[0].places)
+        assertEquals("a stop with a name of its own ends day 2 and starts day 3", "Bad Tölz – Gasthof Post", named[1].places)
+        assertNull("the finish has no name: day 3 has no second line", named[2].places)
         assertEquals("the night of day 1 is a night out, day 2's a hotel", listOf(com.onpath.app.routing.DayEndKind.OVERNIGHT, com.onpath.app.routing.DayEndKind.HOTEL, null),
             shown.rows.map { it.end })
         assertEquals(2, shown.borders.size)
         assertEquals(line, shown.profile)
+    }
+
+    @Test fun aHotelsNameIsItsEndsPlaceEvenWhenTheStopHasNoName() {
+        val app = App(); app.openOverview()
+        app.names.remove(D); app.names[C] = "Bad Tölz"; app.names[E] = "Ziel"
+        val rows = app.multiDay.daysUi()!!.rows
+        assertEquals("Bad Tölz – Gasthof Post", rows[1].places)
+        assertEquals("Gasthof Post – Ziel", rows[2].places)
     }
 
     @Test fun theDayEndsAreNamedFromTheOfflineIndexOnceAndNeverTwiceAtTheSameTime() {
@@ -1199,23 +1209,23 @@ class MultiDaySliceTest {
         app.multiDay.daysUi()
         assertEquals("a second look while it runs starts no second lookup", 1, app.namerCalls)
         assertEquals("the names are read on io, held", 1, app.lanes.ioEx.size)
-        app.endNames[C] = "Bad Tölz"
+        app.endNames[C] = "Bad Tölz"; app.endNames[A] = "Start"
         app.settle()
         val after = app.multiDay.daysUi()!!
-        assertEquals("the day's end is named", "Bad Tölz", after.rows[0].to)
-        assertEquals("and the next day starts there", "Bad Tölz", after.rows[1].from)
-        assertEquals("an end the index does not know stays its distance", com.onpath.app.data.Format.distance(after.rows.sumOf { it.distanceM }), after.rows[2].to)
+        assertEquals("the day's start and end are named", "Start – Bad Tölz", after.rows[0].places)
+        assertEquals("and the next day starts there", "Bad Tölz – Gasthof Post", after.rows[1].places)
+        assertNull("an end the index does not know: no second line", after.rows[2].places)
         app.settle()
         assertEquals("every end has an answer now (even an empty one): nothing is looked up again", 1, app.namerCalls)
     }
 
-    @Test fun anIndexThatCannotBeOpenedIsReportedAndTheKmShownAndItIsTriedAgainLater() {
+    @Test fun anIndexThatCannotBeOpenedIsReportedAndTheRowsHaveNoPlacesAndItIsTriedAgainLater() {
         val app = App(); app.indexFails = true; app.openOverview()
         app.multiDay.daysUi(); app.settle()
         assertEquals(1, app.namerCalls)
-        assertTrue(problems.said("plan", Problems.Level.INFO).any { it.contains("No place index for the day ends; their km shown") })
+        assertTrue(problems.said("plan", Problems.Level.INFO).any { it.contains("No place index for the day ends; their rows without places") })
         val rows = app.multiDay.daysUi()!!.rows
-        assertTrue("the km are shown instead of names", rows[0].to.isNotEmpty())
+        assertNull("no names, no second line", rows[0].places)
         app.settle()
         assertEquals("tried again by the next look", 2, app.namerCalls)
     }
