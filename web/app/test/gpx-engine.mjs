@@ -89,5 +89,11 @@ check(JSON.parse(e.trackToPlan('', JSON.stringify(planLine), JSON.stringify(plan
 const none = JSON.parse(e.trackToPlan('', JSON.stringify([[[46.67, 11.16]]]), '[]', 'HIKE', 2));
 check(none.error !== undefined && none.points === undefined, `a one-point track: no plan (${JSON.stringify(none)})`);
 
+// the kept places' line in the Wasm = the app's SearchLines (String.format(Locale.ROOT, "%.6f") under TeaVM)
+const kept = e.recentAdd('', 'n9\tHütte\thut\t\t46.123456789\t-0.0001\t2100\t\tPOI\t\t\t');
+check(kept === 'n9\tHütte\thut\t\t46.123457\t-0.000100\t2100\t\tPOI\t\t\t', `a kept place's line: six decimals, no locale (${JSON.stringify(kept)})`);
+const twice = e.recentAdd(kept, 'n9\tHütte\thut\t\t46.123457\t-0.0001\t2100\t\tPOI\t\t\t');
+check(twice.split('\n').length === 1, 'the same place twice in Zuletzt gesucht: once');
+
 console.log(fails.length ? 'FAILED' : 'all ok');
 }

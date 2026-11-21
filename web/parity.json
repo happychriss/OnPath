@@ -324,15 +324,6 @@
       "blob": "bc73cfafc52b58ba498d22cf1dcd2ab40bf1adc7"
     },
     {
-      "app": "core/src/main/kotlin/com/onpath/app/domain/routes/RoundTrip.kt",
-      "what": "„↻ Rundtour“: a plan = PlanEdits.isRoundTrip on its points; a track = the guess from its line (RouteNamer.LOOP_M / OUT_M) – shared code since 2026-11-20 ([umbau]): the page can call it and drop the copy",
-      "web": [
-        "web/engine/src/main/kotlin/com/onpath/web/WebSync.kt",
-        "web/app/src/routefilter.ts"
-      ],
-      "blob": "f1b5d1b2fe4cef5d7e6879649ada57234fdd4de4"
-    },
-    {
       "app": "app/src/main/java/com/onpath/app/ui/routes/ActivityFilter.kt",
       "what": "activity filter: MENU order, exactly the chosen activity, „Alle“ under a line, preset with the planning activity at each opening, every choice filters at once, the chip's spoken text",
       "web": [
@@ -367,15 +358,6 @@
         "web/app/src/cells.ts"
       ],
       "blob": "3fe621fbbe60a8efa52619b1dc48397c725c532e"
-    },
-    {
-      "app": "core/src/main/kotlin/com/onpath/app/search/SearchLines.kt",
-      "what": "kept places' and Zuletzt gesucht's line (encode / decode – the page stores these lines as they are, keptplaces.ts) and addRecent (20, the same place once) – WebKept.kt; Android prefs → localStorage – shared code since 2026-11-20 ([umbau]): the page can call decode / addRecent; encode uses String.format(Locale.ROOT) – WebKept avoids that for the same text on the JVM and in the browser, so check it before dropping that copy",
-      "web": [
-        "web/engine/src/main/kotlin/com/onpath/web/WebKept.kt",
-        "web/app/src/keptplaces.ts"
-      ],
-      "blob": "032fc65db00cc3f06b5f9dfbaece58bbd02491f9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchScreen.kt",

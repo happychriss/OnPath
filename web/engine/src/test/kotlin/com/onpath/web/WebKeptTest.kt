@@ -21,7 +21,7 @@ class WebKeptTest {
 
     @Test fun theLineIsTheAppsSearchStoreLine() {
         assertEquals("n1\tWaldcafé\tcafe\t\t51.000000\t7.000000\t\t\tPOI\t\t\t", cafe)
-        assertEquals("-0.000100", WebKept.fixed6(-0.0001))
+        assertTrue(code("m", "Minus", -0.0001, -12.5).contains("\t-0.000100\t-12.500000\t"))
         val p = WebKept.decode(code("x", "Hütte", 46.123456789, 11.5, "hut", 2100))!!
         assertEquals(46.123457, p.lat, 1e-9); assertEquals(2100, p.ele)
         assertNull(WebKept.decode("broken"))
