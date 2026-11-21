@@ -39,6 +39,20 @@ object PoiHit {
     }
 
     /**
+     * Whether the map is idle now, i.e. a query of the rendered features does not wait for the render thread (the
+     * premise of [ShownPois]): it became idle ([became], the did-become-idle event) and the camera has not moved since ([moved]).
+     */
+    class IdleTracker {
+        private var idle = false
+        fun became() { idle = true }
+        fun moved() { idle = false }
+        fun idleNow(): Boolean = idle
+    }
+
+    /** A tap / hold may ask the map itself (one small query) only when the list has no POI there and the map is idle. */
+    fun mayQueryMap(listHit: Boolean, mapIdle: Boolean): Boolean = !listHit && mapIdle
+
+    /**
      * When [ShownPois] reads what the map shows: once, on the first map idle (all tiles in, render thread done) after
      * the camera stopped or the map changed (style / data reload, POI settings) – never on a timer while nothing moves
      * (owner's Pixel 2026-11-13: a read every 2 s on a still map cost battery). The map's own idle events (the
@@ -78,6 +92,12 @@ class ShownPois {
     @Volatile private var entries: List<Entry> = emptyList()
     private val trigger = PoiHit.ReadTrigger()
     private var seq = 0
+    private val idle = PoiHit.IdleTracker()
+    private var readAt = 0L
+    private var styleLoadsSinceRead = 0
+
+    /** The camera moves (any move event): the map is busy until its next idle. */
+    fun cameraMoving() = idle.moved()
 
     /**
      * The camera stopped: the next map idle reads. One repaint is asked for, so that idle really comes AFTER this
@@ -94,13 +114,14 @@ class ShownPois {
     }
 
     /** A new style / map data: forget the old list (it belongs to another style); the next map idle reads. */
-    fun styleChanged() { entries = emptyList(); seq++; trigger.changed() }
+    fun styleChanged() { entries = emptyList(); seq++; styleLoadsSinceRead++; trigger.changed() }
 
     /** Other POI settings (kinds shown): the next map idle reads. */
     fun changed() = trigger.changed()
 
     /** The map became idle (render thread done, all tiles in): read what it shows when the trigger says so. */
     fun onMapIdle(map: MapLibreMap, view: View) {
+        idle.became()
         val ready = try { map.style?.isFullyLoaded == true } catch (e: Exception) { Problems.warn("poi", "Style state not readable", e); false }
         if (trigger.mapIdle(ready)) read(map, view)
     }
@@ -122,6 +143,46 @@ class ShownPois {
         Problems.warn("poi", "POI lookup at the finger failed, treated as no POI", e)
         null
     }
+
+    /**
+     * [at] for a tap or hold (not the finger-down buzz): when the list has no POI under the finger and the map is idle
+     * (no camera move since its last did-become-idle, so the query does not wait for the render thread) the map is asked
+     * once, on the finger's box over the POI symbol layers. A hit is the POI and arms the next read; the miss-then-hit
+     * is logged as a warning with what the list looked like (the cause on the owner's phone 2026-11-21 is unproven).
+     * A moving map is never queried.
+     */
+    fun atOrQuery(map: MapLibreMap, x: Float, y: Float, boxDp: Float = 24f): Poi? {
+        val listed = at(map, x, y, boxDp)
+        if (!PoiHit.mayQueryMap(listed != null, idle.idleNow())) return listed
+        val ageS = if (readAt == 0L) -1L else (SystemClock.uptimeMillis() - readAt) / 1000
+        val info = "${entries.size} listed POIs, last read ${if (ageS < 0) "never" else "$ageS s ago"}, " +
+            "style loads since: $styleLoadsSinceRead"
+        return try {
+            val dp = android.content.res.Resources.getSystem().displayMetrics.density
+            val style = map.style
+            if (style == null || !style.isFullyLoaded) return null
+            val ids = style.layers.map { it.id }.filter { PoiHit.symbolLayer(it) }
+            if (ids.isEmpty()) return null
+            val reach = boxDp * dp / 2f + PoiHit.ICON_HALF_DP * dp
+            val feats = map.queryRenderedFeatures(RectF(x - reach, y - reach, x + reach, y + reach), *ids.toTypedArray())
+            val cands = feats.mapNotNull { Poi.fromFeature(it) }.distinctBy { it.id }.map { p ->
+                val s = map.projection.toScreenLocation(LatLng(p.lat, p.lon))
+                PoiHit.Candidate(p, s.x, s.y, true)
+            }
+            val hit = PoiHit.pick(cands, x, y, boxDp * dp, dp)
+            if (hit != null) {
+                Problems.warn("poi", "A tap or hold found a drawn POI the list did not have ($info) – the list was stale, read again")
+                trigger.changed(); repaintOnce(map, "list miss")
+            } else Problems.trace("poi", "No POI at the finger, in the list or on the map ($info)")
+            hit
+        } catch (e: Exception) {
+            Problems.warn("poi", "POI query at the finger failed, treated as no POI", e)
+            null
+        }
+    }
+
+    /** Test hook (E2E): forget the list as if it was stale; nothing re-arms the read. */
+    fun dropListForTest() { entries = emptyList() }
 
     private fun read(map: MapLibreMap, view: View) {
         try {
@@ -150,14 +211,19 @@ class ShownPois {
                 } catch (e: Exception) {
                     Problems.warn("poi", "Shown POIs not read, a tap or hold uses the last list", e); null
                 }
-                if (list != null) view.post { if (mine == seq) entries = list }
+                if (list != null) view.post { if (mine == seq) { entries = list; readAt = SystemClock.uptimeMillis(); styleLoadsSinceRead = 0 } }
             }
         } catch (e: Exception) {
             Problems.warn("poi", "Shown POIs not read (map idle), a tap or hold uses the last list", e)
         }
     }
 
+    init { current = this }
+
     companion object {
+        /** The newest instance (the one map of the app), for the E2E hook. */
+        @Volatile var current: ShownPois? = null
+
         /** One background thread for all maps: turning the read features into POIs. */
         private val worker = Executors.newSingleThreadExecutor { r -> Thread(r, "shown-pois").apply { isDaemon = true } }
     }

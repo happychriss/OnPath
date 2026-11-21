@@ -203,7 +203,7 @@ fun MapHost(
                 vm.searchFlow.cameraIdle()
                 onCamera(map)
             }
-            map.addOnCameraMoveListener { onCamera(map) }
+            map.addOnCameraMoveListener { shownPois.cameraMoving(); onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
@@ -252,7 +252,7 @@ fun MapHost(
                     } == true
                 }
                 // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
-                val poi = if (marker >= 0 && press == MapGestures.Press.HOLD) null else mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y)
+                val poi = if (marker >= 0 && press == MapGestures.Press.HOLD) null else mark?.toPoi() ?: shownPois.atOrQuery(map, screen.x, screen.y)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(PlaceAddMenu.LINE_SNAP_DP.toFloat()) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)

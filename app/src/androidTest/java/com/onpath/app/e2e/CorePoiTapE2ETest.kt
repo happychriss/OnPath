@@ -50,6 +50,21 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         shot("details")
     }
 
+    /**
+     * a2) the list of shown POIs is empty / stale (cause on the owner's phone 2026-11-21 unproven): a tap and a hold on the
+     * drawn symbol still work – on an idle map the tap asks the map itself once (ShownPois.atOrQuery).
+     */
+    @Test fun aTapOnADrawnSymbolWorksWithAnEmptyList() {
+        scenario.onActivity { com.onpath.app.poi.ShownPois.current!!.dropListForTest() }
+        press(symbol.first, symbol.second, 60)
+        waitFor("the POI details with an empty list, tap at ${at(symbol)}") { read { it.selectedPoi?.id } == POI_ID }
+        device.pressBack()
+        waitFor("the details closed") { read { it.selectedPoi } == null }
+        scenario.onActivity { com.onpath.app.poi.ShownPois.current!!.dropListForTest() }
+        hold(symbol.first, symbol.second)
+        waitFor("the POI menu with an empty list, hold at ${at(symbol)}") { read { it.placeMenus.poiMenu?.id } == POI_ID }
+    }
+
     /** b) a real hold on the drawn symbol in Plan → the POI menu; „Start here“ there sets the plan's start on the POI. */
     @Test fun holdOnADrawnPoiSymbolOpensItsMenu() {
         hold(symbol.first, symbol.second)

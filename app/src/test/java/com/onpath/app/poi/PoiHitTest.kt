@@ -110,6 +110,17 @@ class PoiHitTest {
         assertTrue(t.mapIdle(ready = true))
     }
 
+    @Test fun theMapIsAskedOnlyWhenTheListMissesAndTheMapIsIdle() {
+        val t = PoiHit.IdleTracker()
+        assertFalse("before the first idle", t.idleNow())
+        t.became(); assertTrue(t.idleNow())
+        t.moved(); assertFalse("a camera move: busy until the next idle", t.idleNow())
+        t.became(); assertTrue(t.idleNow())
+        assertTrue(PoiHit.mayQueryMap(listHit = false, mapIdle = true))
+        assertFalse("the list has it", PoiHit.mayQueryMap(listHit = true, mapIdle = true))
+        assertFalse("a moving map is never queried", PoiHit.mayQueryMap(listHit = false, mapIdle = false))
+    }
+
     @Test fun readRunsNoTimer() {
         val tap = File("src/main/java/com/onpath/app/poi/PoiTap.kt").readText()
         for (timer in listOf("postDelayed", "Timer(", "schedule", "delay(")) assertFalse(timer, tap.contains(timer))
@@ -120,9 +131,10 @@ class PoiHitTest {
         val host = File("src/main/java/com/onpath/app/ui/MapHost.kt").readText()
         assertFalse(host.contains("queryRenderedFeatures"))
         assertFalse(host.contains("findPoiAt"))
-        assertTrue(host.contains("shownPois.at("))
+        assertTrue("the finger-down buzz (every touch) stays on the list", host.contains("shownPois.at(map, at.x, at.y)"))
+        assertFalse(host.contains("shownPois.atOrQuery(map, at.x"))
         val tap = File("src/main/java/com/onpath/app/poi/PoiTap.kt").readText()
-        val lookup = tap.substringAfter("fun at(").substringBefore("private fun read(")
+        val lookup = tap.substringAfter("fun at(").substringBefore("fun atOrQuery(")
         assertFalse("ShownPois.at reads only its own list", lookup.contains("queryRenderedFeatures"))
     }
 
