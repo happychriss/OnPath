@@ -143,7 +143,8 @@ class LegFiles(
         const val SUFFIX = ".leg"
         private const val MAGIC = "onpath-leg 1"
 
-        fun name(k: LegCache.Key) = "${k.fromLat}_${k.fromLon}_${k.toLat}_${k.toLon}_${k.activity.name}_${k.sac}$SUFFIX"
+        /** A cut leg (§8.9) has "_cut" in its name: the same ends as a plain leg, another file. Plain names are as before. */
+        fun name(k: LegCache.Key) = "${k.fromLat}_${k.fromLon}_${k.toLat}_${k.toLon}_${k.activity.name}_${k.sac}${if (k.cut) "_cut" else ""}$SUFFIX"
 
         /**
          * Text form (one file): header lines, then one line per point "lat⇥lon⇥ele⇥way⇥turn⇥shape" – way = the
@@ -154,7 +155,8 @@ class LegFiles(
             val r = e.leg
             append(MAGIC).append('\n')
             append("key\t").append(e.key.fromLat).append('\t').append(e.key.fromLon).append('\t').append(e.key.toLat).append('\t')
-                .append(e.key.toLon).append('\t').append(e.key.activity.name).append('\t').append(e.key.sac).append('\n')
+                .append(e.key.toLon).append('\t').append(e.key.activity.name).append('\t').append(e.key.sac)
+                .append(if (e.key.cut) "\tcut" else "").append('\n')
             append("fp\t").append(e.fingerprint).append('\n')
             append("data\t").append(e.data).append('\n')
             append("time\t").append(e.timeMs).append('\n')
@@ -195,7 +197,7 @@ class LegFiles(
                 if (f[0] == "points") break
             }
             val k = head.getValue("key")
-            val key = LegCache.Key(k[0].toLong(), k[1].toLong(), k[2].toLong(), k[3].toLong(), Activity.valueOf(k[4]), k[5].toInt())
+            val key = LegCache.Key(k[0].toLong(), k[1].toLong(), k[2].toLong(), k[3].toLong(), Activity.valueOf(k[4]), k[5].toInt(), k.getOrNull(6) == "cut")
             val st = head.getValue("stats").map { it.toDouble() }
             val n = head.getValue("points")[0].toInt()
             require(lines.size >= i + n) { "leg file cut off" }

@@ -21,7 +21,9 @@ package com.onpath.app.routing
  */
 class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore? = null,
                private val maxLinePoints: Int = MAX_LINE_POINTS) {
-    data class Key(val fromLat: Long, val fromLon: Long, val toLat: Long, val toLon: Long, val activity: Activity, val sac: Int)
+    data class Key(val fromLat: Long, val fromLon: Long, val toLat: Long, val toLon: Long, val activity: Activity, val sac: Int,
+                   /** A stitch's cut leg (docs/design/detour-stitch.md §8.9): its own entry, read only by [lookupAnchored]. */
+                   val cut: Boolean = false)
 
     /** A leg found: [stored] = read from the [store] (not routed in this process). */
     class Hit(val leg: RouteResult, val stored: Boolean)
@@ -46,9 +48,17 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
 
     fun get(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): RouteResult? = lookup(from, to, activity, sac)?.leg
 
-    /** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. */
-    fun lookup(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? {
-        val k = key(from, to, activity, sac)
+    /** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. Never a cut leg. */
+    fun lookup(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? = lookup(key(from, to, activity, sac))
+
+    /**
+     * For a leg of an expanded plan that touches an anchor (§8.9): the stitch's cut leg first (memory, then fresh in the
+     * [store]), else the plain leg. Null = route it.
+     */
+    fun lookupAnchored(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? =
+        lookup(key(from, to, activity, sac, cut = true)) ?: lookup(key(from, to, activity, sac))
+
+    private fun lookup(k: Key): Hit? {
         synchronized(lock) { map[k] }?.let { return Hit(it, stored = false) }
         val s = store?.get(k)?.takeIf { it.fresh } ?: return null
         synchronized(lock) { keep(k, s.leg) }
@@ -67,8 +77,9 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
     /** Is the leg known fresh (memory or [store], then kept in memory) – a plan whose legs all are needs no router run. */
     fun has(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Boolean = lookup(from, to, activity, sac) != null
 
-    fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult) {
-        val k = key(from, to, activity, sac)
+    /** [cut] = a stitch's cut leg (own key, §8.9); the Planner stores routed legs plain. */
+    fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult, cut: Boolean = false) {
+        val k = key(from, to, activity, sac, cut)
         synchronized(lock) { keep(k, leg) }
         store?.put(k, from, to, leg)
     }
@@ -96,10 +107,11 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
 
     companion object {
         /**
-         * Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) – a multi-day tour of 189 points
-         * (München–Venedig, stage 0 2026-11-17) routed ~120 of its legs again at every edit with 64.
+         * Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) plus room for its anchors (at most 500,
+         * detour-stitch.md §8.8) and the cut legs – a multi-day tour of 189 points (München–Venedig, stage 0 2026-11-17)
+         * routed ~120 of its legs again at every edit with 64.
          */
-        const val CAPACITY = PlanCode.MAX_POINTS
+        const val CAPACITY = 1_000
         /**
          * The memory bound: line points held in all legs (a point ~50 bytes → ~12 MB). München–Venedig, 594 km, is ~60 000
          * line points – several such tours fit; a 35 km bike leg is ~1 000.
@@ -107,10 +119,10 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         const val MAX_LINE_POINTS = 250_000
 
         /** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */
-        fun key(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int) = Key(
+        fun key(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, cut: Boolean = false) = Key(
             Math.round(from.lat * 1_000_000.0), Math.round(from.lon * 1_000_000.0),
             Math.round(to.lat * 1_000_000.0), Math.round(to.lon * 1_000_000.0),
-            activity, if (activity == Activity.HIKE) sac.coerceIn(1, 5) else 0)
+            activity, if (activity == Activity.HIKE) sac.coerceIn(1, 5) else 0, cut)
     }
 }
 

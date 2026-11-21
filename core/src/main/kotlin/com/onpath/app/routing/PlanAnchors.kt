@@ -30,6 +30,21 @@ class ExpandedPlan(val points: List<GeoPoint>, val pins: Set<Int>, val visibleIn
     fun expandedIndex(v: Int): Int = if (v in positions.indices) positions[v] else -1
 
     val hasAnchors: Boolean get() = points.size != positions.size
+
+    /** The visible points only (the plan as the user sees it). */
+    val visible: List<GeoPoint> by lazy { points.filterIndexed { e, _ -> visibleIndex.getOrElse(e) { -1 } >= 0 } }
+
+    /** [pins] as visible indices (a pinned anchor is no visible point and drops out). */
+    val visiblePins: Set<Int> by lazy { pins.map { visibleOf(it) }.filter { it >= 0 }.toSet() }
+
+    /** The same plan without the anchors between visible point [v] and [v] + 1 (the fallback of a leg with no route, §8.5). */
+    fun withoutAnchorsOfLeg(v: Int): ExpandedPlan {
+        val from = expandedIndex(v); val to = expandedIndex(v + 1)
+        if (from < 0 || to < 0) return this
+        val keep = points.indices.filter { it <= from || it >= to }
+        val newIndex = HashMap<Int, Int>(); keep.forEachIndexed { n, e -> newIndex[e] = n }
+        return ExpandedPlan(keep.map { points[it] }, pins.mapNotNull { newIndex[it] }.toSet(), keep.map { visibleIndex[it] })
+    }
 }
 
 /** Anchors of a plan point: what to put in the expanded list, where to take them, how they follow edits. */

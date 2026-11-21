@@ -122,7 +122,7 @@ class LegCacheTest {
 
     /** Stage 0 (2026-11-17): a 189-point multi-day tour keeps every leg – one per plan point of the largest plan. */
     @Test fun aWholeMultiDayTourStaysInTheCache() {
-        assertEquals(PlanCode.MAX_POINTS, LegCache.CAPACITY)
+        assertEquals(1_000, LegCache.CAPACITY) // §8.8: 500 points + 500 anchors
         val pts = (0 until 190).map { GeoPoint(46.0 + it * 0.01, 11.0) }
         val e = Engine(); val cache = LegCache()
         Planner(e, legs = cache).plan(pts, act, 2)
@@ -207,5 +207,44 @@ class LegCacheTest {
         Planner(e).plan(listOf(p[0], p[1], p[2]), act, 2)
         assertEquals(4, e.calls.size)
         assertNull(LegCache().get(p[0], p[1], act, 2))
+    }
+
+    // ---- cut legs (docs/design/detour-stitch.md §8.9) ----
+
+    private fun leg(a: GeoPoint, b: GeoPoint, d: Double) = RouteResult(listOf(a, b), d, 0.0, 0.0, 1.0)
+
+    @Test fun aCutLegIsNeverReturnedByAPlainLookup() {
+        val cache = LegCache()
+        cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 7.0), cut = true)
+        assertNull(cache.get(p[0], p[1], act, 2))
+        assertNull(cache.lookup(p[0], p[1], act, 2))
+        assertNull(cache.stale(p[0], p[1], act, 2))
+        assertTrue(!cache.has(p[0], p[1], act, 2))
+        assertEquals(7.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)
+    }
+
+    @Test fun anAnchoredLookupPrefersTheCutLegAndFallsBackToThePlainOne() {
+        val cache = LegCache()
+        assertNull(cache.lookupAnchored(p[0], p[1], act, 2))
+        cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 1.0))
+        assertEquals(1.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)
+        cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 7.0), cut = true)
+        assertEquals(7.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)
+        assertEquals(1.0, cache.get(p[0], p[1], act, 2)!!.distanceM, 0.0)
+        assertEquals(2, cache.size)
+    }
+
+    @Test fun aStoredCutLegIsReadFromTheStoreByAnAnchoredLookupOnly() {
+        val kept = HashMap<LegCache.Key, RouteResult>()
+        val store = object : LegStore {
+            override fun get(key: LegCache.Key) = kept[key]?.let { LegStore.Stored(it, fresh = true) }
+            override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) { kept[key] = leg }
+        }
+        LegCache(store = store).put(p[0], p[1], act, 2, leg(p[0], p[1], 7.0), cut = true)
+        val fresh = LegCache(store = store)
+        assertNull(fresh.lookup(p[0], p[1], act, 2))
+        val hit = fresh.lookupAnchored(p[0], p[1], act, 2)!!
+        assertTrue(hit.stored)
+        assertEquals(7.0, hit.leg.distanceM, 0.0)
     }
 }
