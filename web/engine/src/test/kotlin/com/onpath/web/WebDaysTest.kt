@@ -1,7 +1,11 @@
 package com.onpath.web
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.DayEnd
 import com.onpath.app.routing.DayEndKind
+import com.onpath.app.routing.DayRowText
+import com.onpath.app.routing.Hotel
+import com.onpath.app.routing.NightMark
 import com.onpath.app.routing.DayLine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
@@ -61,6 +65,32 @@ class WebDaysTest {
         // a plan point's „Übernachtung hier“: never the start, the finish or a point with a mark; else needs the line
         for (n in listOf(0, 3, 1, 2)) assertEquals("null", WebDays.rule("addNightAt", pts, "BIKE_TOURING", 2, "", "", t3, n, 0.0, 0.0, ""))
         assertEquals("{\"routed\":false}", WebDays.view("46.1,11.1;46.2,11.1", "HIKE", 2, "", "", t3))
+    }
+
+    /**
+     * The day rows' grey „von – nach“ (owner 2026-11-21, variant A): raw names only, both ends or no line. A grey
+     * proposal with no place near it is unknown – it never borrows the finish's name (a first draft did).
+     */
+    @Test fun theDayRowsPlacesAreRawNamesAndOnlyWhenBothEndsAreKnown() {
+        val g = { la: Double -> GeoPoint(la, 11.2) }
+        val plan = SharedPlan(listOf(g(46.6), g(46.65), g(46.7), g(46.75)), Activity.HIKE, 2, emptySet(),
+            mapOf(0 to "Lermoos", 3 to "Biberwier"), null, 4, com.onpath.app.routing.DayLimits.NONE,
+            mapOf(1 to NightMark(Hotel("Gasthof Krone", null, null)), 2 to NightMark.OVERNIGHT), null)
+        val hotel = DayEnd(DayEndKind.HOTEL, 5000.0, 10, g(46.65), 1)
+        val blue = DayEnd(DayEndKind.OVERNIGHT, 10000.0, 20, g(46.7), 2)
+        val grey = DayEnd(DayEndKind.PROPOSAL, 12000.0, 25, GeoPoint(46.72, 11.2), null)
+        val near = { q: GeoPoint -> if (q.lat == 46.7) "Ehrwald" else null }
+        val rows = WebDays.rowPlaces(plan, listOf(hotel, blue, grey, null), plan.points.first(), plan.points.last(), near)
+        assertEquals(DayRowText.places("Lermoos", "Gasthof Krone"), rows[0])
+        assertEquals("a point with no name of its own: the place near it", DayRowText.places("Gasthof Krone", "Ehrwald"), rows[1])
+        assertNull("a grey proposal with no place: unknown, no second line (not the finish's name)", rows[2])
+        assertNull(rows[3])
+        // no names anywhere: no line, never „Start“ / „Ziel“ or a km position
+        val bare = WebDays.rowPlaces(plan.copy(names = emptyMap(), nights = emptyMap()), listOf(blue, null), plan.points.first(), plan.points.last()) { null }
+        assertEquals(listOf(null, null), bare)
+        // a blank name falls through to the next source
+        val blank = WebDays.rowPlaces(plan.copy(names = mapOf(0 to "  ", 3 to "Biberwier")), listOf(null), plan.points.first(), plan.points.last()) { "Garmisch" }
+        assertEquals(DayRowText.places("Garmisch", "Biberwier"), blank[0])
     }
 
     @Test fun aPastedHotelLink() {

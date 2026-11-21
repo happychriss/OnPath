@@ -4,10 +4,10 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
-import com.onpath.app.routing.DayEndKind
-import com.onpath.app.routing.DayLimitKind
+import com.onpath.app.routing.DayEnd
 import com.onpath.app.routing.DayLimits
 import com.onpath.app.routing.DayLine
+import com.onpath.app.routing.DayRowText
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.Hotel
 import com.onpath.app.routing.NightMark
@@ -139,6 +139,20 @@ object WebDays {
         "{\"routed\":false}"
     }
 
+    /**
+     * The day rows' grey „von – nach“ (owner 2026-11-21, variant A – the app's MultiDaySlice.daysUi): one per day of
+     * [dayEnds] (null = the finish), null unless both ends are known. RAW names only – a plan point's own name, its
+     * hotel's name (or address), the place near it ([nameNear]) –, never a km position or „Start“ / „Ziel“; the map's
+     * night markers keep their own names (viewJson's endNames).
+     */
+    internal fun rowPlaces(p: SharedPlan, dayEnds: List<DayEnd?>, first: GeoPoint, finish: GeoPoint, nameNear: (GeoPoint) -> String?): List<String?> {
+        fun named(s: String?) = s?.trim()?.takeIf { it.isNotEmpty() }
+        fun rawAt(index: Int?, g: GeoPoint): String? =
+            (index?.let { i -> named(p.names[i]) ?: p.nights[i]?.hotel?.let { h -> named(h.name) ?: named(h.address) } }) ?: named(nameNear(g))
+        val at = listOf(rawAt(0, first)) + dayEnds.map { e -> if (e == null) rawAt(p.points.lastIndex, finish) else rawAt(e.planIndex, e.point) }
+        return dayEnds.indices.map { k -> DayRowText.places(at[k], at[k + 1]) }
+    }
+
     private fun viewJson(p: SharedPlan, l: DayLine): String {
         val at = pointAt(p, l)
         val n = p.days ?: 1
@@ -150,12 +164,11 @@ object WebDays {
             return RouteNamer.label(g, near)?.takeIf { !it.startsWith("near ") }
         }
         val last = p.points.lastIndex
-        val startName = p.names[0] ?: placeName(l.points.first()) ?: Txt.s(Res.string.plan_point_start)
-        val endName = p.names[last] ?: placeName(l.points.last()) ?: Txt.s(Res.string.plan_point_destination)
         val ends = td.days.mapNotNull { it.end }
         val endNames = ends.map { e ->
             e.planIndex?.let { p.names[it] } ?: placeName(e.point) ?: Txt.s(Res.string.days_km_at, Format.number(e.alongM / 1000, if (e.alongM < 10_000) 1 else 0))
         }
+        val rowPlaces = rowPlaces(p, td.days.map { it.end }, l.points.first(), l.points.last(), ::placeName)
         val total = l.distM.last(); val up = l.upM.last(); val time = l.timeS.last()
         val days = td.days.size.coerceAtLeast(1)
         return buildString {
@@ -171,22 +184,15 @@ object WebDays {
             append(",\"rows\":[")
             td.days.forEachIndexed { k, d ->
                 if (k > 0) append(',')
-                val from = if (k == 0) startName else endNames[k - 1]
-                val to = if (d.end == null) endName else endNames[k]
-                val over = d.over.map { if (it == DayLimitKind.TIME) Format.duration(TimeEstimate.round(d.timeS)) else "↑ " + Format.meters(d.ascentM) }
                 append("{\"n\":").append(d.number)
-                append(",\"title\":").append(Engine.str(Txt.s(Res.string.days_from_to, from, to)))
+                append(",\"day\":").append(Engine.str(DayRowText.day(d.number)))
+                append(",\"places\":").append(rowPlaces[k]?.let { Engine.str(it) } ?: "null")
                 append(",\"stats\":").append(Engine.str(stats(d.distanceM, d.ascentM, d.timeS)))
                 append(",\"fromM\":").append(Engine.num(d.fromM, 1)).append(",\"toM\":").append(Engine.num(d.toM, 1))
                 append(",\"kind\":").append(d.end?.let { Engine.str(it.kind.name) } ?: "null")
                 append(",\"plan\":").append(d.end?.planIndex ?: "null")
-                append(",\"endText\":").append(Engine.str(when (d.end?.kind) {
-                    DayEndKind.PROPOSAL -> Txt.s(Res.string.days_open_night)
-                    DayEndKind.OVERNIGHT -> Txt.s(Res.string.days_overnight)
-                    DayEndKind.HOTEL -> Txt.s(Res.string.days_hotel) + (p.nights[d.end?.planIndex]?.hotel?.name?.let { ": $it" } ?: "")
-                    null -> ""
-                }))
-                append(",\"over\":").append(if (over.isEmpty()) "null" else Engine.str(Txt.s(Res.string.days_over_limit, over.joinToString(" · "))))
+                // R8: above a limit per day – the values orange (the symbol and the colour say it, no text line)
+                append(",\"over\":").append(d.over.isNotEmpty())
                 append('}')
             }
             append("],\"ends\":[")
