@@ -99,6 +99,62 @@ class PlanAnchorsTest {
         assertNull(PlanAnchors.forInsert(listOf(a, z), a, z, GeoPoint(47.0, 11.0 + 30_000.0 / Geo.mPerDegLon(47.0))))
     }
 
+    @Test fun anAnchorIsNeverTheInsertedPointOrALegEnd() {
+        // P sits exactly on the last line point before a 25 km ferry: the `after` anchor may not be P
+        val l = line(45) + GeoPoint(47.0, 11.0 + 70_000.0 / Geo.mPerDegLon(47.0))
+        val s = PlanAnchors.forInsert(l, l.first(), l.last(), l[45])
+        assertTrue(s != null && s.after.isEmpty() && s.before.isNotEmpty())
+        assertTrue(s!!.before.none { it.lat == l[45].lat && it.lon == l[45].lon })
+        // the visible leg ends are no anchors either, even where the line passes them in the middle
+        val m = line(100)
+        val prev = m[40]
+        val t = PlanAnchors.forInsert(m, prev, m.last(), GeoPoint(47.001, m[50].lon))!!
+        assertTrue((t.before + t.after).none { it.lat == prev.lat && it.lon == prev.lon })
+        assertEquals(1, t.before.size) // the neighbour point of km 40 is chosen instead
+    }
+
+    @Test fun aLineThatPassesThePointTwiceNeverGivesThePointAsAnchor() {
+        val step = 1000.0 / Geo.mPerDegLon(47.0)
+        val x = GeoPoint(47.0, Math.round((11.0 + 50 * step) * 1e6) / 1e6)
+        val up = (1..5).map { GeoPoint(47.0 + it * 0.009, x.lon) }
+        val detour = up + up.reversed().drop(1) + x // 10 km out and back to x: x at km 50 and km 60
+        val tail = (1..40).map { GeoPoint(47.0, Math.round((x.lon + it * step) * 1e6) / 1e6) }
+        val l = line(50) + detour + tail
+        val s = PlanAnchors.forInsert(l, l.first(), l.last(), x)!!
+        assertEquals(1, s.after.size)
+        assertTrue(s.after[0].lat != x.lat || s.after[0].lon != x.lon)
+        assertTrue(s.before[0].lat != x.lat || s.before[0].lon != x.lon)
+    }
+
+    @Test fun repeatedPointsKeepTheirOwnPlace() {
+        val (pa, pb, pc) = Triple(pt(0), pt(1), pt(2))
+        val out = PlanAnchors.follow(listOf(pa, pb, pc, pa, pb), listOf(pc, pa, pb), mapOf(0 to Anchors(after = listOf(a(3))), 3 to Anchors(after = listOf(a(4)))))
+        assertEquals(mapOf(1 to Anchors(after = listOf(a(4)))), out)
+    }
+
+    @Test fun aRotatedClosedLoopKeepsTheAnchorsOfItsEdges() {
+        val pa = pt(0); val pb = pt(1); val pc = pt(2); val pd = pt(3)
+        val old = listOf(pa, pb, pc, pd, pa)
+        val anchors = mapOf(1 to Anchors(listOf(a(1)), listOf(a(2))), 2 to Anchors(listOf(a(3)), listOf(a(4))), 3 to Anchors(listOf(a(5)), listOf(a(6))), 4 to Anchors(before = listOf(a(7))), 0 to Anchors(after = listOf(a(8))))
+        // PlanEdits.rotateLoop: start at c
+        val new = PlanEdits.rotateLoop(old, 2)
+        assertEquals(listOf(pc, pd, pa, pb, pc), new)
+        assertEquals(
+            mapOf(
+                0 to Anchors(after = listOf(a(4))), // c: its edge to d
+                1 to Anchors(listOf(a(5)), listOf(a(6))), // d
+                2 to Anchors(listOf(a(7)), listOf(a(8))), // a: before from the old closing point, after from the old start
+                3 to Anchors(listOf(a(1)), listOf(a(2))), // b
+                4 to Anchors(before = listOf(a(3))), // c as the closing point: the edge b to c
+            ),
+            PlanAnchors.follow(old, new, anchors),
+        )
+        // a loop with a repeated pattern has no single shift: the normal rule applies, nothing is invented
+        val periodic = listOf(pa, pb, pa, pb, pa)
+        val r = PlanAnchors.follow(periodic, listOf(pb, pa, pb, pa, pb), mapOf(1 to Anchors(listOf(a(1)))))
+        assertTrue(r.values.all { it.size <= 1 })
+    }
+
     @Test fun legLengthThreshold() {
         val p59 = line(59); val p61 = line(61)
         assertNull(PlanAnchors.forInsert(p59, p59.first(), p59.last(), p59[30]))

@@ -63,14 +63,14 @@ object PlanAnchors {
 
     /**
      * The stitch rule (§1) for a point [p] put on a leg whose routed line is [legLine] (between the visible points
-     * [prev] and [next], kept for the caller's context – the rule looks at the line only). Null when the line is not
+     * [prev] and [next]). Null when the line is not
      * longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line
      * point about [ANCHOR_M] before p's nearest position, `after` = about [ANCHOR_M] behind it; a side stays empty when
      * its leg end is closer than [ANCHOR_M] + [SIDE_MARGIN_M] along the line. An anchor is always an exact point of
      * [legLine] (same lat / lon, but a plain [GeoPoint] without elevation or way data), never interpolated and never the
-     * line's first or last point (that would be a zero-length leg).
+     * line's first or last point, never at [p]'s, [prev]'s or [next]'s place (that would be a zero-length leg), and strictly
+     * before p's position on the `before` side and strictly after it on the `after` side.
      */
-    @Suppress("UNUSED_PARAMETER")
     fun forInsert(legLine: List<GeoPoint>, prev: GeoPoint, next: GeoPoint, p: GeoPoint): Anchors? {
         if (legLine.size < 2) return null
         val cum = Geo.cumulative(legLine)
@@ -87,23 +87,27 @@ object PlanAnchors {
         }
         if (best > MAX_OFF_M) return null
         val at = cum[seg] + bestT * (cum[seg + 1] - cum[seg])
-        val before = if (at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, 1..seg, at - ANCHOR_M) else null
-        val after = if (total - at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, seg + 1..legLine.lastIndex - 1, at + ANCHOR_M) else null
+        val before = if (at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, 1..seg, at - ANCHOR_M) { cum[it] < at && usable(legLine[it], p, prev, next) } else null
+        val after = if (total - at >= ANCHOR_M + SIDE_MARGIN_M) pick(cum, legLine, seg + 1..legLine.lastIndex - 1, at + ANCHOR_M) { cum[it] > at && usable(legLine[it], p, prev, next) } else null
         if (before == null && after == null) return null
         return Anchors(listOfNotNull(before), listOfNotNull(after))
     }
 
-    /** The line point of [range] whose distance along the line is nearest to [target]; the first on a tie. */
-    private fun pick(cum: DoubleArray, line: List<GeoPoint>, range: IntRange, target: Double): GeoPoint? {
+    /** A line point is no anchor where a visible point of the leg sits (lat / lon): that would be a zero-length leg. */
+    private fun usable(g: GeoPoint, vararg visible: GeoPoint) = visible.none { it.lat == g.lat && it.lon == g.lon }
+
+    /** The line point of [range] that passes [ok] whose distance along the line is nearest to [target]; the first on a tie. */
+    private fun pick(cum: DoubleArray, line: List<GeoPoint>, range: IntRange, target: Double, ok: (Int) -> Boolean): GeoPoint? {
         var bi = -1
-        for (i in range) if (bi < 0 || abs(cum[i] - target) < abs(cum[bi] - target)) bi = i
+        for (i in range) if (ok(i) && (bi < 0 || abs(cum[i] - target) < abs(cum[bi] - target))) bi = i
         // a plain coordinate (no ele / way): equal to itself after a code round trip
         return if (bi < 0) null else GeoPoint(line[bi].lat, line[bi].lon)
     }
 
     /**
      * The anchors of [anchors] (by index into [before]) after an edit [before] → [after], the rows of §2 that need no
-     * line. They follow their point by value like [PlanEdits.follow]; a deleted point's anchors go, a moved point (a new
+     * line. They follow their point by value (the common start and end by position first, so a point that is there twice keeps its
+     * place; a rotated closed loop keeps the anchors of its edges); a deleted point's anchors go, a moved point (a new
      * value) has none. When the point next to P on one side changed (deleted, moved, replaced, or a new point inserted
      * there), P loses the anchors of THAT side and keeps the other. Inserts that keep or transfer anchors by line
      * position (an insert between P and one of its anchors) need the line and are piece 2, not here: until then such an
@@ -111,8 +115,8 @@ object PlanAnchors {
      */
     fun follow(before: List<GeoPoint>, after: List<GeoPoint>, anchors: Map<Int, Anchors>): Map<Int, Anchors> {
         if (anchors.isEmpty()) return anchors
-        val src = IntArray(after.size) { -1 }
-        PlanEdits.follow(before, after, before.indices.associateWith { it }).forEach { (j, i) -> src[j] = i }
+        loopShift(before, after)?.let { return rotated(anchors, before.size - 1, it) }
+        val src = sources(before, after)
         val out = HashMap<Int, Anchors>()
         for (j in after.indices) {
             val i = src[j]
@@ -121,6 +125,50 @@ object PlanAnchors {
             val keepAfter = sameNeighbour(src, j + 1, i + 1, before.size)
             val kept = Anchors(if (keepBefore) a.before else emptyList(), if (keepAfter) a.after else emptyList())
             if (!kept.isEmpty) out[j] = kept
+        }
+        return out
+    }
+
+    /**
+     * For each point of [after] the index it had in [before], or -1: the common start and end by position first (so a
+     * point that is there twice, like a closing point, keeps its own place), then the rest by value in order.
+     */
+    private fun sources(before: List<GeoPoint>, after: List<GeoPoint>): IntArray {
+        val src = IntArray(after.size) { -1 }
+        val used = BooleanArray(before.size)
+        val m = minOf(before.size, after.size)
+        var pre = 0
+        while (pre < m && before[pre] == after[pre]) { src[pre] = pre; used[pre] = true; pre++ }
+        var suf = 0
+        while (suf < m - pre && before[before.size - 1 - suf] == after[after.size - 1 - suf]) {
+            src[after.size - 1 - suf] = before.size - 1 - suf; used[before.size - 1 - suf] = true; suf++
+        }
+        val left = HashMap<GeoPoint, ArrayDeque<Int>>()
+        before.forEachIndexed { i, p -> if (!used[i]) left.getOrPut(p) { ArrayDeque() }.addLast(i) }
+        for (j in after.indices) if (src[j] < 0) src[j] = left[after[j]]?.removeFirstOrNull() ?: -1
+        return src
+    }
+
+    /**
+     * The shift k of a rotated closed loop ([PlanEdits.rotateLoop]): both lists start and end at the same point, have the
+     * same size and `after[j] == before[(j + k) % n]` for exactly one k in 0 until n (n = size - 1); null otherwise
+     * (also for k = 0 and for an ambiguous shift – the normal rule then applies).
+     */
+    private fun loopShift(before: List<GeoPoint>, after: List<GeoPoint>): Int? {
+        if (before.size != after.size || before.size < 3 || before.first() != before.last() || after.first() != after.last()) return null
+        val n = before.size - 1
+        val ks = (0 until n).filter { k -> (0 until n).all { j -> after[j] == before[(j + k) % n] } }
+        return ks.singleOrNull()?.takeIf { it != 0 }
+    }
+
+    /** Every point keeps the anchors of its edges: the closing point's `before` and the new start's `after` included. */
+    private fun rotated(anchors: Map<Int, Anchors>, n: Int, k: Int): Map<Int, Anchors> {
+        val out = HashMap<Int, Anchors>()
+        for (j in 0..n) {
+            val i = (j + k) % n
+            val b = if (j == 0) emptyList() else anchors[if (i == 0) n else i]?.before.orEmpty()
+            val a = if (j == n) emptyList() else anchors[i]?.after.orEmpty()
+            if (b.isNotEmpty() || a.isNotEmpty()) out[j] = Anchors(b, a)
         }
         return out
     }

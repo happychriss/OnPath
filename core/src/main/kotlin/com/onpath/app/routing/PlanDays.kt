@@ -326,8 +326,9 @@ object PlanDays {
         if (index <= 0 || index >= plan.points.lastIndex) return DayEdit(plan)
         val label = hotelLabel(hotel)
         val names = if (label != null) plan.names + (index to label) else plan.names - index
-        val moved = plan.copy(points = PlanEdits.replace(plan.points, index, GeoPoint(at.lat, at.lon)), names = names,
-            pinned = plan.pinned - index)
+        val newPoints = PlanEdits.replace(plan.points, index, GeoPoint(at.lat, at.lon))
+        val moved = plan.copy(points = newPoints, names = names, pinned = plan.pinned - index,
+            anchors = PlanAnchors.follow(plan.points, newPoints, plan.anchors))
         val mark = NightMark(hotel)
         return if (plan.nights.containsKey(index)) DayEdit(moved.copy(nights = moved.nights + (index to mark)))
         else withNight(moved, index, mark)
@@ -346,7 +347,8 @@ object PlanDays {
         if (line.size < 2 || pointAt.size != plan.points.size || index !in 1 until plan.points.lastIndex) return blue
         val j = junction(line, pointAt[index - 1], pointAt[index].coerceIn(0, line.lastIndex), pointAt[index + 1])
         val p = line[j]
-        return blue.copy(points = PlanEdits.replace(plan.points, index, GeoPoint(p.lat, p.lon)))
+        val newPoints = PlanEdits.replace(plan.points, index, GeoPoint(p.lat, p.lon))
+        return blue.copy(points = newPoints, anchors = PlanAnchors.follow(plan.points, newPoints, plan.anchors))
     }
 
     /**
@@ -400,7 +402,8 @@ object PlanDays {
         val kept = PlanEdits.follow(old, after, before.nights)
         val moved = PlanEdits.follow(old, after, before.nights, keepMoved = true)
         val nights = moved.mapValues { (j, m) -> if (m.isHotel && j !in kept) NightMark.OVERNIGHT else m }
-        return before.copy(points = after, pinned = pinned, names = names, nights = clean(after, nights))
+        return before.copy(points = after, pinned = pinned, names = names, nights = clean(after, nights),
+            anchors = PlanAnchors.follow(old, after, before.anchors))
     }
 
     /** Night marks only on points between the start and the last point. */
