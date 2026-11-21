@@ -88,7 +88,7 @@ private fun DayRowSketch(d: SketchDay, valuesRight: Boolean, picked: Boolean, on
             }
             // the grey line: only when both places are known
             if (d.from != null && d.to != null)
-                Text("${d.from} – ${d.to}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                Text("${d.from} – ${d.to}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         Spacer(Modifier.width(8.dp))

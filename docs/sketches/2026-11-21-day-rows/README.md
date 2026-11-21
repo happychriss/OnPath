@@ -1,84 +1,52 @@
-# Tage-Liste einer Mehrtagestour – drei Bilder
+# Tage-Liste einer Mehrtagestour
 
-Beispiel: München – Venedig, 6 Tage, Tag 4 ist angetippt. Tag 4 und Tag 5 haben an einem Ende keinen Ort in der Nähe, dort steht keine graue Zeile.
+**Mein Vorschlag: A.** Die Werte stehen untereinander, so lassen sich die Tage am schnellsten vergleichen.
 
-## Im Handy
+Beispiel München – Venedig, Tag 4 ist angetippt. Bei Tag 4 und 5 liegt an einem Ende kein Ort in der Nähe, dort bleibt die graue Zeile weg.
+
+## App
 
 ### Heute
-
-Wie jetzt: Nummer, „von – nach“, Werte rechts. Fehlt ein Ort, steht der Kilometer.
-
 ![Heute](pics/app-heute.png)
 
 ### A – Werte rechts
+![A](pics/app-a.png)
 
-Tag und Länge/Höhenmeter in einer Zeile, die Werte rechts am Rand; darunter grau „von Ort – nach Ort“.
+### B – Werte neben „Tag 1“
+![B](pics/app-b.png)
 
-![A – Werte rechts](pics/app-a.png)
+## Planer
 
-### B – Werte daneben
-
-Tag und Länge/Höhenmeter direkt nebeneinander; darunter grau „von Ort – nach Ort“.
-
-![B – Werte daneben](pics/app-b.png)
-
-## Im Planer, Handy-Breite
+In A und B fehlen hier die Zeit pro Tag und die Zeile „Nacht noch offen“ / „Über der Grenze“, damit er aussieht wie die App. Ob das so bleibt, frage ich danach extra.
 
 ### Heute
-
-Wie jetzt: Nummer, „von – nach“, Werte rechts.
-
 ![Heute](pics/planer-phone-heute.png)
 
 ### A – Werte rechts
+![A](pics/planer-phone-a.png)
 
-Tag und Länge/Höhenmeter in einer Zeile, die Werte rechts am Rand; darunter grau „von Ort – nach Ort“.
+### B – Werte neben „Tag 1“
+![B](pics/planer-phone-b.png)
 
-![A – Werte rechts](pics/planer-phone-a.png)
+<details>
+<summary>Mehr: größte Schrift in der App, Planer am Computer</summary>
 
-### B – Werte daneben
-
-Tag und Länge/Höhenmeter direkt nebeneinander; darunter grau „von Ort – nach Ort“.
-
-![B – Werte daneben](pics/planer-phone-b.png)
-
-## Im Planer, Seitenleiste am Computer
-
-### Heute
-
-Wie jetzt: Nummer, „von – nach“, Werte rechts.
-
-![Heute](pics/planer-desktop-heute.png)
-
-### A – Werte rechts
-
-Tag und Länge/Höhenmeter in einer Zeile, die Werte rechts am Rand; darunter grau „von Ort – nach Ort“.
-
-![A – Werte rechts](pics/planer-desktop-a.png)
-
-### B – Werte daneben
-
-Tag und Länge/Höhenmeter direkt nebeneinander; darunter grau „von Ort – nach Ort“.
-
-![B – Werte daneben](pics/planer-desktop-b.png)
-
-## Im Handy, größte Schrift
-
-### Heute
-
-Wie jetzt: Nummer, „von – nach“, Werte rechts.
-
+### App, größte Schrift: Heute
 ![Heute](pics/app-gross-heute.png)
 
-### A – Werte rechts
+### App, größte Schrift: A
+![A](pics/app-gross-a.png)
 
-Tag und Länge/Höhenmeter in einer Zeile, die Werte rechts am Rand; darunter grau „von Ort – nach Ort“.
+### App, größte Schrift: B
+![B](pics/app-gross-b.png)
 
-![A – Werte rechts](pics/app-gross-a.png)
+### Planer am Computer: Heute
+![Heute](pics/planer-desktop-heute.png)
 
-### B – Werte daneben
+### Planer am Computer: A
+![A](pics/planer-desktop-a.png)
 
-Tag und Länge/Höhenmeter direkt nebeneinander; darunter grau „von Ort – nach Ort“.
+### Planer am Computer: B
+![B](pics/planer-desktop-b.png)
 
-![B – Werte daneben](pics/app-gross-b.png)
-
+</details>
