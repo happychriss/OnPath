@@ -1,0 +1,32 @@
+<!doctype html><html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="file:///home/development/Projects/work/onpath-app/.claude/worktrees/agent-a21ab3b9cfa1bc3a9/web/app/src/fonts/manrope.css"><link rel="stylesheet" href="file:///home/development/Projects/work/onpath-app/.claude/worktrees/agent-a21ab3b9cfa1bc3a9/web/app/src/style.css"><link rel="stylesheet" href="file:///home/development/Projects/work/onpath-app/.claude/worktrees/agent-a21ab3b9cfa1bc3a9/web/app/src/multiday.css">
+<style>
+html, body { height: auto; } body { padding: 0; background: #d9dccf; }
+#sheet { position: static !important; max-height: none !important; margin: 0; }
+.wrap { padding: 12px; } @media (max-width: 700px) { .wrap { padding: 0; } }
+
+.touroverview .today .l1 { display: flex; align-items: baseline; gap: 10px; min-width: 0; }
+.touroverview .today .l1 b { white-space: nowrap; }
+.touroverview .today .vals { white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--muted); }
+.touroverview .today.over .vals { color: var(--warn); }
+.touroverview .today .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+</style></head><body><div class="wrap"><div id="sheet">
+<div id="tourOverview" class="touroverview">
+  <div class="tohead"><button class="toname">München – Venedig</button>
+    <span class="stepper"><button class="iconbtn" aria-label="weniger">−</button><b>6 Tage</b><button class="iconbtn" aria-label="mehr">+</button></span></div>
+  <div class="tototals muted">564 km · ↑ 6480 m · 34 h 30 min</div>
+  <ol class="todays"><li><button class="today" data-day="1" aria-pressed="false">
+          <span class="txt"><span class="l1"><b>Tag 1</b><span class="vals">92,0 km · ↑ 640 m</span></span><span class="nm muted small">München – Bad Tölz</span></span>
+          <span class="daysym grey" style="width:22px;height:22px"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-12.09-8.43-8.32-14.96z"/></svg></span></button></li><li><button class="today over" data-day="2" aria-pressed="false">
+          <span class="txt"><span class="l1"><b>Tag 2</b><span class="vals">96,0 km · ↑ 1420 m</span></span><span class="nm muted small">Bad Tölz – Gasthof Krone</span></span>
+          <span class="daysym green" style="width:22px;height:22px"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 13c1.66 0 3-1.34 3-3S8.66 7 7 7s-3 1.34-3 3 1.34 3 3 3zm12-6h-8v7H3V5H1v15h2v-3h18v3h2v-9c0-2.21-1.79-4-4-4z"/></svg></span></button></li><li><button class="today" data-day="3" aria-pressed="false">
+          <span class="txt"><span class="l1"><b>Tag 3</b><span class="vals">79,0 km · ↑ 980 m</span></span><span class="nm muted small">Gasthof Krone – Brixen</span></span>
+          <span class="daysym blue" style="width:22px;height:22px"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-12.09-8.43-8.32-14.96z"/></svg></span></button></li><li><button class="today sel" data-day="4" aria-pressed="true">
+          <span class="txt"><span class="l1"><b>Tag 4</b><span class="vals">95,0 km · ↑ 420 m</span></span></span>
+          <span class="daysym grey" style="width:22px;height:22px"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-12.09-8.43-8.32-14.96z"/></svg></span></button></li><li><button class="today" data-day="5" aria-pressed="false">
+          <span class="txt"><span class="l1"><b>Tag 5</b><span class="vals">101 km · ↑ 1120 m</span></span></span>
+          <span class="daysym grey" style="width:22px;height:22px"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.34 2.02C6.59 1.82 2 6.42 2 12c0 5.52 4.48 10 10 10 3.71 0 6.93-2.02 8.66-5.02-7.51-.25-12.09-8.43-8.32-14.96z"/></svg></span></button></li><li><button class="today" data-day="6" aria-pressed="false">
+          <span class="txt"><span class="l1"><b>Tag 6</b><span class="vals">101 km · ↑ 220 m</span></span><span class="nm muted small">Bassano – Venedig</span></span>
+          <span class="daysym goal"><svg class="ic" width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M12.36 6l.4 2H18v6h-3.36l-.4-2H7V6h5.36M14 4H5v17h2v-7h5.6l.4 2h7V6h-5.6L14 4z"/></svg></span></button></li></ol>
+</div></div></div></body></html>

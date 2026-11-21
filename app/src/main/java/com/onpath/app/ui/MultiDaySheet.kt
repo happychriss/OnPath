@@ -120,10 +120,14 @@ fun DaysOverview(days: DaysUi, onTap: (Int) -> Unit, onHold: (Int) -> Unit, onHi
             DayBorders(days)
         }
         Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            for (r in days.rows) DayRow(r, days.selected?.let { r.n in it } == true, { onTap(r.n) }, { onHold(r.n) })
+            val row = LocalDayRowSketch.current ?: ::DayRow
+            for (r in days.rows) row(r, days.selected?.let { r.n in it } == true, { onTap(r.n) }, { onHold(r.n) })
         }
     }
 }
+
+/** Sketch hook only (null = today's row): lets a design sketch draw other rows inside the real sheet. */
+internal val LocalDayRowSketch = androidx.compose.runtime.staticCompositionLocalOf<(@Composable (DayRowUi, Boolean, () -> Unit, () -> Unit) -> Unit)?> { null }
 
 /** The day borders over the profile – the same plot area as [ElevationProfile] (40 dp axis left, 6 dp top, 16 dp bottom). */
 @Composable
@@ -148,7 +152,7 @@ private fun DayBorders(days: DaysUi) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun DayRow(r: DayRowUi, picked: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
+internal fun DayRow(r: DayRowUi, picked: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
     val values = "${Format.distance(r.distanceM)} · ↑ ${Format.meters(r.ascentM)}"
     Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
         .background(if (picked) OnPathColors.Route.copy(alpha = 0.10f) else Color.Transparent)
