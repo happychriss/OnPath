@@ -32,6 +32,9 @@ class ExpandedPlan internal constructor(val points: List<GeoPoint>, val pins: Se
 
     val hasAnchors: Boolean get() = points.size != positions.size
 
+    /** Leg [i] → [i] + 1 has an anchor at an end: the one rule for which [LegCache] key it reads (§8.9). */
+    fun touchesAnchor(i: Int): Boolean = visibleOf(i) < 0 || visibleOf(i + 1) < 0
+
     /** The visible points only (the plan as the user sees it). */
     val visible: List<GeoPoint> by lazy { points.filterIndexed { e, _ -> visibleIndex.getOrElse(e) { -1 } >= 0 } }
 
@@ -144,6 +147,57 @@ object PlanAnchors {
         }
         return out
     }
+
+    /**
+     * [follow] for ONE point N put in at index [at] ([after] = [before] with N there) on the visible leg `at − 1 → at`
+     * whose routed line is [legLine] (§2 "Insert N between …", piece 2b): the anchors between the two old points keep their
+     * place on the line instead of being dropped. S = old point `at − 1`'s `after` then old point `at`'s `before`, each
+     * found on [legLine] ([LegSplit.positionsOn]: exactly once, strictly in order). N's place on the line splits S: the
+     * part before N is `after` of point `at − 1` (its own) and `before` of N (the old `at`'s), the part after N is `after`
+     * of N (the old `at − 1`'s) and `before` of the old `at` (its own) – the route still passes every anchor, in the same
+     * order. The outer sides of both points stay; everything else as [follow]. No stitch for N here (the writer adds one
+     * for an off-line N). Any doubt (shape, range, an anchor not found or out of order, one at N, more than 8 on a side) =
+     * [follow]: a side dropped, never a wrong anchor.
+     */
+    fun followInsert(before: List<GeoPoint>, after: List<GeoPoint>, anchors: Map<Int, Anchors>, at: Int, legLine: List<GeoPoint>): Map<Int, Anchors> {
+        val plain = follow(before, after, anchors)
+        if (anchors.isEmpty() || legLine.size < 2 || at !in 1 until before.size || after.size != before.size + 1) return plain
+        if (after.subList(0, at) != before.subList(0, at) || after.subList(at + 1, after.size) != before.subList(at, before.size)) return plain
+        val left = anchors[at - 1]?.after.orEmpty(); val right = anchors[at]?.before.orEmpty()
+        if (left.isEmpty() && right.isEmpty()) return plain
+        val s = left + right
+        val pos = LegSplit.positionsOn(legLine, s)
+        if (pos.any { it < 0 } || (1 until pos.size).any { pos[it] <= pos[it - 1] }) return plain
+        // N's place along the line, as forInsert projects a point
+        val cum = Geo.cumulative(legLine)
+        val flat = Geo.Flat(after[at].lat)
+        var seg = 0; var bestD = Double.MAX_VALUE; var bestT = 0.0
+        for (i in 0 until legLine.lastIndex) {
+            val t = flat.t(after[at], legLine[i], legLine[i + 1])
+            val d = flat.distanceAt(after[at], legLine[i], legLine[i + 1], t)
+            if (d < bestD) { bestD = d; seg = i; bestT = t }
+        }
+        val n = cum[seg] + bestT * (cum[seg + 1] - cum[seg])
+        if (pos.any { cum[it] == n }) return plain
+        val firstHalf = s.indices.filter { cum[pos[it]] < n }
+        val before1 = firstHalf.filter { it < left.size }.map { s[it] }          // left, before N
+        val before2 = firstHalf.filter { it >= left.size }.map { s[it] }         // right, before N
+        val after1 = s.indices.filter { cum[pos[it]] > n && it < left.size }.map { s[it] }
+        val after2 = s.indices.filter { cum[pos[it]] > n && it >= left.size }.map { s[it] }
+        val first = Anchors(anchors[at - 1]?.before.orEmpty(), before1)
+        val mid = Anchors(before2, after1)
+        val last = Anchors(after2, anchors[at]?.after.orEmpty())
+        if (listOf(first, mid, last).any { it.before.size > MAX_SIDE || it.after.size > MAX_SIDE }) return plain
+        val out = HashMap(plain)
+        for (k in at - 1..at + 1) out.remove(k)
+        if (!first.isEmpty) out[at - 1] = first
+        if (!mid.isEmpty) out[at] = mid
+        if (!last.isEmpty) out[at + 1] = last
+        return out
+    }
+
+    /** At most this many anchors per side of a point (the code's limit, §3). */
+    private const val MAX_SIDE = 8
 
     /**
      * For each point of [after] the index it had in [before], or -1: the common start and end by position first (so a

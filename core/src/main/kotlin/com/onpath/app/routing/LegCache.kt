@@ -58,6 +58,19 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
     fun lookupAnchored(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? =
         lookup(key(from, to, activity, sac, cut = true)) ?: lookup(key(from, to, activity, sac))
 
+    /** Leg [i] of [plan]: [lookupAnchored] where it touches an anchor, else [lookup] – the one rule for the key (§8.9). */
+    fun lookupLeg(plan: ExpandedPlan, i: Int, activity: Activity, sac: Int): Hit? {
+        val pts = plan.points
+        return if (plan.touchesAnchor(i)) lookupAnchored(pts[i], pts[i + 1], activity, sac) else lookup(pts[i], pts[i + 1], activity, sac)
+    }
+
+    /**
+     * The leg from MEMORY only (no [store] read), under the plain key or the [cut] key: for [LegSplit.seed] and
+     * [aliasExpanded], which look at many candidate legs – a cold load would otherwise do thousands of file lookups.
+     */
+    fun inMemory(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, cut: Boolean = false): RouteResult? =
+        synchronized(lock) { map[key(from, to, activity, sac, cut)] }
+
     private fun lookup(k: Key): Hit? {
         synchronized(lock) { map[k] }?.let { return Hit(it, stored = false) }
         val s = store?.get(k)?.takeIf { it.fresh } ?: return null
@@ -72,6 +85,16 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
     fun stale(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): RouteResult? {
         val k = key(from, to, activity, sac)
         return synchronized(lock) { map[k] } ?: store?.get(k)?.leg
+    }
+
+    /** [stale] for leg [i] of [plan]: the cut leg first where the leg touches an anchor (§8.9), then the plain one. */
+    fun staleLeg(plan: ExpandedPlan, i: Int, activity: Activity, sac: Int): RouteResult? {
+        val pts = plan.points
+        if (plan.touchesAnchor(i)) {
+            val k = key(pts[i], pts[i + 1], activity, sac, cut = true)
+            (synchronized(lock) { map[k] } ?: store?.get(k)?.leg)?.let { return it }
+        }
+        return stale(pts[i], pts[i + 1], activity, sac)
     }
 
     /** Is the leg known fresh (memory or [store], then kept in memory) – a plan whose legs all are needs no router run. */
@@ -94,6 +117,34 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         val leg = synchronized(lock) { map[key(from, to, activity, sac)] } ?: return false
         put(newFrom, newTo, activity, sac, leg)
         return true
+    }
+
+    /**
+     * [alias] over expanded lists (§8.2): the plan [old] was snapped onto its line and is [new] now. Same layout only
+     * (same size, same [ExpandedPlan.visibleIndex]), else 0. Every leg with a changed end is copied under the new ends
+     * keeping its kind (a cut leg stays cut, a plain one plain; a leg that touches an anchor: cut first, then plain), and
+     * each visible leg with anchors also as its full plain leg (the §8.5 fallback's leg, the old base). Memory only.
+     * Returns the number of legs copied.
+     */
+    fun aliasExpanded(old: ExpandedPlan, new: ExpandedPlan, activity: Activity, sac: Int): Int {
+        if (old.points.size != new.points.size || old.visibleIndex != new.visibleIndex) return 0
+        fun moved(i: Int, j: Int) = key(old.points[i], old.points[j], activity, sac) != key(new.points[i], new.points[j], activity, sac)
+        var copied = 0
+        for (i in 0 until old.points.size - 1) {
+            if (!moved(i, i + 1)) continue
+            val cutLeg = if (old.touchesAnchor(i)) inMemory(old.points[i], old.points[i + 1], activity, sac, cut = true) else null
+            val leg = cutLeg ?: inMemory(old.points[i], old.points[i + 1], activity, sac) ?: continue
+            put(new.points[i], new.points[i + 1], activity, sac, leg, cut = cutLeg != null)
+            copied++
+        }
+        for (v in 0 until old.visibleCount - 1) {
+            val from = old.expandedIndex(v); val to = old.expandedIndex(v + 1)
+            if (to - from < 2 || !moved(from, to)) continue
+            val leg = inMemory(old.points[from], old.points[to], activity, sac) ?: continue
+            put(new.points[from], new.points[to], activity, sac, leg)
+            copied++
+        }
+        return copied
     }
 
     /** Legs held now (in memory). */

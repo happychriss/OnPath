@@ -148,8 +148,7 @@ class Planner(
         /** The cached result of leg [i] of [layout]; the first layout's lookups are counted below. */
         fun lookupLeg(layout: ExpandedPlan, i: Int): RouteResult? {
             val pts = layout.points
-            val anchored = layout.visibleOf(i) < 0 || layout.visibleOf(i + 1) < 0
-            val hit = if (anchored) legs?.lookupAnchored(pts[i], pts[i + 1], activity, sac) else legs?.lookup(pts[i], pts[i + 1], activity, sac)
+            val hit = legs?.lookupLeg(layout, i, activity, sac)
             if (hit != null) return hit.leg.also { if (hit.stored) storedNow++ }
             return local[LegCache.key(pts[i], pts[i + 1], activity, sac)]
         }
