@@ -67,7 +67,6 @@
     <string name="msg_no_folder_picker">Dieses Handy hat keine Ordnerauswahl – Wiederherstellen und Ordnerwahl sind nicht möglich.</string>
     <string name="msg_something_wrong">Etwas ist schiefgegangen. Es wurde unter Einstellungen → Diagnose notiert.</string>
     <string name="msg_rides_title">Fahrten in „%1$s“</string>
-    <string name="msg_unfinished_save_title">Nicht beendete Tour speichern?</string>
     <string name="msg_update_tour_title">Du bist unterwegs</string>
     <string name="msg_update_tour_text">Beim Installieren des Updates wird OnPath geschlossen und die Tour stoppt. Deine Tour bis hierhin bleibt erhalten – öffne OnPath danach und tippe auf „Fortsetzen“. Besser: nach der Tour installieren.</string>
     <string name="msg_update_after_tour">Nach der Tour</string>

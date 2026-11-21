@@ -68,7 +68,6 @@
     <string name="msg_no_folder_picker">This phone has no folder picker – restore and folder choice are not possible.</string>
     <string name="msg_something_wrong">Something went wrong. It was noted in Settings → Diagnostics.</string>
     <string name="msg_rides_title">Rides in “%1$s”</string>
-    <string name="msg_unfinished_save_title">Save the unfinished tour?</string>
     <string name="msg_update_tour_title">You are on the way</string>
     <string name="msg_update_tour_text">Installing the update closes OnPath and the tour stops. Your tour so far is kept – open OnPath afterwards and tap Continue. Better: install after the tour.</string>
     <string name="msg_update_after_tour">After the tour</string>

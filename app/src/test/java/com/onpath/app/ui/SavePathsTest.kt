@@ -52,7 +52,7 @@ class SavePathsTest {
     /** Way 2: the ride summary has no plan part – nor does any end sheet now. */
     @Test fun theRideSummaryOffersNoPlanSave() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        val rides = screen.substringAfter("is EndAsk.Rides -> RideSummaryDialog(").substringBefore("null -> {}")
+        val rides = screen.substringAfter("is EndAsk.Rides -> RideQuestionDialog(").substringBefore("null -> {}")
         assertFalse(rides, rides.contains("routeLabel") || rides.contains("saveRouteAtEnd"))
         // rides found → the summary (and nothing about the plan): TourEndFlowTest.endTourWithARideShowsTheSummaryAfterTheCheckOnIo / theArrivalBoxsEndTourOfATourWithARideShowsTheSummaryAndStopsNothing
     }

@@ -961,6 +961,36 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "nav_ride_q_end": {
+    "area": "End tour – rides",
+    "context": "Amber box title of the end-of-tour question when the ride is at the end of the tour",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_q_along": {
+    "area": "End tour – rides",
+    "context": "Amber box title when the ride is in the middle of the tour",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_q_several": {
+    "area": "End tour – rides",
+    "context": "Amber box line with several rides: %1$d = count, %2$s = total distance",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_q_without": {
+    "area": "End tour – rides",
+    "context": "Primary button: a ride at the end is cut off, a ride in the middle does not count",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "nav_ride_q_with": {
+    "area": "End tour – rides",
+    "context": "Second button: save the tour as ridden, the ride counts",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "nav_rides_kept_note": {
     "area": "End tour – rides",
     "context": "Small note under the choices; 'Edit rides' must match the menu item in My routes",

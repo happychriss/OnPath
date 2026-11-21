@@ -1,6 +1,7 @@
 package com.onpath.app.rides
 
 import com.onpath.app.gpx.TrackPoint
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -110,9 +111,12 @@ class RideViewTest {
             s.options.map { it.title })
         // the hike goes on after the ride: not counted is preselected
         assertEquals(RideChoice.NOT_COUNTED, s.preselected)
+        // the two-button question: "without the ride" = not counted here, "with" = as recorded; nothing split
+        assertEquals(RideChoice.NOT_COUNTED, s.withoutRide); assertEquals(RideChoice.AS_RECORDED, s.withRide); assertFalse(s.atEnd)
         // ride at the end: "Save only until" preselected
         val atEnd = RideView.summary(listOf(pts.subList(0, 21)), listOf(ride), onFoot = true)!!
         assertEquals(RideChoice.UNTIL, atEnd.preselected)
+        assertEquals(RideChoice.UNTIL, atEnd.withoutRide); assertTrue(atEnd.atEnd)
         assertTrue(atEnd.options.none { it.choice == RideChoice.SPLIT })
         // lifts are never cut by default
         val lift = RideView.summary(listOf(pts.subList(0, 21)), listOf(ride.copy(kind = RideKind.LIFT)), onFoot = true)!!

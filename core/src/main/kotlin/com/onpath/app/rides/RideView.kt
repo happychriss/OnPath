@@ -258,7 +258,16 @@ object RideView {
         val options: List<Option>,
         val preselected: RideChoice,
         val lines: Map<RideChoice, List<Line>>,
-    )
+    ) {
+        /** The ride is at the end of the tour (the rule behind [preselected]: "Save only until" is the preselected choice). */
+        val atEnd: Boolean get() = preselected == RideChoice.UNTIL
+        /** "Save without the ride": a ride at the end is cut off, a ride in the middle stays grey and does not count. */
+        val withoutRide: RideChoice get() = if (atEnd) RideChoice.UNTIL else RideChoice.NOT_COUNTED
+        /** "Save with the ride": as recorded. */
+        val withRide: RideChoice get() = RideChoice.AS_RECORDED
+        /** The map of the question: the whole tour with every ride dashed (nothing dropped). */
+        val questionLines: List<Line> get() = lines[RideChoice.NOT_COUNTED].orEmpty()
+    }
 
     fun summary(segments: List<List<TrackPoint>>, rides0: List<Ride>, onFoot: Boolean, zone: ZoneId = ZoneId.systemDefault(),
                 allowSplit: Boolean = true): Summary? {
