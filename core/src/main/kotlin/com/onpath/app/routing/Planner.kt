@@ -140,35 +140,33 @@ class Planner(
             val legs = (1 until vis.size).map { PlannedLeg(listOf(vis[it - 1], vis[it]), true) }
             return PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS, Txt.s(Res.string.plan_err_straight))
         }
+        var storedNow = 0
         var cur = plan
         val nVis = plan.visibleCount - 1
-        // legs routed in this run (plain keys): a restart after a fallback takes them from here even without a cache
+        // legs routed in this run (plain keys): a leg of a new layout (the fallback) may be there without a cache
         val local = HashMap<LegCache.Key, RouteResult>()
-        var first = true
-        var stored = 0
-        // the cached result per leg of a layout; the cached legs are counted on the first layout only
-        fun lookupAll(layout: ExpandedPlan): Array<RouteResult?> {
+        /** The cached result of leg [i] of [layout]; the first layout's lookups are counted below. */
+        fun lookupLeg(layout: ExpandedPlan, i: Int): RouteResult? {
             val pts = layout.points
-            val out = arrayOfNulls<RouteResult>(pts.size - 1)
-            for (i in out.indices) {
-                val anchored = layout.visibleOf(i) < 0 || layout.visibleOf(i + 1) < 0
-                val hit = if (anchored) legs?.lookupAnchored(pts[i], pts[i + 1], activity, sac) else legs?.lookup(pts[i], pts[i + 1], activity, sac)
-                if (hit != null) { out[i] = hit.leg; if (first && hit.stored) stored++ }
-                else out[i] = local[LegCache.key(pts[i], pts[i + 1], activity, sac)]
-            }
-            if (first) { cachedLegs = out.count { it != null }; storedLegs = stored; first = false }
-            return out
+            val anchored = layout.visibleOf(i) < 0 || layout.visibleOf(i + 1) < 0
+            val hit = if (anchored) legs?.lookupAnchored(pts[i], pts[i + 1], activity, sac) else legs?.lookup(pts[i], pts[i + 1], activity, sac)
+            if (hit != null) return hit.leg.also { if (hit.stored) storedNow++ }
+            return local[LegCache.key(pts[i], pts[i + 1], activity, sac)]
         }
         // the visible leg each leg of a layout belongs to
         fun legOf(layout: ExpandedPlan): IntArray {
             var v = -1
             return IntArray(layout.points.size - 1) { i -> if (layout.visibleOf(i) >= 0) v = layout.visibleOf(i); v }
         }
-        var results = lookupAll(cur)
+        var results = Array(cur.points.size - 1) { lookupLeg(cur, it) }
+        cachedLegs = results.count { it != null }
+        storedLegs = storedNow
+        // a leg is settled when it has its line or has been tried and failed / skipped (straight): never asked again in this run
+        var settled = BooleanArray(results.size) { results[it] != null }
         var vOf = legOf(cur)
         // visible legs with something to route (legs from the cache do not count) and how much of it is left
         val remaining = IntArray(nVis)
-        for (i in results.indices) if (results[i] == null) remaining[vOf[i]]++
+        for (i in results.indices) if (!settled[i]) remaining[vOf[i]]++
         val counted = BooleanArray(nVis) { remaining[it] > 0 }
         val reported = BooleanArray(nVis)
         val total = counted.count { it }
@@ -178,7 +176,7 @@ class Planner(
         var timedOut = false
         var i = 0
         while (i < results.size) {
-            if (results[i] != null) { i++; continue }
+            if (settled[i]) { i++; continue }
             stopIfCancelled()
             val pts = cur.points
             val v = vOf[i]
@@ -193,14 +191,23 @@ class Planner(
                 stopIfCancelled() // cancelled: no straight lines, the caller shows nothing new
                 // expected: RoutingException = no route for this leg (a straight dashed line); anything else is an engine bug
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
-                if (e is RoutingException && !e.timedOut && cur.expandedIndex(v + 1) - cur.expandedIndex(v) > 1) {
-                    // an anchor never makes a route worse (§8.5): this visible leg once more in full, without its anchors
+                val from = cur.expandedIndex(v); val to = cur.expandedIndex(v + 1)
+                if (e is RoutingException && !e.timedOut && (e.kind == RoutingException.Kind.OTHER || e.kind == RoutingException.Kind.START_POINT) && to - from > 1) {
+                    // an anchor never makes a route worse (§8.5): this visible leg once more in full, without its anchors.
+                    // Only for a real "no route" – missing data, memory, a busy or missing engine are no reason to change the line.
                     Problems.warn("routing", "Leg ${v + 1} → ${v + 2}: no route through its detour anchors – routed without them", e)
                     cur = cur.withoutAnchorsOfLeg(v)
-                    results = lookupAll(cur)
+                    // what the run holds stays, by index: the legs before the visible leg, the legs after it (shifted), the full leg new
+                    val m = to - from
+                    val oldResults = results; val oldSettled = settled
+                    results = arrayOfNulls(oldResults.size - m + 1)
+                    settled = BooleanArray(results.size)
+                    for (k in 0 until from) { results[k] = oldResults[k]; settled[k] = oldSettled[k] }
+                    for (k in to until oldResults.size) { results[k - m + 1] = oldResults[k]; settled[k - m + 1] = oldSettled[k] }
+                    results[from] = lookupLeg(cur, from); settled[from] = results[from] != null
                     vOf = legOf(cur)
                     remaining.fill(0)
-                    for (k in results.indices) if (results[k] == null) remaining[vOf[k]]++
+                    for (k in results.indices) if (!settled[k]) remaining[vOf[k]]++
                     // a leg that was counted and has nothing left to route now (its full leg came from the cache) is done
                     for (k in 0 until nVis) if (counted[k] && !reported[k] && remaining[k] == 0) { reported[k] = true; done++; progress?.invoke(done, total) }
                     i = 0
@@ -216,6 +223,7 @@ class Planner(
                 } else if (error == null && !isMiniLeg(Geo.distance(pts[i], pts[i + 1]))) error = legError(v + 1, v + 2, e)
                 null
             }
+            settled[i] = true
             remaining[v]--
             if (remaining[v] == 0 && !reported[v]) { reported[v] = true; done++; progress?.invoke(done, total) }
             i++

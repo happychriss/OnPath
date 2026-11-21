@@ -8,6 +8,7 @@ import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assert.fail
+import org.junit.Before
 import org.junit.Test
 
 /**
@@ -25,15 +26,19 @@ class PlannerAnchorsTest {
     private val visible = listOf(v0, v1, v2)
     private val anchors = mapOf(1 to Anchors(listOf(a), listOf(b)))
 
+    @Before fun setUp() { Problems.clear() }
+
     private fun expanded(pins: Set<Int> = emptySet()) = PlanAnchors.expand(visible, anchors, pins)
 
     /** Records every request; [fail] throws "no route", [slow] a timeout. The line is the request's points. */
-    private class Engine(val fail: (List<GeoPoint>) -> Boolean = { false }, val slow: (List<GeoPoint>) -> Boolean = { false }) : RoutingEngine {
+    private class Engine(val fail: (List<GeoPoint>) -> Boolean = { false }, val slow: (List<GeoPoint>) -> Boolean = { false },
+                         val throwing: (List<GeoPoint>) -> Exception? = { null }) : RoutingEngine {
         val calls = mutableListOf<List<GeoPoint>>()
         var onCall: (List<GeoPoint>) -> Unit = {}
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
             calls += waypoints
             onCall(waypoints)
+            throwing(waypoints)?.let { throw it }
             if (slow(waypoints)) throw RoutingException("took too long", timedOut = true)
             if (fail(waypoints)) throw RoutingException("No route found.")
             return RouteResult(waypoints, 1000.0, 5.0, 5.0, 60.0, matched = waypoints)
@@ -51,12 +56,25 @@ class PlannerAnchorsTest {
         assertEquals(4000.0, r.distanceM, 0.0)
     }
 
-    @Test fun aPlanWithoutAnchorsIsTheOldPlan() {
-        val e1 = Engine(); val e2 = Engine()
-        val old = Planner(e1).plan(visible, act, 2, setOf(1))
-        val viaExpanded = Planner(e2).plan(PlanAnchors.expand(visible, emptyMap(), setOf(1)), act, 2)
-        assertEquals(old, viaExpanded)
-        assertEquals(e1.calls, e2.calls)
+    /** Literal values of the parent commit (before ExpandedPlan): the requests, legs, snapped and progress of a plain plan. */
+    @Test fun aPlanWithoutAnchorsBehavesAsBefore() {
+        val e = Engine()
+        val steps = mutableListOf<Pair<Int, Int>>()
+        val r = Planner(e, progress = { d, t -> steps += d to t }).plan(visible, act, 2, setOf(1))
+        assertEquals(listOf(pair(v0, v1), pair(v1, v2)), e.calls)
+        assertEquals(listOf(0 to 2, 1 to 2, 2 to 2), steps)
+        assertEquals(listOf(listOf(v0, v1), listOf(v1, v2)), r.legs.map { it.points })
+        assertEquals(listOf(false, false), r.legs.map { it.straight })
+        assertEquals(listOf<GeoPoint?>(v0, v1, v2), r.snapped)
+        assertEquals(emptySet<Int>(), r.skipped)
+        assertEquals(2000.0, r.distanceM, 0.0)
+        assertEquals(10.0, r.ascentM, 0.0)
+        assertNull(r.error)
+        // a failing leg: the old text and a straight leg
+        val f = Engine(fail = { it == pair(v1, v2) })
+        val bad = Planner(f).plan(visible, act, 2)
+        assertEquals(Planner.legError(2, 3, RoutingException("No route found.")), bad.error)
+        assertEquals(listOf(false, true), bad.legs.map { it.straight })
     }
 
     @Test fun snappedAndSkippedAreInVisiblePoints() {
@@ -236,6 +254,87 @@ class PlannerAnchorsTest {
         }
         assertEquals(listOf(pair(v0, a), pair(a, v1)), e.calls)
     }
+
+    // ---- the fallback only for a real "no route" ----
+
+    @Test fun onlyNoRouteKindsFallBack() {
+        for (kind in RoutingException.Kind.values()) {
+            val e = Engine(throwing = { if (it == pair(a, v1)) RoutingException("x", kind = kind) else null })
+            val r = Planner(e).plan(expanded(), act, 2)
+            val fell = e.calls.contains(pair(v0, v1))
+            val real = kind == RoutingException.Kind.OTHER || kind == RoutingException.Kind.START_POINT
+            assertEquals("kind $kind", real, fell)
+            if (!real) {
+                assertEquals("kind $kind goes on as today", listOf(pair(v0, a), pair(a, v1), pair(v1, b), pair(b, v2)), e.calls)
+                assertNotNull("kind $kind", r.error)
+                assertTrue(r.legs[1].straight)
+            }
+        }
+    }
+
+    @Test fun aThrownNonRoutingExceptionDoesNotFallBack() {
+        val e = Engine(throwing = { if (it == pair(a, v1)) IllegalStateException("bug") else null })
+        val r = Planner(e).plan(expanded(), act, 2)
+        assertFalse(e.calls.contains(pair(v0, v1)))
+        assertTrue(r.legs[1].straight)
+    }
+
+    @Test fun aTimedOutExceptionOfAnyKindDoesNotFallBack() {
+        val e = Engine(throwing = { if (it == pair(a, v1)) RoutingException("x", timedOut = true, kind = RoutingException.Kind.OTHER) else null })
+        Planner(e).plan(expanded(), act, 2)
+        assertFalse(e.calls.contains(pair(v0, v1)))
+    }
+
+    // ---- a restart never asks again ----
+
+    @Test fun aFailedLegBeforeAFallbackIsNotAskedAgain() {
+        // V0 → A has no map data (no fallback, straight, once); then V1 → B → V2 falls back; it fails once, then works
+        var first = true
+        val e = Engine(throwing = {
+            when {
+                it == pair(v0, a) -> RoutingException("x", kind = RoutingException.Kind.NO_DATA)
+                it == pair(b, v2) && first -> { first = false; RoutingException("No route found.") }
+                else -> null
+            }
+        })
+        val r = Planner(e).plan(expanded(), act, 2)
+        assertEquals(listOf(pair(v0, a), pair(a, v1), pair(v1, b), pair(b, v2), pair(v1, v2)), e.calls)
+        assertTrue("the failed leg stays straight", r.legs[0].straight)
+        assertNotNull(r.error)
+    }
+
+    @Test fun requestsStayLinearWhenManyLegsAreDead() {
+        val k = 40
+        val vs = (0..k).map { GeoPoint(50.0 + it * 0.1, 7.0) }
+        val mids = (0 until k).associate { it to GeoPoint(50.05 + it * 0.1, 7.0) }
+        val plan = PlanAnchors.expand(vs, mids.mapValues { Anchors(emptyList(), listOf(it.value)) }, emptySet())
+        val steps = mutableListOf<Pair<Int, Int>>()
+        // every leg: V → mid fine, mid → next fails, and so does the full leg
+        val e = Engine(throwing = { r -> if (r.first() in mids.values || r in vs.zipWithNext { x, y -> pair(x, y) }) RoutingException("No route found.") else null })
+        val r = Planner(e, progress = { d, t -> steps += d to t }).plan(plan, act, 2)
+        assertEquals(3 * k, e.calls.size)
+        assertEquals(k to k, steps.last())
+        assertTrue(steps.all { it.first <= it.second })
+        assertEquals(steps.map { it.first }, steps.map { it.first }.sorted())
+        assertEquals(k, r.legs.count { it.straight })
+    }
+
+    @Test fun anEvictionDuringAFallbackLosesNothingTheRunHolds() {
+        val cache = LegCache(capacity = 2)
+        cache.put(a, v1, act, 2, RouteResult(listOf(a, v1), 7.0, 0.0, 0.0, 1.0, matched = listOf(a, v1)), cut = true)
+        val steps = mutableListOf<Pair<Int, Int>>()
+        val e = Engine(fail = { it == pair(b, v2) && failOnce() })
+        val r = Planner(e, legs = cache, progress = { d, t -> steps += d to t }).plan(expanded(), act, 2)
+        assertEquals(listOf(pair(v0, a), pair(v1, b), pair(b, v2), pair(v1, v2)), e.calls)
+        assertEquals("the cut leg stays in the route", 7.0 + 1000.0 + 1000.0, r.distanceM, 0.0)
+        assertNull(r.error)
+        assertTrue(steps.all { it.first <= it.second })
+        assertEquals(steps.map { it.first }, steps.map { it.first }.sorted())
+        assertEquals(2 to 2, steps.last())
+    }
+
+    private var failures = 0
+    private fun failOnce() = (failures++ == 0)
 
     // ---- PlanResult ----
 

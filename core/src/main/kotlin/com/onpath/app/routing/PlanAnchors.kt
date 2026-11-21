@@ -12,9 +12,10 @@ data class Anchors(val before: List<GeoPoint> = emptyList(), val after: List<Geo
 /**
  * The list the Planner routes (docs/design/detour-stitch.md §1, §8.1): the visible points with each point's anchors in
  * front of and behind it. [pins] are the pinned visible indices mapped into [points]. [visibleIndex] has one entry per
- * expanded point: its visible index, or -1 for an anchor.
+ * expanded point: its visible index, or -1 for an anchor. Built only by [PlanAnchors.expand], [withoutAnchorsOfLeg] and the
+ * Planner's identity expansion (internal constructor): an anchor before the first or after the last visible point cannot exist.
  */
-class ExpandedPlan(val points: List<GeoPoint>, val pins: Set<Int>, val visibleIndex: List<Int>) {
+class ExpandedPlan internal constructor(val points: List<GeoPoint>, val pins: Set<Int>, val visibleIndex: List<Int>) {
     /** The expanded index of every visible point. */
     private val positions: IntArray by lazy {
         val n = (visibleIndex.maxOrNull() ?: -1) + 1
