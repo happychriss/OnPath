@@ -25,6 +25,9 @@
 // Env: MODE=run (default) | verify (read core/src/test/resources/same-route/*.sha, route every plan code cold from an
 //   empty cache, reproduce every hash); TOURS=<comma list of tour names> (default all); ADDS=<n> (default 20, a smoke
 //   run); SHA_DIR=<dir> reads / writes the .sha files there instead of core/src/test/resources/same-route;
+//   CANON=1 (a measurement, never writes .sha files): the base plan is snapped and routed again from the snapped points until
+//   stable (at most 4 runs, really routed legs only, no alias), and after each case's snap every PLAIN leg with a moved end is
+//   routed again from the snapped points (cut legs stay and are counted); remaining mismatches are classed against the cut legs;
 //   SHA_SELFTEST=<dir> (a run with red cases) writes only the green cases there, to try MODE=verify; WRITE_SHA=0 never writes the files (default: written only when EVERY case of all four tours is green).
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.*
@@ -61,7 +64,12 @@ val TOURS = listOf(
 class State(val pts: List<GeoPoint>, val anchors: Map<Int, Anchors>)
 
 /** One warm run: the snapped state, its expanded plan, the line after the snap, and what was routed. */
-class Step(val state: State, val exp: ExpandedPlan, val route: PlannedRoute, val routed: Int, val rerunRouted: Int, val ok: Boolean, val note: String)
+class Step(val state: State, val exp: ExpandedPlan, val route: PlannedRoute, val routed: Int, val rerunRouted: Int, val ok: Boolean, val note: String,
+           /** CANON: requests / seconds spent re-routing plain legs with a moved end, cut legs with a moved end that were kept, cut legs of [exp]. */
+           val extraReq: Int = 0, val extraS: Double = 0.0, val keptCut: Int = 0, val cutLegs: Set<Int> = emptySet())
+
+/** CANON=1: the canonical base and the re-routing of plain legs with a moved end (see the header). */
+val CANON = System.getenv("CANON") == "1"
 
 fun rounded(p: GeoPoint) = GeoPoint(Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6)
 
@@ -91,16 +99,88 @@ fun warm(engine: BRouterEngine, cache: LegCache, st: State, t: Tour): Step {
     val snapped = res.points
     val expS = PlanAnchors.expand(snapped, st.anchors, emptySet())
     cache.aliasExpanded(exp, expS, t.act, t.sac)
+    var extraReq = 0; var keptCut = 0; var extraS = 0.0
+    if (CANON) {
+        // every plain leg with a moved end is routed again from the snapped points (a really routed leg under its plain key);
+        // a cut leg with a moved end stays as it is
+        val t0 = System.nanoTime()
+        for (i in 0 until exp.points.size - 1) {
+            if (key(exp.points[i]) == key(expS.points[i]) && key(exp.points[i + 1]) == key(expS.points[i + 1])) continue
+            val a = expS.points[i]; val b = expS.points[i + 1]
+            if (expS.touchesAnchor(i) && cache.inMemory(a, b, t.act, t.sac, cut = true) != null) { keptCut++; continue }
+            val tmp = LegCache(maxLinePoints = 600_000)
+            val pl = Planner(engine, legs = tmp)
+            try { pl.plan(listOf(a, b), t.act, t.sac) } catch (e: Exception) { log("   canon: leg $i could not be routed again: $e") } // expected: the alias stays
+            extraReq += pl.tries.size
+            tmp.get(a, b, t.act, t.sac)?.let { cache.put(a, b, t.act, t.sac, it) }
+        }
+        extraS = (System.nanoTime() - t0) / 1e9
+    }
     val p2 = Planner(engine, legs = cache)
     val again = p2.plan(expS, t.act, t.sac)
     val ok = clean(res.route) && clean(again)
     val note = if (!clean(res.route)) "first run: ${res.route.error}" else if (!clean(again)) "rerun: ${again.error}" else ""
-    return Step(State(snapped, st.anchors), expS, again, p1.tries.size, p2.tries.size, ok, note)
+    val cutLegs = (0 until expS.points.size - 1).filter { expS.touchesAnchor(it) && cache.inMemory(expS.points[it], expS.points[it + 1], t.act, t.sac, cut = true) != null }.toSet()
+    return Step(State(snapped, st.anchors), expS, again, p1.tries.size, p2.tries.size, ok, note, extraReq, extraS, keptCut, cutLegs)
+}
+
+/** CANON: route, snap, route again from the snapped points (really routed legs only) until stable at 1e-6 or 4 runs. */
+fun canonBase(engine: BRouterEngine, t: Tour): Pair<Step, LegCache> {
+    var pts = t.pts
+    var last: Step? = null; var cache = LegCache(maxLinePoints = 600_000)
+    val t0 = System.nanoTime(); var firstS = 0.0
+    var stable = false
+    for (r in 1..4) {
+        cache = LegCache(maxLinePoints = 600_000)
+        val exp = PlanAnchors.expand(pts, emptyMap(), emptySet())
+        val p = Planner(engine, legs = cache)
+        val tr = System.nanoTime()
+        val res = PlanResult.plan(p, exp, t.act, t.sac, emptySet(), F)
+        val sec = (System.nanoTime() - tr) / 1e9
+        if (r == 1) firstS = sec
+        val moved = pts.indices.count { key(res.points[it]) != key(pts[it]) }
+        log("canonical base ${t.name}: run $r routed ${p.tries.size} requests in %.1f s; %d of %d points moved when routed from their position".format(sec, moved, pts.size))
+        last = Step(State(pts, emptyMap()), exp, res.route, p.tries.size, 0, clean(res.route), if (clean(res.route)) "" else "first run: ${res.route.error}")
+        if (!clean(res.route)) break
+        if (moved == 0) { stable = true; break }
+        pts = res.points
+    }
+    val total = (System.nanoTime() - t0) / 1e9
+    log("canonical base ${t.name}: ${if (stable) "stable" else "NOT stable"} after the last run; total %.1f s, of it %.1f s beyond the first run".format(total, total - firstS))
+    return last!! to cache
+}
+
+/** The index range of each leg of [route] on its joined line ([PlannedRoute.points]). */
+fun legRanges(route: PlannedRoute): Pair<IntArray, IntArray> {
+    val start = IntArray(route.legs.size); val end = IntArray(route.legs.size)
+    val out = ArrayList<GeoPoint>()
+    for ((i, leg) in route.legs.withIndex()) {
+        var first = true
+        for (p in leg.points) {
+            if (out.isEmpty() || out.last() != p) out += p else out[out.size - 1] = p
+            if (first) { start[i] = out.size - 1; first = false }
+        }
+        end[i] = out.size - 1
+    }
+    return start to end
+}
+
+/** CANON: where a differing hunk (warm index range [h0, h1)) lies against the CUT legs of the warm plan. */
+fun hunkKind(step: Step, h0: Int, h1: Int): String {
+    val (start, end) = legRanges(step.route)
+    val lo = h0; val hi = maxOf(h1 - 1, h0)
+    val inside = step.cutLegs.any { start[it] < lo && hi < end[it] }
+    val join = !inside && step.cutLegs.any { lo <= end[it] + 1 && hi >= start[it] - 1 }
+    return if (inside) "inside a CUT leg" else if (join) "at a join with a cut leg" else "elsewhere"
 }
 
 class Case(val tour: String, val name: String, val anchors: Int, val code: String, val warmHash: String, val coldHash: String,
            val warmM: Double, val coldM: Double, val routedWarm: Int, val rerunRouted: Int, val problems: List<String>) {
     val green get() = problems.isEmpty()
+    // CANON measurements
+    var extraReq = 0; var extraS = 0.0; var keptCut = 0
+    /** Visible points the cold route moves again (PlanResult.snap on the cold line) / visible points of the plan. */
+    var coldMoved = 0; var visiblePts = 0
 }
 
 /** Cold: PlanCode round trip, expand, route with [coldCache] (plain routed legs only), compare with the warm line. */
@@ -128,16 +208,22 @@ fun cold(engine: BRouterEngine, coldCache: LegCache, step: Step, t: Tour, name: 
     val wl = step.route.points; val cl = coldRoute.points
     val wh = sha(wl); val ch = sha(cl)
     val dPct = if (coldRoute.distanceM > 0) 100.0 * (step.route.distanceM - coldRoute.distanceM) / coldRoute.distanceM else 0.0
-    if (wh != ch) problems += describeDiff(wl, cl, step.exp, step.route, dPct)
+    if (wh != ch) problems += describeDiff(wl, cl, step.exp, step.route, dPct, step)
     if (Math.abs(dPct) > 0.5) problems += "distance differs %.2f %% (warm %.0f m, cold %.0f m)".format(dPct, step.route.distanceM, coldRoute.distanceM)
     return Case(t.name, name, step.state.anchors.values.sumOf { it.size }, code, wh, ch, step.route.distanceM, coldRoute.distanceM,
-        step.routed, step.rerunRouted, problems)
+        step.routed, step.rerunRouted, problems).also { c ->
+        c.extraReq = step.extraReq; c.extraS = step.extraS; c.keptCut = step.keptCut
+        val routedVisible = expC.visible
+        val sn = PlanResult.snap(routedVisible, coldRoute, emptySet(), emptySet())
+        c.visiblePts = routedVisible.size
+        c.coldMoved = routedVisible.indices.count { key(sn.points[it]) != key(routedVisible[it]) }
+    }
 }
 
 fun key(p: GeoPoint) = Math.round(p.lat * 1e6) to Math.round(p.lon * 1e6)
 
 /** The differing stretch between two lines: its length in metres (warm / cold side), the leg, which one is longer. */
-fun describeDiff(w: List<GeoPoint>, c: List<GeoPoint>, exp: ExpandedPlan, route: PlannedRoute, dPct: Double): String {
+fun describeDiff(w: List<GeoPoint>, c: List<GeoPoint>, exp: ExpandedPlan, route: PlannedRoute, dPct: Double, step: Step? = null): String {
     val m = minOf(w.size, c.size)
     var pre = 0
     while (pre < m && key(w[pre]) == key(c[pre])) pre++
@@ -160,7 +246,8 @@ fun describeDiff(w: List<GeoPoint>, c: List<GeoPoint>, exp: ExpandedPlan, route:
         val near = exp.points.indices.minByOrNull { Geo.distance(exp.points[it], a) }!!
         "%d–%d warm %.0f m vs %d–%d cold %.0f m at %.6f,%.6f (%.0f m from %s)".format(h[0], h[1], Geo.length(w.subList(maxOf(h[0] - 1, 0), minOf(h[1] + 1, w.size))),
             h[2], h[3], Geo.length(c.subList(maxOf(h[2] - 1, 0), minOf(h[3] + 1, c.size))), a.lat, a.lon, Geo.distance(exp.points[near], a),
-            if (exp.visibleOf(near) >= 0) "plan point ${exp.visibleOf(near)}" else "anchor (expanded #$near)")
+            if (exp.visibleOf(near) >= 0) "plan point ${exp.visibleOf(near)}" else "anchor (expanded #$near)") +
+            (if (CANON && step != null) " [" + hunkKind(step, h[0], h[1]) + "]" else "")
     }
     fun hunkLen(l: List<GeoPoint>, a: Int, b: Int) = Geo.length(l.subList(maxOf(a - 1, 0), minOf(b + 1, l.size)))
     val totW = hs.sumOf { hunkLen(w, it[0], it[1]) }; val totC = hs.sumOf { hunkLen(c, it[2], it[3]) }
@@ -226,9 +313,9 @@ fun runTour(engine: BRouterEngine, t: Tour, nAdds: Int): List<Case> {
     fun s() = (System.nanoTime() - t0) / 1_000_000_000
     val out = ArrayList<Case>()
     val coldCache = LegCache(maxLinePoints = 600_000)
-    val baseCache = LegCache(maxLinePoints = 600_000)
+    var baseCache = LegCache(maxLinePoints = 600_000)
     log("== ${t.name}: base plan, ${t.pts.size} points")
-    val base = warm(engine, baseCache, State(t.pts, emptyMap()), t)
+    val base = if (CANON) canonBase(engine, t).let { (st, c) -> baseCache = c; st } else warm(engine, baseCache, State(t.pts, emptyMap()), t)
     if (!base.ok) {
         out += Case(t.name, "base", 0, "", "", "", 0.0, 0.0, base.routed, 0, listOf("the base plan cannot be routed: ${base.note}"))
         return out
@@ -399,8 +486,22 @@ fun main() {
         log("\nMISMATCHES")
         for (c in red) log("${c.tour} | ${c.name} | anchors ${c.anchors}\n    " + c.problems.joinToString("\n    "))
     }
+    if (CANON) {
+        log("\n==== CANON summary (stitched cases only, the control 'base' excluded; the control is reported on its own) ====")
+        for ((tour, cs) in perTour) {
+            val st = cs.filter { !it.name.startsWith("base") }; val ctl = cs.filter { it.name.startsWith("base") }
+            val adds = st.filter { it.name.startsWith("add") }
+            val vis = st.sumOf { it.visiblePts }
+            log("$tour: stitched ${st.count { it.green }} green / ${st.count { !it.green }} red; control ${ctl.joinToString { if (it.green) "green" else "red" }}")
+            log("   re-routed legs per case (adds): %.1f requests, %.1f s on average, max %d requests / %.1f s; cut legs with a moved end kept: %d in all; all cases %d requests, %.1f s".format(
+                adds.map { it.extraReq }.average(), adds.map { it.extraS }.average(), adds.maxOfOrNull { it.extraReq } ?: 0, adds.maxOfOrNull { it.extraS } ?: 0.0,
+                st.sumOf { it.keptCut }, st.sumOf { it.extraReq }, st.sumOf { it.extraS }))
+            log("   visible points the cold route moves again: %d of %d (in %d of %d cases)".format(st.sumOf { it.coldMoved }, vis, st.count { it.coldMoved > 0 }, st.size))
+        }
+    }
     val full = names == null && nAdds == 20 && perTour.size == TOURS.size
-    if (red.isEmpty() && full && System.getenv("WRITE_SHA") != "0") {
+    if (CANON) log("CANON run: no .sha files are written")
+    else if (red.isEmpty() && full && System.getenv("WRITE_SHA") != "0") {
         val dir = shaDir().apply { mkdirs() }
         for ((tour, cs) in perTour) File(dir, "$tour.sha").writeText(cs.joinToString("") { shaLine(it) })
         log("wrote ${perTour.size} .sha files to $dir")
