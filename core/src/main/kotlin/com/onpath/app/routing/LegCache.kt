@@ -87,8 +87,12 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         return synchronized(lock) { map[k] } ?: store?.get(k)?.leg
     }
 
-    /** [stale] for leg [i] of [plan]: the cut leg first where the leg touches an anchor (§8.9), then the plain one. */
+    /**
+     * [stale] for leg [i] of [plan]: a FRESH leg first ([lookupLeg]), only then a stale cut leg (where the leg touches an
+     * anchor, §8.9), then a stale plain one – a stand-in never takes an old line where a current one exists.
+     */
     fun staleLeg(plan: ExpandedPlan, i: Int, activity: Activity, sac: Int): RouteResult? {
+        lookupLeg(plan, i, activity, sac)?.let { return it.leg }
         val pts = plan.points
         if (plan.touchesAnchor(i)) {
             val k = key(pts[i], pts[i + 1], activity, sac, cut = true)

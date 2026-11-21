@@ -152,42 +152,80 @@ object PlanAnchors {
      * [follow] for ONE point N put in at index [at] ([after] = [before] with N there) on the visible leg `at − 1 → at`
      * whose routed line is [legLine] (§2 "Insert N between …", piece 2b): the anchors between the two old points keep their
      * place on the line instead of being dropped. S = old point `at − 1`'s `after` then old point `at`'s `before`, each
-     * found on [legLine] ([LegSplit.positionsOn]: exactly once, strictly in order). N's place on the line splits S: the
-     * part before N is `after` of point `at − 1` (its own) and `before` of N (the old `at`'s), the part after N is `after`
-     * of N (the old `at − 1`'s) and `before` of the old `at` (its own) – the route still passes every anchor, in the same
-     * order. The outer sides of both points stay; everything else as [follow]. No stitch for N here (the writer adds one
-     * for an off-line N). Any doubt (shape, range, an anchor not found or out of order, one at N, more than 8 on a side) =
-     * [follow]: a side dropped, never a wrong anchor.
+     * found on [legLine] ([LegSplit.positionsOn]: exactly once, strictly in order). N's place on the line splits S into S1
+     * (before N) and S2 (after N).
+     * - N on the line (within [LegSplit.ON_LINE_M] of a line point): S1 is `after` of point `at − 1` (its own) and `before`
+     *   of N (the old `at`'s), S2 is `after` of N (the old `at − 1`'s) and `before` of the old `at` (its own); the route
+     *   still passes every anchor in the same order, no new anchor.
+     * - N off the line (up to [MAX_OFF_M]): N gets its own stitch ([forInsert]: anchors `an` before and `bn` after it) and the
+     *   old anchors give way to it: of S1 only those before `an` stay (no `an`: those at least [ANCHOR_M] before N), of S2
+     *   only those after `bn` (no `bn`: at least [ANCHOR_M] behind N), then N's `before` = its kept S1, `an`; its `after` =
+     *   `bn`, its kept S2. An anchor kept near an off-line N would force the detour through the old line beside it.
+     * The outer sides of both points stay; everything else as [follow]. Any doubt (shape, range, N farther than [MAX_OFF_M],
+     * an anchor not found or out of order, the result not strictly in line order, two equal neighbours, one at a visible
+     * point, more than [MAX_SIDE] on a side) = [follow]: a side dropped, never a wrong anchor.
      */
     fun followInsert(before: List<GeoPoint>, after: List<GeoPoint>, anchors: Map<Int, Anchors>, at: Int, legLine: List<GeoPoint>): Map<Int, Anchors> {
         val plain = follow(before, after, anchors)
-        if (anchors.isEmpty() || legLine.size < 2 || at !in 1 until before.size || after.size != before.size + 1) return plain
+        if (legLine.size < 2 || at !in 1 until before.size || after.size != before.size + 1) return plain
         if (after.subList(0, at) != before.subList(0, at) || after.subList(at + 1, after.size) != before.subList(at, before.size)) return plain
         val left = anchors[at - 1]?.after.orEmpty(); val right = anchors[at]?.before.orEmpty()
-        if (left.isEmpty() && right.isEmpty()) return plain
         val s = left + right
         val pos = LegSplit.positionsOn(legLine, s)
         if (pos.any { it < 0 } || (1 until pos.size).any { pos[it] <= pos[it - 1] }) return plain
         // N's place along the line, as forInsert projects a point
+        val nPt = after[at]
         val cum = Geo.cumulative(legLine)
-        val flat = Geo.Flat(after[at].lat)
-        var seg = 0; var bestD = Double.MAX_VALUE; var bestT = 0.0
+        val flat = Geo.Flat(nPt.lat)
+        var seg = 0; var offM = Double.MAX_VALUE; var bestT = 0.0
         for (i in 0 until legLine.lastIndex) {
-            val t = flat.t(after[at], legLine[i], legLine[i + 1])
-            val d = flat.distanceAt(after[at], legLine[i], legLine[i + 1], t)
-            if (d < bestD) { bestD = d; seg = i; bestT = t }
+            val t = flat.t(nPt, legLine[i], legLine[i + 1])
+            val d = flat.distanceAt(nPt, legLine[i], legLine[i + 1], t)
+            if (d < offM) { offM = d; seg = i; bestT = t }
         }
-        val n = cum[seg] + bestT * (cum[seg + 1] - cum[seg])
-        if (pos.any { cum[it] == n }) return plain
-        val firstHalf = s.indices.filter { cum[pos[it]] < n }
-        val before1 = firstHalf.filter { it < left.size }.map { s[it] }          // left, before N
-        val before2 = firstHalf.filter { it >= left.size }.map { s[it] }         // right, before N
-        val after1 = s.indices.filter { cum[pos[it]] > n && it < left.size }.map { s[it] }
-        val after2 = s.indices.filter { cum[pos[it]] > n && it >= left.size }.map { s[it] }
-        val first = Anchors(anchors[at - 1]?.before.orEmpty(), before1)
-        val mid = Anchors(before2, after1)
-        val last = Anchors(after2, anchors[at]?.after.orEmpty())
+        if (offM > MAX_OFF_M) return plain
+        val posN = cum[seg] + bestT * (cum[seg + 1] - cum[seg])
+        if (pos.any { cum[it] == posN }) return plain
+        val onLine = legLine.any { Geo.distance(it, nPt) <= LegSplit.ON_LINE_M }
+        if (onLine && s.isEmpty()) return plain // nothing to move, no stitch for a point on the line
+        // the line index of each anchor kept, in expanded order, for the final check
+        var an: GeoPoint? = null; var bn: GeoPoint? = null
+        var keepS1: (Int) -> Boolean = { cum[pos[it]] < posN }
+        var keepS2: (Int) -> Boolean = { cum[pos[it]] > posN }
+        val ends = ArrayList<Int>() // line indices of an, bn
+        if (!onLine) {
+            val own = forInsert(legLine, before[at - 1], before[at], nPt)
+            val cand = listOfNotNull(own?.before?.firstOrNull(), own?.after?.firstOrNull())
+            val found = LegSplit.positionsOn(legLine, cand)
+            val anIx = if (own?.before?.isNotEmpty() == true) found[0].takeIf { it >= 0 } else null
+            val bnIx = if (own?.after?.isNotEmpty() == true) found[cand.size - 1].takeIf { it >= 0 } else null
+            if (anIx != null) { an = GeoPoint(legLine[anIx].lat, legLine[anIx].lon); ends += anIx }
+            if (bnIx != null) { bn = GeoPoint(legLine[bnIx].lat, legLine[bnIx].lon); ends += bnIx }
+            val anAt = anIx?.let { cum[it] }; val bnAt = bnIx?.let { cum[it] }
+            keepS1 = { if (anAt != null) cum[pos[it]] < anAt && cum[pos[it]] < posN else cum[pos[it]] <= posN - ANCHOR_M }
+            keepS2 = { if (bnAt != null) cum[pos[it]] > bnAt && cum[pos[it]] > posN else cum[pos[it]] >= posN + ANCHOR_M }
+        }
+        val s1 = s.indices.filter { cum[pos[it]] < posN && keepS1(it) }
+        val s2 = s.indices.filter { cum[pos[it]] > posN && keepS2(it) }
+        val first = Anchors(anchors[at - 1]?.before.orEmpty(), s1.filter { it < left.size }.map { s[it] })
+        val mid = Anchors(s1.filter { it >= left.size }.map { s[it] } + listOfNotNull(an),
+            listOfNotNull(bn) + s2.filter { it < left.size }.map { s[it] })
+        val last = Anchors(s2.filter { it >= left.size }.map { s[it] }, anchors[at]?.after.orEmpty())
         if (listOf(first, mid, last).any { it.before.size > MAX_SIDE || it.after.size > MAX_SIDE }) return plain
+        // the check: this leg's anchors in expanded order are strictly increasing along the line, no two neighbours equal,
+        // none at a visible point
+        val order = ArrayList<Int>(); val coords = ArrayList<GeoPoint>()
+        fun add(ix: Int, g: GeoPoint) { order += ix; coords += g }
+        for (k in s1.filter { it < left.size }) add(pos[k], s[k])
+        for (k in s1.filter { it >= left.size }) add(pos[k], s[k])
+        if (an != null) add(ends[0], an)
+        if (bn != null) add(ends[ends.size - 1], bn)
+        for (k in s2.filter { it < left.size }) add(pos[k], s[k])
+        for (k in s2.filter { it >= left.size }) add(pos[k], s[k])
+        if ((1 until order.size).any { order[it] <= order[it - 1] }) return plain
+        if ((1 until coords.size).any { coords[it].lat == coords[it - 1].lat && coords[it].lon == coords[it - 1].lon }) return plain
+        val visible = listOf(before[at - 1], nPt, before[at])
+        if (coords.any { c -> visible.any { it.lat == c.lat && it.lon == c.lon } }) return plain
         val out = HashMap(plain)
         for (k in at - 1..at + 1) out.remove(k)
         if (!first.isEmpty) out[at - 1] = first

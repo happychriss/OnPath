@@ -51,8 +51,8 @@ object LegSplit {
      * a parent with an anchor at an end is the cut leg, else the plain one. Its inner points that lie on its line exactly
      * once and in order ([positionsOn]) cut it by repeated [split] (the numbers keep adding up); only the pieces that are
      * exactly one leg of the list and not known yet are stored – a piece around an off-line point (the detour's P) is
-     * routed. A piece that touches an anchor is stored as a cut leg; one between two visible points only from a plain
-     * parent (cuts never reach a leg that touches no anchor, §8.9). Without anchors this is the plain [seed]. Returns
+     * routed. A piece that touches an anchor is stored as a cut leg; one between two visible points only in the old
+     * seed's case (§8.9). Without anchors this is the plain [seed]. Returns
      * the number of legs stored.
      */
     fun seed(cache: LegCache, plan: ExpandedPlan, activity: Activity, sac: Int): Int {
@@ -64,6 +64,13 @@ object LegSplit {
             val cutOne = if (plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0) cache.inMemory(pts[i], pts[j], activity, sac, cut = true) else null
             val cutParent = cutOne != null
             val parent = cutOne ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
+            // nothing left to cut: every leg in between is in memory already (cut leg where it touches an anchor, or plain)
+            if ((i until j).all { k -> cache.inMemory(pts[k], pts[k + 1], activity, sac, cut = plan.touchesAnchor(k)) != null ||
+                    cache.inMemory(pts[k], pts[k + 1], activity, sac) != null }) continue
+            // a piece between two visible points only in the old seed's case: a plain parent of two visible ends and one
+            // visible point between, neither half known (§8.9: nothing a plain plan could read comes from a cut)
+            val plainPair = !cutParent && span == 2 && plan.visibleOf(i) >= 0 && plan.visibleOf(j) >= 0 && plan.visibleOf(i + 1) >= 0 &&
+                cache.lookupLeg(plan, i, activity, sac) == null && cache.lookupLeg(plan, i + 1, activity, sac) == null
             val inner = pts.subList(i + 1, j)
             val at = positionsOn(parent.points, inner)
             var rest = parent
@@ -77,20 +84,23 @@ object LegSplit {
                 if (cut == null) { whole = false; break } // the point sits at the rest's end after all: stop, store what is cut
                 val (first, second) = cut
                 last = at[m]
-                stored += keep(cache, plan, from, e, first, cutParent, activity, sac)
+                stored += keep(cache, plan, from, e, first, plainPair, activity, sac)
                 rest = second; from = e
             }
-            if (whole) stored += keep(cache, plan, from, j, rest, cutParent, activity, sac)
+            if (whole) stored += keep(cache, plan, from, j, rest, plainPair, activity, sac)
         }
         return stored
     }
 
     /** Leg [from] → [to] of [plan] into the [cache] when it is exactly one leg, not known yet, and its key allows it; 1 if stored. */
-    private fun keep(cache: LegCache, plan: ExpandedPlan, from: Int, to: Int, leg: RouteResult, cutParent: Boolean,
+    private fun keep(cache: LegCache, plan: ExpandedPlan, from: Int, to: Int, leg: RouteResult, plainPair: Boolean,
                      activity: Activity, sac: Int): Int {
         if (to != from + 1) return 0
         val anchored = plan.touchesAnchor(from)
-        if (!anchored && cutParent) return 0
+        if (!anchored && !plainPair) return 0
+        // a short trip with a long detour is routed (the Planner retries it through the middle): a cut would show the
+        // first route on this device and the retry on another
+        if (Planner.isShortDetour(Geo.distance(plan.points[from], plan.points[to]), Geo.length(leg.points))) return 0
         if (cache.lookupLeg(plan, from, activity, sac) != null) return 0
         cache.put(plan.points[from], plan.points[to], activity, sac, leg, cut = anchored)
         return 1

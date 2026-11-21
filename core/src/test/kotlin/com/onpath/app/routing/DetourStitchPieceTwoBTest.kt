@@ -134,10 +134,10 @@ class DetourStitchPieceTwoBTest {
         assertNotNull(old.cache.inMemory(b, v1, act, sac, cut = true))
         assertNull(old.cache.lookup(v1, v2, act, sac))
         assertNull(old.cache.inMemory(v1, v2, act, sac, cut = true))
-        // from a PLAIN parent the same piece is stored plain
+        // from a plain parent that touches an anchor it is no better: a visible-visible piece only in the old seed's case (§8.9)
         val plain = LegCache(); plain.put(b, v2, act, sac, e.route(listOf(b, v2), act, sac))
-        assertEquals(2, LegSplit.seed(plain, plan, act, sac))
-        assertNotNull(plain.inMemory(v1, v2, act, sac))
+        assertEquals(1, LegSplit.seed(plain, plan, act, sac))
+        assertNull(plain.inMemory(v1, v2, act, sac))
     }
 
     @Test fun parentsAreReadFromMemoryOnly() {
@@ -307,10 +307,14 @@ class DetourStitchPieceTwoBTest {
         assertEquals(Anchors(listOf(b1), emptyList()), t[2])
     }
 
-    @Test fun anOffLineNIsPlacedByItsNearestPositionOnTheLine() {
-        val r = insert(GeoPoint(on(51.25).lat, 7.03), both)
-        assertEquals(Anchors(emptyList(), listOf(a1)), r[0])
-        assertEquals(Anchors(emptyList(), listOf(a2)), r[1])
+    @Test fun anOffLineNGetsItsOwnStitchAndTheOldAnchorsBesideItGiveWay() {
+        val n = GeoPoint(on(51.25).lat, 7.01)
+        val own = PlanAnchors.forInsert(line, p0, p1, n)!!
+        val r = insert(n, both)
+        // a1 (51.2) lies behind N's before-anchor (~51.16) side of the stitch, a2 (51.3) before its after-anchor (~51.34): both go;
+        // b1 (51.6) lies behind the after-anchor and stays
+        assertNull(r[0])
+        assertEquals(Anchors(own.before, own.after), r[1])
         assertEquals(Anchors(listOf(b1), emptyList()), r[2])
     }
 
@@ -351,5 +355,14 @@ class DetourStitchPieceTwoBTest {
         assertEquals(listOf(a1), r[1]!!.after)
         assertEquals(listOf(b1), r[3]!!.before)
         assertNull(r[2])
+    }
+
+    @Test fun anOffLineNOnALegWithoutAnchorsGetsItsStitchAndAnOnLineNGetsNone() {
+        val n = GeoPoint(on(51.5).lat, 7.01)
+        val own = PlanAnchors.forInsert(line, p0, p1, n)!!
+        assertEquals(mapOf(1 to own), insert(n, emptyMap()))
+        assertEquals(emptyMap<Int, Anchors>(), insert(on(51.5), emptyMap()))
+        // too far off the line: no stitch, nothing kept
+        assertEquals(emptyMap<Int, Anchors>(), insert(GeoPoint(51.5, 7.5), both))
     }
 }
