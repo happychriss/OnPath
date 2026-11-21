@@ -151,6 +151,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         private set
 
     private var original = NavLine(session.original)
+    private val beside = StopsBesideRoute() // stops the route cannot reach: passed by at the line's nearest place (C5)
     val detector = OffRouteDetector(offRouteM).apply { headingRule = session.activity != Activity.HIKE }
     private var leftAtM = session.leftAtM
     private var jobId = 0
@@ -712,7 +713,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         for (i in s.stops.indices) {
             if (i in s.visited) continue
             // owner 2026-11-03 ("every tour starts at point 1 and skips nothing"): a stop counts only in plan order
-            if (!inOrder(s, i, v ?: s.visited)) continue
+            if (!s.inOrder(i, v ?: s.visited, detector.progressM)) continue
             val d = Geo.distance(p, s.stops[i].point)
             val closest = stopClosest[s.stops[i].point]
             if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
@@ -720,22 +721,11 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
                 (closest != null && closest <= radius && d > closest + NavSession.VISITED_AWAY_M)
             if (reached) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
-        val nv = v ?: return Step()
-        session = s.copy(visited = nv)
+        val nv = v ?: s.visited
+        val by = beside.passedNow(s, original, p, nv) { s.inOrder(it, nv, detector.progressM) }
+        if (v == null && by.isEmpty()) return Step()
+        session = s.copy(visited = nv, passedBy = s.passedBy + by)
         return Step(sessionChanged = true)
-    }
-
-    /**
-     * Stop [i] may count as reached now (owner 2026-11-03): before the route is reached only point 1 (a lead passing a
-     * later point – or a round trip's closing point at the start – reaches nothing); after it, a later stop only when
-     * every stop before it is reached / left out, or the progress along the planned line got there (a stop passed
-     * 40–50 m beside the way stays behind, not ahead). A round trip's way back to point 1 is never reached at the start.
-     */
-    private fun inOrder(s: NavSession, i: Int, visited: Set<Int>): Boolean {
-        if (i == 0) return true
-        if (!s.reached) return false
-        if ((0 until i).all { it in visited || it in s.skipped }) return true
-        return !s.rerouted && detector.progressM >= s.stops[i].alongM - NavSession.visitedM(s.activity)
     }
 
     /**
