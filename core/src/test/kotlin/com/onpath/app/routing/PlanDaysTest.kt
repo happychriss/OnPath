@@ -368,6 +368,16 @@ class PlanDaysTest {
         assertTrue(PlanDays.afterEdit(plan, plan.points.filterIndexed { i, _ -> i != 2 }).anchors.isEmpty())
     }
 
+    @Test fun reversingARouteReversesItsAnchors() {
+        val w = listOf(GeoPoint(46.1, 11.0), GeoPoint(46.2, 11.0), GeoPoint(46.3, 11.0), GeoPoint(46.4, 11.0), GeoPoint(46.9, 11.0))
+        val plan = SharedPlan(w, Activity.HIKE, anchors = mapOf(3 to Anchors(listOf(q1, q2), listOf(q3))))
+        assertEquals(mapOf(1 to Anchors(listOf(q3), listOf(q2, q1))), PlanDays.afterEdit(plan, w.reversed()).anchors)
+        // a plan equal to its own reverse is no edit
+        val sym = listOf(w[0], w[1], w[0])
+        val symPlan = SharedPlan(sym, Activity.HIKE, anchors = mapOf(1 to Anchors(listOf(q1), listOf(q2))))
+        assertEquals(symPlan.anchors, PlanDays.afterEdit(symPlan, sym).anchors)
+    }
+
     @Test fun aHotelThatMovesAPointTakesItsAnchorsAndTheNeighboursFacingSide() {
         val plan = PlanDays.addNight(tour, ride.points, at, 150).plan.copy(
             anchors = mapOf(1 to Anchors(listOf(q1), listOf(q2)), 2 to Anchors(listOf(q3), listOf(q4))))

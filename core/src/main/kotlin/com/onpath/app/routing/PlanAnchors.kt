@@ -131,21 +131,27 @@ object PlanAnchors {
 
     /**
      * For each point of [after] the index it had in [before], or -1: the common start and end by position first (so a
-     * point that is there twice, like a closing point, keeps its own place), then the rest by value in order.
+     * point that is there twice, like a closing point, keeps its own place), then the middle by value where a point is there exactly once on each side; the rest counts as new.
      */
     private fun sources(before: List<GeoPoint>, after: List<GeoPoint>): IntArray {
         val src = IntArray(after.size) { -1 }
-        val used = BooleanArray(before.size)
         val m = minOf(before.size, after.size)
         var pre = 0
-        while (pre < m && before[pre] == after[pre]) { src[pre] = pre; used[pre] = true; pre++ }
+        while (pre < m && before[pre] == after[pre]) { src[pre] = pre; pre++ }
         var suf = 0
         while (suf < m - pre && before[before.size - 1 - suf] == after[after.size - 1 - suf]) {
-            src[after.size - 1 - suf] = before.size - 1 - suf; used[before.size - 1 - suf] = true; suf++
+            src[after.size - 1 - suf] = before.size - 1 - suf; suf++
         }
-        val left = HashMap<GeoPoint, ArrayDeque<Int>>()
-        before.forEachIndexed { i, p -> if (!used[i]) left.getOrPut(p) { ArrayDeque() }.addLast(i) }
-        for (j in after.indices) if (src[j] < 0) src[j] = left[after[j]]?.removeFirstOrNull() ?: -1
+        // the middle: a value is matched only when it is there exactly once on each side – never a guess between two
+        // copies of a point (a wrong anchor could send the route a wrong way; a lost one only costs full routing)
+        val oldAt = HashMap<GeoPoint, Int>(); val oldTwice = HashSet<GeoPoint>()
+        for (i in pre until before.size - suf) if (oldAt.put(before[i], i) != null) oldTwice += before[i]
+        val newCount = HashMap<GeoPoint, Int>()
+        for (j in pre until after.size - suf) newCount[after[j]] = (newCount[after[j]] ?: 0) + 1
+        for (j in pre until after.size - suf) {
+            val v = after[j]
+            if (newCount[v] == 1 && v !in oldTwice) src[j] = oldAt[v] ?: -1
+        }
         return src
     }
 

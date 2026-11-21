@@ -132,6 +132,16 @@ class PlanAnchorsTest {
         assertEquals(mapOf(1 to Anchors(after = listOf(a(4)))), out)
     }
 
+    @Test fun twoCopiesOfAPointAreNeverGuessed() {
+        val s = pt(0); val pa = pt(1); val pb = pt(2); val pc = pt(3); val pd = pt(4); val t = pt(5)
+        val out = PlanAnchors.follow(
+            listOf(s, pa, pb, pc, pa, pb, pd, t), listOf(s, pc, pa, pb, t),
+            mapOf(1 to Anchors(after = listOf(a(3))), 4 to Anchors(after = listOf(a(4)))),
+        )
+        assertEquals(null, out[2]) // the new A has the anchors of neither pass
+        assertTrue(out.isEmpty())
+    }
+
     @Test fun aRotatedClosedLoopKeepsTheAnchorsOfItsEdges() {
         val pa = pt(0); val pb = pt(1); val pc = pt(2); val pd = pt(3)
         val old = listOf(pa, pb, pc, pd, pa)
