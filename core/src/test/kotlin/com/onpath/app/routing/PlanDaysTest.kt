@@ -350,4 +350,52 @@ class PlanDaysTest {
         val f = Factors(1.2, 1.2, 1.2)
         assertEquals(RouteTimes.of(pts, Activity.HIKE).total(f), DayLine.of(pts, Activity.HIKE, f).timeS.last(), 1e-6)
     }
+
+    // detour anchors follow their points through every edit (docs/design/detour-stitch.md §2)
+
+    private val q1 = GeoPoint(46.5, 11.0)
+    private val q2 = GeoPoint(46.6, 11.0)
+    private val q3 = GeoPoint(46.7, 11.0)
+    private val q4 = GeoPoint(46.8, 11.0)
+
+    @Test fun anchorsFollowAnEditOfTheRoute() {
+        val plan = tour.copy(anchors = mapOf(2 to Anchors(listOf(q1), listOf(q2))))
+        // a point in front is deleted: the anchors move to index 1 and keep both sides
+        assertEquals(mapOf(1 to Anchors(listOf(q1), listOf(q2))), PlanDays.afterEdit(plan, plan.points.drop(1)).anchors)
+        // the next point is deleted: the `after` side goes
+        assertEquals(mapOf(2 to Anchors(listOf(q1))), PlanDays.afterEdit(plan, plan.points.filterIndexed { i, _ -> i != 3 }).anchors)
+        // its own point is deleted: gone
+        assertTrue(PlanDays.afterEdit(plan, plan.points.filterIndexed { i, _ -> i != 2 }).anchors.isEmpty())
+    }
+
+    @Test fun reversingARouteReversesItsAnchors() {
+        val w = listOf(GeoPoint(46.1, 11.0), GeoPoint(46.2, 11.0), GeoPoint(46.3, 11.0), GeoPoint(46.4, 11.0), GeoPoint(46.9, 11.0))
+        val plan = SharedPlan(w, Activity.HIKE, anchors = mapOf(3 to Anchors(listOf(q1, q2), listOf(q3))))
+        assertEquals(mapOf(1 to Anchors(listOf(q3), listOf(q2, q1))), PlanDays.afterEdit(plan, w.reversed()).anchors)
+        // a plan equal to its own reverse is no edit
+        val sym = listOf(w[0], w[1], w[0])
+        val symPlan = SharedPlan(sym, Activity.HIKE, anchors = mapOf(1 to Anchors(listOf(q1), listOf(q2))))
+        assertEquals(symPlan.anchors, PlanDays.afterEdit(symPlan, sym).anchors)
+    }
+
+    @Test fun aHotelThatMovesAPointTakesItsAnchorsAndTheNeighboursFacingSide() {
+        val plan = PlanDays.addNight(tour, ride.points, at, 150).plan.copy(
+            anchors = mapOf(1 to Anchors(listOf(q1), listOf(q2)), 2 to Anchors(listOf(q3), listOf(q4))))
+        val e = PlanDays.setHotel(plan, 1, Hotel("Post"), GeoPoint(47.3502, 11.0105))
+        // point 1 moved: its anchors are gone; point 2 lost its `before` (its neighbour moved), kept `after`
+        assertEquals(mapOf(2 to Anchors(after = listOf(q4))), e.plan.anchors)
+    }
+
+    @Test fun removingAHotelThatMovesItsPointDropsTheAnchorsToo() {
+        val north = (0..100).map { GeoPoint(46.0 + it * 0.009, 11.0) }
+        val out = (1..5).map { GeoPoint(46.9, 11.0 + it * 0.013) }
+        val back = out.reversed().drop(1) + north.last()
+        val on = (1..100).map { GeoPoint(46.9 + it * 0.009, 11.0) }
+        val pts = north + out + back + on
+        val plan = SharedPlan(listOf(pts.first(), out.last(), pts.last()), Activity.BIKE_TOURING, names = mapOf(1 to "Post"), days = 2,
+            nights = mapOf(1 to NightMark(Hotel("Post"))), anchors = mapOf(1 to Anchors(listOf(q1), listOf(q2))))
+        val p = PlanDays.removeHotel(plan, 1, pts, WaypointInsertion.routeIndices(plan.points, pts))
+        assertEquals(north.last(), p.points[1])
+        assertTrue(p.anchors.isEmpty())
+    }
 }
