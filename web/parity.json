@@ -778,7 +778,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/LegFiles.kt": {
-      "blob": "985f6337160bdd33c0bc10a699aa4f2a997018fc",
+      "blob": "0585740edfc6edd4735a699acef432f44ab17281",
       "perf": [
         "private val maxFiles: Int = MAX_FILES,",
         "private val maxBytes: Long = MAX_BYTES,",
@@ -1934,7 +1934,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/LegCache.kt": {
-      "blob": "cafbd677a9cc24c3a28691cf4db73a6aabbbb958",
+      "blob": "76eaa29b867e5819dda33365dd0523b0a5044098",
       "perf": [
         "* from here at once). Same points = same legs = same route: the cache only saves time, a fresh start gives the identical",
         "* Kept in memory for the process, one per routing engine (the app: AppViewModel; the web planner: its page) – a router or",
@@ -1945,14 +1945,14 @@
         "/** Line points of the legs held (the memory bound beside [capacity], [maxLinePoints]). */",
         "/** Keeps [leg] under [k] (under [lock]); the oldest legs go while more than [capacity] legs or [maxLinePoints] are held. */",
         "while ((map.size > capacity || linePoints > maxLinePoints) && map.size > 1 && it.hasNext()) {",
-        "/** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. */",
+        "/** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. Never a cut leg. */",
+        "* For a leg of an expanded plan that touches an anchor (§8.9): the stitch's cut leg first (memory, then fresh in the",
         "* \"Saved routes\"): memory or the [store], fresh or not; null = none known.",
         "/** Is the leg known fresh (memory or [store], then kept in memory) – a plan whose legs all are needs no router run. */",
         "* lies on the line, where the run's join put it). False = the leg is not in memory (a straight leg).",
         "/** Legs held now (in memory). */",
         "* Newer routing data (the same points may route differently now): every leg in memory goes. The [store] keeps its",
-        "* Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) – a multi-day tour of 189 points",
-        "const val CAPACITY = PlanCode.MAX_POINTS",
+        "* Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) plus room for its anchors (at most 500,",
         "* The memory bound: line points held in all legs (a point ~50 bytes → ~12 MB). München–Venedig, 594 km, is ~60 000",
         "const val MAX_LINE_POINTS = 250_000",
         "/** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */"
@@ -2069,11 +2069,11 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt": {
-      "blob": "2dfaad9e0739c2a172d6417608895a50f7d4922f",
+      "blob": "0d9fb82bb703b0ced00bfc92eff610443e236793",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/Planner.kt": {
-      "blob": "7341a6e1dba257663369802638dc374847168304",
+      "blob": "f8f9fc080e096ed7d5e9f7c95e99699a305e66c1",
       "perf": [
         "* points = same legs = same route: the cache saves time, never changes a line.",
         "* A leg without a route becomes a straight dashed line (R-12/R-13); after a timeout the legs still to route are straight",
@@ -2089,9 +2089,14 @@
         "return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))",
         "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS * rounds.coerceAtLeast(1), cancel, rounds))).also { outcome = \"ok\" }",
         "outcome = if (e.timedOut) \"timeout\" else if (cancel?.isCancelled == true) \"cancelled\" else \"failed\"",
+        "// legs routed in this run (plain keys): a leg of a new layout (the fallback) may be there without a cache",
+        "// visible legs with something to route (legs from the cache do not count) and how much of it is left",
+        "// a leg that was counted and has nothing left to route now (its full leg came from the cache) is done",
         "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan) – the legs",
         "// done so far are in the cache, the next run starts after them",
         "// each leg would get its own limit and the wait multiplies: the rest straight at once",
+        "* A failure that means \"no route here\" (a route through the anchors may still exist without them): not a timeout, kind",
+        "* OTHER or START_POINT, and not the engine's own memory-limit or unexpected-error texts (they are OTHER too).",
         "* Time: the retry counts against the leg's time limit ([RouteTimeLimit.forRoute], started at [t0]); it gets only what",
         "* is left of it and does not start with less than [MIN_RETRY_MS]. Returns [r] when nothing was taken.",
         "if (left < MIN_RETRY_MS) { Problems.trace(\"routing\", \"$leg → no time left to retry via the midpoint\"); return r }",
@@ -2970,7 +2975,7 @@
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/routing/LegCacheTest.kt": {
-      "blob": "7ae8ade7ba19fc0c568aee79edff2cd4cee9c3d7",
+      "blob": "0890a518532dc23478c00be17058205a71f701cd",
       "perf": [
         "* The leg cache (owner 2026-11-05, \"long bike routes faster\"): an edit routes only the legs it changed, same points give",
         "* the same route, the wait card's progress counts only the legs routed, Cancel and the time-limit question keep what",
@@ -2999,7 +3004,6 @@
         "run(e, cache, p[0], p[1], p[2], p[3]) // 3 legs, room for 2: 0 → 1 dropped",
         "assertEquals(2, cache.size)",
         "run(e, cache, p[0], p[1], p[2], p[3])",
-        "assertEquals(PlanCode.MAX_POINTS, LegCache.CAPACITY)",
         "Planner(e, legs = cache).plan(pts, act, 2)",
         "assertEquals(189, cache.size)",
         "/** The memory bound: legs with many line points go, oldest first, before the count limit is reached. */",
@@ -3020,7 +3024,17 @@
         "Planner(e, cancel, legs = cache).plan(listOf(p[0], p[1], p[2], p[3]), act, 2)",
         "val e = Engine(slow = { slow && it == listOf(p[1], p[2]) }); val cache = LegCache()",
         "Planner(e, RouteCancel(), askAtLimit = true, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)",
-        "Planner(e, RouteCancel(), askAtLimit = true, rounds = 2, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)"
+        "Planner(e, RouteCancel(), askAtLimit = true, rounds = 2, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)",
+        "val cache = LegCache()",
+        "cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 7.0), cut = true)",
+        "assertNull(cache.lookup(p[0], p[1], act, 2))",
+        "assertNull(cache.stale(p[0], p[1], act, 2))",
+        "assertTrue(!cache.has(p[0], p[1], act, 2))",
+        "assertEquals(7.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)",
+        "assertNull(cache.lookupAnchored(p[0], p[1], act, 2))",
+        "cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 1.0))",
+        "assertEquals(1.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)",
+        "assertEquals(1.0, cache.get(p[0], p[1], act, 2)!!.distanceM, 0.0)"
       ]
     },
     "core/src/test/kotlin/com/onpath/app/routing/PlanNamesTest.kt": {
