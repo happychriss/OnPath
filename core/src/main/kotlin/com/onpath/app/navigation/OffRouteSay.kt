@@ -13,8 +13,10 @@ import kotlin.math.max
  *
  * Doubt is: the fix is old, the GPS lost, standing still, a poor fix ([MAX_ACC_M]), the route closer than the fix is
  * accurate ([MIN_M]), a heading from a bent path (a U-turn or corner just taken – [PATH_FACTOR]) or across a GPS gap
- * ([GAP_MS]), a heading the GPS bearing contradicts ([AGREE_DEG]), and a route point that is not the nearest one
- * ([NEAREST_TOL_M] – the navigator looks ahead of where the route was left, not behind).
+ * ([GAP_MS]), no GPS bearing or one that contradicts the heading ([AGREE_DEG] – the bearing is the only check of the last
+ * metres: the heading is a chord of at least 12 m), a route point that is not the nearest one ([NEAREST_TOL_M] – the
+ * navigator looks ahead of where the route was left, not behind), and one far along from there ([MAX_AHEAD_M] – on a
+ * loop that is a later leg: following it would skip the part between).
  */
 class OffRouteSay {
     data class Numbers(val headingDeg: Double, val routeM: Double, val bearingDeg: Double)
@@ -28,13 +30,18 @@ class OffRouteSay {
 
     fun reset() { recent.clear(); accuracyM = null; gpsBearingDeg = null; speedMps = null; lastMs = null }
 
-    /** A good fix at [nowMs] (elapsed clock). [gpsBearingDeg] / [speedMps]: what the receiver says, null = none. */
-    fun onFix(p: GeoPoint, accuracyM: Double?, gpsBearingDeg: Double?, speedMps: Double?, nowMs: Long) {
+    /**
+     * A good fix that arrived at [arrivedMs] (elapsed clock), [ageMs] old by then – every time here is when it was
+     * measured, so a late fix counts as old and a backlog delivered at once cannot hide a gap.
+     * [gpsBearingDeg] / [speedMps]: what the receiver says, null = none.
+     */
+    fun onFix(p: GeoPoint, accuracyM: Double?, gpsBearingDeg: Double?, speedMps: Double?, arrivedMs: Long, ageMs: Long = 0) {
+        val fixMs = arrivedMs - ageMs.coerceAtLeast(0)
         // a gap in the fixes: the old points say nothing about the way walked now
-        if (recent.isNotEmpty() && (nowMs < recent.last().ms || nowMs - recent.last().ms > GAP_MS)) recent.clear()
-        recent += Pt(p, nowMs)
+        if (recent.isNotEmpty() && (fixMs < recent.last().ms || fixMs - recent.last().ms > GAP_MS)) recent.clear()
+        recent += Pt(p, fixMs)
         if (recent.size > KEEP) recent.subList(0, recent.size - KEEP).clear()
-        this.accuracyM = accuracyM; this.gpsBearingDeg = gpsBearingDeg; this.speedMps = speedMps; lastMs = nowMs
+        this.accuracyM = accuracyM; this.gpsBearingDeg = gpsBearingDeg; this.speedMps = speedMps; lastMs = fixMs
     }
 
     /** The numbers to say at [nowMs] for the navigation state [st]; null = say the plain sentence. */
@@ -48,11 +55,13 @@ class OffRouteSay {
         val off = st.offM ?: return null
         if (!hint.distanceM.isFinite() || !hint.bearingDeg.isFinite() || !off.isFinite()) return null
         if (abs(hint.distanceM - off) > NEAREST_TOL_M) return null
+        if ((hint.alongM ?: return null) > MAX_AHEAD_M) return null
         val acc = accuracyM ?: return null
         if (acc > MAX_ACC_M || hint.distanceM < max(MIN_M, acc)) return null
         if ((speedMps ?: return null) < MOVING_MPS) return null
         val heading = heading() ?: return null
-        gpsBearingDeg?.let { if (it.isFinite() && abs(Geo.angleDiff(heading, it)) > AGREE_DEG) return null }
+        val gps = gpsBearingDeg ?: return null
+        if (!gps.isFinite() || abs(Geo.angleDiff(heading, gps)) > AGREE_DEG) return null
         return Numbers(heading, hint.distanceM, hint.bearingDeg)
     }
 
@@ -69,10 +78,11 @@ class OffRouteSay {
     companion object {
         const val MAX_ACC_M = 15.0
         const val MIN_M = 15.0
-        const val AGREE_DEG = 45.0
+        const val AGREE_DEG = 30.0
         const val MAX_AGE_MS = 3_000L
         const val GAP_MS = 3_000L
         const val NEAREST_TOL_M = 15.0
+        const val MAX_AHEAD_M = 300.0
         const val PATH_FACTOR = 1.2
         const val MOVING_MPS = 0.8
         private const val KEEP = 120

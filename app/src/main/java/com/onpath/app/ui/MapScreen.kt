@@ -328,7 +328,7 @@ fun MapScreen(
     when (val ask = vm.tour.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.tourEnd.endTour() }, onDelete = { vm.tourEnd.endTourAndDelete() },
             onDismiss = { vm.tour.dismissEndAsk() }, activity = vm.planRoute.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
-        is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.tourEnd.endTourWith(ask, it) },
+        is EndAsk.Rides -> RideQuestionDialog(ask.summary, onSave = { vm.tourEnd.endTourWith(ask, it) },
             onDelete = { vm.tourEnd.endTourAndDelete() }, onDismiss = { vm.tour.dismissEndAsk() })
         null -> {}
     }

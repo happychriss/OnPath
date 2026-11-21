@@ -441,8 +441,8 @@ class MainActivity : ComponentActivity() {
                         onDelete = { vm.tourEnd.deleteUnfinished(t) })
                 }
                 vm.tour.unfinishedRides?.let { (t, s) ->
-                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.tourEnd.saveUnfinished(t, it) }, onDelete = { vm.tourEnd.deleteUnfinished(t) },
-                        onDismiss = { vm.tour.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
+                    com.onpath.app.ui.RideQuestionDialog(s, onSave = { vm.tourEnd.saveUnfinished(t, it) }, onDelete = { vm.tourEnd.deleteUnfinished(t) },
+                        onDismiss = { vm.tour.backToUnfinished() })
                 }
                 // "Tour gespeichert" after the end sheet (owner 2026-11-06, onpath.private#35): slim – the numbers,
                 // "In Meine Touren ›" and OK; export and delete are in My routes

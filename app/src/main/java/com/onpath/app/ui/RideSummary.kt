@@ -156,7 +156,7 @@ private fun TimelineRow(r: RideView.Row, zone: ZoneId) {
 
 /** A sketch of the track (no map tiles): kept blue, rides grey dashed, lifts purple dashed, dropped faint. */
 @Composable
-private fun RideMap(lines: List<RideView.Line>, modifier: Modifier) {
+internal fun RideMap(lines: List<RideView.Line>, modifier: Modifier) {
     val bg = MaterialTheme.colorScheme.surfaceVariant
     Canvas(modifier.background(bg, OnPathShapes.Small).padding(10.dp)) {
         val all = lines.flatMap { it.points }

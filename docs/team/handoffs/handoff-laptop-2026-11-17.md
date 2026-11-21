@@ -22,6 +22,11 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
   nothing went online, deploy the newest green main on the owner's standing word.
 - robust-smoke 10(a): fixed for good in 9c2b9931d (the plan's wait identified by an overlay.plan hook). If red again → a
   real finding.
+- **9c2b9931d push run red too, smokes (areas-parity), other checks:** „the route's areas: the sign beside the map – a ring
+  and one percent ({w:0,h:0,inMap:false})“, „its percent moves on, never back (-1 …)“, „no window and no strip line for
+  them“. Areas smokes were green on 8a04b05cf; since then only donald's 7ed35111c (far start warning), 8856a6ecc /
+  6a246bc9b (voice off route) and parity stamps. Suspect real: bisect areas-smoke between 8a04b05cf and 9c2b9931d first.
+  **No deploy until green.**
 - **Open: areas-smoke.mjs:170 „polling: the doorman's 40 % moves the bar (from 94 %)“** (run 44924598176) – on a slow
   runner the area wait's bar was already at 94 % before the doorman's answer; likely a test timing assumption, not proven.
   Investigate (don't just rerun).

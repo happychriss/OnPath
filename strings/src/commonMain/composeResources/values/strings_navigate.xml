@@ -214,6 +214,11 @@
         <item quantity="other">%1$d parts of this tour look like rides (bus, car or lift). What should count?</item>
     </plurals>
     <string name="nav_rides_kept_note">All ridden points are kept – you can change this later in My tours (⋮ → Edit rides).</string>
+    <string name="nav_ride_q_end">You rode at the end</string>
+    <string name="nav_ride_q_along">You rode along the way</string>
+    <string name="nav_ride_q_several">%1$d rides · %2$s</string>
+    <string name="nav_ride_q_without">Save without the ride</string>
+    <string name="nav_ride_q_with">Save with the ride</string>
     <string name="nav_row_on_foot">On foot</string>
     <string name="nav_row_by_bike">By bike</string>
     <string name="nav_row_vehicle">Bus / car</string>

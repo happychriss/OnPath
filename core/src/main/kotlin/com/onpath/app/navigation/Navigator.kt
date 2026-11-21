@@ -86,8 +86,8 @@ val NavPrompt.offRoute: Boolean get() =
     this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed && this !is NavPrompt.MidStart &&
         (this as? NavPrompt.Question)?.switch == null
 
-/** Straight-line direction to the nearest route point ahead (arrow mode). */
-data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint)
+/** Straight-line direction to the nearest route point ahead (arrow mode). [alongM]: metres past where the route was left; null = the way to the start. */
+data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint, val alongM: Double? = null)
 
 /** Navigation state the service publishes for the UI (RecState.nav). */
 data class NavState(
@@ -492,7 +492,14 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val pr = prompt as? NavPrompt.FarStart ?: return Step()
         if (pr.id != id) return Step()
         quiet = true
-        return clearPrompt()
+        return clearPrompt() + withdrawLead()
+    }
+
+    /** "Guide me" is no longer wished: the next plan edit must not start a search the user declined ([NavSession.needsLead]). */
+    private fun withdrawLead(): Step {
+        if (!session.lead) return Step()
+        session = session.copy(lead = false)
+        return Step(sessionChanged = true)
     }
 
     /**
@@ -504,7 +511,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         if (pr.id != id || !pr.searching) return Step()
         prompt = pr.copy(searching = false)
         runningJob = -1
-        return Step(cancelJob = true)
+        return Step(cancelJob = true) + withdrawLead()
     }
 
     /** OK on "No way to the route found – recording continues" ([id]): quiet like "Just record". */
@@ -731,18 +738,15 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         return !s.rerouted && detector.progressM >= s.stops[i].alongM - NavSession.visitedM(s.activity)
     }
 
-    /** Nearest point of the original ahead of where the user left it (never back to a passed part). */
     /**
-     * Arrow + distance to the route: the line followed now from where it was left (owner 2026-11-01, Rosellen replay:
-     * on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left, the new line 50 m away).
+     * Arrow + distance to the nearest point ahead of where the line followed now was left, never a passed part (owner
+     * 2026-11-01, Rosellen replay: on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left).
      */
     private fun hint(p: GeoPoint): RouteHint? {
-        val active = detector.line
-        val m = if (session.rerouted && active != null && active.isUsable)
-            active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
-        else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
-        m ?: return null
-        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point)
+        val active = detector.line?.takeIf { session.rerouted && it.isUsable }
+        val from = if (active != null) detector.leftAtM else leftAtM
+        val m = (active ?: original).match(p, from, from + HINT_AHEAD_M) ?: return null
+        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point, m.alongM - from)
     }
 
     companion object {

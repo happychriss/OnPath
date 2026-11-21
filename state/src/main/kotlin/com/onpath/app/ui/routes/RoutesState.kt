@@ -278,6 +278,9 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
         val segs = runCatching { store.loadSegments(t.id) }
             .onFailure { Problems.warn("routes", "The line of tour ${t.id} for its preview could not be read", it) }
             .getOrDefault(emptyList())
+            // a recorded tour as its ride choice reads it (rides not counted and a cut-off end are not drawn) – "Fahrten bearbeiten";
+            // a lone kept point (where a gondola at the start began) is no line: start and goal stay on the drawn line
+            .let { all -> t.rides?.let { r -> com.onpath.app.rides.RideView.keptSegments(all, r).filter { it.size >= 2 }.ifEmpty { all } } ?: all }
             .map { s -> s.map { GeoPoint(it.lat, it.lon) } }.filter { it.isNotEmpty() }
         return segs.ifEmpty { listOf(t.waypoints.map { GeoPoint(it.lat, it.lon) }) }
     }

@@ -191,6 +191,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **Kept before pruning: `wip/donald-2026-11-13-suggest-round7` fd2593f05** – tour suggestions round 7, unfinished, 1 commit not on main
 - **Kept before pruning…** → [detail](items/2026-11-14-kept-before-pruning-wip-donald-2026-11-1.md)
 - **Kept before pruning: `wip/donald-2026-11-14-suggest-next` f50159937** – tour suggestions, unfinished, 1 commit not on main
+- **[donald] Rests of the off-route / ride-question reviews…** → [detail](items/2026-11-21-review-rests-off-route-ride-question.md)
 
 ## Waiting for the owner
 - [laptop] 2026-11-20 night: **planner ready to deploy at 8a04b05cf** (on the shared code since the last deploy: edit / undo / cancel, holds + place menus, search, the route run incl. the long-route question, GPX → plan, search lines / round trip from core, the day rows variant A + „ab / bis Hotel“; GitHub run green after the robust-smoke race fix 083dcc17b; local checks + gate green, two reviews' findings fixed). Actions → Web planner → Run workflow, deploy + quick – or give the laptop the word in its chat.

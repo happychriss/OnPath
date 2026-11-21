@@ -213,6 +213,11 @@
         <item quantity="other">%1$d Teile dieser Tour sehen nach Fahrten aus (Bus, Auto oder Lift). Was soll zählen?</item>
     </plurals>
     <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Touren ändern (⋮ → Fahrten bearbeiten).</string>
+    <string name="nav_ride_q_end">Am Ende bist du gefahren</string>
+    <string name="nav_ride_q_along">Unterwegs bist du gefahren</string>
+    <string name="nav_ride_q_several">%1$d Fahrten · %2$s</string>
+    <string name="nav_ride_q_without">Ohne Fahrt speichern</string>
+    <string name="nav_ride_q_with">Mit Fahrt speichern</string>
     <string name="nav_row_on_foot">Zu Fuß</string>
     <string name="nav_row_by_bike">Mit dem Rad</string>
     <string name="nav_row_vehicle">Bus / Auto</string>
