@@ -16,6 +16,18 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-21 ~19:00 – the next laptop session starts HERE
+- Owner said „Planer online stellen“ (laptop chat). Manual run on 57b0c7ca0 red (areas-smoke), no deploy. A background
+  loop in the old session waits for the push run on 9c2b9931d and dispatches deploy+quick if green – check Actions: if
+  nothing went online, deploy the newest green main on the owner's standing word.
+- robust-smoke 10(a): fixed for good in 9c2b9931d (the plan's wait identified by an overlay.plan hook). If red again → a
+  real finding.
+- **Open: areas-smoke.mjs:170 „polling: the doorman's 40 % moves the bar (from 94 %)“** (run 44924598176) – on a slow
+  runner the area wait's bar was already at 94 % before the doorman's answer; likely a test timing assumption, not proven.
+  Investigate (don't just rerun).
+- Navigation's OffRouteSay / RouteSide registered (57b0c7ca0); donald's batch may bring more new shared files → `--update`.
+- Detour stitch: yes to umbau's nine points (backlog); web part when umbau's core is ready (captain starts it).
+
 ## State 2026-11-21 ~17:30 – the next laptop session starts HERE
 - Since ~01:00: robust-smoke step 10 race fixed (083dcc17b – the link's first map wait must end before the shares are
   cleared); day rows variant A in the planner (df0cf81eb, WebDays + multiday.ts; picture in

@@ -1113,6 +1113,10 @@
       "blob": "ba016c0a73563866389ebe4919979ce8480ede20",
       "perf": []
     },
+    "core/src/main/kotlin/com/onpath/app/domain/routes/RoundTrip.kt": {
+      "blob": "f1b5d1b2fe4cef5d7e6879649ada57234fdd4de4",
+      "perf": []
+    },
     "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt": {
       "blob": "088806ada7877188bbe747d1b8d9e3e55c0cf969",
       "perf": []
@@ -1340,6 +1344,10 @@
         "*   budget (8.3 ms at 120 Hz) would count the Pixel 8's ordinary busy frames and switch its relief off for nothing."
       ]
     },
+    "core/src/main/kotlin/com/onpath/app/map/ThumbRules.kt": {
+      "blob": "bc73cfafc52b58ba498d22cf1dcd2ab40bf1adc7",
+      "perf": []
+    },
     "core/src/main/kotlin/com/onpath/app/navigation/ActivityCheck.kt": {
       "blob": "c3597cf8ebdfd88543337abf98317cc686551543",
       "perf": [
@@ -1394,13 +1402,13 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/navigation/NavText.kt": {
-      "blob": "afd5d5b29bc1cb850d7a8d32b24c6d398f0a0b96",
+      "blob": "2d2694d52835ff5c643acac5c7e0ddb35380e5c1",
       "perf": [
         "if (via == null) stopLabel(q, Int.MAX_VALUE)?.let { append(\" · \").append(Txt.s(Res.string.nav_without_stop, it)) }"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/Navigator.kt": {
-      "blob": "efe68f00df18f2e8926a082bc807dc22b2a1bc76",
+      "blob": "2df826942c430ac86da25b6cd163d13993e0e176",
       "perf": [
         "/** No way back (no data, nothing found, timeout): arrow + distance to the route. */",
         "session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true))",
@@ -1439,6 +1447,19 @@
         "const val EARLY_CONFIRM_MS = 4_000L",
         "const val MAX_MARGIN_M = 20.0",
         "const val HEADING_MAX_MS = 180_000L"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/navigation/OffRouteSay.kt": {
+      "blob": "9650af1ac446ffc9438706b1a09a52f577a71408",
+      "perf": [
+        "* Doubt is: the fix is old, the GPS lost, standing still, a poor fix ([MAX_ACC_M]), the route closer than the fix is",
+        "* ([GAP_MS]), a heading the GPS bearing contradicts ([AGREE_DEG]), and a route point that is not the nearest one",
+        "if (recent.isNotEmpty() && (nowMs < recent.last().ms || nowMs - recent.last().ms > GAP_MS)) recent.clear()",
+        "if (nowMs < last || nowMs - last > MAX_AGE_MS) return null",
+        "if (acc > MAX_ACC_M || hint.distanceM < max(MIN_M, acc)) return null",
+        "const val MAX_ACC_M = 15.0",
+        "const val MAX_AGE_MS = 3_000L",
+        "const val GAP_MS = 3_000L"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/OffRouteSteps.kt": {
@@ -1490,6 +1511,10 @@
         "RoutingException.Kind.BUSY, RoutingException.Kind.TIMEOUT -> Reason.TIMEOUT"
       ]
     },
+    "core/src/main/kotlin/com/onpath/app/navigation/RouteSide.kt": {
+      "blob": "e8c0cb5b00cea24c80a81750971f7ec1deb5cc1e",
+      "perf": []
+    },
     "core/src/main/kotlin/com/onpath/app/navigation/ScreenTurns.kt": {
       "blob": "2ca066c81aca6fc9aab9bb78f922382317a0960e",
       "perf": []
@@ -1525,7 +1550,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/navigation/VoiceGuide.kt": {
-      "blob": "4765ca05b1c7cdadaf426a6297422a599eeb3ccd",
+      "blob": "bd25acff786ddeb5e127f6a1d606653222377308",
       "perf": [
         "* - At least [GAP_MS] between sentences; off route / arrival / no destination never wait. A sentence that had to wait",
         "*   is dropped after [STALE_MS]; a junction is simply said at the next fix (with its distance then).",
@@ -1563,7 +1588,7 @@
         "if (!noFix && !(since <= nowMs && nowMs - since >= ARRIVE_WAIT_MS)) return null",
         "val there = minOf(toGoal ?: Double.MAX_VALUE, toEnd ?: Double.MAX_VALUE) <= ARRIVE_SAY_BIKE_M",
         "val sayNow = force || !bike || toEnd == null || there || passed || i.quiet || i.nowMs - since >= ARRIVE_WAIT_MS",
-        "* Handy schauen.\" Only inside an open question (its opening is said by [update]), not within [GAP_MS] of the last",
+        "* [update]), not within [GAP_MS] of the last time it was said, not while [quiet] (standing still).",
         "if (!lastOffRoute || quiet || since(offRouteSaidMs, nowMs) < GAP_MS) return null",
         "private fun since(last: Long?, nowMs: Long): Long = if (last == null || last > nowMs) Long.MAX_VALUE else nowMs - last",
         "* [NOW_REPEAT_AFTER_MS], or when it was said at least [NOW_REPEAT_FACTOR] × the lead ahead – and the rider moves.",
@@ -1585,7 +1610,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/VoiceText.kt": {
-      "blob": "8179605bfb71a739a1c3abf3e73a7e154f51f1b9",
+      "blob": "b678e3b532d72cde8054d1df91f41269b7b1e4f0",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/net/HttpDownload.kt": {
@@ -1800,7 +1825,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/recording/RecordingClient.kt": {
-      "blob": "5e3f6752e4833bf1d51c1bb0f169e326b71583b7",
+      "blob": "daabe4c170d4a838c0ad6df91537e5bcbff69aa0",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/recording/RestWatch.kt": {
@@ -1898,6 +1923,10 @@
     },
     "core/src/main/kotlin/com/onpath/app/routing/BreakdownRules.kt": {
       "blob": "c0b32eb2d2cac99324fa3b853a04a641f9f6d82e",
+      "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/DayRowText.kt": {
+      "blob": "283fa5394744e7f3706f55f7f6f77bbfed7e9557",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/Junctions.kt": {
@@ -2255,9 +2284,26 @@
         "/** Prepares what [search] needs (reads the word index into memory), so the first keystroke answers fast. */"
       ]
     },
+    "core/src/main/kotlin/com/onpath/app/search/RouteNamer.kt": {
+      "blob": "1bfff7ef95bf5f0e22dc4e814d9cefcb278f0ea3",
+      "perf": [
+        "const val MAX_LEN = 40",
+        "if (!loop && top != null) \"$s – $top – $s\".takeIf { it.length <= MAX_LEN }?.let { return it }",
+        "via?.let { Txt.s(Res.string.search_route_via, base, it) }?.takeIf { it.length <= MAX_LEN } ?: fit(base)",
+        "private fun fit(s: String): String = if (s.length <= MAX_LEN + 15) s else s.take(MAX_LEN + 14).trimEnd() + \"…\""
+      ]
+    },
     "core/src/main/kotlin/com/onpath/app/search/SavedPlaces.kt": {
       "blob": "bad38bba5a4a70205769eaa8c57a464066f97f32",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/search/SearchLines.kt": {
+      "blob": "032fc65db00cc3f06b5f9dfbaece58bbd02491f9",
+      "perf": [
+        "const val MAX_RECENT = 20",
+        "/** [p] first, the same place not twice, at most [MAX_RECENT]. */",
+        "(listOf(p) + recent.filter { it.id != p.id && !SearchMerge.samePlace(it, p) }).take(MAX_RECENT)"
+      ]
     },
     "core/src/main/kotlin/com/onpath/app/search/SearchMerge.kt": {
       "blob": "8c60babb0f6a5ba23e691eb1c79378dc848d0320",
@@ -3140,7 +3186,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/MapControlsEnabled.kt": {
-      "blob": "03dcf009d31331dd6459f55e94308331a907f711",
+      "blob": "ea6ed1295b453607e3e198839102abae7d31c8f0",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/MessagePlacement.kt": {
@@ -3200,6 +3246,26 @@
       "blob": "cc42fbbe47e2c8fdfa6de2b386d65ab65122a6fe",
       "perf": []
     },
+    "state/src/main/kotlin/com/onpath/app/ui/CellCards.kt": {
+      "blob": "34129537eb1137954a16ca8756837bbccb29ed06",
+      "perf": [
+        "const val MAX_ROWS = 3",
+        "val rows = ordered.take(MAX_ROWS).mapIndexed { i, c -> CellRow(name(c, job, i), rowState(s[c]!!), c == job.own) }",
+        "val rest = ordered.drop(MAX_ROWS)"
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/MapCredits.kt": {
+      "blob": "421f30a128edc203cd0bdf1b49201778c5df30c5",
+      "perf": []
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/ProfileRules.kt": {
+      "blob": "c801b063b1d3e094618ae7f3078da27e1521d2f2",
+      "perf": [
+        "* where the way is steep up to [MAX_EXTRA_ALPHA] more. The slope is taken over [WINDOW_M] around each point (so a DEM",
+        "const val MAX_EXTRA_ALPHA = 0.22f",
+        "fun alpha(level: Int): Float = MAX_EXTRA_ALPHA * level / (LEVELS - 1)"
+      ]
+    },
     "app/src/main/java/btools/router/OnPathHints.java": {
       "blob": "c218f717edb708c74ea141e96ab2ea4698dfad76",
       "perf": []
@@ -3217,7 +3283,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_days.xml": {
-      "blob": "1c8d98a7a2c758c803c450374a8bf792c5ab64f5",
+      "blob": "edc42b5247c66b34bcb1dd8dd4a04baa68cc1190",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_live.xml": {
@@ -3237,7 +3303,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "1a5882a2a25a5235d8c6654513c46383aeed0e21",
+      "blob": "d7eb97249d0b154b1633065923312372494a516e",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
@@ -3273,7 +3339,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
-      "blob": "fb5a8682a73125eab4db0a6f6ae0d858cdd7cdcc",
+      "blob": "75ac7b2b2632dd4acf79def5395849a98557cc66",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
@@ -3289,7 +3355,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_days.xml": {
-      "blob": "610605fa54772da550658c68b7704227be3c8d92",
+      "blob": "cfda526a62ac9afc9b8772c9e20ee3a34c05acd2",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_live.xml": {
@@ -3309,7 +3375,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "5a12afbdd56310d1d873f0afba96969f35bbed25",
+      "blob": "e30b08ec2617089d85a0ff3e07bd964a6abf7460",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
@@ -3345,7 +3411,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
-      "blob": "3f01ad5477afb2ec75e061ff30751c4551d25e2e",
+      "blob": "589a02ebfecf7d640aec3f4d1b6772fb3b353b47",
       "perf": []
     },
     "app/libs/brouter-codec-1.7.11-beta-onpath1.jar": {
@@ -3394,55 +3460,6 @@
     },
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "1c409cb28ff79aaf7c56578053c9e792a41f66c0",
-      "perf": []
-    },
-    "core/src/main/kotlin/com/onpath/app/map/ThumbRules.kt": {
-      "blob": "bc73cfafc52b58ba498d22cf1dcd2ab40bf1adc7",
-      "perf": []
-    },
-    "state/src/main/kotlin/com/onpath/app/ui/CellCards.kt": {
-      "blob": "34129537eb1137954a16ca8756837bbccb29ed06",
-      "perf": [
-        "const val MAX_ROWS = 3",
-        "val rows = ordered.take(MAX_ROWS).mapIndexed { i, c -> CellRow(name(c, job, i), rowState(s[c]!!), c == job.own) }",
-        "val rest = ordered.drop(MAX_ROWS)"
-      ]
-    },
-    "state/src/main/kotlin/com/onpath/app/ui/MapCredits.kt": {
-      "blob": "421f30a128edc203cd0bdf1b49201778c5df30c5",
-      "perf": []
-    },
-    "core/src/main/kotlin/com/onpath/app/domain/routes/RoundTrip.kt": {
-      "blob": "f1b5d1b2fe4cef5d7e6879649ada57234fdd4de4",
-      "perf": []
-    },
-    "core/src/main/kotlin/com/onpath/app/search/RouteNamer.kt": {
-      "blob": "1bfff7ef95bf5f0e22dc4e814d9cefcb278f0ea3",
-      "perf": [
-        "const val MAX_LEN = 40",
-        "if (!loop && top != null) \"$s – $top – $s\".takeIf { it.length <= MAX_LEN }?.let { return it }",
-        "via?.let { Txt.s(Res.string.search_route_via, base, it) }?.takeIf { it.length <= MAX_LEN } ?: fit(base)",
-        "private fun fit(s: String): String = if (s.length <= MAX_LEN + 15) s else s.take(MAX_LEN + 14).trimEnd() + \"…\""
-      ]
-    },
-    "state/src/main/kotlin/com/onpath/app/ui/ProfileRules.kt": {
-      "blob": "c801b063b1d3e094618ae7f3078da27e1521d2f2",
-      "perf": [
-        "* where the way is steep up to [MAX_EXTRA_ALPHA] more. The slope is taken over [WINDOW_M] around each point (so a DEM",
-        "const val MAX_EXTRA_ALPHA = 0.22f",
-        "fun alpha(level: Int): Float = MAX_EXTRA_ALPHA * level / (LEVELS - 1)"
-      ]
-    },
-    "core/src/main/kotlin/com/onpath/app/search/SearchLines.kt": {
-      "blob": "032fc65db00cc3f06b5f9dfbaece58bbd02491f9",
-      "perf": [
-        "const val MAX_RECENT = 20",
-        "/** [p] first, the same place not twice, at most [MAX_RECENT]. */",
-        "(listOf(p) + recent.filter { it.id != p.id && !SearchMerge.samePlace(it, p) }).take(MAX_RECENT)"
-      ]
-    },
-    "core/src/main/kotlin/com/onpath/app/routing/DayRowText.kt": {
-      "blob": "283fa5394744e7f3706f55f7f6f77bbfed7e9557",
       "perf": []
     }
   }
