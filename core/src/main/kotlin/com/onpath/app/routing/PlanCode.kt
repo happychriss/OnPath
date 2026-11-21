@@ -1,5 +1,6 @@
 package com.onpath.app.routing
 
+import com.onpath.app.data.Geo
 import kotlin.math.roundToLong
 
 /**
@@ -34,6 +35,11 @@ data class SharedPlan(
     val nights: Map<Int, NightMark> = emptyMap(),
     /** The tour's description (multi-day tours), free text with line breaks. */
     val description: String? = null,
+    /**
+     * Hidden via points by point index (docs/design/detour-stitch.md): the fourth per-point attribute. They travel in
+     * tag 7 together with the points' exact 1e-6° values; an older reader skips both.
+     */
+    val anchors: Map<Int, Anchors> = emptyMap(),
 )
 
 /** Limits per day of a multi-day tour (owner 2026-11-17: "Natürlich bleiben die Grenzen pro Tag"); null = no limit. */
@@ -78,6 +84,12 @@ data class Hotel(val name: String? = null, val address: String? = null, val link
  *   0 = none), 5 = night mark (varint index, varint kind 1 = Übernachtung / 2 = hotel, then the hotel's own fields as
  *   tag, length, UTF-8: 1 = name, 2 = address, 3 = link; unknown ones skipped, an unknown kind reads as Übernachtung),
  *   6 = description (UTF-8, line breaks kept).
+ * - detour anchors (docs/design/detour-stitch.md §3, §8.10; written only when the plan has one, an older app skips it):
+ *   7 = first, for every point, its remainder to 1e-6° (lat, lon: zigzag varints, each −5…+5), so the points come back
+ *   exactly; then per point with anchors: varint index, varint count before, varint count after, each anchor as zigzag
+ *   deltas in 1e-6° (the first to the point's exact value, then to the previous anchor of that entry, before list
+ *   first). The reader drops the whole tag when it is damaged (remainder out of range, cut off, over 500 anchors) and
+ *   a single entry when its index is out of range, it has over 8 anchors on a side or one lies over 200 km from its point.
  *
  * Reading never throws: anything broken, too large or of a newer major version is null.
  */
@@ -96,6 +108,11 @@ object PlanCode {
     private const val MAX_LIMIT_ASCENT = 20_000
     private const val MAX_TEXT = 16_000
     private const val SCALE = 100_000.0
+    private const val SCALE6 = 1_000_000.0
+    /** Anchors: at most this many per side, per plan, and this far (m) from their point. */
+    const val MAX_ANCHORS_SIDE = 8
+    const val MAX_ANCHORS = 500
+    private const val MAX_ANCHOR_DIST_M = 200_000.0
 
     /** Stored activity codes. Append only; never reorder. */
     private val ACTIVITIES = listOf(
@@ -109,7 +126,8 @@ object PlanCode {
     private const val TAG_NIGHT = 5
     private const val TAG_DESCRIPTION = 6
     /** The highest tag this reader knows; tests read as an older app with a lower one ([decode]). */
-    private const val TAG_LAST = TAG_DESCRIPTION
+    private const val TAG_ANCHORS = 7
+    private const val TAG_LAST = TAG_ANCHORS
 
     private const val NIGHT_OVERNIGHT = 1
     private const val NIGHT_HOTEL = 2
@@ -167,7 +185,81 @@ object PlanCode {
             out.field(TAG_NIGHT, b.toArray())
         }
         cleanText(plan.description)?.let { out.field(TAG_DESCRIPTION, it.encodeToByteArray()) }
+        anchorsField(pts, plan.anchors)?.let { out.field(TAG_ANCHORS, it) }
         return Base64Url.encode(out.toArray())
+    }
+
+    /** Tag 7's payload, or null when there is nothing to write (no anchor survives the caps). */
+    private fun anchorsField(pts: List<GeoPoint>, anchors: Map<Int, Anchors>): ByteArray? {
+        val entries = ArrayList<Pair<Int, Anchors>>()
+        var total = 0
+        for ((i, a) in anchors.toSortedMap()) {
+            if (i !in pts.indices || a.isEmpty || a.before.size > MAX_ANCHORS_SIDE || a.after.size > MAX_ANCHORS_SIDE) continue
+            if (total + a.size > MAX_ANCHORS) break
+            total += a.size; entries += i to a
+        }
+        if (entries.isEmpty()) return null
+        val b = Bytes()
+        for (p in pts) {
+            val rl = micro(p.lat, 90.0) - (p.lat.coerceIn(-90.0, 90.0) * SCALE).roundToLong() * 10
+            val ro = micro(p.lon, 180.0) - (p.lon.coerceIn(-180.0, 180.0) * SCALE).roundToLong() * 10
+            if (rl !in -5L..5L || ro !in -5L..5L) return null
+            b.zigzag(rl); b.zigzag(ro)
+        }
+        for ((i, a) in entries) {
+            b.varint(i.toLong()); b.varint(a.before.size.toLong()); b.varint(a.after.size.toLong())
+            var lat = micro(pts[i].lat, 90.0)
+            var lon = micro(pts[i].lon, 180.0)
+            for (q in a.before + a.after) {
+                val la = micro(q.lat, 90.0); val lo = micro(q.lon, 180.0)
+                b.zigzag(la - lat); b.zigzag(lo - lon)
+                lat = la; lon = lo
+            }
+        }
+        return b.toArray()
+    }
+
+    private fun micro(v: Double, max: Double): Long = (v.coerceIn(-max, max) * SCALE6).roundToLong()
+
+    /**
+     * Reads tag 7 over the points' 1e-5° values [la5] / [lo5]: the exact points and the anchors, or null when the whole
+     * tag is to be ignored (damaged). A single bad entry is only dropped.
+     */
+    private fun readAnchors(f: Reader, la5: LongArray, lo5: LongArray): Pair<List<GeoPoint>, Map<Int, Anchors>>? {
+        return try {
+            val n = la5.size
+            val la = LongArray(n); val lo = LongArray(n)
+            for (i in 0 until n) {
+                val rl = f.zigzag(); val ro = f.zigzag()
+                if (rl !in -5L..5L || ro !in -5L..5L) return null
+                la[i] = la5[i] * 10 + rl; lo[i] = lo5[i] * 10 + ro
+            }
+            val pts = List(n) { GeoPoint(la[it] / SCALE6, lo[it] / SCALE6) }
+            val out = HashMap<Int, Anchors>()
+            var total = 0L
+            while (f.more()) {
+                val i = f.varint(); val nb = f.varint(); val na = f.varint()
+                if (nb < 0 || na < 0 || nb > f.left() || na > f.left() || (nb + na) * 2 > f.left()) return null // each anchor needs two bytes at least
+                total += nb + na
+                if (total > MAX_ANCHORS) return null
+                var lat = if (i in 0 until n.toLong()) la[i.toInt()] else 0L
+                var lon = if (i in 0 until n.toLong()) lo[i.toInt()] else 0L
+                val list = ArrayList<GeoPoint>((nb + na).toInt())
+                repeat((nb + na).toInt()) {
+                    lat += f.zigzag(); lon += f.zigzag()
+                    list += GeoPoint(lat / SCALE6, lon / SCALE6)
+                }
+                if (i !in 0 until n.toLong() || nb > MAX_ANCHORS_SIDE || na > MAX_ANCHORS_SIDE) continue
+                val p = pts[i.toInt()]
+                if (list.any { it.lat !in -90.0..90.0 || it.lon !in -180.0..180.0 || Geo.distance(p, it) > MAX_ANCHOR_DIST_M }) continue
+                out[i.toInt()] = Anchors(list.take(nb.toInt()), list.drop(nb.toInt()))
+            }
+            pts to out
+        } catch (_: IndexOutOfBoundsException) {
+            null // expected: cut-off or damaged tag – the plan stays, without exact points and anchors
+        } catch (_: IllegalArgumentException) {
+            null // expected: damaged tag, same
+        }
     }
 
     /** The link to open [plan] in the web planner at [base] (e.g. "https://…/"). */
@@ -210,8 +302,11 @@ object PlanCode {
         var lat = 0L
         var lon = 0L
         val points = ArrayList<GeoPoint>(n.toInt())
+        val la5 = LongArray(n.toInt())
+        val lo5 = LongArray(n.toInt())
         repeat(n.toInt()) {
             lat += r.zigzag(); lon += r.zigzag()
+            la5[points.size] = lat; lo5[points.size] = lon
             val p = GeoPoint(lat / SCALE, lon / SCALE)
             require(p.lat in -90.0..90.0 && p.lon in -180.0..180.0)
             points += p
@@ -227,6 +322,7 @@ object PlanCode {
         var limits = DayLimits.NONE
         val nights = HashMap<Int, NightMark>()
         var description: String? = null
+        var anchorBytes: ByteArray? = null
         while (r.more()) {
             val tag = r.varint()
             val len = r.varint()
@@ -248,10 +344,16 @@ object PlanCode {
                     if (i > 0 && i < points.lastIndex) nights[i.toInt()] = mark
                 }
                 TAG_DESCRIPTION -> description = cleanText(f.rest().decodeToString())
+                TAG_ANCHORS -> anchorBytes = f.rest()
                 else -> Unit // a field from a newer app: skip it
             }
         }
-        return SharedPlan(points, activity, sac, pinned, names, title, days, limits, nights, description)
+        var exact: List<GeoPoint> = points
+        var anchors: Map<Int, Anchors> = emptyMap()
+        anchorBytes?.let { bytes ->
+            readAnchors(Reader(bytes), la5, lo5)?.let { (p, a) -> exact = p; anchors = a }
+        }
+        return SharedPlan(exact, activity, sac, pinned, names, title, days, limits, nights, description, anchors)
     }
 
     private fun readHotel(f: Reader): Hotel {
