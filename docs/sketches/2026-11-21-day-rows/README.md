@@ -1,6 +1,18 @@
 # Tage-Liste einer Mehrtagestour
 
-**Mein Vorschlag: A.** Die Werte stehen untereinander, so lassen sich die Tage am schnellsten vergleichen.
+**Du hast A gewählt.** Offen ist nur noch: Soll der Planer die Zeit pro Tag behalten?
+
+### Planer: A mit Zeit (mein Vorschlag)
+Ein Tag kann auch wegen seiner Zeit über deiner Grenze liegen. Ohne Zeit wäre er orange, und man sähe nicht, warum.
+
+![A mit Zeit](pics/planer-phone-a-zeit.png)
+
+### Planer: A ohne Zeit (wie die App)
+![A ohne Zeit](pics/planer-phone-a.png)
+
+---
+
+Alle Bilder der ersten Runde:
 
 Beispiel München – Venedig, Tag 4 ist angetippt. Bei Tag 4 und 5 liegt an einem Ende kein Ort in der Nähe, dort bleibt die graue Zeile weg.
 
@@ -17,7 +29,7 @@ Beispiel München – Venedig, Tag 4 ist angetippt. Bei Tag 4 und 5 liegt an ein
 
 ## Planer
 
-In A und B fehlen hier die Zeit pro Tag und die Zeile „Nacht noch offen“ / „Über der Grenze“, damit er aussieht wie die App. Ob das so bleibt, frage ich danach extra.
+In A und B fehlt hier die Zeile „Nacht noch offen“ / „Über der Grenze“: Das sagen das Symbol und die orange Farbe.
 
 ### Heute
 ![Heute](pics/planer-phone-heute.png)
