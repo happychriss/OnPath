@@ -2073,7 +2073,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/Planner.kt": {
-      "blob": "f8f9fc080e096ed7d5e9f7c95e99699a305e66c1",
+      "blob": "8a6e80aaf25ad231876ff2f44f27177ca5f70e37",
       "perf": [
         "* points = same legs = same route: the cache saves time, never changes a line.",
         "* A leg without a route becomes a straight dashed line (R-12/R-13); after a timeout the legs still to route are straight",
@@ -2095,8 +2095,6 @@
         "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan) – the legs",
         "// done so far are in the cache, the next run starts after them",
         "// each leg would get its own limit and the wait multiplies: the rest straight at once",
-        "* A failure that means \"no route here\" (a route through the anchors may still exist without them): not a timeout, kind",
-        "* OTHER or START_POINT, and not the engine's own memory-limit or unexpected-error texts (they are OTHER too).",
         "* Time: the retry counts against the leg's time limit ([RouteTimeLimit.forRoute], started at [t0]); it gets only what",
         "* is left of it and does not start with less than [MIN_RETRY_MS]. Returns [r] when nothing was taken.",
         "if (left < MIN_RETRY_MS) { Problems.trace(\"routing\", \"$leg → no time left to retry via the midpoint\"); return r }",
@@ -2157,12 +2155,13 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/RoutingContract.kt": {
-      "blob": "26010e569f8dedf3df50cce762c3f31ec84c209d",
+      "blob": "94ff1808e679aad5fe8476de0e598e33b80ee1d6",
       "perf": [
         "* [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the",
         "* same or shorter budget (leg by leg) would time out too, so the planner does not retry.",
         "* request that is nothing else is [Kind.TIMEOUT].",
         "val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }",
+        "* A real \"no route here\": not a timeout, kind [Kind.OTHER] or [Kind.START_POINT], and not the engine's own memory-limit",
         "/** Out of memory / too complex: fewer or closer points help. */",
         "/** The request took too long (also: no route within the time limit). */",
         "TIMEOUT,",

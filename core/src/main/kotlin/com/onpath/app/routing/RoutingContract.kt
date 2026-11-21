@@ -164,6 +164,14 @@ class RoutingException(message: String, val timedOut: Boolean = false, kind: Kin
      */
     val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }
 
+    /**
+     * A real "no route here": not a timeout, kind [Kind.OTHER] or [Kind.START_POINT], and not the engine's own memory-limit
+     * or unexpected-error texts (they are OTHER too). The Planner drops a leg's detour anchors only for this.
+     */
+    val isNoRoute: Boolean
+        get() = !timedOut && (this.kind == Kind.OTHER || this.kind == Kind.START_POINT) &&
+            message != Txt.s(Res.string.plan_err_too_long) && message != Txt.s(Res.string.plan_err_unexpected)
+
     enum class Kind {
         OTHER,
         /** Routing data for the area is missing (the map loads it). */
