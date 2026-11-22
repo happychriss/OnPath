@@ -112,7 +112,7 @@ class SyncedRoutingSlice(
                     try {
                         val eng = planRoute.routingEngine()
                         if (eng is com.onpath.app.routing.StraightLineEngine) null
-                        else planRoute.withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel(), legs = planRoute.legCache).plan(pts, act, t.sac, t.pinned), act, f)
+                        else planRoute.withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel(), legs = planRoute.legCache).plan(com.onpath.app.routing.PlanAnchors.expand(pts, t.anchors, t.pinned), act, t.sac), act, f)
                     } catch (e: Exception) {
                         Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
                     }
@@ -128,10 +128,10 @@ class SyncedRoutingSlice(
                         // changed again meanwhile (a newer sync, or the user's own save of another activity / T level / pins
                         // with the same stops): leave it as it is – the write would put the old values back
                         val now = store.getTour(id)
-                        now != null && now.waypoints == t.waypoints && now.activity == t.activity && now.sac == t.sac && now.pinned == t.pinned &&
+                        now != null && now.waypoints == t.waypoints && now.activity == t.activity && now.sac == t.sac && now.pinned == t.pinned && now.anchors == t.anchors &&
                             store.replacePlanned(id, PlannedRow(act.name, t.sac, r.distanceM, r.ascentM, r.descentM,
                             r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned,
-                            planRoute.difficultyOf(r, act)))
+                            planRoute.difficultyOf(r, act), anchors = t.anchors))
                             .also { if (it) { planRoute.plannedTimes.remove(id); planRoute.storePlanTimes(id, r, act) } }
                     } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
                 }

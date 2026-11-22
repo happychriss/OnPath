@@ -75,6 +75,8 @@ class RecentPlans(
         val dated: String,
         /** A multi-day tour's days (stage 4) – kept with it; null = a normal plan. */
         val days: com.onpath.app.data.MultiDay? = null,
+        /** The hidden via points by index of its points. */
+        val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
         /** The difficulty level stored with it; asked only when a row is written. */
         val difficulty: () -> String?,
     )
@@ -86,12 +88,14 @@ class RecentPlans(
         val segments: List<List<TrackPoint>>, val waypoints: List<GpxWaypoint>, val pinned: Set<Int>, val difficulty: String?,
         /** A multi-day tour's days; null = a normal plan. */
         val days: com.onpath.app.data.MultiDay? = null,
+        /** The hidden via points by index of [waypoints]. */
+        val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
     )
 
     /** [RecentPlansState.keep] for a plan as [Leaving]. */
     fun keep(plan: Leaving, why: String): Long? =
         keep(LeavingPlan(plan.points, plan.unsaved, plan.savedId, plan.route, plan.activity, plan.sac, plan.stops, plan.pins,
-            plan.dated, plan.days, plan.difficulty), why)
+            plan.dated, plan.days, plan.anchors, plan.difficulty), why)
 
     companion object {
         /** How long a new route's name waits for its place proposal (it shows the date name meanwhile). */
@@ -102,7 +106,7 @@ class RecentPlans(
 /** [RecentPlansHost] as the [RecentPlansPorts] of [RecentPlansState] (the row converted field by field). */
 private class HostAsPorts(private val host: RecentPlansHost) : RecentPlansPorts {
     private fun DraftRow.toApp() = RecentPlans.DraftRow(name, activity, sac, distanceM, ascentM, descentM, durationS,
-        segments, waypoints, pinned, difficulty, days)
+        segments, waypoints, pinned, difficulty, days, anchors)
 
     override fun insertDraft(row: DraftRow): Long = host.insertDraft(row.toApp())
     override fun updateDraft(id: Long, row: DraftRow): Boolean = host.updateDraft(id, row.toApp())

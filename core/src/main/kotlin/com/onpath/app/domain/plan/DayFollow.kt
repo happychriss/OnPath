@@ -1,5 +1,6 @@
 package com.onpath.app.domain.plan
 
+import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.DayEndKind
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.NightMark
@@ -28,6 +29,11 @@ data class DayPart(
     val endAdded: GeoPoint?,
     val startLine: Int,
     val endLine: Int,
+    /**
+     * The hidden via points of [points] by index. The sides facing out of the day are not here: the day's first point has
+     * no `before`, its last no `after` (an added start or end sits between them and their point).
+     */
+    val anchors: Map<Int, Anchors> = emptyMap(),
 ) {
     /** "Tag 2" or "Tag 3–4" – the same in Navigate's top card ("Tag 4 von 6"). */
     val single: Boolean get() = first == last
@@ -83,7 +89,9 @@ object DayFollow {
         val shift = (if (startAdded != null) 1 else 0) - from
         fun <T> inMiddle(m: Map<Int, T>) = m.filterKeys { it in from..to }.mapKeys { it.key + shift }
         return DayPart(first, last, n, pts, plan.pinned.filter { it in from..to }.map { it + shift }.toSet(), inMiddle(plan.names),
-            inMiddle(plan.nights), from, to, startAdded, endAdded, startLine, endLine)
+            inMiddle(plan.nights), from, to, startAdded, endAdded, startLine, endLine,
+            inMiddle(plan.anchors).mapValues { (k, a) -> Anchors(if (k - shift == from) emptyList() else a.before,
+                if (k - shift == to) emptyList() else a.after) }.filterValues { !it.isEmpty })
     }
 
     /**
@@ -91,12 +99,15 @@ object DayFollow {
      * [whole] (of which [part] was taken): the points before and after the day stay with their pins, names and night
      * marks ([PlanDays.afterEdit]: they follow their points), the day's points and their marks come from the edit; a grey
      * day end put in is no point of the tour and goes again. N stays (a night deleted on the way gives a grey day back,
-     * R2). Returns the new whole plan and the part as it is now (for the next edit).
+     * R2). [anchors] = the day's anchors by index of [edited] (null: they just follow their points in [whole]): they count
+     * inside the day, the two sides that face out of it stay the whole tour's. Returns the new whole plan and the part as
+     * it is now (for the next edit).
      */
     fun writeBack(whole: SharedPlan, part: DayPart, edited: List<GeoPoint>, pinned: Set<GeoPoint>, nameOf: (GeoPoint) -> String?,
-                  nightOf: (GeoPoint) -> NightMark?): Pair<SharedPlan, DayPart> {
+                  nightOf: (GeoPoint) -> NightMark?, anchors: Map<Int, Anchors>? = null): Pair<SharedPlan, DayPart> {
         var middle = edited
-        if (part.startAdded != null && middle.firstOrNull() == part.startAdded) middle = middle.drop(1)
+        val startOff = if (part.startAdded != null && middle.firstOrNull() == part.startAdded) 1 else 0
+        if (startOff == 1) middle = middle.drop(1)
         if (part.endAdded != null && middle.lastOrNull() == part.endAdded) middle = middle.dropLast(1)
         val keptTo = maxOf(part.to, part.from - 1)
         val before = whole.points.subList(0, part.from.coerceIn(0, whole.points.size))
@@ -113,8 +124,15 @@ object DayFollow {
             nameOf(p)?.let { names[i] = it }
             nightOf(p)?.let { nights[i] = it }
         }
-        val plan = moved.copy(pinned = pins, names = names, nights = PlanDays.clean(points, nights))
-        val now = part.copy(points = edited, from = part.from, to = part.from + middle.size - 1,
+        val wholeAnchors = if (anchors == null) moved.anchors else HashMap(moved.anchors.filterKeys { it !in range }).also { out ->
+            for (k in middle.indices) {
+                val own = moved.anchors[before.size + k]; val day = anchors[k + startOff]
+                val kept = Anchors((if (k == 0) own else day)?.before.orEmpty(), (if (k == middle.lastIndex) own else day)?.after.orEmpty())
+                if (!kept.isEmpty) out[before.size + k] = kept
+            }
+        }
+        val plan = moved.copy(pinned = pins, names = names, nights = PlanDays.clean(points, nights), anchors = wholeAnchors)
+        val now = part.copy(points = edited, from = part.from, to = part.from + middle.size - 1, anchors = anchors ?: part.anchors,
             pinned = edited.indices.filter { edited[it] in pinned }.toSet(),
             names = edited.indices.mapNotNull { i -> nameOf(edited[i])?.let { i to it } }.toMap(),
             nights = edited.indices.mapNotNull { i -> nightOf(edited[i])?.let { i to it } }.toMap())

@@ -181,9 +181,14 @@ class RoutesSlice(
                 host.loadedOnTheWay(duringTour && host.touring)
                 // saved routes load without routing again (owner 2026-11-07): its legs from the leg store, else its line
                 // as a stand-in while the run routes; a route routed before is no "very long plan" question again
-                if (!duringTour) loadStoredLine(t, pts, segs)
+                // its detour points lie on the line of the profile it was saved with: another one (a tour keeps its own) routes without them
+                val sameProfile = planRoute.activityOrNull(t.activity) == planRoute.activity &&
+                    (planRoute.activity != Activity.HIKE || t.sac == planRoute.sac)
+                val anchors = if (sameProfile) t.anchors.filterKeys { it in pts.indices } else emptyMap()
+                if (!duringTour) loadStoredLine(t, pts, segs, anchors)
                 if (!duringTour) host.routeEvent(RouteRun.Event.NewPlan) // a new plan: its first route may raise the sheet ([SheetRise])
                 save.keepAsDraft("replaced by \"${t.name}\"")
+                plan.arriving(pts, anchors)
                 host.change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { host.rememberPlaceName(pts[i], it) } }
                 // a stand-in (no stored route behind it): an unsaved plan – Los geht's saves it like every new plan
@@ -228,7 +233,7 @@ class RoutesSlice(
      * The saved line counts only when [t]'s activity and T level are the ones the plan is routed with. Either way the
      * route was routed before: no "very long plan" question for it ([RouteRun.longOk]).
      */
-    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>) {
+    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>, anchors: Map<Int, com.onpath.app.routing.Anchors>) {
         if (pts.size < 2) return
         val act = planRoute.activity; val level = planRoute.sac
         val lineFits = planRoute.activityOrNull(t.activity) == act && (act != Activity.HIKE || t.sac == level)
@@ -236,15 +241,18 @@ class RoutesSlice(
         val pins = t.pinned.filter { it in pts.indices }.toSet()
         val found = withContext(io) {
             try {
-                val fresh = (0 until pts.size - 1).all { planRoute.legCache.lookup(pts[it], pts[it + 1], act, level) != null }
-                fresh to if (fresh) null else com.onpath.app.routing.StoredLine.preview(pts, act, level, pins, planRoute.legCache, line)
+                // one list of legs: with detour points those of the expanded plan (detour-stitch.md §8.1)
+                val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, anchors, pins)
+                val fresh = com.onpath.app.routing.StoredLine.allFresh(expanded, act, level, planRoute.legCache)
+                fresh to if (fresh) null else if (expanded.hasAnchors) com.onpath.app.routing.StoredLine.preview(expanded, act, level, planRoute.legCache, line)
+                    else com.onpath.app.routing.StoredLine.preview(pts, act, level, pins, planRoute.legCache, line)
             } catch (e: Exception) {
                 Problems.warn("routing", "The stored line of \"${t.name}\" could not be read – the route is calculated", e); false to null
             }
         }
         val (fresh, preview) = found
         Problems.trace("routes", "Loading \"${t.name}\": " + when {
-            fresh -> "all ${pts.size - 1} legs stored – no routing"
+            fresh -> "all legs stored – no routing"
             preview != null -> "stored line shown at once (${preview.stale} legs on older routing data, ${preview.fromLine} from the saved line), routed again"
             else -> "no stored line for these points – routed"
         })

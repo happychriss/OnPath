@@ -3,6 +3,8 @@ package com.onpath.app.data
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.GeoPoint
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -33,6 +35,8 @@ data class TourPlan(
     val sourceUuid: String? = null,
     /** When this version was taken (ms). */
     val updatedMs: Long = 0L,
+    /** The plan's hidden via points by index of [waypoints] (docs/design/detour-stitch.md §3); empty = none. */
+    val anchors: Map<Int, Anchors> = emptyMap(),
 ) {
     /** A plan worth keeping: two points at least. */
     val usable: Boolean get() = waypoints.size >= 2
@@ -46,6 +50,7 @@ data class TourPlan(
         put("distance", distanceM); put("ascent", ascentM); put("descent", descentM); put("duration", durationS)
         sourceUuid?.let { put("source", it) }
         put("updated", updatedMs)
+        AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)?.let { put("anchors", JSONArray(it)) }
     }
 
     companion object {
@@ -53,16 +58,18 @@ data class TourPlan(
         fun fromJson(o: JSONObject?): TourPlan? {
             if (o == null) return null
             return try {
+                val waypoints = TourJson.jsonToWaypoints(o.optJSONArray("waypoints")?.toString())
                 TourPlan(
                     name = if (o.has("name")) o.getString("name") else null,
                     activity = o.optString("activity", "HIKE").ifBlank { "HIKE" }, sac = o.optInt("sac", 2),
-                    waypoints = TourJson.jsonToWaypoints(o.optJSONArray("waypoints")?.toString()),
+                    waypoints = waypoints,
                     pinned = TourJson.jsonToPinned(o.optJSONArray("pinned")?.toString()),
                     line = lineFromJson(o.optJSONArray("line")?.toString()),
                     distanceM = o.optDouble("distance", 0.0), ascentM = o.optDouble("ascent", 0.0),
                     descentM = o.optDouble("descent", 0.0), durationS = o.optDouble("duration", 0.0),
                     sourceUuid = if (o.has("source")) o.getString("source") else null,
                     updatedMs = o.optLong("updated", 0L),
+                    anchors = AnchorsJson.read(o.optJSONArray("anchors")?.toString(), waypoints.map { GeoPoint(it.lat, it.lon) }),
                 ).takeIf { it.usable }
             } catch (e: Exception) {
                 Problems.warn("db", "The followed plan of a tour is unreadable – the tour stays without it", e); null

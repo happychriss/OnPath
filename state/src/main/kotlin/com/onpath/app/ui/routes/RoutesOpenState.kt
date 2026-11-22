@@ -123,6 +123,7 @@ class RoutesOpenState(
         // pins before the points: the first route already passes them exactly (recalc reads them at once)
         if (load.pinned.isNotEmpty()) this.plan.pin(load.pinned)
         save.keepAsDraft("replaced by a plan link")
+        this.plan.arriving(load.points, load.anchors) // with the points: the first route already passes them
         ports.change { clear(); addAll(load.points) }
         load.names.forEach { (p, n) -> ports.rememberPlaceName(p, n) }
         ports.saved(null, -1, null) // not in My routes yet: Save asks for a name

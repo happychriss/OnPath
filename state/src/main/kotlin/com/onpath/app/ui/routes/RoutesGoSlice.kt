@@ -149,11 +149,11 @@ class RoutesGoSlice(
         val key = p.waypoints.map { it.lat to it.lon }
         val source = p.sourceUuid?.let { u ->
             store.listTours().firstOrNull { it.uuid == u && it.kind == TourKind.PLANNED && !it.draft && it.deletedMs == null }
-        }?.takeIf { it.waypoints.map { w -> w.lat to w.lon } == key && it.activity == p.activity && it.sac == p.sac }
+        }?.takeIf { it.waypoints.map { w -> w.lat to w.lon } == key && it.activity == p.activity && it.sac == p.sac && it.anchors == p.anchors }
         if (source != null) return source to null
         val line = p.line.ifEmpty { p.waypoints.map { TrackPoint(it.lat, it.lon, it.ele) } }
         return Tour(-1L, TourKind.PLANNED, p.name ?: t.name, t.createdMs, p.activity, p.sac, p.distanceM, p.ascentM,
-            p.descentM, p.durationS, "done", p.waypoints, pinned = p.pinned) to listOf(line)
+            p.descentM, p.durationS, "done", p.waypoints, pinned = p.pinned, anchors = p.anchors) to listOf(line)
     }
 
     /** The overview of a recorded tour: the line of the plan it followed (thin under the track); empty = none. */
@@ -261,7 +261,7 @@ class RoutesGoSlice(
         val pts = plan.points.toList()
         // the route's name: as saved, else the name a link brought while its points are unchanged
         val title = plan.savedName ?: links.title(pts)
-        links.share(com.onpath.app.routing.PlanLinks.share(pts, planRoute.activity, planRoute.sac, plan.pinnedIndices(), host::stopName, title), pts.size, title)
+        links.share(com.onpath.app.routing.PlanLinks.share(pts, planRoute.activity, planRoute.sac, plan.pinnedIndices(), host::stopName, title, plan.anchors), pts.size, title)
     }
 
     /**
@@ -273,6 +273,6 @@ class RoutesGoSlice(
         val pts = t.waypoints.map { GeoPoint(it.lat, it.lon, it.ele) }
         val names = t.waypoints.associate { GeoPoint(it.lat, it.lon, it.ele) to it.name }
         val act = planRoute.activityOrNull(t.activity) ?: Activity.HIKE
-        links.share(com.onpath.app.routing.PlanLinks.share(pts, act, t.sac, t.pinned, { names[it] }, t.name), pts.size, t.name)
+        links.share(com.onpath.app.routing.PlanLinks.share(pts, act, t.sac, t.pinned, { names[it] }, t.name, t.anchors), pts.size, t.name)
     }
 }

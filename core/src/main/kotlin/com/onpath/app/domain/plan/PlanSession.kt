@@ -4,6 +4,8 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.domain.PlanGuidance
 import com.onpath.app.domain.PlanHistory
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.PlanAnchors
 
 /**
  * The plan being edited – its points, Undo / Redo, the pinned (POI) points and the start the one-point rule put in –
@@ -16,7 +18,33 @@ class PlanSession(
     val points: MutableList<GeoPoint>,
     pinnedAtStart: Set<GeoPoint> = emptySet(),
     private val history: PlanHistory = PlanHistory(),
+    anchorsAtStart: Map<Int, Anchors> = emptyMap(),
 ) {
+    /**
+     * The hidden via points by point index (docs/design/detour-stitch.md): they follow every edit here
+     * ([PlanAnchors.edited]), Undo / Redo bring them back. This stage only reads them: a plan gets them from where it was
+     * loaded ([arriving]), no edit makes new ones.
+     */
+    var anchors: Map<Int, Anchors> = anchorsAtStart
+        private set
+
+    /** The anchors of the points the next change puts in ([arriving], Undo / Redo). */
+    private var incoming: Pair<List<GeoPoint>, Map<Int, Anchors>>? = null
+
+    /** The next change that makes the plan exactly [list] (a loaded plan) brings [anchors] with it. */
+    fun arriving(list: List<GeoPoint>, anchors: Map<Int, Anchors>) { incoming = list.toList() to anchors }
+
+    /** The points changed from [before]: the anchors that arrive with them, else the old ones follow. */
+    private fun anchorsAfter(before: List<GeoPoint>) {
+        val now = points.toList()
+        val got = incoming?.takeIf { it.first == now }
+        incoming = null
+        anchors = got?.second ?: PlanAnchors.edited(before, now, anchors)
+    }
+
+    /** All anchors go, in the Undo steps too (an activity / T level change: they lie on the other profile's line). */
+    fun clearAnchors() { anchors = emptyMap(); incoming = null; history.clearAnchors() }
+
     /**
      * Points added by tapping a POI (hut, viewpoint …), kept by value so reorder / reverse / Undo keep them; a dragged
      * point is a new value and so no longer pinned. Routed exactly (Planner).
@@ -39,21 +67,24 @@ class PlanSession(
 
     /** One undoable change: records the step, applies [block]; returns the points before it. */
     fun edit(block: MutableList<GeoPoint>.() -> Unit): List<GeoPoint> {
-        history.record(points)
+        history.record(points, anchors)
         val before = points.toList()
         points.block()
+        anchorsAfter(before)
         return before
     }
 
     /** The plan Undo brings back (taken off the undo stack, not applied yet – [replace]); null = nothing to undo. */
-    fun undo(): List<GeoPoint>? = history.undo(points)
+    fun undo(): List<GeoPoint>? = history.undo(points, anchors)?.also { incoming = it to history.takenAnchors }
 
     /** The plan Redo brings back (like [undo]); null = nothing to redo. */
-    fun redo(): List<GeoPoint>? = history.redo(points)
+    fun redo(): List<GeoPoint>? = history.redo(points, anchors)?.also { incoming = it to history.takenAnchors }
 
     /** Puts [list] in place of the points without an Undo step (Undo / Redo, rules that rewrite the same step). */
     fun replace(list: List<GeoPoint>) {
+        val before = points.toList()
         points.clear(); points.addAll(list)
+        anchorsAfter(before)
     }
 
     /**
@@ -93,6 +124,7 @@ class PlanSession(
     fun empty() {
         oneLeftStart = null
         points.clear()
+        anchors = emptyMap(); incoming = null
     }
 
     /** The plan becomes position → the one point left (like "Hierhin"), in the same Undo step. */

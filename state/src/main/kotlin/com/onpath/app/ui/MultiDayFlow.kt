@@ -3,12 +3,14 @@ package com.onpath.app.ui
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import com.onpath.app.data.AnchorsJson
 import com.onpath.app.data.MultiDay
 import com.onpath.app.data.Tour
 import com.onpath.app.debug.Problems
 import com.onpath.app.domain.plan.DayFollow
 import com.onpath.app.domain.plan.DayPart
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.DayLine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.NightMark
@@ -116,13 +118,14 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
 
     /**
      * The plan's points are [points] now (any edit, Undo, the router's snap): while a day is followed, the change goes
-     * back into the whole tour ([DayFollow.writeBack]). [pinned] / [nameOf] = the plan's pins and names by value.
+     * back into the whole tour ([DayFollow.writeBack]). [pinned] / [nameOf] = the plan's pins and names by value, [anchors] =
+     * its detour points by index of [points] (null: not known for these points, they follow their points in the tour).
      */
-    fun pointsChanged(points: List<GeoPoint>, pinned: Set<GeoPoint>, nameOf: (GeoPoint) -> String?) {
+    fun pointsChanged(points: List<GeoPoint>, pinned: Set<GeoPoint>, anchors: Map<Int, Anchors>? = null, nameOf: (GeoPoint) -> String?) {
         val c = day ?: return
         if (linkedId() != c.tour.id || points.size < 2 || points == c.part.points) return
         try {
-            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf)
+            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf, anchors)
             day = c.copy(whole = whole, part = part)
             Problems.trace("plan", "Day ${c.part.first}–${c.part.last}: change written back into the tour (${whole.points.size} points)")
             save()
@@ -131,14 +134,23 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         }
     }
 
+    /** The plan's detour points were cleared (another activity / T level): the whole tour kept beside a day loses them too. */
+    fun anchorsCleared() {
+        val c = day ?: return
+        if (c.whole.anchors.isEmpty()) return
+        day = c.copy(whole = c.whole.copy(anchors = emptyMap()), part = c.part.copy(anchors = emptyMap()))
+        save()
+    }
+
     // ---- the days -------------------------------------------------------------------------------------------------
 
     /** The whole tour as a plan (overview): [points] with their pins and names, N, limits, marks; null without a tour. */
-    fun plan(points: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>, names: Map<Int, String>): SharedPlan? {
+    fun plan(points: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>, names: Map<Int, String>,
+             anchors: Map<Int, Anchors> = emptyMap()): SharedPlan? {
         val t = tour ?: return null
         val nights = points.indices.mapNotNull { i -> marks[points[i]]?.let { i to it } }.toMap()
         return SharedPlan(points, activity, sac, pinned, names, t.name, t.days.days, t.days.limits, PlanDays.clean(points, nights),
-            t.days.description)
+            t.days.description, anchors)
     }
 
     /** What Save stores as the days of [points] while the overview shows ([Tour.days]); null for a normal plan. */
@@ -281,6 +293,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         .put("activity", p.activity.name).put("sac", p.sac).put("pinned", JSONArray(p.pinned.sorted()))
         .put("names", JSONObject().apply { p.names.forEach { (i, n) -> put(i.toString(), n) } })
         .put("title", p.title).put("days", MultiDay.of(p)?.let { JSONObject(it.toJson()) })
+        .put("anchors", AnchorsJson.write(p.points, p.anchors)?.let { JSONArray(it) })
 
     private fun plan(o: JSONObject): SharedPlan {
         val points = pts(o.getJSONArray("points"))
@@ -288,7 +301,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         val no = o.getJSONObject("names")
         val base = SharedPlan(points, Activity.valueOf(o.getString("activity")), o.getInt("sac"),
             (0 until pa.length()).map { pa.getInt(it) }.toSet(), no.keys().asSequence().associate { it.toInt() to no.getString(it) },
-            o.optString("title").ifEmpty { null })
+            o.optString("title").ifEmpty { null }, anchors = AnchorsJson.read(o.optJSONArray("anchors")?.toString(), points))
         return o.optJSONObject("days")?.let { MultiDay.fromJson(it.toString()) }?.into(base) ?: base
     }
 }

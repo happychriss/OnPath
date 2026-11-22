@@ -303,6 +303,35 @@ object PlanAnchors {
         return if (newHas && oldHas) src[nj] == oi else !newHas && !oldHas
     }
 
+    /**
+     * The anchors after any edit [before] → [after] of the points: a reversed plan turns them round ([reversed]), every
+     * other edit is [follow]. The one rule of the plan on the map, of a multi-day tour and of everything that keeps a plan.
+     */
+    fun edited(before: List<GeoPoint>, after: List<GeoPoint>, anchors: Map<Int, Anchors>): Map<Int, Anchors> = when {
+        anchors.isEmpty() -> anchors
+        after != before && after == before.reversed() -> reversed(anchors, before.size)
+        else -> follow(before, after, anchors)
+    }
+
+    /**
+     * The anchors for routing `[position] + ahead` during a tour (§8.3), by index into that list ([off] = 1 with a position
+     * in front, else 0). [ahead] is the end of [plan]: same count, each point at most [StoredLine.TOLERANCE_M] from its
+     * place (it may have been snapped onto the way since); anything else = none, the legs are routed plain. The first
+     * point ahead loses its `before` anchors: the rider may be past them and the line would lead back. All others keep theirs.
+     */
+    fun forAhead(plan: List<GeoPoint>, anchors: Map<Int, Anchors>, ahead: List<GeoPoint>, off: Int): Map<Int, Anchors> {
+        if (anchors.isEmpty() || ahead.isEmpty() || ahead.size > plan.size) return emptyMap()
+        val start = plan.size - ahead.size
+        if (ahead.indices.any { Geo.distance(plan[start + it], ahead[it]) > StoredLine.TOLERANCE_M }) return emptyMap()
+        val out = HashMap<Int, Anchors>()
+        for (k in ahead.indices) {
+            val a = anchors[start + k] ?: continue
+            val kept = if (k == 0) Anchors(after = a.after) else a
+            if (!kept.isEmpty) out[k + off] = kept
+        }
+        return out
+    }
+
     /** The anchors of a plan of [size] points that was reversed: indices mirrored, `before` and `after` swapped and reversed. */
     fun reversed(anchors: Map<Int, Anchors>, size: Int): Map<Int, Anchors> =
         anchors.entries.filter { it.key in 0 until size }.associate { (i, a) ->

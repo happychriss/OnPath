@@ -178,6 +178,8 @@ open class PlanRecalcState(
         val gen: Int, val pts: List<GeoPoint>, val pins: Set<Int>, val act: Activity, val level: Int,
         val rounds: Int, val askAtLimit: Boolean, val f: com.onpath.app.time.Factors,
         val started: Long, val changeBefore: PlannedRoute?, val standBefore: List<GeoPoint>?,
+        /** The plan's hidden via points by index of [pts] (docs/design/detour-stitch.md): routed too, never shown. */
+        val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
     )
 
     /** What [route] gives back: the plan result and the planner's tries line (null = none). */
@@ -303,7 +305,7 @@ open class PlanRecalcState(
         }
         val started = elapsedMs()
         routeCancel = RouteCancel()
-        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore)
+        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchors)
     }
 
     /** Stage 3 (main): the wait card's legs done / to route ([routeProgress]) – only while the run [gen] is the current one. */
@@ -344,7 +346,7 @@ open class PlanRecalcState(
         var after = emptyList<RouteRun.Effect>()
         result.onSuccess { res ->
             val it = res.route
-            route = it; planReach = reach; snapToRoute(pts, res)
+            route = it; planReach = reach; snapToRoute(pts, res, run)
             // the plan's first route: the sheet rises once to its middle step (owner 2026-11-08, [SheetRise] – once per
             // plan is the run's: [RouteRun.sheetRisen])
             after = routeEvent(RouteRun.Event.Succeeded(gen, planMode = mode == AppMode.PLAN,
@@ -418,7 +420,7 @@ open class PlanRecalcState(
      * state (no undo step; history snapshots get the same values) and does not re-route: [route] already
      * belongs to the snapped points. Only for the newest result of exactly these points.
      */
-    private fun snapToRoute(routed: List<GeoPoint>, res0: com.onpath.app.routing.PlanResult) {
+    private fun snapToRoute(routed: List<GeoPoint>, res0: com.onpath.app.routing.PlanResult, run: Run) {
         if (waypoints.toList() != routed) { planResult = res0; return }
         // the named stops keep their place: their names are read here, on the main thread (a stop named while the
         // route was calculated counts too)
@@ -427,7 +429,7 @@ open class PlanRecalcState(
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
         val snapped = res.points.takeIf { res.moved } ?: return
         plan.moveSnapped(routed, snapped)
-        aliasSnappedLegs(routed, snapped, res.activity, res.sac)
+        aliasSnappedLegs(routed, snapped, res.activity, res.sac, run)
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         ports.linkSnapped(routed, snapped)
         val moves = WaypointSnap.moves(routed, snapped)
@@ -441,10 +443,18 @@ open class PlanRecalcState(
      * ([com.onpath.app.routing.LegCache.alias]) – the plan as saved now loads its legs, and the next edit routes only its
      * new legs (before, the first edit after a snap routed every leg again from the moved points).
      */
-    private fun aliasSnappedLegs(routed: List<GeoPoint>, snapped: List<GeoPoint>, act: Activity, level: Int) {
+    private fun aliasSnappedLegs(routed: List<GeoPoint>, snapped: List<GeoPoint>, act: Activity, level: Int, run: Run) {
         if (routed.size != snapped.size) return
         val moved = (0 until routed.size - 1).filter { snapped[it] != routed[it] || snapped[it + 1] != routed[it + 1] }
         if (moved.isEmpty()) return
+        if (run.anchors.isNotEmpty()) { // the legs are those of the expanded lists, old and new (detour-stitch.md §8.2)
+            val old = com.onpath.app.routing.PlanAnchors.expand(routed, run.anchors, run.pins)
+            val new = com.onpath.app.routing.PlanAnchors.expand(snapped, run.anchors, run.pins)
+            background.run("aliasSnappedLegs", { legCache.aliasExpanded(old, new, act, level) }) { n ->
+                Problems.trace("routing", "$n legs of the plan with detour points kept under their points moved onto the line")
+            }
+            return
+        }
         background.run("aliasSnappedLegs", { moved.count { legCache.alias(routed[it], routed[it + 1], snapped[it], snapped[it + 1], act, level) } }) { n ->
             Problems.trace("routing", "$n of ${moved.size} legs kept under their points moved onto the line")
         }
@@ -469,13 +479,16 @@ open class PlanRecalcState(
             val gen = run.gen; val pts = run.pts; val act = run.act; val level = run.level
             // a point put in ON the routed line (a night, a stop at a line point – owner 2026-11-20, as the
             // planner does): its leg cut there from the known line, nothing routed for it
-            val cut = com.onpath.app.routing.LegSplit.seed(legs, pts, act, level)
+            // a plan with detour points is routed, never cut: only the writer stage has the idle step that brings a cut
+            // leg back to the router's own answer (detour-stitch.md §8.15), and every device must show the same line
+            val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, run.anchors, run.pins)
+            val cut = if (expanded.hasAnchors) 0 else com.onpath.app.routing.LegSplit.seed(legs, pts, act, level)
             if (cut > 0) Problems.trace("routing", "Route #$gen: $cut leg(s) cut at a point put in on the line – not routed")
             // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
             // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
             // askAtLimit: in Plan the time limit asks "Weiter warten?" (SlowPlan); a run for Navigate keeps the straight lines
             val planner = Planner(eng, cancel, askAtLimit = run.askAtLimit, rounds = run.rounds, legs = legs, progress = progress).also(onPlanner)
-            val result = com.onpath.app.routing.PlanResult.plan(planner, pts, act, level, run.pins, emptySet(), run.f)
+            val result = com.onpath.app.routing.PlanResult.plan(planner, expanded, act, level, emptySet(), run.f)
             return Routed(result, planner.describeTries().takeIf { it.isNotEmpty() })
         }
 

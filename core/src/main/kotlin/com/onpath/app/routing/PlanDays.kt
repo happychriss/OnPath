@@ -403,8 +403,7 @@ object PlanDays {
         val moved = PlanEdits.follow(old, after, before.nights, keepMoved = true)
         val nights = moved.mapValues { (j, m) -> if (m.isHotel && j !in kept) NightMark.OVERNIGHT else m }
         return before.copy(points = after, pinned = pinned, names = names, nights = clean(after, nights),
-            anchors = if (after != old && after == old.reversed()) PlanAnchors.reversed(before.anchors, old.size)
-            else PlanAnchors.follow(old, after, before.anchors))
+            anchors = PlanAnchors.edited(old, after, before.anchors))
     }
 
     /** Night marks only on points between the start and the last point. */
