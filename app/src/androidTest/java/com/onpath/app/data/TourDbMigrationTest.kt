@@ -156,11 +156,20 @@ class TourDbMigrationTest {
     /** A downgrade keeps the plan table: a version-5 database that already has `tour_plan` (old shape) gets its `anchors` column, every plan copy stays. */
     @Test fun version5DatabaseThatKeptItsPlanTableGetsTheAnchorsColumnToo() {
         writeOld(6) // the old-shaped tour_plan is there …
+        val wps = """[{"lat":46.7,"lon":11.22},{"lat":46.71,"lon":11.23}]"""
         SQLiteDatabase.openDatabase(ctx.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
-            db.execSQL("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, updated) VALUES (1, 'Plan', 'HIKE', 2, '[{\"lat\":46.7,\"lon\":11.22},{\"lat\":46.71,\"lon\":11.23}]', 5)")
+            db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (3, 'RECORDED', 'With plan', 2, 'done', 'u3')")
+            db.execSQL("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, updated) VALUES (3, 'Plan', 'HIKE', 2, ?, 5)", arrayOf(wps))
             db.version = 5 // … but the database says 5
         }
-        checkUpgraded()
+        checkUpgraded() // its plan copies are written on tour 1, through the new column
+        val tdb = TourDb(ctx, name)
+        try {
+            val kept = tdb.getTourPlan(3)!!
+            assertEquals("Plan", kept.name); assertEquals(2, kept.waypoints.size); assertTrue(kept.anchors.isEmpty())
+            tdb.setTourPlan(3, kept.copy(sac = 3))
+            assertEquals(3, tdb.getTourPlan(3)!!.sac)
+        } finally { tdb.close() }
     }
 
     /** A version-10 database that lost a column (a swallowed ALTER once): opening puts both back, a route write works. */
