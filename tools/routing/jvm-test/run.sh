@@ -33,6 +33,8 @@
 #      LongBikeRuhrTest.kt = the owner's ~98 km bike plan Hilden → Nordkirchen: whole plan vs only the new legs per edit
 #      (needs E5_N50.rd5, docs/design/long-bike-routes.md); MEMCLASS=<MB> patches BRouter's node-cache limit (default 64);
 #      NO_VIA_CORRECTION=1 compiles the engine with BRouter's correctMisplacedViaPoints off (for comparison);
+#      tools/multiday/MultiDayStage0.kt = multi-day stage 0: a long track → plan, plan code size, first route (see its header;
+#      TTP_MAX_CALLS=<n> patches TrackToPlan's router-call cap, default 60);
 #      TrackToPlanJvm.kt = a GPX track as a plan with few route points (TRACK_GPX=<file>, the file outside the repo);
 #      GpxCompare.kt = compare with a reference GPX line (another app's plan, a ride; see its header, needs RAW_TAP=1).
 #      ASSETS_DIR=<dir with brouter/*.brf + lookups.dat> routes with other profiles (A/B; default: the app's assets);
@@ -75,6 +77,12 @@ if [ -n "${MEMCLASS:-}" ]; then
   sed -i "s#^\(\s*\)rc.keyValues = keyValues(activity, sacLimit)\$#&\n\1rc.memoryclass = $MEMCLASS#" "$W/BRouterEngine.kt"
   grep -q "rc.memoryclass = $MEMCLASS" "$W/BRouterEngine.kt"
 fi
+TTP="$R/TrackToPlan.kt"
+if [ -n "${TTP_MAX_CALLS:-}" ]; then
+  # TrackToPlan's router-call cap (default 60) – for the multi-day measurements (tools/multiday/MultiDayStage0.kt)
+  TTP="$W/TrackToPlan.kt"; sed "s#const val MAX_CALLS = 60#const val MAX_CALLS = $TTP_MAX_CALLS#" "$R/TrackToPlan.kt" > "$TTP"
+  grep -q "MAX_CALLS = $TTP_MAX_CALLS" "$TTP"
+fi
 rm -rf "$W/kt"; mkdir -p "$W/kt"
 # the app's texts come from the :strings module (Compose resources): a JVM stand-in with the English texts
 python3 "$HERE/strings_stub.py" "$ROOT" "$W/StringsStub.kt" > /dev/null
@@ -83,7 +91,7 @@ EXTRA+=("$W/StringsStub.kt" "$W/StringsStubRes.kt")
 for f in ${EXTRA_KT:-}; do EXTRA+=("$f"); done
 java -cp "$KCP" org.jetbrains.kotlin.cli.jvm.K2JVMCompiler -no-stdlib -no-reflect -jvm-target 17 \
   -cp "$STD:$W/stub:$LIBS" -d "$W/kt" "$R/RoutingContract.kt" "$R/Rd5Parts.kt" "$R/BRouterWayStats.kt" "$R/WaypointSnap.kt" "$W/BRouterEngine.kt" \
-  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/SlowPlan.kt" "$R/TrackToPlan.kt" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/GoalSide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$D/Format.kt" "$R/OfflineCorridor.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$N/Onward.kt" "$N/TurnRound.kt" "$N/VisitRadius.kt" \
+  "$R/StraightLineEngine.kt" "$R/RouteTimeLimit.kt" "$R/SlowPlan.kt" "$TTP" "$R/TurnDetector.kt" "$R/Junctions.kt" "$N/JunctionCues.kt" "$N/CueRule.kt" "$N/JogRule.kt" "$N/SpeedWindow.kt" "$N/VoiceGuide.kt" "$N/GoalSide.kt" "$N/VoiceText.kt" "$N/ScreenTurns.kt" "$D/Geo.kt" "$D/Format.kt" "$R/OfflineCorridor.kt" "$ROOT/app/src/main/java/com/onpath/app/time/PaceModel.kt" "$ROOT/app/src/main/java/com/onpath/app/time/RouteTimes.kt" "$N/NavLine.kt" "$N/StopSkip.kt" "$N/RerouteTargets.kt" "$N/Rerouter.kt" "$N/Onward.kt" "$N/TurnRound.kt" "$N/VisitRadius.kt" \
   "$R/Planner.kt" "$R/LegCache.kt" "$R/RouteSummary.kt" "$ROOT/app/src/main/java/com/onpath/app/ui/RouteWarnings.kt" "$D/LastActivity.kt" \
   "$HERE/ProblemsStub.kt" "$HERE/TimeEstimateStub.kt" ${EXTRA[@]+"${EXTRA[@]}"} "$W/$TN.kt"
 java -Xmx${JAVA_XMX:-192m} -cp "$STD:$W/stub:$LIBS:$W/kt" "${TN}Kt"
