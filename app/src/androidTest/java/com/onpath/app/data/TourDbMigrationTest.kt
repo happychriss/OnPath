@@ -153,6 +153,30 @@ class TourDbMigrationTest {
 
     @Test fun version5DatabaseGetsTheFollowedPlansAndKeepsToursAndPoints() { writeOld(5); checkUpgraded() }
 
+    /** A downgrade keeps the plan table: a version-5 database that already has `tour_plan` (old shape) gets its `anchors` column, every plan copy stays. */
+    @Test fun version5DatabaseThatKeptItsPlanTableGetsTheAnchorsColumnToo() {
+        writeOld(6) // the old-shaped tour_plan is there …
+        SQLiteDatabase.openDatabase(ctx.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, updated) VALUES (1, 'Plan', 'HIKE', 2, '[{\"lat\":46.7,\"lon\":11.22},{\"lat\":46.71,\"lon\":11.23}]', 5)")
+            db.version = 5 // … but the database says 5
+        }
+        checkUpgraded()
+    }
+
+    /** A version-10 database that lost a column (a swallowed ALTER once): opening puts both back, a route write works. */
+    @Test fun aVersion10DatabaseWithoutTheAnchorsColumnsGetsThemOnOpen() {
+        writeOld(9)
+        SQLiteDatabase.openDatabase(ctx.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.version = 10 // the version was bumped, the columns never came
+        }
+        val tdb = TourDb(ctx, name)
+        try {
+            assertTrue(tdb.replacePlanned(2, "HIKE", 3, 10.0, 0.0, 0.0, 1.0, emptyList(), emptyList()))
+            tdb.setTourPlan(1, TourPlan("P", "HIKE", 2, listOf(com.onpath.app.gpx.GpxWaypoint(46.7, 11.2, null), com.onpath.app.gpx.GpxWaypoint(46.8, 11.3, null))))
+            assertTrue(tdb.getTourPlan(1)!!.anchors.isEmpty())
+        } finally { tdb.close() }
+    }
+
     @Test fun version6DatabaseGetsDifficultyAndKeepsToursAndPoints() { writeOld(6); checkUpgraded() }
 
     @Test fun version7DatabaseGetsFavouriteAndKeepsToursAndPoints() { writeOld(7); checkUpgraded() }

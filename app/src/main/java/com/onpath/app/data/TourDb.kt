@@ -82,17 +82,23 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             }
             db.execSQL("CREATE INDEX IF NOT EXISTS tours_uuid ON tours(uuid)")
         }
-        for (step in TourSchema.stepsFrom(oldVersion)) {
-            val have = db.rawQuery("PRAGMA table_info(${step.table})", null).use { c ->
-                buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
-            }
-            if (step.column in have) { Problems.info("db", "Column ${step.column} already there"); continue }
-            try { db.execSQL(step.sql) } catch (e: Exception) { Problems.error("db", "Column ${step.column} could not be added", e) }
-        }
+        // tables first: a column step on a table that is not there yet would fail, one that is there (a downgrade keeps it) gets its column
         for (sql in TourSchema.tablesFrom(oldVersion)) {
             try { db.execSQL(sql) } catch (e: Exception) { Problems.error("db", "Table could not be added: ${sql.take(40)}", e) }
         }
+        for (step in TourSchema.stepsFrom(oldVersion)) addColumn(db, step)
         assignMissingUuids(db)
+    }
+
+    /** Adds [step]'s column unless it is there; a failure is reported, never thrown. */
+    private fun addColumn(db: SQLiteDatabase, step: TourSchema.Step) {
+        try {
+            val have = db.rawQuery("PRAGMA table_info(${step.table})", null).use { c ->
+                buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
+            }
+            if (step.column in have) { Problems.info("db", "Column ${step.column} already there"); return }
+            db.execSQL(step.sql)
+        } catch (e: Exception) { Problems.error("db", "Column ${step.table}.${step.column} could not be added", e) }
     }
 
     override fun onOpen(db: SQLiteDatabase) {
@@ -101,6 +107,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         if (!db.isReadOnly) try { assignMissingUuids(db) } catch (e: Exception) { Problems.warn("db", "Tour ids for the backup not assigned", e) }
         // the plan copies' table (schema 6) must exist before My routes reads `has_plan` – also when the upgrade could not add it
         if (!db.isReadOnly) try { db.execSQL(TourSchema.CREATE_PLAN) } catch (e: Exception) { Problems.error("db", "Table of the followed plans not there", e) }
+        // schema 10: a swallowed ALTER must not leave a database at version 10 without the columns (every route write would fail)
+        if (!db.isReadOnly) for (step in TourSchema.stepsFrom(9)) addColumn(db, step)
     }
 
     private fun assignMissingUuids(db: SQLiteDatabase) {

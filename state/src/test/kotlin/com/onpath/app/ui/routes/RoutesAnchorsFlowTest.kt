@@ -7,7 +7,10 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.ui.TrackThen
+import com.onpath.app.data.TourKind
+import com.onpath.app.gpx.GpxWaypoint
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /** Another plan takes the map's place (docs/design/detour-stitch.md): the old one is kept whole, the new one brings its own anchors. */
@@ -57,10 +60,49 @@ class RoutesAnchorsFlowTest : RoutesFlowBase() {
         val app = App()
         app.withStitchedHike()
         app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.PLAN); app.settle()
-        val row = app.draftRows.first()
+        val row = app.draftRows.single()
         assertEquals("its own activity, not the track's", "HIKE", row.activity)
         assertEquals(2, row.sac)
         assertEquals("with its detour points", own, row.anchors)
         assertEquals(Activity.BIKE_TOURING, app.planRoute.activity)
+    }
+
+    /** A take that does not happen (no routing data, no way to re-trace) leaves Zuletzt as it was: the plan stays on the map (review problem 1). */
+    @Test fun aTakeThatDoesNotHappenKeepsNothingUnderZuletzt() {
+        for (case in listOf("no routing data", "failed fit")) {
+            val app = App()
+            app.withStitchedHike()
+            // an older entry that a keep would push into the recycle bin (takePlace)
+            val older = db.insertTour(TourKind.PLANNED, "Older", "HIKE", 2, listOf(seg(c, a)), listOf(c, a).map { GpxWaypoint(it.lat, it.lon, null) }, draft = true)
+            if (case == "no routing data") app.missingParts = listOf("part") else app.router.straight = true
+            app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.PLAN); app.settle()
+            assertTrue("$case: nothing was kept", app.draftRows.isEmpty())
+            assertEquals("$case: the plan stays", listOf(a, b, c), app.plan.points.toList())
+            assertTrue("$case: nothing went to the recycle bin", db.listDeleted().isEmpty())
+            assertEquals("$case: the older entry stays", listOf(older), db.listTours().filter { it.draft }.map { it.id })
+            db.deleteTour(older)
+        }
+    }
+
+    /** The track only SHOWN switches the activity at once; its later "Als Plan übernehmen" still keeps the plan under its own profile and anchors (problem 6). */
+    @Test fun aTrackShownFirstAndTakenLaterKeepsThePlanUnderItsOwnProfile() {
+        val app = App()
+        app.withStitchedHike()
+        app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.SHOW); app.settle()
+        assertEquals(Activity.BIKE_TOURING, app.planRoute.activity)
+        assertTrue("shown only: nothing kept yet", app.draftRows.isEmpty())
+        app.slice.planFromShown(); app.settle()
+        val row = app.draftRows.single()
+        assertEquals("HIKE", row.activity); assertEquals(2, row.sac); assertEquals(own, row.anchors)
+    }
+
+    /** The user changed the activity again after the track switched it: then the plan's current profile counts (the note is stale). */
+    @Test fun aProfileChangedAfterTheSwitchIsNotOverwrittenByTheNote() {
+        val app = App()
+        app.withStitchedHike()
+        app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.SHOW); app.settle()
+        app.planRoute.selectActivity(Activity.HIKE)
+        app.slice.planFromShown(); app.settle()
+        assertEquals("HIKE", app.draftRows.single().activity)
     }
 }

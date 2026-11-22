@@ -346,8 +346,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Round trips („Rundtour von hier“, tour-suggestions.md §7 stage 4) – ui/suggest/SuggestSlice; Übernehmen → [planFromLine]. */
     val suggest = com.onpath.app.ui.suggest.SuggestSlice(viewModelScope, com.onpath.app.ui.suggest.AppSuggestHost(app, prefs, { mapData.routingData },
-        fit = { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> save.keepAsDraft("a round trip takes the plan"); if (a != planRoute.activity) planRoute.selectActivity(a); planRoute.selectSac(l)
-            routesFlow.planFromLine(pts, com.onpath.app.data.RoutingTiles.forLine(pts, 1_000.0), a, l, done) }), prefs.suggestTest) { prefs.suggestTest = it }
+        fit = { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> val own = planRoute.activity to planRoute.sac; if (a != planRoute.activity) planRoute.selectActivity(a); planRoute.selectSac(l)
+            routesFlow.planFromLine(pts, com.onpath.app.data.RoutingTiles.forLine(pts, 1_000.0), a, l, own, done) }), prefs.suggestTest) { prefs.suggestTest = it }
 
     // --- Navigate orientation + next turn (see NavigateScreen, MapController.setCamera) ---
 
@@ -827,7 +827,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun stops(points: List<GeoPoint>) = savedStops(points)
         override fun difficulty(route: PlannedRoute?, activity: Activity) = planRoute.difficultyOf(route, activity)
         override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
-        override fun keepWhole() = multiDay.keepWhole()
+        override fun keepWhole(act: Activity, sac: Int) = multiDay.keepWhole(act, sac)
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun datedName() = defaultName(Txt.s(Res.string.msg_name_route))

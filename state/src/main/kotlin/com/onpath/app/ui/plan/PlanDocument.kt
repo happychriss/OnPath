@@ -11,6 +11,7 @@ import com.onpath.app.domain.PlanHistory
 import com.onpath.app.domain.RouteRules
 import com.onpath.app.domain.plan.PlanSession
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.ExpandedPlan
@@ -93,20 +94,20 @@ class PlanDocument(
      * The router put the points [routed] onto their ways ([snapped], same size): the plan's points move there – no Undo
      * step, the marker, the stored plan and the route line agree. Undo / Redo follow with [snappedHistory].
      */
-    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>, anchorsCount: Boolean = true) {
+    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>, runProfile: AnchorProfile? = null) {
         for (i in snapped.indices) if (snapped[i] != routed[i]) points[i] = snapped[i]
-        if (!anchorsCount) session.snapDropsAnchors(routed, snapped)
+        if (runProfile != null) session.snapDropsAnchors(routed, snapped, runProfile)
         stored()
     }
 
     /**
-     * Undo / Redo show the snapped points too ([moves] old → new). [anchorsCount] = the run that snapped routed the plan's detour
-     * points; false (they lie on another profile): the moved points lose them, here as in [moveSnapped].
+     * Undo / Redo show the snapped points too ([moves] old → new). [runProfile] = the profile of the run that snapped: detour points
+     * of another profile (in a step, in the multi-day tour) lose the moved points, here as in [moveSnapped]; null = untouched.
      */
-    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) { session.snapped(moves, anchorsCount); onSnapped?.invoke(moves, anchorsCount) }
+    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) { session.snapped(moves, runProfile); onSnapped?.invoke(moves, runProfile) }
 
     /** Multi-day tours (ui/plan/MultiDaySlice): the night marks are kept by value and follow a snap ([snappedHistory]). */
-    var onSnapped: ((Map<GeoPoint, GeoPoint>, Boolean) -> Unit)? = null
+    var onSnapped: ((Map<GeoPoint, GeoPoint>, AnchorProfile?) -> Unit)? = null
     /** Multi-day tours: the plan belongs to another saved route now ([setSaved]; -1 = none). */
     var onLinked: ((Long) -> Unit)? = null
 

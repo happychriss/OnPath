@@ -120,10 +120,10 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     fun nightOf(p: GeoPoint): NightMark? = marks[p]
 
     /** The router snapped points onto the way ([moves] old → new): their marks (and a day's added ends) go with them. */
-    fun snapped(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) {
+    fun snapped(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) {
         if (moves.isEmpty() || (marks.isEmpty() && day == null)) return
         marks = marks.entries.associate { (p, m) -> (moves[p] ?: p) to m }
-        day = day?.let { c -> c.copy(whole = snappedDay(c, moves, anchorsCount), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
+        day = day?.let { c -> c.copy(whole = snappedDay(c, moves, runProfile), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
             endAdded = c.part.endAdded?.let { moves[it] ?: it })) }
         save()
     }
@@ -132,11 +132,12 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
      * A snap is no edit: the day's points move in the whole tour too, so its detour points stay on the legs at the day's
      * borders. Only a tour with some (a plain tour takes the new values in [pointsChanged] as ever), only inside the day.
      */
-    private fun snappedDay(c: DayContext, moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean): SharedPlan {
+    private fun snappedDay(c: DayContext, moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile?): SharedPlan {
         if (c.whole.anchors.isEmpty()) return c.whole
         val moved = c.whole.points.mapIndexed { i, p -> if (i in c.part.from..c.part.to) moves[p] ?: p else p }
-        // the snap came from a run under another profile than the detour points' (§2, §8.16): the moved points lose them
-        return c.whole.copy(points = moved, anchors = if (anchorsCount) c.whole.anchors else PlanAnchors.edited(c.whole.points, moved, c.whole.anchors))
+        // the snap came from a run of another profile than the one the tour's detour points lie on (§2, §8.16): the moved points lose them
+        val other = runProfile != null && c.anchorProfile != runProfile
+        return c.whole.copy(points = moved, anchors = if (other) PlanAnchors.edited(c.whole.points, moved, c.whole.anchors) else c.whole.anchors)
     }
 
     /**

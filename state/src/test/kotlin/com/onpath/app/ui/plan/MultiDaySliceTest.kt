@@ -324,7 +324,7 @@ class MultiDaySliceTest {
             override fun insertDraftPlanned(name: String, row: PlannedRow): Long {
                 gate("insertDraftPlanned")
                 return db.insertTour(TourKind.PLANNED, name, row.activity, row.sac, row.segments, row.stops, distance = row.distanceM, ascent = row.ascentM,
-                    descent = row.descentM, duration = row.durationS, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days)
+                    descent = row.descentM, duration = row.durationS, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)
             }
         }
 
@@ -405,7 +405,7 @@ class MultiDaySliceTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { names[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
-            override fun keepWhole() = multiDay.keepWhole()
+            override fun keepWhole(act: Activity, sac: Int) = multiDay.keepWhole(act, sac)
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 19 Nov"
@@ -1316,5 +1316,29 @@ class MultiDaySliceTest {
         assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
         assertEquals(3, db.getTour(id)!!.sac)
         assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), db.getTour(id)!!.anchors)
+    }
+
+    /**
+     * A followed day with unsaved edits leaves the map for a track or round trip of another profile (review problem 2): the whole tour goes
+     * under Zuletzt ONCE, with the plan's own activity / T level (handed over, the live ones were switched already) and its detour points.
+     */
+    @Test fun aFollowedDayLeavingUnderAnotherProfileGivesOneDraftWithItsOwnProfileAndAnchors() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        // outside the picked day 2 (C to D): the day's own edit leaves them alone
+        val anchors = mapOf(0 to com.onpath.app.routing.Anchors(after = listOf(on(10))), 4 to com.onpath.app.routing.Anchors(before = listOf(on(80))))
+        routePrefs.activity = Activity.HIKE
+        val id = insertTour(activity = Activity.HIKE, anchors = anchors)
+        val app = App()
+        app.openOverview(id)
+        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
+        ui { app.routeNow = route(dayLine) }; app.settle()
+        ui { app.planEdit.change { add(1, X) } }; app.settle()
+        ui { app.planRoute.selectActivity(Activity.BIKE_TOURING) } // the track's activity, switched before the plan leaves
+        ui { app.save.keepAsDraft("a track takes the plan", Activity.HIKE to 2) }; app.settle()
+        val draft = app.drafts().single()
+        assertEquals("the tour's own activity, not the track's", "HIKE", draft.activity)
+        assertEquals(2, draft.sac)
+        assertEquals("all of the tour's points", 6, draft.waypoints.size)
+        assertTrue("its detour points", draft.anchors.isNotEmpty())
     }
 }

@@ -99,7 +99,7 @@ class MultiDayFlowTest {
         val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
         f.pickDay(whole, pts)!!
         val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
-        f.snapped(mapOf(pts[2] to moved), anchorsCount = false)
+        f.snapped(mapOf(pts[2] to moved), com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 3)) // the tour's anchors lie on BIKE_TOURING
         assertEquals(moved, f.day!!.whole.points[2])
         assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), f.day!!.whole.anchors)
     }

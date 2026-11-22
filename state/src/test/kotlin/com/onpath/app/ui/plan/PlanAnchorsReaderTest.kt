@@ -1,6 +1,7 @@
 package com.onpath.app.ui.plan
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
@@ -119,8 +120,8 @@ class PlanAnchorsReaderTest {
         val d = loaded(store)
         d.edit { add(g(46.35)) } // a step in the history, holding the anchors
         val moved = GeoPoint(46.2001, 11.0)
-        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)), anchorsCount = false)
-        d.snappedHistory(mapOf(p to moved), anchorsCount = false)
+        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)), AnchorProfile.of(Activity.HIKE, 3))
+        d.snappedHistory(mapOf(p to moved), AnchorProfile.of(Activity.HIKE, 3))
         assertEquals("the T2 anchors do not count around the moved point", emptyMap<Int, Anchors>(), d.anchorsFor(Activity.HIKE, 2))
         assertEquals("…also after a restart", emptyMap<Int, Anchors>(), PlanDocument(store).anchorsFor(Activity.HIKE, 2))
         val back = d.undo()!!
@@ -134,8 +135,8 @@ class PlanAnchorsReaderTest {
         val d = loaded()
         d.edit { add(g(46.35)) }
         val moved = GeoPoint(46.2001, 11.0)
-        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)))
-        d.snappedHistory(mapOf(p to moved))
+        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)), AnchorProfile.of(Activity.HIKE, 2))
+        d.snappedHistory(mapOf(p to moved), AnchorProfile.of(Activity.HIKE, 2))
         d.replace(d.undo()!!)
         assertEquals(anchors, d.anchorsFor(Activity.HIKE, 2))
     }
@@ -143,7 +144,24 @@ class PlanAnchorsReaderTest {
     /** The run's own anchors decide whether the snap keeps them: the recalc state hands that to the document and the history. */
     @Test fun theRecalcStatePassesWhetherTheRunRoutedTheAnchorsToTheSnap() {
         val src = sourceFile("ui/plan/PlanRecalcState.kt").readText()
-        assertTrue(src.contains("val counted = run.anchors.isNotEmpty() || plan.anchorSet.anchors.isEmpty()"))
-        assertTrue(src.contains("plan.moveSnapped(routed, snapped, counted)") && src.contains("plan.snappedHistory(moves, counted)"))
+        assertTrue(src.contains("val runProfile = com.onpath.app.routing.AnchorProfile.of(run.act, run.level)"))
+        assertTrue(src.contains("plan.moveSnapped(routed, snapped, runProfile)") && src.contains("plan.snappedHistory(moves, runProfile)"))
+    }
+
+    /**
+     * Undo (review problem 5): `[A, B, C]` with B.before = x on HIKE; on BIKE B is deleted (the live set is empty then), A snaps. The
+     * step Undo brings back holds x of ANOTHER profile than the BIKE run: the moved A is new, B's facing side goes.
+     */
+    @Test fun aSnapOfARunOfAnotherProfileCleansTheUndoStepsWhoseAnchorsLieOnTheirOwn() {
+        val d = PlanDocument(Store()).also { it.arriving(listOf(a, p, c), AnchorSet.of(mapOf(1 to Anchors(before = listOf(x))), Activity.HIKE, 2)); it.edit { clear(); addAll(listOf(a, p, c)) } }
+        d.edit { removeAt(1) } // on another profile: B (p) deleted, the live anchors follow (none left)
+        assertEquals(emptyMap<Int, Anchors>(), d.anchorSet.anchors)
+        val moved = GeoPoint(46.1001, 11.0)
+        val bike = AnchorProfile.of(Activity.BIKE_TOURING, 2)
+        d.moveSnapped(listOf(a, c), listOf(moved, c), bike)
+        d.snappedHistory(mapOf(a to moved), bike)
+        d.replace(d.undo()!!)
+        assertEquals(listOf(moved, p, c), d.points.toList())
+        assertEquals("x does not count around the moved first point", emptyMap<Int, Anchors>(), d.anchorsFor(Activity.HIKE, 2))
     }
 }

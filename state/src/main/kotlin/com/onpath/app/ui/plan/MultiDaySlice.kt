@@ -125,7 +125,7 @@ class MultiDaySlice(
     fun start() {
         // the plan's saved link and the router's snap reach the night marks (PlanDocument)
         plan.onLinked = flow::linked
-        plan.onSnapped = { moves, anchorsCount -> flow.snapped(moves, anchorsCount) }
+        plan.onSnapped = { moves, runProfile -> flow.snapped(moves, runProfile) }
         // the kept multi-day map areas stay asked for after a restart (MapCells.tourCells)
         runCatching {
             host.cells.tourCells = prefs.multiDayMapCells.mapNotNull(CellId::parse).toSet()
@@ -327,19 +327,18 @@ class MultiDaySlice(
      * The plan leaves the map while a followed day has unsaved changes: the whole tour with them goes under Zuletzt (with
      * its days) instead of the day alone. False when no day is followed / nothing changed.
      */
-    fun keepWhole(): Boolean {
+    fun keepWhole(act: com.onpath.app.routing.Activity, level: Int): Boolean {
         if (!plan.unsaved) return false
         val pts = waypoints.toList()
         flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName)
         val c = flow.day?.takeIf { flow.following } ?: return false
         val w = c.whole
         val days = MultiDay.of(w) ?: return false
-        val act = activity
         return runCatching {
             val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, route?.points ?: pts, act, planRoute.planFactors(act))
-            tours.insertDraftPlanned(c.tour.name, PlannedRow(act.name, sac, n[0], n[1], n[2], n[3], listOf(line),
+            tours.insertDraftPlanned(c.tour.name, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line),
                 com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }, w.pinned, null, days,
-                c.anchorSet().forProfile(act, sac)))
+                c.anchorSet().forProfile(act, level)))
             Problems.trace("plan", "Multi-day tour with the day's change kept under Zuletzt")
             host.reloadTourList()
             true

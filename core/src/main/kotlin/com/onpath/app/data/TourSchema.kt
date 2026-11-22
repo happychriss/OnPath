@@ -98,7 +98,8 @@ object TourSchema {
         if (old < 8) add(Step("tours", "favourite", ADD_FAVOURITE))
         if (old < 9) add(Step("tours", "days", ADD_DAYS))
         if (old < 10) add(Step("tours", "anchors", ADD_ANCHORS))
-        // before 6 the table does not exist yet: [tablesFrom] creates it with the column
-        if (old in 6..9) add(Step("tour_plan", "anchors", ADD_PLAN_ANCHORS))
+        // the caller creates missing tables first ([tablesFrom]) and skips a column already there: a version-5 database that kept
+        // its `tour_plan` (a downgrade does) and one that just got it both end with the column
+        if (old < 10) add(Step("tour_plan", "anchors", ADD_PLAN_ANCHORS))
     }
 }

@@ -1,5 +1,6 @@
 package com.onpath.app.domain
 
+import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanAnchors
@@ -46,10 +47,11 @@ class PlanHistory(private val limit: Int = 100) {
 
     /**
      * Rewrites point values in every undo/redo snapshot ([moves]: old → new), without adding a step.
-     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers. [anchorsCount] false: the
-     * run that snapped did not route the plan's detour points (another profile) – a moved point loses them in every step.
+     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers. [runProfile] = the profile of
+     * the run that snapped (null = leave every step's detour points as they are): a step whose detour points lie on ANOTHER profile
+     * was not routed by that run, so a moved point loses them there (docs/design/detour-stitch.md §2, §8.16).
      */
-    fun replacePoints(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) {
+    fun replacePoints(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) {
         if (moves.isEmpty()) return
         for ((q, a) in listOf(undo to undoAnchors, redo to redoAnchors)) for (i in q.indices) {
             val s = q[i]
@@ -58,7 +60,9 @@ class PlanHistory(private val limit: Int = 100) {
                 q[i] = moved
                 // a snap under a profile the detour points do not lie on: the moved point is a new one (§2) – they must not count
                 // around it when the plan is back on their profile (Undo / Redo)
-                if (!anchorsCount) a.getOrNull(i)?.let { set -> if (set.anchors.isNotEmpty()) a[i] = set.copy(anchors = PlanAnchors.edited(s, moved, set.anchors)) }
+                if (runProfile != null) a.getOrNull(i)?.let { set ->
+                    if (set.anchors.isNotEmpty() && set.profile != runProfile) a[i] = set.copy(anchors = PlanAnchors.edited(s, moved, set.anchors))
+                }
             }
         }
     }

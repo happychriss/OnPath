@@ -45,8 +45,8 @@ interface SavePorts : Say {
     fun difficulty(route: PlannedRoute?, activity: Activity): String?
     /** What Save stores as the days of [points]; null for a normal plan or a followed day. Also called on the write's thread. */
     fun days(points: List<GeoPoint>): MultiDay?
-    /** A followed day: its whole multi-day tour goes under Zuletzt instead (true = taken care of). */
-    fun keepWhole(): Boolean
+    /** A followed day: its whole multi-day tour goes under Zuletzt instead, as [act] / [sac] (the plan's profile as it was, true = taken care of). */
+    fun keepWhole(act: Activity, sac: Int): Boolean
     /** A followed day: Save writes the whole multi-day tour (true = taken care of). */
     fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean
     /** "Route 26 Oct, 10:12" in the app's language – the name when nothing else fits. */
@@ -200,12 +200,14 @@ open class SaveState(
      * stays as it is) goes under My routes → Zuletzt, no question: written at once, before it leaves the map
      * ([com.onpath.app.ui.routes.RecentPlans.keep]).
      */
-    fun keepAsDraft(why: String) {
+    fun keepAsDraft(why: String, profile: Pair<Activity, Int>? = null) {
         val pts = plan.points.toList()
-        if (pts.size < 2 || host.keepWhole()) return // a followed day: the whole multi-day tour goes under Zuletzt
-        val r = host.route; val act = host.activity
-        val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, host.sac, host.stops(pts), plan.pinnedIndices(),
-            host.datedName(), host.days(pts), plan.anchorsFor(act, host.sac)) { host.difficulty(r, act) }, why)
+        // [profile]: the plan's own activity / T level when the caller already switched them (a track or round trip that takes its place)
+        val act = profile?.first ?: host.activity; val level = profile?.second ?: host.sac
+        if (pts.size < 2 || host.keepWhole(act, level)) return // a followed day: the whole multi-day tour goes under Zuletzt
+        val r = host.route
+        val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, level, host.stops(pts), plan.pinnedIndices(),
+            host.datedName(), host.days(pts), plan.anchorsFor(act, level)) { host.difficulty(r, act) }, why)
         // its Zuletzt entry holds these points now: the plan is that entry "as it is" – an Undo back to them is not
         // "changed", one back to an older version is, and updates the entry again (never dropped, review 2026-11-20)
         if (updated != null) plan.setSaved(plan.linkName, updated, pts)

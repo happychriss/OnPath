@@ -124,13 +124,15 @@ class SavePathsTest {
      * rule (every `keepAsDraft("replaced by …")` is a slice's).
      */
     /**
-     * "Rundtour von hier" → Übernehmen on a suggestion of another profile (review finding 1): the old plan goes under Zuletzt
-     * BEFORE the activity is switched – afterwards it would be kept as a plan of the new profile, without its detour points.
-     * The flow itself (the same order for a track made a plan): RoutesAnchorsFlowTest.
+     * "Rundtour von hier" → Übernehmen on a suggestion of another profile (review finding 1): the plan's own activity / T level are
+     * noted BEFORE the switch and handed to the take, which keeps the old plan under Zuletzt only when it succeeds – with them, so
+     * its detour points count. The flow itself: RoutesAnchorsFlowTest.
      */
-    @Test fun aSuggestionKeepsTheOldPlanBeforeTheActivitySwitches() {
-        val take = vm.substringAfter("take = { pts, a, l, done ->").substringBefore("routesFlow.planFromLine")
-        assertTrue(take, take.contains("save.keepAsDraft(") && take.indexOf("save.keepAsDraft(") < take.indexOf("planRoute.selectActivity(a)"))
+    @Test fun aSuggestionNotesTheOldProfileBeforeTheActivitySwitchesAndKeepsNothingItself() {
+        val take = vm.substringAfter("take = { pts, a, l, done ->").substringBefore("}), prefs.suggestTest")
+        assertTrue(take, take.contains("val own = planRoute.activity to planRoute.sac") && take.indexOf("val own") < take.indexOf("planRoute.selectActivity(a)"))
+        assertTrue(take, take.contains(", a, l, own, done)"))
+        assertFalse("the keep happens on the take's success, not here", take.contains("keepAsDraft"))
     }
     @Test fun replacingAPlanAsksNothingAndTheViewModelHoldsNoCopyOfTheRule() {
         assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
