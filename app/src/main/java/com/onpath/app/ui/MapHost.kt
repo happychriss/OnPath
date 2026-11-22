@@ -222,14 +222,23 @@ fun MapHost(
             // move the map – else holding a point can add a new one instead of opening its menu).
             var downMarker = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
-                shownPois.finishWaitingPress() // an older press that still waits for the map goes first
+                // the field log's line of this press (Diagnostics): taken before the older press below is ended
+                val pressNow = android.os.SystemClock.uptimeMillis()
+                val fingerMs = hold.fingerMs(pressNow)
+                val note = shownPois.pressNote(map, press.name, fingerMs, hold.upToAppMs(pressNow),
+                    com.onpath.app.poi.PoiHit.ringWord(holdBuzz.value != MapGestures.Buzz.NONE, fingerMs))
+                shownPois.finishWaitingPress("newerPress") // an older press that still waits for the map goes first
                 val c = myCtrl[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
-                    com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
+                    com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e)
+                    shownPois.pressEnded(note, "noScreen"); return false
                 }
-                if (vm.routePeek) return true // peeking at the map: no edits
+                if (vm.routePeek) { shownPois.pressEnded(note, "routePeek"); return true } // peeking at the map: no edits
                 // the round-trip search waits in its window (owner 2026-11-19): a press neither ends it nor sets a point
-                if (vm.suggest.searching) { com.onpath.app.debug.Problems.trace("map", "Press ignored: round-trip search runs"); return true }
+                if (vm.suggest.searching) {
+                    com.onpath.app.debug.Problems.trace("map", "Press ignored: round-trip search runs")
+                    shownPois.pressEnded(note, "searchRuns"); return true
+                }
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
                 // would close the menu just opened ("held spot left the visible map").
                 if (press == MapGestures.Press.HOLD) { vm.map.userMovedMap = true; vm.tapHoldHint = false }
@@ -276,19 +285,24 @@ fun MapHost(
                     }
                 }
                 fun decide(hit: Boolean) = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, hit, vm.plan.points.isEmpty())
+                fun word(a: MapGestures.Action) = a.toString().substringBefore('(')
+                fun runNoted(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?, end: String): Boolean =
+                    run(a, poi).also { shownPois.pressEnded(note, end, word(a)) }
                 // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
-                if (marker >= 0 && press == MapGestures.Press.HOLD) return run(decide(false), null)
-                (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return run(decide(true), it) }
+                if (marker >= 0 && press == MapGestures.Press.HOLD) return runNoted(decide(false), null, "routePoint")
+                (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return runNoted(decide(true), it, "listAtPress") }
                 // The list has no POI here. Where a POI would change what the press does, it waits for the map's next
                 // idle and asks the map there (never inside the press), bounded: a stale list must not lose a drawn
                 // symbol. Both outcomes are decided now: what opens or closes meanwhile cannot change what this press means.
                 val plan = com.onpath.app.poi.PoiHit.PressPlan(edit, decide(false), decide(true))
-                if (plan.plain == plan.onPoi) return run(plan.plain, null)
-                val wait = shownPois.askMapAtNextIdle(map, ll) { found ->
+                if (plan.plain == plan.onPoi) return runNoted(plan.plain, null, "poiChangesNothing")
+                val wait = shownPois.askMapAtNextIdle(map, ll, note) { found ->
                     val a = plan.action(found != null, vm.canEditMap)
-                    if (a == null || vm.routePeek || vm.suggest.searching) Problems.trace("map", "Press dropped: the map's mode changed while it waited")
-                    else run(a, found)
-                } ?: return run(plan.plain, null)
+                    if (a == null || vm.routePeek || vm.suggest.searching) {
+                        note.action = "dropped"
+                        Problems.trace("map", "Press dropped: the map's mode changed while it waited")
+                    } else { note.action = word(a); run(a, found) }
+                } ?: return runNoted(plan.plain, null, "noStyleYet")
                 fun timedOut(waited: Long) {
                     shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
                 }
@@ -388,15 +402,22 @@ const val HOLD_MS = 300L
 private class HoldTracker {
     var downX = 0f; var downY = 0f
     private var downTime = 0L
+    private var upTime = -1L
     var pressing = false; private set
     var lastHoldMs = 0L; private set
 
+    /** How long the finger was down (still down: so far), for the press's line in the field log. */
+    fun fingerMs(nowMs: Long): Long = (if (upTime >= 0) upTime else nowMs) - downTime
+
+    /** From the finger's lift to the map's click reaching the app; -1 while it is still down (a long press). */
+    fun upToAppMs(nowMs: Long): Long = if (upTime >= 0) nowMs - upTime else -1L
+
     fun track(ev: MotionEvent, slopPx: Float) {
         when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y; downTime = ev.eventTime; pressing = true; lastHoldMs = 0 }
+            MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y; downTime = ev.eventTime; upTime = -1L; pressing = true; lastHoldMs = 0 }
             MotionEvent.ACTION_POINTER_DOWN -> pressing = false
             MotionEvent.ACTION_MOVE -> if (pressing && hypot(ev.x - downX, ev.y - downY) > slopPx) pressing = false
-            MotionEvent.ACTION_UP -> { lastHoldMs = if (pressing) ev.eventTime - downTime else 0; pressing = false }
+            MotionEvent.ACTION_UP -> { lastHoldMs = if (pressing) ev.eventTime - downTime else 0; upTime = ev.eventTime; pressing = false }
             MotionEvent.ACTION_CANCEL -> { lastHoldMs = 0; pressing = false }
         }
     }

@@ -74,39 +74,49 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     }
 
     /**
-     * a3) the same while the camera follows the position and stands still (review 2026-11-21): nothing repaints such a
-     * map, so the press itself must ask for its one frame – else no idle comes and the hold sets a route point.
+     * a3) the same while the camera follows north up and stands still (review 2026-11-21): nothing repaints such a map and
+     * a finger does not end this following, so the press itself must ask for its one frame – else no idle comes and the
+     * hold sets a route point. The list cannot learn the symbol first, so the hold must come through the map.
      */
     @Test fun aHoldOnASymbolMissingFromTheListWorksWhileTheCameraFollows() {
-        val ids = (1..3).map { "unlisted-follow-$it" }
-        ids.forEach { addUnlistedLayer(it) }
+        holdWhileFollowing(headingUp = false) { assertTrue("the hold came through the map, the list did not have the symbol", listMissedLogged()) }
+    }
+
+    /**
+     * a4) following with the walking direction up: the finger-down ends following in Plan, so the camera stops under the
+     * hold and a read is due (GitHub's slow emulator 2026-11-22: no idle within the press's second, the hold opened the
+     * first-point menu on a drawn symbol). That read may land before the hold or after it, both are right: what counts is
+     * the POI's menu.
+     */
+    @Test fun aHoldJustAfterTheFingerEndedFollowingOpensThePoiMenu() {
+        holdWhileFollowing(headingUp = true) { }
+    }
+
+    private fun holdWhileFollowing(headingUp: Boolean, thenCheck: () -> Unit) {
+        val id = "unlisted-follow-1"
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHeadingUp = headingUp)) }
+        addUnlistedLayer(id)
         try {
             gpsAt(POI_LAT, POI_LON)
             waitUntil("a GPS fix in the app", 20_000) { read { it.tracker.location.value != null } }
             val (w, h) = mapSize()
-            var viaMap = false
-            // a follow step may read the list just before the hold: then the list has the symbol and the case was not
-            // tested – once more with the next symbol (opening the POI menu ends following, so it is switched on again)
-            for ((i, id) in ids.withIndex()) {
-                scenario.onActivity { vm(it).map.followMe = true }
-                waitUntil("the camera follows", 10_000) { cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE }
-                pause(2_500, "the follow camera landed and stands still")
-                val p = showUnlistedPoi(id, (w * 0.35f) to (h * (0.25f + 0.06f * i)))
-                com.onpath.app.debug.Problems.clear()
-                assertTrue("the camera follows at the press", cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE)
-                hold(p.first, p.second)
-                waitFor("the POI menu of a symbol the list lacks, following, hold at ${at(p)}") { read { it.placeMenus.poiMenu?.id } == id }
-                assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
-                assertEquals("the hold set no route point", 0, waypointCount())
-                viaMap = listMissedLogged()
-                if (viaMap) break
-                assertNotNull("the menu is up before Back", findFresh(By.text("Unlisted $id"), 5_000))
-                device.pressBack()
-                waitFor("the POI menu closed") { read { it.placeMenus.poiMenu } == null }
-            }
-            assertTrue("at least one hold came through the map, the list did not have the symbol", viaMap)
+            scenario.onActivity { vm(it).map.followMe = true }
+            waitUntil("the camera follows", 10_000) { cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE }
+            pause(2_500, "the follow camera landed and stands still")
+            // gpsAt gave one fix, so no follow step moves the camera now. The test provider stays until the end: without it
+            // the emulator's own GPS sends a far-away fix and the following camera flies there (seen 2026-11-22).
+            val p = showUnlistedPoi(id, (w * 0.35f) to (h * 0.25f))
+            com.onpath.app.debug.Problems.clear()
+            assertTrue("the camera follows at the press", cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE)
+            hold(p.first, p.second)
+            waitFor("the POI menu of a symbol the list lacks, following, hold at ${at(p)}") { read { it.placeMenus.poiMenu?.id } == id }
+            assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
+            assertEquals("the hold set no route point", 0, waypointCount())
+            thenCheck()
         } finally {
             device.executeShellCommand("cmd location providers remove-test-provider gps")
+            scenario.onActivity { a -> before?.let { vm(a).settingsSlice.updateSettings(it) } }
         }
     }
 
