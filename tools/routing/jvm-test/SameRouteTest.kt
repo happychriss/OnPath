@@ -197,7 +197,9 @@ fun hunkKind(step: Step, h0: Int, h1: Int): String {
 
 class Case(val tour: String, val name: String, val anchors: Int, val code: String, val warmHash: String, val coldHash: String,
            val warmM: Double, val coldM: Double, val routedWarm: Int, val rerunRouted: Int, val problems: List<String>) {
-    val green get() = problems.isEmpty()
+    val green get() = if (control) problems.all { pr -> EXCUSED.any { pr.startsWith(it) } } else problems.isEmpty()
+    /** Counts for pass / fail: every case but a control whose only problems are the excused ones. */
+    val counts get() = !control || !green
     // CANON measurements
     var extraReq = 0; var extraS = 0.0; var keptCut = 0
     /** Visible points the cold route moves again (PlanResult.snap on the cold line) / visible points of the plan. */
@@ -206,6 +208,10 @@ class Case(val tour: String, val name: String, val anchors: Int, val code: Strin
     var settleReq = 0; var settleS = 0.0
     /** The control (the base plan, no anchors): reported on its own, no pass or fail. */
     val control get() = name.startsWith("base (control")
+    companion object {
+        /** A control (no anchors, the plan code keeps only 1e-5°) is excused for these: the line, the distance and the points they come from. */
+        val EXCUSED = listOf("hash differs", "distance differs", "decoded points differ")
+    }
 }
 
 /** Cold: PlanCode round trip, expand, route with [coldCache] (plain routed legs only), compare with the warm line. */
@@ -325,7 +331,12 @@ fun offsetPoint(line: List<GeoPoint>, fraction: Double, dM: Double, sign: Int): 
 
 fun fork(base: LegCache, st: State, t: Tour): LegCache {
     val c = LegCache(maxLinePoints = 600_000)
-    for (i in 0 until st.pts.size - 1) base.get(st.pts[i], st.pts[i + 1], t.act, t.sac)?.let { c.put(st.pts[i], st.pts[i + 1], t.act, t.sac, it) }
+    for (i in 0 until st.pts.size - 1) {
+        val a = st.pts[i]; val b = st.pts[i + 1]
+        // the marks and the settled legs go along (the warm side of a fork reads what the base settled)
+        base.get(a, b, t.act, t.sac)?.let { c.put(a, b, t.act, t.sac, it, exact = base.isExactInMemory(a, b, t.act, t.sac)) }
+        base.inMemory(a, b, t.act, t.sac, settled = true)?.let { c.put(a, b, t.act, t.sac, it, settled = true) }
+    }
     return c
 }
 
@@ -474,7 +485,7 @@ fun runTour(engine: BRouterEngine, t: Tour, nAdds: Int): List<Case> {
         }
         record(cold(engine, coldCache, settled(engine, qCache, q, t), t, "chainQuick (3 adds, one settle at the end)"))
     }
-    val ctl = out.filter { it.control }; val cs = out.filter { !it.control }
+    val ctl = out.filter { it.control }; val cs = out.filter { it.counts }
     log("== ${t.name}: ${cs.count { it.green }} green / ${cs.count { !it.green }} red in ${s()} s; control ${ctl.joinToString { if (it.green) "green" else "red" }}; " +
         "settle: ${cs.sumOf { it.settleReq }} requests, %.1f s".format(cs.sumOf { it.settleS }))
     return out
@@ -531,12 +542,12 @@ fun main() {
     }
     log("\n==== summary (%.0f min) ====".format((System.nanoTime() - t0) / 6e10))
     for ((tour, cs) in perTour) {
-        val real = cs.filter { !it.control }
+        val real = cs.filter { it.counts }
         log("$tour: ${real.count { it.green }} green / ${real.count { !it.green }} red; control (no anchors, not counted) ${cs.filter { it.control }.joinToString { if (it.green) "green" else "red" }}; " +
             "settle ${real.sumOf { it.settleReq }} requests, %.1f s in all".format(real.sumOf { it.settleS }))
     }
     log("routed requests on the warm side (first run): " + all.filter { it.code.isNotEmpty() }.groupingBy { it.routedWarm }.eachCount().toSortedMap())
-    val red = all.filter { !it.green && !it.control }
+    val red = all.filter { !it.green }
     if (red.isNotEmpty()) {
         log("\nMISMATCHES")
         for (c in red) log("${c.tour} | ${c.name} | anchors ${c.anchors}\n    " + c.problems.joinToString("\n    "))

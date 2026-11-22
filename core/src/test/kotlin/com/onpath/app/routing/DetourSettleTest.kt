@@ -254,9 +254,9 @@ class DetourSettleTest {
     @Test fun aFailedLegKeepsItsLegIsReportedAndTheRestGoesOn() {
         val c = cutCache(); val exp = stitched
         val second = cutLeg(exp.points[1], exp.points[2])
-        val e = Engine(throwing = { w -> if (w.first() == v1 && w.last() == b) RoutingException("No route found.") else null })
+        val e = Engine(throwing = { w -> if (w.first() == v1) RoutingException("No route found.") else null })
         val s = Planner(e, legs = c).settle(exp, act, sac)
-        assertEquals(3, s.routed); assertEquals(1, s.failed); assertFalse(s.cancelled)
+        assertEquals(2, s.routed); assertEquals(1, s.failed); assertFalse(s.cancelled)
         assertEquals(4, e.calls.size)
         // the failed leg still reads its cut leg
         assertNotNull(c.lookupAnchored(v1, b, act, sac))
@@ -286,5 +286,174 @@ class DetourSettleTest {
         val s = Planner(e, legs = c).settle(stitched, act, sac)
         assertEquals(3, s.routed); assertEquals(1, s.failed)
         assertTrue(Problems.snapshot().any { it.level == Problems.Level.ERROR })
+    }
+
+    // ---- review probes ----
+    private val v3 = GeoPoint(52.0, 7.0)
+
+    private class MapStore : LegStore {
+        val m = HashMap<LegCache.Key, LegStore.Stored>()
+        override fun get(key: LegCache.Key) = m[key]
+        override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) { m[key] = LegStore.Stored(leg, true, false) }
+        override fun putExact(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) { m[key] = LegStore.Stored(leg, true, true) }
+    }
+
+    private open class ProbeEng(val fail: (List<GeoPoint>) -> Exception? = { null }) : RoutingEngine {
+        val calls = ArrayList<List<GeoPoint>>()
+        override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+            calls += waypoints
+            fail(waypoints)?.let { throw it }
+            val f = waypoints.first(); val t = waypoints.last()
+            val mid = GeoPoint((f.lat + t.lat) / 2, (f.lon + t.lon) / 2 + 0.01)
+            return RouteResult(listOf(f, mid, t), 1000.0, 5.0, 5.0, 60.0, matched = listOf(f, t))
+        }
+    }
+
+    private fun probeLeg(vararg p: GeoPoint) = RouteResult(p.toList(), 900.0, 1.0, 1.0, 50.0, matched = listOf(p.first(), p.last()))
+    private fun keyOf(l: List<GeoPoint>) = l.map { Math.round(it.lat * 1e6) to Math.round(it.lon * 1e6) }
+
+    // Q2: a plain lookup of a stored exact leg drops the mark in memory, so the cut leg wins again
+    @Test fun aStoredExactLegKeepsItsMarkAfterAPlainRead() {
+        val store = MapStore()
+        val real = probeLeg(a, GeoPoint(51.3, 7.02), v1); val cut = probeLeg(a, v1)
+        LegCache(store = store).apply {
+            put(a, v1, act, sac, cut, cut = true)
+            put(a, v1, act, sac, real, exact = true)
+        }
+        val restarted = LegCache(store = store)
+        assertTrue(restarted.has(a, v1, act, sac)) // StoredLine.preview, or lookupLeg's plain path
+        assertEquals("after a plain read the exact leg must still win", keyOf(real.points),
+            keyOf(restarted.lookupAnchored(a, v1, act, sac)!!.leg.points))
+    }
+
+    // Q2: after a restart a leg that does not touch an anchor goes through lookup(): settle must not route it again
+    @Test fun aRestartDoesNotRerouteSettledLegs() {
+        val store = MapStore(); val e = ProbeEng()
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2, v3), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        Planner(e, legs = LegCache(store = store)).let { it.plan(plan, act, sac); it.settle(plan, act, sac) }
+        val before = e.calls.size
+        val p = Planner(e, legs = LegCache(store = store))
+        p.plan(plan, act, sac)
+        assertEquals("all legs are in the store", before, e.calls.size)
+        assertEquals("nothing to settle after a restart", 0, p.settle(plan, act, sac).routed)
+    }
+
+    // Q2: alias to the SAME key (a point that "moved" only by rounding) must not take the mark away
+    @Test fun anAliasOnTheSameKeyKeepsTheMark() {
+        val store = MapStore(); val c = LegCache(store = store)
+        c.put(a, v1, act, sac, probeLeg(a, v1), exact = true)
+        c.alias(a, v1, GeoPoint(a.lat + 1e-8, a.lon), v1, act, sac)
+        assertTrue("the same key, the same leg: still exact", c.isExact(a, v1, act, sac))
+    }
+
+    // Q1/Q2: a short-trip retry that timed out leaves the first route, which must not count as the router's own answer
+    @Test fun aRetryThatTimedOutIsNotExactAndSettlesLater() {
+        val near = GeoPoint(51.205, 7.0) // ~556 m from a
+        var retryFails = true
+        val e = object : RoutingEngine {
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+                val f = waypoints.first(); val t = waypoints.last()
+                if (waypoints.size == 3) {
+                    if (retryFails) throw RoutingException("slow", timedOut = true)
+                    return RouteResult(listOf(f, t), 600.0, 1.0, 1.0, 100.0, matched = listOf(f, waypoints[1], t))
+                }
+                if (Math.abs(f.lat - t.lat) < 0.01) return RouteResult(listOf(f, GeoPoint(f.lat, f.lon + 0.05), t), 7000.0, 5.0, 5.0, 60.0, matched = listOf(f, t))
+                return RouteResult(listOf(f, t), 1000.0, 5.0, 5.0, 60.0, matched = listOf(f, t))
+            }
+        }
+        val plan = PlanAnchors.expand(listOf(v0, near, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        val warm = LegCache()
+        Planner(e, legs = warm).settle(plan, act, sac)
+        retryFails = false
+        Planner(e, legs = warm).settle(plan, act, sac) // a later settle should heal it
+        val w = Planner(e, legs = warm).plan(plan, act, sac)
+        val c = Planner(e, legs = LegCache()).plan(plan, act, sac)
+        assertEquals(keyOf(c.points), keyOf(w.points))
+    }
+
+    // Q4 / §8.5: a sub-leg with no route. A cold device falls back to the full leg; the warm device must end there too
+    @Test fun aSubLegWithoutARouteSettlesTheFullLegLikeAColdDevice() {
+        val e = ProbeEng { w -> if (w.size == 2 && keyOf(w) == keyOf(listOf(a, v1))) RoutingException("no path") else null }
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        val warm = LegCache()
+        warm.put(v0, a, act, sac, probeLeg(v0, a), cut = true)
+        warm.put(a, v1, act, sac, probeLeg(a, v1), cut = true)
+        val s = Planner(e, legs = warm).settle(plan, act, sac)
+        assertEquals("the full leg settled, nothing failed", 0, s.failed)
+        assertNull("the failed sub-leg's cut leg is retired", warm.inMemory(a, v1, act, sac, cut = true))
+        val w = Planner(e, legs = warm).plan(plan, act, sac)
+        val c = Planner(e, legs = LegCache()).plan(plan, act, sac)
+        assertEquals("warm after settle = cold", keyOf(c.points), keyOf(w.points))
+    }
+
+    // Q4 / §8.5: the fallback's full leg is not in the expanded list, so settle never makes it the router's own
+    @Test fun aKeptFullLegIsReplacedByTheSettledFullLeg() {
+        val e = ProbeEng { w -> if (w.size == 2 && keyOf(w) == keyOf(listOf(a, v1))) RoutingException("no path") else null }
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        val warm = LegCache()
+        warm.put(v0, v1, act, sac, probeLeg(v0, GeoPoint(51.2, 7.05), v1)) // the old base leg kept under a moved point
+        Planner(e, legs = warm).settle(plan, act, sac)
+        val w = Planner(e, legs = warm).plan(plan, act, sac)
+        val c = Planner(e, legs = LegCache()).plan(plan, act, sac)
+        assertEquals("warm after settle = cold", keyOf(c.points), keyOf(w.points))
+    }
+
+    // Q1: the join's decision reads the raw point in the warm run and the decoded point in the cold run
+    @Test fun theJoinUsesTheExactPointsOfAnAnchoredPlan() {
+        val fork = GeoPoint(51.5, 7.0)
+        val spot = GeoPoint(51.5, 7.002) // ~140 m spur east of the fork
+        val s = GeoPoint(51.4, 7.0); val e = GeoPoint(51.6, 7.0)
+        val near = listOf(s, fork, e)
+        var raw: GeoPoint? = null
+        var dLat = 0.00026
+        while (dLat < 0.00029 && raw == null) {
+            val p = GeoPoint(spot.lat + dLat + 3.3e-7, spot.lon + 1.7e-7)
+            if (WaypointSnap.missesMatched(p, spot, near) != WaypointSnap.missesMatched(PlanAnchors.exact(p), spot, near)) raw = p
+            dLat += 1e-7
+        }
+        val p = raw ?: error("no boundary point found")
+        val anchor = GeoPoint(51.45, 7.0)
+        val l1 = RouteResult(listOf(anchor, fork, spot), 6000.0, 1.0, 1.0, 50.0, matched = listOf(anchor, spot))
+        val l2 = RouteResult(listOf(spot, fork, e), 11000.0, 1.0, 1.0, 50.0, matched = listOf(spot, e))
+        val l0 = RouteResult(listOf(s, anchor), 5000.0, 1.0, 1.0, 50.0, matched = listOf(s, anchor))
+        val cache = LegCache()
+        cache.put(s, anchor, act, sac, l0, exact = true)
+        cache.put(anchor, PlanAnchors.exact(p), act, sac, l1, exact = true)
+        cache.put(PlanAnchors.exact(p), e, act, sac, l2, exact = true)
+        val eng = ProbeEng { RoutingException("must come from the cache") }
+        val anchors = mapOf(1 to Anchors(listOf(anchor), emptyList()))
+        val warm = Planner(eng, legs = cache).plan(PlanAnchors.expand(listOf(s, p, e), anchors, emptySet()), act, sac)
+        val cold = Planner(eng, legs = cache).plan(PlanAnchors.expand(listOf(s, PlanAnchors.exact(p), e), anchors, emptySet()), act, sac)
+        assertEquals(0, eng.calls.size)
+        assertEquals("the same cached legs, raw vs decoded point", keyOf(cold.points), keyOf(warm.points))
+    }
+
+    // Q3: settle of an anchored plan must not change the line of the plain plan that shares a leg (undo)
+    @Test fun settlingDoesNotChangeAPlainPlansLine() {
+        val e = ProbeEng(); val c = LegCache()
+        val shown = probeLeg(v0, GeoPoint(51.2, 7.05), v1) // the plain plan's leg, kept under its snapped points
+        c.put(v0, v1, act, sac, shown)
+        c.put(v1, v2, act, sac, probeLeg(v1, GeoPoint(51.6, 7.05), v2))
+        val plain = listOf(v0, v1, v2)
+        val before = Planner(e, legs = c).plan(plain, act, sac).points
+        val stitched = PlanAnchors.expand(listOf(v0, v1, b, v2), mapOf(2 to Anchors(emptyList(), listOf(GeoPoint(51.7, 7.0)))), emptySet())
+        Planner(e, legs = c).settle(stitched, act, sac)
+        val after = Planner(e, legs = c).plan(plain, act, sac).points
+        assertEquals("undo to the plain plan: same line as before the edit", keyOf(before), keyOf(after))
+    }
+
+
+    @Test fun aSettledLegHasItsOwnFileAndARetiredCutLegIsRemoved() {
+        val first = LegCache(store = files())
+        first.put(v0, a, act, sac, cutLeg(v0, a), settled = true)
+        first.put(v0, a, act, sac, cutLeg(v0, a), cut = true)
+        assertTrue(LegCache(store = files()).isExact(v0, a, act, sac))
+        assertNull("a plain read never sees a settled leg", LegCache(store = files()).get(v0, a, act, sac))
+        val dir = tmp.root.resolve("legs")
+        assertEquals(2, dir.list()!!.size)
+        assertEquals(1, dir.list()!!.count { "_settled" in it })
+        first.dropCut(v0, a, act, sac)
+        assertEquals(1, dir.list()!!.size)
+        assertTrue(LegCache(store = files()).isExact(v0, a, act, sac))
     }
 }
