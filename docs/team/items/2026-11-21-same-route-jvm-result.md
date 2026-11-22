@@ -1,6 +1,10 @@
-# SameRouteTest on the JVM: first result (2026-11-21 evening, [umbau])
+# SameRouteTest on the JVM: result (2026-11-21/22, [umbau])
 
-**The test is RED, so no hashes are checked in and nothing of the stitch goes to main.** Real BRouter, `E10_N45`, four tours (München–Venezia Bike and Hike T2, Salzburg–Trieste, Garmisch–Trento), 27 cases each: a control without an edit, 20 adds up to 2 km off the line, a chain of 3 adds, a night in a span, a delete, an undo. Adds 5–10 km off are not covered: speed-up 3 is not built. Wasm has not run.
+**Now GREEN on the JVM (2026-11-22, code at 4b3584b10, with the settling of §8.15).** All 108 stitched cases equal on the 1e-6 line hash, on four tours; a fresh JVM (`MODE=verify`) reproduced all 112 checked-in hashes (the 108 + the four controls) from an empty cache. `Planner.settle` cost per tour over all its cases: 126–170 requests, 23–143 s on this PC (the first settle routes the whole plan once). The four controls have no anchors, stay outside the pass / fail and still differ between the editing device and a cold one: that is the separate item `2026-11-21-fresh-device-vs-editing-device.md`. **Wasm has not run, a phone has not run it, adds 5–10 km off are not covered.** The fix commit 4b3584b10 was read by [umbau], not reviewed a second time.
+
+The rest of this file is the first run, before the settling.
+
+**First run: RED, so no hashes were checked in and nothing of the stitch went to main.** Real BRouter, `E10_N45`, four tours (München–Venezia Bike and Hike T2, Salzburg–Trieste, Garmisch–Trento), 27 cases each: a control without an edit, 20 adds up to 2 km off the line, a chain of 3 adds, a night in a span, a delete, an undo. Adds 5–10 km off are not covered: speed-up 3 is not built. Wasm has not run.
 
 Run: `KTTEST=tools/routing/jvm-test/SameRouteTest.kt EXTRA_KT="core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt core/src/main/kotlin/com/onpath/app/routing/PlanReach.kt core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt" JAVA_XMX=2g tools/routing/jvm-test/run.sh ~/onpath-routing/segments <workDir>`, with `CANON=1` for the second measurement. About 2.5 minutes.
 
