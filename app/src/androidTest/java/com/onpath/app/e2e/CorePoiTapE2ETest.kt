@@ -138,6 +138,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
             device.pressBack()
             waitFor("the details closed") { read { it.selectedPoi } == null }
             // drawn only now: the read the tap's hit caused cannot know it
+            val tapLines = com.onpath.app.debug.Problems.events().filter { it.message.startsWith("Press ") }.map { it.message.substringAfter("| wait=") }
             val second = showUnlistedPoi("unlisted-compass-2", (symbol.first + 80 * dp) to (symbol.second + 90 * dp))
             com.onpath.app.debug.Problems.clear()
             hold(second.first, second.second)
@@ -145,6 +146,9 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
             assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
             assertEquals("the hold set no route point", 0, waypointCount())
             assertTrue("the hold came through the map, the list did not have it", listMissedLogged())
+            pause(1_500, "the read without an idle")
+            val all = com.onpath.app.debug.Problems.events().filter { it.message.startsWith("Press ") || it.message.startsWith("Shown POIs read") || it.message.startsWith("POI at the finger") }.map { it.message.substringAfter("| wait=").take(90) }
+            throw AssertionError("TIMINGS tap=$tapLines hold+=$all")
         } finally {
             turning.set(false)
             compass.join(2_000)
