@@ -41,7 +41,7 @@ class SavePathsTest {
      */
     @Test fun thePlanIsHandedToZuletztBeforeItLeavesTheMap() {
         val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveState.kt").readText() // keepAsDraft moved there (piece 3)
-        val keep = slice.substringAfter("fun keepAsDraft(why: String) {").substringBefore("\n    }\n")
+        val keep = slice.substringAfter("fun keepAsDraft(why: String, profile: Pair<Activity, Int>? = null) {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("recent.keep("))
         assertFalse("handed over at once, no background work before it", keep.contains("launch"))
         // SaveState has no coroutines: deferring is `background.` (a write off the thread) or `names.` (a wait for the name)
