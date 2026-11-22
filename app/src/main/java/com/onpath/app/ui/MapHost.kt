@@ -124,8 +124,11 @@ fun MapHost(
         // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
         val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm.settingsSlice::mapGestureMeasured) }
         var idleListener: MapView.OnDidBecomeIdleListener? = null
+        var frameListener: MapView.OnDidFinishRenderingFrameListener? = null
         mapView.getMapAsync { map ->
             idleListener = MapView.OnDidBecomeIdleListener { shownPois.onMapIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
+            frameListener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ -> shownPois.onMapFrame(map, mapView, fully) }
+                .also { mapView.addOnDidFinishRenderingFrameListener(it) }
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
             map.setMinZoomPreference(3.0)
@@ -221,13 +224,7 @@ fun MapHost(
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
             // move the map – else holding a point can add a new one instead of opening its menu).
             var downMarker = -1
-            fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
-                // the field log's line of this press (Diagnostics): taken before the older press below is ended
-                val pressNow = android.os.SystemClock.uptimeMillis()
-                val fingerMs = hold.fingerMs(pressNow)
-                val note = shownPois.pressNote(map, press.name, fingerMs, hold.upToAppMs(pressNow),
-                    com.onpath.app.poi.PoiHit.ringWord(holdBuzz.value != MapGestures.Buzz.NONE, fingerMs))
-                shownPois.finishWaitingPress("newerPress") // an older press that still waits for the map goes first
+            fun handlePress(ll: LatLng, press: MapGestures.Press, note: com.onpath.app.poi.PoiHit.PressNote, down: Int): Boolean {
                 val c = myCtrl[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
                     com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e)
@@ -246,12 +243,12 @@ fun MapHost(
                 val pts = vm.plan.points.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
                 val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(pts, toScreen, screen.x, screen.y,
-                    press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
+                    press, down, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
                 val dpOf: (Int) -> Int? = { i -> pts.getOrNull(i)?.let { p -> c?.toScreen(p)?.let { (kotlin.math.hypot(it.x - screen.x, it.y - screen.y) / c.dpToPx(1f)).toInt() } } }
                 if (press == MapGestures.Press.HOLD && edit && c != null) {
                     // every hold in Plan goes into Diagnostics, each as its own line (core feature C1)
                     val near = pts.indices.minByOrNull { i -> c.toScreen(pts[i])?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
-                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
+                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${down + 1}, nearest point " +
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
                         "follow ${vm.map.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.placeMenus.mapOverlayOpen}")
                 }
@@ -284,30 +281,44 @@ fun MapHost(
                         edit
                     }
                 }
-                fun decide(hit: Boolean) = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, hit, vm.plan.points.isEmpty())
+                val menuAtPress = vm.placeMenus.mapOverlayOpen
+                fun decideOn(hit: Boolean, planEmpty: Boolean) = MapGestures.decide(edit, press, menuAtPress, marker, hit, planEmpty)
+                fun decide(hit: Boolean) = decideOn(hit, vm.plan.points.isEmpty())
                 fun word(a: MapGestures.Action) = a.toString().substringBefore('(')
                 fun runNoted(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?, end: String): Boolean =
                     run(a, poi).also { shownPois.pressEnded(note, end, word(a)) }
                 // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
                 if (marker >= 0 && press == MapGestures.Press.HOLD) return runNoted(decide(false), null, "routePoint")
                 (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return runNoted(decide(true), it, "listAtPress") }
-                // The list has no POI here. Where a POI would change what the press does, it waits for the map's next
-                // idle and asks the map there (never inside the press), bounded: a stale list must not lose a drawn
-                // symbol. Both outcomes are decided now: what opens or closes meanwhile cannot change what this press means.
-                val plan = com.onpath.app.poi.PoiHit.PressPlan(edit, decide(false), decide(true))
-                if (plan.plain == plan.onPoi) return runNoted(plan.plain, null, "poiChangesNothing")
-                val wait = shownPois.askMapAtNextIdle(map, ll, note) { found ->
-                    val a = plan.action(found != null, vm.canEditMap)
+                // The list has no POI here. Where a POI would change what the press does, it waits for the map's next drawn
+                // frame and asks the map right after it (never inside the press), bounded: a stale list must not lose a drawn
+                // symbol, also on a map that never goes idle. What the finger pressed on is fixed now, the plan is read at the answer.
+                val plain = decide(false)
+                if (plain == decide(true)) return runNoted(plain, null, "poiChangesNothing")
+                val plan = com.onpath.app.poi.PoiHit.PressPlan(edit, ::decideOn)
+                val wait = shownPois.askMapAtNextFrame(map, ll, press == MapGestures.Press.HOLD, note) { found ->
+                    val a = plan.action(found != null, vm.canEditMap, vm.plan.points.isEmpty())
                     if (a == null || vm.routePeek || vm.suggest.searching) {
                         note.action = "dropped"
                         Problems.trace("map", "Press dropped: the map's mode changed while it waited")
                     } else { note.action = word(a); run(a, found) }
-                } ?: return runNoted(plan.plain, null, "noStyleYet")
-                fun timedOut(waited: Long) {
-                    shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
-                }
-                mapView.postDelayed({ timedOut(0) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
-                return edit || plan.plain != MapGestures.Action.None
+                } ?: return runNoted(plain, null, "noStyleYet")
+                mapView.postDelayed({ shownPois.pressTimedOut(wait) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
+                return edit || plain != MapGestures.Action.None
+            }
+            fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
+                // the field log's line of this press (Diagnostics)
+                val pressNow = android.os.SystemClock.uptimeMillis()
+                val fingerMs = hold.fingerMs(pressNow)
+                val note = shownPois.pressNote(map, press.name, fingerMs, hold.upToAppMs(pressNow),
+                    com.onpath.app.poi.PoiHit.ringWord(holdBuzz.value != MapGestures.Buzz.NONE, fingerMs))
+                val down = downMarker
+                // an earlier press without an answer goes first: it answers now, then this one is played on what it did
+                if (shownPois.pressWhileOneWaits(map, mapView, ll, press == MapGestures.Press.HOLD, note,
+                        menuShown = { vm.placeMenus.mapOverlayOpen || vm.selectedPoi != null },
+                        closeMenu = { vm.placeMenus.closeMapOverlays("a hold made before this menu showed"); vm.selectedPoi = null },
+                        run = { handlePress(ll, press, note, down) })) return true
+                return handlePress(ll, press, note, down)
             }
             map.addOnMapClickListener { ll ->
                 // A hold of HOLD_MS (ring under the finger, vibration) ends as a click with lastHoldMs ≥ HOLD_MS.
@@ -354,6 +365,7 @@ fun MapHost(
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
             idleListener?.let { mapView.removeOnDidBecomeIdleListener(it) }
+            frameListener?.let { mapView.removeOnDidFinishRenderingFrameListener(it) }
             shownPois.dispose()
             host.disposed()
             ctrlRef.clear(host)

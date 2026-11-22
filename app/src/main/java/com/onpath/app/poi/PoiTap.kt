@@ -41,39 +41,64 @@ object PoiHit {
     }
 
     /**
-     * How long a press the list has no POI for waits for the map; after that it is a plain press. The idle normally comes
-     * in ~10 ms, so this only counts on a busy map or a slow phone – where a shorter bound turned a hold on a drawn symbol
-     * into a route point (GitHub's emulator 2026-11-21: the idle came after 160–650 ms).
+     * How long a press the list has no POI for waits for a drawn frame; after that it is a plain press. A frame normally comes
+     * in a few ms, so this only counts on a map that draws nothing (GitHub's slow emulator 2026-11-21: up to 770 ms).
      */
     const val PRESS_WAIT_MS = 1_000L
 
-    /** A read is due or only its result is on the way: the press waits for it this much longer, at most. */
-    const val READ_LAND_MS = 1_000L
-    const val READ_STEP_MS = 40L
+    /** A miss on a frame with tiles still coming is asked again, at most this often. */
+    const val ASK_AGAIN_MS = 150L
 
     /**
-     * The press's time ran out while a read is under way or still due (the list is known to be behind the map): it waits
-     * for that read, because a plain press now would turn a hold on a drawn symbol into a route point (GitHub's slow
-     * emulator 2026-11-21: read done, timer 3 ms before it landed; 2026-11-22: a finger ended following, two frames in
-     * 770 ms, the read not begun yet).
+     * When a waiting press asks the map (owner's Pixel 2026-11-22, 19:16 and 19:21: no idle for 30 s and more, because each
+     * compass value on the position dot keeps the map repainting). Not at an idle, which may never come, but right after a
+     * drawn frame: at the first one, and after a miss on a frame with tiles still coming, at the next fully drawn one or
+     * [ASK_AGAIN_MS] later.
      */
-    fun keepWaitingForRead(readRunning: Boolean, waitedMs: Long, readDue: Boolean = false): Boolean =
-        (readRunning || readDue) && waitedMs < READ_LAND_MS
+    class PressAsk {
+        private var missedAt = -1L
+
+        fun wants(fully: Boolean, nowMs: Long): Boolean = missedAt < 0 || fully || nowMs - missedAt >= ASK_AGAIN_MS
+
+        fun missedOnPartFrame(nowMs: Long) { missedAt = nowMs }
+    }
+
+    /** What a press does that came while an earlier one had no answer yet, once that one has answered. */
+    enum class AfterWaiting { RUN, CLOSE_THEN_RUN, DROP }
 
     /**
-     * What a waiting press does, decided when the finger pressed ([plain] without a POI there, [onPoi] with one): what
-     * opened or closed meanwhile cannot turn a hold that closes a menu into a new route point. Null = drop it, the map's
-     * mode changed while it waited.
+     * Each press is played after the earlier one's answer, right away, so a burst of taps never piles up. [samePlace] +
+     * not a hold over a tap: a repeat of the press that had no answer yet, dropped. A tap aimed before the menu [earlierOpened]
+     * showed does not close it. A hold is real input and is never lost: that menu closes and the hold acts.
      */
-    class PressPlan<A>(private val edit: Boolean, val plain: A, val onPoi: A) {
-        fun action(found: Boolean, canEditNow: Boolean): A? = if (canEditNow != edit) null else if (found) onPoi else plain
+    fun afterWaiting(samePlace: Boolean, olderHold: Boolean, newerHold: Boolean, earlierOpened: Boolean): AfterWaiting = when {
+        samePlace && (!newerHold || olderHold) -> AfterWaiting.DROP
+        earlierOpened && !newerHold -> AfterWaiting.DROP
+        earlierOpened -> AfterWaiting.CLOSE_THEN_RUN
+        else -> AfterWaiting.RUN
+    }
+
+    /** Two presses at one place: within the finger's reach of a symbol. */
+    fun samePlace(ax: Float, ay: Float, bx: Float, by: Float, boxPx: Float, dpPx: Float): Boolean {
+        val reach = boxPx / 2f + ICON_HALF_DP * dpPx
+        return abs(ax - bx) <= reach && abs(ay - by) <= reach
+    }
+
+    /**
+     * What a waiting press does. [decide] (POI there, plan empty) holds what the finger pressed on, so a menu that opened or
+     * closed meanwhile cannot turn a hold that closes a menu into a new route point; the plan is the one shown at the answer,
+     * so a plan cleared meanwhile gets the first-point menu instead of a silent point. Null = drop it, the map's mode changed.
+     */
+    class PressPlan<A>(private val edit: Boolean, private val decide: (poi: Boolean, planEmpty: Boolean) -> A) {
+        fun action(found: Boolean, canEditNow: Boolean, planEmptyNow: Boolean): A? =
+            if (canEditNow != edit) null else decide(found, planEmptyNow)
     }
 
     /** The field log's words for a drawn POI that was missing from the list (the E2E tests read them too). */
     const val LIST_MISSED = "A tap or hold found a drawn POI the list did not have"
 
     /**
-     * The one press waiting for the map's next idle – it is never asked inside the press, because a query there can
+     * The one press waiting for the map's next frame – it is never asked inside the press, because a query there can
      * wait for a busy render thread (1447 ms, owner's Pixel 2026-11-13). Whoever takes it finishes it, exactly once.
      */
     class PressWait<P : Any> {
@@ -96,7 +121,7 @@ object PoiHit {
     }
 
     /**
-     * Whether one repaint may be asked for. Not while one is on its way: an asked repaint counts until the next idle, or
+     * Whether one repaint may be asked for. Not while one is on its way: an asked repaint counts until the next frame, or
      * [staleMs] if none comes (a stopped map), so the flag can never stick. After a camera stop also not while the camera
      * follows the position (a repaint per follow step would keep the map busy) – unless a finger moved it: a pinch keeps
      * following, and on a map that then stands still no other frame would come for the read. A press always gets its
@@ -175,11 +200,16 @@ object PoiHit {
         var queryMs = -1L
         var action: String? = null
         private var idleMs = -1L
+        private var frames = 0
+        private var fullFrames = 0
         private var landedMs = -1L
         private var written = false
 
         /** The map's first idle since the press. */
         fun sawIdle(nowMs: Long) { if (idleMs < 0) idleMs = nowMs - atMs }
+
+        /** A drawn frame while the press waited. */
+        fun sawFrame(fully: Boolean) { frames++; if (fully) fullFrames++ }
 
         /** A read's result reached the main thread while the press waited. */
         fun readLanded(nowMs: Long) { if (landedMs < 0) landedMs = nowMs - atMs }
@@ -192,6 +222,7 @@ object PoiHit {
                 append("Press $no $kind nth=$nthSinceCamera camStill=$cameraStillMs finger=$fingerMs upToApp=$upToAppMs ring=$ring $list")
                 append(" | wait=${nowMs - atMs}")
                 repaint?.let { append(" repaint=$it") }
+                if (frames > 0) append(" frames=$frames/$fullFrames")
                 if (idleMs >= 0) append(" idle=$idleMs")
                 if (readMs >= 0) append(" read=$readMs")
                 if (landedMs >= 0) append(" landed=$landedMs")
@@ -224,12 +255,15 @@ object PoiHit {
  * The read: queryRenderedFeatures has to run on the main thread (MapLibre Android), on an idle map it does not wait;
  * turning the features into POIs runs on a background thread, the list is swapped in on the main thread. Until a read
  * is done a hold uses the last list. Positions are kept as coordinates and projected at the hold (no render thread
- * involved). A press the list has no POI for waits for the map's next idle ([askMapAtNextIdle]) and asks the map there,
- * so a stale list cannot lose a drawn symbol (owner's Pixel 2026-11-21, cause unproven). Main thread only. Never throws.
+ * involved). A press the list has no POI for waits for the map's next drawn frame ([askMapAtNextFrame]) and asks the map
+ * right after it, so a stale list cannot lose a drawn symbol – also while the map never goes idle (owner's Pixel 2026-11-22).
+ * Main thread only. Never throws.
  */
 class ShownPois {
     private class Entry(val poi: Poi, val icon: Boolean)
-    private class WaitingPress(val at: LatLng, val boxDp: Float, val note: PoiHit.PressNote, val done: (Poi?) -> Unit)
+    private class WaitingPress(val at: LatLng, val boxDp: Float, val hold: Boolean, val note: PoiHit.PressNote, val done: (Poi?) -> Unit) {
+        val ask = PoiHit.PressAsk()
+    }
 
     @Volatile private var entries: List<Entry> = emptyList()
     private val trigger = PoiHit.ReadTrigger()
@@ -244,17 +278,17 @@ class ShownPois {
     private var gone = false
     private val presses = PoiHit.PressCounter()
     private var styleLoadedAt = -1L
+    private var askPosted = false
 
     /** A read is due or running: the list is known to be behind what the map shows. */
     private val listBehind: Boolean get() = trigger.pending || doneSeq != seq
 
     /**
-     * The camera starts to move. A finger on it ends a waiting press (a plain press now); a follow step does not – the
-     * press is kept as a place and projected again at the idle.
+     * The camera starts to move. A waiting press stays: it is kept as a place and projected again at the next frame.
      */
     fun cameraMoveStarted(byFinger: Boolean) {
         presses.cameraMoved()
-        if (byFinger) { repaint.fingerMoved(); finishWaitingPress("fingerOnMap") }
+        if (byFinger) repaint.fingerMoved()
     }
 
     /**
@@ -300,16 +334,55 @@ class ShownPois {
     /** Other POI settings (kinds shown): the next map idle reads. */
     fun changed() = trigger.changed()
 
-    /**
-     * The map became idle (render thread done, all tiles in). A read that is due runs and a waiting press is answered
-     * from it; with none due the press asks the map here, once.
-     */
+    /** The map became idle (render thread done, all tiles in): a read that is due runs. */
     fun onMapIdle(map: MapLibreMap, view: View) {
         repaint.idleCame()
         waiting.peek()?.note?.sawIdle(SystemClock.uptimeMillis())
-        if (!styleReady(map)) { finishWaitingPress("styleNotReady"); return }
-        val reading = trigger.mapIdle(true) && read(map, view)
-        if (!reading) resolveWaitingPress(map, view)
+        if (styleReady(map) && trigger.mapIdle(true)) read(map, view)
+    }
+
+    /**
+     * A frame was drawn: a waiting press asks the map right after it, outside this callback. Every frame comes here, so
+     * without a waiting press this does nothing more than clear the repaint gate.
+     */
+    fun onMapFrame(map: MapLibreMap, view: View, fully: Boolean) {
+        repaint.idleCame()
+        val p = waiting.peek() ?: return
+        p.note.sawFrame(fully)
+        if (askPosted || !p.ask.wants(fully, SystemClock.uptimeMillis())) return
+        askPosted = true
+        view.post {
+            askPosted = false
+            if (!gone) resolveWaitingPress(map, view, last = fully)
+        }
+    }
+
+    /**
+     * A press came while [waiting] has one without an answer: that one answers now, then this one is played on what it
+     * did ([PoiHit.afterWaiting]) – all in one step after this touch, so a burst of taps never queues up. False = nothing
+     * waits, the caller goes on at once.
+     */
+    fun pressWhileOneWaits(map: MapLibreMap, view: View, ll: LatLng, hold: Boolean, note: PoiHit.PressNote, boxDp: Float = 24f,
+                           menuShown: () -> Boolean, closeMenu: () -> Unit, run: () -> Unit): Boolean {
+        val older = waiting.peek() ?: return false
+        val dp = android.content.res.Resources.getSystem().displayMetrics.density
+        val a = screenOf(map, older)
+        val b = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
+            Problems.warn("poi", "A second press could not be placed on the screen, treated as another place", e); null
+        }
+        val same = a != null && b != null && PoiHit.samePlace(a.x, a.y, b.x, b.y, boxDp * dp, dp)
+        val olderHold = older.hold
+        val shownBefore = menuShown()
+        view.post {
+            if (gone) { pressEnded(note, "mapGone"); return@post }
+            resolveWaitingPress(map, view, last = true)
+            when (PoiHit.afterWaiting(same, olderHold, hold, !shownBefore && menuShown())) {
+                PoiHit.AfterWaiting.DROP -> pressEnded(note, if (same) "repeatOfWaiting" else "menuJustOpened", "dropped")
+                PoiHit.AfterWaiting.CLOSE_THEN_RUN -> { closeMenu(); run() }
+                PoiHit.AfterWaiting.RUN -> run()
+            }
+        }
+        return true
     }
 
     /** The POI under [x], [y] (pixels), from what the map showed at the last read; null when none. */
@@ -331,14 +404,14 @@ class ShownPois {
     }
 
     /**
-     * A tap / hold [at] found nothing for: the press waits for the map's next idle and [done] gets the POI drawn at the
-     * place [ll], or null (a plain press) if none is drawn, a finger moves the camera, the style changes or
-     * [pressTimedOut] comes. Never asks the map here; it asks for the one frame that brings the idle. Returns the wait's
-     * token, or null when it cannot wait (no style yet): the caller goes on at once.
+     * A tap / hold [at] found nothing for: the press waits for the map's next drawn frame and [done] gets the POI drawn at the
+     * place [ll], or null (a plain press) if none is drawn, the style changes or [pressTimedOut] comes. Never asks the map
+     * here; it asks for the one frame. Returns the wait's token, or null when it cannot wait (no style yet): the caller
+     * goes on at once.
      */
-    fun askMapAtNextIdle(map: MapLibreMap, ll: LatLng, note: PoiHit.PressNote, boxDp: Float = 24f, done: (Poi?) -> Unit): Int? {
+    fun askMapAtNextFrame(map: MapLibreMap, ll: LatLng, hold: Boolean, note: PoiHit.PressNote, boxDp: Float = 24f, done: (Poi?) -> Unit): Int? {
         if (!styleReady(map)) return null
-        val (token, older) = waiting.put(WaitingPress(ll, boxDp, note, done))
+        val (token, older) = waiting.put(WaitingPress(ll, boxDp, hold, note, done))
         older?.let { finish(it, null, "newerPress") }
         val ask = repaint.mayAskForPress(SystemClock.uptimeMillis())
         note.repaint = if (ask) "asked" else "onItsWay"
@@ -360,21 +433,15 @@ class ShownPois {
         note.line(end, SystemClock.uptimeMillis())?.let { Problems.trace("poi", it) }
     }
 
-    /**
-     * The wait of [token] ran out (a busy map): the press goes on as a plain press – unless a read is under way or due, then
-     * it waits for that read's result, bounded ([PoiHit.keepWaitingForRead]). Returns the ms after which the caller asks
-     * again with [waitedMs] grown by them, or null when the press is finished.
-     */
-    fun pressTimedOut(token: Int, waitedMs: Long = 0): Long? {
-        if (waiting.waits(token) && PoiHit.keepWaitingForRead(readRunning, waitedMs, trigger.pending)) return PoiHit.READ_STEP_MS
+    /** The wait of [token] ran out, no usable frame came: the press goes on as a plain press. */
+    fun pressTimedOut(token: Int) {
         waiting.expire(token)?.let {
-            Problems.trace("poi", "No map idle in time for a press (${listInfo()}), plain press")
+            Problems.trace("poi", "No map frame in time for a press (${listInfo()}), plain press")
             finish(it, null, "timeout")
         }
-        return null
     }
 
-    /** A press still waiting goes on as a plain press (a newer press, a finger on the camera, a new style). */
+    /** A press still waiting goes on as a plain press (a new style). */
     fun finishWaitingPress(why: String) { waiting.take()?.let { finish(it, null, why) } }
 
     /** The map host goes away: a waiting press is dropped, nothing is left to act on. */
@@ -397,22 +464,23 @@ class ShownPois {
         null
     }
 
-    /** On the map's idle only ([onMapIdle]): the list again (a read may have landed), else one small query at the finger. */
-    private fun resolveWaitingPress(map: MapLibreMap, view: View) {
-        val p = waiting.take() ?: return
-        val s = screenOf(map, p) ?: return finish(p, null, "noScreen")
+    /**
+     * After a drawn frame or for a newer press, never inside a press: the list again, else one small query at the finger. A
+     * miss on a frame with tiles still coming keeps waiting, unless this is the [last] chance.
+     */
+    private fun resolveWaitingPress(map: MapLibreMap, view: View, last: Boolean) {
+        val p = waiting.peek() ?: return
+        if (!styleReady(map)) {
+            if (last) { waiting.take(); finish(p, null, "styleNotReady") }
+            return
+        }
+        val s = screenOf(map, p)
+        if (s == null) { waiting.take(); return finish(p, null, "noScreen") }
         val listed = at(map, s.x, s.y, p.boxDp)
-        val found = listed ?: queryAtFinger(map, view, p, s.x, s.y)
-        finish(p, found, if (listed != null) "listAtIdle" else if (found != null) "mapAtIdle" else "nothingThere")
-    }
-
-    /** The read a waiting press was waiting for has landed: it answers from the new list. */
-    private fun answerFromLandedRead(map: MapLibreMap) {
-        val p = waiting.take() ?: return
-        val s = screenOf(map, p) ?: return finish(p, null, "noScreen")
-        val hit = at(map, s.x, s.y, p.boxDp)
-        if (hit != null) Problems.trace("poi", "${PoiHit.LIST_MISSED} (${listInfo()}) – its read was still due")
-        finish(p, hit, if (hit != null) "landedRead" else "nothingThere")
+        val found = listed ?: queryAtFinger(map, view, p, s.x, s.y, last)
+        if (found == null && !last) { p.ask.missedOnPartFrame(SystemClock.uptimeMillis()); return }
+        waiting.take()
+        finish(p, found, if (listed != null) "listAtFrame" else if (found != null) "mapAtFrame" else "nothingThere")
     }
 
     /** The symbol layers' ids of [style], kept per style (every read refreshes them). */
@@ -420,7 +488,7 @@ class ShownPois {
         symbolLayers?.takeIf { it.first === style }?.second
             ?: style.layers.map { it.id }.filter { PoiHit.symbolLayer(it) }.also { symbolLayers = style to it }
 
-    private fun queryAtFinger(map: MapLibreMap, view: View, p: WaitingPress, x: Float, y: Float): Poi? {
+    private fun queryAtFinger(map: MapLibreMap, view: View, p: WaitingPress, x: Float, y: Float, last: Boolean): Poi? {
         val behind = listBehind // a read is still due or running: a miss is expected
         val info = listInfo()
         return try {
@@ -434,13 +502,13 @@ class ShownPois {
             val feats = map.queryRenderedFeatures(RectF(x - reach, y - reach, x + reach, y + reach), *ids.toTypedArray())
             val ms = SystemClock.uptimeMillis() - t0
             p.note.queryMs = ms
-            if (ms > 100) Problems.trace("poi", "POI at the finger asked in $ms ms on the main thread (map idle)")
+            if (ms > 100) Problems.trace("poi", "POI at the finger asked in $ms ms on the main thread (after a frame)")
             val cands = feats.mapNotNull { Poi.fromFeature(it) }.distinctBy { it.id }.map { c ->
                 val s = map.projection.toScreenLocation(LatLng(c.lat, c.lon))
                 PoiHit.Candidate(c, s.x, s.y, true)
             }
             val hit = PoiHit.pick(cands, x, y, p.boxDp * dp, dp)
-            if (hit == null) Problems.trace("poi", "No POI at the finger, in the list or on the map ($info)")
+            if (hit == null) { if (last) Problems.trace("poi", "No POI at the finger, in the list or on the map ($info)") }
             else {
                 val line = "${PoiHit.LIST_MISSED} ($info)"
                 if (behind) Problems.trace("poi", "$line – its read was still due")
@@ -455,7 +523,7 @@ class ShownPois {
         }
     }
 
-    /** True = the read runs and its landing answers a waiting press. */
+    /** True = the read runs. */
     private fun read(map: MapLibreMap, view: View): Boolean {
         try {
             val t0 = SystemClock.uptimeMillis()
@@ -490,15 +558,12 @@ class ShownPois {
                     if (mine != seq || gone) return@post // a newer read or style answers the press
                     readRunning = false
                     waiting.peek()?.note?.readLanded(SystemClock.uptimeMillis())
-                    if (list == null) { finishWaitingPress("readFailed"); return@post }
+                    if (list == null) return@post
                     entries = list; doneSeq = mine; readAt = SystemClock.uptimeMillis(); styleLoadsSinceRead = 0
                     if (styleLoadedAt >= 0) {
                         Problems.trace("poi", "First POI list after the style load: ${list.size} POIs, ${readAt - styleLoadedAt} ms")
                         styleLoadedAt = -1L
                     }
-                    // a newer read is wanted (the camera stopped since this one began): this list is of the old view, a
-                    // miss in it says nothing – the press waits for that read, bounded by its timeout
-                    if (!trigger.pending) answerFromLandedRead(map)
                 }
             }
             return true

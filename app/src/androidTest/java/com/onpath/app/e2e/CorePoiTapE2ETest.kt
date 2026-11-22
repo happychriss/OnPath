@@ -92,6 +92,67 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         holdWhileFollowing(headingUp = true) { }
     }
 
+    /**
+     * a5) field bug 2026-11-22 19:16 (owner's export: 8 presses in 22 s, no map idle for 30 s, smooth frames, an empty list):
+     * every compass value on the position dot keeps the map repainting for ~300 ms, so a phone in the hand can keep MapLibre
+     * from ever going idle. A tap and a hold on a drawn symbol must answer all the same.
+     */
+    @Test fun aTapAndAHoldOnASymbolAnswerWhileTheCompassKeepsTheMapFromIdle() {
+        val dp = android.content.res.Resources.getSystem().displayMetrics.density
+        gpsAt(POI_LAT, POI_LON)
+        waitUntil("a GPS fix in the app", 20_000) { read { it.tracker.location.value != null } }
+        // both layers first: the camera move of the second one would let a read learn the first symbol
+        addUnlistedLayer("unlisted-compass-1")
+        addUnlistedLayer("unlisted-compass-2")
+        val first = showUnlistedPoi("unlisted-compass-1", (symbol.first + 80 * dp) to symbol.second)
+        val idles = java.util.concurrent.atomic.AtomicInteger()
+        val idle = org.maplibre.android.maps.MapView.OnDidBecomeIdleListener { idles.incrementAndGet() }
+        scenario.onActivity { mapView(it)!!.addOnDidBecomeIdleListener(idle) }
+        val turning = java.util.concurrent.atomic.AtomicBoolean(true)
+        var listeners: List<org.maplibre.android.location.CompassListener> = emptyList()
+        onMap { m ->
+            val engine = m.locationComponent.compassEngine as com.onpath.app.map.HeadingEngine
+            val field = com.onpath.app.map.HeadingEngine::class.java.getDeclaredField("listeners").apply { isAccessible = true }
+            @Suppress("UNCHECKED_CAST") run { listeners = (field.get(engine) as Set<org.maplibre.android.location.CompassListener>).toList() }
+        }
+        assertTrue("the compass reaches the position dot", listeners.isNotEmpty())
+        val main = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val compass = Thread {
+            val t0 = System.currentTimeMillis()
+            while (turning.get()) {
+                val deg = 90 + 6 * kotlin.math.sin((System.currentTimeMillis() - t0) / 180.0)
+                main.runOnMainSync { listeners.forEach { it.onCompassChanged(deg.toFloat()) } }
+                Thread.sleep(16)
+            }
+        }.apply { isDaemon = true; start() }
+        try {
+            pause(1_000, "the turning dot has taken over the map's frames")
+            idles.set(0)
+            pause(1_500, "no idle while the compass turns")
+            assertEquals("the case: the map does not go idle", 0, idles.get())
+            com.onpath.app.debug.Problems.clear()
+            press(first.first, first.second, 60)
+            waitFor("the details of a symbol the list lacks, tap at ${at(first)}") { read { it.selectedPoi?.id } == "unlisted-compass-1" }
+            assertTrue("the tap came through the map, the list did not have it", listMissedLogged())
+            assertNotNull("the sheet is up before Back", findFresh(By.text("Unlisted unlisted-compass-1"), 5_000))
+            device.pressBack()
+            waitFor("the details closed") { read { it.selectedPoi } == null }
+            // drawn only now: the read the tap's hit caused cannot know it
+            val second = showUnlistedPoi("unlisted-compass-2", (symbol.first + 80 * dp) to (symbol.second + 90 * dp))
+            com.onpath.app.debug.Problems.clear()
+            hold(second.first, second.second)
+            waitFor("the POI menu of a symbol the list lacks, hold at ${at(second)}") { read { it.placeMenus.poiMenu?.id } == "unlisted-compass-2" }
+            assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
+            assertEquals("the hold set no route point", 0, waypointCount())
+            assertTrue("the hold came through the map, the list did not have it", listMissedLogged())
+        } finally {
+            turning.set(false)
+            compass.join(2_000)
+            scenario.onActivity { mapView(it)?.removeOnDidBecomeIdleListener(idle) }
+            device.executeShellCommand("cmd location providers remove-test-provider gps")
+        }
+    }
+
     private fun holdWhileFollowing(headingUp: Boolean, thenCheck: () -> Unit) {
         val id = "unlisted-follow-1"
         var before: com.onpath.app.data.AppSettings? = null
