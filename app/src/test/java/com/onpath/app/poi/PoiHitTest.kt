@@ -130,14 +130,44 @@ class PoiHitTest {
         assertEquals("second", w.expire(t4))
     }
 
-    /** Field bug 2026-11-22: no idle for 30 s. A press asks after the first drawn frame; tiles still coming: again, not on every frame. */
-    @Test fun aWaitingPressAsksAfterADrawnFrame() {
+    /** Field bug 2026-11-22: no idle for 30 s. A press asks after the first drawn frame, and at most once more, at a full one. */
+    @Test fun aWaitingPressAsksAfterADrawnFrameAtMostTwice() {
         val a = PoiHit.PressAsk()
-        assertTrue("the first frame, drawn fully or not", a.wants(fully = false, nowMs = 0))
-        a.missedOnPartFrame(10)
-        assertFalse("not again on the next part frame", a.wants(fully = false, nowMs = 20))
-        assertTrue("a fully drawn frame answers", a.wants(fully = true, nowMs = 20))
-        assertTrue("or the next part frame after a while", a.wants(fully = false, nowMs = 10 + PoiHit.ASK_AGAIN_MS))
+        assertFalse(a.asked)
+        assertTrue("the first frame, drawn fully or not", a.wants(fully = false))
+        a.asking()
+        assertTrue(a.asked)
+        assertFalse("not on the next part frame", a.wants(fully = false))
+        assertTrue("once more at a fully drawn frame", a.wants(fully = true))
+        a.asking()
+        assertFalse("never a third time", a.wants(fully = true))
+    }
+
+    /** No frame yet (a busy render thread): the press waits on, bounded; once it could ask, the time-out ends it. */
+    @Test fun aPressWithoutAnyFrameWaitsLongerButNotForever() {
+        assertEquals(PoiHit.NO_FRAME_STEP_MS, PoiHit.moreWaitMs(asked = false, waitedMs = 0))
+        assertEquals(PoiHit.NO_FRAME_STEP_MS, PoiHit.moreWaitMs(asked = false, waitedMs = PoiHit.NO_FRAME_MORE_MS - 1))
+        assertNull("bounded", PoiHit.moreWaitMs(asked = false, waitedMs = PoiHit.NO_FRAME_MORE_MS))
+        assertNull("it could ask: a plain press", PoiHit.moreWaitMs(asked = true, waitedMs = 0))
+        assertTrue("past the 1447 ms stall seen in the field", PoiHit.PRESS_WAIT_MS + PoiHit.NO_FRAME_MORE_MS > 1_447)
+    }
+
+    /** A map that never goes idle still gets its list read, once per wish, after the idle had its chance. */
+    @Test fun aFullFrameReadsWhenNoIdleComes() {
+        val t = PoiHit.ReadTrigger()
+        t.cameraIdle(1_000)
+        assertFalse("the idle has its chance first", t.fullFrame(1_000 + PoiHit.READ_WITHOUT_IDLE_MS - 1))
+        assertTrue(t.pending)
+        assertTrue(t.fullFrame(1_000 + PoiHit.READ_WITHOUT_IDLE_MS))
+        assertFalse("once", t.fullFrame(9_000))
+        t.changed(10_000)
+        assertTrue("the idle takes it", t.mapIdle(true))
+        assertFalse("and the frame reads nothing more", t.fullFrame(20_000))
+    }
+
+    @Test fun whatAPressPutsOnTheScreenIsKnownByItsAction() {
+        for (a in listOf("PoiMenu", "PoiDetails", "PointMenu", "FirstPointMenu")) assertTrue(a, PoiHit.opensSomething(a))
+        for (a in listOf("None", "CloseMenu", "AddPoint", "dropped", null)) assertFalse("$a", PoiHit.opensSomething(a))
     }
 
     /** A press during the wait is played after the earlier one's answer: no stray point, no lost hold, no row of menus. */
@@ -224,7 +254,7 @@ class PoiHitTest {
         assertTrue("the press path is there", press.contains("fun askMapAtNextFrame("))
         assertFalse("a press reads only the list", press.contains("queryRenderedFeatures") || press.contains("queryAtFinger"))
         val onFrame = tap.substringAfter("fun onMapFrame(").substringBefore("fun pressWhileOneWaits(")
-        assertTrue("the map is asked after a frame, in a posted step", onFrame.contains("view.post") && onFrame.contains("resolveWaitingPress(map, view, last = fully)"))
+        assertTrue("the map is asked after a frame, in a posted step", onFrame.contains("view.post") && onFrame.contains("resolveWaitingPress(map, view, last = sure)"))
         val newer = tap.substringAfter("fun pressWhileOneWaits(").substringBefore("fun askMapAtNextFrame(")
         assertTrue("or for a newer press, in a posted step", newer.contains("view.post") && newer.contains("resolveWaitingPress(map, view, last = true)"))
         assertEquals("and from nowhere else", 3, Regex("resolveWaitingPress\\(").findAll(tap).count())

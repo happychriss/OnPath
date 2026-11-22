@@ -303,7 +303,10 @@ fun MapHost(
                         Problems.trace("map", "Press dropped: the map's mode changed while it waited")
                     } else { note.action = word(a); run(a, found) }
                 } ?: return runNoted(plain, null, "noStyleYet")
-                mapView.postDelayed({ shownPois.pressTimedOut(wait) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
+                fun timedOut(waited: Long) {
+                    shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
+                }
+                mapView.postDelayed({ timedOut(0) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
                 return edit || plain != MapGestures.Action.None
             }
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
