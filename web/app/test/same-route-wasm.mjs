@@ -1,16 +1,31 @@
 // SameRouteTest, the Wasm part (docs/design/detour-stitch.md §5, §8): every plan code of
 // core/src/test/resources/same-route/*.sha, routed cold by the planner's engine, must give the JVM's RouteHash exactly
-// (sha256 of the line, tools/routing/jvm-test/SameRouteTest.kt) and its distance within 0.5 %. The whole 1° tile is
+// (sha256 of the line, tools/routing/jvm-test/SameRouteTest.kt) and its distance within 0.5 %. The whole 5° tile is
 // loaded, so the test compares the router and the plan code, not the download of the parts.
-// Usage: node --max-old-space-size=4096 test/same-route-wasm.mjs <segmentsDir>   Env: TOURS=a,b  LIMIT=<cases per tour>
+// The hashes hold only for the routing data named in same-route/DATA.txt: any other E10_N45.rd5 is refused (exit 2).
+// Build: tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine generateWasmGC copyWasmGCRuntime (no npm install needed)
+// Usage: node --max-old-space-size=4096 test/same-route-wasm.mjs <segmentsDir>
+// Env: TOURS=a,b  LIMIT=<cases per tour>  NEIGHBOURS=1 (also load the tiles around E10_N45 found in the folder)
+//      DUMP=<dir> (write each case's line text there)
+// Exit: 0 all equal, 1 a case differs, 2 refused (no folder, or not the recorded data).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const segments = path.resolve(process.argv[2] || '/home/user/build/routing-test/segments');
+if (!process.argv[2]) { console.log('REFUSED: give the segments folder as the argument'); process.exit(2); }
+const segments = path.resolve(process.argv[2]);
 const shaDir = path.join(here, '../../../core/src/test/resources/same-route');
+const tile = 'E10_N45.rd5';
+const wanted = /^sha256:\s*([0-9a-f]{64})\s*$/m.exec(fs.readFileSync(path.join(shaDir, 'DATA.txt'), 'utf8'))?.[1];
+if (!wanted) { console.log('REFUSED: same-route/DATA.txt names no sha256'); process.exit(2); }
+if (!fs.existsSync(path.join(segments, tile))) { console.log(`REFUSED: no ${tile} in ${segments}`); process.exit(2); }
+const digest = crypto.createHash('sha256');
+for await (const c of fs.createReadStream(path.join(segments, tile))) digest.update(c);
+const have = digest.digest('hex');
+if (have !== wanted) { console.log(`REFUSED: ${tile} is not the data the hashes were made with (sha256 ${have}, DATA.txt ${wanted})`); process.exit(2); }
+console.log(`data ok: ${tile} sha256 ${have}`);
 const gen = path.join(here, '../../engine/build/generated/teavm/wasm-gc');
 await import(path.join(gen, 'onpath-web-engine.wasm-runtime.js'));
 const { exports: e } = await TeaVM.wasmGC.load(path.join(gen, 'onpath-web-engine.wasm'));
@@ -18,19 +33,26 @@ e.init('/onpath');
 const assets = path.join(here, '../../../app/src/main/assets/brouter');
 for (const f of fs.readdirSync(assets)) e.putFile('assets/brouter/' + f, new Int8Array(fs.readFileSync(path.join(assets, f))));
 
-const tile = 'E10_N45.rd5';
-const fd = fs.openSync(path.join(segments, tile), 'r');
-const size = fs.fstatSync(fd).size;
-const read = (from, to) => { const b = Buffer.alloc(to - from + 1); fs.readSync(fd, b, 0, b.length, from); return b; };
 const view = (b) => new Int8Array(b.buffer, b.byteOffset, b.length);
-const head = read(0, 199);
-const v = new DataView(head.buffer, head.byteOffset, 200);
-const ends = [...Array(25).keys()].map((i) => Number(v.getBigUint64(i * 8) & 0xffffffffffffn));
-e.putLayout(tile, view(head), view(read(ends[24], size - 1)));
-for (let i = 0; i < 25; i++) {
-  const start = i === 0 ? 200 : ends[i - 1];
-  if (ends[i] > start && !e.putPart(tile, i, view(read(start, ends[i] - 1)))) throw new Error(`part ${i} does not fit`);
+/** A whole tile through the page's calls (head, tail, every part). */
+function loadTile(name) {
+  const fd = fs.openSync(path.join(segments, name), 'r');
+  const size = fs.fstatSync(fd).size;
+  const read = (from, to) => { const b = Buffer.alloc(to - from + 1); fs.readSync(fd, b, 0, b.length, from); return b; };
+  const head = read(0, 199);
+  const v = new DataView(head.buffer, head.byteOffset, 200);
+  const ends = [...Array(25).keys()].map((i) => Number(v.getBigUint64(i * 8) & 0xffffffffffffn));
+  e.putLayout(name, view(head), view(read(ends[24], size - 1)));
+  for (let i = 0; i < 25; i++) {
+    const start = i === 0 ? 200 : ends[i - 1];
+    if (ends[i] > start && !e.putPart(name, i, view(read(start, ends[i] - 1)))) throw new Error(`${name} part ${i} does not fit`);
+  }
+  fs.closeSync(fd);
 }
+loadTile(tile);
+const around = ['E5_N40', 'E10_N40', 'E15_N40', 'E5_N45', 'E15_N45', 'E5_N50', 'E10_N50', 'E15_N50'].map((t) => t + '.rd5').filter((t) => fs.existsSync(path.join(segments, t)));
+if (process.env.NEIGHBOURS) for (const t of around) loadTile(t);
+console.log(`tiles loaded: ${[tile, ...(process.env.NEIGHBOURS ? around : [])].join(' ')}${!process.env.NEIGHBOURS && around.length ? ` (in the folder, not loaded: ${around.join(' ')})` : ''}`);
 e.writeParts();
 
 const metres = (s) => new Float64Array(new BigInt64Array([BigInt.asIntN(64, [...s.replace('-', '')].reduce((n, c) => n * 36n + BigInt(parseInt(c, 36)), 0n) * (s[0] === '-' ? -1n : 1n))]).buffer)[0];
