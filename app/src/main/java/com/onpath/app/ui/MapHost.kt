@@ -126,6 +126,7 @@ fun MapHost(
         var idleListener: MapView.OnDidBecomeIdleListener? = null
         mapView.getMapAsync { map ->
             idleListener = MapView.OnDidBecomeIdleListener { shownPois.onMapIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
+            mapView.addOnDidFinishRenderingFrameListener { fully, _, _ -> shownPois.frameDone(fully) }
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
             map.setMinZoomPreference(3.0)

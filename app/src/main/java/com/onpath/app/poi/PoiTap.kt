@@ -172,11 +172,16 @@ object PoiHit {
         var queryMs = -1L
         var action: String? = null
         private var idleMs = -1L
+        private var frames = 0
+        private var fullFrames = 0
+        private var lastFrameMs = -1L
         private var landedMs = -1L
         private var written = false
 
         /** The map's first idle since the press. */
         fun sawIdle(nowMs: Long) { if (idleMs < 0) idleMs = nowMs - atMs }
+
+        fun frame(fully: Boolean, nowMs: Long) { frames++; if (fully) fullFrames++; lastFrameMs = nowMs - atMs }
 
         /** A read's result reached the main thread while the press waited. */
         fun readLanded(nowMs: Long) { if (landedMs < 0) landedMs = nowMs - atMs }
@@ -189,6 +194,7 @@ object PoiHit {
                 append("Press $no $kind nth=$nthSinceCamera camStill=$cameraStillMs finger=$fingerMs upToApp=$upToAppMs ring=$ring $list")
                 append(" | wait=${nowMs - atMs}")
                 repaint?.let { append(" repaint=$it") }
+                append(" frames=$frames/$fullFrames lastFrame=$lastFrameMs")
                 if (idleMs >= 0) append(" idle=$idleMs")
                 if (readMs >= 0) append(" read=$readMs")
                 if (landedMs >= 0) append(" landed=$landedMs")
@@ -308,6 +314,8 @@ class ShownPois {
         val reading = trigger.mapIdle(true) && read(map, view)
         if (!reading) resolveWaitingPress(map, view)
     }
+
+    fun frameDone(fully: Boolean) { waiting.peek()?.note?.frame(fully, SystemClock.uptimeMillis()) }
 
     /** The POI under [x], [y] (pixels), from what the map showed at the last read; null when none. */
     fun at(map: MapLibreMap, x: Float, y: Float, boxDp: Float = 24f): Poi? = try {
