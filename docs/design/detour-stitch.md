@@ -101,11 +101,10 @@ Other devices only read data – no device-dependent geometry decides a route.
 
 ## 6. Rollout
 1. Core with `forInsert`, no UI, on the wip branch.
-2. `SameRouteTest` green on JVM and Wasm – before any release reads tag 7 (§8.6).
+2. Settling in core (§8.15; §5 found mismatches, the owner chose it), then `SameRouteTest` green on JVM and Wasm – before any release reads tag 7 (§8.6).
 3. Readers: tag 7, expansion, storage – app + planner route anchors but never create them (one release).
-4. Writers: stitch on insert + transfers + „Ganz neu berechnen" (owner picture), app and planner in the same release.
+4. Writers: stitch on insert + transfers + the idle settling + „Ganz neu berechnen" (owner picture), app and planner in the same release.
 5. Speed-up 3 cuts (same field, own corpus run).
-6. Only if §5 found mismatches: idle re-route of cut legs.
 
 ## 7. Risks
 - Sub-path invariant fails somewhere (BRouter heuristics, turn costs at the anchor) → warm and cold lines differ by a
@@ -133,6 +132,7 @@ Other devices only read data – no device-dependent geometry decides a route.
 12. **For the web wiring (laptop).** `WebApi.planParse` writes points with 5 decimals, which throws away the exact values of tag 7: it must keep 6. `web/app/src/share.ts` calls `qr.make()` without a guard and anchors make the link longer: check what it does on overflow before writers ship.
 13. **A short trip with a long detour is never cut (found in the review of piece 2b).** The Planner retries such a leg through its middle (`Planner.isShortDetour`), so a cut piece of a hairpin would differ from what a cold device routes (5 % in the reviewer's case). `LegSplit.seed` leaves that piece to the router on every device.
 14. **For the web wiring (laptop), before the Wasm part of `SameRouteTest`.** `WebLegs` has no cut key: a cut leg is written under the plain name, and a cut lookup on a plain leg removes that leg from `given`. It needs `_cut` in the name and the flag through encode and decode, as `LegFiles` does; `MAX_PENDING` follows §8.8.
+15. **The line settles (owner's choice, see below).** For a plan WITH anchors, when the router is idle (lowest priority, dropped on any edit), every leg that is not the router's own answer for its exact 1e-6° ends is routed once more: cut legs and legs kept under a snapped point. Such a real leg is marked exact, wins over a cut leg, and is what a cold device routes. Plans without anchors route as before. A leg whose real route fails keeps what it has and is reported.
 
 ## Questions for the owner
 1. Do speed-up 3's cut points also count for „Ganz neu berechnen" (row shows whenever the route keeps any point of an
@@ -147,3 +147,4 @@ Other devices only read data – no device-dependent geometry decides a route.
 1. Older apps: **yes** – readers ship one release before writers; an older app routes a stitched plan in full and drops the anchors on re-save (the plan is never lost).
 2. A stitched point moved but still ≤ 2 km from the line: **stitched again** (a move = an insert at another spot).
 3. Speed-up 3's cut points: **one rule** – „Ganz neu berechnen“ shows while the plan holds detours OR cut points and clears both.
+4. (umbau's chat, question box with the picture `sketch/umbau-2026-11-21-same-route`) A line that differs between the editing device and a fresh one: **„Im Hintergrund angleichen“** – the phone calculates in the background on plans with detours, the line may still shift a little some seconds after adding a point, and all devices end on exactly the same line. The exact check stays.

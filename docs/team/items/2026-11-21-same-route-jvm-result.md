@@ -20,7 +20,7 @@ Run: `KTTEST=tools/routing/jvm-test/SameRouteTest.kt EXTRA_KT="core/src/main/kot
    - Hike, 2 cases: 45 m against 42 m of line, 9–12 km from an anchor, at most 2.2 m apart.
    - Salzburg–Trieste, 1 case: 405 m against 378 m, 314 m from an anchor.
 
-## Decision needed (not taken)
+## Decision: the owner chose A („Im Hintergrund angleichen“, `docs/design/detour-stitch.md` §8.15)
 - **A (recommended): keep the exact hash and let the line settle.** The §1 safety net, widened: for a plan WITH anchors, when the router is idle (lowest priority, dropped on any edit), route again every leg that is not a real route from its exact ends: cut legs and aliased legs. Afterwards the editing device holds what a cold device routes. Plans without anchors stay as they are. **The price the owner would see: a line can still shift a little some seconds after an edit** (metres, at one place in this corpus about 200 m of spur at a stop), and the phone routes the far legs in the background.
 - **B: relax the check** to „same way apart from short stretches near plan points“. No extra routing and no line that shifts, but devices keep small differences for good, and it changes the agreed criterion (§8.7).
 
