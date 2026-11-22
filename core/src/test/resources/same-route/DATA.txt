@@ -1,0 +1,7 @@
+The *.sha files in this folder were generated on donald on 2026-11-22 (code at 4b3584b10) with this routing data:
+
+file:   /home/development/onpath-routing/segments/E10_N45.rd5
+size:   199101995 bytes
+sha256: 8df30e8530a77ca355b057c2fc5cc040b9d247aecfb6c2b42c46ed0500943c63
+
+The hashes hold only for this file: another E10_N45.rd5 gives other lines. The run's segments folder also held neighbouring tiles; their hashes were not recorded.
