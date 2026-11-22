@@ -80,6 +80,7 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
         fun find(eng: RoutingEngine, res: PlanResult, cancel: RouteCancel? = null, now: () -> Long = { System.currentTimeMillis() },
                  reach: PlanReach? = null): List<PlanDetour> {
             if (!applies(res.activity, res.sac) || res.route.error != null) return emptyList()
+            if (eng is StraightLineEngine) return emptyList() // no routing data: its "ways" are no evidence for a detour
             val gap = res.gaps.firstOrNull()
             val reachLevel = (reach?.fix as? PlanReach.Fix.Level)?.sac?.takeIf { gap != null && !gap.skipped && reach.index == gap.index }
             if (gap != null && reachLevel == null) return emptyList()

@@ -89,6 +89,24 @@ class PlanDetourCheckTest {
         assertEquals(emptyList<Any>(), check.detoursFor(res.route, res.points))
     }
 
+    @Test fun theScopeEndingStopsTheBlockingRouter() {
+        val inside = CountDownLatch(1); val release = CountDownLatch(1)
+        var cancelled = false
+        val e = Engine { limits ->
+            limits.cancel?.onCancel { cancelled = true; release.countDown() }
+            inside.countDown()
+            release.await(10, TimeUnit.SECONDS)
+            throw RoutingException("cancelled", kind = RoutingException.Kind.CANCELLED)
+        }
+        val res = result(e)
+        check.start(res) { e }
+        assertTrue(inside.await(10, TimeUnit.SECONDS))
+        scope.cancel()
+        settle()
+        assertTrue("the router was told to stop", cancelled)
+        assertNull(check.found)
+    }
+
     @Test fun aResultThatArrivesAfterANewerPlanIsDropped() {
         val inside = CountDownLatch(1); val release = CountDownLatch(1)
         val e = Engine { inside.countDown(); release.await(10, TimeUnit.SECONDS) } // an engine that ignores the cancel signal

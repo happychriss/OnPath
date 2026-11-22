@@ -176,6 +176,11 @@ class PlanDetourTest {
         }
     }
 
+    @Test fun theStraightLineEngineIsNoEvidence() {
+        val e = Table(::levelCaused)
+        assertEquals(emptyList<PlanDetour>(), PlanDetour.find(StraightLineEngine(), plan(e)))
+    }
+
     @Test fun aPointOnlyAHarderLevelReachesNamesItsDetour() {
         val far = GeoPoint(p.lat + 1000 / 111_195.0, p.lon)
         val e = StopsShortAtT1(far)

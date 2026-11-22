@@ -14,9 +14,12 @@ import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.RouteCancel
 import com.onpath.app.routing.RoutingEngine
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 /**
@@ -39,12 +42,26 @@ class PlanDetourCheck(
     private var cancel: RouteCancel? = null
     private var job: Job? = null
 
+    private var paused = false
+
     /** An older check ends and its result goes. */
     fun stop() {
         cancel?.cancel(); cancel = null
         job?.cancel(); job = null
+        paused = false
         found = null
     }
+
+    /** A hold needs the router now: a running check ends at once and is due again ([takePaused]); a finished one stays. */
+    fun pause() {
+        if (job?.isActive != true) return
+        cancel?.cancel(); cancel = null
+        job?.cancel(); job = null
+        paused = true
+    }
+
+    /** True once after [pause] stopped a check that no newer run has replaced. */
+    fun takePaused(): Boolean = paused.also { paused = false }
 
     /** Looks at the route result [res], which is on the map; a running check ends first. */
     fun start(res: PlanResult, reach: PlanReach? = null, engine: () -> RoutingEngine) {
@@ -52,6 +69,8 @@ class PlanDetourCheck(
         if (!PlanDetour.applies(res.activity, res.sac)) return
         val signal = RouteCancel().also { cancel = it }
         job = scope.launchSafe("routing", "Detour check", main) {
+            // a cancelled scope (the screen goes) must also end the blocking router request
+            val watch = launch(start = CoroutineStart.UNDISPATCHED) { try { awaitCancellation() } finally { signal.cancel() } }
             val detours = withContext(worker()) {
                 try {
                     PlanDetour.find(engine(), res, signal, reach = reach)
@@ -66,6 +85,7 @@ class PlanDetourCheck(
                 found = Found(res.route.legs, res.points, detours)
                 Problems.trace("routing", "Detour at point(s) ${detours.joinToString { "${it.index + 1}" }}, T${res.sac}")
             }
+            watch.cancel()
         }
     }
 

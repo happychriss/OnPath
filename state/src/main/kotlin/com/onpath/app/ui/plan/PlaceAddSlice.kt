@@ -21,4 +21,15 @@ class PlaceAddSlice(
     holdWorker: CoroutineDispatcher,
     /** Where a measure's result is applied: the view model's scope (the main thread). */
     scope: CoroutineScope,
-) : PlaceAddState(plan, planEdit, planRun, host, router, HoldPaths(scope, holdWorker))
+) : PlaceAddState(plan, planEdit, planRun, host, router, GivenWayMeasure(HoldPaths(scope, holdWorker), planRun))
+
+/** A hold has 1.5 s for its measure: the router's other background work stops for it and may go on when it is over. */
+private class GivenWayMeasure(private val paths: HoldPaths, private val planRun: PlanRunSlice) : com.onpath.app.domain.HoldMeasure by paths {
+    override fun start(points: List<com.onpath.app.routing.GeoPoint>, s: com.onpath.app.routing.GeoPoint,
+                       straight: com.onpath.app.domain.PlaceAddMenu.Detours, router: com.onpath.app.domain.HoldMeasure.Router,
+                       done: (com.onpath.app.domain.HoldMeasure.Outcome) -> Unit) {
+        planRun.besideRoute?.holdMeasures(true)
+        paths.start(points, s, straight, router) { done(it); planRun.besideRoute?.holdMeasures(false) }
+    }
+    override fun cancel(): Boolean = paths.cancel().also { if (it) planRun.besideRoute?.holdMeasures(false) }
+}

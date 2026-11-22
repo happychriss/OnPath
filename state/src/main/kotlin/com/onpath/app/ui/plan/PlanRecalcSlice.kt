@@ -152,6 +152,15 @@ class PlanRecalcSlice(
     fun detours(): List<com.onpath.app.routing.PlanDetour> =
         if (planRun.routing || recalcHost.routeError != null) emptyList() else detourCheck.detoursFor(recalcHost.route, planDoc.points)
 
+    /** What a hold and a tour start reach through [PlanRunSlice.besideRoute]; handed over when a check starts. */
+    private val besideRoute = object : BesideRoute {
+        /** A hold's measure has the router first; when it is over, a check it stopped looks again at the same route. */
+        override fun holdMeasures(running: Boolean) {
+            if (running) detourCheck.pause() else if (detourCheck.takePaused()) checkDetours(recalcHost.planResult)
+        }
+        override fun stop() = detourCheck.stop()
+    }
+
     /** The plan sheet's red line for a detour ("② macht 4,2 km Umweg"), null = none. */
     fun detourText(): String? = com.onpath.app.domain.PlanGaps.detourText(detours())
 
@@ -167,6 +176,7 @@ class PlanRecalcSlice(
         if (routed == null || res.route.legs !== routed.route.legs) return // superseded: not this run's result
         if (recalcHost.mode != com.onpath.app.domain.AppMode.PLAN || recordingClient.state.value != null || recalcHost.multiDayOverview) return
         if (recalcHost.routeError != null || res.points != planDoc.points.toList()) return
+        planRun.besideRoute = besideRoute
         detourCheck.start(res, recalcHost.planReach) { planRoute.routingEngine() }
     }
 

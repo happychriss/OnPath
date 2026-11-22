@@ -768,6 +768,41 @@ class PlanRecalcFlowTest {
         assertNull(recalc.detourText())
     }
 
+    @Test fun aTourStartEndsARunningCheckBeforeItAsksTheRouter() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        recalcNow(); finishRun()
+        val routed = engine.threads.size
+        ui { planRun.besideRoute!!.stop() }
+        bgEx.runAll()
+        assertEquals("the tour's re-route has the router", routed, engine.threads.size)
+        assertNull(recalc.detourText())
+    }
+
+    @Test fun aHoldHasTheRouterFirstAndTheCheckLooksAgainAfterIt() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        recalcNow(); finishRun()
+        val routed = engine.threads.size
+        ui { planRun.besideRoute!!.holdMeasures(true) }
+        bgEx.runAll()
+        assertEquals("nothing routed beside the hold", routed, engine.threads.size)
+        ui { planRun.besideRoute!!.holdMeasures(false) }
+        bgEx.runAll()
+        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+    }
+
+    @Test fun aHoldOverAFinishedCheckKeepsItsLineAndRoutesNothing() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        recalcNow(); finishRun(); bgEx.runAll()
+        val routed = engine.threads.size
+        ui { planRun.besideRoute!!.holdMeasures(true); planRun.besideRoute!!.holdMeasures(false) }
+        bgEx.runAll()
+        assertEquals(routed, engine.threads.size)
+        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+    }
+
     @Test fun noDetourCheckBesideATour() {
         plan(a, b, c); create()
         engine.wayKm = ::levelDetour
