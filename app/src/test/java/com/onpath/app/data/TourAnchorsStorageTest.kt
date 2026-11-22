@@ -92,4 +92,10 @@ class TourAnchorsStorageTest {
         }
         assertTrue(Problems.snapshot().any { it.area == "db" && it.message.contains("detour points") })
     }
+
+    /** The plan copy gets another profile when the activity switches during the tour: its detour points lie on the old one (TourDb cannot run on the JVM: the text). */
+    @Test fun switchingTheActivityOfThePlanCopyClearsItsAnchors() {
+        val body = java.io.File("src/main/java/com/onpath/app/data/TourDb.kt").readText().substringAfter("fun setTourPlanActivity(").substringBefore("// ---- recording")
+        assertTrue(body, body.contains("putNull(\"anchors\")") && body.contains("put(\"activity\", activity)"))
+    }
 }
