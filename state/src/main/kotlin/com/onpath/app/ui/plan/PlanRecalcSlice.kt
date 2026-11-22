@@ -149,7 +149,7 @@ class PlanRecalcSlice(
     override fun newRunStarts() = detourCheck.stop()
 
     /** The detours of the route now on the map; none while it is calculated or beside a failed leg (the more serious line). */
-    private fun detours(): List<com.onpath.app.routing.PlanDetour> =
+    fun detours(): List<com.onpath.app.routing.PlanDetour> =
         if (planRun.routing || recalcHost.routeError != null) emptyList() else detourCheck.detoursFor(recalcHost.route, planDoc.points)
 
     /** The plan sheet's red line for a detour ("② macht 4,2 km Umweg"), null = none. */
@@ -167,7 +167,7 @@ class PlanRecalcSlice(
         if (routed == null || res.route.legs !== routed.route.legs) return // superseded: not this run's result
         if (recalcHost.mode != com.onpath.app.domain.AppMode.PLAN || recordingClient.state.value != null || recalcHost.multiDayOverview) return
         if (recalcHost.routeError != null || res.points != planDoc.points.toList()) return
-        detourCheck.start(res) { planRoute.routingEngine() }
+        detourCheck.start(res, recalcHost.planReach) { planRoute.routingEngine() }
     }
 
     fun recalc() {

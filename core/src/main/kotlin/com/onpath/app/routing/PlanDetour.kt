@@ -18,6 +18,10 @@ import kotlin.math.min
  *  3. The two neighbours without the point, at both levels: the part that is the stretch's own (long at this level with or
  *     without the point) does not count, or "② macht … Umweg" would promise a saving that deleting ② does not bring ([extra]).
  *
+ * A point the route does not reach but a harder level does ([PlanReach.Fix.Level], his Mutkopf plan: T1 30.3 km and ② stays
+ * 552 m off, T2 10.8 km): the same three steps against the level that reaches it; the line then says both
+ * ([PlanGaps.reachText]: "② erst ab T2 erreichbar · 17,4 km Umweg").
+ *
  * Pure (shared with the planner); blocking – the caller runs it off the main thread, after the route is shown. Never changes
  * the route. A failed or cancelled check gives no hint.
  */
@@ -45,11 +49,11 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
         fun applies(activity: Activity, sac: Int): Boolean = activity == Activity.HIKE && sac in 1 until HARDEST_LEVEL
 
         /** The interior points worth a look (step 1), the worst first, at most [MAX_POINTS]. No routing. */
-        fun toCheck(points: List<GeoPoint>, route: PlannedRoute): List<Int> {
+        fun toCheck(points: List<GeoPoint>, route: PlannedRoute, only: Int? = null): List<Int> {
             val legs = route.legs
             if (points.size < 3 || legs.size != points.size - 1) return emptyList()
             return (1 until points.size - 1).mapNotNull { i ->
-                if (legs[i - 1].straight || legs[i].straight) return@mapNotNull null
+                if ((only != null && i != only) || legs[i - 1].straight || legs[i].straight) return@mapNotNull null
                 val via = Geo.length(legs[i - 1].points) + Geo.length(legs[i].points)
                 val straight = Geo.distance(points[i - 1], points[i + 1])
                 if (via >= LOOK_RATIO * straight && via - straight >= LOOK_OVER_M) i to via - straight else null
@@ -69,15 +73,20 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
         }
 
         /**
-         * The detours of the plan [res], in plan order; empty when there is nothing to say: not a hike below T5, a point the
-         * route does not reach or a failed leg (the more serious red line keeps its place), the check failed or [cancel] fired.
+         * The detours of the plan [res], in plan order; empty when there is nothing to say: not a hike below T5, a failed leg,
+         * the check failed or [cancel] fired. With a point the route does not reach, only that first gap is looked at, and only
+         * when [reach] says a harder level gets there; any other gap keeps its own line.
          */
-        fun find(eng: RoutingEngine, res: PlanResult, cancel: RouteCancel? = null, now: () -> Long = { System.currentTimeMillis() }): List<PlanDetour> {
-            if (!applies(res.activity, res.sac) || res.gaps.isNotEmpty() || res.route.error != null) return emptyList()
+        fun find(eng: RoutingEngine, res: PlanResult, cancel: RouteCancel? = null, now: () -> Long = { System.currentTimeMillis() },
+                 reach: PlanReach? = null): List<PlanDetour> {
+            if (!applies(res.activity, res.sac) || res.route.error != null) return emptyList()
+            val gap = res.gaps.firstOrNull()
+            val reachLevel = (reach?.fix as? PlanReach.Fix.Level)?.sac?.takeIf { gap != null && !gap.skipped && reach.index == gap.index }
+            if (gap != null && reachLevel == null) return emptyList()
             val points = res.points
             val legs = res.route.legs
             val started = now()
-            val harder = res.sac + 1
+            val harder = reachLevel ?: (res.sac + 1)
             var stopped = false
 
             /** The length of the way [from] → [to] at T [sac]; null = no usable answer (it ends away from a point, failed). */
@@ -110,7 +119,7 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
             fun direct(a: GeoPoint, b: GeoPoint, sac: Int): Double? = if (Geo.distance(a, b) < SAME_PLACE_M) 0.0 else way(a, b, sac)
 
             val found = ArrayList<PlanDetour>()
-            for (i in toCheck(points, res.route)) {
+            for (i in toCheck(points, res.route, gap?.index)) {
                 val before = points[i - 1]; val point = points[i]; val after = points[i + 1]
                 val viaHere = Geo.length(legs[i - 1].points) + Geo.length(legs[i].points)
                 val toPoint = way(before, point, harder) ?: if (stopped) break else continue

@@ -1476,7 +1476,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
         if (gaps.isEmpty()) return planRecalc.detourText() // no gap: a point the T level sends on a long detour ([PlanDetourCheck])
-        PlanGaps.reachText(gaps, planReach)?.let { return it }
+        PlanGaps.reachText(gaps, planReach, planRecalc.detours())?.let { return it }
         val pts = plan.points.toList()
         return PlanGaps.text(gaps, planRoute.activity) { i -> pts.getOrNull(i)?.let { searchFlow.stopName(it) ?: planEdit.nearbyNames[it] } }
     }

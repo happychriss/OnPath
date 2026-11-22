@@ -80,14 +80,17 @@ object PlanGaps {
      * The red line when the first gap's point is reached another way ([PlanReach], owner 2026-11-07, replaces
      * "Letzte 550 m … kein Weg für Wandern"): "② erst ab T2 erreichbar", "② nur mit Gravelbike erreichbar", "② mit
      * dem Rad nicht erreichbar – zu Fuß T2", "② nicht erreichbar"; more gaps: " (+1 more)". Null when [reach] is not
-     * about the first gap (an older result, a skipped stop) – then [text] says it.
+     * about the first gap (an older result, a skipped stop) – then [text] says it. A harder level that also saves a long
+     * way ([detours], his Mutkopf plan) adds it: "② erst ab T2 erreichbar · 17,4 km Umweg".
      */
-    fun reachText(gaps: List<PlanGap>, reach: PlanReach?): String? {
+    fun reachText(gaps: List<PlanGap>, reach: PlanReach?, detours: List<PlanDetour> = emptyList()): String? {
         val g = gaps.firstOrNull() ?: return null
         if (reach == null || g.skipped || reach.index != g.index) return null
         val p = pointSign(g.index)
         val line = when (val f = reach.fix) {
-            is PlanReach.Fix.Level -> Txt.s(Res.string.plan_reach_level, p, f.sac)
+            is PlanReach.Fix.Level -> detours.firstOrNull { it.index == g.index }
+                ?.let { Txt.s(Res.string.plan_reach_level_detour, p, f.sac, Format.distance(it.extraM)) }
+                ?: Txt.s(Res.string.plan_reach_level, p, f.sac)
             is PlanReach.Fix.Bike -> Txt.s(Res.string.plan_reach_activity, p, f.activity.navName)
             is PlanReach.Fix.OnFoot -> Txt.s(Res.string.plan_reach_on_foot, p, f.sac)
             PlanReach.Fix.None -> Txt.s(Res.string.plan_reach_none, p)
@@ -98,7 +101,7 @@ object PlanGaps {
     /**
      * The red line of a plan point the T level sends on a long detour ([PlanDetour], owner 2026-11-21, his words from the
      * picture): "② macht 4,2 km Umweg"; more points: " (+1 weitere)". Null without one. Never beside a gap: a point the
-     * route does not reach is the more serious line.
+     * route does not reach is the more serious line (its own line names the detour, [reachText]).
      */
     fun detourText(detours: List<PlanDetour>): String? {
         val d = detours.firstOrNull() ?: return null

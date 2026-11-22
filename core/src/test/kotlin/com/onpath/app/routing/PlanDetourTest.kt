@@ -163,6 +163,46 @@ class PlanDetourTest {
         assertEquals(before, e.calls)
     }
 
+    /** His Mutkopf plan in small: T1 stops short of ② on a long way, T2 reaches it. */
+    private inner class StopsShortAtT1(val far: GeoPoint) : RoutingEngine {
+        var calls = 0
+        override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+            calls++
+            val from = waypoints.first(); val asked = waypoints.last()
+            val to = if (asked == far && sacLimit < 2) p else asked
+            val m = when { from == a && asked == b -> 1600.0; sacLimit < 2 -> 3000.0; else -> 2000.0 }
+            val l = line(from, to, m)
+            return RouteResult(l, Geo.length(l), 0.0, 0.0, 60.0, matched = listOf(from, to))
+        }
+    }
+
+    @Test fun aPointOnlyAHarderLevelReachesNamesItsDetour() {
+        val far = GeoPoint(p.lat + 1000 / 111_195.0, p.lon)
+        val e = StopsShortAtT1(far)
+        val res = plan(e, listOf(a, far, b))
+        val gap = res.gaps.single()
+        val reach = PlanReach(1, PlanReach.Fix.Level(2), emptyList())
+        val found = PlanDetour.find(e, res, reach = reach)
+        val viaT1 = res.route.legs.sumOf { Geo.length(it.points) }
+        val viaT2 = Geo.length(e.route(listOf(a, far), Activity.HIKE, 2).points) + Geo.length(e.route(listOf(far, b), Activity.HIKE, 2).points)
+        assertEquals("what T2 saves; the neighbours are the same at both", viaT1 - viaT2, found.single().extraM, 1.0)
+        val km = com.onpath.app.data.Format.distance(found.single().extraM)
+        assertEquals("② only reachable from T2 · $km detour", PlanGaps.reachText(listOf(gap), reach, found))
+        assertEquals("② erst ab T2 erreichbar · ${inGerman { com.onpath.app.data.Format.distance(found.single().extraM) }} Umweg",
+            inGerman { PlanGaps.reachText(listOf(gap), reach, found) })
+        assertEquals("without a detour the line stays as it was", "② only reachable from T2", PlanGaps.reachText(listOf(gap), reach))
+    }
+
+    @Test fun aGapNoHarderLevelReachesOrAnOlderAnswerRoutesNothing() {
+        val far = GeoPoint(p.lat + 1000 / 111_195.0, p.lon)
+        val e = StopsShortAtT1(far)
+        val res = plan(e, listOf(a, far, b))
+        val before = e.calls
+        assertEquals(emptyList<PlanDetour>(), PlanDetour.find(e, res, reach = PlanReach(1, PlanReach.Fix.None, emptyList())))
+        assertEquals(emptyList<PlanDetour>(), PlanDetour.find(e, res, reach = PlanReach(2, PlanReach.Fix.Level(2), emptyList())))
+        assertEquals(before, e.calls)
+    }
+
     @Test fun theDifferenceBelongsToThePointAndIsClear() {
         // the clean case: only the way via the point changes
         assertEquals(4000.0, PlanDetour.extra(6000.0, 2000.0, 1600.0, 1600.0)!!, 0.1)

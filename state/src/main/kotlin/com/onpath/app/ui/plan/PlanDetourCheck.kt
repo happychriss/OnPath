@@ -7,6 +7,7 @@ import com.onpath.app.debug.Problems
 import com.onpath.app.debug.launchSafe
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanDetour
+import com.onpath.app.routing.PlanReach
 import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.PlannedLeg
 import com.onpath.app.routing.PlannedRoute
@@ -46,14 +47,14 @@ class PlanDetourCheck(
     }
 
     /** Looks at the route result [res], which is on the map; a running check ends first. */
-    fun start(res: PlanResult, engine: () -> RoutingEngine) {
+    fun start(res: PlanResult, reach: PlanReach? = null, engine: () -> RoutingEngine) {
         stop()
         if (!PlanDetour.applies(res.activity, res.sac)) return
         val signal = RouteCancel().also { cancel = it }
         job = scope.launchSafe("routing", "Detour check", main) {
             val detours = withContext(worker()) {
                 try {
-                    PlanDetour.find(engine(), res, signal)
+                    PlanDetour.find(engine(), res, signal, reach = reach)
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
