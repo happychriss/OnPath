@@ -4,15 +4,21 @@
 // loaded, so the test compares the router and the plan code, not the download of the parts.
 // The hashes hold only for the routing data named in same-route/DATA.txt: any other E10_N45.rd5 is refused (exit 2).
 // Build: tools/dev/gradle_slot.sh -- ./gradlew -q -p web/engine generateWasmGC copyWasmGCRuntime (no npm install needed)
-// Usage: node --max-old-space-size=4096 test/same-route-wasm.mjs <segmentsDir>
+// Usage: node --max-old-space-size=4096 test/same-route-wasm.mjs <segmentsDir>   (Node 22 or newer; the V8 flags it needs are set below)
 // Env: TOURS=a,b  LIMIT=<cases per tour>  NEIGHBOURS=1 (also load the tiles around E10_N45 found in the folder)
 //      DUMP=<dir> (write each case's line text there)
 // Exit: 0 all equal, 1 a case differs, 2 refused (no folder, or not the recorded data).
 import fs from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
+import v8 from 'node:v8';
 import { fileURLToPath } from 'node:url';
 
+// Node 22's Wasm tier-up holds gigabytes outside the JS heap on this module, even with nothing routed (measured on the
+// longest tour: over 9 GB with it, 2.4 GB without, the same time and the same hashes). It changes how the code is compiled,
+// not what it computes. Node 22 also needs exnref switched on for TeaVM's module.
+v8.setFlagsFromString('--no-wasm-dynamic-tiering');
+if (Number(process.versions.node.split('.')[0]) < 24) v8.setFlagsFromString('--experimental-wasm-exnref');
 const here = path.dirname(fileURLToPath(import.meta.url));
 if (!process.argv[2]) { console.log('REFUSED: give the segments folder as the argument'); process.exit(2); }
 const segments = path.resolve(process.argv[2]);
@@ -76,6 +82,6 @@ for (const f of fs.readdirSync(shaDir).filter((x) => x.endsWith('.sha')).sort())
     console.log(`${good ? 'GREEN' : 'RED'} ${tour} ${name}: ${state}, hash ${h === hash ? 'equal' : 'DIFFERENT'}, ${Math.round(m)} m (file ${d} m) [${Math.round((Date.now() - t0) / 1000)} s]`);
   }
 }
-console.log(`same-route wasm: ${n} cases, ${red} red`);
+console.log(`same-route wasm: ${n} cases, ${red} red, peak memory ${(process.resourceUsage().maxRSS / 1e6).toFixed(2)} GB`);
 console.log(n > 0 && red === 0 ? 'all ok' : 'FAILED');
 process.exit(n > 0 && red === 0 ? 0 : 1);
