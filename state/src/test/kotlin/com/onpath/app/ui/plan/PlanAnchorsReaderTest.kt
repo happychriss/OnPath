@@ -8,6 +8,7 @@ import com.onpath.app.routing.LegCache
 import com.onpath.app.routing.RouteCancel
 import com.onpath.app.testkit.FakeRoutingEngine
 import com.onpath.app.testkit.ProblemsRule
+import com.onpath.app.testkit.sourceFile
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -107,5 +108,42 @@ class PlanAnchorsReaderTest {
         d.moveSnapped(listOf(a, p, c), listOf(a, moved, c))
         assertEquals(anchors, d.anchorSet.anchors)
         assertEquals("stored under the moved point", anchors, PlanDocument(store).anchorSet.anchors)
+    }
+
+    /**
+     * The snap of a run under ANOTHER profile (T3 on a plan whose detour points lie on T2): the moved point is a new one (§2), so
+     * back on T2 the detour points do not count around it – in the plan and in every Undo / Redo step (review finding 4).
+     */
+    @Test fun aPointSnappedByARunOfAnotherProfileLosesTheAnchorsOfItsProfile() {
+        val store = Store()
+        val d = loaded(store)
+        d.edit { add(g(46.35)) } // a step in the history, holding the anchors
+        val moved = GeoPoint(46.2001, 11.0)
+        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)), anchorsCount = false)
+        d.snappedHistory(mapOf(p to moved), anchorsCount = false)
+        assertEquals("the T2 anchors do not count around the moved point", emptyMap<Int, Anchors>(), d.anchorsFor(Activity.HIKE, 2))
+        assertEquals("…also after a restart", emptyMap<Int, Anchors>(), PlanDocument(store).anchorsFor(Activity.HIKE, 2))
+        val back = d.undo()!!
+        d.replace(back)
+        assertEquals(listOf(a, moved, c), d.points.toList())
+        assertEquals("…and in the step Undo brings back", emptyMap<Int, Anchors>(), d.anchorsFor(Activity.HIKE, 2))
+    }
+
+    /** A snap by a run that DID route them (the plan's own profile) keeps them with the moved point, in the history too. */
+    @Test fun aPointSnappedByARunOfTheirOwnProfileKeepsThemInEveryStep() {
+        val d = loaded()
+        d.edit { add(g(46.35)) }
+        val moved = GeoPoint(46.2001, 11.0)
+        d.moveSnapped(listOf(a, p, c, g(46.35)), listOf(a, moved, c, g(46.35)))
+        d.snappedHistory(mapOf(p to moved))
+        d.replace(d.undo()!!)
+        assertEquals(anchors, d.anchorsFor(Activity.HIKE, 2))
+    }
+
+    /** The run's own anchors decide whether the snap keeps them: the recalc state hands that to the document and the history. */
+    @Test fun theRecalcStatePassesWhetherTheRunRoutedTheAnchorsToTheSnap() {
+        val src = sourceFile("ui/plan/PlanRecalcState.kt").readText()
+        assertTrue(src.contains("val counted = run.anchors.isNotEmpty() || plan.anchorSet.anchors.isEmpty()"))
+        assertTrue(src.contains("plan.moveSnapped(routed, snapped, counted)") && src.contains("plan.snappedHistory(moves, counted)"))
     }
 }

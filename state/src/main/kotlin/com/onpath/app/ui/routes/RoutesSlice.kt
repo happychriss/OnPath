@@ -206,6 +206,9 @@ class RoutesSlice(
                 // track panel; an unknown / missing activity keeps the current one
                 val choice = SportType.openChoice(t.activity, t.sac, planRoute.activity, planRoute.sac, touring = host.touring)
                 // before the track is shown: an activity change clears the panel's line, this one sets it
+                // a track that becomes the plan replaces the old one: it goes under Zuletzt BEFORE the switch, with its own activity,
+                // T level and detour points (afterwards it would be kept as a plan of the track's profile, without them)
+                if (choice.switch && trackThen == TrackThen.PLAN) save.keepAsDraft("replaced by a track's plan")
                 if (choice.switch) {
                     if (choice.pick.activity == Activity.HIKE) { planRoute.sac = choice.pick.sac.coerceIn(1, 5); host.rememberSac(planRoute.sac) }
                     planRoute.selectActivity(choice.pick.activity, userChange = false)

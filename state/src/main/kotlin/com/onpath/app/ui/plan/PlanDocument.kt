@@ -93,16 +93,20 @@ class PlanDocument(
      * The router put the points [routed] onto their ways ([snapped], same size): the plan's points move there – no Undo
      * step, the marker, the stored plan and the route line agree. Undo / Redo follow with [snappedHistory].
      */
-    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>) {
+    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>, anchorsCount: Boolean = true) {
         for (i in snapped.indices) if (snapped[i] != routed[i]) points[i] = snapped[i]
+        if (!anchorsCount) session.snapDropsAnchors(routed, snapped)
         stored()
     }
 
-    /** Undo / Redo show the snapped points too ([moves] old → new). */
-    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>) { session.snapped(moves); onSnapped?.invoke(moves) }
+    /**
+     * Undo / Redo show the snapped points too ([moves] old → new). [anchorsCount] = the run that snapped routed the plan's detour
+     * points; false (they lie on another profile): the moved points lose them, here as in [moveSnapped].
+     */
+    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) { session.snapped(moves, anchorsCount); onSnapped?.invoke(moves, anchorsCount) }
 
     /** Multi-day tours (ui/plan/MultiDaySlice): the night marks are kept by value and follow a snap ([snappedHistory]). */
-    var onSnapped: ((Map<GeoPoint, GeoPoint>) -> Unit)? = null
+    var onSnapped: ((Map<GeoPoint, GeoPoint>, Boolean) -> Unit)? = null
     /** Multi-day tours: the plan belongs to another saved route now ([setSaved]; -1 = none). */
     var onLinked: ((Long) -> Unit)? = null
 

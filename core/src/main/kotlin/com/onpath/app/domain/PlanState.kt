@@ -2,6 +2,7 @@ package com.onpath.app.domain
 
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanAnchors
 
 /**
  * Undo / redo of the planned waypoints. Each entry is a full
@@ -45,13 +46,20 @@ class PlanHistory(private val limit: Int = 100) {
 
     /**
      * Rewrites point values in every undo/redo snapshot ([moves]: old → new), without adding a step.
-     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers.
+     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers. [anchorsCount] false: the
+     * run that snapped did not route the plan's detour points (another profile) – a moved point loses them in every step.
      */
-    fun replacePoints(moves: Map<GeoPoint, GeoPoint>) {
+    fun replacePoints(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) {
         if (moves.isEmpty()) return
-        for (q in listOf(undo, redo)) for (i in q.indices) {
+        for ((q, a) in listOf(undo to undoAnchors, redo to redoAnchors)) for (i in q.indices) {
             val s = q[i]
-            if (s.any { it in moves }) q[i] = s.map { moves[it] ?: it }
+            if (s.any { it in moves }) {
+                val moved = s.map { moves[it] ?: it }
+                q[i] = moved
+                // a snap under a profile the detour points do not lie on: the moved point is a new one (§2) – they must not count
+                // around it when the plan is back on their profile (Undo / Redo)
+                if (!anchorsCount) a.getOrNull(i)?.let { set -> if (set.anchors.isNotEmpty()) a[i] = set.copy(anchors = PlanAnchors.edited(s, moved, set.anchors)) }
+            }
         }
     }
 

@@ -67,6 +67,13 @@ class AnchorReadersTest {
         assertEquals(anchors, RouteItems.planContent(item)!!.anchors)
     }
 
+    /** A route of an activity this app does not know is read as a hike: anchors of another profile are not in its code (review finding 3). */
+    @Test fun aRouteOfAnUnknownActivityCarriesNoAnchors() {
+        val code = RouteItems.planOf(tour().copy(activity = "SKI_TOURING"))!!
+        assertEquals(emptyMap<Int, Anchors>(), PlanCode.decode(code)!!.anchors)
+        assertEquals("a known one keeps them", anchors, PlanCode.decode(RouteItems.planOf(tour().copy(activity = "HIKE"))!!)!!.anchors)
+    }
+
     @Test fun twoPlansThatDifferOnlyInAnchorsAreNotTheSame() {
         val with = RouteItems.planOf(tour())
         val without = RouteItems.planOf(tour().copy(anchors = emptyMap()))

@@ -117,10 +117,11 @@ class MultiDaySliceTest {
     private val days = MultiDay(3, nights = mapOf(2 to NightMark.OVERNIGHT, 3 to hotel), description = "Drei Tage")
 
     /** The tour as My routes holds it: line, stops (D is the hotel), pins (D), days. */
-    private fun insertTour(uuid: String = "u1", name: String = "Drei Tage", pinned: Set<Int> = setOf(3)): Long = db.insertTour(TourKind.PLANNED, name, Activity.BIKE_TOURING.name, 2,
+    private fun insertTour(uuid: String = "u1", name: String = "Drei Tage", pinned: Set<Int> = setOf(3),
+                           activity: Activity = Activity.BIKE_TOURING, anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap()): Long = db.insertTour(TourKind.PLANNED, name, activity.name, 2,
         segments = listOf(line.map { TrackPoint(it.lat, it.lon, it.ele) }),
         waypoints = pts.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, if (i == 3) "Gasthof Post" else null) },
-        distance = 90_000.0, uuid = uuid, pinned = pinned, days = days)
+        distance = 90_000.0, uuid = uuid, pinned = pinned, days = days, anchors = anchors)
     private fun route(l: List<GeoPoint>) = PlannedRoute(listOf(PlannedLeg(l, false)), Geo.length(l), 0.0, 0.0, 3_600.0, null)
     private val cellsAll = listOf(CellId(543, 361), CellId(543, 362), CellId(544, 362))
     private val cellsDay = listOf(CellId(543, 362))
@@ -308,11 +309,11 @@ class MultiDaySliceTest {
             override fun loadSegments(id: Long): List<List<TrackPoint>> { gate("loadSegments"); return db.loadSegments(id) }
             override fun insertPlanned(name: String, row: PlannedRow): Long = db.insertTour(TourKind.PLANNED, name, row.activity, row.sac, row.segments, row.stops,
                 distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, pinned = row.pins,
-                difficulty = row.difficulty, days = row.days)
+                difficulty = row.difficulty, days = row.days, anchors = row.anchors)
             override fun replacePlanned(id: Long, row: PlannedRow): Boolean {
                 gate("replacePlanned"); replaced++
                 return db.replacePlanned(id, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS, row.segments, row.stops,
-                    row.pins, difficulty = row.difficulty, days = row.days)
+                    row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)
             }
             override fun rename(id: Long, name: String) { gate("rename"); db.rename(id, name) }
             override fun setFavourite(id: Long, favourite: Boolean) = db.setFavourite(id, favourite)
@@ -447,6 +448,7 @@ class MultiDaySliceTest {
             val p = t.waypoints.map { GeoPoint(it.lat, it.lon) }
             t.waypoints.forEach { w -> w.name?.let { names[GeoPoint(w.lat, w.lon)] = it } }
             routes.show(routes.load())
+            plan.arriving(p, com.onpath.app.routing.AnchorSet.of(t.anchors, planRoute.activityOrNull(t.activity), t.sac)) // as the view model's openTour does
             plan.replace(p); plan.pin(t.pinned.map { p[it] }); plan.setSaved(t.name, t.id, p)
             multiDay.opened(t, p)
         }
@@ -1274,5 +1276,45 @@ class MultiDaySliceTest {
         assertFalse(app.multiDay.overview)
         assertEquals(days, App().also { it.openOverview() }.multiDay.daysFor(pts))
         assertNull("a tour that is not the plan any more has no days of its own", App().also { it.openOverview(); ui { it.plan.replace(listOf(GeoPoint(1.0, 1.0), GeoPoint(2.0, 2.0))) } }.multiDay.daysFor(listOf(A, B)))
+    }
+
+    // ---------------------------------------------------------------- detour points belong to a profile (review finding 2)
+
+    /**
+     * A saved multi-day tour HIKE T2 with detour points: T3 in the overview, "Tag 2 fahren", back to T2, Save – the tour keeps
+     * its detour points (they lie on the T2 line; under T3 they only do not count).
+     */
+    @Test fun aDayPickedUnderAnotherProfileKeepsTheToursDetourPointsForItsOwn() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(2 to com.onpath.app.routing.Anchors(after = listOf(on(35))), 3 to com.onpath.app.routing.Anchors(before = listOf(on(50))))
+        routePrefs.activity = Activity.HIKE
+        val id = insertTour(activity = Activity.HIKE, anchors = anchors)
+        val app = App()
+        app.openOverview(id)
+        assertEquals(anchors, db.getTour(id)!!.anchors)
+        ui { app.planRoute.selectSac(3) }
+        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
+        ui { app.routeNow = route(dayLine) }; app.settle()
+        ui { app.planRoute.selectSac(2) }; app.settle()
+        assertEquals("the day's plan counts them again on T2", 2, app.plan.anchorsFor(Activity.HIKE, 2).size)
+        assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
+        assertEquals("T2", 2, db.getTour(id)!!.sac)
+        assertEquals("the saved tour keeps its detour points", anchors, db.getTour(id)!!.anchors)
+    }
+
+    /** The same under the other profile: saved as T3, the T2 points do not belong to it – none are written, never the wrong ones. */
+    @Test fun aDayFollowedAndSavedUnderAnotherProfileWritesNoDetourPoints() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(2 to com.onpath.app.routing.Anchors(after = listOf(on(35))))
+        routePrefs.activity = Activity.HIKE
+        val id = insertTour(activity = Activity.HIKE, anchors = anchors)
+        val app = App()
+        app.openOverview(id)
+        ui { app.planRoute.selectSac(3) }
+        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
+        ui { app.routeNow = route(dayLine) }; app.settle()
+        assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
+        assertEquals(3, db.getTour(id)!!.sac)
+        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), db.getTour(id)!!.anchors)
     }
 }

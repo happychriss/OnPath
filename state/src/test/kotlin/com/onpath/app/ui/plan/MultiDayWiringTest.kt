@@ -109,7 +109,7 @@ class MultiDayWiringTest {
         val s = store.replace(Regex("\\s+"), " ")
         assertTrue(s, s.contains("override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name, " +
             "activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days)"))
+            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)"))
     }
 
     /** The slice and its state know no Android, no view model, no database, no preferences class and no dispatcher of their own. */

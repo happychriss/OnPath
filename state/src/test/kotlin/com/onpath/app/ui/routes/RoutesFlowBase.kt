@@ -271,8 +271,8 @@ abstract class RoutesFlowBase {
         }, scope, io)
         val save = SaveSlice(plan, routes, recent, store, object : SaveHost {
             override val route: PlannedRoute? get() = routeNow
-            override val activity: Activity get() = Activity.HIKE
-            override val sac: Int get() = 2
+            override val activity: Activity get() = planRoute.activity
+            override val sac: Int get() = planRoute.sac
             override fun stops(points: List<GeoPoint>) = points.map { GpxWaypoint(it.lat, it.lon, null) }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>): MultiDay? = null

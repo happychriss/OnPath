@@ -123,6 +123,15 @@ class SavePathsTest {
      * RoutesFlowTest / PlanLinkFlowTest; what no flow can see stays here: no question is left in the view model, and no copy of the
      * rule (every `keepAsDraft("replaced by …")` is a slice's).
      */
+    /**
+     * "Rundtour von hier" → Übernehmen on a suggestion of another profile (review finding 1): the old plan goes under Zuletzt
+     * BEFORE the activity is switched – afterwards it would be kept as a plan of the new profile, without its detour points.
+     * The flow itself (the same order for a track made a plan): RoutesAnchorsFlowTest.
+     */
+    @Test fun aSuggestionKeepsTheOldPlanBeforeTheActivitySwitches() {
+        val take = vm.substringAfter("take = { pts, a, l, done ->").substringBefore("routesFlow.planFromLine")
+        assertTrue(take, take.contains("save.keepAsDraft(") && take.indexOf("save.keepAsDraft(") < take.indexOf("planRoute.selectActivity(a)"))
+    }
     @Test fun replacingAPlanAsksNothingAndTheViewModelHoldsNoCopyOfTheRule() {
         assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
         assertEquals("…and no copy of that rule is left in the view model", 0, vm.split("keepAsDraft(\"replaced by").size - 1)

@@ -13,6 +13,7 @@ import com.onpath.app.routing.Activity
 import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.PlanAnchors
 import com.onpath.app.routing.DayLine
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.NightMark
@@ -45,7 +46,16 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
      * day starts / ends on the tour's stored line ([DayFollow.spliceAt]).
      */
     data class DayContext(val tour: TourRef, val whole: SharedPlan, val part: DayPart, val wholeOpened: List<GeoPoint>?,
-                          val startAt: GeoPoint, val endAt: GeoPoint)
+                          val startAt: GeoPoint, val endAt: GeoPoint,
+                          /**
+                           * The profile the tour's detour points ([whole]'s anchors) lie on (docs/design/detour-stitch.md §8.16). It is not
+                           * [whole]'s activity / T level: a day picked under another profile still holds the tour's points for their own, and
+                           * they count again when the plan is back on it. Null = none.
+                           */
+                          val anchorProfile: AnchorProfile? = null) {
+        /** [anchors] (the tour's, or the day's) with that profile. */
+        fun anchorSet(anchors: Map<Int, Anchors> = whole.anchors): AnchorSet = anchorProfile?.takeIf { anchors.isNotEmpty() }?.let { AnchorSet(anchors, it) } ?: AnchorSet.NONE
+    }
 
     /** The days worked out for the plan's route ([compute]); [key] = what they were worked out for. */
     data class DaysView(val days: TourDays, val pointAt: IntArray, val line: List<GeoPoint>, val key: Any)
@@ -110,10 +120,10 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     fun nightOf(p: GeoPoint): NightMark? = marks[p]
 
     /** The router snapped points onto the way ([moves] old → new): their marks (and a day's added ends) go with them. */
-    fun snapped(moves: Map<GeoPoint, GeoPoint>) {
+    fun snapped(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) {
         if (moves.isEmpty() || (marks.isEmpty() && day == null)) return
         marks = marks.entries.associate { (p, m) -> (moves[p] ?: p) to m }
-        day = day?.let { c -> c.copy(whole = snappedDay(c, moves), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
+        day = day?.let { c -> c.copy(whole = snappedDay(c, moves, anchorsCount), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
             endAdded = c.part.endAdded?.let { moves[it] ?: it })) }
         save()
     }
@@ -122,9 +132,11 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
      * A snap is no edit: the day's points move in the whole tour too, so its detour points stay on the legs at the day's
      * borders. Only a tour with some (a plain tour takes the new values in [pointsChanged] as ever), only inside the day.
      */
-    private fun snappedDay(c: DayContext, moves: Map<GeoPoint, GeoPoint>): SharedPlan {
+    private fun snappedDay(c: DayContext, moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean): SharedPlan {
         if (c.whole.anchors.isEmpty()) return c.whole
-        return c.whole.copy(points = c.whole.points.mapIndexed { i, p -> if (i in c.part.from..c.part.to) moves[p] ?: p else p })
+        val moved = c.whole.points.mapIndexed { i, p -> if (i in c.part.from..c.part.to) moves[p] ?: p else p }
+        // the snap came from a run under another profile than the detour points' (§2, §8.16): the moved points lose them
+        return c.whole.copy(points = moved, anchors = if (anchorsCount) c.whole.anchors else PlanAnchors.edited(c.whole.points, moved, c.whole.anchors))
     }
 
     /**
@@ -138,7 +150,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         if (linkedId() != c.tour.id || points.size < 2 || points == c.part.points) return
         try {
             val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf,
-                anchors?.takeIf { it.anchors.isEmpty() || it.profile == AnchorProfile.of(c.whole.activity, c.whole.sac) }?.anchors)
+                anchors?.takeIf { it.anchors.isEmpty() || it.profile == c.anchorProfile }?.anchors)
             day = c.copy(whole = whole, part = part)
             Problems.trace("plan", "Day ${c.part.first}–${c.part.last}: change written back into the tour (${whole.points.size} points)")
             save()
@@ -192,15 +204,16 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     /**
      * "Tag n fahren": the picked days of [plan] (the whole tour as the plan is now, [savedPoints] = as last saved) become
      * the plan. Returns the day's part (its points, pins, names) for the view model to load; null when it cannot be taken
-     * (reported).
+     * (reported). [anchorProfile] = what the plan's detour points lie on (default: the plan's own, when it has any).
      */
-    fun pickDay(plan: SharedPlan, savedPoints: List<GeoPoint>?): DayPart? {
+    fun pickDay(plan: SharedPlan, savedPoints: List<GeoPoint>?, anchorProfile: AnchorProfile? = null): DayPart? {
         val t = tour ?: return null
         val v = view ?: return null
         val s = selected ?: return null
         return try {
             val part = DayFollow.part(plan, v.days, v.pointAt, v.line, s.first, s.last) ?: return null
-            day = DayContext(t, plan, part, savedPoints, v.line[part.startLine], v.line[part.endLine])
+            day = DayContext(t, plan, part, savedPoints, v.line[part.startLine], v.line[part.endLine],
+                anchorProfile ?: plan.anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(plan.activity, plan.sac) })
             Problems.trace("plan", "Multi-day tour: day ${s.first}–${s.last} of ${v.days.days.size} as the plan (${part.points.size} points)")
             save()
             part
@@ -250,6 +263,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                 .put("startLine", p.startLine).put("endLine", p.endLine)
                 .put("points", ptsJson(p.points)).put("startAdded", p.startAdded?.let { ptJson(it) }).put("endAdded", p.endAdded?.let { ptJson(it) })
                 .put("opened", c.wholeOpened?.let { ptsJson(it) }).put("startAt", ptJson(c.startAt)).put("endAt", ptJson(c.endAt))
+                .put("anchorActivity", c.anchorProfile?.activity?.name).put("anchorSac", c.anchorProfile?.sac)
                 .toString()
         }
     } catch (e: Exception) {
@@ -274,13 +288,21 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                     o.getInt("from"), o.getInt("to"), o.optJSONObject("startAdded")?.let(::pt), o.optJSONObject("endAdded")?.let(::pt),
                     o.getInt("startLine"), o.getInt("endLine"))
                 day = DayContext(ref(o.getJSONObject("tour")), whole, part, o.optJSONArray("opened")?.let(::pts),
-                    pt(o.getJSONObject("startAt")), pt(o.getJSONObject("endAt")))
+                    pt(o.getJSONObject("startAt")), pt(o.getJSONObject("endAt")), anchorProfileOf(o, whole))
             }
         } catch (e: Exception) {
             Problems.error("plan", "Multi-day tour state unreadable after the restart – the plan shows without its days (the saved tour keeps them)", e)
             tour = null; day = null; marks = emptyMap()
             dayLost = prefs.planDayFollow != null // a followed day lost: the start reloads the whole tour (MultiDaySlice)
         }
+    }
+
+    /** The kept profile of the tour's detour points; a state from before it was kept has them on the whole plan's own profile. */
+    private fun anchorProfileOf(o: JSONObject, whole: SharedPlan): AnchorProfile? {
+        val name = o.optString("anchorActivity")
+        val own = Activity.entries.firstOrNull { it.name == name }
+        if (own != null && o.has("anchorSac")) return AnchorProfile.of(own, o.getInt("anchorSac"))
+        return whole.anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(whole.activity, whole.sac) }
     }
 
     private fun refJson(t: TourRef) = JSONObject().put("id", t.id).put("uuid", t.uuid).put("name", t.name).put("days", JSONObject(t.days.toJson()))

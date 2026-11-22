@@ -97,9 +97,10 @@ class SyncedRoutingFlowTest {
 
     /** A browser plan as the pass stores it: its via points, a line that is only those points, its own uuid. */
     private fun fromBrowser(name: String = "Alm", vararg via: GeoPoint = arrayOf(a, b, c), kind: TourKind = TourKind.PLANNED,
-                            uuid: String = "uuid-$name", activity: String? = "HIKE", sac: Int = 2, pinned: Set<Int> = emptySet()): Tour {
+                            uuid: String = "uuid-$name", activity: String? = "HIKE", sac: Int = 2, pinned: Set<Int> = emptySet(),
+                            anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap()): Tour {
         val id = db.insertTour(kind, name, activity, sac, listOf(via.map { TrackPoint(it.lat, it.lon, 0.0) }),
-            via.map { GpxWaypoint(it.lat, it.lon, null) }, uuid = uuid, pinned = pinned)
+            via.map { GpxWaypoint(it.lat, it.lon, null) }, uuid = uuid, pinned = pinned, anchors = anchors)
         return db.getTour(id)!!
     }
 
@@ -191,7 +192,7 @@ class SyncedRoutingFlowTest {
                     "stops=${row.stops.size} pins=${row.pins}"
                 if (failReplace) throw IllegalStateException("database or disk is full")
                 return db.replacePlanned(id, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS, row.segments, row.stops,
-                    row.pins, difficulty = row.difficulty, days = row.days)
+                    row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)
             }
             override fun rename(id: Long, name: String) = db.rename(id, name)
             override fun setFavourite(id: Long, favourite: Boolean) = db.setFavourite(id, favourite)
@@ -254,6 +255,19 @@ class SyncedRoutingFlowTest {
         assertEquals(t.waypoints, stored.waypoints)
         assertEquals("Alm", stored.name); assertEquals("uuid-Alm", stored.uuid)
         assertEquals(listOf("io: times 1 ${stored.distanceM.toLong()}"), app.planGroups)
+    }
+
+    /** An activity name this app does not know: the route is routed as a hike, so detour points of another profile do not belong to it (review finding 3). */
+    @Test fun aPlanOfAnUnknownActivityIsRoutedAndStoredWithoutItsDetourPoints() {
+        val mid = GeoPoint((a.lat + b.lat) / 2, (a.lon + b.lon) / 2)
+        val t = fromBrowser("Alm", activity = "SKI_TOURING", anchors = mapOf(1 to com.onpath.app.routing.Anchors(before = listOf(mid))))
+        assertEquals(1, db.getTour(t.id)!!.anchors.size)
+        val app = rig()
+        app.slice.routeSyncedPlans(listOf(t.id))
+        app.settle()
+        assertTrue("it was routed and stored", app.said("store.replacePlanned").isNotEmpty())
+        assertEquals("routed as a hike", "HIKE", db.getTour(t.id)!!.activity)
+        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), db.getTour(t.id)!!.anchors)
     }
 
     @Test fun aPlanEditedAgainMeanwhileIsNotOverwrittenAndNotBackedUp() {

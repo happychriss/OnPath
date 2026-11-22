@@ -346,7 +346,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Round trips („Rundtour von hier“, tour-suggestions.md §7 stage 4) – ui/suggest/SuggestSlice; Übernehmen → [planFromLine]. */
     val suggest = com.onpath.app.ui.suggest.SuggestSlice(viewModelScope, com.onpath.app.ui.suggest.AppSuggestHost(app, prefs, { mapData.routingData },
-        fit = { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> if (a != planRoute.activity) planRoute.selectActivity(a); planRoute.selectSac(l)
+        fit = { map.followMe = false; map.freeLookAt = null; events += UiEvent.Fit(it) }, take = { pts, a, l, done -> save.keepAsDraft("a round trip takes the plan"); if (a != planRoute.activity) planRoute.selectActivity(a); planRoute.selectSac(l)
             routesFlow.planFromLine(pts, com.onpath.app.data.RoutingTiles.forLine(pts, 1_000.0), a, l, done) }), prefs.suggestTest) { prefs.suggestTest = it }
 
     // --- Navigate orientation + next turn (see NavigateScreen, MapController.setCamera) ---

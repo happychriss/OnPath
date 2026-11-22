@@ -428,12 +428,14 @@ open class PlanRecalcState(
         val far = res.far
         if (far.isNotEmpty()) Problems.trace("routing", "Route does not reach point(s) ${far.sorted().joinToString { "${it + 1}" }}")
         val snapped = res.points.takeIf { res.moved } ?: return
-        plan.moveSnapped(routed, snapped)
+        // a run that did not route the plan's detour points (another profile) moves a point out from under them (§2)
+        val counted = run.anchors.isNotEmpty() || plan.anchorSet.anchors.isEmpty()
+        plan.moveSnapped(routed, snapped, counted)
         aliasSnappedLegs(routed, snapped, res.activity, res.sac, run)
         if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
         ports.linkSnapped(routed, snapped)
         val moves = WaypointSnap.moves(routed, snapped)
-        plan.snappedHistory(moves)
+        plan.snappedHistory(moves, counted)
         // an open menu follows its point to the snapped position (it must still find it for Delete)
         host.menuFollowsSnap(moves)
     }

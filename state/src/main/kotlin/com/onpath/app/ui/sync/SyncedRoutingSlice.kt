@@ -107,12 +107,14 @@ class SyncedRoutingSlice(
                 if (t.kind != TourKind.PLANNED || t.waypoints.size < 2 || t.deletedMs != null) continue
                 val act = planRoute.activityOrNull(t.activity) ?: Activity.HIKE
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
+                // an unknown activity is routed as a hike: detour points that lie on another profile do not count and are not stored
+                val anchors = com.onpath.app.routing.AnchorSet.of(t.anchors, planRoute.activityOrNull(t.activity), t.sac).forProfile(act, t.sac)
                 val f = planRoute.planFactors(act)
                 val r = withContext(planRoute.threads.background) {
                     try {
                         val eng = planRoute.routingEngine()
                         if (eng is com.onpath.app.routing.StraightLineEngine) null
-                        else planRoute.withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel(), legs = planRoute.legCache).plan(com.onpath.app.routing.PlanAnchors.expand(pts, t.anchors, t.pinned), act, t.sac), act, f)
+                        else planRoute.withModelTime(Planner(eng, com.onpath.app.routing.RouteCancel(), legs = planRoute.legCache).plan(com.onpath.app.routing.PlanAnchors.expand(pts, anchors, t.pinned), act, t.sac), act, f)
                     } catch (e: Exception) {
                         Problems.warn("sync", "A route from the browser could not be routed; it keeps its points until opened", e); null
                     }
@@ -131,7 +133,7 @@ class SyncedRoutingSlice(
                         now != null && now.waypoints == t.waypoints && now.activity == t.activity && now.sac == t.sac && now.pinned == t.pinned && now.anchors == t.anchors &&
                             store.replacePlanned(id, PlannedRow(act.name, t.sac, r.distanceM, r.ascentM, r.descentM,
                             r.durationS, listOf(r.points.map { TrackPoint(it.lat, it.lon, it.ele) }), t.waypoints, t.pinned,
-                            planRoute.difficultyOf(r, act), anchors = t.anchors))
+                            planRoute.difficultyOf(r, act), anchors = anchors))
                             .also { if (it) { planRoute.plannedTimes.remove(id); planRoute.storePlanTimes(id, r, act) } }
                     } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
                 }

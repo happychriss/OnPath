@@ -273,6 +273,8 @@ class RoutesGoSlice(
         val pts = t.waypoints.map { GeoPoint(it.lat, it.lon, it.ele) }
         val names = t.waypoints.associate { GeoPoint(it.lat, it.lon, it.ele) to it.name }
         val act = planRoute.activityOrNull(t.activity) ?: Activity.HIKE
-        links.share(com.onpath.app.routing.PlanLinks.share(pts, act, t.sac, t.pinned, { names[it] }, t.name, t.anchors), pts.size, t.name)
+        // an unknown activity is shared as a hike: its detour points lie on another profile, so none go with it
+        val anchors = com.onpath.app.routing.AnchorSet.of(t.anchors, planRoute.activityOrNull(t.activity), t.sac).forProfile(act, t.sac)
+        links.share(com.onpath.app.routing.PlanLinks.share(pts, act, t.sac, t.pinned, { names[it] }, t.name, anchors), pts.size, t.name)
     }
 }

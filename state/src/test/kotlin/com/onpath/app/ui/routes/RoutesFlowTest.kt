@@ -1166,6 +1166,17 @@ class RoutesFlowTest : RoutesFlowBase() {
         assertEquals(mapOf(0 to "Start", 1 to "Mitte"), back.names); assertEquals(listOf(a, b, c), back.points)
     }
 
+    /** The link of a saved route of an activity this app does not know is a hike's: detour points lying on another profile are not in it (review finding 3). */
+    @Test fun aSharedRouteOfAnUnknownActivityCarriesNoDetourPoints() {
+        val app = App()
+        val own = mapOf(1 to com.onpath.app.routing.Anchors(before = listOf(GeoPoint(46.690, 11.130)))) // exact to 1e-6, as a link keeps them
+        app.go.shareRoute(planned("Alm", activity = "SKI_TOURING").copy(anchors = own))
+        app.go.shareRoute(planned("Wald", activity = "HIKE").copy(anchors = own))
+        fun anchorsOf(i: Int) = (com.onpath.app.routing.PlanLinks.fromText(app.links[i].first) as com.onpath.app.routing.PlanLinks.Found.Plan).plan.anchors
+        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), anchorsOf(0))
+        assertEquals("a known hike keeps them", own, anchorsOf(1))
+    }
+
     // ---- test clean-up G04 (2026-11-19): SavePathsTest.planFromATrackIsOneUndoStep as a flow
 
     /** Making a plan of a track replaces the plan in ONE edit of the view model (`host.change` = one Undo step), also through the router path. */

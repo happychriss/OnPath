@@ -99,7 +99,17 @@ class PlanSession(
     fun forgetHistory() = history.restore(emptyList(), emptyList())
 
     /** The router snapped points onto the way ([moves] old → new): Undo / Redo show the snapped points too. */
-    fun snapped(moves: Map<GeoPoint, GeoPoint>) = history.replacePoints(moves)
+    fun snapped(moves: Map<GeoPoint, GeoPoint>, anchorsCount: Boolean = true) = history.replacePoints(moves, anchorsCount)
+
+    /**
+     * The points [routed] were moved to [snapped] in place by a run that did not route the detour points (they lie on another
+     * profile than the run's): a moved point is a new one, so its anchors, and the facing sides of its neighbours, go
+     * ([PlanAnchors.edited], docs/design/detour-stitch.md §2). A run that did route them keeps them with the moved point.
+     */
+    fun snapDropsAnchors(routed: List<GeoPoint>, snapped: List<GeoPoint>) {
+        if (anchorSet.anchors.isEmpty() || routed == snapped) return
+        anchorSet = anchorSet.copy(anchors = PlanAnchors.edited(routed, snapped, anchorSet.anchors))
+    }
 
     /** Forget pinned marks of points neither planned nor reachable by Undo / Redo; true when some went (store them). */
     fun prunePinned(): Boolean {

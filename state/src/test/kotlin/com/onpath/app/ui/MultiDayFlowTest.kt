@@ -89,6 +89,21 @@ class MultiDayFlowTest {
         assertEquals("a restart keeps them", anchors, flow().day!!.whole.anchors)
     }
 
+    /** The same snap made by a run of ANOTHER profile than the detour points' (review finding 4): the moved point is new, its detour points go. */
+    @Test fun aSnapOfARunUnderAnotherProfileDropsTheDetourPointsOfTheMovedPoint() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(1 to com.onpath.app.routing.Anchors(after = listOf(on(25))),
+            2 to com.onpath.app.routing.Anchors(listOf(on(27)), listOf(on(40))))
+        val f = opened(flow())
+        f.tapDay(2)
+        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
+        f.pickDay(whole, pts)!!
+        val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
+        f.snapped(mapOf(pts[2] to moved), anchorsCount = false)
+        assertEquals(moved, f.day!!.whole.points[2])
+        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), f.day!!.whole.anchors)
+    }
+
     @Test fun aNormalRouteHasNoDays() {
         val f = flow()
         f.opened(tour.copy(days = null), pts)

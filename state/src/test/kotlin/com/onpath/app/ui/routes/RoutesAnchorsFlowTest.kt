@@ -6,6 +6,7 @@ import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
 import com.onpath.app.routing.SharedPlan
+import com.onpath.app.ui.TrackThen
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -49,5 +50,17 @@ class RoutesAnchorsFlowTest : RoutesFlowBase() {
         val t = planned("Alm", "HIKE", 2, a, b, c).copy(anchors = own)
         app.slice.openTour(t, duringTour = true); app.settle()
         assertEquals(emptyMap<Int, Anchors>(), app.plan.anchorsFor(app.planRoute.activity, app.planRoute.sac))
+    }
+
+    /** Finding 1 of the review: "Als Plan übernehmen" of a bike track switched the activity BEFORE the old plan went under Zuletzt. */
+    @Test fun aTrackOfAnotherProfileMadeAPlanLeavesTheOldPlanWholeUnderZuletzt() {
+        val app = App()
+        app.withStitchedHike()
+        app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.PLAN); app.settle()
+        val row = app.draftRows.first()
+        assertEquals("its own activity, not the track's", "HIKE", row.activity)
+        assertEquals(2, row.sac)
+        assertEquals("with its detour points", own, row.anchors)
+        assertEquals(Activity.BIKE_TOURING, app.planRoute.activity)
     }
 }
