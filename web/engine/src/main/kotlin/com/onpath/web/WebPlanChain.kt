@@ -3,6 +3,7 @@ package com.onpath.web
 import com.onpath.app.domain.NotRouted
 import com.onpath.app.domain.PlanHistory
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.domain.PlanStatus
 import com.onpath.app.domain.plan.RunCause
 import com.onpath.app.navigation.TourSplit
@@ -107,6 +108,26 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         plan.replace(before)
         did.clear()
         edit.set(after)
+    }
+
+    /** Like [record], for a plan from elsewhere: [after] brings no anchors, even where it shares points with [before]; Undo brings them back. */
+    fun recordNew(before: List<GeoPoint>, after: List<GeoPoint>) {
+        plan.replace(before)
+        did.clear()
+        plan.arriving(after, AnchorSet.NONE)
+        edit.set(after)
+    }
+
+    /** A loaded plan [list] with its anchors [set] (detour-stitch.md §8.16): from here they follow its edits, Undo brings them back. */
+    fun arrive(list: List<GeoPoint>, set: AnchorSet) {
+        plan.arriving(list, set)
+        plan.replace(list)
+    }
+
+    /** The router moved the points [routed] onto their ways ([snapped], same size): by index, so each keeps its anchors. */
+    fun snapped(routed: List<GeoPoint>, snapped: List<GeoPoint>) {
+        plan.replace(routed)
+        plan.moveSnapped(routed, snapped)
     }
 
     /**

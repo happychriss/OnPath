@@ -316,6 +316,6 @@ object WebDays {
     }
 
     /** The plan code of the page's plan with its tour (Save, the link, Zuletzt – the app's [PlanCode]). */
-    fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, tour: String): String =
-        PlanCode.encode(plan(points, activity, sac, pinned, names, title, tour))
+    fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, tour: String, anchors: String = ""): String =
+        PlanCode.encode(Engine.withAnchors(plan(points, activity, sac, pinned, names, title, tour), anchors))
 }

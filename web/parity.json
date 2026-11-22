@@ -156,7 +156,7 @@
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "b8a0bb961233db1d5e831915a452b176226fcee3"
+      "blob": "d4de9c993e2bea057e3f63743b315b2804817449"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -3051,7 +3051,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "b8a0bb961233db1d5e831915a452b176226fcee3",
+      "blob": "d4de9c993e2bea057e3f63743b315b2804817449",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
@@ -3508,6 +3508,17 @@
     "core/src/main/kotlin/com/onpath/app/navigation/StopsBesideRoute.kt": {
       "blob": "6f0876c195c3c85988f749a77d354b5c8a99f29b",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/data/AnchorsJson.kt": {
+      "blob": "8953ee20328b4958304fc8f2b972abc8c2f6f92d",
+      "perf": [
+        "if (total + a.size > PlanCode.MAX_ANCHORS) break",
+        "/** The anchors in [json] that belong to [points]; none when it is missing, unreadable or over the plan's limit (reported). */",
+        "if (total > PlanCode.MAX_ANCHORS) {",
+        "Problems.warn(\"db\", \"Stored detour points over the limit – the route is calculated without them\")",
+        "if (a.isEmpty || a.before.size > PlanCode.MAX_ANCHORS_SIDE || a.after.size > PlanCode.MAX_ANCHORS_SIDE) return false",
+        "return (a.before + a.after).all { valid(it) && abs(micro(it.lat) - la) <= PlanCode.MAX_ANCHOR_DELTA && abs(micro(it.lon) - lo) <= PlanCode.MAX_ANCHOR_DELTA }"
+      ]
     }
   }
 }
