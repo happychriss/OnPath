@@ -1,0 +1,15 @@
+# routes whose search threw nodes away under memory pressure: name, how often
+bike-hilden-duesseldorf-15km 5
+bike-hilden-dortmund-via-wuppertal-70km 21
+bike-hilden-nordkirchen-98km 43
+bike-innsbruck-muenchen-150km 23
+hike-dortmund-hilden-70km 28
+bike-koeln-deutz-bonn-30km 7
+bike-duesseldorf-muenster-120km 57
+mtb-hilden-wuppertal-25km 18
+touring-hilden-dortmund-60km 25
+bike-flensburg-schleswig-35km 1
+bike-verona-mantova-40km 2
+bike-hilden-nordkirchen-98km-mem16 44
+bike-duesseldorf-muenster-120km-mem24 57
+hike-dortmund-hilden-70km-mem16 28

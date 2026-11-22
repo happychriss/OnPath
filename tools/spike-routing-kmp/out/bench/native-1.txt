@@ -1,0 +1,27 @@
+bike-hilden-1km 56 33
+bike-hilden-duesseldorf-15km 654 512
+bike-hilden-koeln-30km 153 133
+bike-hilden-dortmund-via-wuppertal-70km 2873 3081
+bike-hilden-nordkirchen-98km 9572 9370
+bike-koeln-muenster-170km 333 293
+bike-meran-bozen-30km 309 211
+bike-innsbruck-muenchen-150km 4132 3988
+hike-hilden-park-2km 73 40
+hike-vellau-hochmuth-leiteralm 61 36
+hike-meran-hirzer-20km 138 108
+hike-garmisch-zugspitze 264 199
+hike-dortmund-hilden-70km 4665 4360
+bike-koeln-deutz-bonn-30km 1350 1284
+bike-duesseldorf-muenster-120km 11410 11932
+mtb-hilden-wuppertal-25km 4240 4079
+mtb-meran-hirzer-20km 287 200
+touring-hilden-dortmund-60km 5075 4825
+touring-ebike-meran-bozen-30km 279 190
+bike-flensburg-schleswig-35km 414 269
+bike-verona-mantova-40km 689 631
+bike-hilden-nordkirchen-98km-mem16 10901 8299
+bike-duesseldorf-muenster-120km-mem24 10520 10266
+hike-dortmund-hilden-70km-mem16 4849 4906
+total_ms 142631
+VmHWM: 98444 kB
+VmRSS: 53352 kB
