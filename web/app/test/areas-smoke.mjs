@@ -130,6 +130,10 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     { maps: (req) => { if (req.method === 'POST') ids.push(req.headers.get('x-onpath-browser')); return handleMaps(req, { MAP_KEY: 'k', DOORMAN: doorman }); } });
   page = opened.page;
   const { ctx, server, log } = opened;
+  // the page's first map done first: on a slow runner the area otherwise joins that map's window at 55–94 %, where the
+  // doorman's 40 % cannot show (run 45062448790, the open question about a bar standing at 94 %) – this block is about its own bar
+  await idle(page);
+  await page.waitForFunction(() => !document.getElementById('waitwin'), null, { timeout: 30_000 });
   // the window's line every 50 ms from its first appearance (the „3 minutes“ flash before the server's estimate)
   await page.evaluate(() => { window.__lines = []; window.__lTimer = setInterval(() => {
     const w = document.getElementById('waitwin');
