@@ -202,7 +202,7 @@ sync stores them (`onpath.private` `liste.md`, Note M).
 
 | Step | File | What you see | Key · used on | Snapshot (Paparazzi) | Change here → new picture |
 | --- | --- | --- | --- | --- | --- |
-| M01 | `M01-handy-mehrtagestour-tagesuebersicht` | plan sheet fully up, day 2 picked: profile with the day borders, one row per day (bed / moon / goal), "Tag 2 fahren" | mehrtage-tage · – (new) | `MultiDayGermanTest_overview` | `ui/MultiDaySheet.kt`, `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
+| M01 | `M01-handy-mehrtagestour-tagesuebersicht` | plan sheet fully up, day 2 picked: profile with the day borders, one row per day (bed / moon / goal), "Tag 2 starten" | mehrtage-tage · – (new) | `MultiDayGermanTest_overview` | `ui/MultiDaySheet.kt`, `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |
 | M02 | `M02-handy-tag-2-von-3-unterwegs` | Navigate on day 2 (flight mode): status card "Tag 2 von 3", next turn, arrival at the day's end | mehrtage-unterwegs · – (new) | `MultiDayGermanTest_dayFollowed` | `ui/NavigateScreen.kt`, `ui/MultiDayFlow.kt` |
 | M03 | `M03-handy-mehrtagestour-naechte-karte` | the plan on the map, day 2 picked: green bed at the hotel, blue moon at the Übernachtung | mehrtage-karte · – (new) | `MultiDayGermanTest_signs` | `ui/MapScreen.kt` (day ends on the map), `ui/plan/MultiDaySlice.kt` |
 

@@ -5,6 +5,36 @@ piece, handoff at ~350k. **The owner's weekend word still holds until Mon 2026-1
 the change's tests, no further question. The Pixel is not on USB. Picture first for anything he sees (`onpath.private/ideen/`;
 `SendUserFile` does not work in this session, give him the GitHub link in the question box).
 
+## State, Sunday 2026-11-22: this session stopped on the captain's word (weekly tokens). Read this first
+No fresh donald until the owner wants work before Tuesday. **0.18.7 is out, the planner is online** (deploy-quick at 8cee9a2ec,
+contains 0.18.7). Items 1–3 and 5 are done. Two things are open, neither on main:
+
+1. **POI hold while the camera follows: the scheduled E2E on main is red, possibly a real bug in 0.18.7.**
+   `CorePoiTapE2ETest.aHoldOnASymbolMissingFromTheListWorksWhileTheCameraFollows` (run 45000657049, 59604cb08, line 107). In that run
+   every hold opened the right menu, but no hold went through the map: a follow step had (likely, round 1 unproven) already read the
+   symbol. `wip/donald-2026-11-22-poi-follow-test` (c60aeab15, deliberately red) forces the case: it removes the GPS test provider
+   after the camera landed, one symbol, one hold. **Then the hold ends as a plain press in both map formats** („No map idle in time“
+   after the 1 s bound, first-point menu). Unknown: is that the app (the press's `triggerRepaint` brings no idle on a still follow
+   camera) or the forcing (no provider, no frames)? First step: log whether the repaint brings an idle there; try a gentler forcing.
+   Do not weaken or just rerun the check. If it is real, the owner's symbol bug is not fixed while following.
+2. **Detour hint, built, NOT merged:** `wip/donald-2026-11-22-detour-hint` (dfe3f0917). Owner chose the wording „② macht 4,2 km
+   Umweg“. Gate --full green; **no big-model review, no E2E, no device.** It does not fire on his own case (Vellau → Mutkopf →
+   Leiteralm, T1: 30.3 km against 10.8 km at T2), because ② stays 552 m off the line, counts as a gap, and the gap line has priority.
+   His answer is open (backlog „Waiting for the owner“). When merged: `AppViewModel.kt` is marked checked in `web/parity.json`, so
+   **the check will not remind the laptop** to wire `PlanDetour.find` + `PlanGaps.detourText` (`WebPlanRules.gapsJson`): add a line.
+
+On main, not released: arrival with an unreachable stop (cb49cbc22). Rests of all reviews:
+`items/2026-11-21-review-rests-off-route-ride-question.md`. Helper worktrees `agent-*` stay until their branches are merged.
+
+## State, later the same evening (fresh session): items 1–3 are done, **0.18.7 is out**
+POI fix, ride question and the review fixes are on main and in the release; the `wip/…-poi-lookup*`, `…-ride-question*` and
+`…-offroute-fixes` branches are merged in content (prune them through the normal list). The planner was **not** deployed with it
+(areas-smoke red in the release run, green on the commit before): the laptop has it. `release.yml` publishes the app before its
+planner check ends, so a green push run on the commit before is not the same as green on the release commit.
+**Item 5 is done and on main (cb49cbc22), not released:** arrival no longer waits for a stop the route cannot reach; reviewed, its
+five findings fixed, gate + `CoreFieldE2ETest` + real-data replay green, no device run with such a stop. Its limits:
+`items/2026-11-21-review-rests-off-route-ride-question.md`. Go on at item 4.
+
 ## Order of work
 1. **POI symbol bug (owner's, first).** Tap / hold on a drawn symbol in Plan finds nothing, „wieder das gleiche Problem“.
    **Cause on his phone unproven.** On the emulator the list was right after every pan and style load; POI parsing loses no kind.

@@ -321,7 +321,7 @@
       "web": [
         "web/app/src/routethumbs.ts"
       ],
-      "blob": "bc73cfafc52b58ba498d22cf1dcd2ab40bf1adc7"
+      "blob": "1aa06a9dcce8d93ee160c8eaf0f6e54234518be1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/routes/ActivityFilter.kt",
@@ -1345,7 +1345,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/map/ThumbRules.kt": {
-      "blob": "bc73cfafc52b58ba498d22cf1dcd2ab40bf1adc7",
+      "blob": "1aa06a9dcce8d93ee160c8eaf0f6e54234518be1",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/navigation/ActivityCheck.kt": {
@@ -3489,13 +3489,25 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanAnchors.kt": {
-      "blob": "478fb202d4151cb63c7207c1ef25686c5f94d701",
+      "blob": "3697dbc73dcf3b0ecd3d151d63aa3e47e516cf1c",
       "perf": [
         "const val MAX_OFF_M = 2_000.0",
         "* longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line",
         "var best = Double.MAX_VALUE",
-        "if (best > MAX_OFF_M) return null"
+        "if (best > MAX_OFF_M) return null",
+        "* - N off the line (up to [MAX_OFF_M]): N gets its own stitch ([forInsert]: anchors `an` before and `bn` after it) and the",
+        "* The outer sides of both points stay; everything else as [follow]. Any doubt (shape, range, N farther than [MAX_OFF_M],",
+        "* point, more than [MAX_SIDE] on a side) = [follow]: a side dropped, never a wrong anchor.",
+        "var seg = 0; var offM = Double.MAX_VALUE; var bestT = 0.0",
+        "if (offM > MAX_OFF_M) return plain",
+        "if (listOf(first, mid, last).any { it.before.size > MAX_SIDE || it.after.size > MAX_SIDE }) return plain",
+        "/** At most this many anchors per side of a point (the code's limit, §3). */",
+        "private const val MAX_SIDE = 8"
       ]
+    },
+    "core/src/main/kotlin/com/onpath/app/navigation/StopsBesideRoute.kt": {
+      "blob": "6f0876c195c3c85988f749a77d354b5c8a99f29b",
+      "perf": []
     }
   }
 }

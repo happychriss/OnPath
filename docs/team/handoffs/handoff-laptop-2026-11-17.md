@@ -16,6 +16,13 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-22 ~00:15 – the next laptop session starts HERE
+- **Planner live at 8cee9a2ec** (owner's yes in the laptop chat; run 44965414468 green, deploy-quick). No standing deploy word: every deploy needs his own yes in this chat.
+- Fixed: a late "detailed map here?" answer after a zoom-out turned the sign into a window (`areas.ts` rested, reproduced in areas-smoke E).
+- Test only: smoke D holds the routing data 700 ms (a fast machine beat the window's 400 ms); smoke B waits for the area's own first row and checks that window has no gap. The null at line 149 (release run 44941010944) was **not reproduced**: likely a first map's closing window. If the gap check goes red, it is a real flicker.
+- **Open, owner's choice (backlog "Waiting for the owner"):** an area joining a window at 94 % leaves the bar standing for minutes (proven: 40 s at 94 % beside "about 5 minutes left"). Rescaling over the rest did not help (still 94 % after 60 s). Until decided, areas-smoke "moves the bar" can go red on a slow runner when the first map's window is up.
+- Parity: ThumbRules and StopsBesideRoute stamped (phone-only). donald's further commits may need more stamps.
+
 ## State 2026-11-21 ~19:00 – the next laptop session starts HERE
 - Owner said „Planer online stellen“ (laptop chat). Manual run on 57b0c7ca0 red (areas-smoke), no deploy. A background
   loop in the old session waits for the push run on 9c2b9931d and dispatches deploy+quick if green – check Actions: if

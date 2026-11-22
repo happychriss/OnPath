@@ -153,6 +153,7 @@ fun MapHost(
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
                     com.onpath.app.debug.Health.noteStyleLoad(n, loadedFrom?.name, MapMemory.geoJsonBytes(style))
                     vm.mapData.onMapStyleLoaded(loadedFrom)
+                    shownPois.styleLoaded(map)
                     try {
                         val c = MapController(context, map, style)
                         myCtrl[0] = c
@@ -194,7 +195,7 @@ fun MapHost(
                 }
             }
             map.addOnCameraIdleListener {
-                shownPois.cameraIdle()
+                shownPois.cameraIdle(map)
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
@@ -205,6 +206,7 @@ fun MapHost(
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
+                shownPois.cameraMoveStarted(byFinger = reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE)
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                     vm.map.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
                 }
@@ -220,6 +222,7 @@ fun MapHost(
             // move the map – else holding a point can add a new one instead of opening its menu).
             var downMarker = -1
             fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
+                shownPois.finishWaitingPress() // an older press that still waits for the map goes first
                 val c = myCtrl[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
                     com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
@@ -250,12 +253,10 @@ fun MapHost(
                         com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
                     } == true
                 }
-                // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
-                val poi = if (marker >= 0 && press == MapGestures.Press.HOLD) null else mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(PlaceAddMenu.LINE_SNAP_DP.toFloat()) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
-                return when (val a = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, poi != null, vm.plan.points.isEmpty())) {
+                fun run(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?): Boolean = when (a) {
                     is MapGestures.Action.PointMenu -> { vm.placeMenus.openPointMenu(a.index, dpOf(a.index)); true }
                     MapGestures.Action.PoiMenu -> { poi?.let { vm.placeMenus.openPoiMenu(it, snap) }; true }
                     MapGestures.Action.FirstPointMenu -> { vm.placeAdd.openFirstPointMenu(p); true }
@@ -274,6 +275,25 @@ fun MapHost(
                         edit
                     }
                 }
+                fun decide(hit: Boolean) = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, hit, vm.plan.points.isEmpty())
+                // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
+                if (marker >= 0 && press == MapGestures.Press.HOLD) return run(decide(false), null)
+                (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return run(decide(true), it) }
+                // The list has no POI here. Where a POI would change what the press does, it waits for the map's next
+                // idle and asks the map there (never inside the press), bounded: a stale list must not lose a drawn
+                // symbol. Both outcomes are decided now: what opens or closes meanwhile cannot change what this press means.
+                val plan = com.onpath.app.poi.PoiHit.PressPlan(edit, decide(false), decide(true))
+                if (plan.plain == plan.onPoi) return run(plan.plain, null)
+                val wait = shownPois.askMapAtNextIdle(map, ll) { found ->
+                    val a = plan.action(found != null, vm.canEditMap)
+                    if (a == null || vm.routePeek || vm.suggest.searching) Problems.trace("map", "Press dropped: the map's mode changed while it waited")
+                    else run(a, found)
+                } ?: return run(plan.plain, null)
+                fun timedOut(waited: Long) {
+                    shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
+                }
+                mapView.postDelayed({ timedOut(0) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
+                return edit || plan.plain != MapGestures.Action.None
             }
             map.addOnMapClickListener { ll ->
                 // A hold of HOLD_MS (ring under the finger, vibration) ends as a click with lastHoldMs ≥ HOLD_MS.
@@ -320,6 +340,7 @@ fun MapHost(
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
             idleListener?.let { mapView.removeOnDidBecomeIdleListener(it) }
+            shownPois.dispose()
             host.disposed()
             ctrlRef.clear(host)
             gestureFrames?.cancel()

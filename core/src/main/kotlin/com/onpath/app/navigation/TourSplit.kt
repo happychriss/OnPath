@@ -36,6 +36,8 @@ object TourSplit {
         val progressM: Double = 0.0,
         /** Stops already marked visited (`NavSession.visited`, by point). */
         val visited: Set<GeoPoint> = emptySet(),
+        /** Stops the route cannot reach that the rider went by (`NavSession.passedBy`, by point): behind, never "reached". */
+        val passedBy: Set<GeoPoint> = emptySet(),
     )
 
     /**
@@ -48,7 +50,8 @@ object TourSplit {
         if (plan.isEmpty()) return emptySet()
         val last = if (PlanEdits.isRoundTrip(plan)) plan.size - 2 else plan.size - 1
         val near = if (t.bike) NEAR_BIKE_M else NEAR_HIKE_M
-        fun hit(p: GeoPoint) = p in t.visited || known.any { sameSpot(it, p) } || nearTrack(p, t.track, near)
+        fun hit(p: GeoPoint) = p in t.visited || t.passedBy.any { sameSpot(it, p) } || known.any { sameSpot(it, p) } ||
+            nearTrack(p, t.track, near)
         // owner 2026-11-03 ("every tour starts at point 1 and skips nothing – shortening = the user deletes points"): the
         // passed points are the ones visited in plan order. A later point hit by chance (the way there passing it, a round
         // trip begun beside its end) no longer makes all points before it passed; only a point the track went by a little
@@ -64,6 +67,18 @@ object TourSplit {
 
     /** A point the track went by within this many times the "passed" radius is bridged by a later passed point. */
     const val BRIDGE = 2.0
+
+    /**
+     * [passed] as the map draws it: a stop the route only passed by ([Tour.passedBy]) is behind the rider but was not
+     * reached, so it keeps its colour – unless the rider did walk to it after all.
+     */
+    fun reachedOf(plan: List<GeoPoint>, passed: Set<Int>, t: Tour): Set<Int> {
+        val near = if (t.bike) NEAR_BIKE_M else NEAR_HIKE_M
+        return passed.filterTo(LinkedHashSet()) { i ->
+            val p = plan.getOrNull(i) ?: return@filterTo false
+            t.passedBy.none { sameSpot(it, p) } || p in t.visited || nearTrack(p, t.track, near)
+        }
+    }
 
     /** The points ahead: after the last passed one, in plan order. */
     fun ahead(plan: List<GeoPoint>, passed: Set<Int>): List<GeoPoint> {

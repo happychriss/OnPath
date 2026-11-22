@@ -70,6 +70,8 @@ export class MapAreas {
   private quota: string | null = null;
   /** The map rests at zoom >= 10 on a spot without detailed map (what "not available on the web" refers to). */
   private centreAbsent = false;
+  /** Counts the map's rests: a late answer about an earlier rest changes nothing. */
+  private restCount = 0;
   private naHidden = false;
   private t: MapTexts = {};
 
@@ -109,10 +111,12 @@ export class MapAreas {
 
   /** The map rests: at zoom >= 10 on a spot without detailed map the strip says so (nothing is asked for). */
   private rested() {
+    const rest = ++this.restCount;
     const c = this.map.getCenter();
     const id = cellOf(c.lat, c.lng);
     if (this.map.getZoom() < CELL_Z) { this.centreAbsent = false; this.show(); return; }
     this.cells.exists(...xy(id)).then((there) => {
+      if (rest !== this.restCount) return; // the map has rested again since (zoomed out on the same spot): that one counts
       const now = this.map.getCenter();
       if (cellOf(now.lat, now.lng) !== id) return; // moved on meanwhile
       if (there == null) return; // not known now (server busy): the cells' own line says so

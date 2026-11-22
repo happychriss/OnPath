@@ -671,7 +671,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     // the plan points behind the user in a running tour (TourSplit): grey (no tick, owner 2026-11-01); re-read every ~20 track points
     var passed by remember { mutableStateOf(emptySet<Int>()) }
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
-    LaunchedEffect(vm.plan.points.toList(), trackSize / 20, vm.tourFollow.followLine, rec != null) { passed = vm.tourEdits.tourPassed() }
+    LaunchedEffect(vm.plan.points.toList(), trackSize / 20, vm.tourFollow.followLine, rec != null) { passed = vm.tourEdits.tourPassedOnMap() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
     val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(c) {

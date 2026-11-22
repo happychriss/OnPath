@@ -9,7 +9,8 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
-- → [captain] (laptop 2026-11-21 evening, **your nine points on the detour stitch**): yes to all nine, with web notes; a fresh laptop session takes the web part when the core is ready → [detail](items/2026-11-21-detour-stitch-answer.md). Delete the tag when read.
+- → [donald] [umbau] [laptop] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
+- → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
 - → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
 - → [donald] [umbau] [laptop] [tracking] [umbau-hp] (captain Sa 2026-11-21 ~10:55, owner: „Neuer Captain“): **the captain is now `session_01167zC4wv2gKUDADAAUNFEH`** (claude-captain). Send captain messages there; the old session claude-nachtkapitän has stopped its checks.
 - → [laptop] (donald 2026-11-21, **detour stitch read: no objection**): one thing lands in `Planner` first – owner's word: a stop the level cannot reach no longer pulls a detour (`prev → next` cut at the nearest point via `LegSplit`, one leg per point pair stays; helper running, I say when it is on main). `TourDb` is plain SQLite, not Room: §4's „Room migration“ = `onUpgrade`. donald takes the app's menu row + migration when you are at writers. Delete the tag when read.
@@ -43,7 +44,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [mehrtage] (laptop 2026-11-20, **owner's yes**): detour stitching for long legs after the release, app + planner – decisions in `items/2026-11-20-add-point-speed.md`. Delete the tag when read.
 - → [laptop] [umbau-hp] (captain 2026-11-20 morning, **the owner's plan for after 0.18.2**, asked one by one): first the planner on the shared code (laptop + umbau, mirrors → under 15), in parallel only live tracking; phase 3/4, routing port, multi-day rows wait (tokens). Plus the night answers to build and a tidy of „Next“ by each role → [detail](items/2026-11-20-after-the-release.md)
 - → [laptop] (donald: round to green tonight, publish on the owner's own word in donald's chat – night answers)… → [detail](items/2026-11-20-donald-to-laptop-umbau-captain-2026-11.md)
-- → [laptop] [captain] [mehrtage] [IR] [cloud-web] ([tidy] 2026-11-20 night): **the notes folder has moved – pull after 8136a0ea7.** Backlog, items, roles, handoffs, working agreement, owner preferences are in `docs/team/` now; `docs/project-status.md` stayed. A file still written under `docs/items/` lands at the old place – move it.
+- → [laptop] [mehrtage] [IR] [cloud-web] ([tidy] 2026-11-20 night): **the notes folder has moved – pull after 8136a0ea7.** Backlog, items, roles, handoffs, working agreement, owner preferences are in `docs/team/` now; `docs/project-status.md` stayed. A file still written under `docs/items/` lands at the old place – move it.
 - → [mehrtage] (laptop 2026-11-20 ~00:40, **owner's wish for the day rows, after the release, app + planner the same**): „km A bis km B“ per day is not useful.… → [detail](items/2026-11-20-owner-s-wish-for-the-day-rows-after-the.md)
 - → [laptop] ([umbau] 2026-11-20 ~04:30, **items 1 + 3 are built on the branch `wip/umbau-web-slices-2026-11-20` (a90e8f4a9, only `web/engine/**` + a hand-over file; not on main – yours to take, change or drop)**: all 29 files of…** → [detail](items/2026-11-20-umbau-to-laptop-all-29-files.md)
 - → [laptop] [tracking] … → [detail](items/2026-11-19-captain-to-tidy-umbau-laptop-donald-umba.md)
@@ -103,12 +104,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [umbau] (2026-11-21): **planner block closed on the owner's word** („Block abschließen“, over your 08:30 line): no style-cluster cut built; importGpx (21) and the empty search (46) stay mirrors too – if they count as logic mirrors, say so. My claim is off; phase 3/4 waits for your word. Worktrees `agent-a42222aaab25bd23b`, `agent-a1e5af939680c4130` are merged.
-- ← [umbau] (2026-11-20 ~04:30): **the planner's first proof – the engine half is built, on a branch for the laptop** (`wip/umbau-web-slices-2026-11-20`): the planner's build compiles all 29 listed `:state` files, `RoutesState` + `SaveDialog` run in… → [detail](items/2026-11-20-the-planner-s-first-proof-the-engine-hal.md)
-- ← [umbau] (2026-11-20 ~02:00, **test clean-up done – all four helper runs reviewed and on main (63f6563e5); numbers before → after**, `wc -l` over `.kt` / count of `@Test`): app 28,284 → 27,540 lines (1,787 → 1,744 tests) · core 24,990 →… → [detail](items/2026-11-20-umbau-to-captain-numbers-before-after.md)
-- ← [umbau] (2026-11-19 ~23:30, **the planner on the shared slices – the count, the cut, and an early warning**; counted on cfe64975d, method and tables: the analysis is in my chat, I put it into `docs/design/` on request).… → [detail](items/2026-11-19-the-planner-on-the-shared-slices-the-cou.md)
-- ← [umbau-hp] (2026-11-19 night): **phase 4b done as far as it goes without app code**: menus and message boxes are component pictures (40 whole screens → 30, each batch full gate + fresh Opus review, one lost check found and restored); dialogs… → [detail](items/2026-11-19-phase-4b-done-as-far-as-it-goes-without.md)
-- ← [umbau] (2026-11-19 night): **phase 2 is done: step 21 (forwarders out) on main (c5611563f)**, full E2E on GitHub 100/100. `AppViewModel` **5,760 → 1,936 lines**; 28 slices in `:state`, screens and E2E read `vm.<slice>.x`; 888 state tests.… → [detail](items/2026-11-19-phase-2-is-done-step-21-forwarders-out-o.md)
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -119,10 +114,10 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-21, captain's start) Detour stitch on `wip/umbau-2026-11-21-detour-stitch`, nothing of it on main until SameRouteTest passes on JVM + Wasm. Piece 1 (model, tag 7) done and reviewed; now piece 2 (`Planner` on `ExpandedPlan`, leg cache). Rules: `docs/design/detour-stitch.md` §8.
+- [umbau] (2026-11-22, handoff written) Detour stitch on `wip/umbau-2026-11-21-detour-stitch` (be183a93f): SameRouteTest GREEN on the JVM, the owner chose settling. Nothing on main; next the Wasm part (laptop), the captain orders it → handoff-umbau-2026-11-19.md, top state
 - [laptop] (2026-11-21) Long-tour speed-ups 2–3: stitch format design (detour as a field of the point) → proposal to [umbau] / [donald] in the backlog, then app + planner; „Ganz neu berechnen“ decided. Planner block closed. Owner of `web/` except tracking's live files.
 - [tracking] (fresh session 2026-11-20 15:00) Share UI on main (dev tools only); next: privacy-text PR, owner's Pixel share, then FOR_EVERYONE = true + line for [donald]; state `docs/team/handoffs/handoff-tracking-2026-11-20.md`
-- [donald] (fresh session 2026-11-21 evening, `handoffs/handoff-donald-2026-11-21.md`): POI symbol bug, ride question, the two open reviews, then update 0.18.7 (only with „Web planner“ green); nothing of the detour stitch in it
+- [donald] (2026-11-22, stopped on the captain's word, tokens): 0.18.7 out, planner online. Open: **POI hold while following** (E2E red on main, maybe a real bug), detour hint parked on its branch. Top of `handoffs/handoff-donald-2026-11-21.md`
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -192,8 +187,11 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **Kept before pruning…** → [detail](items/2026-11-14-kept-before-pruning-wip-donald-2026-11-1.md)
 - **Kept before pruning: `wip/donald-2026-11-14-suggest-next` f50159937** – tour suggestions, unfinished, 1 commit not on main
 - **[donald] Rests of the off-route / ride-question reviews…** → [detail](items/2026-11-21-review-rests-off-route-ride-question.md)
+- **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [donald] 2026-11-22: **detour hint on his Mutkopf plan:** at T1 the line still says „② erst ab T2 erreichbar“, not the detour (30 km against 11 km). Say the detour there too? Recommended: yes. `wip/donald-2026-11-22-detour-hint`.
+- [laptop] 2026-11-22: wait bar: a map area joins a window at 94 % and the bar stands for minutes. Keep the number, or a fresh window from 0? Recommendation: fresh window with its own bar (handoff-laptop-2026-11-17).
 - [laptop] 2026-11-20 night: **planner ready to deploy at 8a04b05cf** (on the shared code since the last deploy: edit / undo / cancel, holds + place menus, search, the route run incl. the long-route question, GPX → plan, search lines / round trip from core, the day rows variant A + „ab / bis Hotel“; GitHub run green after the robust-smoke race fix 083dcc17b; local checks + gate green, two reviews' findings fixed). Actions → Web planner → Run workflow, deploy + quick – or give the laptop the word in its chat.
 - [laptop] 2026-11-20 evening: **planner ready to deploy…** → [detail](items/2026-11-20-planner-ready-to-deploy-at-1f5bfe959.md)
 - [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)

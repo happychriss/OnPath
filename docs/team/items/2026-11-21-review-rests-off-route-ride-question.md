@@ -15,6 +15,17 @@ The findings that were fixed are on `main` (eef668763, fd0ca4c76). These were se
 - `leadFailedOk` leaves `lead` set, so a plan edit after a failed search searches again. Possibly wanted (the edit may make
   the start reachable); decide before changing it.
 
+## Arrival with a stop the route cannot reach (on main cb49cbc22, NOT in 0.18.7, no device or field run with such a stop)
+- **Poor GPS along the whole stretch at the place:** the stop can stay open and no arrival comes (simulated: counted in 123 of
+  240 runs at 35 m accuracy, 80 of 240 at 50 m). That is the safe side and the old behaviour.
+- **With GPS noise a rider can count from 1–2 × the radius short of the place** (worst 45 m; 2–3 of 1,128 runs at 8–15 m, 12 of
+  1,128 at 50 m). No run arrived from farther.
+- **A rider who leaves the line past the place without counting it**, on a new line starting at its nearest point, keeps it open.
+- **`NextStop.kt` does not know `passedBy`:** it filters by position along the line, so on a line like the review's out-and-back a
+  passed stop could still be listed as ahead.
+- **The owner has not said** that a pinned or named stop 25–150 m beside the line (no red line) stops blocking arrival once passed.
+- The rule for a taken line's own place is covered by synthetic geometry only (the 8 real re-routed lines pass the original place).
+
 ## Ride question: the owner's to decide (nothing changed)
 - **Bike tours:** ride detection also runs there, and „Unterwegs bist du gefahren“ / „Ohne Fahrt“ read ambiguously, most of
   all with several rides. The button words are his, so ask before rewording.
