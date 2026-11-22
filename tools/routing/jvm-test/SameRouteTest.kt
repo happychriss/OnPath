@@ -66,7 +66,9 @@ class State(val pts: List<GeoPoint>, val anchors: Map<Int, Anchors>)
 /** One warm run: the snapped state, its expanded plan, the line after the snap, and what was routed. */
 class Step(val state: State, val exp: ExpandedPlan, val route: PlannedRoute, val routed: Int, val rerunRouted: Int, val ok: Boolean, val note: String,
            /** CANON: requests / seconds spent re-routing plain legs with a moved end, cut legs with a moved end that were kept, cut legs of [exp]. */
-           val extraReq: Int = 0, val extraS: Double = 0.0, val keptCut: Int = 0, val cutLegs: Set<Int> = emptySet())
+           val extraReq: Int = 0, val extraS: Double = 0.0, val keptCut: Int = 0, val cutLegs: Set<Int> = emptySet(),
+           /** Default mode: requests and seconds spent in Planner.settle (the line settles, §8.15). */
+           val settleReq: Int = 0, val settleS: Double = 0.0)
 
 /** CANON=1: the canonical base and the re-routing of plain legs with a moved end (see the header). */
 val CANON = System.getenv("CANON") == "1"
@@ -91,7 +93,7 @@ fun legLine(exp: ExpandedPlan, route: PlannedRoute, v: Int): List<GeoPoint> {
 }
 
 /** Warm: seed, the real PlanResult.plan, snap, alias, then the plan again from the cache (must route nothing). */
-fun warm(engine: BRouterEngine, cache: LegCache, st: State, t: Tour): Step {
+fun warm(engine: BRouterEngine, cache: LegCache, st: State, t: Tour, settle: Boolean = true): Step {
     val exp = PlanAnchors.expand(st.pts, st.anchors, emptySet())
     LegSplit.seed(cache, exp, t.act, t.sac)
     val p1 = Planner(engine, legs = cache)
@@ -116,12 +118,31 @@ fun warm(engine: BRouterEngine, cache: LegCache, st: State, t: Tour): Step {
         }
         extraS = (System.nanoTime() - t0) / 1e9
     }
+    val first = Step(State(snapped, st.anchors), expS, res.route, p1.tries.size, 0, clean(res.route),
+        if (!clean(res.route)) "first run: ${res.route.error}" else "", extraReq, extraS, keptCut)
+    return if (settle && !CANON) settled(engine, cache, first, t) else rerun(engine, cache, first, t, 0, 0.0)
+}
+
+/** The plan again from the cache after the snap and alias (and a settle): must route nothing. */
+fun rerun(engine: BRouterEngine, cache: LegCache, s: Step, t: Tour, settleReq: Int, settleS: Double): Step {
     val p2 = Planner(engine, legs = cache)
-    val again = p2.plan(expS, t.act, t.sac)
-    val ok = clean(res.route) && clean(again)
-    val note = if (!clean(res.route)) "first run: ${res.route.error}" else if (!clean(again)) "rerun: ${again.error}" else ""
-    val cutLegs = (0 until expS.points.size - 1).filter { expS.touchesAnchor(it) && cache.inMemory(expS.points[it], expS.points[it + 1], t.act, t.sac, cut = true) != null }.toSet()
-    return Step(State(snapped, st.anchors), expS, again, p1.tries.size, p2.tries.size, ok, note, extraReq, extraS, keptCut, cutLegs)
+    val again = p2.plan(s.exp, t.act, t.sac)
+    val firstClean = s.note.isEmpty()
+    val ok = firstClean && clean(again)
+    val note = if (!firstClean) s.note else if (!clean(again)) "rerun: ${again.error}" else ""
+    val cutLegs = (0 until s.exp.points.size - 1).filter { s.exp.touchesAnchor(it) && cache.inMemory(s.exp.points[it], s.exp.points[it + 1], t.act, t.sac, cut = true) != null }.toSet()
+    return Step(s.state, s.exp, again, s.routed, p2.tries.size, ok, note, s.extraReq, s.extraS, s.keptCut, cutLegs, settleReq, settleS)
+}
+
+/** The line settles (§8.15): Planner.settle on the snapped plan, then the plan again from the cache. That is the warm line compared. */
+fun settled(engine: BRouterEngine, cache: LegCache, s: Step, t: Tour): Step {
+    if (!s.ok && s.note.startsWith("first run")) return rerun(engine, cache, s, t, 0, 0.0)
+    val ps = Planner(engine, legs = cache)
+    val t0 = System.nanoTime()
+    val r = ps.settle(s.exp, t.act, t.sac)
+    val sec = (System.nanoTime() - t0) / 1e9
+    if (r.failed > 0 || r.cancelled) log("   settle: routed ${r.routed}, failed ${r.failed}, cancelled ${r.cancelled}")
+    return rerun(engine, cache, s, t, ps.tries.size, sec)
 }
 
 /** CANON: route, snap, route again from the snapped points (really routed legs only) until stable at 1e-6 or 4 runs. */
@@ -181,6 +202,10 @@ class Case(val tour: String, val name: String, val anchors: Int, val code: Strin
     var extraReq = 0; var extraS = 0.0; var keptCut = 0
     /** Visible points the cold route moves again (PlanResult.snap on the cold line) / visible points of the plan. */
     var coldMoved = 0; var visiblePts = 0
+    /** Default mode: requests and seconds spent in settle for this case. */
+    var settleReq = 0; var settleS = 0.0
+    /** The control (the base plan, no anchors): reported on its own, no pass or fail. */
+    val control get() = name.startsWith("base (control")
 }
 
 /** Cold: PlanCode round trip, expand, route with [coldCache] (plain routed legs only), compare with the warm line. */
@@ -213,6 +238,7 @@ fun cold(engine: BRouterEngine, coldCache: LegCache, step: Step, t: Tour, name: 
     return Case(t.name, name, step.state.anchors.values.sumOf { it.size }, code, wh, ch, step.route.distanceM, coldRoute.distanceM,
         step.routed, step.rerunRouted, problems).also { c ->
         c.extraReq = step.extraReq; c.extraS = step.extraS; c.keptCut = step.keptCut
+        c.settleReq = step.settleReq; c.settleS = step.settleS
         val routedVisible = expC.visible
         val sn = PlanResult.snap(routedVisible, coldRoute, emptySet(), emptySet())
         c.visiblePts = routedVisible.size
@@ -425,7 +451,32 @@ fun runTour(engine: BRouterEngine, t: Tour, nAdds: Int): List<Case> {
             record(cold(engine, coldCache, undo, t, "undo (snapshot of the night)"))
         }
     }
-    log("== ${t.name}: ${out.count { it.green }} green / ${out.count { !it.green }} red in ${s()} s")
+    // 3. chainQuick: 3 adds in a row on the longest leg WITHOUT settling between them, one settle at the end
+    run {
+        val qCache = fork(baseCache, base.state, t)
+        var q = base
+        var qAdded = 0
+        for (m in 1..3) {
+            val range = chainLeg..chainLeg + qAdded
+            val v = range.maxByOrNull { Geo.length(legLine(q.exp, q.route, it)) }!!
+            val line = legLine(q.exp, q.route, v)
+            var next: Step? = null
+            for (attempt in 0..3) {
+                val f = 0.2 + 0.6 * (((m + 3) * 0.6180339887 + attempt * 0.137) % 1.0)
+                val d = (300 + m * 517 + attempt * 211).toDouble().coerceAtMost(1900.0)
+                val p = offsetPoint(line, f, d, if (m % 2 == 1) 1 else -1) ?: continue
+                val cand = warm(engine, qCache, insertAt(q.state, v + 1, p, line), t, settle = false)
+                if (!cand.ok && cand.note.startsWith("first run")) { log("chainQuick$m: attempt $attempt: point not routable, next candidate"); continue }
+                next = cand; break
+            }
+            if (next == null) { out += Case(t.name, "chainQuick", 0, "", "", "", 0.0, 0.0, 0, 0, listOf("no routable candidate point in 4 attempts")); return@run }
+            q = next; qAdded++
+        }
+        record(cold(engine, coldCache, settled(engine, qCache, q, t), t, "chainQuick (3 adds, one settle at the end)"))
+    }
+    val ctl = out.filter { it.control }; val cs = out.filter { !it.control }
+    log("== ${t.name}: ${cs.count { it.green }} green / ${cs.count { !it.green }} red in ${s()} s; control ${ctl.joinToString { if (it.green) "green" else "red" }}; " +
+        "settle: ${cs.sumOf { it.settleReq }} requests, %.1f s".format(cs.sumOf { it.settleS }))
     return out
 }
 
@@ -479,9 +530,13 @@ fun main() {
         perTour[t.name] = cases; all += cases
     }
     log("\n==== summary (%.0f min) ====".format((System.nanoTime() - t0) / 6e10))
-    for ((tour, cs) in perTour) log("$tour: ${cs.count { it.green }} green / ${cs.count { !it.green }} red")
+    for ((tour, cs) in perTour) {
+        val real = cs.filter { !it.control }
+        log("$tour: ${real.count { it.green }} green / ${real.count { !it.green }} red; control (no anchors, not counted) ${cs.filter { it.control }.joinToString { if (it.green) "green" else "red" }}; " +
+            "settle ${real.sumOf { it.settleReq }} requests, %.1f s in all".format(real.sumOf { it.settleS }))
+    }
     log("routed requests on the warm side (first run): " + all.filter { it.code.isNotEmpty() }.groupingBy { it.routedWarm }.eachCount().toSortedMap())
-    val red = all.filter { !it.green }
+    val red = all.filter { !it.green && !it.control }
     if (red.isNotEmpty()) {
         log("\nMISMATCHES")
         for (c in red) log("${c.tour} | ${c.name} | anchors ${c.anchors}\n    " + c.problems.joinToString("\n    "))
