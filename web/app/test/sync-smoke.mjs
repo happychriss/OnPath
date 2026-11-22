@@ -15,6 +15,7 @@ import path from 'node:path';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { chromium } from '@playwright/test';
 import { serve } from './serve.mjs';
 import { handleSync, LIMITS } from '../../host/src/sync.js';
@@ -982,6 +983,9 @@ check(JSON.stringify(pNames()) === phoneBefore && (await placesPhone.placeItems(
 const stored = await K.evaluate(() => { try { return JSON.parse(localStorage.getItem('onpath.keptPlaces')); } catch { return null; } });
 check(stored && !stored.restore && stored.home === HOME2, `the store is written again, restored (${JSON.stringify(stored)})`);
 await ctxK.close();
+
+// a made-up pairing link on a freshly loaded engine (its own process: a small stack, Wasm's slow tier)
+check(spawnSync(process.execPath, [path.join(here, 'pairlink-engine.mjs')], { stdio: 'inherit' }).status === 0, 'a long made-up pairing link is plainly no code');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of (404|409|410|429|507)/.test(e) && !/ERR_INTERNET_DISCONNECTED|Failed to fetch/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
