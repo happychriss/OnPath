@@ -106,6 +106,7 @@ class PlanRecalcFlowTest {
     private val defaultEx = ManualExecutor("default")
     private val ioEx = ManualExecutor("io")
     private val pcEx = ManualExecutor("planCopy")
+    private val bgEx = ManualExecutor("bg")
     private val main = VirtualDelayDispatcher { r -> on("main") { r.run() } }
     private val defaultD = VirtualDelayDispatcher { r -> defaultEx.execute { on("default") { r.run() } } }
     private val ioD: CoroutineDispatcher = VirtualDelayDispatcher { r -> ioEx.execute { on("io") { r.run() } } }
@@ -157,12 +158,23 @@ class PlanRecalcFlowTest {
         var snap: (GeoPoint) -> GeoPoint = { it }
         var onRoute: (Int) -> Unit = {}
         var timeLimit = false
+        /** A way of this many km (from, to, T level) instead of the kit's line: out to a bend and back. */
+        var wayKm: ((GeoPoint, GeoPoint, Int) -> Double)? = null
         val threads = ArrayList<String>()
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult = route(waypoints, activity, sacLimit, RouteLimits(30_000))
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
             threads += thread()
             onRoute(inner.calls.size + 1)
             if (timeLimit) throw RoutingException("too long", timedOut = true)
+            wayKm?.let { km ->
+                val p = waypoints.first(); val q = waypoints.last()
+                val half = km(p, q, sacLimit) * 500; val d = com.onpath.app.data.Geo.distance(p, q) / 2
+                val h = kotlin.math.sqrt((half * half - d * d).coerceAtLeast(1.0)) // the bend square to the line: its length is the asked one
+                val perLon = 111_195.0 * kotlin.math.cos(Math.toRadians(p.lat))
+                val east = (q.lon - p.lon) * perLon; val north = (q.lat - p.lat) * 111_195.0; val n = kotlin.math.hypot(east, north)
+                val l = listOf(p, GeoPoint((p.lat + q.lat) / 2 + h * east / n / 111_195.0, (p.lon + q.lon) / 2 - h * north / n / perLon), q)
+                return RouteResult(l, com.onpath.app.data.Geo.length(l), 0.0, 0.0, 60.0, matched = listOf(p, q))
+            }
             return inner.route(waypoints.map(snap), activity, sacLimit, limits).let { it.copy(matched = waypoints.map(snap)) }
         }
     }
@@ -320,7 +332,7 @@ class PlanRecalcFlowTest {
                 override fun clearShownNote() = Unit
                 override fun showWhole(points: List<GeoPoint>) = Unit
             },
-            threads = RoutingThreads(routing = exec(routingEx, "routing"), background = exec(ManualExecutor("bg"), "bg"),
+            threads = RoutingThreads(routing = exec(routingEx, "routing"), background = exec(bgEx, "bg"),
                 check = exec(ManualExecutor("check"), "check"), hold = exec(ManualExecutor("hold"), "hold")),
         )
         planRun = PlanRunSlice(planRoute.runCauses, object : PlanRunHost {
@@ -725,6 +737,46 @@ class PlanRecalcFlowTest {
         assertFalse(planRun.routing); assertNull(planRun.routeProgress)
         val line = problems.traced("routing").single { it.startsWith("Route #1 for 2 points ready after 150 ms (plan now 2 points): HIKE, ") }
         assertTrue(line, line.contains(" km straight, ") && line.contains(" km routed, ") && line.contains(" line points, 0 straight legs"))
+    }
+
+    /** At T3 ② is 5 + 5 km away, at T4 2.6 + 2.6 km; its neighbours are 2.3 km apart at both ([com.onpath.app.routing.PlanDetour]). */
+    private fun levelDetour(p: GeoPoint, q: GeoPoint, t: Int) = if (p == a && q == c) 2.3 else if (t <= 3) 5.0 else 2.6
+
+    @Test fun aDetourIsSaidAfterTheRouteIsShownAndANewRunDropsIt() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        recalcNow(); finishRun()
+        val line = routeNow!!.points.toList()
+        assertNull("the route is there before the check has run", recalc.detourText())
+        assertFalse(planRun.routing)
+        bgEx.runAll()
+        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+        assertEquals("the map shows the drawn way around the point", line, recalc.detourWay())
+        assertEquals("the route is the same", line, routeNow!!.points)
+        assertTrue("only the background thread routed for it", engine.threads.drop(2).all { it == "bg" })
+        recalcNow()
+        assertNull("a new run drops the old hint at once", recalc.detourText())
+    }
+
+    @Test fun anOlderCheckStillWaitingNeverSpeaksForANewerPlan() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        recalcNow(); finishRun() // its check waits on the background thread
+        engine.wayKm = { p, q, _ -> if (p == a && q == c) 2.3 else 5.0 } // the same at both levels now
+        recalcNow(); finishRun()
+        bgEx.runAll()
+        assertNull(recalc.detourText())
+    }
+
+    @Test fun noDetourCheckBesideATour() {
+        plan(a, b, c); create()
+        engine.wayKm = ::levelDetour
+        modeNow = AppMode.PLAN; client.publish(recState())
+        recalcNow(); finishRun()
+        val routed = engine.threads.size
+        bgEx.runAll()
+        assertEquals("the tour's re-route needs the router", routed, engine.threads.size)
+        assertNull(recalc.detourText())
     }
 
     @Test fun routingDataMissingUnderTheRouteGivesTheNoticeInPlainWordsAndASaneNoticeOtherwiseTheRoutersError() {

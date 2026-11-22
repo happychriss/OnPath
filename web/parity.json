@@ -3467,7 +3467,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
-      "blob": "4f87411ffd621e09a77cfff782d7bf398060fc87",
+      "blob": "0f1228125f41a7f9b9cb29fe85035e53e6c83644",
       "perf": [
         "*     neighbours – only then it is worth a look, at most [MAX_POINTS] points, the worst first.",
         "const val MAX_POINTS = 3",

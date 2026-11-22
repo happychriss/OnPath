@@ -121,7 +121,8 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
                 val directHere = direct(before, after, res.sac) ?: if (stopped) break else continue
                 val directHarder = direct(before, after, harder) ?: if (stopped) break else continue
                 val extraM = extra(viaHere, viaHarder, directHere, directHarder) ?: continue
-                found += PlanDetour(i, extraM, legs[i - 1].points + legs[i].points)
+                val onward = legs[i].points.let { if (it.firstOrNull() == legs[i - 1].points.lastOrNull()) it.drop(1) else it }
+                found += PlanDetour(i, extraM, legs[i - 1].points + onward)
             }
             if (cancel?.isCancelled == true) return emptyList()
             return found.sortedBy { it.index }
