@@ -7,6 +7,8 @@ import android.database.sqlite.SQLiteDatabase
 import android.database.sqlite.SQLiteOpenHelper
 import java.io.File
 import com.onpath.app.debug.Problems
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.GeoPoint
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import org.json.JSONArray
@@ -69,6 +71,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 7 → 8 (owner 2026-11-13): `tours.favourite` – starred in My routes ([Tour.favourite]); every existing tour 0.
      * 8 → 9 (multi-day tours, stage 4): `tours.days` – a planned route's days ([Tour.days], JSON); every existing tour
      * null (a normal route).
+     * 9 → 10 (detour stitch): `tours.anchors` and `tour_plan.anchors` – a plan's hidden via points; every existing row null.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -127,6 +130,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         favourite: Boolean = false,
         /** [Tour.days] of a multi-day tour; null = a normal route. */
         days: MultiDay? = null,
+        /** [Tour.anchors] of a planned route (docs/design/detour-stitch.md §3); empty = none (the column stays NULL). */
+        anchors: Map<Int, Anchors> = emptyMap(),
     ): Long {
         val db = writableDatabase
         db.beginTransaction()
@@ -142,6 +147,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("difficulty", difficulty)
                 put("favourite", if (favourite) 1 else 0)
                 if (days != null) put("days", days.toJson())
+                AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)?.let { put("anchors", it) }
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -231,6 +237,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
          */
         days: MultiDay? = null,
         clearDays: Boolean = false,
+        /** [Tour.anchors] of the new version: written as they are, empty = NULL (unlike [days] there is no "keep"). */
+        anchors: Map<Int, Anchors> = emptyMap(),
     ): Boolean {
         val db = writableDatabase
         db.beginTransaction()
@@ -240,6 +248,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
                 put("pinned", pinnedToJson(pinned)); put("difficulty", difficulty)
                 if (days != null) put("days", days.toJson()) else if (clearDays) putNull("days")
+                val a = AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)
+                if (a != null) put("anchors", a) else putNull("anchors")
             }, "id=? AND kind=? AND deleted_at IS NULL", arrayOf(id.toString(), TourKind.PLANNED.name))
             if (n == 0) return false
             db.delete("points", "tour_id=?", arrayOf(id.toString()))
@@ -347,11 +357,12 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         fun s(n: String) = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getString(it) }
         fun d(n: String) = c.getColumnIndex(n).takeIf { it >= 0 && !c.isNull(it) }?.let { c.getDouble(it) } ?: 0.0
         try {
+            val waypoints = jsonToWaypoints(s("waypoints"))
             TourPlan(name = s("name"), activity = s("activity") ?: "HIKE", sac = d("sac").toInt(),
-                waypoints = jsonToWaypoints(s("waypoints")), pinned = jsonToPinned(s("pinned")),
+                waypoints = waypoints, pinned = jsonToPinned(s("pinned")),
                 line = TourPlan.lineFromJson(s("line")), distanceM = d("distance"), ascentM = d("ascent"),
                 descentM = d("descent"), durationS = d("duration"), sourceUuid = s("source_uuid"),
-                updatedMs = d("updated").toLong()).takeIf { it.usable }
+                updatedMs = d("updated").toLong(), anchors = AnchorsJson.read(s("anchors"), waypoints.map { GeoPoint(it.lat, it.lon) })).takeIf { it.usable }
         } catch (e: Exception) { Problems.warn("db", "The followed plan of tour $tourId is unreadable – the tour stays without it", e); null }
     }
 
@@ -360,7 +371,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * for that activity now. Rows changed (0 = the tour followed no plan).
      */
     fun setTourPlanActivity(tourId: Long, activity: String, sac: Int): Int = writableDatabase.update("tour_plan",
-        ContentValues().apply { put("activity", activity); put("sac", sac); put("updated", System.currentTimeMillis()) },
+        ContentValues().apply { put("activity", activity); put("sac", sac); put("updated", System.currentTimeMillis()); putNull("anchors") },
         "tour_id=?", arrayOf(tourId.toString()))
 
     // ---- recording ----
@@ -480,6 +491,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             difficulty = opt(c, "difficulty")?.let { c.getString(it) },
             favourite = opt(c, "favourite")?.let { c.getInt(it) == 1 } ?: false,
             days = opt(c, "days")?.let { MultiDay.fromJson(c.getString(it)) },
+            anchors = opt(c, "anchors")?.let { i -> AnchorsJson.read(c.getString(i), jsonToWaypoints(s("waypoints")).map { GeoPoint(it.lat, it.lon) }) } ?: emptyMap(),
         )
     }
 

@@ -20,4 +20,7 @@ class PrefsPlanStore(private val prefs: Prefs) : PlanStore {
     override var savedPoints: List<GeoPoint>?
         get() = prefs.planSavedPoints
         set(v) { prefs.planSavedPoints = v }
+    override var anchorsJson: String?
+        get() = prefs.planAnchors
+        set(v) { prefs.planAnchors = v }
 }

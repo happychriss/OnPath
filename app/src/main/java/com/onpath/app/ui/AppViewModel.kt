@@ -198,10 +198,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val recent: com.onpath.app.ui.routes.RecentPlans = com.onpath.app.ui.routes.RecentPlans(routes, routesStore, object : com.onpath.app.ui.routes.RecentPlansHost {
         override fun insertDraft(row: com.onpath.app.ui.routes.RecentPlans.DraftRow) =
             db.insertTour(TourKind.PLANNED, row.name, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS,
-                row.segments, row.waypoints, pinned = row.pinned, draft = true, difficulty = row.difficulty, days = row.days)
+                row.segments, row.waypoints, pinned = row.pinned, draft = true, difficulty = row.difficulty, days = row.days, anchors = row.anchors)
         override fun updateDraft(id: Long, row: com.onpath.app.ui.routes.RecentPlans.DraftRow) =
             db.replacePlanned(id, row.activity, row.sac, row.distanceM, row.ascentM, row.descentM, row.durationS, row.segments, row.waypoints,
-                row.pinned, row.difficulty, row.days, clearDays = row.days == null)
+                row.pinned, row.difficulty, row.days, clearDays = row.days == null, anchors = row.anchors)
         override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = planRoute.storePlanTimes(id, route, activity)
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
@@ -792,11 +792,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun insertPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) =
             db.insertTour(kind = TourKind.PLANNED, name = name, activity = row.activity, sac = row.sac,
                 distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS,
-                segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)
+                segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)
         override fun replacePlanned(id: Long, row: com.onpath.app.ui.routes.PlannedRow) =
             db.replacePlanned(id = id, activity = row.activity, sac = row.sac,
                 distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS,
-                segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)
+                segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)
         override fun rename(id: Long, name: String) = db.rename(id, name)
         override fun setFavourite(id: Long, favourite: Boolean) = db.setFavourite(id, favourite)
         override fun planPoints(id: Long) = db.planPoints(id)
@@ -804,7 +804,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun getTourPlan(id: Long) = db.getTourPlan(id)
         override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name,
             activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS,
-            segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days)
+            segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)
         override fun tourTimes() =
             com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).all()
     }

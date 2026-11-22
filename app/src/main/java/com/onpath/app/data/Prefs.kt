@@ -223,6 +223,11 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
 
+    /** The open plan's hidden via points with their profile ([AnchorsJson.writeSet]); null = none. */
+    var planAnchors: String?
+        get() = sp.getString("planAnchors", null)
+        set(v) = sp.edit().putString("planAnchors", v).apply()
+
     /**
      * Multi-day tours (stage 4, ui/MultiDayFlow): the open tour's days and night marks (JSON); null = a normal plan. Kept
      * like the plan's points, so a restart keeps them.

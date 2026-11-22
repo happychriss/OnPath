@@ -1,5 +1,6 @@
 package com.onpath.app.testkit
 
+import com.onpath.app.data.AnchorsJson
 import com.onpath.app.data.MultiDay
 import com.onpath.app.data.Tour
 import com.onpath.app.data.TourJson
@@ -9,6 +10,8 @@ import com.onpath.app.data.TourSchema
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.rides.RideRecord
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.GeoPoint
 import java.sql.Connection
 import java.sql.DriverManager
 
@@ -50,14 +53,15 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                    waypoints: List<GpxWaypoint> = emptyList(), state: String = "done", distance: Double = 0.0,
                    uuid: String = java.util.UUID.randomUUID().toString(), createdMs: Long = System.currentTimeMillis(), draft: Boolean = false,
                    ascent: Double = 0.0, descent: Double = 0.0, duration: Double = 0.0, pinned: Set<Int> = emptySet(),
-                   difficulty: String? = null, favourite: Boolean = false, days: MultiDay? = null): Long {
+                   difficulty: String? = null, favourite: Boolean = false, days: MultiDay? = null,
+                   anchors: Map<Int, Anchors> = emptyMap()): Long {
         write()
         db.autoCommit = false
         try {
             exec("INSERT INTO tours(kind, name, created, uuid, pinned, activity, sac, distance, ascent, descent, duration, state, waypoints, draft, " +
-                "difficulty, favourite, days) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", kind.name, name, createdMs, uuid, TourJson.pinnedToJson(pinned),
+                "difficulty, favourite, days, anchors) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", kind.name, name, createdMs, uuid, TourJson.pinnedToJson(pinned),
                 activity, sac, distance, ascent, descent, duration, state, TourJson.waypointsToJson(waypoints), if (draft) 1 else 0, difficulty,
-                if (favourite) 1 else 0, days?.toJson())
+                if (favourite) 1 else 0, days?.toJson(), AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors))
             val id = db.createStatement().use { s -> s.executeQuery("SELECT last_insert_rowid()").use { r -> r.next(); r.getLong(1) } }
             var seq = 0
             segments.forEachIndexed { seg, pts -> pts.forEach { point(id, seq++, seg, it, null) } }
@@ -73,15 +77,17 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
      */
     fun replacePlanned(id: Long, activity: String?, sac: Int, distance: Double, ascent: Double, descent: Double, duration: Double,
                        segments: List<List<TrackPoint>>, waypoints: List<GpxWaypoint>, pinned: Set<Int> = emptySet(),
-                       difficulty: String? = null, days: MultiDay? = null, clearDays: Boolean = false): Boolean {
+                       difficulty: String? = null, days: MultiDay? = null, clearDays: Boolean = false,
+                       anchors: Map<Int, Anchors> = emptyMap()): Boolean {
         write()
         db.autoCommit = false
         try {
             val args = mutableListOf<Any?>(activity, sac, distance, ascent, descent, duration, TourJson.waypointsToJson(waypoints),
-                TourJson.pinnedToJson(pinned), difficulty)
+                TourJson.pinnedToJson(pinned), difficulty,
+                AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)) // written as they are, empty = NULL
             if (days != null) args += days.toJson()
             args += id; args += TourKind.PLANNED.name
-            val n = exec("UPDATE tours SET activity=?, sac=?, distance=?, ascent=?, descent=?, duration=?, waypoints=?, pinned=?, difficulty=?" +
+            val n = exec("UPDATE tours SET activity=?, sac=?, distance=?, ascent=?, descent=?, duration=?, waypoints=?, pinned=?, difficulty=?, anchors=?" +
                 (if (days != null) ", days=?" else if (clearDays) ", days=NULL" else "") +
                 " WHERE id=? AND kind=? AND deleted_at IS NULL", *args.toTypedArray())
             if (n == 0) { db.rollback(); return false }
@@ -129,11 +135,11 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
     fun getTourPlan(tourId: Long): TourPlan? = db.prepareStatement("SELECT * FROM tour_plan WHERE tour_id=?").use { st ->
         st.setLong(1, tourId)
         st.executeQuery().use { r ->
-            if (!r.next()) null else TourPlan(name = r.getString("name"), activity = r.getString("activity") ?: "HIKE", sac = r.getInt("sac"),
-                waypoints = TourJson.jsonToWaypoints(r.getString("waypoints")), pinned = TourJson.jsonToPinned(r.getString("pinned")),
+            if (!r.next()) null else TourJson.jsonToWaypoints(r.getString("waypoints")).let { wps -> TourPlan(name = r.getString("name"), activity = r.getString("activity") ?: "HIKE", sac = r.getInt("sac"),
+                waypoints = wps, anchors = AnchorsJson.read(r.getString("anchors"), wps.map { GeoPoint(it.lat, it.lon) }), pinned = TourJson.jsonToPinned(r.getString("pinned")),
                 line = TourPlan.lineFromJson(r.getString("line")), distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"),
                 descentM = r.getDouble("descent"), durationS = r.getDouble("duration"), sourceUuid = r.getString("source_uuid"),
-                updatedMs = r.getLong("updated"))
+                updatedMs = r.getLong("updated")) }
         }
     }
 
@@ -165,6 +171,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                     distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"), descentM = r.getDouble("descent"),
                     durationS = r.getDouble("duration"), state = r.getString("state") ?: "done",
                     waypoints = TourJson.jsonToWaypoints(r.getString("waypoints")), uuid = r.getString("uuid") ?: "",
+                    anchors = AnchorsJson.read(r.getString("anchors"), TourJson.jsonToWaypoints(r.getString("waypoints")).map { GeoPoint(it.lat, it.lon) }),
                     pinned = TourJson.jsonToPinned(r.getString("pinned")),
                     rides = RideRecord.fromJson(r.getString("rides")),
                     deletedMs = r.getLong("deleted_at").takeIf { !r.wasNull() },

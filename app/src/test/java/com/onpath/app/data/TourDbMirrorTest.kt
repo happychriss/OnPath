@@ -40,10 +40,10 @@ class TourDbMirrorTest {
         val vm = sourceFile("ui/AppViewModel.kt").readText().replace(Regex("\\s+"), " ")
         assertTrue(vm.contains("db.insertTour(kind = TourKind.PLANNED, name = name, activity = row.activity, sac = row.sac, " +
             "distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)"))
+            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)"))
         assertTrue(vm.contains("db.replacePlanned(id = id, activity = row.activity, sac = row.sac, " +
             "distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days)"))
+            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, days = row.days, anchors = row.anchors)"))
     }
 
     /**
@@ -59,7 +59,7 @@ class TourDbMirrorTest {
         val vm = sourceFile("ui/AppViewModel.kt").readText().replace(Regex("\\s+"), " ")
         assertTrue(vm.contains("override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name, " +
             "activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days)"))
+            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)"))
     }
 
     /** The activity switched during a recording (piece 16b's flows write it through JdbcTours): the same two columns, the same WHERE. */
