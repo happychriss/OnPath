@@ -63,6 +63,15 @@ object PlanAnchors {
     const val SIDE_MARGIN_M = 2_000.0
 
     /**
+     * [p] as a plan code hands it back (1e-6°, a plain point without elevation or way data): the points a cold device
+     * routes (§8.15). Bit for bit what [PlanCode] decodes (tested).
+     */
+    fun exact(p: GeoPoint) = GeoPoint(Math.round(p.lat * 1e6) / 1e6, Math.round(p.lon * 1e6) / 1e6)
+
+    /** [p] already is its [exact] form (lat and lon equal). */
+    fun isNormal(p: GeoPoint): Boolean { val e = exact(p); return p.lat == e.lat && p.lon == e.lon }
+
+    /**
      * The expanded list of [points]: each point's `before` anchors in front, `after` behind it. Entries out of range
      * are ignored; the first point's `before` and the last point's `after` are never expanded (no leg to cut there).
      * Without anchors the list equals [points] and the mapping is the identity.

@@ -61,9 +61,12 @@ object LegSplit {
         var stored = 0
         for (span in 2..MAX_SPAN) for (i in 0 until pts.size - span) {
             val j = i + span
-            val cutOne = if (plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0) cache.inMemory(pts[i], pts[j], activity, sac, cut = true) else null
+            val anchoredEnd = plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0
+            // an exact plain leg first (§8.15), then the cut leg, then the plain one
+            val exactOne = if (anchoredEnd && cache.isExactInMemory(pts[i], pts[j], activity, sac)) cache.inMemory(pts[i], pts[j], activity, sac) else null
+            val cutOne = if (exactOne == null && anchoredEnd) cache.inMemory(pts[i], pts[j], activity, sac, cut = true) else null
             val cutParent = cutOne != null
-            val parent = cutOne ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
+            val parent = exactOne ?: cutOne ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
             // nothing left to cut: every leg in between is in memory already (cut leg where it touches an anchor, or plain)
             if ((i until j).all { k -> cache.inMemory(pts[k], pts[k + 1], activity, sac, cut = plan.touchesAnchor(k)) != null ||
                     cache.inMemory(pts[k], pts[k + 1], activity, sac) != null }) continue

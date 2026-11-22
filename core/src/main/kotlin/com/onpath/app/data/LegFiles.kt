@@ -66,15 +66,20 @@ class LegFiles(
         }
         // expected: a touch that fails only makes the leg look older to the pruning
         try { f.setLastModified(now()) } catch (_: Exception) {}
-        return LegStore.Stored(e.leg, isFresh(e))
+        return LegStore.Stored(e.leg, isFresh(e), e.exact)
     }
 
-    override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) {
+    override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) = write(key, from, to, leg, exact = false)
+
+    /** An exact leg (§8.15) carries one more header line, "exact"; old readers skip it. */
+    override fun putExact(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) = write(key, from, to, leg, exact = true)
+
+    private fun write(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult, exact: Boolean) {
         val fp = fingerprint() ?: return
         try {
             val parts = Rd5Parts.forCorridor(listOf(from, to), MARGIN_M) + Rd5Parts.forCorridor(leg.points, MARGIN_M)
             val data = parts.sorted().joinToString(";") { "${it.key}=${partVersion(it)}" }
-            val text = encode(Entry(key, fp, data, now(), leg))
+            val text = encode(Entry(key, fp, data, now(), leg, exact))
             synchronized(lock) {
                 count()
                 val f = file(key)
@@ -132,7 +137,9 @@ class LegFiles(
     }
 
     /** One stored leg. [data] = "part=version;…" ([partVersion]), [timeMs] = when it was routed. */
-    data class Entry(val key: LegCache.Key, val fingerprint: String, val data: String, val timeMs: Long, val leg: RouteResult)
+    data class Entry(val key: LegCache.Key, val fingerprint: String, val data: String, val timeMs: Long, val leg: RouteResult,
+                 /** The router's own answer for the key's two exact points (§8.15). */
+                 val exact: Boolean = false)
 
     companion object {
         /** Legs kept: a 35 km bike leg is ~50–100 KB – 40 MB hold dozens of long plans. */
@@ -165,6 +172,7 @@ class LegFiles(
             append("ways\t").append(shares(r.wayTypes)).append('\n')
             append("surf\t").append(shares(r.surfaces)).append('\n')
             append("matched\t").append(r.matched.joinToString("|") { p -> p?.let { "${it.lat},${it.lon},${it.ele ?: ""}" } ?: "-" }).append('\n')
+            if (e.exact) append("exact\t1\n")
             append("points\t").append(r.points.size).append('\n')
             var last: String? = null
             for (p in r.points) {
@@ -228,7 +236,8 @@ class LegFiles(
                 if (m == "-") null else m.split(',').let { GeoPoint(it[0].toDouble(), it[1].toDouble(), it.getOrNull(2)?.ifEmpty { null }?.toDouble()) }
             }
             val leg = RouteResult(pts, st[0], st[1], st[2], st[3], readShares("ways"), readShares("surf"), matched)
-            return Entry(key, head.getValue("fp")[0], head["data"]?.firstOrNull().orEmpty(), head["time"]?.firstOrNull()?.toLong() ?: 0L, leg)
+            return Entry(key, head.getValue("fp")[0], head["data"]?.firstOrNull().orEmpty(), head["time"]?.firstOrNull()?.toLong() ?: 0L, leg,
+                head["exact"]?.firstOrNull() == "1")
         }
     }
 }
