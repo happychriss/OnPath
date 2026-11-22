@@ -1,0 +1,41 @@
+# Work saved at the shutdown of 2026-11-22 (laptop)
+
+Every parent of this commit is one piece that was on no remote branch. `git branch <name> <sha>` brings one back. Nothing was deleted or changed in the worktrees.
+
+- `1f580339c4739ec552b048b54dae379a7a17ebdb` branch laptop-cancel-fixes; worktree HEAD agent-aaa99d5cdde42e484
+- `bc8fc02bb04fd3738e889e910f09f89accf63091` branch laptop-dayrows; worktree HEAD agent-a179bb424711af00a
+- `21158742426915a141948ceea5f630072f1518af` branch laptop-loadcard-merge
+- `d3a130ee0a0c66bfbd1a15a813a8c9d5934b6d41` branch laptop-recalc; worktree HEAD agent-aaaf6f6806e2e7282
+- `c43f050221323702de815f1d1ea27086adecd239` branch laptop-rests; worktree HEAD agent-a47e422c5b9364368
+- `fc5722498d220992404ddd1762b2e757b1f00527` branch laptop-routes; worktree HEAD agent-a7902402704aa1b22
+- `61fd298a9e6fc21b3b1b916ca72ac0f75f3927ad` branch laptop-runhead; worktree HEAD agent-a9f8eb445fb76cdad
+- `e1218fc6635bcd47ff2dc6ee49d8524f8580b403` branch laptop-runhead-fix; worktree HEAD agent-a937c33478c3342c7
+- `66ef55d0ea3d7a48fc6c4b3495b5ee6aea934410` branch laptop-search-wait; worktree HEAD agent-a587b0b026edf8f73
+- `7970bb12b37ec9b235e1ca5ee779e936abb93d10` branch laptop/ci-smokes-2026-11-13
+- `2ef4421f6896ab9dbe7b49e8a4e4b64ddd3468fd` branch laptop/suggest-layer-2026-11-17; worktree HEAD agent-aa238736fc1e27ca7
+- `bf6669b7d55bc40b0ad23aa676aa428e0db1d66b` branch umbau-hp-b2
+- `d681173a35b5d7b5d8f909642fabb03c0eed3990` branch umbau-hp-b3
+- `15022c584f98dc09f4e77a6bb4df09cb43e7c8b9` branch umbau-hp-h1
+- `069b0b2b387c35183b4e952ffdbcc179279bf318` branch umbau-hp-h2
+- `4536119085083f417a0580050ecba6e42d46e80a` branch umbau-hp-h3
+- `cb1f12f4511eb148857e445bf039bb5a7cf3e589` branch umbau-hp-h4
+- `1145ce82b5c3457d5a31c68d9a80d6fea8263c0a` branch web-closed-folder-ask
+- `31b793f2d21f3bce6b23c6b14f8b58e4f75e7199` branch worktree-agent-a036f14f318ee6775; worktree HEAD agent-a036f14f318ee6775
+- `ecd1127ab9b3c1c1344b89c0e58bbbb06d9fe80e` branch worktree-agent-a071c6093d4618358; worktree HEAD agent-a071c6093d4618358
+- `ad0b53ef079346fcf1ef84292a2bf977f7874690` branch worktree-agent-a09c15482cdbee632; worktree HEAD agent-a09c15482cdbee632
+- `681adf22a070ee00e8422f50d9ae17b91f4f69c5` branch worktree-agent-a131b32526d21ea3d; worktree HEAD agent-a131b32526d21ea3d
+- `c75c48312867941ec8d0db1ed4dd3e4d93e9a58f` branch worktree-agent-a19fa9011f3d3864f; worktree HEAD agent-a19fa9011f3d3864f
+- `9f1d1ecb617e03e197c69f353f1a98934dad45a1` branch worktree-agent-a249f4a684e7b0e10; worktree HEAD agent-a249f4a684e7b0e10
+- `eea400f2ae73ddcece90b02ba3b544e9333480e8` branch worktree-agent-a3bcca615faa7b37a; worktree HEAD agent-a3bcca615faa7b37a
+- `08804059e2f2e22b1e3f8177ac8fa8768903e7fd` branch worktree-agent-a401706ef5d07f30b; worktree HEAD agent-a401706ef5d07f30b
+- `b13c56370b1cd1bf70f846321f465acc1b940dd2` branch worktree-agent-a63149949a8541430; worktree HEAD agent-a63149949a8541430
+- `75bbda3328062e60f4b2ecded10892355062887c` branch worktree-agent-a67ee6f5e5050fac5; worktree HEAD agent-a67ee6f5e5050fac5
+- `25a350bed083216a6497069f863db10119e0297a` branch worktree-agent-a71304987ef37a59c; worktree HEAD agent-a71304987ef37a59c
+- `7ae10b23a02bae2fcb26392ec87c07630c5bd2df` branch worktree-agent-a7bac4ace29b83b03; worktree HEAD agent-a7bac4ace29b83b03
+- `f256a391a903648db20db09307c000d18c74d41e` branch worktree-agent-abc400503a5e07cb3; worktree HEAD agent-abc400503a5e07cb3
+- `6ff7b2dd41a041932896f2690410589e793bcfda` branch worktree-agent-adf62ef9d3665a9a8; worktree HEAD agent-adf62ef9d3665a9a8
+- `ca80acb18b6862b1731cd1e45be22bcb6f5bdb0a` branch worktree-agent-ae7bb5443cfc08091; worktree HEAD agent-ae7bb5443cfc08091
+- `f60b769865761eb30392f23398a08c05c252e9bb` branch worktree-agent-ae9d1a7e989637a82; worktree HEAD agent-ae9d1a7e989637a82
+- `6abbcd6fe1fd11d993bfb164023414caafb42294` stash: On worktree-agent-a5188c3a1cb765678: laptop-a5188-mine
+- `16cfb1edcef48ac673f89688129a4cc4c6a484d3` uncommitted of agent-ae0ae0f0208bc8363 on 47151fefd: ools/routing/jvm-test/run.sh, tools/multiday/
+- `8b74f2105dd63130abe807b321ee506a20553011` uncommitted of umbau-hp on bb3918384: tools/spike-routing-kmp/
