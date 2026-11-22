@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "53e04c34b00d31c2c08352721f414284054089e7"
+      "blob": "ae18b008890c286588e142b0f254c0b5b68ee0e0"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -3465,6 +3465,19 @@
     "core/src/main/kotlin/com/onpath/app/navigation/StopsBesideRoute.kt": {
       "blob": "6f0876c195c3c85988f749a77d354b5c8a99f29b",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
+      "blob": "4f87411ffd621e09a77cfff782d7bf398060fc87",
+      "perf": [
+        "*     neighbours – only then it is worth a look, at most [MAX_POINTS] points, the worst first.",
+        "const val MAX_POINTS = 3",
+        "const val TRY_TIMEOUT_MS = 6_000L",
+        "const val BUDGET_MS = 20_000L",
+        "/** The interior points worth a look (step 1), the worst first, at most [MAX_POINTS]. No routing. */",
+        "}.sortedByDescending { it.second }.take(MAX_POINTS).map { it.first }",
+        "if (stopped || cancel?.isCancelled == true || now() - started > BUDGET_MS) { stopped = true; return null }",
+        "eng.route(listOf(from, to), Activity.HIKE, sac, RouteLimits(TRY_TIMEOUT_MS, cancel))"
+      ]
     }
   }
 }

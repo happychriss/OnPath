@@ -313,6 +313,12 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "plan_detour": {
+    "area": "Plan sheet",
+    "context": "Red line on a hike: the chosen T level makes this plan point a long detour (the next harder level is clearly shorter). The owner's words, chosen from a picture 2026-11-21. %1$s = the point's sign (\"②\"), %2$s = the extra distance (\"4.2 km\")",
+    "priority": 2,
+    "confidence": "sicher"
+  },
   "plan_quoted": {
     "area": "Plan sheet",
     "context": "A place name in quotes inside a sentence. %1$s = name",

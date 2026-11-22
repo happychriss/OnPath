@@ -73,6 +73,8 @@ class GermanScreenshotTest {
     @Test fun planReachHike() = shots.planReachHike()
     @Test fun planReachOnFoot() = shots.planReachOnFoot()
     @Test fun planReachBike() = shots.planReachBike()
+    @Test fun planDetourHike() = shots.planDetourHike()
+    @Test fun planDetourHikeMore() = shots.planDetourHikeMore()
     @Test fun routeSpotsListHints() = shots.routeSpotsListHints()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
     @Test fun planChipLongHike() = shots.planChipLongHike()

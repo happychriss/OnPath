@@ -5,6 +5,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanDetour
 import com.onpath.app.routing.PlanReach
 
 /**
@@ -92,6 +93,17 @@ object PlanGaps {
             PlanReach.Fix.None -> Txt.s(Res.string.plan_reach_none, p)
         }.replaceFirstChar { it.uppercase() }
         return if (gaps.size > 1) withMore(line, gaps.size - 1) else line
+    }
+
+    /**
+     * The red line of a plan point the T level sends on a long detour ([PlanDetour], owner 2026-11-21, his words from the
+     * picture): "② macht 4,2 km Umweg"; more points: " (+1 weitere)". Null without one. Never beside a gap: a point the
+     * route does not reach is the more serious line.
+     */
+    fun detourText(detours: List<PlanDetour>): String? {
+        val d = detours.firstOrNull() ?: return null
+        val line = Txt.s(Res.string.plan_detour, pointSign(d.index), Format.distance(d.extraM)).replaceFirstChar { it.uppercase() }
+        return if (detours.size > 1) withMore(line, detours.size - 1) else line
     }
 
     /** "<line> (+2 more)": a red line with [more] further problems behind it. */
