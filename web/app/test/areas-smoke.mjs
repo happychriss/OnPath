@@ -37,7 +37,7 @@ const fails = [];
 const check = (ok, what) => { console.log((ok ? 'ok   ' : 'FAIL ') + what); if (!ok) fails.push(what); };
 const errors = [];
 const browser = await chromium.launch({ args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
-async function open(ctxOpts, at, serverOpts) {
+async function open(ctxOpts, at, serverOpts, before = null) {
   const log = [];
   const { server, url } = await serve({ dist, segments, dataDir: store, log, ...serverOpts });
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 800 }, ...ctxOpts });
@@ -61,6 +61,7 @@ async function open(ctxOpts, at, serverOpts) {
       if (rows && window.__winLog.at(-1) !== rows) window.__winLog.push(rows);
     }).observe(document.body, { subtree: true, childList: true, characterData: true }));
   });
+  await before?.(page);
   await page.goto(url + 'index.html?waitMs=0&at=' + at); // waitMs=0: the route's wait box at once (no 1 s delay)
   await page.waitForFunction(() => window.__map?.isStyleLoaded() && document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
   return { page, ctx, server, log };
@@ -190,6 +191,60 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   await page.evaluate(() => window.__map.jumpTo({ center: [11.6, 48.15], zoom: 14 })); // moves and rests inside the same area again
   await page.waitForTimeout(5000);
   check(asked.length === 1, `the area is asked for once (dedupe; ${asked.length} requests)`);
+  await ctx.close(); server.close();
+}
+
+// ---- B2: an area joins a window that is really still running. The first map's wait is held open at 30 % through the page's
+//      own wait (a job like its tiles', which not every test machine has data for) until the area has joined, so the order
+//      is forced on any machine. One window all along, its number never back, 100 at the end. ----
+{
+  const GRAZ = { latitude: 47.0707, longitude: 15.4395 };
+  const vx = Math.floor(((GRAZ.longitude + 180) / 360) * 1024);
+  const vy = Math.floor(((1 - Math.log(Math.tan((GRAZ.latitude * Math.PI) / 180) + 1 / Math.cos((GRAZ.latitude * Math.PI) / 180)) / Math.PI) / 2) * 1024);
+  let polls = 0;
+  const doorman = { fetch: async (req) => {
+    const u = new URL(req.url);
+    if (u.pathname === '/v1/cells/request') {
+      const b = await req.json();
+      return Response.json({ cells: b.cells.map((id) => ({ id, state: 'queued', position: 1, eta_s: 290 })), poll_s: 5 });
+    }
+    const ids = u.searchParams.get('ids').split(',');
+    if (++polls >= 2) {
+      writeFakeCell(store, vx, vy, 'web-test-b2');
+      return Response.json({ cells: ids.map((id) => ({ id, state: 'ready', version: 'web-test-b2' })), poll_s: 60 });
+    }
+    return Response.json({ cells: ids.map((id) => ({ id, state: 'building', step: 'base', progress: 0.4, eta_s: 110 })), poll_s: 5 });
+  } };
+  const { page, ctx, server } = await open({ geolocation: { ...GRAZ, accuracy: 20 }, permissions: ['geolocation'] }, '11.16,46.67,12',
+    { maps: (req) => handleMaps(req, { MAP_KEY: 'k', DOORMAN: doorman }) });
+  await idle(page);
+  await page.waitForFunction(() => !document.getElementById('waitwin'), null, { timeout: 30_000 });
+  await page.evaluate(() => window.__wait.overlay().job('held', 30, 100, 'map', true));
+  const up = await page.waitForFunction(() => document.getElementById('waitwin') && window.__wait.overlay().isOpen('held'), null, { timeout: 15_000 }).then(() => true, () => false);
+  check(up, 'B2: a map wait is running, its window is up');
+  await page.evaluate(() => {
+    window.__b2 = { el: document.getElementById('waitwin'), pcts: [], gaps: 0, other: 0 };
+    window.__b2t = setInterval(() => {
+      const w = document.getElementById('waitwin'), b = window.__b2;
+      if (!w) { if (!b.closed) b.gaps++; return; }
+      if (w !== b.el) b.other++;
+      b.pcts.push(+w.dataset.pct);
+    }, 25);
+  });
+  const before = await page.evaluate(() => +document.getElementById('waitwin').dataset.pct);
+  await page.click('#locate');
+  const joined = await page.waitForFunction(() => { const r = document.querySelector('#waitwin .wwsteps li'); return r?.className === 'now' && r.textContent === 'being prepared'; }, null, { timeout: 30_000 }).then(() => true, () => false);
+  const during = await page.evaluate(() => ({ running: window.__wait.overlay().isOpen('held'), title: document.querySelector('#waitwin .wwtitle')?.textContent, ...window.__b2, el: undefined }));
+  check(joined && during.running, `B2: the area joined while that wait was still running (from ${before} %)`);
+  check(during.title === 'Map for your area', `B2: the joined window says the area's title ("${during.title}")`);
+  check(during.gaps === 0 && during.other === 0, `B2: one window through the join (${during.gaps} samples without it, ${during.other} in another)`);
+  check(during.pcts.length > 0 && during.pcts.every((v, i) => v >= before && (!i || v >= during.pcts[i - 1])), `B2: the number never goes back at the join (${[...new Set(during.pcts)].join(' ')})`);
+  await page.evaluate(() => window.__wait.overlay().finish('held'));
+  const gone = await page.waitForFunction(() => { if (document.getElementById('waitwin')) return false; window.__b2.closed = true; return document.getElementById('mapnotes').hidden; }, null, { timeout: 40_000 }).then(() => true, () => false);
+  const end = await page.evaluate(() => { clearInterval(window.__b2t); return { pcts: window.__b2.pcts, other: window.__b2.other }; });
+  check(gone, 'B2: ready: the window closes by itself');
+  check(end.other === 0 && end.pcts.every((v, i) => !i || v >= end.pcts[i - 1]), `B2: never back to the end (${[...new Set(end.pcts)].join(' ')})`);
+  check(end.pcts.at(-1) === 100, `B2: 100 at the end (${end.pcts.at(-1)})`);
   await ctx.close(); server.close();
 }
 
