@@ -85,6 +85,35 @@ class WebAnchorsTest {
         assertTrue(Engine.planParse("p=$plain").contains("\"anchors\":null"))
     }
 
+    @Test fun aPlanFromElsewhereGetsNoneAndUndoBringsThemBack() {
+        val longer = "$pts;47.700007,11.700008"
+        Engine.historyReplace(pts, longer)
+        assertEquals("", Engine.anchorsNow())
+        assertEquals(pts, Engine.historyStep("undo", longer))
+        assertEquals(code, encode())
+    }
+
+    @Test fun theirMapDataIsFetchedForTheirActivityOnly() {
+        val line = "46.900000,10.000000;46.900000,11.000000;46.900000,12.000000"
+        val far = "{\"activity\":\"HIKE\",\"sac\":3,\"entries\":[{\"i\":1,\"p\":[46.9,11.0],\"b\":[],\"a\":[[47.6,11.5]]}]}"
+        val plain = Engine.partsNeeded(line, "HIKE")
+        Engine.historyImport("#")
+        Engine.planArrive(line, far)
+        assertNotEquals(plain, Engine.partsNeeded(line, "HIKE"))
+        assertEquals(Engine.partsNeeded(line, "BIKE_TOURING").length > 0, true)
+        Engine.historyImport("#")
+        Engine.planArrive(line, "")
+        val bike = Engine.partsNeeded(line, "BIKE_TOURING")
+        Engine.planArrive(line, far)
+        assertEquals(bike, Engine.partsNeeded(line, "BIKE_TOURING"))
+    }
+
+    @Test fun onlyTheAnchorsOfTheProfileCountWhenPlansAreCompared() {
+        assertEquals(anchorsText(), Engine.anchorsCounting(pts, "HIKE", 3))
+        assertEquals("", Engine.anchorsCounting(pts, "HIKE", 2))
+        assertEquals("", Engine.anchorsCounting("47.0,11.0;47.2,11.2", "HIKE", 3))
+    }
+
     @Test fun aLinkGivesItsCodeByTheRuleOfPlanCode() {
         assertEquals("AbC-_1", Engine.linkCode(" https://plan.onpath.earth/#p=AbC-_1 "))
         assertEquals("AbC", Engine.linkCode("https://x/?a=1&p=AbC&b=2"))

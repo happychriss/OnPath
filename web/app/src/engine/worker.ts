@@ -23,6 +23,7 @@ interface WasmEngine {
   historySnap(routed: string, snapped: string): void;
   planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string, anchors: string): string;
   anchorsNow(): string;
+  historyReplace(before: string, after: string): void;
   anchorsLive(points: string, kept: string): string;
   planArrive(points: string, json: string): void;
   planParse(text: string): string;
@@ -79,7 +80,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -395,7 +396,7 @@ const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
 // planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
 // an open „Weiter warten?“ – WebPlanChain.runExport)
-const HISTORY = new Set(['planArrive', 'historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
+const HISTORY = new Set(['planArrive', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
   'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {

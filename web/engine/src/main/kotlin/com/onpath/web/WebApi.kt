@@ -182,8 +182,18 @@ object Engine {
     }
 
     fun partsNeeded(points: String, activity: String = ""): String =
-        Rd5Parts.forCorridor(parsePoints(points), OfflineCorridor.marginM(activityOrNull(activity))).filter { it !in have }
+        Rd5Parts.forCorridor(corridorPoints(parsePoints(points), activityOrNull(activity)), OfflineCorridor.marginM(activityOrNull(activity))).filter { it !in have }
             .joinToString(",", "[", "]") { "[" + str(it.tile) + "," + it.index + "]" }
+
+    /**
+     * The list the corridor runs along: the open plan's anchors are routed, so their map data is fetched too (detour-stitch.md
+     * §8.1, §8.5: an anchor never makes a route worse). By activity only: a T level the anchors do not count for loads a little more.
+     */
+    private fun corridorPoints(wps: List<GeoPoint>, act: Activity?): List<GeoPoint> {
+        val set = chain.plan.anchorSet
+        if (act == null || set.anchors.isEmpty() || set.profile?.activity != act || !same6(chain.plan.points.toList(), wps)) return wps
+        return PlanAnchors.expand(wps, set.anchors, emptySet()).points
+    }
 
     /** An Activity name, or null when empty / unknown (never throws: a wrong name means "not known"). */
     private fun activityOrNull(name: String): Activity? = Activity.entries.firstOrNull { it.name == name }
@@ -658,6 +668,9 @@ object Engine {
     /** One undoable change of the points [before] → [after] (PlanEditState.change). */
     fun historyRecord(before: String, after: String) = chain.record(parsePoints(before), parsePoints(after))
 
+    /** One undoable change to a plan from elsewhere (a GPX, a track, a suggestion): it has no anchors, whatever points it shares. */
+    fun historyReplace(before: String, after: String) = chain.recordNew(parsePoints(before), parsePoints(after))
+
     /** "undo" / "redo" on the plan [points] (PlanEditState.undoStep / redoStep): the point list to show, or "null". */
     fun historyStep(op: String, points: String): String {
         val out = chain.step(op != "redo", parsePoints(points)) ?: return "null"
@@ -1094,6 +1107,8 @@ external fun planProgress(text: String)
     Engine.planCode(points, activity, sac, pinned, names, title, anchors)
 
 @JSExport fun anchorsNow(): String = Engine.anchorsNow()
+
+@JSExport fun historyReplace(before: String, after: String) = Engine.historyReplace(before, after)
 
 @JSExport fun anchorsCounting(points: String, activity: String, sac: Int): String = Engine.anchorsCounting(points, activity, sac)
 
