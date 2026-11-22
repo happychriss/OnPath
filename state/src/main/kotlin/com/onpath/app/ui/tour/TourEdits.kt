@@ -329,7 +329,7 @@ class TourEdits(
         val off = if (pos != null) 1 else 0
         val pins = ahead.indices.filter { ahead[it] in pinned }.map { it + off }.toSet()
         // the plan's detour points ahead, without those of the first point: the rider may be past them (detour-stitch.md §8.3)
-        val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, com.onpath.app.routing.PlanAnchors.forAhead(waypoints.toList(), plan.anchors, ahead, off), pins)
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, com.onpath.app.routing.PlanAnchors.forAhead(waypoints.toList(), plan.anchorsFor(act, level), ahead, off), pins)
         val name = savedName ?: host.newRouteName(Txt.s(Res.string.msg_name_route))
         val firstAhead = waypoints.indexOf(ahead.first()) + 1
         // a newer edit stops this run ([recalc]); the legs ahead come from the plan's run just before (LegCache) – only

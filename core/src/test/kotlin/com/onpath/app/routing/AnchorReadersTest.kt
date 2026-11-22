@@ -25,6 +25,7 @@ class AnchorReadersTest {
     private val pts = listOf(a, p, c, d)
     /** P has an anchor on each side, C one behind it. */
     private val anchors = mapOf(1 to Anchors(listOf(x), listOf(y)), 2 to Anchors(after = listOf(z)))
+    private val set = AnchorSet.of(anchors, Activity.HIKE, 2)
 
     // ---- storage
 
@@ -96,7 +97,7 @@ class AnchorReadersTest {
 
     // ---- edits
 
-    private fun session() = PlanSession(pts.toMutableList(), anchorsAtStart = anchors)
+    private fun session() = PlanSession(pts.toMutableList(), anchorsAtStart = set)
 
     @Test fun deletingAPointTakesItsAnchorsAndTheFacingSideOfItsNeighbour() {
         val s = session()
@@ -136,22 +137,44 @@ class AnchorReadersTest {
 
     @Test fun anchorsArriveOnlyWithExactlyTheirPoints() {
         val s = PlanSession(mutableListOf(a, d))
-        s.arriving(pts, anchors)
+        s.arriving(pts, set)
         s.edit { clear(); addAll(pts) }
         assertEquals(anchors, s.anchors)
         val other = PlanSession(mutableListOf(a, d))
-        other.arriving(pts, anchors)
+        other.arriving(pts, set)
         other.edit { clear(); addAll(listOf(a, c, d)) } // another plan came first: they are not taken
         assertEquals(emptyMap<Int, Anchors>(), other.anchors)
     }
 
-    @Test fun clearingGoesThroughTheUndoStepsToo() {
+    @Test fun anchorsCountOnlyOnTheirProfileAndAreBackAfterACancel() {
         val s = session()
-        s.edit { removeAt(3) }
-        s.clearAnchors()
-        assertEquals(emptyMap<Int, Anchors>(), s.anchors)
-        s.replace(s.undo()!!)
-        assertEquals(emptyMap<Int, Anchors>(), s.anchors)
+        assertEquals(anchors, s.anchorsFor(Activity.HIKE, 2))
+        assertEquals("another T level", emptyMap<Int, Anchors>(), s.anchorsFor(Activity.HIKE, 3))
+        assertEquals("another activity", emptyMap<Int, Anchors>(), s.anchorsFor(Activity.BIKE_TOURING, 2))
+        assertEquals("nothing was thrown away: the same profile again", anchors, s.anchorsFor(Activity.HIKE, 2))
+    }
+
+    @Test fun aBikesTLevelIsNoOtherProfile() {
+        val bike = AnchorSet.of(anchors, Activity.BIKE_TOURING, 2)
+        assertEquals(anchors, bike.forProfile(Activity.BIKE_TOURING, 4))
+    }
+
+    @Test fun anUndoStepKeepsTheProfileOfItsAnchors() {
+        val s = session()
+        s.edit { clear() }
+        s.arriving(listOf(a, d), AnchorSet.of(mapOf(0 to Anchors(after = listOf(x))), Activity.BIKE_TOURING, 2))
+        s.edit { addAll(listOf(a, d)) }
+        s.replace(s.undo()!!) // the empty plan
+        s.replace(s.undo()!!) // the hike
+        assertEquals(anchors, s.anchorsFor(Activity.HIKE, 2))
+        assertEquals(emptyMap<Int, Anchors>(), s.anchorsFor(Activity.BIKE_TOURING, 2))
+    }
+
+    @Test fun theStoredSetKeepsItsProfile() {
+        val back = com.onpath.app.data.AnchorsJson.readSet(com.onpath.app.data.AnchorsJson.writeSet(pts, set), pts)
+        assertEquals(set, back)
+        assertEquals(AnchorSet.NONE, com.onpath.app.data.AnchorsJson.readSet("{broken", pts))
+        assertEquals(AnchorSet.NONE, com.onpath.app.data.AnchorsJson.readSet("""{"activity":"NO_SUCH","sac":2,"entries":[]}""", pts))
     }
 
     @Test fun anEmptiedPlanHasNoAnchorsAndUndoBringsThem() {

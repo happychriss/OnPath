@@ -9,6 +9,30 @@ data class Anchors(val before: List<GeoPoint> = emptyList(), val after: List<Geo
     val size: Int get() = before.size + after.size
 }
 
+/** The profile a line was routed with: the activity, and the T level only for a hike (no other activity's route depends on it). */
+data class AnchorProfile(val activity: Activity, val sac: Int) {
+    companion object {
+        fun of(activity: Activity, sac: Int) = AnchorProfile(activity, if (activity == Activity.HIKE) sac else 0)
+    }
+}
+
+/**
+ * A plan's anchors with the [profile] whose line they lie on (§2). They count only for that profile ([forProfile]): under
+ * another activity or T level the plan routes plain, and back on its profile (a Cancel, the user's own way back) they count
+ * again. So no path that changes the activity can route or save them under the wrong one.
+ */
+data class AnchorSet(val anchors: Map<Int, Anchors> = emptyMap(), val profile: AnchorProfile? = null) {
+    fun forProfile(activity: Activity, sac: Int): Map<Int, Anchors> =
+        if (anchors.isNotEmpty() && profile == AnchorProfile.of(activity, sac)) anchors else emptyMap()
+
+    companion object {
+        val NONE = AnchorSet()
+        /** [anchors] of a plan routed with [activity] / [sac]; an unknown activity = none. */
+        fun of(anchors: Map<Int, Anchors>, activity: Activity?, sac: Int): AnchorSet =
+            if (activity == null || anchors.isEmpty()) NONE else AnchorSet(anchors, AnchorProfile.of(activity, sac))
+    }
+}
+
 /**
  * The list the Planner routes (docs/design/detour-stitch.md §1, §8.1): the visible points with each point's anchors in
  * front of and behind it. [pins] are the pinned visible indices mapped into [points]. [visibleIndex] has one entry per

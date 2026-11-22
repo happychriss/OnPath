@@ -1,6 +1,7 @@
 package com.onpath.app.ui.plan
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.LegCache
@@ -30,7 +31,7 @@ class PlanAnchorsReaderTest {
     private val anchors = mapOf(1 to Anchors(listOf(x), listOf(y)))
 
     private fun loaded(store: Store = Store()) = PlanDocument(store).also { d ->
-        d.arriving(listOf(a, p, c), anchors)
+        d.arriving(listOf(a, p, c), AnchorSet.of(anchors, Activity.HIKE, 2))
         d.edit { clear(); addAll(listOf(a, p, c)) }
     }
 
@@ -43,15 +44,15 @@ class PlanAnchorsReaderTest {
     @Test fun aLoadedPlanHasItsAnchorsAndTheyAreStored() {
         val store = Store()
         val d = loaded(store)
-        assertEquals(anchors, d.anchors)
-        assertEquals(anchors, PlanDocument(store).anchors) // the next run of the app
+        assertEquals(anchors, d.anchorSet.anchors)
+        assertEquals(anchors, PlanDocument(store).anchorSet.anchors) // the next run of the app
     }
 
     @Test fun aRestartWithOtherPointsDropsThem() {
         val store = Store()
         loaded(store)
         store.points = listOf(a, g(46.21), c) // the points were written, the anchors not (a kill between two writes)
-        assertEquals(emptyMap<Int, Anchors>(), PlanDocument(store).anchors)
+        assertEquals(emptyMap<Int, Anchors>(), PlanDocument(store).anchorSet.anchors)
     }
 
     @Test fun theRouterGoesThroughTheAnchors() {
@@ -90,18 +91,13 @@ class PlanAnchorsReaderTest {
         assertTrue(e.calls.isEmpty())
     }
 
-    @Test fun clearingReachesTheStoreAndTheUndoSteps() {
+    @Test fun anotherProfileRoutesPlainAndTheWayBackHasThemAgain() {
         val store = Store()
         val d = loaded(store)
-        var heard = 0
-        d.onAnchorsCleared = { heard++ }
-        d.clearAnchors()
-        assertEquals(emptyMap<Int, Anchors>(), d.anchors)
-        assertEquals(null, store.anchorsJson)
-        assertEquals(1, heard)
-        d.edit { removeAt(1) }
-        d.replace(d.undo()!!)
-        assertEquals(emptyMap<Int, Anchors>(), d.anchors)
+        assertEquals(emptyMap<Int, Anchors>(), d.anchorsFor(Activity.HIKE, 3))
+        assertEquals(anchors, d.anchorsFor(Activity.HIKE, 2))
+        assertEquals("a restart keeps which profile they lie on", emptyMap<Int, Anchors>(), PlanDocument(store).anchorsFor(Activity.BIKE_TOURING, 2))
+        assertEquals(anchors, PlanDocument(store).anchorsFor(Activity.HIKE, 2))
     }
 
     @Test fun aSnappedPointKeepsItsAnchors() {
@@ -109,7 +105,7 @@ class PlanAnchorsReaderTest {
         val d = loaded(store)
         val moved = GeoPoint(46.2001, 11.0)
         d.moveSnapped(listOf(a, p, c), listOf(a, moved, c))
-        assertEquals(anchors, d.anchors)
-        assertEquals("stored under the moved point", anchors, PlanDocument(store).anchors)
+        assertEquals(anchors, d.anchorSet.anchors)
+        assertEquals("stored under the moved point", anchors, PlanDocument(store).anchorSet.anchors)
     }
 }

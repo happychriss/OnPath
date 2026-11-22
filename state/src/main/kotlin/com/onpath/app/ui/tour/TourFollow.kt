@@ -230,7 +230,7 @@ class TourFollow(
         return com.onpath.app.data.TourPlan(name = savedName, activity = act.name, sac = level, waypoints = host.stopsAsSaved(pts),
             pinned = plan.pinnedIndices(), line = (r?.points ?: pts).map { com.onpath.app.gpx.TrackPoint(it.lat, it.lon, it.ele) },
             distanceM = r?.distanceM ?: 0.0, ascentM = r?.ascentM ?: 0.0, descentM = r?.descentM ?: 0.0,
-            durationS = r?.durationS ?: 0.0, anchors = plan.anchors)
+            durationS = r?.durationS ?: 0.0, anchors = plan.anchorsFor(act, level))
     }
 
     fun followShown() {

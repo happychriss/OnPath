@@ -185,9 +185,10 @@ class RoutesFlowTest : RoutesFlowBase() {
         val order = app.log.filter { !it.contains("store.") }
         assertEquals(listOf(
             "test: markSeen ${t.id}",
-            "main: pref activity BIKE_TREKKING",
             "main: onTheWay false",
             "main: event NewPlan",
+            // the new activity only after the old plan went under Zuletzt: it is kept with its own
+            "main: pref activity BIKE_TREKKING",
             "main: change 3 points; shown=null; drafts=1; activity=BIKE_TREKKING/T3; pins=1; routesOpen=false",
             "main: place name Start",
             "main: saved Alm ${t.id}",

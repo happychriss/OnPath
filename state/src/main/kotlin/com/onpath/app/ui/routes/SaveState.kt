@@ -205,7 +205,7 @@ open class SaveState(
         if (pts.size < 2 || host.keepWhole()) return // a followed day: the whole multi-day tour goes under Zuletzt
         val r = host.route; val act = host.activity
         val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, host.sac, host.stops(pts), plan.pinnedIndices(),
-            host.datedName(), host.days(pts), plan.anchors) { host.difficulty(r, act) }, why)
+            host.datedName(), host.days(pts), plan.anchorsFor(act, host.sac)) { host.difficulty(r, act) }, why)
         // its Zuletzt entry holds these points now: the plan is that entry "as it is" – an Undo back to them is not
         // "changed", one back to an older version is, and updates the entry again (never dropped, review 2026-11-20)
         if (updated != null) plan.setSaved(plan.linkName, updated, pts)
@@ -252,7 +252,7 @@ open class SaveState(
         val fromDraft = linkedDraft
         val act = host.activity; val level = host.sac
         val stops = host.stops(pts); val pins = plan.pinnedIndices()
-        val anchors = plan.anchors.takeIf { pts == plan.points.toList() } ?: emptyMap()
+        val anchors = plan.anchorsFor(act, level).takeIf { pts == plan.points.toList() } ?: emptyMap()
         step(what, end, {
             runCatching {
                 store.insertPlanned(title, PlannedRow(
@@ -308,7 +308,7 @@ open class SaveState(
         val r = host.route
         val act = host.activity; val level = host.sac
         val stops = host.stops(pts); val pins = plan.pinnedIndices()
-        val anchors = plan.anchors.takeIf { pts == plan.points.toList() } ?: emptyMap()
+        val anchors = plan.anchorsFor(act, level).takeIf { pts == plan.points.toList() } ?: emptyMap()
         val opened = plan.savedPoints?.let { p -> com.onpath.app.sync.SaveRule.pointsKey(p.map { it.lat to it.lon }) }
         val end = { saving = false }
         // changed by sync since it was opened here (review sync H3): save as a copy, the other edit stays

@@ -10,6 +10,8 @@ import com.onpath.app.domain.PlanGuidance
 import com.onpath.app.domain.PlanHistory
 import com.onpath.app.domain.RouteRules
 import com.onpath.app.domain.plan.PlanSession
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.ExpandedPlan
 import com.onpath.app.routing.GeoPoint
@@ -26,7 +28,7 @@ interface PlanStore {
     var savedId: Long
     var savedPoints: List<GeoPoint>?
     /**
-     * The plan's hidden via points as [AnchorsJson] (null = none, docs/design/detour-stitch.md). A store that does not keep
+     * The plan's hidden via points with their profile as [AnchorsJson.writeSet] (null = none, docs/design/detour-stitch.md). A store that does not keep
      * them only loses speed and the exact line after a restart: the legs are routed in full.
      */
     var anchorsJson: String?
@@ -54,7 +56,7 @@ class PlanDocument(
     /** The plan's points, in order – Compose state: the map, the sheet and My routes' live row follow it. */
     val points: SnapshotStateList<GeoPoint> = mutableStateListOf<GeoPoint>().apply { addAll(store.points) }
     private var anchorsStored: String? = store.anchorsJson
-    private val session = PlanSession(points, store.pinned, history, AnchorsJson.read(anchorsStored, points))
+    private val session = PlanSession(points, store.pinned, history, AnchorsJson.readSet(anchorsStored, points))
 
     // ---------------- the points and their history ----------------
 
@@ -65,7 +67,7 @@ class PlanDocument(
     private fun history() { canUndo = session.canUndo; canRedo = session.canRedo }
     private fun stored() {
         store.points = points.toList()
-        val json = AnchorsJson.write(points, session.anchors)
+        val json = AnchorsJson.writeSet(points, session.anchorSet)
         if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json }
     }
 
@@ -141,23 +143,18 @@ class PlanDocument(
 
     // ---------------- hidden via points (docs/design/detour-stitch.md) ----------------
 
-    /** The hidden via points by point index: they follow every edit, Undo brings them back; this stage never makes new ones. */
-    val anchors: Map<Int, Anchors> get() = session.anchors
+    /** The hidden via points with their profile: they follow every edit, Undo brings them back; this stage never makes new ones. */
+    val anchorSet: AnchorSet get() = session.anchorSet
 
-    /** The list the router takes: the points with their anchors and the pins. */
-    fun expanded(): ExpandedPlan = PlanAnchors.expand(points.toList(), session.anchors, session.pinnedIndices())
+    /** The anchors that count for [activity] / [sac]: what is routed, saved and shared (none under another profile). */
+    fun anchorsFor(activity: Activity, sac: Int): Map<Int, Anchors> = session.anchorsFor(activity, sac)
 
-    /** The next change that makes the plan exactly [list] (a plan being loaded) brings [anchors] with it. */
-    fun arriving(list: List<GeoPoint>, anchors: Map<Int, Anchors>) = session.arriving(list, anchors)
+    /** The list the router takes for [activity] / [sac]: the points with the anchors that count and the pins. */
+    fun expanded(activity: Activity, sac: Int): ExpandedPlan =
+        PlanAnchors.expand(points.toList(), anchorsFor(activity, sac), session.pinnedIndices())
 
-    /** All anchors go, Undo steps included: the activity or T level changed, they lie on the other profile's line. */
-    fun clearAnchors() {
-        if (session.anchors.isNotEmpty()) com.onpath.app.debug.Problems.trace("plan", "Activity / T level changed: the plan's detour points go")
-        session.clearAnchors(); stored(); onAnchorsCleared?.invoke()
-    }
-
-    /** Multi-day tours: the whole tour kept beside a followed day loses its anchors too. */
-    var onAnchorsCleared: (() -> Unit)? = null
+    /** The next change that makes the plan exactly [list] (a plan being loaded) brings [set] with it. */
+    fun arriving(list: List<GeoPoint>, set: AnchorSet) = session.arriving(list, set)
 
     // ---------------- the saved route the plan belongs to ----------------
 

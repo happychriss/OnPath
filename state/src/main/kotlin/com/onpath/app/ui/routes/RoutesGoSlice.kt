@@ -261,7 +261,7 @@ class RoutesGoSlice(
         val pts = plan.points.toList()
         // the route's name: as saved, else the name a link brought while its points are unchanged
         val title = plan.savedName ?: links.title(pts)
-        links.share(com.onpath.app.routing.PlanLinks.share(pts, planRoute.activity, planRoute.sac, plan.pinnedIndices(), host::stopName, title, plan.anchors), pts.size, title)
+        links.share(com.onpath.app.routing.PlanLinks.share(pts, planRoute.activity, planRoute.sac, plan.pinnedIndices(), host::stopName, title, plan.anchorsFor(planRoute.activity, planRoute.sac)), pts.size, title)
     }
 
     /**

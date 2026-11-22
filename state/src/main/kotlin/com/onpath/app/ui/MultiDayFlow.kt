@@ -10,6 +10,8 @@ import com.onpath.app.debug.Problems
 import com.onpath.app.domain.plan.DayFollow
 import com.onpath.app.domain.plan.DayPart
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.DayLine
 import com.onpath.app.routing.GeoPoint
@@ -111,35 +113,38 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     fun snapped(moves: Map<GeoPoint, GeoPoint>) {
         if (moves.isEmpty() || (marks.isEmpty() && day == null)) return
         marks = marks.entries.associate { (p, m) -> (moves[p] ?: p) to m }
-        day = day?.let { c -> c.copy(part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
+        day = day?.let { c -> c.copy(whole = snappedDay(c, moves), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
             endAdded = c.part.endAdded?.let { moves[it] ?: it })) }
         save()
     }
 
     /**
+     * A snap is no edit: the day's points move in the whole tour too, so its detour points stay on the legs at the day's
+     * borders. Only a tour with some (a plain tour takes the new values in [pointsChanged] as ever), only inside the day.
+     */
+    private fun snappedDay(c: DayContext, moves: Map<GeoPoint, GeoPoint>): SharedPlan {
+        if (c.whole.anchors.isEmpty()) return c.whole
+        return c.whole.copy(points = c.whole.points.mapIndexed { i, p -> if (i in c.part.from..c.part.to) moves[p] ?: p else p })
+    }
+
+    /**
      * The plan's points are [points] now (any edit, Undo, the router's snap): while a day is followed, the change goes
      * back into the whole tour ([DayFollow.writeBack]). [pinned] / [nameOf] = the plan's pins and names by value, [anchors] =
-     * its detour points by index of [points] (null: not known for these points, they follow their points in the tour).
+     * its detour points by index of [points] (null: not known for these points, or of another profile than the tour's: the
+     * tour's follow their points).
      */
-    fun pointsChanged(points: List<GeoPoint>, pinned: Set<GeoPoint>, anchors: Map<Int, Anchors>? = null, nameOf: (GeoPoint) -> String?) {
+    fun pointsChanged(points: List<GeoPoint>, pinned: Set<GeoPoint>, anchors: AnchorSet? = null, nameOf: (GeoPoint) -> String?) {
         val c = day ?: return
         if (linkedId() != c.tour.id || points.size < 2 || points == c.part.points) return
         try {
-            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf, anchors)
+            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf,
+                anchors?.takeIf { it.anchors.isEmpty() || it.profile == AnchorProfile.of(c.whole.activity, c.whole.sac) }?.anchors)
             day = c.copy(whole = whole, part = part)
             Problems.trace("plan", "Day ${c.part.first}–${c.part.last}: change written back into the tour (${whole.points.size} points)")
             save()
         } catch (e: Exception) {
             Problems.error("plan", "A change of the day could not be written back into the multi-day tour – Save keeps the day's plan", e)
         }
-    }
-
-    /** The plan's detour points were cleared (another activity / T level): the whole tour kept beside a day loses them too. */
-    fun anchorsCleared() {
-        val c = day ?: return
-        if (c.whole.anchors.isEmpty()) return
-        day = c.copy(whole = c.whole.copy(anchors = emptyMap()), part = c.part.copy(anchors = emptyMap()))
-        save()
     }
 
     // ---- the days -------------------------------------------------------------------------------------------------

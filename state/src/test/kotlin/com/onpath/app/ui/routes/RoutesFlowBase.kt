@@ -170,6 +170,8 @@ abstract class RoutesFlowBase {
         val prefs = MemoryPrefs()
         val router = FakeRouter(File(tmp.root, "legs")).also { r -> r.onRoute = { log += "$where: router call" } }
         val plansOf = HashMap<Long, List<GpxWaypoint>>()
+        /** Every row written under Zuletzt, in order. */
+        val draftRows = ArrayList<RecentPlans.DraftRow>()
         val timesOf = HashMap<Long, TourTimes>()
         val ridesOf = HashMap<Long, com.onpath.app.rides.RideRecord>()
         var failPlanPoints = false
@@ -257,6 +259,7 @@ abstract class RoutesFlowBase {
                     row.pinned, difficulty = row.difficulty, days = row.days, clearDays = row.days == null)
             override fun insertDraft(row: RecentPlans.DraftRow): Long =
                 db.insertTour(TourKind.PLANNED, row.name, row.activity, row.sac, row.segments, row.waypoints, distance = row.distanceM, draft = true)
+                    .also { draftRows += row }
             override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) {}
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun tourChanged(id: Long) {}

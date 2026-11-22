@@ -126,9 +126,6 @@ class MultiDaySlice(
         // the plan's saved link and the router's snap reach the night marks (PlanDocument)
         plan.onLinked = flow::linked
         plan.onSnapped = flow::snapped
-        // another activity / T level: the plan's detour points go, the whole tour's beside a followed day too
-        plan.onAnchorsCleared = flow::anchorsCleared
-        planRoute.onProfileChange = plan::clearAnchors
         // the kept multi-day map areas stay asked for after a restart (MapCells.tourCells)
         runCatching {
             host.cells.tourCells = prefs.multiDayMapCells.mapNotNull(CellId::parse).toSet()
@@ -184,10 +181,10 @@ class MultiDaySlice(
     val overview: Boolean get() = flow.overview
 
     private fun names(pts: List<GeoPoint>) = pts.indices.mapNotNull { i -> stopName(pts[i])?.let { i to it } }.toMap()
-    private fun wholePlan() = waypoints.toList().let { pts -> flow.plan(pts, activity, sac, pinnedIndices(), names(pts), plan.anchors) }
+    private fun wholePlan() = waypoints.toList().let { pts -> flow.plan(pts, activity, sac, pinnedIndices(), names(pts), plan.anchorsFor(activity, sac)) }
 
     /** The plan's detour points when [pts] still are the plan's points (a collected change can be one step behind). */
-    private fun anchorsOf(pts: List<GeoPoint>) = plan.anchors.takeIf { pts == waypoints.toList() }
+    private fun anchorsOf(pts: List<GeoPoint>) = plan.anchorSet.takeIf { pts == waypoints.toList() }
 
     /** What Save stores as the days of [points] (the overview); null for a normal plan or a followed day. */
     fun daysFor(points: List<GeoPoint>): MultiDay? = flow.daysFor(points)
@@ -254,7 +251,7 @@ class MultiDaySlice(
         val part = flow.pickDay(whole, plan.savedPoints) ?: return
         plan.pin(part.pinned.map { part.points[it] })
         part.names.forEach { (i, n) -> rememberPlaceName(part.points[i], n) }
-        plan.arriving(part.points, part.anchors)
+        plan.arriving(part.points, com.onpath.app.routing.AnchorSet.of(part.anchors, whole.activity, whole.sac))
         change { clear(); addAll(part.points) }
         plan.forgetHistory()
         setSaved(tourName, tourId, part.points)
@@ -276,7 +273,7 @@ class MultiDaySlice(
         plan.pin(whole.pinned.mapNotNull { whole.points.getOrNull(it) })
         whole.names.forEach { (i, n) -> whole.points.getOrNull(i)?.let { rememberPlaceName(it, n) } }
         dayMapsMissing = null; dayMapsCells = null
-        plan.arriving(whole.points, whole.anchors)
+        plan.arriving(whole.points, com.onpath.app.routing.AnchorSet.of(whole.anchors, whole.activity, whole.sac))
         change { clear(); addAll(whole.points) }
         plan.forgetHistory()
         setSaved(tourName, flow.tour?.id ?: plan.linkId, opened ?: whole.points)
@@ -306,7 +303,8 @@ class MultiDaySlice(
                 val ok = withContext(io) {
                     runCatching {
                         val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, dayLine, act, f)
-                        tours.replacePlanned(c.tour.id, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line), stops, w.pinned, null, days, w.anchors))
+                        tours.replacePlanned(c.tour.id, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line), stops, w.pinned, null, days,
+                            com.onpath.app.routing.AnchorSet.of(w.anchors, w.activity, w.sac).forProfile(act, level)))
                             .also { if (it && name != c.tour.name) tours.rename(c.tour.id, name) }
                     }.onFailure { Problems.error("db", "Saving the multi-day tour with the day's change failed", it) }
                 }
@@ -338,7 +336,8 @@ class MultiDaySlice(
         return runCatching {
             val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, route?.points ?: pts, act, planRoute.planFactors(act))
             tours.insertDraftPlanned(c.tour.name, PlannedRow(act.name, sac, n[0], n[1], n[2], n[3], listOf(line),
-                com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }, w.pinned, null, days, w.anchors))
+                com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }, w.pinned, null, days,
+                com.onpath.app.routing.AnchorSet.of(w.anchors, w.activity, w.sac).forProfile(act, sac)))
             Problems.trace("plan", "Multi-day tour with the day's change kept under Zuletzt")
             host.reloadTourList()
             true

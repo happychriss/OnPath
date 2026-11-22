@@ -118,12 +118,13 @@ class RoutesOpenState(
         val load = PlanLinks.load(plan)
         if (ports.mode != AppMode.PLAN) ports.enterMode(AppMode.PLAN)
         ports.clearShown()
+        // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points
+        save.keepAsDraft("replaced by a plan link")
         ports.setActivity(plan.activity)
         ports.setSac(plan.sac.coerceIn(1, 5))
         // pins before the points: the first route already passes them exactly (recalc reads them at once)
         if (load.pinned.isNotEmpty()) this.plan.pin(load.pinned)
-        save.keepAsDraft("replaced by a plan link")
-        this.plan.arriving(load.points, load.anchors) // with the points: the first route already passes them
+        this.plan.arriving(load.points, com.onpath.app.routing.AnchorSet.of(load.anchors, plan.activity, plan.sac.coerceIn(1, 5))) // with the points: the first route passes them
         ports.change { clear(); addAll(load.points) }
         load.names.forEach { (p, n) -> ports.rememberPlaceName(p, n) }
         ports.saved(null, -1, null) // not in My routes yet: Save asks for a name

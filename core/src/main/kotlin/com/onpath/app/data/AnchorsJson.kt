@@ -1,10 +1,13 @@
 package com.onpath.app.data
 
 import com.onpath.app.debug.Problems
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
 import org.json.JSONArray
+import org.json.JSONObject
 import kotlin.math.abs
 
 /**
@@ -56,6 +59,25 @@ object AnchorsJson {
             out
         } catch (e: Exception) {
             Problems.warn("db", "Stored detour points unreadable – the route is calculated without them", e); emptyMap()
+        }
+    }
+
+    /** [write] with the profile the anchors lie on: the plan kept between two runs (the activity can change while the app is gone). */
+    fun writeSet(points: List<GeoPoint>, set: AnchorSet): String? {
+        val profile = set.profile ?: return null
+        val entries = write(points, set.anchors) ?: return null
+        return "{\"activity\":\"${profile.activity.name}\",\"sac\":${profile.sac},\"entries\":$entries}"
+    }
+
+    /** [writeSet]'s text for [points]; [AnchorSet.NONE] when missing or unreadable (reported). */
+    fun readSet(json: String?, points: List<GeoPoint>): AnchorSet {
+        if (json.isNullOrBlank()) return AnchorSet.NONE
+        return try {
+            val o = JSONObject(json)
+            val name = o.getString("activity")
+            AnchorSet.of(read(o.getJSONArray("entries").toString(), points), Activity.entries.firstOrNull { it.name == name }, o.getInt("sac"))
+        } catch (e: Exception) {
+            Problems.warn("db", "Stored detour points of the plan unreadable – the route is calculated without them", e); AnchorSet.NONE
         }
     }
 

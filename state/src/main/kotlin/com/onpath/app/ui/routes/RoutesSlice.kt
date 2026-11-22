@@ -168,10 +168,6 @@ class RoutesSlice(
             routes.open = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
-                if (!duringTour) {
-                    planRoute.activityOrNull(t.activity)?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
-                    planRoute.sac = t.sac
-                }
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 // stop names and POI pins saved with the plan come back too – the pins
@@ -181,13 +177,20 @@ class RoutesSlice(
                 host.loadedOnTheWay(duringTour && host.touring)
                 // saved routes load without routing again (owner 2026-11-07): its legs from the leg store, else its line
                 // as a stand-in while the run routes; a route routed before is no "very long plan" question again
-                // its detour points lie on the line of the profile it was saved with: another one (a tour keeps its own) routes without them
-                val sameProfile = planRoute.activityOrNull(t.activity) == planRoute.activity &&
-                    (planRoute.activity != Activity.HIKE || t.sac == planRoute.sac)
-                val anchors = if (sameProfile) t.anchors.filterKeys { it in pts.indices } else emptyMap()
-                if (!duringTour) loadStoredLine(t, pts, segs, anchors)
+                // what it is routed with: its own activity and T level, during a tour the tour's. Its detour points count only on
+                // the profile it was saved with ([com.onpath.app.routing.AnchorSet])
+                val savedAct = planRoute.activityOrNull(t.activity)
+                val act = if (duringTour) planRoute.activity else savedAct ?: planRoute.activity
+                val level = if (duringTour) planRoute.sac else t.sac
+                val anchors = com.onpath.app.routing.AnchorSet.of(t.anchors.filterKeys { it in pts.indices }, savedAct, t.sac)
+                if (!duringTour) loadStoredLine(t, pts, segs, anchors.forProfile(act, level), act, level)
                 if (!duringTour) host.routeEvent(RouteRun.Event.NewPlan) // a new plan: its first route may raise the sheet ([SheetRise])
+                // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points
                 save.keepAsDraft("replaced by \"${t.name}\"")
+                if (!duringTour) {
+                    savedAct?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
+                    planRoute.sac = t.sac
+                }
                 plan.arriving(pts, anchors)
                 host.change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { host.rememberPlaceName(pts[i], it) } }
@@ -230,12 +233,12 @@ class RoutesSlice(
      * Saved routes load without routing again (owner 2026-11-07, [com.onpath.app.routing.StoredLine],
      * docs/design/long-bike-routes.md "Saved routes"): every leg fresh in the leg store → the plan run takes them (no
      * router run, the same line); else the stored legs / the saved line [segs] as a stand-in for the next run ([RoutesHost.standIn]).
-     * The saved line counts only when [t]'s activity and T level are the ones the plan is routed with. Either way the
+     * The saved line counts only when [t]'s activity and T level are the ones the plan will be routed with ([act], [level]). Either way the
      * route was routed before: no "very long plan" question for it ([RouteRun.longOk]).
      */
-    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>, anchors: Map<Int, com.onpath.app.routing.Anchors>) {
+    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>, anchors: Map<Int, com.onpath.app.routing.Anchors>,
+                                       act: Activity, level: Int) {
         if (pts.size < 2) return
-        val act = planRoute.activity; val level = planRoute.sac
         val lineFits = planRoute.activityOrNull(t.activity) == act && (act != Activity.HIKE || t.sac == level)
         val line = if (lineFits) segs.flatten().map { it.toGeo() } else emptyList()
         val pins = t.pinned.filter { it in pts.indices }.toSet()

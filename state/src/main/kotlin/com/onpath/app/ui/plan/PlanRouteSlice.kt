@@ -133,18 +133,8 @@ class PlanRouteSlice(
     // ---------------- activity ----------------
 
     // Every app start begins with the last chosen activity and hiking level (owner; fresh install Hike T2).
-    private var activityNow by mutableStateOf(prefs.activity)
-    private var sacNow by mutableStateOf(prefs.sac)
-
-    /** The profile the plan is routed with changed (a hike's T level counts, another activity's does not): its detour points go. */
-    var onProfileChange: (() -> Unit)? = null
-
-    var activity: Activity
-        get() = activityNow
-        set(v) { if (v != activityNow) { activityNow = v; onProfileChange?.invoke() } }
-    var sac: Int
-        get() = sacNow
-        set(v) { if (v != sacNow) { sacNow = v; if (activityNow == Activity.HIKE) onProfileChange?.invoke() } }
+    var activity by mutableStateOf(prefs.activity)
+    var sac by mutableStateOf(prefs.sac)
 
     /** What started the routing run: Cancel takes back only that ([RunCause]). */
     val runCauses = RunCause()

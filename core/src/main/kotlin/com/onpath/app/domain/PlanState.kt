@@ -1,6 +1,6 @@
 package com.onpath.app.domain
 
-import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.GeoPoint
 
 /**
@@ -11,42 +11,36 @@ import com.onpath.app.routing.GeoPoint
 class PlanHistory(private val limit: Int = 100) {
     private val undo = ArrayDeque<List<GeoPoint>>()
     private val redo = ArrayDeque<List<GeoPoint>>()
-    private val undoAnchors = ArrayDeque<Map<Int, Anchors>>()
-    private val redoAnchors = ArrayDeque<Map<Int, Anchors>>()
+    private val undoAnchors = ArrayDeque<AnchorSet>()
+    private val redoAnchors = ArrayDeque<AnchorSet>()
 
     /** The anchors of the step the last [undo] / [redo] gave back. */
-    var takenAnchors: Map<Int, Anchors> = emptyMap()
+    var takenAnchors: AnchorSet = AnchorSet.NONE
         private set
 
     val canUndo: Boolean get() = undo.isNotEmpty()
     val canRedo: Boolean get() = redo.isNotEmpty()
 
     /** Call before changing the plan; [current] is the list as it is now. */
-    fun record(current: List<GeoPoint>, anchors: Map<Int, Anchors> = emptyMap()) {
+    fun record(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE) {
         undo.addLast(current.toList()); undoAnchors.addLast(anchors)
         if (undo.size > limit) { undo.removeFirst(); undoAnchors.removeFirst() }
         redo.clear(); redoAnchors.clear()
     }
 
     /** The list to show after undo, or null when there is nothing to undo. */
-    fun undo(current: List<GeoPoint>, anchors: Map<Int, Anchors> = emptyMap()): List<GeoPoint>? =
+    fun undo(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE): List<GeoPoint>? =
         step(undo, undoAnchors, redo, redoAnchors, current, anchors)
-    fun redo(current: List<GeoPoint>, anchors: Map<Int, Anchors> = emptyMap()): List<GeoPoint>? =
+    fun redo(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE): List<GeoPoint>? =
         step(redo, redoAnchors, undo, undoAnchors, current, anchors)
 
-    private fun step(from: ArrayDeque<List<GeoPoint>>, fromAnchors: ArrayDeque<Map<Int, Anchors>>,
-                     to: ArrayDeque<List<GeoPoint>>, toAnchors: ArrayDeque<Map<Int, Anchors>>,
-                     current: List<GeoPoint>, anchors: Map<Int, Anchors>): List<GeoPoint>? {
+    private fun step(from: ArrayDeque<List<GeoPoint>>, fromAnchors: ArrayDeque<AnchorSet>,
+                     to: ArrayDeque<List<GeoPoint>>, toAnchors: ArrayDeque<AnchorSet>,
+                     current: List<GeoPoint>, anchors: AnchorSet): List<GeoPoint>? {
         val prev = from.removeLastOrNull() ?: return null
-        takenAnchors = fromAnchors.removeLastOrNull() ?: emptyMap()
+        takenAnchors = fromAnchors.removeLastOrNull() ?: AnchorSet.NONE
         to.addLast(current.toList()); toAnchors.addLast(anchors)
         return prev
-    }
-
-    /** No step keeps anchors any more (an activity / T level change: they lie on the other profile's line, §2). */
-    fun clearAnchors() {
-        for (q in listOf(undoAnchors, redoAnchors)) for (i in q.indices) q[i] = emptyMap()
-        takenAnchors = emptyMap()
     }
 
     /**
@@ -68,14 +62,14 @@ class PlanHistory(private val limit: Int = 100) {
     fun snapshot(): Pair<List<List<GeoPoint>>, List<List<GeoPoint>>> = undo.toList() to redo.toList()
 
     /** The anchors of [snapshot]'s steps, in the same order. */
-    fun anchorSnapshot(): Pair<List<Map<Int, Anchors>>, List<Map<Int, Anchors>>> = undoAnchors.toList() to redoAnchors.toList()
+    fun anchorSnapshot(): Pair<List<AnchorSet>, List<AnchorSet>> = undoAnchors.toList() to redoAnchors.toList()
 
     /** Takes [snapshot]'s lists back as they were (no step, nothing trimmed), with [anchorSnapshot]'s; a step without any has none. */
     fun restore(undoSteps: List<List<GeoPoint>>, redoSteps: List<List<GeoPoint>>,
-                undoAnchorSteps: List<Map<Int, Anchors>> = emptyList(), redoAnchorSteps: List<Map<Int, Anchors>> = emptyList()) {
+                undoAnchorSteps: List<AnchorSet> = emptyList(), redoAnchorSteps: List<AnchorSet> = emptyList()) {
         undo.clear(); undo.addAll(undoSteps.takeLast(limit)); redo.clear(); redo.addAll(redoSteps)
-        undoAnchors.clear(); undoAnchors.addAll(undoSteps.indices.map { undoAnchorSteps.getOrElse(it) { emptyMap() } }.takeLast(limit))
-        redoAnchors.clear(); redoAnchors.addAll(redoSteps.indices.map { redoAnchorSteps.getOrElse(it) { emptyMap() } })
+        undoAnchors.clear(); undoAnchors.addAll(undoSteps.indices.map { undoAnchorSteps.getOrElse(it) { AnchorSet.NONE } }.takeLast(limit))
+        redoAnchors.clear(); redoAnchors.addAll(redoSteps.indices.map { redoAnchorSteps.getOrElse(it) { AnchorSet.NONE } })
     }
 
     /** Every point reachable by undo or redo (to keep their "pinned" marks alive). */

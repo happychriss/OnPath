@@ -305,7 +305,7 @@ open class PlanRecalcState(
         }
         val started = elapsedMs()
         routeCancel = RouteCancel()
-        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchors)
+        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchorsFor(act, level))
     }
 
     /** Stage 3 (main): the wait card's legs done / to route ([routeProgress]) – only while the run [gen] is the current one. */
