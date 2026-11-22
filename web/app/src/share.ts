@@ -4,20 +4,19 @@
 import qrcode from 'qrcode-generator';
 import { t } from './i18n';
 import { icon } from './icons';
+import { problem } from './diag';
 
 let open: HTMLDialogElement | null = null;
 
 export function shareDialog(link: string, title: string | null, hint?: (box: HTMLElement) => void, gpx?: () => void) {
   open?.close();
-  const qr = qrcode(0, 'M');
-  qr.addData(link, 'Byte');
-  qr.make();
+  const svg = qrSvg(link);
   const d = document.createElement('dialog');
   d.className = 'share';
   d.innerHTML = `
     <h2>${esc(t('web_share'))}</h2>
-    <p class="scanline">${esc(t('web_share_scan'))}</p>
-    <div class="qr" role="img" aria-label="${esc(t('web_share_qr'))}">${qr.createSvgTag({ scalable: true, margin: 2 })}</div>
+    ${svg ? `<p class="scanline">${esc(t('web_share_scan'))}</p>` : ''}
+    ${svg ? `<div class="qr" role="img" aria-label="${esc(t('web_share_qr'))}">${svg}</div>` : ''}
     <p class="muted">${esc(t('web_share_text'))}</p>
     <input id="shareLink" readonly aria-label="${esc(t('web_share_link'))}">
     <div class="row">
@@ -46,6 +45,19 @@ export function shareDialog(link: string, title: string | null, hint?: (box: HTM
   open = d;
   d.showModal();
   hint?.(d.querySelector<HTMLElement>('#shareHint')!); // the one calm line about the app (apphint.ts)
+}
+
+/** The link as a QR code; null when it does not fit one (a long plan): the dialog then offers the link alone, never fails. */
+export function qrSvg(link: string): string | null {
+  try {
+    const qr = qrcode(0, 'M');
+    qr.addData(link, 'Byte');
+    qr.make();
+    return qr.createSvgTag({ scalable: true, margin: 2 });
+  } catch (e) {
+    problem('share', 'The link is too long for a QR code – only the link is offered', e);
+    return null;
+  }
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);

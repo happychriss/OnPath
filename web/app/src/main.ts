@@ -561,6 +561,8 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 let pinTaken: { hit: Hit; at: LatLon; plan: string | null } | null = null;
 /** The next commit opens another plan (a link, a saved or recent plan): it starts with nothing to undo (owner 2026-11-13). */
 let freshHistory = false;
+/** The anchors of the plan the next fresh commit opens (the engine's text, detour-stitch.md §8.16). */
+let nextAnchors: string | null = null;
 async function commit(points: LatLon[], meta?: Meta[]) {
   // the add of a found place (TakenPin): the first commit after it is that add's plan; any later commit drops it
   if (pinTaken) { if (pinTaken.plan == null) pinTaken.plan = enc(points); else pinTaken = null; }
@@ -570,7 +572,11 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const fresh = freshHistory; freshHistory = false;
-  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points), enc(points));
+  const arriving = nextAnchors; nextAnchors = null;
+  if (fresh) engine.anchors = arriving ?? '';
+  // both posted now, in this order: the plan's run head and route come behind them in the one worker
+  const recorded = fresh ? Promise.all([engine.call('historyImport', '#'), engine.call('planArrive', enc(points), arriving ?? '')]).then(([, a]) => a)
+    : engine.call('historyRecord', enc(state.points), enc(points));
   // the tour beside the history: a fresh plan starts with none to undo; else the tour as it was is one undo step
   const tourBefore = state.tour, pointsBefore = state.points, metaBefore = state.meta;
   if (fresh) { tourUndo.length = 0; tourRedo.length = 0; } else { tourUndo.push(tourBefore); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0; }
@@ -1349,7 +1355,7 @@ async function openLink() {
   const shared = await engine.parse(location.href);
   if (!shared) { overlay.remove('link'); status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.length < 2) overlay.remove('link'); // nothing to route: no routing data to wait for
-  if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) { overlay.remove('link'); return; } // our own address update
+  if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac && await sameAnchors(shared)) { overlay.remove('link'); return; } // our own address update
   if (state.points.length) await keepAsRecent('plan link opened');
   forgetSaved();
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
@@ -1393,6 +1399,7 @@ async function loadShared(shared: SharedPlan) {
   nextCause = 'other';
   freshHistory = true; // opening a plan is no edit: no undo back to the plan before it
   nextTour = shared.tour ?? null; // a multi-day tour comes with its days and nights
+  nextAnchors = shared.anchors ?? null;
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
 }
 
@@ -1425,12 +1432,17 @@ function fitPadding(): maplibregl.PaddingOptions {
   return room(below) > room(beside) ? below : beside;
 }
 
+/** The open plan runs through the same hidden via points as [shared] on [shared]'s profile (the same points alone are not the same route). */
+async function sameAnchors(shared: SharedPlan) {
+  return (shared.anchors ?? '') === await engine.call('anchorsCounting', enc(shared.points), shared.activity, shared.sac);
+}
+
 /** The current plan in the app's format (for the QR code, the link and the address bar). */
 function sharedPlan(): SharedPlan {
   const names: Record<string, string> = {};
   state.meta.forEach((m, i) => { if (m.name) names[String(i)] = m.name; });
   return { points: state.points, activity: state.activity, sac: state.sac,
-    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title, tour: state.tour };
+    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title, tour: state.tour, anchors: engine.anchors, live: true };
 }
 
 /** Keeps the plan in the address bar (#p=…): a reload or a bookmark brings it back; nothing goes to a server. */
@@ -1935,7 +1947,7 @@ function render() {
  * or title is no change (laptop 2026-11-15, as the app). Compared as codes of the saved plan with the one or the other
  * point list, so both go through the same rounding.
  */
-const pointsOnly = (p: SharedPlan, points: SharedPlan['points']) => engine.encode({ ...p, points, title: null, pinned: [], names: {} });
+const pointsOnly = (p: SharedPlan, points: SharedPlan['points']) => engine.encode({ ...p, points, title: null, pinned: [], names: {}, anchors: null, live: false });
 /**
  * A saved plan's parsed code and its points-only code, kept per code (the same text always gives the same): the plan on
  * the map is compared with its own saved route at every edit, and with every saved route of the folder when it leaves
@@ -2475,7 +2487,8 @@ const plansHost = {
     if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('another plan opened');
     state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
+    // the same points with other anchors are another route: opened, not only renamed
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';') && await sameAnchors(shared)) {
       state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); keepPlanStats(p.plan); return;
     }
     openedOtherRouting = !!p.otherRouting;

@@ -2,6 +2,12 @@
 @file:org.teavm.jso.JSExportClasses(WebStateApi::class)
 package com.onpath.web
 
+import com.onpath.app.data.AnchorsJson
+import com.onpath.app.routing.AnchorSet
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.ExpandedPlan
+import com.onpath.app.routing.PlanAnchors
+
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
@@ -75,12 +81,51 @@ object Engine {
         val wps = parsePoints(points)
         val act = Activity.valueOf(activity)
         legStore.wanted(emptyList())
-        LegSplit.seed(legCache, wps, act, sac) // a point put in on a routed leg: its two halves, no store read
-        val keys = (0 until wps.size - 1).filter { legCache.lookup(wps[it], wps[it + 1], act, sac) == null }
-            .map { LegCache.key(wps[it], wps[it + 1], act, sac) }
+        val exp = PlanAnchors.expand(wps, anchorsOf(wps, act, sac), emptySet())
+        val keys = if (exp.hasAnchors) anchoredKeys(exp, act, sac) else {
+            LegSplit.seed(legCache, wps, act, sac) // a point put in on a routed leg: its two halves, no store read
+            (0 until wps.size - 1).filter { legCache.lookup(wps[it], wps[it + 1], act, sac) == null }
+                .map { LegCache.key(wps[it], wps[it + 1], act, sac) }
+        }
         legStore.wanted(keys).joinToString(",", "[", "]") { str(it) }
     } catch (e: Exception) {
         Problems.warn("routing", "Stored legs not looked up – the plan routes them", e); "[]"
+    }
+
+    /**
+     * The stored legs a plan with anchors may read (detour-stitch.md §8.9, §8.15), leg by leg over the expanded list: its
+     * settled, plain and (touching an anchor) cut key. A leg already settled or exact in memory needs none of them: nothing
+     * in the store can beat it ([LegCache.lookupLeg]'s order).
+     */
+    private fun anchoredKeys(exp: ExpandedPlan, act: Activity, sac: Int): List<LegCache.Key> =
+        (0 until exp.points.size - 1).flatMap { i ->
+            val a = exp.points[i]; val b = exp.points[i + 1]
+            if (legCache.inMemory(a, b, act, sac, settled = true) != null || legCache.isExact(a, b, act, sac)) emptyList()
+            else listOfNotNull(LegCache.key(a, b, act, sac, settled = true), LegCache.key(a, b, act, sac),
+                if (exp.touchesAnchor(i)) LegCache.key(a, b, act, sac, cut = true) else null)
+        }
+
+    /** The anchors that count for the plan [wps] on [act] / [sac]: the open plan's (its profile's, §8.16), none for any other list. */
+    private fun anchorsOf(wps: List<GeoPoint>, act: Activity, sac: Int): Map<Int, Anchors> =
+        if (same6(chain.plan.points.toList(), wps)) chain.plan.anchorsFor(act, sac) else emptyMap()
+
+    /** The open plan's anchors with their profile as text (AnchorsJson.writeSet; "" = none): the page's copy for its plan codes. */
+    fun anchorsNow(): String = AnchorsJson.writeSet(chain.plan.points.toList(), chain.plan.anchorSet) ?: ""
+
+    /** The open plan's anchors when [points] is still that plan, else [kept] (the page's copy from when it read the plan). */
+    fun anchorsLive(points: String, kept: String): String =
+        if (same6(chain.plan.points.toList(), parsePoints(points))) anchorsNow() else kept
+
+    /** The open plan's anchors that count for [activity] / [sac] as text, for comparing with a parsed plan's ("" = none, another plan = none). */
+    fun anchorsCounting(points: String, activity: String, sac: Int): String {
+        val wps = parsePoints(points); val act = Activity.valueOf(activity)
+        return AnchorsJson.writeSet(wps, AnchorSet.of(anchorsOf(wps, act, sac), act, sac)) ?: ""
+    }
+
+    /** A loaded plan [points] brings its anchors [json] ([planParse]'s text; "" = none): they follow its edits from here. */
+    fun planArrive(points: String, json: String) {
+        val pts = parsePoints(points)
+        chain.arrive(pts, AnchorsJson.readSet(json.ifEmpty { null }, pts))
     }
 
     /** The last plan's legs: routed by the router, taken from memory, taken from the browser's store (the smokes' hook). */
@@ -310,7 +355,7 @@ object Engine {
             // steps – each time a leg is done, {"done":2,"total":5} (the app's RouteWait reads the same Planner report)
             val run = PlanRecalcState.Run(gen = 0, pts = wps, pins = parseIndices(pinned), act = act, level = sac,
                 rounds = rounds.coerceAtLeast(1), askAtLimit = rounds >= 1, f = WebPace.factors(act), started = t0,
-                changeBefore = null, standBefore = null)
+                changeBefore = null, standBefore = null, anchors = anchorsOf(wps, act, sac))
             var planner: Planner? = null
             val res = try {
                 PlanRecalcState.route(run, engine(), legCache, RouteCancel(),
@@ -324,7 +369,7 @@ object Engine {
                 return "{\"slow\":${e.rounds},\"legs\":[]}"
             }
             lastResult = res
-            val n = wps.size - 1
+            val n = PlanAnchors.expand(wps, run.anchors, run.pins).points.size - 1 // the legs really routed or read (§8.1)
             val cached = planner?.cachedLegs ?: 0
             lastLegs = "{\"routed\":${n - cached},\"cached\":$cached,\"stored\":${legStore.hits}}"
             // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
@@ -409,6 +454,8 @@ object Engine {
         val r = parsePoints(routed); val s = parsePoints(snapped)
         history.replacePoints(com.onpath.app.routing.WaypointSnap.moves(r, s))
         aliasSnapped(r, s)
+        // by index: the points moved, their anchors stay theirs (a value match would count them as new points)
+        if (r.size == s.size && chain.plan.anchorSet.anchors.isNotEmpty() && same6(chain.plan.points.toList(), r)) chain.snapped(r, s)
     }
 
     /**
@@ -420,6 +467,12 @@ object Engine {
         if (routed.size != snapped.size) return
         val res = lastResultFor(routed) ?: return
         val moved = (0 until routed.size - 1).filter { snapped[it] != routed[it] || snapped[it + 1] != routed[it + 1] }
+        val anchors = anchorsOf(routed, res.activity, res.sac)
+        if (anchors.isNotEmpty()) { // the legs are those of the expanded lists, old and new (detour-stitch.md §8.2)
+            if (moved.isNotEmpty()) legCache.aliasExpanded(PlanAnchors.expand(routed, anchors, emptySet()),
+                PlanAnchors.expand(snapped, anchors, emptySet()), res.activity, res.sac)
+            return
+        }
         // no trace line (the app writes one): the engine's log reaches the page as console errors, which smokes count
         for (i in moved) legCache.alias(routed[i], routed[i + 1], snapped[i], snapped[i + 1], res.activity, res.sac)
     }
@@ -545,25 +598,53 @@ object Engine {
      * The plan code ([PlanCode], the app's own) for the page's plan. [names] = lines "index<TAB>name" (names never
      * hold control characters, PlanCode drops them).
      */
-    fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
-        PlanCode.encode(SharedPlan(
+    fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, anchors: String = ""): String =
+        PlanCode.encode(withAnchors(SharedPlan(
             parsePoints(points), Activity.valueOf(activity), sac, parseIndices(pinned),
             parseNames(names),
             title.ifBlank { null },
-        ))
+        ), anchors))
+
+    /** [plan] with the anchors of [json] that belong to its points and its profile (§8.16); "" = none. */
+    internal fun withAnchors(plan: SharedPlan, json: String): SharedPlan = if (json.isEmpty()) plan else
+        plan.copy(anchors = AnchorsJson.readSet(json, plan.points).forProfile(plan.activity, plan.sac))
+
+    /**
+     * The bare code of a link ([PlanCode.parse]'s rule: "p=" at the start or after # ? &, then the code characters), found
+     * without its Regex: in a freshly loaded Wasm engine that Regex failed on a long code (from ~1,400 characters, seen
+     * 2026-11-22), so a long link opened as "can't be read". Anything else goes to [PlanCode.parse] as it is.
+     */
+    internal fun linkCode(text: String): String {
+        val t = text.trim()
+        if (t.length > LINK_MAX) return t // PlanCode.parse refuses it
+        var at = t.indexOf("p=")
+        while (at >= 0) {
+            if (at == 0 || t[at - 1] in "#?&") {
+                var end = at + 2
+                while (end < t.length && (t[end] in 'A'..'Z' || t[end] in 'a'..'z' || t[end] in '0'..'9' || t[end] == '_' || t[end] == '-')) end++
+                if (end > at + 2) return t.substring(at + 2, end)
+            }
+            at = t.indexOf("p=", at + 1)
+        }
+        return t
+    }
+    /** PlanCode's limit for a whole link. */
+    private const val LINK_MAX = 16_000
 
     /** The plan in a link or code as JSON (points, activity, sac, pinned, names, title), or "null". */
     fun planParse(text: String): String {
-        val p = PlanCode.parse(text) ?: return "null"
+        val p = PlanCode.parse(linkCode(text)) ?: return "null"
         return buildString {
             append("{\"points\":[")
-            p.points.forEachIndexed { i, q -> if (i > 0) append(','); append('[').append(num(q.lat, 5)).append(',').append(num(q.lon, 5)).append(']') }
+            p.points.forEachIndexed { i, q -> if (i > 0) append(','); append('[').append(num(q.lat, 6)).append(',').append(num(q.lon, 6)).append(']') } // 6: tag 7's exact points (§8.12)
             append("],\"activity\":").append(str(p.activity.name))
             append(",\"sac\":").append(p.sac)
             append(",\"pinned\":").append(p.pinned.sorted().joinToString(",", "[", "]"))
             append(",\"names\":").append(p.names.toSortedMap().entries.joinToString(",", "{", "}") { str(it.key.toString()) + ":" + str(it.value) })
             append(",\"title\":").append(p.title?.let { str(it) } ?: "null")
             // multi-day tours (WebDays.kt, 2026-11-17): days, limits, night marks, description – null for a normal plan
+            // the hidden via points with their profile (detour-stitch.md §8.16): the page hands this text back, never reads it
+            append(",\"anchors\":").append(AnchorsJson.writeSet(p.points, AnchorSet.of(p.anchors, p.activity, p.sac))?.let { str(it) } ?: "null")
             append(",\"tour\":").append(WebDays.tourJson(p))
             append('}')
         }
@@ -605,7 +686,16 @@ object Engine {
         val (u, r) = history.snapshot()
         fun list(l: List<List<GeoPoint>>) = l.joinToString("|") { s -> if (s.isEmpty()) "~" else s.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) } }
         // + what the route run keeps (WebPlanChain.runExport: "Plan anyway", why not routed, an open "Weiter warten?")
-        return list(u) + "#" + list(r) + "#" + chain.runExport() + "#" + epoch
+        // + the anchors (§8.16): of the open plan (its points, its set) and of each step, in the steps' order; a step without any is empty
+        val (ua, ra) = history.anchorSnapshot()
+        fun sets(steps: List<List<GeoPoint>>, a: List<AnchorSet>) =
+            steps.indices.joinToString("|") { i -> a.getOrNull(i)?.let { AnchorsJson.writeSet(steps[i], it) } ?: "" }
+        val now = chain.plan.points.toList()
+        val nowSet = AnchorsJson.writeSet(now, chain.plan.anchorSet)
+        val head = list(u) + "#" + list(r) + "#" + chain.runExport() + "#" + epoch
+        if (nowSet == null && ua.all { it.anchors.isEmpty() } && ra.all { it.anchors.isEmpty() }) return head // a plan without: as ever
+        return head + "#" + (if (nowSet == null) "" else now.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) + "#" +
+            (nowSet ?: "") + "#" + sets(u, ua) + "#" + sets(r, ra)
     }
 
     /**
@@ -620,8 +710,14 @@ object Engine {
     fun historyImport(text: String) {
         val parts = text.split("#")
         fun list(s: String?) = if (s.isNullOrEmpty()) emptyList() else s.split("|").map { if (it == "~") emptyList() else parsePoints(it) }
-        history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
+        val undo = list(parts.getOrNull(0)); val redo = list(parts.getOrNull(1))
+        fun sets(s: String?, steps: List<List<GeoPoint>>): List<AnchorSet> {
+            val texts = s.orEmpty().split("|")
+            return steps.indices.map { i -> AnchorsJson.readSet(texts.getOrNull(i)?.ifEmpty { null }, steps[i]) }
+        }
+        history.restore(undo, redo, sets(parts.getOrNull(6), undo), sets(parts.getOrNull(7), redo))
         chain = WebPlanChain(history = history)
+        parts.getOrNull(4)?.takeIf { it.isNotEmpty() }?.let { planArrive(it, parts.getOrNull(5).orEmpty()) }
         parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
         epoch = (maxOf(epoch, parts.getOrNull(3)?.toIntOrNull() ?: 0) + 1) % 2000
     }
@@ -994,8 +1090,16 @@ external fun planProgress(text: String)
 /** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
 @JSExport fun routingInfo(): String = Engine.routingInfo()
 
-@JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
-    Engine.planCode(points, activity, sac, pinned, names, title)
+@JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, anchors: String): String =
+    Engine.planCode(points, activity, sac, pinned, names, title, anchors)
+
+@JSExport fun anchorsNow(): String = Engine.anchorsNow()
+
+@JSExport fun anchorsCounting(points: String, activity: String, sac: Int): String = Engine.anchorsCounting(points, activity, sac)
+
+@JSExport fun anchorsLive(points: String, kept: String): String = Engine.anchorsLive(points, kept)
+
+@JSExport fun planArrive(points: String, json: String) = Engine.planArrive(points, json)
 
 @JSExport fun planParse(text: String): String = Engine.planParse(text)
 
@@ -1179,8 +1283,8 @@ external fun planProgress(text: String)
 
 // ---- multi-day tours (WebDays.kt, docs/design/multi-day-tours.md stages 2 + 3, session „mehrtage“ 2026-11-17) ----
 // [tour] = the page's tour text (WebDays.parseTour), "" = a normal plan
-@JSExport fun planCodeTour(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, tour: String): String =
-    WebDays.planCode(points, activity, sac, pinned, names, title, tour)
+@JSExport fun planCodeTour(points: String, activity: String, sac: Int, pinned: String, names: String, title: String, tour: String, anchors: String): String =
+    WebDays.planCode(points, activity, sac, pinned, names, title, tour, anchors)
 @JSExport fun daysView(points: String, activity: String, sac: Int, pinned: String, names: String, tour: String): String =
     WebDays.view(points, activity, sac, pinned, names, tour)
 @JSExport fun daysRule(op: String, points: String, activity: String, sac: Int, pinned: String, names: String, tour: String,
