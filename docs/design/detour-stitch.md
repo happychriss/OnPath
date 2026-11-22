@@ -54,7 +54,7 @@ Anchors follow their point like pins / names / nights (`PlanEdits.follow`, `keep
 | Delete / move / replace a neighbour | the facing side of P's anchors is dropped (the new neighbour's natural way need not pass them) |
 | Reverse | `before` ⇄ `after`, lists reversed |
 | Round trip / loopStart | no special case (the closing leg is a leg) |
-| Activity / T level change | all anchors cleared (they lie on the other profile's line) – full routing, as today |
+| Activity / T level change | the anchors no longer count (they lie on the other profile's line, §8.16) – full routing, as today |
 | „Ganz neu berechnen" | all anchors cleared, full re-route of the visible points |
 
 All decisions (stitch or not, where the anchors go) are made **once, on the editing device**, from its line, and stored.
@@ -133,6 +133,8 @@ Other devices only read data – no device-dependent geometry decides a route.
 13. **A short trip with a long detour is never cut (found in the review of piece 2b).** The Planner retries such a leg through its middle (`Planner.isShortDetour`), so a cut piece of a hairpin would differ from what a cold device routes (5 % in the reviewer's case). `LegSplit.seed` leaves that piece to the router on every device.
 14. **For the web wiring (laptop), before the Wasm part of `SameRouteTest`.** `WebLegs` has no cut key: a cut leg is written under the plain name, and a cut lookup on a plain leg removes that leg from `given`. It needs `_cut` in the name and the flag through encode and decode, as `LegFiles` does; `MAX_PENDING` follows §8.8.
 15. **The line settles (owner's choice, see below).** For a plan WITH anchors, when the router is idle (lowest priority, dropped on any edit), every leg that is not the router's own answer for its exact 1e-6° ends is routed once more: cut legs and legs kept under a snapped point. Such a real leg is marked exact, wins over a cut leg, and is what a cold device routes. Plans without anchors route as before. A leg whose real route fails keeps what it has and is reported.
+
+16. **Anchors belong to a profile (found in the review of the reader stage, replaces "cleared" in §2).** `AnchorSet(anchors, profile)`, the profile = activity plus, for a hike, the T level. Only `forProfile` is routed, saved or shared. Clearing lost them on a cancelled T level change and before the replaced plan went under Zuletzt; a stored plan keeps its profile, so an activity switched while the app was gone cannot route it through the old line.
 
 ## Questions for the owner
 1. Do speed-up 3's cut points also count for „Ganz neu berechnen" (row shows whenever the route keeps any point of an
