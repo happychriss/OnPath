@@ -19,6 +19,8 @@ Branch `wip/umbau-2026-11-22-stitch-readers`, from 2a47fffb8 with main (1b699958
 6. `Backups.kt`: `m.anchors` on restore.
 7. The check on the Pixel. The menu row belongs to the writer stage.
 
+**State of the app part (donald, 2026-11-22):** points 1–6 built on `wip/donald-2026-11-22-stitch-readers`, plus the findings of two reviews. Checked: gate full, `SameRouteTest` 112 of 112 (JVM), `TourDbMigrationTest` 10 of 10 and `CoreBackupE2ETest` on GitHub's emulator. **Not checked:** point 7 (Pixel), a stitched plan run in the app, the other E2E classes, Wasm with this branch; the fixes after the second review were not reviewed again.
+
 ## What the laptop's web part needs
 1. `Engine.planParse`: points with **6** decimals (§8.12), and the anchors in its JSON. The page keeps them per plan and hands them back.
 2. `Engine.planCode` and `WebDays.plan` take the anchors: today each re-encode drops tag 7 (share, sync, save).
@@ -31,4 +33,5 @@ Branch `wip/umbau-2026-11-22-stitch-readers`, from 2a47fffb8 with main (1b699958
 9. The wait window counts visible legs (§8.4): check it with an anchored plan. Then `same-route-wasm.mjs` again, plus one case: link → page → share again gives the same code.
 
 ## For the writer stage (not started)
+**Before any writer ships (review, not built):** the `anchors` columns store no profile and no hash of the row's points. A build without anchors (0.18.9) can edit a row and leave the column as it is; after an upgrade a point that still matches then routes through an old anchor, on the wrong activity. Store the profile and a hash of all row points, drop on mismatch.
 The idle wiring notes in `handoff-umbau-2026-11-19.md` (State 2026-11-22) still hold. `forInsert` must store its anchors with the profile of the run.
