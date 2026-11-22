@@ -16,6 +16,13 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-22 evening – the next laptop session starts HERE
+- **Stitch in Wasm:** branch `wip/laptop-2026-11-22-stitch-wasm` = 2a47fffb8 (worktree `onpath-stitch`). `WebLegStore` has `_cut` / `_settled` / exact; `web/app/test/same-route-wasm.mjs` compares the exact hashes and refuses other data (DATA.txt). On the laptop's other E10_N45: JVM and Wasm byte-identical on all 112 lines (55 match the files, as expected not all). **The exact check is GREEN on donald (captain's run at 2a47fffb8, recorded data file, no NEIGHBOURS): 112 of 112 hash-equal, peak 2.9 GB, 242 s.** A fresh umbau session builds the readers on `wip/umbau-2026-11-22-stitch-readers` from this commit; nothing of the stitch on main yet. The captain starts a fresh laptop session for the web part of the readers and the modal window.
+- Still open for the web once green: `WebLegStore.remove` does not delete from IndexedDB yet (no worker wiring), `planParse` writes 5 decimals (needs 6), `share.ts` qr limit.
+- Memory: Node 22's Wasm tier-up, not the engine (over 9 GB; 2.84 GB with `--no-wasm-dynamic-tiering`, set by the runner). A real browser tab on a long tour was not measured.
+- **Wait window, the owner's idea (2026-11-22):** make it modal as in the app (`WaitWindowDialog`); that replaces the „own bar“ proposal. Asked in the chat as plain text what Cancel does: like the app (window closes, area loads on beside the map; recommended) or back to the old state. **Build only after his answer.** No question boxes while work runs: they blocked this session for hours.
+- robust-smoke „percent moves“: the bar's first move comes 4–4.5 s in by its own rule; the check now has the 10 s limit. The failing 60 was not reproduced in a browser here.
+
 ## State 2026-11-22 ~00:15 – the next laptop session starts HERE
 - **Planner live at 8cee9a2ec** (owner's yes in the laptop chat; run 44965414468 green, deploy-quick). No standing deploy word: every deploy needs his own yes in this chat.
 - Fixed: a late "detailed map here?" answer after a zoom-out turned the sign into a window (`areas.ts` rested, reproduced in areas-smoke E).

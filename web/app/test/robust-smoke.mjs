@@ -329,7 +329,12 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const from = await p.evaluate(() => window.__card.length);
   await p.click('#reverse', { timeout: 10_000 }).catch(() => {});
   const came = await p.waitForFunction(() => /Calculating the route/.test(document.querySelector('#waitwin .wwtitle')?.textContent ?? ''), null, { timeout: 30_000 }).then(() => true, () => false);
+  const cameAt = Date.now();
   await p.waitForTimeout(4000);
+  // the bar may stand 2 s before it creeps, by time, so on a slow machine its next whole percent can come after these 4 s:
+  // it must move within the limit of „the number never stands“ above (10 s), not sooner
+  await p.waitForFunction((n) => new Set(window.__card.slice(n).filter((x) => !x.gone).map((x) => x.pct)).size > 1, from, { timeout: 6_000 }).catch(() => {});
+  console.log(`(without downloads: the percent's first move within ${((Date.now() - cameAt) / 1000).toFixed(1)} s)`);
   const second = (await p.evaluate((n) => window.__card.slice(n), from)).filter((x) => !x.gone);
   check(came && second.every((x) => /^\d{1,3} %$/.test(x.num) && x.rows.length <= 3) && second.some((x) => x.rows.some((r) => /Section/.test(r))),
     `without downloads: the route's window – its percent, its legs as steps (${second.slice(-3).map((x) => `${x.num} [${x.rows.join(', ')}]`).join(' ; ')})`);
