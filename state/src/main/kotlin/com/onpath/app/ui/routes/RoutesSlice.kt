@@ -252,7 +252,7 @@ class RoutesSlice(
         }
         val (fresh, preview) = found
         Problems.trace("routes", "Loading \"${t.name}\": " + when {
-            fresh -> "all legs stored – no routing"
+            fresh -> "all ${pts.size - 1} legs stored – no routing"
             preview != null -> "stored line shown at once (${preview.stale} legs on older routing data, ${preview.fromLine} from the saved line), routed again"
             else -> "no stored line for these points – routed"
         })

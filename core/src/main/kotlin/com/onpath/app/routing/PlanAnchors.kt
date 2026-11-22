@@ -61,6 +61,8 @@ object PlanAnchors {
     const val ANCHOR_M = 10_000.0
     /** A side is kept only when its leg end is at least [ANCHOR_M] + this far along the line. */
     const val SIDE_MARGIN_M = 2_000.0
+    /** A point ahead this close to its place in the plan is that point, snapped onto the way since ([forAhead]). */
+    const val AHEAD_SAME_M = 500.0
 
     /**
      * [p] as a plan code hands it back (1e-6°, a plain point without elevation or way data): the points a cold device
@@ -315,14 +317,14 @@ object PlanAnchors {
 
     /**
      * The anchors for routing `[position] + ahead` during a tour (§8.3), by index into that list ([off] = 1 with a position
-     * in front, else 0). [ahead] is the end of [plan]: same count, each point at most [StoredLine.TOLERANCE_M] from its
+     * in front, else 0). [ahead] is the end of [plan]: same count, each point at most [AHEAD_SAME_M] from its
      * place (it may have been snapped onto the way since); anything else = none, the legs are routed plain. The first
      * point ahead loses its `before` anchors: the rider may be past them and the line would lead back. All others keep theirs.
      */
     fun forAhead(plan: List<GeoPoint>, anchors: Map<Int, Anchors>, ahead: List<GeoPoint>, off: Int): Map<Int, Anchors> {
         if (anchors.isEmpty() || ahead.isEmpty() || ahead.size > plan.size) return emptyMap()
         val start = plan.size - ahead.size
-        if (ahead.indices.any { Geo.distance(plan[start + it], ahead[it]) > StoredLine.TOLERANCE_M }) return emptyMap()
+        if (ahead.indices.any { Geo.distance(plan[start + it], ahead[it]) > AHEAD_SAME_M }) return emptyMap()
         val out = HashMap<Int, Anchors>()
         for (k in ahead.indices) {
             val a = anchors[start + k] ?: continue
