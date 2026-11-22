@@ -1475,16 +1475,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * the hiker trusts a line that stops short of where they want to go. Null = every point is reached.
      */
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
-        // no gap, no failed leg: a point the T level sends on a long detour ([PlanDetour], owner 2026-11-21) – the less serious line
-        if (gaps.isEmpty()) return if (routeError != null) null else PlanGaps.detourText(planDetours())
+        if (gaps.isEmpty()) return planRecalc.detourText() // no gap: a point the T level sends on a long detour ([PlanDetourCheck])
         PlanGaps.reachText(gaps, planReach)?.let { return it }
         val pts = plan.points.toList()
         return PlanGaps.text(gaps, planRoute.activity) { i -> pts.getOrNull(i)?.let { searchFlow.stopName(it) ?: planEdit.nearbyNames[it] } }
     }
-
-    /** The detours found for the route now on the map ([com.onpath.app.ui.plan.PlanDetourCheck]); none while it is calculated. */
-    private fun planDetours(): List<com.onpath.app.routing.PlanDetour> =
-        if (planRun.routing) emptyList() else planRecalc.detourCheck.detoursFor(route, plan.points)
 
     // ---------------- route warnings: [PlanRouteSlice] (rebuild phase 2 piece 8) ----------------
 
@@ -1505,11 +1500,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * missing piece.
      */
     fun showPlanGap() {
-        val g = planGaps.firstOrNull() ?: run {
-            // the detour hint's red line: the map shows the drawn route around the point
-            planDetours().firstOrNull()?.let { map.showPiece(it.way, null) }
-            return
-        }
+        val g = planGaps.firstOrNull() ?: return planRecalc.detourWay()?.let { map.showPiece(it, null) } ?: Unit // the detour's line
         val way = planReach?.takeIf { it.index == g.index && !g.skipped }?.way
         if (way != null) map.showPiece(way + g.point, null)
         else map.showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))

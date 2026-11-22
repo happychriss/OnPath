@@ -143,10 +143,20 @@ class PlanRecalcSlice(
     private val recordingClient = recording
 
     /** The detour hint's background step ([PlanDetourCheck]): after a route is shown, on the thread nobody waits for. */
-    val detourCheck = PlanDetourCheck(scope, { planRoute.threads.background }, main)
+    private val detourCheck = PlanDetourCheck(scope, { planRoute.threads.background }, main)
 
     /** A new run: the older detour check stops at once and its result goes. */
     override fun newRunStarts() = detourCheck.stop()
+
+    /** The detours of the route now on the map; none while it is calculated or beside a failed leg (the more serious line). */
+    private fun detours(): List<com.onpath.app.routing.PlanDetour> =
+        if (planRun.routing || recalcHost.routeError != null) emptyList() else detourCheck.detoursFor(recalcHost.route, planDoc.points)
+
+    /** The plan sheet's red line for a detour ("② macht 4,2 km Umweg"), null = none. */
+    fun detourText(): String? = com.onpath.app.domain.PlanGaps.detourText(detours())
+
+    /** What a tap on that line shows: the drawn route around the point. */
+    fun detourWay(): List<GeoPoint>? = detours().firstOrNull()?.way
 
     /**
      * Looks for a detour the T level causes, once this run's [routed] result is the one on the map, in Plan only: no routing
