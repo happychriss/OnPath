@@ -56,14 +56,25 @@ class WebLegStore(
         }
         val ok = isFresh(e)
         if (ok && n in given) hits++
-        return LegStore.Stored(e.leg, ok)
+        return LegStore.Stored(e.leg, ok, e.exact)
     }
 
     /** Fresh legs read from what the worker handed over since the last [wanted] (the smokes' count). */
     var hits = 0
         private set
 
-    override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) {
+    override fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) = write(key, from, to, leg, exact = false)
+
+    /** An exact leg (detour-stitch §8.15): one more header line, "exact"; older readers skip it. */
+    override fun putExact(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) = write(key, from, to, leg, exact = true)
+
+    /** A retired cut leg goes from what this store holds. */
+    override fun remove(key: LegCache.Key) {
+        val n = name(key)
+        given.remove(n); fresh.remove(n)
+    }
+
+    private fun write(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult, exact: Boolean) {
         try {
             val fp = fingerprint().ifEmpty { return }
             val parts = (Rd5Parts.forCorridor(listOf(from, to), MARGIN_M) + Rd5Parts.forCorridor(leg.points, MARGIN_M)).sorted()
@@ -72,7 +83,7 @@ class WebLegStore(
             val data = parts.joinToString(";") { "${it.key}=${partVersion(it)}" }
             val n = name(key)
             fresh.remove(n)
-            fresh[n] = encode(Entry(key, fp, data, leg))
+            fresh[n] = encode(Entry(key, fp, data, leg, exact))
             // the worker takes them after each answer; a page that never does (JVM run) keeps only the newest
             while (fresh.size > MAX_PENDING) fresh.remove(fresh.keys.first())
         } catch (e: Exception) {
@@ -111,17 +122,20 @@ class WebLegStore(
     fun text(name: String): String = taking[name] ?: ""
 
     /** One stored leg. [data] = "part=version;…" ([partVersion]). */
-    internal data class Entry(val key: LegCache.Key, val fingerprint: String, val data: String, val leg: RouteResult)
+    internal data class Entry(val key: LegCache.Key, val fingerprint: String, val data: String, val leg: RouteResult,
+                              /** The router's own answer for the key's two exact points (§8.15). */
+                              val exact: Boolean = false)
 
     companion object {
         /** Routing parts within this of a leg's line or straight line are its routing data (LegFiles.MARGIN_M). */
         const val MARGIN_M = 2_000.0
-        /** Legs kept for the worker at most (a plan has at most PlanCode.MAX_POINTS legs, each also under snapped points). */
-        const val MAX_PENDING = 2 * com.onpath.app.routing.PlanCode.MAX_POINTS
+        /** Legs kept for the worker at most (a plan's expanded legs – its points and anchors – each also under snapped points). */
+        const val MAX_PENDING = 2 * (com.onpath.app.routing.PlanCode.MAX_POINTS + com.onpath.app.routing.PlanCode.MAX_ANCHORS)
         private const val MAGIC = "onpath-web-leg 1"
 
-        /** The phone's file name without ".leg" (LegFiles.name): both points, the activity, the T level. */
-        fun name(k: LegCache.Key) = "${k.fromLat}_${k.fromLon}_${k.toLat}_${k.toLon}_${k.activity.name}_${k.sac}"
+        /** The phone's file name without ".leg" (LegFiles.name): both points, the activity, the T level, a cut / settled leg's mark. */
+        fun name(k: LegCache.Key) = "${k.fromLat}_${k.fromLon}_${k.toLat}_${k.toLon}_${k.activity.name}_${k.sac}" +
+            (if (k.cut) "_cut" else if (k.settled) "_settled" else "")
 
         private fun d(v: Double) = v.toRawBits().toString(36)
         private fun f(v: Float) = v.toRawBits().toString(36)
@@ -133,9 +147,11 @@ class WebLegStore(
             val r = e.leg
             append(MAGIC).append('\n')
             append("key\t").append(e.key.fromLat).append('\t').append(e.key.fromLon).append('\t').append(e.key.toLat).append('\t')
-                .append(e.key.toLon).append('\t').append(e.key.activity.name).append('\t').append(e.key.sac).append('\n')
+                .append(e.key.toLon).append('\t').append(e.key.activity.name).append('\t').append(e.key.sac)
+                .append(if (e.key.cut) "\tcut" else if (e.key.settled) "\tsettled" else "").append('\n')
             append("fp\t").append(e.fingerprint).append('\n')
             append("data\t").append(e.data).append('\n')
+            if (e.exact) append("exact\t1\n")
             append("stats\t").append(d(r.distanceM)).append('\t').append(d(r.ascentM)).append('\t').append(d(r.descentM)).append('\t')
                 .append(d(r.durationS)).append('\n')
             append("ways\t").append(shares(r.wayTypes)).append('\n')
@@ -173,7 +189,8 @@ class WebLegStore(
                 if (f[0] == "points") break
             }
             val k = head.getValue("key")
-            val key = LegCache.Key(k[0].toLong(), k[1].toLong(), k[2].toLong(), k[3].toLong(), Activity.valueOf(k[4]), k[5].toInt())
+            val key = LegCache.Key(k[0].toLong(), k[1].toLong(), k[2].toLong(), k[3].toLong(), Activity.valueOf(k[4]), k[5].toInt(),
+                k.getOrNull(6) == "cut", k.getOrNull(6) == "settled")
             val st = head.getValue("stats").map(::d)
             val n = head.getValue("points")[0].toInt()
             require(lines.size >= i + n) { "leg cut off" }
@@ -204,7 +221,7 @@ class WebLegStore(
                 if (m == "-") null else m.split(',').let { GeoPoint(d(it[0]), d(it[1]), it.getOrNull(2)?.ifEmpty { null }?.let(::d)) }
             }
             val leg = RouteResult(pts, st[0], st[1], st[2], st[3], readShares("ways"), readShares("surf"), matched)
-            return Entry(key, head.getValue("fp")[0], head["data"]?.firstOrNull().orEmpty(), leg)
+            return Entry(key, head.getValue("fp")[0], head["data"]?.firstOrNull().orEmpty(), leg, head["exact"]?.firstOrNull() == "1")
         }
     }
 }

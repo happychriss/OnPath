@@ -121,6 +121,21 @@ object Engine {
      * The routing parts [points] need that are not loaded yet – in the phone's corridor for [activity] (an Activity name;
      * "" = not known → the largest corridor): OfflineCorridor, 10 km on foot, 20 km by bike (owner 2026-11-07, app 501db30d).
      */
+    /** SameRouteTest's Wasm part (web/app/test/same-route-wasm.mjs): a plan code routed cold, only really routed legs kept. */
+    private val sameRouteLegs by lazy { LegCache(maxLinePoints = 600_000) }
+
+    /** "clean<TAB>metres\n" + the RouteHash text of the line (SameRouteTest.lineText). */
+    fun sameRouteCase(code: String): String {
+        val plan = PlanCode.decode(code) ?: return "error\t0\n"
+        val exp = com.onpath.app.routing.PlanAnchors.expand(plan.points, plan.anchors, plan.pinned)
+        val r = Planner(engine(), legs = sameRouteLegs).plan(exp, plan.activity, plan.sac)
+        val clean = r.error == null && r.legs.none { it.straight }
+        return buildString {
+            append(if (clean) "clean" else "dirty").append('\t').append(r.distanceM.toRawBits().toString(36)).append('\n')
+            for (p in r.points) { append(Math.round(p.lat * 1e6)); append(','); append(Math.round(p.lon * 1e6)); append('\n') }
+        }
+    }
+
     fun partsNeeded(points: String, activity: String = ""): String =
         Rd5Parts.forCorridor(parsePoints(points), OfflineCorridor.marginM(activityOrNull(activity))).filter { it !in have }
             .joinToString(",", "[", "]") { "[" + str(it.tile) + "," + it.index + "]" }
@@ -950,6 +965,7 @@ external fun planProgress(text: String)
 @JSExport fun putFile(relPath: String, data: Int8Array) = Engine.putFile(relPath, data.copyToJavaArray())
 
 @JSExport fun partsNeeded(points: String, activity: String): String = Engine.partsNeeded(points, activity)
+@JSExport fun sameRouteCase(code: String): String = Engine.sameRouteCase(code)
 
 @JSExport fun putLayout(tile: String, index: Int8Array, tail: Int8Array) =
     Engine.putLayout(tile, index.copyToJavaArray(), tail.copyToJavaArray())

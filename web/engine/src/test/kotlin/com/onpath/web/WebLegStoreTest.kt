@@ -57,6 +57,26 @@ class WebLegStoreTest {
         same(e.leg, back.leg)
     }
 
+    @Test fun cutAndSettledLegsKeepTheirOwnNameKeyAndExactMark() {
+        val plain = LegCache.key(a, b, Activity.HIKE, 3)
+        val cut = plain.copy(cut = true); val settled = plain.copy(settled = true)
+        assertEquals(setOf(WebLegStore.name(plain), WebLegStore.name(plain) + "_cut", WebLegStore.name(plain) + "_settled"),
+            setOf(WebLegStore.name(plain), WebLegStore.name(cut), WebLegStore.name(settled)))
+        for (k in listOf(plain, cut, settled)) for (exact in listOf(false, true)) {
+            val back = WebLegStore.decode(WebLegStore.encode(WebLegStore.Entry(k, "fp", "E10_N45:1=1", leg(), exact)))
+            assertEquals(k, back.key); assertEquals(exact, back.exact); same(leg(), back.leg)
+        }
+    }
+
+    @Test fun aCutLegIsNotReadUnderThePlainKeyAndRemoveTakesOnlyIt() {
+        val store = WebLegStore({ "fp" }, { "1" })
+        val plain = LegCache.key(a, b, Activity.HIKE, 3); val cut = plain.copy(cut = true)
+        store.put(cut, a, b, leg())
+        assertNull(store.get(plain)); assertNotNull(store.get(cut))
+        store.put(plain, a, b, leg()); store.remove(cut)
+        assertNull(store.get(cut)); assertNotNull(store.get(plain))
+    }
+
     @Test fun aStoredLegCountsOnlyWithTheSameFingerprintAndData() {
         var fp = "r1-0123456789ab"; var version = "100"; var missing = false
         val s = WebLegStore({ fp }, { version }, { missing })
