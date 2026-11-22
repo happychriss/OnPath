@@ -115,10 +115,10 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-22, handoff written) Detour stitch on `wip/umbau-2026-11-21-detour-stitch` (be183a93f): SameRouteTest GREEN on the JVM, the owner chose settling. Nothing on main; next the Wasm part (laptop), the captain orders it → handoff-umbau-2026-11-19.md, top state
+- [umbau] (2026-11-22, stopped on the captain's word) Detour stitch readers on `wip/umbau-2026-11-22-stitch-readers` (c4ef54cd5): core + state green, NOT releasable, nothing on main. Web: fresh laptop session; app: donald after his POI fix. Open: review fixes not re-read, Zuletzt change undecided → handoff-umbau-2026-11-19.md, top state
 - [laptop] (2026-11-21) Long-tour speed-ups 2–3: stitch format design (detour as a field of the point) → proposal to [umbau] / [donald] in the backlog, then app + planner; „Ganz neu berechnen“ decided. Planner block closed. Owner of `web/` except tracking's live files.
 - [tracking] (fresh session 2026-11-20 15:00) Share UI on main (dev tools only); next: privacy-text PR, owner's Pixel share, then FOR_EVERYONE = true + line for [donald]; state `docs/team/handoffs/handoff-tracking-2026-11-20.md`
-- [donald] (2026-11-22): 0.18.8 out. **Do not release main yet:** the POI wait fix (be2e6c159) makes a plan edit or second hold during the wait go wrong more often (review); the captain decides fix or revert. Then the detour hint. Top of `handoffs/handoff-donald-2026-11-21.md`
+- [donald] (2026-11-22, stopped, handoff written): **0.18.9 out**, planner deployed. POI rests (repaint cause, compass limit, second-press test) at the top of `handoffs/handoff-donald-2026-11-21.md`. Next, a fresh donald: detour hint + the readers' app part.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next

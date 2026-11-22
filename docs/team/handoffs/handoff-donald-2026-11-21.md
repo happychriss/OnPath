@@ -5,8 +5,44 @@ piece, handoff at ~350k. **The owner's weekend word still holds until Mon 2026-1
 the change's tests, no further question. The Pixel is not on USB. Picture first for anything he sees (`onpath.private/ideen/`;
 `SendUserFile` does not work in this session, give him the GitHub link in the question box).
 
+## State, Sunday 2026-11-22, 20:40: **0.18.9 is out, the planner deployed with it** – read this first
+Release run green at f9bfa79d4, all planner smokes included. The session stopped on the captain's word; a fresh donald takes the detour hint and
+the readers' app part. **Whether his delay is gone is for him to confirm.** His next export shows it: `[poi] Press …` with `frames=` and `end=`.
+
+**Open from the POI work:**
+1. **The cause of the repainting is unknown.** Each compass value on the dot brings ~300 ms of frames; the dot's bearing transition is already 0
+   and setting it changes nothing. The map still repaints while the compass moves: a **battery cost** that stays.
+2. **Limiting the compass updates to the dot** is the remaining lever, not built. It changes how the dot turns, so **he must see it first**.
+3. **No device test for a second press during the wait.** Only the rule table (`PoiHit.afterWaiting`) is tested; the wait is too short to force.
+4. **The fixes after the big review (a33fa2d5f in the branch, 91bb1b8c1 on main) were not reviewed again.**
+5. **The 2.5 s case:** a map that draws nothing for 2.5 s still turns a hold on a symbol into a plain press, so it can set a route point.
+6. That the compass is what his Pixel did is an inference. Measured on the emulator only.
+
+## The POI press rebuilt (now in 0.18.9)
+**His bug, from his two exports (19:16, 19:21):** taps on drawn symbols got no answer; no map idle for 30 s and more, smooth frames, the list
+stale. **Reproduced on the emulator:** a compass value changing on the position dot keeps the map repainting (182 frames, all fully drawn,
+0 idles in 6 s). That this is what his Pixel did is an inference: his exports hold no frame or compass data. The new press line will show it (`frames=`).
+**The ~300 ms of repaint per compass value is NOT explained.** The dot's bearing transition is already 0, and setting it changes nothing (measured).
+Not fixed at the source: the map still repaints while the compass moves (battery). Throttling the dot's updates would change how it turns, so
+he must see it first.
+
+**The press now (aba712dea, a33fa2d5f; replaces be2e6c159's longer wait):**
+- A list miss asks the map right after the next **drawn frame**, in a posted step, never inside the press, at most twice per press.
+- The list is read at a fully drawn frame when no idle came for 600 ms, once per camera stop, not while the camera moves.
+- A press during the wait runs after the earlier one's answer (`PoiHit.afterWaiting`): a repeat is dropped, a tap does not close a menu that just
+  opened, a hold is never lost. The plan is read at the answer.
+- No frame at all: waits up to 2.5 s, then a plain press (a frozen map can still turn a hold on a symbol into a point).
+
+**Checked:** gate; `CorePoiTapE2ETest` 18 of 18 on GitHub and locally at a33fa2d5f, including a new compass test that was red before. Query with the
+compass running on GitHub's slow emulator: 1, 20, 110, 112 ms (four presses); full read 103 ms. One big review (8 findings, all addressed).
+**Not checked:** the review's fixes were not reviewed again; no device test for a second press during the wait (only the rule table, the wait
+is too short to force); nothing on his Pixel. 
+**At 348e558ef, all green:** unit tests, Web planner, `CorePoiTapStillMapE2ETest` on GitHub. **Next session:** the captain's word on 0.18.9, then the detour hint.
+Probe branches for the normal prune list, never to merge: `ci/donald-poi-follow`, `ci/donald-poi-timing`; also `ci/donald-poi-diag`, `-wait`, `-frame`, `-frame-2`.
+The detour hint waits behind this (`wip/donald-2026-11-22-detour-hint`; its Mutkopf line is not built).
+
 ## State, Sunday 2026-11-22 late: the follow-camera hold is settled, **fix on main, NOT released**
-**DO NOT RELEASE main as it is (review of be2e6c159, the captain's condition for 0.18.9).** The longer wait (up to 2 s) widens two windows,
+**(Superseded by the rebuild above.)** The review of be2e6c159: The longer wait (up to 2 s) widens two windows,
 read in the code, not run: (1) a plan edit during the wait (Neu planen, Undo) does not end the waiting press, so the held point lands on
 the changed plan afterwards; (2) a second hold during the wait starts the first hold's measure and cancels it at once, so the first
 hold is lost silently. Both exist within the first second already (0.18.8); this change makes them likelier. The captain decides: fix forward or revert.
