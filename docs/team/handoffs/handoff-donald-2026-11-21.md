@@ -5,6 +5,30 @@ piece, handoff at ~350k. **The owner's weekend word still holds until Mon 2026-1
 the change's tests, no further question. The Pixel is not on USB. Picture first for anything he sees (`onpath.private/ideen/`;
 `SendUserFile` does not work in this session, give him the GitHub link in the question box).
 
+## State, Sunday 2026-11-22 night: the owner shut donald down, everything is saved – read this first
+**Saved, nothing uncommitted:** `wip/donald-2026-11-22-detour-hint` 31a123de7 · `wip/donald-2026-11-22-stitch-readers` f19fa7866 (app part alone) · `wip/donald-2026-11-22-stitch-readers-all` ac64075d3 (all three reader parts, **the one to go on from**). None is on main. Helper worktree `agent-a06e95b0ca1e9485f` is clean, at f19fa7866.
+**Next, in this order:**
+1. **His answer on the detour line** („Waiting for the owner“). On yes: merge the detour branch with main, `gate --full`, compile androidTest, Web planner green, push, then the line for the laptop (below). A test merge of the two branches has 2 conflict(s): resolve them at the second merge.
+2. **His answer on the Zuletzt change** („Waiting for the owner“; the captain asked him). It rides on the readers branch.
+3. **The captain's exact Wasm check on ac64075d3.** Nothing of the readers goes to main before the captain says so.
+4. Then the check on the Pixel (point 7 of the readers' list) and a stitched plan really run in the app: neither has been done.
+5. Writer stage, later: the `anchors` columns need the profile and a hash of the row's points first.
+
+### Details of this state
+**1. Detour hint, `wip/donald-2026-11-22-detour-hint` (31a123de7), NOT on main.** Now also on his Mutkopf plan: „② erst ab T2 erreichbar · 17,4 km Umweg“
+(real route; T1 30.3 km, T2 10.8 km). Picture: `onpath.private/ideen/2026-11-22-umweg-mutkopf/`; **he has not answered.** One big review: fixed a false hint without
+routing data, the check now gives way to a hold and a tour start and ends with the screen. Gate full, real-data replay green. **Not checked:** E2E, a device, the fixes
+not reviewed again. Left open on purpose: two points behind one barrier get no hint. On merge: **a line for the laptop** (`PlanDetour.find` with `reach`, `PlanGaps.detourText`,
+`reachText` with detours; `AppViewModel.kt` is marked checked in `web/parity.json`, so the check will not remind it). Local branch of that name sits in an old helper worktree: push with `HEAD:`.
+
+**2. Readers' app part, `wip/donald-2026-11-22-stitch-readers` (f19fa7866), NOT on main until the captain says.** State and limits: `docs/team/items/2026-11-22-stitch-readers-state.md` on that branch.
+Points 1–6 built; two big reviews (the corrections, then the app part), their findings fixed. Gate full, `SameRouteTest` 112 of 112, `TourDbMigrationTest` 10 of 10, `CoreBackupE2ETest` green on GitHub.
+**Not checked:** the Pixel, a stitched plan in the app, other E2E classes, Wasm with this branch; the last fixes not reviewed again.
+**The open decision from [umbau] got wider:** a replaced plan goes under Zuletzt with its own activity, now also on the round-trip suggestion and „Als Plan übernehmen“, and only when the take succeeds. It changes plans without anchors too: name it in the release notes or decide against it.
+**All three reader parts together: `wip/donald-2026-11-22-stitch-readers-all` (ac64075d3), NOT on main.** Clean merge of the laptop's 641429f22; the only change after it is `web/parity.json` (three app files read, no planner change needed). Gate full and Web planner green at ac64075d3; `TourDbMigrationTest` 10, `CoreBackupE2ETest` 1, `CorePlanE2ETest` 13, `CorePlanLinkE2ETest` 5, all green on GitHub at 0b8ee8064 (the commit before, differs only in that file). The captain runs the exact Wasm check. `linkCode` is in this branch and, identical, in `wip/laptop-2026-11-22-long-link`: merging that one conflicts in `web/app/test/share-smoke.mjs`. Also for the prune list: `ci/donald-stitch-readers-all`, `ci/donald-readers-all-web`.
+**For the writer stage:** the `anchors` columns store no profile or point hash (a rollback can bring a stale anchor back).
+Probe branch for the normal prune list: `ci/donald-stitch-readers`.
+
 ## State, Sunday 2026-11-22, 20:40: **0.18.9 is out, the planner deployed with it** – read this first
 Release run green at f9bfa79d4, all planner smokes included. The session stopped on the captain's word; a fresh donald takes the detour hint and
 the readers' app part. **Whether his delay is gone is for him to confirm.** His next export shows it: `[poi] Press …` with `frames=` and `end=`.
