@@ -1,7 +1,14 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.layout.Box
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.PersonPinCircle
+import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.ShareLocation
+import androidx.compose.material.icons.outlined.WifiTethering
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -40,13 +47,16 @@ class LiveSharePlaceSketchTest {
         recordedM = 5_320.0, elapsedS = 5025, activity = Activity.HIKE, arriveAt = "16:40")
     private val free = NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)
 
-    private fun shot(ui: NavUi, place: SharePlace, state: SharePlaceState, font: Float = 1f) = paparazzi.snapshot {
+    private fun shot(ui: NavUi, place: SharePlace, state: SharePlaceState, font: Float = 1f,
+                     icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.ShareLocation,
+                     heightDp: Int? = null) = paparazzi.snapshot {
         val d = LocalDensity.current
-        CompositionLocalProvider(LocalDensity provides Density(d.density, font), LocalSharePlaceSketch provides SharePlaceSketch(place, state)) {
+        CompositionLocalProvider(LocalDensity provides Density(d.density, font), LocalSharePlaceSketch provides SharePlaceSketch(place, state,
+            if (place == SharePlace.A_COLUMN) Icons.Outlined.Share else icon)) {
             OnPathTheme {
                 Box(Modifier.fillMaxSize()) {
                     MapPlaceholder(Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    Box((if (heightDp != null) Modifier.fillMaxWidth().height(heightDp.dp) else Modifier.fillMaxSize()).padding(top = 32.dp)) {
                         NavigateOverlay(ui, footer = {
                             MapFooter("500 m" to 64.dp) {
                                 MapControls(CompassSpec(ui.headingUp, 0f) {}, showEye = true, onPeek = {}, gps = GpsStatus.GOOD,
@@ -78,4 +88,17 @@ class LiveSharePlaceSketchTest {
     @Test fun cPlannedLive() = shot(planned, SharePlace.C_PILL, SharePlaceState.LIVE)
     @Test fun cPlannedLiveLarge() = shot(planned, SharePlace.C_PILL, SharePlaceState.LIVE, 2f)
     @Test fun cPlannedLiveEn() = en { shot(planned, SharePlace.C_PILL, SharePlaceState.LIVE) }
+
+    private val D = SharePlace.D_TWO_BUBBLES
+    @Test fun dFreeOff() = shot(free, D, SharePlaceState.OFF)
+    @Test fun dFreeLive() = shot(free, D, SharePlaceState.LIVE)
+    @Test fun dPlannedLive() = shot(planned, D, SharePlaceState.LIVE)
+    @Test fun dPlannedWaiting() = shot(planned, D, SharePlaceState.WAITING)
+    @Test fun dPlannedLiveLarge() = shot(planned, D, SharePlaceState.LIVE, 2f)
+    @Test fun dPlannedLiveEn() = en { shot(planned, D, SharePlaceState.LIVE) }
+    @Test fun dIconPerson() = shot(planned, D, SharePlaceState.LIVE, icon = Icons.Outlined.PersonPinCircle)
+    @Test fun dIconWifi() = shot(planned, D, SharePlaceState.LIVE, icon = Icons.Outlined.WifiTethering)
+    /** Small phone height (640 dp) at the largest font: both bubbles + gap against the card and the scale. */
+    @Test fun dSmallLarge() = shot(planned, D, SharePlaceState.LIVE, 2f, heightDp = 640)
+    @Test fun dSmallLargeFree() = shot(free, D, SharePlaceState.LIVE, 2f, heightDp = 640)
 }

@@ -173,9 +173,9 @@ fun MapControls(
     // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
     val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
+    val sketch = LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.A_COLUMN || it.place == SharePlace.D_TWO_BUBBLES }
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
-        val sketch = LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.A_COLUMN }
-        if (sketch != null) add(str(Res.string.live_share) to { SharePlaceColumnButton(sketch.state, size) }) // sketch A, null elsewhere
+        if (sketch != null) add(str(Res.string.live_share) to { SharePlaceColumnButton(sketch.state, size, sketch.icon) }) // sketch A / D, null elsewhere
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
@@ -188,6 +188,20 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
+    if (sketch?.place == SharePlace.D_TWO_BUBBLES && onSettings != null) {
+        // sketch D: a "tour" bubble (share + settings), a gap, the map bubble (the rest)
+        val bubble = RoundedCornerShape(MAP_FAB / 2)
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            listOf(items.take(2), items.drop(2)).forEach { part ->
+                Surface(shape = bubble, color = bg, modifier = Modifier.floatShadow(bubble)) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        part.forEachIndexed { i, item -> if (i > 0) GroupDivider(); item() }
+                    }
+                }
+            }
+        }
+        return
+    }
     Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.floatShadow(RoundedCornerShape(MAP_FAB / 2))) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             items.forEachIndexed { i, item ->

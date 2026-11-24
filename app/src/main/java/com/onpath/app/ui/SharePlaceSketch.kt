@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Share
+import androidx.compose.material.icons.outlined.ShareLocation
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -33,15 +34,17 @@ import com.onpath.strings.*
  * SKETCH ONLY (owner 2026-11-24: "Standort teilen" more visible in Navigate) – where the share entry could stand.
  * Not wired to anything; read from [LocalSharePlaceSketch] (null = nothing changes, the default everywhere).
  */
-enum class SharePlace { A_COLUMN, B_CARD, C_PILL }
+enum class SharePlace { A_COLUMN, B_CARD, C_PILL, D_TWO_BUBBLES }
 enum class SharePlaceState { OFF, LIVE, WAITING }
-data class SharePlaceSketch(val place: SharePlace, val state: SharePlaceState)
+data class SharePlaceSketch(val place: SharePlace, val state: SharePlaceState,
+                            val icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.ShareLocation)
 
 val LocalSharePlaceSketch = compositionLocalOf<SharePlaceSketch?> { null }
 
 /** A: the top button of the map column – same size and look as the other buttons; green + dot while sharing, grey waiting. */
 @Composable
-internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp) {
+internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp,
+                                    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Share) {
     val tint = when (state) {
         SharePlaceState.OFF -> MaterialTheme.colorScheme.onSurfaceVariant
         SharePlaceState.LIVE -> OnPathColors.Green
@@ -49,7 +52,7 @@ internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp) {
     }
     Box(Modifier.size(size).clip(CircleShape).clickable {}.semantics { contentDescription = Txt.s(Res.string.live_share) },
         contentAlignment = Alignment.Center) {
-        Icon(Icons.Outlined.Share, null, tint = tint, modifier = Modifier.size(28.dp))
+        Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
         if (state != SharePlaceState.OFF) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 9.dp)
             .size(8.dp).background(tint, CircleShape))
     }
