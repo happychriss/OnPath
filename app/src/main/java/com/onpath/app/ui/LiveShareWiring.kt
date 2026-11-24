@@ -16,6 +16,7 @@ import com.onpath.app.ui.live.LiveShareSlice
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.live_share
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -76,7 +77,9 @@ object LiveShares {
     private const val KEY = "com.onpath.live.share"
 
     private class Holder(val slice: LiveShareSlice) : AutoCloseable {
-        override fun close() = Unit // the collectors run in the view model's scope and end with it
+        /** The two collectors [attach] starts; set once, right after the holder is made. */
+        var jobs: List<Job> = emptyList()
+        override fun close() { jobs.forEach { it.cancel() } }
     }
 
     /**
@@ -92,7 +95,8 @@ object LiveShares {
 
     /** Makes [vm]'s slice once (the activity's onCreate, main thread) and feeds it: the lane's snapshots, the recording, the clock. */
     fun attach(vm: AppViewModel, app: Context) {
-        if (of(vm) != null) return
+        // the holder, not of(): of() is null while sharing is off, and every onCreate (config change) made a new slice
+        if (vm.getCloseable<Holder>(KEY) != null) return
         val client = EdgeLiveShareClient(app)
         val slice = LiveShareSlice(client, object : LivePrefs {
             override var liveName: String?
@@ -105,17 +109,19 @@ object LiveShares {
             }
             override fun nowMs(): Long = System.currentTimeMillis()
         })
-        vm.addCloseable(KEY, Holder(slice))
+        val holder = Holder(slice)
+        vm.addCloseable(KEY, holder)
         // on the main thread, for as long as the view model lives; the clock ticks only while sharing
-        vm.viewModelScope.launchSafe("live", "follow the live sharing") {
+        val follow = vm.viewModelScope.launchSafe("live", "follow the live sharing") {
             client.live.collectLatest { s ->
                 slice.onSnapshot(s)
                 if (s.sharing) while (true) { delay(TICK_MS); slice.tick() }
             }
         }
-        vm.viewModelScope.launchSafe("live", "follow the recording for sharing") {
+        val rec = vm.viewModelScope.launchSafe("live", "follow the recording for sharing") {
             vm.recState.collect { slice.onRecording(it != null) }
         }
+        holder.jobs = listOf(follow, rec)
     }
 
     /** How often the sign looks at the clock while sharing (the 12-min rule needs no finer step). */

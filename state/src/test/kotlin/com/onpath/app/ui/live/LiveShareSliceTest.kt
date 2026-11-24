@@ -232,4 +232,42 @@ class LiveShareSliceTest {
         w.slice.nameGiven("x".repeat(200))
         assertEquals(LiveShareSlice.MAX_NAME, w.prefs.liveName!!.length)
     }
+
+    /** A busy lane (a push in flight) has not answered the stop yet: the user sees "not sharing" at once and cannot send the dying link. */
+    @Test
+    fun stopHidesSignAndActionsAtOnceWhileTheLaneIsBusy() {
+        val w = World(name = "Christian")
+        w.slice.share()
+        w.lane(LiveSnapshot(sharing = true, link = link, lastOkMs = w.now))
+        w.shared.clear()
+        w.slice.stop()
+        // the lane is busy: no snapshot yet (or the old one again)
+        assertEquals(LiveSign.NONE, w.slice.sign)
+        assertEquals(listOf(LiveAction.SHARE), w.slice.actions)
+        w.slice.shareAgain()
+        assertTrue("the old link is not sent after stop", w.shared.isEmpty())
+        w.lane(LiveSnapshot(sharing = true, link = link, lastOkMs = w.now))
+        assertEquals(LiveSign.NONE, w.slice.sign)
+        w.slice.shareAgain()
+        assertTrue(w.shared.isEmpty())
+        w.lane(LiveSnapshot.OFF)
+        assertEquals(LiveSign.NONE, w.slice.sign)
+    }
+
+    /** "Standort teilen" right after a stop whose DELETE hangs: no old link in the sheet; the new link opens it once. */
+    @Test
+    fun startAfterStopNeverSendsTheOldLink() {
+        val w = World(name = "Christian")
+        w.slice.share()
+        w.lane(LiveSnapshot(sharing = true, link = link))
+        w.shared.clear()
+        w.slice.stop()
+        w.slice.share()
+        assertEquals("the UI reacts at once", listOf(LiveAction.STOP), w.slice.actions)
+        w.lane(LiveSnapshot(sharing = true, link = link))
+        assertTrue("old link stays unsent", w.shared.isEmpty())
+        w.lane(LiveSnapshot(sharing = true, link = "https://plan.onpath.earth/live/#t=NEW"))
+        assertEquals(1, w.shared.size)
+        assertTrue(w.shared[0].contains("#t=NEW"))
+    }
 }
