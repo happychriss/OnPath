@@ -36,6 +36,7 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
     private val exactKeys = HashSet<Key>()
     /** Line points of the legs held (the memory bound beside [capacity], [maxLinePoints]). */
     private var linePoints = 0L
+    private var epochCount = 0
 
     /** Keeps [leg] under [k] (under [lock]); the oldest legs go while more than [capacity] legs or [maxLinePoints] are held. */
     private fun keep(k: Key, leg: RouteResult, exact: Boolean = false) {
@@ -136,12 +137,19 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
      * points (§8.15: both points already 1e-6°); never together with [cut]. Without [exact] an older mark under the key goes.
      */
     fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult, cut: Boolean = false, exact: Boolean = false,
-            settled: Boolean = false) {
+            settled: Boolean = false, epoch: Int? = null) {
         require(!(exact && cut)) { "a cut leg is never exact" }
         require(!(settled && (cut || exact))) { "a settled leg has its own key" }
         val k = key(from, to, activity, sac, cut, settled)
-        synchronized(lock) { keep(k, leg, exact) }
+        synchronized(lock) {
+            if (epoch != null && epoch != epochCount) return // routed on data from before a [clear]: never written
+            keep(k, leg, exact)
+        }
         if (exact) store?.putExact(k, from, to, leg) else store?.put(k, from, to, leg)
+        if (epoch != null) synchronized(lock) {
+            // a clear came while the store was written: the leg goes from memory and store again (it may only be a stale stand-in)
+            if (epoch != epochCount) { map.remove(k)?.let { linePoints -= it.points.size }; exactKeys.remove(k); store?.remove(k) }
+        }
     }
 
     /** A stitch's cut leg goes (memory and [store]): its sub-leg has no route, the full leg settled instead (§8.5, §8.15). */
@@ -210,7 +218,13 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
      * Newer routing data (the same points may route differently now): every leg in memory goes. The [store] keeps its
      * legs – each says by itself whether the data under it changed ([LegStore.Stored.fresh]).
      */
-    fun clear() { synchronized(lock) { map.clear(); exactKeys.clear(); linePoints = 0 } }
+    fun clear() { synchronized(lock) { map.clear(); exactKeys.clear(); linePoints = 0; epochCount++ } }
+
+    /**
+     * Counts the [clear]s. A background job (the [Planner.settle]) takes it at its start and gives it to [put]: a leg it
+     * routed on the routing data from before a clear is then dropped instead of written over the new data's cache.
+     */
+    val epoch: Int get() = synchronized(lock) { epochCount }
 
     companion object {
         /**

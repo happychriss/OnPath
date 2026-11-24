@@ -267,9 +267,9 @@ class DetourSettleTest {
 
     @Test fun aCancelStopsAndKeepsWhatIsDone() {
         val cancel = RouteCancel(); val e = Engine(); val c = cutCache()
-        e.onCall = { cancel.cancel() }
+        e.onCall = { if (e.calls.size == 2) cancel.cancel() } // the second request is cancelled: its answer is not written (W2)
         val s = Planner(e, cancel = cancel, legs = c).settle(stitched, act, sac)
-        assertTrue(s.cancelled); assertEquals(1, e.calls.size)
+        assertTrue(s.cancelled); assertEquals(2, e.calls.size)
         assertEquals(1, s.routed); assertEquals(0, s.failed)
         assertTrue(c.isExact(v0, a, act, sac))
         assertFalse(c.isExact(a, v1, act, sac))
@@ -455,5 +455,59 @@ class DetourSettleTest {
         first.dropCut(v0, a, act, sac)
         assertEquals(1, dir.list()!!.size)
         assertTrue(LegCache(store = files()).isExact(v0, a, act, sac))
+    }
+
+    // ---- epoch, skip, cancel (piece W2: the settling runs in the background) ----
+
+    @Test fun aPutWithAnOldEpochAfterAClearIsDroppedFromMemoryAndStore() {
+        val dir = tmp.newFolder()
+        val c = LegCache(store = LegFiles(dir, fingerprint = { "fp" }, partVersion = { "v1" }))
+        val e0 = c.epoch
+        c.put(v0, a, act, sac, cutLeg(v0, a), settled = true, epoch = e0)
+        assertNotNull("the current epoch writes", c.inMemory(v0, a, act, sac, settled = true))
+        c.clear()
+        assertEquals(e0 + 1, c.epoch)
+        val files = dir.list()!!.size
+        c.put(a, v1, act, sac, cutLeg(a, v1), settled = true, epoch = e0)
+        assertNull("not in memory", c.inMemory(a, v1, act, sac, settled = true))
+        assertEquals("nothing written to the store", files, dir.list()!!.size)
+        c.put(a, v1, act, sac, cutLeg(a, v1), settled = true) // no epoch given: as before
+        assertNotNull(c.inMemory(a, v1, act, sac, settled = true))
+    }
+
+    @Test fun aClearDuringALegsRoutingDropsThatLeg() {
+        val e = Engine(); val c = cutCache()
+        e.onCall = { c.clear() } // new routing data arrives while the first leg is routed
+        val s = Planner(e, legs = c).settle(stitched, act, sac)
+        for (i in 0 until stitched.points.size - 1)
+            assertNull("no leg of the old data is written back", c.inMemory(stitched.points[i], stitched.points[i + 1], act, sac, settled = true))
+        assertTrue(s.routed <= stitched.points.size - 1)
+    }
+
+    @Test fun settleAsksNothingForASkippedLegAndReportsFailedOnes() {
+        val e = Engine(); val c = cutCache()
+        val exp = stitched
+        val skipped = exp.points[0] to exp.points[1]
+        val s = Planner(e, legs = c).settle(exp, act, sac, skip = { x, y -> x == skipped.first && y == skipped.second })
+        assertEquals(3, s.routed)
+        assertTrue("nothing was asked for the skipped leg", e.calls.none { it.first() == skipped.first && it.last() == skipped.second })
+        assertFalse(c.isExact(skipped.first, skipped.second, act, sac))
+        // a failing leg is reported with its exact ends
+        val bad = exp.points[2] to exp.points[3]
+        val e2 = Engine(throwing = { w -> if (w.first() == PlanAnchors.exact(bad.first) && w.last() == PlanAnchors.exact(bad.second)) IllegalStateException("boom") else null })
+        val s2 = Planner(e2, legs = cutCache()).settle(exp, act, sac)
+        assertEquals(1, s2.failed)
+        assertEquals(listOf(PlanAnchors.exact(bad.first) to PlanAnchors.exact(bad.second)), s2.failedLegs)
+    }
+
+    @Test fun aCancelDuringALegsRoutingWritesNothing() {
+        val cancel = RouteCancel()
+        val e = Engine(); val c = cutCache()
+        e.onCall = { cancel.cancel() } // cancelled while the first request runs; the engine still answers
+        val s = Planner(e, cancel, legs = c).settle(stitched, act, sac)
+        assertTrue(s.cancelled)
+        assertEquals(0, s.routed)
+        for (i in 0 until stitched.points.size - 1)
+            assertNull(c.inMemory(stitched.points[i], stitched.points[i + 1], act, sac, settled = true))
     }
 }
