@@ -1253,5 +1253,28 @@ class PlanRecalcFlowTest {
         assertTrue(problems.traced("routing").none { it.startsWith("Settling started") })
     }
 
+    @Test fun aNamedStopDoesNotStopTheStitch() {
+        routePrefs.activity = Activity.BIKE_TOURING
+        plan(settleStart, settleFar); create()
+        names = mapOf(settleStart to "Home")
+        snapTo { p -> GeoPoint(p.lat + 0.00006, p.lon) } // ~7 m: the router's line lies beside the points
+        recalcNow(); finishRun()
+        assertEquals("the named start keeps its place", settleStart, plan.points[0])
+        plan.edit { add(1, settleMiddle) }
+        assertTrue("an insert on the long leg still stitches", plan.anchorsFor(planRoute.activity, planRoute.sac).isNotEmpty())
+    }
+
+    @Test fun aFailedRunForgetsTheLinesSoALaterEditCannotStitchFromThem() {
+        routePrefs.activity = Activity.BIKE_TOURING
+        plan(settleStart, settleFar); create()
+        recalcNow(); finishRun()
+        ui {
+            val run = recalc.begin()!!
+            recalc.taken(run, Result.failure(com.onpath.app.routing.RoutingException("no way")), null, null, null, true)
+        }
+        plan.edit { add(1, settleMiddle) }
+        assertTrue(plan.anchorsFor(planRoute.activity, planRoute.sac).isEmpty())
+    }
+
     private fun assertNotSame(a: Any?, b: Any?) = assertTrue("same object", a !== b)
 }

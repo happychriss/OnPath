@@ -443,6 +443,7 @@ open class PlanRecalcState(
             if (take.adoptBaseline) planBaseline = it.points
         }
             .onFailure {
+                stitched = null // no line is shown from this run: a later edit must not stitch from an older one
                 if (it is com.onpath.app.routing.SlowPlan.TimeLimit) {
                     // the time limit in Plan: ask (the box stays until answered); the points and the line stay as
                     // they are – no straight lines, no error line
@@ -480,7 +481,8 @@ open class PlanRecalcState(
      */
     private fun rememberLines(run: Run, res: com.onpath.app.routing.PlanResult) {
         val now = waypoints.toList()
-        val ours = now == run.pts || (res.moved && now == res.points)
+        // after the snap the plan holds the NAMED result's points (a named stop keeps its place while res.points has it snapped)
+        val ours = now == run.pts || (res.moved && (now == res.points || now == planResult?.points))
         val expanded = com.onpath.app.routing.PlanAnchors.expand(run.pts, run.anchors, run.pins)
         val got = if (ours) com.onpath.app.routing.PlanStitch.linesOf(res.route, expanded, com.onpath.app.routing.AnchorProfile.of(run.act, run.level)) else null
         stitched = got?.let { com.onpath.app.routing.VisibleLines(now, it.profile, it.lines) }
