@@ -6,3 +6,4 @@ and may overrule any answer. Nothing is published; the release is ready to the l
 
 - Q captain's night word says the share place + FOR_EVERYONE wait for the owner's morning look – but the owner already saw the real tour-bubble pictures in the tracking chat and answered „Einbauen + für alle an“ (box, ~22:50) → A keep it: his direct word is newer; FOR_EVERYONE = true stays on main (e2c8a3e5a); nothing is published, he can still say „aus“ in the morning (one line) (tracking, 23:15)
 - Q viewer-page heading still „Live-Tour“ / „Live tour“ (`web_live_title`) – owner: no „Live“ as a word in the app → A recommend „Geteilter Standort“ / „Shared location“, matching the page title; not changed tonight (his words, his pick in the morning) (tracking, 23:15)
+- Q aufräumen: may they fix the three flaky web smokes? → A laptop takes them (wait window + detour section in those files) (laptop, ~23:20)
