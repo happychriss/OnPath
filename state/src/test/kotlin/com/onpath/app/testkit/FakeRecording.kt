@@ -1,11 +1,13 @@
 package com.onpath.app.testkit
 
+import com.onpath.app.data.Geo
 import com.onpath.app.data.TourKind
 import com.onpath.app.debug.Problems
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.navigation.OffRouteDetector
 import com.onpath.app.navigation.VoiceGuide
 import com.onpath.app.recording.GpsWatchdog
+import com.onpath.app.recording.GuidanceGate
 import com.onpath.app.recording.PointFilter
 import com.onpath.app.recording.PointQueue
 import com.onpath.app.recording.RecState
@@ -29,19 +31,28 @@ import kotlinx.coroutines.flow.StateFlow
  * "GPS lost" by [RestWatch.lostAfterMs]. The time is [clock] (the service's elapsed realtime and the fix time in one):
  * no fix for [GAP_MS] = a gap, the stats written every [STATS_MS] by the tick – so a [kill] between two ticks loses
  * what the phone loses. With [nav] the fixes go on to the service's navigation ([FakeNavService]: the real Navigator),
- * and a tick without GPS tells it so, as the service does.
+ * and a tick without GPS tells it so, as the service does; the arrival at the line's end is checked on every fix as
+ * `RecordingService.checkArrived` checks it (guidance quiet from then on, [RecState.arrived]).
+ *
+ * Two clocks, as on the phone: [clock] is the elapsed realtime (ticks, gaps, navigation), [wall] the wall clock
+ * (`System.currentTimeMillis`: the tour's start, the pause's start, a fix's time unless [fix] is given one – `loc.time`).
+ * [permitted] is the precise-location grant, read at every start as the service reads it: without it the start is
+ * refused loudly ([startFailed], the service's `failLoud`) and the tour row is left as it is.
  *
  * Until the service has an Android-free core of its own, these lines mirror its wiring (`TestKitTest` pins the lines
  * they copy). Not here: the motion sensor (no sensor = [MoveWatch][com.onpath.app.recording.MoveWatch] decides), the
  * standing-still GPS rate, ascent, the trip pace, the voice, notifications.
  */
 class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System::currentTimeMillis,
-                    private val nav: FakeNavService? = null) : TourRecorder {
+                    private val nav: FakeNavService? = null, private val wall: () -> Long = clock,
+                    private val permitted: () -> Boolean = { true }) : TourRecorder {
     companion object {
         /** `RecordingService.GAP_MS`: no fix for longer = the next one comes after a gap. */
         const val GAP_MS = 30_000L
         /** `RecordingService.tick`: the stats go to the tour row every 10 s. */
         const val STATS_MS = 10_000L
+        /** `RecordingService`'s log line when it refuses to record without precise location (`failLoud`). */
+        const val NO_PERMISSION = "Recording stopped: OnPath needs precise location. Allow it in Settings → Apps → OnPath → Permissions."
     }
 
     private val _state = MutableStateFlow<RecState?>(null)
@@ -54,6 +65,9 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         private set
     /** "No GPS after a restart" notifications ([GpsWatchdog]) so far. */
     var watchdogAlarms = 0
+        private set
+    /** Why the service stopped by itself (`RecordingService.startFailed`: the app says it); null = nothing. */
+    var startFailed: String? = null
         private set
 
     private var tourId = -1L
@@ -68,8 +82,9 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     override fun start(activity: String, sac: Int) {
         commands += "start $activity $sac"
         if (running) return // the service ignores a second start while recording
+        if (refused()) return
         val now = clock()
-        val id = tours.insertTour(TourKind.RECORDED, "Tour", activity, sac, state = "active", createdMs = now)
+        val id = tours.insertTour(TourKind.RECORDED, "Tour", activity, sac, state = "active", createdMs = wall())
         begin(id, TourRun(), now, sticky = false)
         tours.finishOtherActive(tourId)
     }
@@ -77,6 +92,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     override fun continueTour(tourId: Long) {
         commands += "continue $tourId"
         if (running) return
+        if (refused()) return
         resume(tourId, sticky = false)
     }
 
@@ -84,8 +100,21 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     fun restartSticky() {
         commands += "sticky"
         if (running) return
-        tours.findActiveRecording()?.let { resume(it.id, sticky = true) }
+        val active = tours.findActiveRecording() ?: return
+        if (refused()) return
+        resume(active.id, sticky = true)
     }
+
+    /** `RecordingService.onStartCommand`: no precise location = told, nothing started, the tour row untouched (R-01). */
+    private fun refused(): Boolean {
+        if (permitted()) return false
+        Problems.error("recording", NO_PERMISSION)
+        startFailed = NO_PERMISSION
+        return true
+    }
+
+    /** The app said it ([com.onpath.app.recording.RecordingClient.startFailedSeen]). */
+    fun startFailedSeen() { startFailed = null }
 
     private fun resume(id: Long, sticky: Boolean) {
         val t = tours.getTour(id) ?: return
@@ -109,7 +138,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         if (!running || run.paused == pause) return
         val now = clock()
         run.paused = pause
-        run.pausedSinceMs = if (pause) now else null
+        run.pausedSinceMs = if (pause) wall() else null
         if (!pause) { run.seg++; run.last = null; run.moveWatch.start(now); watchdog.resumed(now) } // a new piece, not bridged
         nav?.gpsLost()
         safe("stats") { tours.updateStats(tourId, run.distance, run.ascent, run.descent, run.elapsedS.toDouble(), "active") }
@@ -126,8 +155,11 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         _state.value = null
     }
 
-    /** A GPS fix (`RecordingService.onFix`): judged, stored at once and counted – or dropped; nothing while paused. */
-    fun fix(p: GeoPoint, accuracyM: Float = 5f) {
+    /**
+     * A GPS fix (`RecordingService.onFix`): judged, stored at once and counted – or dropped; nothing while paused.
+     * [timeMs] = the fix's own time (`loc.time`), by default the [wall] clock.
+     */
+    fun fix(p: GeoPoint, accuracyM: Float = 5f, timeMs: Long = wall()) {
         if (!running || run.paused) return
         if (!PointFilter.accuracyOk(true, accuracyM)) { run.gapWatch.onDropped(true, accuracyM); return }
         val now = clock()
@@ -135,9 +167,14 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         val wasLost = run.lastGoodFixElapsed > 0 && now - run.lastGoodFixElapsed > GAP_MS
         run.lastGoodFixElapsed = now
         run.gapWatch.reset()
-        val tp = TrackPoint(p.lat, p.lon, p.ele, now)
-        // standing still: no off-route check, the detector waits as without GPS (GuidanceGate.offRouteCheck)
-        nav?.let { if (run.moveWatch.moving(now)) it.fix(OffRouteDetector.Fix(p.lat, p.lon, accuracyM.toDouble(), now)) else it.gpsLost() }
+        val tp = TrackPoint(p.lat, p.lon, p.ele, timeMs)
+        // standing still or arrived: no off-route check, the detector waits as without GPS (GuidanceGate.offRouteCheck);
+        // then the arrival, on the navigator's state after this fix – both before the point is judged, as in the service
+        nav?.let {
+            if (GuidanceGate.offRouteCheck(run.moveWatch.moving(now), run.arrived)) it.fix(OffRouteDetector.Fix(p.lat, p.lon, accuracyM.toDouble(), now))
+            else it.gpsLost()
+            it.main.execute { checkArrived(p, accuracyM.toDouble()) }
+        }
         val prev = run.last
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, tp)
         val (verdict, moved) = PointFilter.judge(prev, tp, accuracyM.toDouble(), continuous = !wasLost || bridged)
@@ -167,6 +204,19 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
             safe("stats") { tours.updateStats(tourId, run.distance, run.ascent, run.descent, run.elapsedS.toDouble(), "active") }
         }
         publish(now)
+    }
+
+    /** `RecordingService.checkArrived` (in Navigate; the line's length not cached): the arrival once per line. */
+    private fun checkArrived(pos: GeoPoint, accuracyM: Double) {
+        val n = nav?.navigator ?: return
+        if (!running || !GuidanceGate.arrivalCheck(run.arrived, run.paused, planQuiet = false)) return
+        val st = n.state
+        if (st.line.size < 2) return
+        val remaining = (Geo.length(st.line) - (st.shownAlongM ?: st.progressM)).coerceAtLeast(0.0)
+        if (!run.arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM, openStops = n.session.openStops)) return
+        run.arrived = true
+        run.arrivedToken = n.session.token
+        publish(clock())
     }
 
     /** The process dies: no state any more, nothing finished, what waited in memory is gone – the row stays "active". */
@@ -204,6 +254,6 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
             descentM = run.descent, elapsedS = run.elapsedS, gpsLost = gpsLost(now), offRouteM = n?.state?.offM,
             offRouteAlert = n?.prompt != null, followName = null, track = run.track.snapshot(), nav = n?.state,
             saveFailed = run.saveFailed, hadGpsFix = run.lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(now),
-            pausedSinceMs = run.pausedSinceMs)
+            arrived = run.arrived, pausedSinceMs = run.pausedSinceMs)
     }
 }
