@@ -22,7 +22,6 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -170,8 +169,6 @@ class PlanSyncCutFlowTest {
      * A push whose answer is lost, then the user edits the same route again before the next pass: the phone meets its
      * own earlier version in the mailbox. Nobody else changed the route – there is no conflict to keep.
      */
-    @Ignore("bug: a lost PUT answer + a second edit before the next pass – SyncMerge.reconcile takes the phone's own stored " +
-        "write for the other side's: the route goes back to the first edit and the user's last edit becomes a \"(copy)\" route")
     @Test fun aLostAnswerThenAnotherEditMakesNoCopy() {
         val own = store.savePlanned("Waalweg", listOf(a, b))
         phoneSync(); browserSync()

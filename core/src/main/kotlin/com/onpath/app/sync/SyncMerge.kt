@@ -106,6 +106,11 @@ object SyncMerge {
                     val mine = e.item
                     out[r.item.id] = SyncEntry(if (mine.deleted) mine else mine.copy(favourite = r.item.favourite), r.rev, dirty = true)
                 }
+                // our own write came back (its answer was lost, then edited again here): not the other side's change –
+                // our newer version goes on, on top of it, no copy (PlanSyncCutFlowTest, 2026-11-25)
+                e.item.isUserItem && r.item.isUserItem && r.item.device == e.item.device &&
+                    r.item.updatedAt <= e.item.updatedAt && !e.item.sameContent(r.item) ->
+                    out[r.item.id] = SyncEntry(e.item, r.rev, dirty = true)
                 // the version seen decides (owner 2026-11-12): the mailbox moved past what our change was based on –
                 // its version keeps the id, ours becomes a copy (a live tour with other content); a stale delete is dropped
                 e.item.isUserItem || r.item.isUserItem -> {
