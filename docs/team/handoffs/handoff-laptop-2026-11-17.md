@@ -16,6 +16,20 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-24 ~22:00 – the next laptop session starts HERE
+- **Long plan link: on main (f4a63e0d7) and online** (the owner started the deploy himself, run 45485633653, live 871179d19).
+  `gh workflow run` is still blocked here by the auto-mode classifier – the owner starts deploys in Actions (he knows how now).
+- **Wait window modal like the app: on main (56abfc513), not online yet.** A veil (`.waitveil`, z 14, under the message
+  cards) takes taps / drags / wheel / keys while the window waits; Cancel unchanged (closes, the map loads on beside the
+  map). The page's first map brings the window for a few seconds – smokes' raw `mouse.click`s now wait for no veil and
+  `areTilesLoaded()`; a new smoke with raw map clicks needs the same line. 15 smokes green locally.
+- **Pairing-link fix: on main (4f300c634)**, own review clean (same answers as the old Regex), gate + sync-smoke green.
+  Same Regex pattern still in `LiveCode.parse` (not called by the web today).
+- Next deploy: both pieces together – ask the owner (question box) to start it once „Web planner“ on main is green.
+- LordTriangel's PRs: planner notes given in the chat; nothing approved or run. All three lack the planner side.
+- Readers branches: donald has the note (keep main's `linkCode`, `share-smoke` step „6.“). Still on the captain's word.
+- Owner's rule now: **questions only as a question box** (AskUserQuestion), never plain text.
+
 ## State 2026-11-22 late, shutdown – the next laptop session starts HERE
 hp and donald were shut down by the owner. **None of the three branches is on main, nothing went online.** Every planner deploy needs the owner's own yes in the laptop chat.
 
