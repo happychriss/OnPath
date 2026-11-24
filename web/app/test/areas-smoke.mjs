@@ -172,8 +172,10 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     `one request through the proxy: ${JSON.stringify(asked)}`);
   check(ids.length === 1 && /^[0-9a-f]{32}$/.test(ids[0] ?? ''), `the request carries the browser's random id (quotas): ${ids[0]}`);
   const p0 = (await win())?.pct ?? 0;
+  // it moves on with the doorman's 40 % – unless a slow runner's time-based bar already stands that high (84 / 94 % on CI
+  // before the answer came): then it may only stand (never back: checked below over the whole window)
   const moved = await page.waitForFunction((a) => +(document.getElementById('waitwin')?.dataset.pct ?? 0) > a, p0, { timeout: 15_000 }).then(() => true, () => false);
-  check(moved, `polling: the doorman's 40 % moves the bar (from ${p0} %)`);
+  check(moved || p0 >= 80, `polling: the doorman's 40 % moves the bar (from ${p0} %${moved ? '' : ', it stood – already that high'})`);
   const gone = await page.waitForFunction(() => !document.getElementById('waitwin') && document.getElementById('mapnotes').hidden, null, { timeout: 20_000 }).then(() => true, () => false);
   check(gone, 'ready: the window closes by itself (no "done" message)');
   // the window of the own area (the last one – the page's first map may have had its own before)
