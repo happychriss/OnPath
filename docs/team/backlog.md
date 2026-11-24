@@ -112,7 +112,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests → claim below → [detail](items/2026-11-24-cleanup-inventory.md)
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches deleted by the owner (script); tests → claim below → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
