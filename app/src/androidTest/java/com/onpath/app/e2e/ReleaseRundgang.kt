@@ -436,7 +436,9 @@ class ReleaseRundgang : E2EBase() {
         scenario.onActivity { vm(it).placeMenus.closeMapOverlays("rundgang: tap elsewhere") }
         waitUntil("c) the menu closed", 5_000) { read { it.placeMenus.poiMenu } == null }
         assertNotNull("c) the pin stays when its menu closes", read { it.searchFlow.searchMark })
-        val chip = findFresh(By.desc(Txt.s(Res.string.plan_pin_chip_desc, name)), 10_000)
+        // 30 s like a) and b): the chip is drawn only once the pin stands inside the visible map; on a loaded emulator
+        // the camera may still be on its way after the share (flaky 2026-11-19: red / green on the same commit with 10 s)
+        val chip = findFresh(By.desc(Txt.s(Res.string.plan_pin_chip_desc, name)), 30_000)
         assertNotNull("c) the name chip \"$name ›\" under the pin – ${seenDescriptions()}", chip)
         shot("3-pin-and-chip")
         chip!!.click()
