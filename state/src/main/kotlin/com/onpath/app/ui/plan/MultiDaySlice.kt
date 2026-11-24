@@ -133,7 +133,8 @@ class MultiDaySlice(
         }.onFailure { Problems.warn("cells", "Kept multi-day map areas not restored – a plan change may drop their requests", it) }
         // every change of a followed day's plan goes back into the whole tour (any edit, Undo, the router's snap)
         scope.launchSafe("app", "multiDayWriteBack") {
-            snapshotFlow { waypoints.toList() }.collect { pts -> flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName) }
+            // the points and the detour points: "Ganz neu berechnen" (and its Undo) change only the latter
+            snapshotFlow { waypoints.toList() to plan.anchorRev }.collect { (pts, _) -> flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName) }
         }
         // a day of a tour whose followed-day state is gone: the whole stored tour again, never a day saved over it
         reloadIfDayLost()

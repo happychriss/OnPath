@@ -75,8 +75,12 @@ class PlanDocument(
     private fun stored() {
         store.points = points.toList()
         val json = AnchorsJson.writeSet(points, session.anchorSet)
-        if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json }
+        if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json; anchorRev++ }
     }
+
+    /** Counts every change of the detour points (also those that keep the points): what a state observer reads to hear them. */
+    var anchorRev by mutableStateOf(0)
+        private set
 
     /** One undoable change: records the step, applies [block], stores the points; returns the points before it. */
     fun edit(block: MutableList<GeoPoint>.() -> Unit): List<GeoPoint> = session.edit(block).also { history(); stored() }
