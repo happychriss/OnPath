@@ -9,6 +9,10 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
   „fragen immer über die fragen box, sonst sehe ich das nicht!!!“). A question in plain chat text is not seen. This
   overrides older „ask in plain text“ words in handoffs / the backlog. A night without him: the night-job rule below still
   decides whether to ask at all.
+- **Pull requests: the sessions merge, not the owner** (owner 2026-11-24: „ich mag nicht selber mergen, das kannst du!“, then
+  „allgemein, wenn alles grün“): the role that built a pull request (or the captain) merges it once every check is green and a
+  second model read it, then one line „For the captain“. Exceptions that still ask him in a box: secrets and signing keys,
+  outside contributions (forks), anything red or unclear.
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
   Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
   other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner

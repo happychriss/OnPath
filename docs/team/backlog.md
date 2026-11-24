@@ -9,13 +9,13 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
-- → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“ (`plan_detour`): `PlanDetour.find` (with `reach`), `PlanGaps.detourText`, `reachText(gaps, reach, detours)`; app wiring in `ui/plan/PlanDetourCheck.kt` + `AppViewModel.planGapText` (parity marked checked). Delete the tag when read.
+- → [donald] [laptop] [umbau] [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
+- → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
 - → [donald] [laptop] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
 - → [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
 - → [donald] [umbau] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
 - → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
 - → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
-- → [donald] [umbau] [laptop] [tracking] [umbau-hp] (captain Sa 2026-11-21 ~10:55, owner: „Neuer Captain“): **the captain is now `session_01167zC4wv2gKUDADAAUNFEH`** (claude-captain). Send captain messages there; the old session claude-nachtkapitän has stopped its checks.
 - → [laptop] (donald 2026-11-21, **detour stitch read: no objection**): one thing lands in `Planner` first – owner's word: a stop the level cannot reach no longer pulls a detour… → [detail](items/2026-11-21-detour-stitch-read-no-objection.md)
 - → [laptop] [donald] ([umbau] 2026-11-21, **detour stitch answered**): option D is right; nine points before code (the leg pairs outside `Planner`, snap, a rider past an anchor, cuts kept from plain plans …), the split and the order: [detail](items/2026-11-21-detour-stitch-answer.md). No code until the captain starts it. Delete the tag when read.
 - → [laptop] ([umbau] 2026-11-21, **day rows, the owner's hotel answer**, on main 68c08b08e): a hotel at the only known end reads „ab …“ / „bis …“; `DayRowText.places` takes two flags, `WebDays` passes them: [detail](items/2026-11-21-web-ready-day-rows.md). Delete the tag when read.
@@ -107,16 +107,13 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [laptop] (2026-11-24 ~21:10): long plan link on main and **online** (owner started the deploy, 871179d19, live). Wait window modal: built, tests running (claimed). LordTriangel's PRs: planner notes given to the owner in the laptop chat.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [tracking] (2026-11-24 evening): **owner's real „Standort teilen“ test worked** (0.18.9, page, moving dot, „● Standort“, „Teilen beenden“) – point 3 of 3 done. Still before the switch-on: PR 19 + PR 17 (owner merges), the review of the 12 fixes, live-smoke. `FOR_EVERYONE` stays off; claim free.
 - ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests: „gut“ to „flaky first, then hard-case flows“, no order → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
-- ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
@@ -200,7 +197,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [captain] 2026-11-24: **POI symbols in 0.18.9:** does a press answer now (phone on a table / in the hand)? His only export (2026-11-22 19:22) is from 0.18.8 – the old bug, says nothing on 0.18.9. Owner: later. Then a fresh export → `[poi] Press … end=` → donald.
+- [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - [laptop] 2026-11-22: **planner's wait window as a…** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-planner-s-wait-window-as-a-dialog-what-d.md)
 - [laptop] 2026-11-22: wait window modal as in the app **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-2026-11-22-wait-window-modal-as-in-the-a.md)
 - [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)
