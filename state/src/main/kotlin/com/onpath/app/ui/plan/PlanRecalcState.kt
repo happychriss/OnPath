@@ -182,6 +182,26 @@ open class PlanRecalcState(
         val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
     )
 
+    /**
+     * The visible legs' lines of the route last taken as the plan's own ([taken]): what a point put on a long leg is
+     * stitched from (§1). Handed to [PlanDocument.stitchLines] below; [linesFor] gives it back only for exactly the
+     * plan it was routed for and the profile it was routed with.
+     */
+    private var stitched: com.onpath.app.routing.VisibleLines? = null
+
+    /** The lines of the plan [before] under [profile], or null (no route taken for exactly these points and this profile). */
+    fun linesFor(before: List<GeoPoint>, profile: com.onpath.app.routing.AnchorProfile): com.onpath.app.routing.VisibleLines? =
+        stitched?.takeIf { it.points == before && it.profile == profile }
+
+    /**
+     * Lets the plan stitch an edit from [linesFor], under the profile the plan has at that moment (an activity switch
+     * leaves the old lines unused). Set at the start of every run ([begin]): lines exist only after a run was taken, so
+     * no earlier wiring is needed, and no constructor or init does the work.
+     */
+    private fun offerLines() {
+        plan.stitchLines = { before -> linesFor(before, com.onpath.app.routing.AnchorProfile.of(activity, sac)) }
+    }
+
     /** What [route] gives back: the plan result and the planner's tries line (null = none). */
     class Routed(val result: com.onpath.app.routing.PlanResult, val tries: String?)
 
@@ -274,6 +294,7 @@ open class PlanRecalcState(
      */
     fun begin(askLong: Boolean = true): Run? {
         runCauses.start()
+        offerLines()
         planRun.routeJob?.cancel(); planRun.routeJob = null
         highlight = null; spotLine = null; spotsOpen = false
         val pts = waypoints.toList()
@@ -347,6 +368,7 @@ open class PlanRecalcState(
         result.onSuccess { res ->
             val it = res.route
             route = it; planReach = reach; snapToRoute(pts, res, run)
+            rememberLines(run, res)
             // the plan's first route: the sheet rises once to its middle step (owner 2026-11-08, [SheetRise] – once per
             // plan is the run's: [RouteRun.sheetRisen])
             after = routeEvent(RouteRun.Event.Succeeded(gen, planMode = mode == AppMode.PLAN,
@@ -408,6 +430,19 @@ open class PlanRecalcState(
             else -> Unit
         }
         routeEvent(RouteRun.Event.Done(gen)) // "calculating" ends once the result is taken
+    }
+
+    /**
+     * Keeps the lines of the route just taken for the stitch of the next edit ([stitched]). Only while the plan still is
+     * the run's (or its snapped form: a snap moves visible points onto the way, never an anchor); else none, and a stitch
+     * would have no line to lie on. A route that does not fit the expanded plan (a leg routed without its anchors, §8.5) gives none.
+     */
+    private fun rememberLines(run: Run, res: com.onpath.app.routing.PlanResult) {
+        val now = waypoints.toList()
+        val ours = now == run.pts || (res.moved && now == res.points)
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(run.pts, run.anchors, run.pins)
+        val got = if (ours) com.onpath.app.routing.PlanStitch.linesOf(res.route, expanded, com.onpath.app.routing.AnchorProfile.of(run.act, run.level)) else null
+        stitched = got?.let { com.onpath.app.routing.VisibleLines(now, it.profile, it.lines) }
     }
 
     /** Indices of the named stops of [pts] (they keep their coordinates when the route is snapped). */
@@ -482,10 +517,12 @@ open class PlanRecalcState(
             val gen = run.gen; val pts = run.pts; val act = run.act; val level = run.level
             // a point put in ON the routed line (a night, a stop at a line point – owner 2026-11-20, as the
             // planner does): its leg cut there from the known line, nothing routed for it
-            // a plan with detour points is routed, never cut: only the writer stage has the idle step that brings a cut
-            // leg back to the router's own answer (detour-stitch.md §8.15), and every device must show the same line
+            // a plan with detour points is cut too (a point put on the line of a stitched leg, a night in an anchor span): the
+            // cut leg is the editing device's stand-in, the idle settling (§8.15, piece W2) brings it back to the router's own
+            // answer so every device ends on the same line
             val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, run.anchors, run.pins)
-            val cut = if (expanded.hasAnchors) 0 else com.onpath.app.routing.LegSplit.seed(legs, pts, act, level)
+            val cut = if (expanded.hasAnchors) com.onpath.app.routing.LegSplit.seed(legs, expanded, act, level)
+                else com.onpath.app.routing.LegSplit.seed(legs, pts, act, level)
             if (cut > 0) Problems.trace("routing", "Route #$gen: $cut leg(s) cut at a point put in on the line – not routed")
             // route, model time, snapped points, gaps, warnings: the one computation the web planner shares
             // (named stops: read on the main thread when the result is taken – snapToRoute → PlanResult.withNamed)
