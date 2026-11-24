@@ -27,7 +27,8 @@ import kotlinx.coroutines.flow.StateFlow
  * A fix and a second of the tour ([fix], [tick]) go through the service's REAL core pieces, wired as `RecordingService`
  * `onFix` / `tick` / `setPaused` / `finish` wire them: [TourRun] (numbers, pieces, distance; a continued tour is
  * [TourRun.resumed] from the row and `recordingCursor`), [PointFilter] (accuracy, jumps, standing still, a gap bridged or
- * a new piece), [PointQueue] (a point that cannot be written waits and goes in with the next one), [GpsWatchdog], and
+ * a new piece), [PointQueue] (a point that cannot be written waits and goes in with the next one – `writePoints` /
+ * `safeDb`: logged, the notification once per failure [saveFailNotices]; [queueMax] = its cap), [GpsWatchdog], and
  * "GPS lost" by [RestWatch.lostAfterMs]. The time is [clock] (the service's elapsed realtime and the fix time in one):
  * no fix for [GAP_MS] = a gap, the stats written every [STATS_MS] by the tick – so a [kill] between two ticks loses
  * what the phone loses. With [nav] the fixes go on to the service's navigation ([FakeNavService]: the real Navigator),
@@ -45,7 +46,7 @@ import kotlinx.coroutines.flow.StateFlow
  */
 class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System::currentTimeMillis,
                     private val nav: FakeNavService? = null, private val wall: () -> Long = clock,
-                    private val permitted: () -> Boolean = { true }) : TourRecorder {
+                    private val permitted: () -> Boolean = { true }, private val queueMax: Int = PointQueue.MAX) : TourRecorder {
     companion object {
         /** `RecordingService.GAP_MS`: no fix for longer = the next one comes after a gap. */
         const val GAP_MS = 30_000L
@@ -69,10 +70,19 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     /** Why the service stopped by itself (`RecordingService.startFailed`: the app says it); null = nothing. */
     var startFailed: String? = null
         private set
+    /** "Recording cannot be saved" notifications shown so far (`notifySaveFailed`: once per failure, not per point). */
+    var saveFailNotices = 0
+        private set
+    /** That notification is up (it stays until a point is written again – `nm().cancel(SAVE_FAIL_ID)`). */
+    var saveFailNoticeUp = false
+        private set
+    /** Points waiting for the database ([PointQueue]); [droppedPoints] given up at its cap. */
+    val waitingPoints: Int get() = queue.size
+    val droppedPoints: Int get() = queue.dropped
 
     private var tourId = -1L
     private var run = TourRun()
-    private var queue = PointQueue()
+    private var queue = PointQueue(queueMax) // one per service, not per tour: its points carry their own tour id
     private val watchdog = GpsWatchdog()
     private var lastTick = 0L
     private var lastStats = 0L
@@ -124,7 +134,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     }
 
     private fun begin(id: Long, r: TourRun, now: Long, sticky: Boolean) {
-        tourId = id; run = r; queue = PointQueue()
+        tourId = id; run = r
         safe("stats") { tours.updateStats(tourId, run.distance, run.ascent, run.descent, run.elapsedS.toDouble(), "active") }
         run.moveWatch.start(now)
         if (sticky) watchdog.arm(now) else watchdog.disarm()
@@ -183,7 +193,9 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         run.moveWatch.moved(now)
         run.count(moved, newPiece = wasLost && prev != null && !bridged)
         queue.add(PointQueue.Pending(tourId, run.seq++, run.seg, tp, accuracyM))
-        writePoints()
+        if (writePoints()) {
+            if (run.saveFailed) { run.saveFailed = false; saveFailNoticeUp = false }
+        }
         run.show(tp)
         publish(now)
     }
@@ -221,7 +233,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     }
 
     /** The process dies: no state any more, nothing finished, what waited in memory is gone – the row stays "active". */
-    fun kill() { tourId = -1; queue = PointQueue(); _state.value = null }
+    fun kill() { tourId = -1; queue = PointQueue(queueMax); _state.value = null }
 
     /** Standing still for the voice and the off-route checks (`RecordingService.standingStill`, no motion sensor). */
     fun standingStill(): Boolean = !moveWatchMoving(clock())
@@ -237,15 +249,24 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         return shortGap || !moveWatchMoving(now)
     }
 
-    private fun writePoints() {
-        val e = queue.flush { tours.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }
-        if (e != null) Problems.error("recording", "Track point not written; it waits and goes in with the next one", e)
-        run.saveFailed = e != null
+    /** `RecordingService.writePoints`: the waiting points in order; false = some still wait (said once, loud – [safe]). */
+    private fun writePoints(): Boolean {
+        val waited = queue.size
+        val ok = safe("point") { queue.flush { tours.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
+        if (ok && waited > 1) Problems.info("recording", "${waited - 1} track point(s) written late – none lost")
+        if (queue.dropped > 0 && queue.dropped % 1000 == 1) {
+            Problems.error("recording", "Storage failed for hours: ${queue.dropped} oldest unwritten point(s) given up")
+        }
+        return ok
     }
 
-    /** `RecordingService.safeDb`: a failed write is said, never thrown. */
-    private inline fun safe(what: String, block: () -> Unit) {
-        try { block() } catch (e: Exception) { run.saveFailed = true; Problems.error("recording", "Database write failed ($what)", e) }
+    /** `RecordingService.safeDb`: a failed write is logged, the notification once per failure, never thrown. */
+    private inline fun safe(what: String, block: () -> Unit): Boolean = try {
+        block(); true
+    } catch (e: Exception) {
+        Problems.error("db", "Recording: database write failed ($what)", e)
+        if (!run.saveFailed) { run.saveFailed = true; saveFailNotices++; saveFailNoticeUp = true }
+        false
     }
 
     private fun publish(now: Long) {

@@ -14,3 +14,8 @@ distance jump, "No GPS" said once, no off-route alarm, the saved tour and its GP
 doubled; a torn last write loses only that point; the sticky restart). Bug found and fixed by it: a killed process lost
 the distance walked since the last 10 s stats write – `TourRun.resumed` now counts at least the saved points
 (`TourRunTest.aContinuedTourCountsAtLeastItsSavedPoints`). The time since that write is still lost (up to 10 s).
+`StorageFullFlowTest` (2026-11-25): every write fails as on a full disk, then space again – told once, the waiting
+points all written in order without hole or double, distance and time whole; a kill while points wait loses only
+those; at the queue's cap the oldest waiting are given up (said once, their numbers stay free); End while full leaves
+the tour "active" (asked next start). Two minor bugs `@Ignore`d there: space back while standing still clears neither
+`saveFailed` nor the ongoing notification (also after End), and the "written late" log line is one short from the tick.

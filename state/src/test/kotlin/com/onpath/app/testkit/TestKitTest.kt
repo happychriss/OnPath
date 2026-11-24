@@ -114,7 +114,8 @@ class TestKitTest {
         assertEquals("the one that waited went in with it, in order (PointQueue)", listOf(pt(0.0, 0.0), pt(10.0, 0.0), pt(20.0, 0.0)),
             tours.loadSegments(rec.state.value!!.tourId).single().map { GeoPoint(it.lat, it.lon) })
         assertEquals("the screen still draws all three", 3, rec.state.value!!.track.single().size)
-        assertTrue("and the failure is in the problem log", problems.said("recording").any { it.contains("not written") })
+        assertTrue("and the failure is in the problem log", problems.said("db").any { it.contains("database write failed (point)") })
+        assertEquals("the user told once", 1, rec.saveFailNotices)
     }
 
     /**
@@ -152,6 +153,18 @@ class TestKitTest {
             // no precise location at a start: told, nothing started (the row untouched)
             "if (!tracker.hasFinePermission()) {",
             "\"${FakeRecording.NO_PERMISSION}\")",
+            // a failed write: logged, told once per failure; the points wait in one queue and go in when the storage is back
+            "private val pointQueue = PointQueue()",
+            "if (writePoints()) {",
+            "if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }",
+            "val ok = safeDb(\"point\") { pointQueue.flush { db.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }",
+            "if (ok && waited > 1) Problems.info(\"recording\", \"\${waited - 1} track point(s) written late – none lost\")",
+            "if (pointQueue.dropped > 0 && pointQueue.dropped % 1000 == 1) {",
+            "Problems.error(\"recording\", \"Storage failed for hours: \${pointQueue.dropped} oldest unwritten point(s) given up\")",
+            "Problems.error(\"db\", \"Recording: database write failed (\$what)\", e)",
+            "if (!saveFailed) { saveFailed = true; notifySaveFailed(); vibrate() }",
+            "if (pointQueue.size > 0) writePoints() // storage back while standing still: the waiting points go in",
+            "if (pointQueue.size > 0) writePoints() // the last waiting points, if the storage is back",
         )) assertTrue("RecordingService no longer has: $line", svc.contains(line))
         // the warning line without a motion sensor (NoGpsShow.line, sensorStill = null)
         val still = sourceFile("recording/StillSense.kt").readText().replace(Regex("\\s+"), " ")

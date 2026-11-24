@@ -28,7 +28,7 @@ import java.sql.DriverManager
 class JdbcTours(path: String = ":memory:") : AutoCloseable {
     val db: Connection = DriverManager.getConnection("jdbc:sqlite:$path")
 
-    /** The next writes throw (a full or broken database), counted down per write. */
+    /** The next writes throw (a full or broken database), counted down per write; Int.MAX_VALUE = full until set back to 0. */
     var failWrites = 0
 
     init { if (tables().isEmpty()) TourSchema.CREATE.forEach { exec(it) } }
@@ -38,7 +38,10 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         st.execute(); st.updateCount
     }
 
-    private fun write() { if (failWrites > 0) { failWrites--; throw java.sql.SQLException("database or disk is full") } }
+    /** A full disk as sqlite-jdbc says it (SQLITE_FULL; on the phone a SQLiteFullException). */
+    private fun write() {
+        if (failWrites > 0) { failWrites--; throw org.sqlite.SQLiteException("[SQLITE_FULL] database or disk is full", org.sqlite.SQLiteErrorCode.SQLITE_FULL) }
+    }
 
     fun tables(): List<String> = db.createStatement().use { s ->
         s.executeQuery("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").use { r -> buildList { while (r.next()) add(r.getString(1)) } }
