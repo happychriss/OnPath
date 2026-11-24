@@ -166,4 +166,33 @@ class PlanRecalcFromScratchTest {
         assertEquals("no history step", steps, bare.canUndo)
         assertFalse(bare.clearDetours())
     }
+
+    @Test fun aClearedSavedPlanIsUnsavedUntilSavedAgainAndItsUndoIsSavedAgain() {
+        val store = MemoryPlanStore()
+        val d = PlanDocument(store)
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse("saved with its detour points", d.unsaved)
+        assertTrue(d.clearDetours())
+        assertTrue("the saved row still holds the old detour points", d.unsaved)
+        d.replace(d.undo()!!)
+        assertFalse("the undo equals the saved ones", d.unsaved)
+        assertTrue(d.clearDetours())
+        assertTrue(d.unsaved)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse("saved again without them", d.unsaved)
+        d.replace(d.undo()!!)
+        assertTrue("the old ones differ from the new save", d.unsaved)
+    }
+
+    @Test fun aSavedPlanWithoutDetourPointsIsUnsavedAsBefore() {
+        val d = PlanDocument(MemoryPlanStore())
+        d.edit { addAll(listOf(a, b)) }
+        d.setSaved("Tour", 5L, listOf(a, b))
+        assertFalse(d.unsaved)
+        d.edit { add(rome) }
+        assertTrue(d.unsaved)
+        assertFalse("nothing to clear", d.clearDetours())
+    }
 }

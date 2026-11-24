@@ -199,12 +199,27 @@ class PlanDocument(
     val savedName: String? get() = linkName.takeIf { linked }
     /** The saved route's tour id, while the plan still belongs to it; -1 = none. */
     val savedId: Long get() = if (linked) linkId else -1L
-    /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
-    val unsaved: Boolean get() = RouteRules.isUnsaved(points, savedPoints)
+    /**
+     * The detour points the plan had when it was saved / loaded ([setSaved]; after a restart: those loaded with it): a plan whose
+     * points are the saved ones but whose detour points differ ("Ganz neu berechnen") is not saved – no detour points on either
+     * side changes nothing.
+     */
+    private var savedAnchors: AnchorSet? = if (store.savedPoints != null) session.anchorSet else null
+    /**
+     * The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved), its points or its detour
+     * points (they are saved with the route).
+     */
+    val unsaved: Boolean get() {
+        val own = RouteRules.isUnsaved(points, savedPoints)
+        if (own) return true
+        val saved = savedAnchors
+        return anchorRev >= 0 && saved != null && linked && session.anchorSet != saved
+    }
 
     /** The plan was saved / loaded as the route [id] called [name] with [points] – or belongs to none (null, -1, null). */
     fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
         linkName = name; linkId = id; savedPoints = points
+        savedAnchors = if (points != null) session.anchorSet else null // a rename of the same route passes through here too
         store.savedName = name; store.savedId = id; store.savedPoints = points
         onLinked?.invoke(id)
     }
