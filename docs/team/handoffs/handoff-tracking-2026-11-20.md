@@ -127,7 +127,26 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
 - Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
   arrival first, above) – pictures first; the Pixel walk list above.
 
-## 2026-11-24 – the owner's real share worked – start here
+## 2026-11-24 night – „Standort teilen“ is ON for everyone – start here
+- On main: `FOR_EVERYONE = true` (e2c8a3e5a). PR 19 (privacy page) and PR 17 (host config) merged by tracking on the
+  owner's yes in a box (the captain relayed „ich mag nicht selber mergen“). Review fixes 7367c0579 (stop/start show at
+  once while the lane is busy; one slice per view model).
+- **New place (owner's pick after rounds A/B/C → D → E → inverted):** Navigate's right column = a tour bubble (share
+  button + ⚙) above the map bubble (▲ 👁 ⛶ ◎); share button inverted while sharing (green filled, white icon; grey while
+  waiting), **no dot**; a pill „Standort · wartet auf Netz“ under the status card only while waiting; tap → „Link nochmal
+  teilen“ / „Teilen beenden“. Old turn-card sign gone. Short screen + large font: 48 dp slots, then the tour bubble
+  beside the map bubble. Pictures: `docs/design/img/live/tour-bubble/`; sketch rounds on `wip/tracking-2026-11-24-share-place`
+  (pictures only, do not merge; `feat/tracking-2026-11-24-tour-bubble` and `fix/tracking-2026-11-24-live-review` are on main).
+- **Not done / to watch:** E2E not run on the new column (androidTest compiles); `live-smoke.mjs` not run by hand (the
+  owner's real share stands in); PR 17's config is live only after the next planner deploy (until then the daily purge);
+  website privacy text (cloud-web line). Review „can wait“ items: a stuck leftover DELETE (lasting 4xx) blocks later
+  shares – give leftovers a time limit; an offline end + a new share soon after leaves the old viewer on „Kein Kontakt“
+  48 h instead of „Tour beendet“; a half-damaged share.txt drops a leftover silently; an Error in a lane task skips the
+  problem log. Viewer heading still „Live-Tour“; the owner's viewer-page wish (verdict + arrival) not built.
+- donald: disk 94 % full; during the weekly fstrim fsync was ~35 ms and `LiveLaneTest.aHangingServerNeverHoldsUpTheRecorder`
+  failed 3/3 (green on GitHub and after the fstrim) – a machine effect, never weaken the test.
+
+## 2026-11-24 – the owner's real share worked
 - Server checked before (read only): `https://plan.onpath.earth/live/` 200 with its assets; `/live/v1/<id>` GET/POST/DELETE
   answer 401 without a token, 404 with an unknown box (so D1 `live_box` exists and is bound). `/live/*` is not in
   `run_worker_first` on main, but the API still reaches the worker (no asset matches); PR 17 adds it.
