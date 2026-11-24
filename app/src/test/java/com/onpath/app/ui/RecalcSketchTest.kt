@@ -17,7 +17,7 @@ import org.junit.Test
 import java.util.Locale
 
 /** SKETCH only (not for main): the plan menu today and with the row "Ganz neu berechnen". */
-abstract class RecalcSketchTest(fontScale: Float, private val locale: Locale) {
+abstract class RecalcSketchTest(fontScale: Float, private val locale: Locale, private val planGroup: Boolean = false) {
     @get:Rule
     val paparazzi = ShotGallery.paparazzi(fontScale)
 
@@ -29,7 +29,7 @@ abstract class RecalcSketchTest(fontScale: Float, private val locale: Locale) {
     private fun Cell(row: Boolean) {
         val menu = PlanMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
             onUpdates = {}, onPairBrowser = {}, onHelp = {}, onSaveRoute = {}, onNewPlan = {}, onRecordWithoutPlan = {},
-            onRecalcFromScratch = if (row) ({}) else null)
+            onRecalcFromScratch = if (row) ({}) else null, recalcInPlanGroup = planGroup)
         OnPathTheme {
             Column(Modifier.fillMaxWidth()) {
                 Box(Modifier.fillMaxWidth().background(PlanTopBand.Color)) { PlanTopBar({}, menu, Modifier.fillMaxWidth()) }
@@ -52,3 +52,6 @@ class RecalcSketchGermanTest : RecalcSketchTest(1f, Locale.GERMANY)
 class RecalcSketchGermanLargeTest : RecalcSketchTest(2f, Locale.GERMANY)
 class RecalcSketchEnglishTest : RecalcSketchTest(1f, Locale.US)
 class RecalcSketchEnglishLargeTest : RecalcSketchTest(2f, Locale.US)
+class RecalcSketchBGermanTest : RecalcSketchTest(1f, Locale.GERMANY, true)
+class RecalcSketchBGermanLargeTest : RecalcSketchTest(2f, Locale.GERMANY, true)
+class RecalcSketchBEnglishTest : RecalcSketchTest(1f, Locale.US, true)

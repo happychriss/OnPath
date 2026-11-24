@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Refresh
+import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.RadioButtonChecked
@@ -105,6 +106,8 @@ class PlanMenu(
     val onRecordWithoutPlan: (() -> Unit)? = null,
     /** SKETCH: "Ganz neu berechnen", last row; null hides it. */
     val onRecalcFromScratch: (() -> Unit)? = null,
+    /** SKETCH variant B: the row stands in the plan group after "Neu planen", icon Route. */
+    val recalcInPlanGroup: Boolean = false,
     /**
      * "? Hilfe" as the first item (owner 2026-11-08, father's feedback): the help on onpath.earth in the app language –
      * the same address as About's "Hilfe & erste Schritte" ([OnPathLinks.help]); null hides it.
@@ -294,12 +297,13 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     }
     // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Nur aufzeichnen, then the rest
     menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
+    if (menu.recalcInPlanGroup) menu.onRecalcFromScratch?.let { r -> MenuItem(Icons.Outlined.Route, str(Res.string.plan_menu_recalc)) { close(); r() } }
     menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
     menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
-    menu.onRecalcFromScratch?.let { r -> MenuItem(Icons.Outlined.Refresh, str(Res.string.plan_menu_recalc)) { close(); r() } }
+    if (!menu.recalcInPlanGroup) menu.onRecalcFromScratch?.let { r -> MenuItem(Icons.Outlined.Refresh, str(Res.string.plan_menu_recalc)) { close(); r() } }
 }
 
 /**
