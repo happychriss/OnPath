@@ -107,7 +107,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [laptop] (2026-11-24 ~22:00): on main, the planner part not yet online: wait window modal like the app (56abfc513) + pairing-link fix (4f300c634, in core – reaches the app; review clean, gate green). Long plan link online since 871179d19. LordTriangel's PRs: planner notes given to the owner (all three lack the planner side; „offizielle Routen“ changes shared routing).
+- ← [laptop] (2026-11-24 ~22:00): online since 7ed2d75cb (owner's ask, deploy green): wait window modal like the app (56abfc513) + pairing-link fix (4f300c634, in core – reaches the app; review clean, gate green). Long plan link online since 871179d19. LordTriangel's PRs: planner notes given to the owner (all three lack the planner side; „offizielle Routen“ changes shared routing).
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 

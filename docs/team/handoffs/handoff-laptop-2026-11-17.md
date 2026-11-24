@@ -19,7 +19,7 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 ## State 2026-11-24 ~22:00 – the next laptop session starts HERE
 - **Long plan link: on main (f4a63e0d7) and online** (the owner started the deploy himself, run 45485633653, live 871179d19).
   `gh workflow run` is still blocked here by the auto-mode classifier – the owner starts deploys in Actions (he knows how now).
-- **Wait window modal like the app: on main (56abfc513), not online yet.** A veil (`.waitveil`, z 14, under the message
+- **Wait window modal like the app: on main (56abfc513), online since 7ed2d75cb with the pairing fix.** A veil (`.waitveil`, z 14, under the message
   cards) takes taps / drags / wheel / keys while the window waits; Cancel unchanged (closes, the map loads on beside the
   map). The page's first map brings the window for a few seconds – smokes' raw `mouse.click`s now wait for no veil and
   `areTilesLoaded()`; a new smoke with raw map clicks needs the same line. 15 smokes green locally.
