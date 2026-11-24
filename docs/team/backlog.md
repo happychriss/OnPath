@@ -194,6 +194,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [captain] 2026-11-24: **POI symbols in 0.18.9:** does a press answer now (phone on a table / in the hand)? His only export (2026-11-22 19:22) is from 0.18.8 – the old bug, says nothing on 0.18.9. Owner: later. Then a fresh export → `[poi] Press … end=` → donald.
 - [laptop] 2026-11-22: **long plan links on a fresh page:** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-long-plan-links-on-a-fresh-page.md)
 - [laptop] 2026-11-22: **planner's wait window as a…** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-planner-s-wait-window-as-a-dialog-what-d.md)
 - [donald] 2026-11-22: **detour line on his Mutkopf plan:** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-detour-line-on-his-mutkopf-plan.md)
