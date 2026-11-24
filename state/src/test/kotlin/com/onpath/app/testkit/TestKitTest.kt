@@ -111,8 +111,40 @@ class TestKitTest {
         assertTrue(rec.state.value!!.saveFailed)
         rec.fix(pt(20.0, 0.0))
         assertFalse("the next point is stored again", rec.state.value!!.saveFailed)
-        assertEquals(2, tours.loadSegments(rec.state.value!!.tourId).single().size)
+        assertEquals("the one that waited went in with it, in order (PointQueue)", listOf(pt(0.0, 0.0), pt(10.0, 0.0), pt(20.0, 0.0)),
+            tours.loadSegments(rec.state.value!!.tourId).single().map { GeoPoint(it.lat, it.lon) })
         assertEquals("the screen still draws all three", 3, rec.state.value!!.track.single().size)
+        assertTrue("and the failure is in the problem log", problems.said("recording").any { it.contains("not written") })
+    }
+
+    /**
+     * [FakeRecording] mirrors the service's wiring of its core pieces; these are the lines it copies – a change there
+     * fails here, and the fake is changed with it.
+     */
+    @Test fun theFakeRecordingCopiesTheServicesLines() {
+        val svc = sourceFile("recording/RecordingService.kt").readText()
+        for (line in listOf(
+            "const val GAP_MS = ${FakeRecording.GAP_MS / 1000}_000L",
+            "val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS",
+            "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
+            "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
+            "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)",
+            "tourRun.count(moved, newPiece = wasLost && prev != null && !bridged)",
+            "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",
+            "if (now - lastStats >= ${FakeRecording.STATS_MS / 1000}_000) {",
+            "if (gpsLost()) navigator?.onGpsLost()",
+            "private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)",
+            "val (nextSeq, lastSeg) = db.recordingCursor(existing.id)",
+            "tourRun = TourRun.resumed(existing.distanceM, existing.ascentM, existing.descentM,",
+            "if (intent == null) gpsWatchdog.arm(SystemClock.elapsedRealtime()) else gpsWatchdog.disarm()",
+            "if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()); gpsWatchdog.resumed(SystemClock.elapsedRealtime()) }",
+        )) assertTrue("RecordingService no longer has: $line", svc.contains(line))
+        // the warning line without a motion sensor (NoGpsShow.line, sensorStill = null)
+        val still = sourceFile("recording/StillSense.kt").readText().replace(Regex("\\s+"), " ")
+        assertTrue(still.contains("sensorStill == true -> Line.NONE shortGap -> Line.QUIET sensorStill == false -> Line.WARN " +
+            "!moveWatchMoving -> Line.QUIET else -> Line.WARN"))
+        // a continued tour's next number: the same statement as TourDb's
+        assertTrue(sourceFile("data/TourDb.kt").readText().contains("\"SELECT MAX(seq), MAX(seg) FROM points WHERE tour_id=?\""))
     }
 
     @Test fun theRealTablesAreThere() {
