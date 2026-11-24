@@ -1,5 +1,6 @@
 package com.onpath.app.ui.plan
 
+import com.onpath.app.debug.Problems
 import com.onpath.app.debug.launchSafe
 import com.onpath.app.domain.RouteSpot
 import com.onpath.app.domain.WaitBar
@@ -124,6 +125,7 @@ class PlanRecalcSlice(
 ) : PlanRecalcState(plan, planRun, RecalcPorts(planRoute, planEdit, tourFollow, map, links), RecalcTour(tourEdits, tourFollow, recording), mapData, say, host,
     CoroutineBackground(scope, io), elapsedMs) {
     private val ROUTING_SLOW_MS = 2_500L
+    private val FAIL_CAP = 2
     /** How often the wait bar asks the router how far it is (ms). */
     private val WAIT_POLL_MS = 250L
 
@@ -137,6 +139,81 @@ class PlanRecalcSlice(
     private var routeJob: Job?
         get() = (planRun.routeJob as? JobHandle)?.job
         set(v) { planRun.routeJob = v?.let(::JobHandle) }
+
+    // ---------------- idle settling (detour-stitch.md §8.15, piece W2) ----------------
+
+    /** One leg of the settling by its exact ends and profile: what the cap counts. */
+    private data class LegId(val a: GeoPoint, val b: GeoPoint, val act: Activity, val sac: Int)
+
+    /** The settling goes on the plan run's own routing thread: a run that starts waits behind it only for the cancel, never beside it. */
+    private val settleThread: CoroutineDispatcher get() = routingDispatcher
+    private var settleJob: Job? = null
+    @Volatile private var settleCancel: RouteCancel? = null
+    /** true while the settling itself asks for the engine: its own engine start clears the cache and must not cancel it. */
+    @Volatile private var ownEngine = false
+    /** Failures of a leg in the settling; 2 = skipped (the cap) until new routing data ([capEpoch]) or the anchors are cleared. */
+    private val failures = java.util.concurrent.ConcurrentHashMap<LegId, Int>()
+    @Volatile private var capEpoch = 0
+
+    /** Stops the settling (main thread or the routing thread): its cancel signal and its coroutine; whatever is written stays. */
+    private fun stopSettle() {
+        settleCancel?.cancel(); settleCancel = null
+        settleJob?.cancel(); settleJob = null
+    }
+
+    /** Every edit (every [begin]) stops the settling first – it is the lowest priority; the cache clear stops it too. */
+    override fun beginning() {
+        stopSettle()
+        // set here, not in a constructor or init (no work there): the hook is in place before any run can start an engine
+        planRoute.beforeClear = { if (!ownEngine) stopSettle() }
+    }
+
+    override fun routeTaken(run: Run, res: com.onpath.app.routing.PlanResult) {
+        if (run.anchors.isEmpty()) { failures.clear(); return } // anchors cleared: the cap starts anew; no anchors, no settling
+        // not during a tour: the tour follows its line and must not see it shift under the position (the plan's re-run is
+        // never told to the tour either); a tour's own edits re-plan and settle after it
+        if (planRoute.touring || recordingTour || navigating) { Problems.trace("routing", "Settling skipped: a tour runs"); return }
+        val now = planPointsNow()
+        val cache = planRoute.legCache
+        if (cache.epoch != capEpoch) { failures.clear(); capEpoch = cache.epoch } // new routing data: every leg may try again
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(now, run.anchors, run.pins)
+        val act = run.act; val level = run.level
+        // the settled line is a re-run of the plan as it stands (its points: those of the run, or snapped onto its line)
+        val again = Run(run.gen, now, run.pins, act, level, 1, false, run.f, run.started, null, null, run.anchors)
+        val cancel = RouteCancel()
+        stopSettle()
+        settleCancel = cancel
+        // the routing thread is the plan run's own: a run that starts waits behind a leg still routing for the time its cancel
+        // takes, never works beside it – so the settling goes only while no run is going
+        settleJob = scope.launchSafe("app", "settle") {
+            val out = withContext(settleThread) {
+                exceptions {
+                    if (cancel.isCancelled) return@exceptions null
+                    ownEngine = true
+                    val eng = try { planRoute.routingEngine() } finally { ownEngine = false }
+                    if (cancel.isCancelled) return@exceptions null
+                    Problems.trace("routing", "Settling started: ${expanded.points.size - 1} legs of the plan with detour points")
+                    val s = Planner(eng, cancel, legs = cache).settle(expanded, act, level) { a, b ->
+                        (failures[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP
+                    }
+                    for ((a, b) in s.failedLegs) {
+                        val n = failures.merge(LegId(a, b, act, level), 1, Int::plus) ?: 1
+                        if (n == FAIL_CAP) Problems.warn("routing", "A leg of the plan could not be settled twice – skipped until new routing data or a plan without detour points")
+                    }
+                    Problems.trace("routing", "Settling: routed ${s.routed} / failed ${s.failed}" + if (s.cancelled) " / cancelled" else "")
+                    if (s.routed < 1 || s.cancelled || cancel.isCancelled) return@exceptions null
+                    // the quiet re-run: every leg is exact now, so it comes from the cache and does not settle again
+                    Problems.trace("routing", "Settling: the plan is shown again from the settled legs")
+                    PlanRecalcState.route(again, eng, cache, cancel, { _, _ -> })
+                }
+            }
+            out.onFailure { Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", it) }
+            val r = out.getOrNull() ?: return@launchSafe
+            withContext(main) {
+                if (!cancel.isCancelled && !takeQuiet(again, r.result)) Problems.trace("routing", "Settling: a newer run began – the settled line is not shown")
+            }
+        }
+    }
 
     fun recalc() {
         val run = begin() ?: return

@@ -171,12 +171,21 @@ class PlanRouteSlice(
 
     @Volatile var engine: RoutingEngine? = null
 
+    /**
+     * Called (on the routing thread) right before the leg cache is cleared for a new engine: the idle settling (§8.15) stops
+     * there – it routed on the old data. The cache's own epoch still catches a leg that is written in the gap.
+     */
+    @Volatile var beforeClear: (() -> Unit)? = null
+
+    /** A tour is being recorded (the idle settling does not run then). */
+    val touring: Boolean get() = host.touring
+
     /** The router (on the routing thread); only a real one is kept, so a failed start is retried next time. */
     @Synchronized // two routing threads ([RoutingThreads.background]): one engine
     fun routingEngine(): RoutingEngine =
         engine ?: router.create().also {
             // a new engine = new routing data (or a failed start): the legs of the old one are routed again
-            if (router.isRealRouter) { engine = it; legCache.clear() }
+            if (router.isRealRouter) { engine = it; beforeClear?.invoke(); legCache.clear() }
         }
 
     /**

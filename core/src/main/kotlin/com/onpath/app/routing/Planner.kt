@@ -234,7 +234,9 @@ class Planner(
     }
 
     /** What [settle] did: legs routed, legs that failed (their old line stays), stopped by a cancel. */
-    class Settled(val routed: Int, val failed: Int, val cancelled: Boolean)
+    class Settled(val routed: Int, val failed: Int, val cancelled: Boolean,
+                  /** The exact ends of the legs that failed (the caller counts them to stop asking a leg again and again). */
+                  val failedLegs: List<Pair<GeoPoint, GeoPoint>> = emptyList())
 
     /**
      * The line settles (§8.15): for a plan WITH anchors, every leg of the expanded list that is not the router's own answer
@@ -243,53 +245,61 @@ class Planner(
      * anchors: nothing, no request. Cancel stops with what is done kept; a failed leg keeps what the cache holds and is
      * reported; a timeout stops (each further leg would wait its own limit). Never throws for a routing failure.
      */
-    fun settle(plan: ExpandedPlan, activity: Activity, sac: Int): Settled {
+    fun settle(plan: ExpandedPlan, activity: Activity, sac: Int, skip: (GeoPoint, GeoPoint) -> Boolean = { _, _ -> false }): Settled {
         val cache = legs
         if (cache == null || !plan.hasAnchors || engine is StraightLineEngine) return Settled(0, 0, false)
-        var routed = 0; var failed = 0
+        var routed = 0
+        val failedLegs = ArrayList<Pair<GeoPoint, GeoPoint>>()
+        fun done(cancelled: Boolean) = Settled(routed, failedLegs.size, cancelled, failedLegs)
+        // taken now: a leg routed on data from before a cache clear is dropped by put, never written (the epoch)
+        val epoch = cache.epoch
         val pts = plan.points
         var i = 0
         while (i < pts.size - 1) {
-            if (cancel?.isCancelled == true) return Settled(routed, failed, true)
+            if (cancel?.isCancelled == true) return done(true)
             val a = PlanAnchors.exact(pts[i]); val b = PlanAnchors.exact(pts[i + 1])
-            if (cache.isExact(a, b, activity, sac)) { i++; continue }
+            if (cache.isExact(a, b, activity, sac) || skip(a, b)) { i++; continue }
             val v = (i downTo 0).firstOrNull { plan.visibleOf(it) >= 0 }?.let { plan.visibleOf(it) } ?: 0
             try {
                 val r = routeLeg(a, b, activity, sac, v)
                 if (retryUnfinished) {
-                    failed++
+                    failedLegs += a to b
                     Problems.warn("routing", "Leg ${i + 1} of the plan: the short-trip retry did not finish – its line stays, settled next time")
-                } else { cache.put(a, b, activity, sac, r, settled = true); routed++ }
+                } else {
+                    if (cancel?.isCancelled == true) return done(true) // cancelled while routing: nothing written
+                    cache.put(a, b, activity, sac, r, settled = true, epoch = epoch); routed++
+                }
             } catch (e: Exception) {
-                if (cancel?.isCancelled == true) return Settled(routed, failed, true)
+                if (cancel?.isCancelled == true) return done(true)
                 if (e is RoutingException && e.isNoRoute && plan.touchesAnchor(i) && plan.expandedIndex(v + 1) > i) {
                     // a cold device falls back to the full visible leg here (§8.5): settle that one, retire the cut leg
                     val to = plan.expandedIndex(v + 1)
                     val fa = PlanAnchors.exact(pts[plan.expandedIndex(v)]); val fb = PlanAnchors.exact(pts[to])
                     try {
-                        if (!cache.isExact(fa, fb, activity, sac)) {
+                        if (!cache.isExact(fa, fb, activity, sac) && !skip(fa, fb)) {
                             val full = routeLeg(fa, fb, activity, sac, v)
                             if (retryUnfinished) throw RoutingException("the short-trip retry did not finish")
-                            cache.put(fa, fb, activity, sac, full, settled = true); routed++
+                            if (cancel?.isCancelled == true) return done(true)
+                            cache.put(fa, fb, activity, sac, full, settled = true, epoch = epoch); routed++
                         }
                         cache.dropCut(a, b, activity, sac)
                     } catch (f: Exception) {
-                        if (cancel?.isCancelled == true) return Settled(routed, failed, true)
-                        failed++
+                        if (cancel?.isCancelled == true) return done(true)
+                        failedLegs += fa to fb
                         if (f is RoutingException) Problems.warn("routing", "Leg ${v + 1} → ${v + 2} could not settle, not even without its anchors – its line stays", f)
                         else Problems.error("routing", "Settling a leg threw unexpectedly – its line stays", f)
-                        if (f is RoutingException && f.timedOut) return Settled(routed, failed, false)
+                        if (f is RoutingException && f.timedOut) return done(false)
                     }
                     i = to; continue
                 }
-                failed++
+                failedLegs += a to b
                 if (e is RoutingException) Problems.warn("routing", "Leg ${i + 1} of the plan could not settle on its exact points – its line stays", e)
                 else Problems.error("routing", "Settling a leg threw unexpectedly – its line stays", e)
-                if (e is RoutingException && e.timedOut) return Settled(routed, failed, false)
+                if (e is RoutingException && e.timedOut) return done(false)
             }
             i++
         }
-        return Settled(routed, failed, false)
+        return done(false)
     }
 
     /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetour]); [index] = visible index of the leg's start. */

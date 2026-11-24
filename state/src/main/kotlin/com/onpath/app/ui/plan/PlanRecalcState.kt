@@ -286,6 +286,43 @@ open class PlanRecalcState(
     }
 
     /**
+     * Every [begin] starts with this (main thread): the app's slice stops the idle settling here (§8.15) – an edit goes first.
+     * Nothing in the planner's chain.
+     */
+    protected open fun beginning() {}
+
+    /**
+     * A run's route was TAKEN as the plan's route, successful and current (main thread, after the run is done): the app's
+     * slice starts the idle settling of a plan with detour points here. [run] is the run, [res] its result.
+     */
+    protected open fun routeTaken(run: Run, res: com.onpath.app.routing.PlanResult) {}
+
+    /** The plan's points now (a copy; main thread) – for the slice's settling, which routes the plan as it stands. */
+    protected fun planPointsNow(): List<GeoPoint> = waypoints.toList()
+
+    /** The app is in Navigate (the tour or a destination is followed): the slice does not settle then. */
+    protected val navigating: Boolean get() = mode == AppMode.NAVIGATE
+
+    /** A tour is recorded ([PlanTourPort.recording]). */
+    protected val recordingTour: Boolean get() = tour.recording
+
+    /**
+     * The re-run of the plan after the idle settling (§8.15), QUIET: it is not an edit and not a run – no [RouteRun] event, so
+     * no history step, no fit, no sheet rise, no "route changed" notice, no wait card, and the tour is not told. It only
+     * shows the settled line: the route, its warnings, the lines the next stitch lies on. Main thread. Taken only while the
+     * plan still is exactly the run's points and no run began or is going (else the newer run's line wins); false = dropped.
+     * Points are never moved by it (no snap): a plan point sits where the run before put it.
+     */
+    fun takeQuiet(run: Run, res: com.onpath.app.routing.PlanResult): Boolean {
+        if (!routeRun.isCurrent(run.gen) || routing || waypoints.toList() != run.pts) return false
+        route = withModelTime(res.route, run.act, run.f)
+        planResult = res.withNamed(namedStops(run.pts))
+        spotsMemo = Triple(res.route.points, run.act, run.level) to res.spots
+        rememberLines(run, res)
+        return true
+    }
+
+    /**
      * Stage 1 (main thread, synchronous): the resets, the `Recalc` event and the stored line shown at once; null = nothing is
      * routed (fewer than two points, or a plan far beyond a day is asked about first). With a [Run] given, the run's
      * [RouteCancel] is [PlanRunSlice.routeCancel]. [askLong] false: a plan beyond a day is routed without the question (the
@@ -294,6 +331,7 @@ open class PlanRecalcState(
      */
     fun begin(askLong: Boolean = true): Run? {
         runCauses.start()
+        beginning()
         offerLines()
         planRun.routeJob?.cancel(); planRun.routeJob = null
         highlight = null; spotLine = null; spotsOpen = false
@@ -365,6 +403,7 @@ open class PlanRecalcState(
             (tries?.let { "; tries: $it" } ?: ""))
         // what the tour does with this result, after it is taken ([RouteRun.Effect.FollowNewRoute] / FollowEditedPlan)
         var after = emptyList<RouteRun.Effect>()
+        var takenRes: com.onpath.app.routing.PlanResult? = null
         result.onSuccess { res ->
             val it = res.route
             route = it; planReach = reach; snapToRoute(pts, res, run)
@@ -374,6 +413,7 @@ open class PlanRecalcState(
             after = routeEvent(RouteRun.Event.Succeeded(gen, planMode = mode == AppMode.PLAN,
                 sheetCanRise = SheetRise.rises(risen = false, planSize, mode == AppMode.PLAN, tour.recording)))
             val take = after.filterIsInstance<RouteRun.Effect.TakeRoute>().firstOrNull() ?: return@onSuccess
+            takenRes = res
             if (take.rises) {
                 planSize = SheetRise.TO
                 Problems.trace("plan", "First route of the plan: the sheet rises to ${SheetRise.TO}")
@@ -403,6 +443,7 @@ open class PlanRecalcState(
             if (take.adoptBaseline) planBaseline = it.points
         }
             .onFailure {
+                stitched = null // no line is shown from this run: a later edit must not stitch from an older one
                 if (it is com.onpath.app.routing.SlowPlan.TimeLimit) {
                     // the time limit in Plan: ask (the box stays until answered); the points and the line stay as
                     // they are – no straight lines, no error line
@@ -430,6 +471,7 @@ open class PlanRecalcState(
             else -> Unit
         }
         routeEvent(RouteRun.Event.Done(gen)) // "calculating" ends once the result is taken
+        takenRes?.let { routeTaken(run, it) } // after Done: the idle settling starts only when no run is going
     }
 
     /**
@@ -439,7 +481,8 @@ open class PlanRecalcState(
      */
     private fun rememberLines(run: Run, res: com.onpath.app.routing.PlanResult) {
         val now = waypoints.toList()
-        val ours = now == run.pts || (res.moved && now == res.points)
+        // after the snap the plan holds the NAMED result's points (a named stop keeps its place while res.points has it snapped)
+        val ours = now == run.pts || (res.moved && (now == res.points || now == planResult?.points))
         val expanded = com.onpath.app.routing.PlanAnchors.expand(run.pts, run.anchors, run.pins)
         val got = if (ours) com.onpath.app.routing.PlanStitch.linesOf(res.route, expanded, com.onpath.app.routing.AnchorProfile.of(run.act, run.level)) else null
         stitched = got?.let { com.onpath.app.routing.VisibleLines(now, it.profile, it.lines) }
