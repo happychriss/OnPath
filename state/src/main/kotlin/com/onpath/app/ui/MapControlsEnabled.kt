@@ -28,9 +28,11 @@ object MapControlsEnabled {
         val followLine: Boolean = false,
         val canUndo: Boolean = false,
         val canRedo: Boolean = false,
+        /** A round-trip suggestion's loop is on the map (owner 2026-11-21: the eye shows the way under it too). */
+        val suggestLine: Boolean = false,
     )
 
-    fun eye(s: In): Boolean = !s.pointsOpen && (s.planLine || s.shownLine || s.followLine)
+    fun eye(s: In): Boolean = !s.pointsOpen && (s.planLine || s.shownLine || s.followLine || s.suggestLine)
     fun wholeRoute(s: In): Boolean = WholeRoute.shows(s.mode, s.pointsOpen, s.planLine, s.shownLine, s.followLine)
     fun undo(s: In): Boolean = s.mode == AppMode.PLAN && s.canUndo && !s.shownOpen
     fun redo(s: In): Boolean = s.mode == AppMode.PLAN && s.canRedo && !s.shownOpen

@@ -166,3 +166,35 @@ passes it to `SaveState` as it is. The app's `RecentPlans : RecentPlansState` ke
 `RecentPlans.Leaving` / `.DraftRow` (copied field by field – two `DraftRow`s in the package, the nested one is the app's);
 `CoroutineNameProposal` is the one name wait for Save and Zuletzt. Changed on purpose: `trimOnce`'s tail (`trimmed = true`,
 the list read again) runs on the main thread, not on io. `keep` still writes its row before it returns (`RecentPlansTest`).
+
+**Built 2026-11-20 evening, the laptop's cut of Routes (not the whole slices):** the planner calls only a track made a plan
+and the open rules, so two small listed states, the slices delegate (callers unchanged):
+- `TrackToPlanState.kt` – `planFromShown` / `planFromLine` / `cancelPlanFromTrack` / `busy` on `TrackFitter.fit(track, act,
+  level, cancel: RouteCancel, got)` (got = `TrackToPlan.Result?` on the caller's thread; the app: `CoroutineTrackFitter` in
+  `RoutesSlice.kt`, the fit on `planRoute.threads.background`) and `TrackToPlanPorts : Say` (8).
+- `RoutesOpenState.kt` – `navigating`, `requestOpen`, `undoNewPlan`, `openSharedPlan` and the top-level `unlessUnsaved` on
+  `RoutesOpenPorts` (21: mode, openTour, the tour's new-plan note, Undo, activity / T level, the link opened, the camera
+  hold). A planner without a tour: `touring = false`, `newPlanUndo = null`.
+- Tours, the route run, export, thumbs, sync marks and share stay the app's (`RoutesSlice` / `RoutesGoSlice`, unlisted).
+
+**Built 2026-11-20 evening, the laptop's (1): the route run in stages – `PlanRecalcState.kt` listed** (`PlanRecalcSlice` keeps
+only the coroutines: debounce, slow timer, the wait bar's poll, the threads). Stages, in the order the driver calls them:
+`begin(): Run?` (the head: resets, the long-route ask via `RouteRun.Event.Recalc`, the stored line shown, the `RouteCancel`
+stored in `planRun.routeCancel`) → companion `route(run, engine, legs, cancel, progress, onPlanner): PlanResult` and
+`findReach(…)` (blocking, on the routing thread; read nothing of the page – the planner's worker calls them) →
+`progress(gen, done, total)` / `share(gen, share)` / `slow(gen)` while it runs → `legsRouted()` → (the app: `postRoute` off the
+main thread) → `taken(run, result, reach, tries, post, active)` (Returned / Superseded, the trace, snap, take or fail, what
+the tour does next, Done). Ports: `PlanRecalcPorts` (20), `PlanRecalcHost` (10), `MapDataPort` (6), `Background`. `Run` holds
+no cancel, lambda or port; note for a codec: `PlannedRoute.points` and three `PlanResult` fields are `by lazy` caches –
+encode the constructor fields, the lazies follow. Text tests that pinned the moved lines read `PlanRecalcState.kt` now.
+
+**Built 2026-11-20 evening, the laptop's (2): the search – `SearchState.kt` listed** (`ui/search`, `:state`). First a pure
+move: `search/OfflineIndex.kt` (`SearchQuery`, `SearchHit`, `SearchRanking`), `PlaceIndex.kt`, `OnlineSearch.kt`
+(`OnlineRanking`, `PhotonProvider`) and `AddressSearch.kt` went from `:app` to `:core` as whole files (byte-identical;
+`AndroidAddressDb` stays in `:app`); the web engine already compiled them via `app/web-shared-files.txt`, now via the core
+folder. Then the cut: `SearchUi` / `SearchContext` / `OnlineState` and the decisions – `onQuery`, `onCategory`, `clear`,
+`remember`, `clearRecent`, `showAllFavourites`, `startLists`, `resolve`, the list that keeps shown rows (`shownList`), and
+`run()` as stages `begin(): Search?` → (offline: the index + address search, then `offlineKeep` / `carried`) →
+`offlineDone`; (online, after `DEBOUNCE_MS`, 3+ letters) `onlineLoading` → `searchCentre` / provider / `onlineAnswer` →
+`onlineDone` (generation checks where they were). Ports `SearchPorts` (5: saved, recent, addRecent, clearRecent,
+indexedPlace). `SearchSession : SearchState` keeps the index, the address files, the provider and the coroutines.

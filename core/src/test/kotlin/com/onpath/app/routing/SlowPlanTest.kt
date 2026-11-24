@@ -64,16 +64,16 @@ class SlowPlanTest {
     }
 
     @Test fun theAppAsksOnlyInPlanAndCancelIsTheUsualCancel() {
-        // `recalc` is in PlanRecalcSlice (rebuild phase 2 piece 9b); the screen calls `vm.planRun.answerSlowPlan` itself (piece 21)
-        val vm = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt").readText()
+        // `recalc`'s head and result are in PlanRecalcState (rebuild phase 2 piece 9b); the screen calls `vm.planRun.answerSlowPlan` itself (piece 21)
+        val vm = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt").readText()
         // only a run started in Plan asks; Cancel is the usual Cancel; "Weiter warten" runs again for the same cause with
         // one more period and a new run starts at one period: the route run's rules (RouteRunTest
         // aRunForNavigateKeepsTheStraightLegsAtTheTimeLimit, cancelOfWeiterWartenIsTheUsualCancel,
         // weiterWartenRunsAgainWithOneMorePeriodAndANewRunStartsAtOneAgain) – here: the view model asks them and obeys
-        val recalc = vm.substringAfter("fun recalc() {").substringBefore("routeJob = scope.launchSafe")
+        val recalc = vm.substringAfter("fun begin(): Run? {").substringBefore("routeCancel = RouteCancel()")
         assertTrue(recalc.contains("RouteRun.Event.Recalc(pts, act, planMode = mode == AppMode.PLAN,"))
         assertTrue(recalc.contains("val gen = start.gen; val rounds = start.rounds; val askAtLimit = start.askAtLimit"))
-        assertTrue(vm.contains("Planner(eng, cancel, askAtLimit = askAtLimit, rounds = rounds, legs = legCache"))
+        assertTrue(vm.contains("Planner(eng, cancel, askAtLimit = run.askAtLimit, rounds = run.rounds, legs = legs"))
         assertTrue(vm.contains("routeEvent(RouteRun.Event.TimeLimit(gen, it.rounds))"))
         // the answer and what the effects do moved to PlanRunSlice (rebuild phase 2 piece 9; PlanRunFlowTest proves them as flows)
         val run = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt").readText()

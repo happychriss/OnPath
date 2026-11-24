@@ -50,6 +50,151 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         shot("details")
     }
 
+    /**
+     * a2) a symbol the map draws but the list does not have (cause on the owner's phone 2026-11-21 unproven): drawn after
+     * the last read, with no camera move, so nothing reads the list again. A tap and a hold on it still work – the press
+     * waits for the map's next idle and asks the map there.
+     */
+    @Test fun aSymbolMissingFromTheListStillAnswersATapAndAHold() {
+        val dp = android.content.res.Resources.getSystem().displayMetrics.density
+        com.onpath.app.debug.Problems.clear()
+        val first = drawUnlistedPoi("unlisted-1", (symbol.first + 80 * dp) to symbol.second)
+        press(first.first, first.second, 60)
+        waitFor("the details of a symbol the list lacks, tap at ${at(first)}") { read { it.selectedPoi?.id } == "unlisted-1" }
+        assertTrue("the field log says the list missed it", listMissedLogged())
+        assertNotNull("the sheet is up before Back", findFresh(By.text("Unlisted unlisted-1"), 5_000))
+        device.pressBack()
+        waitFor("the details closed") { read { it.selectedPoi } == null }
+        val second = drawUnlistedPoi("unlisted-2", (symbol.first + 80 * dp) to (symbol.second + 90 * dp))
+        com.onpath.app.debug.Problems.clear()
+        hold(second.first, second.second)
+        waitFor("the POI menu of a symbol the list lacks, hold at ${at(second)}") { read { it.placeMenus.poiMenu?.id } == "unlisted-2" }
+        assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
+        assertTrue("the hold came through the map, the list did not have it", listMissedLogged())
+    }
+
+    /**
+     * a3) the same while the camera follows north up and stands still (review 2026-11-21): nothing repaints such a map and
+     * a finger does not end this following, so the press itself must ask for its one frame – else no idle comes and the
+     * hold sets a route point. The list cannot learn the symbol first, so the hold must come through the map.
+     */
+    @Test fun aHoldOnASymbolMissingFromTheListWorksWhileTheCameraFollows() {
+        holdWhileFollowing(headingUp = false) { assertTrue("the hold came through the map, the list did not have the symbol", listMissedLogged()) }
+    }
+
+    /**
+     * a4) following with the walking direction up: the finger-down ends following in Plan, so the camera stops under the
+     * hold and a read is due (GitHub's slow emulator 2026-11-22: no idle within the press's second, the hold opened the
+     * first-point menu on a drawn symbol). That read may land before the hold or after it, both are right: what counts is
+     * the POI's menu.
+     */
+    @Test fun aHoldJustAfterTheFingerEndedFollowingOpensThePoiMenu() {
+        holdWhileFollowing(headingUp = true) { }
+    }
+
+    /**
+     * a5) field bug 2026-11-22 19:16 (owner's export: 8 presses in 22 s, no map idle for 30 s, smooth frames, an empty list):
+     * every compass value on the position dot keeps the map repainting for ~300 ms, so a phone in the hand can keep MapLibre
+     * from ever going idle. A tap and a hold on a drawn symbol must answer all the same.
+     */
+    @Test fun aTapAndAHoldOnASymbolAnswerWhileTheCompassKeepsTheMapFromIdle() {
+        val dp = android.content.res.Resources.getSystem().displayMetrics.density
+        gpsAt(POI_LAT, POI_LON)
+        waitUntil("a GPS fix in the app", 20_000) { read { it.tracker.location.value != null } }
+        // both layers first: the camera move of the second one would let a read learn the first symbol
+        addUnlistedLayer("unlisted-compass-1")
+        addUnlistedLayer("unlisted-compass-2")
+        val first = showUnlistedPoi("unlisted-compass-1", (symbol.first + 80 * dp) to symbol.second)
+        val idles = java.util.concurrent.atomic.AtomicInteger()
+        val idle = org.maplibre.android.maps.MapView.OnDidBecomeIdleListener { idles.incrementAndGet() }
+        scenario.onActivity { mapView(it)!!.addOnDidBecomeIdleListener(idle) }
+        val turning = java.util.concurrent.atomic.AtomicBoolean(true)
+        var listeners: List<org.maplibre.android.location.CompassListener> = emptyList()
+        onMap { m ->
+            val engine = m.locationComponent.compassEngine as com.onpath.app.map.HeadingEngine
+            val field = com.onpath.app.map.HeadingEngine::class.java.getDeclaredField("listeners").apply { isAccessible = true }
+            @Suppress("UNCHECKED_CAST") run { listeners = (field.get(engine) as Set<org.maplibre.android.location.CompassListener>).toList() }
+        }
+        assertTrue("the compass reaches the position dot", listeners.isNotEmpty())
+        val main = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val compass = Thread {
+            val t0 = System.currentTimeMillis()
+            while (turning.get()) {
+                val deg = 90 + 6 * kotlin.math.sin((System.currentTimeMillis() - t0) / 180.0)
+                main.runOnMainSync { listeners.forEach { it.onCompassChanged(deg.toFloat()) } }
+                Thread.sleep(16)
+            }
+        }.apply { isDaemon = true; start() }
+        try {
+            pause(1_000, "the turning dot has taken over the map's frames")
+            idles.set(0)
+            pause(1_500, "no idle while the compass turns")
+            assertEquals("the case: the map does not go idle", 0, idles.get())
+            com.onpath.app.debug.Problems.clear()
+            press(first.first, first.second, 60)
+            waitFor("the details of a symbol the list lacks, tap at ${at(first)}") { read { it.selectedPoi?.id } == "unlisted-compass-1" }
+            assertTrue("the tap came through the map, the list did not have it", listMissedLogged())
+            assertNotNull("the sheet is up before Back", findFresh(By.text("Unlisted unlisted-compass-1"), 5_000))
+            device.pressBack()
+            waitFor("the details closed") { read { it.selectedPoi } == null }
+            // drawn only now: the read the tap's hit caused cannot know it
+            val second = showUnlistedPoi("unlisted-compass-2", (symbol.first + 80 * dp) to (symbol.second + 90 * dp))
+            com.onpath.app.debug.Problems.clear()
+            hold(second.first, second.second)
+            waitFor("the POI menu of a symbol the list lacks, hold at ${at(second)}") { read { it.placeMenus.poiMenu?.id } == "unlisted-compass-2" }
+            assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
+            assertEquals("the hold set no route point", 0, waypointCount())
+            assertTrue("the hold came through the map, the list did not have it", listMissedLogged())
+        } finally {
+            turning.set(false)
+            compass.join(2_000)
+            scenario.onActivity { mapView(it)?.removeOnDidBecomeIdleListener(idle) }
+            device.executeShellCommand("cmd location providers remove-test-provider gps")
+        }
+    }
+
+    private fun holdWhileFollowing(headingUp: Boolean, thenCheck: () -> Unit) {
+        val id = "unlisted-follow-1"
+        var before: com.onpath.app.data.AppSettings? = null
+        scenario.onActivity { before = vm(it).settingsSlice.settings; vm(it).settingsSlice.updateSettings(vm(it).settingsSlice.settings.copy(navHeadingUp = headingUp)) }
+        addUnlistedLayer(id)
+        try {
+            gpsAt(POI_LAT, POI_LON)
+            waitUntil("a GPS fix in the app", 20_000) { read { it.tracker.location.value != null } }
+            val (w, h) = mapSize()
+            scenario.onActivity { vm(it).map.followMe = true }
+            waitUntil("the camera follows", 10_000) { cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE }
+            pause(2_500, "the follow camera landed and stands still")
+            // gpsAt gave one fix, so no follow step moves the camera now. The test provider stays until the end: without it
+            // the emulator's own GPS sends a far-away fix and the following camera flies there (seen 2026-11-22).
+            val p = showUnlistedPoi(id, (w * 0.35f) to (h * 0.25f))
+            com.onpath.app.debug.Problems.clear()
+            assertTrue("the camera follows at the press", cameraMode() != org.maplibre.android.location.modes.CameraMode.NONE)
+            hold(p.first, p.second)
+            waitFor("the POI menu of a symbol the list lacks, following, hold at ${at(p)}") { read { it.placeMenus.poiMenu?.id } == id }
+            assertNull("the POI menu, not the plain first-point menu", read { it.placeAdd.firstPointMenu })
+            assertEquals("the hold set no route point", 0, waypointCount())
+            thenCheck()
+        } finally {
+            device.executeShellCommand("cmd location providers remove-test-provider gps")
+            scenario.onActivity { a -> before?.let { vm(a).settingsSlice.updateSettings(it) } }
+        }
+    }
+
+    private fun cameraMode(): Int {
+        var mode = org.maplibre.android.location.modes.CameraMode.NONE
+        val done = java.util.concurrent.CountDownLatch(1)
+        scenario.onActivity { a ->
+            mapView(a)!!.getMapAsync { m ->
+                val c = m.locationComponent
+                if (c.isLocationComponentActivated) mode = c.cameraMode
+                done.countDown()
+            }
+        }
+        done.await(5, java.util.concurrent.TimeUnit.SECONDS)
+        return mode
+    }
+
     /** b) a real hold on the drawn symbol in Plan → the POI menu; „Start here“ there sets the plan's start on the POI. */
     @Test fun holdOnADrawnPoiSymbolOpensItsMenu() {
         hold(symbol.first, symbol.second)
@@ -76,12 +221,23 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
         waitUntil("a plan of two points") { waypointCount() == 2 }
         waitFor("the route drawn") { read { !it.planRun.routing && it.route != null } }
         val s = drawnPoiSymbol(POI_ID, POI_LAT, POI_LON, ICON_LAYER)
-        com.onpath.app.debug.Problems.clear()
-        hold(s.first, s.second, takeAddMenu = false) // waits for the measure (waitHoldMeasured)
-        waitFor("the POI menu after the measure") { read { it.placeMenus.poiMenu?.id } == POI_ID }
-        val rows = read { vm -> vm.placeMenus.poiMenu?.let(vm.placeMenus::placeMenu)?.main }
-        val trace = com.onpath.app.debug.Problems.events().map { it.message }
-        val line = trace.firstOrNull { it.startsWith("Place menu of a") }
+        fun holdAndRead(): Triple<List<com.onpath.app.domain.PlaceAddMenu.Item>?, List<String>, String?> {
+            com.onpath.app.debug.Problems.clear()
+            hold(s.first, s.second, takeAddMenu = false) // waits for the measure (waitHoldMeasured)
+            waitFor("the POI menu after the measure") { read { it.placeMenus.poiMenu?.id } == POI_ID }
+            val rows = read { vm -> vm.placeMenus.poiMenu?.let(vm.placeMenus::placeMenu)?.main }
+            val trace = com.onpath.app.debug.Problems.events().map { it.message }
+            return Triple(rows, trace, trace.firstOrNull { it.startsWith("Place menu of a") })
+        }
+        var (rows, trace, line) = holdAndRead()
+        // GitHub's emulator is sometimes ~5× slower (2026-11-20: the route 5.4 s instead of 1.1 s) and the app's 1.5 s limit
+        // then falls back to straight lines – by design. Held once more (the legs are cached now) so the paths are still checked.
+        if (realRouting && line?.contains("paths failed: timeout") == true) {
+            android.util.Log.i("OnPathE2E", "POI hold while planning: the first measure timed out on a slow emulator – held once more: $line")
+            scenario.onActivity { vm(it).placeMenus.closeMapOverlays("e2e: hold once more") }
+            waitUntil("the menu closed") { read { it.placeMenus.poiMenu } == null }
+            val again = holdAndRead(); rows = again.first; trace = again.second; line = again.third
+        }
         android.util.Log.i("OnPathE2E", "POI hold while planning: rows $rows, realRouting $realRouting: $line")
         assertEquals("only „Neues Ziel“ – $line", listOf(com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION), rows)
         assertTrue("the decision says how it measured – $trace", line != null && (line.contains("paths: ") || line.contains("paths failed")))
@@ -132,7 +288,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     // ------------------------------------------------------------------------------------------------ helpers
 
     /** Whether MapLibre drew a feature of [layer] within 4 dp of the screen point [p] (device pixels). */
-    private fun drawnAround(p: Pair<Float, Float>, layer: String): Boolean {
+    private fun drawnAround(p: Pair<Float, Float>, layer: String, id: String = POI_ID): Boolean {
         val dp = android.content.res.Resources.getSystem().displayMetrics.density
         var hit = false
         val done = java.util.concurrent.CountDownLatch(1)
@@ -142,13 +298,59 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
             mv.getMapAsync { m ->
                 val x = p.first - loc[0]; val y = p.second - loc[1]
                 hit = m.queryRenderedFeatures(android.graphics.RectF(x - 4 * dp, y - 4 * dp, x + 4 * dp, y + 4 * dp), layer)
-                    .any { it.getStringProperty("id") == POI_ID }
+                    .any { it.getStringProperty("id") == id }
                 done.countDown()
             }
         }
         done.await(5, java.util.concurrent.TimeUnit.SECONDS)
         return hit
     }
+
+    /**
+     * Draws one more POI symbol at the screen point [p] in a layer of its own named like the style's POI layers – no camera
+     * move and no style change after the layer is known, so the app's list of shown POIs does not learn of it.
+     */
+    private fun drawUnlistedPoi(id: String, p: Pair<Float, Float>): Pair<Float, Float> {
+        addUnlistedLayer(id)
+        return showUnlistedPoi(id, p)
+    }
+
+    /** The empty layer of [id]; one small camera move lets the app's next read see that the layer exists. */
+    private fun addUnlistedLayer(id: String) {
+        onMap { m ->
+            val style = m.style!!
+            val icon = "e2e-$id"
+            style.addImage(icon, android.graphics.Bitmap.createBitmap(48, 48, android.graphics.Bitmap.Config.ARGB_8888).apply { eraseColor(android.graphics.Color.RED) })
+            style.addSource(org.maplibre.android.style.sources.GeoJsonSource("e2e-src-$id", org.maplibre.geojson.FeatureCollection.fromFeatures(emptyArray<org.maplibre.geojson.Feature>())))
+            style.addLayer(org.maplibre.android.style.layers.SymbolLayer("poi-e2e-$id", "e2e-src-$id").withProperties(
+                org.maplibre.android.style.layers.PropertyFactory.iconImage(icon),
+                org.maplibre.android.style.layers.PropertyFactory.iconAllowOverlap(true),
+                org.maplibre.android.style.layers.PropertyFactory.iconIgnorePlacement(true)))
+            m.moveCamera(org.maplibre.android.camera.CameraUpdateFactory.zoomBy(0.001)) // scrollBy reports no camera idle
+        }
+        pause(1_500, "the camera stop's read has seen the new, still empty layer")
+    }
+
+    /** Puts the symbol of [id] at the screen point [p]: the map draws it, nothing reads the list. */
+    private fun showUnlistedPoi(id: String, p: Pair<Float, Float>): Pair<Float, Float> {
+        scenario.onActivity { a ->
+            val mv = mapView(a)!!
+            val loc = IntArray(2).also { mv.getLocationOnScreen(it) }
+            mv.getMapAsync { m ->
+                val ll = m.projection.fromScreenLocation(android.graphics.PointF(p.first - loc[0], p.second - loc[1]))
+                val f = org.maplibre.geojson.Feature.fromGeometry(org.maplibre.geojson.Point.fromLngLat(ll.longitude, ll.latitude)).apply {
+                    addStringProperty("id", id); addStringProperty("kind", "restaurant"); addStringProperty("name", "Unlisted $id")
+                }
+                m.style!!.getSourceAs<org.maplibre.android.style.sources.GeoJsonSource>("e2e-src-$id")!!.setGeoJson(f)
+            }
+        }
+        waitFor("the extra symbol $id drawn at ${at(p)}") { drawnAround(p, "poi-e2e-$id", id) }
+        pause(1_500, "the map is idle again; nothing read the list")
+        return p
+    }
+
+    private fun listMissedLogged(): Boolean = com.onpath.app.debug.Problems.events().any { it.message.startsWith(com.onpath.app.poi.PoiHit.LIST_MISSED) } ||
+        com.onpath.app.debug.Problems.snapshot().any { it.message.startsWith(com.onpath.app.poi.PoiHit.LIST_MISSED) }
 
     /** The POI data of [format]: `pois.geojson`; format 2 adds the cells' overlays file and POI tiles. */
     private fun writePois(dir: java.io.File) {

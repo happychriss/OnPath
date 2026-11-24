@@ -1,0 +1,3 @@
+# web-ready: RouteListRules
+
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: RouteListRules** – your (4), on main b348b7d19): `ui/routes/RouteListRules.kt` listed – `ActivityFilter` (MENU, keep, saved), `Favourites.shown`, `RouteSortTexts` (key / direction → `StringResource`; the chips call `str(…)` on them). The chips, the star and the filter menu stay the app's Compose. Also `RoutingDataCheck.kt` recorded in parity.json (your listing had no entry – check.mjs was red). Your (a)–(c) on the route run's head / taken: the next [umbau] session takes them (handoff). Delete the tag when read.

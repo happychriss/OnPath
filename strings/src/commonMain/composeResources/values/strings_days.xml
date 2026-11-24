@@ -49,6 +49,8 @@
     <string name="days_which_night">Which night?</string>
     <string name="days_remove_hotel_ask">Remove the overnight stop with its hotel?</string>
     <string name="days_from_to">%1$s – %2$s</string>
+    <string name="days_from_hotel">from %1$s</string>
+    <string name="days_to_hotel">to %1$s</string>
     <string name="days_km_at">km %1$s</string>
     <plurals name="days_count">
         <item quantity="one">%1$d day</item>

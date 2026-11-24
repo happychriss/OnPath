@@ -64,7 +64,7 @@ export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void
 
 const phone = () => matchMedia('(max-width: 700px)').matches;
 
-const DEBOUNCE_MS = 350; // the app's SearchSession.DEBOUNCE_MS
+const DEBOUNCE_MS = 350; // the app's SearchState.DEBOUNCE_MS (shared; the keystroke timer needs it at once, so the page keeps the number)
 
 /** Photon request exactly as the app's PhotonProvider.url (rough position, 2 decimals ≈ 1 km). */
 export function photonUrl(q: string, lat: number, lon: number, limit = 20): string {

@@ -344,6 +344,21 @@ class TourEditsFlowTest {
     }
 
     /** Nothing is passed without a tour, without a followed plan line, for a followed track and for an empty plan. */
+    /** A stop the route only passed by is behind the rider for an edit, but stays out of the map's grey – also after the edit. */
+    @Test fun aStopPassedByIsBehindForAnEditButNotGreyOnTheMap() {
+        startTour(track = listOf(listOf(a, b)))
+        val by = files.load().session!!.copy(visited = setOf(0, 1, 3), passedBy = setOf(2))
+        client.publish(recState(tour7, by, listOf(listOf(a, b))))
+        assertEquals(setOf(0, 1, 2, 3), ui { edits.tourPassed() })
+        assertEquals(setOf(0, 1, 3), ui { edits.tourPassedOnMap() })
+        // the tour follows position → ahead: its session no longer knows the stop
+        client.publish(recState(tour7, by.copy(visited = emptySet(), passedBy = emptySet()), listOf(listOf(a, b))))
+        assertEquals("still behind", setOf(0, 1, 2, 3), ui { edits.tourPassed() })
+        assertFalse("still not grey", 2 in ui { edits.tourPassedOnMap() })
+        client.publish(recState(tour8, by.copy(visited = emptySet(), passedBy = emptySet()), emptyList()))
+        assertEquals("a new tour starts over", emptySet<Int>(), ui { edits.tourPassedOnMap() })
+    }
+
     @Test fun nothingIsPassedWithoutATourAFollowedPlanOrForATrack() {
         create()
         routeNow = routeFor(plan.points.toList())

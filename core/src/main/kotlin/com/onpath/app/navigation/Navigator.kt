@@ -86,8 +86,8 @@ val NavPrompt.offRoute: Boolean get() =
     this !is NavPrompt.FarStart && this !is NavPrompt.LeadFailed && this !is NavPrompt.MidStart &&
         (this as? NavPrompt.Question)?.switch == null
 
-/** Straight-line direction to the nearest route point ahead (arrow mode). */
-data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint)
+/** Straight-line direction to the nearest route point ahead (arrow mode). [alongM]: metres past where the route was left; null = the way to the start. */
+data class RouteHint(val distanceM: Double, val bearingDeg: Double, val target: GeoPoint, val alongM: Double? = null)
 
 /** Navigation state the service publishes for the UI (RecState.nav). */
 data class NavState(
@@ -151,6 +151,7 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         private set
 
     private var original = NavLine(session.original)
+    private val beside = StopsBesideRoute() // stops the route cannot reach: passed by at the line's nearest place (C5)
     val detector = OffRouteDetector(offRouteM).apply { headingRule = session.activity != Activity.HIKE }
     private var leftAtM = session.leftAtM
     private var jobId = 0
@@ -492,7 +493,26 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val pr = prompt as? NavPrompt.FarStart ?: return Step()
         if (pr.id != id) return Step()
         quiet = true
-        return clearPrompt()
+        return clearPrompt() + withdrawLead()
+    }
+
+    /** "Guide me" is no longer wished: the next plan edit must not start a search the user declined ([NavSession.needsLead]). */
+    private fun withdrawLead(): Step {
+        if (!session.lead) return Step()
+        session = session.copy(lead = false)
+        return Step(sessionChanged = true)
+    }
+
+    /**
+     * "Cancel" while the way to the start is searched (far-start question [id]): the search stops and the same question
+     * is asked again (Just record / Guide me). The recording goes on, nothing is said; a late result is ignored.
+     */
+    fun cancelLead(id: Int): Step {
+        val pr = prompt as? NavPrompt.FarStart ?: return Step()
+        if (pr.id != id || !pr.searching) return Step()
+        prompt = pr.copy(searching = false)
+        runningJob = -1
+        return Step(cancelJob = true) + withdrawLead()
     }
 
     /** OK on "No way to the route found – recording continues" ([id]): quiet like "Just record". */
@@ -602,8 +622,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val id = ++jobId
         runningJob = id; refreshing = refresh; this.vibrateOnResult = vibrateOnResult
         jobFrom = f.point
-        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited, session.activity, session.sac,
-            recent = recent.toList()))
+        // a stop passed by is behind the rider (never a target), though not "reached"
+        return Job(id, Rerouter.Request(f.point, original, leftAtM, session.stops, session.visited + session.passedBy,
+            session.activity, session.sac, recent = recent.toList()))
     }
 
     /** A new question: remember its way back and the cost from where it was asked; then catch up with the rider. */
@@ -687,13 +708,13 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
      */
     private fun markVisited(p: GeoPoint, accuracyM: Double): Step {
         val s = session
-        if (s.stops.isEmpty() || accuracyM > NavSession.VISITED_MAX_ACCURACY_M) return Step()
+        if (s.stops.isEmpty()) return Step()
         val radius = NavSession.visitedM(s.activity)
         var v: MutableSet<Int>? = null
-        for (i in s.stops.indices) {
+        if (accuracyM <= NavSession.VISITED_MAX_ACCURACY_M) for (i in s.stops.indices) {
             if (i in s.visited) continue
             // owner 2026-11-03 ("every tour starts at point 1 and skips nothing"): a stop counts only in plan order
-            if (!inOrder(s, i, v ?: s.visited)) continue
+            if (!s.inOrder(i, v ?: s.visited, detector.progressM)) continue
             val d = Geo.distance(p, s.stops[i].point)
             val closest = stopClosest[s.stops[i].point]
             if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
@@ -701,36 +722,23 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
                 (closest != null && closest <= radius && d > closest + NavSession.VISITED_AWAY_M)
             if (reached) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
-        val nv = v ?: return Step()
-        session = s.copy(visited = nv)
+        val nv = v ?: s.visited
+        val now = if (s.rerouted) detector.line ?: original else original
+        val by = beside.passedNow(s, original, now, p, accuracyM, detector.progressM, nv) { s.inOrder(it, nv, detector.progressM) }
+        if (v == null && by.isEmpty()) return Step()
+        session = s.copy(visited = nv, passedBy = s.passedBy + by)
         return Step(sessionChanged = true)
     }
 
     /**
-     * Stop [i] may count as reached now (owner 2026-11-03): before the route is reached only point 1 (a lead passing a
-     * later point – or a round trip's closing point at the start – reaches nothing); after it, a later stop only when
-     * every stop before it is reached / left out, or the progress along the planned line got there (a stop passed
-     * 40–50 m beside the way stays behind, not ahead). A round trip's way back to point 1 is never reached at the start.
-     */
-    private fun inOrder(s: NavSession, i: Int, visited: Set<Int>): Boolean {
-        if (i == 0) return true
-        if (!s.reached) return false
-        if ((0 until i).all { it in visited || it in s.skipped }) return true
-        return !s.rerouted && detector.progressM >= s.stops[i].alongM - NavSession.visitedM(s.activity)
-    }
-
-    /** Nearest point of the original ahead of where the user left it (never back to a passed part). */
-    /**
-     * Arrow + distance to the route: the line followed now from where it was left (owner 2026-11-01, Rosellen replay:
-     * on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left, the new line 50 m away).
+     * Arrow + distance to the nearest point ahead of where the line followed now was left, never a passed part (owner
+     * 2026-11-01, Rosellen replay: on a re-routed line the arrow pointed 530 m back to where the ORIGINAL was left).
      */
     private fun hint(p: GeoPoint): RouteHint? {
-        val active = detector.line
-        val m = if (session.rerouted && active != null && active.isUsable)
-            active.match(p, detector.leftAtM, detector.leftAtM + HINT_AHEAD_M)
-        else original.match(p, leftAtM, leftAtM + HINT_AHEAD_M)
-        m ?: return null
-        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point)
+        val active = detector.line?.takeIf { session.rerouted && it.isUsable }
+        val from = if (active != null) detector.leftAtM else leftAtM
+        val m = (active ?: original).match(p, from, from + HINT_AHEAD_M) ?: return null
+        return RouteHint(m.distanceM, Geo.bearing(p, m.point), m.point, m.alongM - from)
     }
 
     companion object {
@@ -775,5 +783,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
          */
         const val LEAD_REQUEST_MS = 20_000L
         const val LEAD_TOTAL_MS = 30_000L
+
+        /** From this straight-line distance to the start the far-start box warns that the search can take long. */
+        const val FAR_SEARCH_WARN_M = 25_000.0
+        fun searchMayTakeLong(distanceM: Double) = distanceM >= FAR_SEARCH_WARN_M
     }
 }

@@ -388,6 +388,8 @@ class TourWiringTest {
     private val editsSlice = sourceFile("ui/tour/TourEdits.kt").readText()
     /** The route run's coroutine (`recalc`, piece 9b): it cancels `followCancel` and asks the tour to follow the edited plan. */
     private val recalcSlice = sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
+    /** The same run's stages (`PlanRecalcState`, listed): the head and the effects loop live here, their ports' adapter in [recalcSlice]. */
+    private val recalcState = sourceFile("ui/plan/PlanRecalcState.kt").readText()
     private val edits get() = between("val tourEdits: com.onpath.app.ui.tour.TourEdits = com.onpath.app.ui.tour.TourEdits(", "\n    )\n")
     private val editsHost get() = between("host = object : com.onpath.app.ui.tour.TourEditsHost {", "        },\n")
 
@@ -440,9 +442,11 @@ class TourWiringTest {
         )) assertTrue("the view model says: $line", vm.contains(line))
         assertEquals("wayThereFrom is the slice's for both hosts", 2, count(vm, "override fun wayThereFrom(): GeoPoint? = tourEdits.wayThereFrom()"))
         assertEquals("the one field, volatile, is the slice's", 1, count(editsSlice, "@Volatile var followCancel: com.onpath.app.routing.RouteCancel? = null"))
-        assertEquals("recalc (piece 9b: the slice) is the only code that touches it", 1, count(recalcSlice, "tourEdits.followCancel?.cancel(); tourEdits.followCancel = null // the tour's follow line of the old plan"))
+        assertEquals("recalc (piece 9b: the state's head) is the only code that touches it", 1, count(recalcState, "tour.followCancel?.cancel(); tour.followCancel = null // the tour's follow line of the old plan"))
+        assertEquals("…through the slice's adapter", 1, count(recalcSlice, "get() = tourEdits.followCancel\n        set(v) { tourEdits.followCancel = v }"))
         assertEquals("…and the view model no longer does", 0, count(vm, "followCancel?.cancel()"))
-        assertEquals("the run asks the tour to follow the edited plan", 1, count(recalcSlice, "RouteRun.Effect.FollowEditedPlan -> tourEdits.followEditedPlan()"))
+        assertEquals("the run asks the tour to follow the edited plan", 1, count(recalcState, "RouteRun.Effect.FollowEditedPlan -> tour.followEditedPlan()"))
+        assertEquals("…through the slice's adapter", 1, count(recalcSlice, "override fun followEditedPlan() = tourEdits.followEditedPlan()"))
         assertEquals(0, count(vm, "\n        followCancel"))
     }
 

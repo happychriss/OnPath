@@ -45,12 +45,12 @@ abstract class MultiDayScreenshotTest(private val locale: Locale) {
         listOf(0.16f to DayEndKind.PROPOSAL, 0.33f to DayEndKind.HOTEL, 0.47f to DayEndKind.OVERNIGHT, 0.64f to DayEndKind.PROPOSAL,
             0.82f to DayEndKind.PROPOSAL),
         listOf(
-            DayRowUi(1, "München", "Bad Tölz", 92_000.0, 640.0, DayEndKind.PROPOSAL, false),
-            DayRowUi(2, "Bad Tölz", "Gasthof Krone", 96_000.0, 1_420.0, DayEndKind.HOTEL, true),
-            DayRowUi(3, "Matrei", "Brixen", 79_000.0, 980.0, DayEndKind.OVERNIGHT, false),
-            DayRowUi(4, "Brixen", "Salurn", 95_000.0, 420.0, DayEndKind.PROPOSAL, false),
-            DayRowUi(5, "Salurn", "Bassano", 101_000.0, 1_120.0, DayEndKind.PROPOSAL, false),
-            DayRowUi(6, "Bassano", "Venedig", 101_000.0, 220.0, null, false),
+            DayRowUi(1, "München – Bad Tölz", 92_000.0, 640.0, DayEndKind.PROPOSAL, false),
+            DayRowUi(2, "Bad Tölz – Gasthof Krone", 96_000.0, 1_420.0, DayEndKind.HOTEL, true),
+            DayRowUi(3, "Gasthof Krone – Brixen", 79_000.0, 980.0, DayEndKind.OVERNIGHT, false),
+            DayRowUi(4, null, 95_000.0, 420.0, DayEndKind.PROPOSAL, false),
+            DayRowUi(5, null, 101_000.0, 1_120.0, DayEndKind.PROPOSAL, false),
+            DayRowUi(6, "Bassano – Venedig", 101_000.0, 220.0, null, false),
         ), selected = 4..4)
 
     private fun sheet(ui: PlanUi) = paparazzi.snapshot {

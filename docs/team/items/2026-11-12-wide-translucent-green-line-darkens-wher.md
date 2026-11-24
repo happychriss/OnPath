@@ -1,3 +1,0 @@
-# [donald] Wide translucent green line darkens where it overlaps (owner 2026-11-12, Pixel screenshot in Plan during a tour, Meran)
-
-- **[donald] Wide translucent green line darkens where it overlaps (owner 2026-11-12, Pixel screenshot in Plan during a tour, Meran)** – „die transparenten grünen Punkte werden dunkler, wenn sie sich überlappen – kein Drama, sieht aber nicht schön aus“: at joins / turns / out-and-back parts the alpha adds up (separate features or self-overlap). Find the layer (MapController translucent line layers, RouteLook), then: one feature per line (no doubled caps at joins) and, for self-overlap, a pre-blended opaque pale green under the labels – before/after picture first.

@@ -77,7 +77,7 @@ typealias OverviewSnapshot = suspend (Tour, List<List<GeoPoint>>, RouteShape.Tin
  */
 internal object RouteLineCache {
     private val lru = android.util.LruCache<String, List<List<GeoPoint>>>(64)
-    fun key(t: Tour) = "${t.id}:${t.uuid}:${t.distanceM}:${t.waypoints.size}:${t.createdMs}"
+    fun key(t: Tour) = com.onpath.app.ui.routes.RouteLineKey.of(t)
     fun get(t: Tour): List<List<GeoPoint>>? = lru.get(key(t))
     fun put(t: Tour, line: List<List<GeoPoint>>) { lru.put(key(t), line) }
 }

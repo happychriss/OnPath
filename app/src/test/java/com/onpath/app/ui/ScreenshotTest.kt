@@ -854,18 +854,35 @@ class ScreenshotTest {
      * A point the route does not reach, and what does (owner 2026-11-07, "Meran → Mutkopf" at Hike T1): the red line
      * "② erst ab T2 erreichbar" with a › (tap = the map shows the section), no button. Texts from [PlanGaps.reachText].
      */
-    private fun reachPlan(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false): PlanUi {
+    private fun reachPlan(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false, detourM: Double? = null): PlanUi {
         val g = PlanGap(1, GeoPoint(46.71077, 11.13787), GeoPoint(46.7058, 11.1374), 552.0)
         val gaps = if (more) listOf(g, g.copy(index = 2)) else listOf(g)
         return planUi(n = 2, size = PlanSize.MINI).copy(activity = a, sac = 1,
-            gapText = PlanGaps.reachText(gaps, com.onpath.app.routing.PlanReach(1, fix, emptyList())))
+            gapText = PlanGaps.reachText(gaps, com.onpath.app.routing.PlanReach(1, fix, emptyList()),
+                listOfNotNull(detourM?.let { com.onpath.app.routing.PlanDetour(1, it, emptyList()) })))
     }
-    private fun reachShot(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false) =
-        paparazzi.snapshot { Frame(act = a, sac = 1) { PlanPanel(reachPlan(fix, a, more), PlanCallbacks()) } }
+    private fun reachShot(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false, detourM: Double? = null) =
+        paparazzi.snapshot { Frame(act = a, sac = 1) { PlanPanel(reachPlan(fix, a, more, detourM), PlanCallbacks()) } }
+    /** His Mutkopf plan at T1: not reached, and the level makes the long way; the longest form with a second gap. */
+    @Test fun planReachHikeDetour() = reachShot(com.onpath.app.routing.PlanReach.Fix.Level(2), Activity.HIKE, detourM = 17_400.0)
+    @Test fun planReachHikeDetourMore() = reachShot(com.onpath.app.routing.PlanReach.Fix.Level(2), Activity.HIKE, more = true, detourM = 17_400.0)
     @Test fun planReachHike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Level(2), Activity.HIKE)
     /** The longest text: a bike plan only walking reaches; with a second gap "(+1 more)". */
     @Test fun planReachOnFoot() = reachShot(com.onpath.app.routing.PlanReach.Fix.OnFoot(2), Activity.MTB, more = true)
     @Test fun planReachBike() = reachShot(com.onpath.app.routing.PlanReach.Fix.Bike(Activity.BIKE_TREKKING), Activity.BIKE_TOURING)
+
+    /**
+     * A point the T level sends on a long detour (owner 2026-11-21, his words from the picture, variant A): "② macht 4,2 km
+     * Umweg"; the longest text "② macht 12,4 km Umweg (+1 weitere)". Texts from [PlanGaps.detourText].
+     */
+    private fun detourShot(vararg extraM: Double) = paparazzi.snapshot {
+        val detours = extraM.mapIndexed { i, m -> com.onpath.app.routing.PlanDetour(i + 1, m, emptyList()) }
+        Frame(act = Activity.HIKE, sac = 1) {
+            PlanPanel(planUi(n = 3, size = PlanSize.MINI).copy(activity = Activity.HIKE, sac = 1, gapText = PlanGaps.detourText(detours)), PlanCallbacks())
+        }
+    }
+    @Test fun planDetourHike() = detourShot(4200.0)
+    @Test fun planDetourHikeMore() = detourShot(12_400.0, 3_100.0)
 
     /** A point the route does not reach – one red bold line in the small sheet (no message box). */
     @Test fun planGapSmall() = paparazzi.snapshot {

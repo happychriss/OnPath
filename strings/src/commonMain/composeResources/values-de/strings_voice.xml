@@ -40,6 +40,11 @@
     <string name="voice_then_straight">%1$s, dann %2$s geradeaus</string>
     <string name="voice_sentence">%1$s.</string>
     <string name="voice_off_route">Abseits der Route. Bitte aufs Handy schauen.</string>
+    <string name="voice_off_route_side">Abseits der Route. Die Route liegt %1$s, %2$s.</string>
+    <string name="voice_route_ahead">vor dir</string>
+    <string name="voice_route_right">rechts</string>
+    <string name="voice_route_left">links</string>
+    <string name="voice_route_behind">hinter dir</string>
     <string name="voice_back_on_route">Wieder auf der Route.</string>
     <string name="voice_new_route">Neue Route.</string>
     <string name="voice_stop_named">%1$s erreicht.</string>

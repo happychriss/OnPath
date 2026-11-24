@@ -37,7 +37,7 @@ interface WasmEngine {
   keptStart(home: string, favourites: string, recent: string, all: boolean, lat: number, lon: number): string;
   recentAdd(recent: string, code: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
-  historyRecord(points: string): void;
+  historyRecord(before: string, after: string): void;
   historyStep(op: string, points: string): string;
   historyState(): string;
   historyExport(): string;
@@ -51,9 +51,16 @@ interface WasmEngine {
   activities(): string;
   problems(): string;
   longRoute(points: string, activity: string, multiDay: boolean): string;
-  planCancel(cause: string, canUndo: boolean, canRedo: boolean): string;
+  planCancel(cause: string, points: string, activity: string, sac: number, why: string): string;
+  runHead(points: string, activity: string, sac: number, askLong: boolean): string;
+  runLongAnswer(yes: boolean, points: string): void;
+  runEnd(gen: number, outcome: string, rounds: number): void;
+  runSlowAnswer(wait: boolean): void;
+  runPlanAnyway(points: string): void;
+  runRoutedBefore(points: string): void;
   gpxRead(data: Int8Array, fileName: string, activity: string, sac: number): string;
   planFromTrack(track: string, activity: string, sac: number): string;
+  trackToPlan(plan: string, segments: string, waypoints: string, activity: string, sac: number): string;
   paceSet(hike: string, bike: string): string;
   paceChoices(activity: string): string;
   planTime(points: string, activity: string, sac: number): string;
@@ -69,7 +76,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -78,6 +85,8 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   'paceSet', 'paceChoices', 'planTime', 'rangeStats',
   // the app's plan rules before routing (WebPlanRules.kt): long-route question, what Cancel does
   'longRoute', 'planCancel',
+  // the route run's head (the app's PlanRecalcState.begin + RouteRun in WebPlanChain): asked before each run
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
@@ -381,7 +390,10 @@ function legsOut(e: WasmEngine) {
 /** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
 const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
-const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport']);
+// planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
+// an open „Weiter warten?“ – WebPlanChain.runExport)
+const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
@@ -448,6 +460,12 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     if (req.type === 'suggest') { await suggest(e, req); return; }
+    if (req.type === 'planFromTrack' && req.segments != null && req.isPlan) {
+      // an exported plan GPX: the app's TrackToPlanState takes its own points – nothing to route, no routing data
+      reply({ id: req.id, ok: true, text: e.trackToPlan(req.plan ?? '', req.segments, req.waypoints ?? '[]', req.activity, req.sac),
+        problems: JSON.parse(e.problems()) });
+      return;
+    }
     const t0 = performance.now();
     const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes, done) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes, done } }));
     if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; } // superseded while downloading
@@ -459,7 +477,9 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const gp = globalThis as unknown as { onpathPlanProgress?: (text: string) => void };
       gp.onpathPlanProgress = (text) => reply({ id: req.id, ok: true, progress: { phase: 'legs', text } }); // "37 %"
       try {
-      reply({ id: req.id, ok: true, text: e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
+      reply({ id: req.id, ok: true, text: req.segments != null
+        ? e.trackToPlan(req.plan ?? '', req.segments, req.waypoints ?? '[]', req.activity, req.sac)
+        : e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
         problems: JSON.parse(e.problems()) });
       } finally { gp.onpathPlanProgress = undefined; }
       return;

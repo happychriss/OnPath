@@ -107,3 +107,58 @@ arrival: „● Alles klar · unterwegs“. „Im Plan“ in time (later than pl
 in the head – one new optional field; without it „im Plan“ only means „on the route“. It is the phone's own judgement,
 not a word from him – say so on the page if he wants. Rule in `LiveStatusLine` (`:core`, tested), texts in the web strings;
 show ≤ 3 pictures (gallery, public repo) before building. Open question to ask him with the pictures: does „im Plan“ include the time?
+
+## Fresh session 2026-11-20 afternoon (Opus) – the 12 fixes done, share UI on main (dev tools only)
+- All 12 review fixes built, tests first where a test could show it: uploader keeps a stopped share's box as a
+  `LiveLeftover` line in the stored state and deletes it first (`aStopStillOnTheWayIsNotDroppedBySharingAgain`); the lane
+  publishes right after start / stop and steps while `uploader.cleaning` even for an interrupted tour
+  (`LiveLaneTest.startAndStopShowBeforeTheServerAnswers`, `aStopKeptBehindANewShareIs…`); the slice follows the recording
+  (`onRecording`) and the clock (`tick`, every 30 s only while sharing), a share from an earlier process is grey until
+  its first upload, „ended by the server“ is a grey line in the Settings card until shown there (then `liveSeen`),
+  `settingsClosed()` closes the name question; slice kept by the view model (`ViewModel.addCloseable`, made in
+  `MainActivity.onCreate`), TalkBack: the turn card's cleared semantics cover only the instruction. Words: „Standort
+  teilen“ / „● Standort“ / „Verfolge meine Tour: …“ / page title „OnPath – geteilter Standort“. A / B removed; gallery
+  `docs/design/live-app-pictures.md` refreshed. `liveName` stays in the backed-up `onpath.xml` (the user's own setting;
+  the share secret is never backed up) – told to the owner.
+- **Owner 2026-11-20 (box): „Main, Update danach“.** On main c477ef74b, but `LiveShares.FOR_EVERYONE = false`: shown only
+  with developer tools unlocked. Switch to true (+ line for donald „ready to ship“) only after: the privacy-text PR
+  (`pr/live-privacy`, being built) and PR 17 (hourly clean-up – today only the daily 03:17 cron runs `purgeLive`, so
+  expiry can be up to a day late) are merged by him, and he shared once on his Pixel (first real upload ever).
+- Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
+  arrival first, above) – pictures first; the Pixel walk list above.
+
+## 2026-11-24 – the owner's real share worked – start here
+- Server checked before (read only): `https://plan.onpath.earth/live/` 200 with its assets; `/live/v1/<id>` GET/POST/DELETE
+  answer 401 without a token, 404 with an unknown box (so D1 `live_box` exists and is bound). `/live/*` is not in
+  `run_worker_first` on main, but the API still reaches the worker (no asset matches); PR 17 adds it.
+- donald has no wrangler login: the tables could not be watched during the test; nobody saw his link (on purpose).
+- The owner (0.18.9, developer tools, „Nur aufzeichnen“ → ⚙ → „Standort teilen“, second device): **„Alles hat geklappt“** –
+  page, moving dot, „● Standort“, „Teilen beenden“ → „Das Teilen wurde beendet“. **Point 3 of 3 is done.**
+- Still before `FOR_EVERYONE = true` (stays off): PR 19 and PR 17 (owner merges), the big-model review of the 12 fixes
+  (`LiveLane`, `LiveUploader`), `live-smoke.mjs` run once. Then the „Next step“ below.
+- How to start a recording (he asked): Plan's ☰ → „Nur aufzeichnen“, or the green start button with a plan.
+
+## State at the shutdown (owner stopped donald + hp, 2026-11-22)
+**Nothing is unsaved:** all [tracking] work is on `main`. `feat/live-share-ui-3` on GitHub (6e9e55aec) is the state before
+the rebase and only still serves the gallery link in the owner's chat; do not build on it, do not force-push it.
+`feat/live-share-ui` / `-2` are superseded. Deleting any of them goes through `tools/dev/prune_branches.sh`.
+
+**On main:** the share UI with all 12 fixes, **off for users** (`LiveShares.FOR_EVERYONE = false` in `LiveShareWiring.kt`;
+visible only with developer tools unlocked, read when Settings / Navigate draw).
+
+**Waits for the owner, all three before the switch-on (his word 2026-11-20):**
+1. merge **PR 19** (`pr/live-privacy`, privacy page) – open;
+2. merge **PR 17** (`pr/live-host-config`, hourly clean-up, per-IP limit, live smoke in CI) – open;
+3. ~~one real share from his Pixel~~ – **done 2026-11-24, worked** (section above).
+
+**Next step, once all three are done:** `FOR_EVERYONE = true`, gate, push to main, a line for [donald] „ready to ship“ and one
+for [cloud-web] (the website's privacy text goes live with it; its line is in the backlog).
+
+**Not done / not checked – do not assume:**
+- No big-model review of the 12 fixes themselves (the review was before them); recording-adjacent: `LiveLane`, `LiveUploader`.
+- `live-smoke.mjs` (title changed) was not run locally; it only enters CI with PR 17. Run it before the switch-on.
+- [laptop] still has to run `node web/parity/check.mjs --update` unless `web/parity.json` shows it (backlog line).
+- The viewer page's heading is still „Live-Tour“ / „Live tour“ (`web_live_title`); only the page title changed. The owner's
+  „no Live as a word“ was about the app entry – ask him or change it with the viewer-page wish.
+- The owner has not said yes to the picture of the grey „Das Teilen wurde beendet“ line (gallery link, told to him).
+- Still open from above: the viewer page's verdict + arrival (pictures first), the Pixel walk, F-LIVE requirements, a help line.

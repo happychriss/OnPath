@@ -3,6 +3,7 @@
 // Usage: node test/share-smoke.mjs [segmentsDir] [screenshot.png]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { chromium } from '@playwright/test';
 import { serve } from './serve.mjs';
 
@@ -64,6 +65,9 @@ check((await page.textContent('#points li:first-child .txt > span:first-child'))
 await page.goto(url + 'index.html#p=AQ');
 await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes("can't be read"), null, { timeout: 60_000 }).catch(() => {});
 check((await page.textContent('#status')).includes("This plan link can't be read"), 'broken link → plain message');
+
+// 5. a long link on a freshly loaded engine (its own process: a small stack, Wasm's slow tier)
+check(spawnSync(process.execPath, [path.join(here, 'longlink-engine.mjs')], { stdio: 'inherit' }).status === 0, 'a long plan link opens on a fresh page');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

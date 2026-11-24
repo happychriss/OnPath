@@ -94,7 +94,7 @@ class PlaceMenusAdaptersTest {
         // a snapped route: the open point menu follows its point; entering Navigate closes the menus (through the forwarders)
         // (the snap is in `recalc`, which moved to PlanRecalcSlice, piece 9b: through its host)
         assertTrue(vm.contains("override fun menuFollowsSnap(moves: Map<GeoPoint, GeoPoint>) = placeMenus.followSnapped(moves)"))
-        assertTrue(com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("        host.menuFollowsSnap(moves)\n"))
+        assertTrue(com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcState.kt").readText().contains("        host.menuFollowsSnap(moves)\n"))
         // (piece 19: `enter` is TourSession's; its menus line is the host's `closeMenusForNavigate` – the same seven statements in the
         // same order, `followMe = true` right after it in the slice; TourSessionFlowTest shows each menu closed on entering Navigate)
         assertTrue(vm.contains("override fun closeMenusForNavigate() { placeMenus.planPoi = null; placeMenus.poiMenu = null; placeMenus.closePointMenu(\"mode change to Navigate\"); placeAdd.firstPointMenu = null; placeAdd.holdAddMenu = null; placeAdd.cancelHoldMeasure(\"mode change to Navigate\"); highlight = null }"))

@@ -14,6 +14,8 @@ import org.junit.Test
 class PlanRecalcWiringTest {
     private val vm = sourceFile("ui/AppViewModel.kt").readText()
     private val slice = sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
+    /** The listed stages (`PlanRecalcState`): the head, the result taken, the host and the ports. */
+    private val state = sourceFile("ui/plan/PlanRecalcState.kt").readText()
 
     private fun count(hay: String, needle: String): Int {
         var n = 0; var i = hay.indexOf(needle)
@@ -99,20 +101,22 @@ class PlanRecalcWiringTest {
 
     /** The rules for the slice itself (no work at construction, no Android, no view model scope). */
     @Test fun theSliceDoesNoWorkAtConstructionAndHasNoAndroid() {
-        assertFalse("no init block", slice.contains("    init {"))
-        assertFalse("no lazy", slice.contains(" by lazy"))
-        val code = slice.lines().filterNot { it.trim().startsWith("*") || it.trim().startsWith("/**") || it.trim().startsWith("//") }.joinToString("\n")
+        assertFalse("no init block", slice.contains("    init {") || state.contains("    init {"))
+        assertFalse("no lazy", slice.contains(" by lazy") || state.contains(" by lazy"))
+        val code = (slice + "\n" + state).lines().filterNot { it.trim().startsWith("*") || it.trim().startsWith("/**") || it.trim().startsWith("//") }.joinToString("\n")
         assertEquals(0, count(code, "android.") + count(code, "viewModelScope") + count(code, "SystemClock") + count(code, "Dispatchers."))
         // every launch is the old kind and name
         assertEquals(1, count(slice, "routeJob = scope.launchSafe(\"app\", \"recalc\") {"))
         assertEquals(1, count(slice, "scope.launchSafe(\"app\", \"showProgress\", main) {"))
-        assertEquals(1, count(slice, "scope.launchSafe(\"app\", \"aliasSnappedLegs\", io) {"))
-        assertEquals("the head's first statement", 1, count(slice, "    fun recalc() {\n        runCauses.start()\n"))
+        assertEquals(1, count(state, "background.run(\"aliasSnappedLegs\", { moved.count {"))
+        assertEquals("…on the view model's scope and the io thread", 1, count(slice, "CoroutineBackground(scope, io)"))
+        assertEquals("the head's first statement", 1, count(state, "    fun begin(askLong: Boolean = true): Run? {\n        runCauses.start()\n"))
+        assertEquals("the slice's recalc starts with the head", 1, count(slice, "    fun recalc() {\n        val run = begin() ?: return\n"))
     }
 
     /** A host member must not carry the name of a view-model function (`ViewModelInitOrderTest` follows every name an `init` can reach). */
     @Test fun noHostFunctionCarriesTheNameOfAViewModelFunction() {
-        val host = slice.substringAfter("interface PlanRecalcHost {").substringBefore("\n}\n")
+        val host = state.substringAfter("interface PlanRecalcHost {").substringBefore("\n}\n")
         val names = Regex("""\n    fun (\w+)\(""").findAll(host).map { it.groupValues[1] }.toList()
         assertTrue(names.toString(), names.size == 3)
         for (n in names) assertEquals("the view model has a function $n", 0, Regex("""\n    (private |internal )?fun $n\(""").findAll(vm).count())

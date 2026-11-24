@@ -109,6 +109,7 @@ class TourSessionFlowTest {
     private val client = FakeRecordingClient()
     private val db = JdbcTours()
     private val log = ArrayList<String>()
+    private var tourStartsSeen = 0
     private val said = ArrayList<Triple<String, NoticeKind, NoticePlace>>()
 
     // ---------------- threads: main (inline, virtual time), io (held, virtual time), the plan copy's, the routing's ----------------
@@ -672,6 +673,20 @@ class TourSessionFlowTest {
         assertEquals("NAVIGATING off", mapOf<String, Any>(RecordingWire.EXTRA_ON to false), client.sent.last().extras)
     }
 
+    /** The plan's detour check holds the router: it stops before the recording starts, and on any way into Navigate. */
+    @Test fun aTourStartStopsTheRoutingBesideThePlan() {
+        create()
+        planRun.besideRoute = object : com.onpath.app.ui.plan.BesideRoute {
+            override fun holdMeasures(running: Boolean) = Unit
+            override fun stop() { tourStartsSeen++ }
+        }
+        routeNow = routeFor(plan.points.toList())
+        ui { session.startNavigation() }
+        assertEquals(1, tourStartsSeen)
+        ui { session.enter(AppMode.NAVIGATE) }
+        assertEquals(2, tourStartsSeen)
+    }
+
     /** Rule 15: entering Navigate closes the menus THEN follows the position; the zoom is taken once per start; Plan clears it. */
     @Test fun enteringNavigateClosesTheMenusThenFollowsAndTakesTheStartZoomOnce() {
         create()
@@ -808,10 +823,10 @@ class TourSessionFlowTest {
         val before = Triple(session.mode, filesNow(), plan.points.toList())
         ui {
             session.takeNewRoute(1); session.takeViaRoute(2); session.keepOriginalRoute(3); session.leadToStart(4)
-            session.justRecord(5); session.joinHere(6); session.leadFailedOk(7)
+            session.justRecord(5); session.joinHere(6); session.leadFailedOk(7); session.cancelLead(8)
         }
         assertEquals(listOf(RecordingCommand.takeRoute(1), RecordingCommand.takeVia(2), RecordingCommand.keepRoute(3), RecordingCommand.leadThere(4),
-            RecordingCommand.justRecord(5), RecordingCommand.joinHere(6), RecordingCommand.leadFailedOk(7)), client.sent.toList())
+            RecordingCommand.justRecord(5), RecordingCommand.joinHere(6), RecordingCommand.leadFailedOk(7), RecordingCommand.cancelLead(8)), client.sent.toList())
         assertEquals("the app is as it was", before, Triple(session.mode, filesNow(), plan.points.toList()))
     }
 

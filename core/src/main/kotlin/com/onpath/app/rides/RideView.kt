@@ -258,7 +258,19 @@ object RideView {
         val options: List<Option>,
         val preselected: RideChoice,
         val lines: Map<RideChoice, List<Line>>,
-    )
+        /** Less than [AT_END_M] after the last ride, of any kind (a gondola too): what the question's title says. */
+        val rideAtEnd: Boolean = false,
+    ) {
+        /**
+         * "Save without the ride": what [preselected] cuts off (a bus or car at the end) is cut off; any other ride – in the
+         * middle, or a lift, which is never cut – stays grey and does not count.
+         */
+        val withoutRide: RideChoice get() = if (preselected == RideChoice.UNTIL) RideChoice.UNTIL else RideChoice.NOT_COUNTED
+        /** "Save with the ride": as recorded. */
+        val withRide: RideChoice get() = RideChoice.AS_RECORDED
+        /** The map of the question: the whole tour with every ride dashed (nothing dropped). */
+        val questionLines: List<Line> get() = lines[RideChoice.NOT_COUNTED].orEmpty()
+    }
 
     fun summary(segments: List<List<TrackPoint>>, rides0: List<Ride>, onFoot: Boolean, zone: ZoneId = ZoneId.systemDefault(),
                 allowSplit: Boolean = true): Summary? {
@@ -306,10 +318,10 @@ object RideView {
         }
         var after = 0.0
         for (i in last.to until f.size - 1) after += f.d(i, i + 1)
-        val atEnd = last.kind == RideKind.VEHICLE && after < AT_END_M
-        val pre = if (atEnd && options.any { it.choice == RideChoice.UNTIL }) RideChoice.UNTIL else RideChoice.NOT_COUNTED
+        val rideAtEnd = after < AT_END_M
+        val pre = if (rideAtEnd && last.kind == RideKind.VEHICLE && options.any { it.choice == RideChoice.UNTIL }) RideChoice.UNTIL else RideChoice.NOT_COUNTED
         val dummy = TourStats(0.0, 0.0, 0.0, 0.0)
         val lines = options.associate { o -> o.choice to lines(segments, RideRecord(rides, o.choice, dummy), o.choice) }
-        return Summary(rides, rows, options, pre, lines)
+        return Summary(rides, rows, options, pre, lines, rideAtEnd)
     }
 }

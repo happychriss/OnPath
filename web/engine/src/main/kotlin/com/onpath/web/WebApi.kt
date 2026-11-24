@@ -14,6 +14,8 @@ import com.onpath.app.routing.PlanEdits
 import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.Planner
+import com.onpath.app.routing.RouteCancel
+import com.onpath.app.ui.plan.PlanRecalcState
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
 import com.onpath.app.routing.WaypointInsertion
@@ -285,15 +287,22 @@ object Engine {
             // own, in Plan, with no tour running
             val before = lastResultFor(wps)?.takeIf { (it.activity != act || it.sac != sac) &&
                 RouteWarnings.saysChanged(own = true, inPlan = true, touring = false) }
+            // the run itself is the app's stage 2 (PlanRecalcState.route, umbau's cut 2026-11-20): a point put in on the
+            // routed line cut there from the known line (LegSplit, a night on the route), the Planner with its time limit
+            // (askAtLimit: "Weiter warten?"), PlanResult.plan – the one computation of app and planner. The page's Cancel is
+            // a fresh worker (client.ts dropPlans), so the cancel signal handed in here never fires.
             // the wait window (WebWait, owner 2026-11-19 „Route berechnet ist auch A“): the legs the router works on are its
             // steps – each time a leg is done, {"done":2,"total":5} (the app's RouteWait reads the same Planner report)
-            // a point put in on the routed line (a night on the route, owner 2026-11-19): its leg cut there, not routed
-            LegSplit.seed(legCache, wps, act, sac)
-            val planner = Planner(engine(), null, askAtLimit = rounds >= 1, rounds = rounds.coerceAtLeast(1), legs = legCache,
-                progress = { done, total -> progressSink?.invoke("{\"done\":$done,\"total\":$total}") })
+            val run = PlanRecalcState.Run(gen = 0, pts = wps, pins = parseIndices(pinned), act = act, level = sac,
+                rounds = rounds.coerceAtLeast(1), askAtLimit = rounds >= 1, f = WebPace.factors(act), started = t0,
+                changeBefore = null, standBefore = null)
+            var planner: Planner? = null
             val res = try {
-                PlanResult.plan(planner, wps, act, sac, parseIndices(pinned), nm.filterValues { it.isNotBlank() }.keys,
-                    WebPace.factors(act))
+                PlanRecalcState.route(run, engine(), legCache, RouteCancel(),
+                    progress = { done, total -> progressSink?.invoke("{\"done\":$done,\"total\":$total}") },
+                    onPlanner = { planner = it }).result
+                    // the named stops keep their place (the app reads them when the result is taken: PlanResult.withNamed)
+                    .withNamed(nm.filterValues { it.isNotBlank() }.keys)
             } catch (e: SlowPlan.TimeLimit) {
                 // the time limit: the page asks "Weiter warten?" – the points and the last line stay as they are
                 Problems.info("routing", "Plan reached its time limit after ${e.rounds} period(s) – asking to wait on")
@@ -301,18 +310,12 @@ object Engine {
             }
             lastResult = res
             val n = wps.size - 1
-            lastLegs = "{\"routed\":${n - planner.cachedLegs},\"cached\":${planner.cachedLegs},\"stored\":${legStore.hits}}"
+            val cached = planner?.cachedLegs ?: 0
+            lastLegs = "{\"routed\":${n - cached},\"cached\":$cached,\"stored\":${legStore.hits}}"
             // a stop the route does not reach: what does reach it ("② erst ab T2 erreichbar", the app's PlanReach, owner
-            // 2026-11-07) – only the missing piece is routed (~40 ms a try), as AppViewModel.findReach does
+            // 2026-11-07) – only the missing piece is routed (~40 ms a try): the app's PlanRecalcState.findReach
             val reach = res.gaps.firstOrNull()?.takeIf { !it.skipped }?.let { g ->
-                try {
-                    com.onpath.app.routing.PlanReach.find(engine(), g, act, sac).also { r ->
-                        Problems.trace("routing", "Point ${g.index + 1} not reached at ${act.name} T$sac: ${r?.fix ?: "not worked out"}")
-                    }
-                } catch (e: Exception) {
-                    Problems.warn("routing", "What reaches point ${g.index + 1} could not be worked out; the sheet says the missing metres", e)
-                    null
-                }
+                PlanRecalcState.findReach(g, act, sac, RouteCancel(), ::engine, System::currentTimeMillis)
             }
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
@@ -534,9 +537,32 @@ object Engine {
             title.ifBlank { null },
         ))
 
+    /**
+     * The bare code of a link ([PlanCode.parse]'s rule: "p=" at the start or after # ? &, then the code characters), found
+     * without its Regex: on a freshly loaded page, before Wasm's fast tier, that Regex ran out of stack on a long code
+     * (RangeError from ~1,400 characters; test/longlink-engine.mjs), and the link opened as "can't be read". Anything else
+     * goes to [PlanCode.parse] as it is.
+     */
+    internal fun linkCode(text: String): String {
+        val t = text.trim()
+        if (t.length > LINK_MAX) return t // PlanCode.parse refuses it
+        var at = t.indexOf("p=")
+        while (at >= 0) {
+            if (at == 0 || t[at - 1] in "#?&") {
+                var end = at + 2
+                while (end < t.length && (t[end] in 'A'..'Z' || t[end] in 'a'..'z' || t[end] in '0'..'9' || t[end] == '_' || t[end] == '-')) end++
+                if (end > at + 2) return t.substring(at + 2, end)
+            }
+            at = t.indexOf("p=", at + 1)
+        }
+        return t
+    }
+    /** PlanCode's limit for a whole link. */
+    private const val LINK_MAX = 16_000
+
     /** The plan in a link or code as JSON (points, activity, sac, pinned, names, title), or "null". */
     fun planParse(text: String): String {
-        val p = PlanCode.parse(text) ?: return "null"
+        val p = PlanCode.parse(linkCode(text)) ?: return "null"
         return buildString {
             append("{\"points\":[")
             p.points.forEachIndexed { i, q -> if (i > 0) append(','); append('[').append(num(q.lat, 5)).append(',').append(num(q.lon, 5)).append(']') }
@@ -551,20 +577,33 @@ object Engine {
         }
     }
 
-    // ---- undo / redo: the app's PlanHistory (ui/PlanState.kt) on the page's point list ----
+    // ---- undo / redo: the app's PlanDocument + PlanEditState (WebPlanChain) around one PlanHistory ----
     private val history = PlanHistory()
+    /** The app's plan-editing chain on this engine's history (rebuilt after an import: its Undo / Redo flags are read at construction). */
+    private var chain = WebPlanChain(history = history)
 
-    /** Before a change of the points: [points] as they are now (one Undo step). */
-    fun historyRecord(points: String) = history.record(parsePoints(points))
+    /** One undoable change of the points [before] → [after] (PlanEditState.change). */
+    fun historyRecord(before: String, after: String) = chain.record(parsePoints(before), parsePoints(after))
 
-    /** "undo" / "redo": the point list to show, or "null" when there is nothing to take back. */
+    /** "undo" / "redo" on the plan [points] (PlanEditState.undoStep / redoStep): the point list to show, or "null". */
     fun historyStep(op: String, points: String): String {
-        val now = parsePoints(points)
-        val out = (if (op == "redo") history.redo(now) else history.undo(now)) ?: return "null"
+        val out = chain.step(op != "redo", parsePoints(points)) ?: return "null"
         return out.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }
     }
 
     fun historyState(): String = "{\"canUndo\":" + history.canUndo + ",\"canRedo\":" + history.canRedo + "}"
+
+    /**
+     * Cancel of the long-route question ([why] "LONG") / of the wait ("STOPPED") – PlanEditState.cancelRun – for the run started
+     * by [cause] on the plan [points]; [activity] / [sac] = the activity before an activity change. `{"what":"UNDO","points":"…"}`
+     * ("UNDO" / "REDO" with the points to show, "RESTORE_ACTIVITY", "KEEP_POINTS").
+     */
+    fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String = "STOPPED"): String {
+        val (what, pts) = chain.cancel(cause, parsePoints(points), activityOrNull(activity), sac,
+            com.onpath.app.domain.NotRouted.entries.firstOrNull { it.name == why } ?: com.onpath.app.domain.NotRouted.STOPPED)
+        return "{\"what\":" + str(what) + ",\"points\":" +
+            (pts?.let { p -> str(p.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) }) } ?: "null") + "}"
+    }
 
     /**
      * The undo / redo snapshots as text, for a fresh engine worker (web-planner.md §26: the page stops a long plan that
@@ -573,15 +612,61 @@ object Engine {
     fun historyExport(): String {
         val (u, r) = history.snapshot()
         fun list(l: List<List<GeoPoint>>) = l.joinToString("|") { s -> if (s.isEmpty()) "~" else s.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) } }
-        return list(u) + "#" + list(r)
+        // + what the route run keeps (WebPlanChain.runExport: "Plan anyway", why not routed, an open "Weiter warten?")
+        return list(u) + "#" + list(r) + "#" + chain.runExport() + "#" + epoch
     }
 
-    /** [historyExport]'s text back into this engine's history (replaces it). */
+    /**
+     * Which chain a run's number belongs to: every [historyImport] starts a fresh chain whose RouteRun counts from 0 again,
+     * so a number alone could name a run of the chain before (review 2026-11-20: a late result ending the newer run). The
+     * page gets `epoch * EPOCH + gen`; [epoch] grows across fresh chains and fresh workers (it rides in the export).
+     */
+    private var epoch = 0
+    private const val EPOCH = 1_000_000
+
+    /** [historyExport]'s text back into this engine's history (replaces it) and into a fresh chain (its route run too). */
     fun historyImport(text: String) {
         val parts = text.split("#")
         fun list(s: String?) = if (s.isNullOrEmpty()) emptyList() else s.split("|").map { if (it == "~") emptyList() else parsePoints(it) }
         history.restore(list(parts.getOrNull(0)), list(parts.getOrNull(1)))
+        chain = WebPlanChain(history = history)
+        parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
+        epoch = (maxOf(epoch, parts.getOrNull(3)?.toIntOrNull() ?: 0) + 1) % 2000
     }
+
+    // ---- the route run's head (the app's PlanRecalcState.begin + RouteRun, WebPlanChain): the page asks before each run
+
+    /**
+     * The head of a run of the plan [points] for [activity] / [sac]: `{"what":"ROUTE","gen":3,"rounds":1}`, the long-plan
+     * question first `{"what":"ASK","seconds":…,"title":…,"text":…,"plan":…,"cancel":…,"notRouted":…,"again":…}` (the app's
+     * LongRouteDialog texts), or `{"what":"NONE"}`. [askLong] false: a multi-day tour is never asked (owner 2026-11-18).
+     */
+    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String {
+        val act = Activity.valueOf(activity)
+        return when (val h = chain.head(parsePoints(points), act, sac, askLong)) {
+            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds + "}"
+            is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longAsk(h.estimateS, act) + "}"
+            WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
+        }
+    }
+
+    /** The answer to the long-plan question for the plan [points] (RouteRun.LongAnswer): yes = not asked again for them. */
+    fun runLongAnswer(yes: Boolean, points: String) = chain.longAnswer(yes, parsePoints(points))
+
+    /** The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open). */
+    fun runEnd(gen: Int, outcome: String, rounds: Int) {
+        if (gen / EPOCH != epoch) { Problems.trace("plan", "the end of a run of an earlier chain – ignored ($outcome)"); return }
+        chain.end(gen % EPOCH, outcome, rounds)
+    }
+
+    /** The plan [points] was said yes to earlier on this page (RouteRun.RoutedBefore): not asked again. */
+    fun runRoutedBefore(points: String) = chain.routedBefore(parsePoints(points))
+
+    /** The answer to "Weiter warten?" (PlanRunSlice.answerSlowPlan): the next [runHead] has one period more. */
+    fun runSlowAnswer(wait: Boolean) = chain.slowAnswer(wait)
+
+    /** "Plan anyway" / "Calculate" of the not-routed line (PlanRunSlice.planAnyway) on the plan [points]. */
+    fun runPlanAnyway(points: String) = chain.planAnyway(parsePoints(points))
 
     // ---- map gestures: the app's MapGestures (hold rules, point menu) ----
 
@@ -610,29 +695,44 @@ object Engine {
      */
     fun placeMenu(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double = 30.0,
                   activity: String = "", sac: Int = 2): String {
-        val pam = com.onpath.app.domain.PlaceAddMenu
         val w = parsePoints(points)
         val p = GeoPoint(lat, lon)
-        val route = lastPlanFor(w)?.points
-        var why = ""
-        val m = if (!roundTrip && w.size >= 2) {
-            val lineDp = lineDp(w, p, route, lineSnapM)
-            val straight = pam.detours(w, p)!!
-            val act = activityOrNull(activity)
-            if (pam.planningHold(lineDp, straight) == com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE || act == null) {
-                why = "line ${lineDp.toInt()} dp, straight: insert +${straight.insertM.toInt()} m, append ${straight.appendM.toInt()} m"
-                pam.planningPlaceMenu(lineDp, straight)
-            } else {
-                val o = measureOrStraight(w, p, straight, act, sac)
-                why = "line ${lineDp.toInt()} dp, ${o.describe()}"
-                pam.planningPlaceMenu(lineDp, o.detours)
-            }
-        } else pam.menu(w.size, touring = false, zone = if (w.size < 2) null else pam.zone(w, p, loop = roundTrip))
-        val stop = if (w.size < 2) w.size else WaypointInsertion.decide(w, p, route, 30.0, stopOnly = true).index
+        // the app's PlaceMenusState.openPoiMenu → placeMenu: the rows decided (measured on the paths while planning)
+        val q = WebPlaceAdd(w, lastPlanFor(w), activityOrNull(activity), sac)
+        val poi = WebPlaceAdd.poi(lat, lon, "", "")
+        val why = q.traced { q.menus.openPoiMenu(poi, lineSnapM) }
+        val m = q.menus.placeMenu(poi)
+        // where „Einfügen“ puts it: the app's addPoiAsStop (its default 30 m on the line)
+        val stop = if (w.size < 2) w.size else q.add.insertionFor(p, 30.0, stopOnly = true).index
         fun list(items: List<com.onpath.app.domain.PlaceAddMenu.Item>) = items.joinToString(",", "[", "]") { str(it.name) }
-        val keepOld = pam.keepsOldGoal(touring = false)
+        val keepOld = com.onpath.app.domain.PlaceAddMenu.keepsOldGoal(touring = false)
         // "more" stays empty (owner 2026-11-15: every entry in "main") – kept for the planner's reader
         return "{\"main\":" + list(m.main) + ",\"more\":[],\"stop\":" + stop + ",\"keepOld\":" + keepOld + ",\"why\":" + str(why) + "}"
+    }
+
+    /**
+     * An add from a menu or the place card, decided by the app's PlaceAddState on the plan [points] shown now: [op] =
+     * "holdStop" / "holdGoal" (the hold menu's „Einfügen“ / „Neues Ziel“ – holdAsStop / holdAsNewDestination), "poiStop" /
+     * "poiGoal" (a held place's rows – addPoiAsStop / poiAsNewDestination), "SMART" / "START" / "DESTINATION" (the place
+     * card – addPlace). `{"points":"…"}` = the plan to commit (one Undo step), `{"pointMenu":i}` = the place is point i
+     * already (its menu opens instead), `{"points":null}` = nothing changed.
+     */
+    fun placeEdit(op: String, points: String, lat: Double, lon: Double, lineSnapM: Double, title: String, kind: String): String {
+        val w = parsePoints(points)
+        val p = GeoPoint(lat, lon)
+        val q = WebPlaceAdd(w, lastPlanFor(w), null, 2)
+        when (op) {
+            "holdStop", "holdGoal" -> {
+                q.add.holdAddMenu = com.onpath.app.ui.plan.PlaceAddState.HoldAdd(p, com.onpath.app.domain.PlaceAddMenu.Menu(emptyList()), lineSnapM)
+                if (op == "holdStop") q.add.holdAsStop() else q.add.holdAsNewDestination()
+            }
+            "poiStop" -> q.add.addPoiAsStop(WebPlaceAdd.poi(lat, lon, title, kind))
+            "poiGoal" -> q.add.poiAsNewDestination(WebPlaceAdd.poi(lat, lon, title, kind))
+            else -> q.add.addPlace(WebPlaceAdd.place(lat, lon, title, kind), WebPlaceAdd.role(op))
+        }
+        q.pointMenu?.let { return "{\"pointMenu\":$it}" }
+        val after = q.points
+        return "{\"points\":" + (if (after == w) "null" else str(after.joinToString(";") { num(it.lat, 6) + "," + num(it.lon, 6) })) + "}"
     }
 
     /** How far [p] is from the drawn line in dp ([lineSnapM] = metres in 24 dp): the last route for [w], else the straight legs. */
@@ -745,44 +845,19 @@ object Engine {
      */
     fun holdOnMap(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double, activity: String = "",
                   sac: Int = 2): String {
-        val pam = com.onpath.app.domain.PlaceAddMenu
         val w = parsePoints(points)
         val p = GeoPoint(lat, lon)
-        val n = w.size
-        val route = lastPlanFor(w)?.points
-        fun add(i: Int, why: String) = "{\"action\":\"ADD\",\"index\":" + i + ",\"why\":" + str(why) + "}"
-        fun smart() = WaypointInsertion.decide(w, p, route, lineSnapM).index
-        fun ask(m: com.onpath.app.domain.PlaceAddMenu.Menu, why: String) = "{\"action\":\"ASK\",\"main\":" +
-            m.main.joinToString(",", "[", "]") { str(it.name) } + ",\"stop\":" +
-            WaypointInsertion.decide(w, p, route, lineSnapM, stopOnly = true).index + ",\"why\":" + str(why) + "}"
-        if (n < 2) return add(smart(), "plan $n → ${n + 1}")
-        if (roundTrip) {
-            // a round trip: the zone on the plan decides (a loop is never dropped by one hold)
-            val zone = pam.zone(w, p, loop = true)
-            return if (!pam.asksOnHold(zone)) add(smart(), "clear case $zone: set at once")
-            else ask(pam.menu(n, touring = false, zone = zone), "in doubt (zone $zone, $n points)")
+        val q = WebPlaceAdd(w, lastPlanFor(w), activityOrNull(activity), sac)
+        val why = q.traced { q.add.holdOnMap(p, lineSnapM) } // the app's PlaceAddState: a point at once or the small menu
+        q.add.holdAddMenu?.let { a ->
+            val stop = q.add.insertionFor(p, lineSnapM, stopOnly = true).index
+            return "{\"action\":\"ASK\",\"main\":" + a.menu.main.joinToString(",", "[", "]") { str(it.name) } +
+                ",\"stop\":" + stop + ",\"why\":" + str(why) + "}"
         }
-        // planning: „die kürzere gewinnt; nur fast gleich → fragen“ – on the line at once, else on the real paths
-        val lineDp = lineDp(w, p, route, lineSnapM)
-        val straight = pam.detours(w, p)!!
-        if (pam.planningHold(lineDp, straight) == com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE)
-            return add(smart(), "on the line, set at once (line ${lineDp.toInt()} dp, $n points)")
-        val act = activityOrNull(activity)
-        val o = if (act != null) measureOrStraight(w, p, straight, act, sac) else Measured(straight, false, 0, "no activity")
-        val d = o.detours
-        val why = "line ${lineDp.toInt()} dp, ${o.describe()}" +
-            (if (o.onPaths) "; straight +${straight.insertM.toInt()} / ${straight.appendM.toInt()} m" else
-                ", insert +${d.insertM.toInt()} m" + (d.earlyInsertM?.let { " (earlier legs +${it.toInt()} m)" } ?: "") +
-                    ", append ${d.appendM.toInt()} m") + ", $n points"
-        Problems.trace("plan", "Hold beside the plan: $why")
-        return when (pam.planningHold(lineDp, d)) {
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.ON_LINE -> add(smart(), "on the line, set at once ($why)") // not reached: on the line is set before measuring
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.NEW_GOAL -> add(n, "appending clearly shorter, the new goal at once ($why)")
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.STOP ->
-                add(WaypointInsertion.decide(w, p, route, lineSnapM, stopOnly = true).index.coerceIn(0, n),
-                    "inserting clearly shorter, a stop at once ($why)")
-            com.onpath.app.domain.PlaceAddMenu.HoldAction.ASK -> ask(pam.planningMenu(d), "in doubt ($why)")
-        }
+        // the add the shared code made: [p] went in at one place (a new goal is appended while planning)
+        val after = q.points
+        val i = after.indices.firstOrNull { after[it] == p && w.getOrNull(it) != p } ?: w.size
+        return "{\"action\":\"ADD\",\"index\":" + i + ",\"why\":" + str(why) + "}"
     }
 
     /**
@@ -940,6 +1015,8 @@ external fun planProgress(text: String)
     Engine.placeMenu(points, lat, lon, roundTrip, lineSnapM, activity, sac)
 @JSExport fun holdOnMap(points: String, lat: Double, lon: Double, roundTrip: Boolean, lineSnapM: Double, activity: String, sac: Int): String =
     Engine.holdOnMap(points, lat, lon, roundTrip, lineSnapM, activity, sac)
+@JSExport fun placeEdit(op: String, points: String, lat: Double, lon: Double, lineSnapM: Double, title: String, kind: String): String =
+    Engine.placeEdit(op, points, lat, lon, lineSnapM, title, kind)
 @JSExport fun placeBeside(ax: Double, ay: Double, w: Int, h: Int, left: Int, top: Int, right: Int, bottom: Int, gap: Int, column: Int): String =
     Engine.placeBeside(ax, ay, w, h, left, top, right, bottom, gap, column)
 @JSExport fun locateLabel(located: Boolean, lat: Double, lon: Double, south: Double, west: Double, north: Double, east: Double): String = Engine.locateLabel(located, lat, lon, south, west, north, east)
@@ -968,7 +1045,7 @@ external fun planProgress(text: String)
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =
     Engine.insertIndex(points, lat, lon, lineSnapM)
 
-@JSExport fun historyRecord(points: String) = Engine.historyRecord(points)
+@JSExport fun historyRecord(before: String, after: String) = Engine.historyRecord(before, after)
 
 @JSExport fun historyStep(op: String, points: String): String = Engine.historyStep(op, points)
 
@@ -1000,7 +1077,13 @@ external fun planProgress(text: String)
 
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
-@JSExport fun planCancel(cause: String, canUndo: Boolean, canRedo: Boolean): String = WebPlanRules.onCancel(cause, canUndo, canRedo)
+@JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
+@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String = Engine.runHead(points, activity, sac, askLong)
+@JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
+@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
+@JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
+@JSExport fun runPlanAnyway(points: String) = Engine.runPlanAnyway(points)
+@JSExport fun runRoutedBefore(points: String) = Engine.runRoutedBefore(points)
 /** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
 @JSExport fun planChainProbe(): String = WebPlanChain.probe()
 @JSExport fun gpxRead(data: Int8Array, fileName: String, activity: String, sac: Int): String =
@@ -1008,6 +1091,9 @@ external fun planProgress(text: String)
 @JSExport fun planFromTrack(track: String, activity: String, sac: Int): String =
     // the wait box's share done (TrackToPlan's calls of its most calls, multi-day tours stage 3): "37 %" via planProgress
     WebImport.planFromTrack(track, activity, sac) { done, max -> planProgress("${(100 * done / max.coerceAtLeast(1)).coerceIn(0, 100)} %") }
+// the track panel's „Als Plan übernehmen“: the app's TrackToPlanState on the page's points (WebTrackToPlan.kt)
+@JSExport fun trackToPlan(plan: String, segments: String, waypoints: String, activity: String, sac: Int): String =
+    WebTrackToPlan.plan(plan, segments, waypoints, activity, sac) { done, max -> planProgress("${(100 * done / max.coerceAtLeast(1)).coerceIn(0, 100)} %") }
 // the app's texts for map areas on demand and waits (WebMaps.kt, web-planner.md §17)
 @JSExport fun mapTexts(): String = WebMaps.texts()
 // ---- plan sync (WebSync.kt, docs/design/web-sync.md) ----

@@ -1,11 +1,7 @@
 package com.onpath.app.ui.search
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
-import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.AddressDb
 import com.onpath.app.search.AreaPlan
 import com.onpath.app.search.SearchAreas
@@ -19,8 +15,8 @@ import com.onpath.app.search.OnlineRanking
 import com.onpath.app.search.SearchText
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
+import com.onpath.app.search.SavedPlaces
 import com.onpath.app.search.SearchKinds
-import com.onpath.app.search.SearchMerge
 import com.onpath.app.search.SearchProvider
 import com.onpath.app.search.SearchQuery
 import com.onpath.app.search.SearchRanking
@@ -40,42 +36,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import java.io.File
 
-/** Where the user is and what is planned – read when a search runs. */
-data class SearchContext(val refLat: Double, val refLon: Double, val route: List<GeoPoint>?)
-
-enum class OnlineState { IDLE, LOADING, DONE, FAILED }
-
-/** Everything the search view shows (plain data, also used by the screenshot tests). */
-data class SearchUi(
-    val query: String = "",
-    val category: SearchKinds.Category? = null,
-    val hits: List<SearchHit> = emptyList(),
-    val online: List<SearchHit> = emptyList(),
-    val onlineState: OnlineState = OnlineState.IDLE,
-    /** No offline index yet and the first one is being built ("Preparing offline search…"); never during a rebuild. */
-    val indexing: Boolean = false,
-    /** „Zuletzt gesucht“ without the places shown above it ([SavedPlaces.start]). */
-    val recent: List<SearchHit> = emptyList(),
-    /** „⌂ Zuhause“ on top of the empty search (owner 2026-11-15); null = none set (the row is absent). */
-    val home: SearchHit? = null,
-    /** „★ Favoriten“: at most [SavedPlaces.SHOWN_FAVOURITES] until „Alle Favoriten ›“ ([moreFavourites] > 0). */
-    val favourites: List<SearchHit> = emptyList(),
-    val moreFavourites: Int = 0,
-    val hasRoute: Boolean = false,
-    /**
-     * The list on screen, kept by [SearchSession]: ranked once per text ([shownFor]); later answers for the same text
-     * (online, a re-indexed map) only add rows below ([SearchRanking.keepShown]). Null: ranked from [hits] + [online].
-     */
-    val shown: List<SearchHit>? = null,
-    /** The text (normalised) and category [shown] was ranked for. */
-    val shownFor: String? = null,
-) {
-    val active: Boolean get() = query.isNotBlank() || category != null
-
-    /** Offline and online results as ONE list, best first. */
-    val results: List<SearchHit> get() = shown ?: SearchRanking.mix(hits, online)
-}
-
 /**
  * State and background work of the search view. Offline search runs on every keystroke (off the main
  * thread, newer queries supersede older ones); the online provider is asked after 350 ms without typing,
@@ -85,7 +45,7 @@ class SearchSession(
     private val scope: CoroutineScope,
     private val dataDir: File,
     private val cacheDir: File,
-    private val store: SearchStore,
+    store: SearchStore,
     private val online: SearchProvider?,
     /** Opens an offline address file (addresses.sqlite); replaced in tests. */
     private val openAddresses: (File) -> AddressDb = { AndroidAddressDb(it) },
@@ -103,8 +63,8 @@ class SearchSession(
      * then the index is not built: the folder looks empty, and a build would drop every area from the index file.
      */
     private val storageReady: () -> Boolean = { true },
-    private val context: () -> SearchContext,
-) {
+    context: () -> SearchContext,
+) : SearchState(AppPorts(store), online != null, context) {
     @Volatile private var addresses: AddressIndex? = null
 
     /** Address files (re)opened when they changed; never throws. */
@@ -115,17 +75,25 @@ class SearchSession(
         return AddressIndex.open(dataDir, openAddresses).also { addresses = it }
     }
 
-    var ui by mutableStateOf(SearchUi())
-        private set
+    /** The app's side of [SearchPorts]: the store, and the index the session holds (volatile: read off the main thread). */
+    private class AppPorts(private val store: SearchStore) : SearchPorts {
+        @Volatile var index: PlaceIndex? = null
+        override fun saved(): SavedPlaces = store.saved()
+        override fun recent(): List<Place> = store.recent()
+        override fun addRecent(p: Place) { store.addRecent(p) }
+        override fun clearRecent() { store.clearRecent() }
+        override fun indexedPlace(id: String): Place? = index?.place(id)
+    }
 
-    @Volatile private var index: PlaceIndex? = null
+    private var index: PlaceIndex?
+        get() = (ports as AppPorts).index
+        set(v) { (ports as AppPorts).index = v }
     private val indexLock = Mutex()
     private var refreshJob: Job? = null
     @Volatile private var lastCheck = 0L
     private val areas: SearchAreas get() = areasFor(cacheDir, openIndex)
     private var offlineJob: Job? = null
     private var onlineJob: Job? = null
-    private var generation = 0
 
     /**
      * Called when the view opens: a fresh, empty search (never the old text) with the recent places; (re)builds the
@@ -161,35 +129,6 @@ class SearchSession(
             }
         }
     }
-
-    fun onQuery(q: String) { ui = ui.copy(query = q); run() }
-
-    fun onCategory(c: SearchKinds.Category?) { ui = ui.copy(category = if (ui.category == c) null else c); run() }
-
-    fun clear() { ui = ui.copy(query = "", hits = emptyList(), online = emptyList(), onlineState = OnlineState.IDLE); run() }
-
-    fun remember(p: Place) { store.addRecent(p) }
-
-    fun clearRecent() { store.clearRecent(); ui = ui.copy(recent = emptyList()) }
-
-    /** „Alle Favoriten ›“: every favourite place, until the search is opened again. */
-    fun showAllFavourites() { allFavourites = true; ui = startLists(ui, context()) }
-
-    private var allFavourites = false
-
-    /** Zuhause, the favourites and „Zuletzt gesucht“ of the empty search ([SavedPlaces.start]). */
-    private fun startLists(u: SearchUi, ctx: SearchContext): SearchUi {
-        val s = store.saved().start(store.recent(), allFavourites)
-        fun hit(p: Place) = SearchHit(p, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, p.lat, p.lon), false)
-        return u.copy(home = s.home?.let(::hit), favourites = s.favourites.map(::hit), moreFavourites = s.moreFavourites,
-            recent = s.recent.map(::hit))
-    }
-
-    /**
-     * A result or recent entry picked: the offline copy (full details) when the index has it. A shown result is that
-     * copy already; a recent one is one indexed lookup.
-     */
-    fun resolve(p: Place): Place = ui.hits.firstOrNull { it.place.id == p.id }?.place ?: index?.place(p.id) ?: p
 
     /** The offline index, built (off the main thread) when needed; for route names (search/RouteNamer). */
     suspend fun offlineIndex(): PlaceIndex = ensureIndex()
@@ -287,97 +226,50 @@ class SearchSession(
         return withContext(Dispatchers.IO) { SharedPlaceLookup(finder).find(name, address, query) }
     }
 
-    /** What one ranked list is for: the normalised text and the category (a space or case change is the same text). */
-    private fun keyOf(u: SearchUi) = SearchText.normalize(u.query) + "|" + (u.category?.name ?: "")
-
-    /** [next] as the list on screen: for the text already shown, rows on screen stay and new ones go below. */
-    private fun shownList(cur: SearchUi, key: String, next: List<SearchHit>): List<SearchHit> {
-        val shown = cur.shown
-        return if (shown != null && cur.shownFor == key) SearchRanking.keepShown(shown, next) else next
-    }
-
-    /** Where the last online search was centred (scores online rows kept for the next text). */
-    @Volatile private var onlineCentre: Pair<Double, Double>? = null
-
-    private fun run() {
-        val gen = ++generation
-        // the list on screen stays until the answer for the new text is there (old rows are not re-ranked meanwhile)
-        val u = ui
-        val ctx = context()
+    override fun run() {
+        val s = begin()
         offlineJob?.cancel(); onlineJob?.cancel()
-        if (!u.active) {
-            ui = u.copy(hits = emptyList(), online = emptyList(), onlineState = OnlineState.IDLE, hasRoute = ctx.route != null,
-                shown = null, shownFor = null)
-            return
-        }
-        val key = keyOf(u)
-        val q = SearchQuery(u.query, u.category, ctx.refLat, ctx.refLon, ctx.route)
-        val text = u.query.trim()
-        val useOnline = online != null && text.length >= 3
-        val kinds = u.category?.kinds
-        // online rows on screen (an earlier text) that still match this one stay in its list: typing on never loses them
-        val before = u.online.map { it.place }
+        if (s == null) return
         offlineJob = scope.launch {
             val idx = ensureIndex()
             val (hits, carried) = withContext(Dispatchers.IO) {
                 // a newer keystroke cancels this job: the address files not searched yet are skipped
-                val addr = if (kinds == null || "street" in kinds || "address" in kinds) ensureAddresses().search(AddressQuery.parse(u.query)) { !isActive } else emptyList()
+                val addr = if (s.wantsAddresses) ensureAddresses().search(AddressQuery.parse(s.query)) { !isActive } else emptyList()
                 ensureActive()
-                val hits = idx.search(q, addr)
-                val keep = if (!useOnline) emptyList() else SearchRanking.stillMatching(before, text).filter { kinds == null || it.kind in kinds }
-                val carried = if (keep.isEmpty()) emptyList() else {
-                    val towns = OnlineRanking.queryTowns(text, ensureAddresses().townsNamed(SearchText.tokens(text)))
-                    val (cLat, cLon) = onlineCentre ?: (ctx.refLat to ctx.refLon)
-                    SearchRanking.onlineHits(SearchMerge.onlineExtras(hits.map { it.place }, keep), q, towns, cLat, cLon)
-                }
+                val hits = idx.search(s.q, addr)
+                val keep = offlineKeep(s)
+                val carried = if (keep.isEmpty()) emptyList() else carried(s, hits, keep, ensureAddresses().townsNamed(SearchText.tokens(s.text)))
                 hits to carried
             }
-            if (gen != generation) return@launch
-            val cur = ui
-            ui = cur.copy(hits = hits, online = carried, hasRoute = ctx.route != null,
-                shown = shownList(cur, key, SearchRanking.mix(hits, carried)), shownFor = key)
+            offlineDone(s, hits, carried)
         }
-        if (!useOnline) { ui = ui.copy(onlineState = OnlineState.IDLE); return }
+        if (!s.useOnline) { onlineOff(); return }
         onlineJob = scope.launch {
             delay(DEBOUNCE_MS)
-            if (gen != generation) return@launch
-            ui = ui.copy(onlineState = OnlineState.LOADING)
+            if (!onlineLoading(s)) return@launch
             val res = withContext(Dispatchers.IO) {
                 // A town named in the query ("via Roma 3 Bolzano") centres the search there; the user's country
                 // (from the nearest offline town) ranks first.
                 val addr = ensureAddresses()
-                val named = addr.townsNamed(SearchText.tokens(text))
-                val centre = named.minByOrNull { Geo.distance(ctx.refLat, ctx.refLon, it.lat, it.lon) }
-                val (bLat, bLon) = if (centre != null) centre.lat to centre.lon else ctx.refLat to ctx.refLon
+                val named = addr.townsNamed(SearchText.tokens(s.text))
+                val (bLat, bLon) = searchCentre(s, named)
                 try {
-                    val r = online.search(text, bLat, bLon, 20)
-                    val towns = OnlineRanking.queryTowns(text, named)
-                    OnlineAnswer(OnlineRanking.rank(r, bLat, bLon, addr.countryNear(ctx.refLat, ctx.refLon), towns, text).take(10), towns, bLat, bLon)
+                    val r = online!!.search(s.text, bLat, bLon, 20)
+                    onlineAnswer(s, r, bLat, bLon, addr.countryNear(s.ctx.refLat, s.ctx.refLon), named)
                 } catch (e: Exception) {
                     Problems.info("search", "Online search failed (offline or server unreachable)", e); null
                 }
             }
-            if (gen != generation) return@launch
+            if (!current(s)) return@launch
             offlineJob?.join()
-            if (gen != generation) return@launch
-            // no answer: the rows on screen stay (also online ones kept from the text before)
-            if (res == null) { ui = ui.copy(onlineState = OnlineState.FAILED); return@launch }
-            onlineCentre = res.lat to res.lon
-            val cur = ui
-            val offline = if (cur.shownFor == key) cur.hits else emptyList()
-            val extras = SearchMerge.onlineExtras(offline.map { it.place } + cur.online.map { it.place }, res.places)
-                .filter { kinds == null || it.kind in kinds }
-            // scored like the offline hits, so both rank in one list
-            val all = cur.online + SearchRanking.onlineHits(extras, q, res.towns, res.lat, res.lon)
-            ui = cur.copy(online = all, onlineState = OnlineState.DONE,
-                shown = shownList(cur, key, SearchRanking.mix(offline, all)), shownFor = key)
+            onlineDone(s, res)
         }
     }
 
-    private class OnlineAnswer(val places: List<Place>, val towns: Set<String>, val lat: Double, val lon: Double)
+    /** Written on the main thread, read on the IO one. */
+    @Volatile override var onlineCentre: Pair<Double, Double>? = null
 
     companion object {
-        const val DEBOUNCE_MS = 350L
         /** While typing, the map areas are checked for changes at most this often (on open: always). */
         const val RECHECK_MS = 5_000L
         private val areaStores = HashMap<String, SearchAreas>()

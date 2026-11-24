@@ -5,8 +5,11 @@ import com.onpath.app.routing.GeoPoint
 
 // The multi-day overview's screen models, moved unchanged from MultiDaySheet.kt (a Composable file) – rebuild phase 2 piece 20.
 
-/** One row of a multi-day tour's overview: day [n], from – to, km, hm, its end ([end] null = the finish). */
-data class DayRowUi(val n: Int, val from: String, val to: String, val distanceM: Double, val ascentM: Double,
+/**
+ * One row of a multi-day tour's overview: day [n], km, hm, its end ([end] null = the finish); [places] = "von – nach" under
+ * it, null unless the place is known at both ends (no second line then).
+ */
+data class DayRowUi(val n: Int, val places: String?, val distanceM: Double, val ascentM: Double,
                     val end: DayEndKind?, val over: Boolean)
 
 /**

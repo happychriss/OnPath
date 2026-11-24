@@ -209,3 +209,7 @@ Written by `tools/dev/prune_branches.sh` (owner said yes in the chat). Bring one
 | 2026-11-19 | `wip/donald-2026-11-13-suggest-round7` | `fd2593f055b3daeb542ebf2884872f05491a66e5` | checked by hand: owner's yes 2026-11-19 23:58 in the captain's chat; unfinished work noted in the backlog with its last commit |
 | 2026-11-19 | `wip/donald-2026-11-14-planner-suggest-remote` | `0ae208fea4692a2273141d1f05b8b98b862773d6` | checked by hand: owner's yes 2026-11-19 23:58 in the captain's chat; unfinished work noted in the backlog with its last commit |
 | 2026-11-19 | `wip/donald-2026-11-14-suggest-next` | `f501599375811814c1e8453205f2485f8679fd94` | checked by hand: owner's yes 2026-11-19 23:58 in the captain's chat; unfinished work noted in the backlog with its last commit |
+| 2026-11-21 | `ci/umbau-save-state` | `8c50f4f0996e341016d1c2995608d98214b1b2a4` | main |
+| 2026-11-21 | `ci/umbau-routes-open` | `acb620e39f25a4f87dc1b325a3b7d4b5c4180875` | main |
+| 2026-11-21 | `ci/umbau-recalc-state` | `100b77d9d0ffd6e073555a292f7d9a761d165303` | main |
+| 2026-11-21 | `ci/umbau-search-state` | `56fb0b826ac67dd2606bb8266aa34f603a8a01fe` | main |

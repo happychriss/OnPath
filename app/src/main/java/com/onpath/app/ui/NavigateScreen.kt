@@ -83,7 +83,6 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -256,6 +255,8 @@ fun NavigateOverlay(
     /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
     onLeadThere: (Int) -> Unit = {},
     onJustRecord: (Int) -> Unit = {},
+    /** "Cancel" while the way to the far start is searched: back to the far-start question. */
+    onCancelLead: (Int) -> Unit = {},
     /** "Hier einsteigen" on the mid-route question (owner 2026-11-03); "Zu ① führen" is [onLeadThere]. */
     onJoinHere: (Int) -> Unit = {},
     onLeadFailedOk: (Int) -> Unit = {},
@@ -409,7 +410,7 @@ fun NavigateOverlay(
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
-            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }, onCancel = { onCancelLead(p.id) }) },
             mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
@@ -960,29 +961,6 @@ internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
         icon = Icons.Outlined.AltRoute, navigate = true)
 
 /**
- * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
- * recording" · Just record / Guide me (FRAGE). Calm: no vibration, no sound; stays until answered or the route is
- * reached. After "Guide me" only "Just record" stays while the way there is computed ("Finding a way to the start…").
- */
-internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRecord: () -> Unit): Message {
-    val buttons = if (p.searching) listOf(MessageButton(NavText.JUST_RECORD, onJustRecord))
-        else listOf(MessageButton(NavText.JUST_RECORD, onJustRecord), MessageButton(NavText.LEAD, onLead))
-    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
-}
-
-/**
- * The route reached beside a later part of it, not at point 1 (owner 2026-11-03: "every tour starts at point 1 and skips
- * nothing"): "Du stehst mitten auf der Route." · "Die Tour beginnt bei ①." · Hier einsteigen / **Zu ① führen** (the
- * primary). Calm (no vibration); stays until answered or the user is at the start. "Hier einsteigen" = the points before
- * count as passed (grey, not deleted). While the way to ① is computed only "Hier einsteigen" stays.
- */
-internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: () -> Unit): Message {
-    val buttons = if (p.searching) listOf(MessageButton(NavText.MID_JOIN, onJoin))
-        else listOf(MessageButton(NavText.MID_JOIN, onJoin), MessageButton(NavText.MID_LEAD, onLead))
-    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
-}
-
-/**
  * Android's back in Navigate (flow map N4, owner 2026-11-15 after a hike: „aus der Aufzeichnung verlassen wir die App
  * nicht“): while a tour records back never leaves the app – it is swallowed (before 2026-11-15 it asked "App
  * verlassen?", which an accidental back from the ◀ key under „Anhalten“ brought up on the way). Pure, unit-tested.
@@ -1177,7 +1155,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             newPlan = vm.tour.newPlanNote, onNewPlanUndo = vm.routesGo::undoNewPlan, onNewPlanGone = vm.tour::dropNewPlanNote,
             onPause = vm.tourEnd::pauseRecording, onEnd = { vm.tourEnd.askEndTour() }, lock = vm.settingsSlice.settings.navLock,
             onTakeRoute = vm.tourSession::takeNewRoute, onKeepRoute = vm.tourSession::keepOriginalRoute, onTakeVia = vm.tourSession::takeViaRoute,
-            onLeadThere = vm.tourSession::leadToStart, onJustRecord = vm.tourSession::justRecord, onJoinHere = vm.tourSession::joinHere, onLeadFailedOk = vm.tourSession::leadFailedOk,
+            onLeadThere = vm.tourSession::leadToStart, onJustRecord = vm.tourSession::justRecord, onCancelLead = vm.tourSession::cancelLead, onJoinHere = vm.tourSession::joinHere, onLeadFailedOk = vm.tourSession::leadFailedOk,
             onActivity = vm.activityCheckSlice::openActivityCheck, onChooseActivity = vm.activityCheckSlice::chooseActivity, onKeepActivity = vm.activityCheckSlice::closeActivityCheck,
             onHikeLevel = vm.activityCheckSlice::chooseHikeLevel,
             onProfileScrub = vm.map::navScrub, onProfileRelease = vm.map::navScrubEnd,

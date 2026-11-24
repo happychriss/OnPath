@@ -44,30 +44,6 @@ import com.onpath.app.ui.OnPathShadow
 import com.onpath.app.ui.OnPathShapes
 import com.onpath.app.ui.warmShadow
 
-/** What the wait window waits for – its sign: the map (cloud), a route (route sign), offline (cloud crossed), failed (⚠). */
-enum class WaitSign { MAP, ROUTE, OFFLINE, FAILED }
-
-/**
- * Form A ("ich muss warten", owner 2026-11-19): one window over the map, always the same frame – sign + title, ONE bar
- * 0–100 over all steps with its number beside it (never back, never standing – [com.onpath.app.domain.OneBar]), at most
- * 3 step rows with ticks ([WaitSteps]), the time left ("noch etwa 20 Sekunden") or why it waits ([line]), the buttons
- * (Cancel). [paused]: the bar stands grey (offline, waiting for Wi-Fi); [bar] false: no bar (failed).
- */
-data class WaitWindowUi(
-    val sign: WaitSign,
-    val title: String,
-    /** 0..100 over all steps. */
-    val percent: Int,
-    val steps: List<WaitStep>,
-    /** "noch etwa 20 Sekunden", or why it waits / what failed; null = nothing (not estimable yet). */
-    val line: String?,
-    val paused: Boolean = false,
-    val bar: Boolean = true,
-)
-
-/** A button of the window: a verb ("Abbrechen", "Erneut versuchen"). */
-class WaitButton(val label: String, val onClick: () -> Unit)
-
 /** At this font scale and above the line gets its own row and the step rows take their short labels. */
 const val WAIT_WINDOW_LARGE_FONT = 1.5f
 

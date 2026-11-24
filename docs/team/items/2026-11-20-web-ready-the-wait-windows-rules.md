@@ -1,0 +1,3 @@
+# web-ready: the wait windows' rules
+
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: the wait windows' rules** – your (3), on main 5f830bf12): moved unchanged (same packages) into listed `:state` files – `ui/progress/WaitRules.kt` (RouteWait, RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow), `ui/MapWaitRules.kt` (MapLoadUi, MapLoads, MapLoadWait, MapLoadCancel), `data/ProgressMemory.kt` (the interface + InMemory; the prefs store stays the app's, `progressMemoryOf(context)`). Still in `:app`: `MapWait` (it reads `RoutingDataLoader.Status` / `Phase` and `RoutingLoads.FAILED_TEXT`) and the Compose views. Parity entries point at the new files; your `WebWait.kt` can compile them instead of mirroring. Delete the tag when read.

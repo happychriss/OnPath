@@ -45,3 +45,10 @@ of „For the roles“): fresh session at ~350k context; helpers on Sonnet (set 
   rest (both reads fail), I03 picture, the rest of Next.
 - **0.18.5 released** ~16:40 (b2454f04a): the batch above + the interrupted-tour rest (0ef237e65: both start reads failed → the next
   tour start reads once more). Change E2E on GitHub green (CorePoiTap only on rerun – runner slow; Next item for the test).
+- Evening: found-place menu below the search bar (5d3be63e5 – `MapController.panBy` eases the camera; MapLibre's `scrollBy`
+  sends no camera event at all), CorePoiTap held once more after a slow-runner timeout (80b260cf3), POI-name check
+  `tools/check_poi_names.py` (8273568d6; style clean since d91d04d23; before/after renders in `~/onpath-cells-work/poi-names-check/`).
+  Ship with the next 0.18.x together with tracking's „Standort teilen“ (hidden behind the developer tools – captain 17:45).
+- **0.18.6 released** ~19:35 (a68d79933): full E2E green twice (101/101 on 36db9f14 and bc5577e9), release run green.
+  Next for the fresh session: the rest of „Next“ top-down (I03 picture, very short recordings, the green line, colour rests …).
+  PR 18 still waits for the owner. Helper worktree `agent-adb75876…` is locked (stopped agent) – harmless.

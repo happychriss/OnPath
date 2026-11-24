@@ -198,7 +198,7 @@ object NavText {
         return Txt.s(names[(((deg % 360 + 360) % 360) / 45.0).roundToInt() % 8])
     }
 
-    private fun round10(m: Double) = (m / 10).roundToInt() * 10.0
+    fun round10(m: Double) = (m / 10).roundToInt() * 10.0
 
     /** A stop's name longer than this is said as "stop 3" (the skip button wraps to at most two lines). */
     const val NAME_MAX = 16

@@ -17,6 +17,12 @@ ui/routes/SaveState.kt
 # RecentPlansState: ports RecentPlansPorts (9 members: insertDraft, updateDraft, storeTimes, tourChanged, purged, syncChanged, refreshTours, problem, trimmed), Background (1: run) and NameProposal (1: ask); RoutesStore as above;
 #   RecentPlans (app) adds the coroutines and `suspend proposeName`
 ui/routes/RecentPlansState.kt
+# TrackToPlanState: ports TrackToPlanPorts (8 members + Say: shown, closeShown, activity, sac, routingParts, ensureRoutingData, change, rememberPlaceName) and TrackFitter (1: fit; the
+#   re-tracing off the caller's thread, `got` back on it); SaveState + PlanDocument as above; RoutesSlice (app) adds CoroutineTrackFitter
+ui/routes/TrackToPlanState.kt
+# RoutesOpenState: port RoutesOpenPorts (21 members: touring, mode, enterMode, openTour, noteNewPlan, newPlanUndo, dropNewPlanNote, undoStep, followIsTrack, continueNavigation, clearShown, setActivity, setSac,
+#   change, rememberPlaceName, saved, linkOpened, holdCameraForSharedPlace, followMe, freeLookAt, routeEvent); also the top-level unlessUnsaved; RoutesGoSlice (app) builds the adapter
+ui/routes/RoutesOpenState.kt
 ui/routes/SaveStore.kt
 # KeptPlacesSlice: ports PlacesStore (4 members: saved, update, backupChanged, syncChanged) and KeptPlacesHost (2: searchMark, isCandidate)
 ui/plan/KeptPlacesSlice.kt
@@ -29,6 +35,13 @@ ui/MultiDayFlow.kt
 # PlanRunSlice: ports PlanRunHost (6 members: points, clearRoute, noCorridor, loadDeferredMaps, recalc, cancelRun) and Cancellable
 #   (1: cancel; the run's handle `routeJob`, set by the host's own recalc), plus the RunCause object of core (pure)
 ui/plan/PlanRunSlice.kt
+# PlanRecalcState: ports PlanRecalcPorts (15 members: runCauses, activity, sac, legCache, planFactors, withModelTime, activityBefore, spotsOpen, spotLine, spotsMemo, routeChangedNotice,
+#   planSize, setSaved, fitFirstRoute, linkSnapped), PlanTourPort (5: followCancel, followEditedPlan, planBaseline, followPlanned, recording; None = no tour),
+#   MapDataPort (6; None = no map data), PlanRecalcHost (10), Background (1: run);
+#   stages begin / route (companion, pure) / findReach (companion) / progress / share / slow / legsRouted / taken; PlanRecalcSlice (app) strings them with coroutines
+ui/plan/PlanRecalcState.kt
+# RoutingDataCheck: pure rules (differs: „the route changed noticeably“) – PlanRecalcState.taken asks it by its full name
+data/RoutingDataCheck.kt
 # PlanEditState: port PlanEditPorts (29 members: map menus / camera, the tour, search; PlanEditHost adds the suspend pointNames), PointNames (1: label)
 ui/plan/PlanEditState.kt
 # PlaceAddState: port PlaceAddPorts (21 members: map menus, app facts, tour, search; PlaceAddHost adds none), HoldRouter (1: routedLength) + a HoldPaths (core)
@@ -66,3 +79,21 @@ ui/MapDimens.kt
 ui/MapSizes.kt
 ui/OverviewPillPlace.kt
 ui/SheetRise.kt
+# SearchState: port SearchPorts (5 members: saved, recent, addRecent, clearRecent, indexedPlace; blocking), plain-data types Search (the run's request from begin()) and OnlineAnswer;
+#   17 members: begin, onlineOff, current, offlineKeep, carried, offlineDone, onlineLoading, searchCentre, onlineAnswer, onlineDone + onQuery, onCategory, clear, remember, clearRecent, showAllFavourites, resolve;
+#   SearchSession (app) adds the coroutines, the index, the address files, the provider
+ui/search/SearchState.kt
+# The wait windows' rules (the planner's WebWait mirrors them): RouteWait + RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow (ui/progress/WaitRules.kt)
+ui/progress/WaitRules.kt
+# The map wait window's words and decisions: MapLoadUi, MapLoads, MapLoadWait, MapLoadCancel (MapWait, the measuring class, stays in :app – it reads RoutingDataLoader.Status)
+ui/MapWaitRules.kt
+# ProgressMemory: the learned shares' interface + InMemory + SUGGEST_DEFAULT (the preferences-backed one is in :app)
+data/ProgressMemory.kt
+# RouteListRules: My routes' list rules – ActivityFilter (MENU, keep, saved), Favourites.shown, RouteSortTexts (the chips' texts); plain
+ui/routes/RouteListRules.kt
+# CellCards: the map-area strip card (CellCardUi, CellRow, MobileQuestion, CellCards, OverviewHintRule, MapUpdateUi, MapUpdates); the Composables stay in :app (CellCard.kt)
+ui/CellCards.kt
+# MapCredits: the full credits list (Settings -> About)
+ui/MapCredits.kt
+# ProfileRules: the elevation profile's fill (ProfileFill), column picks (columnIndices) and axis (ProfileAxis); the steepness colours stay in ElevationProfile.kt (Compose Color)
+ui/ProfileRules.kt

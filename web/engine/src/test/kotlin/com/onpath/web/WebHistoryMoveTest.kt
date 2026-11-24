@@ -10,13 +10,15 @@ import org.junit.Test
 class WebHistoryMoveTest {
     @Test fun undoAndRedoGoOnTheSameInTheFreshEngine() {
         Engine.historyImport("") // a clean history (the object is shared by the tests)
-        Engine.historyRecord("")
-        Engine.historyRecord("46.670000,11.160000")
-        Engine.historyRecord("46.670000,11.160000;46.680000,11.200000")
+        Engine.historyRecord("", "46.670000,11.160000")
+        Engine.historyRecord("46.670000,11.160000", "46.670000,11.160000;46.680000,11.200000")
+        Engine.historyRecord("46.670000,11.160000;46.680000,11.200000", "46.670000,11.160000;46.680000,11.200000;46.690000,11.210000")
         assertEquals("46.670000,11.160000;46.680000,11.200000",
             Engine.historyStep("undo", "46.670000,11.160000;46.680000,11.200000;46.690000,11.210000"))
         val moved = Engine.historyExport()
-        assertEquals("~|46.670000,11.160000#46.670000,11.160000;46.680000,11.200000;46.690000,11.210000", moved)
+        // + the route run's memory (none here) + the chain's number (WebApi epoch – depends on the tests run before)
+        assertEquals("~|46.670000,11.160000#46.670000,11.160000;46.680000,11.200000;46.690000,11.210000#||",
+            moved.substringBeforeLast("#"))
 
         Engine.historyImport("") // what a fresh worker has
         assertEquals("{\"canUndo\":false,\"canRedo\":false}", Engine.historyState())

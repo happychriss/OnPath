@@ -26,7 +26,12 @@ sealed interface Phrase {
         /** Where the junction is (metres along the line) – not spoken; for the trace and the timing tests. */
         val atM: Double? = null,
     ) : Phrase
-    data object OffRoute : Phrase
+    /**
+     * Off the route (owner 2026-11-21): "Abseits der Route. Die Route liegt rechts, 40 Meter." – [side] of the nearest
+     * point of the route from the walking direction and [meters] to it. Either null (no heading / no distance known) =
+     * the plain "Abseits der Route. Bitte aufs Handy schauen."; the numbers are of the moment it is said.
+     */
+    data class OffRoute(val side: RouteSide? = null, val meters: Double? = null) : Phrase
     data object BackOnRoute : Phrase
     /**
      * A new route was taken; [next] = its first junction when it is close; [turnRound] = it starts behind the user:
@@ -140,6 +145,13 @@ class VoiceGuide {
         /** Where this fix is, and the heading ridden over the last metres (null = standing / not known): the goal's side. */
         val here: GeoPoint? = null,
         val headingDeg: Double? = null,
+        /**
+         * Off the route, only what [OffRouteSay.numbers] is sure of (else all null = the plain sentence): the walking
+         * direction, metres and compass bearing to the nearest point of the route.
+         */
+        val routeHeadingDeg: Double? = null,
+        val routeM: Double? = null,
+        val routeBearingDeg: Double? = null,
     )
 
     private var version = Int.MIN_VALUE
@@ -230,7 +242,7 @@ class VoiceGuide {
         if (i.offRoute && !lastOffRoute) {
             lastOffRoute = true
             offRouteSpoken = !i.quiet && since(offRouteSaidMs, i.nowMs) >= OFF_ROUTE_EVERY_MS
-            if (offRouteSpoken) { offRouteSaidMs = i.nowMs; waiting.clear(); return speak(Phrase.OffRoute, i.nowMs) }
+            if (offRouteSpoken) { offRouteSaidMs = i.nowMs; waiting.clear(); return speak(offRoute(i.routeHeadingDeg, i.routeM, i.routeBearingDeg), i.nowMs) }
         }
         if (!i.offRoute && lastOffRoute) {
             lastOffRoute = false
@@ -429,14 +441,21 @@ class VoiceGuide {
     /**
      * The open off-route question asks again – where the phone would vibrate ([Navigator.Step.vibrate]: the first
      * reminder, a way found after none, asked again after "Keep original"). With the voice on nothing vibrates, so it is
-     * said (owner 2026-11-07: both steps of leaving the route are said, [OffRouteSteps]): "Abseits der Route. Bitte aufs
-     * Handy schauen." Only inside an open question (its opening is said by [update]), not within [GAP_MS] of the last
-     * time it was said, not while [quiet] (standing still).
+     * said (owner 2026-11-07: both steps of leaving the route are said, [OffRouteSteps]): "Abseits der Route. Die Route
+     * liegt rechts, 40 Meter." with the side and metres of this moment (the arguments, from [OffRouteSay.numbers]); any
+     * of them null = "Abseits der Route. Bitte aufs Handy schauen." Only inside an open question (its opening is said by
+     * [update]), not within [GAP_MS] of the last time it was said, not while [quiet] (standing still).
      */
-    fun questionAgain(nowMs: Long, quiet: Boolean): Phrase? {
+    fun questionAgain(nowMs: Long, quiet: Boolean, headingDeg: Double? = null, routeM: Double? = null, routeBearingDeg: Double? = null): Phrase? {
         if (!lastOffRoute || quiet || since(offRouteSaidMs, nowMs) < GAP_MS) return null
         offRouteSaidMs = nowMs; offRouteSpoken = true
-        waiting.clear(); return speak(Phrase.OffRoute, nowMs)
+        waiting.clear(); return speak(offRoute(headingDeg, routeM, routeBearingDeg), nowMs)
+    }
+
+    /** The off-route sentence with the side and the metres of this moment; the plain one when either is not known (never wrong). */
+    private fun offRoute(headingDeg: Double?, routeM: Double?, routeBearingDeg: Double?): Phrase.OffRoute {
+        val side = RouteSide.of(headingDeg, routeBearingDeg)
+        return if (side != null && routeM != null && routeM.isFinite() && routeM >= 0) Phrase.OffRoute(side, routeM) else Phrase.OffRoute()
     }
 
     /** Time since [last]; "long ago" when never, or when the clock went back (a reboot restarts the elapsed clock). */

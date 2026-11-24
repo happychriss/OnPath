@@ -421,13 +421,6 @@
     "doubt": "'Rides' = 'Fahrten' – must match the Rides dialog wording",
     "max": 40
   },
-  "msg_unfinished_save_title": {
-    "area": "Tour",
-    "context": "Title of the dialog that saves a tour left unfinished (the app was closed during recording).",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 40
-  },
   "msg_update_tour_title": {
     "area": "Settings → Updates",
     "context": "Dialog title: Install tapped while a tour records.",

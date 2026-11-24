@@ -76,17 +76,8 @@ fun RouteSortChips(choice: RouteSort.Choice, onChoice: (RouteSort.Choice) -> Uni
 private const val PEEK_DP = 40
 
 @Composable
-private fun keyLabel(k: RouteSort.Key): String = str(when (k) {
-    RouteSort.Key.NEWEST -> Res.string.routes_sort_newest
-    RouteSort.Key.OLDEST -> Res.string.routes_sort_oldest
-    RouteSort.Key.LENGTH -> Res.string.routes_sort_length
-    RouteSort.Key.DURATION -> Res.string.routes_sort_duration
-    RouteSort.Key.ASCENT -> Res.string.routes_sort_ascent
-})
+private fun keyLabel(k: RouteSort.Key): String = str(RouteSortTexts.key(k))
 
 /** "längste zuerst" … for a key with a direction. */
 @Composable
-private fun direction(k: RouteSort.Key, biggestFirst: Boolean): String = str(when (k) {
-    RouteSort.Key.ASCENT -> if (biggestFirst) Res.string.routes_sort_most else Res.string.routes_sort_least
-    else -> if (biggestFirst) Res.string.routes_sort_longest else Res.string.routes_sort_shortest
-})
+private fun direction(k: RouteSort.Key, biggestFirst: Boolean): String = str(RouteSortTexts.direction(k, biggestFirst))

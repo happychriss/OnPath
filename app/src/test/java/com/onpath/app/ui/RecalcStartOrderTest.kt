@@ -15,7 +15,7 @@ import java.io.File
  */
 class RecalcStartOrderTest {
     private val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readLines()
-    private val slice = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt").readLines()
+    private val slice = File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt").readLines()
 
     private val initAt = vm.indices.first { vm[it] == "    init {" && vm.getOrNull(it + 1)?.trim() == "recalc()" }
     private val declRe = Regex("""^    (?:private |internal |public )?(?:val|var) (\w+)\b""")
@@ -26,8 +26,8 @@ class RecalcStartOrderTest {
     }
 
     private val headRange: IntRange get() {
-        val s = slice.indexOfFirst { it.trim() == "fun recalc() {" }
-        val e = slice.indexOfFirst { it.contains("routeJob = scope.launchSafe") }
+        val s = slice.indexOfFirst { it.trim() == "fun begin(askLong: Boolean = true): Run? {" }
+        val e = slice.indexOfFirst { it.trim() == "routeCancel = RouteCancel()" }
         assertTrue("head found in the slice", s in 0 until e)
         return s..e
     }

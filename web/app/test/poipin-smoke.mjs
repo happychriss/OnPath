@@ -60,7 +60,7 @@ await ready();
 const poi = await findPoi();
 console.log('POI:', poi);
 const box = await page.locator('#map canvas').first().boundingBox();
-await page.mouse.click(box.x + poi.x, box.y + poi.y);
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(box.x + poi.x, box.y + poi.y);
 await page.waitForSelector('.holdpopup button', { timeout: 15_000 });
 await page.click('.holdpopup button');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 15_000 });
@@ -106,7 +106,7 @@ await page.waitForFunction(() => !document.querySelector('.holdpopup'), null, { 
 
 // (c) dragged away: a new place – no longer pinned, the plain dot
 await page.mouse.move(pb.x + pb.width / 2, pb.y + pb.height / 2);
-await page.mouse.down();
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
 await page.mouse.move(pb.x + pb.width / 2 + 60, pb.y + pb.height / 2 + 40, { steps: 8 });
 await page.mouse.up();
 await page.waitForFunction(() => !window.__state.meta[1]?.pinned, null, { timeout: 30_000 }).catch(() => {});
@@ -153,7 +153,7 @@ const onName = () => dp.evaluate(() => {
 });
 const clickName = async (n) => {
   const cb = await dp.locator('#map canvas').first().boundingBox();
-  await dp.mouse.click(cb.x + n.x, cb.y + n.y);
+  await dp.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await dp.mouse.click(cb.x + n.x, cb.y + n.y);
   await dp.waitForSelector('.holdpopup .menuhead', { timeout: 15_000 }).catch(() => {});
   return dp.evaluate(() => ({ head: document.querySelector('.holdpopup .menuhead')?.textContent ?? null,
     rows: [...document.querySelectorAll('.holdpopup .pointmenu button .txt > span:first-child')].map((b) => b.textContent) }));

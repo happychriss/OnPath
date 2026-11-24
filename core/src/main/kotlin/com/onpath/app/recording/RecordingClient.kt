@@ -21,6 +21,7 @@ object RecordingWire {
     const val ACTION_TAKE_VIA = "com.onpath.app.TAKE_VIA"
     const val ACTION_LEAD_THERE = "com.onpath.app.LEAD_THERE"
     const val ACTION_JUST_RECORD = "com.onpath.app.JUST_RECORD"
+    const val ACTION_CANCEL_LEAD = "com.onpath.app.CANCEL_LEAD"
     const val ACTION_LEAD_FAILED_OK = "com.onpath.app.LEAD_FAILED_OK"
     const val ACTION_JOIN_HERE = "com.onpath.app.JOIN_HERE"
     const val EXTRA_QUESTION = "question"
@@ -69,6 +70,7 @@ data class RecordingCommand(val action: String, val extras: Map<String, Any> = e
         fun keepRoute(questionId: Int) = answer(RecordingWire.ACTION_KEEP_ROUTE, questionId)
         fun leadThere(questionId: Int) = answer(RecordingWire.ACTION_LEAD_THERE, questionId)
         fun justRecord(questionId: Int) = answer(RecordingWire.ACTION_JUST_RECORD, questionId)
+        fun cancelLead(questionId: Int) = answer(RecordingWire.ACTION_CANCEL_LEAD, questionId)
         fun joinHere(questionId: Int) = answer(RecordingWire.ACTION_JOIN_HERE, questionId)
         fun leadFailedOk(questionId: Int) = answer(RecordingWire.ACTION_LEAD_FAILED_OK, questionId)
         private fun answer(action: String, questionId: Int) = RecordingCommand(action, mapOf(RecordingWire.EXTRA_QUESTION to questionId))
@@ -120,6 +122,7 @@ interface RecordingClient {
     fun keepRoute(questionId: Int) = send(RecordingCommand.keepRoute(questionId))
     fun leadThere(questionId: Int) = send(RecordingCommand.leadThere(questionId))
     fun justRecord(questionId: Int) = send(RecordingCommand.justRecord(questionId))
+    fun cancelLead(questionId: Int) = send(RecordingCommand.cancelLead(questionId))
     fun joinHere(questionId: Int) = send(RecordingCommand.joinHere(questionId))
     fun leadFailedOk(questionId: Int) = send(RecordingCommand.leadFailedOk(questionId))
 }

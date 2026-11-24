@@ -29,7 +29,7 @@ type EndKind = 'PROPOSAL' | 'OVERNIGHT' | 'HOTEL';
 interface DaysView {
   routed: boolean; days: number; canRemove: boolean; suggested: number | null; suggestedText: string | null; countText: string;
   totals: string; perDay: string; limits: string | null; totalM: number;
-  rows: { n: number; title: string; stats: string; fromM: number; toM: number; kind: EndKind | null; plan: number | null; endText: string; over: string | null }[];
+  rows: { n: number; day: string; places: string | null; stats: string; fromM: number; toM: number; kind: EndKind | null; plan: number | null; over: boolean }[];
   ends: { night: number; kind: EndKind; lat: number; lon: number; plan: number | null; alongM: number; name: string }[];
 }
 
@@ -259,8 +259,8 @@ export class MultiDay {
       ${v.limits ? `<button class="tolimits muted small" id="toLimits">${esc(v.limits)}</button>` : ''}
       ${v.canRemove ? '' : `<div class="tohint muted small">${esc(t('days_remove_first'))}</div>`}
       <ol class="todays">${v.rows.map((r) => `<li><button class="today${r.over ? ' over' : ''}${this.selected === r.n ? ' sel' : ''}" data-day="${r.n}" aria-pressed="${this.selected === r.n}">
-          <span class="dn">${r.n}</span><span class="txt"><b>${esc(r.title)}</b><span class="muted small">${esc(r.stats)}</span>
-          ${r.over ? `<span class="overline small">${esc(r.over)}</span>` : r.endText ? `<span class="muted small">${esc(r.endText)}</span>` : ''}</span>
+          <span class="txt"><span class="dl1"><b class="dn">${esc(r.day)}</b><span class="dv">${esc(r.stats)}</span></span>
+          ${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}</span>
           ${r.kind ? endSymbol(r.kind, 22) : `<span class="daysym goal">${icon('flag', 14)}</span>`}</button></li>`).join('')}</ol>`;
     const b = (id: string) => this.box.querySelector<HTMLButtonElement>('#' + id);
     b('toName')!.onclick = () => { void this.daysBox(); };

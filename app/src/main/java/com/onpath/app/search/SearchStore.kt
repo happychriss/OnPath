@@ -3,7 +3,6 @@ package com.onpath.app.search
 import android.content.Context
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.GeoPoint
-import java.util.Locale
 
 /**
  * Small persisted search state: the last 20 picked places ("Recent", owner 2026-11-15: 8 was too few) and the names of route points
@@ -18,7 +17,7 @@ class SearchStore(context: Context) {
     fun recent(): List<Place> = sp.getString("recent", null).orEmpty().lines().mapNotNull { decode(it) }
 
     fun addRecent(p: Place) {
-        val list = (listOf(p) + recent().filter { it.id != p.id && !SearchMerge.samePlace(it, p) }).take(MAX_RECENT)
+        val list = SearchLines.addRecent(recent(), p)
         sp.edit().putString("recent", list.joinToString("\n") { encode(it) }).apply()
     }
 
@@ -75,32 +74,16 @@ class SearchStore(context: Context) {
 
     fun saveNames(names: Map<GeoPoint, String>) {
         sp.edit().putString("names", names.entries.toList().takeLast(200)
-            .joinToString("\n") { (g, n) -> "${g.lat}\t${g.lon}\t${clean(n)}" }).apply()
+            .joinToString("\n") { (g, n) -> "${g.lat}\t${g.lon}\t${SearchLines.clean(n)}" }).apply()
     }
 
     companion object {
-        const val MAX_RECENT = 20
+        const val MAX_RECENT = SearchLines.MAX_RECENT
         /** Zuhause + favourites: in Android's backup (backup_rules.xml / data_extraction_rules.xml). */
         const val PLACES_PREFS = "onpath-places"
         /** One writer of the kept places at a time ([update]). */
         private val LOCK = Any()
-        private fun clean(s: String?) = s.orEmpty().replace('\t', ' ').replace('\n', ' ')
-
-        fun encode(p: Place): String = listOf(p.id, clean(p.name), p.kind, p.sub.orEmpty(),
-            String.format(Locale.ROOT, "%.6f", p.lat), String.format(Locale.ROOT, "%.6f", p.lon),
-            p.ele?.toString().orEmpty(), clean(p.address), p.source.name,
-            clean(p.town), clean(p.village), if (p.shared) "s" else "").joinToString("\t")
-
-        fun decode(l: String): Place? {
-            val p = l.split('\t'); if (p.size < 9) return null
-            return Place(p[0], p[1].ifEmpty { null }, p[2], p[4].toDoubleOrNull() ?: return null, p[5].toDoubleOrNull() ?: return null,
-                p[6].toIntOrNull(), p[3].ifEmpty { null }, p[7].ifEmpty { null },
-                // expected: unknown/old source name → POI
-                runCatching { Place.Source.valueOf(p[8]) }.getOrDefault(Place.Source.POI),
-                // fields 10–11 (town, village) are missing in older entries
-                town = p.getOrNull(9)?.ifEmpty { null }, village = p.getOrNull(10)?.ifEmpty { null },
-                // field 12: shared into OnPath (missing in older entries)
-                shared = p.getOrNull(11) == "s")
-        }
+        fun encode(p: Place): String = SearchLines.encode(p)
+        fun decode(l: String): Place? = SearchLines.decode(l)
     }
 }

@@ -6,14 +6,13 @@ release's notes) and the git history – this file keeps only the current state 
 
 ## Where things are
 <!-- Kept by the captain every round (docs/team/roles/captain.md). -->
-- **GitHub release:** v0.17.2 (2026-11-07 ~07:45, 7dd730f5, donald): calmer look (walnut, paper, ink blue), plan and tour
-  apart with "Zuletzt", hold to unlock, route previews, the night's code audit. Before it: gate --full, GitHub E2E
-  CoreField / CorePlan / CorePlanLink / Release-Rundgang green, unit.yml green. Details: the git history of that day.
-- **Planner (plan.onpath.earth):** live 78f5a4a6 (laptop, 2026-11-06/07: plan bar, list km / ↑↓, 3D flyover, big profile
-  range). **Not deployed with v0.17.2:** "Web planner" (`web.yml`) is red on parity since 2026-11-06 22:39 – 17 mirrors of
-  the new app look; the laptop's catch-up is on branch `wip/laptop-2026-11-07-parity-colours` (backlog "Next laptop
-  session – start here"), then Actions → Web planner → Run workflow → deploy.
-- **Pixel:** not checked after v0.17.2 – ask the owner / check About.
+- **GitHub release:** v0.18.7 (2026-11-21 19:35 UTC, 75c6bdcb1, donald): POI press, ride question when saving, off-route
+  sentence with side and metres, far-start warning, day rows, eye on round-trip suggestions. Device test 106/106 on the
+  commit before it. Its release run is red only in the planner part (a test, deploy skipped). On main, not released:
+  arrival with a stop the route cannot reach (cb49cbc22).
+- **Planner (plan.onpath.earth):** deployed 8cee9a2ec (2026-11-22 ~01:00, laptop, on the owner's yes in its chat), with the
+  day rows. The deploy's live smoke was skipped (no Access token in the repo), so the live page is not machine-checked.
+- **Pixel:** the owner gets updates from GitHub this weekend (not on USB); whether 0.18.7 is installed is not known.
 - **Google Play internal test (owner 2026-11-07): live.** App `com.onpath.app`, Play App Signing (Google holds the app key),
   upload key only on donald in `.secrets/` (gitignored), `tools/dev/play_bundle.sh` → `dist/onpath-<version>.aab`,
   uploaded by hand (`docs/play-build.md`); first release 0.17.3 (versionCode 1703), 0.17.4 (1704) live 2026-11-07, 3–4 testers by email list. Every new
@@ -22,6 +21,11 @@ release's notes) and the git history – this file keeps only the current state 
   offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/team/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
+- **donald, 2026-11-24 – detour line on main in the owner's words** („Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“; gate full, planner check green; the laptop has the web line). Readers-all merged with main (3c7779e2c, gate full green), waits for the captain's Wasm check + [umbau]'s review. Restore-plan box: picture approved, stays until answered, not built. LordTriangel PRs 20–22 read (notes in the backlog „For the captain“). Pixel log 2026-11-24: nothing new (known perf / snapshot warnings).
+- **donald, 2026-11-22 evening – 0.18.8 and 0.18.9 released (READ `docs/team/handoffs/handoff-donald-2026-11-21.md`, top):** a field-log line per POI press; a press now answers after the next drawn frame, because a turning compass can keep the map from ever going idle (measured on the emulator, not proven on his Pixel). Planner deployed.
+- **donald, 2026-11-21 evening – 0.18.7 released (READ `docs/team/handoffs/handoff-donald-2026-11-21.md`):** POI press waits for the map's idle (cause on the owner's Pixel still unproven; the field log now says whether the list was stale), ride question at save, off-route voice with side and metres only when sure, far-start warning. Full E2E 106/106 on 53031a337. The release run's planner check went red (areas-smoke), so the planner was not deployed: the laptop has it. Rests: `docs/team/items/2026-11-21-review-rests-off-route-ride-question.md`.
+- **umbau, 2026-11-21 – multi-day day rows (READ `docs/team/handoffs/handoff-umbau-2026-11-19.md`, top state):** the owner's variant A in the app and the shared `DayRowText`; the planner follows from the web-ready line; a hotel at the only known end reads „ab …“ / „bis …“ (owner); the detour stitch is being built on `wip/umbau-2026-11-21-detour-stitch` (pieces 1 + 2a), nothing of it on main until `SameRouteTest` passes on JVM + Wasm.
+- **umbau, 2026-11-21 morning – planner block closed (READ `docs/team/handoffs/handoff-umbau-2026-11-19.md`, top state):** route run for the planner (`begin(askLong)`, `PlanTourPort`, `MapDataPort.None`) and the pure moves (ThumbRules, CellCards, MapCredits, RoundTrip + RouteNamer, ProfileRules, SearchLines) on main; owner: only logic mirrors count, no further cuts; the laptop wires the rests.
 - **umbau, 2026-11-20 afternoon – after 0.18.2 (READ `docs/team/handoffs/handoff-umbau-2026-11-19.md`, top state):** Zuletzt updates its entry (`RoutesState.keepDraft` with an update port; the planner still to follow – [laptop]); the owner's test cuts built (566 → 505 pictures, colour pins out, `docs/team/items/2026-11-20-test-streichliste.md`); planner block in `state/`: the laptop's wishes, and the cut `XState` + `XSlice : XState` for `PlaceMenus`, `PlanEdit`, `PlaceAdd` – all three listed in `web-ready.txt` (`docs/design/web-ready-status.md` §6). Next: `SaveSlice` / `RoutesSlice` the same way on the laptop's word.
 - **tidy, 2026-11-20 night – repo tidy-up for 0.18.2 (READ `docs/team/items/2026-11-20-tidy-done-and-the-wip-branches.md`):** the sessions' notes are in `docs/team/`, guide page `docs/README.md`, spikes in `experiments/`, 91 done items and 12 old handoffs out, personal things cut. Open: the wip branches (list there, nothing deleted), test places in code – the owner's call.
 - **IR, 2026-11-18/19 – tour suggestions live (READ `docs/team/handoffs/handoff-ir-2026-11-19.md`):** planner + app on by default, swipe card row, „Rundtour von hier“ only for the first point, suggest files in all cells, core lean (bike 3 h < 96 MB), README + website pictures.

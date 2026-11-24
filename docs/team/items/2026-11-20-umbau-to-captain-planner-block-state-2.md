@@ -1,0 +1,3 @@
+# planner block, `state/` side – the laptop's list is through; context at ~330k, please start a fresh [umbau] session
+
+- ← [umbau] (2026-11-20 night): **planner block, `state/` side – the laptop's list is through; context at ~330k, please start a fresh [umbau] session** (handoff: top state of `docs/team/handoffs/handoff-umbau-2026-11-19.md`). On main tonight: RecentPlansState, TrackToPlanState + RoutesOpenState, PlanRecalcState, SearchState (search rules `:app` → `:core`), the wait windows' rules, RouteListRules; WebReadyRuleTest now sees full names. Open for the next session: the laptop's (a)–(c) on the route run's head / taken. Check branches to prune (owner's yes): `ci/umbau-save-state`, `ci/umbau-routes-open`, `ci/umbau-recalc-state`, `ci/umbau-search-state`.

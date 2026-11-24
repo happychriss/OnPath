@@ -58,7 +58,7 @@ class RoutesGoSlice(
     private fun sayError(text: String, place: NoticePlace) = host.say(text, NoticeKind.ERROR, place)
 
     /** Navigate mode or a tour recording: no loading into the plan, no Clear. */
-    fun navigating(recording: Boolean): Boolean = host.mode == AppMode.NAVIGATE || recording
+    fun navigating(recording: Boolean): Boolean = open.navigating(recording)
 
     /** State of the ⋮ menu items (RouteRules.menu). */
     fun menuState(recording: Boolean): RouteMenuState =
@@ -74,38 +74,14 @@ class RoutesGoSlice(
      * brings the plan from before ([undoNewPlan]; it is also under Zuletzt). Ending the tour stays in the pause. Without a
      * tour the current plan goes under "Zuletzt" (owner 2026-11-06) – no "Replace current plan?" any more.
      */
-    fun requestOpen(t: Tour, why: String = "My routes tapped") {
-        Problems.trace("routes", "Open tour ${t.id} \"${t.name}\" (${t.kind}, ${t.distanceM.toInt()} m): $why")
-        val ask = routes.openAsk(t, navigating(host.touring), plan.points, plan.savedPoints)
-        val hadPlan = plan.points.isNotEmpty()
-        when (ask) {
-            OpenAsk.FOLLOW_PLAN_DURING_TOUR -> {
-                Problems.trace("tour", "Plan \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
-                tour.noteNewPlan(undo = hadPlan)
-                flow.unlessUnsaved("Load \"${t.name}\" during the tour") { flow.openTour(t, duringTour = true) }
-            }
-            OpenAsk.FOLLOW_DURING_TOUR -> {
-                Problems.trace("tour", "Track \"${t.name}\" tapped during the tour: followed at once (no question), the recording goes on")
-                tour.noteNewPlan(undo = hadPlan)
-                flow.unlessUnsaved("Follow \"${t.name}\" during the tour") { flow.openTour(t, trackThen = TrackThen.FOLLOW) }
-            }
-            OpenAsk.REPLACE_PLAN, OpenAsk.NONE -> flow.openTour(t)
-        }
-    }
+    fun requestOpen(t: Tour, why: String = "My routes tapped") = open.requestOpen(t, why)
 
     /**
      * "Rückgängig" on the "Neuer Plan" line: the plan from before comes back in one Undo step (loading the new plan / clearing the
      * plan for a followed track was one step) and the tour follows it again – a followed track gives way to it as at
      * "Weiter geht's" (the host's continueNavigation). Only offered when there was a plan before.
      */
-    fun undoNewPlan() {
-        val note = tour.newPlanNote ?: return
-        tour.dropNewPlanNote()
-        if (!note.undo) return
-        Problems.trace("plan", "Rückgängig on \"Neuer Plan\": the plan from before comes back, the tour follows it")
-        host.undoStep()
-        if (host.followIsTrack && host.touring) host.continueNavigation()
-    }
+    fun undoNewPlan() = open.undoNewPlan()
 
     /**
      * "Los geht's" in My routes (owner 2026-11-07, [com.onpath.app.domain.routes.RoutesGo]): [t] is loaded as the plan like
@@ -245,29 +221,35 @@ class RoutesGoSlice(
     fun planFromTour(t: Tour) = flow.unlessUnsaved("\"${t.name}\" as the plan") { flow.openTour(t, trackThen = TrackThen.PLAN) }
 
     /** Puts a plan from a link into the plan: points, activity, T level, point names, pinned points – a new, unsaved plan. */
-    fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking") {
-        val load = com.onpath.app.routing.PlanLinks.load(plan)
-        if (host.mode != AppMode.PLAN) host.enterMode(AppMode.PLAN)
-        flow.shown = null
-        planRoute.activity = plan.activity; host.rememberActivity(plan.activity)
-        planRoute.sac = plan.sac.coerceIn(1, 5); host.rememberSac(planRoute.sac)
-        // pins before the points: the first route already passes them exactly (recalc reads them at once)
-        if (load.pinned.isNotEmpty()) this.plan.pin(load.pinned)
-        save.keepAsDraft("replaced by a plan link")
-        host.change { clear(); addAll(load.points) }
-        load.names.forEach { (p, n) -> host.rememberPlaceName(p, n) }
-        host.saved(null, -1, null) // not in My routes yet: Save asks for a name
-        links.opened(plan.title, load.points)
-        Problems.info("plan", "Plan link opened ($via): ${load.points.size} points, ${plan.activity.name}" +
-            (if (plan.activity == Activity.HIKE) " T${plan.sac}" else "") + ", ${load.pinned.size} pinned, ${load.names.size} names")
-        // the map shows the plan (field A-019: it stayed where it was): its points now, the whole route once computed;
-        // the start camera must not centre on the position afterwards, following stops first (CLAUDE.md "Map camera")
-        host.holdCameraForSharedPlace()
-        host.followMe = false
-        host.freeLookAt = null
-        host.routeEvent(RouteRun.Event.FitNext) // the whole line shows once computed (field A-019)
-        camera.fit(load.points)
-    }
+    fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking") = open.openSharedPlan(plan, via)
+
+    private val open = RoutesOpenState(plan, routes, save, camera, object : RoutesOpenPorts {
+        override val touring: Boolean get() = host.touring
+        override val mode: AppMode get() = host.mode
+        override fun enterMode(m: AppMode) = host.enterMode(m)
+        override fun openTour(t: Tour, duringTour: Boolean, trackThen: TrackThen) = flow.openTour(t, duringTour, trackThen)
+        override fun noteNewPlan(undo: Boolean) = tour.noteNewPlan(undo = undo)
+        override val newPlanUndo: Boolean? get() = tour.newPlanNote?.undo
+        override fun dropNewPlanNote() = tour.dropNewPlanNote()
+        override fun undoStep() = host.undoStep()
+        override val followIsTrack: Boolean get() = host.followIsTrack
+        override fun continueNavigation() = host.continueNavigation()
+        override fun clearShown() { flow.shown = null }
+        override fun setActivity(a: Activity) { planRoute.activity = a; host.rememberActivity(a) }
+        override fun setSac(level: Int) { planRoute.sac = level; host.rememberSac(planRoute.sac) }
+        override fun change(block: MutableList<GeoPoint>.() -> Unit) = host.change(block)
+        override fun rememberPlaceName(p: GeoPoint, name: String) = host.rememberPlaceName(p, name)
+        override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = host.saved(name, id, points)
+        override fun linkOpened(title: String?, points: List<GeoPoint>) = links.opened(title, points)
+        override fun holdCameraForSharedPlace() = host.holdCameraForSharedPlace()
+        override var followMe: Boolean
+            get() = host.followMe
+            set(v) { host.followMe = v }
+        override var freeLookAt: GeoPoint?
+            get() = host.freeLookAt
+            set(v) { host.freeLookAt = v }
+        override fun routeEvent(e: RouteRun.Event) = host.routeEvent(e)
+    })
 
     /**
      * The open plan as a plan.onpath.earth link (PlanLinks) in the share sheet; from two points. No button since 0.13.5

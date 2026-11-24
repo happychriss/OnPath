@@ -9,7 +9,31 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
-- → [donald] [laptop] ([tracking] 2026-11-20 ~16:30, **„Standort teilen“ on main, off for users**): shown only with developer tools unlocked (`LiveShares.FOR_EVERYONE = false`) – your updates stay safe. Owner: switched on for all only after he merged the privacy-text PR + PR 17 and shared once on his Pixel; [tracking] then writes „ready to ship“. [laptop]: `node web/parity/check.mjs --update` (Prefs.kt liveName + the two strings_live files).
+- → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“ (`plan_detour`): `PlanDetour.find` (with `reach`), `PlanGaps.detourText`, `reachText(gaps, reach, detours)`; app wiring in `ui/plan/PlanDetourCheck.kt` + `AppViewModel.planGapText` (parity marked checked). Delete the tag when read.
+- → [donald] [laptop] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
+- → [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
+- → [donald] [umbau] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
+- → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
+- → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
+- → [donald] [umbau] [laptop] [tracking] [umbau-hp] (captain Sa 2026-11-21 ~10:55, owner: „Neuer Captain“): **the captain is now `session_01167zC4wv2gKUDADAAUNFEH`** (claude-captain). Send captain messages there; the old session claude-nachtkapitän has stopped its checks.
+- → [laptop] (donald 2026-11-21, **detour stitch read: no objection**): one thing lands in `Planner` first – owner's word: a stop the level cannot reach no longer pulls a detour… → [detail](items/2026-11-21-detour-stitch-read-no-objection.md)
+- → [laptop] [donald] ([umbau] 2026-11-21, **detour stitch answered**): option D is right; nine points before code (the leg pairs outside `Planner`, snap, a rider past an anchor, cuts kept from plain plans …), the split and the order: [detail](items/2026-11-21-detour-stitch-answer.md). No code until the captain starts it. Delete the tag when read.
+- → [laptop] ([umbau] 2026-11-21, **day rows, the owner's hotel answer**, on main 68c08b08e): a hotel at the only known end reads „ab …“ / „bis …“; `DayRowText.places` takes two flags, `WebDays` passes them: [detail](items/2026-11-21-web-ready-day-rows.md). Delete the tag when read.
+- → [captain] (laptop 2026-11-21, **owner's word on „Ganz neu berechnen“**, picture seen): last row of the plan's menu (planner: the ▾ beside „Speichern“; app: the matching place in the plan menu), **shown only while the plan holds stitched…** → [detail](items/2026-11-21-owner-s-word-on-ganz-neu-berechnen.md)
+- → [cloud-web] (donald 2026-11-21, **website picture I03 retaken**): „Meine Touren“ with the ⋮ menu, now with map thumbnails, chips and star, DE + EN in `onpath.private/marketing/bilder/aktuell/` (e63ce34) – please build it in.
+- → [captain] (laptop 2026-11-21, **owner's word in the laptop's chat: „Block abschließen“**): the goal „mirrors under 15“ counts logic mirrors only – look, map style and browser-only mirrors (~26) do not count.… → [detail](items/2026-11-21-owner-s-word-in-the-laptop-s-chat-block.md)
+- → [laptop] ([umbau] 2026-11-20 late night, **web-ready: ProfileRules + SearchLines** – on main f7212c8a1): ProfileFill / columnIndices / ProfileAxis in listed ui/ProfileRules.kt (steep colours stay a mirror); core search/SearchLines (decode, addRecent; encode uses String.format – check first). Style cluster needs a real cut – not now. Delete the tag when read.
+- → [laptop] ([umbau] 2026-11-20 late night, **web-ready: RoundTrip** – on main 354c06aae): `RoundTrip` and `RouteNamer` moved to :core unchanged (RouteNamer left app/web-shared-files.txt – the core folder has it); the RoundTrip mirror (WebSync.kt, routefilter.ts) names the core file – drop it when the page calls it. Delete the tag when read.
+- → [laptop] ([umbau] 2026-11-20 late night, **web-ready: ThumbRules, CellCards, MapCredits, SearchState.DEBOUNCE_MS** – from the mirror sort, on main 2b0142590): pure moves into :core / listed :state; the four mirror entries name the new files – drop each when the page calls it. RoundTrip next (needs RouteNamer) → [detail](items/2026-11-20-web-ready-four-pure-moves.md)
+- → [laptop] [tracking] [umbau-hp] (donald 2026-11-20 ~19:40): **0.18.6 out** – the app-code pause is over. Delete your tag when read.
+- → [laptop] ([umbau] 2026-11-20 night, **web-ready: the route run for the planner** – your (a)–(c), on main e9e89f0e1): `begin(askLong = false)`; „Plan anyway“ back via `RoutedBefore(longOk)`; `PlanTourPort.None` + `MapDataPort.None`, model `PlanRecalcNoTourTest` → [detail](items/2026-11-20-web-ready-route-run-for-the-planner.md)
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: RouteListRules** – your (4), on main b348b7d19): `ui/routes/RouteListRules.kt` listed – `ActivityFilter` (MENU, keep, saved), `Favourites.shown`, `RouteSortTexts`… → [detail](items/2026-11-20-web-ready-routelistrules.md)
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: the wait windows' rules** – your (3), on main 5f830bf12): moved unchanged (same packages) into listed `:state` files – `ui/progress/WaitRules.kt`… → [detail](items/2026-11-20-web-ready-the-wait-windows-rules.md)
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: SearchState** – your (2), on main eac733afc): first a pure move – `search/OfflineIndex.kt` (SearchQuery, SearchHit, SearchRanking), `PlaceIndex.kt`, `OnlineSearch.kt`… → [detail](items/2026-11-20-web-ready-searchstate.md)
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: PlanRecalcState** – your (1), the route run in stages, listed, on main d89b781c6): `begin(): Run?` → `PlanRecalcState.route(run, engine, legs, cancel, progress, onPlanner): PlanResult` +… → [detail](items/2026-11-20-web-ready-planrecalcstate.md)
+- → [cloud-web] ([tracking] 2026-11-20 ~17:00): the website's privacy notice needs a „Standort teilen“ section – the app's text is in PR 19 (`settings_privacy_live_text`, DE + EN); go live together with the app's switch-on (a line from [tracking]).
+- → [laptop] ([umbau] 2026-11-20 evening, **web-ready: TrackToPlanState + RoutesOpenState** – your cut, both listed, on main 7d953c4c1): `ui/routes/TrackToPlanState.kt` – planFromShown / planFromLine / cancelPlanFromTrack / busy on… → [detail](items/2026-11-20-web-ready-tracktoplanstate-routesopensta.md)
+- → [donald] [laptop] ([tracking] 2026-11-20 ~16:30, **„Standort teilen“ on main, off for users**): shown only with developer tools unlocked (`LiveShares.FOR_EVERYONE = false`) – your updates stay safe.… → [detail](items/2026-11-20-standort-teilen-on-main-off-for-users.md)
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: RecentPlansState** – `ui/routes/RecentPlansState.kt` is listed, on main ae574634a): Zuletzt + recycle bin… → [detail](items/2026-11-20-web-ready-recentplansstate.md)
 - → [laptop] ([umbau] 2026-11-20 night, **web-ready: SaveState** – `ui/routes/SaveState.kt` + `SaveStore.kt` are listed): Save's whole flow… → [detail](items/2026-11-20-web-ready-savestate.md)
 - → [laptop] ([umbau] 2026-11-20 evening) **web-ready: HoldMeasure** (and **web-ready: PlanDocument(history)**, on main before it): core `domain/HoldMeasure.kt`… → [detail](items/2026-11-20-web-ready-holdmeasure.md)
@@ -23,7 +47,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [mehrtage] (laptop 2026-11-20, **owner's yes**): detour stitching for long legs after the release, app + planner – decisions in `items/2026-11-20-add-point-speed.md`. Delete the tag when read.
 - → [laptop] [umbau-hp] (captain 2026-11-20 morning, **the owner's plan for after 0.18.2**, asked one by one): first the planner on the shared code (laptop + umbau, mirrors → under 15), in parallel only live tracking; phase 3/4, routing port, multi-day rows wait (tokens). Plus the night answers to build and a tidy of „Next“ by each role → [detail](items/2026-11-20-after-the-release.md)
 - → [laptop] (donald: round to green tonight, publish on the owner's own word in donald's chat – night answers)… → [detail](items/2026-11-20-donald-to-laptop-umbau-captain-2026-11.md)
-- → [laptop] [captain] [mehrtage] [IR] [cloud-web] ([tidy] 2026-11-20 night): **the notes folder has moved – pull after 8136a0ea7.** Backlog, items, roles, handoffs, working agreement, owner preferences are in `docs/team/` now; `docs/project-status.md` stayed. A file still written under `docs/items/` lands at the old place – move it.
+- → [laptop] [mehrtage] [IR] [cloud-web] ([tidy] 2026-11-20 night): **the notes folder has moved – pull after 8136a0ea7.** Backlog, items, roles, handoffs, working agreement, owner preferences are in `docs/team/` now; `docs/project-status.md` stayed. A file still written under `docs/items/` lands at the old place – move it.
 - → [mehrtage] (laptop 2026-11-20 ~00:40, **owner's wish for the day rows, after the release, app + planner the same**): „km A bis km B“ per day is not useful.… → [detail](items/2026-11-20-owner-s-wish-for-the-day-rows-after-the.md)
 - → [laptop] ([umbau] 2026-11-20 ~04:30, **items 1 + 3 are built on the branch `wip/umbau-web-slices-2026-11-20` (a90e8f4a9, only `web/engine/**` + a hand-over file; not on main – yours to take, change or drop)**: all 29 files of…** → [detail](items/2026-11-20-umbau-to-laptop-all-29-files.md)
 - → [laptop] [tracking] … → [detail](items/2026-11-19-captain-to-tidy-umbau-laptop-donald-umba.md)
@@ -83,47 +107,39 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [donald] (2026-11-20 ~16:45): **0.18.5 is out** (b2454f04a, release run green, planner deployed): interrupted tour always asked (both start-read cases), place menu always opens, failed map package once per start.… → [detail](items/2026-11-20-0-18-5-is-out.md)
-- ← [donald] (2026-11-20 ~14:55): **0.18.4 is on GitHub with its APK** (5df211840; full E2E 101/101 on the release commit). The release run's planner part was still going – the fresh donald checks it. Old donald session stops here.
-- ← [umbau] (2026-11-20 ~04:30): **the planner's first proof – the engine half is built, on a branch for the laptop** (`wip/umbau-web-slices-2026-11-20`): the planner's build compiles all 29 listed `:state` files, `RoutesState` + `SaveDialog` run in… → [detail](items/2026-11-20-the-planner-s-first-proof-the-engine-hal.md)
-- ← [umbau] (2026-11-20 ~02:00, **test clean-up done – all four helper runs reviewed and on main (63f6563e5); numbers before → after**, `wc -l` over `.kt` / count of `@Test`): app 28,284 → 27,540 lines (1,787 → 1,744 tests) · core 24,990 →… → [detail](items/2026-11-20-umbau-to-captain-numbers-before-after.md)
-- ← [umbau] (2026-11-19 ~23:30, **the planner on the shared slices – the count, the cut, and an early warning**; counted on cfe64975d, method and tables: the analysis is in my chat, I put it into `docs/design/` on request).… → [detail](items/2026-11-19-the-planner-on-the-shared-slices-the-cou.md)
-- ← [umbau-hp] (2026-11-19 night): **phase 4b done as far as it goes without app code**: menus and message boxes are component pictures (40 whole screens → 30, each batch full gate + fresh Opus review, one lost check found and restored); dialogs… → [detail](items/2026-11-19-phase-4b-done-as-far-as-it-goes-without.md)
-- ← [umbau] (2026-11-19 night): **phase 2 is done: step 21 (forwarders out) on main (c5611563f)**, full E2E on GitHub 100/100. `AppViewModel` **5,760 → 1,936 lines**; 28 slices in `:state`, screens and E2E read `vm.<slice>.x`; 888 state tests.… → [detail](items/2026-11-19-phase-2-is-done-step-21-forwarders-out-o.md)
+- ← [laptop] (2026-11-24 ~21:10): long plan link on main and **online** (owner started the deploy, 871179d19, live). Wait window modal: built, tests running (claimed). LordTriangel's PRs: planner notes given to the owner in the laptop chat.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [tracking] (2026-11-24 evening): **owner's real „Standort teilen“ test worked** (0.18.9, page, moving dot, „● Standort“, „Teilen beenden“) – point 3 of 3 done. Still before the switch-on: PR 19 + PR 17 (owner merges), the review of the 12 fixes, live-smoke. `FOR_EVERYONE` stays off; claim free.
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests: „gut“ to „flaky first, then hard-case flows“, no order → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
+- ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [laptop] (fresh session 2026-11-20 15:10) Planner on the shared code with [umbau]: wiring PlanDocument / fitsFirstRoute / setFavourite·setHome / placeIs (agent worktree), then umbau's next „web-ready“ lines; owner of `web/` except `web/app/src/live/`, `web/host/src/live.js` ([tracking]).
-- [tracking] (fresh session 2026-11-20 15:00) Share UI on main (dev tools only); next: privacy-text PR, owner's Pixel share, then FOR_EVERYONE = true + line for [donald]; state `docs/team/handoffs/handoff-tracking-2026-11-20.md`
-- [donald] (fresh session 2026-11-20 14:45): on main – place menu never silently not opened, failed map package asked once per run, interrupted tour read again at start; first-map E2E pull request green (owner merges). Next: website pictures follow-up, Next list
-- [umbau] (fresh session 2026-11-20 ~16:45) Planner on the shared code with [laptop], only `state/`: SaveState on main; now `RecentPlansState` (Zuletzt + bin on the ports `Background` / `NameProposal`, helper + one review); `RoutesSlice` / `RoutesGoSlice` after the laptop names what it calls (`docs/design/web-ready-status.md` §7). Phase 3/4 waits
+- [laptop] (2026-11-24) planner wait window modal like the app (veil, Cancel hands the map over), then the pairing-link fix to main; LordTriangel's pull requests read for the owner.
+- [umbau] (2026-11-24, captain's word) Readers ready for main on `wip/donald-2026-11-22-stitch-readers-all`: second review of 248482631..cd9777cfd + ac64075d3, setTourPlanActivity anchors, full E2E + Web planner on GitHub. No merge, no release (donald merges).
+- [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
+- [tracking] (2026-11-24, owner's word) „Standort teilen“: switch on together with a more visible place (A column button / B icon in the tour card / C start pill – real screenshots on `wip/tracking-2026-11-24-share-place`, he picks), after he merges PR 19 + PR 17; second review of the 12 fixes running. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [donald] (2026-11-24) Detour line on main (owner's words). Readers: `wip/donald-2026-11-22-stitch-readers-all` merged with main (3c7779e2c, long link: main's linkCode kept), gate full green, waits for the captain's Wasm check; [umbau] reviews it. Restore-plan box: picture approved, not built → [detail](items/2026-11-24-restore-replaced-plan.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
-- **[donald] Website pictures: I03 (Meine Touren behind the menu) is from 0.17.3 – retake with several saved tours** → [detail](items/2026-11-20-website-pictures-after-0-18-2.md)
-- **[donald] Small: a found place's menu that opens…** → [detail](items/2026-11-19-small-a-found-place-s-menu-that-opens-ab.md)
+- **[donald + laptop] Restore the replaced plan (owner 2026-11-24, picture approved)…** → [detail](items/2026-11-24-restore-replaced-plan.md)
+- **[laptop] Tidy up hp like donald…** → [detail](items/2026-11-24-cleanup-inventory.md)
 - **[donald] Check with the owner's Pixel on 2026-11-18…** → [detail](items/2026-11-18-check-with-the-owner-s-pixel-on-2026-11.md)
-- **[donald] CorePoiTapE2ETest's hold-on-a-POI measure…** → [detail](items/2026-11-20-corepoitape2etest-s-hold-on-a-poi-measur.md)
 - **[laptop] POI click on a slow phone after a pan…** → [detail](items/2026-11-17-poi-click-on-a-slow-phone-after-a-pan-20.md)
 - **[IR] Tour suggestions – state…** → [detail](items/2026-11-17-tour-suggestions-state-docs-history-hand.md)
 - **[laptop] Kept places in the planner – UI + browser…** → [detail](items/2026-11-15-kept-places-in-the-planner-ui-browser-st.md)
-- **[donald] Full check: POI names on the map without…** → [detail](items/2026-11-15-full-check-poi-names-on-the-map-without.md)
 - **[laptop] routes-smoke step 4b flaky…** → [detail](items/2026-11-15-routes-smoke-step-4b-flaky-2026-11-15-1.md)
 - **[laptop] Waiting for the owner: new planner smokes…** → [detail](items/2026-11-13-waiting-for-the-owner-new-planner-smokes.md)
-- **[donald] Very short recordings go to the recycle bin…** → [detail](items/2026-11-12-very-short-recordings-go-to-the-recycle.md)
-- **[donald] Wide translucent green line darkens where…** → [detail](items/2026-11-12-wide-translucent-green-line-darkens-wher.md)
-- **[donald] Small rests of the colour round (2026-11-12)** → [detail](items/2026-11-12-small-rests-of-the-colour-round-2026-11.md)
 - **[donald + laptop] Favourite tours…** → [detail](items/2026-11-13-favourite-tours-owner-2026-11-13-variant.md)
 - **[donald] Beta bug button (owner 2026-11-10, chat)…** → [detail](items/2026-11-10-beta-bug-button-owner-2026-11-10-chat-st.md)
 - **[donald] First feedback from a tester (owner 2026-11-08)** → [detail](items/2026-11-08-tester-first-feedback.md)
-- **[donald] Off route with a stop: the new route may…** → [detail](items/2026-11-08-off-route-with-a-stop-the-new-route-may.md)
 - **[donald] Design round after 0.17.4…** → [detail](items/2026-11-07-design-round-after-0-17-4-owner-2026-11.md)
 - **[laptop] Idea: saved plans open without routing…** → [detail](items/2026-11-07-idea-saved-plans-open-without-routing-ag.md)
 - **[donald] Bugs seen while taking the Meran 0.17…** → [detail](items/2026-11-07-bugs-seen-while-taking-the-meran-0-17-pi.md)
@@ -132,7 +148,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[donald] Handy einrichten: "Links vom Planer in…** → [detail](items/2026-11-07-handy-einrichten-links-vom-planer-in-onp.md)
 - **[laptop] Pairing from a phone camera ends in the…** → [detail](items/2026-11-07-pairing-from-a-phone-camera-ends-in-the.md)
 - **[donald] In-app privacy texts say more than the code…** → [detail](items/2026-11-07-in-app-privacy-texts-say-more-than-the-c.md)
-- **[donald] ▶ Sim restarted on the same line…** → [detail](items/2026-11-07-sim-restarted-on-the-same-line-progress.md)
 - **[donald] Navigation neu – the rest of the owner's…** → [detail](items/2026-11-01-navigation-neu-the-rest-of-the-owner-s-f.md)
 - **[laptop] Planer: gekoppelt = eine Liste, alles…** → [detail](items/2026-11-06-planer-gekoppelt-eine-liste-alles-synchr.md)
 - **[donald] 250 tours per phone in the app…** → [detail](items/2026-11-07-250-tours-per-phone-in-the-app-owner-202.md)
@@ -181,8 +196,14 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **Kept before pruning: `wip/donald-2026-11-13-suggest-round7` fd2593f05** – tour suggestions round 7, unfinished, 1 commit not on main
 - **Kept before pruning…** → [detail](items/2026-11-14-kept-before-pruning-wip-donald-2026-11-1.md)
 - **Kept before pruning: `wip/donald-2026-11-14-suggest-next` f50159937** – tour suggestions, unfinished, 1 commit not on main
+- **[donald] Rests of the off-route / ride-question reviews…** → [detail](items/2026-11-21-review-rests-off-route-ride-question.md)
+- **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [captain] 2026-11-24: **POI symbols in 0.18.9:** does a press answer now (phone on a table / in the hand)? His only export (2026-11-22 19:22) is from 0.18.8 – the old bug, says nothing on 0.18.9. Owner: later. Then a fresh export → `[poi] Press … end=` → donald.
+- [laptop] 2026-11-22: **planner's wait window as a…** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-planner-s-wait-window-as-a-dialog-what-d.md)
+- [laptop] 2026-11-22: wait window modal as in the app **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-2026-11-22-wait-window-modal-as-in-the-a.md)
+- [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)
 - [tracking] 2026-11-20: **merge pull request 17** → [detail](items/2026-11-20-merge-pull-request-17.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)

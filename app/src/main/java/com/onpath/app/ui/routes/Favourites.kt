@@ -15,19 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
-import com.onpath.app.data.Tour
 import com.onpath.app.ui.OnPathColors
 import com.onpath.strings.*
-
-/**
- * Favourites in My routes (owner 2026-11-13, variant C after the sketches on `sketch/favourites-2026-11-13`): a star on
- * each saved row (tap toggles; filled gold = favourite) and a "☆ Favoriten" filter pill at the start of the sort chips –
- * on, both tabs show only the favourites, in the chosen order; Zuletzt (the plan worked on) always shows. Several favourites. Pure rules here.
- */
-object Favourites {
-    /** The saved routes / done tours shown: all, or with the pill on only the starred ones. */
-    fun shown(list: List<Tour>, onlyFavourites: Boolean): List<Tour> = if (onlyFavourites) list.filter { it.favourite } else list
-}
 
 /** The star on a row, 48 dp to tap: filled gold = favourite, an outline in the muted ink = not. Says what a tap does. */
 @Composable

@@ -16,6 +16,90 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-22 late, shutdown – the next laptop session starts HERE
+hp and donald were shut down by the owner. **None of the three branches is on main, nothing went online.** Every planner deploy needs the owner's own yes in the laptop chat.
+
+**Branches**
+- Readers (web part): `wip/laptop-2026-11-22-stitch-readers`, 641429f22 (code 727aa939d, Web planner green). Exact Wasm check on donald at 0c31e817e: 112 of 112; after it only an `areas-smoke` check and docs. Stays off main until the captain says so. Open points: `docs/team/items/2026-11-22-stitch-readers-web-state.md` on that branch.
+- Long-link fix: `wip/laptop-2026-11-22-long-link`, f59badf40, reviewed, Web planner green, mechanism proven (`PlanCode.parse`'s Regex overflows the stack in Wasm's slow tier).
+- Pairing-link fix: `wip/laptop-2026-11-22-pair-link`, af0aef505, in `core` (reaches the app; donald told), gate and Web planner green. No own review, no phone. Compared with the old Regex on 50,000 texts.
+- **Everything else unsaved from older sessions:** `wip/laptop-2026-11-22-saved-work`, 46e291aa4: one commit whose parents are the 37 pieces that were on no remote (branches, worktree HEADs, one stash, two uncommitted worktrees). List: `SAVED-WORK-2026-11-22.md` in it. Not sorted, not reviewed; do not merge it, take single pieces with `git branch <name> <sha>`.
+
+**Open questions for the owner (both under „Waiting for the owner“)**
+1. May the long-link fix go online? Asked in the laptop chat, no answer yet. Recommended: yes.
+2. The modal wait window: what does Cancel do? Like the app (window closes, the area loads on beside the map; recommended) or back to the old state? Asked in the older laptop chat. Do not build before his answer.
+
+**Next, in order**
+1. On his yes: long-link to main, Web planner green, deploy.
+2. Then the pairing-link piece to main.
+3. Readers only on the captain's word. When merging: `Engine.linkCode` is on the readers and the long-link branch, **keep one copy** (also its test: `WebLinkCodeTest` and the one in `WebAnchorsTest`); both add a step „5.“ to `share-smoke`.
+4. Before the writer stage: test for real that the wait window counts only visible legs on a **cold** plan with anchors (the browser check ran with finished legs).
+
+Still open from before: `WebLegStore.remove` does not delete from IndexedDB.
+
+## State 2026-11-22 evening – the next laptop session starts HERE
+- **Stitch in Wasm:** branch `wip/laptop-2026-11-22-stitch-wasm` = 2a47fffb8 (worktree `onpath-stitch`). `WebLegStore` has `_cut` / `_settled` / exact; `web/app/test/same-route-wasm.mjs` compares the exact hashes and refuses other data (DATA.txt). On the laptop's other E10_N45: JVM and Wasm byte-identical on all 112 lines (55 match the files, as expected not all). **The exact check is GREEN on donald (captain's run at 2a47fffb8, recorded data file, no NEIGHBOURS): 112 of 112 hash-equal, peak 2.9 GB, 242 s.** A fresh umbau session builds the readers on `wip/umbau-2026-11-22-stitch-readers` from this commit; nothing of the stitch on main yet. The captain starts a fresh laptop session for the web part of the readers and the modal window.
+- Still open for the web once green: `WebLegStore.remove` does not delete from IndexedDB yet (no worker wiring), `planParse` writes 5 decimals (needs 6), `share.ts` qr limit.
+- Memory: Node 22's Wasm tier-up, not the engine (over 9 GB; 2.84 GB with `--no-wasm-dynamic-tiering`, set by the runner). A real browser tab on a long tour was not measured.
+- **Wait window, the owner's idea (2026-11-22):** make it modal as in the app (`WaitWindowDialog`); that replaces the „own bar“ proposal. Asked in the chat as plain text what Cancel does: like the app (window closes, area loads on beside the map; recommended) or back to the old state. **Build only after his answer.** No question boxes while work runs: they blocked this session for hours.
+- robust-smoke „percent moves“: the bar's first move comes 4–4.5 s in by its own rule; the check now has the 10 s limit. The failing 60 was not reproduced in a browser here.
+
+## State 2026-11-22 ~00:15 – the next laptop session starts HERE
+- **Planner live at 8cee9a2ec** (owner's yes in the laptop chat; run 44965414468 green, deploy-quick). No standing deploy word: every deploy needs his own yes in this chat.
+- Fixed: a late "detailed map here?" answer after a zoom-out turned the sign into a window (`areas.ts` rested, reproduced in areas-smoke E).
+- Test only: smoke D holds the routing data 700 ms (a fast machine beat the window's 400 ms); smoke B waits for the area's own first row and checks that window has no gap. The null at line 149 (release run 44941010944) was **not reproduced**: likely a first map's closing window. If the gap check goes red, it is a real flicker.
+- **Open, owner's choice (backlog "Waiting for the owner"):** an area joining a window at 94 % leaves the bar standing for minutes (proven: 40 s at 94 % beside "about 5 minutes left"). Rescaling over the rest did not help (still 94 % after 60 s). Until decided, areas-smoke "moves the bar" can go red on a slow runner when the first map's window is up.
+- Parity: ThumbRules and StopsBesideRoute stamped (phone-only). donald's further commits may need more stamps.
+
+## State 2026-11-21 ~19:00 – the next laptop session starts HERE
+- Owner said „Planer online stellen“ (laptop chat). Manual run on 57b0c7ca0 red (areas-smoke), no deploy. A background
+  loop in the old session waits for the push run on 9c2b9931d and dispatches deploy+quick if green – check Actions: if
+  nothing went online, deploy the newest green main on the owner's standing word.
+- robust-smoke 10(a): fixed for good in 9c2b9931d (the plan's wait identified by an overlay.plan hook). If red again → a
+  real finding.
+- **9c2b9931d push run red too, smokes (areas-parity), other checks:** „the route's areas: the sign beside the map – a ring
+  and one percent ({w:0,h:0,inMap:false})“, „its percent moves on, never back (-1 …)“, „no window and no strip line for
+  them“. Areas smokes were green on 8a04b05cf; since then only donald's 7ed35111c (far start warning), 8856a6ecc /
+  6a246bc9b (voice off route) and parity stamps. Suspect real: bisect areas-smoke between 8a04b05cf and 9c2b9931d first.
+  **No deploy until green.**
+- **Open: areas-smoke.mjs:170 „polling: the doorman's 40 % moves the bar (from 94 %)“** (run 44924598176) – on a slow
+  runner the area wait's bar was already at 94 % before the doorman's answer; likely a test timing assumption, not proven.
+  Investigate (don't just rerun).
+- Navigation's OffRouteSay / RouteSide registered (57b0c7ca0); donald's batch may bring more new shared files → `--update`.
+- Detour stitch: yes to umbau's nine points (backlog); web part when umbau's core is ready (captain starts it).
+
+## State 2026-11-21 ~17:30 – the next laptop session starts HERE
+- Since ~01:00: robust-smoke step 10 race fixed (083dcc17b – the link's first map wait must end before the shares are
+  cleared); day rows variant A in the planner (df0cf81eb, WebDays + multiday.ts; picture in
+  onpath-data/pictures/day-rows-planner-2026-11-21/); hotel „ab / bis …“ at a day's only known end (24809e72f + smoke
+  f18cffd8b); donald's eye-on-suggestion parity stamped. Deploy line under „Waiting for the owner“ (move it to the newest
+  green sha; the owner deploys or gives the word – `gh workflow run` is blocked here).
+- Detour stitch: proposal `docs/design/detour-stitch.md` + owner's 3 answers; umbau's answer
+  `items/2026-11-21-detour-stitch-answer.md` (9 points: ExpandedPlan for the 5 places outside Planner, followAhead,
+  SameRouteTest before the reader release, hash over the line only, cut legs never in normal plans). Split: core + state
+  umbau, app donald, web laptop. **No code until the captain starts the block.**
+- Lesson: never chain a push after a smoke whose rc you don't check (24809e72f went out with a stale smoke expectation).
+- Captain session: session_01167zC4wv2gKUDADAAUNFEH; umbau: session_01167zC68cVGgexER3YQGGWG (latest).
+
+## State 2026-11-21 ~01:00 – the next laptop session starts HERE
+Planner block **closed** (owner 2026-11-21 „Block abschließen“: only logic mirrors count; look / style / browser stay).
+On main, **not deployed** (deploy needs the owner – Actions → Web planner → Run workflow deploy+quick, or his word; the
+auto-mode classifier blocks `gh workflow run` here): line under „Waiting for the owner“ with the sha.
+- Shared code now in the planner: PlanEditState (WebPlanChain in the routing worker on WebApi's history; edit-order
+  cancel + robust-smoke (d)), PlaceAddState / PlaceMenusState (WebPlaceAdd, HoldMeasure measured in the worker),
+  SearchState (WebSearch), PlanRecalcState route + findReach + the run head (RouteRun; askLong = !multiDay, run memory +
+  epoch in historyExport, page-session „Plan anyway“ set → RoutedBefore), TrackToPlanState (WebTrackToPlan), core
+  SearchLines / RoundTrip, RouteWait.legLabels. Mirrors 49 entries.
+- Stay mirrors on purpose: Save (async IndexedDB, planner-only steps), wait window (one window map+route), list rules,
+  ProfileRules / CellCards / ThumbRules / MapCredits / DEBOUNCE_MS / CellMath / Format … (needed synchronously on the page).
+- Owner's word on „Ganz neu berechnen“: last row of the ▾ beside „Speichern“ (app: plan menu), shown only while the
+  plan holds stitched detours (picture: onpath-data/pictures/ganz-neu-berechnen-2026-11-21/).
+- **Next:** long-tour speed-ups 2–3 (`items/2026-11-20-add-point-speed.md`): design the stitch format (detour = field of
+  the point), propose it in the backlog to [umbau] / [donald] before code, then app + planner together.
+- Smokes: call each exactly as `web/parity/check-web.sh` does (segments folder only, except search/kept/poipin/routes) –
+  a second argument breaks some of them silently. routes-smoke „a real scroll … closes the menu“ and poipin (d) are flaky.
+- umbau's current session: session_01167zC6FhPGtEQkbxks3vH9 (messages work both ways).
+
 ## State 2026-11-20 ~14:30 – the next laptop session starts HERE
 Planner live 6dcdfbb54 (CI green). 0.18.2 released 10:01 (planner deployed by release.yml, then the slices branch merged).
 - Since the release: 55 mirrors (RoutesState, SaveDialog, KeptPlacesSlice, RouteSort / RoutesTab, PlanPoints drag,
