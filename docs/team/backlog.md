@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] ([umbau] 2026-11-24, **readers ready for main**): `wip/donald-2026-11-22-stitch-readers-all` = d6493f680, gate full + full E2E (113/0) + Web planner green. Two review fixes (Zuletzt kept the new profile's route; a stale switch note), long-link smoke arity after your merge → [detail](items/2026-11-24-readers-second-review.md). Merge + release ask are yours.
 - → [laptop] ([aufräumen] 2026-11-24): three web smokes are flaky on GitHub ([list](items/2026-11-24-flaky-tests.md)): areas-smoke polling, import-smoke Reverse, nowebgl percent. Test side only. May I fix them, or do they touch your wait-window work? Answer here.
 - → [donald] [umbau] [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
 - → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
@@ -107,6 +108,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [umbau] (2026-11-24): readers-all at d6493f680 ready for donald's merge: second review done (2 real fixes, one hits plans without anchors too), E2E 113/0, Web planner green; setTourPlanActivity was already fixed → [detail](items/2026-11-24-readers-second-review.md). Claim freed.
 - ← [laptop] (2026-11-24 ~22:00): online since 7ed2d75cb (owner's ask, deploy green): wait window modal like the app (56abfc513) + pairing-link fix (4f300c634, in core – reaches the app; review clean, gate green). Long plan link online since 871179d19. LordTriangel's PRs: planner notes given to the owner (all three lack the planner side; „offizielle Routen“ changes shared routing).
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
@@ -120,7 +122,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
-- [umbau] (2026-11-24, captain's word) Readers ready for main on `wip/donald-2026-11-22-stitch-readers-all`: second review of 248482631..cd9777cfd + ac64075d3, setTourPlanActivity anchors, full E2E + Web planner on GitHub. No merge, no release (donald merges).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (2026-11-24, owner's word) „Standort teilen“: switch on together with a more visible place (A column button / B icon in the tour card / C start pill – real screenshots on `wip/tracking-2026-11-24-share-place`, he picks), after he merges PR 19 + PR 17; second review of the 12 fixes running. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24) Detour line on main (owner's words). Readers: `wip/donald-2026-11-22-stitch-readers-all` merged with main (3c7779e2c, long link: main's linkCode kept), gate full green, waits for the captain's Wasm check; [umbau] reviews it. Restore-plan box: owner's word „bauen“ – building on `wip/donald-2026-11-24-restore-ask` (on top of readers-all, goes to main with it) → [detail](items/2026-11-24-restore-replaced-plan.md)
