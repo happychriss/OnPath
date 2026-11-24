@@ -55,7 +55,7 @@ class MultiDayWiringTest {
             assertTrue("$user below multiDay", vm.indexOf(user) > at)
         // `multiDay` is only read inside the hosts' members, at call time
         assertTrue(vm.contains("override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)"))
-        assertTrue(vm.contains("override fun keepWhole(act: Activity, sac: Int) = multiDay.keepWhole(act, sac)"))
+        assertTrue(vm.contains("override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)"))
         assertTrue(vm.contains("override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)"))
         assertTrue(vm.contains("override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)"))
         assertTrue(vm.contains("override fun withMaps(t: Tour) = multiDay.withMaps(t)"))
