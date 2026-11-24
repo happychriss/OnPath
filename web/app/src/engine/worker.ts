@@ -73,6 +73,9 @@ interface WasmEngine {
   legsTaken(): string;
   legText(name: string): string;
   legsLast(): string;
+  detourStart(): string;
+  detourAt(i: number): string;
+  detourGaps(names: string): string;
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
@@ -100,6 +103,8 @@ const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historySt
   'syncSetFavourite', 'syncPlanFacts',
   // sync fields 7 / 8 (web-sync.md §5.2): Save with this engine's routing; the diagnostics line
   'syncSaveRouted', 'routingInfo',
+  // the detour hint (WebApi detourStart / detourAt / detourGaps – the app's PlanDetourCheck), point by point after a route
+  'detourStart', 'detourAt', 'detourGaps',
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
   'searchCategories', 'searchReset',
   // kept places and „Zuletzt gesucht“ (WebKept.kt – the app's SavedPlaces / SearchStore.addRecent, owner 2026-11-15)

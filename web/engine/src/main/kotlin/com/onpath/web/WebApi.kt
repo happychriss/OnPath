@@ -250,6 +250,73 @@ object Engine {
      * one for every page call that needs "the plan of these points" (rows, gaps, insert, GPX, pace).
      */
     private var lastResult: PlanResult? = null
+    /** What reaches [lastResult]'s first gap ("② erst ab T2 erreichbar"), as the page got it; the detour check reads it. */
+    private var lastReach: com.onpath.app.routing.PlanReach? = null
+
+    // ---- the detour hint (the app's PlanDetourCheck, owner 2026-11-21 / 2026-11-24) ----
+    // The app checks on a background thread after the route is shown and cancels the router at the next run. The worker has
+    // one thread and cannot be interrupted, so the page runs the check point by point (detourStart → detourAt for each →
+    // detourGaps): a newer plan or a hold's measure waits for at most one point, and the page stops asking when its plan is
+    // superseded. Each point is [PlanDetour.find] on the plan cut to that point and its two neighbours – the same three steps,
+    // the same numbers; the whole check keeps the app's one budget ([PlanDetour.BUDGET_MS]).
+    /** The result the running check belongs to (a newer plan ends it: its steps then answer nothing). */
+    private var detourFor: PlanResult? = null
+    private var detourStarted = 0L
+    /** The detours found so far for [detourFor], in plan order. */
+    private var detours: List<com.onpath.app.routing.PlanDetour> = emptyList()
+
+    /**
+     * A detour check of the last plan starts: the plan points worth a look ([PlanDetour.toCheck], at most 3), as a JSON
+     * array; `[]` = nothing to check (not a hike below T5, a failed leg, a gap no harder level reaches – the app's
+     * [PlanDetour.find] guards and PlanRecalcSlice.checkDetours: never after a failed leg).
+     */
+    fun detourStart(): String {
+        val res = lastResult
+        detourFor = null; detours = emptyList()
+        if (res == null || !com.onpath.app.routing.PlanDetour.applies(res.activity, res.sac) || res.route.error != null) return "[]"
+        val gap = res.gaps.firstOrNull()
+        val reach = lastReach
+        val reachLevel = (reach?.fix as? com.onpath.app.routing.PlanReach.Fix.Level)?.takeIf { gap != null && !gap.skipped && reach.index == gap.index }
+        if (gap != null && reachLevel == null) return "[]"
+        val idx = com.onpath.app.routing.PlanDetour.toCheck(res.points, res.route, gap?.index)
+        if (idx.isEmpty()) return "[]"
+        detourFor = res; detourStarted = System.currentTimeMillis()
+        return idx.joinToString(",", "[", "]")
+    }
+
+    /** One point [i] of the running check ([detourStart]): true when the level sends it on a long detour. */
+    fun detourAt(i: Int): Boolean {
+        val res = detourFor ?: return false
+        if (res !== lastResult || i < 1 || i >= res.points.size - 1) return false
+        val gap = res.gaps.firstOrNull()?.takeIf { it.index == i }
+        // the plan cut to the point and its neighbours: PlanDetour.find looks at exactly this point (toCheck of 3 points)
+        val cut = res.copy(points = res.points.subList(i - 1, i + 2), route = res.route.copy(legs = res.route.legs.subList(i - 1, i + 1)),
+            gaps = listOfNotNull(gap?.copy(index = 1)))
+        val reach = lastReach?.takeIf { gap != null && it.index == i }?.copy(index = 1)
+        // the app's budget is for the whole check: the clock reads 0 at find's start, then the time since detourStart
+        var first = true
+        val clock = { if (first) { first = false; 0L } else System.currentTimeMillis() - detourStarted }
+        val found = try {
+            com.onpath.app.routing.PlanDetour.find(engine(), cut, RouteCancel(), clock, reach)
+        } catch (e: Exception) {
+            Problems.warn("routing", "Detour check failed; the plan shows no detour hint", e)
+            return false
+        }
+        val d = found.firstOrNull() ?: return false
+        detours = (detours.filter { it.index != i } + d.copy(index = i)).sortedBy { it.index }
+        Problems.trace("routing", "Detour at point ${i + 1}, T${res.sac}")
+        return true
+    }
+
+    /**
+     * The red line with what the check found (the app's planGapText: no gap → [com.onpath.app.domain.PlanGaps.detourText],
+     * a gap a harder level reaches → reachText with the detour), as [WebPlanRules.gapsJson]; "null" = nothing to say.
+     */
+    fun detourGaps(names: String): String {
+        val res = detourFor ?: return "null"
+        if (res !== lastResult || detours.isEmpty()) return "null"
+        return WebPlanRules.gapsJson(res, parseNames(names), lastReach, detours)
+    }
 
     /** The same points at the page's 6 decimals (the page sends them rounded; a snapped point comes back rounded). */
     private fun same6(a: List<GeoPoint>, b: List<GeoPoint>): Boolean = a.size == b.size &&
@@ -320,6 +387,8 @@ object Engine {
             val changed = before?.route?.takeIf { b ->
                 RouteWarnings.changedNoticeably(b.points, b.distanceM, b.ascentM, res.route.points, res.route.distanceM, res.route.ascentM)
             }?.let { RouteWarnings.changedText(act, sac) }
+            lastReach = reach
+            detourFor = null; detours = emptyList() // the last plan's detour check ends (the app's newRunStarts → detourCheck.stop)
             planJson(res, nm, System.currentTimeMillis() - t0, changed, reach)
         } catch (e: Exception) {
             Problems.error("web", "Plan request failed", e)
@@ -1000,6 +1069,11 @@ external fun planProgress(text: String)
 
 /** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
 @JSExport fun routingInfo(): String = Engine.routingInfo()
+
+// the detour hint (the app's PlanDetourCheck), point by point – Engine.detourStart
+@JSExport fun detourStart(): String = Engine.detourStart()
+@JSExport fun detourAt(i: Int): String = if (Engine.detourAt(i)) "1" else "0"
+@JSExport fun detourGaps(names: String): String = Engine.detourGaps(names)
 
 @JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
     Engine.planCode(points, activity, sac, pinned, names, title)

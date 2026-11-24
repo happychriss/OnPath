@@ -8,7 +8,8 @@ import { roomFor } from './cardanchor';
 
 type LatLon = [number, number];
 interface Gap { index: number; point: LatLon; end: LatLon; show: [number, number, number] }
-/** [way]: what reaches the first gap's point (the app's PlanReach, owner 2026-11-07 – "② erst ab T2 erreichbar"), with the point. */
+/** [way]: what reaches the first gap's point (the app's PlanReach, owner 2026-11-07 – "② erst ab T2 erreichbar"), with the point;
+ * with no gap, the route around a point the T level sends on a long detour (the app's detourWay – "② macht 4,2 km Umweg"). */
 export interface Gaps { text: string | null; way?: LatLon[] | null; gaps: Gap[] }
 
 const NONE: Gaps = { text: null, way: null, gaps: [] };
@@ -46,7 +47,8 @@ export class PlanGapsLayer {
   show(padding: maplibregl.PaddingOptions) {
     const g = this.last.gaps[0];
     const way = this.last.way;
-    if (g && way && way.length >= 2) { // like a steep section: the way that reaches the point, amber, fitted (AppViewModel.showPlanGap)
+    // a detour's line (no gap): the drawn route around the point (the app's detourWay); a gap's: the way that reaches it
+    if (way && way.length >= 2 && (g || !this.last.gaps.length)) { // like a steep section: the way that reaches the point, amber, fitted (AppViewModel.showPlanGap)
       this.shown = true; this.draw();
       const lats = way.map((p) => p[0]), lons = way.map((p) => p[1]);
       this.map.fitBounds([[Math.min(...lons), Math.min(...lats)], [Math.max(...lons), Math.max(...lats)]], { padding, maxZoom: 17 });

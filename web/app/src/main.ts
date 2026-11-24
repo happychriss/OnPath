@@ -1707,6 +1707,35 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
+  void checkDetours(id); // after the route is on the map: it never waits for this
+}
+
+/**
+ * The detour hint (the app's PlanDetourCheck, owner 2026-11-21 / 2026-11-24 his words): after the route is shown, the engine
+ * looks whether the hike's T level sends a plan point on a long detour – "② macht 4,2 km Umweg", or with a point only a harder
+ * level reaches "Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar". Point by point (WebApi.detourStart): a newer
+ * edit or a hold's measure waits for one point at most, and the check stops when its plan is no longer the one shown. Never
+ * beside a multi-day tour (the app's multi-day overview) or a failed leg; a failed check gives no hint. The route stays.
+ */
+async function checkDetours(id: number) {
+  const plan = state.plan;
+  if (!plan || plan.error || plan.failed || plan.notice || state.tour || state.activity !== 'HIKE') return;
+  const points = enc(state.points);
+  const same = () => id === state.latest && state.plan === plan && !state.planning && enc(state.points) === points && !state.tour;
+  try {
+    const idx = JSON.parse(await engine.call('detourStart')) as number[];
+    for (const i of idx) {
+      if (!same()) return;
+      await engine.call('detourAt', i);
+    }
+    if (!same() || !idx.length) return;
+    const g = JSON.parse(await engine.call('detourGaps', namesText()));
+    if (!g || !same()) return;
+    planGaps.set(g);
+    render();
+  } catch (e) {
+    problem('routing', 'Detour check failed; the plan shows no detour hint', e);
+  }
 }
 
 /** The last plan lacked routing data (download failed): plan the same points once more – back online or after a moment. */
