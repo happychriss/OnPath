@@ -115,6 +115,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [tracking] (2026-11-24 night): PR 19 + 17 merged by me on the owner's yes (box; your relay). PR 17's host config goes live only with the next planner deploy (release.yml / dispatch). donald's disk is 94 % full: fsync ~10–35 ms, the recorder timing test (LiveLaneTest) fails under load – free space soon.
 - ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches deleted by the owner (script); tests → claim below → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
@@ -124,7 +125,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## In progress
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] (2026-11-24, owner's word) „Standort teilen“: switch on together with a more visible place (A column button / B icon in the tour card / C start pill – real screenshots on `wip/tracking-2026-11-24-share-place`, he picks), after he merges PR 19 + PR 17; second review of the 12 fixes running. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [tracking] (2026-11-24) „Standort teilen“: PR 19 + 17 merged (owner's yes), review fixes on main (7367c0579); tour bubble (inverted share button + ⚙, pill only while waiting) on `feat/tracking-2026-11-24-tour-bubble`, waits for the owner's look; then FOR_EVERYONE. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24) Detour line on main. Readers-all merged with main, waits for the captain's Wasm check + [umbau]'s review. Restore-plan box BUILT on `wip/donald-2026-11-24-restore-ask` (4d9c8d90f, on top of readers 1a1a81293), gate full green, owner's lines chosen; goes to main with the readers → [detail](items/2026-11-24-restore-replaced-plan.md)
 - [aufräumen] (2026-11-24, owner „ok, so machen“) Tests: flaky ones first (GitHub evidence), then flows for no GPS / no network / restart mid-tour. Web smokes only after asking [laptop] (wait window).
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
@@ -203,8 +204,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## Waiting for the owner
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
-- [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)
-- [tracking] 2026-11-20: **merge pull request 17** → [detail](items/2026-11-20-merge-pull-request-17.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
