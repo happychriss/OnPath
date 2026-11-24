@@ -276,7 +276,6 @@ class StorageFullFlowTest {
      * be saved" notification (ongoing, not swipeable) stays up though everything is written, and after End it stays
      * for good: finish() never cancels SAVE_FAIL_ID.
      */
-    @Ignore("bug: storage back while standing still – everything written, but saveFailed and the ongoing SAVE_FAIL notification stay, also after End (RecordingService.kt:684 only clear; finish ~1366 never cancels it)")
     @Test fun spaceBackWhileStandingStill_everythingWritten_theWarningGoes() {
         tour.start("HIKE", 3)
         val id = rec.state.value!!.tourId
@@ -297,7 +296,6 @@ class StorageFullFlowTest {
      * The problem log's "written late" line when the tick writes them (no new point with them): it counts one too few
      * (`waited - 1` is right only on a fix, where the newest point is not late).
      */
-    @Ignore("bug: \"N track point(s) written late\" is one short when the tick writes the queue – RecordingService.writePoints ~823 `waited - 1`")
     @Test fun theLateLineCountsEveryLatePoint() {
         tour.start("HIKE", 3)
         walk(10)

@@ -193,9 +193,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         run.moveWatch.moved(now)
         run.count(moved, newPiece = wasLost && prev != null && !bridged)
         queue.add(PointQueue.Pending(tourId, run.seq++, run.seg, tp, accuracyM))
-        if (writePoints()) {
-            if (run.saveFailed) { run.saveFailed = false; saveFailNoticeUp = false }
-        }
+        writePoints(withNewPoint = true)
         run.show(tp)
         publish(now)
     }
@@ -250,10 +248,12 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
     }
 
     /** `RecordingService.writePoints`: the waiting points in order; false = some still wait (said once, loud – [safe]). */
-    private fun writePoints(): Boolean {
+    private fun writePoints(withNewPoint: Boolean = false): Boolean {
         val waited = queue.size
         val ok = safe("point") { queue.flush { tours.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
-        if (ok && waited > 1) Problems.info("recording", "${waited - 1} track point(s) written late – none lost")
+        val late = if (withNewPoint) waited - 1 else waited
+        if (ok && late > 0) Problems.info("recording", "$late track point(s) written late – none lost")
+        if (ok && run.saveFailed) { run.saveFailed = false; saveFailNoticeUp = false }
         if (queue.dropped > 0 && queue.dropped % 1000 == 1) {
             Problems.error("recording", "Storage failed for hours: ${queue.dropped} oldest unwritten point(s) given up")
         }

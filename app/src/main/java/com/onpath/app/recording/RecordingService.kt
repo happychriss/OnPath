@@ -680,9 +680,7 @@ class RecordingService : Service() {
         // The point goes to SQLite first (R-07). A point that cannot be written now waits in order and is written with
         // the next one that can (review M2) – never dropped while the service runs.
         pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))
-        if (writePoints()) {
-            if (saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
-        }
+        writePoints(withNewPoint = true)
         tourRun.show(p)
         publish()
     }
@@ -816,11 +814,13 @@ class RecordingService : Service() {
     /** Track points not yet written ([PointQueue]). */
     private val pointQueue = PointQueue()
 
-    /** Writes the waiting points in order; false = some still wait (reported once, loud – [safeDb]). */
-    private fun writePoints(): Boolean {
+    /** Writes the waiting points in order; false = some still wait ([safeDb]). All in = the warning goes; [withNewPoint]: newest not late. */
+    private fun writePoints(withNewPoint: Boolean = false): Boolean {
         val waited = pointQueue.size
         val ok = safeDb("point") { pointQueue.flush { db.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
-        if (ok && waited > 1) Problems.info("recording", "${waited - 1} track point(s) written late – none lost")
+        val late = if (withNewPoint) waited - 1 else waited
+        if (ok && late > 0) Problems.info("recording", "$late track point(s) written late – none lost")
+        if (ok && saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         if (pointQueue.dropped > 0 && pointQueue.dropped % 1000 == 1) {
             Problems.error("recording", "Storage failed for hours: ${pointQueue.dropped} oldest unwritten point(s) given up")
         }
