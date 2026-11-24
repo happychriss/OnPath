@@ -136,4 +136,41 @@ class PlanRecalcNoTourTest {
         assertTrue(engine.calls.isNotEmpty())
         assertEquals(RouteRun.Phase.Idle, planRun.routeRun.phase)
     }
+
+    // ---------------- the writer: a point put on a long leg is stitched (detour-stitch.md §2) ----------------
+
+    private val far = GeoPoint(46.0, 12.5) // ~115 km from [start] along lat 46
+    private val start = GeoPoint(46.0, 11.0)
+    private val middle = GeoPoint(46.009, 11.75) // ~1 km off the middle of that leg
+
+    @Test fun aPointPutOnALongRoutedLegGetsItsAnchorsAndTheNextRunCarriesThem() {
+        plan.replace(listOf(start, far))
+        assertNotNull(run(askLong = false))
+        assertTrue("no anchors before an edit", plan.anchorsFor(Activity.HIKE, 2).isEmpty())
+        plan.edit { add(1, middle) }
+        val got = plan.anchorsFor(Activity.HIKE, 2)
+        assertEquals("anchors on the new point only", setOf(1), got.keys)
+        assertTrue(got.getValue(1).before.isNotEmpty() && got.getValue(1).after.isNotEmpty())
+        val next = run(askLong = false)!!
+        assertEquals("the next run routes them", got, next.anchors)
+        assertEquals(3, plan.points.size)
+        assertNull(host.routeError)
+    }
+
+    @Test fun anEditBeforeAnyRouteAndOneUnderAnotherActivityGetNone() {
+        plan.replace(listOf(start, far))
+        plan.edit { add(1, middle) } // no route taken yet: no line to lie on
+        assertTrue(plan.anchorSet.anchors.isEmpty())
+        plan.replace(listOf(start, far))
+        run(askLong = false)
+        val other = state.linesFor(plan.points.toList(), com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 0))
+        assertNull("the lines belong to the profile they were routed with", other)
+    }
+
+    @Test fun aPointOnAShortLegGetsNoAnchors() {
+        plan.replace(listOf(a, b))
+        run()
+        plan.edit { add(1, GeoPoint(46.6055, 11.115)) }
+        assertTrue(plan.anchorSet.anchors.isEmpty())
+    }
 }

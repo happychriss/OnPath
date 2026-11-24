@@ -9,6 +9,8 @@ import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.PlanAnchors
+import com.onpath.app.routing.PlanStitch
+import com.onpath.app.routing.VisibleLines
 
 /**
  * The plan being edited – its points, Undo / Redo, the pinned (POI) points and the start the one-point rule put in –
@@ -25,8 +27,9 @@ class PlanSession(
 ) {
     /**
      * The hidden via points by point index (docs/design/detour-stitch.md): they follow every edit here
-     * ([PlanAnchors.edited]), Undo / Redo bring them back. This stage only reads them: a plan gets them from where it was
-     * loaded ([arriving]), no edit makes new ones. They count only for the profile they lie on ([anchorsFor]).
+     * ([PlanAnchors.edited]), Undo / Redo bring them back. A plan gets them from where it was loaded ([arriving]) or from an
+     * edit that puts a point on a long leg ([stitchLines], [PlanStitch.after]). They count only for the profile they lie on
+     * ([anchorsFor]).
      */
     var anchorSet: AnchorSet = anchorsAtStart
         private set
@@ -43,12 +46,18 @@ class PlanSession(
     /** The next change that makes the plan exactly [list] (a loaded plan) brings [set] with it. */
     fun arriving(list: List<GeoPoint>, set: AnchorSet) { incoming = list.toList() to set }
 
+    /**
+     * The routed lines of the visible legs of exactly the points [before] an edit (null = none known): what the stitch of a
+     * new point is decided from. Set by whoever holds the route; without it an edit only moves the anchors that exist.
+     */
+    var stitchLines: ((before: List<GeoPoint>) -> VisibleLines?)? = null
+
     /** The points changed from [before]: the anchors that arrive with them, else the old ones follow. */
     private fun anchorsAfter(before: List<GeoPoint>) {
         val now = points.toList()
         val got = incoming?.takeIf { it.first == now }
         incoming = null
-        anchorSet = got?.second ?: anchorSet.copy(anchors = PlanAnchors.edited(before, now, anchorSet.anchors))
+        anchorSet = got?.second ?: PlanStitch.after(before, now, anchorSet, stitchLines?.invoke(before))
     }
 
     /**

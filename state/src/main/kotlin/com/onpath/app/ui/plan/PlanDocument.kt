@@ -17,6 +17,7 @@ import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.ExpandedPlan
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanAnchors
+import com.onpath.app.routing.VisibleLines
 
 /**
  * Where the plan on the map is kept between two runs of the app (the preferences in the app, a map in tests): its
@@ -60,6 +61,11 @@ class PlanDocument(
     private val session = PlanSession(points, store.pinned, history, AnchorsJson.readSet(anchorsStored, points))
 
     // ---------------- the points and their history ----------------
+
+    /** The lines a new point's stitch is decided from ([PlanSession.stitchLines]); the route's owner sets it, default none. */
+    var stitchLines: ((before: List<GeoPoint>) -> VisibleLines?)?
+        get() = session.stitchLines
+        set(v) { session.stitchLines = v }
 
     var canUndo by mutableStateOf(session.canUndo)
         private set
