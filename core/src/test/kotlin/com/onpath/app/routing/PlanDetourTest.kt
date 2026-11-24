@@ -192,8 +192,9 @@ class PlanDetourTest {
         val viaT2 = Geo.length(e.route(listOf(a, far), Activity.HIKE, 2).points) + Geo.length(e.route(listOf(far, b), Activity.HIKE, 2).points)
         assertEquals("what T2 saves; the neighbours are the same at both", viaT1 - viaT2, found.single().extraM, 1.0)
         val km = com.onpath.app.data.Format.distance(found.single().extraM)
-        assertEquals("② only reachable from T2 · $km detour", PlanGaps.reachText(listOf(gap), reach, found))
-        assertEquals("② erst ab T2 erreichbar · ${inGerman { com.onpath.app.data.Format.distance(found.single().extraM) }} Umweg",
+        // the owner's words 2026-11-24: the detour first, then the point with the activity and its T level
+        assertEquals("$km detour needed, ② only reachable from Hike T2", PlanGaps.reachText(listOf(gap), reach, found))
+        assertEquals("Umweg ${inGerman { com.onpath.app.data.Format.distance(found.single().extraM) }} notwendig, ② erst ab Wandern T2 erreichbar",
             inGerman { PlanGaps.reachText(listOf(gap), reach, found) })
         assertEquals("without a detour the line stays as it was", "② only reachable from T2", PlanGaps.reachText(listOf(gap), reach))
     }

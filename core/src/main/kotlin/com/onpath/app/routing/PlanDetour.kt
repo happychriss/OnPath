@@ -20,7 +20,7 @@ import kotlin.math.min
  *
  * A point the route does not reach but a harder level does ([PlanReach.Fix.Level], his Mutkopf plan: T1 30.3 km and ② stays
  * 552 m off, T2 10.8 km): the same three steps against the level that reaches it; the line then says both
- * ([PlanGaps.reachText]: "② erst ab T2 erreichbar · 17,4 km Umweg").
+ * ([PlanGaps.reachText]: "Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar").
  *
  * Pure (shared with the planner); blocking – the caller runs it off the main thread, after the route is shown. Never changes
  * the route. A failed or cancelled check gives no hint.

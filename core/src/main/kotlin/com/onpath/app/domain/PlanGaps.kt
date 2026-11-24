@@ -3,6 +3,7 @@ package com.onpath.app.domain
 import com.onpath.strings.*
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
+import com.onpath.app.data.LastActivity
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanDetour
@@ -81,7 +82,8 @@ object PlanGaps {
      * "Letzte 550 m … kein Weg für Wandern"): "② erst ab T2 erreichbar", "② nur mit Gravelbike erreichbar", "② mit
      * dem Rad nicht erreichbar – zu Fuß T2", "② nicht erreichbar"; more gaps: " (+1 more)". Null when [reach] is not
      * about the first gap (an older result, a skipped stop) – then [text] says it. A harder level that also saves a long
-     * way ([detours], his Mutkopf plan) adds it: "② erst ab T2 erreichbar · 17,4 km Umweg".
+     * way ([detours], his Mutkopf plan) says it first, in his words (owner 2026-11-24): "Umweg 17,4 km notwendig, ② erst ab
+     * Wandern T2 erreichbar".
      */
     fun reachText(gaps: List<PlanGap>, reach: PlanReach?, detours: List<PlanDetour> = emptyList()): String? {
         val g = gaps.firstOrNull() ?: return null
@@ -89,7 +91,7 @@ object PlanGaps {
         val p = pointSign(g.index)
         val line = when (val f = reach.fix) {
             is PlanReach.Fix.Level -> detours.firstOrNull { it.index == g.index }
-                ?.let { Txt.s(Res.string.plan_reach_level_detour, p, f.sac, Format.distance(it.extraM)) }
+                ?.let { Txt.s(Res.string.plan_reach_level_detour, Format.distance(it.extraM), p, LastActivity.name(Activity.HIKE, f.sac)) }
                 ?: Txt.s(Res.string.plan_reach_level, p, f.sac)
             is PlanReach.Fix.Bike -> Txt.s(Res.string.plan_reach_activity, p, f.activity.navName)
             is PlanReach.Fix.OnFoot -> Txt.s(Res.string.plan_reach_on_foot, p, f.sac)
