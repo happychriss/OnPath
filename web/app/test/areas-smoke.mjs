@@ -224,7 +224,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   await page.route(/\.rd5/, async (r) => { await new Promise((f) => setTimeout(f, 700)); await r.continue().catch(() => {}); });
   const clickAt = async (lon, lat) => {
     const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
-    await page.mouse.click(p[0], p[1]);
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
   };
   await clickAt(11.16, 46.67);
   await page.waitForSelector('.pointmenu');

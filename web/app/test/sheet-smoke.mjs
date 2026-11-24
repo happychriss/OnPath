@@ -227,7 +227,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     check(!!g2.popup && Math.abs(g2.popup.x - g.popup.x - 140) < 3 && Math.abs(g2.popup.y - g.popup.y + 70) < 3, `${P} the menu followed the point during the pan`);
     // a map click beside the menu closes it and adds nothing; the pin and its chip stay; Escape closes it too
     const pins = await page.locator('.pin').count();
-    await page.mouse.click(vp.width - 120, Math.round(vp.height * 0.35)); // the map, not the profile along the bottom
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(vp.width - 120, Math.round(vp.height * 0.35)); // the map, not the profile along the bottom
     await page.waitForTimeout(400);
     check(await page.locator(MENU).count() === 0 && await page.locator('.pin').count() === pins && await page.isVisible('.pinchip'),
       `${P} a map click beside the menu closes it (nothing added, pin and chip stay)`);

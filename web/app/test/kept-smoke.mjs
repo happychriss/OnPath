@@ -180,7 +180,7 @@ const emptySearch = async (page) => {
   });
   if (poi) {
     const mb = await page.locator('#map canvas').first().boundingBox();
-    await page.mouse.click(mb.x + poi.x, mb.y + poi.y);
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(mb.x + poi.x, mb.y + poi.y);
     await page.waitForSelector('.holdpopup:not(.pinmenu) .pointmenu', { timeout: 15_000 }).catch(() => {});
     const pr = await page.$$eval('.holdpopup:not(.pinmenu) .pointmenu button', (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim()));
     check(pr.slice(-2).join('|') === 'Add to favourites|Open in Google Maps' && !pr.includes('Set as home'), `a map POI (${poi.name}): the same rows, no „Set as home“ (${pr.join(' · ')})`);
