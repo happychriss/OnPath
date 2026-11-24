@@ -477,7 +477,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
         }
         acquireWakeLock()
-        restWatch.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
+        restGps.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
         moveWatch.start(SystemClock.elapsedRealtime())
         if (!saverRegistered) try {
             ContextCompat.registerReceiver(this, saverReceiver,
@@ -551,7 +551,7 @@ class RecordingService : Service() {
         // the motion sensor while recording (owner 2026-11-24: it decides the standing-still rate and GPS off – an accelerometer
         // costs far less than GPS); without a fix "still" = nothing about GPS (owner 2026-11-02)
         motion.listen(tourId >= 0 && !paused)
-        if (tourId >= 0 && !paused) restTick(now)
+        if (tourId >= 0 && !paused) restGps.onTick(now)
         if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
         arrivalVoiceTick(now)
@@ -568,7 +568,7 @@ class RecordingService : Service() {
         publish()
     }
 
-    private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)
+    private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restGps.resting)
 
     /** The phone's motion sensor while there is no fix (owner 2026-11-02): lying still = nothing about GPS. */
     private val motion by lazy { MotionSense(this) }
@@ -593,42 +593,8 @@ class RecordingService : Service() {
     private fun moveWatchMoving(): Boolean =
         moveWatch.moving(if (gpsLost() && lastGoodFixElapsed > 0) lastGoodFixElapsed else SystemClock.elapsedRealtime())
 
-    /** Slower GPS while standing still (owner, battery); the paused rate is [PauseWatch]'s. */
-    private val restWatch = RestWatch()
-
-    /** Feeds [restWatch] with a usable fix of a running tour and applies the rate change; never costs the track. */
-    private fun restRate(loc: Location) {
-        try {
-            restWatch.onFix(loc.elapsedRealtimeNanos / 1_000_000L, loc.latitude, loc.longitude, loc.accuracy,
-                if (loc.hasSpeed()) loc.speed else null, motion.still(SystemClock.elapsedRealtime()))?.let { applyRest(it, "GPS") }
-        } catch (e: Exception) { restFailed(e) }
-    }
-
-    /** The tick's motion-sensor word for [restWatch] (rest without good fixes, wake without fixes, GPS off after an hour). */
-    private fun restTick(now: Long) {
-        try { restWatch.onTick(now, motion.still(now))?.let { applyRest(it, "motion sensor") } } catch (e: Exception) { restFailed(e) }
-    }
-
-    /** A [RestWatch] change on the tracker: slow, normal again (GPS back on when it was off) or GPS off. */
-    private fun applyRest(change: RestWatch.Change, by: String) {
-        when (change) {
-            RestWatch.Change.OFF -> tracker.stop()
-            else -> { tracker.setInterval(restWatch.intervalMs); tracker.start() } // start: no-op while running
-        }
-        Problems.trace("gps", when (change) {
-            RestWatch.Change.REST -> "Standing still for ${RestWatch.REST_AFTER_MS / 1000} s ($by): GPS every ${RestWatch.REST_MS / 1000} s"
-            RestWatch.Change.MOVING -> "Moving again ($by): GPS every second"
-            RestWatch.Change.OFF -> "Lying still for ${RestWatch.OFF_AFTER_MS / 60_000} min (motion sensor): GPS off until the phone moves"
-        })
-    }
-
-    /** Never stay slow or blind on a failure: GPS back to every second. */
-    private fun restFailed(e: Exception) {
-        Problems.warn("gps", "GPS rate for standing still not changed; back to every second", e)
-        restWatch.reset()
-        tracker.setInterval(RestWatch.NORMAL_MS)
-        try { tracker.start() } catch (e2: Exception) { Problems.error("gps", "GPS could not be started again after a rate failure", e2) }
-    }
+    /** Slower GPS while standing still, off after an hour lying still (owner, battery); the paused rate is [PauseWatch]'s. */
+    private val restGps by lazy { RestGps(tracker) { motion.still(it) } }
 
     private fun onFix(loc: Location) {
         if (tourId >= 0 && paused) {
@@ -650,7 +616,7 @@ class RecordingService : Service() {
             Problems.trace("gps", "Demo location ${if (demoFix) "started" else "ended"} during the tour: new track piece")
         }
         // before any filtering below: the first moving fix after a rest switches back to every second (and is stored)
-        restRate(loc)
+        restGps.onFix(loc)
 
         val nowEl = SystemClock.elapsedRealtime()
         gpsWatchdog.disarm()
@@ -1376,7 +1342,7 @@ class RecordingService : Service() {
         // Battery: a pause records nothing – GPS runs slowly (never off (owner): walking on with the pause still on
         // is noticed by PauseWatch), the wake lock rests until Resume.
         pauseWatch.reset()
-        restWatch.reset() // the pause has its own rate; after Resume the standing-still minute starts anew
+        restGps.reset() // the pause has its own rate; after Resume the standing-still minute starts anew
         nm().cancel(PAUSE_ALERT_ID)
         if (p) {
             tracker.setInterval(PauseWatch.GPS_MS)
@@ -1426,7 +1392,7 @@ class RecordingService : Service() {
         }
         tourId = -1
         tracker.stop()
-        restWatch.reset()
+        restGps.reset()
         tracker.setInterval(RestWatch.NORMAL_MS) // a tour ended while paused / resting must not start the next one slowly
         cancelReroute()
         scope.cancel()
