@@ -25,7 +25,7 @@ import kotlin.math.min
  * Pure (shared with the planner); blocking – the caller runs it off the main thread, after the route is shown. Never changes
  * the route. A failed or cancelled check gives no hint.
  */
-data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint>) {
+data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint>, /** The T level that is clearly shorter (owner 2026-11-24: the line names it). */ val level: Int) {
     companion object {
         /** Worth a look: the way via the point is this many times the straight line of its neighbours … */
         const val LOOK_RATIO = 1.5
@@ -132,7 +132,7 @@ data class PlanDetour(val index: Int, val extraM: Double, val way: List<GeoPoint
                 val directHarder = direct(before, after, harder) ?: if (stopped) break else continue
                 val extraM = extra(viaHere, viaHarder, directHere, directHarder) ?: continue
                 val onward = legs[i].points.let { if (it.firstOrNull() == legs[i - 1].points.lastOrNull()) it.drop(1) else it }
-                found += PlanDetour(i, extraM, legs[i - 1].points + onward)
+                found += PlanDetour(i, extraM, legs[i - 1].points + onward, harder)
             }
             if (cancel?.isCancelled == true) return emptyList()
             return found.sortedBy { it.index }

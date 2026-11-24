@@ -321,7 +321,7 @@
   },
   "plan_detour": {
     "area": "Plan sheet",
-    "context": "Red line on a hike: the chosen T level makes this plan point a long detour (the next harder level is clearly shorter). The owner's words, chosen from a picture 2026-11-21. %1$s = the point's sign (\"②\"), %2$s = the extra distance (\"4.2 km\")",
+    "context": "Red line on a hike: the chosen T level makes this plan point a long detour (the next harder level is clearly shorter). The owner's words, chosen from a picture 2026-11-21; its reason added 2026-11-24 („Grund dazu“). %1$s = the point's sign (\"②\"), %2$s = the extra distance (\"2.8 km\"), %3$s = the shorter level, activity with T level (\"Hike T2\")",
     "priority": 2,
     "confidence": "sicher"
   },

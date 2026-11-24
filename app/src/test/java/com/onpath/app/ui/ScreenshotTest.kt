@@ -859,7 +859,7 @@ class ScreenshotTest {
         val gaps = if (more) listOf(g, g.copy(index = 2)) else listOf(g)
         return planUi(n = 2, size = PlanSize.MINI).copy(activity = a, sac = 1,
             gapText = PlanGaps.reachText(gaps, com.onpath.app.routing.PlanReach(1, fix, emptyList()),
-                listOfNotNull(detourM?.let { com.onpath.app.routing.PlanDetour(1, it, emptyList()) })))
+                listOfNotNull(detourM?.let { com.onpath.app.routing.PlanDetour(1, it, emptyList(), 2) })))
     }
     private fun reachShot(fix: com.onpath.app.routing.PlanReach.Fix, a: Activity, more: Boolean = false, detourM: Double? = null) =
         paparazzi.snapshot { Frame(act = a, sac = 1) { PlanPanel(reachPlan(fix, a, more, detourM), PlanCallbacks()) } }
@@ -873,10 +873,10 @@ class ScreenshotTest {
 
     /**
      * A point the T level sends on a long detour (owner 2026-11-21, his words from the picture, variant A): "② macht 4,2 km
-     * Umweg"; the longest text "② macht 12,4 km Umweg (+1 weitere)". Texts from [PlanGaps.detourText].
+     * Umweg – mit Wandern T2 kürzer" (its reason since 2026-11-24); the longest text with "(+1 weitere)". Texts from [PlanGaps.detourText].
      */
     private fun detourShot(vararg extraM: Double) = paparazzi.snapshot {
-        val detours = extraM.mapIndexed { i, m -> com.onpath.app.routing.PlanDetour(i + 1, m, emptyList()) }
+        val detours = extraM.mapIndexed { i, m -> com.onpath.app.routing.PlanDetour(i + 1, m, emptyList(), 2) }
         Frame(act = Activity.HIKE, sac = 1) {
             PlanPanel(planUi(n = 3, size = PlanSize.MINI).copy(activity = Activity.HIKE, sac = 1, gapText = PlanGaps.detourText(detours)), PlanCallbacks())
         }

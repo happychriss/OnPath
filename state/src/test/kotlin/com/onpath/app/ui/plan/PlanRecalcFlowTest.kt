@@ -750,7 +750,7 @@ class PlanRecalcFlowTest {
         assertNull("the route is there before the check has run", recalc.detourText())
         assertFalse(planRun.routing)
         bgEx.runAll()
-        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+        assertEquals("② adds a 4.8 km detour – shorter with Hike T4", recalc.detourText())
         assertEquals("the map shows the drawn way around the point", line, recalc.detourWay())
         assertEquals("the route is the same", line, routeNow!!.points)
         assertTrue("only the background thread routed for it", engine.threads.drop(2).all { it == "bg" })
@@ -789,7 +789,7 @@ class PlanRecalcFlowTest {
         assertEquals("nothing routed beside the hold", routed, engine.threads.size)
         ui { planRun.besideRoute!!.holdMeasures(false) }
         bgEx.runAll()
-        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+        assertEquals("② adds a 4.8 km detour – shorter with Hike T4", recalc.detourText())
     }
 
     @Test fun aHoldOverAFinishedCheckKeepsItsLineAndRoutesNothing() {
@@ -800,7 +800,7 @@ class PlanRecalcFlowTest {
         ui { planRun.besideRoute!!.holdMeasures(true); planRun.besideRoute!!.holdMeasures(false) }
         bgEx.runAll()
         assertEquals(routed, engine.threads.size)
-        assertEquals("② adds a 4.8 km detour", recalc.detourText())
+        assertEquals("② adds a 4.8 km detour – shorter with Hike T4", recalc.detourText())
     }
 
     @Test fun noDetourCheckBesideATour() {

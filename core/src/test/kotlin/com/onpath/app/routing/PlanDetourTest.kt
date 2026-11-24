@@ -65,8 +65,9 @@ class PlanDetourTest {
         assertEquals(1, d.index)
         assertEquals("via T1 6 km − via T2 2 km, the neighbours the same at both", 4000.0, d.extraM, 60.0)
         assertTrue("the way shown on a tap is the drawn route around the point", d.way.size >= 3)
-        assertEquals("② adds a 4.0 km detour", PlanGaps.detourText(found))
-        assertEquals("② macht 4,0 km Umweg", inGerman { PlanGaps.detourText(found) })
+        assertEquals("the shorter level is kept for the line (owner 2026-11-24)", 2, d.level)
+        assertEquals("② adds a 4.0 km detour – shorter with Hike T2", PlanGaps.detourText(found))
+        assertEquals("② macht 4,0 km Umweg – mit Wandern T2 kürzer", inGerman { PlanGaps.detourText(found) })
     }
 
     @Test fun aSummitSpurTheSameAtBothLevelsShowsNothing() {
@@ -142,7 +143,7 @@ class PlanDetourTest {
         assertEquals(PlanDetour.MAX_POINTS, found.size)
         assertEquals("the worst ones, in plan order", listOf(5, 6, 7), found.map { it.index })
         assertTrue("bounded routing: ${e.calls.size}", e.calls.size <= PlanDetour.MAX_POINTS * 4)
-        assertEquals("⑥ adds a ${com.onpath.app.data.Format.distance(found[0].extraM)} detour (+2 more)", PlanGaps.detourText(found))
+        assertEquals("⑥ adds a ${com.onpath.app.data.Format.distance(found[0].extraM)} detour – shorter with Hike T2 (+2 more)", PlanGaps.detourText(found))
     }
 
     @Test fun aPlanWithAGapIsNotChecked() {
