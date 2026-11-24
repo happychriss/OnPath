@@ -178,6 +178,7 @@
     <string name="plan_menu">Menü</string>
     <string name="plan_menu_my_routes">Meine Touren</string>
     <string name="plan_menu_check_updates">Nach Updates suchen</string>
+    <string name="plan_menu_recalc">Ganz neu berechnen</string>
     <string name="plan_map_credits">Kartenquellen anzeigen</string>
     <string name="plan_undo">Rückgängig</string>
     <string name="plan_new_during_tour">Neuer Plan – deine Aufnahme läuft weiter</string>

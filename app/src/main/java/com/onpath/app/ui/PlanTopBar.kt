@@ -29,6 +29,7 @@ import androidx.compose.material.icons.filled.Sync
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.RadioButtonChecked
@@ -102,6 +103,8 @@ class PlanMenu(
      * rarely needed): a plain recording; null hides it (a tour runs).
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
+    /** SKETCH: "Ganz neu berechnen", last row; null hides it. */
+    val onRecalcFromScratch: (() -> Unit)? = null,
     /**
      * "? Hilfe" as the first item (owner 2026-11-08, father's feedback): the help on onpath.earth in the app language –
      * the same address as About's "Hilfe & erste Schritte" ([OnPathLinks.help]); null hides it.
@@ -296,6 +299,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
     menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
+    menu.onRecalcFromScratch?.let { r -> MenuItem(Icons.Outlined.Refresh, str(Res.string.plan_menu_recalc)) { close(); r() } }
 }
 
 /**
