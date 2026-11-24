@@ -145,6 +145,8 @@ class PlanRecalcSlice(
     /** One leg of the settling by its exact ends and profile: what the cap counts. */
     private data class LegId(val a: GeoPoint, val b: GeoPoint, val act: Activity, val sac: Int)
 
+    /** The settling goes on the plan run's own routing thread: a run that starts waits behind it only for the cancel, never beside it. */
+    private val settleThread: CoroutineDispatcher get() = routingDispatcher
     private var settleJob: Job? = null
     @Volatile private var settleCancel: RouteCancel? = null
     /** true while the settling itself asks for the engine: its own engine start clears the cache and must not cancel it. */
@@ -184,7 +186,7 @@ class PlanRecalcSlice(
         // the routing thread is the plan run's own: a run that starts waits behind a leg still routing for the time its cancel
         // takes, never works beside it – so the settling goes only while no run is going
         settleJob = scope.launchSafe("app", "settle") {
-            val out = withContext(routingDispatcher) {
+            val out = withContext(settleThread) {
                 exceptions {
                     if (cancel.isCancelled) return@exceptions null
                     ownEngine = true
