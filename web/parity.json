@@ -156,7 +156,7 @@
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78"
+      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -3051,7 +3051,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78",
+      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
@@ -3519,6 +3519,10 @@
         "if (a.isEmpty || a.before.size > PlanCode.MAX_ANCHORS_SIDE || a.after.size > PlanCode.MAX_ANCHORS_SIDE) return false",
         "return (a.before + a.after).all { valid(it) && abs(micro(it.lat) - la) <= PlanCode.MAX_ANCHOR_DELTA && abs(micro(it.lon) - lo) <= PlanCode.MAX_ANCHOR_DELTA }"
       ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/routes/RestoreAsk.kt": {
+      "blob": "f45ecdfdfd0c6a10b09952aee1b6f5990f993827",
+      "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
       "blob": "0f1228125f41a7f9b9cb29fe85035e53e6c83644",

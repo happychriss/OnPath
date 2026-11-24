@@ -1693,6 +1693,16 @@ class ScreenshotTest {
         Frame(top = { MessageCard(slowPlanMessage {}) }) { PlanPanel(planUi(4, null), PlanCallbacks()) }
     }
 
+    /**
+     * A new plan replaced the plan on the map (owner 2026-11-24, approved from a picture): "Restore your old plan?" + where the
+     * old plan is now – Keep · **Restore** (blue). The German and largest-font twins: GermanScreenshotTest, PlanChipLargeFontGermanTest.
+     */
+    @Test fun restoreAsk() = paparazzi.snapshot {
+        Frame(top = { MessageCard(restoreAskMessage(com.onpath.app.ui.routes.RestoreBox("Algund → Meran", underRecent = true)) {}) }) {
+            PlanPanel(planUi(), PlanCallbacks())
+        }
+    }
+
     /** The app opened where there is no detailed map – the box asks, nothing loads by itself. */
     @Test fun hereAsk() = paparazzi.snapshot {
         Frame(route = false, top = { MessageCard(hereAskMessage(21L * 1_048_576, {}, {})) }) { PlanPanel(planWithCard(n = 0), PlanCallbacks()) }

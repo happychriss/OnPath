@@ -551,6 +551,15 @@ class TourSessionFlowTest {
         assertEquals("the start zoom of a hike", 17.0, session.navStartZoom!!, 0.0)
     }
 
+    /** "Restore your old plan?" (owner 2026-11-24) is for planning: a tour start drops it unanswered – the tour follows the plan on the map. */
+    @Test fun aTourStartDropsRestoreYourOldPlan() {
+        create(); routeNow = routeFor(plan.points.toList())
+        ui { save.keepAsDraft("replaced by a test", asks = true) }
+        assertNotNull(save.restoreAsk)
+        ui { session.startNavigation() }
+        assertNull(save.restoreAsk)
+    }
+
     /** Rule 3: no first state in 6 s → the message and the mode stays Plan; the constant is 6,000 ms. */
     @Test fun noStateInSixSecondsSaysSoAndStaysInPlanAndAnOpenErrorBoxGetsNoSecondOne() {
         create(); routeNow = routeFor(plan.points.toList())

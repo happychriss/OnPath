@@ -92,6 +92,7 @@ class GermanScreenshotTest {
     @Test fun planPairHint() = shots.planPairHint()
     @Test fun navigateNewPlan() = shots.navigateNewPlan()
     @Test fun planSlowAsk() = shots.planSlowAsk()
+    @Test fun restoreAsk() = shots.restoreAsk()
     @Test fun planTourRunning() = shots.planTourRunning()
     @Test fun planRecalculatingBefore() = shots.planRecalculatingBefore()
     @Test fun planRecalculating() = shots.planRecalculating()

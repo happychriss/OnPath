@@ -515,8 +515,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val upd = vm.updates.update as? AppViewModel.UpdateState.Available
     val mapBox = notice?.let { mapNoticeMessage(it, cellCb) }
     val message = if (vm.searchFlow.searchOpen) null else Messages.pick(listOf(
-        // the plan run reached its time limit (owner 2026-11-03): "Weiter warten?" – stays until answered
-        vm.planRun.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm.planRun::answerSlowPlan) },
+        // stay until answered: the plan run reached its time limit (owner 2026-11-03), a new plan replaced the old one (2026-11-24)
+        vm.planRun.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm.planRun::answerSlowPlan) }, restoreAskMessage(vm, touring = rec != null),
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
         if (vm.pairing.pairHint) pairHintMessage(onCamera = { vm.pairing.pairHintCamera(pairCamera) }, onCancel = vm.pairing::pairHintCancel) else null,
         mapBox?.takeIf { it.kind == MessageKind.FRAGE },
