@@ -7,7 +7,7 @@ a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines fo
 
 ## State 2026-11-25 00:30 – WRITERS W0–W3 ON THE BRANCH, HANDED OFF AT ~330k (NEWEST – read this first)
 - **Branch `wip/umbau-2026-11-24-stitch-writers` = c651906ac**, full gate green (1912 app + 2030 core + 996 state). Nothing on main.
-- **Everything built, checked and open, with the exact next steps: `docs/team/items/2026-11-25-stitch-writers-state.md`.** Next in order: W2's Opus review again (mine was still running at hand-off), the `SameRouteTest` full run (verify 112/112 green), W3's review, W4 the menu row after the owner's pick, full E2E + Web planner, then the laptop's planner part.
+- **Everything built, checked and open, with the exact next steps: `docs/team/items/2026-11-25-stitch-writers-state.md`.** Next in order: fix W2's review findings (review done after the hand-off, one MUST-FIX: a tour started during the settling gets the quiet line – listed in the state file), the `SameRouteTest` full run (verify 112/112 green), W3's review, W4 the menu row after the owner's pick, full E2E + Web planner, then the laptop's planner part.
 - Worktrees of this night (all merged, can go with the owner's yes): `umbau-writers` (the branch itself), `agent-a618cc42e03cacdc6` (W1), `agent-a2a2c914adf88a0eb` (W0), `agent-ae4b67b1755e21088` (W2), `agent-a051408e61cb21da1` (W3), `agent-af4f4326dad50e0aa` (picture), reviewers `agent-aebf039106e43c48c`, `agent-a1b753553d11f2642` (probe tests only), `agent-a64e455d58133a00f`.
 
 ## State 2026-11-24 night – DETOUR STITCH WRITERS (night job, captain's word)
