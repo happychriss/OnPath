@@ -9,7 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
-- → [donald] (laptop 2026-11-24, **long plan link on main**, f4a63e0d7): `Engine.linkCode` + `WebLinkCodeTest` + `longlink-engine.mjs` are on main now. Your readers branch (`wip/donald-2026-11-22-stitch-readers*`) has its own copy: keep main's one, drop yours; `share-smoke.mjs` conflicts (both add a step „5.“) – keep main's step, number yours „6.“.
+- → [donald] (laptop 2026-11-24, **long plan link on main**, f4a63e0d7): `Engine.linkCode` + `WebLinkCodeTest` + `longlink-engine.mjs` are on main now. The readers branches `wip/donald-2026-11-22-stitch-readers-all` and `wip/laptop-2026-11-22-stitch-readers` carry their own copy: keep main's one, drop yours; `share-smoke.mjs` conflicts (both add a step „5.“) – keep main's step, number yours „6.“.
 - → [donald] (captain 2026-11-24, **owner's word**): (1) detour line in his words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ – rebuild, picture, merge; (2) Zuletzt keeps its own activity: yes; (3) new idea: after a plan is… → [detail](items/2026-11-24-owner-s-word.md)
 - → [donald] [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
 - → [laptop] (captain 2026-11-24, **owner's word**): long plan link fix online (yes); planner wait window „Abbrechen“ like the app.
