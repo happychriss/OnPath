@@ -376,7 +376,7 @@ fun NavigateOverlay(
                     actions = null)
             }
             LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.C_PILL }?.let { SharePlacePill(it.state) } // sketch C
-            LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.E_BUBBLES_PILL }?.let { SharePlacePillE(it.state) } // sketch E
+            LocalSharePlaceSketch.current?.takeIf { (it.place == SharePlace.E_BUBBLES_PILL || it.place == SharePlace.E2_INVERTED_PILL) }?.let { SharePlacePillE(it.state) } // sketch E
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }

@@ -34,7 +34,7 @@ import com.onpath.strings.*
  * SKETCH ONLY (owner 2026-11-24: "Standort teilen" more visible in Navigate) – where the share entry could stand.
  * Not wired to anything; read from [LocalSharePlaceSketch] (null = nothing changes, the default everywhere).
  */
-enum class SharePlace { A_COLUMN, B_CARD, C_PILL, D_TWO_BUBBLES, E_BUBBLES_PILL }
+enum class SharePlace { A_COLUMN, B_CARD, C_PILL, D_TWO_BUBBLES, E_BUBBLES_PILL, E2_INVERTED_PILL, E3_INVERTED }
 enum class SharePlaceState { OFF, LIVE, WAITING }
 data class SharePlaceSketch(val place: SharePlace, val state: SharePlaceState,
                             val icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.ShareLocation)
@@ -44,11 +44,22 @@ val LocalSharePlaceSketch = compositionLocalOf<SharePlaceSketch?> { null }
 /** A: the top button of the map column – same size and look as the other buttons; green + dot while sharing, grey waiting. */
 @Composable
 internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp,
-                                    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Share, dot: Boolean = true) {
+                                    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Share, dot: Boolean = true,
+                                    inverted: Boolean = false) {
     val tint = when (state) {
         SharePlaceState.OFF -> MaterialTheme.colorScheme.onSurfaceVariant
         SharePlaceState.LIVE -> OnPathColors.Green
         SharePlaceState.WAITING -> OnPathColors.Grey
+    }
+    if (inverted) {
+        // E2 / E3: while sharing the button's round area is filled (green; grey waiting) with a white icon; 40 dp inside the 56 dp slot
+        Box(Modifier.size(size).clickable {}.semantics { contentDescription = Txt.s(Res.string.live_share) }, contentAlignment = Alignment.Center) {
+            if (state == SharePlaceState.OFF) Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
+            else Box(Modifier.size(40.dp).background(tint, CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(24.dp))
+            }
+        }
+        return
     }
     Box(Modifier.size(size).clip(CircleShape).clickable {}.semantics { contentDescription = Txt.s(Res.string.live_share) },
         contentAlignment = Alignment.Center) {

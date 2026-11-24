@@ -52,7 +52,7 @@ class LiveSharePlaceSketchTest {
                      heightDp: Int? = null) = paparazzi.snapshot {
         val d = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(d.density, font), LocalSharePlaceSketch provides SharePlaceSketch(place, state,
-            if (place == SharePlace.A_COLUMN || place == SharePlace.E_BUBBLES_PILL) Icons.Outlined.Share else icon)) {
+            if (place == SharePlace.A_COLUMN || place >= SharePlace.E_BUBBLES_PILL) Icons.Outlined.Share else icon)) {
             OnPathTheme {
                 Box(Modifier.fillMaxSize()) {
                     MapPlaceholder(Modifier.fillMaxSize())
@@ -112,4 +112,13 @@ class LiveSharePlaceSketchTest {
     @Test fun ePlannedLiveEn() = en { shot(planned, E, SharePlaceState.LIVE) }
     @Test fun eSmallLarge() = shot(planned, E, SharePlaceState.WAITING, 2f, heightDp = 640)
     @Test fun eSmallLargeFree() = shot(free, E, SharePlaceState.WAITING, 2f, heightDp = 640)
+
+    private val E2 = SharePlace.E2_INVERTED_PILL
+    private val E3 = SharePlace.E3_INVERTED
+    @Test fun e2PlannedLive() = shot(planned, E2, SharePlaceState.LIVE)
+    @Test fun e2PlannedWaiting() = shot(planned, E2, SharePlaceState.WAITING)
+    @Test fun e3PlannedLive() = shot(planned, E3, SharePlaceState.LIVE)
+    @Test fun e3PlannedWaiting() = shot(planned, E3, SharePlaceState.WAITING)
+    @Test fun e2PlannedLiveLarge() = shot(planned, E2, SharePlaceState.LIVE, 2f)
+    @Test fun e2PlannedLiveEn() = en { shot(planned, E2, SharePlaceState.LIVE) }
 }

@@ -175,7 +175,8 @@ fun MapControls(
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val sketch = LocalSharePlaceSketch.current?.takeIf { it.place != SharePlace.B_CARD && it.place != SharePlace.C_PILL }
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
-        if (sketch != null) add(str(Res.string.live_share) to { SharePlaceColumnButton(sketch.state, size, sketch.icon, dot = sketch.place != SharePlace.E_BUBBLES_PILL) }) // sketch A / D, null elsewhere
+        if (sketch != null) add(str(Res.string.live_share) to { SharePlaceColumnButton(sketch.state, size, sketch.icon, dot = sketch.place == SharePlace.A_COLUMN || sketch.place == SharePlace.D_TWO_BUBBLES,
+            inverted = sketch.place == SharePlace.E2_INVERTED_PILL || sketch.place == SharePlace.E3_INVERTED) }) // sketch A / D, null elsewhere
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
@@ -188,7 +189,7 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    if ((sketch?.place == SharePlace.D_TWO_BUBBLES || sketch?.place == SharePlace.E_BUBBLES_PILL) && onSettings != null) {
+    if (sketch != null && sketch.place != SharePlace.A_COLUMN && onSettings != null) {
         // sketch D: a "tour" bubble (share + settings), a gap, the map bubble (the rest)
         val bubble = RoundedCornerShape(MAP_FAB / 2)
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
