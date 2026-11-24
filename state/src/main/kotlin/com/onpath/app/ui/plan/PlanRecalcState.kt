@@ -330,8 +330,8 @@ open class PlanRecalcState(
      * on every [begin] of that plan, also the reruns of [RouteRun.Effect.Rerun] ("Weiter warten", "Plan anyway").
      */
     fun begin(askLong: Boolean = true): Run? {
-        beginning()
         runCauses.start()
+        beginning()
         offerLines()
         planRun.routeJob?.cancel(); planRun.routeJob = null
         highlight = null; spotLine = null; spotsOpen = false
