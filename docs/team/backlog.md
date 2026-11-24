@@ -111,7 +111,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests: „gut“ to „flaky first, then hard-case flows“, no order → [detail](items/2026-11-24-cleanup-inventory.md)
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests → claim below → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
@@ -123,6 +123,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (2026-11-24, owner's word) „Standort teilen“: switch on together with a more visible place (A column button / B icon in the tour card / C start pill – real screenshots on `wip/tracking-2026-11-24-share-place`, he picks), after he merges PR 19 + PR 17; second review of the 12 fixes running. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24) Detour line on main (owner's words). Readers: `wip/donald-2026-11-22-stitch-readers-all` merged with main (3c7779e2c, long link: main's linkCode kept), gate full green, waits for the captain's Wasm check; [umbau] reviews it. Restore-plan box: picture approved, not built → [detail](items/2026-11-24-restore-replaced-plan.md)
+- [aufräumen] (2026-11-24, owner „ok, so machen“) Tests: flaky ones first (GitHub evidence), then flows for no GPS / no network / restart mid-tour. Web smokes only after asking [laptop] (wait window).
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
