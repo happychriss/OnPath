@@ -5,7 +5,13 @@ Start sentence: „Du bist die Einheit **umbau** (OnPath) auf donald. Lies `docs
 „For the roles“ line of 2026-11-18 (owner's go) – each piece own worktree, `gate --full`, fresh Opus review, then main;
 a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines for the captain under „For the captain“.
 
-## State 2026-11-24 evening – READERS READY FOR DONALD'S MERGE (NEWEST – read this first)
+## State 2026-11-24 night – DETOUR STITCH WRITERS (night job, captain's word) (NEWEST – read this first)
+- **Branch `wip/umbau-2026-11-24-stitch-writers`** from readers-all d6493f680. Nothing on main (writers ship only after the readers' release). Night mode: no question boxes, answers in `docs/team/items/2026-11-24-night-answers.md`.
+- **Pieces:** W1 stitch on insert / move / transfer (`PlanStitch` in core, `PlanSession.stitchLines`, `PlanRecalcState.linesFor`, seed for anchored plans) · W0 DB rows with profile + points hash (`AnchorsJson.writeRow` / `readRow`) · W2 idle settling (after a taken run of an anchored plan: `Planner.settle` lowest priority, cancelled by any edit and BEFORE `LegCache.clear`, a failing leg skipped after 2 tries until new data, a quiet re-run from the cache when it routed) · W3 „Ganz neu berechnen“ logic (`hasDetours`, an undoable clear + recalc) · picture `sketch/umbau-2026-11-25-ganz-neu-berechnen` for his morning.
+- **Running at 23:15:** helpers W1, W0, picture (Sonnet, own worktrees). W2 after W1 (same files). One Opus review per piece, `SameRouteTest` 112/112 at the end.
+
+## State 2026-11-24 evening – READERS READY FOR DONALD'S MERGE
+
 - **Captain's word (owner 2026-11-24):** get the readers ready for main, parallel to donald; no merge, no release. Done; claim freed.
 - **Branch `wip/donald-2026-11-22-stitch-readers-all` = d6493f680** (on donald's merge 3c7779e2c of main's long link). gate full green, **full E2E 113/0** (run 45487971813), **Web planner green** (run 45490248195). Detail: `docs/team/items/2026-11-24-readers-second-review.md`.
 - **OPEN 1 of 2026-11-22 is closed:** one fresh Opus reviewer read 248482631..cd9777cfd + the later fixes + the merge. Two real defects fixed (test first): the track / round-trip take kept the old plan under its old profile with the NEW profile's route (plans without anchors too) → `OwnProfile` taken before the switch; a stale switch note → it holds the plan's points. Three small items fixed. The fifth finding (`setTourPlanActivity`) was already fixed on the branch (c0d3d9d7a).
