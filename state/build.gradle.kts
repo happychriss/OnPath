@@ -44,6 +44,9 @@ animalsniffer {
     excludeJars("json-*")
 }
 tasks.test { dependsOn("animalsnifferMain")
+    // WebReadyRuleTest reads these: a change of the list or of the engine's stand-ins / excludes must run it again (Gradle would skip it)
+    inputs.files("web-ready.txt", "../web/engine/core-excludes.txt")
+    inputs.dir("../web/engine/src/main/kotlin")
 
     // like :core and :app: UTC, English, the texts straight from the XML files
     systemProperty("user.timezone", "UTC")
