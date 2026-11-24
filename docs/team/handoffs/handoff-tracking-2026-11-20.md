@@ -126,3 +126,28 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
   expiry can be up to a day late) are merged by him, and he shared once on his Pixel (first real upload ever).
 - Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
   arrival first, above) – pictures first; the Pixel walk list above.
+
+## State at the shutdown (owner stopped donald + hp, 2026-11-22) – start here
+**Nothing is unsaved:** all [tracking] work is on `main`. `feat/live-share-ui-3` on GitHub (6e9e55aec) is the state before
+the rebase and only still serves the gallery link in the owner's chat; do not build on it, do not force-push it.
+`feat/live-share-ui` / `-2` are superseded. Deleting any of them goes through `tools/dev/prune_branches.sh`.
+
+**On main:** the share UI with all 12 fixes, **off for users** (`LiveShares.FOR_EVERYONE = false` in `LiveShareWiring.kt`;
+visible only with developer tools unlocked, read when Settings / Navigate draw).
+
+**Waits for the owner, all three before the switch-on (his word 2026-11-20):**
+1. merge **PR 19** (`pr/live-privacy`, privacy page) – open;
+2. merge **PR 17** (`pr/live-host-config`, hourly clean-up, per-IP limit, live smoke in CI) – open;
+3. **one real share from his Pixel** (developer tools unlocked) – no tour has ever reached the online server.
+
+**Next step, once all three are done:** `FOR_EVERYONE = true`, gate, push to main, a line for [donald] „ready to ship“ and one
+for [cloud-web] (the website's privacy text goes live with it; its line is in the backlog).
+
+**Not done / not checked – do not assume:**
+- No big-model review of the 12 fixes themselves (the review was before them); recording-adjacent: `LiveLane`, `LiveUploader`.
+- `live-smoke.mjs` (title changed) was not run locally; it only enters CI with PR 17. Run it before the switch-on.
+- [laptop] still has to run `node web/parity/check.mjs --update` unless `web/parity.json` shows it (backlog line).
+- The viewer page's heading is still „Live-Tour“ / „Live tour“ (`web_live_title`); only the page title changed. The owner's
+  „no Live as a word“ was about the app entry – ask him or change it with the viewer-page wish.
+- The owner has not said yes to the picture of the grey „Das Teilen wurde beendet“ line (gallery link, told to him).
+- Still open from above: the viewer page's verdict + arrival (pictures first), the Pixel walk, F-LIVE requirements, a help line.

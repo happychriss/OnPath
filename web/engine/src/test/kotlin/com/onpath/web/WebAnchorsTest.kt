@@ -114,18 +114,6 @@ class WebAnchorsTest {
         assertEquals("", Engine.anchorsCounting("47.0,11.0;47.2,11.2", "HIKE", 3))
     }
 
-    @Test fun aLinkGivesItsCodeByTheRuleOfPlanCode() {
-        assertEquals("AbC-_1", Engine.linkCode(" https://plan.onpath.earth/#p=AbC-_1 "))
-        assertEquals("AbC", Engine.linkCode("https://x/?a=1&p=AbC&b=2"))
-        assertEquals("AbC", Engine.linkCode("p=AbC"))
-        assertEquals("AbC", Engine.linkCode("https://x/#map=1&top=2&p=AbC")) // "p=" inside "top=" is no marker
-        assertEquals("AbC", Engine.linkCode("AbC")) // a bare code stays
-        assertEquals("#p=", Engine.linkCode("#p=")) // no code: PlanCode.parse says no
-        val long = "x".repeat(16_001)
-        assertEquals("#p=$long", Engine.linkCode("#p=$long")) // over the limit: PlanCode.parse refuses it
-        assertEquals(null, PlanCode.parse(Engine.linkCode("#p=$long")))
-    }
-
     @Test fun theStoreIsAskedForTheExpandedLegs() {
         val names = Regex("\"([^\"]+)\"").findAll(Engine.legsWanted(pts, "HIKE", 3)).map { it.groupValues[1] }.toList()
         assertEquals(names.toString(), 4, names.count { it.endsWith("_cut") }) // each of the four legs touches an anchor

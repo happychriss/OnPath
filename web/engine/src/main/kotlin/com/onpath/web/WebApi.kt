@@ -621,8 +621,9 @@ object Engine {
 
     /**
      * The bare code of a link ([PlanCode.parse]'s rule: "p=" at the start or after # ? &, then the code characters), found
-     * without its Regex: in a freshly loaded Wasm engine that Regex failed on a long code (from ~1,400 characters, seen
-     * 2026-11-22), so a long link opened as "can't be read". Anything else goes to [PlanCode.parse] as it is.
+     * without its Regex: on a freshly loaded page, before Wasm's fast tier, that Regex ran out of stack on a long code
+     * (RangeError from ~1,400 characters; test/longlink-engine.mjs), and the link opened as "can't be read". Anything else
+     * goes to [PlanCode.parse] as it is.
      */
     internal fun linkCode(text: String): String {
         val t = text.trim()

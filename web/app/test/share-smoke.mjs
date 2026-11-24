@@ -3,6 +3,7 @@
 // Usage: node test/share-smoke.mjs [segmentsDir] [screenshot.png]
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { spawnSync } from 'node:child_process';
 import { chromium } from '@playwright/test';
 import { serve } from './serve.mjs';
 
@@ -65,7 +66,9 @@ await page.goto(url + 'index.html#p=AQ');
 await page.waitForFunction(() => document.getElementById('status')?.textContent?.includes("can't be read"), null, { timeout: 60_000 }).catch(() => {});
 check((await page.textContent('#status')).includes("This plan link can't be read"), 'broken link → plain message');
 
-// 5. a plan with detour points (detour-stitch.md §6 step 3): read, routed through them, shared on with the same code
+// 5. a long link on a freshly loaded engine (its own process: a small stack, Wasm's slow tier)
+check(spawnSync(process.execPath, [path.join(here, 'longlink-engine.mjs')], { stdio: 'inherit' }).status === 0, 'a long plan link opens on a fresh page');
+// 6. a plan with detour points (detour-stitch.md §6 step 3): read, routed through them, shared on with the same code
 await page.goto('about:blank');
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
