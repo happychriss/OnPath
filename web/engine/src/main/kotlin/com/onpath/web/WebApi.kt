@@ -537,9 +537,32 @@ object Engine {
             title.ifBlank { null },
         ))
 
+    /**
+     * The bare code of a link ([PlanCode.parse]'s rule: "p=" at the start or after # ? &, then the code characters), found
+     * without its Regex: on a freshly loaded page, before Wasm's fast tier, that Regex ran out of stack on a long code
+     * (RangeError from ~1,400 characters; test/longlink-engine.mjs), and the link opened as "can't be read". Anything else
+     * goes to [PlanCode.parse] as it is.
+     */
+    internal fun linkCode(text: String): String {
+        val t = text.trim()
+        if (t.length > LINK_MAX) return t // PlanCode.parse refuses it
+        var at = t.indexOf("p=")
+        while (at >= 0) {
+            if (at == 0 || t[at - 1] in "#?&") {
+                var end = at + 2
+                while (end < t.length && (t[end] in 'A'..'Z' || t[end] in 'a'..'z' || t[end] in '0'..'9' || t[end] == '_' || t[end] == '-')) end++
+                if (end > at + 2) return t.substring(at + 2, end)
+            }
+            at = t.indexOf("p=", at + 1)
+        }
+        return t
+    }
+    /** PlanCode's limit for a whole link. */
+    private const val LINK_MAX = 16_000
+
     /** The plan in a link or code as JSON (points, activity, sac, pinned, names, title), or "null". */
     fun planParse(text: String): String {
-        val p = PlanCode.parse(text) ?: return "null"
+        val p = PlanCode.parse(linkCode(text)) ?: return "null"
         return buildString {
             append("{\"points\":[")
             p.points.forEachIndexed { i, q -> if (i > 0) append(','); append('[').append(num(q.lat, 5)).append(',').append(num(q.lon, 5)).append(']') }
