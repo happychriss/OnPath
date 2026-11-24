@@ -41,7 +41,7 @@ class SavePathsTest {
      */
     @Test fun thePlanIsHandedToZuletztBeforeItLeavesTheMap() {
         val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveState.kt").readText() // keepAsDraft moved there (piece 3)
-        val keep = slice.substringAfter("fun keepAsDraft(why: String, profile: Pair<Activity, Int>? = null) {").substringBefore("\n    }\n")
+        val keep = slice.substringAfter("fun keepAsDraft(why: String, own: OwnProfile? = null) {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("recent.keep("))
         assertFalse("handed over at once, no background work before it", keep.contains("launch"))
         // SaveState has no coroutines: deferring is `background.` (a write off the thread) or `names.` (a wait for the name)
@@ -130,7 +130,7 @@ class SavePathsTest {
      */
     @Test fun aSuggestionNotesTheOldProfileBeforeTheActivitySwitchesAndKeepsNothingItself() {
         val take = vm.substringAfter("take = { pts, a, l, done ->").substringBefore("}), prefs.suggestTest")
-        assertTrue(take, take.contains("val own = planRoute.activity to planRoute.sac") && take.indexOf("val own") < take.indexOf("planRoute.selectActivity(a)"))
+        assertTrue(take, take.contains("val own = routesFlow.leavingNow()") && take.indexOf("val own") < take.indexOf("planRoute.selectActivity(a)"))
         assertTrue(take, take.contains(", a, l, own, done)"))
         assertFalse("the keep happens on the take's success, not here", take.contains("keepAsDraft"))
     }
