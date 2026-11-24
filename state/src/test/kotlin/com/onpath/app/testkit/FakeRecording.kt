@@ -14,6 +14,7 @@ import com.onpath.app.recording.RecState
 import com.onpath.app.recording.RestWatch
 import com.onpath.app.recording.TourRun
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.setup.LocationSaverMode
 import com.onpath.app.ui.tour.TourRecorder
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -75,6 +76,9 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         private set
     /** That notification is up (it stays until a point is written again – `nm().cancel(SAVE_FAIL_ID)`). */
     var saveFailNoticeUp = false
+        private set
+    /** "Battery saver stops GPS with the screen off" notifications so far (`checkBatterySaver`: once per tour). */
+    var saverNotices = 0
         private set
     /** Points waiting for the database ([PointQueue]); [droppedPoints] given up at its cap. */
     val waitingPoints: Int get() = queue.size
@@ -215,6 +219,18 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
             safe("stats") { tours.updateStats(tourId, run.distance, run.ascent, run.descent, run.elapsedS.toDouble(), "active") }
         }
         publish(now)
+    }
+
+    /**
+     * `RecordingService.checkBatterySaver`, called by its receiver when the phone's saver changes ([powerSave],
+     * [mode] = `locationPowerSaveMode`, null below API 28): said once per tour, loud, nothing else changes.
+     */
+    fun batterySaverChanged(powerSave: Boolean, mode: Int?) {
+        if (!running) return
+        if (!LocationSaverMode.warnDuringTour(powerSave, mode, run.saverWarned)) return
+        run.saverWarned = true
+        Problems.warn("recording", "Battery saver came on during the tour and stops GPS with the screen off – user told")
+        saverNotices++
     }
 
     /** `RecordingService.checkArrived` (in Navigate; the line's length not cached): the arrival once per line. */

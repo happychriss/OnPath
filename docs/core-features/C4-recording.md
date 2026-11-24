@@ -19,6 +19,10 @@ points all written in order without hole or double, distance and time whole; a k
 those; at the queue's cap the oldest waiting are given up (said once, their numbers stay free); End while full leaves
 the tour "active" (asked next start). Two minor bugs it found, fixed: space back while standing still cleared neither
 `saveFailed` nor the ongoing notification (also after End), and the "written late" log line was one short from the tick.
+`BatterySaverFlowTest` (2026-11-25): the saver comes on mid-tour and GPS stops for 10 min – told once per tour (a second
+change in the same tour is silent, the next tour says it again), the silence behaves as any lost GPS (grey line, then the
+warning, no off-route alarm, no false arrival, no restart watchdog), the points before are kept, fixes back 300 m on = a
+new piece, no jump in the distance; a saver that keeps GPS (or API < 28) says nothing. No bug found.
 
 `SchemaUpgradeFlowTest` (2026-11-25, [aufräumen]): the app updated in the middle of a tour – for every tour database version
 1 … 9 (and a version 3 with `rides` but no `acc`; 10 = control) the file as that version had it, an active tour with two

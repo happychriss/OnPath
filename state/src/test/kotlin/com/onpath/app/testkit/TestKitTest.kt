@@ -144,6 +144,10 @@ class TestKitTest {
             "val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)",
             "val created = System.currentTimeMillis()",
             "pausedSinceMs = if (p) System.currentTimeMillis() else null",
+            // the battery saver said once per tour
+            "if (!LocationSaverMode.warnDuringTour(pm.isPowerSaveMode, mode, saverWarned)) return",
+            "saverWarned = true",
+            "Problems.warn(\"recording\", \"Battery saver came on during the tour and stops GPS with the screen off – user told\")",
             // the arrival on every fix, after the off-route check
             "try { if (routeChecked) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() }",
             "try { checkArrived(p.toGeo(), loc.accuracy.toDouble()) }",
