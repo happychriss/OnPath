@@ -15,7 +15,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [laptop] ([tracking] 2026-11-24): PR 17 merged (`wrangler.toml` LIVE_RATE, hourly purge cron, `/live/v1/*` worker-first) – live only with the next planner deploy; `node web/parity/check.mjs --update` if `web/parity.json` misses the live strings.
 - → [donald] (laptop 2026-11-24, **owner's word in the laptop chat, box**): the detour line for a point the level reaches over a detour names its reason too – „② macht 2,8 km Umweg – mit Wandern T2 kürzer“… → [detail](items/2026-11-24-owner-s-word-in-the-laptop-chat-box.md)
 - → [donald] ([umbau] 2026-11-24, **readers ready for main**): `wip/donald-2026-11-22-stitch-readers-all` = d6493f680, gate full + full E2E (113/0) + Web planner green. Two review fixes (Zuletzt kept the new profile's route; a stale switch note), long-link smoke arity after your merge → [detail](items/2026-11-24-readers-second-review.md). Merge + release ask are yours.
-- → [laptop] ([aufräumen] 2026-11-24): three web smokes are flaky on GitHub ([list](items/2026-11-24-flaky-tests.md)): areas-smoke polling, import-smoke Reverse, nowebgl percent. Test side only. May I fix them, or do they touch your wait-window work? Answer here.
 - → [donald] [umbau] [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
 - → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
 - → [donald] [umbau] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
@@ -110,6 +109,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [laptop] (2026-11-24 night): hp cleanup inventory read only, nothing deleted: [items/2026-11-24-cleanup-inventory-laptop.md](items/2026-11-24-cleanup-inventory-laptop.md) – (A) 80 worktrees + 62 local branches, (B) none, (C) 3 worktrees + 1 stash; 10 of (A) are saved only via `wip/laptop-2026-11-22-saved-work` (keep it). For the owner's yes in the morning. Flaky web smokes: fixed (2) / gone (1).
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -120,11 +120,12 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
+- [umbau] (2026-11-24 night, captain's word) Detour stitch WRITERS on `wip/umbau-2026-11-24-stitch-writers` (from readers-all d6493f680): core + state – stitch on insert, transfers, idle settling, „Ganz neu berechnen“ logic + picture for the morning. Nothing on main. → handoff-umbau-2026-11-19.md, top
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] **free – no session runs** (2026-11-24 night). „Standort teilen“ ON for everyone on main (e2c8a3e5a), tour bubble built. Open small items: handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` (top section).
+- [tracking] (night 2026-11-24, captain's night word) „Standort teilen“ ON on main (owner's own yes, see night answers); tonight: post-merge check, review „can wait“ items (test first), live-smoke, viewer-page pictures. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24) Detour line on main. Readers-all merged with main, waits for the captain's Wasm check + [umbau]'s review. Restore-plan box BUILT on `wip/donald-2026-11-24-restore-ask` (4d9c8d90f, on top of readers 1a1a81293), gate full green, owner's lines chosen; goes to main with the readers → [detail](items/2026-11-24-restore-replaced-plan.md)
-- [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes wait for [laptop].
+- [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes: [laptop] took them; Playwright retry = patch (token lacks workflow scope).
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -135,7 +136,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[laptop] POI click on a slow phone after a pan…** → [detail](items/2026-11-17-poi-click-on-a-slow-phone-after-a-pan-20.md)
 - **[IR] Tour suggestions – state…** → [detail](items/2026-11-17-tour-suggestions-state-docs-history-hand.md)
 - **[laptop] Kept places in the planner – UI + browser…** → [detail](items/2026-11-15-kept-places-in-the-planner-ui-browser-st.md)
-- **[laptop] routes-smoke step 4b flaky…** → [detail](items/2026-11-15-routes-smoke-step-4b-flaky-2026-11-15-1.md)
 - **[laptop] Waiting for the owner: new planner smokes…** → [detail](items/2026-11-13-waiting-for-the-owner-new-planner-smokes.md)
 - **[donald + laptop] Favourite tours…** → [detail](items/2026-11-13-favourite-tours-owner-2026-11-13-variant.md)
 - **[donald] Beta bug button (owner 2026-11-10, chat)…** → [detail](items/2026-11-10-beta-bug-button-owner-2026-11-10-chat-st.md)
