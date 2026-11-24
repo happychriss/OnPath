@@ -209,4 +209,21 @@ class MultiDayFlowTest {
         assertNull(f.tour); assertNull(f.day)
         assertTrue(Problems.snapshot().any { it.area == "plan" && it.message.contains("Multi-day") })
     }
+
+    /** Review of the writers (W1): a stitch made on a day of a tour that had no detour points yet reaches the whole tour, with its profile. */
+    @Test fun aStitchOnADayOfATourWithoutAnchorsReachesTheTour() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val f = opened(flow())
+        f.tapDay(2)
+        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"))!!
+        f.pickDay(whole, pts, null)!!
+        val extra = GeoPoint(46.0 + 45 * 0.009, 11.01)
+        val stitch = mapOf(1 to com.onpath.app.routing.Anchors(listOf(on(40)), listOf(on(50))))
+        val profile = com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 2)
+        f.pointsChanged(listOf(pts[2], extra, pts[3]), emptySet(), com.onpath.app.routing.AnchorSet(stitch, profile)) { if (it == pts[3]) "Gasthof Post" else null }
+        assertEquals(listOf(pts[0], pts[1], pts[2], extra, pts[3], pts[4]), f.day!!.whole.points)
+        assertEquals("the day's new anchors are in the tour", mapOf(3 to stitch[1]!!), f.day!!.whole.anchors)
+        assertEquals("with the profile they lie on", profile, f.day!!.anchorProfile)
+        assertEquals("a restart keeps them", mapOf(3 to stitch[1]!!), flow().day!!.whole.anchors)
+    }
 }

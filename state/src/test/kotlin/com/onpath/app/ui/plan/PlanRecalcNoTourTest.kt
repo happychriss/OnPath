@@ -138,6 +138,8 @@ class PlanRecalcNoTourTest {
     }
 
     // ---------------- the writer: a point put on a long leg is stitched (detour-stitch.md §2) ----------------
+    // The planner does NOT stitch yet, though it strings the run like this: it never calls `taken`, so it has no lines
+    // (review of the writers, finding 3). These cases are the app's; the planner's wiring is the laptop's, before the writers ship.
 
     private val far = GeoPoint(46.0, 12.5) // ~115 km from [start] along lat 46
     private val start = GeoPoint(46.0, 11.0)

@@ -72,5 +72,8 @@ class AnchorsRowFormatTest {
         // pinned: the planner and every app version must agree on it
         assertEquals(AnchorsJson.hash(pts), AnchorsJson.hash(pts.map { g(it.lat + 1e-8) }))
         assertEquals(16, AnchorsJson.hash(pts).length)
+        // the value itself, computed outside Kotlin (FNV-1a 64 over the micro-degrees, little-endian bytes): a change of the
+        // hash would drop every stored row's detour points
+        assertEquals("62c3b8e261299bd5", AnchorsJson.hash(pts))
     }
 }
