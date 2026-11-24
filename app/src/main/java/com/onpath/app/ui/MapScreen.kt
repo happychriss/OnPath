@@ -682,7 +682,11 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
         // canEditMap is part of the key on its own: Navigate → Plan while the plan is followed must redraw the markers
         snapshotFlow {
             val (line, markers) = planLayers(vm.canEditMap, navigateWithPlan = vm.tourSession.mode == AppMode.NAVIGATE && vm.tourFollow.planGuides)
-            PlanDrawing(vm.route, line, markers, vm.plan.points.toList(), vm.planGaps, passed, vm.placeMenus.pinnedPoiKinds())
+            // a point being dragged is drawn under the finger; the line follows when it is let go
+            val pts = vm.plan.points.toList().let { w ->
+                vm.planEdit.dragPreview?.let { (i, p) -> com.onpath.app.routing.PlanPoints.relocate(w, i, p) } ?: w
+            }
+            PlanDrawing(vm.route, line, markers, pts, vm.planGaps, passed, vm.placeMenus.pinnedPoiKinds())
         }
             .collect { d ->
                 val r = if (d.showLine) d.route else null
@@ -771,6 +775,13 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     // the candidate's dashed preview line to where it would join the route (Plan, with a route; AppViewModel.candidateJoin)
     LaunchedEffect(c, passed, trackSize / 20) {
         snapshotFlow { vm.placeAdd.candidateJoin() }.distinctUntilChanged().collect { c.setCandidateJoin(it?.first, it?.second) }
+    }
+    // a route point being dragged: dashed lines from its neighbours to the finger (owner 2026-11-14)
+    LaunchedEffect(c) {
+        snapshotFlow {
+            vm.planEdit.dragPreview?.let { (i, p) -> com.onpath.app.routing.PlanPoints.dragNeighbours(vm.plan.points.toList(), i).map { it to p } }
+                ?: emptyList()
+        }.distinctUntilChanged().collect { c.setDragPreview(it) }
     }
     // Google Maps place → go there (owner): the ring's menu opens by itself once the camera has arrived there (and the
     // map-download modal for it is gone) – checked on every camera stop while it waits (SharedPlaceMenu)

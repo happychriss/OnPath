@@ -197,6 +197,18 @@ open class PlanEditState(
         set(after)
     }
 
+    /** A route point held and dragged on the map, while the finger is down: drawn there, the plan is not changed yet. */
+    var dragPreview by mutableStateOf<Pair<Int, GeoPoint>?>(null)
+
+    /** A route point dragged on the map and let go at [to]: one undoable edit, the route is calculated again. */
+    fun movePointTo(index: Int, to: GeoPoint) {
+        dragPreview = null
+        val after = com.onpath.app.routing.PlanPoints.relocate(waypoints.toList(), index, to)
+        if (after == waypoints.toList()) return
+        Problems.trace("plan", "Point ${index + 1} dragged on the map to a new place (plan ${waypoints.size} points)")
+        set(after)
+    }
+
     /** Points list → ✕: deleted at once (Undo brings it back); a round trip stays closed at its start. */
     fun deletePointFromList(index: Int) {
         val after = com.onpath.app.routing.PlanPoints.delete(waypoints, index)

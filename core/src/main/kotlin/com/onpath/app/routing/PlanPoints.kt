@@ -180,6 +180,34 @@ object PlanPoints {
         return delete(plan, row)
     }
 
+    /**
+     * Plan point [index] moved to [to] – a map marker held and dragged. A round trip's ① and its closing point are the
+     * same spot: moving either moves both, so the loop stays closed. Shared rule, unit tested.
+     */
+    fun relocate(plan: List<GeoPoint>, index: Int, to: GeoPoint): List<GeoPoint> {
+        if (index !in plan.indices) return plan
+        val loopAt = PlanEdits.loopStart(plan)
+        val out = plan.toMutableList()
+        if (loopAt != null && (index == plan.lastIndex || index == loopAt)) {
+            out[loopAt] = to; out[plan.lastIndex] = to
+        } else out[index] = to
+        return out
+    }
+
+    /**
+     * The plan points a dragged point [index] is joined to – its neighbours before and after; for a round trip's start
+     * (or its closing point) the second point and the last loop point. The preview draws a dashed line from each to the
+     * finger. Pure, unit tested.
+     */
+    fun dragNeighbours(plan: List<GeoPoint>, index: Int): List<GeoPoint> {
+        if (index !in plan.indices) return emptyList()
+        val loopAt = PlanEdits.loopStart(plan)
+        val idx = if (loopAt != null && (index == plan.lastIndex || index == loopAt))
+            listOf(loopAt - 1, loopAt + 1, plan.lastIndex - 1) else listOf(index - 1, index + 1)
+        return idx.distinct().filter { it in plan.indices && it != index && !(loopAt != null && it == plan.lastIndex) }
+            .map { plan[it] }
+    }
+
     /** The row a row dragged from [from] by [offsetPx] lands on ([rowPx] = row height, 0 = not measured). */
     fun dropIndex(from: Int, offsetPx: Float, rowPx: Float, count: Int): Int {
         if (rowPx <= 0f || count <= 0) return from

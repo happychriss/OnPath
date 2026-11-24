@@ -332,9 +332,50 @@ fun MapHost(
                 holdAt.value = null
                 handle(ll, MapGestures.Press.HOLD)
             }
+            // Drag a route point: hold it (ring full) and move the finger without letting go – the point follows the
+            // finger, the route is calculated when it is let go (owner 2026-11-14). A move before the hold is a pan.
+            var dragIndex = -1
+            fun cancelMapGesture(ev: MotionEvent) {
+                val c = MotionEvent.obtain(ev).apply { action = MotionEvent.ACTION_CANCEL }
+                try { mapView.onTouchEvent(c) } catch (e: Exception) {
+                    Problems.warn("map", "Map gesture not reset at the start of a point drag", e)
+                } finally { c.recycle() }
+            }
+            fun dragPoint(ev: MotionEvent): GeoPoint? = try {
+                map.projection.fromScreenLocation(PointF(ev.x, ev.y)).let { GeoPoint(it.latitude, it.longitude) }
+            } catch (e: Exception) {
+                Problems.warn("map", "Dragged point: map position unknown", e); null
+            }
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
                 if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.map.onMapTouch()
+                if (dragIndex >= 0) {
+                    when (ev.actionMasked) {
+                        MotionEvent.ACTION_MOVE -> dragPoint(ev)?.let { vm.planEdit.dragPreview = dragIndex to it }
+                        MotionEvent.ACTION_UP -> {
+                            val p = dragPoint(ev)
+                            if (p != null) vm.planEdit.movePointTo(dragIndex, p) else vm.planEdit.dragPreview = null
+                            dragIndex = -1
+                        }
+                        // a second finger or a cancelled touch: the point stays where it was
+                        MotionEvent.ACTION_POINTER_DOWN, MotionEvent.ACTION_CANCEL -> {
+                            Problems.trace("plan", "Point drag cancelled, point ${dragIndex + 1} unchanged")
+                            vm.planEdit.dragPreview = null; dragIndex = -1
+                        }
+                    }
+                    return@setOnTouchListener true
+                }
+                if (ev.actionMasked == MotionEvent.ACTION_MOVE && hold.pressing && downMarker >= 0 &&
+                    vm.canEditMap && !vm.routePeek && ev.eventTime - ev.downTime >= HOLD_MS &&
+                    kotlin.math.hypot(ev.x - hold.downX, ev.y - hold.downY) > 8 * density) {
+                    dragIndex = downMarker
+                    holdAt.value = null
+                    cancelMapGesture(ev) // MapLibre must neither pan nor report a long click for this press
+                    vm.placeMenus.closeMapOverlays("route point dragged")
+                    dragPoint(ev)?.let { vm.planEdit.dragPreview = dragIndex to it }
+                    Problems.trace("plan", "Point ${dragIndex + 1} dragged on the map")
+                    return@setOnTouchListener true
+                }
                 hold.track(ev, slopPx = 8 * density)
                 if (!hold.pressing) holdAt.value = null
                 else if (ev.actionMasked == MotionEvent.ACTION_DOWN) {

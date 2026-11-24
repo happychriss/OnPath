@@ -219,6 +219,28 @@ class PlanEditFlowTest {
         assertFalse(app.plan.canUndo)
     }
 
+    @Test fun aPointDraggedOnTheMapIsOneStoredStepAndUndoBringsItBack() {
+        val app = App(listOf(a, b, c))
+        app.slice.dragPreview = 1 to d
+        assertEquals("the preview alone changes nothing", "abc", app.stored())
+        app.slice.movePointTo(1, d)
+        assertNull(app.slice.dragPreview)
+        assertEquals("adc", app.stored())
+        assertTrue(app.plan.canUndo)
+        assertEquals(listOf("Point 2 dragged on the map to a new place (plan 3 points)"), app.problemsPlan())
+        app.slice.undoStep()
+        assertEquals("abc", app.stored())
+    }
+
+    @Test fun aDragLetGoOnTheSameSpotOrAStalePointChangesNothing() {
+        val app = App(listOf(a, b, c))
+        app.slice.movePointTo(1, b)
+        app.slice.movePointTo(7, d)
+        assertEquals("abc", app.stored())
+        assertFalse(app.plan.canUndo)
+        assertEquals(emptyList<String>(), app.log)
+    }
+
     @Test fun aRowDroppedOnItselfOrAStaleRowChangesNothing() {
         // a stale row index (the plan shrank under the drag) must never empty the plan: PlanPoints.move hands back the plan itself
         val app = App(listOf(a, b, c))
