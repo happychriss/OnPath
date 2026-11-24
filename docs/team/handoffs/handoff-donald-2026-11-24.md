@@ -28,7 +28,7 @@ Web planner run on main for 07fbe331d (deploys the planner); red → fix at once
    for the laptop is there).
 3. **Detour reason** `wip/donald-2026-11-24-detour-reason` = **1b127b706** (worktree `still-gps`): owner's word in the
    laptop chat „② macht 2,8 km Umweg – mit Wandern T2 kürzer“ (`plan_detour` + `PlanDetour.level`); tests + 6 pictures
-   updated; gate full was running (`/tmp/donald-dr-gate.log`). The planner uses the shared `PlanGaps.detourText` – check
+   updated; gate full GREEN at 1b127b706 (before the readers landed: merge main, gate again). The planner uses the shared `PlanGaps.detourText` – check
    `web/engine/.../WebDetourTest.kt` (it compares to detourText, should follow) in the Web planner run; then main + the
    `For the roles` line from the laptop (2026-11-24) answered → delete it.
 4. **0.18.10 to the last step** (NOT pushed): a branch, `appVersion` 0.18.10 in `app/build.gradle.kts` +
