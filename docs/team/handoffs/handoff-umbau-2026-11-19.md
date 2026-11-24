@@ -5,7 +5,12 @@ Start sentence: „Du bist die Einheit **umbau** (OnPath) auf donald. Lies `docs
 „For the roles“ line of 2026-11-18 (owner's go) – each piece own worktree, `gate --full`, fresh Opus review, then main;
 a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines for the captain under „For the captain“.
 
-## State 2026-11-24 night – DETOUR STITCH WRITERS (night job, captain's word) (NEWEST – read this first)
+## State 2026-11-25 00:30 – WRITERS W0–W3 ON THE BRANCH, HANDED OFF AT ~330k (NEWEST – read this first)
+- **Branch `wip/umbau-2026-11-24-stitch-writers` = c651906ac**, full gate green (1912 app + 2030 core + 996 state). Nothing on main.
+- **Everything built, checked and open, with the exact next steps: `docs/team/items/2026-11-25-stitch-writers-state.md`.** Next in order: W2's Opus review again (mine was still running at hand-off), the `SameRouteTest` full run (verify 112/112 green), W3's review, W4 the menu row after the owner's pick, full E2E + Web planner, then the laptop's planner part.
+- Worktrees of this night (all merged, can go with the owner's yes): `umbau-writers` (the branch itself), `agent-a618cc42e03cacdc6` (W1), `agent-a2a2c914adf88a0eb` (W0), `agent-ae4b67b1755e21088` (W2), `agent-a051408e61cb21da1` (W3), `agent-af4f4326dad50e0aa` (picture), reviewers `agent-aebf039106e43c48c`, `agent-a1b753553d11f2642` (probe tests only), `agent-a64e455d58133a00f`.
+
+## State 2026-11-24 night – DETOUR STITCH WRITERS (night job, captain's word)
 - **Branch `wip/umbau-2026-11-24-stitch-writers`** from readers-all d6493f680. Nothing on main (writers ship only after the readers' release). Night mode: no question boxes, answers in `docs/team/items/2026-11-24-night-answers.md`.
 - **Pieces:** W1 stitch on insert / move / transfer (`PlanStitch` in core, `PlanSession.stitchLines`, `PlanRecalcState.linesFor`, seed for anchored plans) · W0 DB rows with profile + points hash (`AnchorsJson.writeRow` / `readRow`) · W2 idle settling (after a taken run of an anchored plan: `Planner.settle` lowest priority, cancelled by any edit and BEFORE `LegCache.clear`, a failing leg skipped after 2 tries until new data, a quiet re-run from the cache when it routed) · W3 „Ganz neu berechnen“ logic (`hasDetours`, an undoable clear + recalc) · picture `sketch/umbau-2026-11-25-ganz-neu-berechnen` for his morning.
 - **Running at 23:15:** helpers W1, W0, picture (Sonnet, own worktrees). W2 after W1 (same files). One Opus review per piece, `SameRouteTest` 112/112 at the end.
