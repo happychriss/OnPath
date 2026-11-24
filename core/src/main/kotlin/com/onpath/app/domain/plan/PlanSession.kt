@@ -89,6 +89,20 @@ class PlanSession(
         return before
     }
 
+    /**
+     * "Ganz neu berechnen" (docs/design/detour-stitch.md §2): ONE undoable step that keeps the points and drops every anchor,
+     * whatever profile they lie on. Undo brings them back with their profile, Redo drops them again. The step is the same
+     * snapshot pair as any edit – only its anchors differ from the next one – so [replace] after Undo / Redo still finds its
+     * anchors in [incoming] (it matches the points, which are equal). False = there were none: nothing is recorded.
+     */
+    fun clearAnchors(): Boolean {
+        if (anchorSet.anchors.isEmpty()) return false
+        history.record(points, anchorSet)
+        anchorSet = AnchorSet.NONE
+        incoming = null
+        return true
+    }
+
     /** The plan Undo brings back (taken off the undo stack, not applied yet – [replace]); null = nothing to undo. */
     fun undo(): List<GeoPoint>? = history.undo(points, anchorSet)?.also { incoming = it to history.takenAnchors }
 
