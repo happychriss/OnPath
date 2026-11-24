@@ -121,7 +121,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [umbau] (2026-11-22, stopped on the captain's word) Detour stitch readers on `wip/umbau-2026-11-22-stitch-readers` (c4ef54cd5): core + state green, NOT releasable, nothing on main. Web: fresh laptop session; app: donald after his POI fix. Open: review fixes not re-read, Zuletzt change undecided → handoff-umbau-2026-11-19.md, top state
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – no session runs** (stopped 2026-11-22). „Standort teilen“ on main, off for users; waits for PR 19 + PR 17 + the owner's real share from his Pixel, then `FOR_EVERYONE = true`. A fresh session takes it: end of `docs/team/handoffs/handoff-tracking-2026-11-20.md`
-- [donald] (2026-11-22, stopped, owner shut donald down; free for a fresh donald) Detour hint `wip/donald-2026-11-22-detour-hint` waits for his yes; readers together on `wip/donald-2026-11-22-stitch-readers-all` (ac64075d3), not on main → top of `handoffs/handoff-donald-2026-11-21.md`.
+- [donald] (2026-11-24, fresh donald) Owner's word of 2026-11-24: detour hint in his words (`wip/donald-2026-11-22-detour-hint`) → picture → merge on his yes; restore-question sketch; LordTriangel PRs 20–22 app part (read only); then readers `wip/donald-2026-11-22-stitch-readers-all`.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
