@@ -127,6 +127,23 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
 - Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
   arrival first, above) – pictures first; the Pixel walk list above.
 
+## Stop 2026-11-25 ~00:30 (context ~330k, captain's word) – a fresh session starts here
+**Done tonight (all on main):** PR 19 + 17 merged (owner's yes); review fixes 7367c0579 and f63e96b46 (leftover deletes
+beside the new share, 48 h / 3×4xx limit, damaged leftover line + lane Errors reported – each test failed first); tour
+bubble + FOR_EVERYONE = true (e2c8a3e5a); E2E 110/110 (run 45498021891); live smoke green in the main run (sheet-sync);
+website pictures O01–O06 DE + EN in onpath.private a99ba00 + rows in `docs/design/website-screens.md` (section O).
+**First job for the next session – release blocker:** first tap on the Navigate share button with no stored name does
+nothing visible: `LiveShareSlice.share()` sets `askName`, but the name dialog is drawn only by `LiveShareLayer` around the
+Settings page (`MainActivity.kt:277`). Test first (Navigate tap → dialog shown), then draw the dialog where Navigate is
+(or ask the name inside the share flow). Until fixed it must not ship (line for donald), else FOR_EVERYONE back to false.
+**Then, pictures first (owner's wishes):** countdown bar V1 (`wip/tracking-2026-11-24-viewer-verdict`, he has not seen
+them yet), viewer map starting on the last position not Meran, plan line dark blue, verdict line + arrival on top;
+check his „Bildschirm aktualisiert nicht“ with him (steps / screen recording). Smaller: „Das Teilen wurde beendet“ shows
+only when the server ended it – a user's own stop shows nothing in Navigate (fine? ask him with a picture).
+**Leftovers:** the emulator's second demo tour may still be recording on its next start (discard it); branches
+`wip/tracking-2026-11-24-share-place` (sketch rounds, pictures only), `ci/tracking-2026-11-24-navigate` (E2E run) – prune
+later via `tools/dev/prune_branches.sh`; worktrees /tmp/wt-pr19, /tmp/wt-pr17, /tmp/wt-leftovers can go.
+
 ## Owner's field notes 2026-11-24 ~23:30 (his phone, simulation, viewer page open) – to do, pictures first
 1. „Bildschirm aktualisiert nicht / buggy“: the viewer page did not seem to refresh while his phone ran a simulation. Expected
    cadence: moving 120 s, still / paused 600 s (`LivePolicy`), the page asks ~10 s after the due time. Not checked yet:

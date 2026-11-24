@@ -220,6 +220,23 @@ downloaded by the app (real suggest file).
 | N03 | `N03-handy-rundtour-von-hier` | phone: a place's menu, „Rundtour von hier“ right under „Hier starten“ (empty plan only) | rundtour-menue · – (new) | – | `domain/PinMenuPlace.kt`, `ui/MapOverlays.kt` |
 | N04 | `N04-handy-rundtour-kartenreihe` | phone: „5 Rundtouren“, one card in front, the next looking in, the chosen loop on the map | rundtour-karten · – (new) | `cards` | `ui/suggest/SuggestSheet.kt`, `ui/suggest/SuggestSlice.kt` |
 
+## O – Standort teilen (app + viewer page; flight mode only for O05)
+
+Live location sharing (on for everyone since 2026-11-24). Meran scenario: Wandern T2, Vellau → Leiteralm, simulated position
+near the Korblift valley station, name "Anna" (demo), the sharing started for real against the production live box and ended
+with "Teilen beenden" afterwards (O04 needs the real viewer page). The link holds a secret: never in git, logs or a picture –
+O02 shows the share sheet with the link text blurred. The Android share sheet follows the system language (English on the AVD),
+not the app language.
+
+| Step | File | What you see | Key · used on | Snapshot (Paparazzi) | Change here → new picture |
+| --- | --- | --- | --- | --- | --- |
+| O01 | `O01-handy-tour-bubble-teilen` | Navigate during the tour: the tour bubble (share button + ⚙) above the map bubble, not sharing | – (new) | `LiveSign*ScreenshotTest_freeTourOff` `_plannedLive` (button states) | `ui/LiveShareUi.kt`, `ui/MapFooter.kt` |
+| O02 | `O02-handy-standort-teilen-link` | Android share sheet after "Standort teilen": "Verfolge meine Tour: …", the link text blurred, no contacts | – (new) | – | `ui/LiveShareUi.kt`, `ui/LiveShareWiring.kt` |
+| O03 | `O03-handy-teilen-aktiv` | Navigate while sharing: the share button inverted (green filled) | – (new) | `LiveSign*ScreenshotTest_plannedLive` | `ui/LiveShareUi.kt`, `ui/MapFooter.kt` |
+| O04 | `O04-web-geteilter-standort` | the viewer page from the link, phone size (412 × 915 css px, ×2.625): "Unterwegs · gerade eben", the dot moved along the route, distance, time, battery, last place | – (new) | – | `web/app/src/live/` |
+| O05 | `O05-handy-wartet-auf-netz` | flight mode: the grey share button + the pill "Standort · wartet auf Netz" under the status card (the sign turns grey 12 min after the last good upload) | – (new) | `LiveSign*ScreenshotTest_plannedWaiting` | `ui/LiveShareUi.kt`, `ui/MapFooter.kt` |
+| O06 | `O06-handy-teilen-beendet` | ⚙ Navigate settings right after "Teilen beenden": the sharing card back to "Standort teilen" + "Name auf der Seite". The grey line "Das Teilen wurde beendet. Der Link gilt nicht mehr." shows only when the SERVER ended the sharing (`LiveShareScreenshotTest_endedByServer`), not after the user's own stop – so it is not in this picture | – (new) | `LiveShare*ScreenshotTest_entryWithName` (`_endedByServer` for the line) | `ui/LiveShareUi.kt` |
+
 ## Store (Google Play) – made from the flows, no extra shots
 
 S1 "Plane in Ruhe – auch ohne Netz" → D05 · S2 "Unterwegs umplanen – ganz einfach" → F04 · S3 "Klare Ansagen an jeder
