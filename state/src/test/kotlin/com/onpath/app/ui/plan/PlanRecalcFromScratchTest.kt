@@ -101,10 +101,11 @@ class PlanRecalcFromScratchTest {
         Say { text, _, _ -> said += text }, host, background, elapsedMs = { 0L })
 
     /** The edit's ports: every call answers "nothing" (no tour, no menus) and is logged by name. */
+    private var touring = false
     private val editPorts = java.lang.reflect.Proxy.newProxyInstance(javaClass.classLoader, arrayOf(PlanEditPorts::class.java)) { _, m, _ ->
-        did += m.name
+        if (m.name != "touring") did += m.name // a question, not a follow-up
         when (m.returnType) {
-            java.lang.Boolean.TYPE -> false
+            java.lang.Boolean.TYPE -> m.name == "touring" && touring
             java.lang.Integer.TYPE -> 0
             else -> null
         }
@@ -194,5 +195,19 @@ class PlanRecalcFromScratchTest {
         d.edit { add(rome) }
         assertTrue(d.unsaved)
         assertFalse("nothing to clear", d.clearDetours())
+    }
+
+    @Test fun notWhileATourRuns() {
+        withAnchors(plan, listOf(a, b, rome))
+        touring = true
+        assertFalse("the row is hidden", edit.canRecalcFromScratch(Activity.HIKE, 2))
+        assertFalse(edit.recalcFromScratch(Activity.HIKE, 2))
+        assertTrue("anchors unchanged", plan.hasDetours(Activity.HIKE, 2))
+        assertEquals(anchors, plan.anchorSet.anchors)
+        assertTrue("nothing re-routes", did.none { it == "recalc" || it == "planChanged" })
+        touring = false
+        assertTrue(edit.canRecalcFromScratch(Activity.HIKE, 2))
+        assertTrue(edit.recalcFromScratch(Activity.HIKE, 2))
+        assertFalse(plan.hasDetours(Activity.HIKE, 2))
     }
 }

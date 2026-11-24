@@ -170,10 +170,14 @@ open class PlanEditState(
      * Left out, because the points are the same: FitNext (nothing new to fit), the routing spot and the maps of new points
      * (no new point), pruning the pins, the tour split and "route back" ask (the points a tour follows did not move),
      * and the one-point / empty-plan rules.
+     * Not while a tour runs ([PlanEditPorts.touring]): nothing happens, false. True = the plan was cleared and routed again.
      */
-    fun recalcFromScratch(activity: Activity, sac: Int) {
+    fun recalcFromScratch(activity: Activity, sac: Int): Boolean {
+        if (host.touring()) {
+            Problems.trace("plan", "Ganz neu berechnen: a tour runs, not allowed (its followed plan would restart from ①)"); return false
+        }
         if (!plan.hasDetours(activity, sac)) {
-            Problems.trace("plan", "Ganz neu berechnen: no detours or cut points on this profile, nothing to do"); return
+            Problems.trace("plan", "Ganz neu berechnen: no detours or cut points on this profile, nothing to do"); return false
         }
         Problems.trace("plan", "Ganz neu berechnen: ${plan.anchorSet.anchors.values.sumOf { it.before.size + it.after.size }} anchors cleared, plan ${waypoints.size} points routed again")
         host.cancelHoldMeasure("plan changed")
@@ -184,7 +188,15 @@ open class PlanEditState(
         host.planChanged()
         runCauses.pointEdit()
         host.recalc()
+        return true
     }
+
+    /**
+     * The "Ganz neu berechnen" row is offered: detours or cut points on [activity] / [sac] and no tour running (decided for the
+     * umbau: while a tour records or navigates the followed plan must not restart, so the row is hidden then – the same
+     * [PlanEditPorts.touring] as the other plan rows).
+     */
+    fun canRecalcFromScratch(activity: Activity, sac: Int): Boolean = !host.touring() && plan.hasDetours(activity, sac)
 
     /** The plan becomes [list] in one undoable step ([change]). */
     fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
