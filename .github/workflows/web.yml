@@ -141,6 +141,11 @@ jobs:
       - name: Texts – no hard-coded user texts in the page, every web text in every language (web/strings)
         run: node web/app/test/texts-check.mjs
 
+      - name: The place menu's rows and the city POI density = the app's own cases
+        run: |
+          node web/app/test/pinmenu-check.mjs
+          node web/app/test/poidensity-check.mjs
+
       # The APK's world overview (docs/map-pipeline.md §9b), from the same GitHub release the app's release workflow
       # downloads (repository variable ONPATH_OVERVIEW_URL there); checked against its SHA256SUMS. Served next to the
       # page so the map is never blank below zoom 10 (docs/design/web-planner.md §16).
@@ -279,8 +284,10 @@ jobs:
             web/engine/build/*.json
             web/engine/build/*.png
 
-  # The browser smokes on 5 machines, balanced by their times (cells-smoke alone is the longest, ~150 s). Each smoke
-  # stays its own step, so a failure's log is that smoke's alone; a new smoke goes into the shortest group.
+  # The browser smokes on 5 machines, balanced by their times (a group's job, with its setup and the wait for the build,
+  # 9–11 min; sheet-sync and short are the longest). Each smoke stays its own step, so a failure's log is that smoke's
+  # alone; a new smoke goes into the shortest group. Every browser smoke of web/parity/check-web.sh runs here, except
+  # search-, kept-, poipin- and routes-smoke: they need a real map cell store, which CI does not have.
   smokes:
     runs-on: ubuntu-latest
     timeout-minutes: 30
@@ -301,14 +308,19 @@ jobs:
       - name: Week number (cache key)
         id: week
         run: echo "week=$(date -u +%G-%V)" >> "$GITHUB_OUTPUT"
+      # group cells also gets the Ruhr (E5_N50, the same cache as the jvm job): stop-smoke plans Meran → Hilden – without
+      # it the smoke skips itself, and a planner bug there slipped through (2026-11-24)
       - uses: actions/cache@v4
         with:
           path: segments
-          key: rd5-E10_N45-${{ steps.week.outputs.week }}
+          key: rd5-${{ matrix.group == 'cells' && 'E10_N45-E5_N50' || 'E10_N45' }}-${{ steps.week.outputs.week }}
       - name: Routing data
+        env:
+          RUHR: ${{ matrix.group == 'cells' }}
         run: |
           mkdir -p segments
           [ -s segments/E10_N45.rd5 ] || curl -fsS --retry 3 -o segments/E10_N45.rd5 https://brouter.de/brouter/segments4/E10_N45.rd5
+          [ "$RUHR" != true ] || [ -s segments/E5_N50.rd5 ] || curl -fsS --retry 3 -o segments/E5_N50.rd5 https://brouter.de/brouter/segments4/E5_N50.rd5
           ls -la segments
 
       - name: Playwright's Chromium
@@ -337,11 +349,21 @@ jobs:
           name: web-build
           path: web
 
-      # group cells (~150 s)
+      # group cells (~150 s + phonelink ~6 min + stop ~30 s)
       - name: A cell whose map fails (404, busy, 429, new generation, slow) – bounded tries, overview stays, strip says it, diagnostics
         if: matrix.group == 'cells'
         working-directory: web/app
         run: node test/cells-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: A long plan never holds the planner (Meran → Hilden dropped by Cancel + New – fresh worker, short plan at once, undo)
+        if: matrix.group == 'cells'
+        working-directory: web/app
+        run: node test/stop-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: A shared plan link opened on a phone – the route on the map, the sheet peeks, one wait window with Cancel
+        if: matrix.group == 'cells'
+        working-directory: web/app
+        run: node test/phonelink-smoke.mjs $GITHUB_WORKSPACE/segments
 
       # group sheet-sync (~140 s)
       - name: Plan sheet steps (small / profile / Points on desktop and phone, handle, chevron, remembered; Share icon, place card)
@@ -359,7 +381,7 @@ jobs:
         working-directory: web/app
         run: node test/live-smoke.mjs $GITHUB_WORKSPACE/segments
 
-      # group areas-parity (~135 s)
+      # group areas-parity (~135 s + center ~1.5 min + deep ~2 min)
       - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
         if: matrix.group == 'areas-parity'
         working-directory: web/app
@@ -370,7 +392,17 @@ jobs:
         working-directory: web/app
         run: node test/parity-smoke.mjs $GITHUB_WORKSPACE/segments
 
-      # group lang-gpx (~100 s)
+      - name: Every dialog sits in the middle (1280×800, 1920×1080, 412×839; a QR code in the middle of its dialog)
+        if: matrix.group == 'areas-parity'
+        working-directory: web/app
+        run: node test/center-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: A plan near München arrives (BRouter's peninsula cleanup on a long chain – no stack overflow in the worker)
+        if: matrix.group == 'areas-parity'
+        working-directory: web/app
+        run: node test/deep-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      # group lang-gpx (~100 s + ~5 min: sort, sync-rate, legcache, zuletzt, multiday)
       - name: German first (browser language, switch, engine texts, website links, the one line about the app, noindex)
         if: matrix.group == 'lang-gpx'
         working-directory: web/app
@@ -390,6 +422,31 @@ jobs:
         if: matrix.group == 'lang-gpx'
         working-directory: web/app
         run: node test/perf.mjs normal $GITHUB_WORKSPACE/segments
+
+      - name: Meine Touren's sort chips and search like the app's (RouteSort, words EN + DE, ties)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/sort-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Plan sync keeps to the host's per-IP rate (field bug 2026-11-12, re-pairing pushed ~110 plans at once)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/sync-rate-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Finished legs kept in the browser (IndexedDB) – a plan opened again routes nothing
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/legcache-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Meine Touren → Zuletzt = the app's one-plan rule
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/zuletzt-smoke.mjs $GITHUB_WORKSPACE/segments
+
+      - name: Multi-day tours (GPX track, trim, append, days, nights, day rows)
+        if: matrix.group == 'lang-gpx'
+        working-directory: web/app
+        run: node test/multiday-smoke.mjs $GITHUB_WORKSPACE/segments
 
       # group short (~80 s)
       - name: No WebGL2 → a plain message, never a blank page (owner 2026-10-30)
