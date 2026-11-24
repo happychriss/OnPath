@@ -124,10 +124,13 @@ class MapAreaNetworkLostFlowTest {
         assertEquals(firstThree.toFloat() / total, working.progress!!, 0.001f)
         link.hold!!.countDown() // the connection drops
 
-        // told plainly, at once (the stream ended early: an IOException on the JVM as on Android's HTTP stack)
+        // told plainly, at once. How the cut stream ends depends on timing: an IOException ("broke") or a clean end short
+        // of its length (HttpDownload.Incomplete: "stopped at 50 %") – both UNREACHABLE, both plain (red on GitHub
+        // 2026-11-25 with the second while the first came locally)
         waitFor("told") { mc.state(area) is CellState.Offline }
         val stopped = card(mc) as CellCardUi.Offline
-        assertEquals("Connection to the map server broke – trying again.", stopped.title)
+        assertTrue(stopped.title, stopped.title in setOf("Connection to the map server broke – trying again.",
+            "Map download stopped at 50 % – continues when connected."))
         // what is on the phone: the three files whole, half of terrain as a part to resume from, nothing installed
         val part = File(File(mc.store.downloadDir, area.id), "v1.part")
         val half = File(part, "terrain.pmtiles.part")

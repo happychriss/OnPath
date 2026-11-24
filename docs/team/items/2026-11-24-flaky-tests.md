@@ -58,3 +58,6 @@ index b533a21a1..de5d5f9b3 100644
        - name: Wait for the build job (engine + page)
          env:
 ```
+
+## 2026-11-25 night: MapAreaNetworkLostFlowTest (new) red on GitHub
+unit.yml on a08683fd2: the cut stream ended as a clean short end (`HttpDownload.Incomplete` → „Map download stopped at 50 % …“) instead of an IOException („Connection to the map server broke …“) – timing, both are the product's plain UNREACHABLE texts and keep the part. The test now accepts both (test only).
