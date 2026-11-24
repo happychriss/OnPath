@@ -167,15 +167,23 @@ fun MapControls(
     locateLabel: String? = null,
     /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
     tipShown: Int = -1,
+    /** Navigate: the share button on top of the tour bubble (live sharing, [LocalTourShare]); null = not offered, ⚙ alone. */
+    tourShare: (@Composable (Dp) -> Unit)? = LocalTourShare.current,
 ) {
-    val size = MAP_FAB
+    // Navigate: the column gives way to a short screen ([ControlsRoom]); Plan stays as it is
+    val tier = if (onSettings != null) LocalControlsTier.current else ControlsTier.FULL
+    val size = tier.slot
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
     // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
     val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
-        if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        // Navigate (owner 2026-11-24): the "tour" bubble on top – share (only while sharing is offered) and ⚙ – over the map bubble
+        if (onSettings != null) {
+            if (tourShare != null) add(str(Res.string.live_share) to { tourShare(size) })
+            add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        }
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
         if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
         // eye and whole route are always there (owner 2026-11-06: "ausgrauen statt ausblenden – dann springt nichts und
@@ -186,13 +194,32 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.floatShadow(RoundedCornerShape(MAP_FAB / 2))) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            items.forEachIndexed { i, item ->
-                if (i > 0) GroupDivider()
-                item()
+    // Navigate: two bubbles with a gap, the tour's (share, ⚙) above the map's (compass, eye, ⛶, locate); on a short screen
+    // 48 dp slots and a 6 dp gap, then the tour bubble side by side to the left of the map bubble's top ([ControlsTier])
+    val tourCount = if (onSettings != null) (if (tourShare != null) 2 else 1) else 0
+    val bubble = RoundedCornerShape(size / 2)
+    val parts = listOf(items.take(tourCount), items.drop(tourCount)).filter { it.isNotEmpty() }
+    val bubbles = parts.map { part ->
+        @Composable {
+            Surface(shape = bubble, color = bg, modifier = Modifier.floatShadow(bubble)) {
+                if (tier == ControlsTier.SIDE && part.size == tourCount && tourCount > 0) Row(verticalAlignment = Alignment.CenterVertically) {
+                    part.forEachIndexed { i, item ->
+                        if (i > 0) androidx.compose.material3.VerticalDivider(Modifier.height(28.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        item()
+                    }
+                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    part.forEachIndexed { i, item ->
+                        if (i > 0) GroupDivider()
+                        item()
+                    }
+                }
             }
         }
+    }
+    if (tier == ControlsTier.SIDE && bubbles.size == 2) Row(horizontalArrangement = Arrangement.spacedBy(tier.gap), verticalAlignment = Alignment.Top) {
+        bubbles.forEach { it() }
+    } else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(tier.gap)) {
+        bubbles.forEach { it() }
     }
 }
 

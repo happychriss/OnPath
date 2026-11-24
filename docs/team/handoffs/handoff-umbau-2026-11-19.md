@@ -5,7 +5,16 @@ Start sentence: „Du bist die Einheit **umbau** (OnPath) auf donald. Lies `docs
 „For the roles“ line of 2026-11-18 (owner's go) – each piece own worktree, `gate --full`, fresh Opus review, then main;
 a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines for the captain under „For the captain“.
 
-## State 2026-11-22 evening – DETOUR STITCH: READERS IN CORE + STATE, STOPPED ON THE CAPTAIN'S WORD (NEWEST – read this first)
+## State 2026-11-24 evening – READERS READY FOR DONALD'S MERGE (NEWEST – read this first)
+- **Captain's word (owner 2026-11-24):** get the readers ready for main, parallel to donald; no merge, no release. Done; claim freed.
+- **Branch `wip/donald-2026-11-22-stitch-readers-all` = d6493f680** (on donald's merge 3c7779e2c of main's long link). gate full green, **full E2E 113/0** (run 45487971813), **Web planner green** (run 45490248195). Detail: `docs/team/items/2026-11-24-readers-second-review.md`.
+- **OPEN 1 of 2026-11-22 is closed:** one fresh Opus reviewer read 248482631..cd9777cfd + the later fixes + the merge. Two real defects fixed (test first): the track / round-trip take kept the old plan under its old profile with the NEW profile's route (plans without anchors too) → `OwnProfile` taken before the switch; a stale switch note → it holds the plan's points. Three small items fixed. The fifth finding (`setTourPlanActivity`) was already fixed on the branch (c0d3d9d7a).
+- **Web planner was red after donald's merge** (not flaky): main's `longlink-engine.mjs` called `planCode` / `planCodeTour` without the readers' `anchors` argument. Fixed in the script. Lesson: after a merge of main into a branch that changed a `@JSExport` signature, grep `web/app/test` for its callers.
+- **OPEN 2 (Zuletzt change):** the owner kept it (captain's backlog line of 2026-11-24, d85742b5e); it goes into the release notes.
+- **Next for [umbau]:** nothing claimed. Writer stage only on the captain's word (anchors columns need the profile + a points hash first).
+- Worktrees that can go with the owner's yes: `umbau-readers-all` (branch `work/umbau-readers-all`, pushed), the reviewer's `agent-a64e455d58133a00f` (clean). Branch `ci/umbau-readers-all` for the prune list.
+
+## State 2026-11-22 evening – DETOUR STITCH: READERS IN CORE + STATE, STOPPED ON THE CAPTAIN'S WORD
 - **Branch `wip/umbau-2026-11-22-stitch-readers` = c4ef54cd5** (last code commit cd9777cfd; from 2a47fffb8 with main 1b6999585 merged). **Nothing of it on main, and it is not releasable:** without the app part a stitched plan survives neither a restart nor a save on the phone, and the planner does not read anchors yet. What each side still needs, point by point: `docs/team/items/2026-11-22-stitch-readers-state.md` on that branch.
 - **Checked at cd9777cfd:** gate full (1901 app + 2002 core + 962 state, screenshots); `SameRouteTest` 112 of 112 on the JVM (verify) and in Wasm against `same-route/DATA.txt`. **Not checked:** a real phone, adds 5–10 km off.
 - **Who is next (captain):** a fresh laptop session builds the web part from this branch and checks §8.16 from the planner's side. donald's app part (seven points) waits until his POI fix is out; the captain starts it. [umbau] builds nothing further until told.

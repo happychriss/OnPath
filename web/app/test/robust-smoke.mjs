@@ -29,7 +29,7 @@ const statusText = () => page.textContent('#status');
 check(!/ready|bereit|\d+ ms/.test(await statusText()), `no developer line without ?debug ("${(await statusText()).trim()}")`);
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
 };
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
@@ -86,7 +86,7 @@ await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].
 // the projection below and the clicks (CI 5be2031d: both clicks landed beside p1 / p2; 8f8db60d, 045e8ebf: p2's pixel
 // lay outside the window – elementFromPoint gave nothing – and its click was lost).
 { const r = await again.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
-  await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
+  await again.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
 // a fixed view of the leg's middle part; no padding left by an earlier camera move (it shifts where the centre is drawn)
 await again.evaluate(() => window.__map.jumpTo({ center: [11.1554, 46.6894], zoom: 13.5, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
 await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
@@ -107,7 +107,7 @@ const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().get
 // what is under each click (the map's canvas, or a box over it) – said when a click is lost (CI 2026-11-03 / 11-05)
 const under = await again.evaluate((ps) => ps.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : '-'; }), px);
 const camBefore = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
-await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
+await again.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
 const camAfter = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
@@ -207,10 +207,23 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area/.test(card.text),
     `the wait window: title, bar, "${card?.pct}", ${card?.rows} rows, Cancel ("${card?.text}")`);
   check(box && !!card && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
+  // modal like the app's window (owner 2026-11-24): a tap on the map, a drag, a key and Escape change nothing – Cancel is the way out
+  if (box) {
+    const before = await p.evaluate(() => ({ pts: window.__state.points.length, c: window.__map.getCenter().toArray().join() }));
+    const m = await p.evaluate(() => { const r = document.getElementById('map').getBoundingClientRect(), w = document.getElementById('waitwin').getBoundingClientRect();
+      return { x: r.right - 60, y: r.bottom - 60, inWin: false, veil: !!document.querySelector('.waitveil'), top: document.elementFromPoint(r.right - 60, r.bottom - 60)?.className }; });
+    await p.mouse.click(m.x, m.y);
+    await p.mouse.move(m.x, m.y); await p.mouse.down(); await p.mouse.move(m.x - 150, m.y - 100, { steps: 5 }); await p.mouse.up();
+    await p.keyboard.press('Escape'); await p.keyboard.press('Minus');
+    const now = await p.evaluate(() => ({ pts: window.__state.points.length, c: window.__map.getCenter().toArray().join(), win: !!document.getElementById('waitwin') }));
+    check(m.veil && m.top === 'waitveil' && now.win && now.pts === before.pts && now.c === before.c,
+      `modal: the veil takes the map's taps, drags and keys; Escape keeps it (${JSON.stringify({ ...m, before, now })})`);
+  }
   await p.click('#waitwin .wwcancel');
   await p.waitForFunction(() => !document.getElementById('waitwin') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
   const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
     btn: document.getElementById('planAnyway')?.textContent }));
+  check(await p.evaluate(() => !document.querySelector('.waitveil')), 'Cancel: the veil is gone, the map answers again');
   check(after.pts === 2 && !after.plan && /calculation stopped/.test(after.line) && after.btn === 'Calculate',
     `Cancel: the points stay, "Route not calculated – calculation stopped." + Calculate (${JSON.stringify(after)})`);
   await p.click('#planAnyway');

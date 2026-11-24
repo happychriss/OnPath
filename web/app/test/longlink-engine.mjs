@@ -25,7 +25,7 @@ if (process.argv[2] !== '--child') {
   const read = (t) => { try { return JSON.parse(e.planParse(t)); } catch (x) { return String(x).slice(0, 70); } };
   const pts = '46.600000,11.200000;46.700000,11.300000';
   for (const n of [500, 1000, 1500, 2000]) {
-    const code = e.planCodeTour(pts, 'HIKE', 3, '', '', '', 'd\t2\nl\t0\t0\nt\t' + 'x'.repeat(n));
+    const code = e.planCodeTour(pts, 'HIKE', 3, '', '', '', 'd\t2\nl\t0\t0\nt\t' + 'x'.repeat(n), ''); // '' = no anchors (every export argument is given: a missing one is undefined in Wasm)
     for (const [what, text] of [['link', 'https://plan.onpath.earth/#p=' + code], ['p=', 'p=' + code], ['bare code', code]]) {
       const r = read(text);
       check(r?.tour?.description?.length === n, `${what}, ${code.length} characters: ${typeof r === 'string' ? r : 'read'}`);
@@ -33,7 +33,7 @@ if (process.argv[2] !== '--child') {
   }
   // many points: the longest kind of plan a link holds today
   const many = Array.from({ length: 500 }, (_, i) => `${(46 + i * 0.00137).toFixed(6)},${(11 + (i % 97) * 0.00211).toFixed(6)}`).join(';');
-  const big = e.planCode(many, 'HIKE', 3, '', '', '');
+  const big = e.planCode(many, 'HIKE', 3, '', '', '', '');
   const r = read('https://plan.onpath.earth/#p=' + big);
   check(r?.points?.length === 500, `link with 500 points, ${big.length} characters: ${typeof r === 'string' ? r : 'read'}`);
   console.log(fails.length ? 'FAILED' : 'all ok');

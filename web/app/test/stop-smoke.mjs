@@ -45,11 +45,15 @@ try {
     console.log('skip: the long plan ended by itself (routing data missing between the ends?) – nothing to stop');
   } else {
     const t0 = Date.now();
-    await page.click('#newPlan');
+    // the wait window is modal like the app's (owner 2026-11-24): while it is up, Cancel is the way out – it drops the
+    // run like „+ Neu“ (the app's cancelRun) – then „+ Neu“
+    const win = await page.locator('#waitwin .wwcancel').isVisible().catch(() => false);
+    if (win) await page.click('#waitwin .wwcancel', { timeout: 2_000 });
+    await page.click('#newPlan', { timeout: 3_000 });
     if (await page.locator('dialog.discard[open]').count()) await page.click('#discardOk');
     await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 }).catch(() => {});
     const clearMs = Date.now() - t0;
-    check(clearMs < 3000, `„+ Neu" during the long plan: the map is empty at once (${clearMs} ms)`);
+    check(clearMs < 3000, `${win ? 'Cancel, then ' : ''}„+ Neu" during the long plan: the map is empty at once (${clearMs} ms)`);
     // „+ Neu" can be undone (the plan comes back) – also in the fresh worker. Asked before the short link below: a plan
     // opened from a link starts with nothing to undo (owner 2026-11-13), so after it there is no history to carry.
     await page.waitForFunction(() => window.__engine.restarts.count >= 1, null, { timeout: 15_000 }).catch(() => {});

@@ -57,7 +57,11 @@ class LiveShareSlice(
     /** When "Teilen" started the running share in this process (wall clock); null = it came from an earlier process. */
     private var startedHereMs: Long? = null
     /** "Live teilen" was tapped and the link has not been handed to the share sheet yet. */
-    private var linkWanted = false
+    private var linkWanted by mutableStateOf(false)
+    /** "Teilen beenden" was tapped; the lane (maybe busy with a request) has not confirmed yet – the sharing is gone for the user. */
+    private var stopPending by mutableStateOf(false)
+    /** The link that was running when stop was tapped: never sent again, and a different one ends the waiting. */
+    private var stoppedLink: String? = null
     private var storedName by mutableStateOf(prefs.liveName)
     /** The Settings card showed [ended] (the lane was told: [LiveShareClient.liveSeen]). */
     private var endedSeen = false
@@ -85,7 +89,8 @@ class LiveShareSlice(
     val sign: LiveSign get() {
         val s = snapshot
         return when {
-            !s.sharing -> LiveSign.NONE
+            stopPending -> LiveSign.NONE
+            !s.sharing -> if (linkWanted) LiveSign.WAITING else LiveSign.NONE
             s.waiting || stale -> LiveSign.WAITING
             else -> LiveSign.LIVE
         }
@@ -93,10 +98,14 @@ class LiveShareSlice(
 
     /** The actions offered now; empty when no tour records and nothing is shared. */
     val actions: List<LiveAction> get() = when {
-        snapshot.sharing -> listOf(LiveAction.SHARE_AGAIN, LiveAction.STOP)
+        sharingNow -> listOf(LiveAction.SHARE_AGAIN, LiveAction.STOP)
+        linkWanted -> listOf(LiveAction.STOP)
         recording -> listOf(LiveAction.SHARE)
         else -> emptyList()
     }
+
+    /** The sharing as the user sees it: running and not being stopped. */
+    private val sharingNow: Boolean get() = snapshot.sharing && !stopPending
 
     /** A tour records (the recording service's state changed). */
     fun onRecording(on: Boolean) { recording = on }
@@ -106,8 +115,8 @@ class LiveShareSlice(
 
     /** "Live teilen": the first time the name is asked, then the share sheet opens with the link. */
     fun share() {
-        if (snapshot.sharing) { shareAgain(); return }
-        if (!recording) return
+        if (sharingNow) { shareAgain(); return }
+        if (!recording || linkWanted) return
         if (storedName == null) { editingName = false; askName = true; return }
         start(storedName.orEmpty())
     }
@@ -118,7 +127,7 @@ class LiveShareSlice(
         askName = false; editingName = false
         val n = name.trim().take(MAX_NAME)
         prefs.liveName = n; storedName = n
-        if (!edit && recording && !snapshot.sharing) start(n)
+        if (!edit && recording && !sharingNow && !linkWanted) start(n)
     }
 
     /** The name question closed without an answer: nothing is shared, nothing stored – it is asked again next time. */
@@ -141,17 +150,19 @@ class LiveShareSlice(
     fun editName() { editingName = true; askName = true }
 
     /** "Link nochmal teilen": the same link for a second person. */
-    fun shareAgain() { snapshot.link?.let(::send) }
+    fun shareAgain() { if (sharingNow) snapshot.link?.let(::send) }
 
     /** "Teilen beenden": the state goes at once, the server's copy is deleted. */
     fun stop() {
         linkWanted = false
+        if (snapshot.sharing) { stopPending = true; stoppedLink = snapshot.link }
         client.liveStop()
     }
 
     /** The lane published a new snapshot (the app's collector calls this on the main thread). */
     fun onSnapshot(s: LiveSnapshot) {
         snapshot = s
+        if (stopPending && (!s.sharing || (s.link != null && s.link != stoppedLink))) stopPending = false
         if (!s.sharing) startedHereMs = null
         stale = isStale()
         if (s.endedByServer) {
@@ -159,7 +170,7 @@ class LiveShareSlice(
             linkWanted = false
             if (!endedAcked && !ended) { ended = true; endedSeen = false }
         } else endedAcked = false
-        if (linkWanted && s.sharing && s.link != null) { linkWanted = false; send(s.link!!) }
+        if (linkWanted && !stopPending && s.sharing && s.link != null) { linkWanted = false; send(s.link!!) }
     }
 
     private fun isStale(): Boolean {
@@ -175,7 +186,7 @@ class LiveShareSlice(
         ended = false
         client.liveStart(name)
         // the lane may have published the link already (a share that was running)
-        client.live.value.let { if (it.sharing && it.link != null) onSnapshot(it) }
+        client.live.value.let { if (!stopPending && it.sharing && it.link != null) onSnapshot(it) }
     }
 
     private fun send(link: String) = host.shareText(Txt.s(Res.string.live_share_text, link))

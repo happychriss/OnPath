@@ -41,7 +41,7 @@ const clickAt = async (lon, lat, button = 'left') => {
     await page.waitForTimeout(200);
   }
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
-  await page.mouse.click(p[0], p[1], { button });
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1], { button });
 };
 const menuItems = () => page.$$eval('.pointmenu button .txt > span:first-child', (b) => b.map((x) => x.textContent));
 
@@ -99,7 +99,7 @@ await planned();
 // 3. the eye: held = route and markers hidden, released = back
 const box = await page.locator('#eye').boundingBox();
 await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
-await page.mouse.down();
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
 const held = await page.evaluate(() => ({ line: window.__map.getLayoutProperty('planned-route', 'visibility'),
   pin: getComputedStyle(document.querySelector('.pin')).visibility }));
 await page.mouse.up();
@@ -143,7 +143,7 @@ const before = await order();
 const g = await page.locator('#points li:first-child .grip').boundingBox();
 const lastRow = await page.locator('#points li:last-child').boundingBox();
 await page.mouse.move(g.x + g.width / 2, g.y + g.height / 2);
-await page.mouse.down();
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
 await page.mouse.move(g.x + g.width / 2, lastRow.y + lastRow.height / 2 + 4, { steps: 8 });
 const live = await page.evaluate(() => ({ lifted: document.querySelector('#points li.lifted')?.style.transform ?? '',
   moved: [...document.querySelectorAll('#points li:not(.lifted)')].filter((li) => li.style.transform.includes('-')).length }));
@@ -521,7 +521,7 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   // whole-route fit (WholeRoute.SETTLE_MS after its plan – lastMapTouch). Without it that fit could start between a
   // spot's centring and its click (CI 2909bd34: the click on the line landed elsewhere – on a note's × – and was lost)
   { const x = canvas.x + canvas.width * 0.6, y = canvas.y + canvas.height * 0.4;
-    await hp.mouse.move(x, y); await hp.mouse.down(); await hp.mouse.move(x + 40, y + 20, { steps: 5 }); await hp.mouse.up(); }
+    await hp.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await hp.mouse.move(x, y); await hp.mouse.down(); await hp.mouse.move(x + 40, y + 20, { steps: 5 }); await hp.mouse.up(); }
   await still();
   /** The spot [lat, lon] centred on the map (its longitude exact on a whole pixel column), then clicked. */
   const clickCentred = async ([la, lo]) => {
@@ -531,7 +531,7 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
     // nothing over the spot: on a slow machine a note on the map (the load card, its ×) can stand there for a moment –
     // a click on it is a click on that note, not on the map (parity-smoke on one core: the × closed it, no point added)
     await hp.waitForFunction(([x, y]) => document.elementFromPoint(x, y) === window.__map.getCanvas(), [canvas.x + q[0], canvas.y + q[1]], { timeout: 10_000 }).catch(() => {});
-    await hp.mouse.click(canvas.x + q[0], canvas.y + q[1]);
+    await hp.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await hp.mouse.click(canvas.x + q[0], canvas.y + q[1]);
     return q;
   };
   /** The screen distance (px) of [lat, lon] from the drawn route. */
@@ -625,7 +625,7 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   check(m1 && m1.free && Math.abs(m1.ring[0] - (canvas.x + q1[0])) < 2 && Math.abs(m1.ring[1] - (canvas.y + q1[1])) < 2,
     'hold rule: a ring marks the spot, the menu beside it (never over it)');
   // a click elsewhere: closed, nothing added
-  await hp.mouse.click(canvas.x + canvas.width - 150, canvas.y + 150);
+  await hp.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await hp.mouse.click(canvas.x + canvas.width - 150, canvas.y + 150);
   await hp.waitForTimeout(500);
   check(await hp.locator('.holdaddpopup').count() === 0 && await hp.locator('.holdring').count() === 0 && (await pts()).length === 2,
     'hold rule: a click elsewhere closes the menu and its ring, nothing added');

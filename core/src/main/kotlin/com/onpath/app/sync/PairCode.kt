@@ -14,7 +14,7 @@ package com.onpath.app.sync
 object PairCode {
     const val VERSION = 1
     const val SECRET_BYTES = 32
-    private val MARKER = Regex("""(?:^|[#?&])pair=([A-Za-z0-9_-]+)""")
+    private const val MARKER = "pair="
 
     /** The code for [secret] (32 random bytes from the platform's secure random). */
     fun encode(secret: ByteArray): String {
@@ -29,10 +29,28 @@ object PairCode {
     fun parse(text: String): ByteArray? {
         val t = text.trim()
         if (t.isEmpty() || t.length > 4000) return null
-        val code = MARKER.find(t)?.groupValues?.get(1) ?: return null
+        val code = codeIn(t) ?: return null
         val b = B64.decode(code) ?: return null
         if (b.size < 1 + SECRET_BYTES || b[0].toInt() != VERSION) return null
         return b.copyOfRange(1, 1 + SECRET_BYTES)
+    }
+
+    /**
+     * The code after the first "pair=" at the start or after # ? & that has one. By hand, not with a Regex: in the browser's
+     * Wasm, before its fast tier, a Regex ran out of stack on a long code, and the pairing dialog stayed open without a word.
+     */
+    private fun codeIn(t: String): String? {
+        var at = t.indexOf(MARKER)
+        while (at >= 0) {
+            if (at == 0 || t[at - 1] in "#?&") {
+                val start = at + MARKER.length
+                var end = start
+                while (end < t.length && B64.isCodeChar(t[end])) end++
+                if (end > start) return t.substring(start, end)
+            }
+            at = t.indexOf(MARKER, at + 1)
+        }
+        return null
     }
 }
 

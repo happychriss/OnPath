@@ -109,6 +109,7 @@ class TourSessionFlowTest {
     private val client = FakeRecordingClient()
     private val db = JdbcTours()
     private val log = ArrayList<String>()
+    private var tourStartsSeen = 0
     private val said = ArrayList<Triple<String, NoticeKind, NoticePlace>>()
 
     // ---------------- threads: main (inline, virtual time), io (held, virtual time), the plan copy's, the routing's ----------------
@@ -679,6 +680,20 @@ class TourSessionFlowTest {
         assertFalse("and it was closed when the service was told", last.saveOpen)
         assertEquals(AppMode.PLAN, last.mode)
         assertEquals("NAVIGATING off", mapOf<String, Any>(RecordingWire.EXTRA_ON to false), client.sent.last().extras)
+    }
+
+    /** The plan's detour check holds the router: it stops before the recording starts, and on any way into Navigate. */
+    @Test fun aTourStartStopsTheRoutingBesideThePlan() {
+        create()
+        planRun.besideRoute = object : com.onpath.app.ui.plan.BesideRoute {
+            override fun holdMeasures(running: Boolean) = Unit
+            override fun stop() { tourStartsSeen++ }
+        }
+        routeNow = routeFor(plan.points.toList())
+        ui { session.startNavigation() }
+        assertEquals(1, tourStartsSeen)
+        ui { session.enter(AppMode.NAVIGATE) }
+        assertEquals(2, tourStartsSeen)
     }
 
     /** Rule 15: entering Navigate closes the menus THEN follows the position; the zoom is taken once per start; Plan clears it. */

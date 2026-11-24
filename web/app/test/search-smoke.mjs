@@ -149,7 +149,7 @@ check(rows.join('|') === 'Set as destination|Add to favourites|Open in Google Ma
 await page.waitForTimeout(800); // the online search would have answered by now (owner 2026-10-28: the list came back)
 check(await page.isHidden('#results'), 'the results list stays closed while the menu is shown');
 // a click elsewhere closes the menu; the pin and its chip "Name ›" stay, the chip opens the same menu again
-{ const m = await page.locator('#map').boundingBox(); await page.mouse.click(m.x + m.width - 120, m.y + m.height - 160); }
+{ const m = await page.locator('#map').boundingBox(); await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(m.x + m.width - 120, m.y + m.height - 160); }
 await page.waitForTimeout(300);
 check(await page.locator('.holdpopup.pinmenu').count() === 0 && await page.isVisible('.candidate') && await page.isVisible('.pinchip'),
   'a click elsewhere: the menu closes, pin and name chip stay');
@@ -245,7 +245,7 @@ const menuHead = () => page.textContent('.holdpopup:not(.pinmenu) .menuhead').ca
 if (await page.isVisible('#bigProfile .bpclose')) await page.click('#bigProfile .bpclose');
 await pickFirst('Ifinger');
 const poiOpen = await findPoi();
-{ const mb = await page.locator('#map canvas').first().boundingBox(); await page.mouse.click(mb.x + poiOpen.x, mb.y + poiOpen.y); }
+{ const mb = await page.locator('#map canvas').first().boundingBox(); await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(mb.x + poiOpen.x, mb.y + poiOpen.y); }
 await page.waitForSelector('.holdpopup:not(.pinmenu) .pointmenu', { timeout: 15_000 }).catch(() => {});
 check(await page.locator('.holdpopup.pinmenu').count() === 0 && (await menuHead()).includes(poiOpen.name),
   `a click on a POI with the found place's menu open: that menu closes, the POI's menu opens at once (${poiOpen.name})`);
@@ -286,7 +286,7 @@ const POI_BUTTONS = '.holdpopup:not(.pinmenu) .pointmenu button';
 let poi = null, poiRows = [], tinted = [];
 for (const tried = []; tried.length < 6;) {
   const p = await findPoi(tried);
-  await page.mouse.click(mapBox.x + p.x, mapBox.y + p.y);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(mapBox.x + p.x, mapBox.y + p.y);
   await page.waitForSelector('.pointmenu', { timeout: 15_000 });
   const rows = await page.$$eval(POI_BUTTONS, (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim() ?? ''));
   const strong = await strongRows(POI_BUTTONS), one = await oneLine(POI_BUTTONS);
