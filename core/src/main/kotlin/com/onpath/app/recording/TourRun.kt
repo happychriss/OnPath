@@ -1,5 +1,6 @@
 package com.onpath.app.recording
 
+import com.onpath.app.data.Geo
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.navigation.JunctionCues
 import com.onpath.app.navigation.SpeedWindow
@@ -113,10 +114,12 @@ class TourRun {
         /**
          * A tour continued from its saved row: its totals and points, the next point in a new piece (no straight jump
          * from where it stopped). Everything else starts fresh, as for a new tour.
+         * The distance is never less than its saved points' length: the row's totals are written only every 10 s, a
+         * killed process loses the metres since (TourKillFlowTest, 2026-11-24); every point is written at once.
          */
         fun resumed(distanceM: Double, ascentM: Double, descentM: Double, durationS: Long, nextSeq: Int, lastSeg: Int,
                     segments: List<List<GeoPoint>>): TourRun = TourRun().apply {
-            distance = distanceM; ascent = ascentM; descent = descentM
+            distance = maxOf(distanceM, segments.sumOf { Geo.length(it) }); ascent = ascentM; descent = descentM
             elapsedS = durationS
             seq = nextSeq; seg = lastSeg + 1
             segments.forEach { s -> track.newSegment(); s.forEach { track.add(it) } }
