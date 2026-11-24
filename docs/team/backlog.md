@@ -128,7 +128,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
-- **[aufräumen] Unit tests red on main at a08683fd2 (captain 2026-11-25 00:27)** – `MapAreaNetworkLostFlowTest.cutMidFileThenNoNetworkThenBack…` ComparisonFailure :130 in `:state:test`; flaky or real, fix test-first.
 - **[donald + laptop] LordTriangel's PRs 20–22 – parked by the owner 2026-11-24 (to-do, other work first)…** → [detail](items/2026-11-24-lordtriangel-prs-20-22.md)
 - **[laptop] Restore the replaced plan – the app's box is on main (2e754723f), the planner part is yours (owner 2026-11-24, picture approved)…** → [detail](items/2026-11-24-restore-replaced-plan.md)
 - **[laptop] Tidy up hp like donald…** → [detail](items/2026-11-24-cleanup-inventory.md)
