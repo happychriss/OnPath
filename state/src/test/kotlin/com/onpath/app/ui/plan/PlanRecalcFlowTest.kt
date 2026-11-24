@@ -157,17 +157,21 @@ class PlanRecalcFlowTest {
         var snap: (GeoPoint) -> GeoPoint = { it }
         var onRoute: (Int) -> Unit = {}
         var timeLimit = false
+        /** A request (its points) that throws an unexpected error – the settling's failing leg (W2). */
+        var failFor: (List<GeoPoint>) -> Boolean = { false }
         val threads = ArrayList<String>()
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult = route(waypoints, activity, sacLimit, RouteLimits(30_000))
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
             threads += thread()
             onRoute(inner.calls.size + 1)
             if (timeLimit) throw RoutingException("too long", timedOut = true)
+            if (failFor(waypoints)) throw IllegalStateException("leg fails")
             return inner.route(waypoints.map(snap), activity, sacLimit, limits).let { it.copy(matched = waypoints.map(snap)) }
         }
     }
     private val engine = Engine()
     private var createFails = false
+    private var realRouter = false
     private var onCreate: () -> Unit = {}
 
     // ---------------- the real neighbours ----------------
@@ -294,7 +298,7 @@ class PlanRecalcFlowTest {
             prefs = routePrefs,
             router = object : RouterPort {
                 override fun create(): RoutingEngine { onCreate(); if (createFails) throw IllegalStateException("engine cannot start"); return engine }
-                override val isRealRouter: Boolean get() = false
+                override val isRealRouter: Boolean get() = realRouter
                 override fun fingerprint() = "fp"
                 override val legsDir: File get() = File(tmp.root, "legs")
                 override fun partVersion(part: Rd5Parts.Part) = "v1"
@@ -1114,6 +1118,139 @@ class PlanRecalcFlowTest {
         val warn = problems.said("routing", com.onpath.app.debug.Problems.Level.WARN).filter { it.startsWith("What reaches point 2 could not be worked out") }
         assertEquals(problems.said("routing").toString(), 1, warn.size)
         assertEquals("the route itself is taken", 1, log.count { it.contains("planResult=") })
+    }
+
+    // ======================================================================================================================
+    // the idle settling of a plan with detour points (detour-stitch.md §8.15, piece W2)
+    // ======================================================================================================================
+
+    private val settleStart = GeoPoint(46.0, 11.0)
+    private val settleFar = GeoPoint(46.0, 12.5)
+    private val settleMiddle = GeoPoint(46.009, 11.75)
+
+    /** A plan with a stitched point, its run taken: the settling waits on the routing thread (nothing stepped yet). */
+    private fun anchoredPlanTaken() {
+        routePrefs.activity = Activity.BIKE_TOURING // 115 km is a day by bike: no "Plan it anyway?" question
+        plan(settleStart, settleFar); create()
+        recalcNow(); finishRun()
+        plan.edit { add(1, settleMiddle) }
+        assertTrue("the edit stitched", plan.anchorsFor(planRoute.activity, planRoute.sac).isNotEmpty())
+        recalcNow(); finishRun()
+    }
+
+    private fun expandedNow() = com.onpath.app.routing.PlanAnchors.expand(plan.points.toList(), plan.anchorsFor(planRoute.activity, planRoute.sac), emptySet())
+    private fun settledLegs() = expandedNow().let { e ->
+        (0 until e.points.size - 1).count { planRoute.legCache.isExact(e.points[it], e.points[it + 1], planRoute.activity, planRoute.sac) }
+    }
+
+    @Test fun anAnchoredPlanTakenSettlesOnTheRoutingThreadAndShowsTheSettledLineOnceQuietly() {
+        anchoredPlanTaken()
+        assertTrue("the settling is queued on the routing thread", routingEx.size > 0)
+        assertEquals("nothing settled yet", 0, settledLegs())
+        val callsBefore = engine.inner.calls.size
+        var afterShown = 0
+        engine.onRoute = { if (problems.traced("routing").any { it.startsWith("Settling: the plan is shown again") }) afterShown++ }
+        log.clear()
+        stepRouting(); advance(1); stepDefault(); stepIo()
+        assertTrue("legs were routed", engine.inner.calls.size > callsBefore)
+        assertEquals("every leg of the plan is the router's own answer now", expandedNow().points.size - 1, settledLegs())
+        assertEquals("the quiet re-run asks the router nothing", 0, afterShown)
+        assertTrue(problems.traced("routing").toString(), problems.traced("routing").any { it.startsWith("Settling started") })
+        assertTrue(problems.traced("routing").any { it.startsWith("Settling: routed ") })
+        assertTrue("the line is shown", log.any { it.contains("route=") })
+        // quiet: no run, no fit, no wait card, no corridor, no notice
+        assertFalse(planRun.routing)
+        assertEquals(RouteRun.Phase.Idle, planRun.routeRun.phase)
+        assertTrue(log.toString(), log.none { it.contains("fit") || it.contains("clearRoute") || it.contains("routeComputed") || it.contains("postRoute") })
+        assertNull(planRoute.routeChangedNotice)
+        // no loop: nothing is left to run, however long it waits
+        val calls = engine.inner.calls.size
+        advance(60_000); stepRouting(); stepDefault(); stepIo()
+        assertEquals(0, routingEx.size)
+        assertEquals(calls, engine.inner.calls.size)
+        assertEquals(1, problems.traced("routing").count { it.startsWith("Settling started") })
+    }
+
+    @Test fun anEditDuringTheSettlingStopsItAndTheLegInHandIsNotWritten() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        // the edit comes while the second leg is routed: its answer must not be written, nothing after it is asked
+        engine.onRoute = { n -> if (n == base + 2) ui { recalc.recalc() } }
+        stepRouting()
+        assertEquals("the first leg only", 1, settledLegs())
+        assertTrue(planRun.routing)
+        assertEquals("nothing asked after the cancel (the new run's own debounce has not run)", base + 2, engine.inner.calls.size)
+    }
+
+    @Test fun anEditBeforeTheSettlingStartsAsksNothing() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        recalcNow() // the settling still waits in the queue
+        stepRouting()
+        assertEquals(base, engine.inner.calls.size)
+        assertEquals(0, settledLegs())
+    }
+
+    @Test fun aLegThatFailedTwiceIsSkippedAndReportedOnce() {
+        anchoredPlanTaken()
+        val e = expandedNow()
+        val from = com.onpath.app.routing.PlanAnchors.exact(e.points[1])
+        var asked = 0
+        engine.failFor = { it.size == 2 && it.first() == from && run { asked++; true } }
+        fun settleRound() { stepRouting(); advance(1); stepDefault(); stepIo() }
+        settleRound()
+        assertEquals(1, asked)
+        recalcNow(); finishRun(); settleRound()
+        assertEquals("asked a second time", 2, asked)
+        recalcNow(); finishRun(); settleRound()
+        assertEquals("skipped now", 2, asked)
+        val warns = problems.said("routing", com.onpath.app.debug.Problems.Level.WARN).filter { it.contains("could not be settled twice") }
+        assertEquals(problems.said("routing").toString(), 1, warns.size)
+        // new routing data (the cache's epoch) lets it try again
+        planRoute.legCache.clear()
+        recalcNow(); finishRun(); settleRound()
+        assertEquals(3, asked)
+    }
+
+    @Test fun aClearOfTheCacheDuringTheSettlingLeavesNoOldLegBehind() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        engine.onRoute = { n -> if (n == base + 1) planRoute.legCache.clear() } // new routing data, no hook (the race the epoch covers)
+        stepRouting()
+        assertEquals("the leg routed on the old data is not written", 0, settledLegs())
+    }
+
+    @Test fun aNewEngineDuringTheSettlingStopsItBeforeTheClear() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        engine.onRoute = { n ->
+            if (n == base + 1) { realRouter = true; planRoute.engine = null; planRoute.routingEngine() } // a new engine: hook, then clear
+        }
+        stepRouting()
+        assertEquals("stopped: no second leg asked", base + 1, engine.inner.calls.size)
+        assertEquals(0, settledLegs())
+    }
+
+    @Test fun aPlanWithoutAnchorsIsNotSettledAndNothingIsAsked() {
+        plan(a, b); create()
+        recalcNow(); finishRun()
+        assertEquals(0, routingEx.size)
+        val calls = engine.inner.calls.size
+        advance(60_000); stepRouting()
+        assertEquals(calls, engine.inner.calls.size)
+        assertTrue(problems.traced("routing").none { it.startsWith("Settling") })
+    }
+
+    @Test fun duringATourThePlanIsNotSettled() {
+        routePrefs.activity = Activity.BIKE_TOURING
+        plan(settleStart, settleFar); create()
+        recalcNow(); finishRun()
+        plan.edit { add(1, settleMiddle) }
+        client.publish(recState())
+        recalcNow(); finishRun()
+        assertEquals("no settling queued", 0, routingEx.size)
+        assertTrue(problems.traced("routing").any { it.startsWith("Settling skipped") })
+        assertTrue(problems.traced("routing").none { it.startsWith("Settling started") })
     }
 
     private fun assertNotSame(a: Any?, b: Any?) = assertTrue("same object", a !== b)
