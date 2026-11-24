@@ -127,6 +127,8 @@ let packed = false; // preview host: rd5 published as <name>.b64.txt (see packed
 /** Tests only (?slowRoute=ms): the router held this long before it routes and at every leg – a slow router, blocking the
  * worker like BRouter on a 600 km plan (robust-smoke 9: the calculation phase of the load card, Cancel). 0 = off. */
 let slowMs = 0;
+/** Tests only (?slowDetour=ms): each step of the detour check held this long – a check that runs long (stop-smoke). */
+let slowDetourMs = 0;
 const hold = () => { if (!slowMs) return; const end = performance.now() + slowMs; while (performance.now() < end) { /* expected: a test's slow router */ } };
 const loadMs = { engine: 0 };
 
@@ -405,7 +407,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   if (req.type === 'drop') { dropped.add(req.target); return; } // no answer: the page already stopped waiting
   try {
     if (req.type === 'config') {
-      base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en'; slowMs = req.slowMs ?? 0;
+      base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en'; slowMs = req.slowMs ?? 0; slowDetourMs = req.slowDetourMs ?? 0;
       let e: WasmEngine;
       try { e = await getEngine(); } catch (err) {
         // the browser cannot compile the engine (Safari < 18.2 has no WasmGC): no reload helps – the page says so
@@ -444,6 +446,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     if (req.type === 'call') {
       if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
+      if (req.fn === 'detourAt' && slowDetourMs) { const end = performance.now() + slowDetourMs; while (performance.now() < end) { /* expected: a test's slow check */ } }
       const out = fn(...req.args);
       reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined });
       if (req.fn === 'historySnap') legsOut(e); // the legs kept under the snapped points (the plan as saved)

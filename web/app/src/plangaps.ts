@@ -40,6 +40,15 @@ export class PlanGapsLayer {
 
   clear() { this.last = NONE; this.shown = false; this.draw(); }
 
+  /**
+   * A later line for the same plan (the detour check's answer): a way shown after "Show" stays shown when it is the same
+   * way – in the app the amber piece stays on the map when the sheet's line changes (map.showPiece is the map's, not the line's).
+   */
+  update(g: Gaps) {
+    const keep = this.shown && JSON.stringify(g.way ?? null) === JSON.stringify(this.last.way ?? null);
+    this.last = g; this.shown = keep; this.draw();
+  }
+
   /** The reaching way drawn after "Show" (until the next plan). */
   private shown = false;
 

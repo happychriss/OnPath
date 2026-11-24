@@ -447,8 +447,25 @@ check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching 
     'Show draws the route around the point amber');
   await page.goto(url + 'index.html#p=' + await plan(2));
   await planned();
-  await page.waitForTimeout(3000); // the check's time
-  check(await page.isHidden('#notice'), 'T2: no detour line');
+  // the check of this plan is over (main.ts checkDetours: body[data-detour] = "<plan>:done")
+  const over = await page.waitForFunction(() => window.__state.sac === 2 && document.body.dataset.planning !== '1' && !!window.__state.plan
+    && document.body.dataset.detour === `${window.__state.latest}:done`,
+    null, { timeout: 60_000 }).then(() => true, () => false);
+  check(over && await page.isHidden('#notice'), `T2: no detour line once its check is over (${over})`);
+
+  // an edit while the check runs long (?slowDetour: each step held 8 s) stops it at once – the app's detourCheck.stop():
+  // the new route comes within a few seconds, not after the check
+  await page.goto(url + 'index.html?slowDetour=8000#p=' + await plan(1));
+  await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  await planned();
+  await page.waitForFunction(() => document.body.dataset.detour === `${window.__state.latest}:running`, null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(300); // the first step is in the worker now
+  const t0 = Date.now();
+  await page.click('#points li:last-child .del');
+  const back = await page.waitForFunction(() => window.__state.points.length === 2 && !!window.__state.plan && document.body.dataset.planning !== '1'
+    && window.__state.plan.points.length === 2, null, { timeout: 60_000 }).then(() => true, () => false);
+  const ms = Date.now() - t0;
+  check(back && ms < 5000, `an edit during a long detour check: the new route in ${ms} ms (not after the check)`);
 }
 
 await browser.close(); server.close();

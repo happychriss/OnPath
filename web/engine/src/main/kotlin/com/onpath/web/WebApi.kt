@@ -15,6 +15,9 @@ import com.onpath.app.routing.PlanPoints
 import com.onpath.app.routing.PlanResult
 import com.onpath.app.routing.Planner
 import com.onpath.app.routing.RouteCancel
+import com.onpath.app.routing.RoutingEngine
+import com.onpath.app.routing.RouteLimits
+import com.onpath.app.routing.RouteResult
 import com.onpath.app.ui.plan.PlanRecalcState
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.routing.RouteSummary
@@ -254,25 +257,59 @@ object Engine {
     private var lastReach: com.onpath.app.routing.PlanReach? = null
 
     // ---- the detour hint (the app's PlanDetourCheck, owner 2026-11-21 / 2026-11-24) ----
-    // The app checks on a background thread after the route is shown and cancels the router at the next run. The worker has
-    // one thread and cannot be interrupted, so the page runs the check point by point (detourStart → detourAt for each →
-    // detourGaps): a newer plan or a hold's measure waits for at most one point, and the page stops asking when its plan is
-    // superseded. Each point is [PlanDetour.find] on the plan cut to that point and its two neighbours – the same three steps,
-    // the same numbers; the whole check keeps the app's one budget ([PlanDetour.BUDGET_MS]).
+    // The app checks on a background thread after the route is shown and cancels the router at once when a newer run starts.
+    // The worker has one thread and cannot be interrupted, so the page runs the check in small steps (detourStart, then
+    // detourAt(i) until it answers, then detourGaps): each step does at most ONE router request – [PlanDetour.find] runs
+    // again with the answers so far ([DetourReplay]) and stops at the next request it does not know yet. A hold's measure
+    // waits for one request at most; on an edit the page also replaces a worker still in a step (client.ts dropPlans). Each
+    // point is find on the plan cut to that point and its two neighbours: the same three steps, the same requests, the same
+    // numbers; the app's budget ([PlanDetour.BUDGET_MS]) counts the check's own router time only.
     /** The result the running check belongs to (a newer plan ends it: its steps then answer nothing). */
     private var detourFor: PlanResult? = null
-    private var detourStarted = 0L
+    /** The router time this check spent so far (its budget). */
+    private var detourSpentMs = 0L
+    /** The router's answers of this check, by request ([DetourReplay]). */
+    private val detourMemo = HashMap<String, Result<RouteResult>>()
     /** The detours found so far for [detourFor], in plan order. */
     private var detours: List<com.onpath.app.routing.PlanDetour> = emptyList()
 
     /**
+     * [PlanDetour.find]'s router for one step: the answers of earlier steps again, then ONE new request – the next one it
+     * does not know ends the step ([more]; find then stops as if cancelled and the page asks again).
+     */
+    private class DetourReplay(private val real: RoutingEngine, private val memo: MutableMap<String, Result<RouteResult>>,
+                               private val spent: (Long) -> Unit) : RoutingEngine {
+        var more = false
+        private var routed = false
+        override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult =
+            route(waypoints, activity, sacLimit, RouteLimits(com.onpath.app.routing.PlanDetour.TRY_TIMEOUT_MS, null))
+        override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
+            val key = "$activity|$sacLimit|" + waypoints.joinToString(";") { "${it.lat},${it.lon}" }
+            memo[key]?.let { return it.getOrThrow() }
+            if (routed) {
+                more = true
+                limits.cancel?.cancel()
+                throw RoutingException("the detour step ends here", kind = RoutingException.Kind.CANCELLED)
+            }
+            routed = true
+            val t0 = System.currentTimeMillis()
+            // the real answer or its failure, kept: the next step reads it as find's own request again
+            val r = try { Result.success(real.route(waypoints, activity, sacLimit, limits)) } catch (e: Exception) { Result.failure(e) }
+            spent(System.currentTimeMillis() - t0)
+            memo[key] = r
+            return r.getOrThrow()
+        }
+    }
+
+    /**
      * A detour check of the last plan starts: the plan points worth a look ([PlanDetour.toCheck], at most 3), as a JSON
      * array; `[]` = nothing to check (not a hike below T5, a failed leg, a gap no harder level reaches – the app's
-     * [PlanDetour.find] guards and PlanRecalcSlice.checkDetours: never after a failed leg).
+     * [PlanDetour.find] guards and PlanRecalcSlice.checkDetours: never after a failed leg). A fresh budget each time (the
+     * app's check after a hold starts again too).
      */
     fun detourStart(): String {
         val res = lastResult
-        detourFor = null; detours = emptyList()
+        detourFor = null; detours = emptyList(); detourMemo.clear(); detourSpentMs = 0
         if (res == null || !com.onpath.app.routing.PlanDetour.applies(res.activity, res.sac) || res.route.error != null) return "[]"
         val gap = res.gaps.firstOrNull()
         val reach = lastReach
@@ -280,32 +317,37 @@ object Engine {
         if (gap != null && reachLevel == null) return "[]"
         val idx = com.onpath.app.routing.PlanDetour.toCheck(res.points, res.route, gap?.index)
         if (idx.isEmpty()) return "[]"
-        detourFor = res; detourStarted = System.currentTimeMillis()
+        detourFor = res
         return idx.joinToString(",", "[", "]")
     }
 
-    /** One point [i] of the running check ([detourStart]): true when the level sends it on a long detour. */
-    fun detourAt(i: Int): Boolean {
-        val res = detourFor ?: return false
-        if (res !== lastResult || i < 1 || i >= res.points.size - 1) return false
+    /**
+     * One step at point [i] of the running check ([detourStart]): "1" = the level sends it on a long detour, "0" = not (or
+     * the check is over), "more" = one router request done, ask again.
+     */
+    fun detourAt(i: Int): String {
+        val res = detourFor ?: return "0"
+        if (res !== lastResult || i < 1 || i >= res.points.size - 1) return "0"
         val gap = res.gaps.firstOrNull()?.takeIf { it.index == i }
         // the plan cut to the point and its neighbours: PlanDetour.find looks at exactly this point (toCheck of 3 points)
         val cut = res.copy(points = res.points.subList(i - 1, i + 2), route = res.route.copy(legs = res.route.legs.subList(i - 1, i + 1)),
             gaps = listOfNotNull(gap?.copy(index = 1)))
         val reach = lastReach?.takeIf { gap != null && it.index == i }?.copy(index = 1)
-        // the app's budget is for the whole check: the clock reads 0 at find's start, then the time since detourStart
+        val eng = DetourReplay(engine(), detourMemo) { detourSpentMs += it }
+        // the budget is the whole check's router time: find's clock reads 0 when it starts, then the time spent so far
         var first = true
-        val clock = { if (first) { first = false; 0L } else System.currentTimeMillis() - detourStarted }
+        val clock = { if (first) { first = false; 0L } else detourSpentMs }
         val found = try {
-            com.onpath.app.routing.PlanDetour.find(engine(), cut, RouteCancel(), clock, reach)
+            com.onpath.app.routing.PlanDetour.find(eng, cut, RouteCancel(), clock, reach)
         } catch (e: Exception) {
             Problems.warn("routing", "Detour check failed; the plan shows no detour hint", e)
-            return false
+            return "0"
         }
-        val d = found.firstOrNull() ?: return false
+        if (eng.more) return "more"
+        val d = found.firstOrNull() ?: return "0"
         detours = (detours.filter { it.index != i } + d.copy(index = i)).sortedBy { it.index }
         Problems.trace("routing", "Detour at point ${i + 1}, T${res.sac}")
-        return true
+        return "1"
     }
 
     /**
@@ -1072,7 +1114,7 @@ external fun planProgress(text: String)
 
 // the detour hint (the app's PlanDetourCheck), point by point – Engine.detourStart
 @JSExport fun detourStart(): String = Engine.detourStart()
-@JSExport fun detourAt(i: Int): String = if (Engine.detourAt(i)) "1" else "0"
+@JSExport fun detourAt(i: Int): String = Engine.detourAt(i)
 @JSExport fun detourGaps(names: String): String = Engine.detourGaps(names)
 
 @JSExport fun planCode(points: String, activity: String, sac: Int, pinned: String, names: String, title: String): String =
