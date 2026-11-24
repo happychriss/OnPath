@@ -164,6 +164,15 @@ class PlanDocument(
     fun expanded(activity: Activity, sac: Int): ExpandedPlan =
         PlanAnchors.expand(points.toList(), anchorsFor(activity, sac), session.pinnedIndices())
 
+    /** Anchors that count for [activity] / [sac] exist: what the "Ganz neu berechnen" row reads (detours and cut points alike). */
+    fun hasDetours(activity: Activity, sac: Int): Boolean = anchorsFor(activity, sac).isNotEmpty()
+
+    /**
+     * Drops every anchor in one undoable step ([PlanSession.clearAnchors]), stored at once; false = none, no step. Whoever calls
+     * it routes the plan again ([PlanEditState.recalcFromScratch]).
+     */
+    fun clearDetours(): Boolean = session.clearAnchors().also { if (it) { history(); stored() } }
+
     /** The next change that makes the plan exactly [list] (a plan being loaded) brings [set] with it. */
     fun arriving(list: List<GeoPoint>, set: AnchorSet) = session.arriving(list, set)
 

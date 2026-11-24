@@ -13,6 +13,7 @@ import com.onpath.app.domain.plan.RouteRun
 import com.onpath.app.domain.plan.RoutingSpot
 import com.onpath.app.domain.plan.RunCause
 import com.onpath.app.navigation.TourSplit
+import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanEdits
 import com.onpath.app.ui.PlanSize
@@ -155,6 +156,32 @@ open class PlanEditState(
         host.oneLeftGoesFromHere(before, mayEmpty = true)
         host.planChanged()
         host.endGuidanceIfPlanEmpty()
+        runCauses.pointEdit()
+        host.recalc()
+    }
+
+    /**
+     * "Ganz neu berechnen" (docs/design/detour-stitch.md §2): the plan's detours and cut points all go in one undoable step and
+     * the visible points are routed again. [activity] / [sac] are the plan's current ones (only anchors on that profile count;
+     * the caller – the menu row – knows them). No such anchors: nothing happens, no step, no run.
+     *
+     * Follow-ups of [change] kept: the run events, [PlanEditPorts.planChanged], the run cause (a Cancel of the run takes the
+     * step back, anchors included) and [PlanEditPorts.recalc]; also the hold-measure and map-turn stops, as any plan edit.
+     * Left out, because the points are the same: FitNext (nothing new to fit), the routing spot and the maps of new points
+     * (no new point), pruning the pins, the tour split and "route back" ask (the points a tour follows did not move),
+     * and the one-point / empty-plan rules.
+     */
+    fun recalcFromScratch(activity: Activity, sac: Int) {
+        if (!plan.hasDetours(activity, sac)) {
+            Problems.trace("plan", "Ganz neu berechnen: no detours or cut points on this profile, nothing to do"); return
+        }
+        Problems.trace("plan", "Ganz neu berechnen: ${plan.anchorSet.anchors.values.sumOf { it.before.size + it.after.size }} anchors cleared, plan ${waypoints.size} points routed again")
+        host.cancelHoldMeasure("plan changed")
+        pinTaken = null
+        host.stopFollowingWhenMapTurns()
+        plan.clearDetours()
+        planRun.routeEvent(RouteRun.Event.PlanEdited)
+        host.planChanged()
         runCauses.pointEdit()
         host.recalc()
     }
