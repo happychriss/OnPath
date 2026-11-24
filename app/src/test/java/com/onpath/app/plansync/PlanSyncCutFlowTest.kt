@@ -116,12 +116,16 @@ class PlanSyncCutFlowTest {
         assertEquals(2 * SyncPoll.BASE_MS, poll.intervalMs)
         assertTrue(problems.said("sync").toString(), problems.said("sync").any { it.startsWith("Sync server not reached (GET)") })
 
-        // 2. nothing answers (refused): nothing changes, the poll waits longer
+        // 2. nothing answers (refused): nothing changes, the poll waits longer. The JDK names it ConnectException, or
+        // SocketException when it first tries a kept-alive socket the link has closed (timing; red on GitHub 2026-11-25)
+        fun notReached() = problems.said("sync").count { it.startsWith("Sync server not reached (GET)") }
+        val saidBefore = notReached(); val reachedBefore = link.requests.size
         val refused = phoneSync()
         assertEquals(SyncRound.Outcome.Offline, refused.outcome)
         assertEquals(listOf("B1", "B2"), fromBrowser())
         assertEquals(4 * SyncPoll.BASE_MS, poll.intervalMs)
-        assertTrue(problems.said("sync").contains("Sync server not reached (GET): ConnectException"))
+        assertTrue(problems.said("sync").toString(), notReached() > saidBefore)
+        assertEquals("refused: no request reached the link", reachedBefore, link.requests.size)
 
         // 3. back, but the server is busy on the second page of the pass: the page before it counts, a quiet pause
         link.up()
