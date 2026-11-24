@@ -9,10 +9,10 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
 - → [donald] (laptop 2026-11-24, **long plan link on main**, f4a63e0d7): `Engine.linkCode` + `WebLinkCodeTest` + `longlink-engine.mjs` are on main now. The readers branches `wip/donald-2026-11-22-stitch-readers-all` and `wip/laptop-2026-11-22-stitch-readers` carry their own copy: keep main's one, drop yours; `share-smoke.mjs` conflicts (both add a step „5.“) – keep main's step, number yours „6.“.
 - → [donald] (captain 2026-11-24, **owner's word**): (1) detour line in his words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ – rebuild, picture, merge; (2) Zuletzt keeps its own activity: yes; (3) new idea: after a plan is… → [detail](items/2026-11-24-owner-s-word.md)
 - → [donald] [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
-- → [laptop] (captain 2026-11-24, **owner's word**): long plan link fix online (yes); planner wait window „Abbrechen“ like the app.
 - → [donald] [umbau] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
 - → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
 - → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
@@ -108,10 +108,12 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [laptop] (2026-11-24 ~21:10): long plan link on main and **online** (owner started the deploy, 871179d19, live). Wait window modal: built, tests running (claimed). LordTriangel's PRs: planner notes given to the owner in the laptop chat.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
 - ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
@@ -120,13 +122,14 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [laptop] (2026-11-24) planner wait window modal like the app (veil, Cancel hands the map over), then the pairing-link fix to main; LordTriangel's pull requests read for the owner.
-- [umbau] (2026-11-22, stopped on the captain's word) Detour stitch readers on `wip/umbau-2026-11-22-stitch-readers` (c4ef54cd5): core + state green, NOT releasable, nothing on main. Web: fresh laptop session; app: donald after his POI fix. Open: review fixes not re-read, Zuletzt change undecided → handoff-umbau-2026-11-19.md, top state
+- [umbau] (2026-11-24, captain's word) Readers ready for main on `wip/donald-2026-11-22-stitch-readers-all`: second review of 248482631..cd9777cfd + ac64075d3, setTourPlanActivity anchors, full E2E + Web planner on GitHub. No merge, no release (donald merges).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] **free – no session runs** (stopped 2026-11-22). „Standort teilen“ on main, off for users; waits for PR 19 + PR 17 + the owner's real share from his Pixel, then `FOR_EVERYONE = true`. A fresh session takes it: end of `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [tracking] (2026-11-24, captain's word) the owner's first real „Standort teilen“ from his Pixel (point 3 of 3 before the switch-on): server checked ready (page 200, API 401/404, D1 bound); waiting for his test. `FOR_EVERYONE` stays off. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24, fresh donald) Owner's word of 2026-11-24: detour hint in his words (`wip/donald-2026-11-22-detour-hint`) → picture → merge on his yes; restore-question sketch; LordTriangel PRs 20–22 app part (read only); then readers `wip/donald-2026-11-22-stitch-readers-all`.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[laptop] Tidy up hp like donald…** → [detail](items/2026-11-24-cleanup-inventory.md)
 - **[donald] Check with the owner's Pixel on 2026-11-18…** → [detail](items/2026-11-18-check-with-the-owner-s-pixel-on-2026-11.md)
 - **[laptop] POI click on a slow phone after a pan…** → [detail](items/2026-11-17-poi-click-on-a-slow-phone-after-a-pan-20.md)
 - **[IR] Tour suggestions – state…** → [detail](items/2026-11-17-tour-suggestions-state-docs-history-hand.md)
