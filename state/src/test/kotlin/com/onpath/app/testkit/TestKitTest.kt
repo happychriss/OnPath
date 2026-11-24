@@ -129,6 +129,7 @@ class TestKitTest {
             "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
             "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
             "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)",
+            "if (verdict == PointFilter.Verdict.JUMP) return",
             "tourRun.count(moved, newPiece = wasLost && prev != null && !bridged)",
             "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",
             "if (now - lastStats >= ${FakeRecording.STATS_MS / 1000}_000) {",
@@ -138,6 +139,19 @@ class TestKitTest {
             "tourRun = TourRun.resumed(existing.distanceM, existing.ascentM, existing.descentM,",
             "if (intent == null) gpsWatchdog.arm(SystemClock.elapsedRealtime()) else gpsWatchdog.disarm()",
             "if (!p) { seg++; last = null; moveWatch.start(SystemClock.elapsedRealtime()); gpsWatchdog.resumed(SystemClock.elapsedRealtime()) }",
+            // the two clocks: the fix's own time on the point, the wall clock for the tour's start and the pause's
+            "val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)",
+            "val created = System.currentTimeMillis()",
+            "pausedSinceMs = if (p) System.currentTimeMillis() else null",
+            // the arrival on every fix, after the off-route check
+            "try { if (routeChecked) checkOffRoute(p, loc.accuracy.toDouble(), nowEl) else navigator?.onGpsLost() }",
+            "try { checkArrived(p.toGeo(), loc.accuracy.toDouble()) }",
+            "if (!GuidanceGate.arrivalCheck(arrived, paused, planQuiet())) return",
+            "val remaining = (len - (st.shownAlongM ?: st.progressM)).coerceAtLeast(0.0)",
+            "if (!arrivalGate.onFix(pos, st.line.last(), remaining, accuracyM, openStops = nav.session.openStops)) return",
+            // no precise location at a start: told, nothing started (the row untouched)
+            "if (!tracker.hasFinePermission()) {",
+            "\"${FakeRecording.NO_PERMISSION}\")",
         )) assertTrue("RecordingService no longer has: $line", svc.contains(line))
         // the warning line without a motion sensor (NoGpsShow.line, sensorStill = null)
         val still = sourceFile("recording/StillSense.kt").readText().replace(Regex("\\s+"), " ")

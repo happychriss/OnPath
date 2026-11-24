@@ -28,3 +28,33 @@ TourDbMigrationTest schema 9 (announced) · parity cascades.
 - The backlog's „robust-smoke 'without downloads: the percent moves' red in the 0.18.8 run“: no CI red found in the window.
 - No retries / @FlakyTest hide anything. Fixed waits are the likeliest future flakes: web smokes' `waitForTimeout`
   (flows-shots 35, search-smoke 20, parity-smoke 17, zuletzt-smoke 14, robust-smoke 15, areas-smoke 8).
+
+## Playwright install retry – the pull request could not be opened (2026-11-24 night)
+The push of `pr/web-playwright-install-retry` was refused: donald's `gh` token has no `workflow` scope (repo, gist, read:org only). Needs the owner or a session whose token may change `.github/workflows/`. The change (local branch on donald, 53182aab5):
+
+```diff
+diff --git a/.github/workflows/web.yml b/.github/workflows/web.yml
+index b533a21a1..de5d5f9b3 100644
+--- a/.github/workflows/web.yml
++++ b/.github/workflows/web.yml
+@@ -220,7 +220,8 @@ jobs:
+         working-directory: web/app
+         run: |
+           npm ci
+-          npx playwright install --with-deps chromium
++          # a second try after a short wait: the apt mirror failed once (exit 100, run 43764893116; green on the same commit)
++          npx playwright install --with-deps chromium || { sleep 20; npx playwright install --with-deps chromium; }
+ 
+       # test = the app's own tests of the shared files (appTests) + WebImportTest (writes build/jvm-gpx.json)
+       - name: The app's tests of the shared files + routes on the JVM (same engine code)
+@@ -315,7 +316,8 @@ jobs:
+         working-directory: web/app
+         run: |
+           npm ci
+-          npx playwright install --with-deps chromium
++          # a second try after a short wait: the apt mirror failed once (exit 100, run 43764893116; green on the same commit)
++          npx playwright install --with-deps chromium || { sleep 20; npx playwright install --with-deps chromium; }
+ 
+       - name: Wait for the build job (engine + page)
+         env:
+```

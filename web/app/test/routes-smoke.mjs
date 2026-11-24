@@ -154,8 +154,10 @@ await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Vigiljoch MTB-Rund
 {
   await P.evaluate(() => { document.getElementById('planList').scrollTop = 0; });
   const lastName = (await names(P)).at(-1);
-  const below = await P.evaluate((n) => { const ul = document.getElementById('planList'), li = [...ul.querySelectorAll('li[data-id]')].find((l) => l.querySelector('.name').textContent === n);
-    return li.querySelector('.more').getBoundingClientRect().bottom > ul.getBoundingClientRect().bottom; }, lastName);
+  // the precondition waits for the list's final layout (its rows' thumbnails and fonts may still come – read too early it
+  // said „below false“ under load, 2026-11-15)
+  const below = await P.waitForFunction((n) => { const ul = document.getElementById('planList'), li = [...ul.querySelectorAll('li[data-id]')].find((l) => l.querySelector('.name').textContent === n);
+    return !!li && li.querySelector('.more').getBoundingClientRect().bottom > ul.getBoundingClientRect().bottom; }, lastName, { timeout: 10_000 }).then(() => true, () => false);
   await P.click(`#planList li[data-id]:has(.name:text-is("${lastName}")) .more`);
   const open = await P.waitForSelector(`#planList li[data-id]:has(.name:text-is("${lastName}")) .rowmenu:not([hidden])`, { timeout: 3_000 }).then(() => true).catch(() => false);
   check(below && open, `⋮ on the last row below the fold (${lastName}): scrolled into view, the menu stays open (below ${below}, open ${open})`);

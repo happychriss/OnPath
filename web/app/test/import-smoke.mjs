@@ -241,15 +241,13 @@ check(!(await page.$('dialog.plans[open]')) && !(await page.$('dialog.overview')
   "a draft's tile opens the plan at once – no overview in between: the plan is on the map");
 // a new route draws itself in 0.5 s (the app's RouteReveal): Reverse → the line grows from start to goal, then whole
 {
-  await page.evaluate(() => { window.__reveal = true; });
-  const counts = page.evaluate(() => new Promise((res) => {
-    const out = [], t0 = performance.now();
-    const n = () => { const d = window.__map.getSource('planned-route').serialize().data; return (d.features ?? []).reduce((a, f) => a + f.geometry.coordinates.length, 0); };
-    const tick = () => { out.push(n()); if (performance.now() - t0 < 4000) requestAnimationFrame(tick); else res(out); };
-    tick();
-  }));
+  // the page records each step it draws (routereveal.ts __revealSteps) – sampling the map's source by frames missed
+  // the partial line on a loaded runner (CI flake 2026-11)
+  await page.evaluate(() => { window.__reveal = true; window.__revealSteps = null; });
   await page.click('#reverse');
-  const c = await counts;
+  await page.waitForFunction(() => { const s = window.__revealSteps; return s && s.length > 1 && s.at(-1) > 2 && !document.body.dataset.planning; }, null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(800); // the reveal's last frame (0.5 s)
+  const c = await page.evaluate(() => window.__revealSteps ?? []);
   await page.evaluate(() => { window.__reveal = false; });
   const last = c[c.length - 1], partial = c.some((x) => x > 1 && x < last);
   check(last > 2 && partial, `Reverse: the new route draws itself (${c.length} frames, a partial line seen, ${last} points at the end)`);
