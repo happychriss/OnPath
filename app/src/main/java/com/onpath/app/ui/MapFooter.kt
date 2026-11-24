@@ -167,6 +167,8 @@ fun MapControls(
     locateLabel: String? = null,
     /** Screenshot tests: the tooltip of this control (its index from the top) is open. */
     tipShown: Int = -1,
+    /** Navigate: the share button on top of the tour bubble (live sharing, [LocalTourShare]); null = not offered, ⚙ alone. */
+    tourShare: (@Composable (Dp) -> Unit)? = LocalTourShare.current,
 ) {
     val size = MAP_FAB
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
@@ -175,7 +177,11 @@ fun MapControls(
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
-        if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        // Navigate (owner 2026-11-24): the "tour" bubble on top – share (only while sharing is offered) and ⚙ – over the map bubble
+        if (onSettings != null) {
+            if (tourShare != null) add(str(Res.string.live_share) to { tourShare(size) })
+            add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
+        }
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
         if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
         // eye and whole route are always there (owner 2026-11-06: "ausgrauen statt ausblenden – dann springt nichts und
@@ -186,11 +192,18 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    Surface(shape = RoundedCornerShape(MAP_FAB / 2), color = bg, modifier = Modifier.floatShadow(RoundedCornerShape(MAP_FAB / 2))) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            items.forEachIndexed { i, item ->
-                if (i > 0) GroupDivider()
-                item()
+    // Navigate: two bubbles with a 12 dp gap, the tour's (share, ⚙) above the map's (compass, eye, ⛶, locate)
+    val tourCount = if (onSettings != null) (if (tourShare != null) 2 else 1) else 0
+    val bubble = RoundedCornerShape(MAP_FAB / 2)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        listOf(items.take(tourCount), items.drop(tourCount)).filter { it.isNotEmpty() }.forEach { part ->
+            Surface(shape = bubble, color = bg, modifier = Modifier.floatShadow(bubble)) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    part.forEachIndexed { i, item ->
+                        if (i > 0) GroupDivider()
+                        item()
+                    }
+                }
             }
         }
     }
