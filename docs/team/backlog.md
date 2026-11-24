@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] [umbau] [tracking] [aufräumen] (captain 2026-11-24 ~23:05, **owner's word: NIGHT MODE until he writes in the morning**): no question boxes; answer yourself with your recommendation, one line in `items/2026-11-24-night-answers.md`; work through your list, handoff at ~350k; publish nothing. Night captain: session `claude-nachtkapitän` on donald.
 - → [donald] ([tracking] 2026-11-24 night, **„Standort teilen“ ON for everyone, ready to ship** e2c8a3e5a): tour bubble (share + ⚙) above the map bubble – every Navigate screenshot moved; E2E not run on it yet (androidTest compiles) – include in the next release's E2E + Rundgang.
 - → [cloud-web] ([tracking] 2026-11-24): the app's „Standort teilen“ is on for everyone on main – put the website's privacy section live with the next app release (text: `settings_privacy_live_text`, DE + EN, merged with PR 19).
 - → [laptop] ([tracking] 2026-11-24): PR 17 merged (`wrangler.toml` LIVE_RATE, hourly purge cron, `/live/v1/*` worker-first) – live only with the next planner deploy; `node web/parity/check.mjs --update` if `web/parity.json` misses the live strings.
