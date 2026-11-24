@@ -34,8 +34,9 @@ val LocalTourShare = compositionLocalOf<(@Composable (androidx.compose.ui.unit.D
 
 /**
  * Live sharing around the Settings page (docs/design/live-tracking.md §2, §14.2): its card is the first entry of the
- * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content]. Closing Settings (also by
- * the app) closes the name question and a seen "ended" line.
+ * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content] while Settings is open
+ * (Navigate's [LiveSignLayer] draws it otherwise, never both: Settings is composed over Navigate). Closing Settings (also
+ * by the app) closes the name question and a seen "ended" line.
  */
 @Composable
 fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
@@ -53,14 +54,18 @@ fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
  * Live sharing on Navigate (owner 2026-11-24, "Standort teilen" in the tour bubble): the round share button on top of the
  * map column's tour bubble – plain off, green while sharing, grey waiting – and, only while waiting, a pill under the status
  * card. The button is there only while sharing is offered (a tour records or is shared; [LiveShareSlice.actions]).
+ * Its first tap, with no name stored, asks the name: drawn here over Navigate, but not while Settings is open (then
+ * [LiveShareLayer] draws it). Leaving Navigate closes a question that is not an edit, so it does not pop up on Settings later.
  */
 @Composable
 fun LiveSignLayer(vm: AppViewModel, content: @Composable () -> Unit) {
     val slice = LiveShares.of(vm) ?: return content()
+    DisposableEffect(slice) { onDispose { if (slice.askName && !slice.editingName) slice.nameCancelled() } }
     CompositionLocalProvider(
         LocalTourShare provides if (slice.actions.isEmpty()) null else { size -> LiveShareButton(slice.sign, slice.actions, size) { slice.act(it) } },
         LocalNavBelowCard provides { LiveWaitingPill(slice.sign, slice.actions) { slice.act(it) } },
         content = content)
+    if (slice.askName && !vm.settingsSlice.showSettings) LiveNameDialog(slice.name, onShare = slice::nameGiven, onCancel = slice::nameCancelled, edit = slice.editingName)
 }
 
 private fun LiveShareSlice.act(a: LiveAction) = when (a) {
