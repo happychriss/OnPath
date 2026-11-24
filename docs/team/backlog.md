@@ -127,7 +127,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (night 2026-11-24, captain's night word) „Standort teilen“ ON on main (owner's own yes, see night answers); tonight: post-merge check, review „can wait“ items (test first), live-smoke, viewer-page pictures. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24 ~23:55, context full, stopped for a fresh donald) Readers ON MAIN 07fbe331d (watch Web planner on main). Next: restore box 607af9e48 → main; detour reason 1b127b706; 0.18.10 to the last step → `handoffs/handoff-donald-2026-11-24.md`.
-- [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes: [laptop] took them; Playwright retry = patch (token lacks workflow scope).
+- [aufräumen] (2026-11-24 night) Tests on main: 5 new flows (GPS lost, kill, jump fix, clock jump, permission revoked) + 3 fixes they found (kill distance, GPS jump → false off-route / early arrival, clock-back freeze). Running: download + sync-cut flows.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
