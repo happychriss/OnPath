@@ -167,7 +167,7 @@ class SettingsScreenshotTest {
     /** Privacy (A-020) in full, down to the website link: device backup, IP line, update check, search, Google short link, address service. */
     fun privacyFull() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
-            screenWidth = 1024, screenHeight = 5400, xdpi = 428, ydpi = 428, density = Density.create(420)))
+            screenWidth = 1024, screenHeight = 6200, xdpi = 428, ydpi = 428, density = Density.create(420)))
         paparazzi.snapshot { Screen(SettingsPage.PRIVACY) }
     }
 
