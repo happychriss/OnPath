@@ -28,9 +28,13 @@ owner only as a question box (his word 2026-11-24) – but **not at night** (nig
 - Notes in `docs/core-features/C4-recording.md`, `C5-navigate.md`, `C16-pair-browser.md`.
 
 ## Open
-- **Storage-full flow (#6) – a helper was still writing it when this session stopped** (night captain's word at ~320k):
-  worktree `.claude/worktrees/agent-aa2b66bb26a332e5e`, branch `worktree-agent-aa2b66bb26a332e5e`, not merged. A fresh
-  session: look there (`git -C <it> log origin/main..HEAD`), gate, cherry-pick to main; a bug it found → test first, fix.
+- **`StorageFullFlowTest` on main** (#6, helper work merged ~01:15). Two minor bugs it found, `@Ignore`d – **next: test
+  is there, fix**: (1) space back while standing still → the waiting points are written by the tick but `saveFailed` and
+  the ongoing „Recording cannot be saved“ notification stay, even after End (only clear: `RecordingService.onFix` after a
+  write; `finish()` never cancels `SAVE_FAIL_ID`) – `spaceBackWhileStandingStill_everythingWritten_theWarningGoes`;
+  (2) the „N track point(s) written late“ line says N−1 when the tick writes them (`waited - 1`, right only on a fix;
+  at the cap it also says „none lost“) – `theLateLineCountsEveryLatePoint`. Suspected, untested: `TourEndSlice.saveUnfinished`
+  saves the row's distance as it is (the kill-distance fix covered Continue only). RecordingService is at its size cap.
 - 2026-11-25 ~00:45: `MapAreaNetworkLostFlowTest` was red on GitHub by timing (a cut ends as 'broke' or 'stopped at
   50 %') – the test accepts both now (pushed, gate green).
 - `ClockJumpFlowTest.onTheWayIsTheTourTimeAfterTheClockWentOn` stays `@Ignore` (minor: "on the way" 1 h long after a
