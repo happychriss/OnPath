@@ -375,6 +375,7 @@ fun NavigateOverlay(
                     // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([TourBottomBar])
                     actions = null)
             }
+            LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.C_PILL }?.let { SharePlacePill(it.state) } // sketch C
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
@@ -602,7 +603,9 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
         modifier = Modifier.fillMaxWidth().floatShadow(MaterialTheme.shapes.large).then(cardTouch)) {
       androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
       // a large font (owner 2026-11-08, v7): the arrival would squeeze the numbers – it goes under them ([CardFit])
-      val tight = CardFit.tight(ui, maxWidth, canOpen)
+      val shareB = LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.B_CARD } // sketch B
+      val shareBw = if (shareB != null) sharePlaceCardEndWidth(shareB.state) else 0f
+      val tight = CardFit.tight(ui, maxWidth, canOpen, extra = shareBw)
       Column {
         // stopped (owner 2026-11-08, v6): the stopped block over the whole card width – the calm line never hidden
         if (ui.paused && ui.recordedM != null) StoppedHead(ui.pausedSinceMs)
@@ -723,6 +726,7 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
                         modifier = Modifier.then(NoIntrinsicWidth).fillMaxWidth())
                 }
             }
+            if (shareB != null) SharePlaceCardEnd(shareB.state)
             if (canOpen) androidx.compose.material3.IconButton(onClick = onToggleProfile, modifier = Modifier.size(48.dp)) {
                 // the chevron turns with the card (open: it points up)
                 val turn by androidx.compose.animation.core.animateFloatAsState(if (profileOpen) 180f else 0f, label = "chevron")
@@ -1302,7 +1306,7 @@ internal object CardFit {
 
     /** The card's own measure: no arrival clock shown → never tight. */
     @Composable
-    fun tight(ui: NavUi, width: androidx.compose.ui.unit.Dp, chevron: Boolean): Boolean {
+    fun tight(ui: NavUi, width: androidx.compose.ui.unit.Dp, chevron: Boolean, extra: Float = 0f): Boolean {
         val g = ui.toGo ?: return false
         if (ui.arriveAt == null || g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) return false
         val tm = rememberTextMeasurer()
@@ -1313,6 +1317,6 @@ internal object CardFit {
         val upDown = w("↑ ${Format.meters(g.ascentM)}  ↓ ${Format.meters(g.descentM)}", ty.bodyLarge)
         val numbers = w(Format.durationShort(g.timeS), ty.titleLarge) + 10.dp + w(Format.distance(g.distanceM), ty.titleLarge)
         val line = ui.recordedM?.let { recordingLine(ui, it) }?.split(" · ")?.maxOfOrNull { w(it, ty.bodyMedium) } ?: 0.dp
-        return tight(numbers.value, upDown.value, line.value, arrival.value, sides(ui.activity != null, chevron), width.value)
+        return tight(numbers.value, upDown.value, line.value, arrival.value, sides(ui.activity != null, chevron) + extra, width.value)
     }
 }

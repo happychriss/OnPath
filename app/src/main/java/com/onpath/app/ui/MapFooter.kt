@@ -174,6 +174,8 @@ fun MapControls(
     val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
+        val sketch = LocalSharePlaceSketch.current?.takeIf { it.place == SharePlace.A_COLUMN }
+        if (sketch != null) add(str(Res.string.live_share) to { SharePlaceColumnButton(sketch.state, size) }) // sketch A, null elsewhere
         val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
         if (onSettings != null) add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
