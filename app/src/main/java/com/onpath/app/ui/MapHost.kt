@@ -124,8 +124,11 @@ fun MapHost(
         // frame times of each map gesture → events log, problem report, the relief rule (ReliefAuto, owner 2026-11-07)
         val gestureFrames = context.findActivity()?.window?.let { w -> MapGestureFrames(w, vm.settingsSlice::mapGestureMeasured) }
         var idleListener: MapView.OnDidBecomeIdleListener? = null
+        var frameListener: MapView.OnDidFinishRenderingFrameListener? = null
         mapView.getMapAsync { map ->
             idleListener = MapView.OnDidBecomeIdleListener { shownPois.onMapIdle(map, mapView) }.also { mapView.addOnDidBecomeIdleListener(it) }
+            frameListener = MapView.OnDidFinishRenderingFrameListener { fully, _, _ -> shownPois.onMapFrame(map, mapView, fully) }
+                .also { mapView.addOnDidFinishRenderingFrameListener(it) }
             val (lat, lon, zoom) = vm.initialCamera()
             map.cameraPosition = CameraPosition.Builder().target(LatLng(lat, lon)).zoom(zoom).build()
             map.setMinZoomPreference(3.0)
@@ -153,6 +156,7 @@ fun MapHost(
                         "${android.os.Debug.getNativeHeapAllocatedSize() / 1_048_576} MB")
                     com.onpath.app.debug.Health.noteStyleLoad(n, loadedFrom?.name, MapMemory.geoJsonBytes(style))
                     vm.mapData.onMapStyleLoaded(loadedFrom)
+                    shownPois.styleLoaded(map)
                     try {
                         val c = MapController(context, map, style)
                         myCtrl[0] = c
@@ -194,7 +198,7 @@ fun MapHost(
                 }
             }
             map.addOnCameraIdleListener {
-                shownPois.cameraIdle()
+                shownPois.cameraIdle(map)
                 val c = map.cameraPosition
                 c.target?.let { vm.saveCamera(it.latitude, it.longitude, c.zoom) }
                 vm.mapGesture(false)
@@ -205,6 +209,7 @@ fun MapHost(
             map.addOnCameraMoveListener { onCamera(map) }
             // The user moved the map: the start camera (StartCamera) must not jump to the position any more.
             map.addOnCameraMoveStartedListener { reason ->
+                shownPois.cameraMoveStarted(byFinger = reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE)
                 if (reason == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                     vm.map.userMovedMap = true; vm.mapGesture(true); gestureFrames?.started()
                 }
@@ -219,14 +224,18 @@ fun MapHost(
             // The route point under the finger, decided at finger-down (what the user aimed at, before anything can
             // move the map – else holding a point can add a new one instead of opening its menu).
             var downMarker = -1
-            fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
+            fun handlePress(ll: LatLng, press: MapGestures.Press, note: com.onpath.app.poi.PoiHit.PressNote, down: Int): Boolean {
                 val c = myCtrl[0]
                 val screen = try { map.projection.toScreenLocation(ll) } catch (e: Exception) {
-                    com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e); return false
+                    com.onpath.app.debug.Problems.warn("map", "Map press ignored: screen position unknown", e)
+                    shownPois.pressEnded(note, "noScreen"); return false
                 }
-                if (vm.routePeek) return true // peeking at the map: no edits
+                if (vm.routePeek) { shownPois.pressEnded(note, "routePeek"); return true } // peeking at the map: no edits
                 // the round-trip search waits in its window (owner 2026-11-19): a press neither ends it nor sets a point
-                if (vm.suggest.searching) { com.onpath.app.debug.Problems.trace("map", "Press ignored: round-trip search runs"); return true }
+                if (vm.suggest.searching) {
+                    com.onpath.app.debug.Problems.trace("map", "Press ignored: round-trip search runs")
+                    shownPois.pressEnded(note, "searchRuns"); return true
+                }
                 // A hold works on this spot: the start camera must not jump to a late first GPS fix any more – that
                 // would close the menu just opened ("held spot left the visible map").
                 if (press == MapGestures.Press.HOLD) { vm.map.userMovedMap = true; vm.tapHoldHint = false }
@@ -234,12 +243,12 @@ fun MapHost(
                 val pts = vm.plan.points.toList()
                 val toScreen: (GeoPoint) -> Pair<Float, Float>? = { p -> c?.toScreen(p)?.let { it.x to it.y } }
                 val marker = if (!edit || c == null) -1 else MapGestures.markerUnderFinger(pts, toScreen, screen.x, screen.y,
-                    press, downMarker, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
+                    press, down, c.dpToPx(MapGestures.MARKER_RADIUS_DP))
                 val dpOf: (Int) -> Int? = { i -> pts.getOrNull(i)?.let { p -> c?.toScreen(p)?.let { (kotlin.math.hypot(it.x - screen.x, it.y - screen.y) / c.dpToPx(1f)).toInt() } } }
                 if (press == MapGestures.Press.HOLD && edit && c != null) {
                     // every hold in Plan goes into Diagnostics, each as its own line (core feature C1)
                     val near = pts.indices.minByOrNull { i -> c.toScreen(pts[i])?.let { kotlin.math.hypot(it.x - screen.x, it.y - screen.y) } ?: Float.MAX_VALUE }
-                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${downMarker + 1}, nearest point " +
+                    com.onpath.app.debug.Problems.trace("map", "Hold: marker ${marker + 1}, finger-down ${down + 1}, nearest point " +
                         "${near?.plus(1)} at ${near?.let(dpOf)} dp, ${pts.size} points (${c.drawnWaypointCount()} drawn), " +
                         "follow ${vm.map.followMe}, bearing ${map.cameraPosition.bearing.toInt()}°, menu open ${vm.placeMenus.mapOverlayOpen}")
                 }
@@ -250,12 +259,10 @@ fun MapHost(
                         com.onpath.app.map.CandidateMarker.hit((screen.x - s.x) / dp, (screen.y - s.y) / dp)
                     } == true
                 }
-                // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
-                val poi = if (marker >= 0 && press == MapGestures.Press.HOLD) null else mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y)
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(PlaceAddMenu.LINE_SNAP_DP.toFloat()) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
-                return when (val a = MapGestures.decide(edit, press, vm.placeMenus.mapOverlayOpen, marker, poi != null, vm.plan.points.isEmpty())) {
+                fun run(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?): Boolean = when (a) {
                     is MapGestures.Action.PointMenu -> { vm.placeMenus.openPointMenu(a.index, dpOf(a.index)); true }
                     MapGestures.Action.PoiMenu -> { poi?.let { vm.placeMenus.openPoiMenu(it, snap) }; true }
                     MapGestures.Action.FirstPointMenu -> { vm.placeAdd.openFirstPointMenu(p); true }
@@ -274,6 +281,47 @@ fun MapHost(
                         edit
                     }
                 }
+                val menuAtPress = vm.placeMenus.mapOverlayOpen
+                fun decideOn(hit: Boolean, planEmpty: Boolean) = MapGestures.decide(edit, press, menuAtPress, marker, hit, planEmpty)
+                fun decide(hit: Boolean) = decideOn(hit, vm.plan.points.isEmpty())
+                fun word(a: MapGestures.Action) = a.toString().substringBefore('(')
+                fun runNoted(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?, end: String): Boolean =
+                    run(a, poi).also { shownPois.pressEnded(note, end, word(a)) }
+                // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
+                if (marker >= 0 && press == MapGestures.Press.HOLD) return runNoted(decide(false), null, "routePoint")
+                (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return runNoted(decide(true), it, "listAtPress") }
+                // The list has no POI here. Where a POI would change what the press does, it waits for the map's next drawn
+                // frame and asks the map right after it (never inside the press), bounded: a stale list must not lose a drawn
+                // symbol, also on a map that never goes idle. What the finger pressed on is fixed now, the plan is read at the answer.
+                val plain = decide(false)
+                if (plain == decide(true)) return runNoted(plain, null, "poiChangesNothing")
+                val plan = com.onpath.app.poi.PoiHit.PressPlan(edit, ::decideOn)
+                val wait = shownPois.askMapAtNextFrame(map, ll, press == MapGestures.Press.HOLD, note) { found ->
+                    val a = plan.action(found != null, vm.canEditMap, vm.plan.points.isEmpty())
+                    if (a == null || vm.routePeek || vm.suggest.searching) {
+                        note.action = "dropped"
+                        Problems.trace("map", "Press dropped: the map's mode changed while it waited")
+                    } else { note.action = word(a); run(a, found) }
+                } ?: return runNoted(plain, null, "noStyleYet")
+                fun timedOut(waited: Long) {
+                    shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
+                }
+                mapView.postDelayed({ timedOut(0) }, com.onpath.app.poi.PoiHit.PRESS_WAIT_MS)
+                return edit || plain != MapGestures.Action.None
+            }
+            fun handle(ll: LatLng, press: MapGestures.Press): Boolean {
+                // the field log's line of this press (Diagnostics)
+                val pressNow = android.os.SystemClock.uptimeMillis()
+                val fingerMs = hold.fingerMs(pressNow)
+                val note = shownPois.pressNote(map, press.name, fingerMs, hold.upToAppMs(pressNow),
+                    com.onpath.app.poi.PoiHit.ringWord(holdBuzz.value != MapGestures.Buzz.NONE, fingerMs))
+                val down = downMarker
+                // an earlier press without an answer goes first: it answers now, then this one is played on what it did
+                if (shownPois.pressWhileOneWaits(map, mapView, ll, press == MapGestures.Press.HOLD, note,
+                        menuShown = { vm.placeMenus.mapOverlayOpen || vm.selectedPoi != null },
+                        closeMenu = { vm.placeMenus.closeMapOverlays("a hold made before this menu showed"); vm.selectedPoi = null },
+                        run = { handlePress(ll, press, note, down) })) return true
+                return handlePress(ll, press, note, down)
             }
             map.addOnMapClickListener { ll ->
                 // A hold of HOLD_MS (ring under the finger, vibration) ends as a click with lastHoldMs ≥ HOLD_MS.
@@ -320,6 +368,8 @@ fun MapHost(
         // only clear what is ours: another (short-lived) map host must never switch off this one
         onDispose {
             idleListener?.let { mapView.removeOnDidBecomeIdleListener(it) }
+            frameListener?.let { mapView.removeOnDidFinishRenderingFrameListener(it) }
+            shownPois.dispose()
             host.disposed()
             ctrlRef.clear(host)
             gestureFrames?.cancel()
@@ -367,15 +417,22 @@ const val HOLD_MS = 300L
 private class HoldTracker {
     var downX = 0f; var downY = 0f
     private var downTime = 0L
+    private var upTime = -1L
     var pressing = false; private set
     var lastHoldMs = 0L; private set
 
+    /** How long the finger was down (still down: so far), for the press's line in the field log. */
+    fun fingerMs(nowMs: Long): Long = (if (upTime >= 0) upTime else nowMs) - downTime
+
+    /** From the finger's lift to the map's click reaching the app; -1 while it is still down (a long press). */
+    fun upToAppMs(nowMs: Long): Long = if (upTime >= 0) nowMs - upTime else -1L
+
     fun track(ev: MotionEvent, slopPx: Float) {
         when (ev.actionMasked) {
-            MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y; downTime = ev.eventTime; pressing = true; lastHoldMs = 0 }
+            MotionEvent.ACTION_DOWN -> { downX = ev.x; downY = ev.y; downTime = ev.eventTime; upTime = -1L; pressing = true; lastHoldMs = 0 }
             MotionEvent.ACTION_POINTER_DOWN -> pressing = false
             MotionEvent.ACTION_MOVE -> if (pressing && hypot(ev.x - downX, ev.y - downY) > slopPx) pressing = false
-            MotionEvent.ACTION_UP -> { lastHoldMs = if (pressing) ev.eventTime - downTime else 0; pressing = false }
+            MotionEvent.ACTION_UP -> { lastHoldMs = if (pressing) ev.eventTime - downTime else 0; upTime = ev.eventTime; pressing = false }
             MotionEvent.ACTION_CANCEL -> { lastHoldMs = 0; pressing = false }
         }
     }

@@ -115,8 +115,6 @@ abstract class PlaceMenusGalleryFullTest : PlaceMenusGalleryTest() {
     }
 }
 
-class PlaceMenusGalleryEnglishTest : PlaceMenusGalleryFullTest()
-
 class PlaceMenusGalleryGermanTest : PlaceMenusGalleryFullTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

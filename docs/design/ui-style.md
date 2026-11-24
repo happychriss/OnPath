@@ -26,7 +26,7 @@ buttons; a 10 dp walnut `edgeShadow` under Plan's top band and above the sheet).
 | `InkMuted` | secondary text: detail lines, explanations (Material `onSurfaceVariant`) |
 | `Paper`, `CardPaper` | the website's paper `#FAFAF6` (palette D "wie die Webseite", owner 2026-11-12): menus, dialogs, message boxes, cards (over the map and in lists, also inside a sage sheet) |
 | `MapGround` | the light sage `#EEF0E8` of what floats over the map in Plan and Navigate (owner 2026-11-12): Plan's top band, search pill (+ a fine `Line` edge) and ☰, the map column + undo, the plan sheet in every step, the activity chip, Navigate's status card |
-| `PaperDim` | the website's sage `#EEF0E8`: the page behind cards (My routes, Settings), boxes inside a paper surface |
+| `PaperDim` | the website's sage `#EEF0E8`: the page behind cards (My routes, Settings), boxes inside a paper surface – owner 2026-11-06: paper is the ground of every surface, white only for what floats over the map |
 | `PaperDeep` | a deeper sage `#E4E8DD`: the plan sheet's pill row, filled fields, a lifted row |
 | `Line` | fine lines `#D2DACD` (outlineVariant) |
 | `CardWhite` | cards over the map (message boxes, sheets), text on `Green` |
@@ -47,6 +47,11 @@ One colour = one kind of action, so the hand finds it the second time by colour:
 - **green = navigation** – start, continue, pause / resume the guidance (`ActionGo`; the primary buttons stay `Green`);
 - **blue = edit** – change the route, you are editing (`ActionEdit`);
 - **red = stop** – end the process you are in (end the recording, clear the plan to start anew) (`ActionStop`).
+
+Owner 2026-11-06: "alles blau, und was zur Navigation geht, grün"; onpath.private#36: "Wir nehmen erstmal Walnuss" – the theme's primary
+(every button without a meaning of its own) is walnut, Navigate green, Plan blue (`flow-map.md` "Colour rule audit"). No test pins it
+since 2026-11-20 (owner: the pictures show it – `MessageCardGermanScreenshotTest_kinds.png` walnut, `GermanScreenshotTest_plan.png` blue,
+`GermanScreenshotTest_navigateLockOff.png` green).
 
 Today (owner 2026-11-07, "Anhalten" variant 5): Navigate's one bottom bar green "⏸ Anhalten" | blue "✎ Planen"; stopped green
 "▶ Weiter" (the widest) · dark green #0D3A27 "■ Tour beenden" · blue "✎ Planen", icons and words together, 56 dp; the
@@ -72,7 +77,7 @@ pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is c
 errors. Since 2026-11-12 (owner, variant F + "one rule"): **in Plan every big go button is plan ink blue with white
 words** (`OnPathColors.PlanGo` via `ActionButtons.planGo()`, 7.1:1) – "▶ Los geht's", "▲ Weiter geht's" back to
 Navigate, "Tour nachfahren" under a shown tour, the route overview's "Los geht's" / "Folgen"; **in Navigate everything
-stays green** (`ActionButtons.go()`, the bottom bar, the arrival and end sheets). `PlanColourTest` keeps the plan tokens out of Navigate.
+stays green** (`ActionButtons.go()`, the bottom bar, the arrival and end sheets). `PlanColourTest` keeps the plan colours readable.
 
 Add a token when a new meaning is needed (with a comment saying what it is for); `inverseSurface` and Snackbars stay
 out (`NoticesTest.noDarkBarAnyMore`).

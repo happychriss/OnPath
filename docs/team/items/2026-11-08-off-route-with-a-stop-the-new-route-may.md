@@ -1,3 +1,0 @@
-# [donald] Off route with a stop: the new route may leave the stop out without saying so (found 2026-11-08 while taking G04, emulator, 0.17.6)
-
-- **[donald] Off route with a stop: the new route may leave the stop out without saying so (found 2026-11-08 while taking G04, emulator, 0.17.6)** – A-019 + Gasthof Hochmuth as stop, 80 m off ~150 m after Vellau: the question says only „Neue Route bis zum Ziel: 4,3 km (4,3 km kürzer)“ (via Hochmuth it is 8,7 km), no „Über ② / ② auslassen“. Suspects: `Rerouter.kt:171` passes `deliberate = false` to `StopSkip.decide`, or `keepsTheTour` / `MIN_KEEP_SHARE`. First a test that reproduces it (core feature), then check whether „Neue Route“ really drops the stop, then the fix.

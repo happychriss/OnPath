@@ -40,16 +40,19 @@ class SavePathsTest {
      * .aNameThatNeverComesLosesNothing); (SaveFlowTest.aReplacedUnsavedPlanIsKeptUnderZuletztAtOnce…); here only that the slice hands the plan over on the calling thread.
      */
     @Test fun thePlanIsHandedToZuletztBeforeItLeavesTheMap() {
-        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveSlice.kt").readText() // keepAsDraft moved there (piece 3)
+        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveState.kt").readText() // keepAsDraft moved there (piece 3)
         val keep = slice.substringAfter("fun keepAsDraft(why: String) {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("recent.keep("))
         assertFalse("handed over at once, no background work before it", keep.contains("launch"))
+        // SaveState has no coroutines: deferring is `background.` (a write off the thread) or `names.` (a wait for the name)
+        assertFalse("handed over at once, nothing deferred (background)", keep.contains("background."))
+        assertFalse("handed over at once, no wait for a name (names)", keep.contains("names."))
     }
 
     /** Way 2: the ride summary has no plan part – nor does any end sheet now. */
     @Test fun theRideSummaryOffersNoPlanSave() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        val rides = screen.substringAfter("is EndAsk.Rides -> RideSummaryDialog(").substringBefore("null -> {}")
+        val rides = screen.substringAfter("is EndAsk.Rides -> RideQuestionDialog(").substringBefore("null -> {}")
         assertFalse(rides, rides.contains("routeLabel") || rides.contains("saveRouteAtEnd"))
         // rides found → the summary (and nothing about the plan): TourEndFlowTest.endTourWithARideShowsTheSummaryAfterTheCheckOnIo / theArrivalBoxsEndTourOfATourWithARideShowsTheSummaryAndStopsNothing
     }

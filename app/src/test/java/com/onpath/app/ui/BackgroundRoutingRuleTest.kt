@@ -16,7 +16,7 @@ class BackgroundRoutingRuleTest {
         // browser plans after a pairing: routeSyncedPlans moved to SyncedRoutingSlice (piece 15); the flow
         // `SyncedRoutingFlowTest.aPlanFromTheBrowserIsRoutedOnTheBackgroundThreadAndStoredWithItsRealLine` runs it on the held background
         // thread (every router call is seen on "bg"), `SyncWiringTest.theBrowserPlansAreRoutedOnTheBackgroundRoutingThreadAndNeverTheUsersOwn` pins the slice
-        // "Plan a route from it" / a track made a plan: planFromLine moved to RoutesSlice (piece 13); the flow
+        // "Plan a route from it" / a track made a plan: planFromLine moved to RoutesSlice (piece 13), its logic to TrackToPlanState – the fit stays in RoutesSlice's CoroutineTrackFitter; the flow
         // `RoutesFlowTest.aDoneTourWithNoPlanBecomesAPlanThroughTheRouterOnTheBackgroundThread` runs it on the held background thread
         val slice = com.onpath.app.testkit.sourceFile("ui/routes/RoutesSlice.kt").readText()
         assertTrue("anchor", slice.contains("TrackToPlan.fit("))
@@ -26,6 +26,8 @@ class BackgroundRoutingRuleTest {
         // the routing thread by name – PlanRecalcFlowTest sees the router called on the held routing thread only)
         val recalcSlice = com.onpath.app.testkit.sourceFile("ui/plan/PlanRecalcSlice.kt").readText()
         assertEquals(1, Regex("withContext\\(routingDispatcher\\)").findAll(recalcSlice).count())
+        // the engine and the leg cache are read on the routing thread too (the route itself is PlanRecalcState.route, plain)
+        assertTrue(recalcSlice.substringAfter("withContext(routingDispatcher) {").substringBefore("}.also").contains("PlanRecalcState.route(run, planRoute.routingEngine(), planRoute.legCache, cancel,"))
         assertEquals(0, Regex("withContext\\(routingDispatcher\\)").findAll(vm).count())
         assertTrue(vm.contains("scope = viewModelScope, routingDispatcher = planRoute.threads.routing, io = Dispatchers.IO, main = Dispatchers.Main, default = Dispatchers.Default,"))
         val edits = com.onpath.app.testkit.sourceFile("ui/tour/TourEdits.kt").readText()
@@ -47,7 +49,7 @@ class BackgroundRoutingRuleTest {
      * moved with the code to SaveSlice.)
      */
     @Test fun overwriteChecksTheStoredRouteFirst() {
-        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveSlice.kt").readText()
+        val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveState.kt").readText()
         val over = slice.substringAfter("private fun overwriteSaved(").substringBefore("\n    }\n")
         assertTrue(over.indexOf("SaveRule.keepsOtherEdit") in 0 until over.indexOf("store.replacePlanned("))
     }

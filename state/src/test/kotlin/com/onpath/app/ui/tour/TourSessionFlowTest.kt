@@ -109,6 +109,7 @@ class TourSessionFlowTest {
     private val client = FakeRecordingClient()
     private val db = JdbcTours()
     private val log = ArrayList<String>()
+    private var tourStartsSeen = 0
     private val said = ArrayList<Triple<String, NoticeKind, NoticePlace>>()
 
     // ---------------- threads: main (inline, virtual time), io (held, virtual time), the plan copy's, the routing's ----------------
@@ -672,6 +673,20 @@ class TourSessionFlowTest {
         assertEquals("NAVIGATING off", mapOf<String, Any>(RecordingWire.EXTRA_ON to false), client.sent.last().extras)
     }
 
+    /** The plan's detour check holds the router: it stops before the recording starts, and on any way into Navigate. */
+    @Test fun aTourStartStopsTheRoutingBesideThePlan() {
+        create()
+        planRun.besideRoute = object : com.onpath.app.ui.plan.BesideRoute {
+            override fun holdMeasures(running: Boolean) = Unit
+            override fun stop() { tourStartsSeen++ }
+        }
+        routeNow = routeFor(plan.points.toList())
+        ui { session.startNavigation() }
+        assertEquals(1, tourStartsSeen)
+        ui { session.enter(AppMode.NAVIGATE) }
+        assertEquals(2, tourStartsSeen)
+    }
+
     /** Rule 15: entering Navigate closes the menus THEN follows the position; the zoom is taken once per start; Plan clears it. */
     @Test fun enteringNavigateClosesTheMenusThenFollowsAndTakesTheStartZoomOnce() {
         create()
@@ -808,10 +823,10 @@ class TourSessionFlowTest {
         val before = Triple(session.mode, filesNow(), plan.points.toList())
         ui {
             session.takeNewRoute(1); session.takeViaRoute(2); session.keepOriginalRoute(3); session.leadToStart(4)
-            session.justRecord(5); session.joinHere(6); session.leadFailedOk(7)
+            session.justRecord(5); session.joinHere(6); session.leadFailedOk(7); session.cancelLead(8)
         }
         assertEquals(listOf(RecordingCommand.takeRoute(1), RecordingCommand.takeVia(2), RecordingCommand.keepRoute(3), RecordingCommand.leadThere(4),
-            RecordingCommand.justRecord(5), RecordingCommand.joinHere(6), RecordingCommand.leadFailedOk(7)), client.sent.toList())
+            RecordingCommand.justRecord(5), RecordingCommand.joinHere(6), RecordingCommand.leadFailedOk(7), RecordingCommand.cancelLead(8)), client.sent.toList())
         assertEquals("the app is as it was", before, Triple(session.mode, filesNow(), plan.points.toList()))
     }
 
@@ -920,8 +935,10 @@ class TourSessionFlowTest {
         assertEquals("the start mode of the nothing-found case", AppMode.PLAN, session.mode)
         assertTrue("`enter(Plan)` ran", log.any { it.startsWith("clearHints [mode=PLAN") })
         assertNull("no question for a tour that could not be read", ctl.unfinished)
-        assertFalse("the hold is released", ctl.unfinishedPending)
+        assertTrue("held while it is read once more after the sticky wait", ctl.unfinishedPending)
         assertTrue("reported", problems.said("app").any { it.contains("Active tour could not be read") })
+        advance(1_500)
+        assertFalse("the hold is released", ctl.unfinishedPending)
         assertEquals("nothing sent to the service", emptyList<String>(), actions())
         advance(5_000)
         assertNull(ctl.unfinished)
@@ -942,24 +959,115 @@ class TourSessionFlowTest {
         assertEquals(mapOf<String, Any>(RecordingWire.EXTRA_ON to true), client.sent.last().extras)
     }
 
-    /** L2: an interrupted row exists but cannot be read – no question, the row is not touched, no command; asked at the next start. */
+    /**
+     * [umbau]'s finding 2026-11-19: an interrupted tour whose read failed once at start got no question – and a new tour then
+     * closed it as „done“ (`RecordingService` START → `finishOtherActive`). Now the read is tried once more after the sticky
+     * wait, with the start hold kept: found → Navigate and its question, as on a normal start.
+     */
+    @Test fun anInterruptedTourWhoseReadFailsOnceIsReadAgainAndAsked() {
+        val id = unfinishedId
+        create()
+        var reads = 0
+        onFindActive = { if (++reads == 1) throw java.io.IOException("database busy") }
+        ui { session.start() }
+        stepIo()
+        assertTrue("the start mode is known at once", map.startModeKnown)
+        assertNull(ctl.unfinished)
+        assertTrue("no new tour while it is read again", ctl.unfinishedPending)
+        advance(1_500); stepIo()
+        assertEquals("read again", 2, reads)
+        assertEquals("asked after the second read", id, ctl.unfinished!!.id)
+        assertEquals(AppMode.NAVIGATE, session.mode)
+        assertFalse(ctl.unfinishedPending)
+        assertEquals("the row is untouched", "active", db.getTour(id)!!.state)
+        assertTrue(problems.said("app").any { it.contains("Active tour could not be read at start") })
+    }
+
+    /** Review 2026-11-20: switching to Navigate after the second read throws – reported, and the question still comes. */
+    @Test fun aThrowingEnterAfterTheSecondReadStillAsks() {
+        val id = unfinishedId
+        create()
+        var reads = 0
+        onFindActive = { if (++reads == 1) throw java.io.IOException("database busy") }
+        ui { session.start() }
+        stepIo()
+        failClearHints = true
+        advance(1_500); stepIo()
+        assertEquals(id, ctl.unfinished!!.id)
+        assertFalse(ctl.unfinishedPending)
+        assertTrue(problems.said("app").any { it.contains("Entering Navigate for the tour read again failed") })
+    }
+
+    /** The service comes back by itself during the wait (sticky): the second read finds its tour – no question, no command. */
+    @Test fun aServiceBackDuringTheSecondWaitIsNotAskedAbout() {
+        create(); routeNow = routeFor(plan.points.toList())
+        var reads = 0
+        onFindActive = { if (++reads == 1) throw java.io.IOException("database busy") }
+        ui { session.start() }
+        stepIo()
+        serviceTakes()
+        advance(1_500); stepIo()
+        assertNull(ctl.unfinished)
+        assertFalse(ctl.unfinishedPending)
+        assertEquals("not read again: the service owns its tour", 1, reads)
+    }
+
+    /** L2: the read fails twice – no question, the row is not touched, no command; asked at the next start. */
     @Test fun anInterruptedTourThatCouldNotBeReadIsAskedAtTheNextStart() {
         val id = unfinishedId
         create()
-        rows.failOn += "findActiveRecording"
+        onFindActive = { throw java.io.IOException("database busy") }
         assertFalse("the opposite first", map.startModeKnown)
         ui { session.start() }
-        stepIo(); advance(5_000)
+        stepIo(); advance(1_500); stepIo(); advance(5_000)
         assertTrue(map.startModeKnown)
         assertNull("no question for a tour that could not be read", ctl.unfinished)
         assertEquals("the row is still active", "active", db.getTour(id)!!.state)
         assertEquals("no command", emptyList<String>(), actions())
         assertFalse(ctl.unfinishedPending)
+        assertTrue(problems.said("app").any { it.contains("Active tour could not be read again") })
         // the next start (the failure is over): the question for that tour comes
-        rows.failOn -= "findActiveRecording"
+        onFindActive = null
         ui { session.start() }
         stepIo(); advance(1_500)
         assertEquals("asked at the next start", id, ctl.unfinished!!.id)
+    }
+
+    /**
+     * Review 2026-11-20 (the rest of [umbau]'s finding): both start reads failed, then the user starts a new tour – the active
+     * tour is read once more before START (which would close it as „done“, `finishOtherActive`): found → its question, no START.
+     */
+    @Test fun bothStartReadsFailedThenANewTourReadsOnceMoreAndAsks() {
+        val id = unfinishedId
+        create(); routeNow = routeFor(plan.points.toList())
+        var fail = true
+        onFindActive = { if (fail) throw java.io.IOException("database busy") }
+        ui { session.start() }
+        stepIo(); advance(1_500); stepIo()
+        assertNull(ctl.unfinished)
+        assertFalse(ctl.unfinishedPending)
+        fail = false
+        ui { session.startNavigation() }
+        assertTrue("held while it reads", ctl.unfinishedPending)
+        assertEquals("nothing sent before the read", emptyList<String>(), actions())
+        stepIo()
+        assertEquals("its question instead of a new tour", id, ctl.unfinished!!.id)
+        assertEquals("no START", emptyList<String>(), actions())
+        assertFalse(ctl.unfinishedPending)
+        assertEquals("the row is untouched", "active", db.getTour(id)!!.state)
+    }
+
+    /** The same, but the read before the tour fails again or finds nothing: the tour starts (a tour is never refused) – once. */
+    @Test fun bothStartReadsFailedAndTheReadBeforeTheTourFailsTooTheTourStarts() {
+        create(); routeNow = routeFor(plan.points.toList())
+        onFindActive = { throw java.io.IOException("database busy") }
+        ui { session.start() }
+        stepIo(); advance(1_500); stepIo()
+        ui { session.startNavigation() }
+        stepIo()
+        assertEquals("the tour starts", listOf("START"), actions())
+        assertFalse(ctl.unfinishedPending)
+        assertTrue(problems.said("app").any { it.contains("Active tour could not be read before a new tour") })
     }
 
     /** L2: `enter(start)` itself throws – reported, and the start mode is still known. */
@@ -999,6 +1107,7 @@ class TourSessionFlowTest {
         stepIo()
         assertTrue(map.startModeKnown)
         assertTrue(problems.said("app").any { it.contains("stray cancellation") })
+        advance(1_500) // read once more after the sticky wait (fails the same way)
         assertFalse(ctl.unfinishedPending)
     }
 

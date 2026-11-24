@@ -6,6 +6,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
 import com.onpath.app.domain.PlanGuidance
+import com.onpath.app.domain.PlanHistory
 import com.onpath.app.domain.RouteRules
 import com.onpath.app.domain.plan.PlanSession
 import com.onpath.app.routing.GeoPoint
@@ -30,17 +31,24 @@ interface PlanStore {
  * document. The route line is not here (domain/plan/RouteRun), nor what an edit means for a running tour, the map or
  * the routing – the view model does that around [edit] / [undo] / [redo]. Testable on the JVM (PlanDocumentTest).
  */
-class PlanDocument(private val store: PlanStore) {
+class PlanDocument(
+    private val store: PlanStore,
+    /**
+     * The Undo / Redo steps: a fresh one in the app (a new run starts without history); the planner hands in the
+     * history it keeps outside (it must survive a fresh routing worker) – its steps show at once ([canUndo]).
+     */
+    history: PlanHistory = PlanHistory(),
+) {
 
     /** The plan's points, in order – Compose state: the map, the sheet and My routes' live row follow it. */
     val points: SnapshotStateList<GeoPoint> = mutableStateListOf<GeoPoint>().apply { addAll(store.points) }
-    private val session = PlanSession(points, store.pinned)
+    private val session = PlanSession(points, store.pinned, history)
 
     // ---------------- the points and their history ----------------
 
-    var canUndo by mutableStateOf(false)
+    var canUndo by mutableStateOf(session.canUndo)
         private set
-    var canRedo by mutableStateOf(false)
+    var canRedo by mutableStateOf(session.canRedo)
         private set
     private fun history() { canUndo = session.canUndo; canRedo = session.canRedo }
     private fun stored() { store.points = points.toList() }

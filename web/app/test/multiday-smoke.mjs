@@ -34,7 +34,7 @@ async function run(lang, viewport, shotPrefix) {
   const clickLngLat = async (lon, lat) => {
     const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
       const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
-    await page.mouse.click(p[0], p[1]);
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
   };
   const menuItem = async (label) => { await page.waitForSelector('.holdpopup .pointmenu', { timeout: 10_000 });
     await page.locator('.holdpopup .pointmenu button', { hasText: label }).first().click(); };
@@ -58,7 +58,7 @@ async function run(lang, viewport, shotPrefix) {
   const bar = await page.locator('#trackPanel .trimbar.from').boundingBox();
   const plot = await page.locator('#trackPanel .profplot').boundingBox();
   await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
-  await page.mouse.down();
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
   await page.mouse.move(plot.x + plot.width * 0.2, bar.y + bar.height / 2, { steps: 5 });
   await page.mouse.up();
   const trim = await page.evaluate(() => window.__trim);
@@ -101,6 +101,16 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.days === 3, 'the overview with 3 days');
   check(await page.locator('#tourOverview .today').count() === 3, 'the overview: one row per day');
   check(await page.locator('.dayend.proposal').count() === 2, 'two grey moons on the map');
+  // the day rows (owner 2026-11-21, variant A): bold „Tag 1“, the day's km · ↑ m · time on its right, a grey „von – nach“
+  // under it only when both places are known – never a km position, never „Start“ / „Ziel“, no third line
+  const dayRows = () => page.$$eval('#tourOverview .today', (ls) => ls.map((l) => ({ day: l.querySelector('.dn')?.textContent ?? '',
+    vals: l.querySelector('.dv')?.textContent ?? '', places: l.querySelector('.dpl')?.textContent ?? null, lines: l.querySelectorAll('.txt > span').length })));
+  const rowsNow = await dayRows();
+  console.log('day rows:', JSON.stringify(rowsNow));
+  check(rowsNow.map((r) => r.day).join('|') === (lang === 'de' ? 'Tag 1|Tag 2|Tag 3' : 'Day 1|Day 2|Day 3'), `the rows say „${lang === 'de' ? 'Tag' : 'Day'} n“ (${rowsNow.map((r) => r.day).join('|')})`);
+  check(rowsNow.every((r) => /^[\d.,]+ k?m · ↑ [\d.,]+ m · .+/.test(r.vals)), `each row: km · ↑ m · time (${rowsNow.map((r) => r.vals).join(' | ')})`);
+  check(rowsNow.every((r) => r.lines <= 2 && (r.places == null || (/ – /.test(r.places) && !/\bkm \d|^(Start|Ziel|Destination) –|– (Start|Ziel|Destination)$/.test(r.places)))),
+    'at most the grey places line under it, never a km position or Start / Ziel');
   // each day end says which day of how many ends there (owner 2026-11-20): „Ende Tag 1 von 3“, „Ende Tag 2 von 3“
   const endDays = (sel) => page.$$eval(sel, (els) => els.map((e) => {
     const m = /(\d+)\D+(\d+)/.exec(e.title ?? ''); return m && (e.getAttribute('aria-label') ?? '').includes(m[0]) ? [Number(m[1]), Number(m[2])] : null; }));
@@ -172,6 +182,12 @@ async function run(lang, viewport, shotPrefix) {
   await settled();
   check(await page.locator('.pin.night .daysym.green').count() === 1, 'Hotel: the night is a green bed');
   check(await page.evaluate(() => Object.values(window.__days.h.tour().nights)[0]?.hotel?.name === 'Gasthof Test'), 'the hotel keeps its name');
+  const hotelRows = await dayRows();
+  console.log('day rows with the hotel:', JSON.stringify(hotelRows));
+  // „von – nach“, or a hotel at the day's only known end: „ab Gasthof Test“ / „bis Gasthof Test“ (owner 2026-11-21)
+  const hotelLine = (s) => s.split(' – ').length === 2 || /^(ab|bis|from|to) Gasthof Test$/.test(s);
+  check(hotelRows.every((r) => r.places == null || hotelLine(r.places)), `the hotel day: its places line is „von – nach“, „ab / bis Hotel“ or none (${hotelRows.map((r) => r.places).join(' | ')})`);
+  check(hotelRows.some((r) => r.places != null && r.places.includes('Gasthof Test')), 'the hotel day: the hotel\'s name is on a places line');
 
   // 7 · Hotel entfernen (R4: the night stays, blue)
   await page.click('.pin.night');

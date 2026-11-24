@@ -522,6 +522,29 @@ class CellDownloadTest {
         assertEquals(emptyList<CellId>(), mc.ensurePackages())
     }
 
+    /**
+     * A package the server failed to build (field 2026-11-18/19, the owner's log: 7-63-42 „Build step 'shade' failed“ 15×):
+     * the cells come without it, and it is not asked for again in this run – before, every trigger asked again and logged
+     * the same line again. The next app start asks once more (the server may have it by then).
+     */
+    @Test fun aPackageFailedOnTheServerIsNotAskedForAgainInThisRun() {
+        server.publish(a, "v1"); server.publish(b, "v1"); server.publishPackage(pe, "p1"); server.buildPolls = 0
+        server.failing[pa.id] = "Build step 'shade' failed"
+        val mc = cells(Net(), packages = true)
+        mc.request(listOf(a), CellReason.POINT)
+        waitFor("cell ready") { mc.state(a) is CellState.Ready }
+        waitFor("the failed package seen") { mc.state(pa) is CellState.Failed }
+        waitFor("the other package joined") { mc.packages.value.map { it.id } == listOf(pe) }
+        val asked = server.requestCalls.count { pa.id in it }
+        // every later trigger: a join (ensurePackages()), another request in the same package's area
+        assertEquals(emptyList<CellId>(), mc.ensurePackages())
+        mc.request(listOf(b), CellReason.POINT)
+        waitFor("b ready") { mc.state(b) is CellState.Ready }
+        assertEquals(emptyList<CellId>(), mc.ensurePackages(listOf(a, b)))
+        assertEquals("not asked for again: ${server.requestCalls}", asked, server.requestCalls.count { pa.id in it })
+        assertTrue(mc.packages.value.none { it.id == pa })
+    }
+
     /** Packages belong to the cells: when the cells' request goes (plan changed), theirs goes too; deleting the last
      *  cell under a package removes the package. */
     @Test fun packagesFollowTheirCells() {

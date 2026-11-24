@@ -62,9 +62,6 @@ fun BesideSign(percent: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
     }
 }
 
-/** One load in the details: its name and where it stands ("fertig", "lädt", "wird vorbereitet", "fast fertig"). */
-data class BesideRow(val name: String, val state: String)
-
 /**
  * The details (a bottom sheet's content, docs/design/ui-style.md "the details of a state are a bottom sheet"): title, the
  * ONE bar with the sign's percent over the whole action, what loads – one line each, no number of its own –, [notes]

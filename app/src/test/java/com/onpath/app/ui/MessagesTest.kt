@@ -8,6 +8,12 @@ import org.junit.Test
 class MessagesTest {
     private fun m(kind: MessageKind, title: String = kind.name) = Message(kind, title, buttons = listOf(MessageButton("OK") {}))
 
+    /** A box's primary takes its meaning: a Navigate question is "go", any other box neutral (moved here from the cut ColourRuleTest). */
+    @Test fun aNavigateQuestionIsGoEveryOtherBoxNeutral() {
+        assertEquals(ButtonTone.GO, Message(MessageKind.FRAGE, "t", buttons = emptyList(), navigate = true).tone)
+        assertEquals(ButtonTone.NEUTRAL, Message(MessageKind.FRAGE, "t", buttons = emptyList()).tone)
+    }
+
     /** One box at a time: a FRAGE wins over a HINWEIS; the others wait (they stay in their state). */
     @Test fun oneBoxAtATimeQuestionFirst() {
         val note = m(MessageKind.HINWEIS)

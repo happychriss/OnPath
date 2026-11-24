@@ -371,7 +371,7 @@ class MapCells(
      * Asks for the region packages (map-cells.md §20) that [extra] cells and every installed or asked-for cell need
      * ([CellId.packagesFor]) and that are neither installed nor asked for; an installed package older than
      * [PACKAGE_CHECK_MS] is asked for again (the server answers "ready" with the same version when nothing is newer).
-     * Returns the packages added. Called at start and with every request; never throws.
+     * Returns the packages added; one failed in this run waits for the next start. Called at start and per request; never throws.
      */
     fun ensurePackages(extra: Collection<CellId> = emptyList()): List<CellId> = if (!regionPackages || packagesRefused) emptyList() else try {
         val have = _packages.value.associateBy { it.id }
@@ -381,7 +381,7 @@ class MapCells(
         val want = CellId.packagesFor(cells).filter { p -> have[p]?.let { t - it.installedAt > PACKAGE_CHECK_MS } ?: true }
         val added = ArrayList<CellId>()
         synchronized(queue) {
-            for (p in want) if (p !in queue && !isFinished(p)) {
+            for (p in want) if (p !in queue && !isFinished(p) && state(p) !is CellState.Failed) {
                 queue[p] = Pending(p, CellReason.PACKAGE, ownPoint = false, at = t, approvedMobile = false)
                 added += p
             }
@@ -1055,7 +1055,7 @@ class MapCells(
                     if (c.isPackage) Problems.info("cells", "Region package $c failed on the server: ${s.reason}")
                     else Problems.warn("cells", "Map cell $c failed on the server: ${s.reason}")
                     set(c, CellState.Failed(msg))
-                    // dropped from the queue: the next trigger for this place asks again (the server retries up to 3×)
+                    // dropped from the queue: the next trigger asks again (server retries up to 3×) – a package at the next start
                     synchronized(queue) { queue.remove(c) }
                 }
                 else -> { sent -= c; set(c, CellState.Requested) } // "none": server forgot it → request again

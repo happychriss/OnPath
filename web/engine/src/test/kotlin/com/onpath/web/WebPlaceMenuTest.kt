@@ -146,4 +146,30 @@ class WebPlaceMenuTest {
         assertEquals("", Engine.locateLabel(false, 0.0, 0.0, 46.6, 11.1, 46.7, 11.2))   // no position
         assertTrue(Engine.locateLabel(true, 51.17, 6.93, 46.6, 11.1, 46.7, 11.2).endsWith("km")) // Hilden, map at Meran
     }
+
+    // ---- an add from a menu / the place card (WebApi.placeEdit = the app's PlaceAddState on the plan shown now) ----
+    private fun pts(j: String) = Regex("\"points\":\"([^\"]*)\"").find(j)?.groupValues?.get(1)
+
+    @Test fun theHoldMenusRowsAddWhereTheAppDoes() {
+        // „Einfügen“ beside the middle → between A and B; „Neues Ziel“ → appended, the old goal stays (planning)
+        assertEquals("46.600000,11.200000;46.650000,11.210000;46.700000,11.200000",
+            pts(Engine.placeEdit("holdStop", ns, 46.65, 11.21, 24.0, "", "")))
+        assertEquals("46.600000,11.200000;46.700000,11.200000;46.650000,11.210000",
+            pts(Engine.placeEdit("holdGoal", ns, 46.65, 11.21, 24.0, "", "")))
+    }
+
+    @Test fun aPlaceAlreadyPlannedMovesOrOpensItsMenu() {
+        // the place card on a planned place: „As destination“ moves it to the end, „As start“ makes it the start
+        assertEquals("46.700000,11.200000;46.600000,11.200000", pts(Engine.placeEdit("DESTINATION", ns, 46.6, 11.2, 30.0, "A", "")))
+        assertEquals("46.700000,11.200000;46.600000,11.200000", pts(Engine.placeEdit("START", ns, 46.7, 11.2, 30.0, "B", "")))
+        // a held place that is a stop already: its point menu, nothing added
+        assertEquals("{\"pointMenu\":1}", Engine.placeEdit("poiStop", ns, 46.7, 11.2, 30.0, "B", "hut"))
+    }
+
+    @Test fun aNewPlaceGoesWhereTheCardSaid() {
+        assertEquals("46.550000,11.200000;46.600000,11.200000;46.700000,11.200000",
+            pts(Engine.placeEdit("START", ns, 46.55, 11.2, 30.0, "C", "")))
+        assertEquals("46.600000,11.200000;46.700000,11.200000;46.750000,11.200000",
+            pts(Engine.placeEdit("poiGoal", ns, 46.75, 11.2, 30.0, "C", "hut")))
+    }
 }

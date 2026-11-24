@@ -101,9 +101,9 @@ class CoreFieldE2ETest : E2EBase() {
         hold(w * 0.5f, h * 0.25f)
         clickText(Txt.s(Res.string.plan_go_here))
         waitUntil("route from my location", 20_000) { waypointCount() == 2 }
-        // the route (and its snap) first: a hold beside the plan is measured against the plan it was made on, and its
-        // result is dropped when the plan changed meanwhile ("measured for a plan no longer shown – nothing added",
-        // seen 2026-11-19 on a slow emulator: the hold fell into the snap of the first route)
+        // the route (and its snap) first, so the hold is measured once: a hold that falls into the snap of the first route
+        // (seen 2026-11-19 on a slow emulator) is measured again on the snapped plan (PlaceAddFlowTest
+        // .aMeasureForAPlanChangedMeanwhileIsMeasuredAgainOnThePlanNowShown) – it took a few seconds longer there
         routeSettled()
         hold(w * 0.30f, h * 0.30f)
         waitUntil("a stop added", 20_000) { waypointCount() == 3 }
@@ -1489,9 +1489,18 @@ class CoreFieldE2ETest : E2EBase() {
             assertNotNull("step 1: the \"$offRoute\" card on Navigate", findFresh(card, 10_000))
             // told either – or: said with a voice, vibrated without one (GitHub's emulator has no voice – 2d06b5e6: a
             // voiceless tour vibrates; E2E 2026-11-07 waited for a sentence that is never said there)
-            val said = "To say: " + com.onpath.app.navigation.VoiceText.of(com.onpath.app.navigation.Phrase.OffRoute)
+            // the sentence is the plain one or carries the side and the metres ("… Die Route liegt rechts, 40 Meter."):
+            // both start alike; what follows is exactly one of the two (the side sentence of any side, a number, a unit)
+            val plain = com.onpath.app.navigation.VoiceText.of(com.onpath.app.navigation.Phrase.OffRoute())
+            val first = plain.substringBefore('.') + "."
+            val said = "To say: $first"
+            val sideHeads = com.onpath.app.navigation.RouteSide.values().map {
+                com.onpath.app.navigation.VoiceText.of(com.onpath.app.navigation.Phrase.OffRoute(it, 40.0)).substringAfter("$first ").substringBefore("40")
+            }
+            fun validRest(rest: String) = rest == plain.substringAfter("$first ") ||
+                sideHeads.any { h -> rest.startsWith(h) && Regex("[0-9.,]+ \\D+\\.").matches(rest.removePrefix(h)) }
             val buzz = com.onpath.app.recording.GuidanceGate.OFF_ROUTE_VIBRATED
-            fun saidNow() = com.onpath.app.debug.Problems.events().any { it.area == "voice" && it.message == said }
+            fun saidNow() = com.onpath.app.debug.Problems.events().any { it.area == "voice" && it.message.startsWith("$said ") && validRest(it.message.removePrefix("$said ")) }
             fun vibratedNow() = com.onpath.app.debug.Problems.events().firstOrNull { it.area == "navigation" && it.message.startsWith(buzz) }
             waitUntil("step 1 told: \"$said\" with a voice, \"$buzz\" without", 10_000) { saidNow() || vibratedNow() != null }
             val vibrated = vibratedNow()

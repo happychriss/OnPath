@@ -191,6 +191,36 @@
     "priority": 2,
     "confidence": "bitte prüfen"
   },
+  "voice_off_route_side": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – off the route: where the route lies from the walking direction; docs/design/navigation-v2.md §3 E",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_route_ahead": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – off the route: where the route lies from the walking direction; docs/design/navigation-v2.md §3 E",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_route_right": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – off the route: where the route lies from the walking direction; docs/design/navigation-v2.md §3 E",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_route_left": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – off the route: where the route lies from the walking direction; docs/design/navigation-v2.md §3 E",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
+  "voice_route_behind": {
+    "area": "Spoken directions (text-to-speech)",
+    "context": "Spoken, not shown – off the route: where the route lies from the walking direction; docs/design/navigation-v2.md §3 E",
+    "priority": 2,
+    "confidence": "bitte prüfen"
+  },
   "voice_off_route": {
     "area": "Spoken directions (text-to-speech)",
     "context": "Spoken, not shown – whole phrases with placeholders (docs/design/voice-guidance.md §3); German dative after 'In' (Metern / Kilometern)",

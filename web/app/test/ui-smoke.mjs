@@ -44,7 +44,7 @@ const clickAt = async (lon, lat) => {
     }
     return [q.x, q.y];
   }, [lon, lat]);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
 };
 await clickAt(11.1600, 46.6700);
 // the first click on an empty plan asks like the app's first hold: Start here · Go here
@@ -99,7 +99,7 @@ tcheck(JSON.stringify(colours.legend) === JSON.stringify(['rgb(30, 63, 174)', 'r
 // a click clears it
 const bigSvg = await page.locator('#bigProfile .profplot > svg').boundingBox();
 await page.mouse.move(bigSvg.x + bigSvg.width * 0.2, bigSvg.y + bigSvg.height * 0.5);
-await page.mouse.down();
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
 await page.mouse.move(bigSvg.x + bigSvg.width * 0.45, bigSvg.y + bigSvg.height * 0.5, { steps: 5 });
 await page.mouse.move(bigSvg.x + bigSvg.width * 0.7, bigSvg.y + bigSvg.height * 0.5, { steps: 5 });
 await page.mouse.up();
@@ -113,7 +113,7 @@ const m = /^([\d.,]+) (k?m) · (.+) · ↑ (\d+) m ↓ (\d+) m$/.exec(marked.tex
 tcheck(!!m && parseFloat(m[1].replace(',', '.')) > 0 && /\d/.test(m[3]) && marked.shade && marked.line >= 2 && marked.r
   && Math.abs(Math.abs(marked.r[1] - marked.r[0]) - marked.total * 0.5) < marked.total * 0.05,
   `marked range: "${marked.text}", shaded, on the map (${JSON.stringify({ ...marked, text: undefined })})`);
-await page.mouse.click(bigSvg.x + bigSvg.width * 0.5, bigSvg.y + bigSvg.height * 0.5);
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(bigSvg.x + bigSvg.width * 0.5, bigSvg.y + bigSvg.height * 0.5);
 await page.waitForTimeout(200);
 const cleared = await page.evaluate(async () => ({ label: document.querySelector('#bigProfile .bprange')?.hidden,
   shade: document.querySelector('#bigProfile .profrange')?.hidden, line: (await window.__map.getSource('profile-range').getData())?.features?.length ?? -1 }));
@@ -141,7 +141,7 @@ tcheck(on3d.terrain === 'terrain' && on3d.pitch > 55 && on3d.pressed === 'true' 
 tcheck(/rechte Maustaste|right mouse button/.test(await page.locator('#threeDNote .turnhint').innerText()), '3D note says how to turn and tilt (mouse)');
 const nBefore = await page.evaluate(() => window.__state.points.length);
 const mapBox = await page.locator('#map').boundingBox();
-await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(mapBox.x + mapBox.width * 0.75, mapBox.y + mapBox.height * 0.5);
 await page.waitForTimeout(500);
 tcheck(await page.evaluate(() => window.__state.points.length) === nBefore && await page.locator('.pointmenu').count() === 0, '3D is view only: a click adds no point');
 // the flyover (owner 2026-11-06, D): ▶ Abfliegen → the camera moves along the route with a calm direction and the

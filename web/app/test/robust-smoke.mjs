@@ -29,7 +29,7 @@ const statusText = () => page.textContent('#status');
 check(!/ready|bereit|\d+ ms/.test(await statusText()), `no developer line without ?debug ("${(await statusText()).trim()}")`);
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
 };
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
@@ -86,7 +86,7 @@ await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].
 // the projection below and the clicks (CI 5be2031d: both clicks landed beside p1 / p2; 8f8db60d, 045e8ebf: p2's pixel
 // lay outside the window – elementFromPoint gave nothing – and its click was lost).
 { const r = await again.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
-  await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
+  await again.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await again.mouse.move(x, y); await again.mouse.down(); await again.mouse.move(x + 40, y + 20, { steps: 5 }); await again.mouse.up(); }
 // a fixed view of the leg's middle part; no padding left by an earlier camera move (it shifts where the centre is drawn)
 await again.evaluate(() => window.__map.jumpTo({ center: [11.1554, 46.6894], zoom: 13.5, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
 await again.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
@@ -107,7 +107,7 @@ const px = await again.evaluate((ps) => { const r = window.__map.getCanvas().get
 // what is under each click (the map's canvas, or a box over it) – said when a click is lost (CI 2026-11-03 / 11-05)
 const under = await again.evaluate((ps) => ps.map(([x, y]) => { const e = document.elementFromPoint(x, y); return e ? `${e.tagName.toLowerCase()}.${[...e.classList].join('.')}` : '-'; }), px);
 const camBefore = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
-await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
+await again.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await again.mouse.click(px[0][0], px[0][1]); await again.mouse.click(px[1][0], px[1][1]);
 const camAfter = await again.evaluate(() => JSON.stringify([window.__map.getCenter(), window.__map.getZoom()]));
 await again.waitForFunction(() => window.__state.points.length === 4, null, { timeout: 60_000 }).catch(() => {});
 const order = await again.evaluate(() => window.__state.points.map(([la, lo]) => [Number(lo.toFixed(3)), Number(la.toFixed(3))]));
@@ -207,10 +207,23 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area/.test(card.text),
     `the wait window: title, bar, "${card?.pct}", ${card?.rows} rows, Cancel ("${card?.text}")`);
   check(box && !!card && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
+  // modal like the app's window (owner 2026-11-24): a tap on the map, a drag, a key and Escape change nothing – Cancel is the way out
+  if (box) {
+    const before = await p.evaluate(() => ({ pts: window.__state.points.length, c: window.__map.getCenter().toArray().join() }));
+    const m = await p.evaluate(() => { const r = document.getElementById('map').getBoundingClientRect(), w = document.getElementById('waitwin').getBoundingClientRect();
+      return { x: r.right - 60, y: r.bottom - 60, inWin: false, veil: !!document.querySelector('.waitveil'), top: document.elementFromPoint(r.right - 60, r.bottom - 60)?.className }; });
+    await p.mouse.click(m.x, m.y);
+    await p.mouse.move(m.x, m.y); await p.mouse.down(); await p.mouse.move(m.x - 150, m.y - 100, { steps: 5 }); await p.mouse.up();
+    await p.keyboard.press('Escape'); await p.keyboard.press('Minus');
+    const now = await p.evaluate(() => ({ pts: window.__state.points.length, c: window.__map.getCenter().toArray().join(), win: !!document.getElementById('waitwin') }));
+    check(m.veil && m.top === 'waitveil' && now.win && now.pts === before.pts && now.c === before.c,
+      `modal: the veil takes the map's taps, drags and keys; Escape keeps it (${JSON.stringify({ ...m, before, now })})`);
+  }
   await p.click('#waitwin .wwcancel');
   await p.waitForFunction(() => !document.getElementById('waitwin') && document.body.dataset.planning !== '1', null, { timeout: 5_000 }).catch(() => {});
   const after = await p.evaluate(() => ({ pts: window.__state.points.length, plan: !!window.__state.plan, line: document.getElementById('summary').textContent,
     btn: document.getElementById('planAnyway')?.textContent }));
+  check(await p.evaluate(() => !document.querySelector('.waitveil')), 'Cancel: the veil is gone, the map answers again');
   check(after.pts === 2 && !after.plan && /calculation stopped/.test(after.line) && after.btn === 'Calculate',
     `Cancel: the points stay, "Route not calculated – calculation stopped." + Calculate (${JSON.stringify(after)})`);
   await p.click('#planAnyway');
@@ -329,7 +342,12 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const from = await p.evaluate(() => window.__card.length);
   await p.click('#reverse', { timeout: 10_000 }).catch(() => {});
   const came = await p.waitForFunction(() => /Calculating the route/.test(document.querySelector('#waitwin .wwtitle')?.textContent ?? ''), null, { timeout: 30_000 }).then(() => true, () => false);
+  const cameAt = Date.now();
   await p.waitForTimeout(4000);
+  // the bar may stand 2 s before it creeps, by time, so on a slow machine its next whole percent can come after these 4 s:
+  // it must move within the limit of „the number never stands“ above (10 s), not sooner
+  await p.waitForFunction((n) => new Set(window.__card.slice(n).filter((x) => !x.gone).map((x) => x.pct)).size > 1, from, { timeout: 6_000 }).catch(() => {});
+  console.log(`(without downloads: the percent's first move within ${((Date.now() - cameAt) / 1000).toFixed(1)} s)`);
   const second = (await p.evaluate((n) => window.__card.slice(n), from)).filter((x) => !x.gone);
   check(came && second.every((x) => /^\d{1,3} %$/.test(x.num) && x.rows.length <= 3) && second.some((x) => x.rows.some((r) => /Section/.test(r))),
     `without downloads: the route's window – its percent, its legs as steps (${second.slice(-3).map((x) => `${x.num} [${x.rows.join(', ')}]`).join(' ; ')})`);
@@ -404,7 +422,11 @@ const planFromLink = async (c) => {
   const p = await c.newPage();
   await p.goto(url + 'index.html#p=' + LINK);
   await p.waitForFunction(() => document.body.dataset.engine === 'ready' && document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 120_000 });
-  await p.waitForFunction(() => !document.getElementById('waitwin') && !window.__wait.overlay().active, null, { timeout: 60_000 }).catch(() => {}); // the first map's wait is over too
+  // the first map's wait is over too – its tiles teach the map's shares when they end (rightly); on a slow runner they can
+  // take over a minute, and a wait still open here would write them during the step below (CI 2026-11-21: mapSteps
+  // learned in „a failed plan“). So the shares are cleared only once no wait is open.
+  const over = await p.waitForFunction(() => !document.getElementById('waitwin') && !window.__wait.overlay().active, null, { timeout: 240_000 }).then(() => true, () => false);
+  check(over, 'the link\'s first wait is over before the wait checks start');
   await p.evaluate(() => { for (const k of Object.keys(localStorage)) if (k.startsWith('onpath.progress.')) localStorage.removeItem(k); });
   return p;
 };
@@ -414,14 +436,30 @@ const planFromLink = async (c) => {
   const p = await planFromLink(c);
   await p.evaluate(() => { window.__pcts = []; // the plan is asked, the window comes, the plan then fails
     window.__engine.plan = (pts, a, s, pin, onProgress) => new Promise((res) => { onProgress({ phase: 'download', done: 10, bytes: 1000 }); setTimeout(() => res({ ok: false, error: 'boom' }), 3000); }); });
+  // every end of a wait from here on: finished or not, and what it wrote (a map wait of its own that starts later – tiles
+  // on a slow runner – rightly teaches the map's shares; CI 2026-11-21 twice: mapSteps learned beside the failed plan)
+  // [plan]: the route run was part of that wait (overlay.plan with a run while it was open) – CI 2026-11-21: a map wait
+  // of its own can end (finished, teaching the map's shares) after the click, before the failed plan's wait ends
+  await p.evaluate(() => { const o = window.__wait.overlay(); window.__ends = []; window.__planIn = false;
+    const plan = o.plan.bind(o); o.plan = (run, ...a) => { if (run) window.__planIn = true; return plan(run, ...a); };
+    const end = o.end.bind(o);
+    o.end = (f) => { const inPlan = window.__planIn; window.__planIn = false; const r = end(f);
+      window.__ends.push({ f, plan: inPlan, ls: Object.keys(localStorage).filter((k) => k.startsWith('onpath.progress.')).map((k) => k + '=' + localStorage.getItem(k)) }); return r; }; });
   await p.click('#reverse');
   const came = await p.waitForSelector('#waitwin', { timeout: 10_000 }).then(() => true, () => false);
   await p.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 10_000 }).catch(() => {});
   await p.waitForTimeout(1000);
   const r = await p.evaluate(() => ({ max: Math.max(0, ...window.__pcts), left: !!document.getElementById('waitwin'), err: document.getElementById('status').classList.contains('error') }));
+  const ends = await p.evaluate(() => window.__ends);
   const ls = await learned(p);
   check(came && r.max < 100 && !r.left, `a failed plan: the window never shows 100 % (${JSON.stringify(r)}, came ${came})`);
-  check(ls.length === 0, `a failed plan: no learned shares written (${ls.join(' ')})`);
+  // the failed plan's wait (the wait the route run was part of) ends unfinished; a map wait of its own may end around it
+  const planEnds = ends.filter((e) => e.plan);
+  check(planEnds.length > 0 && planEnds.every((e) => e.f === false), `a failed plan: its wait ends unfinished (${JSON.stringify(ends)})`);
+  // nothing of the route is learned at all; the map's shares only by a map wait of its own that finished
+  const routeLs = ls.filter((x) => !x.startsWith('onpath.progress.mapSteps='));
+  const mapOk = ls.every((x) => !x.startsWith('onpath.progress.mapSteps=')) || ends.some((e) => !e.plan && e.f);
+  check(routeLs.length === 0 && mapOk, `a failed plan: no learned shares written (${ls.join(' ')}; ends ${JSON.stringify(ends.map((e) => e.f))})`);
   await c.close();
 }
 { // (b)
@@ -466,6 +504,39 @@ for (const hold of [false, true]) { // (c) [hold]: another job (the map's tiles,
   await p.click('#planAnyway', { timeout: 10_000 });
   const again = await p.waitForSelector('#waitwin', { timeout: 20_000 }).then(() => true, () => false);
   check(again, `Cancel, then Calculate${hold ? ' with another job still open' : ''}: the new route gets its window`);
+  await c.close();
+}
+
+{ // (d) a click queued while the route runs, then Cancel (review 2026-11-20): the take-back runs in edit order – the
+  // click's point is never lost (before, planCancel undid the run's edit at once and the click's commit then cleared Redo)
+  const c = await browser.newContext({ viewport: { width: 1280, height: 800 } });
+  const p = await planFromLink(c);
+  await p.evaluate(() => {
+    const e = window.__engine, call = e.call.bind(e);
+    window.__realPlan = e.plan.bind(e);
+    e.plan = (pts, a, s, pin, cb) => { cb({ phase: 'download', done: 10, bytes: 1000 }); return new Promise(() => {}); }; // routes for good
+    e.call = (fn, ...a) => fn === 'holdOnMap' ? new Promise((ok, no) => setTimeout(() => call(fn, ...a).then(ok, no), 1500)) : call(fn, ...a);
+  });
+  await p.click('#reverse'); // an edit: its run is what Cancel would take back
+  await p.waitForSelector('#waitwin .wwcancel', { timeout: 30_000 });
+  const n0 = await p.evaluate(() => window.__state.points.length);
+  await p.evaluate(() => {
+    window.__engine.plan = window.__realPlan; // the click's own run routes for real
+    const m = window.__map, c0 = m.getCenter(), at = { lng: c0.lng + 0.01, lat: c0.lat + 0.01 };
+    m.fire('click', { lngLat: at, point: m.project(at), originalEvent: new MouseEvent('click') });
+  });
+  await p.click('#waitwin .wwcancel');
+  await p.waitForFunction((n) => window.__state.points.length === n + 1, n0, { timeout: 15_000 }).catch(() => {});
+  await p.waitForTimeout(2500);
+  const n1 = await p.evaluate(() => window.__state.points.length);
+  check(n1 === n0 + 1, `a click queued before Cancel: its point stays (${n0} → ${n1})`);
+  await p.click('#undo');
+  await p.waitForTimeout(800);
+  const n2 = await p.evaluate(() => window.__state.points.length);
+  await p.click('#redo').catch(() => {});
+  await p.waitForTimeout(800);
+  const n3 = await p.evaluate(() => window.__state.points.length);
+  check(n2 === n0 && n3 === n0 + 1, `… and Undo / Redo take exactly that click (${n2}, ${n3})`);
   await c.close();
 }
 

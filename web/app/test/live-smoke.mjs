@@ -121,7 +121,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const bad = await openViewer(browser, url, '#t=abc');
   check((await lineOf(bad)).state === 'broken' && asked() === 0, 'a damaged code: "Dieser Link funktioniert nicht.", the server is not asked');
   await bad.context().close();
-  check(await idle.evaluate(() => document.title) === 'OnPath – Live-Tour' && await idle.evaluate(() => document.querySelector('meta[name=robots]')?.content.includes('noindex')), 'neutral title, noindex');
+  check(await idle.evaluate(() => document.title) === 'OnPath – geteilter Standort' && await idle.evaluate(() => document.querySelector('meta[name=robots]')?.content.includes('noindex')), 'neutral title, noindex');
 
   // ---- 2. a link before the phone got through: "noch keine Daten" ----
   const ph = await phone(idle, live, url, clock);

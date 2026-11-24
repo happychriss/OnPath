@@ -60,7 +60,7 @@ class MultiDayWiringTest {
         assertTrue(vm.contains("override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)"))
         assertTrue(vm.contains("override fun withMaps(t: Tour) = multiDay.withMaps(t)"))
         // `recalc` moved to PlanRecalcSlice (piece 9b): the branch asks the host, the host asks the slice
-        assertTrue(sourceFile("ui/plan/PlanRecalcSlice.kt").readText().contains("if (host.multiDayOverview) mapData.corridorFollowsPlan(it.points, act) else mapData.routeComputed(it.points, post?.cells, dest, act)"))
+        assertTrue(sourceFile("ui/plan/PlanRecalcState.kt").readText().contains("if (host.multiDayOverview) mapData.corridorFollowsPlan(it.points, act) else mapData.routeComputed(it.points, post?.cells, dest, act)"))
         assertTrue(vm.contains("override val multiDayOverview: Boolean get() = multiDay.overview"))
     }
 

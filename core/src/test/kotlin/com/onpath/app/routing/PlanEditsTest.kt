@@ -100,10 +100,10 @@ class PlanEditsTest {
         assertEquals("a round trip rotates", listOf(q, r, p, q), PlanEdits.startHere(listOf(p, q, r, p), 1))
         // the card's "As start" on a planned place (PlaceAddSlice, piece 11; PlaceAddFlowTest.thePlaceCardsRoles… runs it) and the
         // point menu's "Start here" (PlaceMenusSlice, piece 12) are the one edit startAtPoint
-        val slice = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt").readText()
+        val slice = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddState.kt").readText()
         val add = slice.substringAfter("    fun addPlace(").substringBefore("\n    }")
         assertTrue(add, add.contains("AddRole.START -> startAtPoint(idx)"))
-        val menus = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlaceMenusSlice.kt").readText()
+        val menus = java.io.File("../state/src/main/kotlin/com/onpath/app/ui/plan/PlaceMenusState.kt").readText()
         assertTrue("the slice's makeStartFromMenu was found", menus.contains("    fun makeStartFromMenu() {"))
         val menu = menus.substringAfter("    fun makeStartFromMenu() {").substringBefore("\n    }")
         assertTrue(menu, menu.contains("placeAdd.startAtPoint(index)"))

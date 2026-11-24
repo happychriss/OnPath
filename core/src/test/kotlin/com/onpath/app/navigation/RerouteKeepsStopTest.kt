@@ -70,4 +70,22 @@ class RerouteKeepsStopTest {
         assertTrue("the new route leaves the inn out unasked (skipStop ${out.skipStop}, ask ${out.ask != null})", via || asked)
         assertTrue(1 !in out.skippedStops || out.skipStop == 1)
     }
+
+    /**
+     * The G04 picture (2026-11-08, 0.17.6): 80 m off, 150 m after the start, a plain "Neue Route" about half as long, no
+     * "Über ②". Only a stop already in `visited` (reached or left out earlier in this tour) gives that shape: open, the
+     * inn stays on the new line; visited, it is rightly not asked about again.
+     */
+    @Test fun nearTheStart_theInnIsDroppedOnlyWhenAlreadyVisited() {
+        val near = pt(150.0, 80.0)
+        fun reroute(visited: Set<Int>) =
+            Rerouter(Straight).reroute(Rerouter.Request(near, plan, 150.0, stops, visited, Activity.HIKE, 2)) as Rerouter.Found
+        val open = reroute(setOf(0))
+        assertTrue("an open stop stays on the new line", passes(open.line, inn))
+        assertEquals(null, open.skipStop)
+        val done = reroute(setOf(0, 1))
+        assertTrue("a visited stop is not routed to again", !passes(done.line, inn))
+        assertEquals(null, done.skipStop)
+        assertEquals(null, done.ask)
+    }
 }

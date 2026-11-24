@@ -32,10 +32,10 @@ import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
 import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
-import { settleMs, slice, slicesReady } from './slices';
+import { fitsFirstRoute, settleMs, slice, slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
-import { longRouteOk, allowLongRoute, notRoutedTexts, setNotRouted, type Before } from './longroute';
+import { longRouteOk, runHead, planAnyway, notRoutedTexts, setNotRouted, type Before, type Head } from './longroute';
 import { post, dismiss, onShown } from './msgcard';
 import { OneWait } from './onewait';
 import { setupGpxImport } from './gpximport';
@@ -570,7 +570,7 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const fresh = freshHistory; freshHistory = false;
-  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points));
+  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points), enc(points));
   // the tour beside the history: a fresh plan starts with none to undo; else the tour as it was is one undo step
   const tourBefore = state.tour, pointsBefore = state.points, metaBefore = state.meta;
   if (fresh) { tourUndo.length = 0; tourRedo.length = 0; } else { tourUndo.push(tourBefore); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0; }
@@ -646,17 +646,22 @@ function applyEdit(op: 'reverse' | 'roundTrip' | 'startHere' | 'delete' | 'move'
 function step(op: 'undo' | 'redo') {
   closeMenu();
   pinTaken = null; // the user's own Undo / Redo: a later Cancel brings no pin back (cancelLongRoute reads it first)
-  return queueEdit(async () => {
-    const t = await engine.call('historyStep', op, enc(state.points));
-    runCause = op;
-    state.otherRouting = false;
-    if (t === 'null') return null;
-    // the tour of that step (kept beside the history in commit)
-    const from = op === 'undo' ? tourUndo : tourRedo, to = op === 'undo' ? tourRedo : tourUndo;
-    if (from.length) { to.push(state.tour); state.tour = from.pop()!; }
-    setPoints(dec(t));
-    return { planned: changed() };
-  });
+  return queueEdit(async () => stepTo(op, await engine.call('historyStep', op, enc(state.points))));
+}
+
+/**
+ * The plan after an Undo / Redo [op] the engine took (PlanEditState.undoStep / redoStep – the user's own, or the one a
+ * Cancel asked for): [t] = its points, 'null' = nothing to take back. The tour of that step comes with it.
+ */
+function stepTo(op: 'undo' | 'redo', t: string): { planned: Promise<void> } | null {
+  runCause = op;
+  state.otherRouting = false;
+  if (t === 'null') return null;
+  // the tour of that step (kept beside the history in commit)
+  const from = op === 'undo' ? tourUndo : tourRedo, to = op === 'undo' ? tourRedo : tourUndo;
+  if (from.length) { to.push(state.tour); state.tour = from.pop()!; }
+  setPoints(dec(t));
+  return { planned: changed() };
 }
 
 /**
@@ -956,9 +961,28 @@ type HoldAnswer = { action: 'ADD'; index: number; why: string } | { action: 'ASK
  * the line the engine measures appending and inserting on the real paths for the plan's activity (owner 2026-11-17
  * „Always real paths“, at most ~1.5 s, straight lines on any failure) – in the worker, the page stays free.
  */
-async function holdAnswer(at: maplibregl.LngLat, lineSnapM: number): Promise<HoldAnswer> {
+async function holdAnswer(at: maplibregl.LngLat, lineSnapM: number, straight = false): Promise<HoldAnswer> {
+  // [straight]: no activity → the engine decides on the straight lines (WebApi.holdOnMap's „no activity“)
   return JSON.parse(await engine.call('holdOnMap', enc(state.points), at.lat, at.lng, state.roundTrip, lineSnapM,
-    state.activity, state.sac)) as HoldAnswer;
+    straight ? '' : state.activity, state.sac)) as HoldAnswer;
+}
+
+/**
+ * [holdAnswer] for the plan shown when it comes back (the app's PlaceAddSlice HoldTry, [umbau]'s finding 2026-11-20):
+ * an answer measured for a plan no longer shown (points, activity, level or round trip changed meanwhile) is never applied –
+ * the hold is decided again on the plan now shown, measured once more, after a second change on the straight lines; so a
+ * click always ends in a point or the menu.
+ */
+async function holdAnswerNow(at: maplibregl.LngLat, lineSnapM: number): Promise<HoldAnswer> {
+  const shown = () => [state.points, state.activity, state.sac, state.roundTrip] as const;
+  for (const straight of [false, false, true]) {
+    const before = shown();
+    const a = await holdAnswer(at, lineSnapM, straight);
+    const now = shown();
+    if (straight || before.every((v, i) => v === now[i])) return a;
+    console.info('[Problems] TRACE plan: Hold beside the plan: measured for a plan no longer shown – decided again on the plan now shown');
+  }
+  throw new Error('not reached');
 }
 
 /** 24 px on screen at [lat] in metres – the app's LINE_SNAP_DP („on the line“). */
@@ -997,7 +1021,7 @@ function addPoint(at: maplibregl.LngLat) {
   return queueEdit(async () => {
     const done = state.points.length >= 2 && !state.roundTrip ? measuringRing(at) : () => {};
     let a: HoldAnswer;
-    try { a = await holdAnswer(at, snap); } finally { done(); }
+    try { a = await holdAnswerNow(at, snap); } finally { done(); }
     if (a.action === 'ASK') { holdAddMenu(at, a, snap); return null; }
     const pts = state.points.slice(), meta = state.meta.slice();
     const i = Math.max(0, Math.min(a.index, pts.length));
@@ -1017,22 +1041,14 @@ const HOLD_RING_PX = 12;
  */
 function holdAddMenu(at: maplibregl.LngLat, a: { main: string[]; stop: number }, lineSnapM: number) {
   const p: LatLon = [at.lat, at.lng];
-  const asked = state.points;
   const strong = emphasised(a.main);
   const items = a.main.map((item): MenuItem => item === 'ADD_STOP'
+    // „Einfügen“ / „Neues Ziel“: the app's holdAsStop / holdAsNewDestination on the points as they are then (PlaceAddState)
     ? { icon: 'addLocation', label: t('plan_add_as_stop'), key: item, strong: item === strong, act: () => {
-      void queueEdit(async () => {
-        // the points changed while the menu was open: where the stop goes, worked out again
-        const stop = state.points === asked ? a.stop : (await holdAnswerStop(at, lineSnapM));
-        const pts = state.points.slice(), meta = state.meta.slice();
-        const i = Math.max(0, Math.min(stop, pts.length));
-        pts.splice(i, 0, p); meta.splice(i, 0, { pinned: false });
-        return { planned: commit(pts, meta) };
-      });
+      void queueEdit(() => placeEdit('holdStop', p, lineSnapM, { pinned: false }));
     } }
     : { icon: 'flag', label: t('plan_make_destination'), key: item, strong: item === strong, act: () => {
-      // „Neues Ziel“ while planning: appended, the old goal stays as the last stop (PlaceAddMenu.keepsOldGoal)
-      void queueEdit(async () => ({ planned: commit([...state.points, p], [...state.meta, { pinned: false }]) }));
+      void queueEdit(() => placeEdit('holdGoal', p, lineSnapM, { pinned: false }));
     } });
   closeMenu();
   const box = holdMenu('', items, closeMenu);
@@ -1081,11 +1097,31 @@ function menuRoom(x: number): { top: number; bottom: number } {
   return { top, bottom: Math.max(top, Math.min(st.bottom, under, footTop) - st.top) };
 }
 
-/** Where „Einfügen“ of a held spot goes now (the points changed while its menu was open). */
-async function holdAnswerStop(at: maplibregl.LngLat, lineSnapM: number): Promise<number> {
-  const a = await holdAnswer(at, lineSnapM);
-  return a.action === 'ASK' ? a.stop
-    : (JSON.parse(await engine.call('placeMenu', enc(state.points), at.lat, at.lng, state.roundTrip, lineSnapM, '', 0)) as { stop: number }).stop;
+/**
+ * An add from a menu or the place card, decided by the app's PlaceAddState in the engine (WebApi.placeEdit) on the points as
+ * they are now: [op] = holdStop / holdGoal (the hold menu), poiStop / poiGoal (a held place's rows), SMART / START /
+ * DESTINATION (the place card). The plan it hands back is committed (one Undo step); the new point [at] gets [m], every
+ * other point keeps its name and pin. Call inside queueEdit. Null = nothing changed (the place is a point already).
+ */
+async function placeEdit(op: string, at: LatLon, lineSnapM: number, m: Meta, title = '', kind = '') {
+  const r = JSON.parse(await engine.call('placeEdit', op, enc(state.points), at[0], at[1], lineSnapM, title, kind)) as
+    { points?: string | null; pointMenu?: number };
+  if (r.pointMenu != null || !r.points) {
+    // no commit: what the add's click set up for its commit (the pin's TakenPin, the fit after a place) is dropped
+    placeFit = false;
+    if (pinTaken?.plan == null) pinTaken = null;
+    // the place is a stop already (the app's addPoiWith → openPointMenu „POI that is a stop“): its point menu
+    if (r.pointMenu != null) {
+      // found again by its place when the menu opens: an edit queued behind this one may have moved its index
+      const k = key(state.points[r.pointMenu]);
+      setTimeout(() => { const i = state.points.findIndex((q) => key(q) === k); if (i >= 0) void pointMenu(i); }, 0);
+    }
+    return null;
+  }
+  const was = new Map(state.points.map((q, i) => [key(q), state.meta[i]] as const));
+  const after = dec(r.points).map((q): LatLon => (key(q) === key(at) && !was.has(key(at)) ? at : q));
+  const meta = after.map((q): Meta => was.get(key(q)) ?? (key(q) === key(at) ? m : { ...(known.get(key(q)) ?? { pinned: false }) }));
+  return { planned: commit(after, meta) };
 }
 
 const position = new Position(map, () => { renderFabs(); locateNotice(); void updateLocateLabel(); });
@@ -1215,8 +1251,8 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const row0 = async (item: string): Promise<MenuItem> => {
     if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => { fromPin(); void addPlace(hit, 'START', pin); } };
     if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind }); });
-    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void addPlaceAt(hit, pm.stop); } };
-    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAsNewDestination(hit, pm.keepOld ?? true); } };
+    if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void placeAddAs(hit, 'poiStop'); } };
+    if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAddAs(hit, 'poiGoal'); } };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
       act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
@@ -1270,35 +1306,14 @@ async function keepRows(code: string | undefined): Promise<MenuItem[]> {
   return HOME_ROW_SHOWN ? rows : rows.filter((r) => r.key !== 'HOME');
 }
 
-/** Place menu → „Einfügen“: at [index] (the engine's stopOnly place – never behind the goal), pinned with its name. */
-async function addPlaceAt(h: Hit, index: number) {
-  const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-  const asked = state.points;
-  await queueEdit(async () => {
-    // the points changed while waiting (an edit before this one): where the stop goes, worked out again
-    const stop = state.points === asked ? index
-      : (JSON.parse(await engine.call('placeMenu', enc(state.points), p[0], p[1], state.roundTrip, lineSnapAt(p[0]), '', 0)) as { stop: number }).stop;
-    const pts = state.points.slice(), meta = state.meta.slice();
-    const at = Math.max(0, Math.min(stop, pts.length));
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
-    return { planned: commit(pts, meta) };
-  });
-}
-
 /**
- * Place menu → „Neues Ziel“: the route goes on to the place. [keepOld] (the engine's PlaceAddMenu.keepsOldGoal, owner
- * 2026-11-14 „beim Planen anhängen, unterwegs ersetzen“; the planner has no tour, so always true): the old goal stays as
- * the last stop; else it is replaced. One Undo brings the plan before back either way.
+ * Place menu → „Einfügen“ (poiStop: the app's addPoiAsStop – the best place on the route, never behind the goal) or „Neues
+ * Ziel“ (poiGoal: poiAsNewDestination – while planning the old goal stays as the last stop, owner 2026-11-14), pinned with
+ * its name. One Undo brings the plan before back.
  */
-async function placeAsNewDestination(h: Hit, keepOld: boolean) {
+async function placeAddAs(h: Hit, op: 'poiStop' | 'poiGoal') {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-  await queueEdit(async () => {
-    const pts = state.points.slice(), meta = state.meta.slice();
-    const m = { pinned: true, name: h.title, kind: h.kind };
-    if (!pts.length || keepOld) { pts.push(p); meta.push(m); }
-    else { pts[pts.length - 1] = p; meta[meta.length - 1] = m; }
-    return { planned: commit(pts, meta) };
-  });
+  await queueEdit(() => placeEdit(op, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
 }
 
 /** "Open in Google Maps": the app's link (PoiLinks.googleMaps), in a new tab – Google content is never drawn here. */
@@ -1542,6 +1557,9 @@ async function changed() {
   // a plan still running for the points before is dropped: the one worker must not hold the next calls behind it
   // (a long plan routes for minutes – client.ts dropPlans stops it, the app's cancelRun)
   engine.dropPlans();
+  // the dropped run's late answer is ignored from now on (planRun), not only once the next run starts: it must never end
+  // the newer run in the engine (review 2026-11-20)
+  state.latest++;
   const before = editBefore; editBefore = null; dismiss('slowplan'); // a new edit answers the time-limit question
   placeCard.planChanged(); // the pin card's "+ Zur Route" / "Hierhin" follows the plan
   await drawPoints();
@@ -1559,14 +1577,36 @@ async function changed() {
   const h = JSON.parse(await engine.call('historyState'));
   if (stale()) return;
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
-  if (few) { render(); return; }
+  if (few) {
+    // the run in the engine learns there is nothing to route (RouteRun leaves Routing) – never left „routing“ there
+    void runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+    render(); return;
+  }
   planGaps.clear(); // the last plan's gaps belong to other points
-  // the app's long-route question first (routing/LongRoute): nothing is routed or downloaded until it is answered
-  const answer = await longRouteOk(engine, state.points, state.activity, before, !!state.tour);
+  // the app's run head (PlanRecalcState.begin + RouteRun, in the engine): route now, or the long-route question first –
+  // nothing is routed or downloaded until it is answered; a multi-day tour is never asked (owner 2026-11-18)
+  const multiDay = !!state.tour;
+  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay);
   if (stale()) return;
-  if (answer === 'cancel') { await cancelLongRoute(); cancelLongRouteCamera(); return; }
-  if (answer !== 'plan') { await startFresh(answer.fresh); return; }
-  await planRun(1);
+  if (head.what === 'ASK') {
+    const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale);
+    if (stale()) return;
+    if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
+    if (answer !== 'plan') { await startFresh(answer.fresh); return; }
+    head = await runHead(engine, state.points, state.activity, state.sac, multiDay); // „Plan anyway“: not asked again
+    if (stale()) return;
+  }
+  await planRun(routeHead(head));
+}
+
+/**
+ * The run a head gives (its generation in the engine's RouteRun and its time-limit periods). Two or more points are always
+ * routed: a head that does not say so (an engine that could not answer) routes with one period – never left waiting.
+ */
+function routeHead(head: Head, rounds = 1): { gen: number; rounds: number } {
+  if (head.what === 'ROUTE') return head;
+  problem('routing', `the run head said ${head.what} for ${state.points.length} points – routed anyway`);
+  return { gen: -1, rounds };
 }
 
 /**
@@ -1577,16 +1617,38 @@ async function changed() {
  */
 function askSlowPlan(rounds: number) {
   post({ id: 'slowplan', kind: 'frage', tone: 'edit', title: t('plan_slow_title'), detail: t('plan_slow_text'), at: mapMiddle, buttons: [
-    { label: t('common_cancel'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`); setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute(); } },
-    { label: t('plan_slow_wait'), act: () => { dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`); planRun(rounds + 1); } },
+    { label: t('common_cancel'), act: () => {
+      dismiss('slowplan'); problem('routing', `slow plan: cancel after ${rounds} period(s)`);
+      engine.call('runSlowAnswer', false).catch((e) => problem('routing', 'the slow plan\'s answer not told to the engine', e));
+      setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate')); cancelLongRoute();
+    } },
+    { label: t('plan_slow_wait'), act: async () => {
+      dismiss('slowplan'); problem('routing', `slow plan: keep waiting after ${rounds} period(s)`);
+      // the app's answerSlowPlan (RouteRun.SlowAnswer): the run again with one more period – the head knows how many
+      const run = changeRun; // an edit meanwhile starts its own run: this one is not routed then
+      try { await engine.call('runSlowAnswer', true); } catch (e) { problem('routing', 'the slow plan\'s answer not told to the engine', e); }
+      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+      // never fewer periods than this answer asked for: an engine that missed the time limit (no end told, a run of an
+      // earlier chain) would give one period again – „Weiter warten?“ at the same limit for ever (review 2026-11-20)
+      const rr = routeHead(head, rounds + 1);
+      if (run === changeRun) planRun({ ...rr, rounds: Math.max(rr.rounds, rounds + 1) });
+    } },
   ] });
 }
 
-/** One plan run of the current points with [rounds] time-limit periods (1, more after "Weiter warten"). */
-async function planRun(rounds: number) {
+/**
+ * One plan run of the current points: the run [gen] of the engine's RouteRun (-1 = none) with [rounds] time-limit periods
+ * (1, more after "Weiter warten"); its end is told back (runEnd: Idle again, or "Weiter warten?" open).
+ */
+async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   dismiss('slowplan');
   // a plan needs two points (the engine's Planner requires them): fewer is no route, never a request
-  if (state.points.length < 2) { problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`); return; }
+  if (state.points.length < 2) {
+    problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`);
+    // the run [gen] ends here: the engine's RouteRun must not stay in Routing with nothing running
+    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds).catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
+    return;
+  }
   const id = ++state.latest;
   setPlanning(true);
   render();
@@ -1615,6 +1677,8 @@ async function planRun(rounds: number) {
     if (id === state.latest && state.planning) overlay.plan(run);
   }, namesText(), rounds);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
+  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds)
+    .catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
   setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
   if (!r.ok || !r.plan || r.plan.failed) {
@@ -1633,7 +1697,7 @@ async function planRun(rounds: number) {
     const asked = fitAskedAt, plan = state.plan;
     // the app's WholeRoute.SETTLE_MS (slices.ts; 500 until its instance is there): a moment for the map; not when the
     // user moved it meanwhile or the plan moved on (MapViewSlice.fitFirstRoute)
-    setTimeout(() => { if (lastMapTouch <= asked && state.plan === plan) fitRoute(); else console.info(`[map] route fit left out: ${lastMapTouch > asked ? 'the map was touched' : 'another plan'}`); }, settleMs());
+    setTimeout(() => { if (fitsFirstRoute(lastMapTouch > asked, state.plan === plan)) fitRoute(); else console.info(`[map] route fit left out: ${lastMapTouch > asked ? 'the map was touched' : 'another plan'}`); }, settleMs());
   }
   drawPoints(); // leg distances along the new route line (the engine now has this plan)
   engine.call('routingInfo').then((l) => { routingLine = l; }, (e) => problem('routing', 'routing fingerprint line not read', e));
@@ -1731,24 +1795,55 @@ function newPointsAsked() {
 let runCause = 'other';
 let nextCause: string | null = null;
 let activityBefore: { a: Activity; sac: number } | null = null;
-/** Cancel of "This route is very long" (AppViewModel.cancelRun): undo / redo the change, put the activity back, or keep the points. */
-async function cancelLongRoute() {
+/**
+ * Cancel of "This route is very long" ([why] LONG) / of the wait (STOPPED): the app's PlanEditState.cancelRun in the engine (WebPlanChain)
+ * decides for the run's cause – the change undone / redone (the engine's history took that step), the activity put back,
+ * or the points kept.
+ */
+async function cancelLongRoute(why: 'STOPPED' | 'LONG' = 'STOPPED') {
   engine.dropPlans(); // the running plan stops for real (client.ts) – planCancel below must not wait behind it
   overlay.finish('link'); // a link's plan stopped: nothing more to wait for
   state.latest++; // from now on the stopped run's reports are ignored (planRun) – not only after the answer below
-  const what = await engine.call('planCancel', runCause, state.canUndo, state.canRedo);
-  state.latest++; state.plan = null; setPlanning(false);
-  const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
-  const pinBack = () => { // TakenPin.back: the place is no point of the plan any more and no other pin is shown
-    if (!taken || placeCard.hasPin()) return;
-    if (state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) return;
-    placeCard.showPin(taken.hit);
-  };
-  if (what === 'UNDO') { await step('undo'); pinBack(); return; }
-  if (what === 'REDO') { await step('redo'); pinBack(); return; }
-  if (what === 'RESTORE_ACTIVITY' && activityBefore) return setActivity(activityBefore.a, activityBefore.sac, true);
-  state.notRouted = true;
-  render();
+  // what the run was, read at the click: an edit queued meanwhile must not change which step is taken back
+  const cause = runCause, before = cause === 'activity' ? activityBefore : null, clicked = enc(state.points);
+  let restore: { a: Activity; sac: number } | null = null;
+  try {
+    // in edit order (as the user's own Undo): the take-back runs after every edit queued before the click, and the
+    // history step and the shown plan are one queued step – an Undo or a click meanwhile can't interleave with it
+    await queueEdit(async () => {
+      if (enc(state.points) !== clicked) {
+        // a newer edit replaced the stopped run's plan (its own run is already under way): nothing to take back
+        console.info('[Problems] TRACE plan: Cancel of a run whose plan was changed meanwhile – the points stay');
+        return null;
+      }
+      let what = 'KEEP_POINTS', points: string | null = null;
+      try {
+        ({ what, points } = JSON.parse(await engine.call('planCancel', cause, clicked, before?.a ?? '', before?.sac ?? 0, why) as string) as
+          { what: string; points: string | null });
+      } catch (e) { // the shared cancelRun failed: the points stay, planning stops anyway
+        problem('routing', 'Cancel of a run: the take-back failed – the points stay', e);
+      }
+      state.latest++; state.plan = null; setPlanning(false);
+      const taken = pinTaken?.plan === enc(state.points) ? pinTaken : null; pinTaken = null;
+      if (what === 'UNDO' || what === 'REDO') {
+        closeMenu(); // an open point menu holds an index of the plan before the step
+        const r = stepTo(what === 'UNDO' ? 'undo' : 'redo', points ?? 'null');
+        // TakenPin.back: the place is no point of the plan any more and no other pin is shown
+        if (taken && !placeCard.hasPin() &&
+          !state.points.some(([la, lo]) => Math.abs(la - taken.at[0]) < 1e-6 && Math.abs(lo - taken.at[1]) < 1e-6)) placeCard.showPin(taken.hit);
+        return r;
+      }
+      if (what === 'RESTORE_ACTIVITY' && before) { restore = before; return null; }
+      state.notRouted = true;
+      render();
+      return null;
+    });
+  } catch (e) { // never left calculating
+    problem('routing', 'Cancel of a run failed', e, 'error');
+    state.latest++; state.plan = null; setPlanning(false); state.notRouted = true; render();
+  }
+  const back = restore as { a: Activity; sac: number } | null;
+  if (back) setActivity(back.a, back.sac, true); // outside the queue: it queues its own run
 }
 
 const routeReveal = new RouteReveal((legs) => (map.getSource('planned-route') as GeoJSONSource | undefined)?.setData(legs.length ? {
@@ -1781,7 +1876,8 @@ function render() {
     if (state.notRouted && n >= 2) {
       const b = document.createElement('button');
       b.className = 'textbtn'; b.id = 'planAnyway'; b.textContent = notRoutedTexts.button;
-      b.onclick = () => { allowLongRoute(state.points); changed(); };
+      // the app's PlanRunSlice.planAnyway: after "very long" these points are not asked again; then the run
+      b.onclick = async () => { await planAnyway(engine, state.points); changed(); };
       sub.append(b);
     }
     routeProfile.update(null, '');
@@ -2200,22 +2296,10 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
   const pv = await engine.placePreview(state.points, p[0], p[1]);
   placeFit = fit; // the edit's commit asks RouteFit.fitAfterPlace (the plan changed and has a route)
-  if (pv.existing != null) {
-    if (role === 'START') await applyEdit('startHere', pv.existing);
-    else if (role === 'DESTINATION') await applyEdit('move', pv.existing, state.points.length - 1);
-    else if (role === 'REMOVE') await deletePoint(pv.existing);
-    return;
-  }
-  const asked = state.points;
-  await queueEdit(async () => {
-    // the points changed while waiting (an edit before this one): where the place goes, worked out again
-    const now = state.points === asked ? pv : await engine.placePreview(state.points, p[0], p[1]);
-    if (now.existing != null) return null; // planned meanwhile
-    const at = role === 'START' ? 0 : role === 'DESTINATION' ? state.points.length : now.index ?? state.points.length;
-    const pts = state.points.slice(), meta = state.meta.slice();
-    pts.splice(at, 0, p); meta.splice(at, 0, { pinned: true, name: h.title, kind: h.kind });
-    return { planned: commit(pts, meta) };
-  });
+  if (role === 'REMOVE') { if (pv.existing != null) await deletePoint(pv.existing); return; }
+  // the app's PlaceAddState.addPlace on the points as they are then: a planned place – „As start“ = Start here, „As
+  // destination“ moves it to the end; else a pinned stop where the card said (WaypointInsertion), at the start or the end
+  await queueEdit(() => placeEdit(role, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
 }
 
 // ---- menus, sheet, dialogs ----
@@ -2580,6 +2664,9 @@ const gpxImport = setupGpxImport({
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
+  // the app's TrackToPlanState decides on the plan's points whether it goes under Zuletzt (keepAsDraft), after the fit
+  points: () => state.points.slice(),
+  keepAsDraft: async () => { await keepAsRecent('replaced by a track\'s plan'); },
   // multi-day tours (stage 3): trim handles while the guide is open; „An die Route anhängen“ once it has a route
   tourMode: () => multiDay?.gpxMode() ?? 'off',
   append: async (points) => { await appendRoute(points); },

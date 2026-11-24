@@ -63,9 +63,9 @@ object WebSync {
 
     /**
      * What My routes' row says of a plan or track besides its name (owner 2026-11-13): its activity (the enum name, null
-     * = unreadable), the T level and "↻ Rundtour" – the app's ui/routes/RoundTrip (not shared: it reads the app's Tour):
+     * = unreadable), the T level and "↻ Rundtour" – the app's core RoundTrip (shared since 2026-11-20):
      * a plan is a round trip when its points end at its start ([PlanEdits.isRoundTrip], the plan sheet's ↻ rule: certain);
-     * an imported track has no plan to ask – a guess from its line ([roundTripGuess]). [days] = a multi-day tour's N (its
+     * an imported track has no plan to ask – a guess from its line (RoundTrip.guess). [days] = a multi-day tour's N (its
      * plan code's tour part – the app's "6 Tage · …"), null = a normal plan or a track.
      */
     private fun factsFields(it: SyncItem): String {
@@ -76,7 +76,7 @@ object WebSync {
         if (it.kind == SyncItem.TRACK) {
             TrackCode.of(it.track ?: "")?.let { t ->
                 act = t.activity; sac = t.sac
-                loop = roundTripGuess(t.segments.flatten().map { p -> com.onpath.app.routing.GeoPoint(p.lat, p.lon) })
+                loop = com.onpath.app.domain.routes.RoundTrip.guess(t.segments.map { seg -> seg.map { p -> com.onpath.app.routing.GeoPoint(p.lat, p.lon) } })
             }
         } else {
             com.onpath.app.routing.PlanCode.parse(it.plan ?: "")?.let { p ->
@@ -93,16 +93,9 @@ object WebSync {
             com.onpath.app.routing.PlanEdits.isRoundTrip(p.points) + ",\"days\":" + p.days + "}"
     }
 
-    /**
-     * The app's RoundTrip.guess on a line: ≥ 3 points, it ends within RouteNamer.LOOP_M (200 m) of its start and went at
-     * least RouteNamer.OUT_M (500 m) away (the rule that names a track "Rundtour ab …"); a short ride back home is none.
-     */
-    internal fun roundTripGuess(pts: List<com.onpath.app.routing.GeoPoint>): Boolean {
-        if (pts.size < 3) return false
-        val start = pts.first()
-        return com.onpath.app.data.Geo.distance(start, pts.last()) <= com.onpath.app.search.RouteNamer.LOOP_M &&
-            pts.any { com.onpath.app.data.Geo.distance(start, it) >= com.onpath.app.search.RouteNamer.OUT_M }
-    }
+    /** The app's [com.onpath.app.domain.routes.RoundTrip.guess] on one line (kept for the tests). */
+    internal fun roundTripGuess(pts: List<com.onpath.app.routing.GeoPoint>): Boolean =
+        com.onpath.app.domain.routes.RoundTrip.guess(listOf(pts))
 
     /** The other devices: [{name, device, updatedAt}], newest first. */
     /**

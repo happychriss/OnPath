@@ -63,7 +63,9 @@ try {
     check(ok && shortMs < 15_000, `a short plan right after arrives in ${shortMs} ms (not after the long one)`);
     check(r.count >= 1, `the blocked worker was replaced (${r.count}×, fresh worker ready in ${r.lastMs} ms)`);
   }
-  const bad = errors.filter((e) => !/Failed to load resource|favicon/.test(e));
+  // the engine's diagnostics (stderr → console) are no page errors – as in the other smokes (the run head's
+  // „Very long plan – asking first“ is the app's PlanRunSlice trace)
+  const bad = errors.filter((e) => !/Failed to load resource|favicon/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
   check(bad.length === 0, `no page errors (${bad.slice(0, 3).join(' | ')})`);
 } finally {
   await browser.close();

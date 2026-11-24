@@ -265,78 +265,33 @@ class RoutesSlice(
      * A track is being turned into a plan ([planFromShown]): a modal box with Cancel over everything (owner 2026-11-01 –
      * nothing else at the same time; review routing M3: minutes for a long track, points set meanwhile were overwritten).
      */
-    var planFromTrackBusy by mutableStateOf(false)
-        private set
-    private var planFromTrackCancel: com.onpath.app.routing.RouteCancel? = null
+    val planFromTrackBusy: Boolean get() = trackToPlan.busy
 
-    fun cancelPlanFromTrack() {
-        Problems.trace("plan", "Track → plan cancelled by the user")
-        planFromTrackCancel?.cancel()
-        planFromTrackBusy = false
-    }
+    fun cancelPlanFromTrack() = trackToPlan.cancel()
 
-    /**
-     * The track sheet's "Als Plan übernehmen" (owner; routing/TrackToPlan): our router and the current activity re-trace
-     * the track; the result replaces the plan (Undo brings it back). An unsaved plan asks first ([unlessUnsaved], P3).
-     */
-    fun planFromShown() = unlessUnsaved("Track → plan") { planFromShownNow() }
+    /** The track sheet's "Als Plan übernehmen" ([TrackToPlanState.planFromShown]). */
+    fun planFromShown() = trackToPlan.planFromShown()
 
-    /**
-     * Something else takes the plan's place (a track or a plan followed during a tour, "Als Plan
-     * übernehmen"): no question any more (owner 2026-11-06) – the replaced plan goes under Zuletzt ([SaveSlice.keepAsDraft]).
-     */
-    fun unlessUnsaved(what: String, go: () -> Unit) { Problems.trace("plan", "$what: the plan on the map goes under Zuletzt if not saved"); go() }
+    /** See [com.onpath.app.ui.routes.unlessUnsaved] (RoutesOpenState.kt). */
+    fun unlessUnsaved(what: String, go: () -> Unit) = com.onpath.app.ui.routes.unlessUnsaved(what, go)
 
-    private fun planFromShownNow() {
-        val sh = shown ?: return
-        val track = sh.segments.flatten().takeIf { it.size >= 2 } ?: return
-        // an exported OnPath plan (gpx/PlanGpx): its <wpt> are the route points – the plan comes back exactly, with names
-        com.onpath.app.gpx.PlanGpx.stopsOf(track, sh.waypoints)?.let { stops ->
-            Problems.trace("plan", "Track → plan: the file's ${stops.size} route points (a plan GPX), no fitting")
-            val pts = stops.map { GeoPoint(it.lat, it.lon) }
-            closeShown()
-            // pinned route points come back pinned (review routing L1)
-            plan.pin(com.onpath.app.gpx.PlanGpx.pinnedOf(stops).map { pts[it] })
-            save.keepAsDraft("replaced by a track's plan")
-            host.change { clear(); addAll(pts) }
-            stops.forEachIndexed { i, w -> w.name?.let { host.rememberPlaceName(pts[i], it) } }
-            return
-        }
-        planFromLine(track, host.routingParts(track, planRoute.activity), planRoute.activity, planRoute.sac) { if (it) closeShown() }
-    }
+    private fun planFromShownNow() = trackToPlan.planFromShownNow()
 
     /** [track] → a plan (routing/TrackToPlan) with [act] / [level], [parts] = its routing data; [done] true just before the plan replaces the old one, false when nothing changes. */
-    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, done: (Boolean) -> Unit) {
-        if (planFromTrackBusy) return done(false)
-        // routing data along the track first: without it every leg fails
-        val missing = try { host.ensureRoutingData(parts) } catch (e: Exception) {
-            Problems.warn("routing", "Routing data along the track not checked; planning from the track anyway", e); emptyList()
-        }
-        if (missing.isNotEmpty()) { sayError(Txt.s(Res.string.plan_from_track_wait), NoticePlace.MAP); return done(false) }
-        planFromTrackBusy = true
-        val cancel = com.onpath.app.routing.RouteCancel().also { planFromTrackCancel = it }
-        scope.launchSafe("app", "planFromLine") {
-            val t0 = elapsedMs()
-            val r = withContext(planRoute.threads.background) {
-                try {
-                    val eng = planRoute.routingEngine()
-                    if (eng is com.onpath.app.routing.StraightLineEngine) null
-                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level, cancel = cancel)
-                } catch (e: Exception) {
-                    if (!cancel.isCancelled) Problems.error("routing", "Track could not be turned into a plan", e); null
-                }
-            }
-            if (planFromTrackCancel === cancel) planFromTrackCancel = null
-            if (cancel.isCancelled) return@launchSafe done(false) // the user cancelled: nothing changes
-            planFromTrackBusy = false
-            if (r == null || r.points.size < 2) { sayError(Txt.s(Res.string.plan_from_track_failed), NoticePlace.MAP); return@launchSafe done(false) }
-            Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows ${(r.follows * 100).toInt()} %, " +
-                "${r.calls} routing calls, ${r.failedLegs} legs without a route, ${elapsedMs() - t0} ms")
-            done(true)
-            save.keepAsDraft("replaced by a track's plan")
-            host.change { clear(); addAll(r.points) }
-        }
-    }
+    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, done: (Boolean) -> Unit) =
+        trackToPlan.planFromLine(track, parts, act, level, done)
+
+    private val trackToPlan = TrackToPlanState(plan, save, object : TrackToPlanPorts {
+        override fun say(text: String, kind: NoticeKind, place: NoticePlace) = host.say(text, kind, place)
+        override val shown: ShownTrack? get() = this@RoutesSlice.shown
+        override fun closeShown() = this@RoutesSlice.closeShown()
+        override val activity: Activity get() = planRoute.activity
+        override val sac: Int get() = planRoute.sac
+        override fun routingParts(track: List<GeoPoint>, act: Activity) = host.routingParts(track, act)
+        override fun ensureRoutingData(parts: List<String>) = host.ensureRoutingData(parts)
+        override fun change(block: MutableList<GeoPoint>.() -> Unit) = host.change(block)
+        override fun rememberPlaceName(p: GeoPoint, name: String) = host.rememberPlaceName(p, name)
+    }, CoroutineTrackFitter(scope, planRoute), elapsedMs)
 
     fun deleteTour(t: Tour) {
         // never the tour being recorded: the service keeps writing into it (the list hides Delete for it too)
@@ -353,6 +308,28 @@ class RoutesSlice(
                 if (tour.finishedTour?.id == t.id) tour.closeFinished()
                 refreshTours()
             }
+        }
+    }
+}
+
+/**
+ * The app's [TrackFitter]: a coroutine on [scope] that re-traces the track on the routing background thread (the straight-line
+ * engine gives null; a failure is reported unless the user cancelled), then calls `got` on the scope's thread.
+ */
+class CoroutineTrackFitter(private val scope: CoroutineScope, private val planRoute: PlanRouteSlice) : TrackFitter {
+    override fun fit(track: List<GeoPoint>, act: Activity, level: Int, cancel: com.onpath.app.routing.RouteCancel,
+                     got: (com.onpath.app.routing.TrackToPlan.Result?) -> Unit) {
+        scope.launchSafe("app", "planFromLine") {
+            val r = withContext(planRoute.threads.background) {
+                try {
+                    val eng = planRoute.routingEngine()
+                    if (eng is com.onpath.app.routing.StraightLineEngine) null
+                    else com.onpath.app.routing.TrackToPlan.fit(track, eng, act, level, cancel = cancel)
+                } catch (e: Exception) {
+                    if (!cancel.isCancelled) Problems.error("routing", "Track could not be turned into a plan", e); null
+                }
+            }
+            got(r)
         }
     }
 }

@@ -14,7 +14,7 @@ import org.junit.Test
  */
 class SharedCoreRuleTest {
     /** Files of the shared-logic packages that still live in `:app` (package/name) – they must stay free of the platform. */
-    private val appSide = listOf("search/PlaceIndex.kt", "map/ActivityLayers.kt", "sync/PlaceSync.kt", "rides/RideApply.kt")
+    private val appSide = listOf("map/ActivityLayers.kt", "sync/PlaceSync.kt", "rides/RideApply.kt")
     /** Files the old rule listed, in either module (the TourSplit test below reads them as code shared with the web). */
     private val files = appSide + listOf(
         "routing/PlanResult.kt", "routing/ProfileData.kt", "domain/PlanGaps.kt", "domain/RouteWarnings.kt", "data/Geo.kt",

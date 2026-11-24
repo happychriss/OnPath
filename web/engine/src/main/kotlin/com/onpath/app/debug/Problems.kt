@@ -19,7 +19,11 @@ object Problems {
     fun trace(area: String, message: String) = add("TRACE", area, message, null)
     fun report(area: String, message: String, t: Throwable? = null, level: Level = Level.WARN) = add(level.name, area, message, t)
 
+    /** Web only: every message also goes here while set (WebPlaceAdd hands a shared decision's traces back as its „why“). */
+    var tap: ((area: String, message: String) -> Unit)? = null
+
     private fun add(level: String, area: String, message: String, t: Throwable?) {
+        tap?.invoke(area, message)
         val line = "$level $area: $message" + (t?.let { " ($it)" } ?: "")
         System.err.println("[Problems] $line")
         recent.addLast(line)

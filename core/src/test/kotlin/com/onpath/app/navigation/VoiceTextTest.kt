@@ -48,6 +48,23 @@ class VoiceTextTest {
         assertEquals("Ziel erreicht.", VoiceText.of(Phrase.Arrived))
     }
 
+    /** Off the route (owner 2026-11-21): the side of the route and the metres; plain when either is unknown. */
+    @Test fun offTheRouteWithSideAndMetres() {
+        assertEquals("Off the route. The route is on your right, 40 meters.", VoiceText.of(Phrase.OffRoute(RouteSide.RIGHT, 38.0)))
+        assertEquals("Off the route. The route is on your left, 130 meters.", VoiceText.of(Phrase.OffRoute(RouteSide.LEFT, 131.0)))
+        assertEquals("Off the route. The route is ahead of you, 10 meters.", VoiceText.of(Phrase.OffRoute(RouteSide.AHEAD, 3.0)))
+        assertEquals("Off the route. The route is behind you, 2.5 kilometers.", VoiceText.of(Phrase.OffRoute(RouteSide.BEHIND, 2_540.0)))
+        assertEquals("Off the route. Please look at your phone.", VoiceText.of(Phrase.OffRoute()))
+        assertEquals("Off the route. Please look at your phone.", VoiceText.of(Phrase.OffRoute(RouteSide.LEFT, null)))
+        de {
+            assertEquals("Abseits der Route. Die Route liegt rechts, 40 Meter.", VoiceText.of(Phrase.OffRoute(RouteSide.RIGHT, 38.0)))
+            assertEquals("Abseits der Route. Die Route liegt links, 130 Meter.", VoiceText.of(Phrase.OffRoute(RouteSide.LEFT, 131.0)))
+            assertEquals("Abseits der Route. Die Route liegt vor dir, 10 Meter.", VoiceText.of(Phrase.OffRoute(RouteSide.AHEAD, 3.0)))
+            assertEquals("Abseits der Route. Die Route liegt hinter dir, 2,5 Kilometer.", VoiceText.of(Phrase.OffRoute(RouteSide.BEHIND, 2_540.0)))
+            assertEquals("Abseits der Route. Bitte aufs Handy schauen.", VoiceText.of(Phrase.OffRoute()))
+        }
+    }
+
     /** Where the goal is (owner 2026-11-07: "Das Ziel ist rechts von dir", "Ziel in 50 m, schräg rechts"). */
     @Test fun theGoalsSide() {
         assertEquals("You have arrived. The destination is on your right.", VoiceText.of(Phrase.ArrivedSide(GoalSide.RIGHT)))

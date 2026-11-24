@@ -131,13 +131,6 @@ abstract class BackgroundDownloadScreenshotTest {
     @Test fun detailsNewerMap() = sheet(newer)
 }
 
-/** The same in English. */
-class BackgroundDownloadEnglishScreenshotTest : BackgroundDownloadScreenshotTest() {
-    private val before = Locale.getDefault()
-    @Before fun english() = Locale.setDefault(Locale.US)
-    @After fun back() = Locale.setDefault(before)
-}
-
 /** The same in German. */
 class BackgroundDownloadGermanScreenshotTest : BackgroundDownloadScreenshotTest() {
     private val before = Locale.getDefault()

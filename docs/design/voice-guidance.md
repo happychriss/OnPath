@@ -50,7 +50,12 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
    one; a sentence whose junction is already passed is dropped. **A turn's "now" never waits and is never swallowed**
    (owner 2026-11-07, §9): it cuts what is being said, a waiting sentence waits for it, a turn said as "danach" gets its
    own "now", and only a turn really passed (its word could not be heard 1 s before it) stays quiet.
-8. **Questions stay on the screen:** the voice never asks; it says "bitte aufs Handy schauen" once.
+8. **Questions stay on the screen:** the voice never asks. Off the route it says where the route lies – side and metres
+   ("Die Route liegt rechts, 40 Meter.", owner 2026-11-21) – but only when sure (`OffRouteSay`): a fresh good fix
+   (≤ 15 m, ≤ 3 s old, GPS not lost), moving, a straight path for the heading (no U-turn / corner just taken, no GPS
+   gap), a GPS bearing agreeing within 30° (none = doubt), the route ≥ 15 m away and the hint the nearest point, at most
+   300 m along from where the route was left (on a loop a later leg is not the way back). Every doubt keeps
+   „Abseits der Route. Bitte aufs Handy schauen." – a wrong side is worse than none.
 9. **Quiet** while paused, during a phone call, while the user is off the route and the question is open (said once;
    again only where the phone would vibrate – the first reminder, a way found after none, asked again after Keep –
    and a question after one answered with a new route is news: said, not held back by the 2-minute guard – owner
@@ -74,7 +79,8 @@ same voice; "smart, clever sentences, not too much". Built after the feature sto
 | … then a long quiet stretch | „In 100 Metern rechts, dann 3 Kilometer geradeaus." | "In 100 meters turn right, then 3 kilometers straight on." |
 | Roundabout | „Im Kreisverkehr die zweite Ausfahrt." | "At the roundabout, take the second exit." |
 | Turn round (U-turn on the route) | „Bitte wenden." | "Please turn round." |
-| Off route (the question appears) | „Abseits der Route. Bitte aufs Handy schauen." | "Off the route. Please look at your phone." |
+| Off route (the question appears; again when it is asked again – the numbers of that moment) | „Abseits der Route. Die Route liegt rechts, 40 Meter." · „… liegt links, …" · „… liegt vor dir, …" · „… liegt hinter dir, …" (side = bearing to the nearest route point against the walking direction, four sectors ±45° / ±135° – `RouteSide`; metres as on the screen, 10 m steps, from 950 m kilometres) | "Off the route. The route is on your right, 40 meters." · "… on your left, …" · "… ahead of you, …" · "… behind you, …" |
+| … no walking direction (standing, too little track) or no distance known | „Abseits der Route. Bitte aufs Handy schauen." | "Off the route. Please look at your phone." |
 | Back on the route by yourself | „Wieder auf der Route." | "Back on the route." |
 | New route taken | „Neue Route. In 200 Metern rechts." (the next junction) | "New route. In 200 meters, turn right." |
 | Stop reached | „Gasthof Hochmuth erreicht. Weiter nach Algund, 4 Kilometer." (no name → „Stopp 3 erreicht.") | "Gasthof Hochmuth reached. On to Algund, 4 kilometers." |

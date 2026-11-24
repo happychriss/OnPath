@@ -36,6 +36,17 @@ class PlanDocumentTest {
 
     // ---------------- the plan survives the process ----------------
 
+    /** A history handed in (the planner keeps its own across a fresh routing worker) is the document's: its steps show at once and Undo takes them. */
+    @Test fun aHistoryHandedInIsUsedAndItsStepsShowAtOnce() {
+        val store = PrefsPlanStore(Prefs(sp, dir)).also { it.points = listOf(a, b) }
+        val history = com.onpath.app.domain.PlanHistory().apply { record(listOf(a)) }
+        val plan = PlanDocument(store, history)
+        assertTrue("the step from before shows", plan.canUndo); assertFalse(plan.canRedo)
+        assertEquals("Undo hands back the plan of that step", listOf(a), plan.undo())
+        assertFalse(plan.canUndo); assertTrue(plan.canRedo)
+        assertEquals("a step taken here is in the history outside", listOf(listOf(a, b)), history.snapshot().second)
+    }
+
     @Test fun aFirstStartHasNoPlan() {
         val plan = start()
         assertTrue(plan.points.isEmpty()); assertTrue(plan.pinned.isEmpty())

@@ -21,8 +21,8 @@ object PlaceMenuMeasure {
      * false; else the measure starts on [paths] (true) and [open] comes on its scope with the outcome – never for a
      * measure cancelled or replaced.
      */
-    fun start(paths: HoldPaths, points: List<GeoPoint>, p: GeoPoint, lineDp: Double, straight: PlaceAddMenu.Detours,
-              router: HoldPaths.Router, open: (Rows) -> Unit): Boolean {
+    fun start(paths: HoldMeasure, points: List<GeoPoint>, p: GeoPoint, lineDp: Double, straight: PlaceAddMenu.Detours,
+              router: HoldMeasure.Router, open: (Rows) -> Unit): Boolean {
         val now = PlaceAddMenu.planningHold(lineDp, straight)
         if (now == PlaceAddMenu.HoldAction.ON_LINE) {
             open(Rows(PlaceAddMenu.planningRows(now, straight), now, straight, "on the line (${lineDp.toInt()} dp)"))

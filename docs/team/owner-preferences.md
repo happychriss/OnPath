@@ -5,6 +5,10 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 **questions to the owner** – other files link here.
 
 ## Talking with the owner
+- **EVERY question to the owner goes in a question box (AskUserQuestion) – never in plain text** (owner 2026-11-24, emphatic:
+  „fragen immer über die fragen box, sonst sehe ich das nicht!!!“). A question in plain chat text is not seen. This
+  overrides older „ask in plain text“ words in handoffs / the backlog. A night without him: the night-job rule below still
+  decides whether to ask at all.
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
   Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
   other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner
@@ -56,6 +60,12 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   ~06:30 in `docs/team/items/<date>-morning-report.md` (plain words: done, release candidate ready?, the night's
   answers, what needs his word, who works on what). Publishing needs **his own word in the chat of the role that publishes** (owner 2026-11-20: never relayed by the
   captain) – so a night ends with the release ready to the last step.
+- **Tokens (owner 2026-11-20, all four chosen):** (1) a session writes a handoff at **~350k context** and the captain
+  starts a fresh one – every step re-reads the whole context, a 560k session costs ~4× a 150k one per step;
+  (2) **new sessions on Opus**, Fable only for the routing port (Fable costs 2× Opus, 4× Sonnet); (3) **helpers on
+  Sonnet** for reading, searching, test runs and pictures (set the model when you start one), one review per piece
+  with the big model, not per commit; (4) weekend / small updates: gate + the change's tests, **no full E2E /
+  Rundgang per update**.
 - **Don't weaken CI gates** without the owner's explicit words. Releases are batched unless the owner asks.
 
 ## The owner's phone (Pixel 8, adb)

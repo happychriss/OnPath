@@ -43,7 +43,7 @@ class LongRouteCancelCameraTest {
         assertTrue(answer, answer.contains("LongRouteCancelCamera.after(this.plan.points.toList(), route?.points"))
         // the shared cancel (slow plan, Stop) leaves the camera alone
         // (cancelRun moved to PlanEditSlice, piece 10)
-        val cancel = sourceFile("ui/plan/PlanEditSlice.kt").readText().substringAfter("    fun cancelRun(why: NotRouted) {").substringBefore("\n    }\n")
+        val cancel = sourceFile("ui/plan/PlanEditState.kt").readText().substringAfter("    fun cancelRun(why: NotRouted) {").substringBefore("\n    }\n")
         assertTrue("the anchor was found", cancel.contains("planRun.leaveUnrouted(why)"))
         assertTrue(cancel, !cancel.contains("LongRouteCancelCamera"))
     }

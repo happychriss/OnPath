@@ -42,7 +42,7 @@ class RecordingClientTest {
         val answers = listOf<Pair<(Int) -> Unit, String>>(
             client::takeRoute to "TAKE_ROUTE", client::takeVia to "TAKE_VIA", client::keepRoute to "KEEP_ROUTE",
             client::leadThere to "LEAD_THERE", client::justRecord to "JUST_RECORD", client::joinHere to "JOIN_HERE",
-            client::leadFailedOk to "LEAD_FAILED_OK")
+            client::leadFailedOk to "LEAD_FAILED_OK", client::cancelLead to "CANCEL_LEAD")
         answers.forEachIndexed { i, (answer, action) ->
             answer(40 + i)
             assertEquals("com.onpath.app.$action" to mapOf<String, Any>("question" to 40 + i), last())
@@ -66,11 +66,11 @@ class RecordingClientTest {
         val contract = File("../core/src/main/kotlin/com/onpath/app/recording/RecordingClient.kt").readText()
         val wire = contract.substringAfter("object RecordingWire").substringBefore("\n}\n")
         val declared = Regex("""const val (ACTION_\w+) = "com\.onpath\.app\.""").findAll(wire).map { it.groupValues[1] }.toSet()
-        assertEquals("the service's actions", 18, declared.size)
+        assertEquals("the service's actions", 19, declared.size)
         val companion = contract.substringAfter("companion object")
         assertEquals("actions without a typed command", emptySet<String>(), declared.filterNot { companion.contains("RecordingWire.$it") }.toSet())
         val wireNames = Regex("""const val ((?:ACTION|EXTRA|SAY)_\w+) = """).findAll(wire).map { it.groupValues[1] }.toSet()
-        assertEquals("18 actions, 8 extras, 2 SAY values", 28, wireNames.size)
+        assertEquals("19 actions, 8 extras, 2 SAY values", 29, wireNames.size)
         assertEquals("a wire string the service has no alias for", emptySet<String>(),
             wireNames.filterNot { svc.contains("const val $it = RecordingWire.$it") }.toSet())
         // … and each is taken by onStartCommand: a control action in its set and its branch (START is the fall-through)

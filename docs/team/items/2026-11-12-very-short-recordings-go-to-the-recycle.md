@@ -1,3 +1,0 @@
-# [donald] Very short recordings go to the recycle bin (owner 2026-11-12, decided):
-
-- **[donald] Very short recordings go to the recycle bin (owner 2026-11-12, decided):** a recording that ends with < 50 m of track (incl. 0 m / one GPS point) is not shown as „Tour gespeichert“ but moved to the recycle bin at once (`db.setDeleted`, like the end dialog's delete), with a short notice „Kurze Aufzeichnung (2 m) – in den Papierkorb gelegt.“ + Rückgängig; 30 days restorable, nothing lost. Found: owner's „Tour 5. Nov. …“ with the orange dot (date name kept because there was no line to name, RouteShape placeholder). Core feature (recording) → test first. Existing mini tours: owner deletes by hand.

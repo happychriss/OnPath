@@ -139,6 +139,16 @@ class WebReadyRuleTest {
             (segs.size - 1 downTo 1).firstNotNullOfOrNull { k -> find(segs.take(k).joinToString("."), segs[k]) }
                 ?.let { out += Use(n, imp.groupValues[1], it.inState, it.decl) }
         }
+        // a name written out in full in the code (`com.onpath.app.data.RoutingDataCheck.differs(…)` – no import): resolved like an
+        // import (laptop 2026-11-20: PlanRecalcState used an unlisted :state file this way and only the planner's build saw it)
+        for ((n, l) in lines) {
+            if (l.trimStart().startsWith("import ") || l.trimStart().startsWith("package ")) continue
+            for (m in Regex("""\bcom\.onpath\.app(?:\.\w+)+""").findAll(l)) {
+                val segs = m.value.split('.')
+                (segs.size - 1 downTo 3).firstNotNullOfOrNull { k -> find(segs.take(k).joinToString("."), segs[k]) }
+                    ?.let { out += Use(n, m.value, it.inState, it.decl) }
+            }
+        }
         for ((n, l) in lines) {
             if (l.trimStart().startsWith("import ") || l.trimStart().startsWith("package ")) continue
             for (m in Regex("""[A-Za-z_]\w*""").findAll(l)) {

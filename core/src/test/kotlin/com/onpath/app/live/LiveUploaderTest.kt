@@ -390,6 +390,67 @@ class LiveUploaderTest {
         assertEquals(LiveStatus.Off, w.uploader.status)
     }
 
+    /** A server with many boxes, each with its own items; [down] = no network. */
+    private class Boxes {
+        var down = false
+        val items = HashMap<String, HashMap<String, ByteArray>>()
+        val deleted = HashSet<String>()
+        fun boxes() = LiveBoxes { id, _ ->
+            object : LiveBox {
+                private fun call(f: () -> Unit) = if (down) LiveReply(0) else { f(); LiveReply(200) }
+                override fun claim(readHash: String, writeHash: String) = call { items.getOrPut(id) { HashMap() } }
+                override fun push(items: List<LivePush>, ended: Boolean) = call { items.forEach { this@Boxes.items.getValue(id)[it.name] = it.blob } }
+                override fun delete() = call { this@Boxes.items.remove(id); deleted += id }
+            }
+        }
+    }
+
+    /**
+     * Guards (privacy, review 2026-11-20): "Teilen beenden" without network, then sharing again – the first link's box
+     * is still deleted once the network is back (also after a killed app, also when the second share is stopped too),
+     * instead of showing the way up to the stop for up to 48 h.
+     */
+    @Test
+    fun aStopStillOnTheWayIsNotDroppedBySharingAgain() {
+        val boxes = Boxes(); val tour = Tour(); val store = Store(); val rnd = Random(3)
+        var now = t0
+        fun fresh() = LiveUploader(boxes.boxes(), tour, store, { n -> ByteArray(n).also(rnd::nextBytes) })
+        var u = fresh()
+        fun run(ms: Long) { val end = now + ms; while (now < end) { now += 1000; if (now % 4000 < 1000) tour.walk(1, now); u.step(now) } }
+        fun box(link: String) = LiveKeys.of(link)!!.boxId
+
+        val first = u.start(tour.id, "Christian")
+        run(5 * 60_000)
+        assertTrue("the first share reached the server", boxes.items[box(first)].orEmpty().isNotEmpty())
+        boxes.down = true
+        u.stop()
+        run(60_000)
+        val second = u.start(tour.id, "Christian")
+        assertNotEquals(first, second)
+        assertEquals(second, u.link)
+        run(60_000)
+        u = fresh() // killed while offline
+        boxes.down = false
+        run(5 * 60_000)
+        assertTrue("the first link's box is deleted", box(first) in boxes.deleted)
+        assertNull(boxes.items[box(first)])
+        assertTrue("the second share uploads", boxes.items[box(second)].orEmpty().containsKey(LiveItem.HEAD))
+        assertEquals(second, u.link)
+
+        // both stopped while offline: both go, then nothing is left to do
+        boxes.down = true
+        u.stop()
+        val third = u.start(tour.id, "Christian")
+        run(60_000)
+        u.stop()
+        boxes.down = false
+        run(5 * 60_000)
+        assertTrue(box(second) in boxes.deleted)
+        assertNull(boxes.items[box(third)])
+        assertFalse(u.pending)
+        assertNull(store.text)
+    }
+
     /** Guards: a share stopped before anything reached the server needs no network at all. */
     @Test
     fun stopBeforeTheFirstRequestIsSilent() {
@@ -499,6 +560,49 @@ class LiveUploaderTest {
         w.run(10 * 60_000)
         repeat(50) { w.uploader.step(w.now, event = true, networkBack = true) }
         assertTrue("503 with retry-after 60: ${w.server.calls - calls} tries in ten minutes", w.server.calls - calls <= 11)
+    }
+
+    /**
+     * Guards: "Tour beendet" must not sit behind the 30-s event floor – the recording service releases its wake lock at
+     * the end, so a final head scheduled half a minute later may wait until the phone next wakes and the page says
+     * "kein Kontakt" for a tour that is over. An end (and a stop's delete) right after an upload goes within seconds.
+     */
+    @Test
+    fun anEndRightAfterAnUploadIsSentAtOnce() {
+        val w = World()
+        w.start()
+        w.run(5 * 60_000)
+        val pushes = w.server.pushes
+        while (w.server.pushes == pushes) w.run(1000) // an upload just went through
+        w.tour.headKnown = false
+        w.uploader.end()
+        assertTrue("due within seconds, not after the event floor", w.uploader.nextDueMs()!! - w.now <= 2000)
+        w.run(3000, walking = false)
+        assertTrue("the final head is there 3 s after End tour", w.server.ended)
+        assertFalse(w.uploader.pending)
+
+        val v = World()
+        v.start()
+        v.run(5 * 60_000)
+        val p2 = v.server.pushes
+        while (v.server.pushes == p2) v.run(1000)
+        v.uploader.stop()
+        v.run(3000, walking = false)
+        assertTrue("the box is deleted 3 s after Stop sharing", v.server.deleted)
+    }
+
+    /** Guards: a busy server is still left alone at the end – its retry-after holds for the final head too. */
+    @Test
+    fun anEndDoesNotHammerABusyServer() {
+        val w = World()
+        w.start()
+        w.run(5 * 60_000)
+        w.server.net = { Net.BUSY }
+        w.tour.headKnown = false
+        w.uploader.end()
+        val calls = w.server.calls
+        w.run(50_000, walking = false)
+        assertTrue("at most one try inside the busy floor: ${w.server.calls - calls}", w.server.calls - calls <= 1)
     }
 
     /**

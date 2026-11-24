@@ -28,7 +28,8 @@ object VoiceText {
             }
         }
         is Phrase.Junction -> junction(p)
-        Phrase.OffRoute -> Txt.s(Res.string.voice_off_route)
+        is Phrase.OffRoute -> if (p.side == null || p.meters == null) Txt.s(Res.string.voice_off_route)
+            else Txt.s(Res.string.voice_off_route_side, routeSide(p.side), offDistance(p.meters))
         Phrase.BackOnRoute -> Txt.s(Res.string.voice_back_on_route)
         is Phrase.NewRoute -> listOfNotNull(Txt.s(Res.string.voice_new_route),
             if (p.turnRound) Txt.s(Res.string.voice_turn_round) else p.next?.let { junction(it) }).joinToString(" ")
@@ -129,6 +130,18 @@ object VoiceText {
         return if (r < 1_000) Txt.s(Res.string.voice_in_m, r.toString())
         else km(r / 1000.0).let { (count, text) -> Txt.p(Res.plurals.voice_in_km, count, text) }
     }
+
+    private fun routeSide(s: RouteSide): String = when (s) {
+        RouteSide.AHEAD -> Txt.s(Res.string.voice_route_ahead)
+        RouteSide.RIGHT -> Txt.s(Res.string.voice_route_right)
+        RouteSide.LEFT -> Txt.s(Res.string.voice_route_left)
+        RouteSide.BEHIND -> Txt.s(Res.string.voice_route_behind)
+    }
+
+    /** "40 metres" to the route: tens of metres as on the screen ([NavText.round10]), from 950 m kilometres as elsewhere. */
+    fun offDistance(m: Double): String =
+        if (m < 950) Txt.p(Res.plurals.voice_m, 2, NavText.round10(m).coerceAtLeast(10.0).roundToInt().toString())
+        else km(m / 1000.0).let { (count, text) -> Txt.p(Res.plurals.voice_km, count, text) }
 
     /** "3 kilometres" / "400 metres" – a length (start, quiet stretch, on to the next stop). */
     fun distance(m: Double): String =

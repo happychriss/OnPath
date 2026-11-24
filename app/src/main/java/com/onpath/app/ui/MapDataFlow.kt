@@ -331,7 +331,7 @@ class MapDataFlow(
     /** The window waits for the first map of the user's area ([FirstMapCard.waits]): Cancel stops that job. */
     private var firstMapWait by mutableStateOf(false)
     /** The learned shares of time of the wait window's steps – also the sign's and the notification's ([ProgressMemory]). */
-    val progressMemory: com.onpath.app.data.ProgressMemory by lazy { com.onpath.app.data.ProgressMemory.of(app) }
+    val progressMemory: com.onpath.app.data.ProgressMemory by lazy { com.onpath.app.data.progressMemoryOf(app) }
     /** A search / shared place opened (or joined) the modal: Cancel also removes its ring ([MapLoadCancel]). */
     private var loadBySearch = false
     /**

@@ -66,11 +66,33 @@ data class NavSession(
      * "reached" – the voice says nothing for them (owner 2026-11-01: "Stopp 2 erreicht, den wir gar nicht erreicht haben").
      */
     val skipped: Set<Int> = emptySet(),
+    /**
+     * Stops the planned line cannot reach ([StopsBesideRoute]) where the rider got to the line's nearest place: not "reached"
+     * (no voice, not passed on the map), but they no longer hold the arrival back ([openStops]) or a later stop.
+     */
+    val passedBy: Set<Int> = emptySet(),
 ) {
     /** The number the map shows for stop [i] of [stops]. */
     fun numberOf(i: Int): Int = i + firstNumber
     val active: List<GeoPoint> get() = current ?: original
     val rerouted: Boolean get() = current != null
+
+    /** Route points between start and goal that still hold the arrival back ([com.onpath.app.routing.ArrivalGate]). */
+    val openStops: Int get() = (1 until stops.size - 1).count { it !in visited && it !in passedBy }
+
+    /**
+     * Stop [i] may count as reached now (owner 2026-11-03): before the route is reached only point 1 (a lead passing a
+     * later point – or a round trip's closing point at the start – reaches nothing); after it, a later stop only when
+     * every stop before it is reached / left out / passed by, or the progress along the planned line ([progressM]) got
+     * there (a stop passed 40–50 m beside the way stays behind, not ahead). A round trip's way back to point 1 is never
+     * reached at the start.
+     */
+    fun inOrder(i: Int, visited: Set<Int>, progressM: Double): Boolean {
+        if (i == 0) return true
+        if (!reached) return false
+        if ((0 until i).all { it in visited || it in skipped || it in passedBy }) return true
+        return !rerouted && progressM >= stops[i].alongM - visitedM(activity)
+    }
 
     companion object {
         /** A stop counts as reached this close (owner 2026-11-01: was 40 m; phone GPS outside is good to 3–10 m) … */
@@ -204,6 +226,7 @@ class NavSessionStore(private val file: File) {
             .put("token", s.token)
             .put("firstNumber", s.firstNumber)
             .put("skipped", JSONArray().apply { s.skipped.sorted().forEach { put(it) } })
+            .put("passedBy", JSONArray().apply { s.passedBy.sorted().forEach { put(it) } })
 
         fun fromJson(o: JSONObject): NavSession? {
             val original = withShapes(withTurns(withWays(readPts(o.getJSONArray("original")), o.optJSONArray("originalWays")),
@@ -236,6 +259,7 @@ class NavSessionStore(private val file: File) {
                 token = o.optLong("token", 0L),
                 firstNumber = o.optInt("firstNumber", 1).coerceAtLeast(1),
                 skipped = o.optJSONArray("skipped")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty(),
+                passedBy = o.optJSONArray("passedBy")?.let { a -> (0 until a.length()).map { a.getInt(it) }.toSet() }.orEmpty(),
             )
         }
 

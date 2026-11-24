@@ -6,7 +6,8 @@ import org.jetbrains.compose.resources.StringResource
 
 /**
  * The app's texts for map areas on demand and waits (docs/design/web-planner.md §17): the page's map strip mirrors the
- * app's CellCards / MapLoad (ui/CellCard.kt, ui/MapLoad.kt – Compose files the engine cannot compile, web/parity.json),
+ * app's CellCards / MapLoad (state ui/CellCards.kt compiles here since 2026-11-20, but the strip is built on the page on every
+ * download tick – areas.ts keeps its copy, web/parity.json),
  * so it asks for the raw strings here and fills the `%1$d` placeholders itself (XmlStrings.format's rule).
  * `{"key": "text", …}`; plurals as `{"one": …, "other": …}`.
  */

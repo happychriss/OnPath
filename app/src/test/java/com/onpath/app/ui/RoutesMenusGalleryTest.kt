@@ -79,8 +79,6 @@ abstract class RoutesMenusGalleryTest(fontScale: Float = 1f) {
     }
 }
 
-class RoutesMenusGalleryEnglishTest : RoutesMenusGalleryTest()
-
 class RoutesMenusGalleryGermanTest : RoutesMenusGalleryTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

@@ -45,6 +45,8 @@
   "days_which_night": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_remove_hotel_ask": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_from_to": {"area": "Planner · multi-day tour", "context": "Day row: %1$s = where the day starts, %2$s = where it ends", "priority": 2, "confidence": "bitte prüfen"},
+  "days_from_hotel": {"area": "Planner · multi-day tour", "context": "Day row when only the day's start is known and it is a hotel: %1$s = the hotel", "priority": 2, "confidence": "bitte prüfen"},
+  "days_to_hotel": {"area": "Planner · multi-day tour", "context": "Day row when only the day's end is known and it is a hotel: %1$s = the hotel", "priority": 2, "confidence": "bitte prüfen"},
   "days_km_at": {"area": "Planner · multi-day tour", "context": "Name of a day end without a place name: %1$s = km along the route", "priority": 2, "confidence": "bitte prüfen"},
   "days_count": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"}
 }

@@ -1,0 +1,176 @@
+From e08025de9b0b39c679be43beb316a268b1b4fbd1 Mon Sep 17 00:00:00 2001
+From: development <pmsfriend@googlemail.com>
+Date: Fri, 20 Nov 2026 13:56:41 +0100
+Subject: [PATCH] =?UTF-8?q?E2E:=20the=20first=20map=20on=20a=20fresh=20ins?=
+ =?UTF-8?q?tall=20on=20GitHub=20=E2=80=93=20its=20own=20job=20with=20the?=
+ =?UTF-8?q?=20TEST=20map=20key=20runs=20only=20FirstMapDownloadE2ETest?=
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+Owner's plan 2026-11-20 (docs/team/items/2026-11-20-after-the-release.md): the first map download on a fresh install
+tested on GitHub by ONE E2E class with the TEST map key. The key must not reach the other E2E runs (every test would
+then download real map areas at Meran), so a new job "first-map" builds with ONPATH_MAP_KEY_TEST (repository secret,
+job-wide so the test run does not rebuild without it) and the world overview (like a released APK; without it a fresh
+install shows the missing-data screen) and runs only com.onpath.app.e2e.FirstMapDownloadE2ETest. It runs with the
+nightly / full run and when that class is asked for (tools/ci/e2e_github.sh --tests …FirstMapDownloadE2ETest – then
+the normal emulator job stays off, where the class would only skip); not in release.yml's start test. A guard fails the
+job when the test case is missing or skipped (no key in the build; the runner writes a skip into the XML as a
+<failure> with AssumptionViolatedException while Gradle passes it – both count as skipped). Report: e2e-report-first-map (e2e_github.sh reads
+every e2e-report*). The key is never printed (the step only checks it is not empty).
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .github/workflows/e2e.yml | 125 +++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 124 insertions(+), 1 deletion(-)
+
+diff --git a/.github/workflows/e2e.yml b/.github/workflows/e2e.yml
+index cb8a65b93..37a648c0a 100644
+--- a/.github/workflows/e2e.yml
++++ b/.github/workflows/e2e.yml
+@@ -8,6 +8,8 @@
+ # emulator. Without the Release-Rundgang (that runs locally on donald before a release made there:
+ # tools/ci/release_rundgang.sh, docs/release-rundgang.md). The screenshots (/sdcard/e2e) are always in the report
+ # "e2e-report-<shard>". A requested test class that produced no test case fails the run.
++# The first map on a fresh install (FirstMapDownloadE2ETest) runs in its own job "first-map": the only build with the
++# TEST map key, so no other test downloads real map areas.
+ name: E2E
+ 
+ on:
+@@ -56,7 +58,8 @@ jobs:
+ 
+   emulator:
+     needs: changed
+-    if: needs.changed.outputs.run == 'true'
++    # the first-map class alone runs only in its own job below (here, without the key, it would only skip)
++    if: needs.changed.outputs.run == 'true' && inputs.tests != 'com.onpath.app.e2e.FirstMapDownloadE2ETest'
+     runs-on: ubuntu-latest
+     timeout-minutes: 40
+     strategy:
+@@ -176,3 +179,123 @@ jobs:
+             app/build/outputs/androidTest-results/
+             e2e-out/
+           if-no-files-found: ignore
++
++  # The first map on a fresh install (FirstMapDownloadE2ETest, owner 2026-11-20): the one class that downloads real map
++  # areas from the TEST map server. Only this job builds with the TEST map key – the job above builds without one, so no
++  # other test downloads maps (and this class skips itself there). Built with the world overview like a released APK
++  # (without it a fresh install shows the missing-data screen). No routing data pushed: the app loads it itself.
++  # Runs with the nightly / full run and when its class is asked for; not in release.yml's start test.
++  first-map:
++    needs: changed
++    if: needs.changed.outputs.run == 'true' && (inputs.tests == '' || contains(inputs.tests, 'FirstMapDownloadE2ETest'))
++    runs-on: ubuntu-latest
++    timeout-minutes: 40
++    env:
++      # job-wide: Gradle reads it when it configures, so the test run sees the same key as the build (no rebuild without it)
++      ONPATH_MAP_KEY_TEST: ${{ secrets.ONPATH_MAP_KEY_TEST }}
++    steps:
++      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
++
++      - name: The TEST map key is set
++        run: |
++          if [ -z "$ONPATH_MAP_KEY_TEST" ]; then echo "::error::repository secret ONPATH_MAP_KEY_TEST is empty – the first-map test cannot download"; exit 1; fi
++          echo "TEST map key present"
++
++      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
++        with:
++          distribution: temurin
++          java-version: "21"
++
++      - uses: android-actions/setup-android@be39fa834029ff78f1a44aa3bb0819b8fc2bd8fd # v4.0.4
++        with:
++          packages: "platforms;android-36 build-tools;35.0.0 platform-tools"
++
++      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
++
++      # the files release.yml puts into the APK (docs/map-pipeline.md §9b), checked against their SHA256SUMS
++      - name: World overview map
++        env:
++          OVERVIEW_URL: ${{ vars.ONPATH_OVERVIEW_URL || 'https://github.com/happychriss/OnPath/releases/download/overview-2026-10-22/' }}
++        run: |
++          DIR="$RUNNER_TEMP/overview-assets/overview"
++          mkdir -p "$DIR"
++          for f in SHA256SUMS base.pmtiles hillshade.pmtiles; do
++            curl -fsSL --retry 5 --retry-delay 5 -o "$DIR/$f" "${OVERVIEW_URL%/}/$f"
++          done
++          (cd "$DIR" && grep -E ' \*?(base|hillshade)\.pmtiles$' SHA256SUMS | sha256sum -c -) && rm "$DIR/SHA256SUMS"
++          echo "ONPATH_OVERVIEW_ASSETS=$RUNNER_TEMP/overview-assets" >> "$GITHUB_ENV"
++
++      - name: Build app + test APKs with the TEST map key (x86_64 for the emulator)
++        run: ./gradlew --no-daemon assembleDebug assembleDebugAndroidTest -Ponpath.e2e=true
++
++      - name: Enable KVM
++        run: |
++          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
++          sudo udevadm control --reload-rules
++          sudo udevadm trigger --name-match=kvm
++
++      - name: Emulator snapshot cache
++        id: avdcache
++        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
++        with:
++          path: |
++            ~/.android/avd/*
++            ~/.android/adb*
++          key: avd-34-x86_64-google_apis-pixel_6-v1
++
++      - name: Create the emulator + boot snapshot (only when not cached)
++        if: steps.avdcache.outputs.cache-hit != 'true'
++        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
++        with:
++          api-level: 34
++          arch: x86_64
++          target: google_apis
++          profile: pixel_6
++          force-avd-creation: false
++          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
++          disable-animations: false
++          script: echo "Emulator snapshot made for the cache."
++
++      - name: First map download on the emulator
++        uses: reactivecircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d # v2.38.0
++        with:
++          api-level: 34
++          arch: x86_64
++          target: google_apis
++          profile: pixel_6
++          force-avd-creation: false
++          emulator-options: -no-snapshot-save -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
++          disable-animations: true
++          script: |
++            adb logcat -c || true
++            ./gradlew --no-daemon connectedDebugAndroidTest -Ponpath.e2e=true -Pandroid.testInstrumentationRunnerArguments.class=com.onpath.app.e2e.FirstMapDownloadE2ETest && R=0 || R=1; mkdir -p e2e-out; adb pull /sdcard/e2e e2e-out/ || true; adb logcat -d -s FirstMapDownloadE2E:I > e2e-out/first-map.txt || true; [ $R = 0 ] || { adb logcat -d > e2e-out/logcat.txt || true; exit 1; }
++
++      # a skipped test case would be green without testing anything (e.g. the key did not reach the build). The Android
++      # test runner writes a skip (a failed assumption) into the JUnit XML as a <failure> with AssumptionViolatedException
++      # while Gradle counts it as passed – both forms count as skipped here.
++      - name: The first-map test ran and was not skipped
++        run: |
++          python3 - <<'PY'
++          import glob, sys, xml.etree.ElementTree as ET
++          ran = skipped = 0
++          for f in glob.glob("app/build/outputs/androidTest-results/connected/**/*.xml", recursive=True):
++              for tc in ET.parse(f).getroot().iter("testcase"):
++                  if tc.get("classname", "").endswith("FirstMapDownloadE2ETest"):
++                      ran += 1
++                      if tc.find("skipped") is not None or any("AssumptionViolatedException" in (f.text or "") for f in tc.iter("failure")):
++                          skipped += 1
++          print("FirstMapDownloadE2ETest: %d test case(s), %d skipped" % (ran, skipped))
++          if ran == 0: print("::error::FirstMapDownloadE2ETest never ran"); sys.exit(1)
++          if skipped: print("::error::FirstMapDownloadE2ETest was skipped – the build had no TEST map key"); sys.exit(1)
++          PY
++
++      - name: Test report
++        if: always()
++        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
++        with:
++          name: e2e-report-first-map
++          path: |
++            app/build/reports/androidTests/
++            app/build/outputs/androidTest-results/
++            e2e-out/
++          if-no-files-found: ignore
+-- 
+2.53.0
+

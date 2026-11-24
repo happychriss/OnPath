@@ -47,3 +47,4 @@ paths:
 
 - Map style on the phone in a minute: `tools/dev/push_style.sh [theme.json | style.json | --remove]` (make_style.py → `dev/style.json` in the data folder + app restart; used only with developer tools on – Diagnostics shows it, Remove / Reload map style; `docs/map-style-notes.md` "Test style on the phone").
 - Map style check without a phone: render `onpath.json` with maplibre-gl JS in headless Chromium (replace `{DATA_DIR}` / `asset://` URLs with a local HTTP server).
+- POI names never without their symbol: `python3 tools/check_poi_names.py` (every kind × zoom × theme × format; test `tools/test_check_poi_names.py`, run `cd tools && python3 -m unittest test_check_poi_names`) – run it after any change to `pois()` in `make_style.py` or the sprite.

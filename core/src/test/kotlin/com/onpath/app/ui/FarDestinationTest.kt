@@ -53,7 +53,7 @@ class FarDestinationTest {
     /** The ViewModel wiring: every add from the pin remembers it (Cancel / a newer edit: PlanEditFlowTest). */
     @Test fun cancelOfARunShowsThePinOfTheAddItTookBack() {
         // the adds live in PlaceAddSlice (rebuild phase 2 piece 11); PlaceAddFlowTest shows each remember the pin AFTER its change
-        val slice = src("ui/plan/PlaceAddSlice.kt")
+        val slice = src("ui/plan/PlaceAddState.kt")
         for (f in listOf("    fun addPoiPoint(", "    fun poiFromMyLocation(", "    private fun addPoiWith(", "    fun addPlace(")) {
             assertTrue("$f found", slice.contains(f))
             val b = body(slice, f)

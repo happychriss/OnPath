@@ -16,7 +16,7 @@ import java.util.Locale
  * Owner 2026-11-08 (father's feedback, Galaxy S10 – the owner's S10 shows it too): on a normal or small phone the
  * activity picker showed only "T1 … T5" with no word after them, and a tap on a T closed it without saying what the
  * level means. Now the chosen level's line "T2 · Bergwandern: …" stands under the chips, and a T tap keeps the picker
- * open. Pictures at the S10's size (1080 × 2280, ≈ 411 dp) and at 360 dp, font 1.0 and 1.3, German and English –
+ * open. Pictures at the S10's size (1080 × 2280, ≈ 411 dp) and at 360 dp, font 1.0 and 1.3, German (and English at 1.0 only, owner 2026-11-20) –
  * `verifyPaparazziDebug` (gate) keeps them; the rules below keep the line in the code.
  */
 abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
@@ -28,7 +28,7 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
         showSystemUi = false,
     )
 
-    private fun shot(locale: Locale, current: Activity) {
+    protected fun shot(locale: Locale, current: Activity) {
         val before = Locale.getDefault()
         Locale.setDefault(locale)
         try {
@@ -37,14 +37,17 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
     }
 
     @Test fun hikeT2German() = shot(Locale.GERMANY, Activity.HIKE)
-    @Test fun hikeT2English() = shot(Locale.UK, Activity.HIKE)
 }
 
 /** Galaxy S10: 1080 × 2280 px at 420 dpi ≈ 411 dp wide. */
-class ActivityPickerS10Test : ActivityPickerSizes(widthDp411 = true, font = 1.0f)
+class ActivityPickerS10Test : ActivityPickerSizes(widthDp411 = true, font = 1.0f) {
+    @Test fun hikeT2English() = shot(Locale.UK, Activity.HIKE)
+}
 class ActivityPickerS10LargeFontTest : ActivityPickerSizes(widthDp411 = true, font = 1.3f)
 /** A small phone: 360 dp wide. */
-class ActivityPicker360Test : ActivityPickerSizes(widthDp411 = false, font = 1.0f)
+class ActivityPicker360Test : ActivityPickerSizes(widthDp411 = false, font = 1.0f) {
+    @Test fun hikeT2English() = shot(Locale.UK, Activity.HIKE)
+}
 class ActivityPicker360LargeFontTest : ActivityPickerSizes(widthDp411 = false, font = 1.3f)
 
 /** The rules behind the pictures: a chosen level always has its line under the chips; a T tap does not close. */

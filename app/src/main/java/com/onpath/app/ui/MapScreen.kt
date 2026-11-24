@@ -222,7 +222,7 @@ fun MapScreen(
                     onPanelHeight = { panelHeightPx = it },
                     onActivityBox = { r, b -> planActivity[0] = r; planActivity[1] = b })
             },
-            navigate = { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } },
+            navigate = { LiveSignLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
         )
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
         // (not over the rest view while cycling)
@@ -328,7 +328,7 @@ fun MapScreen(
     when (val ask = vm.tour.endAsk) {
         EndAsk.Plain -> EndTourDialog(onSave = { vm.tourEnd.endTour() }, onDelete = { vm.tourEnd.endTourAndDelete() },
             onDismiss = { vm.tour.dismissEndAsk() }, activity = vm.planRoute.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
-        is EndAsk.Rides -> RideSummaryDialog(ask.summary, onSave = { vm.tourEnd.endTourWith(ask, it) },
+        is EndAsk.Rides -> RideQuestionDialog(ask.summary, onSave = { vm.tourEnd.endTourWith(ask, it) },
             onDelete = { vm.tourEnd.endTourAndDelete() }, onDismiss = { vm.tour.dismissEndAsk() })
         null -> {}
     }
@@ -457,7 +457,7 @@ private fun PlanMode(
         com.onpath.app.ui.suggest.SuggestWishHost(vm) // the wish sheet of the round-trip suggestions while open
         // the round-trip search: the same wait window as a map load or a route (owner 2026-11-19) – its steps, Abbrechen;
         // the map takes no press under it
-        com.onpath.app.ui.progress.SuggestWaitWindow(com.onpath.app.data.ProgressMemory.of(androidx.compose.ui.platform.LocalContext.current),
+        com.onpath.app.ui.progress.SuggestWaitWindow(com.onpath.app.data.progressMemoryOf(androidx.compose.ui.platform.LocalContext.current),
             vm.suggest)
         com.onpath.app.ui.search.SearchHost(vm) // full-screen search view while open
     }
@@ -607,7 +607,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
         onLoadOnMobile = vm.mapData::loadModalOnMobile))
     vm.mapData.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.mapData.answerLoadAsk(true) }, onNotNow = { vm.mapData.answerLoadAsk(false) }) }
     // a route that takes a while: the wait window (form A, owner 2026-11-19) – the legs as steps, Cancel; not over a question
-    com.onpath.app.ui.progress.RouteWaitWindow(com.onpath.app.data.ProgressMemory.of(androidx.compose.ui.platform.LocalContext.current),
+    com.onpath.app.ui.progress.RouteWaitWindow(com.onpath.app.data.progressMemoryOf(androidx.compose.ui.platform.LocalContext.current),
         vm.planRun.routing, slow = vm.planRun.routingSlow && vm.planRun.slowPlanAsk == null && vm.planRun.longRouteAsk == null, vm.planRun.routeProgress, vm.planRun.routeShare,
         com.onpath.app.ui.progress.RouteWait.legLabels(rows, vm.plan.points.size, vm.planRun.routeProgress?.second), vm.planRun.routeRun.gen,
         onCancel = vm.planRun::cancelRouting)
@@ -671,7 +671,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     // the plan points behind the user in a running tour (TourSplit): grey (no tick, owner 2026-11-01); re-read every ~20 track points
     var passed by remember { mutableStateOf(emptySet<Int>()) }
     val trackSize = rec?.track?.sumOf { it.size } ?: 0
-    LaunchedEffect(vm.plan.points.toList(), trackSize / 20, vm.tourFollow.followLine, rec != null) { passed = vm.tourEdits.tourPassed() }
+    LaunchedEffect(vm.plan.points.toList(), trackSize / 20, vm.tourFollow.followLine, rec != null) { passed = vm.tourEdits.tourPassedOnMap() }
     // Planned line only while the plan can be edited (Plan mode, no track shown); markers only in Plan (planLayers).
     val view = androidx.compose.ui.platform.LocalView.current
     LaunchedEffect(c) {

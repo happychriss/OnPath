@@ -17,7 +17,7 @@ import androidx.core.app.ServiceCompat
 import com.onpath.app.MainActivity
 import com.onpath.app.R
 import com.onpath.app.data.AppRouting
-import com.onpath.app.data.ProgressMemory
+import com.onpath.app.data.progressMemoryOf
 import com.onpath.app.data.RoutingDataLoader
 import com.onpath.app.ui.BackgroundAction
 import com.onpath.app.ui.BackgroundProgress
@@ -105,7 +105,7 @@ class MapLoadService : Service() {
      * the same loads into the same action ([BackgroundAction]). Null = nothing measurable yet.
      */
     private fun actionPercent(cells: MapCells): Int? = try {
-        val shares = ProgressMemory.of(this).shares
+        val shares = progressMemoryOf(this).shares
         val installed = cells.installed.value.map { it.id }.toSet()
         val routing = try { AppRouting.get(this).status?.takeIf { it.phase == RoutingDataLoader.Phase.LOADING } } catch (e: Exception) {
             Problems.warn("cells", "Routing data state unreadable for the loading notification", e); null

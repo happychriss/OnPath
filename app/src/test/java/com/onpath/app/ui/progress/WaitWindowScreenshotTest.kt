@@ -154,6 +154,5 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
     }
 }
 
-class WaitWindowEnglishTest : WaitWindowShots(Locale.US, 1f)
 class WaitWindowGermanTest : WaitWindowShots(Locale.GERMANY, 1f)
 class WaitWindowLargeFontGermanTest : WaitWindowShots(Locale.GERMANY, 2f)

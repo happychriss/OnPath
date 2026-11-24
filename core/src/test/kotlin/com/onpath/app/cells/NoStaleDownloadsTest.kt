@@ -258,11 +258,15 @@ class NoStaleDownloadsTest {
         val mc = cells(net)
         mc.tourCells = setOf(a, b); mc.tourWifiCells = setOf(a, b)
         assertEquals(listOf(a, b), mc.request(listOf(a, b), CellReason.CORRIDOR, ownPoint = false))
+        waitFor("waiting for Wi-Fi") { mc.state(a) is CellState.WaitingForWifi && mc.state(b) is CellState.WaitingForWifi }
+        // c is not a tour area, so it is allowed on mobile data and would download within milliseconds – on a slow runner
+        // before keepCorridor below (flake 2026-11-19). The server holds it in the build, as long as the test needs it.
+        server.buildPolls = 1_000_000
         mc.request(listOf(c), CellReason.CORRIDOR, ownPoint = false)
         // the plan is now one day that needs none of them: c (the old plan's corridor) goes, the tour's stay
         assertEquals(listOf(c), mc.keepCorridor(emptyList()))
         assertEquals(setOf(a.id, b.id), queued(mc))
-        waitFor("waiting for Wi-Fi") { mc.state(a) is CellState.WaitingForWifi && mc.state(b) is CellState.WaitingForWifi }
+        server.buildPolls = 0
         // on the way: the position needs b – it loads on mobile data (the own-point rule)
         mc.request(listOf(b), CellReason.NEAR, ownPoint = true)
         waitFor("b loaded on mobile data") { mc.state(b) == CellState.Ready("v1") }

@@ -10,14 +10,9 @@
 [files]
 # BRouter adapter (the engine's own routing; Context is a web stand-in)
 routing/BRouterEngine.kt
-# search (docs/design/web-planner.md §10): the app's index, ranking and Photon parsing
-search/OfflineIndex.kt
-search/OnlineSearch.kt
-search/AddressSearch.kt
-search/PlaceIndex.kt
+# search (docs/design/web-planner.md §10): the index, ranking and Photon parsing (search/OfflineIndex.kt, OnlineSearch.kt, AddressSearch.kt, PlaceIndex.kt live in :core now)
 # kept places (owner 2026-11-15, „Orte merken“, F-PLAN-14): search/SavedPlaces.kt lives in :core now (the core folder is compiled as a whole)
-# web UI (docs/design/web-planner.md §13): route name proposal (Save)
-search/RouteNamer.kt
+# web UI (docs/design/web-planner.md §13): route name proposal (Save) – search/RouteNamer.kt lives in :core now (2026-11-20)
 # Google link-out (page parity with the phone, web-planner.md §11)
 poi/GoogleMapsLink.kt
 # kept places (Zuhause + favourites) ⇄ the ledger – the same export / import on phone and planner (web-sync.md §5.4)

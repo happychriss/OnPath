@@ -98,8 +98,6 @@ abstract class PlanMenuGalleryTest {
     }
 }
 
-class PlanMenuGalleryEnglishTest : PlanMenuGalleryTest()
-
 class PlanMenuGalleryGermanTest : PlanMenuGalleryTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

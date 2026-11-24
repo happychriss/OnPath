@@ -105,7 +105,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
          */
         val ROUTE_OVERLAY_LAYERS = NAV_LAYERS + listOf(
             "planned-route-casing", "planned-route", "planned-straight-casing", "planned-straight",
-            "$SRC_GPX-casing", SRC_GPX, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN, SRC_UTURN,
+            "$SRC_GPX-casing", SRC_GPX, "$SRC_SUGGEST-casing", SRC_SUGGEST, SRC_RIDES, SRC_LIFTS, "highlight-dot", "waypoints-pin", LAYER_WPT, LAYER_TURN, SRC_UTURN,
             "planned-route-arrows", "$SRC_GPX-arrows", SRC_GAPS, SRC_SPOT, SRC_MARK_JOIN,
         )
         private const val ARROW_IMAGE = "route-arrow"
@@ -913,11 +913,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     fun dpToPx(dp: Float) = dp * density
 
-    /**
-     * Moves the map's content down by [dyPx] screen pixels (up when negative), eased: the found place's menu makes room
-     * above its pin (ui/PinMenuPlace, owner 2026-11-13). Never throws.
-     */
-    fun panBy(dyPx: Float) = runCatching { map.scrollBy(0f, dyPx, 300L) }
+    /** Moves the map's content down by [dyPx] px (up when negative), eased – the found place's menu (ui/PinMenuPlace). Never throws. Not
+     *  `scrollBy`: MapLibre's moveBy sends no camera event at all (flow 10, 2026-11-19: the menu stayed over the search bar). */
+    fun panBy(dyPx: Float) = runCatching { val c = map.projection.toScreenLocation(map.cameraPosition.target ?: return@runCatching)
+        map.easeCamera(CameraUpdateFactory.newLatLng(map.projection.fromScreenLocation(PointF(c.x, c.y - dyPx))), 300) }
         .onFailure { Problems.warn("map", "Map did not move to make room for the place's menu", it) }
 
     /**

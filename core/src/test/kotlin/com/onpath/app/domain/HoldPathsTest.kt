@@ -40,7 +40,7 @@ class HoldPathsTest {
 
     @Test fun feldstrasseOnThePathsIsTheNewGoal() = runBlocking {
         val paths = HoldPaths(this, dispatcher)
-        var got: HoldPaths.Outcome? = null
+        var got: HoldMeasure.Outcome? = null
         paths.start(plan, spot, straight, { a, b, _ -> PlaceAddMenuTest.Feldstrasse.length(a, b) }) { got = it }
         assertTrue("running while the router works", paths.running)
         until { got != null }
@@ -56,7 +56,7 @@ class HoldPathsTest {
     @Test fun aTimeoutKeepsTheStraightLines() = runBlocking {
         val paths = HoldPaths(this, dispatcher, timeoutMs = 200)
         val stopped = CountDownLatch(1)
-        var got: HoldPaths.Outcome? = null
+        var got: HoldMeasure.Outcome? = null
         // the router hangs until it is cancelled (as BRouter's cancel hook stops a search)
         paths.start(plan, spot, straight, { _, _, c ->
             val seen = CountDownLatch(1)
@@ -79,7 +79,7 @@ class HoldPathsTest {
 
     @Test fun aFailureKeepsTheStraightLines() = runBlocking {
         val paths = HoldPaths(this, dispatcher)
-        var got: HoldPaths.Outcome? = null
+        var got: HoldMeasure.Outcome? = null
         paths.start(plan, spot, straight, { _, _, _ -> throw RoutingException("no data", kind = RoutingException.Kind.NO_DATA) }) { got = it }
         until { got != null }
         assertFalse(got!!.onPaths)
@@ -90,7 +90,7 @@ class HoldPathsTest {
     /** An engine bug (not a RoutingException) and a nonsense length are failures too – never a crash, never a stale number. */
     @Test fun anEngineBugOrNoLengthKeepsTheStraightLines() = runBlocking {
         val paths = HoldPaths(this, dispatcher)
-        var got: HoldPaths.Outcome? = null
+        var got: HoldMeasure.Outcome? = null
         paths.start(plan, spot, straight, { _, _, _ -> throw IllegalStateException("boom") }) { got = it }
         until { got != null }
         assertFalse(got!!.onPaths)
@@ -124,7 +124,7 @@ class HoldPathsTest {
     @Test fun aCancelledMeasureIsNeverApplied() = runBlocking {
         val paths = HoldPaths(this, Dispatchers.IO)
         val release = CountDownLatch(1)
-        var got: HoldPaths.Outcome? = null
+        var got: HoldMeasure.Outcome? = null
         paths.start(plan, spot, straight, { a, b, _ -> release.await(5, TimeUnit.SECONDS); PlaceAddMenuTest.Feldstrasse.length(a, b) }) { got = it }
         assertTrue(paths.cancel())
         assertFalse(paths.running)

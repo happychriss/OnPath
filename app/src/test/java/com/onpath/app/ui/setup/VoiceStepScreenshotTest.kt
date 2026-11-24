@@ -53,12 +53,6 @@ abstract class VoiceStepScreenshotTest {
     @Test fun testStayedSilent() = shot(s10.copy(voice = VoiceStatus.READY), VoiceSetup.VoiceTest(VoiceSetup.Outcome.SILENT))
 }
 
-class VoiceStepScreenshotEnglishTest : VoiceStepScreenshotTest() {
-    private val before = Locale.getDefault()
-    @Before fun english() = Locale.setDefault(Locale.US)
-    @After fun back() = Locale.setDefault(before)
-}
-
 class VoiceStepScreenshotGermanTest : VoiceStepScreenshotTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

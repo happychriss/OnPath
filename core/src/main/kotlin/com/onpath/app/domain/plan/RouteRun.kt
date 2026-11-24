@@ -20,7 +20,7 @@ import com.onpath.app.routing.SlowPlan
  * Transitions (each one a test):
  * - [Event.Recalc] (every plan edit, activity change, Undo, load, newer routing data, "Plan anyway", "Weiter warten"):
  *   a new generation – a run still going is superseded, its result ignored. Fewer than two points → [Phase.Idle], no
- *   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan beyond a day that was not said yes to ([longOk]) →
+ *   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan beyond a day that was not said yes to ([longOk]) and may be asked about ([Event.Recalc.askLong]) →
  *   [Phase.AskLong], nothing routed or loaded. Else → [Phase.Routing] + [Effect.StartRouting]. Always: the time-limit
  *   periods start at 1 again unless "Weiter warten" asked for this run, an open [Phase.AskSlow] / [Phase.Unrouted]
  *   goes, [viaData] and [compareActivity] are taken by this run, a plan without points may raise the sheet again.
@@ -90,8 +90,12 @@ data class RouteRun(
     fun isCurrent(g: Int): Boolean = g == gen
 
     sealed interface Event {
-        /** The plan is to be routed (again) for [points]; [planMode]: the Plan screen shows; [newPlan]: a plan begins (`SheetRise.resets`). */
-        data class Recalc(val points: List<GeoPoint>, val activity: Activity, val planMode: Boolean, val newPlan: Boolean) : Event
+        /**
+         * The plan is to be routed (again) for [points]; [planMode]: the Plan screen shows; [newPlan]: a plan begins (`SheetRise.resets`);
+         * [askLong] false: never the long-plan question (the planner's multi-day tour, owner 2026-11-18).
+         */
+        data class Recalc(val points: List<GeoPoint>, val activity: Activity, val planMode: Boolean, val newPlan: Boolean,
+                          val askLong: Boolean = true) : Event
         /** The run [gen] has been calculating for a while. */
         data class Slow(val gen: Int) : Event
         /** The router came back for the run [gen]; [active]: its job was not stopped meanwhile. */
@@ -114,7 +118,10 @@ data class RouteRun(
         data class SlowAnswer(val answer: SlowPlan.Answer) : Event
         /** "Plan anyway" / "Calculate" of the not-routed notice for the plan [points]. */
         data class PlanAnyway(val points: List<GeoPoint>) : Event
-        /** [points] were routed before (a saved route loaded with its line): no long-plan question for them. */
+        /**
+         * [points] were routed before (a saved route loaded with its line): no long-plan question for them. Also the way back
+         * for a host that loses its [RouteRun] (the planner's fresh worker): [longOk] given again, nothing else changes.
+         */
         data class RoutedBefore(val points: List<GeoPoint>) : Event
         /** A new plan (a saved route replaces it): its first route may raise the sheet again. */
         data object NewPlan : Event
@@ -178,7 +185,7 @@ data class RouteRun(
                 // outside the screen gets here)
                 e.points.size < 2 -> to(next.copy(phase = phase as? Phase.AskLong ?: Phase.Idle, followNext = false, fitNext = false),
                     Effect.ClearRoute, Effect.NoCorridor)
-                e.points != longOk && LongRoute.needsAsk(e.points, e.activity) -> {
+                e.askLong && e.points != longOk && LongRoute.needsAsk(e.points, e.activity) -> {
                     val s = LongRoute.estimateS(e.points, e.activity)
                     to(next.copy(phase = Phase.AskLong(s)), Effect.ClearRoute, Effect.LongAsked(s), Effect.NoCorridor)
                 }

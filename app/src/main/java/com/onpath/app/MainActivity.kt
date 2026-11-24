@@ -132,8 +132,8 @@ class MainActivity : ComponentActivity() {
             return
         }
         incoming(intent, if (savedInstanceState == null) IncomingIntent.Delivery.CREATE else IncomingIntent.Delivery.RESTORED)
-
         announceLastCrash()
+        com.onpath.app.ui.LiveShares.attach(vm, applicationContext) // live sharing's state, kept by the view model
         setContent {
             // New map files imported: restart so MapLibre opens them fresh (see AppViewModel.importData)
             LaunchedEffect(vm.restartForData) { if (vm.restartForData) restartForNewMapData() }
@@ -274,7 +274,7 @@ class MainActivity : ComponentActivity() {
                         com.onpath.app.ui.RouteDetailsScreen(r, vm.planRoute.activity, onBack = { vm.planEdit.routeDetailsOpen = false })
                     }
                     if (vm.settingsSlice.showSettings) BackHandler { vm.settingsSlice.settingsBack() }
-                    PageFade(vm.settingsSlice.showSettings) {
+                    PageFade(vm.settingsSlice.showSettings) { com.onpath.app.ui.LiveShareLayer(vm) {
                         // Offline maps: what loads – the sign beside the map's number and its details sheet (form B)
                         val loads = com.onpath.app.ui.rememberBackgroundDownload(vm)
                         var loadsOpen by remember { mutableStateOf(false) }
@@ -392,7 +392,7 @@ class MainActivity : ComponentActivity() {
                                 onAllowStorage = { storagePermission.launch(Manifest.permission.WRITE_EXTERNAL_STORAGE) },
                             ),
                         )
-                    }
+                    } }
                     // over Settings too: Diagnostics → Developer tools opens the technical view
                     if (vm.planRoute.timeDetails != null) BackHandler { vm.planRoute.timeDetails = null }
                     PageFadeOf(vm.planRoute.timeDetails) { td ->
@@ -441,8 +441,8 @@ class MainActivity : ComponentActivity() {
                         onDelete = { vm.tourEnd.deleteUnfinished(t) })
                 }
                 vm.tour.unfinishedRides?.let { (t, s) ->
-                    com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.tourEnd.saveUnfinished(t, it) }, onDelete = { vm.tourEnd.deleteUnfinished(t) },
-                        onDismiss = { vm.tour.backToUnfinished() }, title = str(Res.string.msg_unfinished_save_title))
+                    com.onpath.app.ui.RideQuestionDialog(s, onSave = { vm.tourEnd.saveUnfinished(t, it) }, onDelete = { vm.tourEnd.deleteUnfinished(t) },
+                        onDismiss = { vm.tour.backToUnfinished() })
                 }
                 // "Tour gespeichert" after the end sheet (owner 2026-11-06, onpath.private#35): slim – the numbers,
                 // "In Meine Touren ›" and OK; export and delete are in My routes

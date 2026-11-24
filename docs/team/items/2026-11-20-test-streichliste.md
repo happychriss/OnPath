@@ -35,3 +35,18 @@ Gravelbike“ auf den Knöpfen, der Papierkorb-Hinweis ohne Pronomen, „Kompass
 Die eigentliche Last ist aber eine andere: wenn sich Fußleiste, Knopfspalte oder obere Leiste ändern, müssen ~170 ganze
 Bildschirme neu aufgenommen werden. Das wird nur kleiner, wenn die Tests den Plan-Bildschirm über das Gerüst der App
 zeichnen – das ist App-Code und gehört zu Phase 4 (wartet).
+
+## Die Antworten des Owners (2026-11-20 nachmittags, einzeln gefragt in [umbau]s Chat)
+1. Englische Bilder mit größter Schrift: **ja, streichen** (~61).
+2. Englische Zwillinge der Menüs / Fenster: **ja, alle 36**.
+3. Farb-Tests: **die drei Farb-Pins streichen** (Kompassfarbe, Farbregel ganz; bei den Planfarben nur die festen
+   Farbwerte). Die Prüfungen auf Lesbarkeit (Kontrast) und alle Lage-Tests bleiben. Vorschlag 3 der Bilder (deutsch
+   normal weg) wurde nicht gefragt – bleibt.
+
+## Gebaut (2026-11-20, auf main)
+566 → 505 Bilder (61 weniger: 27 englisch in größerer Schrift, 34 englische Zwillinge), Farb-Pins weg (rund 120 Zeilen).
+Nicht gestrichen, weil die Bedingung „jede Szene behält ein Bild in größter Schrift / ein Bild überhaupt“ sonst bräche:
+Einrichtung (12), Ruheansicht (5), Navigationsziel (1) – deutsch nur in normaler Schrift vorhanden; zwei Bilder der
+Plan-Meldungen – deutsch gar nicht vorhanden. Wer die auch weghaben will: erst die deutschen Bilder aufnehmen.
+Zurückgeholt nach der Review: die Regel „Navigations-Frage = grüner Knopf“ (Verhalten, kein Farbwert) steht jetzt in
+`MessagesTest`. Nur noch im Bild bewacht: keine hellblauen Flächen, Papier als Grund jeder Fläche.

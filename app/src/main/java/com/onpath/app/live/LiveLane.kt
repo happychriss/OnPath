@@ -58,11 +58,12 @@ class LiveLane(
     fun start(tourId: Long, name: String) = run("start sharing") {
         if (tourId < 0) return@run
         uploader.start(tourId, name)
+        show() // the link reaches the share sheet now, not after the claim's answer (up to 25 s on a weak network)
         step(event = true)
     }
 
     /** "Stop sharing". */
-    fun stop() = run("stop sharing") { uploader.stop(); step() }
+    fun stop() = run("stop sharing") { uploader.stop(); show(); step() }
 
     /**
      * Something the viewer should see soon changed in the recording's state: pause, resume, alarm, arrived – or the
@@ -108,8 +109,12 @@ class LiveLane(
         settle()
     }
 
-    /** True while there is something to send: the shared tour records here, or its end / stop still has to reach the server. */
+    /**
+     * True while there is something to send: the shared tour records here, or its end / stop – or an older share's
+     * stop ([LiveUploader.cleaning], whatever the running share's tour does) – still has to reach the server.
+     */
     private fun active(): Boolean {
+        if (uploader.cleaning) return true
         val shared = uploader.tourId ?: return false
         if (uploader.link == null) return true // ending or stopping
         return state()?.tourId == shared
@@ -119,7 +124,7 @@ class LiveLane(
     private fun settle() {
         val pending = uploader.pending
         // the reader of the snapshot and the network watch are neighbours: one that throws must not cost the next step
-        guarded("show the state") { publish(snapshot()) }
+        show()
         if (pending != watching) {
             watching = pending
             guarded("watch the network") {
@@ -135,6 +140,8 @@ class LiveLane(
         val floor = lastStepMs?.let { it + MIN_GAP_MS - now } ?: 0L
         next = exec.schedule({ guarded("upload") { step() } }, maxOf(due - now, floor, 0L), TimeUnit.MILLISECONDS)
     }
+
+    private fun show() = guarded("show the state") { publish(snapshot()) }
 
     private fun snapshot(): LiveSnapshot {
         val st = uploader.status

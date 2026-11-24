@@ -137,6 +137,120 @@ class FarStartTest {
         assertNull("quiet after OK", r.nav.prompt)
     }
 
+    /** Owner 2026-11-21: "Cancel" while the way to the start is searched → the same question again, nothing said. */
+    @Test fun cancelWhileSearchingGoesBackToTheQuestionAndStopsTheJob() {
+        val r = Run(Navigator(session()))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        val job = r.nav.leadThere(p.id).job!!
+        val s = r.nav.cancelLead(p.id)
+        assertTrue("the running search is cancelled", s.cancelJob)
+        assertFalse(s.vibrate)
+        assertNull(s.job)
+        val back = r.nav.prompt as NavPrompt.FarStart
+        assertFalse(back.searching)
+        assertEquals(p.id, back.id)
+        r.feed(drift(-30_000.0, t0 = 100_000)) // not quiet: the question stays and is not replaced
+        assertEquals(back.id, (r.nav.prompt as NavPrompt.FarStart).id)
+        // a late result of the cancelled job changes nothing
+        val late = r.nav.onResult(job.id, Rerouter.Failed(Rerouter.Reason.NO_WAY, "x", 5))
+        assertEquals(NavPrompt.FarStart::class, r.nav.prompt!!::class)
+        assertFalse((r.nav.prompt as NavPrompt.FarStart).searching)
+        assertFalse(late.lineChanged); assertFalse(late.vibrate); assertNull(late.job)
+        val lateFound = r.nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request))
+        assertEquals(back, r.nav.prompt)
+        assertFalse(lateFound.lineChanged)
+        // not on the route yet, and the question is still asked: "Guide me" works again
+        val again = r.nav.leadThere(p.id)
+        assertNotNull(again.job)
+        assertTrue((r.nav.prompt as NavPrompt.FarStart).searching)
+        assertTrue("a new job id", again.job!!.id != job.id)
+    }
+
+    @Test fun cancelIsIdCheckedAndOnlyWhileSearching() {
+        val r = Run(Navigator(session()))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        assertFalse(r.nav.cancelLead(p.id).cancelJob)          // not searching: nothing
+        assertEquals(p, r.nav.prompt)
+        r.nav.leadThere(p.id)
+        assertFalse(r.nav.cancelLead(p.id + 1).cancelJob)       // another question: ignored
+        assertTrue((r.nav.prompt as NavPrompt.FarStart).searching)
+    }
+
+    @Test fun cancelAfterAnEditedPlanSearchGoesBackToTheQuestionToo() {
+        val led = session().copy(lead = true, current = line(-30_000.0 to 0.0, 0.0 to 0.0), version = 1)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        val nav = Navigator(NavSession.afterPlanEdit(led, edited))
+        val job = nav.leadAgain(fix(-30_000.0, 0.0, 0)).job!!
+        val p = nav.prompt as NavPrompt.FarStart
+        assertTrue(p.searching)
+        assertTrue(nav.cancelLead(p.id).cancelJob)
+        assertFalse((nav.prompt as NavPrompt.FarStart).searching)
+        nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request) as Rerouter.Found)
+        assertFalse((nav.prompt as NavPrompt.FarStart).searching)
+    }
+
+    /** Review 2026-11-21: Abbrechen + „Ohne Route weiter“ – the next plan edit must not start the search he just declined. */
+    @Test fun aDeclinedLeadIsNotStartedAgainByAPlanEdit() {
+        val led = session().copy(lead = true, current = line(-30_000.0 to 0.0, 0.0 to 0.0), version = 1)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        val nav = Navigator(NavSession.afterPlanEdit(led, edited))
+        val from = fix(-30_000.0, 0.0, 0)
+        nav.leadAgain(from).job!!
+        val p = nav.prompt as NavPrompt.FarStart
+        val cancelled = nav.cancelLead(p.id)
+        nav.justRecord(p.id)
+        val again = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.drop(1))
+        val next = Navigator(NavSession.afterPlanEdit(nav.session, again))
+        assertNull("no search he did not ask for", next.leadAgain(from).job)
+        assertNull(next.prompt)
+        assertTrue("Abbrechen is saved", cancelled.sessionChanged)
+        assertFalse(nav.session.lead)
+    }
+
+    @Test fun justRecordWithdrawsGuideMeAndIsSaved() {
+        val led = session().copy(lead = true)
+        val nav = Navigator(led)
+        val job = nav.leadAgain(fix(-30_000.0, 0.0, 0)).job
+        assertNotNull(job)
+        val p = nav.prompt as NavPrompt.FarStart
+        val s = nav.justRecord(p.id)
+        assertTrue(s.sessionChanged); assertTrue("the running search stops", s.cancelJob)
+        assertFalse(nav.session.lead)
+    }
+
+    /** Declined once, „Guide me“ later still counts: found → remembered for the next plan edit. */
+    @Test fun guideMeAfterACancelSetsTheLeadAgain() {
+        val r = Run(Navigator(session().copy(lead = true)))
+        r.feed(drift(-30_000.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        r.nav.leadThere(p.id)
+        r.nav.cancelLead(p.id)
+        assertFalse(r.nav.session.lead)
+        val job = r.nav.leadThere(p.id).job!!
+        r.nav.onResult(job.id, Rerouter(PolyEngine()).reroute(job.request))
+        assertTrue(r.nav.session.lead)
+    }
+
+    @Test fun walkingToTheRouteAfterCancelStillClearsTheQuestion() {
+        val r = Run(Navigator(session()))
+        r.feed(drift(-500.0))
+        val p = r.nav.prompt as NavPrompt.FarStart
+        r.nav.leadThere(p.id); r.nav.cancelLead(p.id)
+        r.feed(walk(-500.0 to 0.0, 0.0 to 0.0, 200.0 to 0.0, t0Ms = 100_000))
+        assertNull(r.nav.prompt)
+        assertTrue(r.nav.session.reached)
+    }
+
+    @Test fun theLongSearchWarningStartsAt25Km() {
+        assertEquals(25_000.0, Navigator.FAR_SEARCH_WARN_M, 0.0)
+        assertFalse(Navigator.searchMayTakeLong(8_000.0))
+        assertFalse(Navigator.searchMayTakeLong(24_999.0))
+        assertTrue(Navigator.searchMayTakeLong(25_000.0))
+        assertTrue(Navigator.searchMayTakeLong(630_000.0))
+    }
+
     @Test fun reachingTheRouteClearsTheQuestion() {
         val r = Run(Navigator(session()))
         r.feed(drift(-500.0))

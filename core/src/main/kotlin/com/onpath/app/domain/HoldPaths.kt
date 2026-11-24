@@ -1,6 +1,8 @@
 package com.onpath.app.domain
 
 import com.onpath.app.debug.Problems
+import com.onpath.app.domain.HoldMeasure.Outcome
+import com.onpath.app.domain.HoldMeasure.Router
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.RouteCancel
 import com.onpath.app.routing.RoutingException
@@ -18,7 +20,7 @@ import kotlinx.coroutines.withTimeoutOrNull
  * timeout or any failure (no routing data, an engine error, a spot on an island) gives the straight-line numbers back
  * ([Outcome.onPaths] false, [Outcome.failure] says why) – a hold always gets its decision (core feature C1). One measure
  * at a time: [start] cancels the one before, [cancel] stops it (a plan change, Undo, leaving Plan); a cancelled measure
- * never calls its `done`. App only (the browser planner has no main thread to keep free).
+ * never calls its `done`. The app's [HoldMeasure] (the browser planner measures in its routing worker: its own).
  *
  * [scope] = where `done` runs (the ViewModel's: the main thread), [worker] = the thread the router is asked on.
  */
@@ -27,35 +29,20 @@ class HoldPaths(
     private val worker: CoroutineDispatcher,
     private val timeoutMs: Long = TIMEOUT_MS,
     private val clock: () -> Long = { System.nanoTime() / 1_000_000 },
-) {
-    /** The routed length a → b in metres (blocking, on [worker]); throws when there is none. Stops soon after [cancel]. */
-    fun interface Router {
-        fun length(a: GeoPoint, b: GeoPoint, cancel: RouteCancel): Double
-    }
-
-    /** What a measure found: [detours] on the paths, or the straight ones after [failure]; [ms] = how long it took. */
-    class Outcome(val detours: PlaceAddMenu.Detours, val onPaths: Boolean, val ms: Long, val failure: String? = null) {
-        /** For the hold's trace: "paths: insert +X m, append Y m (Z ms)" or "paths failed: … – straight lines". */
-        fun describe(): String =
-            if (onPaths) "paths: insert +${detours.insertM.toInt()} m" +
-                (detours.earlyInsertM?.let { " (earlier legs +${it.toInt()} m)" } ?: "") +
-                ", append ${detours.appendM.toInt()} m ($ms ms)"
-            else "paths failed: $failure ($ms ms) – straight lines"
-    }
-
+) : HoldMeasure {
     private var job: Job? = null
     private var cancel: RouteCancel? = null
     private var gen = 0
 
     /** A measure is running (its `done` not called yet). Main thread. */
-    var running = false
+    override var running = false
         private set
 
     /**
      * Measures [s] beside the plan [points] (2+) on the paths; [straight] = its straight-line numbers ([PlaceAddMenu.detours],
      * the fallback and the arrival angle). [done] gets the outcome on [scope] – never for a measure cancelled or replaced.
      */
-    fun start(points: List<GeoPoint>, s: GeoPoint, straight: PlaceAddMenu.Detours, router: Router, done: (Outcome) -> Unit) {
+    override fun start(points: List<GeoPoint>, s: GeoPoint, straight: PlaceAddMenu.Detours, router: Router, done: (Outcome) -> Unit) {
         cancel()
         val g = ++gen
         val c = RouteCancel().also { cancel = it }
@@ -104,7 +91,7 @@ class HoldPaths(
     }
 
     /** Stops a running measure (its `done` is never called); true when one was running. Main thread. */
-    fun cancel(): Boolean {
+    override fun cancel(): Boolean {
         val was = running
         gen++
         running = false

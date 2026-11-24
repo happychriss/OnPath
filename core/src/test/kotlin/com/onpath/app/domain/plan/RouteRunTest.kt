@@ -274,6 +274,21 @@ class RouteRunTest {
         assertTrue(left.on(recalc(far)).state.phase is Phase.AskLong)
     }
 
+    @Test fun aPlanBeyondADayIsRoutedWithoutTheQuestionWhenTheHostSaysNever() {
+        val step = RouteRun().on(Event.Recalc(far, Activity.HIKE, planMode = true, newPlan = false, askLong = false))
+        assertTrue(step.state.routing)
+        assertTrue(step.effects.none { it is Effect.LongAsked })
+        assertEquals(1, step.effects.filterIsInstance<Effect.StartRouting>().size)
+    }
+
+    @Test fun aYesToTheLongPlanSurvivesAFreshRunWhenItsPointsAreGivenBack() {
+        // the planner drops its worker (and its RouteRun) on a superseded run: it gives longOk back with RoutedBefore
+        val yes = RouteRun().on(recalc(far)).state.on(Event.LongAnswer(planAnyway = true, points = far)).state
+        val fresh = RouteRun().on(Event.RoutedBefore(yes.longOk!!)).state
+        assertEquals(yes.longOk, fresh.longOk)
+        assertTrue(fresh.on(recalc(far)).state.routing)
+    }
+
     @Test fun aSavedRouteRoutedBeforeIsNotAskedAbout() {
         assertTrue(RouteRun().after(Event.RoutedBefore(far), recalc(far)).state.routing)
     }

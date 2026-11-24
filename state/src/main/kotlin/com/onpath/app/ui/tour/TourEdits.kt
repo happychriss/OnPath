@@ -112,16 +112,32 @@ class TourEdits(
      * Only the app's tour: the plan itself is edited exactly as in the web planner.
      */
     fun tourPassed(plan: List<GeoPoint> = waypoints.toList()): Set<Int> {
-        val rec = recState.value ?: return emptySet()
-        if (rec.tourId != passedTourId) { passedTourId = rec.tourId; passedPoints.clear() }
-        if (followLine == null || followIsTrack || plan.isEmpty()) return emptySet()
+        val t = splitTour(plan) ?: return emptySet()
+        return TourSplit.passed(plan, t, known = passedPoints)
+            .also { r -> r.forEach { i -> plan.getOrNull(i)?.let { passedPoints += it } } }
+    }
+
+    /** [tourPassed] as the map draws it (grey): a stop the route only passed by is behind the rider, but was not reached. */
+    fun tourPassedOnMap(plan: List<GeoPoint> = waypoints.toList()): Set<Int> {
+        val passed = tourPassed(plan)
+        val t = splitTour(plan) ?: return emptySet()
+        return TourSplit.reachedOf(plan, passed, t)
+    }
+
+    /** What [TourSplit] knows of the running tour; null = no tour that follows the plan. */
+    private fun splitTour(plan: List<GeoPoint>): TourSplit.Tour? {
+        val rec = recState.value ?: return null
+        if (rec.tourId != passedTourId) { passedTourId = rec.tourId; passedPoints.clear(); passedByPoints.clear() }
+        if (followLine == null || followIsTrack || plan.isEmpty()) return null
         val s = rec.nav?.session?.takeIf { it.kind == NavKind.PLAN }
-        return TourSplit.passed(plan, TourSplit.Tour(
+        s?.passedBy?.forEach { i -> s.stops.getOrNull(i)?.let { passedByPoints += it.point } }
+        return TourSplit.Tour(
             track = rec.track, position = myPosition(), reached = s?.reached == true, bike = activity != Activity.HIKE,
             // progress compares with the stops' places on the original line only (a taken re-route has its own)
             stops = s?.takeUnless { it.rerouted }?.stops.orEmpty(), progressM = rec.nav?.progressM ?: 0.0,
             visited = s?.visited?.mapNotNull { s.stops.getOrNull(it)?.point }?.toSet().orEmpty(),
-        ), known = passedPoints).also { r -> r.forEach { i -> plan.getOrNull(i)?.let { passedPoints += it } } }
+            passedBy = passedByPoints.toSet(),
+        )
     }
 
     /**
@@ -130,6 +146,8 @@ class TourEdits(
      * simply no longer matches). Cleared with a new tour.
      */
     private val passedPoints = HashSet<GeoPoint>()
+    /** Of those, the stops the route only passed by ([com.onpath.app.navigation.NavSession.passedBy]): never grey on the map. */
+    private val passedByPoints = HashSet<GeoPoint>()
     private var passedTourId: Long? = null
 
     /** The next plan change loads a saved route during a tour ([openTour] duringTour): a whole new plan ([splitOf]). */

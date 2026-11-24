@@ -83,7 +83,6 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
-import androidx.compose.material.icons.outlined.Flag
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -256,6 +255,8 @@ fun NavigateOverlay(
     /** "Route starts 31 km away" (never on the route yet): Guide me / Just record; OK on "no way to the route". */
     onLeadThere: (Int) -> Unit = {},
     onJustRecord: (Int) -> Unit = {},
+    /** "Cancel" while the way to the far start is searched: back to the far-start question. */
+    onCancelLead: (Int) -> Unit = {},
     /** "Hier einsteigen" on the mid-route question (owner 2026-11-03); "Zu ① führen" is [onLeadThere]. */
     onJoinHere: (Int) -> Unit = {},
     onLeadFailedOk: (Int) -> Unit = {},
@@ -362,9 +363,8 @@ fun NavigateOverlay(
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            // cards glide in and out instead of popping and pushing the status card
-            Appearing(ui.turn) { TurnCard(it) }
+        ) { LocalNavTop.current?.invoke(ui.turn != null) // live sharing's sign when no turn card carries it ([LiveSignLayer])
+            Appearing(ui.turn) { TurnCard(it) } // cards glide in and out instead of popping and pushing the status card
             // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
             // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
             Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
@@ -410,7 +410,7 @@ fun NavigateOverlay(
         val message = Messages.pick(listOf(
             question?.let { q -> rerouteMessage(q, onTake = { onTakeRoute(q.id) }, onKeep = { onKeepRoute(q.id) }, onVia = { onTakeVia(q.id) }) },
             ui.offRoute?.takeIf { it.prompt == NavPrompt.Searching }?.let { o -> searchingMessage(o, onKeep = { onKeepRoute(-1) }) },
-            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }) },
+            far?.let { p -> farStartMessage(p, onLead = { onLeadThere(p.id) }, onJustRecord = { onJustRecord(p.id) }, onCancel = { onCancelLead(p.id) }) },
             mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
@@ -463,20 +463,21 @@ private fun TurnCard(t: TurnHint) {
         else str(Res.string.nav_turn_in, spoken, turnDistance(t.distanceM))
     Surface(shape = MaterialTheme.shapes.large, color = OnPathColors.ActionGo,
         contentColor = OnPathColors.CardWhite,
-        modifier = Modifier.fillMaxWidth().clearAndSetSemantics { contentDescription = text }.warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
+        modifier = Modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, MaterialTheme.shapes.large)) {
         Row(Modifier.heightIn(min = 76.dp).padding(horizontal = 16.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
-            else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
-            else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
-            Spacer(Modifier.width(16.dp))
-            // the way word goes on the same line as the direction ("Links auf den Radweg"): the card never grows, a long
-            // label ends in "…" (owner: nothing jumps)
-            Column(Modifier.weight(1f)) {
-                Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
-                    style = MaterialTheme.typography.headlineMedium)
-                StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
-                    fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
-            }
+            Row(Modifier.weight(1f).clearAndSetSemantics { contentDescription = text }, verticalAlignment = Alignment.CenterVertically) { // one spoken text
+                if (t.stop != null) StopSign(t.stop, Modifier.size(48.dp))
+                else if (t.roundabout != null) RoundaboutSign(t.roundabout, t.roundaboutAngle, Modifier.size(48.dp))
+                else Icon(if (t.straight) Icons.Filled.ArrowUpward else turnIcon(t.kind), null, modifier = Modifier.size(48.dp))
+                Spacer(Modifier.width(16.dp))
+                // the way word on the direction's line ("Links auf den Radweg"): the card never grows, a long label ends in "…"
+                Column(Modifier.weight(1f)) {
+                    Text(instrument(turnDistance(t.distanceM), MaterialTheme.typography.headlineMedium),
+                        style = MaterialTheme.typography.headlineMedium)
+                    StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
+                        fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
+                }
+            }; LocalTurnCardEnd.current?.invoke() // live sharing's sign at the edge, its own button for TalkBack ([LiveSignLayer])
         }
     }
 }
@@ -960,29 +961,6 @@ internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
         icon = Icons.Outlined.AltRoute, navigate = true)
 
 /**
- * Never on the route yet and away from it (owner 2026-10-31): "Route starts 31 km away" · "south-west (direct) ·
- * recording" · Just record / Guide me (FRAGE). Calm: no vibration, no sound; stays until answered or the route is
- * reached. After "Guide me" only "Just record" stays while the way there is computed ("Finding a way to the start…").
- */
-internal fun farStartMessage(p: NavPrompt.FarStart, onLead: () -> Unit, onJustRecord: () -> Unit): Message {
-    val buttons = if (p.searching) listOf(MessageButton(NavText.JUST_RECORD, onJustRecord))
-        else listOf(MessageButton(NavText.JUST_RECORD, onJustRecord), MessageButton(NavText.LEAD, onLead))
-    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
-}
-
-/**
- * The route reached beside a later part of it, not at point 1 (owner 2026-11-03: "every tour starts at point 1 and skips
- * nothing"): "Du stehst mitten auf der Route." · "Die Tour beginnt bei ①." · Hier einsteigen / **Zu ① führen** (the
- * primary). Calm (no vibration); stays until answered or the user is at the start. "Hier einsteigen" = the points before
- * count as passed (grey, not deleted). While the way to ① is computed only "Hier einsteigen" stays.
- */
-internal fun midStartMessage(p: NavPrompt.MidStart, onLead: () -> Unit, onJoin: () -> Unit): Message {
-    val buttons = if (p.searching) listOf(MessageButton(NavText.MID_JOIN, onJoin))
-        else listOf(MessageButton(NavText.MID_JOIN, onJoin), MessageButton(NavText.MID_LEAD, onLead))
-    return Message(MessageKind.FRAGE, NavText.title(p), NavText.state(p), buttons, icon = Icons.Outlined.Flag, navigate = true)
-}
-
-/**
  * Android's back in Navigate (flow map N4, owner 2026-11-15 after a hike: „aus der Aufzeichnung verlassen wir die App
  * nicht“): while a tour records back never leaves the app – it is swallowed (before 2026-11-15 it asked "App
  * verlassen?", which an accidental back from the ◀ key under „Anhalten“ brought up on the way). Pure, unit-tested.
@@ -1177,7 +1155,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             newPlan = vm.tour.newPlanNote, onNewPlanUndo = vm.routesGo::undoNewPlan, onNewPlanGone = vm.tour::dropNewPlanNote,
             onPause = vm.tourEnd::pauseRecording, onEnd = { vm.tourEnd.askEndTour() }, lock = vm.settingsSlice.settings.navLock,
             onTakeRoute = vm.tourSession::takeNewRoute, onKeepRoute = vm.tourSession::keepOriginalRoute, onTakeVia = vm.tourSession::takeViaRoute,
-            onLeadThere = vm.tourSession::leadToStart, onJustRecord = vm.tourSession::justRecord, onJoinHere = vm.tourSession::joinHere, onLeadFailedOk = vm.tourSession::leadFailedOk,
+            onLeadThere = vm.tourSession::leadToStart, onJustRecord = vm.tourSession::justRecord, onCancelLead = vm.tourSession::cancelLead, onJoinHere = vm.tourSession::joinHere, onLeadFailedOk = vm.tourSession::leadFailedOk,
             onActivity = vm.activityCheckSlice::openActivityCheck, onChooseActivity = vm.activityCheckSlice::chooseActivity, onKeepActivity = vm.activityCheckSlice::closeActivityCheck,
             onHikeLevel = vm.activityCheckSlice::chooseHikeLevel,
             onProfileScrub = vm.map::navScrub, onProfileRelease = vm.map::navScrubEnd,

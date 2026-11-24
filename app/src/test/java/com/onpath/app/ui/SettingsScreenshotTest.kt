@@ -82,6 +82,10 @@ class SettingsScreenshotTest {
 
     /** Navigate → ⚙ (owner 2026-11-07): the Navigation page, then Karte · POIs · Tempo · Offline-Karten, "Alle Einstellungen ›". */
     fun onTheWay() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true) }
+    /** The on-the-way list with something first ([LocalSettingsFirst] – live sharing's card, [LiveShareScreenshotTest]). */
+    fun onTheWayWith(first: @androidx.compose.runtime.Composable () -> Unit) = paparazzi.snapshot {
+        androidx.compose.runtime.CompositionLocalProvider(LocalSettingsFirst provides first) { Screen(null, phone = phoneOk, onTheWay = true) }
+    }
     /** The same with the location off: "Handy einrichten" at the top of the Navigation page (red, "Fehlt: …"). */
     fun onTheWayPhoneMissing() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false), onTheWay = true) }
 

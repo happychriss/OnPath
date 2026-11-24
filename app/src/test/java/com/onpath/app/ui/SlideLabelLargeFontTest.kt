@@ -13,7 +13,7 @@ import java.util.Locale
  * normal phone: the small line does not fit and is left out – the main line stays whole, nothing is cut. Same
  * pictures as the [ScreenshotTest] tests of the same name, drawn with this class's Paparazzi.
  */
-open class SlideLabelLargeFontTest {
+abstract class SlideLabelLargeFontTest {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = 2.0f), showSystemUi = false)
 
@@ -61,7 +61,7 @@ open class SlideLabelLargeFontTest {
     @Test fun savedTourBox() = shots.savedTourBox()
 }
 
-/** The same in German ("Tour beenden" is the longest button word). */
+/** German only ("Tour beenden" is the longest button word; owner 2026-11-20: the largest font is checked in German, the base class draws nothing). */
 class SlideLabelLargeFontGermanTest : SlideLabelLargeFontTest() {
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)

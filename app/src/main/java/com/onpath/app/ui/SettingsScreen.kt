@@ -215,7 +215,7 @@ fun SettingsScreen(
             if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    item {
+                    item { LocalSettingsFirst.current?.invoke() // live sharing's rows ([LiveShareLayer]) – first on the way
                         NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
                             onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
                             onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
@@ -999,13 +999,6 @@ private fun LicenceEntry(e: com.onpath.app.data.Licences.Entry, read: (String) -
         }
     }
 }
-
-/** Full credits (Settings → About); the map shows only "© OpenStreetMap" and opens these on a tap. */
-val MAP_CREDITS: List<String> get() = listOf(
-    Res.string.settings_credit_osm, Res.string.settings_credit_omt, Res.string.settings_credit_terrain,
-    Res.string.settings_credit_ne, Res.string.settings_credit_brouter, Res.string.settings_credit_icons,
-    Res.string.settings_credit_maplibre,
-).map { Txt.s(it) }
 
 /** False inside a topic page: the page's top bar already names the topic, the card does not repeat it. */
 internal val LocalSectionTitle = compositionLocalOf { true }

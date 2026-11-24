@@ -204,10 +204,34 @@ class VoiceGuideTest {
         val l = line(3000, emptyMap())
         val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         assertTrue(g.update(base) is Phrase.Start)
-        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
         assertNull(g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
         // "back on the route" only when the question was open for a while (a flapping fix says nothing twice)
         assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
+    }
+
+    /** Owner 2026-11-21: side and metres of that moment; no heading or no distance = the plain sentence, never a wrong one. */
+    @Test fun offRouteSaysSideAndMetres_andRepeatsTheNumbersOfThatMoment() {
+        val g = VoiceGuide()
+        val base = VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 1.4, bike = false)
+        g.update(base)
+        // walking east, the route 40 m to the south (bearing 180) = on the right
+        assertEquals(Phrase.OffRoute(RouteSide.RIGHT, 40.0), g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true,
+            routeHeadingDeg = 90.0, routeM = 40.0, routeBearingDeg = 180.0)))
+        g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true))
+        // asked again: the numbers of now, the route is behind
+        assertEquals(Phrase.OffRoute(RouteSide.BEHIND, 85.0), g.questionAgain(45_000, quiet = false, headingDeg = 90.0, routeM = 85.0, routeBearingDeg = 270.0))
+        // asked again without a heading: plain
+        assertEquals(Phrase.OffRoute(), g.questionAgain(90_000, quiet = false, headingDeg = null, routeM = 85.0, routeBearingDeg = 270.0))
+    }
+
+    @Test fun offRouteWithoutHeadingOrDistanceStaysPlain() {
+        val base = VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 1.4, bike = false)
+        for ((h, m, b) in listOf(Triple(null, 40.0, 180.0), Triple(90.0, null, 180.0), Triple(90.0, 40.0, null))) {
+            val g = VoiceGuide(); g.update(base)
+            assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true,
+                routeHeadingDeg = h, routeM = m, routeBearingDeg = b)))
+        }
     }
 
     /**
@@ -221,11 +245,11 @@ class VoiceGuideTest {
         val base = VoiceGuide.Input(0, line(3000, emptyMap()), 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         g.update(base)
         assertNull("no question open: nothing", g.questionAgain(1_000, quiet = false))
-        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 2_000, onRoute = false, offRoute = true)))
         assertNull("the opening was just said", g.questionAgain(3_000, quiet = false))
         assertNull(g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
         assertNull("standing still: quiet", g.questionAgain(40_000, quiet = true))
-        assertEquals(Phrase.OffRoute, g.questionAgain(45_000, quiet = false))
+        assertEquals(Phrase.OffRoute(), g.questionAgain(45_000, quiet = false))
         assertNull(g.update(base.copy(nowMs = 50_000, onRoute = false, offRoute = true)))
         assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 70_000)))
         assertNull("back on the route: nothing", g.questionAgain(90_000, quiet = false))
@@ -242,13 +266,13 @@ class VoiceGuideTest {
         val v1 = line(3000, emptyMap())
         val base = VoiceGuide.Input(0, v1, 1, 100.0, onRoute = true, speedMps = 1.3, bike = false)
         g.update(base)
-        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 160_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 160_000, onRoute = false, offRoute = true)))
         // "Neue Route" taken 3 s later: the new line, the question closed
         val v2 = VoiceGuide.Input(163_000, line(2900, emptyMap()), 2, 0.0, onRoute = true, speedMps = 1.3, bike = false, rerouted = true)
         assertNull(g.update(v2))
         assertTrue(g.update(v2.copy(nowMs = 175_000, alongM = 10.0)) is Phrase.NewRoute)
         // off the new line 24 s after it was taken: said again (was: silent until 2 minutes after the first)
-        assertEquals(Phrase.OffRoute, g.update(v2.copy(nowMs = 187_000, alongM = null, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(v2.copy(nowMs = 187_000, alongM = null, onRoute = false, offRoute = true)))
         // flapping (back by itself, off again at once) stays said once
         g.update(v2.copy(nowMs = 190_000, alongM = 12.0))
         assertNull(g.update(v2.copy(nowMs = 200_000, alongM = null, onRoute = false, offRoute = true)))
@@ -457,7 +481,7 @@ class VoiceGuideTest {
         val g = VoiceGuide()
         val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         assertTrue(g.update(base) is Phrase.Start)
-        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 30_000, onRoute = false, offRoute = true)))
         assertEquals(Phrase.BackOnRoute, g.update(base.copy(nowMs = 55_000, alongM = 400.0)))
     }
 
@@ -474,7 +498,7 @@ class VoiceGuideTest {
             g.update(base.copy(nowMs = t + 10_000))?.let { said += it }
             t += 20_000
         }
-        assertEquals("$said", 2, said.count { it == Phrase.OffRoute })
+        assertEquals("$said", 2, said.count { it is Phrase.OffRoute })
         assertTrue("$said", said.none { it == Phrase.BackOnRoute })
     }
 
@@ -509,7 +533,7 @@ class VoiceGuideTest {
         val g = VoiceGuide()
         val base = VoiceGuide.Input(0, l, 1, 100.0, onRoute = true, speedMps = 5.0, bike = true)
         g.update(base)
-        assertEquals(Phrase.OffRoute, g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
+        assertEquals(Phrase.OffRoute(), g.update(base.copy(nowMs = 20_000, onRoute = false, offRoute = true)))
         g.lineFromApp()
         val said = (1..20).mapNotNull { g.update(base.copy(nowMs = 100_000L + it * 1000, version = 2)) }
         assertTrue("$said", said.none { it == Phrase.BackOnRoute })

@@ -17,6 +17,12 @@ class MapControlsEnabledTest {
         assertEquals(why, listOf(eye, whole, undo, redo),
             listOf(MapControlsEnabled.eye(s), MapControlsEnabled.wholeRoute(s), MapControlsEnabled.undo(s), MapControlsEnabled.redo(s)))
 
+    /** Owner 2026-11-21: a round-trip suggestion on the map – the eye shows the way under it; undo and whole route as before. */
+    @Test fun aSuggestionsLoopCanBeHiddenWithTheEye() {
+        check("only the suggestion's loop on the map", MapControlsEnabled.In(P, suggestLine = true), eye = true, whole = false, undo = false, redo = false)
+        check("the points step leaves no eye", MapControlsEnabled.In(P, pointsOpen = true, suggestLine = true), eye = false, whole = false, undo = false, redo = false)
+    }
+
     @Test fun everyPlanState() {
         check("empty plan, fresh start: nothing on the map, no history",
             MapControlsEnabled.In(P), eye = false, whole = false, undo = false, redo = false)

@@ -27,6 +27,8 @@ interface Slices {
   cancelCamera(points: string, routeLine: string): string;
   /** The app's WholeRoute.SETTLE_MS (WebRules). */
   wholeRouteSettleMs(): string;
+  /** The app's WholeRoute.fitsFirstRoute (mode Plan, nothing shown): `true` / `false`. */
+  wholeRouteFitsFirst(touchedSince: boolean, sameLine: boolean): string;
   /** The app's RoutesTab.search (WebRoutesOrder): the indices of the names (one per line) the query finds. */
   routesSearch(names: string, query: string): string;
   /** The app's RouteSort.sort: the rows' ("rank\tat\tm\ts\tup") indices in the order of the sort ("LENGTH:down"). */
@@ -76,6 +78,16 @@ let settle: number | null = null;
 export function settleMs(): number {
   if (settle == null && sliceExports()) settle = slice<number>('wholeRouteSettleMs');
   return settle ?? 500;
+}
+
+/**
+ * The app's WholeRoute.fitsFirstRoute (MapViewSlice.fitFirstRoute asks it): fit the first route after the settle wait –
+ * not when the map was touched meanwhile or the plan moved on. Without the instance (the first route can come before
+ * it): the same two conditions by hand, unreported – nothing is lost, it is only a camera move.
+ */
+export function fitsFirstRoute(touchedSince: boolean, sameLine: boolean): boolean {
+  if (!sliceExports()) return !touchedSince && sameLine;
+  return slice<boolean>('wholeRouteFitsFirst', touchedSince, sameLine) === true;
 }
 
 // ---- ids: the slices know tours by number; the page's plans have string ids. One number per plan for this page ----
