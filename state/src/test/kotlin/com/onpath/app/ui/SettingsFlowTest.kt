@@ -84,6 +84,7 @@ class SettingsFlowTest {
             override val tourRecording: Boolean get() = recordingRunning
             override fun recordingSettingsChanged() { log += "recording told"; storedAtCall += "recording:" + prefs.inner.settings.contours + "/" + slice.settings.contours }
             override fun mapsWifiOnly(on: Boolean) { log += "wifi only $on"; storedAtCall += "wifi:" + prefs.inner.settings.mapsWifiOnly + "/" + slice.settings.mapsWifiOnly }
+            override fun officialRoutesChanged(strength: Int) { log += "official $strength"; storedAtCall += "official:" + prefs.inner.settings.officialRouteStrength + "/" + slice.settings.officialRouteStrength }
         }
         init { slice = SettingsSlice(board, prefs, host, CoroutineScope(Job() + Dispatchers.Unconfined), io) { now } }
     }
@@ -190,6 +191,21 @@ class SettingsFlowTest {
         assertEquals(2, app.log.count { it == "retime" })
         app.slice.updateSettings(app.slice.settings)
         assertEquals("the same pace again: nothing", 2, app.log.count { it == "retime" })
+    }
+
+    @Test fun preferOfficialRoutesRoutesAgainOnlyWhenItChanges() {
+        val app = App()
+        assertEquals("off by default: the routes as before", AppSettings.OFFICIAL_OFF, app.slice.settings.officialRouteStrength)
+        app.slice.updateSettings(app.slice.settings.copy(contours = false))
+        assertTrue("another setting: not routed again", app.log.none { it.startsWith("official") })
+        app.slice.updateSettings(app.slice.settings.copy(officialRouteStrength = AppSettings.OFFICIAL_STRONG))
+        assertEquals(listOf("official 2"), app.log.filter { it.startsWith("official") })
+        assertEquals("stored and in the slice when the router is told", "official:2/2", app.storedAtCall.last { it.startsWith("official") })
+        assertTrue(problems.traced("routing").any { "Prefer official routes: 2" in it })
+        app.slice.updateSettings(app.slice.settings)
+        assertEquals("the same strength again: nothing", 1, app.log.count { it.startsWith("official") })
+        app.slice.updateSettings(app.slice.settings.copy(officialRouteStrength = AppSettings.OFFICIAL_NORMAL))
+        assertEquals(listOf("official 2", "official 1"), app.log.filter { it.startsWith("official") })
     }
 
     @Test fun aRunningRecordingIsToldAndNoRecordingIsNot() {

@@ -23,7 +23,7 @@ object RouterProfile {
     private fun viaCorrectionM(activity: Activity): Double = RouterRules.viaCorrectionM(activity)
 
     // ---- copy of BRouterEngine.keyValues (RouterProfileTest) ----
-    internal fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
+    internal fun keyValues(activity: Activity, sacLimit: Int, official: Int = 0): MutableMap<String, String> {
         val kv = HashMap<String, String>()
         // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner).
         // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
@@ -53,6 +53,14 @@ object RouterProfile {
                 kv["SAC_scale_preferred"] = minOf(sac, 3).toString()
             }
             else -> Unit
+        }
+        // "Prefer official routes" (Settings → Map): 0 sets nothing – the profile's own value applies, the same routes as
+        // before and as the web planner. 1 normal, 2 strong: marked hiking / cycle / MTB route networks weigh more.
+        val o = official.coerceIn(0, 2)
+        if (o > 0) when (activity) {
+            Activity.HIKE -> kv["hiking_routes_preference"] = if (o == 1) "0.8" else "2.0" // profile 0.2
+            Activity.MTB, Activity.EMTB -> kv["cycleroutes_pref"] = if (o == 1) "0.4" else "1.0" // profile 0.2
+            Activity.BIKE_TOURING, Activity.EBIKE, Activity.BIKE_TREKKING -> kv["stick_to_cycleroutes"] = "1" // profile false
         }
         return kv
     }

@@ -62,6 +62,14 @@
     <string name="settings_map_planning">Planen</string>
     <string name="settings_map_vibrate">Vibration beim Planen</string>
     <string name="settings_map_vibrate_sub">Kurzes Vibrieren, wenn du die Karte gedrückt hältst, zweimal auf einem Routenpunkt</string>
+    <string name="settings_map_official">Offizielle Routen bevorzugen</string>
+    <string name="settings_map_official_sub">Markierte Wander-, Rad- und MTB-Routen beim Planen</string>
+    <string name="settings_map_official_off">Aus</string>
+    <string name="settings_map_official_off_line">Wie bisher: das Routing-Profil entscheidet allein</string>
+    <string name="settings_map_official_normal">Normal</string>
+    <string name="settings_map_official_normal_line">Markierte Routen deutlich vorziehen, kleine Umwege sind in Ordnung</string>
+    <string name="settings_map_official_strong">Stark</string>
+    <string name="settings_map_official_strong_line">Möglichst auf markierten Routen bleiben, auch mit längeren Umwegen</string>
     <string name="settings_nav_offroute">Warnung abseits der Route</string>
     <string name="settings_nav_offroute_sub">Benachrichtigung, wenn du die gefolgte Route verlässt</string>
     <string name="settings_nav_warn_after">Warnen nach</string>

@@ -90,11 +90,21 @@ data class AppSettings(
     val bikePace: com.onpath.app.time.Pace = com.onpath.app.time.Pace.DEFAULT,
     /** Settings → Offline maps: map areas download only on Wi-Fi, not even the own area on mobile data (F-OFF-03). */
     val mapsWifiOnly: Boolean = false,
+    /**
+     * Settings → Map → Planning: how strongly routing prefers official marked routes (hiking, cycle and MTB route
+     * networks) – [OFFICIAL_OFF] = the profile's own weighting (as before), [OFFICIAL_NORMAL], [OFFICIAL_STRONG]
+     * (BRouterEngine.keyValues). Changes the route, never the time estimate.
+     */
+    val officialRouteStrength: Int = OFFICIAL_OFF,
 ) {
     /** The hold lock is on ([navHoldMs] above 0): the tour's buttons fire only when held. */
     val navLock: Boolean get() = HoldSetting.locked(navHoldMs)
 
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
+        const val OFFICIAL_OFF = 0
+        const val OFFICIAL_NORMAL = 1
+        const val OFFICIAL_STRONG = 2
+        val OFFICIAL_STRENGTHS = listOf(OFFICIAL_OFF, OFFICIAL_NORMAL, OFFICIAL_STRONG)
     }
 }

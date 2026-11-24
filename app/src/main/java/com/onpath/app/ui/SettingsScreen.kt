@@ -433,7 +433,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
     }
 }
 
-/** Map: contours, hill shading, map direction (Plan and Navigate) and – for planning – the vibration on hold. */
+/** Map: contours, hill shading, map direction (Plan and Navigate) and – for planning – the vibration on hold and official routes. */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
@@ -452,6 +452,14 @@ private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, t
             modifier = Modifier.padding(start = 16.dp, top = 2.dp))
         SwitchRow(str(Res.string.settings_map_vibrate), str(Res.string.settings_map_vibrate_sub),
             settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
+        // Aus / Normal / Stark: how strongly the route keeps to marked hiking, cycle and MTB route networks (BRouterEngine)
+        ChoiceRow(str(Res.string.settings_map_official), str(Res.string.settings_map_official_sub),
+            listOf(
+                Choice(AppSettings.OFFICIAL_OFF, str(Res.string.settings_map_official_off), str(Res.string.settings_map_official_off_line)),
+                Choice(AppSettings.OFFICIAL_NORMAL, str(Res.string.settings_map_official_normal), str(Res.string.settings_map_official_normal_line)),
+                Choice(AppSettings.OFFICIAL_STRONG, str(Res.string.settings_map_official_strong), str(Res.string.settings_map_official_strong_line)),
+            ),
+            settings.officialRouteStrength, onPick = { onChange(settings.copy(officialRouteStrength = it)) })
     }
 }
 

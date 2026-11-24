@@ -63,6 +63,14 @@
     <string name="settings_map_planning">Planning</string>
     <string name="settings_map_vibrate">Vibrate when planning</string>
     <string name="settings_map_vibrate_sub">Short buzz when you hold the map, two buzzes on a route point</string>
+    <string name="settings_map_official">Prefer official routes</string>
+    <string name="settings_map_official_sub">Marked hiking, cycle and MTB routes when planning</string>
+    <string name="settings_map_official_off">Off</string>
+    <string name="settings_map_official_off_line">As before: the routing profile alone decides</string>
+    <string name="settings_map_official_normal">Normal</string>
+    <string name="settings_map_official_normal_line">Clearly prefer marked routes, small detours are fine</string>
+    <string name="settings_map_official_strong">Strong</string>
+    <string name="settings_map_official_strong_line">Keep to marked routes where possible, even with longer detours</string>
     <string name="settings_nav_offroute">Off-route warning</string>
     <string name="settings_nav_offroute_sub">A notification when you leave the followed route</string>
     <string name="settings_nav_warn_after">Warn after</string>

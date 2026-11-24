@@ -22,9 +22,9 @@ class RouterProfileTest {
 
     @Test fun keyValuesAreTheRoutersOwn() {
         val router = body("src/main/java/com/onpath/app/routing/BRouterEngine.kt",
-            "private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {")
+            "private fun keyValues(activity: Activity, sacLimit: Int, official: Int = 0): MutableMap<String, String> {")
         val copy = body("../core/src/main/kotlin/com/onpath/app/suggest/RouterProfile.kt",
-            "internal fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {")
+            "internal fun keyValues(activity: Activity, sacLimit: Int, official: Int = 0): MutableMap<String, String> {")
         assertEquals(router, copy)
         assertTrue(File("src/main/java/com/onpath/app/routing/BRouterEngine.kt").readText()
             .contains("private const val MAX_SNAP_M = 1000.0"))

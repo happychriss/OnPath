@@ -267,7 +267,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 set(v) { prefs.sac = v }
         },
         router = object : com.onpath.app.ui.plan.RouterPort {
-            override fun create() = EngineProvider.create(getApplication(), dataFiles.segmentsDir)
+            override fun create() = EngineProvider.create(getApplication(), dataFiles.segmentsDir).also {
+                (it as? com.onpath.app.routing.BRouterEngine)?.officialRouteStrength = settingsSlice.settings.officialRouteStrength
+            }
             override val isRealRouter: Boolean get() = EngineProvider.isRealRouter
             override fun fingerprint(): String = routingFingerprint
             override val legsDir: File get() = File(app.filesDir, "legs")
@@ -326,6 +328,10 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun retime() = this@AppViewModel.planRoute.retime()
         override val tourRecording: Boolean get() = recState.value != null
         override fun recordingSettingsChanged() = recording.settingsChanged()
+        override fun officialRoutesChanged(strength: Int) {
+            (planRoute.engine as? com.onpath.app.routing.BRouterEngine)?.officialRouteStrength = strength
+            planRoute.officialRoutesChanged()
+        }
     }
     val settingsSlice: com.onpath.app.ui.SettingsSlice = com.onpath.app.ui.SettingsSlice(notices, settingsStore, settingsHost, viewModelScope, Dispatchers.IO)
     /**

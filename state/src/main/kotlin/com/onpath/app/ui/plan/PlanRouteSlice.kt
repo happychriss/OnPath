@@ -184,8 +184,21 @@ class PlanRouteSlice(
      * changed; the plan, the tour's follow line and browser plans share it. Cleared with the engine ([routingEngine]).
      */
     val legCache = LegCache(store = LegFiles(
-        router.legsDir, fingerprint = { legFingerprint },
+        router.legsDir, fingerprint = { legFingerprint?.let { officialFingerprint(it, host.settings.officialRouteStrength) } },
         partVersion = { router.partVersion(it) }))
+
+    /**
+     * "Prefer official routes" (Settings → Map) routes differently: a stored leg counts only with the same strength. Off
+     * keeps the plain fingerprint, so the legs stored before the setting existed stay valid.
+     */
+    internal fun officialFingerprint(fingerprint: String, strength: Int): String =
+        if (strength <= 0) fingerprint else "$fingerprint|official=$strength"
+
+    /** "Prefer official routes" changed: the legs in memory were routed with the old strength – the plan is routed again. */
+    fun officialRoutesChanged() {
+        legCache.clear()
+        host.recalc()
+    }
 
     /**
      * The routing fingerprint (BRouter, profiles, PLANNER_VERSION) the phone routes with – stored legs ([legCache]'s

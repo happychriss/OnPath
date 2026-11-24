@@ -49,6 +49,8 @@ interface SettingsHost {
     val tourRecording: Boolean
     /** The recording service reads the settings again (voice, units). */
     fun recordingSettingsChanged()
+    /** "Prefer official routes" changed: the router takes the new strength, the plan is routed again (PlanRoute). */
+    fun officialRoutesChanged(strength: Int)
 }
 
 /**
@@ -178,6 +180,7 @@ class SettingsSlice(
 
     fun updateSettings(s: AppSettings) {
         val paceChanged = s.hikePace != settings.hikePace || s.bikePace != settings.bikePace
+        val officialChanged = s.officialRouteStrength != settings.officialRouteStrength
         // Relief set by hand (Settings → Map): the user's choice wins, the app never switches it off again (ReliefAuto)
         if (s.hillshade != settings.hillshade) {
             reliefAuto = com.onpath.app.map.ReliefAuto.userSet(reliefAuto); store.reliefAuto = reliefAuto
@@ -186,6 +189,10 @@ class SettingsSlice(
         settings = s; store.settings = s
         host.mapsWifiOnly(s.mapsWifiOnly)
         if (paceChanged) host.retime()
+        if (officialChanged) {
+            Problems.trace("routing", "Prefer official routes: ${s.officialRouteStrength} (0 off, 1 normal, 2 strong) – routed again")
+            host.officialRoutesChanged(s.officialRouteStrength)
+        }
         if (host.tourRecording) host.recordingSettingsChanged()
     }
 }

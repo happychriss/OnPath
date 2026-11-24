@@ -80,7 +80,13 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE
     }
 
-    private data class CacheKey(val coords: List<Long>, val activity: Activity, val sac: Int)
+    private data class CacheKey(val coords: List<Long>, val activity: Activity, val sac: Int, val official: Int)
+
+    /**
+     * Settings → Map → "Prefer official routes": 0 = off (the profile's own weighting), 1 = normal, 2 = strong
+     * ([keyValues]). Set by the app when it creates the engine and when the setting changes; part of the cache key.
+     */
+    @Volatile var officialRouteStrength: Int = 0
 
     override fun lastLockWaitMs(): Long = RouterRules.lastLockWaitMs()
 
@@ -98,10 +104,11 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             else if (!LOCK.tryLock(limits.timeoutMs, TimeUnit.MILLISECONDS)) throw RoutingException(BUSY, timedOut = true)
             RouterRules.lastLockWait.set(System.currentTimeMillis() - start)
             try {
-                val key = cacheKey(waypoints, activity, sacLimit)
+                val official = officialRouteStrength.coerceIn(0, 2) // read once: the same value for the key and the search
+                val key = cacheKey(waypoints, activity, sacLimit, official)
                 cache[key] ?: run {
                     val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }
-                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)
+                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1, official)
                 }.also { cache[key] = it }
             } finally {
                 LOCK.unlock()
@@ -126,17 +133,17 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException(UNEXPECTED)
         }
 
-    private fun cacheKey(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): CacheKey {
+    private fun cacheKey(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, official: Int): CacheKey {
         val c = ArrayList<Long>(waypoints.size * 2)
         for (p in waypoints) {
             c.add(Math.round(p.lat * 1_000_000.0)); c.add(Math.round(p.lon * 1_000_000.0))
         }
-        return CacheKey(c, activity, if (activity == Activity.HIKE) sacLimit.coerceIn(1, 5) else 0)
+        return CacheKey(c, activity, if (activity == Activity.HIKE) sacLimit.coerceIn(1, 5) else 0, official)
     }
 
     private fun routeLocked(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
-        rounds: Int = 1,
+        rounds: Int = 1, official: Int = 0,
     ): RouteResult {
         if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
         checkSegments(waypoints)
@@ -146,7 +153,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
         val (track, nodes) = try {
-            search(waypoints, activity, sacLimit, timeoutMs, cancel)
+            search(waypoints, activity, sacLimit, timeoutMs, cancel, official)
         } catch (e: RoutingException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -167,14 +174,14 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
      * a point that cannot be routed takes the closest usable way).
      */
     private fun search(
-        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?,
+        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?, official: Int = 0,
     ): Pair<OsmTrack, List<OsmNodeNamed>> {
         val t0 = System.currentTimeMillis()
         val skipWays = ArrayList<LongArray>()
         while (true) {
             val rc = RoutingContext()
             rc.localFunction = File(profileDir, profileFile(activity)).absolutePath
-            rc.keyValues = keyValues(activity, sacLimit)
+            rc.keyValues = keyValues(activity, sacLimit, official)
             val nodes = bRouterNodes(waypoints)
             val engine = BRouter(null, null, segmentsDir, nodes, rc)
             engine.quite = true
@@ -362,7 +369,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     }
 
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
-    private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
+    private fun keyValues(activity: Activity, sacLimit: Int, official: Int = 0): MutableMap<String, String> {
         val kv = HashMap<String, String>()
         // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner).
         // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
@@ -392,6 +399,14 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
                 kv["SAC_scale_preferred"] = minOf(sac, 3).toString()
             }
             else -> Unit
+        }
+        // "Prefer official routes" (Settings → Map): 0 sets nothing – the profile's own value applies, the same routes as
+        // before and as the web planner. 1 normal, 2 strong: marked hiking / cycle / MTB route networks weigh more.
+        val o = official.coerceIn(0, 2)
+        if (o > 0) when (activity) {
+            Activity.HIKE -> kv["hiking_routes_preference"] = if (o == 1) "0.8" else "2.0" // profile 0.2
+            Activity.MTB, Activity.EMTB -> kv["cycleroutes_pref"] = if (o == 1) "0.4" else "1.0" // profile 0.2
+            Activity.BIKE_TOURING, Activity.EBIKE, Activity.BIKE_TREKKING -> kv["stick_to_cycleroutes"] = "1" // profile false
         }
         return kv
     }
