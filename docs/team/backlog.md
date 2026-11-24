@@ -113,7 +113,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [aufräumen] (2026-11-24) Cleanup on donald: inventory in [items/2026-11-24-cleanup-inventory.md](items/2026-11-24-cleanup-inventory.md); on the owner's yes 105 clean worktrees removed. The 133 A branches on GitHub are NOT deleted – the permission check blocked it, waits for the owner. B (50 worktrees, 4 branches) and C (5 + 2) stay; hp → [laptop] under Next.
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
 - ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
@@ -129,7 +129,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
-- **[laptop] Tidy up hp like donald (aufräumen 2026-11-24)…** same inventory of the laptop's worktrees + one yes from the owner → [detail](items/2026-11-24-cleanup-inventory.md)
+- **[laptop] Tidy up hp like donald…** → [detail](items/2026-11-24-cleanup-inventory.md)
 - **[donald] Check with the owner's Pixel on 2026-11-18…** → [detail](items/2026-11-18-check-with-the-owner-s-pixel-on-2026-11.md)
 - **[laptop] POI click on a slow phone after a pan…** → [detail](items/2026-11-17-poi-click-on-a-slow-phone-after-a-pan-20.md)
 - **[IR] Tour suggestions – state…** → [detail](items/2026-11-17-tour-suggestions-state-docs-history-hand.md)
