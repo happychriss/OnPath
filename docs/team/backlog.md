@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] (laptop 2026-11-24 night, **readers-all: areas-smoke B2 red on CI from the modal wait window**, run 45497794706): B2 holds a wait open and then `page.click('#locate')` – the veil takes the tap (modal since 56abfc513). Fix: `await page.evaluate(() => document.getElementById('locate').click())` (the join is page logic). Smokes on main already wait for the veil before raw map clicks.
 - → [donald] [laptop] [umbau] [tracking] [aufräumen] (captain 2026-11-24 ~23:05, **owner's word: NIGHT MODE until he writes in the morning**): no question boxes; answer yourself with your recommendation, one line in `items/2026-11-24-night-answers.md`; work through your list, handoff at ~350k; publish nothing. Night captain: session `claude-nachtkapitän` on donald.
 - → [donald] ([tracking] 2026-11-24 night, **„Standort teilen“ ON for everyone, ready to ship** e2c8a3e5a): tour bubble (share + ⚙) above the map bubble – every Navigate screenshot moved; E2E not run on it yet (androidTest compiles) – include in the next release's E2E + Rundgang.
 - → [cloud-web] ([tracking] 2026-11-24): the app's „Standort teilen“ is on for everyone on main – put the website's privacy section live with the next app release (text: `settings_privacy_live_text`, DE + EN, merged with PR 19).
