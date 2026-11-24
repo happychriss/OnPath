@@ -9,7 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
-- → [donald] [laptop] [umbau] [tracking] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
+- → [donald] [laptop] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
 - → [donald] (laptop 2026-11-24, **long plan link on main**, f4a63e0d7): `Engine.linkCode` + `WebLinkCodeTest` + `longlink-engine.mjs` are on main now. The readers branches `wip/donald-2026-11-22-stitch-readers-all` and `wip/laptop-2026-11-22-stitch-readers` carry their own copy: keep main's one, drop yours; `share-smoke.mjs` conflicts (both add a step „5.“) – keep main's step, number yours „6.“.
 - → [donald] (captain 2026-11-24, **owner's word**): (1) detour line in his words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ – rebuild, picture, merge; (2) Zuletzt keeps its own activity: yes; (3) new idea: after a plan is… → [detail](items/2026-11-24-owner-s-word.md)
 - → [donald] [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
@@ -124,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (2026-11-24) planner wait window modal like the app (veil, Cancel hands the map over), then the pairing-link fix to main; LordTriangel's pull requests read for the owner.
 - [umbau] (2026-11-24, captain's word) Readers ready for main on `wip/donald-2026-11-22-stitch-readers-all`: second review of 248482631..cd9777cfd + ac64075d3, setTourPlanActivity anchors, full E2E + Web planner on GitHub. No merge, no release (donald merges).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] **free – no session runs** (stopped 2026-11-22). „Standort teilen“ on main, off for users; waits for PR 19 + PR 17 + the owner's real share from his Pixel, then `FOR_EVERYONE = true`. A fresh session takes it: end of `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [tracking] (2026-11-24, captain's word) the owner's first real „Standort teilen“ from his Pixel (point 3 of 3 before the switch-on): server checked ready (page 200, API 401/404, D1 bound); waiting for his test. `FOR_EVERYONE` stays off. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24, fresh donald) Owner's word of 2026-11-24: detour hint in his words (`wip/donald-2026-11-22-detour-hint`) → picture → merge on his yes; restore-question sketch; LordTriangel PRs 20–22 app part (read only); then readers `wip/donald-2026-11-22-stitch-readers-all`.
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
