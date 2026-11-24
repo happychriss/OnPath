@@ -1,0 +1,9 @@
+OnPath
+Copyright 2026 The OnPath authors (happychriss and contributors)
+
+This product includes software developed by the OnPath project
+(https://github.com/happychriss/OnPath, https://onpath.earth/).
+
+OnPath uses BRouter (MIT licence) for route calculation and MapLibre Native
+(BSD licence) for map display. Map data © OpenStreetMap contributors (ODbL),
+© OpenMapTiles.

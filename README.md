@@ -130,13 +130,19 @@ Use **JDK 17** and **Android SDK 36**:
 A source build has no map-service key by default. See the [map-hosting guide](docs/design/map-hosting.md) for
 service configuration.
 
-Start with the [contributor guide](CLAUDE.md), [requirements](docs/requirements.md),
-[architecture contract](docs/architecture-contract.md) and [core features](docs/core-features.md).
-The browser planner lives in [web/](web/); routing and map tools live in [tools/](tools/).
+**Contributions are welcome** – testing on different phones, clear bug reports, wording and accessibility
+improvements, and focused fixes or features. See [CONTRIBUTING.md](CONTRIBUTING.md) for how to start; for a larger
+change, open an issue first to agree on scope.
 
-Useful contributions include testing on different phones, clear bug reports, wording and accessibility improvements,
-and focused fixes. For a larger change, open an issue first to agree on scope.
-Follow the repository's working agreement and run `tools/ci/gate.sh` before pushing a change.
+Background reading: [requirements](docs/requirements.md), [architecture contract](docs/architecture-contract.md) and
+[core features](docs/core-features.md). The browser planner lives in [web/](web/); routing and map tools live in
+[tools/](tools/).
+
+## Built on OnPath
+
+OnPath is Apache-2.0, and you are welcome to build your own app on it. Built something on OnPath? Open an issue or a
+pull request and I will list it here. If you fork, please keep the `LICENSE` and `NOTICE` files and say that your app
+is based on OnPath.
 
 ## Why I am building it
 
@@ -160,4 +166,4 @@ Terrain: Terrarium tiles (Mapzen / AWS Terrain Tiles; SRTM, Copernicus and other
 
 ## License
 
-Apache License 2.0, see [LICENSE](LICENSE).
+Apache License 2.0, see [LICENSE](LICENSE) and [NOTICE](NOTICE).
