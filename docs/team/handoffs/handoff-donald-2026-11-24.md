@@ -11,7 +11,10 @@ publish nothing; 0.18.10 ready to the last step in the morning, his word in dona
   Test APK of main at that point on his Pixel 23:03. NOT checked: E2E, a real tour.
 - LordTriangel PRs 20–22 read (notes in backlog Next, parked by the owner). Restore-plan box approved (picture + his lines).
 
-## Branches, NOT on main – the night list (captain), in order
+## Branches – the night list (captain), in order
+**1. DONE 23:55: the readers are on main (07fbe331d)**, Web planner on the branch green (45499972936). Still to do: watch the
+Web planner run on main for 07fbe331d (deploys the planner); red → fix at once.
+
 1. **Readers** `wip/donald-2026-11-22-stitch-readers-all` = **a171c962a**: umbau's d6493f680 + main merged (conflicts:
    TimeEstimateStub kept the real time; WebApi keeps both the detour exports and planCode/planCodeTour with `anchors`;
    parity merged, AppViewModel marked) + **areas-smoke B2 fix** (the modal wait window's veil took the `#locate` click –
