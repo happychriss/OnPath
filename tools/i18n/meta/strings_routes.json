@@ -668,13 +668,13 @@
   },
   "routes_restore_recent": {
     "area": "Plan – „Restore your old plan?“ box",
-    "context": "Detail line under the question: %1$s = the old plan's name as My routes → Recent shows it („Algund → Meran“); the owner's words 2026-11-24.",
+    "context": "Detail line under the question: the old plan is kept (its Recent entry; while the new plan is on the map Recent shows the new one, so the line names no place). %1$s = the old plan's name („Algund → Meran“). The owner's choice 2026-11-24 („ist gesichert“).",
     "priority": 2,
     "confidence": "sicher"
   },
   "routes_restore_saved": {
     "area": "Plan – „Restore your old plan?“ box",
-    "context": "Detail line when the old plan was a saved route left unchanged (it stays under Saved, not Recent): %1$s = its name. Proposed 2026-11-24 – waits for the owner's word.",
+    "context": "Detail line when the old plan was a saved route left unchanged (it stays under Saved, not Recent): %1$s = its name. The owner's choice 2026-11-24.",
     "priority": 2,
     "confidence": "sicher"
   },
