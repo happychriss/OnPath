@@ -52,7 +52,7 @@ class LiveSharePlaceSketchTest {
                      heightDp: Int? = null) = paparazzi.snapshot {
         val d = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(d.density, font), LocalSharePlaceSketch provides SharePlaceSketch(place, state,
-            if (place == SharePlace.A_COLUMN) Icons.Outlined.Share else icon)) {
+            if (place == SharePlace.A_COLUMN || place == SharePlace.E_BUBBLES_PILL) Icons.Outlined.Share else icon)) {
             OnPathTheme {
                 Box(Modifier.fillMaxSize()) {
                     MapPlaceholder(Modifier.fillMaxSize())
@@ -101,4 +101,15 @@ class LiveSharePlaceSketchTest {
     /** Small phone height (640 dp) at the largest font: both bubbles + gap against the card and the scale. */
     @Test fun dSmallLarge() = shot(planned, D, SharePlaceState.LIVE, 2f, heightDp = 640)
     @Test fun dSmallLargeFree() = shot(free, D, SharePlaceState.LIVE, 2f, heightDp = 640)
+
+    private val E = SharePlace.E_BUBBLES_PILL
+    @Test fun eFreeOff() = shot(free, E, SharePlaceState.OFF)
+    @Test fun eFreeLive() = shot(free, E, SharePlaceState.LIVE)
+    @Test fun ePlannedLive() = shot(planned, E, SharePlaceState.LIVE)
+    @Test fun ePlannedWaiting() = shot(planned, E, SharePlaceState.WAITING)
+    @Test fun ePlannedLiveLarge() = shot(planned, E, SharePlaceState.LIVE, 2f)
+    @Test fun ePlannedWaitingLarge() = shot(planned, E, SharePlaceState.WAITING, 2f)
+    @Test fun ePlannedLiveEn() = en { shot(planned, E, SharePlaceState.LIVE) }
+    @Test fun eSmallLarge() = shot(planned, E, SharePlaceState.WAITING, 2f, heightDp = 640)
+    @Test fun eSmallLargeFree() = shot(free, E, SharePlaceState.WAITING, 2f, heightDp = 640)
 }

@@ -34,7 +34,7 @@ import com.onpath.strings.*
  * SKETCH ONLY (owner 2026-11-24: "Standort teilen" more visible in Navigate) – where the share entry could stand.
  * Not wired to anything; read from [LocalSharePlaceSketch] (null = nothing changes, the default everywhere).
  */
-enum class SharePlace { A_COLUMN, B_CARD, C_PILL, D_TWO_BUBBLES }
+enum class SharePlace { A_COLUMN, B_CARD, C_PILL, D_TWO_BUBBLES, E_BUBBLES_PILL }
 enum class SharePlaceState { OFF, LIVE, WAITING }
 data class SharePlaceSketch(val place: SharePlace, val state: SharePlaceState,
                             val icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.ShareLocation)
@@ -44,7 +44,7 @@ val LocalSharePlaceSketch = compositionLocalOf<SharePlaceSketch?> { null }
 /** A: the top button of the map column – same size and look as the other buttons; green + dot while sharing, grey waiting. */
 @Composable
 internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp,
-                                    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Share) {
+                                    icon: androidx.compose.ui.graphics.vector.ImageVector = Icons.Outlined.Share, dot: Boolean = true) {
     val tint = when (state) {
         SharePlaceState.OFF -> MaterialTheme.colorScheme.onSurfaceVariant
         SharePlaceState.LIVE -> OnPathColors.Green
@@ -53,7 +53,7 @@ internal fun SharePlaceColumnButton(state: SharePlaceState, size: Dp,
     Box(Modifier.size(size).clip(CircleShape).clickable {}.semantics { contentDescription = Txt.s(Res.string.live_share) },
         contentAlignment = Alignment.Center) {
         Icon(icon, null, tint = tint, modifier = Modifier.size(28.dp))
-        if (state != SharePlaceState.OFF) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 9.dp)
+        if (dot && state != SharePlaceState.OFF) Box(Modifier.align(Alignment.TopEnd).padding(top = 7.dp, end = 9.dp)
             .size(8.dp).background(tint, CircleShape))
     }
 }
@@ -122,3 +122,24 @@ internal fun SharePlacePill(state: SharePlaceState) {
 /** Sketch rule: from this font scale on B shows only the icon while sharing. */
 @Composable
 private fun compactAtLargeFont(): Boolean = androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f
+
+/** E: the live pill under the status card (only while sharing); the long waiting text wraps to two lines, never "…". */
+@Composable
+internal fun SharePlacePillE(state: SharePlaceState) {
+    if (state == SharePlaceState.OFF) return
+    val live = state == SharePlaceState.LIVE
+    val label = str(if (live) Res.string.live_sign else Res.string.live_sign_waiting)
+    // on a short screen at the largest font the map column reaches up to the pill: it keeps clear of the column then
+    val clear = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= 1.5f) 68.dp else 0.dp
+    Box(Modifier.fillMaxWidth().padding(end = clear), contentAlignment = Alignment.Center) {
+        Surface(shape = androidx.compose.foundation.shape.RoundedCornerShape(24.dp), color = OnPathColors.MapGround,
+            modifier = Modifier.floatShadow(androidx.compose.foundation.shape.RoundedCornerShape(24.dp)).semantics { contentDescription = label }) {
+            Row(Modifier.heightIn(min = 40.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(12.dp).background(if (live) OnPathColors.Green else OnPathColors.Grey, CircleShape))
+                Spacer(Modifier.width(8.dp))
+                Text(label, style = MaterialTheme.typography.labelLarge, textAlign = androidx.compose.ui.text.style.TextAlign.Start,
+                    color = if (live) MaterialTheme.colorScheme.onSurface else OnPathColors.Grey, modifier = Modifier.weight(1f, fill = false))
+            }
+        }
+    }
+}
