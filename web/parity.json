@@ -3519,6 +3519,14 @@
         "if (a.isEmpty || a.before.size > PlanCode.MAX_ANCHORS_SIDE || a.after.size > PlanCode.MAX_ANCHORS_SIDE) return false",
         "return (a.before + a.after).all { valid(it) && abs(micro(it.lat) - la) <= PlanCode.MAX_ANCHOR_DELTA && abs(micro(it.lon) - lo) <= PlanCode.MAX_ANCHOR_DELTA }"
       ]
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanStitch.kt": {
+      "blob": "68723d71d0f0c24d969630cd6212ee4f914d48b5",
+      "perf": [
+        "/** At most this many anchors per side (the code's limit, as in [PlanAnchors]). */",
+        "private const val MAX_SIDE = 8",
+        "if (own == null || own.isEmpty || own.before.size > MAX_SIDE || own.after.size > MAX_SIDE) return plain"
+      ]
     }
   }
 }
