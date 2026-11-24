@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [laptop] ([aufräumen] 2026-11-24): three web smokes are flaky on GitHub ([list](items/2026-11-24-flaky-tests.md)): areas-smoke polling, import-smoke Reverse, nowebgl percent. Test side only. May I fix them, or do they touch your wait-window work? Answer here.
 - → [donald] [umbau] [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
 - → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
 - → [donald] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
