@@ -113,7 +113,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## For the captain
 - ← [tracking] (2026-11-24 evening): **owner's real „Standort teilen“ test worked** (0.18.9, page, moving dot, „● Standort“, „Teilen beenden“) – point 3 of 3 done. Still before the switch-on: PR 19 + PR 17 (owner merges), the review of the 12 fixes, live-smoke. `FOR_EVERYONE` stays off; claim free.
-- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check → [detail](items/2026-11-24-cleanup-inventory.md)
+- ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check; tests: „gut“ to „flaky first, then hard-case flows“, no order → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
 - ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
