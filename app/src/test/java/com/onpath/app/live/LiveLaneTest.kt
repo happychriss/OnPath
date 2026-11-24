@@ -395,6 +395,32 @@ class LiveLaneTest {
     }
 
     /** Parts beside the lane that throw (the snapshot's reader, the network watch) never stop it. */
+    /**
+     * An Error (OutOfMemoryError …) inside a lane task is swallowed by the executor's wrapper unless the lane's own guard
+     * catches it: it must reach the problem log as an error, and the lane must take and run the next task.
+     */
+    @Test fun anErrorInALaneTaskIsReportedAndTheLaneGoesOn() {
+        val rec = recorder()
+        val tour = rec.insertTour(TourKind.RECORDED, "t", "HIKE", 2, state = "active")
+        rec.appendPoint(tour, 0, 0, point(0), 5f)
+        val points = JdbcLivePoints(dbPath()).also { closers += it }
+        state.set(recState(tour))
+        com.onpath.app.debug.Problems.clear()
+        val track = DbLiveTrack(points, state::get, { 80 }, System::currentTimeMillis)
+        val uploader = LiveUploader(box, track, store, random = { size -> ByteArray(size) { (it + 3).toByte() } })
+        val calls = AtomicInteger()
+        val l = LiveLane(uploader, state::get, track::over, clock, System::currentTimeMillis, net) {
+            if (calls.incrementAndGet() == 1) throw OutOfMemoryError("test")
+        }
+        lane = l
+        l.attach(); l.start(tour, "")
+        assertTrue("the lane still takes work", l.idle())
+        until("the box is claimed after the Error") { box.claims.get() >= 1 }
+        assertTrue("reported as an error", com.onpath.app.debug.Problems.snapshot().any {
+            it.area == "live" && it.level == com.onpath.app.debug.Problems.Level.ERROR
+        })
+    }
+
     @Test fun aThrowingNeighbourNeverStopsTheLane() {
         val rec = recorder()
         val tour = rec.insertTour(TourKind.RECORDED, "t", "HIKE", 2, state = "active")
