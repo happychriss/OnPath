@@ -11,7 +11,7 @@ Branch **`wip/umbau-2026-11-24-stitch-writers` = c651906ac** (from readers-all d
 
 ## Checked
 - Opus review of W0 + W1: done, fixed (above). Left on purpose: a move re-stitch is only fast when the old prev→next leg is cached; a §8.5 fallback stops stitching in that plan.
-- `SameRouteTest` cold verify at 6b4dd091e: **112 of 112 GREEN** (`/tmp/umbau-sr-verify.log` on donald). The full warm-vs-cold run (`WRITE_SHA=0`) was still running at 00:30 → `/tmp/umbau-sr-full.log`.
+- `SameRouteTest` cold verify at 6b4dd091e: **112 of 112 GREEN** (`/tmp/umbau-sr-verify.log` on donald). Full warm-vs-cold run (`WRITE_SHA=0`): 108/108 + 4 controls GREEN (item 2 below).
 
 ## NOT done – the next session, in this order
 1. **W2's Opus review is DONE (came back after the hand-off, at 6b4dd091e) – fix these test-first, no new review needed for the findings themselves:**
@@ -22,7 +22,7 @@ Branch **`wip/umbau-2026-11-24-stitch-writers` = c651906ac** (from readers-all d
    - **NIT:** `stopSettle` from the background thread races `routeTaken` on main: `settleJob` not `@Volatile`, `settleCancel = null` may wipe a new cancel.
    - **For the owner (cost, not a defect):** the first stitch re-routes nearly every leg once (tapped points are aliased, not exact) – minutes of background routing on long plans; §8.15 intends it.
    - Test weak spot: `PlanRecalcFlowTest`'s fake anchors are off the 1e-6 grid, so the "run's own exact legs are skipped" path is covered only in `DetourSettleTest`.
-2. **`SameRouteTest` full run:** read `/tmp/umbau-sr-full.log` (must end `full=0`, all green, no hash written); if gone, rerun: `WRITE_SHA=0 KTTEST=tools/routing/jvm-test/SameRouteTest.kt EXTRA_KT="core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt core/src/main/kotlin/com/onpath/app/routing/PlanReach.kt core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt" JAVA_XMX=2g tools/routing/jvm-test/run.sh ~/onpath-routing/segments <workDir>` (and `MODE=verify` for the 112).
+2. **`SameRouteTest` full run: DONE, GREEN at 6b4dd091e** – 4 tours × 27 cases, 108 of 108 stitched cases equal warm vs cold + 4 controls, no .sha written (`WRITE_SHA=0`); settle per tour 126–170 requests, 24–162 s on donald. Cold verify 112/112. Rerun only if core routing changes again.
 3. **W3's Opus review** (bac827707) – not reviewed.
 4. **W4 = the menu row** after the owner's pick (picture `sketch/umbau-2026-11-25-ganz-neu-berechnen`, A vs B, B recommended; the sketch commit's `PlanMenu.onRecalcFromScratch` + strings are a model, never merge that branch): row visible while `plan.hasDetours(activity, sac)`, calls `planEdit.recalcFromScratch(activity, sac)`.
 5. **Full E2E on GitHub** for the writers branch (`ci/umbau-writers`, `tools/ci/e2e_github.sh --ref … --wait`) + Web planner workflow.
