@@ -193,8 +193,12 @@ open class PlanRecalcState(
     fun linesFor(before: List<GeoPoint>, profile: com.onpath.app.routing.AnchorProfile): com.onpath.app.routing.VisibleLines? =
         stitched?.takeIf { it.points == before && it.profile == profile }
 
-    init {
-        // the edit is stitched under the profile the plan has now (an activity switch leaves the old lines unused)
+    /**
+     * Lets the plan stitch an edit from [linesFor], under the profile the plan has at that moment (an activity switch
+     * leaves the old lines unused). Set at the start of every run ([begin]): lines exist only after a run was taken, so
+     * no earlier wiring is needed, and no constructor or init does the work.
+     */
+    private fun offerLines() {
         plan.stitchLines = { before -> linesFor(before, com.onpath.app.routing.AnchorProfile.of(activity, sac)) }
     }
 
@@ -290,6 +294,7 @@ open class PlanRecalcState(
      */
     fun begin(askLong: Boolean = true): Run? {
         runCauses.start()
+        offerLines()
         planRun.routeJob?.cancel(); planRun.routeJob = null
         highlight = null; spotLine = null; spotsOpen = false
         val pts = waypoints.toList()
