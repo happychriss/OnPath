@@ -124,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (fresh session, night 2026-11-25) ON MAIN: restore box 2e754723f, detour reason fb38e0ec4, share-name blocker fixed 224ea091d (`LiveShareNameE2ETest` red → green). 0.18.10 prepared on `ci/donald-2026-11-25-release-0.18.10` (NOT on main – release.yml fires there): full E2E + Rundgang running on GitHub, then `release_check.sh --go v0.18.10`; publish only on the owner's word in donald's chat.
-- [aufräumen] (2026-11-25 night) 7 hard-case flows + 4 bugs they found fixed (kill distance, GPS jump, clock back, sync own write); next #6 storage full → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
+- [aufräumen] (2026-11-25 night, fresh session) 9 hard-case flows on main + 6 bugs they found fixed (kill distance, GPS jump, clock back, sync own write, storage-back warning stuck, late-line count); schema upgrade in a tour: no bug. Next: battery saver as a flow; `TourEndSlice.saveUnfinished` distance (suspected). **Morning:** the `TourInterruptedReceiver` reboot test needs Robolectric = build config = a pull request (not started at night) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
