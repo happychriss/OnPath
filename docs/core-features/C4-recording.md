@@ -17,5 +17,11 @@ the distance walked since the last 10 s stats write – `TourRun.resumed` now co
 `StorageFullFlowTest` (2026-11-25): every write fails as on a full disk, then space again – told once, the waiting
 points all written in order without hole or double, distance and time whole; a kill while points wait loses only
 those; at the queue's cap the oldest waiting are given up (said once, their numbers stay free); End while full leaves
-the tour "active" (asked next start). Two minor bugs `@Ignore`d there: space back while standing still clears neither
-`saveFailed` nor the ongoing notification (also after End), and the "written late" log line is one short from the tick.
+the tour "active" (asked next start). Two minor bugs it found, fixed: space back while standing still cleared neither
+`saveFailed` nor the ongoing notification (also after End), and the "written late" log line was one short from the tick.
+
+`SchemaUpgradeFlowTest` (2026-11-25, [aufräumen]): the app updated in the middle of a tour – for every tour database version
+1 … 9 (and a version 3 with `rides` but no `acc`; 10 = control) the file as that version had it, an active tour with two
+pieces, the real `TourSchema` upgrade steps, then Continue: name, activity, distance, ascent, time, every point intact, the
+next point numbered on (`recordingCursor`), 30 more points on top in a new piece. No bug found. The upgrade steps are a
+mirror of `TourDb.onUpgrade` (Android-only); the real helper is in `TourDbMigrationTest` (emulator).

@@ -17,7 +17,7 @@ TourRun, InterruptedLog) and a few E2E. No fake network, clock or storage exists
 | Plan sync / links offline | PlanSyncTest, SyncPollTest, SyncRulesRandomTest, PlanLinkFlowTest | pull cut in the middle (check SyncRulesRandomTest first); a plan link with no network |
 | Live sharing offline | LiveUploaderTest (300 seeds, kills) | only the status line after long offline |
 | Process killed mid-tour | TourSessionFlowTest (~15), TourEndFlowTest, UnfinishedTourSetupE2ETest | point count before/after a real kill; no doubled point at DB level |
-| Phone reboot / app update in a tour | – | TourInterruptedReceiver (BOOT_COMPLETED, MY_PACKAGE_REPLACED) untested; schema upgrade with an active tour |
+| Phone reboot / app update in a tour | – | TourInterruptedReceiver (BOOT_COMPLETED, MY_PACKAGE_REPLACED) untested; schema upgrade with an active tour: SchemaUpgradeFlowTest (2026-11-25) |
 | Broken map / routing / app files | BrokenAppFilesTest, BrokenFilesTest, StorageNotReadyTest | – |
 | Storage full while recording | fake `saveFailed` only | a real write failure, resume when space returns |
 | Clock / time-zone jump | unit only (UTC suite) | clock back / zone change mid-tour |
