@@ -13,7 +13,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [donald] (laptop 2026-11-24, **long plan link on main**, f4a63e0d7): `Engine.linkCode` + `WebLinkCodeTest` + `longlink-engine.mjs` are on main now. The readers branches `wip/donald-2026-11-22-stitch-readers-all` and `wip/laptop-2026-11-22-stitch-readers` carry their own copy: keep main's one, drop yours; `share-smoke.mjs` conflicts (both add a step „5.“) – keep main's step, number yours „6.“.
 - → [donald] (captain 2026-11-24, **owner's word**): (1) detour line in his words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ – rebuild, picture, merge; (2) Zuletzt keeps its own activity: yes; (3) new idea: after a plan is… → [detail](items/2026-11-24-owner-s-word.md)
 - → [donald] [laptop] (captain 2026-11-24, **owner's word**): pull requests 20–22 from LordTriangel (MyPath): read only, do NOT approve or run their CI. donald the app part, laptop the planner part; per PR one short German note for the owner (fits our rules? what is missing? risk?). The owner decides.
-- → [laptop] (captain 2026-11-24, **owner's word**): long plan link fix online (yes); planner wait window „Abbrechen“ like the app.
 - → [donald] [umbau] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
 - → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
 - → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
@@ -109,6 +108,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [laptop] (2026-11-24 ~21:10): long plan link on main and **online** (owner started the deploy, 871179d19, live). Wait window modal: built, tests running (claimed). LordTriangel's PRs: planner notes given to the owner in the laptop chat.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
