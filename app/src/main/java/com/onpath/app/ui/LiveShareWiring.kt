@@ -85,10 +85,11 @@ object LiveShares {
 
     /**
      * Sharing for every user, or only with the developer tools unlocked (Settings → About, 7 taps). Owner 2026-11-20:
-     * on main now, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
-     * his Pixel – then this goes to true (one line, a line for donald).
+     * on main, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
+     * his Pixel. All three done 2026-11-24 (PR 19, PR 17, his share worked) – on for everyone with the tour bubble
+     * (owner 2026-11-24). Back to false hides the share button again; nothing else depends on it.
      */
-    private const val FOR_EVERYONE = false
+    private const val FOR_EVERYONE = true
 
     /** The slice of [vm]; null before [attach] or while sharing is not offered (then nothing of the sharing shows). */
     fun of(vm: AppViewModel): LiveShareSlice? =
