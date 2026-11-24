@@ -102,12 +102,12 @@ object PlanGaps {
 
     /**
      * The red line of a plan point the T level sends on a long detour ([PlanDetour], owner 2026-11-21, his words from the
-     * picture): "② macht 4,2 km Umweg"; more points: " (+1 weitere)". Null without one. Never beside a gap: a point the
+     * picture), with its reason (owner 2026-11-24, „Grund dazu“): "② macht 2,8 km Umweg – mit Wandern T2 kürzer"; more points: " (+1 weitere)". Null without one. Never beside a gap: a point the
      * route does not reach is the more serious line (its own line names the detour, [reachText]).
      */
     fun detourText(detours: List<PlanDetour>): String? {
         val d = detours.firstOrNull() ?: return null
-        val line = Txt.s(Res.string.plan_detour, pointSign(d.index), Format.distance(d.extraM)).replaceFirstChar { it.uppercase() }
+        val line = Txt.s(Res.string.plan_detour, pointSign(d.index), Format.distance(d.extraM), LastActivity.name(Activity.HIKE, d.level)).replaceFirstChar { it.uppercase() }
         return if (detours.size > 1) withMore(line, detours.size - 1) else line
     }
 
