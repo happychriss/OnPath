@@ -168,17 +168,18 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         run.lastGoodFixElapsed = now
         run.gapWatch.reset()
         val tp = TrackPoint(p.lat, p.lon, p.ele, timeMs)
+        val prev = run.last
+        val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, tp)
+        val (verdict, moved) = PointFilter.judge(prev, tp, accuracyM.toDouble(), continuous = !wasLost || bridged)
+        if (verdict == PointFilter.Verdict.JUMP) return // a jump is no position: not for the track, the navigation, the arrival
         // standing still or arrived: no off-route check, the detector waits as without GPS (GuidanceGate.offRouteCheck);
-        // then the arrival, on the navigator's state after this fix – both before the point is judged, as in the service
+        // then the arrival, on the navigator's state after this fix – both after the jump rule, as in the service
         nav?.let {
             if (GuidanceGate.offRouteCheck(run.moveWatch.moving(now), run.arrived)) it.fix(OffRouteDetector.Fix(p.lat, p.lon, accuracyM.toDouble(), now))
             else it.gpsLost()
             it.main.execute { checkArrived(p, accuracyM.toDouble()) }
         }
-        val prev = run.last
-        val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, tp)
-        val (verdict, moved) = PointFilter.judge(prev, tp, accuracyM.toDouble(), continuous = !wasLost || bridged)
-        if (verdict != PointFilter.Verdict.ACCEPT) return // a jump or standing still
+        if (verdict != PointFilter.Verdict.ACCEPT) return // standing still
         run.moveWatch.moved(now)
         run.count(moved, newPiece = wasLost && prev != null && !bridged)
         queue.add(PointQueue.Pending(tourId, run.seq++, run.seg, tp, accuracyM))

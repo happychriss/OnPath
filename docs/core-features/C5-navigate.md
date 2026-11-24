@@ -12,3 +12,8 @@ Navigate draws the followed line and – while the tour follows the plan – the
 not editable there (owner 2026-11-01: "sonst weiß man gar nicht, wo man einen Punkt gemacht hat"); Plan draws them and
 lets you edit them, also during a tour (`MapScreen.planLayers`, `PlanLayersTest`; e2e
 `CoreFieldE2ETest.navigateThenBackToPlanStillDeletes` checks them shown but not editable in Navigate, editable back in Plan).
+
+**GPS jump (2026-11-24, [aufräumen], found by `JumpFixFlowTest`):** a fix faster than PointFilter's jump rule (35 m/s from
+the last point) is no position for anyone – not the track, not the off-route check, not the arrival, not the trip pace.
+Before, the navigation and the arrival got it before the jump rule: one jump onto the route 2 km ahead moved the progress
+there (then a false off-route alarm and re-route), one onto the goal said "arrived" 2 km early.
