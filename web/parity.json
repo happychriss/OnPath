@@ -54,7 +54,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "809b3cae57c22182d07d59f060a9c3b3069c96a7"
+      "blob": "a19cf86402245da868288ad654d52c1d91b3b3d4"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
