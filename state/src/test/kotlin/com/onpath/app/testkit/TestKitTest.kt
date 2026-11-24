@@ -133,7 +133,7 @@ class TestKitTest {
             "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",
             "if (now - lastStats >= ${FakeRecording.STATS_MS / 1000}_000) {",
             "if (gpsLost()) navigator?.onGpsLost()",
-            "private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restWatch.resting)",
+            "private fun gpsLost() = SystemClock.elapsedRealtime() - lastGoodFixElapsed > RestWatch.lostAfterMs(restGps.resting)",
             "val (nextSeq, lastSeg) = db.recordingCursor(existing.id)",
             "tourRun = TourRun.resumed(existing.distanceM, existing.ascentM, existing.descentM,",
             "if (intent == null) gpsWatchdog.arm(SystemClock.elapsedRealtime()) else gpsWatchdog.disarm()",
