@@ -58,7 +58,7 @@ object RouteItems {
             t.waypoints.mapIndexedNotNull { i, w -> w.name?.let { i to it } }.toMap(), title = null,
             // an unknown activity is a hike here: anchors that lie on another profile do not go into the code
             anchors = com.onpath.app.routing.AnchorSet.of(t.anchors.filterKeys { it in pts.indices },
-                t.activity?.let { a -> Activity.entries.firstOrNull { it.name == a } }, t.sac).forProfile(activityOf(t), t.sac))
+                t.activity?.let { a -> Activity.entries.firstOrNull { it.name == a } }, t.sac).forProfile(activityOf(t), t.sac.coerceIn(1, 5)))
         // a multi-day tour travels with its days (stage 4): N, limits, night marks, description
         return PlanCode.encode(t.days?.into(plan) ?: plan)
     }

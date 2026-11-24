@@ -408,7 +408,7 @@ class TourSessionFlowTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { names[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = route?.let { "MODERATE" }
             override fun days(points: List<GeoPoint>): MultiDay? = null
-            override fun keepWhole(act: Activity, sac: Int): Boolean = false
+            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?): Boolean = false
             override fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean = false
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? {
                 log += "proposeName [${st()} corridor=${log.any { it.startsWith("secureTourCorridor") }} sent=${client.actions}]"; return null

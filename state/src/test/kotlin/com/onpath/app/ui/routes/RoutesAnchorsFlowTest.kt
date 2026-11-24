@@ -5,6 +5,8 @@ import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlanCode
+import com.onpath.app.routing.PlannedLeg
+import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.SharedPlan
 import com.onpath.app.ui.TrackThen
 import com.onpath.app.data.TourKind
@@ -104,5 +106,48 @@ class RoutesAnchorsFlowTest : RoutesFlowBase() {
         app.planRoute.selectActivity(Activity.HIKE)
         app.slice.planFromShown(); app.settle()
         assertEquals("HIKE", app.draftRows.single().activity)
+    }
+
+    private fun route(km: Double) = PlannedRoute(listOf(PlannedLeg(listOf(a, b, c), false)), km * 1000, 0.0, 0.0, km * 600, null)
+
+    /**
+     * Second review of the readers (2026-11-24), finding 1: the track's switch re-routes the old plan on the new profile at once.
+     * The plan under Zuletzt must carry ITS route (as it was before the switch), not the new profile's – also without anchors.
+     */
+    @Test fun aTrackTakenAfterTheSwitchKeepsTheOldPlanWithItsOwnRoute() {
+        val app = App()
+        app.planRoute.activity = Activity.HIKE; app.planRoute.sac = 2
+        app.plan.edit { clear(); addAll(listOf(a, b, c)) }; app.routeNow = route(10.0)
+        app.slice.openTour(recorded("Ride", "BIKE_TOURING", 3), trackThen = TrackThen.SHOW); app.settle()
+        app.routeNow = route(30.0) // the recalc the switch asked for
+        app.slice.planFromShown(); app.settle()
+        val row = app.draftRows.single()
+        assertEquals("HIKE", row.activity)
+        assertEquals("the hike's route, not the bike's", 10_000.0, row.distanceM, 0.1)
+    }
+
+    /** The same for a round trip's take (the caller switched the profile before the fit). */
+    @Test fun aRoundTripTakenAfterTheSwitchKeepsTheOldPlanWithItsOwnRoute() {
+        val app = App()
+        app.planRoute.activity = Activity.HIKE; app.planRoute.sac = 2
+        app.plan.edit { clear(); addAll(listOf(a, b, c)) }; app.routeNow = route(10.0)
+        val own = app.slice.leavingNow()
+        app.planRoute.selectActivity(Activity.BIKE_TOURING)
+        app.routeNow = route(30.0)
+        app.slice.planFromLine(listOf(a, b, c), listOf("part"), Activity.BIKE_TOURING, 2, own) { }; app.settle()
+        val row = app.draftRows.single()
+        assertEquals("HIKE", row.activity); assertEquals(10_000.0, row.distanceM, 0.1)
+    }
+
+    /** Finding 2: the note of a switch holds only while the plan is the one it was taken of – an edited plan keeps its current profile. */
+    @Test fun aSwitchNoteOfAnEditedPlanDoesNotRelabelIt() {
+        val app = App()
+        app.planRoute.activity = Activity.HIKE; app.planRoute.sac = 2
+        app.plan.edit { clear(); addAll(listOf(a, b, c)) }
+        val t = recorded("Ride", "BIKE_TOURING", 3)
+        app.slice.openTour(t, trackThen = TrackThen.SHOW); app.settle(); app.slice.closeShown()
+        app.plan.edit { add(GeoPoint(c.lat + 0.01, c.lon)) }
+        app.slice.openTour(t, trackThen = TrackThen.PLAN); app.settle()
+        assertEquals("BIKE_TOURING", app.draftRows.single().activity)
     }
 }

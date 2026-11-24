@@ -45,7 +45,7 @@ interface TrackToPlanPorts : Say {
      * The plan's activity / T level as they were before the track shown here switched them (null = unchanged): the plan that
      * leaves the map goes under Zuletzt with its own, with its detour points. Read once, on the success path.
      */
-    fun leavingProfile(): Pair<Activity, Int>? = null
+    fun leavingProfile(): OwnProfile? = null
 }
 
 /**
@@ -105,7 +105,7 @@ class TrackToPlanState(
      * false when nothing changes. The replaced plan goes under Zuletzt only here, on the success path (a failed or cancelled take leaves Zuletzt alone), as
      * [leaving] (its activity / T level when the caller switched them already), else as the ports say.
      */
-    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: Pair<Activity, Int>? = null, done: (Boolean) -> Unit) {
+    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: OwnProfile? = null, done: (Boolean) -> Unit) {
         if (busy) return done(false)
         // routing data along the track first: without it every leg fails
         val missing = try { ports.ensureRoutingData(parts) } catch (e: Exception) {

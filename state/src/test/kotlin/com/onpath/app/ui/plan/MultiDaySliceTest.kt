@@ -405,7 +405,7 @@ class MultiDaySliceTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { names[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
-            override fun keepWhole(act: Activity, sac: Int) = multiDay.keepWhole(act, sac)
+            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 19 Nov"
@@ -1333,8 +1333,9 @@ class MultiDaySliceTest {
         ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
         ui { app.routeNow = route(dayLine) }; app.settle()
         ui { app.planEdit.change { add(1, X) } }; app.settle()
+        val own = com.onpath.app.ui.routes.OwnProfile(Activity.HIKE, 2, app.routeNow) // taken before the switch, with the day's route
         ui { app.planRoute.selectActivity(Activity.BIKE_TOURING) } // the track's activity, switched before the plan leaves
-        ui { app.save.keepAsDraft("a track takes the plan", Activity.HIKE to 2) }; app.settle()
+        ui { app.save.keepAsDraft("a track takes the plan", own) }; app.settle()
         val draft = app.drafts().single()
         assertEquals("the tour's own activity, not the track's", "HIKE", draft.activity)
         assertEquals(2, draft.sac)

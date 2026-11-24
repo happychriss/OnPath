@@ -327,7 +327,7 @@ class MultiDaySlice(
      * The plan leaves the map while a followed day has unsaved changes: the whole tour with them goes under Zuletzt (with
      * its days) instead of the day alone. False when no day is followed / nothing changed.
      */
-    fun keepWhole(act: com.onpath.app.routing.Activity, level: Int): Boolean {
+    fun keepWhole(act: com.onpath.app.routing.Activity, level: Int, dayRoute: PlannedRoute? = route): Boolean {
         if (!plan.unsaved) return false
         val pts = waypoints.toList()
         flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName)
@@ -335,7 +335,7 @@ class MultiDaySlice(
         val w = c.whole
         val days = MultiDay.of(w) ?: return false
         return runCatching {
-            val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, route?.points ?: pts, act, planRoute.planFactors(act))
+            val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, dayRoute?.points ?: pts, act, planRoute.planFactors(act))
             tours.insertDraftPlanned(c.tour.name, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line),
                 com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }, w.pinned, null, days,
                 c.anchorSet().forProfile(act, level)))

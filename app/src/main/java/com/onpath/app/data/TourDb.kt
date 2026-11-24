@@ -90,13 +90,13 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         assignMissingUuids(db)
     }
 
-    /** Adds [step]'s column unless it is there; a failure is reported, never thrown. */
-    private fun addColumn(db: SQLiteDatabase, step: TourSchema.Step) {
+    /** Adds [step]'s column unless it is there; a failure is reported, never thrown. [quiet]: no info line when it is there (every open checks). */
+    private fun addColumn(db: SQLiteDatabase, step: TourSchema.Step, quiet: Boolean = false) {
         try {
             val have = db.rawQuery("PRAGMA table_info(${step.table})", null).use { c ->
                 buildSet { while (c.moveToNext()) add(c.getString(c.getColumnIndexOrThrow("name"))) }
             }
-            if (step.column in have) { Problems.info("db", "Column ${step.column} already there"); return }
+            if (step.column in have) { if (!quiet) Problems.info("db", "Column ${step.column} already there"); return }
             db.execSQL(step.sql)
         } catch (e: Exception) { Problems.error("db", "Column ${step.table}.${step.column} could not be added", e) }
     }
@@ -108,7 +108,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         // the plan copies' table (schema 6) must exist before My routes reads `has_plan` – also when the upgrade could not add it
         if (!db.isReadOnly) try { db.execSQL(TourSchema.CREATE_PLAN) } catch (e: Exception) { Problems.error("db", "Table of the followed plans not there", e) }
         // schema 10: a swallowed ALTER must not leave a database at version 10 without the columns (every route write would fail)
-        if (!db.isReadOnly) for (step in TourSchema.stepsFrom(9)) addColumn(db, step)
+        if (!db.isReadOnly) for (step in TourSchema.stepsFrom(9)) addColumn(db, step, quiet = true)
     }
 
     private fun assignMissingUuids(db: SQLiteDatabase) {

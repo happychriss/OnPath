@@ -82,7 +82,8 @@ class MultiDayFlowTest {
         val part = f.pickDay(whole, pts)!!
         val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
         val edited = listOf(moved, pts[3])
-        f.snapped(mapOf(pts[2] to moved))
+        // the run that snapped is of the tour's own profile (second review: with null the profile check was skipped)
+        f.snapped(mapOf(pts[2] to moved), com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 2))
         f.pointsChanged(edited, emptySet(), com.onpath.app.routing.AnchorSet.of(part.anchors, Activity.BIKE_TOURING, 2)) { null }
         assertEquals(anchors, f.day!!.whole.anchors)
         assertEquals(moved, f.day!!.whole.points[2])

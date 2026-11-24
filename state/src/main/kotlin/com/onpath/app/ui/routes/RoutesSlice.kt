@@ -210,9 +210,11 @@ class RoutesSlice(
                 // under Zuletzt with them and its detour points (the keep itself waits for the success of the take, TrackToPlanState)
                 val before = planRoute.activity to planRoute.sac
                 if (choice.switch) {
+                    // a chain of tracks keeps the first note while the plan is unchanged; else the plan as it is now (its route before the switch re-routes it)
+                    val own = switched?.takeIf { it.to == before && it.points == plan.points.toList() }?.from ?: leavingNow()
                     if (choice.pick.activity == Activity.HIKE) { planRoute.sac = choice.pick.sac.coerceIn(1, 5); host.rememberSac(planRoute.sac) }
                     planRoute.selectActivity(choice.pick.activity, userChange = false)
-                    switched = ProfileSwitch(t.id, switched?.takeIf { it.to == before }?.from ?: before, planRoute.activity to planRoute.sac)
+                    switched = ProfileSwitch(t.id, own, planRoute.activity to planRoute.sac, plan.points.toList())
                 }
                 // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
                 val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
@@ -292,12 +294,15 @@ class RoutesSlice(
 
     private fun planFromShownNow() = trackToPlan.planFromShownNow()
 
-    /** The plan's profile before the track of [trackId] switched it to [to] ([from]); a chain of tracks keeps the first. */
-    private class ProfileSwitch(val trackId: Long?, val from: Pair<Activity, Int>, val to: Pair<Activity, Int>)
+    /** The plan ([points]) as it was before the track of [trackId] switched its profile to [to] ([from]); a chain of tracks keeps the first. */
+    private class ProfileSwitch(val trackId: Long?, val from: OwnProfile, val to: Pair<Activity, Int>, val points: List<GeoPoint>)
     private var switched: ProfileSwitch? = null
 
+    /** The plan's own profile and route now: a caller that switches the profile before a take ([planFromLine], the round trip) takes it first. */
+    fun leavingNow() = OwnProfile(planRoute.activity, planRoute.sac, host.route)
+
     /** [track] → a plan (routing/TrackToPlan) with [act] / [level], [parts] = its routing data; [done] true just before the plan replaces the old one, false when nothing changes. */
-    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: Pair<Activity, Int>? = null, done: (Boolean) -> Unit) =
+    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: OwnProfile? = null, done: (Boolean) -> Unit) =
         trackToPlan.planFromLine(track, parts, act, level, leaving, done)
 
     private val trackToPlan = TrackToPlanState(plan, save, object : TrackToPlanPorts {
@@ -310,9 +315,13 @@ class RoutesSlice(
         override fun ensureRoutingData(parts: List<String>) = host.ensureRoutingData(parts)
         override fun change(block: MutableList<GeoPoint>.() -> Unit) = host.change(block)
         override fun rememberPlaceName(p: GeoPoint, name: String) = host.rememberPlaceName(p, name)
-        /** Only for the track still shown and the profile it switched to (the user may have changed it since: then the plan's current one counts). */
-        override fun leavingProfile(): Pair<Activity, Int>? =
-            switched?.takeIf { it.trackId == shown?.tourId && it.to == (planRoute.activity to planRoute.sac) }?.from.also { switched = null }
+        /**
+         * Only for the track still shown, the profile it switched to (the user may have changed it since: then the plan's current one counts)
+         * and the plan it was taken of (an edited plan is routed on the current profile: it goes under Zuletzt as it is).
+         */
+        override fun leavingProfile(): OwnProfile? =
+            switched?.takeIf { it.trackId == shown?.tourId && it.to == (planRoute.activity to planRoute.sac) && it.points == plan.points.toList() }
+                ?.from.also { switched = null }
     }, CoroutineTrackFitter(scope, planRoute), elapsedMs)
 
     fun deleteTour(t: Tour) {
