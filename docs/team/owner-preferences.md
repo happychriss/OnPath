@@ -5,6 +5,10 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 **questions to the owner** – other files link here.
 
 ## Talking with the owner
+- **EVERY question to the owner goes in a question box (AskUserQuestion) – never in plain text** (owner 2026-11-24, emphatic:
+  „fragen immer über die fragen box, sonst sehe ich das nicht!!!“). A question in plain chat text is not seen. This
+  overrides older „ask in plain text“ words in handoffs / the backlog. A night without him: the night-job rule below still
+  decides whether to ask at all.
 - **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
   Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
   other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner
