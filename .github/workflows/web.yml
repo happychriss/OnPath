@@ -354,6 +354,11 @@ jobs:
         working-directory: web/app
         run: node test/sync-smoke.mjs $GITHUB_WORKSPACE/segments
 
+      - name: Live tracking – a fake phone through the real live box, the viewer page's states and its request count
+        if: matrix.group == 'sheet-sync'
+        working-directory: web/app
+        run: node test/live-smoke.mjs $GITHUB_WORKSPACE/segments
+
       # group areas-parity (~135 s)
       - name: Never a blank map, every wait said, map areas on demand (fake doorman behind the host's proxy)
         if: matrix.group == 'areas-parity'
