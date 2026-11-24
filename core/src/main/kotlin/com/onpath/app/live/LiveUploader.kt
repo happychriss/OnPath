@@ -127,8 +127,9 @@ data class LiveShare(
  * A stopped share's box that still has to be deleted after another share was started (review 2026-11-20: dropping it
  * left the first link showing the way up to the stop for up to 48 h). Kept as its own line beside the share.
  */
-data class LiveLeftover(val boxId: String, val writeToken: String) {
-    fun toText(): String = "$MAGIC $boxId $writeToken"
+data class LiveLeftover(val boxId: String, val writeToken: String, val sinceMs: Long = 0L) {
+    /** `onpath-live-delete <box> <token> <since>`; [sinceMs] = wall clock when it was left over (0 = not known yet). */
+    fun toText(): String = "$MAGIC $boxId $writeToken $sinceMs"
 
     companion object {
         private const val MAGIC = "onpath-live-delete"
@@ -137,7 +138,7 @@ data class LiveLeftover(val boxId: String, val writeToken: String) {
         fun parse(line: String): LiveLeftover? {
             val f = line.trim().split(' ')
             return if (f.size >= 3 && f[0] == MAGIC && f[1].isNotEmpty() && f[2].isNotEmpty() &&
-                f[1].all(B64::isCodeChar) && f[2].all(B64::isCodeChar)) LiveLeftover(f[1], f[2]) else null
+                f[1].all(B64::isCodeChar) && f[2].all(B64::isCodeChar)) LiveLeftover(f[1], f[2], f.getOrNull(3)?.toLongOrNull()?.coerceAtLeast(0) ?: 0L) else null
         }
     }
 }
@@ -173,12 +174,19 @@ class LiveUploader(
     /** n random bytes from the platform's secure random. */
     private val random: (Int) -> ByteArray,
     private val aead: Aead = AesGcm,
+    /** The wall clock (ms) – only for the age of a leftover box that has to survive a restart. */
+    private val wall: () -> Long = System::currentTimeMillis,
 ) {
     private var share: LiveShare? = null
     /** Boxes of stopped shares still to delete, oldest first (a share started again while its stop was on the way). */
     private var leftovers: List<LiveLeftover> = emptyList()
     private var loaded = false
     private var box: LiveBox? = null
+    // the leftovers' own pacing: a box that cannot be deleted never holds up the running share
+    private var leftoverTryMs: Long? = null
+    private var leftoverFailures = 0
+    private var leftoverRetryAfterMs: Long? = null
+    private var leftoverClientErrors = 0
 
     private var lastOkMs: Long? = null
     private var lastTryMs: Long? = null
@@ -201,7 +209,7 @@ class LiveUploader(
     /** True while there is anything left to do for the server – the lane keeps calling [step] until it is false. */
     val pending: Boolean get() = current() != null || leftovers.isNotEmpty()
 
-    /** An older share's box is still to be deleted – the next steps do that first, whatever the running share's tour does. */
+    /** An older share's box is still to be deleted – the steps do that beside the running share, on their own back-off. */
     val cleaning: Boolean get() { current(); return leftovers.isNotEmpty() }
 
     /** The link of the running share, or null. */
@@ -228,7 +236,7 @@ class LiveUploader(
         // an older share that is still stopping keeps its delete (privacy: the old link must not show the way to the stop
         // for days); one still ending is dropped – its box keeps the way the user meant to share and goes by the
         // server's own clean-up
-        if (old != null && old.stopping) leftovers = leftovers + LiveLeftover(LiveKeys(old.secret).boxId, old.writeToken)
+        if (old != null && old.stopping) leftovers = leftovers + LiveLeftover(LiveKeys(old.secret).boxId, old.writeToken, wall())
         val s = LiveShare(random(LiveCode.SECRET_BYTES), B64.encode(random(32)), tourId, name.trim().take(LiveItem.MAX_NAME))
         reset()
         stoppedByServer = false
@@ -258,31 +266,48 @@ class LiveUploader(
     fun acknowledge() { stoppedByServer = false }
 
     /** When the next [step] is due (ms, the caller's clock); null = nothing to do. A step before that does nothing. */
-    fun nextDueMs(): Long? {
+    fun nextDueMs(shareActive: Boolean = true): Long? {
         val s = current()
         if (s == null && leftovers.isEmpty()) return null
+        val own = if (s != null && shareActive) shareDueMs(s) else null
+        val old = if (leftovers.isNotEmpty()) leftoverDueMs() else null
+        return if (own != null && old != null) minOf(own, old) else own ?: old
+    }
+
+    private fun leftoverDueMs(): Long {
+        val t = leftoverTryMs ?: return 0L
+        return if (leftoverFailures > 0) LivePolicy.nextUpload(null, t, true, false, false, false, leftoverFailures, leftoverRetryAfterMs)
+        else t + CATCH_UP_MS
+    }
+
+    private fun shareDueMs(s: LiveShare): Long {
         // the end's final head and a stop's delete do not wait for the 30-s event floor: the recording service lets its
         // wake lock go at the end, a step half a minute later may not run until the phone next wakes. A failed try
         // (back-off, the server's retry-after) still holds – that is the branch below.
-        if (failures == 0 && (more || leftovers.isNotEmpty() || s!!.stopping || s.ending)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
+        if (failures == 0 && (more || s.stopping || s.ending)) return lastTryMs?.plus(CATCH_UP_MS) ?: 0L
         return LivePolicy.nextUpload(lastOkMs, lastTryMs, moving, paused, lowBattery, event, failures, retryAfterMs, networkBack)
     }
 
     /**
-     * Does what is due at [nowMs] – at most one request: claim the box, or one push (the route when it changed, up to
+     * Does what is due at [nowMs] – at most one request for the share (and one more for an old box's delete): claim the box, or one push (the route when it changed, up to
      * [CHUNKS_PER_PUSH] chunks from the cursor, the head), or the delete after [stop].
      *
      * @param event something the viewer should see soon happened (pause, resume, off-route alarm, arrived)
      * @param networkBack Android reported the network back
+     * @param shareActive false = the shared tour does not record here (interrupted): only the old boxes' deletes may go
      */
-    fun step(nowMs: Long, event: Boolean = false, networkBack: Boolean = false): LiveStatus {
+    fun step(nowMs: Long, event: Boolean = false, networkBack: Boolean = false, shareActive: Boolean = true): LiveStatus {
         try {
             if (event) this.event = true
             if (networkBack && failures > 0) this.networkBack = true
-            val due = nextDueMs() ?: return status
-            if (nowMs < due) return status
-            leftovers.firstOrNull()?.let { deleteLeftover(it, nowMs); return status }
+            if (networkBack && leftoverFailures > 0) leftoverRetryAfterMs = null
+            current()
+            // an old box's delete runs beside the running share, on its own back-off – never in front of it
+            if (leftovers.isNotEmpty() && nowMs >= leftoverDueMs()) deleteLeftover(leftovers.first(), nowMs)
+            if (!shareActive) return status
             val s = current() ?: return status
+            val due = shareDueMs(s)
+            if (nowMs < due) return status
             val b = box ?: guard("open the box") { boxes.open(LiveKeys(s.secret).boxId, s.writeToken) }?.also { box = it }
             if (b == null) { failed(nowMs, LiveReply(0)); return status }
             when {
@@ -381,9 +406,36 @@ class LiveUploader(
 
     /** A stopped share's box from before the running one: deleted first, retried like the running share's delete. */
     private fun deleteLeftover(l: LiveLeftover, now: Long) {
+        // the server forgets an idle box after 48 h by itself – a box that could not be deleted that long is let go
+        if (l.sinceMs > 0 && wall() - l.sinceMs >= LEFTOVER_MAX_MS) {
+            Problems.warn("live", "Live sharing: an old box could not be deleted for two days – given up")
+            dropLeftover(l); return
+        }
         val b = guard("open an old box") { boxes.open(l.boxId, l.writeToken) }
         val r = if (b == null) LiveReply(0) else call("delete an old box") { b.delete() }
-        if (r.ok || r.gone) { tried(now); leftovers = leftovers - l; save() } else failed(now, r)
+        leftoverTryMs = now
+        when {
+            r.ok || r.gone -> dropLeftover(l)
+            r.code in 400..499 && !r.busy -> {
+                // a lasting refusal (400 / 401 / 405 …): asking again never helps – after a few answers it is dropped
+                if (++leftoverClientErrors >= LEFTOVER_CLIENT_ERRORS) {
+                    Problems.warn("live", "Live sharing: the server keeps refusing to delete an old box (${r.code}) – given up")
+                    dropLeftover(l)
+                } else leftoverFailed(r)
+            }
+            else -> leftoverFailed(r)
+        }
+    }
+
+    private fun dropLeftover(l: LiveLeftover) {
+        leftovers = leftovers - l
+        leftoverFailures = 0; leftoverRetryAfterMs = null; leftoverClientErrors = 0
+        save()
+    }
+
+    private fun leftoverFailed(r: LiveReply) {
+        leftoverFailures++
+        leftoverRetryAfterMs = if (r.busy) (r.retryAfterS ?: 0).coerceAtLeast(0) * 1000L else null
     }
 
     // ---- bookkeeping ----
@@ -427,9 +479,13 @@ class LiveUploader(
             val lines = text.orEmpty().lines().filter { it.isNotBlank() }
             // the share's line first, then one line per box still to delete (an older state is the share's line alone)
             share = lines.firstOrNull()?.let(LiveShare::parse)
-            leftovers = lines.mapNotNull(LiveLeftover::parse)
+            val parsed = lines.map { it to LiveLeftover.parse(it) }
+            leftovers = parsed.mapNotNull { it.second }.map { if (it.sinceMs <= 0) it.copy(sinceMs = wall()) else it }
+            val damaged = parsed.withIndex().count { (i, p) -> p.second == null && !(i == 0 && share != null) }
             if (share == null && leftovers.isEmpty() && !text.isNullOrBlank())
                 Problems.warn("live", "Live sharing: the saved state is unreadable – sharing is off")
+            else if (damaged > 0)
+                Problems.warn("live", "Live sharing: $damaged line(s) of the saved state are unreadable and were dropped")
         }
         return share
     }
@@ -464,5 +520,9 @@ class LiveUploader(
         const val CATCH_UP_MS = 1_000L
         /** Below this the phone uploads rarely (§5). */
         const val LOW_BATTERY_PCT = 15
+        /** The server forgets an idle box after 48 h (web/host/src/live.js LIMITS.idleMs): an old box is not chased longer. */
+        const val LEFTOVER_MAX_MS = 48L * 3_600_000L
+        /** A box whose delete is refused with a 4xx this often in a row is given up. */
+        const val LEFTOVER_CLIENT_ERRORS = 3
     }
 }
