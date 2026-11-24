@@ -114,6 +114,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## For the captain
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
+- ← [donald] (2026-11-24) LordTriangel's pull requests 20–22, app part read (read only, nothing run or approved), notes in donald's chat: official routes – planner lacks it (app ≠ planner routes), no reroute, values unmeasured; slope – small, low risk; drag a point – against the owner's „no dragging points“ decision, core gesture, no E2E, high risk. All three merge cleanly on main.
 <!-- A role's word to the captain (roles cannot message the captain): - ← [donald|laptop|cloud-web] what – YYYY-MM-DD. The captain deletes the line when read. -->
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
@@ -197,8 +198,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## Waiting for the owner
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** does a press answer now (phone on a table / in the hand)? His only export (2026-11-22 19:22) is from 0.18.8 – the old bug, says nothing on 0.18.9. Owner: later. Then a fresh export → `[poi] Press … end=` → donald.
 - [laptop] 2026-11-22: **planner's wait window as a…** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-planner-s-wait-window-as-a-dialog-what-d.md)
-- [donald] 2026-11-22: **detour line on his Mutkopf plan:** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-detour-line-on-his-mutkopf-plan.md)
-- [donald] 2026-11-22: **Zuletzt with a replaced plan:** **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-zuletzt-with-a-replaced-plan.md)
+- [donald] 2026-11-24: **detour line in his words** „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ built on `wip/donald-2026-11-22-detour-hint` (gate full green), picture `onpath.private/ideen/2026-11-24-umweg-worte/`, asked in donald's chat. Keep it? Recommended: yes → merge + line for the laptop.
 - [laptop] 2026-11-22: wait window modal as in the app **ANSWERED 2026-11-24 (in the detail)** → [detail](items/2026-11-22-2026-11-22-wait-window-modal-as-in-the-a.md)
 - [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)
 - [tracking] 2026-11-20: **merge pull request 17** → [detail](items/2026-11-20-merge-pull-request-17.md)
