@@ -365,13 +365,16 @@ class TourEndSlice(
         if (recording.state.value?.tourId == t.id) { host.enterMode(AppMode.NAVIGATE); return }
         host.enterMode(AppMode.PLAN)
         scope.launchSafe("app", "saveUnfinished", io) {
-            rows.updateStats(t.id, t.distanceM, t.ascentM, t.descentM, t.durationS, "done")
+            // the row's distance is as old as the last stats write (10 s): at least the saved points' length, as Continue (TourRun.resumed)
+            val distanceM = runCatching { maxOf(t.distanceM, tours.loadSegments(t.id).sumOf { s -> com.onpath.app.data.Geo.length(s.map { it.toGeo() }) }) }
+                .onFailure { Problems.warn("db", "The saved points of the unfinished tour could not be measured – saved with the row's distance", it) }.getOrDefault(t.distanceM)
+            rows.updateStats(t.id, distanceM, t.ascentM, t.descentM, t.durationS, "done")
             val store = rows.rides()
             if (choice != null && rides != null) runCatching { com.onpath.app.rides.RideApply.choose(store, t.id, rides, choice) }
                 .onFailure { Problems.error("rides", "The choice for the ride could not be stored – the tour is saved as recorded", it) }
             val a = activityOrNull(t.activity) ?: activity
             val parts = com.onpath.app.rides.RideApply.finish(store, t.id,
-                com.onpath.app.rides.TourStats(t.distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
+                com.onpath.app.rides.TourStats(distanceM, t.ascentM, t.descentM, t.durationS), System.currentTimeMillis(), a)
             host.tourChanged(t.id)
             parts.forEach { host.tourChanged(it) }
             // the track is in My routes – no message (owner: no "Track saved" bar)
