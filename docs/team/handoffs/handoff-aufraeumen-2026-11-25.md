@@ -27,20 +27,26 @@ owner only as a question box (his word 2026-11-24) – but **not at night** (nig
      newer version over our own write (parity blob updated; shared code, the planner gets it on merge).
 - Notes in `docs/core-features/C4-recording.md`, `C5-navigate.md`, `C16-pair-browser.md`.
 
+## Second session (night 2026-11-25, ~00:30–01:30) – all on main, gate green each time
+- Storage-full flow (#6) merged; its two bugs fixed test-first (2ae6f3da0): the tick's write clears `saveFailed` and
+  the ongoing notification (inside `writePoints`); the "written late" line counts every late point (`withNewPoint`).
+  RecordingService still at its cap 1774.
+- `SchemaUpgradeFlowTest` (state): every tour-DB version 1–9 (+ v3 with `rides`, no `acc`) → active tour offered,
+  stats, points, numbering intact, 30 more on top. No bug. The upgrade steps are a mirror of `TourDb.onUpgrade`
+  (Android-only); the real helper is in the emulator `TourDbMigrationTest`.
+- `BatterySaverFlowTest` (state; `FakeRecording.batterySaverChanged`, pinned): told once per tour, silence = lost GPS,
+  fixes back = a new piece, no distance jump. No bug.
+- Bug fixed test-first (0fc09442e): **Save** of an unfinished tour kept the row's stale distance → now at least the
+  saved points' length, as Continue (`TourEndSlice.saveUnfinished`; `TourEndFlowTest.saveOfAKilledTourCountsAtLeastItsSavedPoints`).
+  Ascent/descent/time still up to 10 s stale on both paths (cannot be rebuilt from points the same simple way).
+- `PlanSyncCutFlowTest` :110 was red on GitHub by timing (ConnectException vs SocketException on a refused link) –
+  test only, 5f140fa9e.
+
 ## Open
-- **`StorageFullFlowTest` on main** (#6, helper work merged ~01:15). Two minor bugs it found, `@Ignore`d – **next: test
-  is there, fix**: (1) space back while standing still → the waiting points are written by the tick but `saveFailed` and
-  the ongoing „Recording cannot be saved“ notification stay, even after End (only clear: `RecordingService.onFix` after a
-  write; `finish()` never cancels `SAVE_FAIL_ID`) – `spaceBackWhileStandingStill_everythingWritten_theWarningGoes`;
-  (2) the „N track point(s) written late“ line says N−1 when the tick writes them (`waited - 1`, right only on a fix;
-  at the cap it also says „none lost“) – `theLateLineCountsEveryLatePoint`. Suspected, untested: `TourEndSlice.saveUnfinished`
-  saves the row's distance as it is (the kill-distance fix covered Continue only). RecordingService is at its size cap.
-- 2026-11-25 ~00:45: `MapAreaNetworkLostFlowTest` was red on GitHub by timing (a cut ends as 'broke' or 'stopped at
-  50 %') – the test accepts both now (pushed, gate green).
+- **Morning, owner awake:** the reboot receiver test (`TourInterruptedReceiver`, BOOT_COMPLETED / MY_PACKAGE_REPLACED)
+  needs Robolectric = build config = a pull request (the session merges it itself once green + a second model read it).
+- At the queue's cap the "written late" line still says "none lost" though the oldest were given up (minor, log only).
 - `ClockJumpFlowTest.onTheWayIsTheTourTimeAfterTheClockWentOn` stays `@Ignore` (minor: "on the way" 1 h long after a
-  clock set ON by hand; summer time does not do it; a fix needs the pause total on the elapsed clock across restarts) –
-  night answer logged, the owner may decide.
-- Next flows by the audit's ranking: **#6 storage full while recording** (told once, earlier points intact, resumes);
-  then a reboot receiver test (`TourInterruptedReceiver` – needs Robolectric = build config = a pull request, ask first);
-  schema upgrade with an active tour; battery saver as a flow.
+  clock set ON by hand; summer time does not do it) – the owner may decide.
+- Audit's flow list (`items/2026-11-24-hard-case-test-coverage.md`) is done except the receiver test.
 - None of the fixes is released; they go with the next update (release only on the owner's word).
