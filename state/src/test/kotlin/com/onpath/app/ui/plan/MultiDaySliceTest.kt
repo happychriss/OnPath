@@ -1302,6 +1302,29 @@ class MultiDaySliceTest {
         assertEquals("the saved tour keeps its detour points", anchors, db.getTour(id)!!.anchors)
     }
 
+    /**
+     * "Ganz neu berechnen" on a followed day (review of W3): the day's plan keeps its points and loses its detour points – that must
+     * reach the whole tour (back to "Alle Tage", Speichern), and so must the Undo of it.
+     */
+    @Test fun aClearAndItsUndoOnAFollowedDayReachTheWholeTour() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(2 to com.onpath.app.routing.Anchors(after = listOf(on(35))), 3 to com.onpath.app.routing.Anchors(before = listOf(on(50))))
+        routePrefs.activity = Activity.HIKE
+        val id = insertTour(activity = Activity.HIKE, anchors = anchors)
+        val app = App()
+        app.openOverview(id)
+        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
+        ui { app.routeNow = route(dayLine) }; app.settle()
+        assertTrue("the day carries its detour points", app.plan.hasDetours(Activity.HIKE, 2))
+        ui { app.plan.clearDetours() }; app.settle()
+        assertEquals("the whole tour heard the clear", emptyMap<Int, com.onpath.app.routing.Anchors>(), app.multiDay.flow.day!!.whole.anchors)
+        ui { app.plan.replace(app.plan.undo()!!) }; app.settle()
+        assertEquals("and the undo of it", anchors, app.multiDay.flow.day!!.whole.anchors)
+        ui { app.plan.clearDetours() }; app.settle()
+        ui { app.multiDay.allDays() }
+        assertEquals("all days: the tour without its detour points", emptyMap<Int, com.onpath.app.routing.Anchors>(), app.plan.anchorSet.anchors)
+    }
+
     /** The same under the other profile: saved as T3, the T2 points do not belong to it – none are written, never the wrong ones. */
     @Test fun aDayFollowedAndSavedUnderAnotherProfileWritesNoDetourPoints() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)

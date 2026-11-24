@@ -23,4 +23,7 @@ class PrefsPlanStore(private val prefs: Prefs) : PlanStore {
     override var anchorsJson: String?
         get() = prefs.planAnchors
         set(v) { prefs.planAnchors = v }
+    override var savedAnchorsJson: String?
+        get() = prefs.planSavedAnchors
+        set(v) { prefs.planSavedAnchors = v }
 }

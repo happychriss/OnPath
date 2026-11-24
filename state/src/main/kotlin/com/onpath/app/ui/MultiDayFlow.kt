@@ -148,14 +148,16 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
      */
     fun pointsChanged(points: List<GeoPoint>, pinned: Set<GeoPoint>, anchors: AnchorSet? = null, nameOf: (GeoPoint) -> String?) {
         val c = day ?: return
-        if (linkedId() != c.tour.id || points.size < 2 || points == c.part.points) return
+        if (linkedId() != c.tour.id || points.size < 2) return
+        // a tour without detour points yet takes the day's first stitch with the profile it lies on (review of the writers:
+        // else the tour kept none, and a reload or another device routed the day's detour in full – another line)
+        val adopt = anchors?.profile?.takeIf { anchors.anchors.isNotEmpty() && c.whole.anchors.isEmpty() && it != c.anchorProfile }
+        val profile = adopt ?: c.anchorProfile
+        val dayAnchors = anchors?.takeIf { it.anchors.isEmpty() || it.profile == profile }?.anchors
+        // equal points go on when the detour points differ ("Ganz neu berechnen" and its Undo keep the points)
+        if (points == c.part.points && (dayAnchors == null || dayAnchors == c.part.anchors)) return
         try {
-            // a tour without detour points yet takes the day's first stitch with the profile it lies on (review of the writers:
-            // else the tour kept none, and a reload or another device routed the day's detour in full – another line)
-            val adopt = anchors?.profile?.takeIf { anchors.anchors.isNotEmpty() && c.whole.anchors.isEmpty() && it != c.anchorProfile }
-            val profile = adopt ?: c.anchorProfile
-            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf,
-                anchors?.takeIf { it.anchors.isEmpty() || it.profile == profile }?.anchors)
+            val (whole, part) = DayFollow.writeBack(c.whole, c.part, points, pinned, nameOf, ::nightOf, dayAnchors)
             day = c.copy(whole = whole, part = part, anchorProfile = profile)
             Problems.trace("plan", "Day ${c.part.first}–${c.part.last}: change written back into the tour (${whole.points.size} points)")
             save()

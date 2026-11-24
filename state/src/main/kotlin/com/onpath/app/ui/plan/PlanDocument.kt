@@ -36,6 +36,13 @@ interface PlanStore {
     var anchorsJson: String?
         get() = null
         set(_) {}
+    /**
+     * The detour points the saved route had ([AnchorsJson.writeSet] for [savedPoints]; "" = it had none; null = never written, an old
+     * install: the plan's loaded ones count as saved). A store that does not keep them loses only the "unsaved" mark after a restart.
+     */
+    var savedAnchorsJson: String?
+        get() = null
+        set(_) {}
 }
 
 /**
@@ -75,8 +82,12 @@ class PlanDocument(
     private fun stored() {
         store.points = points.toList()
         val json = AnchorsJson.writeSet(points, session.anchorSet)
-        if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json }
+        if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json; anchorRev++ }
     }
+
+    /** Counts every change of the detour points (also those that keep the points): what a state observer reads to hear them. */
+    var anchorRev by mutableStateOf(0)
+        private set
 
     /** One undoable change: records the step, applies [block], stores the points; returns the points before it. */
     fun edit(block: MutableList<GeoPoint>.() -> Unit): List<GeoPoint> = session.edit(block).also { history(); stored() }
@@ -101,9 +112,12 @@ class PlanDocument(
      * step, the marker, the stored plan and the route line agree. Undo / Redo follow with [snappedHistory].
      */
     fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>, runProfile: AnchorProfile? = null) {
+        val clean = savedAnchors?.let { it == session.anchorSet } ?: false
         for (i in snapped.indices) if (snapped[i] != routed[i]) points[i] = snapped[i]
         if (runProfile != null) session.snapDropsAnchors(routed, snapped, runProfile)
         stored()
+        // the saved detour points follow a snap only while they matched: a plan that differs from its save keeps differing
+        if (clean && savedAnchors != session.anchorSet) { savedAnchors = session.anchorSet; storeSavedAnchors() }
     }
 
     /**
@@ -195,13 +209,40 @@ class PlanDocument(
     val savedName: String? get() = linkName.takeIf { linked }
     /** The saved route's tour id, while the plan still belongs to it; -1 = none. */
     val savedId: Long get() = if (linked) linkId else -1L
-    /** The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved). */
-    val unsaved: Boolean get() = RouteRules.isUnsaved(points, savedPoints)
+    /**
+     * The detour points the plan had when it was saved / loaded ([setSaved]; after a restart: those loaded with it): a plan whose
+     * points are the saved ones but whose detour points differ ("Ganz neu berechnen") is not saved – no detour points on either
+     * side changes nothing.
+     */
+    private var savedAnchors: AnchorSet? = when {
+        store.savedPoints == null -> null
+        else -> store.savedAnchorsJson?.let { j -> if (j.isEmpty()) AnchorSet.NONE else AnchorsJson.readSet(j, store.savedPoints!!) } ?: session.anchorSet
+    }
+    private fun storeSavedAnchors() {
+        val pts = savedPoints; val set = savedAnchors
+        store.savedAnchorsJson = if (pts == null || set == null) null else AnchorsJson.writeSet(pts, set) ?: ""
+    }
+    /**
+     * The plan has a route worth keeping that differs from the last save / load (RouteRules.isUnsaved), its points or its detour
+     * points (they are saved with the route).
+     */
+    val unsaved: Boolean get() {
+        val own = RouteRules.isUnsaved(points, savedPoints)
+        if (own) return true
+        val saved = savedAnchors
+        return anchorRev >= 0 && saved != null && linked && session.anchorSet != saved
+    }
+
+    private var relink = false
+    /** Runs [block] (the snap's / a rename's [setSaved]): that is no save – the saved detour points stay what they were. */
+    fun relinking(block: () -> Unit) { relink = true; try { block() } finally { relink = false } }
 
     /** The plan was saved / loaded as the route [id] called [name] with [points] – or belongs to none (null, -1, null). */
     fun setSaved(name: String?, id: Long, points: List<GeoPoint>?) {
         linkName = name; linkId = id; savedPoints = points
+        if (!relink || points == null) savedAnchors = if (points != null) session.anchorSet else null
         store.savedName = name; store.savedId = id; store.savedPoints = points
+        storeSavedAnchors()
         onLinked?.invoke(id)
     }
 }

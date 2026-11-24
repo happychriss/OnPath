@@ -42,6 +42,7 @@ class PlanRecalcFromScratchTest {
         override var savedId: Long = -1L
         override var savedPoints: List<GeoPoint>? = null
         override var anchorsJson: String? = null
+        override var savedAnchorsJson: String? = null
     }
 
     private val plan = PlanDocument(MemoryPlanStore())
@@ -101,10 +102,11 @@ class PlanRecalcFromScratchTest {
         Say { text, _, _ -> said += text }, host, background, elapsedMs = { 0L })
 
     /** The edit's ports: every call answers "nothing" (no tour, no menus) and is logged by name. */
+    private var touring = false
     private val editPorts = java.lang.reflect.Proxy.newProxyInstance(javaClass.classLoader, arrayOf(PlanEditPorts::class.java)) { _, m, _ ->
-        did += m.name
+        if (m.name != "touring") did += m.name // a question, not a follow-up
         when (m.returnType) {
-            java.lang.Boolean.TYPE -> false
+            java.lang.Boolean.TYPE -> m.name == "touring" && touring
             java.lang.Integer.TYPE -> 0
             else -> null
         }
@@ -165,5 +167,102 @@ class PlanRecalcFromScratchTest {
         assertTrue("no run", did.isEmpty())
         assertEquals("no history step", steps, bare.canUndo)
         assertFalse(bare.clearDetours())
+    }
+
+    @Test fun aClearedSavedPlanIsUnsavedUntilSavedAgainAndItsUndoIsSavedAgain() {
+        val store = MemoryPlanStore()
+        val d = PlanDocument(store)
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse("saved with its detour points", d.unsaved)
+        assertTrue(d.clearDetours())
+        assertTrue("the saved row still holds the old detour points", d.unsaved)
+        d.replace(d.undo()!!)
+        assertFalse("the undo equals the saved ones", d.unsaved)
+        assertTrue(d.clearDetours())
+        assertTrue(d.unsaved)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse("saved again without them", d.unsaved)
+        d.replace(d.undo()!!)
+        assertTrue("the old ones differ from the new save", d.unsaved)
+    }
+
+    @Test fun aSavedPlanWithoutDetourPointsIsUnsavedAsBefore() {
+        val d = PlanDocument(MemoryPlanStore())
+        d.edit { addAll(listOf(a, b)) }
+        d.setSaved("Tour", 5L, listOf(a, b))
+        assertFalse(d.unsaved)
+        d.edit { add(rome) }
+        assertTrue(d.unsaved)
+        assertFalse("nothing to clear", d.clearDetours())
+    }
+
+    @Test fun notWhileATourRuns() {
+        withAnchors(plan, listOf(a, b, rome))
+        touring = true
+        assertFalse("the row is hidden", edit.canRecalcFromScratch(Activity.HIKE, 2))
+        assertFalse(edit.recalcFromScratch(Activity.HIKE, 2))
+        assertTrue("anchors unchanged", plan.hasDetours(Activity.HIKE, 2))
+        assertEquals(anchors, plan.anchorSet.anchors)
+        assertTrue("nothing re-routes", did.none { it == "recalc" || it == "planChanged" })
+        touring = false
+        assertTrue(edit.canRecalcFromScratch(Activity.HIKE, 2))
+        assertTrue(edit.recalcFromScratch(Activity.HIKE, 2))
+        assertFalse(plan.hasDetours(Activity.HIKE, 2))
+    }
+
+    private val hikeProfile = com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 2)
+    private fun snap(d: PlanDocument, routed: List<GeoPoint>) {
+        // what PlanRecalcState.snapToRoute does for a saved plan: the free point moves a little, the saved link follows
+        val snapped = routed.mapIndexed { i, p -> if (i == 2) GeoPoint(p.lat + 0.0001, p.lon) else p }
+        d.moveSnapped(routed, snapped, hikeProfile)
+        d.relinking { d.setSaved(d.linkName, d.linkId, snapped) }
+    }
+
+    @Test fun aSnapAfterAClearKeepsTheSavedPlanUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        assertTrue(d.unsaved)
+        snap(d, pts)
+        assertTrue("the cold run's snap is no save", d.unsaved)
+    }
+
+    @Test fun aNormalSnapOfASavedStitchedRouteIsNotUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        snap(d, pts)
+        assertFalse("anchors matched the save before the snap: still saved", d.unsaved)
+    }
+
+    @Test fun aRenameOfAClearedSavedPlanKeepsItUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        d.relinking { d.setSaved("Neu", 5L, d.savedPoints) }
+        assertEquals("Neu", d.linkName)
+        assertTrue(d.unsaved)
+    }
+
+    @Test fun theSavedDetourPointsSurviveARestart() {
+        val store = MemoryPlanStore()
+        val d = PlanDocument(store)
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        assertTrue(PlanDocument(store).unsaved)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse(PlanDocument(store).unsaved)
+        // an old install has no such key: the loaded detour points count as saved
+        store.savedAnchorsJson = null
+        assertFalse(PlanDocument(store).unsaved)
     }
 }

@@ -81,7 +81,7 @@ class SyncedRoutingSlice(
             val read = withContext(io) { runCatching { store.getTour(id) } }
             val t = read.getOrElse { Problems.warn("db", "Saved route not read after a browser change; the plan stays linked", it); return@launchSafe }
             if (plan.linkId != id) return@launchSafe
-            if (t == null || t.deletedMs != null) host.setSaved(null, -1, null) else if (t.name != plan.linkName) host.setSaved(t.name, id, plan.savedPoints)
+            if (t == null || t.deletedMs != null) host.setSaved(null, -1, null) else if (t.name != plan.linkName) plan.relinking { host.setSaved(t.name, id, plan.savedPoints) } // a rename is no save
         }
     }
 

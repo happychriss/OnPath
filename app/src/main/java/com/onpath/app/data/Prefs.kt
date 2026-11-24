@@ -223,6 +223,11 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getString("planSavedPoints", null)?.let { s -> TourDb.jsonToWaypoints(s).map { GeoPoint(it.lat, it.lon) } }
         set(v) = sp.edit().putString("planSavedPoints", v?.let { l -> TourDb.waypointsToJson(l.map { GpxWaypoint(it.lat, it.lon, null) }) }).apply()
 
+    /** The detour points the plan's saved route had ([PlanStore.savedAnchorsJson]: "" = none, null = never written). */
+    var planSavedAnchors: String?
+        get() = sp.getString("planSavedAnchors", null)
+        set(v) = sp.edit().putString("planSavedAnchors", v).apply()
+
     /** The open plan's hidden via points with their profile ([AnchorsJson.writeSet]); null = none. */
     var planAnchors: String?
         get() = sp.getString("planAnchors", null)

@@ -512,7 +512,7 @@ open class PlanRecalcState(
         val runProfile = com.onpath.app.routing.AnchorProfile.of(run.act, run.level)
         plan.moveSnapped(routed, snapped, runProfile)
         aliasSnappedLegs(routed, snapped, res.activity, res.sac, run)
-        if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) setSaved(linkName, linkId, snapped)
+        if (routed.size >= 2 && !RouteRules.isUnsaved(routed, savedPoints)) plan.relinking { setSaved(linkName, linkId, snapped) } // no save: the saved detour points stay
         ports.linkSnapped(routed, snapped)
         val moves = WaypointSnap.moves(routed, snapped)
         plan.snappedHistory(moves, runProfile)

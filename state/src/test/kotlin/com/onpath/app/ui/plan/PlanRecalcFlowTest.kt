@@ -1213,6 +1213,41 @@ class PlanRecalcFlowTest {
         assertEquals(3, asked)
     }
 
+    /** What "Ganz neu berechnen" does to the run chain (PlanEditState.recalcFromScratch): the anchors go in one step, the plan is routed again. */
+    private fun recalcFromScratchNow() = ui { assertTrue(plan.clearDetours()); recalc.recalc() }
+
+    @Test fun ganzNeuBerechnenDuringTheSettlingStopsItAndTheLegInHandIsNotWritten() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        engine.onRoute = { n -> if (n == base + 2) recalcFromScratchNow() }
+        stepRouting()
+        assertTrue("the run of the cleared plan is going", planRun.routing)
+        assertEquals("nothing asked after the cancel", base + 2, engine.inner.calls.size)
+        assertTrue("the cleared plan has no detour points", plan.anchorsFor(planRoute.activity, planRoute.sac).isEmpty())
+        engine.onRoute = { }
+        advance(60_000); stepRouting()
+        assertTrue("the settling did not go on after the clear", problems.traced("routing").count { it.startsWith("Settling started") } == 1)
+    }
+
+    @Test fun ganzNeuBerechnenResetsTheFailureCapOfTheSettling() {
+        anchoredPlanTaken()
+        val e = expandedNow()
+        val from = com.onpath.app.routing.PlanAnchors.exact(e.points[1])
+        var asked = 0
+        engine.failFor = { it.size == 2 && it.first() == from && run { asked++; true } }
+        fun settleRound() { stepRouting(); advance(1); stepDefault(); stepIo() }
+        settleRound()
+        recalcNow(); finishRun(); settleRound()
+        recalcNow(); finishRun(); settleRound()
+        assertEquals("the leg is at its cap: skipped", 2, asked)
+        recalcFromScratchNow(); finishRun(); settleRound()
+        assertEquals("no detour points, no settling", 2, asked)
+        ui { plan.replace(plan.undo()!!) }
+        assertTrue(plan.anchorsFor(planRoute.activity, planRoute.sac).isNotEmpty())
+        recalcNow(); finishRun(); settleRound()
+        assertEquals("the from-scratch run began the cap anew: the leg is tried again", 3, asked)
+    }
+
     @Test fun aClearOfTheCacheDuringTheSettlingLeavesNoOldLegBehind() {
         anchoredPlanTaken()
         val base = engine.inner.calls.size
