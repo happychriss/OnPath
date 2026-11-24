@@ -164,6 +164,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Activity switched during a tour | FRAGE (56 dp) | "New route for MTB" – Keep original / Take new route |
 | First ☰ → Pair with browser | FRAGE | "On your computer open plan.onpath.earth …" – Cancel / Open camera |
 | A planned route tapped during a tour | FRAGE | "Load route “‹name›”? You are on the way." – Cancel / End tour and load / **Continue with this route** (owner 2026-11-03) |
+| A new plan replaced the plan on the map (no tour) | FRAGE | "Restore your old plan? · “‹name›” is now under Recent." – Keep / **Restore** (swaps the two; owner 2026-11-24, `routes/RestoreAsk`) |
 | Paired / unpaired | HINWEIS | "Paired." + what it means – OK |
 | No map downloads in this build | HINWEIS | OK |
 | The map needs the location | HINWEIS | "Allow location" |

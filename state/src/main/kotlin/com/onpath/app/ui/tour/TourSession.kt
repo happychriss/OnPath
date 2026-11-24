@@ -326,6 +326,7 @@ class TourSession(
             // A shown track without a line closes, like ☰ → Start recording.
             PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
         }
+        save.dropRestoreAsk("a tour started") // "Restore your old plan?" is for planning: the tour follows the plan on the map
         startRecording()
         // Navigate only once the service really records (R-01): a refused foreground service, a missing
         // permission or a broken database must not leave the user in Navigate with nothing being recorded.

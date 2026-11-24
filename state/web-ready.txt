@@ -17,12 +17,14 @@ ui/routes/SaveState.kt
 # RecentPlansState: ports RecentPlansPorts (9 members: insertDraft, updateDraft, storeTimes, tourChanged, purged, syncChanged, refreshTours, problem, trimmed), Background (1: run) and NameProposal (1: ask); RoutesStore as above;
 #   RecentPlans (app) adds the coroutines and `suspend proposeName`
 ui/routes/RecentPlansState.kt
-# TrackToPlanState: ports TrackToPlanPorts (8 members + Say: shown, closeShown, activity, sac, routingParts, ensureRoutingData, change, rememberPlaceName) and TrackFitter (1: fit; the
+# TrackToPlanState: ports TrackToPlanPorts (8 members + Say: shown, closeShown, activity, sac, routingParts, ensureRoutingData, change, rememberPlaceName; leavingProfile + touring have defaults) and TrackFitter (1: fit; the
 #   re-tracing off the caller's thread, `got` back on it); SaveState + PlanDocument as above; RoutesSlice (app) adds CoroutineTrackFitter
 ui/routes/TrackToPlanState.kt
-# RoutesOpenState: port RoutesOpenPorts (21 members: touring, mode, enterMode, openTour, noteNewPlan, newPlanUndo, dropNewPlanNote, undoStep, followIsTrack, continueNavigation, clearShown, setActivity, setSac,
+# RoutesOpenState: port RoutesOpenPorts (22 members: touring, mode, enterMode, openTour, restore, noteNewPlan, newPlanUndo, dropNewPlanNote, undoStep, followIsTrack, continueNavigation, clearShown, setActivity, setSac,
 #   change, rememberPlaceName, saved, linkOpened, holdCameraForSharedPlace, followMe, freeLookAt, routeEvent); also the top-level unlessUnsaved; RoutesGoSlice (app) builds the adapter
 ui/routes/RoutesOpenState.kt
+# RestoreAsk: "Restore your old plan?" after a replacement (owner 2026-11-24) – RestoreAsk (+ box), SavedLink, RestoreBox; SaveState sets it, RoutesOpenState answers it
+ui/routes/RestoreAsk.kt
 ui/routes/SaveStore.kt
 # KeptPlacesSlice: ports PlacesStore (4 members: saved, update, backupChanged, syncChanged) and KeptPlacesHost (2: searchMark, isCandidate)
 ui/plan/KeptPlacesSlice.kt

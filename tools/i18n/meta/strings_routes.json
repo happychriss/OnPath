@@ -659,5 +659,30 @@
     "context": "Screen reader text of the time bar: %1$s = start clock time, %2$s = end clock time („10:12“) (owner 2026-11-19).",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "routes_restore_title": {
+    "area": "Plan – „Restore your old plan?“ box",
+    "context": "Question box after a new plan replaced the plan on the map (a saved route, a plan link or a track's plan opened); the owner's words 2026-11-24.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_restore_recent": {
+    "area": "Plan – „Restore your old plan?“ box",
+    "context": "Detail line under the question: %1$s = the old plan's name as My routes → Recent shows it („Algund → Meran“); the owner's words 2026-11-24.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_restore_saved": {
+    "area": "Plan – „Restore your old plan?“ box",
+    "context": "Detail line when the old plan was a saved route left unchanged (it stays under Saved, not Recent): %1$s = its name. Proposed 2026-11-24 – waits for the owner's word.",
+    "priority": 2,
+    "confidence": "sicher"
+  },
+  "routes_restore_keep": {
+    "area": "Plan – „Restore your old plan?“ box",
+    "context": "Left button: the new plan stays, the box goes (the right one is „Restore“, common_restore); the owner's words 2026-11-24.",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 14
   }
 }

@@ -46,6 +46,8 @@ interface TrackToPlanPorts : Say {
      * leaves the map goes under Zuletzt with its own, with its detour points. Read once, on the success path.
      */
     fun leavingProfile(): OwnProfile? = null
+    /** A tour is being recorded: the replaced plan goes under Zuletzt without "Restore your old plan?" ([RestoreAsk]). */
+    val touring: Boolean get() = false
 }
 
 /**
@@ -92,7 +94,7 @@ class TrackToPlanState(
             ports.closeShown()
             // pinned route points come back pinned (review routing L1)
             plan.pin(com.onpath.app.gpx.PlanGpx.pinnedOf(stops).map { pts[it] })
-            save.keepAsDraft("replaced by a track's plan", leaving)
+            save.keepAsDraft("replaced by a track's plan", leaving, asks = !ports.touring)
             ports.change { clear(); addAll(pts) }
             stops.forEachIndexed { i, w -> w.name?.let { ports.rememberPlaceName(pts[i], it) } }
             return
@@ -126,7 +128,7 @@ class TrackToPlanState(
                         "${r.calls} routing calls, ${r.failedLegs} legs without a route, ${elapsedMs() - t0} ms")
                     val own = leaving ?: ports.leavingProfile() // before [done] closes the shown track
                     done(true)
-                    save.keepAsDraft("replaced by a track's plan", own)
+                    save.keepAsDraft("replaced by a track's plan", own, asks = !ports.touring)
                     ports.change { clear(); addAll(r.points) }
                 }
             }

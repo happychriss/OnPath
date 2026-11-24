@@ -492,6 +492,20 @@ internal fun slowPlanMessage(onAnswer: (com.onpath.app.routing.SlowPlan.Answer) 
             MessageButton(str(Res.string.plan_slow_wait)) { onAnswer(com.onpath.app.routing.SlowPlan.Answer.KEEP_WAITING) },
         ), tone = ButtonTone.EDIT) // waiting for a plan to compute = planning
 
+/**
+ * A new plan replaced the plan on the map (owner 2026-11-24, approved from a picture, [com.onpath.app.ui.routes.RestoreAsk]):
+ * "Deinen alten Plan wiederherstellen?" + where the old plan is now – Behalten · **Wiederherstellen** (blue: planning). FRAGE,
+ * stays until answered.
+ */
+@Composable
+internal fun restoreAskMessage(box: com.onpath.app.ui.routes.RestoreBox, onAnswer: (Boolean) -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.routes_restore_title),
+        str(if (box.underRecent) Res.string.routes_restore_recent else Res.string.routes_restore_saved, box.name),
+        buttons = listOf(
+            MessageButton(str(Res.string.routes_restore_keep)) { onAnswer(false) },
+            MessageButton(str(Res.string.common_restore)) { onAnswer(true) },
+        ), tone = ButtonTone.EDIT) // bringing a plan back = planning
+
 @Composable
 private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppViewModel, rec: RecState?,
                                                                         onRequestLocation: () -> Unit,
@@ -514,9 +528,12 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val syncNote = vm.syncNote
     val upd = vm.updates.update as? AppViewModel.UpdateState.Available
     val mapBox = notice?.let { mapNoticeMessage(it, cellCb) }
+    // a new plan replaced the one on the map (owner 2026-11-24): bring the old one back? – only while it is still in My routes, never during a tour
+    val restore = com.onpath.app.ui.routes.RestoreAsk.box(vm.save.restoreAsk, vm.routes.tours, touring = rec != null)
     val message = if (vm.searchFlow.searchOpen) null else Messages.pick(listOf(
         // the plan run reached its time limit (owner 2026-11-03): "Weiter warten?" – stays until answered
         vm.planRun.slowPlanAsk?.let { slowPlanMessage(onAnswer = vm.planRun::answerSlowPlan) },
+        restore?.let { restoreAskMessage(it, onAnswer = vm.routesGo::answerRestore) },
         // ☰ → Pair with browser, the first time (owner 2026-10-30): the one step, then the camera
         if (vm.pairing.pairHint) pairHintMessage(onCamera = { vm.pairing.pairHintCamera(pairCamera) }, onCancel = vm.pairing::pairHintCancel) else null,
         mapBox?.takeIf { it.kind == MessageKind.FRAGE },

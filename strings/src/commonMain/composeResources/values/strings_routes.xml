@@ -133,4 +133,9 @@
     <string name="routes_act_all">All</string>
     <string name="routes_act_chip_desc">Activity: %1$s. Tap to change</string>
     <string name="routes_act_none">No %1$s tours here.</string>
+    <!-- Plan: "Restore your old plan?" after a new plan replaced the one on the map (owner 2026-11-24, approved from a picture) -->
+    <string name="routes_restore_title">Restore your old plan?</string>
+    <string name="routes_restore_recent">“%1$s” is now under Recent.</string>
+    <string name="routes_restore_saved">“%1$s” is saved.</string>
+    <string name="routes_restore_keep">Keep</string>
 </resources>

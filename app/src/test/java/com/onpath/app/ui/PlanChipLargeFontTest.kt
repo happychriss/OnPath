@@ -50,6 +50,8 @@ abstract class PlanChipLargeFontTest {
     @Test fun planPointsFullUndo() = shots.planPointsFullUndo()
     @Test fun planRoundTripOn() = shots.planRoundTripOn()
     @Test fun planOutAndBack() = shots.planOutAndBack()
+    /** "Restore your old plan?" (owner 2026-11-24): the long German title and the two buttons at the largest font. */
+    @Test fun restoreAsk() = shots.restoreAsk()
 }
 
 /** The same in German. */
