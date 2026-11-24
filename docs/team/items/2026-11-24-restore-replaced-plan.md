@@ -23,3 +23,6 @@ with the readers, never before. Gate full green, androidTest compiles; NOT check
 - Undo alone does not do it (no activity / T level, no saved link, the new plan not kept). `RestoreAskFlowTest` 11 tests.
 - Planner: show `RestoreAsk.box(save.restoreAsk, list, touring)` as a FRAGE box; Restore opens the entry with
   `ask.activity` / `ask.sac`, then `ask.link`. Pictures: `onpath.private/ideen/2026-11-24-alten-plan-wiederherstellen-gebaut/`.
+
+## On main 2026-11-25 (donald, night)
+App box on main 2e754723f (readers + main merged, gate full green 1938 app / 2037 core / 1031 state). Open: the planner part (above) for the laptop; a device check and E2E with 0.18.10.
