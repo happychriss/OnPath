@@ -26,11 +26,11 @@ import kotlinx.coroutines.flow.collectLatest
  */
 val LocalSettingsFirst = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
-/** First in Navigate's top column, above the turn card; it is told whether a turn card shows. Live sharing's pill ([LiveSignLayer]). */
-val LocalNavTop = compositionLocalOf<(@Composable (turnCard: Boolean) -> Unit)?> { null }
+/** The pill under Navigate's status card (only while sharing waits for the network). Live sharing's ([LiveSignLayer]). */
+val LocalNavBelowCard = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
-/** At the right edge inside Navigate's turn card. Live sharing's sign ([LiveSignLayer]). */
-val LocalTurnCardEnd = compositionLocalOf<(@Composable () -> Unit)?> { null }
+/** The share button on top of Navigate's tour bubble (a size in; only while sharing is offered). Live sharing's ([LiveSignLayer]). */
+val LocalTourShare = compositionLocalOf<(@Composable (androidx.compose.ui.unit.Dp) -> Unit)?> { null }
 
 /**
  * Live sharing around the Settings page (docs/design/live-tracking.md §2, §14.2): its card is the first entry of the
@@ -50,15 +50,16 @@ fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
 }
 
 /**
- * Live sharing's sign on Navigate (owner 2026-11-20: "oben bei den Richtungen"): inside the turn card while one shows,
- * else a pill at the top right (a tour without a route has no turn card). A tap opens the two actions.
+ * Live sharing on Navigate (owner 2026-11-24, "Standort teilen" in the tour bubble): the round share button on top of the
+ * map column's tour bubble – plain off, green while sharing, grey waiting – and, only while waiting, a pill under the status
+ * card. The button is there only while sharing is offered (a tour records or is shared; [LiveShareSlice.actions]).
  */
 @Composable
 fun LiveSignLayer(vm: AppViewModel, content: @Composable () -> Unit) {
     val slice = LiveShares.of(vm) ?: return content()
     CompositionLocalProvider(
-        LocalTurnCardEnd provides { LiveSignInTurnCard(slice.sign, slice.actions) { slice.act(it) } },
-        LocalNavTop provides { turnCard -> if (!turnCard) LiveSignOnMap(slice.sign, slice.actions) { slice.act(it) } },
+        LocalTourShare provides if (slice.actions.isEmpty()) null else { size -> LiveShareButton(slice.sign, slice.actions, size) { slice.act(it) } },
+        LocalNavBelowCard provides { LiveWaitingPill(slice.sign, slice.actions) { slice.act(it) } },
         content = content)
 }
 
@@ -84,10 +85,11 @@ object LiveShares {
 
     /**
      * Sharing for every user, or only with the developer tools unlocked (Settings → About, 7 taps). Owner 2026-11-20:
-     * on main now, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
-     * his Pixel – then this goes to true (one line, a line for donald).
+     * on main, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
+     * his Pixel. All three done 2026-11-24 (PR 19, PR 17, his share worked) – on for everyone with the tour bubble
+     * (owner 2026-11-24). Back to false hides the share button again; nothing else depends on it.
      */
-    private const val FOR_EVERYONE = false
+    private const val FOR_EVERYONE = true
 
     /** The slice of [vm]; null before [attach] or while sharing is not offered (then nothing of the sharing shows). */
     fun of(vm: AppViewModel): LiveShareSlice? =

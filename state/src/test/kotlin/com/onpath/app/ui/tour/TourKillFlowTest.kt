@@ -16,7 +16,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -177,11 +176,11 @@ class TourKillFlowTest {
     }
 
     /**
-     * The points are whole, the distance is not: the service writes the distance to the row only every 10 s (tick) and a
+     * The points are whole, the distance was not: the service writes the distance to the row only every 10 s (tick) and a
      * continued tour starts from the row (TourRun.resumed(existing.distanceM …)) – the metres since the last stats write
-     * are lost with the process (here the 100th point's 7 m: 1027.8 m saved, its points 1034.8 m). The time the same way.
+     * were lost with the process (the 100th point's 7 m: 1027.8 m saved, its points 1034.8 m) – fixed 2026-11-24: TourRun.resumed
+     * counts at least the saved points. The time is still lost the same way (up to 10 s).
      */
-    @Ignore("bug: after a kill the saved distance misses the metres walked since the last 10 s stats write (RecordingService.tick → TourRun.resumed)")
     @Test fun theDistanceWalkedJustBeforeTheKillIsCounted() {
         val (p, id) = tourKilledAfter100(torn = false)
         val pieces = p.tours.loadSegments(id)

@@ -416,7 +416,8 @@ status(t('web_engine_loading'), 'busy');
 async function configureEngine() {
   for (let i = 0; ; i++) {
     // ?slowRoute=ms: the tests' slow router (worker.ts hold – robust-smoke 9)
-    const r = await engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang, Number(params.get('slowRoute') ?? 0) || 0);
+    const r = await engine.configure(base, params.get('segments') ?? base + 'segments/', PACKED, lang, Number(params.get('slowRoute') ?? 0) || 0,
+      Number(params.get('slowDetour') ?? 0) || 0);
     if (r.ok || r.unsupported || i >= 2) return r;
     problem('engine', 'routing engine not loaded – trying again', r.error);
     await new Promise((res) => setTimeout(res, 3000 * (i + 1)));
@@ -963,8 +964,14 @@ type HoldAnswer = { action: 'ADD'; index: number; why: string } | { action: 'ASK
  */
 async function holdAnswer(at: maplibregl.LngLat, lineSnapM: number, straight = false): Promise<HoldAnswer> {
   // [straight]: no activity → the engine decides on the straight lines (WebApi.holdOnMap's „no activity“)
-  return JSON.parse(await engine.call('holdOnMap', enc(state.points), at.lat, at.lng, state.roundTrip, lineSnapM,
-    straight ? '' : state.activity, state.sac)) as HoldAnswer;
+  holdsMeasuring++; holdGen++; // the detour check gives way (checkDetours)
+  try {
+    return JSON.parse(await engine.call('holdOnMap', enc(state.points), at.lat, at.lng, state.roundTrip, lineSnapM,
+      straight ? '' : state.activity, state.sac)) as HoldAnswer;
+  } finally {
+    holdsMeasuring--;
+    if (!holdsMeasuring) holdWaiters.splice(0).forEach((r) => r());
+  }
 }
 
 /**
@@ -1707,7 +1714,58 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
+  void checkDetours(id); // after the route is on the map: it never waits for this
 }
+
+/**
+ * The detour hint (the app's PlanDetourCheck, owner 2026-11-21 / 2026-11-24 his words): after the route is shown, the engine
+ * looks whether the hike's T level sends a plan point on a long detour – "② macht 4,2 km Umweg", or with a point only a harder
+ * level reaches "Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar". In small steps of one router request each
+ * (WebApi.detourStart / detourAt): the check stops when its plan is no longer the one shown, and an edit replaces a worker
+ * still in a step (client.ts dropPlans – the app's detourCheck.stop()). A hold's measure pauses it; when the hold is over the
+ * check starts again with a fresh budget (the app's holdMeasures → takePaused → checkDetours). Never beside a multi-day tour
+ * (the app's multi-day overview) or a failed leg; a failed check gives no hint. The route stays. body[data-detour] =
+ * "<plan>:done" when this plan's check is over (the tests).
+ */
+async function checkDetours(id: number) {
+  const plan = state.plan;
+  document.body.dataset.detour = `${id}:running`;
+  const points = enc(state.points);
+  const same = () => id === state.latest && state.plan === plan && !state.planning && enc(state.points) === points && !state.tour;
+  try {
+    if (!plan || plan.error || plan.failed || plan.notice || state.tour || state.activity !== 'HIKE') return;
+    for (;;) {
+      await holdsOver();
+      if (!same()) return;
+      const gen = holdGen;
+      const idx = JSON.parse(await engine.call('detourStart')) as number[];
+      let paused = false;
+      for (const i of idx) {
+        for (;;) {
+          if (!same()) return;
+          if (holdGen !== gen || holdsMeasuring) { paused = true; break; }
+          if (await engine.call('detourAt', i) !== 'more') break;
+        }
+        if (paused) break;
+      }
+      if (paused) continue; // a hold measured meanwhile: the check again, from the start
+      if (!same() || !idx.length) return;
+      const g = JSON.parse(await engine.call('detourGaps', namesText()));
+      if (g && same()) { planGaps.update(g); render(); }
+      return;
+    }
+  } catch (e) {
+    // a step of a dropped plan answers {cancelled} (a fresh worker): nothing to report – a newer plan is on its way
+    if (same()) problem('routing', 'Detour check failed; the plan shows no detour hint', e);
+  } finally {
+    document.body.dataset.detour = `${id}:done`;
+  }
+}
+
+/** Holds measuring now (the app's holdMeasuring) and how many began: the detour check gives way to them. */
+let holdsMeasuring = 0, holdGen = 0;
+const holdWaiters: (() => void)[] = [];
+async function holdsOver() { while (holdsMeasuring) await new Promise<void>((r) => holdWaiters.push(r)); }
 
 /** The last plan lacked routing data (download failed): plan the same points once more – back online or after a moment. */
 let dataRetryFor = '';

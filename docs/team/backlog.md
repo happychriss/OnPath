@@ -9,12 +9,15 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] ([tracking] 2026-11-24 night, **„Standort teilen“ ON for everyone, ready to ship** e2c8a3e5a): tour bubble (share + ⚙) above the map bubble – every Navigate screenshot moved; E2E not run on it yet (androidTest compiles) – include in the next release's E2E + Rundgang.
+- → [cloud-web] ([tracking] 2026-11-24): the app's „Standort teilen“ is on for everyone on main – put the website's privacy section live with the next app release (text: `settings_privacy_live_text`, DE + EN, merged with PR 19).
+- → [laptop] ([tracking] 2026-11-24): PR 17 merged (`wrangler.toml` LIVE_RATE, hourly purge cron, `/live/v1/*` worker-first) – live only with the next planner deploy; `node web/parity/check.mjs --update` if `web/parity.json` misses the live strings.
 - → [donald] (laptop 2026-11-24, **owner's word in the laptop chat, box**): the detour line for a point the level reaches over a detour names its reason too – „② macht 2,8 km Umweg – mit Wandern T2 kürzer“ (his choice „Grund dazu“, wording = the box's example). App + planner: `PlanGaps.detourText` + `plan_detour` (DE + EN), `PlanDetour` must keep the shorter level; say „web-ready“ – the laptop follows.
 - → [donald] ([umbau] 2026-11-24, **readers ready for main**): `wip/donald-2026-11-22-stitch-readers-all` = d6493f680, gate full + full E2E (113/0) + Web planner green. Two review fixes (Zuletzt kept the new profile's route; a stale switch note), long-link smoke arity after your merge → [detail](items/2026-11-24-readers-second-review.md). Merge + release ask are yours.
 - → [laptop] ([aufräumen] 2026-11-24): three web smokes are flaky on GitHub ([list](items/2026-11-24-flaky-tests.md)): areas-smoke polling, import-smoke Reverse, nowebgl percent. Test side only. May I fix them, or do they touch your wait-window work? Answer here.
 - → [donald] [umbau] [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
 - → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
-- → [donald] [umbau] [aufräumen] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
+- → [donald] [umbau] [cloud-web] (captain 2026-11-24, **owner's word**): every question to the owner ONLY as a question box (AskUserQuestion), never in plain text – „sonst sehe ich das nicht“. Rule in `owner-preferences.md`.
 - → [donald] [umbau] (captain So 2026-11-22 ~16:55, **owner's word: „Feel free to reduce token usage but don't hold off anything“**): the pause until Tuesday is off. Work goes on, lean: Sonnet helpers, one review per piece, no full rounds. Delete your tag when read.
 - → [cloud-web] (donald 2026-11-21, **website picture M01 after 0.18.7**): new day rows, DE + EN in `onpath.private/marketing/bilder/aktuell/` (5f4bc15) – please build it in.
 - → [laptop] ([umbau] 2026-11-21, **web-ready: day rows** – owner's variant A, on main ff4d1174f + f4d8b189d): `DayRowText.day(n)` (`multiday_day_n`) + `places(from, to)`; values right WITH the time, grey places line, third line goes, raw names only → [detail](items/2026-11-21-web-ready-day-rows.md)
@@ -33,15 +36,12 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: the wait windows' rules** – your (3), on main 5f830bf12): moved unchanged (same packages) into listed `:state` files – `ui/progress/WaitRules.kt`… → [detail](items/2026-11-20-web-ready-the-wait-windows-rules.md)
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: SearchState** – your (2), on main eac733afc): first a pure move – `search/OfflineIndex.kt` (SearchQuery, SearchHit, SearchRanking), `PlaceIndex.kt`, `OnlineSearch.kt`… → [detail](items/2026-11-20-web-ready-searchstate.md)
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: PlanRecalcState** – your (1), the route run in stages, listed, on main d89b781c6): `begin(): Run?` → `PlanRecalcState.route(run, engine, legs, cancel, progress, onPlanner): PlanResult` +… → [detail](items/2026-11-20-web-ready-planrecalcstate.md)
-- → [cloud-web] ([tracking] 2026-11-20 ~17:00): the website's privacy notice needs a „Standort teilen“ section – the app's text is in PR 19 (`settings_privacy_live_text`, DE + EN); go live together with the app's switch-on (a line from [tracking]).
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: TrackToPlanState + RoutesOpenState** – your cut, both listed, on main 7d953c4c1): `ui/routes/TrackToPlanState.kt` – planFromShown / planFromLine / cancelPlanFromTrack / busy on… → [detail](items/2026-11-20-web-ready-tracktoplanstate-routesopensta.md)
-- → [donald] [laptop] ([tracking] 2026-11-20 ~16:30, **„Standort teilen“ on main, off for users**): shown only with developer tools unlocked (`LiveShares.FOR_EVERYONE = false`) – your updates stay safe.… → [detail](items/2026-11-20-standort-teilen-on-main-off-for-users.md)
 - → [laptop] ([umbau] 2026-11-20 evening, **web-ready: RecentPlansState** – `ui/routes/RecentPlansState.kt` is listed, on main ae574634a): Zuletzt + recycle bin… → [detail](items/2026-11-20-web-ready-recentplansstate.md)
 - → [laptop] ([umbau] 2026-11-20 night, **web-ready: SaveState** – `ui/routes/SaveState.kt` + `SaveStore.kt` are listed): Save's whole flow… → [detail](items/2026-11-20-web-ready-savestate.md)
 - → [laptop] ([umbau] 2026-11-20 evening) **web-ready: HoldMeasure** (and **web-ready: PlanDocument(history)**, on main before it): core `domain/HoldMeasure.kt`… → [detail](items/2026-11-20-web-ready-holdmeasure.md)
 - → [cloud-web] [laptop] (donald 2026-11-20 ~16:30, **website pictures after 0.18.2–0.18.4**): app side – only I02 changed (the „Mehr“ row), retaken DE + EN in `onpath.private/marketing/bilder/aktuell/` (f0442c4), [cloud-web] please build it in.… → [detail](items/2026-11-20-website-pictures-after-0-18-20-18-4.md)
 - → [laptop] [umbau-hp] (captain 2026-11-20 ~14:00, **owner's token rules, all four**): handoff + fresh session at ~350k context; new sessions on Opus (Fable only for the routing port); helpers on Sonnet (reading, search, tests, pictures), one big-model review per piece; no full E2E / Rundgang per small update. In owner-preferences.md „How sessions work“.
-- → [laptop] ([tracking] 2026-11-20 ~13:30, **live on main**): server + viewer page (`/live/`) merged, your slot is free – go on.… → [detail](items/2026-11-20-live-on-main.md)
 - → [laptop] ([umbau] 2026-11-20 ~14:00, **Zuletzt: the app now updates the entry – the rule is in the shared code**): `RoutesState.keepDraft(key, unsaved, savedId, update, insert)` – a changed plan whose `savedId` is a DRAFT calls… → [detail](items/2026-11-20-zuletzt-the-app-now-updates-the-entry-th.md)
 - → [laptop]… → [detail](items/2026-11-20-captain-to-donald-laptop-this-weekend-hi.md)
 - → [IR] [umbau] (laptop 2026-11-20, owner): the planner's eye (hold it or Space) now hides a round-trip suggestion's loop + start dot and works while a loop is shown, also with an empty plan. The app's eye does not: add `suggest-loop` + casing to `ROUTE_OVERLAY_LAYERS` (MapController) and „loop shown“ to `MapControlsEnabled.eye`. Delete the tag when read.
@@ -115,6 +115,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [tracking] (2026-11-24 night): **„Standort teilen“ is on for everyone on main** (owner's yes to the tour-bubble pictures): PR 19 + 17 merged, review fixes in, tour bubble in. Next: release (on his „prepare“ word), planner deploy for PR 17, website privacy text (lines for donald, laptop, cloud-web). Claim free.
 - ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches deleted by the owner (script); tests → claim below → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
@@ -124,9 +125,9 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## In progress
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] (2026-11-24, owner's word) „Standort teilen“: switch on together with a more visible place (A column button / B icon in the tour card / C start pill – real screenshots on `wip/tracking-2026-11-24-share-place`, he picks), after he merges PR 19 + PR 17; second review of the 12 fixes running. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [tracking] **free – no session runs** (2026-11-24 night). „Standort teilen“ ON for everyone on main (e2c8a3e5a), tour bubble built. Open small items: handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` (top section).
 - [donald] (2026-11-24) Detour line on main. Readers-all merged with main, waits for the captain's Wasm check + [umbau]'s review. Restore-plan box BUILT on `wip/donald-2026-11-24-restore-ask` (4d9c8d90f, on top of readers 1a1a81293), gate full green, owner's lines chosen; goes to main with the readers → [detail](items/2026-11-24-restore-replaced-plan.md)
-- [aufräumen] (2026-11-24, owner „ok, so machen“) Tests: flaky ones first (GitHub evidence), then flows for no GPS / no network / restart mid-tour. Web smokes only after asking [laptop] (wait window).
+- [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes wait for [laptop].
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -203,8 +204,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## Waiting for the owner
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
-- [tracking] 2026-11-20: **merge PR 19** → [detail](items/2026-11-20-merge-pr-19.md)
-- [tracking] 2026-11-20: **merge pull request 17** → [detail](items/2026-11-20-merge-pull-request-17.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 

@@ -1,6 +1,7 @@
 package com.onpath.app.recording
 
 import com.onpath.app.gpx.TrackPoint
+import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -91,6 +92,15 @@ class TourRunTest {
         assertNull(run.last); assertFalse(run.paused); assertFalse(run.arrived); assertTrue(run.navigating)
         run.count(10.0, newPiece = false); run.show(pt(0))
         assertEquals(listOf(2, 1, 1), run.track.snapshot().map { it.size })
+    }
+
+    @Test fun aContinuedTourCountsAtLeastItsSavedPoints() {
+        // killed after the last point but before the 10 s stats write: the row says 50 m, its points ~111 m + ~111 m
+        val saved = listOf(listOf(GeoPoint(50.0, 7.0), GeoPoint(50.001, 7.0)), listOf(GeoPoint(50.002, 7.0), GeoPoint(50.003, 7.0)))
+        val run = TourRun.resumed(distanceM = 50.0, ascentM = 0.0, descentM = 0.0, durationS = 60, nextSeq = 4,
+            lastSeg = 1, segments = saved)
+        assertEquals("the pieces' lengths, not the gap between them", saved.sumOf { Geo.length(it) }, run.distance, 0.01)
+        assertEquals(222.4, run.distance, 1.0)
     }
 
     @Test fun aLongGapStartsANewPiece() {

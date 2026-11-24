@@ -72,6 +72,12 @@ export class EngineClient {
     if (req.type === 'call' && req.fn === 'paceSet') this.pace = req.args;
     // a GPX track's fit routes for minutes on a long tour (multi-day tours stage 3): stoppable like a plan (dropPlans)
     if (req.type === 'plan' || req.type === 'planFromTrack') this.plans.set(id, 0);
+    // a step of the detour check (WebApi.detourAt, the app's PlanDetourCheck): the next edit stops it at once like the app's
+    // detourCheck.stop() – it counts as routing for longer than the grace already, so dropPlans replaces a worker still in it
+    if (req.type === 'call' && req.fn === 'detourAt') this.plans.set(id, performance.now() - EngineClient.DROP_GRACE_MS);
+    // … and so does every request an edit, a link, Neu or Undo begins with (they come before the plan's dropPlans and would
+    // wait behind the step); a hold's measure does not – the check gives way to it by itself (main.ts checkDetours)
+    else if (EngineClient.endsDetour(req)) this.stopDetour();
     return new Promise((resolve) => {
       const noAnswer = () => {
         if (!this.waiting.delete(id)) return;
@@ -86,6 +92,18 @@ export class EngineClient {
       this.sent.set(id, full);
       this.worker.postMessage(full);
     });
+  }
+
+  /** A request that begins a new plan or an edit (the app's newRunStarts → detourCheck.stop()). */
+  private static endsDetour(req: NoId<EngineRequest>): boolean {
+    if (req.type === 'plan' || req.type === 'edit' || req.type === 'parse' || req.type === 'planFromTrack' || req.type === 'gpxRead') return true;
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead'].includes(req.fn);
+  }
+
+  /** A detour step still in the worker is stopped at once: a fresh worker ([restart]); its promise answers {cancelled}. */
+  private stopDetour() {
+    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return r?.type === 'call' && r.fn === 'detourAt'; });
+    if (ids.length) this.restart(ids);
   }
 
   /**
@@ -137,7 +155,7 @@ export class EngineClient {
   }
 
   /** [base] = where engine/ and brouter/ are served; [segments] = rd5 files with HTTP range support. */
-  configure(base: string, segments: string, packed = false, lang = 'en', slowMs = 0) { return this.ask({ type: 'config', base, segments, packed, lang, slowMs }); }
+  configure(base: string, segments: string, packed = false, lang = 'en', slowMs = 0, slowDetourMs = 0) { return this.ask({ type: 'config', base, segments, packed, lang, slowMs, slowDetourMs }); }
 
   route(points: [number, number][], activity: Activity, sac: number) {
     return this.ask({ type: 'route', points: enc(points), activity, sac });
