@@ -129,6 +129,7 @@ class TestKitTest {
             "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
             "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
             "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)",
+            "if (verdict == PointFilter.Verdict.JUMP) return",
             "tourRun.count(moved, newPiece = wasLost && prev != null && !bridged)",
             "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",
             "if (now - lastStats >= ${FakeRecording.STATS_MS / 1000}_000) {",

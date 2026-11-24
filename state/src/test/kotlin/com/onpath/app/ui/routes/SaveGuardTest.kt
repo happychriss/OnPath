@@ -95,7 +95,7 @@ class SaveGuardTest {
         }
         override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
         override fun days(points: List<GeoPoint>): MultiDay? = null
-        override fun keepWhole() = false
+        override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = false
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = false
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
         override fun datedName() = "Route 31 Oct, 10:12"

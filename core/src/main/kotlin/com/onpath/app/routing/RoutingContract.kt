@@ -164,6 +164,22 @@ class RoutingException(message: String, val timedOut: Boolean = false, kind: Kin
      */
     val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }
 
+    /**
+     * A real "no route here": not a timeout, kind [Kind.OTHER] or [Kind.START_POINT], and not the engine's own memory-limit
+     * or unexpected-error texts, and not the engine's setup failures (profiles, coordinates, a request without two points;
+     * they are OTHER too and would fail the same without the anchors). The Planner drops a leg's detour anchors only for this.
+     */
+    val isNoRoute: Boolean
+        get() = !timedOut && (this.kind == Kind.OTHER || this.kind == Kind.START_POINT) &&
+            message != Txt.s(Res.string.plan_err_too_long) && message != Txt.s(Res.string.plan_err_unexpected) &&
+            !isSetupFailure(message.orEmpty())
+
+    private fun isSetupFailure(m: String): Boolean = m == Txt.s(Res.string.plan_err_profiles) ||
+        m == Txt.s(Res.string.plan_err_profile_folder) || m == Txt.s(Res.string.plan_err_coordinates) ||
+        m == Txt.s(Res.string.plan_err_set_start_dest) || m == Txt.s(Res.string.plan_err_set_start_end) ||
+        // "Cannot install routing profile <name>.": the text up to the name
+        m.startsWith(Txt.s(Res.string.plan_err_profile_install, "\u0000").substringBefore('\u0000'))
+
     enum class Kind {
         OTHER,
         /** Routing data for the area is missing (the map loads it). */

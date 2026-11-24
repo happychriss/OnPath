@@ -5,11 +5,18 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshots.SnapshotStateList
+import com.onpath.app.data.AnchorsJson
 import com.onpath.app.domain.PlanGuidance
 import com.onpath.app.domain.PlanHistory
 import com.onpath.app.domain.RouteRules
 import com.onpath.app.domain.plan.PlanSession
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
+import com.onpath.app.routing.AnchorSet
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.ExpandedPlan
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanAnchors
 
 /**
  * Where the plan on the map is kept between two runs of the app (the preferences in the app, a map in tests): its
@@ -21,6 +28,13 @@ interface PlanStore {
     var savedName: String?
     var savedId: Long
     var savedPoints: List<GeoPoint>?
+    /**
+     * The plan's hidden via points with their profile as [AnchorsJson.writeSet] (null = none, docs/design/detour-stitch.md). A store that does not keep
+     * them only loses speed and the exact line after a restart: the legs are routed in full.
+     */
+    var anchorsJson: String?
+        get() = null
+        set(_) {}
 }
 
 /**
@@ -42,7 +56,8 @@ class PlanDocument(
 
     /** The plan's points, in order – Compose state: the map, the sheet and My routes' live row follow it. */
     val points: SnapshotStateList<GeoPoint> = mutableStateListOf<GeoPoint>().apply { addAll(store.points) }
-    private val session = PlanSession(points, store.pinned, history)
+    private var anchorsStored: String? = store.anchorsJson
+    private val session = PlanSession(points, store.pinned, history, AnchorsJson.readSet(anchorsStored, points))
 
     // ---------------- the points and their history ----------------
 
@@ -51,7 +66,11 @@ class PlanDocument(
     var canRedo by mutableStateOf(session.canRedo)
         private set
     private fun history() { canUndo = session.canUndo; canRedo = session.canRedo }
-    private fun stored() { store.points = points.toList() }
+    private fun stored() {
+        store.points = points.toList()
+        val json = AnchorsJson.writeSet(points, session.anchorSet)
+        if (json != anchorsStored) { anchorsStored = json; store.anchorsJson = json }
+    }
 
     /** One undoable change: records the step, applies [block], stores the points; returns the points before it. */
     fun edit(block: MutableList<GeoPoint>.() -> Unit): List<GeoPoint> = session.edit(block).also { history(); stored() }
@@ -75,16 +94,20 @@ class PlanDocument(
      * The router put the points [routed] onto their ways ([snapped], same size): the plan's points move there – no Undo
      * step, the marker, the stored plan and the route line agree. Undo / Redo follow with [snappedHistory].
      */
-    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>) {
+    fun moveSnapped(routed: List<GeoPoint>, snapped: List<GeoPoint>, runProfile: AnchorProfile? = null) {
         for (i in snapped.indices) if (snapped[i] != routed[i]) points[i] = snapped[i]
+        if (runProfile != null) session.snapDropsAnchors(routed, snapped, runProfile)
         stored()
     }
 
-    /** Undo / Redo show the snapped points too ([moves] old → new). */
-    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>) { session.snapped(moves); onSnapped?.invoke(moves) }
+    /**
+     * Undo / Redo show the snapped points too ([moves] old → new). [runProfile] = the profile of the run that snapped: detour points
+     * of another profile (in a step, in the multi-day tour) lose the moved points, here as in [moveSnapped]; null = untouched.
+     */
+    fun snappedHistory(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) { session.snapped(moves, runProfile); onSnapped?.invoke(moves, runProfile) }
 
     /** Multi-day tours (ui/plan/MultiDaySlice): the night marks are kept by value and follow a snap ([snappedHistory]). */
-    var onSnapped: ((Map<GeoPoint, GeoPoint>) -> Unit)? = null
+    var onSnapped: ((Map<GeoPoint, GeoPoint>, AnchorProfile?) -> Unit)? = null
     /** Multi-day tours: the plan belongs to another saved route now ([setSaved]; -1 = none). */
     var onLinked: ((Long) -> Unit)? = null
 
@@ -122,6 +145,21 @@ class PlanDocument(
 
     /** Forget pinned marks of points neither planned nor reachable by Undo / Redo (stored when some went). */
     fun prunePinned() { if (session.prunePinned()) store.pinned = session.pinned }
+
+    // ---------------- hidden via points (docs/design/detour-stitch.md) ----------------
+
+    /** The hidden via points with their profile: they follow every edit, Undo brings them back; this stage never makes new ones. */
+    val anchorSet: AnchorSet get() = session.anchorSet
+
+    /** The anchors that count for [activity] / [sac]: what is routed, saved and shared (none under another profile). */
+    fun anchorsFor(activity: Activity, sac: Int): Map<Int, Anchors> = session.anchorsFor(activity, sac)
+
+    /** The list the router takes for [activity] / [sac]: the points with the anchors that count and the pins. */
+    fun expanded(activity: Activity, sac: Int): ExpandedPlan =
+        PlanAnchors.expand(points.toList(), anchorsFor(activity, sac), session.pinnedIndices())
+
+    /** The next change that makes the plan exactly [list] (a plan being loaded) brings [set] with it. */
+    fun arriving(list: List<GeoPoint>, set: AnchorSet) = session.arriving(list, set)
 
     // ---------------- the saved route the plan belongs to ----------------
 

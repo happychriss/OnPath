@@ -55,7 +55,7 @@ class MultiDayWiringTest {
             assertTrue("$user below multiDay", vm.indexOf(user) > at)
         // `multiDay` is only read inside the hosts' members, at call time
         assertTrue(vm.contains("override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)"))
-        assertTrue(vm.contains("override fun keepWhole() = multiDay.keepWhole()"))
+        assertTrue(vm.contains("override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)"))
         assertTrue(vm.contains("override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)"))
         assertTrue(vm.contains("override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)"))
         assertTrue(vm.contains("override fun withMaps(t: Tour) = multiDay.withMaps(t)"))
@@ -109,7 +109,7 @@ class MultiDayWiringTest {
         val s = store.replace(Regex("\\s+"), " ")
         assertTrue(s, s.contains("override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name, " +
             "activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days)"))
+            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)"))
     }
 
     /** The slice and its state know no Android, no view model, no database, no preferences class and no dispatcher of their own. */

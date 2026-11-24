@@ -2,6 +2,7 @@ package com.onpath.app.data
 
 import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.rides.RideRecord
+import com.onpath.app.routing.Anchors
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.routes_kind_imported
@@ -76,4 +77,9 @@ data class Tour(
      * reads the list; null = not known / not a multi-day tour. Not stored.
      */
     val mapsMissing: Boolean? = null,
+    /**
+     * Planned: the hidden via points by index of [waypoints] (docs/design/detour-stitch.md §3); empty = none. As JSON:
+     * [AnchorsJson]. Backed up and synced (tag 7 of the plan code).
+     */
+    val anchors: Map<Int, Anchors> = emptyMap(),
 )

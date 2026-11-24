@@ -72,7 +72,9 @@ object PlanLinks {
         PlanCode.parse(s)?.takeIf { it.points.isNotEmpty() }?.let { Found.Plan(it) } ?: Found.Broken
 
     /** What a plan from a link puts into the app's plan: the points, the pinned points and the names by point. */
-    data class Load(val points: List<GeoPoint>, val pinned: Set<GeoPoint>, val names: Map<GeoPoint, String>)
+    data class Load(val points: List<GeoPoint>, val pinned: Set<GeoPoint>, val names: Map<GeoPoint, String>,
+                    /** The hidden via points by index into [points] (docs/design/detour-stitch.md). */
+                    val anchors: Map<Int, Anchors> = emptyMap())
 
     fun load(plan: SharedPlan): Load {
         val pts = plan.points
@@ -80,16 +82,18 @@ object PlanLinks {
             pts,
             plan.pinned.mapNotNull { pts.getOrNull(it) }.toSet(),
             plan.names.mapNotNull { (i, n) -> pts.getOrNull(i)?.let { it to n } }.toMap(),
+            plan.anchors,
         )
     }
 
     /** The current plan as it is shared: names and pinned points by index ([pinned] / [names] from the app's plan). */
     fun share(points: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>, names: (GeoPoint) -> String?,
-              title: String?): SharedPlan =
+              title: String?, anchors: Map<Int, Anchors> = emptyMap()): SharedPlan =
         SharedPlan(
             points.map { GeoPoint(it.lat, it.lon) }, activity, sac.coerceIn(1, 5),
             pinned.filter { it in points.indices }.toSet(),
             points.indices.mapNotNull { i -> names(points[i])?.let { i to it } }.toMap(),
             title,
+            anchors = anchors.filterKeys { it in points.indices },
         )
 }

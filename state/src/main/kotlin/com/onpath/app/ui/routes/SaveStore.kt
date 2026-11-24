@@ -16,6 +16,8 @@ class PlannedRow(
     val segments: List<List<TrackPoint>>, val stops: List<GpxWaypoint>, val pins: Set<Int>, val difficulty: String?,
     /** null = a normal route (insert) / keep the stored days (replace) – never wiped by a write that does not know them. */
     val days: MultiDay? = null,
+    /** The hidden via points by index of [stops] ([Tour.anchors]); written as they are, empty = none. */
+    val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
 )
 
 /**

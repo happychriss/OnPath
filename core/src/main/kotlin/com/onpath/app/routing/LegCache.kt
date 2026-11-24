@@ -21,37 +21,87 @@ package com.onpath.app.routing
  */
 class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore? = null,
                private val maxLinePoints: Int = MAX_LINE_POINTS) {
-    data class Key(val fromLat: Long, val fromLon: Long, val toLat: Long, val toLon: Long, val activity: Activity, val sac: Int)
+    data class Key(val fromLat: Long, val fromLon: Long, val toLat: Long, val toLon: Long, val activity: Activity, val sac: Int,
+                   /** A stitch's cut leg (docs/design/detour-stitch.md §8.9): its own entry, read only by [lookupAnchored]. */
+                   val cut: Boolean = false,
+                   /** The router's own answer for the plan's exact points, kept apart from the plain leg (§8.15, [Planner.settle]). */
+                   val settled: Boolean = false)
 
     /** A leg found: [stored] = read from the [store] (not routed in this process). */
     class Hit(val leg: RouteResult, val stored: Boolean)
 
     private val lock = Any()
     private val map = LinkedHashMap<Key, RouteResult>(minOf(capacity, 64) + 1, 0.75f, true)
+    /** Plain legs in [map] that are the router's own answer for their two exact points (§8.15); always a subset of the keys of [map]. */
+    private val exactKeys = HashSet<Key>()
     /** Line points of the legs held (the memory bound beside [capacity], [maxLinePoints]). */
     private var linePoints = 0L
 
     /** Keeps [leg] under [k] (under [lock]); the oldest legs go while more than [capacity] legs or [maxLinePoints] are held. */
-    private fun keep(k: Key, leg: RouteResult) {
+    private fun keep(k: Key, leg: RouteResult, exact: Boolean = false) {
         map.put(k, leg)?.let { linePoints -= it.points.size }
+        if (exact) exactKeys.add(k) else exactKeys.remove(k)
         linePoints += leg.points.size
         val it = map.entries.iterator()
         while ((map.size > capacity || linePoints > maxLinePoints) && map.size > 1 && it.hasNext()) {
             val e = it.next()
             if (e.key == k) continue // the leg just kept stays
             linePoints -= e.value.points.size
+            exactKeys.remove(e.key)
             it.remove()
         }
     }
 
     fun get(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): RouteResult? = lookup(from, to, activity, sac)?.leg
 
-    /** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. */
-    fun lookup(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? {
-        val k = key(from, to, activity, sac)
+    /** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. Never a cut leg. */
+    fun lookup(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? = lookup(key(from, to, activity, sac))
+
+    /**
+     * For a leg of an expanded plan that touches an anchor (§8.9): an exact plain leg first (§8.15, the router's own answer
+     * for the two points), then the stitch's cut leg (memory, then fresh in the [store]), else the plain leg. Null = route it.
+     */
+    fun lookupAnchored(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Hit? = chain(from, to, activity, sac, cut = true)
+
+    /** A settled leg (§8.15) first, then an exact plain leg, then (with [cut]) the cut leg, then the plain leg. */
+    private fun chain(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, cut: Boolean): Hit? =
+        lookup(key(from, to, activity, sac, settled = true)) ?: lookupExact(key(from, to, activity, sac))
+            ?: (if (cut) lookup(key(from, to, activity, sac, cut = true)) else null) ?: lookup(key(from, to, activity, sac))
+
+    /** The plain leg only when it is marked exact: in memory, or fresh and exact in the [store] (then kept in memory, marked). */
+    private fun lookupExact(k: Key): Hit? {
+        synchronized(lock) {
+            val m = map[k]
+            if (m != null) return if (k in exactKeys) Hit(m, stored = false) else null // a plain leg in memory is the newest word
+        }
+        val s = store?.get(k)?.takeIf { it.fresh && it.exact } ?: return null
+        synchronized(lock) { keep(k, s.leg, exact = true) }
+        return Hit(s.leg, stored = true)
+    }
+
+    /** The plain leg [from] → [to] is the router's own answer for exactly these points (§8.15): marked in memory, or fresh exact in the [store]. */
+    fun isExact(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Boolean =
+        lookup(key(from, to, activity, sac, settled = true)) != null || lookupExact(key(from, to, activity, sac)) != null
+
+    /** Leg [i] of [plan]: [lookupAnchored] where it touches an anchor, else [lookup] – the one rule for the key (§8.9). */
+    fun lookupLeg(plan: ExpandedPlan, i: Int, activity: Activity, sac: Int, anchoredPlan: Boolean = plan.hasAnchors): Hit? {
+        val pts = plan.points
+        // a plan without anchors reads exactly what it always read: the plain leg, never a settled one
+        if (!anchoredPlan) return lookup(pts[i], pts[i + 1], activity, sac)
+        return chain(pts[i], pts[i + 1], activity, sac, cut = plan.touchesAnchor(i))
+    }
+
+    /**
+     * The leg from MEMORY only (no [store] read), under the plain key or the [cut] key: for [LegSplit.seed] and
+     * [aliasExpanded], which look at many candidate legs – a cold load would otherwise do thousands of file lookups.
+     */
+    fun inMemory(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, cut: Boolean = false, settled: Boolean = false): RouteResult? =
+        synchronized(lock) { map[key(from, to, activity, sac, cut, settled)] }
+
+    private fun lookup(k: Key): Hit? {
         synchronized(lock) { map[k] }?.let { return Hit(it, stored = false) }
         val s = store?.get(k)?.takeIf { it.fresh } ?: return null
-        synchronized(lock) { keep(k, s.leg) }
+        synchronized(lock) { keep(k, s.leg, exact = s.exact) }
         return Hit(s.leg, stored = true)
     }
 
@@ -64,13 +114,41 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         return synchronized(lock) { map[k] } ?: store?.get(k)?.leg
     }
 
+    /**
+     * [stale] for leg [i] of [plan]: a FRESH leg first ([lookupLeg]), only then a stale cut leg (where the leg touches an
+     * anchor, §8.9), then a stale plain one – a stand-in never takes an old line where a current one exists.
+     */
+    fun staleLeg(plan: ExpandedPlan, i: Int, activity: Activity, sac: Int): RouteResult? {
+        lookupLeg(plan, i, activity, sac)?.let { return it.leg }
+        val pts = plan.points
+        if (plan.touchesAnchor(i)) {
+            val k = key(pts[i], pts[i + 1], activity, sac, cut = true)
+            (synchronized(lock) { map[k] } ?: store?.get(k)?.leg)?.let { return it }
+        }
+        return stale(pts[i], pts[i + 1], activity, sac)
+    }
+
     /** Is the leg known fresh (memory or [store], then kept in memory) – a plan whose legs all are needs no router run. */
     fun has(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Boolean = lookup(from, to, activity, sac) != null
 
-    fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult) {
-        val k = key(from, to, activity, sac)
-        synchronized(lock) { keep(k, leg) }
-        store?.put(k, from, to, leg)
+    /**
+     * [cut] = a stitch's cut leg (own key, §8.9). [exact] = a plain leg that is the router's own answer for exactly these
+     * points (§8.15: both points already 1e-6°); never together with [cut]. Without [exact] an older mark under the key goes.
+     */
+    fun put(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, leg: RouteResult, cut: Boolean = false, exact: Boolean = false,
+            settled: Boolean = false) {
+        require(!(exact && cut)) { "a cut leg is never exact" }
+        require(!(settled && (cut || exact))) { "a settled leg has its own key" }
+        val k = key(from, to, activity, sac, cut, settled)
+        synchronized(lock) { keep(k, leg, exact) }
+        if (exact) store?.putExact(k, from, to, leg) else store?.put(k, from, to, leg)
+    }
+
+    /** A stitch's cut leg goes (memory and [store]): its sub-leg has no route, the full leg settled instead (§8.5, §8.15). */
+    fun dropCut(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int) {
+        val k = key(from, to, activity, sac, cut = true)
+        synchronized(lock) { map.remove(k)?.let { linePoints -= it.points.size }; exactKeys.remove(k) }
+        store?.remove(k)
     }
 
     /**
@@ -81,9 +159,49 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
      */
     fun alias(from: GeoPoint, to: GeoPoint, newFrom: GeoPoint, newTo: GeoPoint, activity: Activity, sac: Int): Boolean {
         val leg = synchronized(lock) { map[key(from, to, activity, sac)] } ?: return false
+        if (key(from, to, activity, sac) == key(newFrom, newTo, activity, sac)) return true // the same key: nothing to copy, the mark stays
         put(newFrom, newTo, activity, sac, leg)
         return true
     }
+
+    /**
+     * [alias] over expanded lists (§8.2): the plan [old] was snapped onto its line and is [new] now. Same layout only
+     * (same size, same [ExpandedPlan.visibleIndex]), else 0. Every leg with a changed end is copied under the new ends
+     * keeping its kind (a cut leg stays cut, a plain one plain; a leg that touches an anchor: cut first, then plain), and
+     * each visible leg with anchors also as its full plain leg (the §8.5 fallback's leg, the old base). Memory only.
+     * Returns the number of legs copied.
+     */
+    fun aliasExpanded(old: ExpandedPlan, new: ExpandedPlan, activity: Activity, sac: Int): Int {
+        if (old.points.size != new.points.size || old.visibleIndex != new.visibleIndex) return 0
+        fun moved(i: Int, j: Int) = key(old.points[i], old.points[j], activity, sac) != key(new.points[i], new.points[j], activity, sac)
+        var copied = 0
+        for (i in 0 until old.points.size - 1) {
+            if (!moved(i, i + 1)) continue
+            val touches = old.touchesAnchor(i)
+            val settledLeg = inMemory(old.points[i], old.points[i + 1], activity, sac, settled = true)
+            val cutLeg = if (settledLeg == null && touches) inMemory(old.points[i], old.points[i + 1], activity, sac, cut = true) else null
+            val leg = settledLeg ?: cutLeg ?: inMemory(old.points[i], old.points[i + 1], activity, sac) ?: continue
+            // a settled source goes under the cut key where the leg touches an anchor, else plain (never exact, never a settled key)
+            val asCut = cutLeg != null || (settledLeg != null && touches)
+            if (!asCut && isExact(new.points[i], new.points[i + 1], activity, sac)) continue
+            put(new.points[i], new.points[i + 1], activity, sac, leg, cut = asCut)
+            copied++
+        }
+        for (v in 0 until old.visibleCount - 1) {
+            val from = old.expandedIndex(v); val to = old.expandedIndex(v + 1)
+            if (to - from < 2 || !moved(from, to)) continue
+            val leg = inMemory(old.points[from], old.points[to], activity, sac, settled = true)
+                ?: inMemory(old.points[from], old.points[to], activity, sac) ?: continue
+            if (isExact(new.points[from], new.points[to], activity, sac)) continue
+            put(new.points[from], new.points[to], activity, sac, leg)
+            copied++
+        }
+        return copied
+    }
+
+    /** The mark in memory only (no [store] read). */
+    fun isExactInMemory(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int): Boolean =
+        synchronized(lock) { key(from, to, activity, sac) in exactKeys }
 
     /** Legs held now (in memory). */
     val size: Int get() = synchronized(lock) { map.size }
@@ -92,14 +210,15 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
      * Newer routing data (the same points may route differently now): every leg in memory goes. The [store] keeps its
      * legs – each says by itself whether the data under it changed ([LegStore.Stored.fresh]).
      */
-    fun clear() { synchronized(lock) { map.clear(); linePoints = 0 } }
+    fun clear() { synchronized(lock) { map.clear(); exactKeys.clear(); linePoints = 0 } }
 
     companion object {
         /**
-         * Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) – a multi-day tour of 189 points
-         * (München–Venedig, stage 0 2026-11-17) routed ~120 of its legs again at every edit with 64.
+         * Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) plus room for its anchors (at most 500,
+         * detour-stitch.md §8.8) and the cut legs – a multi-day tour of 189 points (München–Venedig, stage 0 2026-11-17)
+         * routed ~120 of its legs again at every edit with 64.
          */
-        const val CAPACITY = PlanCode.MAX_POINTS
+        const val CAPACITY = 1_000
         /**
          * The memory bound: line points held in all legs (a point ~50 bytes → ~12 MB). München–Venedig, 594 km, is ~60 000
          * line points – several such tours fit; a 35 km bike leg is ~1 000.
@@ -107,10 +226,10 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
         const val MAX_LINE_POINTS = 250_000
 
         /** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */
-        fun key(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int) = Key(
+        fun key(from: GeoPoint, to: GeoPoint, activity: Activity, sac: Int, cut: Boolean = false, settled: Boolean = false) = Key(
             Math.round(from.lat * 1_000_000.0), Math.round(from.lon * 1_000_000.0),
             Math.round(to.lat * 1_000_000.0), Math.round(to.lon * 1_000_000.0),
-            activity, if (activity == Activity.HIKE) sac.coerceIn(1, 5) else 0)
+            activity, if (activity == Activity.HIKE) sac.coerceIn(1, 5) else 0, cut, settled)
     }
 }
 
@@ -120,9 +239,16 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
  * the same routing data under the leg. Implementations never throw: a leg that cannot be read or written is no leg.
  */
 interface LegStore {
-    class Stored(val leg: RouteResult, val fresh: Boolean)
+    /** [exact] = the leg is marked as the router's own answer for its two exact points (§8.15). */
+    class Stored(val leg: RouteResult, val fresh: Boolean, val exact: Boolean = false)
 
     fun get(key: LegCache.Key): Stored?
 
     fun put(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult)
+
+    /** [put] of an exact leg (§8.15); a store that cannot mark it just keeps the leg. */
+    fun putExact(key: LegCache.Key, from: GeoPoint, to: GeoPoint, leg: RouteResult) = put(key, from, to, leg)
+
+    /** Forgets the leg under [key] (a retired cut leg); a store that cannot just keeps it. */
+    fun remove(key: LegCache.Key) {}
 }

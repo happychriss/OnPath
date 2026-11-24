@@ -24,7 +24,9 @@ import com.onpath.app.sync.TrackPt
  */
 data class PlanContent(val points: List<GeoPoint>, val activity: Activity, val sac: Int, val pinned: Set<Int>,
                        val names: Map<Int, String>, val days: Int? = null, val limits: DayLimits = DayLimits.NONE,
-                       val nights: Map<Int, NightMark> = emptyMap(), val description: String? = null) {
+                       val nights: Map<Int, NightMark> = emptyMap(), val description: String? = null,
+                       /** The hidden via points by index (tag 7 of the plan code, docs/design/detour-stitch.md §3). */
+                       val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap()) {
     /** The route's stops as saved (GpxWaypoint with the names, like AppViewModel.savedStops). */
     val stops: List<GpxWaypoint> get() = points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, names[i]) }
 
@@ -53,7 +55,10 @@ object RouteItems {
         if (t.waypoints.size < 2) return null
         val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
         val plan = SharedPlan(pts, activityOf(t), t.sac.coerceIn(1, 5), t.pinned.filter { it in pts.indices }.toSet(),
-            t.waypoints.mapIndexedNotNull { i, w -> w.name?.let { i to it } }.toMap(), title = null)
+            t.waypoints.mapIndexedNotNull { i, w -> w.name?.let { i to it } }.toMap(), title = null,
+            // an unknown activity is a hike here: anchors that lie on another profile do not go into the code
+            anchors = com.onpath.app.routing.AnchorSet.of(t.anchors.filterKeys { it in pts.indices },
+                t.activity?.let { a -> Activity.entries.firstOrNull { it.name == a } }, t.sac).forProfile(activityOf(t), t.sac.coerceIn(1, 5)))
         // a multi-day tour travels with its days (stage 4): N, limits, night marks, description
         return PlanCode.encode(t.days?.into(plan) ?: plan)
     }
@@ -79,7 +84,7 @@ object RouteItems {
 
     fun planContent(item: SyncItem): PlanContent? {
         val p = item.plan?.let(PlanCode::decode)?.takeIf { it.points.size >= 2 } ?: return null
-        return PlanContent(p.points, p.activity, p.sac, p.pinned, p.names, p.days, p.limits, p.nights, p.description)
+        return PlanContent(p.points, p.activity, p.sac, p.pinned, p.names, p.days, p.limits, p.nights, p.description, p.anchors)
     }
 
     /** The track item text of an imported tour (thinned to fit when long); null without points. */

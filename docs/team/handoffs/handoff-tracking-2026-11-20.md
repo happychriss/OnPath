@@ -127,6 +127,16 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
 - Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
   arrival first, above) – pictures first; the Pixel walk list above.
 
+## Owner's field notes 2026-11-24 ~23:30 (his phone, simulation, viewer page open) – to do, pictures first
+1. „Bildschirm aktualisiert nicht / buggy“: the viewer page did not seem to refresh while his phone ran a simulation. Expected
+   cadence: moving 120 s, still / paused 600 s (`LivePolicy`), the page asks ~10 s after the due time. Not checked yet:
+   whether his simulation records points (only recorded points are uploaded) or the app judged „still“ (10 min). His
+   Pixel was not attached to donald – ask him for the steps / a screen recording, never his export into git.
+2. The viewer map started on Meran first and took a while to jump to the position – start on the last known position
+   (or no map until the first head is read), never on a default place.
+3. The planned tour on the viewer page should be better visible: **dark blue** (today a dotted green line).
+4. The countdown to the next update (pictures above, V1 recommended) – his wish, build after his yes.
+
 ## 2026-11-24 night – „Standort teilen“ is ON for everyone – start here
 - On main: `FOR_EVERYONE = true` (e2c8a3e5a). PR 19 (privacy page) and PR 17 (host config) merged by tracking on the
   owner's yes in a box (the captain relayed „ich mag nicht selber mergen“). Review fixes 7367c0579 (stop/start show at
@@ -137,7 +147,7 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
   teilen“ / „Teilen beenden“. Old turn-card sign gone. Short screen + large font: 48 dp slots, then the tour bubble
   beside the map bubble. Pictures: `docs/design/img/live/tour-bubble/`; sketch rounds on `wip/tracking-2026-11-24-share-place`
   (pictures only, do not merge; `feat/tracking-2026-11-24-tour-bubble` and `fix/tracking-2026-11-24-live-review` are on main).
-- **Not done / to watch:** E2E not run on the new column (androidTest compiles); `live-smoke.mjs` not run by hand (the
+- **Not done / to watch:** E2E on the new column: green (110/110, run 45498021891); `live-smoke.mjs` not run by hand (the
   owner's real share stands in); PR 17's config is live only after the next planner deploy (until then the daily purge);
   website privacy text (cloud-web line). Review „can wait“ items: a stuck leftover DELETE (lasting 4xx) blocks later
   shares – give leftovers a time limit; an offline end + a new share soon after leaves the old viewer on „Kein Kontakt“

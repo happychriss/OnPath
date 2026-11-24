@@ -170,6 +170,8 @@ abstract class RoutesFlowBase {
         val prefs = MemoryPrefs()
         val router = FakeRouter(File(tmp.root, "legs")).also { r -> r.onRoute = { log += "$where: router call" } }
         val plansOf = HashMap<Long, List<GpxWaypoint>>()
+        /** Every row written under Zuletzt, in order. */
+        val draftRows = ArrayList<RecentPlans.DraftRow>()
         val timesOf = HashMap<Long, TourTimes>()
         val ridesOf = HashMap<Long, com.onpath.app.rides.RideRecord>()
         var failPlanPoints = false
@@ -257,6 +259,7 @@ abstract class RoutesFlowBase {
                     row.pinned, difficulty = row.difficulty, days = row.days, clearDays = row.days == null)
             override fun insertDraft(row: RecentPlans.DraftRow): Long =
                 db.insertTour(TourKind.PLANNED, row.name, row.activity, row.sac, row.segments, row.waypoints, distance = row.distanceM, draft = true)
+                    .also { draftRows += row }
             override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) {}
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun tourChanged(id: Long) {}
@@ -268,12 +271,12 @@ abstract class RoutesFlowBase {
         }, scope, io)
         val save = SaveSlice(plan, routes, recent, store, object : SaveHost {
             override val route: PlannedRoute? get() = routeNow
-            override val activity: Activity get() = Activity.HIKE
-            override val sac: Int get() = 2
+            override val activity: Activity get() = planRoute.activity
+            override val sac: Int get() = planRoute.sac
             override fun stops(points: List<GeoPoint>) = points.map { GpxWaypoint(it.lat, it.lon, null) }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>): MultiDay? = null
-            override fun keepWhole() = false
+            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = false
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = false
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 31 Oct, 10:12"

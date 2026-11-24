@@ -194,4 +194,34 @@ class LegFilesTest {
         assertEquals(key, back.key)
         assertNull(files().get(LegCache.key(p[2], p[3], act, 2)))
     }
+
+    @Test fun aCutLegAndAPlainLegWithTheSameEndsAreTwoFiles() {
+        val store = files()
+        val plain = LegCache.key(p[0], p[1], act, 2)
+        val cut = LegCache.key(p[0], p[1], act, 2, cut = true)
+        assertTrue(LegFiles.name(plain) != LegFiles.name(cut))
+        val e = Engine()
+        val one = e.route(listOf(p[0], p[1]), act, 2)
+        val other = one.copy(distanceM = 99.0)
+        store.put(plain, p[0], p[1], one)
+        store.put(cut, p[0], p[1], other)
+        assertEquals(1234.5, store.get(plain)!!.leg.distanceM, 0.0)
+        assertEquals(99.0, store.get(cut)!!.leg.distanceM, 0.0)
+        assertEquals(2, tmp.root.resolve("legs").listFiles()!!.count { it.name.endsWith(LegFiles.SUFFIX) })
+        // the cut flag survives the text form
+        val entry = LegFiles.Entry(cut, "fp", "", 1L, one)
+        assertTrue(LegFiles.decode(LegFiles.encode(entry)).key.cut)
+        assertFalse(LegFiles.decode(LegFiles.encode(entry.copy(key = plain))).key.cut)
+    }
+
+    @Test fun aFileWrittenBeforeTheCutFlagReadsAsPlain() {
+        val e = Engine()
+        val one = e.route(listOf(p[0], p[1]), act, 2)
+        val plain = LegCache.key(p[0], p[1], act, 2)
+        assertEquals("plain names are as before", "${plain.fromLat}_${plain.fromLon}_${plain.toLat}_${plain.toLon}_BIKE_TOURING_0.leg", LegFiles.name(plain))
+        val text = LegFiles.encode(LegFiles.Entry(plain, "fp", "", 1L, one))
+        // the old key line had six fields: no seventh in a plain leg's file
+        assertEquals(6, text.lines().first { it.startsWith("key\t") }.split('\t').size - 1)
+        assertFalse(LegFiles.decode(text).key.cut)
+    }
 }

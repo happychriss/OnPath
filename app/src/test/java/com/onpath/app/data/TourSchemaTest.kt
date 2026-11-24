@@ -19,8 +19,9 @@ class TourSchemaTest {
     private fun Connection.count(sql: String): Int = createStatement().use { s -> s.executeQuery(sql).use { r -> r.next(); r.getInt(1) } }
 
     private fun Connection.upgrade(from: Int) {
-        TourSchema.stepsFrom(from).forEach { if (it.column !in columns(it.table)) exec(it.sql) }
+        // the order of TourDb.onUpgrade: missing tables first, then the columns (skipping one already there)
         TourSchema.tablesFrom(from).forEach { exec(it) }
+        TourSchema.stepsFrom(from).forEach { if (it.column !in columns(it.table)) exec(it.sql) }
     }
 
     private fun Connection.tables(): List<String> =
@@ -175,6 +176,52 @@ class TourSchemaTest {
     }
 
     /**
+     * A version 9 database (multi-day days) gets `tours.anchors` and `tour_plan.anchors` (detour stitch, docs/design/detour-stitch.md
+     * §3): every tour, track, plan copy and point stays as it was, every anchors cell is NULL (none); twice (a half-done upgrade)
+     * breaks nothing; a version 5 database (no plan table yet) gets the table with the column and no failing step.
+     */
+    @Test fun upgradeFrom9AddsAnchorsAndLosesNothing() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT)
+            c.exec(TourSchema.ADD_DIFFICULTY); c.exec(TourSchema.ADD_FAVOURITE); c.exec(TourSchema.ADD_DAYS)
+            c.exec("""CREATE TABLE tour_plan(tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL, sac INTEGER NOT NULL,
+                waypoints TEXT NOT NULL, pinned TEXT, line TEXT, distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
+                descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL)""")
+            c.exec("INSERT INTO tours(kind, name, created, uuid, waypoints, days) VALUES ('PLANNED', 'Brenner', 3, 'u2', '[]', '{}')")
+            c.exec("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, updated) VALUES (1, 'Waalweg', 'HIKE', 2, '[]', 9)")
+            assertTrue("anchors" !in c.columns("tours")); assertTrue("anchors" !in c.columns("tour_plan"))
+            c.upgrade(9)
+            assertTrue("anchors" in c.columns("tours")); assertTrue("anchors" in c.columns("tour_plan"))
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours WHERE anchors IS NULL"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=1 AND anchors IS NULL AND name='Waalweg' AND updated=9"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE uuid='u2' AND days='{}'"))
+            assertEquals(50, c.count("SELECT COUNT(*) FROM points WHERE tour_id=1"))
+            c.upgrade(9)
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan"))
+        }
+        // a version 5 database without tour_plan: the table comes with the column
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT); c.upgrade(5)
+            assertTrue("anchors" in c.columns("tour_plan")); assertTrue("anchors" in c.columns("tours"))
+        }
+        // a version 5 database that kept its tour_plan (a downgrade does): the old-shaped table gets the column, rows stay
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT)
+            c.exec("""CREATE TABLE tour_plan(tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL, sac INTEGER NOT NULL,
+                waypoints TEXT NOT NULL, pinned TEXT, line TEXT, distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
+                descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL)""")
+            c.exec("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, updated) VALUES (1, 'Waalweg', 'HIKE', 2, '[]', 9)")
+            c.upgrade(5)
+            assertTrue("anchors" in c.columns("tour_plan")); assertTrue("anchors" in c.columns("tours"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=1 AND anchors IS NULL AND updated=9"))
+            c.upgrade(5) // twice: nothing breaks
+        }
+        // the onOpen check (TourDb.addColumn over stepsFrom(9)) finds both columns of a version-10 database that lost one
+        assertEquals(listOf("tours.anchors", "tour_plan.anchors"), TourSchema.stepsFrom(9).map { "${it.table}.${it.column}" })
+    }
+
+    /**
      * Owner 2026-11-07: the copy is a copy – the planned route deleted (or changed) later, the tour still has the plan it
      * followed; a newer version replaces the older (the last version counts); the tour removed for good takes it along.
      */
@@ -210,7 +257,9 @@ class TourSchemaTest {
             assertTrue("difficulty" in c.columns("tours"))
             assertTrue("favourite" in c.columns("tours"))
             assertTrue("days" in c.columns("tours"))
-            assertEquals(9, TourSchema.VERSION)
+            assertEquals(10, TourSchema.VERSION)
+            assertTrue("anchors" in c.columns("tours"))
+            assertTrue("anchors" in c.columns("tour_plan"))
             assertEquals(TourSchema.VERSION, TourDb.VERSION)
         }
     }

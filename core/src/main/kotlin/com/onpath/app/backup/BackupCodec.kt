@@ -62,6 +62,11 @@ data class BackupMeta(
      * carries nothing of them: other apps see a normal route, hotels as named waypoints.
      */
     val days: com.onpath.app.data.MultiDay? = null,
+    /**
+     * Planned: the hidden via points ([Tour.anchors]) – key "anchors" in the record; older apps ignore it, a record without
+     * it has none.
+     */
+    val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
 ) {
     /** "tour" (recorded), "plan" (saved planned route) or "imported" – readable in the file. */
     val type: String get() = typeOf(kind)
@@ -75,7 +80,8 @@ data class BackupMeta(
             val times = segments.flatten().mapNotNull { it.timeMs }
             return BackupMeta(t.uuid, t.kind, t.name, t.createdMs, t.activity, t.sac, t.distanceM, t.ascentM, t.descentM,
                 t.durationS, t.waypoints, t.pinned, times.minOrNull(), times.maxOrNull(), t.deletedMs, savedMs, t.rides,
-                plan?.takeIf { t.kind == TourKind.RECORDED }, t.favourite, t.days.takeIf { t.kind == TourKind.PLANNED })
+                plan?.takeIf { t.kind == TourKind.RECORDED }, t.favourite, t.days.takeIf { t.kind == TourKind.PLANNED },
+                if (t.kind == TourKind.PLANNED) t.anchors else emptyMap())
         }
     }
 }
@@ -178,6 +184,8 @@ object BackupCodec {
         m.plan?.let { put("plan", it.toJson()) }
         if (m.favourite) put("favourite", true)
         m.days?.let { put("days", JSONObject(it.toJson())) }
+        com.onpath.app.data.AnchorsJson.write(m.waypoints.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }, m.anchors)
+            ?.let { put("anchors", JSONArray(it)) }
     }
 
     fun fromJson(o: JSONObject): BackupMeta? {
@@ -210,6 +218,9 @@ object BackupCodec {
             favourite = o.optBoolean("favourite", false),
             // unreadable → a normal route (reported in MultiDay.fromJson)
             days = if (kind == TourKind.PLANNED) o.optJSONObject("days")?.let { com.onpath.app.data.MultiDay.fromJson(it.toString()) } else null,
+            // unreadable → none, the route is routed in full (reported in AnchorsJson.read)
+            anchors = if (kind == TourKind.PLANNED) com.onpath.app.data.AnchorsJson.read(o.optJSONArray("anchors")?.toString(),
+                wpts.map { com.onpath.app.routing.GeoPoint(it.lat, it.lon) }) else emptyMap(),
         )
     }
 

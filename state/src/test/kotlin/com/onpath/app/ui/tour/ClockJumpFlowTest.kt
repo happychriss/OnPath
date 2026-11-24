@@ -162,11 +162,10 @@ class ClockJumpFlowTest {
     }
 
     /**
-     * The arrival clock while walking on after the clock was set back: it must follow the new clock. Today the trip pace
-     * shows nothing new for an hour – its updates wait for `wallMs - lastShowWall >= 10 s / 30 s` (TripPace.refresh),
-     * negative until the clock has caught up: "to go" and the arrival stay as they were at the jump.
+     * The arrival clock while walking on after the clock was set back: it must follow the new clock. Until 2026-11-24 the
+     * trip pace showed nothing new for an hour – its updates waited for `wallMs - lastShowWall >= 10 s / 30 s`
+     * (TripPace.refresh), negative until the clock caught up; now a clock set back starts the display anew.
      */
-    @Ignore("bug: after the clock is set back 1 h the trip pace's 'to go' and arrival freeze for that hour (TripPace.refresh waits for wallMs - lastShowWall >= 10 s)")
     @Test fun theArrivalFollowsTheClockSetBack() {
         start()
         walk(5)

@@ -4,6 +4,11 @@ import com.onpath.app.data.Geo
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.domain.PlanGuidance
 import com.onpath.app.domain.PlanHistory
+import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
+import com.onpath.app.routing.AnchorSet
+import com.onpath.app.routing.Anchors
+import com.onpath.app.routing.PlanAnchors
 
 /**
  * The plan being edited – its points, Undo / Redo, the pinned (POI) points and the start the one-point rule put in –
@@ -16,7 +21,36 @@ class PlanSession(
     val points: MutableList<GeoPoint>,
     pinnedAtStart: Set<GeoPoint> = emptySet(),
     private val history: PlanHistory = PlanHistory(),
+    anchorsAtStart: AnchorSet = AnchorSet.NONE,
 ) {
+    /**
+     * The hidden via points by point index (docs/design/detour-stitch.md): they follow every edit here
+     * ([PlanAnchors.edited]), Undo / Redo bring them back. This stage only reads them: a plan gets them from where it was
+     * loaded ([arriving]), no edit makes new ones. They count only for the profile they lie on ([anchorsFor]).
+     */
+    var anchorSet: AnchorSet = anchorsAtStart
+        private set
+
+    /** The anchors as kept, whatever the profile is now: to carry them along, never to route or save with. */
+    val anchors: Map<Int, Anchors> get() = anchorSet.anchors
+
+    /** The anchors that count for [activity] / [sac]: what is routed and saved. */
+    fun anchorsFor(activity: Activity, sac: Int): Map<Int, Anchors> = anchorSet.forProfile(activity, sac)
+
+    /** The anchors of the points the next change puts in ([arriving], Undo / Redo). */
+    private var incoming: Pair<List<GeoPoint>, AnchorSet>? = null
+
+    /** The next change that makes the plan exactly [list] (a loaded plan) brings [set] with it. */
+    fun arriving(list: List<GeoPoint>, set: AnchorSet) { incoming = list.toList() to set }
+
+    /** The points changed from [before]: the anchors that arrive with them, else the old ones follow. */
+    private fun anchorsAfter(before: List<GeoPoint>) {
+        val now = points.toList()
+        val got = incoming?.takeIf { it.first == now }
+        incoming = null
+        anchorSet = got?.second ?: anchorSet.copy(anchors = PlanAnchors.edited(before, now, anchorSet.anchors))
+    }
+
     /**
      * Points added by tapping a POI (hut, viewpoint …), kept by value so reorder / reverse / Undo keep them; a dragged
      * point is a new value and so no longer pinned. Routed exactly (Planner).
@@ -39,21 +73,24 @@ class PlanSession(
 
     /** One undoable change: records the step, applies [block]; returns the points before it. */
     fun edit(block: MutableList<GeoPoint>.() -> Unit): List<GeoPoint> {
-        history.record(points)
+        history.record(points, anchorSet)
         val before = points.toList()
         points.block()
+        anchorsAfter(before)
         return before
     }
 
     /** The plan Undo brings back (taken off the undo stack, not applied yet – [replace]); null = nothing to undo. */
-    fun undo(): List<GeoPoint>? = history.undo(points)
+    fun undo(): List<GeoPoint>? = history.undo(points, anchorSet)?.also { incoming = it to history.takenAnchors }
 
     /** The plan Redo brings back (like [undo]); null = nothing to redo. */
-    fun redo(): List<GeoPoint>? = history.redo(points)
+    fun redo(): List<GeoPoint>? = history.redo(points, anchorSet)?.also { incoming = it to history.takenAnchors }
 
     /** Puts [list] in place of the points without an Undo step (Undo / Redo, rules that rewrite the same step). */
     fun replace(list: List<GeoPoint>) {
+        val before = points.toList()
         points.clear(); points.addAll(list)
+        anchorsAfter(before)
     }
 
     /**
@@ -63,7 +100,17 @@ class PlanSession(
     fun forgetHistory() = history.restore(emptyList(), emptyList())
 
     /** The router snapped points onto the way ([moves] old → new): Undo / Redo show the snapped points too. */
-    fun snapped(moves: Map<GeoPoint, GeoPoint>) = history.replacePoints(moves)
+    fun snapped(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) = history.replacePoints(moves, runProfile)
+
+    /**
+     * The points [routed] were moved to [snapped] in place by a run of [runProfile]. Detour points that lie on ANOTHER profile were not
+     * routed by it: a moved point is a new one, so its anchors, and the facing sides of its neighbours, go ([PlanAnchors.edited],
+     * docs/design/detour-stitch.md §2). A run of their own profile keeps them with the moved point.
+     */
+    fun snapDropsAnchors(routed: List<GeoPoint>, snapped: List<GeoPoint>, runProfile: AnchorProfile) {
+        if (anchorSet.anchors.isEmpty() || routed == snapped || anchorSet.profile == runProfile) return
+        anchorSet = anchorSet.copy(anchors = PlanAnchors.edited(routed, snapped, anchorSet.anchors))
+    }
 
     /** Forget pinned marks of points neither planned nor reachable by Undo / Redo; true when some went (store them). */
     fun prunePinned(): Boolean {
@@ -93,6 +140,7 @@ class PlanSession(
     fun empty() {
         oneLeftStart = null
         points.clear()
+        anchorSet = AnchorSet.NONE; incoming = null
     }
 
     /** The plan becomes position → the one point left (like "Hierhin"), in the same Undo step. */

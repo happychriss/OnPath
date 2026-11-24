@@ -55,6 +55,40 @@ object StoredLine {
         return Preview(route, stale, fromLine)
     }
 
+    /** Every leg of the expanded [plan] fresh in [legs] (a leg that touches an anchor: its cut leg or the plain one, §8.9). */
+    fun allFresh(plan: ExpandedPlan, activity: Activity, sac: Int, legs: LegCache): Boolean =
+        (0 until plan.points.size - 1).all { legs.lookupLeg(plan, it, activity, sac) != null }
+
+    /**
+     * [preview] over an [ExpandedPlan] (§8.1): one leg per leg of the expanded list, the stored leg even if stale
+     * ([LegCache.staleLeg]) else the piece of [line] between its two points. The stand-in is planned from the same
+     * [ExpandedPlan]; its legs sit under plain keys in a cache sized for all of them, which a leg that touches an anchor
+     * also reads. Counts and fall-backs as the plain [preview].
+     */
+    fun preview(plan: ExpandedPlan, activity: Activity, sac: Int, legs: LegCache, line: List<GeoPoint>): Preview? {
+        val via = plan.points
+        if (via.size < 2 || plan.visibleCount < 2) return null
+        val n = via.size - 1
+        if (allFresh(plan, activity, sac, legs)) return null
+        var pieces: List<List<GeoPoint>>? = null
+        var piecesTried = false
+        val temp = LegCache(capacity = n + 1)
+        var stale = 0; var fromLine = 0
+        for (i in 0 until n) {
+            val known = legs.staleLeg(plan, i, activity, sac)
+            val leg = if (known != null) { if (legs.lookupLeg(plan, i, activity, sac) == null) stale++; known } else {
+                if (!piecesTried) { pieces = split(via, line); piecesTried = true }
+                val p = pieces?.get(i) ?: return null
+                fromLine++
+                val (up, down) = Planner.climb(p)
+                val d = Geo.length(p)
+                RouteResult(p, d, up, down, com.onpath.app.time.PaceModel.seconds(d, up, activity), matched = listOf(p.first(), p.last()))
+            }
+            temp.put(via[i], via[i + 1], activity, sac, leg)
+        }
+        return Preview(Planner(NoRouter, legs = temp).plan(plan, activity, sac), stale, fromLine)
+    }
+
     /**
      * [line] cut into one piece per leg between [via]: each point at the line point nearest to it, in order (the
      * smallest sum of distances; the first point at the line's start, the last at its end). null when a point is

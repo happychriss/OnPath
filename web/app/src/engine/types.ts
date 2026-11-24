@@ -31,6 +31,10 @@ export interface SharedPlan {
   pinned: number[]; names: Record<string, string>; title: string | null;
   /** A multi-day tour (WebDays.kt): days, limits, night marks; null / missing = a normal plan. */
   tour?: Tour | null;
+  /** The hidden via points with their profile (the engine's text, detour-stitch.md §8.16): carried along, never read here. */
+  anchors?: string | null;
+  /** This is the open plan: the worker takes its anchors as they are by then, [anchors] only if the plan has moved on. */
+  live?: boolean;
 }
 
 export interface PlanResult {
@@ -86,6 +90,8 @@ export interface EngineReply { id: number; ok: boolean; result?: RouteResult; pl
   cancelled?: boolean;
   /** After a call that changed the undo / redo history: the history as text (Engine.historyExport), for a fresh worker. */
   history?: string;
+  /** With [history]: the open plan's anchors as the engine keeps them now ("" = none). */
+  anchors?: string;
   /** Problems the worker met itself (the leg store's IndexedDB) – for the page's problem log (diag.ts). */
   notes?: { area: string; message: string; detail: string }[] }
 /** What a plan waits for: the routing data under it ([bytes] still to download when it started, [done] of them

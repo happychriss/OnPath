@@ -20,6 +20,8 @@ export class EngineClient {
   private cfg: NoId<EngineRequest> | null = null;
   private pace: (string | number | boolean)[] | null = null;
   private history = '';
+  /** The open plan's anchors as of the engine's last history answer: what the page's plan code carries ("" = none). */
+  anchors = '';
   /** For the tests and the diagnostics: how often a long plan was stopped, and how long the last fresh worker took. */
   readonly restarts = { count: 0, lastMs: 0 };
   /** For the tests: the last answered plan's stats (its legs routed / from the browser's store – legcache-smoke). */
@@ -41,6 +43,7 @@ export class EngineClient {
         this.progress.get(r.id)?.(r.progress); return; // not the answer yet
       }
       if (r.history != null) this.history = r.history;
+      if (r.anchors != null) this.anchors = r.anchors;
       this.waiting.get(r.id)?.(r);
       this.waiting.delete(r.id);
       this.progress.delete(r.id);

@@ -72,6 +72,18 @@ data class PlanResult(
             of(points, planner.plan(points, activity, sac, pins), activity, sac, pins, named, factors)
 
         /**
+         * The same for an [expanded] plan (docs/design/detour-stitch.md §8.1): the anchors are routed too, but [routed],
+         * [points], [far] and [gaps] are in VISIBLE points and [pins] are the visible pins.
+         */
+        fun plan(planner: Planner, expanded: ExpandedPlan, activity: Activity, sac: Int, named: Set<Int>, factors: Factors): PlanResult =
+            of(expanded.visible, planner.plan(expanded, activity, sac), activity, sac, expanded.visiblePins, named, factors)
+
+        /** The same with a fresh [Planner] on [engine] for an [expanded] plan. */
+        fun plan(engine: RoutingEngine, expanded: ExpandedPlan, activity: Activity, sac: Int, named: Set<Int>, factors: Factors,
+                 cancel: RouteCancel? = null, legs: LegCache? = null, progress: ((Int, Int) -> Unit)? = null): PlanResult =
+            plan(Planner(engine, cancel, legs = legs, progress = progress), expanded, activity, sac, named, factors)
+
+        /**
          * The same with a fresh [Planner] on [engine] ([cancel] = the Cancel signal, null = none; [legs] = the caller's
          * [LegCache] – keep one per engine so an edit routes only its new legs; [progress] = legs done / to route).
          */

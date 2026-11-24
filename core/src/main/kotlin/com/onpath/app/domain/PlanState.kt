@@ -1,44 +1,69 @@
 package com.onpath.app.domain
 
+import com.onpath.app.routing.AnchorProfile
+import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanAnchors
 
 /**
  * Undo / redo of the planned waypoints. Each entry is a full
- * snapshot of the point list, so a Clear is just one more step that Undo can revert.
+ * snapshot of the point list, so a Clear is just one more step that Undo can revert. Each step keeps the plan's hidden
+ * via points beside its points (docs/design/detour-stitch.md §2): Undo brings them back with them.
  */
 class PlanHistory(private val limit: Int = 100) {
     private val undo = ArrayDeque<List<GeoPoint>>()
     private val redo = ArrayDeque<List<GeoPoint>>()
+    private val undoAnchors = ArrayDeque<AnchorSet>()
+    private val redoAnchors = ArrayDeque<AnchorSet>()
+
+    /** The anchors of the step the last [undo] / [redo] gave back. */
+    var takenAnchors: AnchorSet = AnchorSet.NONE
+        private set
 
     val canUndo: Boolean get() = undo.isNotEmpty()
     val canRedo: Boolean get() = redo.isNotEmpty()
 
     /** Call before changing the plan; [current] is the list as it is now. */
-    fun record(current: List<GeoPoint>) {
-        undo.addLast(current.toList())
-        if (undo.size > limit) undo.removeFirst()
-        redo.clear()
+    fun record(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE) {
+        undo.addLast(current.toList()); undoAnchors.addLast(anchors)
+        if (undo.size > limit) { undo.removeFirst(); undoAnchors.removeFirst() }
+        redo.clear(); redoAnchors.clear()
     }
 
     /** The list to show after undo, or null when there is nothing to undo. */
-    fun undo(current: List<GeoPoint>): List<GeoPoint>? = step(undo, redo, current)
-    fun redo(current: List<GeoPoint>): List<GeoPoint>? = step(redo, undo, current)
+    fun undo(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE): List<GeoPoint>? =
+        step(undo, undoAnchors, redo, redoAnchors, current, anchors)
+    fun redo(current: List<GeoPoint>, anchors: AnchorSet = AnchorSet.NONE): List<GeoPoint>? =
+        step(redo, redoAnchors, undo, undoAnchors, current, anchors)
 
-    private fun step(from: ArrayDeque<List<GeoPoint>>, to: ArrayDeque<List<GeoPoint>>, current: List<GeoPoint>): List<GeoPoint>? {
+    private fun step(from: ArrayDeque<List<GeoPoint>>, fromAnchors: ArrayDeque<AnchorSet>,
+                     to: ArrayDeque<List<GeoPoint>>, toAnchors: ArrayDeque<AnchorSet>,
+                     current: List<GeoPoint>, anchors: AnchorSet): List<GeoPoint>? {
         val prev = from.removeLastOrNull() ?: return null
-        to.addLast(current.toList())
+        takenAnchors = fromAnchors.removeLastOrNull() ?: AnchorSet.NONE
+        to.addLast(current.toList()); toAnchors.addLast(anchors)
         return prev
     }
 
     /**
      * Rewrites point values in every undo/redo snapshot ([moves]: old → new), without adding a step.
-     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers.
+     * Used when routing snapped points onto the way, so undo/redo show the same (snapped) markers. [runProfile] = the profile of
+     * the run that snapped (null = leave every step's detour points as they are): a step whose detour points lie on ANOTHER profile
+     * was not routed by that run, so a moved point loses them there (docs/design/detour-stitch.md §2, §8.16).
      */
-    fun replacePoints(moves: Map<GeoPoint, GeoPoint>) {
+    fun replacePoints(moves: Map<GeoPoint, GeoPoint>, runProfile: AnchorProfile? = null) {
         if (moves.isEmpty()) return
-        for (q in listOf(undo, redo)) for (i in q.indices) {
+        for ((q, a) in listOf(undo to undoAnchors, redo to redoAnchors)) for (i in q.indices) {
             val s = q[i]
-            if (s.any { it in moves }) q[i] = s.map { moves[it] ?: it }
+            if (s.any { it in moves }) {
+                val moved = s.map { moves[it] ?: it }
+                q[i] = moved
+                // a snap under a profile the detour points do not lie on: the moved point is a new one (§2) – they must not count
+                // around it when the plan is back on their profile (Undo / Redo)
+                if (runProfile != null) a.getOrNull(i)?.let { set ->
+                    if (set.anchors.isNotEmpty() && set.profile != runProfile) a[i] = set.copy(anchors = PlanAnchors.edited(s, moved, set.anchors))
+                }
+            }
         }
     }
 
@@ -48,9 +73,15 @@ class PlanHistory(private val limit: Int = 100) {
      */
     fun snapshot(): Pair<List<List<GeoPoint>>, List<List<GeoPoint>>> = undo.toList() to redo.toList()
 
-    /** Takes [snapshot]'s lists back as they were (no step, nothing trimmed). */
-    fun restore(undoSteps: List<List<GeoPoint>>, redoSteps: List<List<GeoPoint>>) {
+    /** The anchors of [snapshot]'s steps, in the same order. */
+    fun anchorSnapshot(): Pair<List<AnchorSet>, List<AnchorSet>> = undoAnchors.toList() to redoAnchors.toList()
+
+    /** Takes [snapshot]'s lists back as they were (no step, nothing trimmed), with [anchorSnapshot]'s; a step without any has none. */
+    fun restore(undoSteps: List<List<GeoPoint>>, redoSteps: List<List<GeoPoint>>,
+                undoAnchorSteps: List<AnchorSet> = emptyList(), redoAnchorSteps: List<AnchorSet> = emptyList()) {
         undo.clear(); undo.addAll(undoSteps.takeLast(limit)); redo.clear(); redo.addAll(redoSteps)
+        undoAnchors.clear(); undoAnchors.addAll(undoSteps.indices.map { undoAnchorSteps.getOrElse(it) { AnchorSet.NONE } }.takeLast(limit))
+        redoAnchors.clear(); redoAnchors.addAll(redoSteps.indices.map { redoAnchorSteps.getOrElse(it) { AnchorSet.NONE } })
     }
 
     /** Every point reachable by undo or redo (to keep their "pinned" marks alive). */

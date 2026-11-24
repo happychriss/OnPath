@@ -156,7 +156,7 @@
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "b8a0bb961233db1d5e831915a452b176226fcee3"
+      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "49b1a48a9f679d397730dcd78c4df9f4339fca29"
+      "blob": "5891f46664e19c96b8ce9b3a0ad9720307a9eb8c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -237,7 +237,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "b3a4aa44afbb537d7ab4782a88f9896e058dc44b"
+      "blob": "4d676b9f58987c23f92d8b6743c3530cba7a0df3"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -778,7 +778,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/LegFiles.kt": {
-      "blob": "985f6337160bdd33c0bc10a699aa4f2a997018fc",
+      "blob": "0585740edfc6edd4735a699acef432f44ab17281",
       "perf": [
         "private val maxFiles: Int = MAX_FILES,",
         "private val maxBytes: Long = MAX_BYTES,",
@@ -1934,7 +1934,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/LegCache.kt": {
-      "blob": "cafbd677a9cc24c3a28691cf4db73a6aabbbb958",
+      "blob": "76eaa29b867e5819dda33365dd0523b0a5044098",
       "perf": [
         "* from here at once). Same points = same legs = same route: the cache only saves time, a fresh start gives the identical",
         "* Kept in memory for the process, one per routing engine (the app: AppViewModel; the web planner: its page) – a router or",
@@ -1945,14 +1945,14 @@
         "/** Line points of the legs held (the memory bound beside [capacity], [maxLinePoints]). */",
         "/** Keeps [leg] under [k] (under [lock]); the oldest legs go while more than [capacity] legs or [maxLinePoints] are held. */",
         "while ((map.size > capacity || linePoints > maxLinePoints) && map.size > 1 && it.hasNext()) {",
-        "/** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. */",
+        "/** The leg from memory, else a fresh one from the [store] (then kept in memory too); null = route it. Never a cut leg. */",
+        "* For a leg of an expanded plan that touches an anchor (§8.9): the stitch's cut leg first (memory, then fresh in the",
         "* \"Saved routes\"): memory or the [store], fresh or not; null = none known.",
         "/** Is the leg known fresh (memory or [store], then kept in memory) – a plan whose legs all are needs no router run. */",
         "* lies on the line, where the run's join put it). False = the leg is not in memory (a straight leg).",
         "/** Legs held now (in memory). */",
         "* Newer routing data (the same points may route differently now): every leg in memory goes. The [store] keeps its",
-        "* Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) – a multi-day tour of 189 points",
-        "const val CAPACITY = PlanCode.MAX_POINTS",
+        "* Legs kept: one per plan point of the largest plan ([PlanCode.MAX_POINTS]) plus room for its anchors (at most 500,",
         "* The memory bound: line points held in all legs (a point ~50 bytes → ~12 MB). München–Venedig, 594 km, is ~60 000",
         "const val MAX_LINE_POINTS = 250_000",
         "/** The T level counts only for Hike (the bike profiles ignore it – same as BRouterEngine's own cache key). */"
@@ -1983,9 +1983,10 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanCode.kt": {
-      "blob": "4d11652b07aa053a1a2e6c5930d2df5807d15b4f",
+      "blob": "a58eb260aba8abdee7ad9808eabb89cbd45df0f0",
       "perf": [
         "/** Limits per day of a multi-day tour (owner 2026-11-17: \"Natürlich bleiben die Grenzen pro Tag\"); null = no limit. */",
+        "*   is empty, it has over 8 anchors on a side or an anchor's lat or lon is over [MAX_ANCHOR_DELTA] (30°) from its point.",
         "const val MAX_POINTS = 500",
         "const val MAX_NAME = 100",
         "const val MAX_DAYS = 99",
@@ -1995,12 +1996,24 @@
         "private const val MAX_LIMIT_MIN = 24 * 60",
         "private const val MAX_LIMIT_ASCENT = 20_000",
         "private const val MAX_TEXT = 16_000",
+        "/** Room kept in [MAX_TEXT] for the link's base URL when anchors are added. */",
+        "const val MAX_ANCHORS_SIDE = 8",
+        "const val MAX_ANCHORS = 500",
+        "const val MAX_ANCHOR_DELTA = 30_000_000L",
         "/** The code for [plan] (without \"p=\"). Points beyond [MAX_POINTS] and over-long names are cut. */",
         "val pts = plan.points.take(MAX_POINTS)",
+        "// a plan must stay openable ([parse] refuses over MAX_TEXT): too long with anchors = without them",
+        "return if (full.length > MAX_TEXT - LINK_ROOM) write(plan, pts, null) else full",
         "plan.days?.let { out.field(TAG_DAYS, Bytes().apply { varint(it.coerceIn(1, MAX_DAYS).toLong()) }.toArray()) }",
         "varint(limit(plan.limits.maxTimeMin, MAX_LIMIT_MIN).toLong()); varint(limit(plan.limits.maxAscentM, MAX_LIMIT_ASCENT).toLong())",
         "clean(h.address, MAX_ADDRESS)?.let { b.field(HOTEL_ADDRESS, it.encodeToByteArray()) }",
         "clean(h.link, MAX_LINK)?.let { b.field(HOTEL_LINK, it.encodeToByteArray()) }",
+        "if (i !in pts.indices || a.isEmpty || a.before.size > MAX_ANCHORS_SIDE || a.after.size > MAX_ANCHORS_SIDE) continue",
+        "if (all.any { abs(micro(it.lat, 90.0) - la) > MAX_ANCHOR_DELTA || abs(micro(it.lon, 180.0) - lo) > MAX_ANCHOR_DELTA }) continue",
+        "if (total + a.size > MAX_ANCHORS) break",
+        "if (total > MAX_ANCHORS) return null",
+        "if (nb + na == 0L || i !in 0 until n.toLong() || nb > MAX_ANCHORS_SIDE || na > MAX_ANCHORS_SIDE) continue",
+        "if (abs(lat - la[ix]) > MAX_ANCHOR_DELTA || abs(lon - lo[ix]) > MAX_ANCHOR_DELTA) ok = false",
         "if (t.isEmpty() || t.length > MAX_TEXT) return null",
         "if (n < 0 || n > MAX_POINTS) return null",
         "TAG_DAYS -> days = f.varint().takeIf { it in 1..MAX_DAYS }?.toInt()",
@@ -2013,7 +2026,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDays.kt": {
-      "blob": "94fa7638cf8ade64a86a2e91a46268df9e99398b",
+      "blob": "0bf2f3afb3cce83834d65b2571e1eca85d3c5d63",
       "perf": [
         "/** A limit per day a day is above (R8: its row turns orange with that value). */",
         "* a limit where that is possible, otherwise about equal by time (owner 2026-11-17). A day above a limit is flagged",
@@ -2056,11 +2069,11 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt": {
-      "blob": "2dfaad9e0739c2a172d6417608895a50f7d4922f",
+      "blob": "0d9fb82bb703b0ced00bfc92eff610443e236793",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/Planner.kt": {
-      "blob": "7341a6e1dba257663369802638dc374847168304",
+      "blob": "8a6e80aaf25ad231876ff2f44f27177ca5f70e37",
       "perf": [
         "* points = same legs = same route: the cache saves time, never changes a line.",
         "* A leg without a route becomes a straight dashed line (R-12/R-13); after a timeout the legs still to route are straight",
@@ -2076,6 +2089,9 @@
         "return (if (limitMs != null) engine.route(pts, activity, sac, RouteLimits(minOf(limitMs, PLAN_LIMIT_MS), cancel))",
         "else engine.route(pts, activity, sac, RouteLimits(PLAN_LIMIT_MS * rounds.coerceAtLeast(1), cancel, rounds))).also { outcome = \"ok\" }",
         "outcome = if (e.timedOut) \"timeout\" else if (cancel?.isCancelled == true) \"cancelled\" else \"failed\"",
+        "// legs routed in this run (plain keys): a leg of a new layout (the fallback) may be there without a cache",
+        "// visible legs with something to route (legs from the cache do not count) and how much of it is left",
+        "// a leg that was counted and has nothing left to route now (its full leg came from the cache) is done",
         "// at the time limit in Plan: the user is asked \"Weiter warten?\" (owner 2026-11-03, SlowPlan) – the legs",
         "// done so far are in the cache, the next run starts after them",
         "// each leg would get its own limit and the wait multiplies: the rest straight at once",
@@ -2139,12 +2155,13 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/RoutingContract.kt": {
-      "blob": "26010e569f8dedf3df50cce762c3f31ec84c209d",
+      "blob": "94ff1808e679aad5fe8476de0e598e33b80ee1d6",
       "perf": [
         "* [timedOut] = the router gave up for time (search budget used up, or the engine stayed busy): another try with the",
         "* same or shorter budget (leg by leg) would time out too, so the planner does not retry.",
         "* request that is nothing else is [Kind.TIMEOUT].",
         "val kind: Kind = kind ?: Kind.of(message).let { if (it == Kind.OTHER && timedOut) Kind.TIMEOUT else it }",
+        "* A real \"no route here\": not a timeout, kind [Kind.OTHER] or [Kind.START_POINT], and not the engine's own memory-limit",
         "/** Out of memory / too complex: fewer or closer points help. */",
         "/** The request took too long (also: no route within the time limit). */",
         "TIMEOUT,",
@@ -2957,7 +2974,7 @@
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/routing/LegCacheTest.kt": {
-      "blob": "7ae8ade7ba19fc0c568aee79edff2cd4cee9c3d7",
+      "blob": "0890a518532dc23478c00be17058205a71f701cd",
       "perf": [
         "* The leg cache (owner 2026-11-05, \"long bike routes faster\"): an edit routes only the legs it changed, same points give",
         "* the same route, the wait card's progress counts only the legs routed, Cancel and the time-limit question keep what",
@@ -2986,7 +3003,6 @@
         "run(e, cache, p[0], p[1], p[2], p[3]) // 3 legs, room for 2: 0 → 1 dropped",
         "assertEquals(2, cache.size)",
         "run(e, cache, p[0], p[1], p[2], p[3])",
-        "assertEquals(PlanCode.MAX_POINTS, LegCache.CAPACITY)",
         "Planner(e, legs = cache).plan(pts, act, 2)",
         "assertEquals(189, cache.size)",
         "/** The memory bound: legs with many line points go, oldest first, before the count limit is reached. */",
@@ -3007,7 +3023,17 @@
         "Planner(e, cancel, legs = cache).plan(listOf(p[0], p[1], p[2], p[3]), act, 2)",
         "val e = Engine(slow = { slow && it == listOf(p[1], p[2]) }); val cache = LegCache()",
         "Planner(e, RouteCancel(), askAtLimit = true, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)",
-        "Planner(e, RouteCancel(), askAtLimit = true, rounds = 2, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)"
+        "Planner(e, RouteCancel(), askAtLimit = true, rounds = 2, legs = cache).plan(listOf(p[0], p[1], p[2]), act, 2)",
+        "val cache = LegCache()",
+        "cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 7.0), cut = true)",
+        "assertNull(cache.lookup(p[0], p[1], act, 2))",
+        "assertNull(cache.stale(p[0], p[1], act, 2))",
+        "assertTrue(!cache.has(p[0], p[1], act, 2))",
+        "assertEquals(7.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)",
+        "assertNull(cache.lookupAnchored(p[0], p[1], act, 2))",
+        "cache.put(p[0], p[1], act, 2, leg(p[0], p[1], 1.0))",
+        "assertEquals(1.0, cache.lookupAnchored(p[0], p[1], act, 2)!!.leg.distanceM, 0.0)",
+        "assertEquals(1.0, cache.get(p[0], p[1], act, 2)!!.distanceM, 0.0)"
       ]
     },
     "core/src/test/kotlin/com/onpath/app/routing/PlanNamesTest.kt": {
@@ -3025,7 +3051,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "b8a0bb961233db1d5e831915a452b176226fcee3",
+      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
@@ -3462,9 +3488,37 @@
       "blob": "1c409cb28ff79aaf7c56578053c9e792a41f66c0",
       "perf": []
     },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanAnchors.kt": {
+      "blob": "3697dbc73dcf3b0ecd3d151d63aa3e47e516cf1c",
+      "perf": [
+        "const val MAX_OFF_M = 2_000.0",
+        "* longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line",
+        "var best = Double.MAX_VALUE",
+        "if (best > MAX_OFF_M) return null",
+        "* - N off the line (up to [MAX_OFF_M]): N gets its own stitch ([forInsert]: anchors `an` before and `bn` after it) and the",
+        "* The outer sides of both points stay; everything else as [follow]. Any doubt (shape, range, N farther than [MAX_OFF_M],",
+        "* point, more than [MAX_SIDE] on a side) = [follow]: a side dropped, never a wrong anchor.",
+        "var seg = 0; var offM = Double.MAX_VALUE; var bestT = 0.0",
+        "if (offM > MAX_OFF_M) return plain",
+        "if (listOf(first, mid, last).any { it.before.size > MAX_SIDE || it.after.size > MAX_SIDE }) return plain",
+        "/** At most this many anchors per side of a point (the code's limit, §3). */",
+        "private const val MAX_SIDE = 8"
+      ]
+    },
     "core/src/main/kotlin/com/onpath/app/navigation/StopsBesideRoute.kt": {
       "blob": "6f0876c195c3c85988f749a77d354b5c8a99f29b",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/data/AnchorsJson.kt": {
+      "blob": "8953ee20328b4958304fc8f2b972abc8c2f6f92d",
+      "perf": [
+        "if (total + a.size > PlanCode.MAX_ANCHORS) break",
+        "/** The anchors in [json] that belong to [points]; none when it is missing, unreadable or over the plan's limit (reported). */",
+        "if (total > PlanCode.MAX_ANCHORS) {",
+        "Problems.warn(\"db\", \"Stored detour points over the limit – the route is calculated without them\")",
+        "if (a.isEmpty || a.before.size > PlanCode.MAX_ANCHORS_SIDE || a.after.size > PlanCode.MAX_ANCHORS_SIDE) return false",
+        "return (a.before + a.after).all { valid(it) && abs(micro(it.lat) - la) <= PlanCode.MAX_ANCHOR_DELTA && abs(micro(it.lon) - lo) <= PlanCode.MAX_ANCHOR_DELTA }"
+      ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
       "blob": "0f1228125f41a7f9b9cb29fe85035e53e6c83644",

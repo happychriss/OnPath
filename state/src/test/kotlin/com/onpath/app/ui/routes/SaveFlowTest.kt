@@ -146,7 +146,7 @@ class SaveFlowTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { stopNames[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = route?.let { "MODERATE" }
             override fun days(points: List<GeoPoint>): MultiDay? = daysNow
-            override fun keepWhole(): Boolean { if (wholeKept) log += "whole kept"; return wholeKept }
+            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?): Boolean { if (wholeKept) log += "whole kept"; return wholeKept }
             override fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean {
                 if (wholeTakesTheSave) log += "whole overwritten as \"$name\""
                 return wholeTakesTheSave

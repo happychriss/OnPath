@@ -45,8 +45,8 @@ interface SavePorts : Say {
     fun difficulty(route: PlannedRoute?, activity: Activity): String?
     /** What Save stores as the days of [points]; null for a normal plan or a followed day. Also called on the write's thread. */
     fun days(points: List<GeoPoint>): MultiDay?
-    /** A followed day: its whole multi-day tour goes under Zuletzt instead (true = taken care of). */
-    fun keepWhole(): Boolean
+    /** A followed day: its whole multi-day tour goes under Zuletzt instead, as [act] / [sac] (the plan's profile as it was, true = taken care of). */
+    fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?): Boolean
     /** A followed day: Save writes the whole multi-day tour (true = taken care of). */
     fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean
     /** "Route 26 Oct, 10:12" in the app's language – the name when nothing else fits. */
@@ -72,7 +72,8 @@ interface SavePorts : Say {
 /** A plan as it leaves the map, as [Recent.keep] takes it (the fields of `RecentPlans.Leaving`; `SaveSlice` converts). */
 class LeavingPlan(
     val points: List<GeoPoint>, val unsaved: Boolean, val savedId: Long, val route: PlannedRoute?, val activity: Activity, val sac: Int,
-    val stops: List<GpxWaypoint>, val pins: Set<Int>, val dated: String, val days: MultiDay?, val difficulty: () -> String?,
+    val stops: List<GpxWaypoint>, val pins: Set<Int>, val dated: String, val days: MultiDay?,
+    val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(), val difficulty: () -> String?,
 )
 
 /** What [SaveState] asks of Zuletzt (`RecentPlans` in the app): the two writes it starts. */
@@ -170,7 +171,7 @@ open class SaveState(
             runCatching {
                 val t = store.getTour(id) ?: return@runCatching null
                 store.insertPlanned(name, PlannedRow(t.activity, t.sac, t.distanceM, t.ascentM, t.descentM, t.durationS,
-                    store.loadSegments(id), t.waypoints, pins = t.pinned, difficulty = t.difficulty))
+                    store.loadSegments(id), t.waypoints, pins = t.pinned, difficulty = t.difficulty, anchors = t.anchors))
                     .also { n -> host.copyTimes(id, n, t.distanceM) }
             }.onFailure { Problems.error("db", "Copying a planned route failed", it) }.getOrNull()
         }, always = { saving = false }) { newId ->
@@ -199,12 +200,15 @@ open class SaveState(
      * stays as it is) goes under My routes → Zuletzt, no question: written at once, before it leaves the map
      * ([com.onpath.app.ui.routes.RecentPlans.keep]).
      */
-    fun keepAsDraft(why: String) {
+    fun keepAsDraft(why: String, own: OwnProfile? = null) {
         val pts = plan.points.toList()
-        if (pts.size < 2 || host.keepWhole()) return // a followed day: the whole multi-day tour goes under Zuletzt
-        val r = host.route; val act = host.activity
-        val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, host.sac, host.stops(pts), plan.pinnedIndices(),
-            host.datedName(), host.days(pts)) { host.difficulty(r, act) }, why)
+        // [own]: the plan's own activity / T level / route when the caller already switched the profile (a track or round trip that
+        // takes its place) – the switch re-routed the plan on the new profile, so [SaveHost.route] is not the plan's own any more
+        val act = own?.activity ?: host.activity; val level = own?.sac ?: host.sac
+        val r = if (own != null) own.route else host.route
+        if (pts.size < 2 || host.keepWhole(act, level, r)) return // a followed day: the whole multi-day tour goes under Zuletzt
+        val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, level, host.stops(pts), plan.pinnedIndices(),
+            host.datedName(), host.days(pts), plan.anchorsFor(act, level)) { host.difficulty(r, act) }, why)
         // its Zuletzt entry holds these points now: the plan is that entry "as it is" – an Undo back to them is not
         // "changed", one back to an older version is, and updates the entry again (never dropped, review 2026-11-20)
         if (updated != null) plan.setSaved(plan.linkName, updated, pts)
@@ -251,13 +255,14 @@ open class SaveState(
         val fromDraft = linkedDraft
         val act = host.activity; val level = host.sac
         val stops = host.stops(pts); val pins = plan.pinnedIndices()
+        val anchors = plan.anchorsFor(act, level).takeIf { pts == plan.points.toList() } ?: emptyMap()
         step(what, end, {
             runCatching {
                 store.insertPlanned(title, PlannedRow(
                     act.name, level,
                     r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                     listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                    stops, pins, difficulty = host.difficulty(r, act), days = host.days(pts),
+                    stops, pins, difficulty = host.difficulty(r, act), days = host.days(pts), anchors = anchors,
                 )).also { host.storeTimes(it, r, act) }
             }.onFailure { Problems.error("db", "Saving a planned route failed", it) }.getOrNull()
         }) { id ->
@@ -306,6 +311,7 @@ open class SaveState(
         val r = host.route
         val act = host.activity; val level = host.sac
         val stops = host.stops(pts); val pins = plan.pinnedIndices()
+        val anchors = plan.anchorsFor(act, level).takeIf { pts == plan.points.toList() } ?: emptyMap()
         val opened = plan.savedPoints?.let { p -> com.onpath.app.sync.SaveRule.pointsKey(p.map { it.lat to it.lon }) }
         val end = { saving = false }
         // changed by sync since it was opened here (review sync H3): save as a copy, the other edit stays
@@ -326,7 +332,7 @@ open class SaveState(
                                 act.name, level,
                                 r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
                                 listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }),
-                                stops, pins, difficulty = host.difficulty(r, act), days = host.days(pts),
+                                stops, pins, difficulty = host.difficulty(r, act), days = host.days(pts), anchors = anchors,
                             ),
                         ).also {
                             if (it) { host.forgetTimes(id); host.storeTimes(id, r, act) }
@@ -447,3 +453,9 @@ open class SaveState(
         }
     }
 }
+
+/**
+ * A plan's own activity, T level and route, taken before a track or round trip switched the profile: the plan goes under Zuletzt
+ * like that ([SaveState.keepAsDraft]). Taken BEFORE the switch – the switch re-routes the plan on the new profile at once.
+ */
+class OwnProfile(val activity: Activity, val sac: Int, val route: PlannedRoute?)

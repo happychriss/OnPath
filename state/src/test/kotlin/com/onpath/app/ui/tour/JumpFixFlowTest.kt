@@ -23,7 +23,6 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Ignore
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
@@ -44,9 +43,9 @@ import java.io.File
  * from the last point – 2 km for up to 57 s; the off-route alarm needs 15 s off the line and 25 m moved (a single jump
  * never confirms it).
  *
- * Found 2026-11-24 (the @Ignore'd tests): the navigation and the arrival get every fix BEFORE PointFilter judges it
- * (RecordingService.onFix: checkOffRoute / checkArrived, then PointFilter.judge) – a jump landing on the route ahead or on
- * the goal is taken as the position there. A jump beside the route is harmless.
+ * Found and fixed 2026-11-24: the navigation and the arrival got every fix BEFORE PointFilter judged it – a jump landing
+ * on the route ahead or on the goal was taken as the position there (progress 2 km on, then a false off-route alarm and
+ * re-route; "arrived" 2 km early). Now RecordingService.onFix judges first and a jump goes nowhere.
  */
 class JumpFixFlowTest {
     @get:Rule val tmp = TemporaryFolder()
@@ -157,10 +156,8 @@ class JumpFixFlowTest {
      * ON_ROUTE); the next real fix lies behind the new window – LEAVING ("to go" gone), confirmed off route after
      * 15 s + 25 m moved, the question and a re-route while walking on the route.
      */
-    @Ignore("bug: a jump onto the route ahead moves the navigation's progress there (navigation gets the fix before PointFilter's jump rule) – the real fixes are off route: question + re-route ~22 s later")
     @Test fun oneJumpOntoTheRouteAhead_onFoot() { startWithPlan(Activity.HIKE, 4_000.0); tourWithJump({ x -> pt(x + 2_000.0, 0.0) }) }
 
-    @Ignore("bug: a jump onto the route ahead moves the navigation's progress there (navigation gets the fix before PointFilter's jump rule) – the real fixes are off route: question + re-route ~22 s later")
     @Test fun oneJumpOntoTheRouteAhead_onTheBike() {
         startWithPlan(Activity.BIKE_TOURING, 5_000.0); tourWithJump({ x -> pt(x + 2_000.0, 0.0) })
     }
@@ -170,15 +167,12 @@ class JumpFixFlowTest {
      * above) and the arrival check on the same fix finds it there – "been away", the progress in the last 50 m, at the
      * goal: arrived at once; guidance quiet from then on (no turns, no off-route), the arrival box asks to end the tour.
      */
-    @Ignore("bug: a jump onto the goal is taken as the arrival (checkArrived gets the fix before PointFilter's jump rule) – arrival box, guidance quiet 2 km before the goal")
     @Test fun oneJumpOntoTheGoal_onFoot() { startWithPlan(Activity.HIKE, 2_300.0); tourWithJump({ pt(2_300.0, 0.0) }) }
 
-    @Ignore("bug: a jump onto the goal is taken as the arrival (checkArrived gets the fix before PointFilter's jump rule) – arrival box, guidance quiet 2 km before the goal")
     @Test fun oneJumpOntoTheGoal_onTheBike() { startWithPlan(Activity.BIKE_TOURING, 2_300.0); tourWithJump({ pt(2_300.0, 0.0) }) }
 
     /** Three jump fixes in a row at the same wrong place (1 s apart): still faster than 35 m/s from the last point. */
     @Test fun threeJumpsInARowBesideTheRoute() { startWithPlan(Activity.HIKE, 3_000.0); tourWithJump(north, jumps = 3) }
 
-    @Ignore("bug: a jump onto the goal is taken as the arrival (checkArrived gets the fix before PointFilter's jump rule) – arrival box, guidance quiet 2 km before the goal")
     @Test fun threeJumpsInARowOntoTheGoal() { startWithPlan(Activity.HIKE, 2_300.0); tourWithJump({ pt(2_300.0, 0.0) }, jumps = 3) }
 }

@@ -1,6 +1,7 @@
 package com.onpath.app.routing
 
 import com.onpath.app.data.Geo
+import kotlin.math.abs
 
 /**
  * A point put in ON a routed leg's line is no reason to route (owner 2026-11-19: „Übernachtung hier“ at a spot of the
@@ -37,6 +38,101 @@ object LegSplit {
             cut++
         }
         return cut
+    }
+
+    /** A parent leg of [seed] over an [ExpandedPlan] spans at most this many legs of the expanded list. */
+    const val MAX_SPAN = 40
+
+    /**
+     * [seed] for an [ExpandedPlan] (docs/design/detour-stitch.md §8): the legs of a stitch's chain are cut out of a
+     * known longer leg – `prev → a` and `b → next` of `[prev, a, P, b, next]` from the old `prev → next` (or, for a second
+     * stitch, from the cut leg `b1 → next`). Parents are the legs (i, j) of the expanded list with 2..[MAX_SPAN] legs
+     * between their ends, the smallest first, read from MEMORY only (a cold load must not do thousands of file lookups);
+     * a parent with an anchor at an end is the cut leg, else the plain one. Its inner points that lie on its line exactly
+     * once and in order ([positionsOn]) cut it by repeated [split] (the numbers keep adding up); only the pieces that are
+     * exactly one leg of the list and not known yet are stored – a piece around an off-line point (the detour's P) is
+     * routed. A piece that touches an anchor is stored as a cut leg; one between two visible points only in the old
+     * seed's case (§8.9). Without anchors this is the plain [seed]. Returns
+     * the number of legs stored.
+     */
+    fun seed(cache: LegCache, plan: ExpandedPlan, activity: Activity, sac: Int): Int {
+        if (!plan.hasAnchors) return seed(cache, plan.points, activity, sac)
+        val pts = plan.points
+        var stored = 0
+        for (span in 2..MAX_SPAN) for (i in 0 until pts.size - span) {
+            val j = i + span
+            val anchoredEnd = plan.visibleOf(i) < 0 || plan.visibleOf(j) < 0
+            // an exact plain leg first (§8.15), then the cut leg, then the plain one
+            val exactOne = if (anchoredEnd && cache.isExactInMemory(pts[i], pts[j], activity, sac)) cache.inMemory(pts[i], pts[j], activity, sac) else null
+            val cutOne = if (exactOne == null && anchoredEnd) cache.inMemory(pts[i], pts[j], activity, sac, cut = true) else null
+            val cutParent = cutOne != null
+            val parent = exactOne ?: cutOne ?: cache.inMemory(pts[i], pts[j], activity, sac) ?: continue
+            // nothing left to cut: every leg in between is in memory already (cut leg where it touches an anchor, or plain)
+            if ((i until j).all { k -> cache.inMemory(pts[k], pts[k + 1], activity, sac, cut = plan.touchesAnchor(k)) != null ||
+                    cache.inMemory(pts[k], pts[k + 1], activity, sac) != null }) continue
+            // a piece between two visible points only in the old seed's case: a plain parent of two visible ends and one
+            // visible point between, neither half known (§8.9: nothing a plain plan could read comes from a cut)
+            val plainPair = !cutParent && span == 2 && plan.visibleOf(i) >= 0 && plan.visibleOf(j) >= 0 && plan.visibleOf(i + 1) >= 0 &&
+                cache.lookupLeg(plan, i, activity, sac) == null && cache.lookupLeg(plan, i + 1, activity, sac) == null
+            val inner = pts.subList(i + 1, j)
+            val at = positionsOn(parent.points, inner)
+            var rest = parent
+            var from = i
+            var whole = true
+            var last = -1
+            for (m in inner.indices) {
+                if (at[m] <= last) continue // off the line, ambiguous or out of order: not a cut
+                val e = i + 1 + m
+                val cut = split(rest, pts[e])
+                if (cut == null) { whole = false; break } // the point sits at the rest's end after all: stop, store what is cut
+                val (first, second) = cut
+                last = at[m]
+                stored += keep(cache, plan, from, e, first, plainPair, activity, sac)
+                rest = second; from = e
+            }
+            if (whole) stored += keep(cache, plan, from, j, rest, plainPair, activity, sac)
+        }
+        return stored
+    }
+
+    /** Leg [from] → [to] of [plan] into the [cache] when it is exactly one leg, not known yet, and its key allows it; 1 if stored. */
+    private fun keep(cache: LegCache, plan: ExpandedPlan, from: Int, to: Int, leg: RouteResult, plainPair: Boolean,
+                     activity: Activity, sac: Int): Int {
+        if (to != from + 1) return 0
+        val anchored = plan.touchesAnchor(from)
+        if (!anchored && !plainPair) return 0
+        // a short trip with a long detour is routed (the Planner retries it through the middle): a cut would show the
+        // first route on this device and the retry on another
+        if (Planner.isShortDetour(Geo.distance(plan.points[from], plan.points[to]), Geo.length(leg.points))) return 0
+        if (cache.lookupLeg(plan, from, activity, sac) != null) return 0
+        cache.put(plan.points[from], plan.points[to], activity, sac, leg, cut = anchored)
+        return 1
+    }
+
+    /**
+     * For each of [pts] the index of its line point on [line], or -1: within [ON_LINE_M] of a line point, not at the
+     * line's first or last point, and exactly ONE occurrence (line points within [ON_LINE_M] next to each other are one;
+     * two separate passes are ambiguous – never guessed). Order is for the caller to check.
+     */
+    fun positionsOn(line: List<GeoPoint>, pts: List<GeoPoint>): IntArray {
+        val n = pts.size
+        val runs = IntArray(n); val best = IntArray(n) { -1 }; val bestD = DoubleArray(n) { Double.MAX_VALUE }
+        val prev = IntArray(n) { -2 }; val atEnd = BooleanArray(n)
+        val boxLat = 1e-5; val boxLon = DoubleArray(n) { Geo.degLon(1.1, pts[it].lat) }
+        for (k in line.indices) {
+            val g = line[k]
+            for (q in 0 until n) {
+                val p = pts[q]
+                if (abs(g.lat - p.lat) > boxLat || abs(g.lon - p.lon) > boxLon[q]) continue
+                val d = Geo.distance(g, p)
+                if (d > ON_LINE_M) continue
+                if (prev[q] != k - 1) runs[q]++
+                prev[q] = k
+                if (k == 0 || k == line.lastIndex) atEnd[q] = true
+                if (d < bestD[q]) { bestD[q] = d; best[q] = k }
+            }
+        }
+        return IntArray(n) { if (runs[it] == 1 && !atEnd[it]) best[it] else -1 }
     }
 
     /**

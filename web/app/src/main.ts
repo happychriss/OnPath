@@ -562,6 +562,10 @@ const namesText = () => state.meta.map((m, i) => (m.name ? `${i}\t${m.name.repla
 let pinTaken: { hit: Hit; at: LatLon; plan: string | null } | null = null;
 /** The next commit opens another plan (a link, a saved or recent plan): it starts with nothing to undo (owner 2026-11-13). */
 let freshHistory = false;
+/** The anchors of the plan the next fresh commit opens (the engine's text, detour-stitch.md §8.16). */
+let nextAnchors: string | null = null;
+/** The next commit is a plan from elsewhere (a GPX, a track, a suggestion): one undo step, without the old plan's anchors. */
+let nextPlain = false;
 async function commit(points: LatLon[], meta?: Meta[]) {
   // the add of a found place (TakenPin): the first commit after it is that add's plan; any later commit drops it
   if (pinTaken) { if (pinTaken.plan == null) pinTaken.plan = enc(points); else pinTaken = null; }
@@ -571,7 +575,12 @@ async function commit(points: LatLon[], meta?: Meta[]) {
   // sent now with the points as they are (the worker keeps the order), not waited for: a long plan still running in the
   // one engine worker must not hold the page (Clear / Delete while planning answers at once, as in the app)
   const fresh = freshHistory; freshHistory = false;
-  const recorded = fresh ? engine.call('historyImport', '#') : engine.call('historyRecord', enc(state.points), enc(points));
+  const arriving = nextAnchors; nextAnchors = null;
+  const plain = nextPlain; nextPlain = false;
+  if (fresh) engine.anchors = arriving ?? ''; else if (plain) engine.anchors = '';
+  // both posted now, in this order: the plan's run head and route come behind them in the one worker
+  const recorded = fresh ? Promise.all([engine.call('historyImport', '#'), engine.call('planArrive', enc(points), arriving ?? '')]).then(([, a]) => a)
+    : engine.call(plain ? 'historyReplace' : 'historyRecord', enc(state.points), enc(points));
   // the tour beside the history: a fresh plan starts with none to undo; else the tour as it was is one undo step
   const tourBefore = state.tour, pointsBefore = state.points, metaBefore = state.meta;
   if (fresh) { tourUndo.length = 0; tourRedo.length = 0; } else { tourUndo.push(tourBefore); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0; }
@@ -1356,7 +1365,7 @@ async function openLink() {
   const shared = await engine.parse(location.href);
   if (!shared) { overlay.remove('link'); status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.length < 2) overlay.remove('link'); // nothing to route: no routing data to wait for
-  if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac) { overlay.remove('link'); return; } // our own address update
+  if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac && await sameAnchors(shared)) { overlay.remove('link'); return; } // our own address update
   if (state.points.length) await keepAsRecent('plan link opened');
   forgetSaved();
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
@@ -1400,6 +1409,7 @@ async function loadShared(shared: SharedPlan) {
   nextCause = 'other';
   freshHistory = true; // opening a plan is no edit: no undo back to the plan before it
   nextTour = shared.tour ?? null; // a multi-day tour comes with its days and nights
+  nextAnchors = shared.anchors ?? null;
   await commit(shared.points, shared.points.map((_, i) => ({ pinned: shared.pinned.includes(i), name: shared.names[String(i)] })));
 }
 
@@ -1432,12 +1442,17 @@ function fitPadding(): maplibregl.PaddingOptions {
   return room(below) > room(beside) ? below : beside;
 }
 
+/** The open plan, as it routes now, runs through the same hidden via points as [shared] (the same points alone are not the same route). */
+async function sameAnchors(shared: SharedPlan) {
+  return (shared.anchors ?? '') === await engine.call('anchorsCounting', enc(shared.points), state.activity, state.sac);
+}
+
 /** The current plan in the app's format (for the QR code, the link and the address bar). */
 function sharedPlan(): SharedPlan {
   const names: Record<string, string> = {};
   state.meta.forEach((m, i) => { if (m.name) names[String(i)] = m.name; });
   return { points: state.points, activity: state.activity, sac: state.sac,
-    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title, tour: state.tour };
+    pinned: state.meta.flatMap((m, i) => (m.pinned ? [i] : [])), names, title: state.title, tour: state.tour, anchors: engine.anchors, live: true };
 }
 
 /** Keeps the plan in the address bar (#p=…): a reload or a bookmark brings it back; nothing goes to a server. */
@@ -1993,7 +2008,7 @@ function render() {
  * or title is no change (laptop 2026-11-15, as the app). Compared as codes of the saved plan with the one or the other
  * point list, so both go through the same rounding.
  */
-const pointsOnly = (p: SharedPlan, points: SharedPlan['points']) => engine.encode({ ...p, points, title: null, pinned: [], names: {} });
+const pointsOnly = (p: SharedPlan, points: SharedPlan['points']) => engine.encode({ ...p, points, title: null, pinned: [], names: {}, anchors: null, live: false });
 /**
  * A saved plan's parsed code and its points-only code, kept per code (the same text always gives the same): the plan on
  * the map is compared with its own saved route at every edit, and with every saved route of the folder when it leaves
@@ -2434,6 +2449,9 @@ async function keepAsRecent(why: string) {
   // (read at once, like Save's state was: renderSaved keeps planUnsaved current; no await before the plan is read)
   const savedId = state.savedId && !planUnsaved ? state.savedId : null, savedFolder = state.savedFolder;
   const pts = enc(state.points), plan = { ...sharedPlan(), points: [...state.points] }, n = state.points.length;
+  // its anchors as they count for these points, asked now: the worker answers behind every edit already sent, before any later one
+  const anchorsKept = engine.anchors ? engine.call('anchorsCounting', pts, plan.activity, plan.sac).catch((e) => {
+    problem('routes', 'Zuletzt: the detour points could not be read – the plan is kept without them', e); return ''; }) : Promise.resolve('');
   const own = state.title || plansHost.linkTitle();
   await slicesReady(); // the plan is read; the slice decides (loaded with the page – without it the plan is still kept)
   // what is kept is the app's RoutesState.keepDraft (recent.ts → the slice); this looks up what its store asks: the
@@ -2459,7 +2477,8 @@ async function keepAsRecent(why: string) {
   if (!(await ready)) return;
   // changed (or new) but exactly the points of a saved route of the open folder: that route takes the Zuletzt place –
   // never a twin draft beside it (RouteRules.isUnsaved: points only – the page compares them, the slice decides)
-  const twin = await savedTwin(plan.points);
+  plan.anchors = await anchorsKept; plan.live = false;
+  const twin = await savedTwin(plan.points, plan.anchors);
   const code = await engine.encode(plan);
   const dated = datedName();
   const id = keepPlan({ code, title: own || dated, points: pts, replaces: fromRecent, savedId, saved, twin: twin?.id ?? null });
@@ -2479,10 +2498,11 @@ async function keepAsRecent(why: string) {
  * The saved route of the open folder with exactly [points] (lat/lon, as [samePointsAs]), or null – the newest when there
  * are several. A failure reads as none: the plan is then kept as a draft (never lost).
  */
-async function savedTwin(points: SharedPlan['points']): Promise<SavedPlan | null> {
+async function savedTwin(points: SharedPlan['points'], anchors: string): Promise<SavedPlan | null> {
   try {
     if (!(await syncReady)) return null;
-    for (const p of await sync.list(sync.open)) if (p.kind === 'plan' && p.plan && (await samePointsAs(p.plan, points))) return p;
+    for (const p of await sync.list(sync.open)) if (p.kind === 'plan' && p.plan && (await samePointsAs(p.plan, points)) &&
+      ((await savedPoints(p.plan).plan)?.anchors ?? '') === anchors) return p; // other hidden via points: another route, kept
   } catch (e) { problem('routes', 'Zuletzt: the saved routes could not be compared – the plan is kept as a draft', e); }
   return null;
 }
@@ -2530,10 +2550,11 @@ const plansHost = {
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     // the multi-day guide's „Noch etwas anhängen“ → „Gespeicherte Route öffnen“: appended behind the route, not opened
     if (multiDay?.takeAppend()) { await appendRoute(shared.points); return; }
-    if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('another plan opened');
+    if (shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('another plan opened');
     state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';')) {
+    // the same points with other anchors are another route: opened, not only renamed
+    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';') && await sameAnchors(shared)) {
       state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); keepPlanStats(p.plan); return;
     }
     openedOtherRouting = !!p.otherRouting;
@@ -2556,7 +2577,7 @@ const plansHost = {
   openRecent: async (r: RecentPlan) => {
     const shared = await engine.parse('p=' + r.code);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
-    if (shared.points.map(key).join(';') !== state.points.map(key).join(';')) await keepAsRecent('a plan from Zuletzt opened');
+    if (shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('a plan from Zuletzt opened');
     forgetSaved();
     await loadShared({ ...shared, title: r.title });
     state.recentId = r.id;
@@ -2719,6 +2740,7 @@ const gpxImport = setupGpxImport({
   plan: async (points, title, names, pinned) => {
     state.title = title; forgetSaved();
     nextTour = null; // a new route from a track: a normal plan until the days are set
+    nextPlain = true;
     await commit(points, names ? points.map((_, i) => ({ pinned: !!pinned?.[i], name: names[i] ?? undefined })) : undefined);
   },
   mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
@@ -2877,7 +2899,7 @@ if (suggestOn()) {
       map, engine, cells: params.get('data') ?? base + 'data/',
       activity: () => ({ activity: state.activity, sac: state.sac }),
       setActivity: (a, sac) => setActivity(a, sac, false),
-      plan: async (points, title) => { state.title = title; forgetSaved(); await commit(points); },
+      plan: async (points, title) => { state.title = title; forgetSaved(); nextPlain = true; await commit(points); },
       fitPadding,
       closeMenus: () => { closeMenu(); closeMenus(); },
       loopChanged: () => renderFabs(),

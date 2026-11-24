@@ -21,7 +21,11 @@ interface WasmEngine {
   route(points: string, activity: string, sac: number): string;
   plan(points: string, activity: string, sac: number, pinned: string, names: string, rounds: number): string;
   historySnap(routed: string, snapped: string): void;
-  planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string): string;
+  planCode(points: string, activity: string, sac: number, pinned: string, names: string, title: string, anchors: string): string;
+  anchorsNow(): string;
+  historyReplace(before: string, after: string): void;
+  anchorsLive(points: string, kept: string): string;
+  planArrive(points: string, json: string): void;
   planParse(text: string): string;
   edit(op: string, points: string, index: number, to: number): string;
   rows(points: string, names: string): string;
@@ -67,7 +71,7 @@ interface WasmEngine {
   rangeStats(points: string, activity: string, sac: number, fromM: number, toM: number): string;
   mapTexts(): string;
   suggest(op: string, json: string): string;
-  planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string): string;
+  planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string, anchors: string): string;
   legsWanted(points: string, activity: string, sac: number): string;
   legGive(name: string, text: string): void;
   legsTaken(): string;
@@ -79,7 +83,7 @@ interface WasmEngine {
 }
 
 /** Small synchronous calls the page may make by name (the app's pure UI rules – see client.ts). */
-const CALLS = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
+const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
@@ -399,7 +403,7 @@ const dropped = new Set<number>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
 // planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
 // an open „Weiter warten?“ – WebPlanChain.runExport)
-const HISTORY = new Set(['historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
+const HISTORY = new Set(['planArrive', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
   'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
@@ -424,9 +428,10 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const p = req.plan;
       const names = Object.entries(p.names).map(([i, n]) => `${i}\t${n.replace(/[\t\n]/g, ' ')}`).join('\n');
       const pts = p.points.map(([la, lo]) => `${la.toFixed(6)},${lo.toFixed(6)}`).join(';');
+      const anchors = p.live ? e.anchorsLive(pts, p.anchors ?? '') : p.anchors ?? '';
       // a multi-day tour carries its days and night marks (tourText, WebDays.parseTour)
-      reply({ id: req.id, ok: true, code: p.tour ? e.planCodeTour(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '', tourText(p.tour))
-        : e.planCode(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '') });
+      reply({ id: req.id, ok: true, code: p.tour ? e.planCodeTour(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '', tourText(p.tour), anchors)
+        : e.planCode(pts, p.activity, p.sac, p.pinned.join(','), names, p.title ?? '', anchors) });
       return;
     }
     if (req.type === 'parse') {
@@ -448,7 +453,8 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
       if (req.fn === 'detourAt' && slowDetourMs) { const end = performance.now() + slowDetourMs; while (performance.now() < end) { /* expected: a test's slow check */ } }
       const out = fn(...req.args);
-      reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined });
+      reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined,
+        anchors: HISTORY.has(req.fn) ? e.anchorsNow() : undefined });
       if (req.fn === 'historySnap') legsOut(e); // the legs kept under the snapped points (the plan as saved)
       return;
     }

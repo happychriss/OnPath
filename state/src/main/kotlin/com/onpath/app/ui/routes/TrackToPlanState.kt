@@ -41,6 +41,11 @@ interface TrackToPlanPorts : Say {
     /** The plan's points are changed by [block] – one Undo step, stored, routed. */
     fun change(block: MutableList<GeoPoint>.() -> Unit)
     fun rememberPlaceName(p: GeoPoint, name: String)
+    /**
+     * The plan's activity / T level as they were before the track shown here switched them (null = unchanged): the plan that
+     * leaves the map goes under Zuletzt with its own, with its detour points. Read once, on the success path.
+     */
+    fun leavingProfile(): OwnProfile? = null
 }
 
 /**
@@ -83,10 +88,11 @@ class TrackToPlanState(
         com.onpath.app.gpx.PlanGpx.stopsOf(track, sh.waypoints)?.let { stops ->
             Problems.trace("plan", "Track → plan: the file's ${stops.size} route points (a plan GPX), no fitting")
             val pts = stops.map { GeoPoint(it.lat, it.lon) }
+            val leaving = ports.leavingProfile() // before the track closes: the note belongs to the shown track
             ports.closeShown()
             // pinned route points come back pinned (review routing L1)
             plan.pin(com.onpath.app.gpx.PlanGpx.pinnedOf(stops).map { pts[it] })
-            save.keepAsDraft("replaced by a track's plan")
+            save.keepAsDraft("replaced by a track's plan", leaving)
             ports.change { clear(); addAll(pts) }
             stops.forEachIndexed { i, w -> w.name?.let { ports.rememberPlaceName(pts[i], it) } }
             return
@@ -94,8 +100,12 @@ class TrackToPlanState(
         planFromLine(track, ports.routingParts(track, ports.activity), ports.activity, ports.sac) { if (it) ports.closeShown() }
     }
 
-    /** [track] → a plan (routing/TrackToPlan) with [act] / [level], [parts] = its routing data; [done] true just before the plan replaces the old one, false when nothing changes. */
-    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, done: (Boolean) -> Unit) {
+    /**
+     * [track] → a plan (routing/TrackToPlan) with [act] / [level], [parts] = its routing data; [done] true just before the plan replaces the old one,
+     * false when nothing changes. The replaced plan goes under Zuletzt only here, on the success path (a failed or cancelled take leaves Zuletzt alone), as
+     * [leaving] (its activity / T level when the caller switched them already), else as the ports say.
+     */
+    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: OwnProfile? = null, done: (Boolean) -> Unit) {
         if (busy) return done(false)
         // routing data along the track first: without it every leg fails
         val missing = try { ports.ensureRoutingData(parts) } catch (e: Exception) {
@@ -114,8 +124,9 @@ class TrackToPlanState(
                 else {
                     Problems.trace("plan", "Track → plan: ${track.size} track points → ${r.points.size} route points, follows ${(r.follows * 100).toInt()} %, " +
                         "${r.calls} routing calls, ${r.failedLegs} legs without a route, ${elapsedMs() - t0} ms")
+                    val own = leaving ?: ports.leavingProfile() // before [done] closes the shown track
                     done(true)
-                    save.keepAsDraft("replaced by a track's plan")
+                    save.keepAsDraft("replaced by a track's plan", own)
                     ports.change { clear(); addAll(r.points) }
                 }
             }

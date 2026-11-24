@@ -68,6 +68,46 @@ check((await page.textContent('#status')).includes("This plan link can't be read
 
 // 5. a long link on a freshly loaded engine (its own process: a small stack, Wasm's slow tier)
 check(spawnSync(process.execPath, [path.join(here, 'longlink-engine.mjs')], { stdio: 'inherit' }).status === 0, 'a long plan link opens on a fresh page');
+// 6. a plan with detour points (detour-stitch.md §6 step 3): read, routed through them, shared on with the same code
+await page.goto('about:blank');
+await page.goto(url + 'index.html#p=' + CODE);
+await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+const made = await page.evaluate(async (c) => {
+  const e = window.__engine, s = await e.parse('p=' + c), r = (await e.plan(s.points, s.activity, s.sac, s.pinned)).plan;
+  const line = r.legs.flatMap((l) => l.points), m = line[line.length >> 1];
+  const six = (x) => [+x[0].toFixed(6), +x[1].toFixed(6)];
+  const anchors = JSON.stringify({ activity: s.activity, sac: s.sac, entries: [{ i: 0, p: six(s.points[0]), b: [], a: [six(m)] }] });
+  return { code: await e.encode({ ...s, anchors }), anchor: six(m),
+    long: await e.encode({ ...s, tour: { days: 2, limits: { timeMin: null, ascentM: null }, nights: {}, description: 'x'.repeat(4000) } }) };
+}, CODE);
+await page.goto('about:blank');
+await page.goto(url + 'index.html#p=' + made.code);
+await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+await page.waitForTimeout(1500); // the snapped start written back to the address
+const read = await page.evaluate(async (a) => {
+  const e = window.__engine, s = await e.parse(location.hash.slice(1));
+  let total = 0;
+  const r = (await e.plan(s.points, s.activity, s.sac, s.pinned, (p) => { total = Math.max(total, p.total ?? 0); })).plan;
+  const near = r.legs.flatMap((l) => l.points).some((q) => Math.abs(q[0] - a[0]) < 2e-5 && Math.abs(q[1] - a[1]) < 2e-5);
+  return { anchor: s.anchors && JSON.parse(s.anchors).entries[0]?.a[0], near, total, legs: r.legs.length, same: await e.encode(s) === location.hash.slice(3), hash: location.hash };
+}, made.anchor);
+check(JSON.stringify(read.anchor) === JSON.stringify(made.anchor), 'the page keeps the detour point in its address');
+check(read.near, 'the route runs through the detour point');
+check(read.same, 'read and written again: the same code');
+check(read.total <= 1, `the wait counts the visible legs only (${read.total})`);
+await page.click('#share');
+await page.waitForSelector('dialog.share[open]');
+check((await page.inputValue('#shareLink')).endsWith(read.hash), 'the shared link carries the detour point');
+await page.click('#closeShare');
+// a link too long for a QR code: the dialog offers the link alone
+await page.goto('about:blank');
+await page.goto(url + 'index.html#p=' + made.long);
+await page.waitForFunction(() => document.body.dataset.planning !== '1' && document.querySelector('#share')?.disabled === false, null, { timeout: 120_000 });
+await page.click('#share');
+await page.waitForSelector('dialog.share[open]');
+check(await page.evaluate(() => !document.querySelector('dialog.share .qr') && !document.querySelector('dialog.share .scanline')), 'too long for a QR code: no code, no line about scanning');
+check((await page.inputValue('#shareLink')).length > 2400, 'too long for a QR code: the link is there');
+await page.click('#closeShare');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

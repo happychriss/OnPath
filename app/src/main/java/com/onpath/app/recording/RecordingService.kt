@@ -627,6 +627,14 @@ class RecordingService : Service() {
         gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
 
+        val prev = last
+        // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
+        val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
+        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s ($gapWhy); " +
+            "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " + if (bridged) "line kept connected" else "new track piece")
+        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
+        // a GPS jump is no position: not for the track, nor the navigation / arrival / trip pace (JumpFixFlowTest)
+        if (verdict == PointFilter.Verdict.JUMP) return
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
         // Standing still (owner 2026-11-01): no new off-route state, no reminder – the detector waits as without GPS
         val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)
@@ -660,15 +668,7 @@ class RecordingService : Service() {
                 fresh = routeChecked)
         } catch (e: Exception) { Problems.error("time", "Trip pace update on a GPS fix failed; times shown may be wrong", e) }
 
-        val prev = last
-        // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
-        val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
-        if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s " +
-            "($gapWhy); " +
-            "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " +
-            if (bridged) "line kept connected" else "new track piece")
-        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
-        if (verdict != PointFilter.Verdict.ACCEPT) return             // GPS jump or standing still
+        if (verdict != PointFilter.Verdict.ACCEPT) return             // standing still (a jump never got here)
         moveWatch.moved(nowEl)
         tourRun.count(moved, newPiece = wasLost && prev != null && !bridged) // a long GPS gap: new segment
         // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track

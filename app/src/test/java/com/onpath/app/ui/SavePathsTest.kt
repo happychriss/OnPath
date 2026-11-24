@@ -41,7 +41,7 @@ class SavePathsTest {
      */
     @Test fun thePlanIsHandedToZuletztBeforeItLeavesTheMap() {
         val slice = com.onpath.app.testkit.sourceFile("ui/routes/SaveState.kt").readText() // keepAsDraft moved there (piece 3)
-        val keep = slice.substringAfter("fun keepAsDraft(why: String) {").substringBefore("\n    }\n")
+        val keep = slice.substringAfter("fun keepAsDraft(why: String, own: OwnProfile? = null) {").substringBefore("\n    }\n")
         assertTrue(keep, keep.contains("recent.keep("))
         assertFalse("handed over at once, no background work before it", keep.contains("launch"))
         // SaveState has no coroutines: deferring is `background.` (a write off the thread) or `names.` (a wait for the name)
@@ -123,6 +123,17 @@ class SavePathsTest {
      * RoutesFlowTest / PlanLinkFlowTest; what no flow can see stays here: no question is left in the view model, and no copy of the
      * rule (every `keepAsDraft("replaced by …")` is a slice's).
      */
+    /**
+     * "Rundtour von hier" → Übernehmen on a suggestion of another profile (review finding 1): the plan's own activity / T level are
+     * noted BEFORE the switch and handed to the take, which keeps the old plan under Zuletzt only when it succeeds – with them, so
+     * its detour points count. The flow itself: RoutesAnchorsFlowTest.
+     */
+    @Test fun aSuggestionNotesTheOldProfileBeforeTheActivitySwitchesAndKeepsNothingItself() {
+        val take = vm.substringAfter("take = { pts, a, l, done ->").substringBefore("}), prefs.suggestTest")
+        assertTrue(take, take.contains("val own = routesFlow.leavingNow()") && take.indexOf("val own") < take.indexOf("planRoute.selectActivity(a)"))
+        assertTrue(take, take.contains(", a, l, own, done)"))
+        assertFalse("the keep happens on the take's success, not here", take.contains("keepAsDraft"))
+    }
     @Test fun replacingAPlanAsksNothingAndTheViewModelHoldsNoCopyOfTheRule() {
         assertFalse(vm.contains("ReplaceAsk") || vm.contains("replaceUnsavedAsk") || vm.contains("replaceAsk"))
         assertEquals("…and no copy of that rule is left in the view model", 0, vm.split("keepAsDraft(\"replaced by").size - 1)

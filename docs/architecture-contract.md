@@ -40,6 +40,7 @@ what builds each file are in `CLAUDE.md` ("Map data") and `docs/map-pipeline.md`
 - `RoutingException(message, timedOut = false)`: `timedOut` = the search budget ran out or the router stayed
   busy; `Planner` then shows straight lines at once instead of retrying leg by leg. BRouter's own search limit per
   request comes from `routing/RouteTimeLimit` (by straight-line km and profile, 15 s … 45 s hike / 90 s bike / 120 s MTB).
+  `isNoRoute` = a real „no route here“ (not a timeout, not missing data, memory or an engine fault): only then does `Planner` drop a leg's detour anchors (`docs/design/detour-stitch.md` §8.5).
 
 ## Way attributes on the route line (time estimate P4)
 - `GeoPoint.way: WayAttrs?` (default null): what the way from this point to the next is like (way type / surface keys

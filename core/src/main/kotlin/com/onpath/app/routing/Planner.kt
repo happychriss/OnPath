@@ -123,58 +123,186 @@ class Planner(
      * Routes [waypoints] leg by leg ([Planner]). [pinned] = indices of waypoints that must be passed exactly (a tapped
      * hut, a POI): no there-and-back is trimmed at them.
      */
-    fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute {
-        require(waypoints.size >= 2) { "a plan needs two points, got ${waypoints.size}" }
+    fun plan(waypoints: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int> = emptySet()): PlannedRoute =
+        plan(ExpandedPlan(waypoints, pinned, waypoints.indices.toList()), activity, sac)
+
+    /**
+     * Routes an [ExpandedPlan] (docs/design/detour-stitch.md §8): every leg of the expanded list is a request, a leg with an
+     * anchor at an end may come from a stitch's cut leg ([LegCache.lookupAnchored]); routed legs are stored plain. The result
+     * counts VISIBLE points ([PlannedRoute.snapped], [PlannedRoute.skipped], error texts, [progress]). A visible leg whose
+     * sub-leg has no route is routed once more without its anchors (§8.5). Without anchors this is [plan] as ever.
+     */
+    fun plan(plan: ExpandedPlan, activity: Activity, sac: Int): PlannedRoute {
+        require(plan.visibleCount >= 2) { "a plan needs two points, got ${plan.visibleCount}" }
         if (engine is StraightLineEngine) {
-            val r = engine.route(waypoints, activity, sac)
-            val legs = (1 until waypoints.size).map { PlannedLeg(listOf(waypoints[it - 1], waypoints[it]), true) }
+            val vis = plan.visible
+            val r = engine.route(vis, activity, sac)
+            val legs = (1 until vis.size).map { PlannedLeg(listOf(vis[it - 1], vis[it]), true) }
             return PlannedRoute(legs, r.distanceM, r.ascentM, r.descentM, r.durationS, Txt.s(Res.string.plan_err_straight))
         }
-        val n = waypoints.size - 1
-        val results = arrayOfNulls<RouteResult>(n)
-        var stored = 0
-        for (i in 0 until n) results[i] = legs?.lookup(waypoints[i], waypoints[i + 1], activity, sac)?.also { if (it.stored) stored++ }?.leg
+        var storedNow = 0
+        val anchored = plan.hasAnchors // of the plan as given: the §8.5 layouts below still read the settled legs
+        var cur = plan
+        val nVis = plan.visibleCount - 1
+        // legs routed in this run (plain keys): a leg of a new layout (the fallback) may be there without a cache
+        val local = HashMap<LegCache.Key, RouteResult>()
+        /** The cached result of leg [i] of [layout]; the first layout's lookups are counted below. */
+        fun lookupLeg(layout: ExpandedPlan, i: Int): RouteResult? {
+            val pts = layout.points
+            val hit = legs?.lookupLeg(layout, i, activity, sac, anchored)
+            if (hit != null) return hit.leg.also { if (hit.stored) storedNow++ }
+            return local[LegCache.key(pts[i], pts[i + 1], activity, sac)]
+        }
+        // the visible leg each leg of a layout belongs to
+        fun legOf(layout: ExpandedPlan): IntArray {
+            var v = -1
+            return IntArray(layout.points.size - 1) { i -> if (layout.visibleOf(i) >= 0) v = layout.visibleOf(i); v }
+        }
+        var results = Array(cur.points.size - 1) { lookupLeg(cur, it) }
         cachedLegs = results.count { it != null }
-        storedLegs = stored
-        val total = n - cachedLegs
+        storedLegs = storedNow
+        // a leg is settled when it has its line or has been tried and failed / skipped (straight): never asked again in this run
+        var settled = BooleanArray(results.size) { results[it] != null }
+        var vOf = legOf(cur)
+        // visible legs with something to route (legs from the cache do not count) and how much of it is left
+        val remaining = IntArray(nVis)
+        for (i in results.indices) if (!settled[i]) remaining[vOf[i]]++
+        val counted = BooleanArray(nVis) { remaining[it] > 0 }
+        val reported = BooleanArray(nVis)
+        val total = counted.count { it }
         var done = 0
         if (total > 0) progress?.invoke(0, total)
         var error: String? = null
         var timedOut = false
-        for (i in 0 until n) {
-            if (results[i] != null) continue
+        var i = 0
+        while (i < results.size) {
+            if (settled[i]) { i++; continue }
             stopIfCancelled()
+            val pts = cur.points
+            val v = vOf[i]
             if (timedOut) {
                 if (error == null) error = TOOK_TOO_LONG
             } else results[i] = try {
-                routeLeg(waypoints[i], waypoints[i + 1], activity, sac, i).also { legs?.put(waypoints[i], waypoints[i + 1], activity, sac, it) }
+                routeLeg(pts[i], pts[i + 1], activity, sac, v).also {
+                    local[LegCache.key(pts[i], pts[i + 1], activity, sac)] = it
+                    legs?.put(pts[i], pts[i + 1], activity, sac, it,
+                        exact = PlanAnchors.isNormal(pts[i]) && PlanAnchors.isNormal(pts[i + 1]) && !retryUnfinished)
+                }
             } catch (e: Exception) {
                 stopIfCancelled() // cancelled: no straight lines, the caller shows nothing new
                 // expected: RoutingException = no route for this leg (a straight dashed line); anything else is an engine bug
                 if (e !is RoutingException) Problems.error("routing", "Leg route request threw unexpectedly", e)
+                val from = cur.expandedIndex(v); val to = cur.expandedIndex(v + 1)
+                if (e is RoutingException && e.isNoRoute && to - from > 1 && (from until i).none { results[it] == null }) {
+                    // an anchor never makes a route worse (§8.5): this visible leg once more in full, without its anchors.
+                    // Only for a real "no route" ([RoutingException.isNoRoute]), and not when an earlier sub-leg of this leg already failed for
+                    // another reason: that leg keeps its straight piece and its true error.
+                    Problems.warn("routing", "Leg ${v + 1} → ${v + 2}: no route through its detour anchors – routed without them", e)
+                    cur = cur.withoutAnchorsOfLeg(v)
+                    // what the run holds stays, by index: the legs before the visible leg, the legs after it (shifted), the full leg new
+                    val m = to - from
+                    val oldResults = results; val oldSettled = settled
+                    results = arrayOfNulls(oldResults.size - m + 1)
+                    settled = BooleanArray(results.size)
+                    for (k in 0 until from) { results[k] = oldResults[k]; settled[k] = oldSettled[k] }
+                    for (k in to until oldResults.size) { results[k - m + 1] = oldResults[k]; settled[k - m + 1] = oldSettled[k] }
+                    results[from] = lookupLeg(cur, from); settled[from] = results[from] != null
+                    vOf = legOf(cur)
+                    remaining.fill(0)
+                    for (k in results.indices) if (!settled[k]) remaining[vOf[k]]++
+                    // a leg that was counted and has nothing left to route now (its full leg came from the cache) is done
+                    for (k in 0 until nVis) if (counted[k] && !reported[k] && remaining[k] == 0) { reported[k] = true; done++; progress?.invoke(done, total) }
+                    i = 0
+                    continue
+                }
                 if (e is RoutingException && e.timedOut) {
                     // at the time limit in Plan: the user is asked "Weiter warten?" (owner 2026-11-03, SlowPlan) – the legs
                     // done so far are in the cache, the next run starts after them
                     if (SlowPlan.atLimit(askAtLimit) == SlowPlan.AtLimit.ASK) throw SlowPlan.TimeLimit(rounds)
                     // each leg would get its own limit and the wait multiplies: the rest straight at once
                     timedOut = true
-                    if (error == null) error = if (n == 1) legError(1, 2, e) else TOOK_TOO_LONG
-                } else if (error == null && !isMiniLeg(Geo.distance(waypoints[i], waypoints[i + 1]))) error = legError(i + 1, i + 2, e)
+                    if (error == null) error = if (nVis == 1) legError(1, 2, e) else TOOK_TOO_LONG
+                } else if (error == null && !isMiniLeg(Geo.distance(pts[i], pts[i + 1]))) error = legError(v + 1, v + 2, e)
                 null
             }
-            done++
-            progress?.invoke(done, total)
+            settled[i] = true
+            remaining[v]--
+            if (remaining[v] == 0 && !reported[v]) { reported[v] = true; done++; progress?.invoke(done, total) }
+            i++
         }
-        return join(waypoints, results, activity, pinned, error)
+        return join(cur, results, activity, error, anchored)
     }
 
-    /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetour]); [index] = index of [a]. */
+    /** What [settle] did: legs routed, legs that failed (their old line stays), stopped by a cancel. */
+    class Settled(val routed: Int, val failed: Int, val cancelled: Boolean)
+
+    /**
+     * The line settles (§8.15): for a plan WITH anchors, every leg of the expanded list that is not the router's own answer
+     * for its exact 1e-6° ends ([LegCache.isExact]) – a cut leg, a leg kept under a moved point – is routed once more from
+     * the normalized points and kept as an exact leg, so every device ends on the line a cold one routes. No cache or no
+     * anchors: nothing, no request. Cancel stops with what is done kept; a failed leg keeps what the cache holds and is
+     * reported; a timeout stops (each further leg would wait its own limit). Never throws for a routing failure.
+     */
+    fun settle(plan: ExpandedPlan, activity: Activity, sac: Int): Settled {
+        val cache = legs
+        if (cache == null || !plan.hasAnchors || engine is StraightLineEngine) return Settled(0, 0, false)
+        var routed = 0; var failed = 0
+        val pts = plan.points
+        var i = 0
+        while (i < pts.size - 1) {
+            if (cancel?.isCancelled == true) return Settled(routed, failed, true)
+            val a = PlanAnchors.exact(pts[i]); val b = PlanAnchors.exact(pts[i + 1])
+            if (cache.isExact(a, b, activity, sac)) { i++; continue }
+            val v = (i downTo 0).firstOrNull { plan.visibleOf(it) >= 0 }?.let { plan.visibleOf(it) } ?: 0
+            try {
+                val r = routeLeg(a, b, activity, sac, v)
+                if (retryUnfinished) {
+                    failed++
+                    Problems.warn("routing", "Leg ${i + 1} of the plan: the short-trip retry did not finish – its line stays, settled next time")
+                } else { cache.put(a, b, activity, sac, r, settled = true); routed++ }
+            } catch (e: Exception) {
+                if (cancel?.isCancelled == true) return Settled(routed, failed, true)
+                if (e is RoutingException && e.isNoRoute && plan.touchesAnchor(i) && plan.expandedIndex(v + 1) > i) {
+                    // a cold device falls back to the full visible leg here (§8.5): settle that one, retire the cut leg
+                    val to = plan.expandedIndex(v + 1)
+                    val fa = PlanAnchors.exact(pts[plan.expandedIndex(v)]); val fb = PlanAnchors.exact(pts[to])
+                    try {
+                        if (!cache.isExact(fa, fb, activity, sac)) {
+                            val full = routeLeg(fa, fb, activity, sac, v)
+                            if (retryUnfinished) throw RoutingException("the short-trip retry did not finish")
+                            cache.put(fa, fb, activity, sac, full, settled = true); routed++
+                        }
+                        cache.dropCut(a, b, activity, sac)
+                    } catch (f: Exception) {
+                        if (cancel?.isCancelled == true) return Settled(routed, failed, true)
+                        failed++
+                        if (f is RoutingException) Problems.warn("routing", "Leg ${v + 1} → ${v + 2} could not settle, not even without its anchors – its line stays", f)
+                        else Problems.error("routing", "Settling a leg threw unexpectedly – its line stays", f)
+                        if (f is RoutingException && f.timedOut) return Settled(routed, failed, false)
+                    }
+                    i = to; continue
+                }
+                failed++
+                if (e is RoutingException) Problems.warn("routing", "Leg ${i + 1} of the plan could not settle on its exact points – its line stays", e)
+                else Problems.error("routing", "Settling a leg threw unexpectedly – its line stays", e)
+                if (e is RoutingException && e.timedOut) return Settled(routed, failed, false)
+            }
+            i++
+        }
+        return Settled(routed, failed, false)
+    }
+
+    /** One leg [a] → [b] as its own request, with the short-trip retry ([retryShortDetour]); [index] = visible index of the leg's start. */
     private fun routeLeg(a: GeoPoint, b: GeoPoint, activity: Activity, sac: Int, index: Int): RouteResult {
+        retryUnfinished = false
         val t0 = now()
         val first = route(listOf(a, b), activity, sac)
         if (first.points.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_no_route_between, index + 1, index + 2))
         return retryShortDetour(a, b, first, activity, sac, index, t0)
     }
+
+    /** The last [routeLeg]'s short-trip retry was skipped for time or timed out: its leg is not the router's own answer. */
+    private var retryUnfinished = false
 
     /** A routed leg, its line as drawn after trimming ([trimSpike]) and its numbers. */
     private class Leg(val r: RouteResult) {
@@ -187,8 +315,9 @@ class Planner(
     }
 
     /** The legs as one route: spikes at the joins trimmed ([trimSpike]), straight dashed lines where a leg failed. */
-    private fun join(waypoints: List<GeoPoint>, results: Array<RouteResult?>, activity: Activity, pinned: Set<Int>,
-                     error: String?): PlannedRoute {
+    private fun join(plan: ExpandedPlan, results: Array<RouteResult?>, activity: Activity, error: String?, anchored: Boolean): PlannedRoute {
+        // an anchored plan joins on the points a plan code hands a cold device (§8.15); a plain plan on its own points
+        val waypoints = if (anchored) plan.points.map { PlanAnchors.exact(it) } else plan.points; val pinned = plan.pins
         val n = results.size
         val legs = results.map { r -> r?.takeIf { it.points.size >= 2 }?.let { Leg(it) } }
         for (k in 1 until n) {
@@ -226,13 +355,16 @@ class Planner(
                 planned += PlannedLeg(listOf(a.copy(way = null), b.copy(way = null)), true) // no known way on a straight line
             }
         }
+        // one entry per VISIBLE point (without anchors that is every point)
+        val visible = if (anchored) plan.visible.map { PlanAnchors.exact(it) } else plan.visible
         val route = lineClimb(PlannedRoute(planned, dist, up, down, time, error, RouteSummary.mergeShares(ways),
-            RouteSummary.mergeShares(surf), snapped.toList()))
+            RouteSummary.mergeShares(surf), visible.indices.map { snapped[plan.expandedIndex(it)] }))
         if (!all) return route
         // every leg routed: where each point lies on the whole line, as for one request (the matched spot when the line
         // passes it, else the point projected onto the line), and the points whose spot the line still misses
         val line = route.points
-        return route.copy(snapped = WaypointSnap.onRoute(waypoints, line, matched), skipped = WaypointSnap.skipped(waypoints, line, matched))
+        val visibleMatched = visible.indices.map { matched[plan.expandedIndex(it)] }
+        return route.copy(snapped = WaypointSnap.onRoute(visible, line, visibleMatched), skipped = WaypointSnap.skipped(visible, line, visibleMatched))
     }
 
     /**
@@ -331,9 +463,10 @@ class Planner(
         if (!isShortDetour(straight, routed)) return r
         val leg = "Leg ${index + 1}: short-trip detour ${fmt(routed / straight)}×"
         val left = RouteTimeLimit.forRoute(listOf(a, b), activity) - (now() - t0)
-        if (left < MIN_RETRY_MS) { Problems.trace("routing", "$leg → no time left to retry via the midpoint"); return r }
+        if (left < MIN_RETRY_MS) { retryUnfinished = true; Problems.trace("routing", "$leg → no time left to retry via the midpoint"); return r }
         val retry = try { route(listOf(a, midpoint(a, b), b), activity, sac, left) } catch (e: Exception) {
             stopIfCancelled()
+            if (e is RoutingException && e.timedOut) retryUnfinished = true
             // expected: RoutingException = no route via the midpoint (an island, a timeout) – the first route stays
             if (e !is RoutingException) Problems.error("routing", "Short-trip retry threw unexpectedly; kept the first route", e)
             Problems.trace("routing", "$leg → retried via midpoint: no route (${e.message}) – kept ${routed.toInt()} m"); return r

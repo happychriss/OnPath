@@ -21,6 +21,8 @@ class DraftRow(
     val segments: List<List<TrackPoint>>, val waypoints: List<GpxWaypoint>, val pinned: Set<Int>, val difficulty: String?,
     /** A multi-day tour's days; null = a normal plan. */
     val days: com.onpath.app.data.MultiDay? = null,
+    /** The hidden via points by index of [waypoints]. */
+    val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
 )
 
 /**
@@ -96,7 +98,7 @@ open class RecentPlansState(
         var updated = false
         fun row() = DraftRow(plan.dated, plan.activity.name, plan.sac,
             r?.distanceM ?: 0.0, r?.ascentM ?: 0.0, r?.descentM ?: 0.0, r?.durationS ?: 0.0,
-            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), plan.stops, plan.pins, plan.difficulty(), plan.days)
+            listOf((r?.points ?: pts).map { TrackPoint(it.lat, it.lon, it.ele) }), plan.stops, plan.pins, plan.difficulty(), plan.days, plan.anchors)
         val id = runCatching {
             // not twice: no second draft with these points, none for a saved route with them; a changed plan opened from
             // Zuletzt updates its entry (RoutesState)
@@ -131,7 +133,7 @@ open class RecentPlansState(
             runCatching {
                 routes.keepReplaced(key) {
                     host.insertDraft(DraftRow(old.name, old.activity, old.sac, old.distanceM, old.ascentM, old.descentM,
-                        old.durationS, segments, old.waypoints, old.pinned, old.difficulty, old.days))
+                        old.durationS, segments, old.waypoints, old.pinned, old.difficulty, old.days, old.anchors))
                 }
             }.onFailure { Problems.error("db", "The saved route's version before the tour start could not be kept under Zuletzt", it) }
                 .getOrNull()

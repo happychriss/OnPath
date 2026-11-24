@@ -71,6 +71,40 @@ class MultiDayFlowTest {
         assertTrue("Undo back to the tour: the overview again", f.overview)
     }
 
+    /** Day 2's first point moves onto the way: a snap, no edit – the anchors on the legs at the day's border stay in the tour. */
+    @Test fun aSnapOfADaysBorderPointKeepsTheToursDetourPoints() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(1 to com.onpath.app.routing.Anchors(after = listOf(on(25))),
+            2 to com.onpath.app.routing.Anchors(listOf(on(27)), listOf(on(40))))
+        val f = opened(flow())
+        f.tapDay(2)
+        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
+        val part = f.pickDay(whole, pts)!!
+        val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
+        val edited = listOf(moved, pts[3])
+        // the run that snapped is of the tour's own profile (second review: with null the profile check was skipped)
+        f.snapped(mapOf(pts[2] to moved), com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 2))
+        f.pointsChanged(edited, emptySet(), com.onpath.app.routing.AnchorSet.of(part.anchors, Activity.BIKE_TOURING, 2)) { null }
+        assertEquals(anchors, f.day!!.whole.anchors)
+        assertEquals(moved, f.day!!.whole.points[2])
+        assertEquals("a restart keeps them", anchors, flow().day!!.whole.anchors)
+    }
+
+    /** The same snap made by a run of ANOTHER profile than the detour points' (review finding 4): the moved point is new, its detour points go. */
+    @Test fun aSnapOfARunUnderAnotherProfileDropsTheDetourPointsOfTheMovedPoint() {
+        fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
+        val anchors = mapOf(1 to com.onpath.app.routing.Anchors(after = listOf(on(25))),
+            2 to com.onpath.app.routing.Anchors(listOf(on(27)), listOf(on(40))))
+        val f = opened(flow())
+        f.tapDay(2)
+        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
+        f.pickDay(whole, pts)!!
+        val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
+        f.snapped(mapOf(pts[2] to moved), com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 3)) // the tour's anchors lie on BIKE_TOURING
+        assertEquals(moved, f.day!!.whole.points[2])
+        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), f.day!!.whole.anchors)
+    }
+
     @Test fun aNormalRouteHasNoDays() {
         val f = flow()
         f.opened(tour.copy(days = null), pts)

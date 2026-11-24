@@ -104,7 +104,7 @@ class LiveLane(
         if (active()) {
             val now = clock()
             lastStepMs = now
-            uploader.step(now, event, networkBack)
+            uploader.step(now, event, networkBack, shareActive = shareRuns())
         }
         settle()
     }
@@ -113,8 +113,10 @@ class LiveLane(
      * True while there is something to send: the shared tour records here, or its end / stop – or an older share's
      * stop ([LiveUploader.cleaning], whatever the running share's tour does) – still has to reach the server.
      */
-    private fun active(): Boolean {
-        if (uploader.cleaning) return true
+    private fun active(): Boolean = uploader.cleaning || shareRuns()
+
+    /** The running share has something to send: its tour records here, or its end / stop is still on the way. */
+    private fun shareRuns(): Boolean {
         val shared = uploader.tourId ?: return false
         if (uploader.link == null) return true // ending or stopping
         return state()?.tourId == shared
@@ -134,7 +136,7 @@ class LiveLane(
         next?.cancel(false)
         next = null
         if (!active()) return
-        val due = uploader.nextDueMs() ?: return
+        val due = uploader.nextDueMs(shareRuns()) ?: return
         val now = clock()
         // never spin: at least MIN_GAP_MS after the step before, whatever the uploader says
         val floor = lastStepMs?.let { it + MIN_GAP_MS - now } ?: 0L
@@ -164,7 +166,15 @@ class LiveLane(
     }
 
     private inline fun guarded(what: String, block: () -> Unit) {
-        try { block() } catch (e: Exception) { Problems.warn("live", "Live sharing: could not $what", e) }
+        try {
+            block()
+        } catch (e: Exception) {
+            Problems.warn("live", "Live sharing: could not $what", e)
+        } catch (e: Throwable) {
+            // an Error (OutOfMemoryError …) must reach the problem log and must not cost the next task; it is never
+            // rethrown into the executor (its wrapper would swallow it unseen) and never touches the recording
+            try { Problems.error("live", "Live sharing: could not $what", e) } catch (ignored: Throwable) { /* expected: the log itself failed (no memory); the lane goes on */ }
+        }
     }
 
     companion object {

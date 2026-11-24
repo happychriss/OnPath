@@ -168,10 +168,6 @@ class RoutesSlice(
             routes.open = false
             if (RouteRules.replacesPlan(t.kind, t.waypoints.size)) {
                 // Back into planning with its via points (recalculated with the current engine).
-                if (!duringTour) {
-                    planRoute.activityOrNull(t.activity)?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
-                    planRoute.sac = t.sac
-                }
                 shown = null
                 val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
                 // stop names and POI pins saved with the plan come back too – the pins
@@ -181,9 +177,21 @@ class RoutesSlice(
                 host.loadedOnTheWay(duringTour && host.touring)
                 // saved routes load without routing again (owner 2026-11-07): its legs from the leg store, else its line
                 // as a stand-in while the run routes; a route routed before is no "very long plan" question again
-                if (!duringTour) loadStoredLine(t, pts, segs)
+                // what it is routed with: its own activity and T level, during a tour the tour's. Its detour points count only on
+                // the profile it was saved with ([com.onpath.app.routing.AnchorSet])
+                val savedAct = planRoute.activityOrNull(t.activity)
+                val act = if (duringTour) planRoute.activity else savedAct ?: planRoute.activity
+                val level = if (duringTour) planRoute.sac else t.sac
+                val anchors = com.onpath.app.routing.AnchorSet.of(t.anchors.filterKeys { it in pts.indices }, savedAct, t.sac)
+                if (!duringTour) loadStoredLine(t, pts, segs, anchors.forProfile(act, level), act, level)
                 if (!duringTour) host.routeEvent(RouteRun.Event.NewPlan) // a new plan: its first route may raise the sheet ([SheetRise])
+                // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points
                 save.keepAsDraft("replaced by \"${t.name}\"")
+                if (!duringTour) {
+                    savedAct?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
+                    planRoute.sac = t.sac
+                }
+                plan.arriving(pts, anchors)
                 host.change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { host.rememberPlaceName(pts[i], it) } }
                 // a stand-in (no stored route behind it): an unsaved plan – Los geht's saves it like every new plan
@@ -198,9 +206,15 @@ class RoutesSlice(
                 // track panel; an unknown / missing activity keeps the current one
                 val choice = SportType.openChoice(t.activity, t.sac, planRoute.activity, planRoute.sac, touring = host.touring)
                 // before the track is shown: an activity change clears the panel's line, this one sets it
+                // the plan's own activity / T level are noted before the switch: when this track later replaces the plan, the plan goes
+                // under Zuletzt with them and its detour points (the keep itself waits for the success of the take, TrackToPlanState)
+                val before = planRoute.activity to planRoute.sac
                 if (choice.switch) {
+                    // a chain of tracks keeps the first note while the plan is unchanged; else the plan as it is now (its route before the switch re-routes it)
+                    val own = switched?.takeIf { it.to == before && it.points == plan.points.toList() }?.from ?: leavingNow()
                     if (choice.pick.activity == Activity.HIKE) { planRoute.sac = choice.pick.sac.coerceIn(1, 5); host.rememberSac(planRoute.sac) }
                     planRoute.selectActivity(choice.pick.activity, userChange = false)
+                    switched = ProfileSwitch(t.id, own, planRoute.activity to planRoute.sac, plan.points.toList())
                 }
                 // rides (vehicle detection): the tour as chosen; rides not counted beside it, dropped parts not drawn
                 val lines = com.onpath.app.rides.RideView.lines(segs, t.rides).filter { it.part != com.onpath.app.rides.RideView.Part.DROPPED }
@@ -225,19 +239,22 @@ class RoutesSlice(
      * Saved routes load without routing again (owner 2026-11-07, [com.onpath.app.routing.StoredLine],
      * docs/design/long-bike-routes.md "Saved routes"): every leg fresh in the leg store → the plan run takes them (no
      * router run, the same line); else the stored legs / the saved line [segs] as a stand-in for the next run ([RoutesHost.standIn]).
-     * The saved line counts only when [t]'s activity and T level are the ones the plan is routed with. Either way the
+     * The saved line counts only when [t]'s activity and T level are the ones the plan will be routed with ([act], [level]). Either way the
      * route was routed before: no "very long plan" question for it ([RouteRun.longOk]).
      */
-    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>) {
+    private suspend fun loadStoredLine(t: Tour, pts: List<GeoPoint>, segs: List<List<TrackPoint>>, anchors: Map<Int, com.onpath.app.routing.Anchors>,
+                                       act: Activity, level: Int) {
         if (pts.size < 2) return
-        val act = planRoute.activity; val level = planRoute.sac
         val lineFits = planRoute.activityOrNull(t.activity) == act && (act != Activity.HIKE || t.sac == level)
         val line = if (lineFits) segs.flatten().map { it.toGeo() } else emptyList()
         val pins = t.pinned.filter { it in pts.indices }.toSet()
         val found = withContext(io) {
             try {
-                val fresh = (0 until pts.size - 1).all { planRoute.legCache.lookup(pts[it], pts[it + 1], act, level) != null }
-                fresh to if (fresh) null else com.onpath.app.routing.StoredLine.preview(pts, act, level, pins, planRoute.legCache, line)
+                // one list of legs: with detour points those of the expanded plan (detour-stitch.md §8.1)
+                val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, anchors, pins)
+                val fresh = com.onpath.app.routing.StoredLine.allFresh(expanded, act, level, planRoute.legCache)
+                fresh to if (fresh) null else if (expanded.hasAnchors) com.onpath.app.routing.StoredLine.preview(expanded, act, level, planRoute.legCache, line)
+                    else com.onpath.app.routing.StoredLine.preview(pts, act, level, pins, planRoute.legCache, line)
             } catch (e: Exception) {
                 Problems.warn("routing", "The stored line of \"${t.name}\" could not be read – the route is calculated", e); false to null
             }
@@ -277,9 +294,16 @@ class RoutesSlice(
 
     private fun planFromShownNow() = trackToPlan.planFromShownNow()
 
+    /** The plan ([points]) as it was before the track of [trackId] switched its profile to [to] ([from]); a chain of tracks keeps the first. */
+    private class ProfileSwitch(val trackId: Long?, val from: OwnProfile, val to: Pair<Activity, Int>, val points: List<GeoPoint>)
+    private var switched: ProfileSwitch? = null
+
+    /** The plan's own profile and route now: a caller that switches the profile before a take ([planFromLine], the round trip) takes it first. */
+    fun leavingNow() = OwnProfile(planRoute.activity, planRoute.sac, host.route)
+
     /** [track] → a plan (routing/TrackToPlan) with [act] / [level], [parts] = its routing data; [done] true just before the plan replaces the old one, false when nothing changes. */
-    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, done: (Boolean) -> Unit) =
-        trackToPlan.planFromLine(track, parts, act, level, done)
+    fun planFromLine(track: List<GeoPoint>, parts: List<String>, act: Activity, level: Int, leaving: OwnProfile? = null, done: (Boolean) -> Unit) =
+        trackToPlan.planFromLine(track, parts, act, level, leaving, done)
 
     private val trackToPlan = TrackToPlanState(plan, save, object : TrackToPlanPorts {
         override fun say(text: String, kind: NoticeKind, place: NoticePlace) = host.say(text, kind, place)
@@ -291,6 +315,13 @@ class RoutesSlice(
         override fun ensureRoutingData(parts: List<String>) = host.ensureRoutingData(parts)
         override fun change(block: MutableList<GeoPoint>.() -> Unit) = host.change(block)
         override fun rememberPlaceName(p: GeoPoint, name: String) = host.rememberPlaceName(p, name)
+        /**
+         * Only for the track still shown, the profile it switched to (the user may have changed it since: then the plan's current one counts)
+         * and the plan it was taken of (an edited plan is routed on the current profile: it goes under Zuletzt as it is).
+         */
+        override fun leavingProfile(): OwnProfile? =
+            switched?.takeIf { it.trackId == shown?.tourId && it.to == (planRoute.activity to planRoute.sac) && it.points == plan.points.toList() }
+                ?.from.also { switched = null }
     }, CoroutineTrackFitter(scope, planRoute), elapsedMs)
 
     fun deleteTour(t: Tour) {
