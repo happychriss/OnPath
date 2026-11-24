@@ -112,6 +112,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [tracking] (2026-11-24 evening): **owner's real „Standort teilen“ test worked** (0.18.9, page, moving dot, „● Standort“, „Teilen beenden“) – point 3 of 3 done. Still before the switch-on: PR 19 + PR 17 (owner merges), the review of the 12 fixes, live-smoke. `FOR_EVERYONE` stays off; claim free.
 - ← [aufräumen] (2026-11-24) donald: 105 clean worktrees removed (owner's yes); 133 GitHub branches wait – blocked by the permission check → [detail](items/2026-11-24-cleanup-inventory.md)
 - ← [laptop] (2026-11-07) for cloud-web: the planner links privacy at https://onpath.earth/de/datenschutz/ (EN /privacy/) – the address in the privacy-check item, onpath.earth/datenschutz/, answers 404; maybe a redirect on the site. Access comments in web/host fixed (02a16286).
 - ← [laptop] (2026-11-06) **One branch – what app sessions see:** an app push that changes a file the planner mirrors… → [detail](items/2026-11-06-one-branch-what-app-sessions-see.md)
@@ -123,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (2026-11-24) planner wait window modal like the app (veil, Cancel hands the map over), then the pairing-link fix to main; LordTriangel's pull requests read for the owner.
 - [umbau] (2026-11-24, captain's word) Readers ready for main on `wip/donald-2026-11-22-stitch-readers-all`: second review of 248482631..cd9777cfd + ac64075d3, setTourPlanActivity anchors, full E2E + Web planner on GitHub. No merge, no release (donald merges).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
-- [tracking] (2026-11-24, captain's word) the owner's first real „Standort teilen“ from his Pixel (point 3 of 3 before the switch-on): server checked ready (page 200, API 401/404, D1 bound); waiting for his test. `FOR_EVERYONE` stays off. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
+- [tracking] **free – no session runs** (2026-11-24). Point 3 done: the owner's real share from his Pixel worked. Before `FOR_EVERYONE = true` still: PR 19, PR 17, review of the 12 fixes, `live-smoke.mjs`. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md` (start at „2026-11-24“)
 - [donald] (2026-11-24) Detour line on main (owner's words). Readers: `wip/donald-2026-11-22-stitch-readers-all` merged with main (3c7779e2c, long link: main's linkCode kept), gate full green, waits for the captain's Wasm check; [umbau] reviews it. Restore-plan box: picture approved, not built → [detail](items/2026-11-24-restore-replaced-plan.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 

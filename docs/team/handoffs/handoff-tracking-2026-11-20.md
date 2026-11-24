@@ -127,7 +127,18 @@ show ≤ 3 pictures (gallery, public repo) before building. Open question to ask
 - Open: the website's privacy page needs the same text (line for cloud-web); the owner's viewer-page wish (verdict +
   arrival first, above) – pictures first; the Pixel walk list above.
 
-## State at the shutdown (owner stopped donald + hp, 2026-11-22) – start here
+## 2026-11-24 – the owner's real share worked – start here
+- Server checked before (read only): `https://plan.onpath.earth/live/` 200 with its assets; `/live/v1/<id>` GET/POST/DELETE
+  answer 401 without a token, 404 with an unknown box (so D1 `live_box` exists and is bound). `/live/*` is not in
+  `run_worker_first` on main, but the API still reaches the worker (no asset matches); PR 17 adds it.
+- donald has no wrangler login: the tables could not be watched during the test; nobody saw his link (on purpose).
+- The owner (0.18.9, developer tools, „Nur aufzeichnen“ → ⚙ → „Standort teilen“, second device): **„Alles hat geklappt“** –
+  page, moving dot, „● Standort“, „Teilen beenden“ → „Das Teilen wurde beendet“. **Point 3 of 3 is done.**
+- Still before `FOR_EVERYONE = true` (stays off): PR 19 and PR 17 (owner merges), the big-model review of the 12 fixes
+  (`LiveLane`, `LiveUploader`), `live-smoke.mjs` run once. Then the „Next step“ below.
+- How to start a recording (he asked): Plan's ☰ → „Nur aufzeichnen“, or the green start button with a plan.
+
+## State at the shutdown (owner stopped donald + hp, 2026-11-22)
 **Nothing is unsaved:** all [tracking] work is on `main`. `feat/live-share-ui-3` on GitHub (6e9e55aec) is the state before
 the rebase and only still serves the gallery link in the owner's chat; do not build on it, do not force-push it.
 `feat/live-share-ui` / `-2` are superseded. Deleting any of them goes through `tools/dev/prune_branches.sh`.
@@ -138,7 +149,7 @@ visible only with developer tools unlocked, read when Settings / Navigate draw).
 **Waits for the owner, all three before the switch-on (his word 2026-11-20):**
 1. merge **PR 19** (`pr/live-privacy`, privacy page) – open;
 2. merge **PR 17** (`pr/live-host-config`, hourly clean-up, per-IP limit, live smoke in CI) – open;
-3. **one real share from his Pixel** (developer tools unlocked) – no tour has ever reached the online server.
+3. ~~one real share from his Pixel~~ – **done 2026-11-24, worked** (section above).
 
 **Next step, once all three are done:** `FOR_EVERYONE = true`, gate, push to main, a line for [donald] „ready to ship“ and one
 for [cloud-web] (the website's privacy text goes live with it; its line is in the backlog).
