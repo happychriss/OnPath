@@ -170,7 +170,9 @@ fun MapControls(
     /** Navigate: the share button on top of the tour bubble (live sharing, [LocalTourShare]); null = not offered, ⚙ alone. */
     tourShare: (@Composable (Dp) -> Unit)? = LocalTourShare.current,
 ) {
-    val size = MAP_FAB
+    // Navigate: the column gives way to a short screen ([ControlsRoom]); Plan stays as it is
+    val tier = if (onSettings != null) LocalControlsTier.current else ControlsTier.FULL
+    val size = tier.slot
     val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
     // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
     val bg = OnPathColors.MapGround
@@ -192,13 +194,20 @@ fun MapControls(
         if (!plan) add(locate) // Navigate: locate at the bottom, as before
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
-    // Navigate: two bubbles with a 12 dp gap, the tour's (share, ⚙) above the map's (compass, eye, ⛶, locate)
+    // Navigate: two bubbles with a gap, the tour's (share, ⚙) above the map's (compass, eye, ⛶, locate); on a short screen
+    // 48 dp slots and a 6 dp gap, then the tour bubble side by side to the left of the map bubble's top ([ControlsTier])
     val tourCount = if (onSettings != null) (if (tourShare != null) 2 else 1) else 0
-    val bubble = RoundedCornerShape(MAP_FAB / 2)
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        listOf(items.take(tourCount), items.drop(tourCount)).filter { it.isNotEmpty() }.forEach { part ->
+    val bubble = RoundedCornerShape(size / 2)
+    val parts = listOf(items.take(tourCount), items.drop(tourCount)).filter { it.isNotEmpty() }
+    val bubbles = parts.map { part ->
+        @Composable {
             Surface(shape = bubble, color = bg, modifier = Modifier.floatShadow(bubble)) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                if (tier == ControlsTier.SIDE && part.size == tourCount && tourCount > 0) Row(verticalAlignment = Alignment.CenterVertically) {
+                    part.forEachIndexed { i, item ->
+                        if (i > 0) androidx.compose.material3.VerticalDivider(Modifier.height(28.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                        item()
+                    }
+                } else Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     part.forEachIndexed { i, item ->
                         if (i > 0) GroupDivider()
                         item()
@@ -206,6 +215,11 @@ fun MapControls(
                 }
             }
         }
+    }
+    if (tier == ControlsTier.SIDE && bubbles.size == 2) Row(horizontalArrangement = Arrangement.spacedBy(tier.gap), verticalAlignment = Alignment.Top) {
+        bubbles.forEach { it() }
+    } else Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(tier.gap)) {
+        bubbles.forEach { it() }
     }
 }
 

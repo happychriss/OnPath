@@ -19,6 +19,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
 import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -144,7 +146,6 @@ object LiveShareLook {
 
     /** From this font scale on the pill keeps clear of the map column (it would reach under it on a narrow phone). */
     const val PILL_CLEAR_FROM_FONT = 1.5f
-    val PILL_CLEAR = 68.dp
 }
 
 /**
@@ -183,9 +184,20 @@ fun LiveWaitingPill(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAc
     if (!LiveShareLook.pill(sign)) return
     val label = str(Res.string.live_sign_waiting)
     var open by remember { mutableStateOf(false) }
-    val clear = if (androidx.compose.ui.platform.LocalDensity.current.fontScale >= LiveShareLook.PILL_CLEAR_FROM_FONT) LiveShareLook.PILL_CLEAR else 0.dp
+    val lane = LocalControlsLane.current
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    // the map column stands beside the pill's top: the pill keeps clear of it (wider when its tour bubble lies beside the map
+    // bubble). Read while measuring, so the tier the footer just chose counts in the same frame
+    val clearSides = Modifier.layout { m, c ->
+        val clear = if (lane.tier == ControlsTier.SIDE || d.fontScale >= LiveShareLook.PILL_CLEAR_FROM_FONT)
+            ControlsFit.pillClear(lane.tier, 2).roundToPx() else 0
+        val p = m.measure(c.copy(maxWidth = (c.maxWidth - clear).coerceAtLeast(0)))
+        layout(c.maxWidth, p.height) { p.place(0, 0) }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { lane.pillDp = 0 } }
     val shape = RoundedCornerShape(24.dp)
-    Box(Modifier.fillMaxWidth().padding(end = clear), contentAlignment = Alignment.Center) {
+    Box(clearSides.fillMaxWidth().onSizeChanged { lane.pillDp = with(d) { it.height.toDp().value.toInt() } },
+        contentAlignment = Alignment.Center) {
         Box {
             androidx.compose.material3.Surface(onClick = { open = true }, shape = shape, color = OnPathColors.MapGround,
                 modifier = Modifier.floatShadow(shape).semantics { contentDescription = label; role = Role.Button }) {
