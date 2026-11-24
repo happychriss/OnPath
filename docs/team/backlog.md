@@ -127,6 +127,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[donald + laptop] LordTriangel's PRs 20–22 – parked by the owner 2026-11-24 (to-do, other work first)…** → [detail](items/2026-11-24-lordtriangel-prs-20-22.md)
 - **[donald + laptop] Restore the replaced plan (owner 2026-11-24, picture approved)…** → [detail](items/2026-11-24-restore-replaced-plan.md)
 - **[laptop] Tidy up hp like donald…** → [detail](items/2026-11-24-cleanup-inventory.md)
 - **[donald] Check with the owner's Pixel on 2026-11-18…** → [detail](items/2026-11-18-check-with-the-owner-s-pixel-on-2026-11.md)
