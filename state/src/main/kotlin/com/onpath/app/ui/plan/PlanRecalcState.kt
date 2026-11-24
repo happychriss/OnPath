@@ -315,7 +315,8 @@ open class PlanRecalcState(
      */
     fun takeQuiet(run: Run, res: com.onpath.app.routing.PlanResult): Boolean {
         if (!routeRun.isCurrent(run.gen) || routing || waypoints.toList() != run.pts) return false
-        route = withModelTime(res.route, run.act, run.f)
+        if (recordingTour || navigating) return false // a tour began while it settled: the line stays under it
+        route = withModelTime(res.route, run.act, planFactors(run.act)) // the pace now: a change during the settling stays
         planResult = res.withNamed(namedStops(run.pts))
         spotsMemo = Triple(res.route.points, run.act, run.level) to res.spots
         rememberLines(run, res)

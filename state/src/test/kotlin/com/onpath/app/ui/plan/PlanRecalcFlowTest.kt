@@ -172,6 +172,7 @@ class PlanRecalcFlowTest {
     private val engine = Engine()
     private var createFails = false
     private var realRouter = false
+    @Volatile private var partV = "v1"
     private var onCreate: () -> Unit = {}
 
     // ---------------- the real neighbours ----------------
@@ -301,7 +302,7 @@ class PlanRecalcFlowTest {
                 override val isRealRouter: Boolean get() = realRouter
                 override fun fingerprint() = "fp"
                 override val legsDir: File get() = File(tmp.root, "legs")
-                override fun partVersion(part: Rd5Parts.Part) = "v1"
+                override fun partVersion(part: Rd5Parts.Part) = partV
             },
             times = object : TimesStore {
                 override fun loadSegments(id: Long): List<List<TrackPoint>> = emptyList()
@@ -1274,6 +1275,32 @@ class PlanRecalcFlowTest {
         }
         plan.edit { add(1, settleMiddle) }
         assertTrue(plan.anchorsFor(planRoute.activity, planRoute.sac).isEmpty())
+    }
+
+
+    // ---------------- review W2: settling vs a tour, vs new routing data ----------------
+
+    @Test fun aTourStartedDuringTheSettlingStopsItAndTheLineStays() {
+        anchoredPlanTaken()
+        // the user taps Start right after the edit: recording + Navigate, no new begin
+        client.publish(recState()); modeNow = AppMode.NAVIGATE
+        log.clear()
+        stepRouting(); advance(1); stepDefault(); stepIo()
+        assertTrue("the settling went on during the tour: " + problems.traced("routing"), problems.traced("routing").none { it.startsWith("Settling: the plan is shown again") })
+        assertTrue("the plan line changed under the tour: $log", log.none { it.contains("route=") })
+    }
+
+    @Test fun newRoutingDataBeforeTheClearLeavesNoOldLegMarkedFresh() {
+        anchoredPlanTaken()
+        val base = engine.inner.calls.size
+        // routing data arrives while the first leg routes: the new rd5 is on disk, the engine is dropped (routingDataArrived);
+        // the gated recalc comes later – the settling goes on with the OLD engine it holds
+        engine.onRoute = { n -> if (n == base + 1) { partV = "v2"; planRoute.dropEngine() } }
+        stepRouting()
+        val written = settledLegs()
+        // the recalc after the gate: a new engine, the cache clear
+        realRouter = true; planRoute.routingEngine()
+        assertEquals("legs routed on the old engine after the new data came must not count as exact (written before: $written)", 0, settledLegs())
     }
 
     private fun assertNotSame(a: Any?, b: Any?) = assertTrue("same object", a !== b)

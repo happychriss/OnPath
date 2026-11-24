@@ -177,6 +177,13 @@ class PlanRouteSlice(
      */
     @Volatile var beforeClear: (() -> Unit)? = null
 
+    /**
+     * The routing data changed (new or removed parts, an invalid engine): the engine goes and with it the trust in what is
+     * routed on it right now – the settling stops and the cache's epoch moves on at once; the cache itself is cleared with the
+     * next engine ([routingEngine]). Any thread.
+     */
+    fun dropEngine() { engine = null; beforeClear?.invoke(); legCache.newData() }
+
     /** A tour is being recorded (the idle settling does not run then). */
     val touring: Boolean get() = host.touring
 

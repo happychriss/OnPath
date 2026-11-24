@@ -221,7 +221,14 @@ class LegCache(private val capacity: Int = CAPACITY, private val store: LegStore
     fun clear() { synchronized(lock) { map.clear(); exactKeys.clear(); linePoints = 0; epochCount++ } }
 
     /**
-     * Counts the [clear]s. A background job (the [Planner.settle]) takes it at its start and gives it to [put]: a leg it
+     * The routing data changed but the cache is not cleared yet (the engine was dropped; [clear] comes with the next engine):
+     * only the epoch moves on, so a leg a background job routes on the old data is dropped by [put] instead of being stored
+     * as fresh on the new data.
+     */
+    fun newData() { synchronized(lock) { epochCount++ } }
+
+    /**
+     * Counts the [clear]s and [newData]s. A background job (the [Planner.settle]) takes it at its start and gives it to [put]: a leg it
      * routed on the routing data from before a clear is then dropped instead of written over the new data's cache.
      */
     val epoch: Int get() = synchronized(lock) { epochCount }

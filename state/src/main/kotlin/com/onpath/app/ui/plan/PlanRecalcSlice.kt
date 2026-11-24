@@ -147,8 +147,9 @@ class PlanRecalcSlice(
 
     /** The settling goes on the plan run's own routing thread: a run that starts waits behind it only for the cancel, never beside it. */
     private val settleThread: CoroutineDispatcher get() = routingDispatcher
-    private var settleJob: Job? = null
-    @Volatile private var settleCancel: RouteCancel? = null
+    // atomic: stopSettle also runs from the cache-clear hook on other threads; a plain null-out could wipe a newer settling's handle
+    private val settleJob = java.util.concurrent.atomic.AtomicReference<Job?>(null)
+    private val settleCancel = java.util.concurrent.atomic.AtomicReference<RouteCancel?>(null)
     /** true while the settling itself asks for the engine: its own engine start clears the cache and must not cancel it. */
     @Volatile private var ownEngine = false
     /** Failures of a leg in the settling; 2 = skipped (the cap) until new routing data ([capEpoch]) or the anchors are cleared. */
@@ -157,9 +158,15 @@ class PlanRecalcSlice(
 
     /** Stops the settling (main thread or the routing thread): its cancel signal and its coroutine; whatever is written stays. */
     private fun stopSettle() {
-        settleCancel?.cancel(); settleCancel = null
-        settleJob?.cancel(); settleJob = null
+        settleCancel.getAndSet(null)?.cancel()
+        settleJob.getAndSet(null)?.cancel()
     }
+
+    /**
+     * A tour is recorded, followed or Navigate is on. Read between legs on the routing thread: three plain flags, a stale read
+     * costs one leg more – the main thread's [takeQuiet] check ([tourRuns]) is the one that decides what is shown.
+     */
+    private fun tourRuns() = planRoute.touring || recordingTour || navigating
 
     /** Every edit (every [begin]) stops the settling first – it is the lowest priority; the cache clear stops it too. */
     override fun beginning() {
@@ -172,7 +179,7 @@ class PlanRecalcSlice(
         if (run.anchors.isEmpty()) { failures.clear(); return } // anchors cleared: the cap starts anew; no anchors, no settling
         // not during a tour: the tour follows its line and must not see it shift under the position (the plan's re-run is
         // never told to the tour either); a tour's own edits re-plan and settle after it
-        if (planRoute.touring || recordingTour || navigating) { Problems.trace("routing", "Settling skipped: a tour runs"); return }
+        if (tourRuns()) { Problems.trace("routing", "Settling skipped: a tour runs"); return }
         val now = planPointsNow()
         val cache = planRoute.legCache
         if (cache.epoch != capEpoch) { failures.clear(); capEpoch = cache.epoch } // new routing data: every leg may try again
@@ -182,10 +189,10 @@ class PlanRecalcSlice(
         val again = Run(run.gen, now, run.pins, act, level, 1, false, run.f, run.started, null, null, run.anchors)
         val cancel = RouteCancel()
         stopSettle()
-        settleCancel = cancel
+        settleCancel.set(cancel)
         // the routing thread is the plan run's own: a run that starts waits behind a leg still routing for the time its cancel
         // takes, never works beside it – so the settling goes only while no run is going
-        settleJob = scope.launchSafe("app", "settle") {
+        settleJob.set(scope.launchSafe("app", "settle") {
             val out = withContext(settleThread) {
                 exceptions {
                     if (cancel.isCancelled) return@exceptions null
@@ -194,7 +201,7 @@ class PlanRecalcSlice(
                     if (cancel.isCancelled) return@exceptions null
                     Problems.trace("routing", "Settling started: ${expanded.points.size - 1} legs of the plan with detour points")
                     val s = Planner(eng, cancel, legs = cache).settle(expanded, act, level) { a, b ->
-                        (failures[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP
+                        tourRuns() || (failures[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP // a tour started: no further leg
                     }
                     for ((a, b) in s.failedLegs) {
                         val n = failures.merge(LegId(a, b, act, level), 1, Int::plus) ?: 1
@@ -202,6 +209,7 @@ class PlanRecalcSlice(
                     }
                     Problems.trace("routing", "Settling: routed ${s.routed} / failed ${s.failed}" + if (s.cancelled) " / cancelled" else "")
                     if (s.routed < 1 || s.cancelled || cancel.isCancelled) return@exceptions null
+                    if (tourRuns()) { Problems.trace("routing", "Settling stopped: a tour began"); return@exceptions null }
                     // the quiet re-run: every leg is exact now, so it comes from the cache and does not settle again
                     Problems.trace("routing", "Settling: the plan is shown again from the settled legs")
                     PlanRecalcState.route(again, eng, cache, cancel, { _, _ -> })
@@ -210,9 +218,9 @@ class PlanRecalcSlice(
             out.onFailure { Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", it) }
             val r = out.getOrNull() ?: return@launchSafe
             withContext(main) {
-                if (!cancel.isCancelled && !takeQuiet(again, r.result)) Problems.trace("routing", "Settling: a newer run began – the settled line is not shown")
+                if (!cancel.isCancelled && !tourRuns() && !takeQuiet(again, r.result)) Problems.trace("routing", "Settling: a newer run began – the settled line is not shown")
             }
-        }
+        })
     }
 
     fun recalc() {

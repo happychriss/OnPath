@@ -444,7 +444,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun clearSearchRing() { this@AppViewModel.searchFlow.searchMark = null; searchFlow.searchPlace = null }
             override fun placeName(at: GeoPoint): String? = searchFlow.stopName(at) ?: planEdit.nearbyNames[at]
             override suspend fun offlineIndex() = search.offlineIndex()
-            override fun invalidateEngine() { planRoute.engine = null }
+            override fun invalidateEngine() { planRoute.dropEngine() }
             override fun routingDataArrived(names: List<String>) = this@AppViewModel.routingDataArrived(names)
             override fun say(text: String, kind: NoticeKind, place: NoticePlace) = this@AppViewModel.notices.say(text, kind, place)
         })
@@ -476,7 +476,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     private fun routingDataArrived(names: List<String>) {
         Problems.info("routing", "Routing data installed (${names.joinToString()}); plan computed again")
         recheckData()
-        planRoute.engine = null // a new engine reads the new tile
+        planRoute.dropEngine() // a new engine reads the new tile
         // once after the batch, not per arriving part (a recalc can take up to a minute on a long plan)
         arrivedNames += names
         arrivalGateJob = gated(routingArrivalGate, arrivalGateJob, busy = { mapData.routingLoading }) {
@@ -1843,7 +1843,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
                 routingDataBusy = false
                 if (got > 0) {
                     Problems.info("routing", "Newer routing data installed ($got file(s)); plan computed again")
-                    planRoute.engine = null // new engine: no cached routes from the old data
+                    planRoute.dropEngine() // new engine: no cached routes from the old data
                     if (tourSession.mode == AppMode.PLAN && recState.value == null && plan.points.size >= 2) {
                         planRecalc.routingDataBefore = route?.points; planRun.routeEvent(RouteRun.Event.NewerData); recalc()
                     }
