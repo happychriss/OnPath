@@ -119,7 +119,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-25 00:30, **handed off** – a fresh umbau session takes it) Detour stitch writers W0–W3 on `wip/umbau-2026-11-24-stitch-writers` (c651906ac), gate full green, nothing on main. Next: W2 review, SameRouteTest full, W3 review, W4 row after the owner's pick → [state](items/2026-11-25-stitch-writers-state.md)
+- [umbau] (2026-11-25 00:35, fresh session, night mode) Detour stitch writers W0–W3 on `wip/umbau-2026-11-24-stitch-writers` (c651906ac), gate full green, nothing on main. Running: Opus reviews of W2 + W3, SameRouteTest full; then fixes, full E2E + Web planner on a ci/ branch; W4 waits for his pick → [state](items/2026-11-25-stitch-writers-state.md)
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
