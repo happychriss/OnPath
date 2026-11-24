@@ -42,6 +42,7 @@ class PlanRecalcFromScratchTest {
         override var savedId: Long = -1L
         override var savedPoints: List<GeoPoint>? = null
         override var anchorsJson: String? = null
+        override var savedAnchorsJson: String? = null
     }
 
     private val plan = PlanDocument(MemoryPlanStore())
@@ -209,5 +210,59 @@ class PlanRecalcFromScratchTest {
         assertTrue(edit.canRecalcFromScratch(Activity.HIKE, 2))
         assertTrue(edit.recalcFromScratch(Activity.HIKE, 2))
         assertFalse(plan.hasDetours(Activity.HIKE, 2))
+    }
+
+    private val hikeProfile = com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 2)
+    private fun snap(d: PlanDocument, routed: List<GeoPoint>) {
+        // what PlanRecalcState.snapToRoute does for a saved plan: the free point moves a little, the saved link follows
+        val snapped = routed.mapIndexed { i, p -> if (i == 2) GeoPoint(p.lat + 0.0001, p.lon) else p }
+        d.moveSnapped(routed, snapped, hikeProfile)
+        d.relinking { d.setSaved(d.linkName, d.linkId, snapped) }
+    }
+
+    @Test fun aSnapAfterAClearKeepsTheSavedPlanUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        assertTrue(d.unsaved)
+        snap(d, pts)
+        assertTrue("the cold run's snap is no save", d.unsaved)
+    }
+
+    @Test fun aNormalSnapOfASavedStitchedRouteIsNotUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        snap(d, pts)
+        assertFalse("anchors matched the save before the snap: still saved", d.unsaved)
+    }
+
+    @Test fun aRenameOfAClearedSavedPlanKeepsItUnsaved() {
+        val d = PlanDocument(MemoryPlanStore())
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        d.relinking { d.setSaved("Neu", 5L, d.savedPoints) }
+        assertEquals("Neu", d.linkName)
+        assertTrue(d.unsaved)
+    }
+
+    @Test fun theSavedDetourPointsSurviveARestart() {
+        val store = MemoryPlanStore()
+        val d = PlanDocument(store)
+        val pts = listOf(a, b, rome)
+        withAnchors(d, pts)
+        d.setSaved("Tour", 5L, pts)
+        assertTrue(d.clearDetours())
+        assertTrue(PlanDocument(store).unsaved)
+        d.setSaved("Tour", 5L, pts)
+        assertFalse(PlanDocument(store).unsaved)
+        // an old install has no such key: the loaded detour points count as saved
+        store.savedAnchorsJson = null
+        assertFalse(PlanDocument(store).unsaved)
     }
 }
