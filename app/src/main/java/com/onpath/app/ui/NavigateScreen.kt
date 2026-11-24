@@ -357,7 +357,7 @@ fun NavigateOverlay(
         barOpen = closableBar, sheetOpen = ui.activityCheck != null || ui.settingsOpen)) {
         com.onpath.app.debug.Problems.trace("app", "Back in Navigate while recording: stays in the app (owner 2026-11-15)")
     }
-    Box(Modifier.fillMaxSize()) {
+    ControlsLaneHost { Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
@@ -379,7 +379,7 @@ fun NavigateOverlay(
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
-            footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
+            ControlsRoom(topColumnDp, sliderDp) { footer() } // map controls: the column gives way to a short screen
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
@@ -424,7 +424,7 @@ fun NavigateOverlay(
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
-    }
+    } }
 }
 
 /** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
