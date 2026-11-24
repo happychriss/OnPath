@@ -203,4 +203,23 @@ object RouteSummary {
             steepnessOf(if (run <= 0) 0.0 else (ele[b] - ele[a]) / run * 100)
         }
     }
+
+    /**
+     * Gradient in percent at profile sample [index] (+ uphill, − downhill in the direction of travel), measured over a
+     * window of at least [windowM] centred on the sample so DEM noise does not jump from point to point. Shown next to
+     * height and distance while a finger is on the elevation profile. Pure, unit tested.
+     */
+    fun slopePct(data: ProfileData, index: Int, windowM: Double = 60.0): Int {
+        val n = data.dist.size
+        if (n < 2) return 0
+        val i = index.coerceIn(0, n - 1)
+        val center = data.dist[i]
+        var a = i; var b = i
+        while (data.dist[b] - data.dist[a] < windowM && (a > 0 || b < n - 1)) {
+            // widen towards the side that keeps the window centred on the sample
+            if (a > 0 && (b == n - 1 || center - data.dist[a - 1] <= data.dist[b + 1] - center)) a-- else b++
+        }
+        val run = data.dist[b] - data.dist[a]
+        return if (run <= 0.0) 0 else ((data.ele[b] - data.ele[a]) / run * 100.0).roundToInt()
+    }
 }

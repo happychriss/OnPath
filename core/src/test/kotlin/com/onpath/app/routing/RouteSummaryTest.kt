@@ -280,4 +280,25 @@ class RouteSummaryTest {
         assertTrue(RouteSummary.steepness(doubleArrayOf(0.0), doubleArrayOf(1.0)).isEmpty())
         assertEquals(listOf(Steepness.VERY_STEEP), RouteSummary.steepness(doubleArrayOf(0.0, 10.0), doubleArrayOf(0.0, 2.0)))
     }
+
+    @Test fun slopeInPercentUnderTheFinger() {
+        fun profile(ele: (Int) -> Double) = DoubleArray(11) { it * 10.0 }.let { d ->
+            val e = DoubleArray(11) { ele(it) }
+            ProfileData(d, e, IntArray(11) { it }, e.min(), e.max(), 100.0)
+        }
+        // a steady 10 % climb, everywhere and at both ends
+        val climb = profile { 500.0 + it * 1.0 }
+        assertEquals(10, RouteSummary.slopePct(climb, 5))
+        assertEquals(10, RouteSummary.slopePct(climb, 0))
+        assertEquals(10, RouteSummary.slopePct(climb, 10))
+        // downhill is negative, flat is 0
+        assertEquals(-10, RouteSummary.slopePct(profile { 500.0 - it * 1.0 }, 5))
+        assertEquals(0, RouteSummary.slopePct(profile { 500.0 }, 5))
+        // a 2 m spike in one sample is smoothed by the 60 m window (2 / 60 m ≈ 3 %, not 20 %)
+        val spike = profile { if (it == 5) 502.0 else 500.0 }
+        assertTrue(kotlin.math.abs(RouteSummary.slopePct(spike, 4)) <= 4)
+        // an index outside the profile is clamped, a profile of one sample has no slope
+        assertEquals(10, RouteSummary.slopePct(climb, 99))
+        assertEquals(0, RouteSummary.slopePct(ProfileData(doubleArrayOf(0.0), doubleArrayOf(500.0), intArrayOf(0), 500.0, 500.0, 0.0), 0))
+    }
 }

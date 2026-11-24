@@ -172,7 +172,10 @@ fun ElevationProfile(
             drawLine(Color(0xFF333333), Offset(cx, top), Offset(cx, bottom), 1.5f)
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
-            val t = measurer.measure(instrument("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle), labelStyle)
+            // the gradient under the finger: + uphill, − downhill in the direction of travel
+            val slope = RouteSummary.slopePct(data, i)
+            val slopeTxt = if (slope > 0) "+$slope %" else "$slope %"
+            val t = measurer.measure(instrument("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])} · $slopeTxt", labelStyle), labelStyle)
             val tx = (cx - t.size.width / 2).coerceIn(left, (size.width - t.size.width).coerceAtLeast(left))
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
