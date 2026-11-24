@@ -125,7 +125,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (night 2026-11-24, captain's night word) „Standort teilen“ ON on main (owner's own yes, see night answers); tonight: post-merge check, review „can wait“ items (test first), live-smoke, viewer-page pictures. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
-- [donald] (2026-11-24) Detour line on main. Readers-all merged with main, waits for the captain's Wasm check + [umbau]'s review. Restore-plan box BUILT on `wip/donald-2026-11-24-restore-ask` (4d9c8d90f, on top of readers 1a1a81293), gate full green, owner's lines chosen; goes to main with the readers → [detail](items/2026-11-24-restore-replaced-plan.md)
+- [donald] (2026-11-24 ~23:35, context full, stopped for a fresh donald) Night list: readers a171c962a (Web planner run 45499972936 decides) → main; restore box 607af9e48; detour reason 1b127b706; 0.18.10 to the last step → `handoffs/handoff-donald-2026-11-24.md`.
 - [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes: [laptop] took them; Playwright retry = patch (token lacks workflow scope).
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
