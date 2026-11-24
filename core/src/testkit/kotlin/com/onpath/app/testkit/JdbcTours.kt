@@ -191,6 +191,12 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
     fun findActiveRecording(): Tour? = query("SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE kind=? AND state='active' AND deleted_at IS NULL " +
         "ORDER BY created DESC LIMIT 1", TourKind.RECORDED.name).firstOrNull()
 
+    /** [TourDb.recordingCursor]: the next point's number and the last piece of a tour being continued (0 to 0 = no points). */
+    fun recordingCursor(tourId: Long): Pair<Int, Int> = db.prepareStatement("SELECT MAX(seq), MAX(seg) FROM points WHERE tour_id=?").use { st ->
+        st.setLong(1, tourId)
+        st.executeQuery().use { r -> if (r.next() && r.getObject(1) != null) (r.getInt(1) + 1) to r.getInt(2) else 0 to 0 }
+    }
+
     /** [TourDb.loadSegments]. */
     fun loadSegments(id: Long): List<List<TrackPoint>> = db.prepareStatement("SELECT seg, lat, lon, ele, time FROM points WHERE tour_id=? ORDER BY seq").use { st ->
         st.setLong(1, id)

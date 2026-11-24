@@ -1,6 +1,6 @@
 package com.onpath.app.time
 
-/** JVM-test stand-in for TimeEstimate (the real one needs AppSettings / gpx): the clock JunctionCues uses and PlanResult's plan time. */
+/** JVM-test stand-in for TimeEstimate (the real one needs AppSettings / gpx): the clock JunctionCues uses and PlanResult's plan time (DetourHintJvmTest reads none). */
 object TimeEstimate {
     fun planSeconds(points: List<com.onpath.app.routing.GeoPoint>, a: com.onpath.app.routing.Activity, f: Factors): Double =
         Math.round(RouteTimes.of(points, a).total(f)).toDouble()

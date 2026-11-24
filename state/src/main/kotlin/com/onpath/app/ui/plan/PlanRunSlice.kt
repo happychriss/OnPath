@@ -27,6 +27,14 @@ interface PlanRunHost {
     fun cancelRun(why: NotRouted)
 }
 
+/** Routing that runs beside the plan's route and gives way to what needs the router now (the app's detour check). */
+interface BesideRoute {
+    /** A hold's measure takes the router ([running]) or is over. */
+    fun holdMeasures(running: Boolean)
+    /** A tour starts: this work ends now. */
+    fun stop()
+}
+
 /**
  * The plan's route run, second half, first part (rebuild phase 2 piece 9): the run's state ([RouteRun], changed only by
  * [routeEvent]), what its effects do ([perform]), the run's handles (job, cancel signal, wait card progress) and the
@@ -51,6 +59,9 @@ class PlanRunSlice(
     val longRouteAsk: Double? get() = routeRun.longAsk
     /** The plan is left without a route on purpose; the sheet offers to calculate. */
     val notRouted: NotRouted? get() = routeRun.notRouted
+
+    /** The routing beside this plan's route, set by the plan's recalculation; a hold and a tour start reach it here. */
+    var besideRoute: BesideRoute? = null
 
     /** Cancel signal of the route being calculated (Cancel button; a newer request stops the older one). */
     var routeCancel: RouteCancel? = null

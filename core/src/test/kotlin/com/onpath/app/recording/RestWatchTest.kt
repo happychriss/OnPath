@@ -16,8 +16,16 @@ class RestWatchTest {
     /** Metres north of the start point. */
     private fun north(m: Double) = lat0 + m / 111_195.0
 
-    private fun RestWatch.fix(tS: Double, northM: Double = 0.0, speed: Float? = 0f, acc: Float = 8f) =
-        onFix((tS * 1000).toLong(), north(northM), lon0, acc, speed)
+    private fun RestWatch.fix(tS: Double, northM: Double = 0.0, speed: Float? = 0f, acc: Float = 8f, still: Boolean? = null) =
+        onFix((tS * 1000).toLong(), north(northM), lon0, acc, speed, still)
+
+    /** The service's one-second tick with the motion sensor's word, from [fromS] for [s] seconds; the last change. */
+    private fun RestWatch.ticks(fromS: Double, s: Double, still: Boolean?): RestWatch.Change? {
+        var last: RestWatch.Change? = null
+        var t = fromS
+        while (t <= fromS + s) { onTick((t * 1000).toLong(), still)?.let { last = it }; t += 1.0 }
+        return last
+    }
 
     /** Standing for [s] seconds at [northM] with small drift, one fix per [stepS]. */
     private fun RestWatch.stand(fromS: Double, s: Double, northM: Double = 0.0, stepS: Double = 1.0): RestWatch.Change? {
@@ -119,5 +127,135 @@ class RestWatchTest {
     @Test fun gpsLostAllowsForTheSlowRate() {
         assertEquals(8_000L, RestWatch.lostAfterMs(resting = false))
         assertTrue(RestWatch.lostAfterMs(resting = true) > RestWatch.REST_MS)
+    }
+
+    // ---------------- the motion sensor decides while the phone lies still (owner 2026-11-24, his Pixel indoors) ----------------
+
+    @Test fun indoorJumpsDoNotWakeWhileTheSensorSaysStill() {
+        // his Pixel 2026-11-24 22:01–22:49, lying on a table indoors: 9 times "Moving again" from fixes of ±49 m, 4 satellites,
+        // jumping 30 m and reporting 3 m/s – the motion sensor said still all along
+        val w = RestWatch()
+        w.stand(0.0, 70.0)
+        assertTrue(w.resting)
+        assertNull("a poor fix far away", w.fix(80.0, northM = 30.0, acc = 49f, speed = 3.1f, still = true))
+        assertNull("another one", w.fix(90.0, northM = -25.0, acc = 35f, speed = null, still = true))
+        assertTrue(w.resting)
+        assertEquals(RestWatch.REST_MS, w.intervalMs)
+    }
+
+    @Test fun aGoodFixFarAwayWakesEvenWhenTheSensorSaysStill() {
+        // a phone lying still in a moving car or train: good GPS that moved is the truth
+        val w = RestWatch()
+        w.stand(0.0, 70.0)
+        assertEquals(RestWatch.Change.MOVING, w.fix(80.0, northM = 40.0, acc = 8f, still = true))
+        val v = RestWatch()
+        v.stand(0.0, 70.0)
+        assertEquals("good and fast", RestWatch.Change.MOVING, v.fix(80.0, northM = 2.0, acc = 8f, speed = 5f, still = true))
+    }
+
+    @Test fun theSensorMovingWakesAtOnceWithoutAnyFix() {
+        // picked up and walked off inside, no GPS fix at all: back to every second at once (never lose the first points)
+        val w = RestWatch()
+        w.stand(0.0, 70.0)
+        assertTrue(w.resting)
+        assertNull(w.ticks(71.0, 10.0, still = true))
+        assertEquals(RestWatch.Change.MOVING, w.onTick(82_000L, still = false))
+        assertFalse(w.resting)
+    }
+
+    @Test fun aMinuteStillByTheSensorRestsWithoutGoodFixes() {
+        // indoors the fixes are too poor to start a rest by GPS; the sensor's minute does it
+        val w = RestWatch()
+        for (t in 0..120) assertNull(w.fix(t.toDouble(), acc = 45f, still = true))
+        assertNull(w.ticks(0.0, 59.0, still = true))
+        assertEquals(RestWatch.Change.REST, w.onTick(60_000L, still = true))
+        assertTrue(w.resting)
+    }
+
+    @Test fun theSensorMinuteStartsAgainWhenItWasUnsureOrMoving() {
+        val w = RestWatch()
+        assertNull(w.ticks(0.0, 50.0, still = true))
+        assertNull(w.onTick(51_000L, still = false))
+        assertNull(w.ticks(52.0, 50.0, still = true))
+        assertFalse(w.resting)
+        assertNull(w.onTick(103_000L, still = null))
+        assertNull(w.ticks(104.0, 59.0, still = true))
+        assertFalse("no sensor word breaks the minute too", w.resting)
+        assertEquals(RestWatch.Change.REST, w.onTick(164_000L, still = true))
+    }
+
+    @Test fun withoutASensorEverythingIsAsBefore() {
+        val w = RestWatch()
+        assertNull(w.ticks(0.0, 120.0, still = null))
+        assertFalse(w.resting)
+        w.stand(0.0, 70.0)
+        assertTrue(w.resting)
+        assertEquals(RestWatch.Change.MOVING, w.fix(80.0, northM = 40.0, acc = 45f, still = null))
+    }
+
+    @Test fun resetForgetsTheSensorMinute() {
+        val w = RestWatch()
+        w.ticks(0.0, 50.0, still = true)
+        w.reset()
+        assertNull(w.ticks(51.0, 30.0, still = true))
+        assertFalse(w.resting)
+    }
+
+    // ---------------- GPS off after an hour still (owner 2026-11-24: „dann ist das Handy wenigstens nicht leer“) ----------------
+
+    @Test fun anHourStillByTheSensorSwitchesGpsOff() {
+        val w = RestWatch()
+        assertNull(w.ticks(0.0, 59.0, still = true))
+        assertEquals(RestWatch.Change.REST, w.onTick(60_000L, still = true))
+        assertNull("an hour not over yet", w.onTick(RestWatch.OFF_AFTER_MS - 1, still = true))
+        assertFalse(w.off)
+        assertEquals(RestWatch.Change.OFF, w.onTick(RestWatch.OFF_AFTER_MS, still = true))
+        assertTrue(w.off)
+        assertTrue(w.resting)
+        assertNull("said once", w.onTick(RestWatch.OFF_AFTER_MS + 1_000, still = true))
+    }
+
+    @Test fun movingTurnsGpsBackOnAtTheNormalRate() {
+        val w = RestWatch()
+        w.onTick(0L, still = true); w.onTick(60_000L, still = true); w.onTick(RestWatch.OFF_AFTER_MS, still = true)
+        assertTrue(w.off)
+        assertEquals(RestWatch.Change.MOVING, w.onTick(RestWatch.OFF_AFTER_MS + 5_000, still = false))
+        assertFalse(w.off)
+        assertFalse(w.resting)
+        assertEquals(RestWatch.NORMAL_MS, w.intervalMs)
+    }
+
+    @Test fun theSensorLosingItsWordTurnsGpsBackOn() {
+        // never stay blind on a guess: no sensor word while GPS is off = GPS on again
+        val w = RestWatch()
+        w.onTick(0L, still = true); w.onTick(60_000L, still = true); w.onTick(RestWatch.OFF_AFTER_MS, still = true)
+        assertEquals(RestWatch.Change.MOVING, w.onTick(RestWatch.OFF_AFTER_MS + 1_000, still = null))
+        assertFalse(w.off)
+    }
+
+    @Test fun aBreakInTheStillHourStartsItAgain() {
+        val w = RestWatch()
+        w.onTick(0L, still = true); w.onTick(60_000L, still = true)
+        assertNull("unsure for a moment while resting: rest stays", w.onTick(30 * 60_000L, still = null))
+        assertTrue(w.resting)
+        assertNull(w.onTick(30 * 60_000L + 1_000, still = true))
+        assertNull("the hour counts from the break", w.onTick(RestWatch.OFF_AFTER_MS, still = true))
+        assertEquals(RestWatch.Change.OFF, w.onTick(30 * 60_000L + 1_000 + RestWatch.OFF_AFTER_MS, still = true))
+    }
+
+    @Test fun neverOffWithoutTheSensor() {
+        val w = RestWatch()
+        w.stand(0.0, 70.0)
+        assertTrue(w.resting)
+        assertNull(w.ticks(71.0, 2.0 * 3600, still = null))
+        assertFalse(w.off)
+    }
+
+    @Test fun resetTurnsOffBackOn() {
+        val w = RestWatch()
+        w.onTick(0L, still = true); w.onTick(60_000L, still = true); w.onTick(RestWatch.OFF_AFTER_MS, still = true)
+        w.reset()
+        assertFalse(w.off)
+        assertFalse(w.resting)
     }
 }

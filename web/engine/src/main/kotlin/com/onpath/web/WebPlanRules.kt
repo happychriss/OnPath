@@ -44,19 +44,25 @@ object WebPlanRules {
      * although it lies on a way, Bug 01): the sheet's red line, combined with a failed leg like PlanPanel does (one line,
      * "+N more"), and the grey dashed pieces. [names] = index → name. JSON {text, gaps}.
      */
-    fun gapsJson(res: PlanResult, names: Map<Int, String>, reach: com.onpath.app.routing.PlanReach? = null): String {
+    fun gapsJson(res: PlanResult, names: Map<Int, String>, reach: com.onpath.app.routing.PlanReach? = null,
+                 detours: List<com.onpath.app.routing.PlanDetour> = emptyList()): String {
         val gaps = res.gaps
-        // what reaches the first gap's point (PlanReach, owner 2026-11-07) says it instead of the missing metres
-        val reachText = com.onpath.app.domain.PlanGaps.reachText(gaps, reach)
+        // what reaches the first gap's point (PlanReach, owner 2026-11-07) says it instead of the missing metres – with the
+        // detour the level costs when the check found one ("Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar")
+        val reachText = com.onpath.app.domain.PlanGaps.reachText(gaps, reach, detours)
         val gapText = com.onpath.app.domain.PlanGaps.text(gaps, res.activity) { names[it]?.takeIf { n -> n.isNotBlank() } }
+        // no gap: a point the T level sends on a long detour ("② macht 4,2 km Umweg"); never beside a failed leg
+        val detourText = if (gaps.isEmpty() && res.route.error == null) com.onpath.app.domain.PlanGaps.detourText(detours) else null
         val text = when {
+            detourText != null -> detourText
             reachText != null -> reachText // as the app's planGapText: the reach line as it is
             gapText == null -> null
             res.route.error != null && !com.onpath.app.domain.PlanGaps.hasMore(gapText) -> com.onpath.app.domain.PlanGaps.withMore(gapText, 1)
             else -> gapText
         }
         // the way that reaches it (a tap shows it like a steep section: amber on the map, fitted)
-        val way = reach?.takeIf { reachText != null }?.way?.let { w -> w + gaps.first().point }
+        val way = if (detourText != null) detours.first().way // the drawn route around the point (the app's detourWay)
+            else reach?.takeIf { reachText != null }?.way?.let { w -> w + gaps.first().point }
         return "{\"text\":" + (text?.let { Engine.str(it) } ?: "null") + ",\"way\":" +
             (way?.joinToString(",", "[", "]") { "[" + Engine.num(it.lat, 6) + "," + Engine.num(it.lon, 6) + "]" } ?: "null") +
             ",\"gaps\":" + gaps.joinToString(",", "[", "]") { g ->

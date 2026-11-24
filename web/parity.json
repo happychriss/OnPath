@@ -54,7 +54,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "809b3cae57c22182d07d59f060a9c3b3069c96a7"
+      "blob": "a19cf86402245da868288ad654d52c1d91b3b3d4"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "c1021a62154a61f992c5d31cad8bf9727ab3178a"
+      "blob": "5891f46664e19c96b8ce9b3a0ad9720307a9eb8c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -3518,6 +3518,19 @@
         "Problems.warn(\"db\", \"Stored detour points over the limit – the route is calculated without them\")",
         "if (a.isEmpty || a.before.size > PlanCode.MAX_ANCHORS_SIDE || a.after.size > PlanCode.MAX_ANCHORS_SIDE) return false",
         "return (a.before + a.after).all { valid(it) && abs(micro(it.lat) - la) <= PlanCode.MAX_ANCHOR_DELTA && abs(micro(it.lon) - lo) <= PlanCode.MAX_ANCHOR_DELTA }"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
+      "blob": "0f1228125f41a7f9b9cb29fe85035e53e6c83644",
+      "perf": [
+        "*     neighbours – only then it is worth a look, at most [MAX_POINTS] points, the worst first.",
+        "const val MAX_POINTS = 3",
+        "const val TRY_TIMEOUT_MS = 6_000L",
+        "const val BUDGET_MS = 20_000L",
+        "/** The interior points worth a look (step 1), the worst first, at most [MAX_POINTS]. No routing. */",
+        "}.sortedByDescending { it.second }.take(MAX_POINTS).map { it.first }",
+        "if (stopped || cancel?.isCancelled == true || now() - started > BUDGET_MS) { stopped = true; return null }",
+        "eng.route(listOf(from, to), Activity.HIKE, sac, RouteLimits(TRY_TIMEOUT_MS, cancel))"
       ]
     }
   }

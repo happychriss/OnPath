@@ -72,6 +72,9 @@ export class LoadOverlay {
   /** A new wait takes the window over that is up (a map area joined a wait that had none). */
   private carry = false;
   private el: HTMLElement | null = null;
+  /** The veil over the page while the window waits (the app's WaitWindowDialog: back and a tap outside do nothing –
+   * Cancel is the way out). Under the message cards: a FRAGE asked meanwhile stays answerable. */
+  private veil: HTMLElement | null = null;
 
   /**
    * [delayMs]: a map wait shorter than this shows nothing (no flash); [planDelayMs]: the same for a route alone (the
@@ -246,6 +249,7 @@ export class LoadOverlay {
     this.hideTimer = 0;
     this.visible = false;
     this.el?.remove(); this.el = null;
+    this.modal(false);
     this.onVisible(false);
   }
 
@@ -303,8 +307,35 @@ export class LoadOverlay {
     el.querySelector('.wwcancel')!.textContent = t('common_cancel');
     el.querySelector<HTMLButtonElement>('.wwcancel')!.hidden = !this.active; // the last picture at 100 %: nothing to cancel
     el.classList.toggle('done', !this.active); // … and it lets a click through to the map while it goes
+    this.modal(this.active);
     this.place(el);
   }
+
+  /**
+   * Modal like the app's window (owner 2026-11-22 / 2026-11-24): while it waits, a veil takes every tap, drag and wheel
+   * meant for the map, the bar and the sheet, and keys go nowhere but to the window and the message cards; Escape does
+   * nothing. At 100 % (its last moment) and when it goes, the page is free again at once.
+   */
+  private modal(on: boolean) {
+    if (on === !!this.veil) return;
+    if (on) {
+      const v = this.veil = document.createElement('div');
+      v.className = 'waitveil';
+      v.setAttribute('aria-hidden', 'true');
+      for (const ev of ['pointerdown', 'mousedown', 'touchstart', 'click', 'dblclick', 'contextmenu', 'wheel'] as const)
+        v.addEventListener(ev, (e) => { e.preventDefault(); e.stopPropagation(); }, { passive: false });
+      document.body.append(v);
+      document.addEventListener('keydown', this.keys, true);
+    } else {
+      this.veil!.remove(); this.veil = null;
+      document.removeEventListener('keydown', this.keys, true);
+    }
+  }
+  private keys = (e: KeyboardEvent) => {
+    const at = e.target instanceof Element ? e.target : null;
+    if (at?.closest('#waitwin, #msgcards, dialog[open]')) return;
+    e.preventDefault(); e.stopPropagation();
+  };
 
   /** In the free map's middle, whole on screen: under the top bar, over the sheet when there is room. */
   private place(el: HTMLElement) {

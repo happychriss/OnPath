@@ -294,6 +294,7 @@ class TourSession(
         // the start zoom of Navigate, once per start (owner); the map takes it when it follows
         if (m == AppMode.NAVIGATE && was != AppMode.NAVIGATE) navStartZoom = AppMode.navStartZoom(activity)
         else if (m != AppMode.NAVIGATE) navStartZoom = null
+        if (m == AppMode.NAVIGATE) planRun.besideRoute?.stop() // the tour's re-route needs the router
         if (m == AppMode.NAVIGATE) { host.closeMenusForNavigate(); map.followMe = true }
         // Plan keeps the compass choice: walking direction up stays turned and following (until you edit or move the
         // map); north up stops following
@@ -326,6 +327,7 @@ class TourSession(
             // A shown track without a line closes, like ☰ → Start recording.
             PlanStart.WAIT_FOR_ROUTE, PlanStart.RECORD_ONLY -> { clearFollow(); shown = null }
         }
+        planRun.besideRoute?.stop() // the tour's re-route needs the router
         startRecording()
         // Navigate only once the service really records (R-01): a refused foreground service, a missing
         // permission or a broken database must not leave the user in Navigate with nothing being recorded.

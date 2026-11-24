@@ -53,7 +53,7 @@ async function open(lang, on, viewport = { width: 1280, height: 860 }) {
 /** The first tap's menu at Hilden: its row labels. */
 async function firstMenu(page) {
   const p = await page.evaluate(([la, lo]) => { const q = window.__map.project([lo, la]), r = window.__map.getCanvas().getBoundingClientRect(); return [q.x + r.x, q.y + r.y]; }, HILDEN);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
   await page.waitForSelector('.pointmenu');
   return page.$$eval('.pointmenu button[role=menuitem] .txt > span:first-child', (b) => b.map((x) => x.textContent));
 }
@@ -156,7 +156,7 @@ try {
     // the plan has points now: „Rundtour von hier“ never again (owner 2026-11-18: only for the very first point)
     {
       const p = await page.evaluate(([la, lo]) => { const q = window.__map.project([lo + 0.01, la + 0.006]), r = window.__map.getCanvas().getBoundingClientRect(); return [q.x + r.x, q.y + r.y]; }, HILDEN);
-      await page.mouse.click(p[0], p[1]);
+      await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
       await page.waitForTimeout(1500);
       const rows = await page.$$eval('.pointmenu button[role=menuitem] .txt > span:first-child', (b) => b.map((x) => x.textContent));
       check(!rows.includes('Rundtour von hier') && !(await page.evaluate(() => document.body.textContent.includes('Rundtour von hier'))),

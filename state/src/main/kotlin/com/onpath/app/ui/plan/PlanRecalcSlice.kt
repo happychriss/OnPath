@@ -138,6 +138,48 @@ class PlanRecalcSlice(
         get() = (planRun.routeJob as? JobHandle)?.job
         set(v) { planRun.routeJob = v?.let(::JobHandle) }
 
+    private val recalcHost = host
+    private val planDoc = plan
+    private val recordingClient = recording
+
+    /** The detour hint's background step ([PlanDetourCheck]): after a route is shown, on the thread nobody waits for. */
+    private val detourCheck = PlanDetourCheck(scope, { planRoute.threads.background }, main)
+
+    /** A new run: the older detour check stops at once and its result goes. */
+    override fun newRunStarts() = detourCheck.stop()
+
+    /** The detours of the route now on the map; none while it is calculated or beside a failed leg (the more serious line). */
+    fun detours(): List<com.onpath.app.routing.PlanDetour> =
+        if (planRun.routing || recalcHost.routeError != null) emptyList() else detourCheck.detoursFor(recalcHost.route, planDoc.points)
+
+    /** What a hold and a tour start reach through [PlanRunSlice.besideRoute]; handed over when a check starts. */
+    private val besideRoute = object : BesideRoute {
+        /** A hold's measure has the router first; when it is over, a check it stopped looks again at the same route. */
+        override fun holdMeasures(running: Boolean) {
+            if (running) detourCheck.pause() else if (detourCheck.takePaused()) checkDetours(recalcHost.planResult)
+        }
+        override fun stop() = detourCheck.stop()
+    }
+
+    /** The plan sheet's red line for a detour ("② macht 4,2 km Umweg"), null = none. */
+    fun detourText(): String? = com.onpath.app.domain.PlanGaps.detourText(detours())
+
+    /** What a tap on that line shows: the drawn route around the point. */
+    fun detourWay(): List<GeoPoint>? = detours().firstOrNull()?.way
+
+    /**
+     * Looks for a detour the T level causes, once this run's [routed] result is the one on the map, in Plan only: no routing
+     * beside a tour (its re-route needs the router) or a multi-day overview, none after a failed leg.
+     */
+    private fun checkDetours(routed: com.onpath.app.routing.PlanResult?) {
+        val res = recalcHost.planResult ?: return
+        if (routed == null || res.route.legs !== routed.route.legs) return // superseded: not this run's result
+        if (recalcHost.mode != com.onpath.app.domain.AppMode.PLAN || recordingClient.state.value != null || recalcHost.multiDayOverview) return
+        if (recalcHost.routeError != null || res.points != planDoc.points.toList()) return
+        planRun.besideRoute = besideRoute
+        detourCheck.start(res, recalcHost.planReach) { planRoute.routingEngine() }
+    }
+
     fun recalc() {
         val run = begin() ?: return
         val gen = run.gen
@@ -178,6 +220,7 @@ class PlanRecalcSlice(
             // the corridor work of a result off the main thread
             val post = result.getOrNull()?.let { r -> withContext(default) { mapData.postRoute(r.result.route, run.pts, run.act) } }
             taken(run, result.map { it.result }, reach, planner?.describeTries()?.takeIf { it.isNotEmpty() }, post, isActive)
+            checkDetours(result.getOrNull()?.result) // after the route is on the map: it never waits for this
         }
     }
 

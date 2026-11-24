@@ -44,7 +44,7 @@ const planned = () => page.waitForFunction(() => document.querySelector('#summar
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
     const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
 };
 
 await page.goto(url + 'index.html');
@@ -85,7 +85,7 @@ check(await pins() === 2, 'short plan from a link: 2 points, routed, no question
 // the user takes the map first (a short drag), as a person does: it cancels the route's pending whole-route fit
 // (WholeRoute, 500 ms after its plan) that could otherwise move the map between the projection and the click
 { const r = await page.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
-  await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y + 20, { steps: 5 }); await page.mouse.up(); }
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y + 20, { steps: 5 }); await page.mouse.up(); }
 await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
 await clickAt(11.16, 52.05);
@@ -417,7 +417,8 @@ const red = await page.textContent('#notice');
 console.log('red line:', red);
 // since 2026-11-07 (the app's PlanReach, owner "Meran → Mutkopf"): the line says what reaches it – "② only reachable from
 // T3" / "② not reachable" – else the missing metres as before
-const reachLine = /② (only reachable from T[3-5]|not reachable)/.test(red);
+// – since 2026-11-24 with the detour the level costs when the check finds one ("… detour needed, ② only reachable from Hike T3")
+const reachLine = /② (only reachable from (Hike )?T[3-5]|not reachable)/.test(red);
 check((reachLine || /Last \d+ m to “Ifinger”: no way for Hike/.test(red)) && await page.isVisible('#showGap'), `unreachable summit at T2: the app's red line + Show (${reachLine ? 'what reaches it' : 'missing metres'})`);
 check(await page.evaluate(() => window.__map.getSource('plan-gaps').serialize().data.features.length) === 1, 'the missing piece is drawn grey dashed');
 // Show: like a steep section – the way that reaches the point drawn amber (PlanReach.way), the map fitted on it
@@ -425,6 +426,47 @@ await page.click('#showGap');
 await page.waitForTimeout(800);
 const reachDrawn = await page.evaluate(() => window.__map.getSource('plan-reach')?.serialize().data.features.length ?? -1);
 check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching way amber only with a reach line (${reachDrawn})`);
+
+// 6. a point the T level sends on a long detour (the app's PlanDetour, owner 2026-11-21 / 2026-11-24 his words): Hike T1, 7.3 km
+//    via ② where T2 takes 4.5 km and the neighbours are 1.4 km apart at both – after the route, "② adds a 2.8 km detour" + Show;
+//    the route stays as it is, Show draws the route around the point amber. The same points at T2: no line.
+{
+  const plan = (sac) => page.evaluate((s) => window.__engine.encode({ points: [[46.68895, 11.18446], [46.70009, 11.17894], [46.69748, 11.18970]],
+    activity: 'HIKE', sac: s, pinned: [], names: {}, title: null }), sac);
+  await page.goto(url + 'index.html#p=' + await plan(1));
+  await planned();
+  await page.waitForFunction(() => /detour/.test(document.getElementById('notice').textContent), null, { timeout: 60_000 }).catch(() => {});
+  const line = await page.textContent('#notice');
+  console.log('detour line:', line);
+  const km = await page.evaluate(() => window.__state.plan.distanceM);
+  check(/② adds a 2[.,][6-9] km detour/.test(line) && await page.isVisible('#showGap'), `T1: "② adds a … km detour" + Show (${line.trim()})`);
+  await page.click('#showGap');
+  await page.waitForTimeout(800);
+  check(km > 7000 && await page.evaluate(() => window.__state.plan.distanceM) === km, `the route stays as it is (${Math.round(km)} m at T1)`);
+  check(await page.evaluate(() => window.__map.getSource('plan-reach')?.serialize().data.features[0]?.geometry.coordinates.length ?? 0) > 10,
+    'Show draws the route around the point amber');
+  await page.goto(url + 'index.html#p=' + await plan(2));
+  await planned();
+  // the check of this plan is over (main.ts checkDetours: body[data-detour] = "<plan>:done")
+  const over = await page.waitForFunction(() => window.__state.sac === 2 && document.body.dataset.planning !== '1' && !!window.__state.plan
+    && document.body.dataset.detour === `${window.__state.latest}:done`,
+    null, { timeout: 60_000 }).then(() => true, () => false);
+  check(over && await page.isHidden('#notice'), `T2: no detour line once its check is over (${over})`);
+
+  // an edit while the check runs long (?slowDetour: each step held 8 s) stops it at once – the app's detourCheck.stop():
+  // the new route comes within a few seconds, not after the check
+  await page.goto(url + 'index.html?slowDetour=8000#p=' + await plan(1));
+  await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  await planned();
+  await page.waitForFunction(() => document.body.dataset.detour === `${window.__state.latest}:running`, null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(300); // the first step is in the worker now
+  const t0 = Date.now();
+  await page.click('#points li:last-child .del');
+  const back = await page.waitForFunction(() => window.__state.points.length === 2 && !!window.__state.plan && document.body.dataset.planning !== '1'
+    && window.__state.plan.points.length === 2, null, { timeout: 60_000 }).then(() => true, () => false);
+  const ms = Date.now() - t0;
+  check(back && ms < 5000, `an edit during a long detour check: the new route in ${ms} ms (not after the check)`);
+}
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE|ERROR) /.test(e));

@@ -418,6 +418,8 @@ dialog.pair .check b { letter-spacing: .08em; }
 .waitwin { position: fixed; z-index: 16; transform: translate(-50%, -50%); width: min(360px, calc(100vw - 32px)); box-sizing: border-box;
   padding: 18px 12px 6px 20px; background: var(--paper); border-radius: var(--r-card); box-shadow: var(--shadow-high); color: var(--fg); }
 .waitwin.done { pointer-events: none; }
+/* the veil under it while it waits (modal like the app's Dialog); under the message cards (z 15), over map, bar and sheet */
+.waitveil { position: fixed; inset: 0; z-index: 14; background: rgba(0,0,0,.32); touch-action: none; }
 .waitwin .wwhead { display: flex; align-items: center; gap: 10px; padding-right: 8px; }
 .waitwin .wwsign { flex: none; width: 24px; height: 24px; color: var(--go); } .waitwin .wwsign svg { width: 24px; height: 24px; display: block; }
 .waitwin.paused .wwsign { color: var(--muted); }
