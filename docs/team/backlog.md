@@ -127,7 +127,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (2026-11-24) „Standort teilen“: PR 19 + 17 merged (owner's yes), review fixes on main (7367c0579); tour bubble (inverted share button + ⚙, pill only while waiting) on `feat/tracking-2026-11-24-tour-bubble`, waits for the owner's look; then FOR_EVERYONE. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
 - [donald] (2026-11-24) Detour line on main. Readers-all merged with main, waits for the captain's Wasm check + [umbau]'s review. Restore-plan box BUILT on `wip/donald-2026-11-24-restore-ask` (4d9c8d90f, on top of readers 1a1a81293), gate full green, owner's lines chosen; goes to main with the readers → [detail](items/2026-11-24-restore-replaced-plan.md)
-- [aufräumen] (2026-11-24, owner „ok, so machen“) Tests: flaky ones first (GitHub evidence), then flows for no GPS / no network / restart mid-tour. Web smokes only after asking [laptop] (wait window).
+- [aufräumen] (2026-11-24) Tests: on main Rundgang 10 wait, GpsLost + TourKill flows, kill-distance fix. Next: jump fix, clock jump, permission revoked; web smokes wait for [laptop].
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
