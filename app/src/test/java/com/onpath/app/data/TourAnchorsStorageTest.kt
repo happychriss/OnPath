@@ -73,6 +73,25 @@ class TourAnchorsStorageTest {
         }
     }
 
+    /** An older build (no anchors) edits the row and leaves the column: the stored profile and the points hash catch it. */
+    @Test fun aRowEditedByAnOlderBuildReadsAsNone() {
+        JdbcTours().use { t ->
+            val id = t.planned()
+            val plan = t.insertTour(TourKind.RECORDED, "Tour", "HIKE", 2)
+            t.setTourPlan(plan, TourPlan("Plan", "HIKE", 2, stops, anchors = anchors))
+            // the T level changed
+            t.exec("UPDATE tours SET sac=3 WHERE id=?", id)
+            t.exec("UPDATE tour_plan SET sac=3 WHERE tour_id=?", plan)
+            assertEquals(emptyMap<Int, Anchors>(), t.getTour(id)!!.anchors)
+            assertEquals(emptyMap<Int, Anchors>(), t.getTourPlan(plan)!!.anchors)
+            t.exec("UPDATE tours SET sac=2 WHERE id=?", id)
+            assertEquals(anchors, t.getTour(id)!!.anchors)
+            // a neighbour of the anchored point 1 (point 2) was moved
+            t.exec("UPDATE tours SET waypoints=? WHERE id=?", TourJson.waypointsToJson(stops.take(2) + GpxWaypoint(46.67, 11.21, "C")), id)
+            assertEquals(emptyMap<Int, Anchors>(), t.getTour(id)!!.anchors)
+        }
+    }
+
     @Test fun aBrokenAnchorsTextReadsAsNoneAndIsReported() {
         val dir = java.nio.file.Files.createTempDirectory("anch").toFile()
         Problems.init(dir); Problems.clear()

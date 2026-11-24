@@ -61,7 +61,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
             exec("INSERT INTO tours(kind, name, created, uuid, pinned, activity, sac, distance, ascent, descent, duration, state, waypoints, draft, " +
                 "difficulty, favourite, days, anchors) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", kind.name, name, createdMs, uuid, TourJson.pinnedToJson(pinned),
                 activity, sac, distance, ascent, descent, duration, state, TourJson.waypointsToJson(waypoints), if (draft) 1 else 0, difficulty,
-                if (favourite) 1 else 0, days?.toJson(), AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors))
+                if (favourite) 1 else 0, days?.toJson(), AnchorsJson.writeRow(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors, activity, sac))
             val id = db.createStatement().use { s -> s.executeQuery("SELECT last_insert_rowid()").use { r -> r.next(); r.getLong(1) } }
             var seq = 0
             segments.forEachIndexed { seg, pts -> pts.forEach { point(id, seq++, seg, it, null) } }
@@ -84,7 +84,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         try {
             val args = mutableListOf<Any?>(activity, sac, distance, ascent, descent, duration, TourJson.waypointsToJson(waypoints),
                 TourJson.pinnedToJson(pinned), difficulty,
-                AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)) // written as they are, empty = NULL
+                AnchorsJson.writeRow(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors, activity, sac)) // written as they are, empty = NULL
             if (days != null) args += days.toJson()
             args += id; args += TourKind.PLANNED.name
             val n = exec("UPDATE tours SET activity=?, sac=?, distance=?, ascent=?, descent=?, duration=?, waypoints=?, pinned=?, difficulty=?, anchors=?" +
@@ -136,7 +136,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
         st.setLong(1, tourId)
         st.executeQuery().use { r ->
             if (!r.next()) null else TourJson.jsonToWaypoints(r.getString("waypoints")).let { wps -> TourPlan(name = r.getString("name"), activity = r.getString("activity") ?: "HIKE", sac = r.getInt("sac"),
-                waypoints = wps, anchors = AnchorsJson.read(r.getString("anchors"), wps.map { GeoPoint(it.lat, it.lon) }), pinned = TourJson.jsonToPinned(r.getString("pinned")),
+                waypoints = wps, anchors = AnchorsJson.readRow(r.getString("anchors"), wps.map { GeoPoint(it.lat, it.lon) }, r.getString("activity") ?: "HIKE", r.getInt("sac")), pinned = TourJson.jsonToPinned(r.getString("pinned")),
                 line = TourPlan.lineFromJson(r.getString("line")), distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"),
                 descentM = r.getDouble("descent"), durationS = r.getDouble("duration"), sourceUuid = r.getString("source_uuid"),
                 updatedMs = r.getLong("updated")) }
@@ -171,7 +171,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                     distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"), descentM = r.getDouble("descent"),
                     durationS = r.getDouble("duration"), state = r.getString("state") ?: "done",
                     waypoints = TourJson.jsonToWaypoints(r.getString("waypoints")), uuid = r.getString("uuid") ?: "",
-                    anchors = AnchorsJson.read(r.getString("anchors"), TourJson.jsonToWaypoints(r.getString("waypoints")).map { GeoPoint(it.lat, it.lon) }),
+                    anchors = AnchorsJson.readRow(r.getString("anchors"), TourJson.jsonToWaypoints(r.getString("waypoints")).map { GeoPoint(it.lat, it.lon) }, r.getString("activity"), r.getInt("sac")),
                     pinned = TourJson.jsonToPinned(r.getString("pinned")),
                     rides = RideRecord.fromJson(r.getString("rides")),
                     deletedMs = r.getLong("deleted_at").takeIf { !r.wasNull() },

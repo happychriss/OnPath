@@ -155,7 +155,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("difficulty", difficulty)
                 put("favourite", if (favourite) 1 else 0)
                 if (days != null) put("days", days.toJson())
-                AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)?.let { put("anchors", it) }
+                AnchorsJson.writeRow(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors, activity, sac)?.let { put("anchors", it) }
             })
             var seq = 0
             segments.forEachIndexed { segIdx, seg -> seg.forEach { insertPoint(db, id, seq++, segIdx, it) } }
@@ -256,7 +256,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 put("descent", descent); put("duration", duration); put("waypoints", waypointsToJson(waypoints))
                 put("pinned", pinnedToJson(pinned)); put("difficulty", difficulty)
                 if (days != null) put("days", days.toJson()) else if (clearDays) putNull("days")
-                val a = AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)
+                val a = AnchorsJson.writeRow(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors, activity, sac)
                 if (a != null) put("anchors", a) else putNull("anchors")
             }, "id=? AND kind=? AND deleted_at IS NULL", arrayOf(id.toString(), TourKind.PLANNED.name))
             if (n == 0) return false
@@ -370,7 +370,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 waypoints = waypoints, pinned = jsonToPinned(s("pinned")),
                 line = TourPlan.lineFromJson(s("line")), distanceM = d("distance"), ascentM = d("ascent"),
                 descentM = d("descent"), durationS = d("duration"), sourceUuid = s("source_uuid"),
-                updatedMs = d("updated").toLong(), anchors = AnchorsJson.read(s("anchors"), waypoints.map { GeoPoint(it.lat, it.lon) })).takeIf { it.usable }
+                updatedMs = d("updated").toLong(), anchors = AnchorsJson.readRow(s("anchors"), waypoints.map { GeoPoint(it.lat, it.lon) }, s("activity") ?: "HIKE", d("sac").toInt())).takeIf { it.usable }
         } catch (e: Exception) { Problems.warn("db", "The followed plan of tour $tourId is unreadable – the tour stays without it", e); null }
     }
 
@@ -499,7 +499,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             difficulty = opt(c, "difficulty")?.let { c.getString(it) },
             favourite = opt(c, "favourite")?.let { c.getInt(it) == 1 } ?: false,
             days = opt(c, "days")?.let { MultiDay.fromJson(c.getString(it)) },
-            anchors = opt(c, "anchors")?.let { i -> AnchorsJson.read(c.getString(i), jsonToWaypoints(s("waypoints")).map { GeoPoint(it.lat, it.lon) }) } ?: emptyMap(),
+            anchors = opt(c, "anchors")?.let { i -> AnchorsJson.readRow(c.getString(i), jsonToWaypoints(s("waypoints")).map { GeoPoint(it.lat, it.lon) }, s("activity"), c.getInt(c.getColumnIndexOrThrow("sac"))) } ?: emptyMap(),
         )
     }
 

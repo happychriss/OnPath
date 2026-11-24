@@ -78,7 +78,7 @@ object TourSchema {
     fun planArgs(tourId: Long, p: TourPlan): Array<Any?> = arrayOf(tourId, p.name, p.activity, p.sac,
         TourJson.waypointsToJson(p.waypoints), TourJson.pinnedToJson(p.pinned), TourPlan.lineToJson(p.line),
         p.distanceM, p.ascentM, p.descentM, p.durationS, p.sourceUuid, p.updatedMs,
-        AnchorsJson.write(p.waypoints.map { GeoPoint(it.lat, it.lon) }, p.anchors))
+        AnchorsJson.writeRow(p.waypoints.map { GeoPoint(it.lat, it.lon) }, p.anchors, p.activity, p.sac))
 
     /** Tables to add for an upgrade from [old] (each `IF NOT EXISTS`). */
     fun tablesFrom(old: Int): List<String> = buildList { if (old < 6) add(CREATE_PLAN) }

@@ -2,6 +2,7 @@ package com.onpath.app.data
 
 import com.onpath.app.debug.Problems
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.AnchorSet
 import com.onpath.app.routing.Anchors
 import com.onpath.app.routing.GeoPoint
@@ -60,6 +61,66 @@ object AnchorsJson {
         } catch (e: Exception) {
             Problems.warn("db", "Stored detour points unreadable – the route is calculated without them", e); emptyMap()
         }
+    }
+
+    /**
+     * The JSON of a DB row's anchors (docs/design/detour-stitch.md §3): [write]'s entries with the profile they lie on and a
+     * hash of ALL the row's [points]. An older build (no anchors) can change the row's activity or T level, or delete / move
+     * a NEIGHBOUR of an anchored point, and leave this column as it is; the entry's own point would still match. The profile
+     * and the hash tell [readRow] that the row was edited since. Null when there is nothing to keep (or no activity to tie to).
+     */
+    fun writeRow(points: List<GeoPoint>, anchors: Map<Int, Anchors>, activity: String?, sac: Int): String? {
+        if (activity == null) return null
+        val entries = write(points, anchors) ?: return null
+        val known = activityOf(activity)
+        val name = known?.name ?: activity
+        val s = if (known != null) AnchorProfile.of(known, sac).sac else sac
+        return "{\"activity\":${JSONObject.quote(name)},\"sac\":$s,\"h\":\"${hash(points)}\",\"entries\":$entries}"
+    }
+
+    /**
+     * The anchors of a row written by [writeRow]: none (reported) when its profile or its points are not the row's now.
+     * The older array format (the reader stage, no profile) is read as [read] does. Unreadable = none, never throws.
+     */
+    fun readRow(json: String?, points: List<GeoPoint>, activity: String?, sac: Int): Map<Int, Anchors> {
+        if (json.isNullOrBlank()) return emptyMap()
+        if (!json.trimStart().startsWith("{")) return read(json, points)
+        return try {
+            val o = JSONObject(json)
+            val name = o.getString("activity")
+            if (activity == null || !sameProfile(name, o.getInt("sac"), activity, sac)) {
+                Problems.warn("db", "Stored detour points belong to another activity than the route's – the route is calculated without them")
+                return emptyMap()
+            }
+            if (o.getString("h") != hash(points)) {
+                Problems.warn("db", "The route's points changed since its detour points were stored – the route is calculated without them")
+                return emptyMap()
+            }
+            read(o.getJSONArray("entries").toString(), points)
+        } catch (e: Exception) {
+            Problems.warn("db", "Stored detour points of the route unreadable – the route is calculated without them", e); emptyMap()
+        }
+    }
+
+    private fun activityOf(name: String): Activity? = Activity.entries.firstOrNull { it.name == name }
+
+    /** Known activities by [AnchorProfile] (a hike's T level counts, else not); an unknown name by its raw name and level. */
+    private fun sameProfile(storedName: String, storedSac: Int, name: String, sac: Int): Boolean {
+        val a = activityOf(storedName); val b = activityOf(name)
+        return if (a != null && b != null) AnchorProfile.of(a, storedSac) == AnchorProfile.of(b, sac)
+        else a == null && b == null && storedName == name && storedSac == sac
+    }
+
+    /**
+     * FNV-1a 64 over every point's micro-degree lat and lon, in order, as 16 hex digits. Written by hand: no platform hash
+     * (the code also runs in Wasm), and the same text in the planner and the app.
+     */
+    internal fun hash(points: List<GeoPoint>): String {
+        var h = -3750763034362895579L // 0xcbf29ce484222325
+        fun mix(v: Long) { for (k in 0 until 8) { h = (h xor ((v shr (8 * k)) and 0xff)) * 1099511628211L } }
+        for (p in points) { mix(micro(p.lat)); mix(micro(p.lon)) }
+        val digits = "0123456789abcdef"
+        return buildString { for (k in 15 downTo 0) append(digits[((h shr (4 * k)) and 0xf).toInt()]) }
     }
 
     /** [write] with the profile the anchors lie on: the plan kept between two runs (the activity can change while the app is gone). */
