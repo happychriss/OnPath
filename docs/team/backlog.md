@@ -120,6 +120,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
+- [umbau] (2026-11-24 night, captain's word) Detour stitch WRITERS on `wip/umbau-2026-11-24-stitch-writers` (from readers-all d6493f680): core + state – stitch on insert, transfers, idle settling, „Ganz neu berechnen“ logic + picture for the morning. Nothing on main. → handoff-umbau-2026-11-19.md, top
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] (night 2026-11-24, captain's night word) „Standort teilen“ ON on main (owner's own yes, see night answers); tonight: post-merge check, review „can wait“ items (test first), live-smoke, viewer-page pictures. Handoff: `docs/team/handoffs/handoff-tracking-2026-11-20.md`
