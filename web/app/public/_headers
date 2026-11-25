@@ -1,0 +1,17 @@
+# Security headers of the planner's pages and static files (Cloudflare Workers assets format; vite copies this file
+# into dist/). The host worker (web/host/src/index.js) sets the four simple ones again on its own answers (/data, /sync,
+# /live/v1, /maps, /segments) – web/host/test/host.test.js keeps both in line, web/app/test/csp-smoke.mjs runs the
+# built planner and the live viewer under exactly this policy and fails on any violation.
+# What the pages load (checked 2026-11-25): everything from their own origin (page, engine wasm, rd5 /segments/, map
+# cells /data/, sync /sync/, live /live/v1/, map areas /maps/, fonts, style, sprites); the only other host is Photon
+# place search (https://photon.komoot.io, search.ts / multiday.ts). MapLibre runs its worker from a blob: URL and draws
+# from blob:/data: images; the routing engine is WebAssembly GC (wasm-unsafe-eval) – and TeaVM's runtime calls new Function
+# (JSO glue in onpath-web-engine.wasm-runtime.js, page and worker), so script-src needs 'unsafe-eval' too (tried without:
+# the engine does not load; no way around it short of changing the TeaVM runtime); inline style="" is
+# used by the page and set by MapLibre (style-src 'unsafe-inline' – scripts stay without it).
+/*
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'wasm-unsafe-eval' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' https://photon.komoot.io; worker-src 'self' blob:; manifest-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-src 'none'; frame-ancestors 'none'
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  X-Frame-Options: DENY
+  Permissions-Policy: geolocation=(self), camera=(), microphone=(), payment=(), usb=(), serial=(), interest-cohort=()
