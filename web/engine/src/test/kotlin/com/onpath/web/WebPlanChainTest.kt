@@ -164,4 +164,62 @@ class WebPlanChainTest {
         assertTrue("written to the store", store.savedAnchorsJson != null)
         assertTrue("still unsaved after a reload", com.onpath.app.ui.plan.PlanDocument(store).unsaved)
     }
+
+    // ---- the idle settling (PlanSettle) of a taken run with detour points - writers part 2
+
+    /** A stitched plan [la] - n - [lb] whose run was taken (the line of a plan with detour points), ready to settle. */
+    private fun takenWithAnchors(): Pair<WebPlanChain, List<com.onpath.app.routing.GeoPoint>> {
+        val two = listOf(la, lb)
+        val chain = WebPlanChain(two)
+        chain.end(run(chain, two), "ok", 1) { routed(two) }
+        val three = listOf(la, bulge(la, lb), lb)
+        chain.record(two, three)
+        assertTrue(chain.plan.hasDetours(hike, 2))
+        val gen = run(chain, three)
+        val exp = com.onpath.app.routing.PlanAnchors.expand(three, chain.plan.anchorsFor(hike, 2), emptySet())
+        val planner = com.onpath.app.routing.Planner(bulging, com.onpath.app.routing.RouteCancel(), legs = com.onpath.app.routing.LegCache())
+        val res = com.onpath.app.routing.PlanResult.plan(planner, exp, hike, 2, emptySet(), WebPace.factors(hike))
+        chain.end(gen, "ok", 1) { res }
+        return chain to three
+    }
+
+    /** A taken run with detour points settles: its legs routed on their own, the line shown again quietly from the cache. */
+    @Test
+    fun aTakenRunWithDetourPointsSettlesAndTakesTheQuietLine() {
+        val (chain, _) = takenWithAnchors()
+        val quiet = chain.settleNow(bulging)
+        assertTrue("the settled line is taken", quiet != null)
+        assertTrue("the plan keeps its detour points", chain.plan.hasDetours(hike, 2))
+        assertTrue("it is asked for once", chain.settleNow(bulging) == null)
+    }
+
+    /** No detour points, nothing to settle. */
+    @Test
+    fun aPlainRunHasNothingToSettle() {
+        val two = listOf(la, lb)
+        val chain = WebPlanChain(two)
+        chain.end(run(chain, two), "ok", 1) { routed(two) }
+        assertTrue(chain.settleNow(bulging) == null)
+    }
+
+    /** Every edit (begin) stops the settling: the work is gone. */
+    @Test
+    fun anEditStopsTheSettling() {
+        val (chain, three) = takenWithAnchors()
+        run(chain, three) // a new run begins (an edit, Undo, activity switch)
+        assertTrue(chain.settleNow(bulging) == null)
+    }
+
+    /** A request that routes nothing the engine can answer (a leg missing) shows no worse line: the taken line stays. */
+    @Test
+    fun aLegTheEngineCannotRouteLeavesTheLine() {
+        val (chain, _) = takenWithAnchors()
+        val refusing = object : com.onpath.app.routing.RoutingEngine {
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int) =
+                throw com.onpath.app.routing.RoutingException("no route")
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int,
+                               limits: com.onpath.app.routing.RouteLimits) = route(waypoints, activity, sacLimit)
+        }
+        assertTrue(chain.settleNow(refusing) == null)
+    }
 }

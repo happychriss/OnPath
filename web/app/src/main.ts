@@ -1731,7 +1731,31 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
-  void checkDetours(id); // after the route is on the map: it never waits for this
+  void checkDetours(id).then(() => settleLine(id)); // after the route is on the map: it never waits for this
+}
+
+/**
+ * The idle settling (detour-stitch.md §8.15, the app's PlanRecalcSlice.routeTaken): a plan with detour points has its legs routed on
+ * their own so every device ends on the same line; then the line is shown again, quietly – no fit, no sheet, no notice, no undo step.
+ * The engine does it in one long call (WebApi.settleRun) after the taken run; an edit, a hold or Neu replaces the worker still in
+ * it (client.ts), and the plan is not touched. Only for the plan still shown. body[data-settle] = "<plan>:done|shown" (the tests).
+ */
+async function settleLine(id: number) {
+  const points = enc(state.points);
+  const same = () => id === state.latest && !state.planning && enc(state.points) === points && !state.tour;
+  if (!same() || !engine.anchors) return; // no detour points: nothing to settle (the page's copy of the engine's)
+  document.body.dataset.settle = `${id}:running`;
+  try {
+    const text = await engine.call('settleRun', namesText());
+    if (text === 'null' || !same()) { if (same()) document.body.dataset.settle = `${id}:done`; return; }
+    state.plan = JSON.parse(text);
+    planGaps.set(state.plan!.gaps);
+    document.body.dataset.settle = `${id}:shown`;
+    render();
+  } catch (e) {
+    // a settling of a replaced worker answers {cancelled}: nothing to report – the edit is on its way
+    if (same()) problem('routing', 'Settling the plan\'s line failed – the line stays as it is', e, 'warn');
+  }
 }
 
 /**

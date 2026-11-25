@@ -24,6 +24,10 @@ import com.onpath.app.domain.AppMode
 import com.onpath.app.domain.RouteSpot
 import com.onpath.app.domain.plan.RouteRun
 import com.onpath.app.routing.LegCache
+import com.onpath.app.routing.RouteCancel
+import com.onpath.app.routing.RoutingEngine
+import com.onpath.app.debug.Problems
+import com.onpath.app.ui.plan.PlanSettle
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.SlowPlan
 import com.onpath.app.routing.PlanResult
@@ -40,7 +44,9 @@ import com.onpath.app.ui.Say
  * a fresh worker (historyExport / historyImport, web-planner.md §26): the page's commit, Undo / Redo and Cancel go through
  * [record], [step] and [cancel] – the shared PlanEditState decides (Cancel takes back the change that started the run).
  */
-class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = PlanHistory()) {
+class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = PlanHistory(),
+                   /** The engine's own leg cache: the snap aliases legs in it, the settle reads and fills it. */
+                   private val legCache: LegCache = LegCache()) {
     /** What the slice asked the host, in order (one word each, e.g. "recalc", "restoreActivity"). */
     val did = ArrayList<String>()
     var line: List<GeoPoint>? = null
@@ -177,7 +183,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         override val runCauses: RunCause get() = this@WebPlanChain.runCauses
         override val activity: Activity get() = act
         override val sac: Int get() = level
-        override val legCache: LegCache = LegCache() // the head reads none; the engine's own is Engine's legCache
+        override val legCache: LegCache get() = this@WebPlanChain.legCache
         override fun planFactors(a: Activity): com.onpath.app.time.Factors = WebPace.factors(a)
         override fun withModelTime(r: PlannedRoute, a: Activity, f: com.onpath.app.time.Factors): PlannedRoute = r
         override var activityBefore: PlannedRoute? = null
@@ -211,8 +217,46 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         }
     }
 
-    val recalc = PlanRecalcState(plan, planRun, recalcPorts, PlanTourPort.None, MapDataPort.None,
-        Say { _, _, _ -> }, recalcHost, background, elapsedMs = { System.currentTimeMillis() })
+    /**
+     * The idle settling (detour-stitch.md §8.15, piece W2): the app's pure [PlanSettle] (cap, what to settle, the blocking work);
+     * the page runs [settleNow] as one call of the routing worker once the taken run's line is shown, and an edit stops it (a
+     * fresh worker, client.ts) – here every [PlanRecalcState.begin] drops the work not yet started. No tour in the planner.
+     */
+    val settle = PlanSettle()
+    private var pending: PlanSettle.Work? = null
+    private var settleCancel: RouteCancel? = null
+
+    val recalc: PlanRecalcState = object : PlanRecalcState(plan, planRun, recalcPorts, PlanTourPort.None, MapDataPort.None,
+        Say { _, _, _ -> }, recalcHost, background, elapsedMs = { System.currentTimeMillis() }) {
+        /** Every edit (every begin) stops the settling first – it is the lowest priority. */
+        override fun beginning() { stopSettle() }
+        /** A run was taken: its settling is asked for, once (null = nothing to settle). */
+        override fun routeTaken(run: PlanRecalcState.Run, res: PlanResult) {
+            pending = settle.prepare(run, res, planPointsNow(), legCache) { false }
+        }
+    }
+
+    /** The settling stops: the work not yet started goes, the cancel signal fires (new routing data, a cache clear, an edit). */
+    fun stopSettle() { settleCancel?.cancel(); settleCancel = null; pending = null }
+
+    /**
+     * The settling of the run last taken (blocking, in the routing worker): the plan's own legs routed one by one, then the
+     * line shown again from the cache alone ([PlanSettle.settle]) and taken quietly ([PlanRecalcState.takeQuiet]: only while the plan
+     * is still exactly the run's). Null = nothing to show. Exceptions go to the caller.
+     */
+    fun settleNow(engine: RoutingEngine): PlanResult? {
+        val work = pending ?: return null
+        pending = null
+        val cancel = RouteCancel()
+        settleCancel = cancel
+        val res = settle.settle(work, engine, legCache, cancel) { false } ?: return null
+        if (cancel.isCancelled) return null
+        if (!recalc.takeQuiet(work.again, res)) {
+            Problems.trace("routing", "Settling: a newer run began – the settled line is not shown")
+            return null
+        }
+        return res
+    }
 
     /** What [head] decided. */
     sealed interface Head {

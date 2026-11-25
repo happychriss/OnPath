@@ -77,7 +77,8 @@ export class EngineClient {
     if (req.type === 'plan' || req.type === 'planFromTrack') this.plans.set(id, 0);
     // a step of the detour check (WebApi.detourAt, the app's PlanDetourCheck): the next edit stops it at once like the app's
     // detourCheck.stop() – it counts as routing for longer than the grace already, so dropPlans replaces a worker still in it
-    if (req.type === 'call' && req.fn === 'detourAt') this.plans.set(id, performance.now() - EngineClient.DROP_GRACE_MS);
+    // … and the idle settling of a plan with detour points (WebApi.settleRun – one long call, the lowest priority)
+    if (req.type === 'call' && (req.fn === 'detourAt' || req.fn === 'settleRun')) this.plans.set(id, performance.now() - EngineClient.DROP_GRACE_MS);
     // … and so does every request an edit, a link, Neu or Undo begins with (they come before the plan's dropPlans and would
     // wait behind the step); a hold's measure does not – the check gives way to it by itself (main.ts checkDetours)
     else if (EngineClient.endsDetour(req)) this.stopDetour();
@@ -100,12 +101,13 @@ export class EngineClient {
   /** A request that begins a new plan or an edit (the app's newRunStarts → detourCheck.stop()). */
   private static endsDetour(req: NoId<EngineRequest>): boolean {
     if (req.type === 'plan' || req.type === 'edit' || req.type === 'parse' || req.type === 'planFromTrack' || req.type === 'gpxRead') return true;
-    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead'].includes(req.fn);
+    // (a hold or a menu on the map also: the one worker would keep them waiting behind the settling)
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch', 'holdOnMap', 'pointMenu', 'placeMenu', 'placeEdit', 'gesture'].includes(req.fn);
   }
 
   /** A detour step still in the worker is stopped at once: a fresh worker ([restart]); its promise answers {cancelled}. */
   private stopDetour() {
-    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return r?.type === 'call' && r.fn === 'detourAt'; });
+    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return r?.type === 'call' && (r.fn === 'detourAt' || r.fn === 'settleRun'); });
     if (ids.length) this.restart(ids);
   }
 

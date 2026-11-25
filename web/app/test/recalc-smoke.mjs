@@ -46,7 +46,24 @@ check(await page.evaluate(() => window.__engine.anchors) !== '', 'the plan carri
 const label = await page.textContent('#menuRecalc');
 check(/Ganz neu berechnen|Recalculate from scratch/.test(label), `the row says "${label.trim()}" (the app's string)`);
 check(await page.evaluate(() => document.querySelector('#newPlan').nextElementSibling.id) === 'menuRecalc', 'the row sits right after Neu planen');
-const before = await page.evaluate(() => JSON.stringify(window.__state.points));
+let before = await page.evaluate(() => JSON.stringify(window.__state.points));
+
+// the idle settling (WebApi.settleRun – the app's PlanSettle): the taken run's legs routed on their own, the line shown again quietly
+const settleDone = (id) => page.waitForFunction((i) => /:(shown|done)$/.test(document.body.dataset.settle ?? '') && document.body.dataset.settle.startsWith(i ? '' : ''), id, { timeout: 600_000 });
+await settleDone();
+const settledAs = await page.evaluate(() => document.body.dataset.settle.split(':')[1]);
+const line1 = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
+console.log('settled (' + settledAs + '): ' + line1);
+check(settledAs === 'shown' || settledAs === 'done', 'the plan with detour points was settled (' + settledAs + ')');
+check(await page.evaluate(() => window.__engine.anchors) !== '', 'the settling left the detour points');
+
+// a reload: the plan from the address, its own settled legs from the browser store: the same line
+await page.reload();
+await idle();
+await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
+const line2 = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
+check(line2 === line1, 'reload: the same line (' + line2 + ')');
+before = await page.evaluate(() => JSON.stringify(window.__state.points));
 
 // tap: the detour points go, the plan is routed again
 await page.click('#menuRecalc');
@@ -57,6 +74,8 @@ check(await page.evaluate(() => window.__engine.anchors) === '', 'tap: the detou
 check(await rowShown(false), 'tap: the row goes');
 check(await page.evaluate(() => JSON.stringify(window.__state.points)) === before, 'tap: the same visible points');
 check(await page.isEnabled('#undo') || await page.isVisible('#undoPill'), 'tap is one undo step');
+const cold = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
+console.log('cold line: ' + cold);
 
 // Undo: the stitched plan is back
 await page.waitForFunction(() => !document.querySelector('.waitveil') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
@@ -64,6 +83,9 @@ await page.click('#undo');
 check(await rowShown(true), 'Undo: the row is back');
 check(await page.evaluate(() => window.__engine.anchors) !== '', 'Undo: the detour points are back');
 await idle();
+await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
+const back = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
+check(back === line1, 'Undo: the stitched, settled line is back (' + back + ')');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

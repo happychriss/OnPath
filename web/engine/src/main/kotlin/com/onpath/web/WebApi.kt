@@ -142,6 +142,7 @@ object Engine {
         android.content.res.AssetManager.root = File(root, "assets")
         engine = null
         fingerprint = null // of the profiles handed over to this root
+        chain.stopSettle()
         legCache.clear() // other profiles / routing data: every leg is routed again
     }
 
@@ -211,7 +212,7 @@ object Engine {
         ix.check()
         val before = layouts[tile]?.second
         // a newer build of the tile (the page's copy is at most a day old): the same points may route differently now
-        if (before != null && Rd5Parts.creationTime(before) != Rd5Parts.creationTime(tail)) legCache.clear()
+        if (before != null && Rd5Parts.creationTime(before) != Rd5Parts.creationTime(tail)) { chain.stopSettle(); legCache.clear() }
         layouts[tile] = ix to tail
     }
 
@@ -775,7 +776,7 @@ object Engine {
     // ---- undo / redo: the app's PlanDocument + PlanEditState (WebPlanChain) around one PlanHistory ----
     private val history = PlanHistory()
     /** The app's plan-editing chain on this engine's history (rebuilt after an import: its Undo / Redo flags are read at construction). */
-    private var chain = WebPlanChain(history = history)
+    private var chain = WebPlanChain(history = history, legCache = legCache)
 
     /** One undoable change of the points [before] → [after] (PlanEditState.change). */
     fun historyRecord(before: String, after: String) = chain.record(parsePoints(before), parsePoints(after))
@@ -841,7 +842,7 @@ object Engine {
             return steps.indices.map { i -> AnchorsJson.readSet(texts.getOrNull(i)?.ifEmpty { null }, steps[i]) }
         }
         history.restore(undo, redo, sets(parts.getOrNull(6), undo), sets(parts.getOrNull(7), redo))
-        chain = WebPlanChain(history = history)
+        chain = WebPlanChain(history = history, legCache = legCache)
         parts.getOrNull(4)?.takeIf { it.isNotEmpty() }?.let { planArrive(it, parts.getOrNull(5).orEmpty()) }
         parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
         epoch = (maxOf(epoch, parts.getOrNull(3)?.toIntOrNull() ?: 0) + 1) % 2000
@@ -870,6 +871,24 @@ object Engine {
     fun runEnd(gen: Int, outcome: String, rounds: Int) {
         if (gen / EPOCH != epoch) { Problems.trace("plan", "the end of a run of an earlier chain – ignored ($outcome)"); return }
         chain.end(gen % EPOCH, outcome, rounds) { lastResultFor(it) }
+    }
+
+    /**
+     * The idle settling of the run last taken (the app's PlanRecalcSlice.routeTaken, §8.15): every leg of a plan with detour points
+     * routed on its own so each device ends on the same line, then the line again from the cache. The page's plan JSON of the
+     * settled line, or "null" (nothing to settle, an edit came first, a leg missing from the cache: the line stays). One blocking
+     * call, started once the taken line is shown; an edit replaces the worker still in it (client.ts, as the detour check).
+     */
+    fun settleRun(names: String): String {
+        val t0 = System.currentTimeMillis()
+        return try {
+            val res = chain.settleNow(engine())?.withNamed(parseNames(names).filterValues { it.isNotBlank() }.keys) ?: return "null"
+            lastResult = res
+            planJson(res, parseNames(names), System.currentTimeMillis() - t0, null, lastReach)
+        } catch (e: Exception) {
+            Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", e)
+            "null"
+        }
     }
 
     /** The plan menu's row "Ganz neu berechnen" (PlanEditState.recalcRow): is it shown for the page's plan [points]? Only for the open plan. */
@@ -1319,6 +1338,8 @@ external fun planProgress(text: String)
 @JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
 @JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
+
+@JSExport fun settleRun(names: String): String = Engine.settleRun(names)
 
 @JSExport fun recalcRow(points: String, activity: String, sac: Int): Boolean = Engine.recalcRow(points, activity, sac)
 
