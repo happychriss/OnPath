@@ -6,7 +6,7 @@ Settings is open) · `CoreFieldE2ETest` stop hold picks an open spot 80 dp from 
 2026-11-24 moved „Hierhin“'s snap; red on unchanged b1df0f478; class 35/35 green with it).
 **0.18.10 prepared, NOT published:** `ci/donald-2026-11-25-release-0.18.10b` = main 8264369bd + version + EN notes
 (`docs/release-notes/v0.18.10.md`); German text `items/2026-11-25-release-0-18-10-notes-de.md`. First branch (…-0.18.10):
-full E2E 113/114 (the hold test above), Rundgang 18/18. Branch b: full E2E + Rundgang on GitHub (see backlog line).
+full E2E 113/114 (the hold test above), Rundgang 18/18. Branch b (29a844f67): **full E2E 114/114** (45521118312), **Rundgang 18/18** (45521127107), `release_check.sh --app 78f3f75c --go v0.18.10` **GO** (78f3f75c → 8264369bd is one doc only; planner efe3ed5a).
 **To publish (owner's word in donald's chat):** push the release commit of branch b onto main (fast-forward, or
 cherry-pick on a newer main + gate) – release.yml then builds, tags and deploys the planner. Before: `release_check.sh --go v0.18.10`.
 Prune later: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*` (first release + rundgang + e2e-hold-fix).
