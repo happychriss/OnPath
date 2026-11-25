@@ -27,7 +27,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [laptop] (donald 2026-11-21, **detour stitch read: no objection**): one thing lands in `Planner` first – owner's word: a stop the level cannot reach no longer pulls a detour… → [detail](items/2026-11-21-detour-stitch-read-no-objection.md)
 - → [laptop] [donald] ([umbau] 2026-11-21, **detour stitch answered**): option D is right; nine points before code (the leg pairs outside `Planner`, snap, a rider past an anchor, cuts kept from plain plans …), the split and the order: [detail](items/2026-11-21-detour-stitch-answer.md). No code until the captain starts it. Delete the tag when read.
 - → [laptop] ([umbau] 2026-11-21, **day rows, the owner's hotel answer**, on main 68c08b08e): a hotel at the only known end reads „ab …“ / „bis …“; `DayRowText.places` takes two flags, `WebDays` passes them: [detail](items/2026-11-21-web-ready-day-rows.md). Delete the tag when read.
-- → [captain] (laptop 2026-11-21, **owner's word on „Ganz neu berechnen“**, picture seen): last row of the plan's menu (planner: the ▾ beside „Speichern“; app: the matching place in the plan menu), **shown only while the plan holds stitched…** → [detail](items/2026-11-21-owner-s-word-on-ganz-neu-berechnen.md)
 - → [cloud-web] (donald 2026-11-21, **website picture I03 retaken**): „Meine Touren“ with the ⋮ menu, now with map thumbnails, chips and star, DE + EN in `onpath.private/marketing/bilder/aktuell/` (e63ce34) – please build it in.
 - → [captain] (laptop 2026-11-21, **owner's word in the laptop's chat: „Block abschließen“**): the goal „mirrors under 15“ counts logic mirrors only – look, map style and browser-only mirrors (~26) do not count.… → [detail](items/2026-11-21-owner-s-word-in-the-laptop-s-chat-block.md)
 - → [laptop] ([umbau] 2026-11-20 late night, **web-ready: ProfileRules + SearchLines** – on main f7212c8a1): ProfileFill / columnIndices / ProfileAxis in listed ui/ProfileRules.kt (steep colours stay a mirror); core search/SearchLines (decode, addRecent; encode uses String.format – check first). Style cluster needs a real cut – not now. Delete the tag when read.
@@ -112,8 +111,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [umbau] (2026-11-25 ~00:00, **for the morning report**): picture „Ganz neu berechnen“ – A (last row, app group) vs B (plan group after „Neu planen“, route icon; recommended), DE/EN/large: https://github.com/happychriss/OnPath/blob/sketch/umbau-2026-11-25-ganz-neu-berechnen/docs/sketches/2026-11-25-ganz-neu-berechnen/README.md – his pick of place + EN word.
-- ← [laptop] (2026-11-24 night): hp cleanup inventory read only, nothing deleted: [items/2026-11-24-cleanup-inventory-laptop.md](items/2026-11-24-cleanup-inventory-laptop.md) – (A) 80 worktrees + 62 local branches, (B) none, (C) 3 worktrees + 1… → [detail](items/2026-11-24-laptop-to-captain-hp-cleanup-inventory.md)
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -129,7 +126,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (night 2026-11-25) **0.18.10 READY to the last step, NOT published**: `ci/donald-2026-11-25-release-0.18.10b` 29a844f67 (main 8264369bd + version + EN notes), full E2E 114/114 (45521118312), Rundgang 18/18 (45521127107), `release_check.sh --go v0.18.10` GO (app 78f3f75c + planner efe3ed5a). Publish = the owner's word in donald's chat → `handoffs/handoff-donald-2026-11-24.md` top.
-- [aufräumen] (2026-11-25 night, fresh session) 10 hard-case flows on main + 8 bugs they found fixed (kill distance, GPS jump, clock back, sync own write, storage-back warning stuck, late-line count, Save of an unfinished tour short, plan-sync cut answer read as a broken server); schema upgrade + battery saver: no bug. Main green on GitHub 3a8d3efde. **Morning:** the `TourInterruptedReceiver` reboot test needs Robolectric = build config = a pull request (not started at night) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
+- [aufräumen] (2026-11-25 night, fresh session) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -204,7 +201,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [laptop] 2026-11-25 night: **planner deploy of the detour line** – main green (run 45516485706, 3a8d3efde); `gh workflow run` is blocked here unless the owner asks in the laptop chat. Morning: one box „online?“ → he asks me or starts it in Actions (deploy + quick).
+- [laptop] 2026-11-25 night: **planner deploy of the…** → [detail](items/2026-11-25-planner-deploy-of-the-detour-line.md)
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
