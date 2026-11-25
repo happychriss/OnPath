@@ -436,6 +436,11 @@ check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching 
   await page.waitForFunction(() => /detour/.test(document.getElementById('notice').textContent), null, { timeout: 60_000 }).catch(() => {});
   const line = await page.textContent('#notice');
   console.log('detour line:', line);
+  // the sheet with the detour line + the warnings on a laptop (1280 × 800): every point row shown, the goal too
+  // (2026-11-25: the list was squeezed to two rows, „Ziel“ hidden inside it)
+  const rows = await page.evaluate(() => { const list = document.getElementById('points'), box = list.getBoundingClientRect(), sh = document.getElementById('sheet').getBoundingClientRect();
+    return [...list.querySelectorAll(':scope > li')].map((li) => { const r = li.getBoundingClientRect(); return r.height > 0 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1 && r.top >= sh.top - 1; }); });
+  check(rows.length === 3 && rows.every(Boolean), `with the detour line every point row is shown, none clipped inside the list (${rows.join(' ')})`);
   const km = await page.evaluate(() => window.__state.plan.distanceM);
   check(/② adds a 2[.,][6-9] km detour/.test(line) && await page.isVisible('#showGap'), `T1: "② adds a … km detour" + Show (${line.trim()})`);
   await page.click('#showGap');
