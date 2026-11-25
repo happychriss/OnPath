@@ -299,7 +299,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
 }
 
 /**
- * One plain menu line (owner 2026-11-07: "einfach ein Menüeintrag"): "Mit Browser koppeln" / "Browser-Kopplung"
+ * One plain menu line (owner 2026-11-07: "einfach ein Menüeintrag"): "Mit Browser verbinden" / "Browser-Verbindung"
  * ([SyncMenuUi.labelPaired]), no subtitle, no ✓. The state shows only in the leading icon: a problem worth a look makes
  * the same sync icon amber (and the ☰ dot) – the screen reader hears the reason. A tap opens the pairing / Browser sync,
  * where the status stands ("Verbunden seit …", "Zuletzt abgeglichen", Trennen).

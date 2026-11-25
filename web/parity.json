@@ -1423,7 +1423,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/Navigator.kt": {
-      "blob": "157473d9ac4eba61751e9ec3aee76d1312dd5e1a",
+      "blob": "a9e5291ad1f611b27441e8cbd398b521fb3945a1",
       "perf": [
         "/** No way back (no data, nothing found, timeout): arrow + distance to the route. */",
         "session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true))",
@@ -1448,12 +1448,13 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/OffRouteDetector.kt": {
-      "blob": "f7f8dd00ea3cba49b725b18d27ecf5dc993f3b72",
+      "blob": "abc8cc3f9b06bf31f8103c482ce8e7595145ff86",
       "perf": [
         "* - Off-route distance = setting + accuracy margin (min(accuracy, [MAX_MARGIN_M])).",
         "* - Confirmed only after [CONFIRM_MS] off **and** having moved [MOVE_M] (+ margin) since leaving: a break with GPS",
         "*   ([shownAlongM] null) and it is confirmed after [EARLY_CONFIRM_MS] and [MOVE_M] instead of [CONFIRM_MS]. It stays",
         "fun offDistance(accuracyM: Double) = offRouteM + min(max(accuracyM, 0.0), MAX_MARGIN_M)",
+        "m.alongM - progressM > SKIP_AHEAD_M + MAX_SPEED_MPS * sinceS",
         "val needMove = MOVE_M + min(f.accuracyM, MAX_MARGIN_M)",
         "if (f.timeMs - leaveStartMs >= (if (leaveEarly) EARLY_CONFIRM_MS else CONFIRM_MS) && leaveMoved >= needMove) {",
         "while (recent.size > 2 && f.timeMs - recent.first().timeMs > HEADING_MAX_MS) recent.removeFirst()",
@@ -1461,11 +1462,12 @@
         "const val CONFIRM_MS = 15_000L",
         "const val EARLY_CONFIRM_MS = 4_000L",
         "const val MAX_MARGIN_M = 20.0",
+        "const val MAX_SPEED_MPS = 25.0",
         "const val HEADING_MAX_MS = 180_000L"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/OffRouteSay.kt": {
-      "blob": "d8f0a5171dc599d2d1691c25485e090e10550317",
+      "blob": "1a648568e524ccf63fbd9239d499e2ff73e2104e",
       "perf": [
         "* Doubt is: the fix is old, the GPS lost, standing still, a poor fix ([MAX_ACC_M]), the route closer than the fix is",
         "* ([GAP_MS]), no GPS bearing or one that contradicts the heading ([AGREE_DEG] – the bearing is the only check of the last",
@@ -1828,7 +1830,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/recording/PointQueue.kt": {
-      "blob": "e9ecc7bed2e6fd828b8c386a05eb5d2fb7b70e2b",
+      "blob": "677bccb3e996dc36894d124e03eeb535aad3d303",
       "perf": [
         "/** ~5 h at one point a second: beyond that the oldest unwritten point is given up (memory). */"
       ]
@@ -3448,7 +3450,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "03f972e8aff3c8e87c4eb508ea7f313a7a6b7f07",
+      "blob": "89b9492d935bce83c168a57adca4424d445b7a7a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -3460,7 +3462,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
-      "blob": "640c550148c226533552e2c95eba6f0255cff4c6",
+      "blob": "70ff2f0674e19fb4f80c7b3f6b9f45157d47fd0e",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_voice.xml": {
@@ -3520,7 +3522,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "ab1b7dafc77784a8df5ca734077e152aa7b37b66",
+      "blob": "1de7aeaed1057a56c46e7dd7f8754ad5e66aad6a",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -3532,7 +3534,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {
-      "blob": "ba85431d947b1519ecc70219391d2c3eb4b6ab85",
+      "blob": "7ba86b2dac8139220a4fce7b561774dc381f2b3c",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_voice.xml": {
