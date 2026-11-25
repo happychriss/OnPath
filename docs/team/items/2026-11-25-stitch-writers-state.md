@@ -19,7 +19,8 @@ Branch **`wip/umbau-2026-11-24-stitch-writers` = 29496f0ec** (fresh umbau sessio
 ## Checked (night 2026-11-25)
 - `SameRouteTest` full at c651906ac: 4 tours × 27 = 108/108 + 4 controls GREEN, `full=0` (settle 126–170 requests, 24–162 s per tour on donald); cold verify 112/112.
 - Web planner green on `ci/umbau-writers` at c651906ac (run 45511200895). Full E2E at c651906ac (run 45511149796): 1 red – `CoreFieldE2ETest.goHereFromMyLocationThenDeleteWhileFollowing` (the second hold landed 16 dp from the snapped destination and opened its menu; 2 points, no anchors, old hold-during-snap area, item 2026-11-20) – not the writers.
-- Full E2E + Web planner at 29496f0ec: running (45514940693, 45514968780) – see the night answers for the result.
+- Full E2E at 29496f0ec (run 45514940693): the same single red `goHereFromMyLocationThenDeleteWhileFollowing`. **It is red on main too** (donald's 0.18.10 release run 45508818926: 114 / 1 failed, same message) → a main issue, line „For the captain“ (donald / aufräumen): the second hold (`w*0.30, h*0.30`) lands 16 dp from the snapped destination after the 2.2× short-trip retry and opens its point menu instead of adding a stop.
+- Web planner: red at 29496f0ec only for parity (AppViewModel + Prefs changed) → recorded (d75e05b12) → green (45516232232).
 
 ## NOT done – in this order
 1. **W2 SHOULD-FIX (first review):** no-route legs asked again by every settle / quiet re-run; a §8.5 fallback sub-leg not in the cap; quiet re-run should be cache-only → a helper on `work/w2-noroute` (night 2026-11-25), merge after its gate.
