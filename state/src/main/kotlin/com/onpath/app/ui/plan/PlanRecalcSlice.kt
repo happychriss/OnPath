@@ -219,14 +219,14 @@ class PlanRecalcSlice(
                     // a cache miss for any leg that is not a known no-route leg cancels the quiet run's OWN signal (never the settle's or a newer run's):
                     // no fallback without anchors, no worse line – the taken line stays
                     val quietCancel = RouteCancel()
-                    var missed = false
-                    val cacheOnly = com.onpath.app.routing.CacheOnlyEngine(known = { x, y -> (x to y) in noRoute }, onMiss = { _, _ -> missed = true; quietCancel.cancel() })
+                    val missed = java.util.concurrent.atomic.AtomicBoolean(false) // atomic: the planner may ask legs on more than one thread
+                    val cacheOnly = com.onpath.app.routing.CacheOnlyEngine(known = { x, y -> (x to y) in noRoute }, onMiss = { _, _ -> missed.set(true); quietCancel.cancel() })
                     val quiet = try { PlanRecalcState.route(again, cacheOnly, cache, quietCancel, { _, _ -> }) } catch (e: Exception) {
-                        if (!missed) throw e
+                        if (!missed.get()) throw e
                         Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is")
                         return@exceptions null
                     }
-                    if (missed) { Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is"); null } else quiet
+                    if (missed.get()) { Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is"); null } else quiet
                 }
             }
             out.onFailure { Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", it) }
