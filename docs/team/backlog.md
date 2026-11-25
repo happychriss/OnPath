@@ -199,12 +199,12 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [laptop] 2026-11-25: **laptop tidy-up (group A)** – deleting is blocked for the session (the yes came through the captain), so like donald's: the owner runs `~/aufraeumen-laptop-2026-11-25.sh` on the laptop (79 worktrees, each re-checked first; 61 local branches; `/tmp/pcheck` pruned). `web-spike` was wrongly in A – it stays (frozen).
-- [laptop] 2026-11-25 morning: **pull request „Web planner CI: every browser smoke runs“** (stop-smoke with the Ruhr data) – all checks green, a second model read it (no blockers); `gh pr merge` is blocked here without the owner's ask in the laptop chat. Follow-up: routes-smoke can run in CI too (needs no cell store).
-- [aufräumen] 2026-11-25 morning: **Playwright install retry PR (his yes) is blocked by the token** – donald's `gh` token has no `workflow` scope (GitHub refuses any push touching `.github/workflows/`). His step: `gh auth refresh -h github.com -s workflow` on donald (browser login) – then aufräumen pushes `pr/web-playwright-install-retry` (53182aab5) and merges as usual; or he pushes that branch himself.
+- [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
+- [laptop] 2026-11-25 morning: **pull request…** → [detail](items/2026-11-25-pull-request-web-planner-ci-every-browse.md)
+- [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
-- **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
-- **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
+- **[donald] Only our signed apps on the map server?…** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
+- **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
 ## Later
 - **Multi-day tours – concept complete, nothing built…** → [detail](items/2026-11-17-multi-day-tours-concept-complete-nothing.md)
