@@ -1,3 +1,16 @@
+# Night 2026-11-25 (fresh donald, ~02:00) – state
+
+**On main:** restore box 2e754723f · detour reason fb38e0ec4 (Web planner jvm with WebDetourTest green) · share-name
+blocker fixed 224ea091d (`LiveShareNameE2ETest` red → green; Navigate's `LiveSignLayer` draws the name question unless
+Settings is open) · `CoreFieldE2ETest` stop hold picks an open spot 80 dp from the points 7d1dd4044 (brouter.de data of
+2026-11-24 moved „Hierhin“'s snap; red on unchanged b1df0f478; class 35/35 green with it).
+**0.18.10 prepared, NOT published:** `ci/donald-2026-11-25-release-0.18.10b` = main 8264369bd + version + EN notes
+(`docs/release-notes/v0.18.10.md`); German text `items/2026-11-25-release-0-18-10-notes-de.md`. First branch (…-0.18.10):
+full E2E 113/114 (the hold test above), Rundgang 18/18. Branch b: full E2E + Rundgang on GitHub (see backlog line).
+**To publish (owner's word in donald's chat):** push the release commit of branch b onto main (fast-forward, or
+cherry-pick on a newer main + gate) – release.yml then builds, tags and deploys the planner. Before: `release_check.sh --go v0.18.10`.
+Prune later: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*` (first release + rundgang + e2e-hold-fix).
+
 # Handoff donald, Tuesday 2026-11-24 ~23:35 (night mode, context full – for the fresh donald)
 
 Start: `docs/team/roles/start.md` → this file → backlog lines for [donald]. **NIGHT MODE** (captain ~23:05, owner asleep):
