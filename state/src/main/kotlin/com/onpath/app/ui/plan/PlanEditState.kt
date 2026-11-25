@@ -198,6 +198,13 @@ open class PlanEditState(
      */
     fun canRecalcFromScratch(activity: Activity, sac: Int): Boolean = !host.touring() && plan.hasDetours(activity, sac)
 
+    /**
+     * The plan menu's row "Ganz neu berechnen" (owner 2026-11-25, picture B): what the menu is handed – null (no row) unless
+     * [canRecalcFromScratch], else the tap, which runs [recalcFromScratch] on the profile asked for now.
+     */
+    fun recalcRow(activity: Activity, sac: Int): (() -> Unit)? =
+        if (canRecalcFromScratch(activity, sac)) ({ recalcFromScratch(activity, sac) }) else null
+
     /** The plan becomes [list] in one undoable step ([change]). */
     fun set(list: List<GeoPoint>) = change { clear(); addAll(list) }
 

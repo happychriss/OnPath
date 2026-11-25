@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.RadioButtonChecked
+import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
@@ -102,6 +103,12 @@ class PlanMenu(
      * rarely needed): a plain recording; null hides it (a tour runs).
      */
     val onRecordWithoutPlan: (() -> Unit)? = null,
+    /**
+     * "Ganz neu berechnen" in the plan group right after "Neu planen" (owner 2026-11-25, picture B): drops the plan's detour
+     * points and routes it again; null hides it ([com.onpath.app.ui.plan.PlanEditState.recalcRow]: only a plan with such
+     * points on its profile, no tour running).
+     */
+    val onRecalcFromScratch: (() -> Unit)? = null,
     /**
      * "? Hilfe" as the first item (owner 2026-11-08, father's feedback): the help on onpath.earth in the app language –
      * the same address as About's "Hilfe & erste Schritte" ([OnPathLinks.help]); null hides it.
@@ -291,6 +298,7 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     }
     // owner 2026-11-06: Meine Touren · Plan speichern · Neu planen · Nur aufzeichnen, then the rest
     menu.onNewPlan?.let { n -> MenuItem(Icons.Filled.Close, str(Res.string.plan_close_plan)) { close(); n() } }
+    menu.onRecalcFromScratch?.let { r -> MenuItem(Icons.Outlined.Route, str(Res.string.plan_menu_recalc)) { close(); r() } }
     menu.onRecordWithoutPlan?.let { r -> MenuItem(Icons.Outlined.RadioButtonChecked, str(Res.string.plan_menu_record_without_plan)) { close(); r() } }
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
