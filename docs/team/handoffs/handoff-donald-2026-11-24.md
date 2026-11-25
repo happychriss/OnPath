@@ -1,3 +1,19 @@
+# SHUTDOWN 2026-11-25 ~23:10 (owner's word via the captain) – start here, fresh donald
+
+**On main (all gated):** 0.18.10 released 10:54 UTC (de9bb71a4, planner deployed). Viewer countdown V1 + „Geteilter
+Standort“ 1ea95b37a (NOT deployed yet – goes live with 0.18.11's planner deploy). 0.18.11 app list complete
+(`items/2026-11-25-release-0-18-11-plan.md` „[donald] done“): off-route loop jump + time-scaled skip 4b5988f31,
+AGREE_DEG side check, NextStop passedBy + noisy arrival cd49d70cb, leadFailedOk + „none lost“ + zip a7407b508, privacy
+texts (owner's yes) cf8c44351, My routes keeps its search 0328e6d02. No unfinished work, no wip branch, no device job.
+**Waits:** the detour writers (umbau app done on `wip/umbau-2026-11-24-stitch-writers`; the laptop's planner part) on
+main. Then: version 0.18.11 + EN notes (+ German item), full E2E + Rundgang on a `ci/` branch, Web planner green,
+`release_check.sh --go v0.18.11` → **publish yourself: the owner's own word in donald's chat 2026-11-25 ~16:45**
+(„publish everything to a final release … to test end-to-end in real life“; memory release-word-0-18-11). Red stays out.
+**Owner question (backlog „Waiting for the owner“):** bike marker hides point „1“ – a picture first (marker under the
+numbered point / smaller near a point); recommendation: marker under the numbered point while within ~30 m of it.
+**Not checked on a device:** the 0.18.11 fixes (emulator helper stopped at the welcome screen; E2E covers the flows).
+Prune later: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*`, `wip/donald-2026-11-25-*` (all merged).
+
 # 2026-11-25 ~11:55: 0.18.10 RELEASED on the owner's word („Ok, for the release“) – de9bb71a4 (the release commit cherry-picked onto main ab07f1cd6+docs; only test-only Robolectric + a planner CSS fix came in between, both CI-green), release run 45597989609 green, planner deployed.
 
 # Night 2026-11-25 (fresh donald, ~02:00) – state

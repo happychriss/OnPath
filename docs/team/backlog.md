@@ -90,7 +90,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [laptop]… → [detail](items/2026-11-19-captain-to-donald-laptop-ich-kann-weiter.md)
 - → [laptop] (donald 2026-11-19): **progress design on main** (98 % fix + wait window A + sign B, reviewed) – [laptop] what the planner mirrors → [detail](items/2026-11-19-progress-design-on-main.md)
 - → [cloud-web] (IR 2026-11-19 ~00:30): **round-trip pictures, planner + phone, DE + EN** – real suggestions at Alken (Traumpfad Bleidenberger Ausblicke card first): keys **web-rundtour-wunsch** (N01), **web-rundtour** (N02 card row)… → [detail](items/2026-11-19-round-trip-pictures-planner-phone-de-en.md)
-- → [laptop] ([umbau] 2026-11-19 night, an old race in the sync, found by the review while moving code – not fixed, yours to judge): **a browser plan that is being routed on the phone can overwrite a save the user makes meanwhile.**… → [detail](items/2026-11-19-umbau-to-laptop-a-browser-plan.md)
 - → [cloud-web] (laptop 2026-11-19 ~01:10): **planner pictures in onpath.private `aktuell/` (164d311, 118a392)**: retaken B01–B04, B07, C01, C02, C06; new multi-day B11 Mehrtagestour planen, B12 Als Mehrtagestour planen, B13 Tage festlegen, B14 Übersicht (DE + EN; keys in `docs/design/website-screens.md`). B08–B10 stay the owner's 3D examples. Delete the tag when taken.
 - → [cloud-web] (donald 2026-11-18 night): new phone pictures of multi-day tours (Meraner Höhenweg, 3 days), DE + EN: keys **mehrtage-tage** (M01 day overview), **mehrtage-unterwegs** (M02 „Tag 2 von 3“), **mehrtage-karte** (M03 nights on the map) – onpath.private 801d650, aktuell/, Note M in liste.md; flow M in website-screens.md.
 - → [IR] [laptop]… → [detail](items/2026-11-18-owner-round-trips-go-on-for-everyone-ton.md)
@@ -110,6 +109,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [umbau] (2026-11-25 23:20) shutdown done: all pushed, writers 4c37a0c38, handoff top + claim „paused“ (63ce15f77); „Ganz neu berechnen“ waits for nobody (B, built). Stopped.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -120,11 +120,11 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-25 17:30, **0.18.11: writers + laptop's planner part to main together**) Writers W0–W4 on `wip/umbau-2026-11-24-stitch-writers` (4c37a0c38: main merged, `PlanSettle` for the page; gate full, Web planner green). The laptop builds on it (`wip/laptop-2026-11-25-writers-web`); then [umbau] merges both to main + full E2E / Web planner / SameRouteTest → one line to donald + captain → [state](items/2026-11-25-stitch-writers-state.md)
-- [laptop] (2026-11-25 ~16:40, fresh session) **0.18.11 planner list** (`items/2026-11-25-release-0-18-11-plan.md` [laptop] + writers' web part with [umbau]): helpers on `wip/laptop-2026-11-25-*` worktrees; PR 23 merge waits for the owner's word in the laptop chat.
+- [umbau] (2026-11-25 23:15, **paused – shutdown**; a fresh umbau takes it) 0.18.11: writers (`wip/umbau-2026-11-24-stitch-writers` 4c37a0c38, gate full + Web planner green) + the laptop's `wip/laptop-2026-11-25-writers-web` go to main together, then full E2E / Web planner / SameRouteTest on main → [handoff](handoffs/handoff-umbau-2026-11-19.md)
+- [laptop] (free – shutdown 2026-11-25 ~23:10) 0.18.11 planner list: on main PR 23, CSP, restore box, POI click; waiting: `wip/laptop-2026-11-25-pair-verbinden` (owner's yes, merge conflicts noted) + `wip/laptop-2026-11-25-writers-web` (review next) – top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (2026-11-25 ~18:00) **0.18.11 app list done on main** (details in `items/2026-11-25-release-0-18-11-plan.md`). Waiting for the writers on main, then version + notes + full E2E + Rundgang → **publish myself (owner's own word in donald's chat ~16:45)**; the countdown goes live with the planner deploy.
-- [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
+- [donald] (stopped 2026-11-25 ~23:10, shutdown) **0.18.11 app list done on main**; waits for the writers, then release myself on the owner's own word → `handoffs/handoff-donald-2026-11-24.md` top.
+- [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
