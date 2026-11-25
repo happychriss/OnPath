@@ -383,9 +383,7 @@ private fun PlanMode(
                 onSaveRoute = if (RouteRules.saveInMenu(vm.plan.points.size)) vm::requestSave else null,
                 onOpened = vm.routesFlow::refreshTours,
                 // owner 2026-11-06: "Neu planen" also in ☰ (the same way as the sheet's ✕ pill) and the plain recording
-                onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null,
-                // owner 2026-11-25 (picture B): "Ganz neu berechnen" after it – only for a plan holding detour points, never during a tour
-                onRecalcFromScratch = vm.planEdit.recalcRow(vm.planRoute.activity, vm.planRoute.sac),
+                onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null, onRecalcFromScratch = vm.planEdit.recalcRow(vm.planRoute.activity, vm.planRoute.sac),
                 onRecordWithoutPlan = if (rec == null) ({
                     vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourSession.startNavigation(recordOnly = true) } }) else null,
                 // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
