@@ -61,3 +61,8 @@ index b533a21a1..de5d5f9b3 100644
 
 ## 2026-11-25 night: MapAreaNetworkLostFlowTest (new) red on GitHub
 unit.yml on a08683fd2: the cut stream ended as a clean short end (`HttpDownload.Incomplete` → „Map download stopped at 50 % …“) instead of an IOException („Connection to the map server broke …“) – timing, both are the product's plain UNREACHABLE texts and keep the part. The test now accepts both (test only).
+
+## 2026-11-25 morning (seen on PR 24, unrelated to it)
+- `smokes (sheet-sync)` and `smokes (lang-gpx)`: `actions/download-artifact` failed before any test (GitHub infra), green on rerun.
+- `smokes (lang-gpx)` „an edit during a long detour check: the new route in 5483 ms (not after the check)“ – a timing
+  bound in the detour-line smoke (donald's fb38e0ec4 area); green on rerun, same commit. → [donald] / [laptop] watch it.

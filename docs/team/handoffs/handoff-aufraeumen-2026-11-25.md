@@ -46,8 +46,12 @@ owner only as a question box (his word 2026-11-24) – but **not at night** (nig
   does not use HttpMailbox. The refused step also accepts either exception name (ConnectException / SocketException).
 
 ## Open
-- **Morning, owner awake:** the reboot receiver test (`TourInterruptedReceiver`, BOOT_COMPLETED / MY_PACKAGE_REPLACED)
-  needs Robolectric = build config = a pull request (the session merges it itself once green + a second model read it).
+- DONE (morning, owner's yes): PR 24 merged ab07f1cd6 – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`
+  (7 cases, real TourDb; `SQLiteMode.LEGACY` is required – native SQLite broke ~590 Paparazzi tests in the same JVM;
+  sent as a broadcast so goAsync has its pending result). Second-model review taken in. Unit tests green on main.
+- **Playwright install retry PR (owner's yes):** blocked – donald's `gh` token has no `workflow` scope. Backlog
+  "Waiting for the owner" says his step (`gh auth refresh -h github.com -s workflow`, or he pushes
+  `pr/web-playwright-install-retry` 53182aab5).
 - At the queue's cap the "written late" line still says "none lost" though the oldest were given up (minor, log only).
 - `ClockJumpFlowTest.onTheWayIsTheTourTimeAfterTheClockWentOn` stays `@Ignore` (minor: "on the way" 1 h long after a
   clock set ON by hand; summer time does not do it) – the owner may decide.

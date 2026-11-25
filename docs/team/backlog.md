@@ -123,7 +123,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (night 2026-11-25) **0.18.10 READY to the last step, NOT published**: `ci/donald-2026-11-25-release-0.18.10b` 29a844f67 (main 8264369bd + version + EN notes), full E2E 114/114 (45521118312), Rundgang 18/18 (45521127107), `release_check.sh --go v0.18.10` GO (app 78f3f75c + planner efe3ed5a). Publish = the owner's word in donald's chat → `handoffs/handoff-donald-2026-11-24.md` top.
-- [aufräumen] (2026-11-25 morning: Robolectric PR for the reboot receiver test in work; night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
+- [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
