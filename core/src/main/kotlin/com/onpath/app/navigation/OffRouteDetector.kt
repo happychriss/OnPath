@@ -94,6 +94,7 @@ class OffRouteDetector(
     private var started = false          // a first match was made on this line
     private var provisional = false       // matched before the walking direction was known (may be corrected)
     private var gap = false               // GPS was lost: allow a wider window ahead once
+    private var lastFixMs: Long? = null   // the previous fix's time: how far the progress may move on in between
     private var noGpsGood = 0             // good fixes in a row while NO_GPS
     private var leaveStartMs = 0L
     private var leaveStart: GeoPoint? = null
@@ -126,7 +127,7 @@ class OffRouteDetector(
         highM = this.progressM
         state = if (assumeOnRoute && newLine != null) State.ON_ROUTE else State.NO_GPS
         noGpsGood = 0; rejoinCount = 0; gap = false; jumpFrom = null; provisional = false; backward = false; leaveEarly = false
-        offEarly = false
+        offEarly = false; lastFixMs = null
         onLine = assumeOnRoute && newLine != null
         leaveStart = null; leaveMoved = 0.0; lastDistanceM = null
     }
@@ -167,6 +168,10 @@ class OffRouteDetector(
 
     fun onFix(f: Fix): Status {
         remember(f)
+        // seconds since the previous fix (0 after a clock restart): a fast ride covers more than SKIP_AHEAD_M before
+        // GPS counts as lost (8 s at 1 Hz, longer after the resting GPS) – that is a continuation, not another leg
+        val sinceS = lastFixMs?.let { (f.timeMs - it).coerceAtLeast(0L) / 1000.0 } ?: 0.0
+        lastFixMs = f.timeMs
         val l = line
         if (l == null || !l.isUsable) return Status(state, null, progressM)
         val p = f.point
@@ -179,7 +184,12 @@ class OffRouteDetector(
         lastDistanceM = m.distanceM
         val early = started && reached && (state == State.ON_ROUTE || state == State.LEAVING) && !backward &&
             leavingByHeading(l, f, m.distanceM, h)
-        val within = m.distanceM <= dOff && !early && !(state == State.LEAVING && leaveEarly && m.distanceM >= EARLY_M)
+        // a later leg of a loop passing close by (legs ~100 m apart) is no continuation: the progress never leaps ahead
+        // between two fixes without GPS gap or a walking-direction jump – it would skip the part (and stops) between
+        val skipsAhead = started && !gap && !pick.jumped && (state == State.ON_ROUTE || state == State.LEAVING) &&
+            m.alongM - progressM > SKIP_AHEAD_M + MAX_SPEED_MPS * sinceS
+        val within = m.distanceM <= dOff && !early && !skipsAhead &&
+            !(state == State.LEAVING && leaveEarly && m.distanceM >= EARLY_M)
         onLine = within
         if (!started) {
             // never on the route: a match away from it says nothing about where one is along it (progress = start)
@@ -432,6 +442,10 @@ class OffRouteDetector(
         const val REJOIN_FIXES = 3
         /** While leaving, progress is shown only within this many off distances of the line ([shownAlongM]). */
         const val LEAVING_SHOWN_FACTOR = 2.0
+        /** On the route, a match this far ahead of the progress is another leg of the line, not a continuation. */
+        const val SKIP_AHEAD_M = 150.0
+        /** The fastest ride the skip check allows for between two fixes (90 km/h, an e-bike downhill with margin). */
+        const val MAX_SPEED_MPS = 25.0
         const val BACK_M = 300.0
         const val AHEAD_M = 2_000.0
         /** While off the route (or after a GPS gap) a rejoin further ahead also counts (shortcut). */

@@ -36,4 +36,16 @@ class PointQueueTest {
         (0 until 5).forEach { q.add(pt(it)) }
         assertEquals(2, q.size); assertEquals(3, q.dropped)
     }
+
+    /** Plan 0.18.11 [donald] 6: at the cap the line says what was given up, not "none lost". */
+    @Test fun lateLineSaysWhatReallyHappened() {
+        val q = PointQueue(max = 3)
+        (0 until 3).forEach { q.add(pt(it)) }
+        assertEquals("3 track point(s) written late – none lost", q.lateLine(3))
+        assertNull(q.lateLine(0))
+        (3 until 8).forEach { q.add(pt(it)) } // 5 more, the cap holds 3
+        assertEquals(5, q.dropped)
+        assertEquals("3 track point(s) written late, 5 oldest given up at the queue cap of 3", q.lateLine(3))
+        assertEquals("2 track point(s) written late – none lost", q.lateLine(2)) // said once, then the count restarts
+    }
 }

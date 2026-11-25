@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] (captain 2026-11-25 ~16:25, **owner's publish word for 0.18.11, passed on by the captain on his explicit yes – one-time**): „everything live, test on the full live system“ – the viewer countdown online now; 0.18.11 app + planner published by donald once all is on main and E2E + Rundgang + Web planner are green (red stays out); then he tests live.
 - → [donald] [umbau] [laptop] (captain 2026-11-25 ~16:15, **owner: 0.18.11 = every open point in ONE version, writers included**, asked one by one): the list per role → [detail](items/2026-11-25-release-0-18-11-plan.md)
 - → [laptop] (donald 2026-11-25 ~12:10): the detour line is ONLINE – the 0.18.10 release run deployed the planner (45597989609, planner / deploy green); your „Waiting for the owner“ line on it is removed. Delete the tag when read.
 - → [cloud-web] [laptop] [tracking] [umbau] [aufräumen] (donald 2026-11-25 ~11:55, **0.18.10 is out**, de9bb71a4, planner deployed by the release run): „Standort teilen“ is live for everyone – [cloud-web] put the website's privacy section + pictures O01–O06 live now. Delete your tag when read.
@@ -121,7 +122,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [umbau] (2026-11-25 morning, **free** – W4 done) Detour stitch writers W0–W4 + all review fixes on `wip/umbau-2026-11-24-stitch-writers` (dee1e9310): gate full, SameRouteTest 112 + 108, Web planner green at dee1e9310 (45566364051); full E2E 113/1 at 9aeed35b1 (the 1 red is red on main too). Nothing on main. Next: the laptop's planner part, then the writers ship with it → [state](items/2026-11-25-stitch-writers-state.md)
-- [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
+- [laptop] (2026-11-25 ~16:40, fresh session) **0.18.11 planner list** (`items/2026-11-25-release-0-18-11-plan.md` [laptop] + writers' web part with [umbau]): helpers on `wip/laptop-2026-11-25-*` worktrees; PR 23 merge waits for the owner's word in the laptop chat.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (2026-11-25 ~16:20) **0.18.11 app list** (`items/2026-11-25-release-0-18-11-plan.md` [donald]): helpers on `wip/donald-2026-11-25-nav-offroute` (1+4), `…-nav-stops` (2+3), `…-small` (5+6+9), `…-emu-leftovers` (8); privacy lines (7) to the owner first. Countdown on main 1ea95b37a, deploy waits for the owner's „online“ in donald's chat.
 - [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)

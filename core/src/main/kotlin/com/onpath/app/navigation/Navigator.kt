@@ -325,8 +325,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
                 .also { session = session.copy(lead = true) }
             is Rerouter.Failed -> {
-                if (outcome.reason != Rerouter.Reason.CANCELLED) prompt = NavPrompt.LeadFailed(++questionId)
-                Step()
+                if (outcome.reason == Rerouter.Reason.CANCELLED) return Step()
+                prompt = NavPrompt.LeadFailed(++questionId)
+                // the search failed: no new one by itself after a plan edit – only when the user asks again
+                withdrawLead()
             }
         }
         return when (outcome) {

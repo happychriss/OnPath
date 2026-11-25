@@ -180,4 +180,17 @@ class OffRouteSayTest {
         s.onFix(pt(0.0, 44.0), 8.0, 0.0, 1.4, t + 2_000, ageMs = 1_000)
         assertNotNull(s.numbers(st(), t + 2_000, false))
     }
+
+    /** C5 2026-11-25: chord 18°, GPS bearing 44° (passes AGREE_DEG), route at 70° – "right" by the chord (+52°), "ahead" by the real way (+26°). */
+    @Test fun aLaggingBearingWithTheRouteBetweenChordAndBearingGivesNoSide() {
+        val s = OffRouteSay()
+        val r = Math.toRadians(18.0)
+        val t = walk(s, (0..12).map { pt(it * 4.0 * Math.sin(r), it * 4.0 * Math.cos(r)) }, bearing = 44.0)
+        val n = s.numbers(st(bearing = 70.0), t, false)
+        assertNull("route 70°: chord says right, bearing says ahead – a coin toss, say nothing; got $n", n)
+        // the same chord with the bearing agreeing and the route clearly to one side still gives the numbers
+        val s2 = OffRouteSay()
+        val t2 = walk(s2, (0..12).map { pt(it * 4.0 * Math.sin(r), it * 4.0 * Math.cos(r)) }, bearing = 25.0)
+        assertNotNull(s2.numbers(st(bearing = 100.0), t2, false))
+    }
 }
