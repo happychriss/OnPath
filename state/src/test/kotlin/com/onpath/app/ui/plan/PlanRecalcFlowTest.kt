@@ -159,6 +159,9 @@ class PlanRecalcFlowTest {
         var timeLimit = false
         /** A request (its points) that throws an unexpected error – the settling's failing leg (W2). */
         var failFor: (List<GeoPoint>) -> Boolean = { false }
+        /** A request (its points) the router answers with "no route" (a RoutingException); counted in [noRouteAsked]. */
+        var noRouteFor: (List<GeoPoint>) -> Boolean = { false }
+        val noRouteAsked = ArrayList<List<GeoPoint>>()
         val threads = ArrayList<String>()
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult = route(waypoints, activity, sacLimit, RouteLimits(30_000))
         override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: RouteLimits): RouteResult {
@@ -166,6 +169,7 @@ class PlanRecalcFlowTest {
             onRoute(inner.calls.size + 1)
             if (timeLimit) throw RoutingException("too long", timedOut = true)
             if (failFor(waypoints)) throw IllegalStateException("leg fails")
+            if (noRouteFor(waypoints)) { noRouteAsked += waypoints; throw RoutingException("No route found.") }
             return inner.route(waypoints.map(snap), activity, sacLimit, limits).let { it.copy(matched = waypoints.map(snap)) }
         }
     }
@@ -1265,6 +1269,59 @@ class PlanRecalcFlowTest {
         stepRouting()
         assertEquals("stopped: no second leg asked", base + 1, engine.inner.calls.size)
         assertEquals(0, settledLegs())
+    }
+
+    /** A plan with a stitched point taken while the router answers "no route" for the requests [bad] picks (set before the taken run). */
+    private fun anchoredPlanTakenWith(bad: (com.onpath.app.routing.ExpandedPlan) -> (List<GeoPoint>) -> Boolean) {
+        routePrefs.activity = Activity.BIKE_TOURING
+        plan(settleStart, settleFar); create()
+        recalcNow(); finishRun()
+        plan.edit { add(1, settleMiddle) }
+        assertTrue("the edit stitched", plan.anchorsFor(planRoute.activity, planRoute.sac).isNotEmpty())
+        engine.noRouteFor = bad(expandedNow())
+        recalcNow(); finishRun()
+    }
+
+    private fun settleRoundNow() { stepRouting(); advance(1); stepDefault(); stepIo() }
+
+    @Test fun aLegDrawnStraightInTheTakenRunIsNotAskedAgainBySettleOrTheQuietRerun() {
+        // the whole first visible leg has no route (its sub-legs and its full leg): straight in the taken run
+        anchoredPlanTakenWith { e ->
+            val first = (0..e.expandedIndex(1)).map { com.onpath.app.routing.PlanAnchors.exact(e.points[it]) }.toSet()
+            ({ w -> com.onpath.app.routing.PlanAnchors.exact(w.first()) in first })
+        }
+        assertTrue("the taken run drew it straight", planRoute.legCache.let { engine.noRouteAsked.isNotEmpty() })
+        val before = engine.noRouteAsked.size
+        val callsBefore = engine.inner.calls.size
+        settleRoundNow()
+        assertEquals("settle and quiet re-run never ask the no-route leg again: ${engine.noRouteAsked.drop(before)}", before, engine.noRouteAsked.size)
+        recalcNow(); finishRun()
+        val again = engine.noRouteAsked.size // the taken run itself asks (as a cold device would)
+        settleRoundNow()
+        assertEquals("not in a later settle either", again, engine.noRouteAsked.size)
+    }
+
+    @Test fun aLegThatAlwaysFallsBackToTheFullLegIsAskedAtMostTwiceAcrossSettles() {
+        // every leg that touches a detour point has no route; the full visible leg always works (the §8.5 fallback)
+        anchoredPlanTakenWith { e ->
+            val bad = (0 until e.points.size - 1).filter { e.touchesAnchor(it) }.map {
+                listOf(com.onpath.app.routing.PlanAnchors.exact(e.points[it]), com.onpath.app.routing.PlanAnchors.exact(e.points[it + 1]))
+            }.toSet()
+            ({ w -> w.map { com.onpath.app.routing.PlanAnchors.exact(it) } in bad })
+        }
+        engine.noRouteAsked.clear()
+        settleRoundNow()
+        repeat(4) { recalcNow(); finishRun(); settleRoundNow() }
+        // the taken runs ask the bad sub-legs as a cold device does; only the rounds' own asks count: measure them alone
+        val perRound = ArrayList<Int>()
+        engine.noRouteAsked.clear()
+        repeat(3) {
+            recalcNow(); finishRun()
+            val before = engine.noRouteAsked.size
+            settleRoundNow()
+            perRound += engine.noRouteAsked.size - before
+        }
+        assertEquals("after two tries the settle leaves the fallback leg alone: $perRound", listOf(0, 0, 0), perRound)
     }
 
     @Test fun aPlanWithoutAnchorsIsNotSettledAndNothingIsAsked() {
