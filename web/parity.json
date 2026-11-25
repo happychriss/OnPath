@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "c1021a62154a61f992c5d31cad8bf9727ab3178a"
+      "blob": "76b5baffc9a6696f8f62c09dda9d59d4fd51924a"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -237,7 +237,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "4d676b9f58987c23f92d8b6743c3530cba7a0df3"
+      "blob": "1ab1e4321547ee14c4a2cc120e8c2f4f7ae61e70"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
