@@ -1603,21 +1603,21 @@ async function changed() {
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
   if (few) {
     // the run in the engine learns there is nothing to route (RouteRun leaves Routing) – never left „routing“ there
-    void runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+    void runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned);
     render(); return;
   }
   planGaps.clear(); // the last plan's gaps belong to other points
   // the app's run head (PlanRecalcState.begin + RouteRun, in the engine): route now, or the long-route question first –
   // nothing is routed or downloaded until it is answered; a multi-day tour is never asked (owner 2026-11-18)
   const multiDay = !!state.tour;
-  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay);
+  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned);
   if (stale()) return;
   if (head.what === 'ASK') {
     const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale);
     if (stale()) return;
     if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
     if (answer !== 'plan') { await startFresh(answer.fresh); return; }
-    head = await runHead(engine, state.points, state.activity, state.sac, multiDay); // „Plan anyway“: not asked again
+    head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned); // „Plan anyway“: not asked again
     if (stale()) return;
   }
   await planRun(routeHead(head));
@@ -1651,7 +1651,7 @@ function askSlowPlan(rounds: number) {
       // the app's answerSlowPlan (RouteRun.SlowAnswer): the run again with one more period – the head knows how many
       const run = changeRun; // an edit meanwhile starts its own run: this one is not routed then
       try { await engine.call('runSlowAnswer', true); } catch (e) { problem('routing', 'the slow plan\'s answer not told to the engine', e); }
-      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour);
+      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned);
       // never fewer periods than this answer asked for: an engine that missed the time limit (no end told, a run of an
       // earlier chain) would give one period again – „Weiter warten?“ at the same limit for ever (review 2026-11-20)
       const rr = routeHead(head, rounds + 1);
@@ -2069,6 +2069,9 @@ async function savedPlanChanged(): Promise<boolean> {
   if (!(await samePointsAsSaved())) return true;
   // a multi-day tour's days and nights are part of it (multi-day tours §1 #10: saved as every plan – so a change asks for Save)
   const saved = await savedPoints(state.savedCode).plan;
+  // the detour points are saved with the route (the app's PlanDocument.unsaved: points alike, other detour points = not saved –
+  // "Ganz neu berechnen" on a saved route): the saved code carries them, so the mark holds across a reload
+  if ((saved?.anchors ?? '') !== engine.anchors) return true;
   return tourText(saved?.tour) !== tourText(state.tour);
 }
 /** The plan on the map differs from its saved version (or was never saved) – Meine Touren's „Speichern“ on its row. */

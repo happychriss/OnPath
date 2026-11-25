@@ -272,8 +272,11 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
      * The head of a run of the page's plan [now] ([PlanRecalcState.begin]): the run to route, the long-plan question first, or
      * nothing to route. [askLong] false: never asked (the planner's multi-day tour, owner 2026-11-18) – on every head of it.
      */
-    fun head(now: List<GeoPoint>, activity: Activity, sac: Int, askLong: Boolean): Head {
+    fun head(now: List<GeoPoint>, activity: Activity, sac: Int, askLong: Boolean, pinned: Set<Int> = emptySet()): Head {
         plan.replace(now)
+        // the page's POI / place points (routed exactly): by value in the plan, so the run's pins - and the settle's, and every
+        // edit's expansion - are those the page plans with (WebApi.plan gets the same indices)
+        plan.pin(pinned.mapNotNull { now.getOrNull(it) })
         act = activity; level = sac
         did.clear()
         val run = recalc.begin(askLong)

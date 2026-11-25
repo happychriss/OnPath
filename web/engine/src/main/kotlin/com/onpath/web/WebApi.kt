@@ -855,9 +855,9 @@ object Engine {
      * question first `{"what":"ASK","seconds":…,"title":…,"text":…,"plan":…,"cancel":…,"notRouted":…,"again":…}` (the app's
      * LongRouteDialog texts), or `{"what":"NONE"}`. [askLong] false: a multi-day tour is never asked (owner 2026-11-18).
      */
-    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String {
+    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String = ""): String {
         val act = Activity.valueOf(activity)
-        return when (val h = chain.head(parsePoints(points), act, sac, askLong)) {
+        return when (val h = chain.head(parsePoints(points), act, sac, askLong, parseIndices(pinned))) {
             is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds + "}"
             is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longAsk(h.estimateS, act) + "}"
             WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
@@ -1334,7 +1334,7 @@ external fun planProgress(text: String)
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
 @JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
-@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean): String = Engine.runHead(points, activity, sac, askLong)
+@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String): String = Engine.runHead(points, activity, sac, askLong, pinned)
 @JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
 @JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)

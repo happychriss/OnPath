@@ -222,4 +222,26 @@ class WebPlanChainTest {
         }
         assertTrue(chain.settleNow(refusing) == null)
     }
+
+    /** A plan with POI-pinned points: the run carries the page's pins, so it stitches and settles like any other. */
+    @Test
+    fun aPlanWithPinnedPointsStitchesAndSettles() {
+        val two = listOf(la, lb)
+        val chain = WebPlanChain(two)
+        fun routedPinned(pts: List<com.onpath.app.routing.GeoPoint>, pins: Set<Int>): com.onpath.app.routing.PlanResult {
+            val exp = com.onpath.app.routing.PlanAnchors.expand(pts, chain.plan.anchorsFor(hike, 2), pins)
+            val planner = com.onpath.app.routing.Planner(bulging, com.onpath.app.routing.RouteCancel(), legs = com.onpath.app.routing.LegCache())
+            return com.onpath.app.routing.PlanResult.plan(planner, exp, hike, 2, emptySet(), WebPace.factors(hike))
+        }
+        val g1 = (chain.head(two, hike, 2, false, setOf(0, 1)) as WebPlanChain.Head.Route).gen
+        org.junit.Assert.assertEquals("the run has the page's pins", setOf(0, 1), chain.plan.pinnedIndices())
+        chain.end(g1, "ok", 1) { routedPinned(two, setOf(0, 1)) }
+        val three = listOf(la, bulge(la, lb), lb)
+        chain.record(two, three)
+        assertTrue("the pinned plan stitched", chain.plan.hasDetours(hike, 2))
+        val g2 = (chain.head(three, hike, 2, false, setOf(0, 2)) as WebPlanChain.Head.Route).gen
+        org.junit.Assert.assertEquals(setOf(0, 2), chain.plan.pinnedIndices().intersect(setOf(0, 2)))
+        chain.end(g2, "ok", 1) { routedPinned(three, setOf(0, 2)) }
+        assertTrue("and settles", chain.settleNow(bulging) != null)
+    }
 }

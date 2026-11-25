@@ -56,7 +56,7 @@ interface WasmEngine {
   problems(): string;
   longRoute(points: string, activity: string, multiDay: boolean): string;
   planCancel(cause: string, points: string, activity: string, sac: number, why: string): string;
-  runHead(points: string, activity: string, sac: number, askLong: boolean): string;
+  runHead(points: string, activity: string, sac: number, askLong: boolean, pinned: string): string;
   runLongAnswer(yes: boolean, points: string): void;
   runEnd(gen: number, outcome: string, rounds: number): void;
   settleRun(names: string): string;

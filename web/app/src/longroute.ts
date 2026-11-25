@@ -26,12 +26,12 @@ export type Head = { what: 'ROUTE'; gen: number; rounds: number } | { what: 'NON
  * The run's head for [points]: a multi-day tour is never asked ([multiDay], owner 2026-11-18 – its day rows show a long day).
  * A head the engine could not answer routes at once (one period, never blocked on a question that can't be put).
  */
-export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false): Promise<Head> {
+export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false, pinned: number[] = []): Promise<Head> {
   try {
     // said yes to earlier on this page: the run knows it (RouteRun.RoutedBefore) – also on a fresh chain (an opened plan,
     // a fresh worker), so it is never asked again in this page session, as before the shared run
     if (allowed.has(keyOf(points))) await engine.call('runRoutedBefore', keyOf(points));
-    return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay)) as Head;
+    return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay, pinned.join(','))) as Head;
   } catch (e) {
     problem('routing', 'the route run\'s head failed – routed without the long-plan question', e);
     return { what: 'ROUTE', gen: -1, rounds: 1 };

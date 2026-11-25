@@ -65,6 +65,16 @@ const line2 = await page.evaluate(() => window.__state.plan.distanceM + '/' + wi
 check(line2 === line1, 'reload: the same line (' + line2 + ')');
 before = await page.evaluate(() => JSON.stringify(window.__state.points));
 
+// the route saved (a folder of this browser): "Saved", the header's Save light
+const saveHead = () => page.evaluate(() => document.getElementById('menuSavePlan').dataset.state);
+const savedText = () => page.evaluate(() => document.getElementById('savedLine').textContent.trim());
+const markedUnsaved = () => page.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'dark' && /changed, not saved/.test(document.getElementById('savedLine').textContent), null, { timeout: 30_000 }).then(() => true, () => false);
+const settleSaveMark = (want) => page.waitForFunction((w) => document.getElementById('menuSavePlan').dataset.state === w, want, { timeout: 30_000 }).then(() => true, () => false);
+await page.click('#menuSavePlan');
+await page.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 10_000 });
+await page.click('#saveOk');
+check(await settleSaveMark('done'), 'the route is saved: the header says Saved (' + await saveHead() + ')');
+
 // tap: the detour points go, the plan is routed again
 await page.click('#menuRecalc');
 await page.waitForFunction(() => window.__engine.anchors === '', null, { timeout: 30_000 }).catch(() => {});
@@ -74,6 +84,8 @@ check(await page.evaluate(() => window.__engine.anchors) === '', 'tap: the detou
 check(await rowShown(false), 'tap: the row goes');
 check(await page.evaluate(() => JSON.stringify(window.__state.points)) === before, 'tap: the same visible points');
 check(await page.isEnabled('#undo') || await page.isVisible('#undoPill'), 'tap is one undo step');
+// the saved-anchors rule (the app's PlanDocument.unsaved): same points, other detour points = not saved
+check(await markedUnsaved(), 'a saved route recalculated from scratch is unsaved (' + await saveHead() + ': ' + await savedText() + ')');
 const cold = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
 console.log('cold line: ' + cold);
 
@@ -81,11 +93,26 @@ console.log('cold line: ' + cold);
 await page.waitForFunction(() => !document.querySelector('.waitveil') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
 await page.click('#undo');
 check(await rowShown(true), 'Undo: the row is back');
+check(await settleSaveMark('done'), 'Undo: the route is saved again (' + await saveHead() + ')');
 check(await page.evaluate(() => window.__engine.anchors) !== '', 'Undo: the detour points are back');
 await idle();
 await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
+await page.reload();
+await idle();
+check(await settleSaveMark('done') && !/changed, not saved/.test(await savedText()), 'reload: still saved');
+await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
 const back = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
 check(back === line1, 'Undo: the stitched, settled line is back (' + back + ')');
+
+// the same again after the reload (the plan from the address, the saved route's code from the folder): tap -> unsaved, reload -> still
+await page.waitForFunction(() => !document.getElementById('menuRecalc').hidden, null, { timeout: 60_000 });
+await page.click('#menuRecalc');
+await page.waitForFunction(() => window.__engine.anchors === '', null, { timeout: 30_000 }).catch(() => {});
+await idle();
+check(await markedUnsaved(), 'after a reload: a saved route recalculated from scratch is unsaved');
+await page.reload();
+await idle();
+check(await markedUnsaved(), 'reload: it is still unsaved (' + await saveHead() + ': ' + await savedText() + ' anchors=' + (await page.evaluate(() => window.__engine.anchors)).length + ' savedId=' + await page.evaluate(() => window.__state.savedId) + ')');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
