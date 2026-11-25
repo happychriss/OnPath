@@ -185,3 +185,6 @@ Read only; nothing deleted.
 - `.claude/worktrees` 12G in total (86 dirs; the biggest are the three active wip ones at 290–430 MB each; `onpath-stitch` 246M)
 - `onpath-data/`: store 1.5G · store-test-routes 731M · segments 365M · test-suggest-seg 175M · test-routes-venv 105M · test-routes-suggest 46M · film 15M · multiday 2.4M · pictures 1.9M · test-routes-work 436K · nrw.log 4K
 - main checkout `onpath-plan` without `.claude`: 1.1G; disk /home: 163G used of 466G (37 %).
+
+## Owner's yes 2026-11-25 (captain's relay) → the owner's script
+The session's permission check blocks the deletion, so `~/aufraeumen-laptop-2026-11-25.sh` does it when the owner runs it: every (A) worktree re-checked just before (no changes, no process inside – else skipped), `git worktree remove` without force; 61 local branches with `git branch -D` (each skipped when a worktree uses it). **`web-spike` is taken out of (A)** – the frozen planner branch, never touch. Log: `~/aufraeumen-laptop-2026-11-25.log`.
