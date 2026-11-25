@@ -66,3 +66,6 @@ unit.yml on a08683fd2: the cut stream ended as a clean short end (`HttpDownload.
 - `smokes (sheet-sync)` and `smokes (lang-gpx)`: `actions/download-artifact` failed before any test (GitHub infra), green on rerun.
 - `smokes (lang-gpx)` „an edit during a long detour check: the new route in 5483 ms (not after the check)“ – a timing
   bound in the detour-line smoke (donald's fb38e0ec4 area); green on rerun, same commit. → [donald] / [laptop] watch it.
+
+## Seen once since (laptop 2026-11-25)
+- robust-smoke (c) „Cancel: nothing learned from the stopped run“ (`onpath.progress.mapSteps` written), run 45570599195 on ab07f1cd6, green on rerun, 3/3 green locally. Guess: a job of the cancelled run still open after Cancel starts a new (dismissed) wait whose finished end writes the shares – `loadoverlay.ts` `cancel()` → `end(false)` → `update()` → `begin()`. Next time red: log `__wait.overlay()` jobs at the check.
