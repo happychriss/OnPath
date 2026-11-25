@@ -1,6 +1,6 @@
 # Detour stitch: the writer stage, core + state (umbau, night 2026-11-24/25)
 
-Branch **`wip/umbau-2026-11-24-stitch-writers` = 29496f0ec** (fresh umbau session, night 2026-11-25: W2 + W3 review fixes merged) (from readers-all d6493f680). **Nothing on main; writers ship only after the readers' release** (design §6), app AND planner together.
+Branch **`wip/umbau-2026-11-24-stitch-writers` = 9aeed35b1** (fresh umbau session, night 2026-11-25: W2 + W3 review fixes + W2 should-fix merged; gate full 1912 + 2035 + 1010) (from readers-all d6493f680). **Nothing on main; writers ship only after the readers' release** (design §6), app AND planner together.
 
 ## Built (each piece by a Sonnet helper, merged by [umbau], full gate green after each merge; last at 29496f0ec: 1912 app + 2030 core + 1008 state)
 - **W0** (8349b4289): DB columns `tours.anchors` / `tour_plan.anchors` in row format – `AnchorsJson.writeRow` / `readRow`: the row's profile + an FNV-1a 64 hash of all its points (pinned value `62c3b8e261299bd5` for the test points, computed outside Kotlin); another profile or other points → none, reported. Old array still read; backup keeps the old array inside its activity-carrying record.
@@ -23,7 +23,7 @@ Branch **`wip/umbau-2026-11-24-stitch-writers` = 29496f0ec** (fresh umbau sessio
 - Web planner: red at 29496f0ec only for parity (AppViewModel + Prefs changed) → recorded (d75e05b12) → green (45516232232).
 
 ## NOT done – in this order
-1. **W2 SHOULD-FIX (first review):** no-route legs asked again by every settle / quiet re-run; a §8.5 fallback sub-leg not in the cap; quiet re-run should be cache-only → a helper on `work/w2-noroute` (night 2026-11-25), merge after its gate.
+1. ~~W2 SHOULD-FIX~~ **done** (97a647f15, e60d6dc9c, 1eaa5c9a4, 9aeed35b1): `PlannedRoute.noRoute` + `Planner.skipNoRoute` – a leg the taken run had no route for is never asked by the settle; `Settled.fellBackLegs` counted in the cap; the quiet re-run plans on `CacheOnlyEngine` (refuses every request) – a cache miss cancels only the quiet run's own signal, the taken line stays (trace), never the §8.5 fallback. SameRouteTest at 9aeed35b1: verify 112/112, full 108/108 + controls green.
 2. **W4 = the menu row** after the owner's pick (picture `sketch/umbau-2026-11-25-ganz-neu-berechnen`, A vs B, B recommended; the sketch commit's `PlanMenu.onRecalcFromScratch` + strings are a model, never merge that branch): row visible while `planEdit.canRecalcFromScratch(activity, sac)`, calls `planEdit.recalcFromScratch(activity, sac)`.
 3. **For the laptop, before the writers ship:** the planner does not stitch (`WebPlanChain` never calls `taken`, so no lines); it needs: `taken` / lines, its own settle (LegCache + engine in the page, `Planner.settle` after a taken run, cancel on edit, the cap, `takeQuiet`, a `beforeClear`), the row (`edit.recalcFromScratch`, `plan.hasDetours`), and the saved-anchors rule (a cleared saved route is unsaved).
 4. **For the owner (cost, not a defect):** the first stitch re-routes nearly every leg once in the background (tapped points are aliased, not exact) – minutes on long plans; §8.15 intends it.
