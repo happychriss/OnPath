@@ -819,7 +819,7 @@ class RecordingService : Service() {
         val waited = pointQueue.size
         val ok = safeDb("point") { pointQueue.flush { db.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
         val late = if (withNewPoint) waited - 1 else waited
-        if (ok && late > 0) Problems.info("recording", "$late track point(s) written late – none lost")
+        if (ok) pointQueue.lateLine(late)?.let { Problems.info("recording", it) }
         if (ok && saveFailed) { saveFailed = false; nm().cancel(SAVE_FAIL_ID) }
         if (pointQueue.dropped > 0 && pointQueue.dropped % 1000 == 1) {
             Problems.error("recording", "Storage failed for hours: ${pointQueue.dropped} oldest unwritten point(s) given up")

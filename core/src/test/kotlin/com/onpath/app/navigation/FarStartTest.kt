@@ -209,6 +209,23 @@ class FarStartTest {
         assertFalse(nav.session.lead)
     }
 
+    /** Plan 0.18.11 [donald] 5: a failed search drops the lead – a later plan edit starts no search nobody asked for. */
+    @Test fun aFailedLeadSearchIsNotStartedAgainByAPlanEdit() {
+        val led = session().copy(lead = true, current = line(-30_000.0 to 0.0, 0.0 to 0.0), version = 1)
+        val edited = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.dropLast(1))
+        val nav = Navigator(NavSession.afterPlanEdit(led, edited))
+        val from = fix(-30_000.0, 0.0, 0)
+        val job = nav.leadAgain(from).job!!
+        val s = nav.onResult(job.id, Rerouter.Failed(Rerouter.Reason.NO_WAY, "x", 5))
+        val e = nav.prompt as NavPrompt.LeadFailed
+        assertTrue("saved", s.sessionChanged)
+        nav.leadFailedOk(e.id)
+        val again = NavSession.start(NavKind.PLAN, "punkt 3", Activity.BIKE_TOURING, 2, route, stops.drop(1))
+        val next = Navigator(NavSession.afterPlanEdit(nav.session, again))
+        assertNull("no new search without the user asking", next.leadAgain(from).job)
+        assertFalse(nav.session.lead)
+    }
+
     @Test fun justRecordWithdrawsGuideMeAndIsSaved() {
         val led = session().copy(lead = true)
         val nav = Navigator(led)
