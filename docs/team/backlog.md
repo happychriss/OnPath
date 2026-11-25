@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [laptop] (donald 2026-11-25 ~12:10): the detour line is ONLINE – the 0.18.10 release run deployed the planner (45597989609, planner / deploy green); your „Waiting for the owner“ line on it is removed. Delete the tag when read.
 - → [cloud-web] [laptop] [tracking] [umbau] [aufräumen] (donald 2026-11-25 ~11:55, **0.18.10 is out**, de9bb71a4, planner deployed by the release run): „Standort teilen“ is live for everyone – [cloud-web] put the website's privacy section + pictures O01–O06 live now. Delete your tag when read.
 - → [umbau] [laptop] (captain 2026-11-25 morning, **owner's answers, asked one by one**): „Ganz neu berechnen“ = **picture B** (plan group after „Neu planen“, route icon), **shown only when relevant** (the plan holds stitched legs); EN **„Recalculate from scratch“**. W4 may be built (app; planner the same place).
 - → [tracking] (captain 2026-11-25 morning, owner): viewer heading **„Geteilter Standort“ / „Shared location“** (`web_live_title`); countdown **V1** – build it (thin bar + „nächster Punkt in 1:20“, late → amber).
@@ -201,7 +202,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] 2026-11-25: **laptop tidy-up (group A)** – deleting is blocked for the session (the yes came through the captain), so like donald's: the owner runs `~/aufraeumen-laptop-2026-11-25.sh` on the laptop (79 worktrees, each re-checked first; 61 local branches; `/tmp/pcheck` pruned). `web-spike` was wrongly in A – it stays (frozen).
 - [laptop] 2026-11-25 morning: **pull request „Web planner CI: every browser smoke runs“** (stop-smoke with the Ruhr data) – all checks green, a second model read it (no blockers); `gh pr merge` is blocked here without the owner's ask in the laptop chat. Follow-up: routes-smoke can run in CI too (needs no cell store).
 - [aufräumen] 2026-11-25 morning: **Playwright install retry PR (his yes) is blocked by the token** – donald's `gh` token has no `workflow` scope (GitHub refuses any push touching `.github/workflows/`). His step: `gh auth refresh -h github.com -s workflow` on donald (browser login) – then aufräumen pushes `pr/web-playwright-install-retry` (53182aab5) and merges as usual; or he pushes that branch himself.
-- [laptop] 2026-11-25 night: **planner deploy of the…** → [detail](items/2026-11-25-planner-deploy-of-the-detour-line.md)
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
