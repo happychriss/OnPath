@@ -86,7 +86,7 @@ const savedKey = (id: string) => 's:' + id;
 const placeNum = (p = zuletztPlace()) => (p ? numOf(p.kind === 'draft' ? draftKey(p.id) : savedKey(p.id)) : -1);
 
 /** A saved route as the store shows it to the slice: [points] its key (empty = never the same points), [deletedAt] in the bin. */
-interface SavedLine { id: string; points?: string; deletedAt?: number | null; at?: number }
+interface SavedLine { id: string; points?: string; deletedAt?: number | null; at?: number; title?: string }
 
 /**
  * The store's list: the saved routes first (a saved twin wins over a draft – never a draft beside it), then the drafts
@@ -96,7 +96,7 @@ interface SavedLine { id: string; points?: string; deletedAt?: number | null; at
 function lines(list: RecentPlan[], saved: SavedLine[] = [], blank: string | null = null): string {
   const drafts = [...list].sort((a, b) => b.at - a.at);
   return [
-    ...saved.map((s) => tourLine(savedKey(s.id), false, s.deletedAt, s.at ?? 0, '', s.points ?? '')),
+    ...saved.map((s) => tourLine(savedKey(s.id), false, s.deletedAt, s.at ?? 0, s.title ?? '', s.points ?? '')),
     ...drafts.map((r) => tourLine(draftKey(r.id), true, r.deletedAt, r.at, r.title, r.id === blank ? '' : r.points)),
   ].join('\n');
 }
@@ -134,9 +134,27 @@ function apply<R>(a: RoutesAnswer<R>, list = read()): RecentPlan[] {
  * meanwhile). Returns the draft's id when one was written, else null (the place went to an existing plan). Without the
  * slice the plan is still kept as a draft (never lost), nothing else changes.
  */
+let keptNow: string | null = null;
+/**
+ * The entry that holds the plan the last [keepPlan] kept (RoutesState.keptAs: "d:<id>" a Zuletzt draft, "s:<id>" the saved
+ * route it was as it is), once; null = nothing was kept (no plan, no slice). "Restore your old plan?" asks about it.
+ */
+export function takeKept(): string | null { const k = keptNow; keptNow = null; return k; }
+
+/**
+ * "Restore your old plan?" ([RestoreAsk.box] of the app, run on the page): the box's facts while [entry] (a [takeKept] key)
+ * is still in My routes – [saved] = the saved route it is ("s:" entries: its name now, [deletedAt] when in the bin; null = gone) –
+ * else null: no box. Without the slice also null (nothing is asked, nothing lost).
+ */
+export function restoreBox(entry: string, saved: { title: string; deletedAt?: number | null } | null, touring = false): { name: string; underRecent: boolean } | null {
+  const savedLines: SavedLine[] = entry.startsWith('s:') && saved ? [{ id: entry.slice(2), title: saved.title, deletedAt: saved.deletedAt }] : [];
+  return slice<{ name: string; underRecent: boolean } | null>('routesRestoreBox', lines(read(), savedLines), numOf(entry), touring);
+}
+
 export function keepPlan(p: { code: string; title: string; points: string; replaces?: string | null; savedId?: string | null;
   saved?: 'there' | 'binned' | 'gone'; twin?: string | null }, now = Date.now()): string | null {
   const list = read();
+  keptNow = null;
   const id = p.replaces && list.some((r) => r.id === p.replaces) ? p.replaces : newId();
   const savedLines: SavedLine[] = [];
   if (p.savedId && p.saved === 'there') savedLines.push({ id: p.savedId });
@@ -151,6 +169,7 @@ export function keepPlan(p: { code: string; title: string; points: string; repla
     return id;
   }
   const out = apply(a, list);
+  keptNow = keyOf(a.kept ?? -1);
   if (a.result === numOf(draftKey(id))) {
     write([entry(), ...out.filter((r) => r.id !== id)]);
     return id;
