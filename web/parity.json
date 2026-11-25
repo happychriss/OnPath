@@ -54,7 +54,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "809b3cae57c22182d07d59f060a9c3b3069c96a7"
+      "blob": "a19cf86402245da868288ad654d52c1d91b3b3d4"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
@@ -156,7 +156,7 @@
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78"
+      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "76b5baffc9a6696f8f62c09dda9d59d4fd51924a"
+      "blob": "6a1cf70ff39039304497800d652acbed0931e41d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -2618,7 +2618,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/sync/SyncMerge.kt": {
-      "blob": "3b3217ab60ebf131a361a069ff9d44b7ce2e1732",
+      "blob": "97bb02f371869e1e64bdd7fc6b0514bdfcb55939",
       "perf": [
         "val seed = \"OnPath copy \".encodeToByteArray() + (B64.decode(loser.id) ?: ByteArray(0)) +",
         "val base = (loser.title ?: \"Plan\").take(SyncFormat.MAX_TITLE - COPY.length)",
@@ -3051,7 +3051,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "0487da4df7aa2b98fe20ae4a8d89463aa9c35e78",
+      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
@@ -3526,6 +3526,23 @@
         "/** At most this many anchors per side (the code's limit, as in [PlanAnchors]). */",
         "private const val MAX_SIDE = 8",
         "if (own == null || own.isEmpty || own.before.size > MAX_SIDE || own.after.size > MAX_SIDE) return plain"
+      ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/routes/RestoreAsk.kt": {
+      "blob": "f45ecdfdfd0c6a10b09952aee1b6f5990f993827",
+      "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
+      "blob": "0f1228125f41a7f9b9cb29fe85035e53e6c83644",
+      "perf": [
+        "*     neighbours – only then it is worth a look, at most [MAX_POINTS] points, the worst first.",
+        "const val MAX_POINTS = 3",
+        "const val TRY_TIMEOUT_MS = 6_000L",
+        "const val BUDGET_MS = 20_000L",
+        "/** The interior points worth a look (step 1), the worst first, at most [MAX_POINTS]. No routing. */",
+        "}.sortedByDescending { it.second }.take(MAX_POINTS).map { it.first }",
+        "if (stopped || cancel?.isCancelled == true || now() - started > BUDGET_MS) { stopped = true; return null }",
+        "eng.route(listOf(from, to), Activity.HIKE, sac, RouteLimits(TRY_TIMEOUT_MS, cancel))"
       ]
     }
   }

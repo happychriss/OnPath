@@ -16,6 +16,7 @@ import com.onpath.app.ui.live.LiveShareSlice
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.live_share
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -25,16 +26,17 @@ import kotlinx.coroutines.flow.collectLatest
  */
 val LocalSettingsFirst = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
-/** First in Navigate's top column, above the turn card; it is told whether a turn card shows. Live sharing's pill ([LiveSignLayer]). */
-val LocalNavTop = compositionLocalOf<(@Composable (turnCard: Boolean) -> Unit)?> { null }
+/** The pill under Navigate's status card (only while sharing waits for the network). Live sharing's ([LiveSignLayer]). */
+val LocalNavBelowCard = compositionLocalOf<(@Composable () -> Unit)?> { null }
 
-/** At the right edge inside Navigate's turn card. Live sharing's sign ([LiveSignLayer]). */
-val LocalTurnCardEnd = compositionLocalOf<(@Composable () -> Unit)?> { null }
+/** The share button on top of Navigate's tour bubble (a size in; only while sharing is offered). Live sharing's ([LiveSignLayer]). */
+val LocalTourShare = compositionLocalOf<(@Composable (androidx.compose.ui.unit.Dp) -> Unit)?> { null }
 
 /**
  * Live sharing around the Settings page (docs/design/live-tracking.md §2, §14.2): its card is the first entry of the
- * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content]. Closing Settings (also by
- * the app) closes the name question and a seen "ended" line.
+ * on-the-way Settings through [LocalSettingsFirst], its name question is shown over [content] while Settings is open
+ * (Navigate's [LiveSignLayer] draws it otherwise, never both: Settings is composed over Navigate). Closing Settings (also
+ * by the app) closes the name question and a seen "ended" line.
  */
 @Composable
 fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
@@ -49,16 +51,21 @@ fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
 }
 
 /**
- * Live sharing's sign on Navigate (owner 2026-11-20: "oben bei den Richtungen"): inside the turn card while one shows,
- * else a pill at the top right (a tour without a route has no turn card). A tap opens the two actions.
+ * Live sharing on Navigate (owner 2026-11-24, "Standort teilen" in the tour bubble): the round share button on top of the
+ * map column's tour bubble – plain off, green while sharing, grey waiting – and, only while waiting, a pill under the status
+ * card. The button is there only while sharing is offered (a tour records or is shared; [LiveShareSlice.actions]).
+ * Its first tap, with no name stored, asks the name: drawn here over Navigate, but not while Settings is open (then
+ * [LiveShareLayer] draws it). Leaving Navigate closes a question that is not an edit, so it does not pop up on Settings later.
  */
 @Composable
 fun LiveSignLayer(vm: AppViewModel, content: @Composable () -> Unit) {
     val slice = LiveShares.of(vm) ?: return content()
+    DisposableEffect(slice) { onDispose { if (slice.askName && !slice.editingName) slice.nameCancelled() } }
     CompositionLocalProvider(
-        LocalTurnCardEnd provides { LiveSignInTurnCard(slice.sign, slice.actions) { slice.act(it) } },
-        LocalNavTop provides { turnCard -> if (!turnCard) LiveSignOnMap(slice.sign, slice.actions) { slice.act(it) } },
+        LocalTourShare provides if (slice.actions.isEmpty()) null else { size -> LiveShareButton(slice.sign, slice.actions, size) { slice.act(it) } },
+        LocalNavBelowCard provides { LiveWaitingPill(slice.sign, slice.actions) { slice.act(it) } },
         content = content)
+    if (slice.askName && !vm.settingsSlice.showSettings) LiveNameDialog(slice.name, onShare = slice::nameGiven, onCancel = slice::nameCancelled, edit = slice.editingName)
 }
 
 private fun LiveShareSlice.act(a: LiveAction) = when (a) {
@@ -76,15 +83,18 @@ object LiveShares {
     private const val KEY = "com.onpath.live.share"
 
     private class Holder(val slice: LiveShareSlice) : AutoCloseable {
-        override fun close() = Unit // the collectors run in the view model's scope and end with it
+        /** The two collectors [attach] starts; set once, right after the holder is made. */
+        var jobs: List<Job> = emptyList()
+        override fun close() { jobs.forEach { it.cancel() } }
     }
 
     /**
      * Sharing for every user, or only with the developer tools unlocked (Settings → About, 7 taps). Owner 2026-11-20:
-     * on main now, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
-     * his Pixel – then this goes to true (one line, a line for donald).
+     * on main, in an update only after the privacy text and the hourly clean-up are merged and he shared once on
+     * his Pixel. All three done 2026-11-24 (PR 19, PR 17, his share worked) – on for everyone with the tour bubble
+     * (owner 2026-11-24). Back to false hides the share button again; nothing else depends on it.
      */
-    private const val FOR_EVERYONE = false
+    private const val FOR_EVERYONE = true
 
     /** The slice of [vm]; null before [attach] or while sharing is not offered (then nothing of the sharing shows). */
     fun of(vm: AppViewModel): LiveShareSlice? =
@@ -92,7 +102,8 @@ object LiveShares {
 
     /** Makes [vm]'s slice once (the activity's onCreate, main thread) and feeds it: the lane's snapshots, the recording, the clock. */
     fun attach(vm: AppViewModel, app: Context) {
-        if (of(vm) != null) return
+        // the holder, not of(): of() is null while sharing is off, and every onCreate (config change) made a new slice
+        if (vm.getCloseable<Holder>(KEY) != null) return
         val client = EdgeLiveShareClient(app)
         val slice = LiveShareSlice(client, object : LivePrefs {
             override var liveName: String?
@@ -105,17 +116,19 @@ object LiveShares {
             }
             override fun nowMs(): Long = System.currentTimeMillis()
         })
-        vm.addCloseable(KEY, Holder(slice))
+        val holder = Holder(slice)
+        vm.addCloseable(KEY, holder)
         // on the main thread, for as long as the view model lives; the clock ticks only while sharing
-        vm.viewModelScope.launchSafe("live", "follow the live sharing") {
+        val follow = vm.viewModelScope.launchSafe("live", "follow the live sharing") {
             client.live.collectLatest { s ->
                 slice.onSnapshot(s)
                 if (s.sharing) while (true) { delay(TICK_MS); slice.tick() }
             }
         }
-        vm.viewModelScope.launchSafe("live", "follow the recording for sharing") {
+        val rec = vm.viewModelScope.launchSafe("live", "follow the recording for sharing") {
             vm.recState.collect { slice.onRecording(it != null) }
         }
+        holder.jobs = listOf(follow, rec)
     }
 
     /** How often the sign looks at the clock while sharing (the 12-min rule needs no finer step). */

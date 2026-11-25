@@ -2,8 +2,10 @@
 <!-- Die Seite zur Live-Tour (web/app/live/, docs/design/live-tracking.md §3). -->
 <resources>
     <string name="web_live_page_title">OnPath – geteilter Standort</string>
-    <string name="web_live_title">Live-Tour</string>
+    <string name="web_live_title">Geteilter Standort</string>
     <string name="web_live_title_named">Tour von %1$s</string>
+    <string name="web_live_next_point">nächster Punkt in %1$s</string>
+    <string name="web_live_waiting">wartet auf das Handy …</string>
     <string name="web_live_loading">Lädt …</string>
     <string name="web_live_moving">Unterwegs · zuletzt vor %1$d Min.</string>
     <string name="web_live_moving_now">Unterwegs · gerade eben</string>

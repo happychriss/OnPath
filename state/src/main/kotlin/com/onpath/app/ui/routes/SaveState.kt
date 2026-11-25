@@ -200,18 +200,45 @@ open class SaveState(
      * stays as it is) goes under My routes → Zuletzt, no question: written at once, before it leaves the map
      * ([com.onpath.app.ui.routes.RecentPlans.keep]).
      */
-    fun keepAsDraft(why: String, own: OwnProfile? = null) {
+    fun keepAsDraft(why: String, own: OwnProfile? = null, asks: Boolean = false) {
+        // a replacement asks about the plan it replaces – a newer one about its own old plan, or nothing ([RestoreAsk])
+        if (asks) restoreAsk = null
         val pts = plan.points.toList()
         // [own]: the plan's own activity / T level / route when the caller already switched the profile (a track or round trip that
         // takes its place) – the switch re-routed the plan on the new profile, so [SaveHost.route] is not the plan's own any more
         val act = own?.activity ?: host.activity; val level = own?.sac ?: host.sac
         val r = if (own != null) own.route else host.route
         if (pts.size < 2 || host.keepWhole(act, level, r)) return // a followed day: the whole multi-day tour goes under Zuletzt
+        routes.keptAs = -1L
         val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, level, host.stops(pts), plan.pinnedIndices(),
             host.datedName(), host.days(pts), plan.anchorsFor(act, level)) { host.difficulty(r, act) }, why)
         // its Zuletzt entry holds these points now: the plan is that entry "as it is" – an Undo back to them is not
         // "changed", one back to an older version is, and updates the entry again (never dropped, review 2026-11-20)
         if (updated != null) plan.setSaved(plan.linkName, updated, pts)
+        if (asks) restoreAsk = routes.keptAs.takeIf { it >= 0 }?.let { entry ->
+            // a changed saved route keeps its link (Save overwrites it); a link to the entry itself comes back with the entry
+            val link = plan.linkId.takeIf { it >= 0 && it != entry }?.let { SavedLink(plan.linkName, it, plan.savedPoints) }
+            Problems.trace("plan", "Restore your old plan? asked ($why): tour $entry, ${pts.size} points, ${act.name} T$level" +
+                (link?.let { ", linked to saved route ${it.id}" } ?: ""))
+            RestoreAsk(entry, act, level, link)
+        }
+    }
+
+    /**
+     * "Restore your old plan?" after a replacement ([RestoreAsk]; the box: [RestoreAsk.box]); null = no question. Set by
+     * [keepAsDraft] with `asks`, taken by the answer ([takeRestoreAsk]), dropped at a tour start ([dropRestoreAsk]).
+     */
+    var restoreAsk by mutableStateOf<RestoreAsk?>(null)
+        private set
+
+    /** The question is answered: it goes, and the caller gets it (null = none waited). */
+    fun takeRestoreAsk(): RestoreAsk? = restoreAsk.also { restoreAsk = null }
+
+    /** The question is gone without an answer ([why]: a tour started). */
+    fun dropRestoreAsk(why: String) {
+        if (restoreAsk == null) return
+        Problems.trace("plan", "Restore your old plan? dropped: $why")
+        restoreAsk = null
     }
 
     /**

@@ -642,4 +642,127 @@ class LiveUploaderTest {
         w.run(5 * 60_000)
         assertEquals(w.server.items.keys.count { LiveItem.chunkNumber(it) != null }, w.head()!!.chunks)
     }
+
+    // ---- leftovers (review 2026-11-24) ----
+
+    /** Boxes whose delete answers a given code for the ids in [refuse]; everything else works. Records claims / pushes per box. */
+    private class RefusingBoxes {
+        val refuse = HashMap<String, Int>()
+        val claimedAt = ArrayList<String>(); val pushedAt = ArrayList<String>(); val deleted = ArrayList<String>()
+        var deleteCalls = 0
+        var allDown = false
+        fun boxes() = LiveBoxes { id, _ ->
+            object : LiveBox {
+                override fun claim(readHash: String, writeHash: String) = if (allDown) LiveReply(0) else { claimedAt += id; LiveReply(200) }
+                override fun push(items: List<LivePush>, ended: Boolean) = if (allDown) LiveReply(0) else { pushedAt += id; LiveReply(200) }
+                override fun delete(): LiveReply {
+                    deleteCalls++
+                    if (allDown) return LiveReply(0)
+                    refuse[id]?.let { return LiveReply(it) }
+                    deleted += id; return LiveReply(200)
+                }
+            }
+        }
+    }
+
+    private class Lone {
+        val rb = RefusingBoxes()
+        val tour = Tour(); val store = Store(); val rnd = Random(5)
+        var now = 1_800_000_000_000L
+        var wallMs = 1_800_000_000_000L
+        fun fresh() = LiveUploader(rb.boxes(), tour, store, { n -> ByteArray(n).also(rnd::nextBytes) }, wall = { wallMs })
+        var u = fresh()
+        fun run(ms: Long) {
+            val end = now + ms
+            while (now < end) { now += 1000; wallMs += 1000; if (now % 4000 < 1000) tour.walk(1, now); u.step(now) }
+        }
+        fun box(link: String) = LiveKeys.of(link)!!.boxId
+        fun hasLeftoverLine() = store.text.orEmpty().lines().any { it.startsWith("onpath-live-delete") }
+    }
+
+    private fun warned(part: String) = com.onpath.app.debug.Problems.snapshot().any { it.area == "live" && it.message.contains(part) }
+
+    /** Guards: a leftover box whose delete keeps failing never holds up the new share's claim and uploads. */
+    @Test
+    fun aLeftoverThatCannotBeDeletedNeverHoldsUpTheNewShare() {
+        val l = Lone()
+        val first = l.u.start(l.tour.id, "A")
+        l.run(2 * 60_000)
+        l.rb.refuse[l.box(first)] = 500
+        l.u.stop()
+        val second = l.u.start(l.tour.id, "A")
+        l.run(5 * 60_000)
+        assertTrue("the new share is claimed", l.box(second) in l.rb.claimedAt)
+        assertTrue("and uploads", l.box(second) in l.rb.pushedAt)
+        assertTrue("the old delete is still tried, with back-off", l.rb.deleteCalls in 2..12)
+        assertTrue(l.u.pending)
+    }
+
+    /** Guards: the first claim of a new share does not wait for the 30-s event floor after the old box's delete went through. */
+    @Test
+    fun theClaimDoesNotWaitForTheOldDelete() {
+        val l = Lone()
+        val first = l.u.start(l.tour.id, "A")
+        l.run(2 * 60_000)
+        l.rb.allDown = true
+        l.u.stop()
+        val second = l.u.start(l.tour.id, "A")
+        l.rb.allDown = false
+        l.run(3_000)
+        assertTrue("old box deleted", l.box(first) in l.rb.deleted)
+        assertTrue("the claim came within seconds, not after the 30-s floor", l.box(second) in l.rb.claimedAt)
+    }
+
+    /** Guards: a lasting 4xx (400 / 401 / 405) on the old box's delete is given up – later shares go on, also after a restart. */
+    @Test
+    fun aLeftoverRefusedForGoodIsDroppedAndReported() {
+        val l = Lone()
+        val first = l.u.start(l.tour.id, "A")
+        l.run(2 * 60_000)
+        l.rb.refuse[l.box(first)] = 405
+        l.u.stop()
+        val second = l.u.start(l.tour.id, "A")
+        l.run(60_000)
+        l.u = l.fresh() // killed meanwhile
+        l.run(10 * 60_000)
+        assertFalse("dropped", l.hasLeftoverLine())
+        assertTrue("reported", warned("keeps refusing"))
+        assertEquals(second, l.u.link)
+        assertFalse(l.u.cleaning)
+    }
+
+    /** Guards: a leftover older than the server's 48 h idle limit is dropped (read from the stored state), reported, no request. */
+    @Test
+    fun aLeftoverOlderThanTwoDaysIsDropped() {
+        val l = Lone()
+        val first = l.u.start(l.tour.id, "A")
+        l.run(2 * 60_000)
+        l.rb.allDown = true
+        l.u.stop()
+        l.u.start(l.tour.id, "A")
+        l.run(60_000)
+        l.u = l.fresh()
+        l.wallMs += 49 * 3_600_000L
+        val before = l.rb.deleteCalls
+        l.rb.allDown = false
+        l.run(10_000)
+        assertEquals("no request for an expired box", before, l.rb.deleteCalls)
+        assertFalse(l.box(first) in l.rb.deleted)
+        assertFalse(l.hasLeftoverLine())
+        assertTrue(warned("two days"))
+    }
+
+    /** Guards: a damaged leftover line beside a good share line is reported, the share is kept. */
+    @Test
+    fun aDamagedLeftoverLineIsReportedAndTheShareKept() {
+        val l = Lone()
+        val link = l.u.start(l.tour.id, "A")
+        val good = l.store.text!!
+        com.onpath.app.debug.Problems.clear()
+        l.store.text = good + "\nonpath-live-delete ???? !!!!\n"
+        l.u = l.fresh()
+        assertEquals(link, l.u.link)
+        assertTrue(warned("unreadable and were dropped"))
+        assertFalse(l.u.cleaning)
+    }
 }

@@ -99,6 +99,8 @@
     <string name="plan_reach_activity">%1$s only reachable by %2$s</string>
     <string name="plan_reach_on_foot">%1$s not reachable by bike – on foot T%2$d</string>
     <string name="plan_reach_none">%1$s not reachable</string>
+    <string name="plan_reach_level_detour">%1$s detour needed, %2$s only reachable from %3$s</string>
+    <string name="plan_detour">%1$s adds a %2$s detour – shorter with %3$s</string>
     <string name="plan_quoted">“%1$s”</string>
     <string name="plan_more">%1$s (+%2$d more)</string>
     <string name="plan_saved_as">Saved as “%1$s”</string>

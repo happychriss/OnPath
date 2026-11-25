@@ -160,7 +160,11 @@ class RoutesSlice(
      */
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW,
                  /** A stand-in with no stored route behind it (a recorded tour's followed plan): its line. */
-                 lineOf: List<List<TrackPoint>>? = null, planned: (() -> Unit)? = null) {
+                 lineOf: List<List<TrackPoint>>? = null, planned: (() -> Unit)? = null,
+                 /** "Wiederherstellen" ([RoutesOpenState.answerRestore]): [t] is the old plan's entry, brought back as it was – its profile and link. */
+                 restoring: RestoreAsk? = null,
+                 /** False: the replaced plan goes under Zuletzt without "Restore your old plan?" (a tour starts right after, Los geht's). */
+                 asks: Boolean = true) {
         Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         host.syncMarkSeen(t)
         scope.launchSafe("app", "openTour") {
@@ -180,22 +184,27 @@ class RoutesSlice(
                 // what it is routed with: its own activity and T level, during a tour the tour's. Its detour points count only on
                 // the profile it was saved with ([com.onpath.app.routing.AnchorSet])
                 val savedAct = planRoute.activityOrNull(t.activity)
-                val act = if (duringTour) planRoute.activity else savedAct ?: planRoute.activity
-                val level = if (duringTour) planRoute.sac else t.sac
+                // restored: the old plan's own profile (a saved route may have been switched after loading)
+                val own = restoring?.activity ?: savedAct
+                val act = if (duringTour) planRoute.activity else own ?: planRoute.activity
+                val level = if (duringTour) planRoute.sac else restoring?.sac ?: t.sac
                 val anchors = com.onpath.app.routing.AnchorSet.of(t.anchors.filterKeys { it in pts.indices }, savedAct, t.sac)
                 if (!duringTour) loadStoredLine(t, pts, segs, anchors.forProfile(act, level), act, level)
                 if (!duringTour) host.routeEvent(RouteRun.Event.NewPlan) // a new plan: its first route may raise the sheet ([SheetRise])
-                // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points
-                save.keepAsDraft("replaced by \"${t.name}\"")
+                // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points – and outside a
+                // tour the box asks whether it should come back ([RestoreAsk]; not when this IS the way back)
+                save.keepAsDraft("replaced by \"${t.name}\"", asks = asks && !duringTour && restoring == null)
                 if (!duringTour) {
-                    savedAct?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
-                    planRoute.sac = t.sac
+                    own?.let { planRoute.activity = it; host.rememberActivity(it) } // unknown: the current one stays
+                    planRoute.sac = level
                 }
                 plan.arriving(pts, anchors)
                 host.change { clear(); addAll(pts) }
                 t.waypoints.forEachIndexed { i, w -> w.name?.let { host.rememberPlaceName(pts[i], it) } }
                 // a stand-in (no stored route behind it): an unsaved plan – Los geht's saves it like every new plan
                 if (t.id >= 0) host.saved(t.name, t.id, pts) else host.saved(null, -1L, null); host.opened(t, pts)
+                // restored: a changed saved route is linked to that route again (Save overwrites it, as before the replacement)
+                restoring?.link?.let { host.saved(it.name, it.id, it.points) }
                 camera.fit(segs.flatten().map { it.toGeo() })
                 host.syncRoutingCheck(t, pts)
                 if (duringTour && host.touring) host.enterMode(AppMode.NAVIGATE)
@@ -315,6 +324,7 @@ class RoutesSlice(
         override fun ensureRoutingData(parts: List<String>) = host.ensureRoutingData(parts)
         override fun change(block: MutableList<GeoPoint>.() -> Unit) = host.change(block)
         override fun rememberPlaceName(p: GeoPoint, name: String) = host.rememberPlaceName(p, name)
+        override val touring: Boolean get() = host.touring
         /**
          * Only for the track still shown, the profile it switched to (the user may have changed it since: then the plan's current one counts)
          * and the plan it was taken of (an edited plan is routed on the current profile: it goes under Zuletzt as it is).

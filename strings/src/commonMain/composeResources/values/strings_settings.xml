@@ -168,6 +168,11 @@
     <string name="settings_privacy_sync_when">only when you pair with a browser: after a change and when the app opens</string>
     <string name="settings_privacy_sync_title">Plan sync with the web planner (only when you pair)</string>
     <string name="settings_privacy_sync_text">Your saved plans and imported tracks are encrypted on your phone and in your browser before they leave the device. They pass through our sync server (Cloudflare, stored in the EU) as locked data: the server cannot read them and never learns your name, e-mail or where you plan to go. It stores a random mailbox number, the locked plans and when they last changed. Unpairing deletes everything there at once; a mailbox nobody uses for 12 months is deleted automatically. Whoever has your pairing code can see your saved plans – do not share it.</string>
+    <string name="settings_privacy_live_what">Your route and location during a shared tour, encrypted on the phone</string>
+    <string name="settings_privacy_live_to">OnPath server (Cloudflare, stored in the EU)</string>
+    <string name="settings_privacy_live_when">only when you tap “Share location”, until the tour ends or you stop sharing</string>
+    <string name="settings_privacy_live_title">Share location (only when you turn it on)</string>
+    <string name="settings_privacy_live_text">When you share a tour, your phone sends your route to our server (Cloudflare, stored in the EU) during the tour, encrypted. The key is only in the link you send yourself – the server can read neither your location nor your route. It stores a random number, the locked data, when it arrived, and the name you give for the page, also encrypted. Whoever has the link can see your tour until you stop sharing. “Stop sharing” deletes everything at once; otherwise the server deletes the data 12 hours after the tour ends, and at the latest 48 hours after the last sign of life.</string>
     <string name="settings_nav_voice_test">Test voice</string>
     <string name="settings_nav_guide">Turn hints</string>
     <string name="settings_nav_guide_sub">Shortly before a junction where you could go wrong – vibration: 1× left, 2× right</string>

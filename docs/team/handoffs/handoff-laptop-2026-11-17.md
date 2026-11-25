@@ -16,6 +16,36 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-25 morning – the next laptop session starts HERE
+- **On main, not online yet** (deploy waits for the owner's ask in the laptop chat – `gh workflow run` / `gh pr merge` are
+  blocked for this session otherwise, even on the captain's word): the detour hint in the planner (`detourStart` →
+  `detourAt(i)` one router request per step → `detourGaps`; an edit replaces a worker mid-step, client.ts `stopDetour`)
+  with donald's reason „② macht 2,8 km Umweg – mit Wandern T2 kürzer“; a short point list (≤ 4) keeps every row at every
+  width (style.css, the goal was hidden on a laptop); smoke fixes (Reverse reveal steps, areas polling, routes 4b,
+  stop-smoke takes Cancel then Neu).
+- **Pull request „Web planner CI: every browser smoke runs“** (stop-smoke with E5_N50): green, read by a second model, merge
+  waits for the owner's ask. Follow-up: routes-smoke can run in CI too (needs no cell store).
+- **Tidy-up**: owner's yes via the captain → `~/aufraeumen-laptop-2026-11-25.sh` for the owner to run (79 worktrees + 61
+  branches; web-spike taken out of A). Inventory: `items/2026-11-24-cleanup-inventory-laptop.md`.
+- Readers (donald, on main 07fbe331d) – areas-smoke B2 locate fix is in. Still for the planner: „Ganz neu berechnen“ (picture B,
+  only with stitched legs, when umbau's W4 lands), the restore-plan box (after donald's app part), the stitch WRITERS' web part.
+- Watching CI: filter `gh run list --branch main` – branch runs contain main's commits too (two false alarms tonight).
+- Rebuild the engine (`gradle_slot … -p web/engine generateWasmGC copyWasmGCRuntime`) before smokes after any core/engine pull.
+
+## State 2026-11-24 ~22:00 – the next laptop session starts HERE
+- **Long plan link: on main (f4a63e0d7) and online** (the owner started the deploy himself, run 45485633653, live 871179d19).
+  `gh workflow run` is still blocked here by the auto-mode classifier – the owner starts deploys in Actions (he knows how now).
+- **Wait window modal like the app: on main (56abfc513), online since 7ed2d75cb with the pairing fix.** A veil (`.waitveil`, z 14, under the message
+  cards) takes taps / drags / wheel / keys while the window waits; Cancel unchanged (closes, the map loads on beside the
+  map). The page's first map brings the window for a few seconds – smokes' raw `mouse.click`s now wait for no veil and
+  `areTilesLoaded()`; a new smoke with raw map clicks needs the same line. 15 smokes green locally.
+- **Pairing-link fix: on main (4f300c634)**, own review clean (same answers as the old Regex), gate + sync-smoke green.
+  Same Regex pattern still in `LiveCode.parse` (not called by the web today).
+- Next deploy: both pieces together – ask the owner (question box) to start it once „Web planner“ on main is green.
+- LordTriangel's PRs: planner notes given in the chat; nothing approved or run. All three lack the planner side.
+- Readers branches: donald has the note (keep main's `linkCode`, `share-smoke` step „6.“). Still on the captain's word.
+- Owner's rule now: **questions only as a question box** (AskUserQuestion), never plain text.
+
 ## State 2026-11-22 late, shutdown – the next laptop session starts HERE
 hp and donald were shut down by the owner. **None of the three branches is on main, nothing went online.** Every planner deploy needs the owner's own yes in the laptop chat.
 

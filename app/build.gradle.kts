@@ -30,7 +30,7 @@ android {
         // One source of truth for the version: "-PappVersion=0.4.1" (the release workflow passes the git
         // tag) or the default below. versionCode is derived (major*10000 + minor*100 + patch), so every
         // newer version installs as an update.
-        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.18.9"
+        val appVersion = (project.findProperty("appVersion") as String?)?.removePrefix("v") ?: "0.18.10"
         val (vMaj, vMin, vPatch) = appVersion.split(".").map { it.takeWhile(Char::isDigit).toIntOrNull() ?: 0 }
             .plus(listOf(0, 0, 0)).take(3)
         versionCode = vMaj * 10000 + vMin * 100 + vPatch
@@ -159,6 +159,8 @@ android {
     }
     testOptions {
         unitTests.isReturnDefaultValues = true
+        // Robolectric needs the merged manifest / resources of the app.
+        unitTests.isIncludeAndroidResources = true
         // Every JVM test in UTC, like CI: dates in screenshots (recycle bin, My routes) otherwise depend on the
         // machine's time zone and verifyPaparazziDebug fails on another machine (owner: tests in UTC).
         unitTests.all {
@@ -252,6 +254,9 @@ dependencies {
     testImplementation("org.json:json:20240303")
     // SQLite on the JVM for the offline address search tests (Android's SQLite is not available there).
     testImplementation("org.xerial:sqlite-jdbc:3.46.1.3")
+    // Real Android classes (BroadcastReceiver, SQLiteOpenHelper, notifications) on the JVM, only for the few tests that
+    // need a Context: TourInterruptedReceiverTest (owner yes 2026-11-25).
+    testImplementation("org.robolectric:robolectric:4.16")
 
     // End-to-end tests of the core features on an emulator (docs/core-features.md, app/src/androidTest)
     androidTestImplementation("androidx.test:runner:1.6.2")

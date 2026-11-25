@@ -58,10 +58,16 @@ class StillSenseTest {
         assertNull("the sensor went silent", d.still(10_000 + StillDetector.STALE_MS + 1))
     }
 
-    /** Wiring: the sensor only without a fix while recording (battery); the card shows nothing about GPS when still. */
+    /**
+     * Wiring: the sensor runs while a tour records (owner 2026-11-24: it decides the standing-still GPS rate and GPS off,
+     * [RestGps]); the no-GPS rules read it only while GPS is lost; the card shows nothing about GPS when still.
+     */
     @Test fun wiredOnlyWithoutAFixAndHidesTheLine() {
         val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
-        assertTrue(svc.contains("motion.listen(tourId >= 0 && !paused && gpsLost())"))
+        assertTrue(svc.contains("motion.listen(tourId >= 0 && !paused)"))
+        assertTrue(svc.contains("if (tourId >= 0 && !paused) restGps.onTick(now)"))
+        assertTrue(svc.contains("RestGps(tracker) { motion.still(it) }"))
+        assertTrue(svc.contains("private fun stillWithoutGps(): Boolean? = if (gpsLost()) motion.still(SystemClock.elapsedRealtime()) else null"))
         assertTrue(svc.contains("motion.listen(false)"))
         assertTrue(svc.contains("gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE"))
         val nav = java.io.File("src/main/java/com/onpath/app/ui/NavigateScreen.kt").readText()

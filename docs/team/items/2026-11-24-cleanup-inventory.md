@@ -1,0 +1,453 @@
+# Cleanup inventory – donald, 2026-11-24 [aufräumen]
+
+Owner's word (captain 2026-11-24): tidy up – inventory first, then ONE yes for the group „kann weg“, then delete. Read only so far; **nothing deleted yet**.
+
+## How it was checked
+- `git fetch --prune`; every worktree of `onpath-app` (210 besides the main checkout). Other OnPath checkouts on donald (`onpath-owner`, `onpath-test`, `onpath-cells-work/*/src`, `onpath.private`): one worktree each, clean – nothing to tidy.
+- A commit counts as saved when its sha is on an origin branch **or** the same patch (`git patch-id --stable`) is on main or on a branch that stays. Merge commits alone are not trusted (→ C). Uncommitted changes: `git status --porcelain` (incl. untracked).
+- Remote branches: merged into main / every commit's patch on main / the whole diff already on main (`git apply -R --check` against main) / contained in a branch that stays.
+- (D) = never touch: backlog In progress + Waiting + handoffs + items of the last days name it, the captain's list (today's wip branches, saved-work, main, web-spike, pr/* + `claude/youthful-mayer-vp3lkn` of open pull requests, umbau-webready-inputs), the umbau-phase-* tags (tags are not touched at all), the wip branches the start hook lists for „bring to main“, worktrees with a running process (two sessions) or changed today. Worktrees created after the inventory (e.g. `readers`, 21:44) are not in it and stay.
+
+## Counts
+| Group | Worktrees | Remote branches |
+|---|---|---|
+| (A) kann weg | 105 | 133 |
+| (B) aufheben | 50 | 4 |
+| (C) unklar | 5 | 2 |
+| (D) aktiv – nie anfassen | 50 | 56 |
+| total | 210 | 195 |
+
+## (B) aufheben
+### Worktrees
+- `agent-a05de356b79931628` [worktree-agent-a05de356b79931628] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „WIP donald 2026-11-03 night (a022-plan-tour-route) – unfinished, NOT gated; saved when the“
+- `agent-a06a38c13507bd586` [worktree-agent-a06a38c13507bd586] 2026-11-12 – 2 own commit(s) found nowhere on GitHub · „SKETCH (not for main): Plan mode – F (today + blue Los geht's), G (B + blue Los geht's) | SKETCH (not for main): Plan mode clearer – today v“
+- `agent-a088dd2c836c65766` [donald-map-controls] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „Plan's map controls stand at one fixed place (owner 2026-11-06, onpath.private#43): top an | Round trip is a switch (owner 2026-11-06, onpat“
+- `agent-a1279cee67d5b1ebc` [worktree-agent-a1279cee67d5b1ebc] 2026-11-19 – 1 own commit(s) found nowhere on GitHub · „Fix: a row dropped on itself (or a stale row) in the Points list emptied the plan | Piece 10 review lows: seven lines of PlanEditSlice whose“
+- `agent-a19393692315c94f2` [sketch/plan-shadow] 2026-11-12 – 1 own commit(s) found nowhere on GitHub · „SKETCH plan shadow (owner 2026-11-12): one shadow level for all that floats over the map,  | Plan: "▲ Weiter geht's" back to Navigate in the“
+- `agent-a1c93262f1220859e` [worktree-agent-a1c93262f1220859e] 2026-11-02 – 1 own commit(s) found nowhere on GitHub · „Found place = blue pin + name chip "Name ›" (owner 2026-11-02), replaces the dashed ring w“
+- `agent-a29a505c088882ee7` [donald-novice-walkthrough] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „flow-map.md: novice walkthrough (owner 2026-11-06: complicated ways back and actions that“
+- `agent-a29e2f8f1988db51c` [worktree-agent-a29e2f8f1988db51c] 2026-11-05 – 1 own commit(s) found nowhere on GitHub · „PROPOSAL (screenshots only, owner 2026-11-05): three cleaner 'Tour beenden' boxes – V1 dia“
+- `agent-a2b41de62e349ba45` [worktree-agent-a2b41de62e349ba45] 2026-11-14 – 1 own commit(s) found nowhere on GitHub · „WIP (stopped unfinished, untested – donald shut down 2026-11-14): tour suggestions, part 1“
+- `agent-a2d3d7bc0e3e2baea` [sketch/website-tones-guss] 2026-11-12 – 1 own commit(s) found nowhere on GitHub · „SKETCH (not for main): website tones – today (A) vs the website's neutrals (D) vs D with w“
+- `agent-a32bd18440ce87c78` [worktree-agent-a32bd18440ce87c78] 2026-11-12 – 4 own commit(s) found nowhere on GitHub · „Screenshots: paper tone B (owner 2026-11-12) – all pictures re-recorded | Paper tone B (owner 2026-11-12): one step warmer – #F5F3EB read as“
+- `agent-a3342582f6de2338f` [worktree-agent-a3342582f6de2338f] 2026-11-12 – 2 own commit(s) found nowhere on GitHub · „Store a planned route's difficulty at saving (schema 7) | My routes: sort chips (owner 2026-11-12, variant C) | Sketch: sort My routes – thr“
+- `agent-a3d00a1a840ebb4e4` [worktree-agent-a3d00a1a840ebb4e4] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „WIP donald 2026-11-03 night (roundtrip-A-lead) – unfinished, NOT gated; saved when the own | Test (ignored): round trip 1 → 2 → 3 → 1, Guide“
+- `agent-a3e63f7299740cf3b` [donald-hold-sketch] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „Sketch only (never main): lock as hold-to-confirm, variants A band / B ring / C band under“
+- `agent-a472898ca900a40f4` [donald-brand-sketch] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „SKETCH ONLY (never main): OnPath name + logo places – splash wordmark, menu head, empty sh“
+- `agent-a49e632e138b92e64` [donald-paper-sketch] 2026-11-07 – 1 own commit(s) found nowhere on GitHub · „SKETCH (not for main): paper tones A #FAFAF6 / B #F5F3EB / C #F1F0E9 for menus, dialogs, s“
+- `agent-a4af3738baf274ca7` [worktree-agent-a4af3738baf274ca7] 2026-11-18 – 4 own commit(s) found nowhere on GitHub · „Backlog slimming fixes: gate check without a pipe, cap 40,000 with a message that says wha | Backlog slimming: role lines complete up to 400“
+- `agent-a5eb6e6660f45c45e` [donald-settings-nav-sketch] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „Sketch only (never main): Settings → Navigation today vs. variants A/B/C (owner 2026-11-06“
+- `agent-a5ed8e6326f664a38` [worktree-agent-a5ed8e6326f664a38] 2026-11-18 – 1 own commit(s) found nowhere on GitHub · „Stopped tour card: the calm line under the head is dropped (owner 2026-11-18) – 'Aufzeichn“
+- `agent-a655365b99b8af1cd` [worktree-agent-a655365b99b8af1cd] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „Flow map (owner 2026-11-06): every state × button, inputs for the common goals, findings H“
+- `agent-a6d293d939a8a7592` [worktree-agent-a6d293d939a8a7592] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „Loading a route during a tour asks (owner 2026-11-03): 'Route „‹Name›“ laden? Du bist gera“
+- `agent-a748f4d14eab56e37` [donald-empty-guide-sketch] 2026-11-07 – 1 own commit(s) found nowhere on GitHub · „SKETCH (never main): 3-step guide in the empty start sheet – A list, B cards, C pictures (“
+- `agent-a8057f82351d572be` [donald-paused-sketch] 2026-11-07 – 1 own commit(s) found nowhere on GitHub · „SKETCH (throwaway, not for main): paused Navigate – today and three proposals A/B/C (owner“
+- `agent-a82e2142f1a4d390f` [donald-blue-sketch] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „Throwaway sketch: plan blue A | B | C switchable for the screenshot test (owner 2026-11-06“
+- `agent-a865429a7196a8b03` [worktree-agent-a865429a7196a8b03] 2026-11-19 – 5 own commit(s) found nowhere on GitHub · „Tests G10: map-loading tests -> MapLoadFlowTest (app ui) + RoutingDataCheckTest (state dat | Tests G17: diagnostics tests -> DiagnosticsSmal“
+- `agent-a8b12aa2fbaf5bf32` [donald-polish-sketch] 2026-11-06 – 2 own commit(s) found nowhere on GitHub · „SKETCH: page look check + final map frame (throwaway) | SKETCH (throwaway, not for main): polish ideas 1–8 for the owner's before/after page“
+- `agent-a8cee26a6efbaf39e` [donald-routes-sketch] 2026-11-07 – 1 own commit(s) found nowhere on GitHub · „SKETCH (never main): Meine Touren rows – today vs. A clean list, B big preview, C actions“
+- `agent-a92cbb0eb35d71b71` [donald-review-bugs] 2026-11-06 – 1 own commit(s) found nowhere on GitHub · „'Plan speichern?' for a never-saved plan: 'Dein Plan ist noch nicht gespeichert.' (was 'De | N1 (novice walkthrough): in Plan during a tour “
+- `agent-a961463dd2e6cc1e6` [worktree-agent-a961463dd2e6cc1e6] 2026-11-19 – 1 own commit(s) found nowhere on GitHub · „Piece 15 review: the write of a synced route is asserted column by column, comment of the  | Rebuild phase 2 piece 15: the sync driver moves“
+- `agent-a99c28e59142f1dc4` [sketch/favourites-2026-11-13] 2026-11-13 – 3 own commit(s) found nowhere on GitHub · „SKETCH map rows (owner 2026-11-13): favourites C + the route on a real map – L1 84 dp squa | SKETCH compact My routes (owner 2026-11-13): to“
+- `agent-a9d3fb5dae92a6dcb` [worktree-agent-a9d3fb5dae92a6dcb] 2026-11-19 – 1 own commit(s) found nowhere on GitHub · „Piece 9 review lows: guards and log lines of PlanRunSlice asserted, empty deferred-maps pa | Rebuild phase 2 piece 9 (first half): PlanRunSl“
+- `agent-aaa4346ccc37ca343` [tour-running] 2026-11-12 – 1 own commit(s) found nowhere on GitHub · „Plan during a tour, empty plan: "● Tour läuft noch" + "Neues Ziel festlegen ›" (owner 2026 | One rule (owner 2026-11-12): every big go butto“
+- `agent-aadcab6e4c252428e` [worktree-agent-aadcab6e4c252428e] 2026-11-21 – 1 own commit(s) found nowhere on GitHub · „Voice off route: side and metres only when sure (OffRouteSay): straight-path heading, near | Voice: off the route says the side and the metr“
+- `agent-aadffc42b1a111595` [worktree-agent-aadffc42b1a111595] 2026-11-18 – 1 own commit(s) found nowhere on GitHub · „Multi-day tours stage 4: a day whose state is lost after a restart is never saved over the | MultiDayTourE2ETest: points down the Etsch vall“
+- `agent-ab2333d7c38db2168` [worktree-agent-ab2333d7c38db2168] 2026-11-13 – 1 own commit(s) found nowhere on GitHub · „WIP (stopped unfinished, untested): tour suggestions round 7 – Rhine as a named destinatio“
+- `agent-ab885e4137c0095bc` [worktree-agent-ab885e4137c0095bc] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „Fewer terms (owner 2026-11-03): two states Planen / Unterwegs, two things Route / Tour – '“
+- `agent-ac08bafcc6e050c79` [worktree-agent-ac08bafcc6e050c79] 2026-11-08 – 2 own commit(s) found nowhere on GitHub · „WIP smooth map 2 | WIP smooth map“
+- `agent-ad23f4104afb1fac9` [worktree-agent-ad23f4104afb1fac9] 2026-11-19 – 1 own commit(s) found nowhere on GitHub · „Piece 6 review: demoLine reads shown lazily as before; busy rule pinned per maker; host ad | parity: re-hash AppViewModel after piece 6 (no “
+- `agent-ada611a825b7fe279` [worktree-agent-ada611a825b7fe279] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „WIP donald 2026-11-03 night (offline-pill) – unfinished, NOT gated; saved when the owner s“
+- `agent-adb75876e3e2604b3` [worktree-agent-adb75876e3e2604b3] 2026-11-20 – 1 own commit(s) found nowhere on GitHub · „Map style check: POI names never without their symbol – tools/check_poi_names.py (every ki“
+- `agent-aeacecbbaacb83ff3` [worktree-agent-aeacecbbaacb83ff3] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „WIP donald 2026-11-03 night (roundtrip-B-reroute-circles) – unfinished, NOT gated; saved w“
+- `agent-aefbee9b7f6f8fba2` [testbuild/renderer-fades-nodot] 2026-11-12 – 1 own commit(s) found nowhere on GitHub · „Revert "Map: position dot on MapLibre's native location layer (test build)" | UI: full pages fade in and out (test build) | Map: position do“
+- `agent-af157df928d347de5` [spike/3d-webview] 2026-11-06 – 7 own commit(s) found nowhere on GitHub · „SPIKE 3D probe round 5: the web planner's calm flyover camera ported 1:1 (web/app/src/flyo | SPIKE 3D probe round 4 (owner on the Pixel 23:0“
+- `agent-af1a07018ce75ad61` [worktree-agent-af1a07018ce75ad61] 2026-11-03 – 1 own commit(s) found nowhere on GitHub · „WIP donald 2026-11-03 night (roundtrip-C-stop-on-the-way) – unfinished, NOT gated; saved w“
+- `agent-af91d64e77e6bbe0b` [worktree-agent-af91d64e77e6bbe0b] 2026-11-19 – 1 own commit(s) found nowhere on GitHub · „L2 review: a stray CancellationException with a live job is a failure; tests for service c | L2: a failing read of the active tour at start “
+- `agent-afc2d72c0b5aff720` [donald-go-row-sketch] 2026-11-07 – 1 own commit(s) found nowhere on GitHub · „SKETCH (never for main): three variants for the rolled-up plan sheet's Los geht's row (own“
+- `donald-3d-on-merge` [donald-3d-on-merge] 2026-11-06 – 3 own commit(s) found nowhere on GitHub · „SPIKE 3D: docs/design/3d-spike.md – what was built, emulator measurements, risks, effort ( | SPIKE 3D probe: runs offline on the emulator – “
+- `donald-pixel-1106` [donald-pixel-1106] 2026-11-06 – 6 own commit(s) found nowhere on GitHub · „SPIKE 3D probe round 4 (owner on the Pixel 23:00, stutter): PMTiles via async fetch of exa | SPIKE 3D probe round 3 (owner on the Pixel 22:4“
+- `donald-pixel2-1106` [donald-pixel2-1106] 2026-11-06 – 7 own commit(s) found nowhere on GitHub · „SPIKE 3D probe round 5: the web planner's calm flyover camera ported 1:1 (web/app/src/flyo | SPIKE 3D probe round 4 (owner on the Pixel 23:0“
+- `search-state-cut` [search-state-cut] 2026-11-20 – 2 own commit(s) found nowhere on GitHub · „SearchState: the search's state and decisions move to :state (web-ready); SearchSession ke | Search core move: OfflineIndex (SearchQuery, Se“
+### Remote branches
+- `ci/umbau-p2-17b` 2026-11-19 – 2 own commit(s)
+- `feat/nav-v2-step2` 2026-11-01 – 1 own commit(s)
+- `sketch/donald-2026-11-19-progress-design` 2026-11-19 – 3 own commit(s)
+- `sketch/donald-2026-11-19-suggest-fulltext` 2026-11-19 – 1 own commit(s)
+
+## (C) unklar
+### Worktrees
+- `agent-a10e2e5c1e49456bc` [wip/donald-2026-11-14-suggest-remote] 2026-11-14 – 1 uncommitted file(s): ?? web/app/node_modules
+- `agent-a932f94112040d5bf` [worktree-agent-a932f94112040d5bf] 2026-11-18 – 1 merge commit(s) not on GitHub, rest on GitHub · „Backlog: IR planner stage 3 ready to merge (wip/ir-2026-11-18-planner-suggest) | Tour suggestions §7: stage 3 built (engine, worker, UI, tes“
+- `agent-a9bdfa7ed7b2f96ee` [donald-pkg-all] 2026-11-06 – 1 uncommitted file(s): M app/src/androidTest/java/com/onpath/app/e2e/CoreFieldE2ETest.kt
+- `agent-a9db56cc9e73ac2a0` [donald-flow-map] 2026-11-06 – 2 uncommitted file(s): ?? app/src/androidTest/java/com/onpath/app/e2e/FlowMapProbeE2ETest.kt ?? docs/design/flow-map.md
+- `agent-ab9860b0053e3d030` [worktree-agent-ab9860b0053e3d030] 2026-11-18 – 7 uncommitted file(s): ?? tools/routing/kn-spike/.gitignore ?? tools/routing/kn-spike/build.gradle.kts ?? tools/routing/kn-spike/settings.gradle.kts ?? tools/routing/kn-spike/src/commonMain/kotlin/btools/spike/ ?? tools/routing/kn-spike/src/commonMain/kotlin/btools/util/Platform.kt
+### Remote branches
+- `a003-play-build` 2026-11-07 – only merge commits left, content not clearly on main
+- `ci/donald-merge-1113-fix` 2026-11-14 – only merge commits left, content not clearly on main
+
+## (A) kann weg
+### Worktrees
+- `agent-a056ebbc8e27c20f8` [worktree-agent-a056ebbc8e27c20f8] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a0776b8ee562b0686` [worktree-agent-a0776b8ee562b0686] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a08a236b1e87c9a59` [tracking-piece5] 2026-11-20 – own commits are on main / a kept branch (same patch)
+- `agent-a132cf7ae937b483f` [ci/donald-2026-11-19-hold-measure] 2026-11-19 – nothing own
+- `agent-a1a165ebee0a51f25` [worktree-agent-a1a165ebee0a51f25] 2026-11-18 – own commits are on main / a kept branch (same patch)
+- `agent-a1c38e60efa9dca09` [worktree-agent-a1c38e60efa9dca09] 2026-11-21 – nothing own
+- `agent-a1c54a511ddf1fb8e` [tracking-piece4] 2026-11-20 – own commits are on main / a kept branch (same patch)
+- `agent-a1cd737a47dd5d502` [worktree-agent-a1cd737a47dd5d502] 2026-11-20 – own commits are on main / a kept branch (same patch)
+- `agent-a21d4a7550fc33157` [worktree-agent-a21d4a7550fc33157] 2026-11-18 – nothing own
+- `agent-a239f79fbe0fa5665` [worktree-agent-a239f79fbe0fa5665] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a2746d3788863085e` [worktree-agent-a2746d3788863085e] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a27de738585a03982` [wip/ir-2026-11-17-port-batch] 2026-11-17 – nothing own
+- `agent-a29228ce56b604a62` [worktree-agent-a29228ce56b604a62] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a2e8f1f40b5d364bf` [worktree-agent-a2e8f1f40b5d364bf] 2026-11-20 – nothing own
+- `agent-a31c6f225e4e2d69a` [worktree-agent-a31c6f225e4e2d69a] 2026-11-18 – own commits are on main / a kept branch (same patch)
+- `agent-a32cabeb82b0fe6f3` [worktree-agent-a32cabeb82b0fe6f3] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a33ac563dd295d4d7` [wip/ir-2026-11-18-card-row] 2026-11-18 – nothing own
+- `agent-a37d28251eeb68c40` [worktree-agent-a37d28251eeb68c40] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a38582c0bf421e408` [worktree-agent-a38582c0bf421e408] 2026-11-18 – nothing own
+- `agent-a3b44020b99cca185` [tracking-piece1] 2026-11-20 – own commits are on main / a kept branch (same patch)
+- `agent-a3d8e81018e92282c` [worktree-agent-a3d8e81018e92282c] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a405f834d1134ff18` [worktree-agent-a405f834d1134ff18] 2026-11-17 – nothing own
+- `agent-a439886806442d671` [worktree-agent-a439886806442d671] 2026-11-20 – nothing own
+- `agent-a45360899278f7032` [worktree-agent-a45360899278f7032] 2026-11-19 – nothing own
+- `agent-a4ded104e22a8cb8f` [worktree-agent-a4ded104e22a8cb8f] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a50fb527f0de0d347` [worktree-agent-a50fb527f0de0d347] 2026-11-19 – nothing own
+- `agent-a58f3f2edf9b1a15f` [wip/ir-2026-11-16-poc] 2026-11-16 – nothing own
+- `agent-a5a01d41ecb7d1642` [wip/ir-2026-11-17-official-access] 2026-11-17 – nothing own
+- `agent-a5b67b2439ce6e920` [worktree-agent-a5b67b2439ce6e920] 2026-11-21 – nothing own
+- `agent-a5cf6b321c3348e34` [wip/ir-2026-11-17-pills] 2026-11-17 – nothing own
+- `agent-a6518ba7b4ed3e9a9` [undo-sheet-pick] 2026-11-19 – nothing own
+- `agent-a675bd67c4a6d2bfd` [worktree-agent-a675bd67c4a6d2bfd] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-a69f6bc2685310c07` [worktree-agent-a69f6bc2685310c07] 2026-11-17 – nothing own
+- `agent-a6cf548f5ccb62921` [wip/ir-2026-11-18-core-memory] 2026-11-18 – nothing own
+- `agent-a70713b8b69e015bb` [worktree-agent-a70713b8b69e015bb] 2026-11-20 – nothing own
+- `agent-a764a2801040a4fec` [worktree-agent-a764a2801040a4fec] 2026-11-19 – nothing own
+- `agent-a76ab22ffb5a525f4` [worktree-agent-a76ab22ffb5a525f4] 2026-11-19 – nothing own
+- `agent-a8279b74efcbf1b83` [worktree-agent-a8279b74efcbf1b83] 2026-11-18 – nothing own
+- `agent-a8545770bc65b7dd2` [worktree-agent-a8545770bc65b7dd2] 2026-11-19 – nothing own
+- `agent-a8ccf1cc1d4bef206` [worktree-agent-a8ccf1cc1d4bef206] 2026-11-17 – nothing own
+- `agent-a8e177cd46ad2a499` [worktree-agent-a8e177cd46ad2a499] 2026-11-20 – nothing own
+- `agent-a931d1d7016a01445` [(detached)] 2026-11-22 – nothing own
+- `agent-a9b6c30919aba5783` [worktree-agent-a9b6c30919aba5783] 2026-11-18 – own commits are on main / a kept branch (same patch)
+- `agent-a9d1a7d517610521a` [worktree-agent-a9d1a7d517610521a] 2026-11-18 – nothing own
+- `agent-a9ead79827d3fa009` [worktree-agent-a9ead79827d3fa009] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aa134249d6195d119` [job-home-final] 2026-11-19 – nothing own
+- `agent-aa1421abbb8b4bc68` [wip/ir-2026-11-17-pill-words] 2026-11-17 – nothing own
+- `agent-aa3091443f94a2e5d` [worktree-agent-aa3091443f94a2e5d] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aa462c8c13ec72940` [sketch/donald-2026-11-19-progress-design] 2026-11-19 – nothing own
+- `agent-aa853711f5602d417` [worktree-agent-aa853711f5602d417] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aab015f1dd2a4cb7e` [worktree-agent-aab015f1dd2a4cb7e] 2026-11-21 – nothing own
+- `agent-aace14e9b3a5af2e2` [worktree-agent-aace14e9b3a5af2e2] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aad00046005aa0a3a` [worktree-agent-aad00046005aa0a3a] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aae2f0772a2ef79c4` [worktree-agent-aae2f0772a2ef79c4] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-ab2b212f68e6e5824` [wip/ir-2026-11-16-comments] 2026-11-16 – nothing own
+- `agent-ab37cb5a365aa6547` [worktree-agent-ab37cb5a365aa6547] 2026-11-19 – nothing own
+- `agent-abdef962922783a3a` [worktree-agent-abdef962922783a3a] 2026-11-19 – nothing own
+- `agent-abf9df4e13b32c6ad` [worktree-agent-abf9df4e13b32c6ad] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-ac391d63560e91f03` [wip/donald-2026-11-21-poi-lookup-2] 2026-11-21 – own commits are on main / a kept branch (same patch)
+- `agent-ac5a0a4eb826fabc7` [review/ride-question] 2026-11-21 – nothing own
+- `agent-ac644418c702d3d58` [worktree-agent-ac644418c702d3d58] 2026-11-17 – own commits are on main / a kept branch (same patch)
+- `agent-aca514b882f9df8f4` [worktree-agent-aca514b882f9df8f4] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-acaaf84a2306072bb` [worktree-agent-acaaf84a2306072bb] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-acb088265beef1e45` [worktree-agent-acb088265beef1e45] 2026-11-18 – nothing own
+- `agent-accd3672e8e6924ed` [worktree-agent-accd3672e8e6924ed] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-ad37bdbbb745e6ab7` [(detached)] 2026-11-21 – nothing own
+- `agent-ad398390f6241b88c` [wip/ir-2026-11-18-app-suggest-ui] 2026-11-18 – own commits are on main / a kept branch (same patch)
+- `agent-ad4360942895a8763` [worktree-agent-ad4360942895a8763] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-ad4aa5ed3e03cf04a` [sketch/donald-2026-11-19-suggest-fulltext] 2026-11-19 – nothing own
+- `agent-ad6f002a9d28123d3` [worktree-agent-ad6f002a9d28123d3] 2026-11-18 – nothing own
+- `agent-ad87888a783a56d47` [worktree-agent-ad87888a783a56d47] 2026-11-18 – nothing own
+- `agent-ad89fa2fbb3eb68f3` [worktree-agent-ad89fa2fbb3eb68f3] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-adfe814201b67b462` [worktree-agent-adfe814201b67b462] 2026-11-18 – nothing own
+- `agent-adfee2adbf61726ea` [worktree-agent-adfee2adbf61726ea] 2026-11-19 – nothing own
+- `agent-ae05495236738905a` [worktree-agent-ae05495236738905a] 2026-11-21 – own commits are on main / a kept branch (same patch)
+- `agent-ae584818a662e4ee9` [worktree-agent-ae584818a662e4ee9] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-ae68dcca2947b2bba` [worktree-agent-ae68dcca2947b2bba] 2026-11-18 – nothing own
+- `agent-aeb05b5bc3e5c0f33` [worktree-agent-aeb05b5bc3e5c0f33] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-aedb76adbd822d7f7` [worktree-agent-aedb76adbd822d7f7] 2026-11-16 – nothing own
+- `agent-aedde488ae3458771` [worktree-agent-aedde488ae3458771] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-af2012f03f0abc57a` [worktree-agent-af2012f03f0abc57a] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-afc049b95affdf534` [worktree-agent-afc049b95affdf534] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `agent-afdeb03d87e8aeddf` [worktree-agent-afdeb03d87e8aeddf] 2026-11-19 – own commits are on main / a kept branch (same patch)
+- `bridge-cse_01167zC4wv2gKUDADAAUNFEH` [worktree-bridge-cse_01167zC4wv2gKUDADAAUNFEH] 2026-11-22 – nothing own
+- `bridge-cse_01167zC54kXwgAAFeoVtMZfY` [worktree-bridge-cse_01167zC54kXwgAAFeoVtMZfY] 2026-11-20 – nothing own
+- `bridge-cse_01167zC5MpxRhh4LrBL8RMvt` [worktree-bridge-cse_01167zC5MpxRhh4LrBL8RMvt] 2026-11-22 – nothing own
+- `bridge-cse_01167zC5VstbPriZ9obyKhJk` [worktree-bridge-cse_01167zC5VstbPriZ9obyKhJk] 2026-11-22 – nothing own
+- `bridge-cse_01167zC5bnqnaKyLqK1jY24S` [worktree-bridge-cse_01167zC5bnqnaKyLqK1jY24S] 2026-11-18 – nothing own
+- `bridge-cse_01167zC5sxRWHJd2LKqziSwP` [worktree-bridge-cse_01167zC5sxRWHJd2LKqziSwP] 2026-11-13 – nothing own
+- `bridge-cse_01167zC63mHLq5HQTJ5qypSY` [tidy] 2026-11-19 – nothing own
+- `bridge-cse_01167zC68cVGgexER3YQGGWG` [worktree-bridge-cse_01167zC68cVGgexER3YQGGWG] 2026-11-21 – nothing own
+- `bridge-cse_01167zC6FhPGtEQkbxks3vH9` [worktree-bridge-cse_01167zC6FhPGtEQkbxks3vH9] 2026-11-21 – nothing own
+- `bridge-cse_01167zC6UPNeQ2jaNjQuHbVp` [worktree-bridge-cse_01167zC6UPNeQ2jaNjQuHbVp] 2026-11-20 – nothing own
+- `bridge-cse_01167zC6aSFxvQ4BfZuD8T8n` [donald-work] 2026-11-20 – nothing own
+- `bridge-cse_01167zC6iM1XdgobvvL8HFcd` [umbau-tmp2] 2026-11-20 – nothing own
+- `bridge-cse_01167zC74dA4WpWJKxeapSMK` [worktree-bridge-cse_01167zC74dA4WpWJKxeapSMK] 2026-11-20 – nothing own
+- `bridge-cse_01167zC7PHKGWoAamcVjNLjj` [worktree-bridge-cse_01167zC7PHKGWoAamcVjNLjj] 2026-11-14 – nothing own
+- `bridge-cse_01167zC7QHMHdu7CPtMm91Sm` [worktree-bridge-cse_01167zC7QHMHdu7CPtMm91Sm] 2026-11-03 – nothing own
+- `bridge-cse_01167zC7QqLNJtmKMiqG1hvy` [worktree-bridge-cse_01167zC7QqLNJtmKMiqG1hvy] 2026-11-21 – nothing own
+- `bridge-cse_01167zC7XWfxSDxpZuEc53yr` [worktree-bridge-cse_01167zC7XWfxSDxpZuEc53yr] 2026-11-21 – nothing own
+- `bridge-cse_01167zC8fWf3sPSLdWFwkVi2` [worktree-bridge-cse_01167zC8fWf3sPSLdWFwkVi2] 2026-11-19 – nothing own
+- `bridge-cse_01167zC8mNt5zArXMqTEQxwK` [work/donald-notes] 2026-11-22 – nothing own
+- `bridge-cse_01167zC8oGEN7hHJwUMS7CdM` [worktree-bridge-cse_01167zC8oGEN7hHJwUMS7CdM] 2026-11-20 – nothing own
+- `bridge-cse_01167zC9JNSwb1SwL9SfGnHR` [worktree-bridge-cse_01167zC9JNSwb1SwL9SfGnHR] 2026-11-16 – nothing own
+- `donald-pixel3-1107` [donald-pixel-play] 2026-11-07 – nothing own
+### Remote branches
+- `ci/donald-0187` 2026-11-21 – merged into main
+- `ci/donald-2026-11-19-hold-measure` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-19-release-0181` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-19-release-0181-full` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-19-release-0181-rg` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-19-tourdb-migration` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-19-zuhause-off` 2026-11-19 – all commits on main (same patch)
+- `ci/donald-2026-11-20-flow17` 2026-11-19 – CI run of release 0.18.2 (released)
+- `ci/donald-2026-11-20-rc-0186` 2026-11-20 – merged into main
+- `ci/donald-2026-11-20-rc-0186b` 2026-11-20 – merged into main
+- `ci/donald-2026-11-20-rc2-rg` 2026-11-20 – CI run of release 0.18.2 (released)
+- `ci/donald-2026-11-20-rc3-rg` 2026-11-20 – CI run of release 0.18.2 (released)
+- `ci/donald-2026-11-20-release-0182-full` 2026-11-19 – CI run of release 0.18.2 (released)
+- `ci/donald-2026-11-20-release-0182-rg` 2026-11-19 – CI run of release 0.18.2 (released)
+- `ci/donald-ah-field` 2026-11-07 – merged into main
+- `ci/donald-bv-backup` 2026-11-08 – merged into main
+- `ci/donald-coreplan-1` 2026-11-12 – all commits on main (same patch)
+- `ci/donald-ff-plan` 2026-11-08 – merged into main
+- `ci/donald-ff-points` 2026-11-08 – merged into main
+- `ci/donald-fm-FreshInstall` 2026-11-08 – merged into main
+- `ci/donald-fm-PhoneSetup` 2026-11-08 – merged into main
+- `ci/donald-lc-field` 2026-11-08 – merged into main
+- `ci/donald-merge-1113` 2026-11-13 – merged into main
+- `ci/donald-navsession` 2026-11-12 – all commits on main (same patch)
+- `ci/donald-pb-field` 2026-11-07 – merged into main
+- `ci/donald-poi-frame` 2026-11-22 – all commits on main (same patch)
+- `ci/donald-poi-frame-2` 2026-11-22 – all commits on main (same patch)
+- `ci/donald-poi-main-check` 2026-11-22 – merged into main
+- `ci/donald-r174-backup` 2026-11-07 – merged into main
+- `ci/donald-r174-delete` 2026-11-07 – merged into main
+- `ci/donald-r174-field` 2026-11-07 – merged into main
+- `ci/donald-r174-fresh` 2026-11-07 – merged into main
+- `ci/donald-r174-indoor` 2026-11-07 – merged into main
+- `ci/donald-r174-link` 2026-11-07 – merged into main
+- `ci/donald-r174-plan` 2026-11-07 – merged into main
+- `ci/donald-r174-points` 2026-11-07 – merged into main
+- `ci/donald-r174-rdfresh` 2026-11-07 – merged into main
+- `ci/donald-r174-setup` 2026-11-07 – merged into main
+- `ci/donald-r174-smoke` 2026-11-07 – merged into main
+- `ci/donald-r174-stale` 2026-11-07 – merged into main
+- `ci/donald-r175-backup` 2026-11-08 – merged into main
+- `ci/donald-r175-delete` 2026-11-08 – merged into main
+- `ci/donald-r175-field` 2026-11-08 – merged into main
+- `ci/donald-r175-fresh` 2026-11-08 – merged into main
+- `ci/donald-r175-indoor` 2026-11-08 – merged into main
+- `ci/donald-r175-link` 2026-11-08 – merged into main
+- `ci/donald-r175-plan` 2026-11-08 – merged into main
+- `ci/donald-r175-points` 2026-11-08 – merged into main
+- `ci/donald-r175-rdfresh` 2026-11-08 – merged into main
+- `ci/donald-r175-setup` 2026-11-08 – merged into main
+- `ci/donald-r175-smoke` 2026-11-08 – merged into main
+- `ci/donald-r175-stale` 2026-11-08 – merged into main
+- `ci/donald-r176-backup` 2026-11-08 – merged into main
+- `ci/donald-r176-delete` 2026-11-08 – merged into main
+- `ci/donald-r176-field` 2026-11-08 – merged into main
+- `ci/donald-r176-fresh` 2026-11-08 – merged into main
+- `ci/donald-r176-indoor` 2026-11-08 – merged into main
+- `ci/donald-r176-link` 2026-11-08 – merged into main
+- `ci/donald-r176-plan` 2026-11-08 – merged into main
+- `ci/donald-r176-points` 2026-11-08 – merged into main
+- `ci/donald-r176-rdfresh` 2026-11-08 – merged into main
+- `ci/donald-r176-setup` 2026-11-08 – merged into main
+- `ci/donald-r176-smoke` 2026-11-08 – merged into main
+- `ci/donald-r176-stale` 2026-11-08 – merged into main
+- `ci/donald-r177-backup` 2026-11-08 – merged into main
+- `ci/donald-r177-delete` 2026-11-08 – merged into main
+- `ci/donald-r177-field` 2026-11-08 – merged into main
+- `ci/donald-r177-fresh` 2026-11-08 – merged into main
+- `ci/donald-r177-indoor` 2026-11-08 – merged into main
+- `ci/donald-r177-link` 2026-11-08 – merged into main
+- `ci/donald-r177-plan` 2026-11-08 – merged into main
+- `ci/donald-r177-points` 2026-11-08 – merged into main
+- `ci/donald-r177-rdfresh` 2026-11-08 – merged into main
+- `ci/donald-r177-setup` 2026-11-08 – merged into main
+- `ci/donald-r177-smoke` 2026-11-08 – merged into main
+- `ci/donald-r177-stale` 2026-11-08 – merged into main
+- `ci/donald-r178-backup` 2026-11-08 – merged into main
+- `ci/donald-r178-delete` 2026-11-08 – merged into main
+- `ci/donald-r178-field` 2026-11-08 – merged into main
+- `ci/donald-r178-fresh` 2026-11-08 – merged into main
+- `ci/donald-r178-indoor` 2026-11-08 – merged into main
+- `ci/donald-r178-link` 2026-11-08 – merged into main
+- `ci/donald-r178-plan` 2026-11-08 – merged into main
+- `ci/donald-r178-points` 2026-11-08 – merged into main
+- `ci/donald-r178-rdfresh` 2026-11-08 – merged into main
+- `ci/donald-r178-setup` 2026-11-08 – merged into main
+- `ci/donald-r178-smoke` 2026-11-08 – merged into main
+- `ci/donald-r178-stale` 2026-11-08 – merged into main
+- `ci/donald-rc01710` 2026-11-14 – merged into main
+- `ci/donald-rc01710b` 2026-11-14 – merged into main
+- `ci/donald-rc01710c` 2026-11-14 – merged into main
+- `ci/donald-rc0179` 2026-11-12 – all commits on main (same patch)
+- `ci/donald-rc0179-fix` 2026-11-13 – all commits on main (same patch)
+- `ci/umbau-l1` 2026-11-19 – merged into main
+- `ci/umbau-l2` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-l2b` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-l5` 2026-11-19 – merged into main
+- `ci/umbau-p2-10a` 2026-11-19 – merged into main
+- `ci/umbau-p2-10b` 2026-11-19 – merged into main
+- `ci/umbau-p2-11` 2026-11-19 – merged into main
+- `ci/umbau-p2-12` 2026-11-19 – merged into main
+- `ci/umbau-p2-13` 2026-11-19 – merged into main
+- `ci/umbau-p2-14a` 2026-11-19 – merged into main
+- `ci/umbau-p2-14b` 2026-11-19 – merged into main
+- `ci/umbau-p2-14c` 2026-11-19 – merged into main
+- `ci/umbau-p2-16a` 2026-11-19 – merged into main
+- `ci/umbau-p2-16a-s` 2026-11-19 – merged into main
+- `ci/umbau-p2-16b` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-16b-2` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-17` 2026-11-19 – contained in kept branch ci/umbau-p2-17b
+- `ci/umbau-p2-18a` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-18b` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-19` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-20` 2026-11-19 – merged into main
+- `ci/umbau-p2-21` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-p2-5` 2026-11-19 – merged into main
+- `ci/umbau-p2-6` 2026-11-19 – merged into main
+- `ci/umbau-p2-7` 2026-11-19 – merged into main
+- `ci/umbau-p2-8` 2026-11-19 – merged into main
+- `ci/umbau-p2-9a` 2026-11-19 – merged into main
+- `ci/umbau-p2-9b` 2026-11-19 – all commits on main (same patch)
+- `ci/umbau-wait-2bf93fe-0` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait-2bf93fe-1` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait-2bf93fe-2` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait-2bf93fe-3` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait2-e63d742-0` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait2-e63d742-1` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait2-e63d742-2` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait2-e63d742-3` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait3` 2026-11-18 – all commits on main (same patch)
+- `ci/umbau-wait4` 2026-11-18 – all commits on main (same patch)
+- `wip/donald-2026-11-21-poi-lookup-2` 2026-11-21 – all commits on main (same patch)
+- `wip/donald-2026-11-21-ride-question-2` 2026-11-21 – all commits on main (same patch)
+
+## (D) aktiv – not touched
+### Worktrees
+- `agent-a0530e15ed8d0a981` [(detached)] 2026-11-21 – named in backlog / handoffs
+- `agent-a053e72521f0ce52a` [worktree-agent-a053e72521f0ce52a] 2026-11-19 – named in backlog / handoffs
+- `agent-a05485fcfdb144881` [worktree-agent-a05485fcfdb144881] 2026-11-20 – named in backlog / handoffs
+- `agent-a06e95b0ca1e9485f` [work/donald-stitch-readers] 2026-11-22 – named in backlog / handoffs
+- `agent-a195fffc54d18aa01` [worktree-agent-a195fffc54d18aa01] 2026-11-20 – named in backlog / handoffs
+- `agent-a1a24c611b0ef1f48` [sketch/umbau-2026-11-21-same-route] 2026-11-21 – named in backlog / handoffs
+- `agent-a1e5af939680c4130` [worktree-agent-a1e5af939680c4130] 2026-11-20 – named in backlog / handoffs
+- `agent-a21ab3b9cfa1bc3a9` [sketch/umbau-2026-11-21-day-rows] 2026-11-21 – named in backlog / handoffs
+- `agent-a34dc7e20caf4b4c7` [umbau/detour-2b] 2026-11-21 – named in backlog / handoffs
+- `agent-a3dff9b8347ca6f0c` [feat/live-viewer] 2026-11-20 – on an active or named branch
+- `agent-a42222aaab25bd23b` [worktree-agent-a42222aaab25bd23b] 2026-11-20 – named in backlog / handoffs
+- `agent-a460b916d37df067b` [wip/donald-2026-11-19-zuhause] 2026-11-19 – on an active or named branch
+- `agent-a47cdc4303b915521` [wip/donald-2026-11-19-progress-design] 2026-11-19 – on an active or named branch
+- `agent-a493fcd8b10af1d8a` [(detached)] 2026-11-21 – named in backlog / handoffs
+- `agent-a5339ca338b876814` [(detached)] 2026-11-22 – named in backlog / handoffs
+- `agent-a60f13f33807730e1` [wip/donald-2026-11-19-honest-progress] 2026-11-19 – on an active or named branch
+- `agent-a615037780b740993` [worktree-agent-a615037780b740993] 2026-11-19 – named in backlog / handoffs
+- `agent-a6890f6908a681410` [worktree-agent-a6890f6908a681410] 2026-11-19 – named in backlog / handoffs
+- `agent-a68e27f6c2f1e50d6` [wip/donald-2026-11-21-arrival-unreachable] 2026-11-21 – on an active or named branch
+- `agent-a6b0e7e91990d9ad1` [umbau/same-route] 2026-11-21 – named in backlog / handoffs
+- `agent-a73fea8093256fb6a` [umbau-day-rows] 2026-11-21 – named in backlog / handoffs
+- `agent-a7b1cd0d14c82a4a6` [worktree-agent-a7b1cd0d14c82a4a6] 2026-11-21 – named in backlog / handoffs
+- `agent-a7d47c1e431b9b14b` [wip/donald-2026-11-21-arrival-unreachable-2] 2026-11-21 – on an active or named branch
+- `agent-a7df5faa938876ac6` [worktree-agent-a7df5faa938876ac6] 2026-11-20 – named in backlog / handoffs
+- `agent-a84441c86e57a214b` [feat/live-share-ui] 2026-11-20 – on an active or named branch
+- `agent-a85f9c28de7519322` [worktree-agent-a85f9c28de7519322] 2026-11-18 – named in backlog / handoffs
+- `agent-a8e0b1c6b848a42cc` [worktree-agent-a8e0b1c6b848a42cc] 2026-11-20 – named in backlog / handoffs
+- `agent-a900f7f52fcbeb9a0` [umbau/detour-settle] 2026-11-22 – named in backlog / handoffs
+- `agent-a9604f810b16992be` [wip/donald-2026-11-13-planner-suggest] 2026-11-13 – on an active or named branch
+- `agent-a97ded78f641e807e` [worktree-agent-a97ded78f641e807e] 2026-11-19 – named in backlog / handoffs
+- `agent-a9bafbf61692b9077` [worktree-agent-a9bafbf61692b9077] 2026-11-18 – named in backlog / handoffs
+- `agent-aa07a56c6adf9fd02` [wip/donald-2026-11-22-detour-hint] 2026-11-22 – on an active or named branch
+- `agent-aa365053dc6604e85` [worktree-agent-aa365053dc6604e85] 2026-11-19 – named in backlog / handoffs
+- `agent-ab70389c572716eed` [worktree-agent-ab70389c572716eed] 2026-11-20 – named in backlog / handoffs
+- `agent-abded0e6b1110ba63` [wip/donald-2026-11-21-offroute-fixes] 2026-11-21 – on an active or named branch
+- `agent-ac08b69e8bf2e5eed` [wip/ir-2026-11-18-app-suggest-core] 2026-11-18 – on an active or named branch
+- `agent-ac1e35660ef166978` [(detached)] 2026-11-21 – named in backlog / handoffs
+- `agent-ac61e54146d4400f3` [worktree-agent-ac61e54146d4400f3] 2026-11-19 – named in backlog / handoffs
+- `agent-ae43190ec262043de` [worktree-agent-ae43190ec262043de] 2026-11-21 – named in backlog / handoffs
+- `agent-ae6bf47a847c051e4` [wip/donald-2026-11-22-poi-follow-test] 2026-11-22 – on an active or named branch
+- `agent-aebbf68293ee9e61a` [wip/ir-2026-11-17-aims] 2026-11-17 – on an active or named branch
+- `agent-afc98af598ff10069` [feat/live-server] 2026-11-20 – on an active or named branch
+- `agent-afe083d53df514a7a` [wip/donald-2026-11-19-undo-sheet] 2026-11-19 – on an active or named branch
+- `agent-afe3bcfe6a1447882` [worktree-agent-afe3bcfe6a1447882] 2026-11-20 – named in backlog / handoffs
+- `bridge-cse_01167zC5EcsBtb9zkfvkZxL5` [wip/umbau-2026-11-21-detour-stitch] 2026-11-22 – on an active or named branch
+- `bridge-cse_01167zC5WxPG5wDDdb9nLd1z` [work/donald-detour-words] 2026-11-24 – session running / changed today
+- `bridge-cse_01167zC5xkARvf2t6zSLPmNV` [worktree-bridge-cse_01167zC5xkARvf2t6zSLPmNV] 2026-11-24 – session running / changed today
+- `bridge-cse_01167zC79oCuJxW51t7ggryz` [wip/umbau-2026-11-22-stitch-readers] 2026-11-22 – on an active or named branch
+- `bridge-cse_01167zC8ejXp1nW5gU4RUroB` [feat/live-share-ui-3] 2026-11-22 – on an active or named branch
+- `sketch-restore` [sketch/donald-restore-ask] 2026-11-24 – session running / changed today
+### Remote branches
+- `ci/donald-2026-11-20-rc-0184` 2026-11-20 – named in backlog / handoffs
+- `ci/donald-2026-11-20-rc2-full` 2026-11-20 – named in backlog / handoffs
+- `ci/donald-2026-11-20-rc3-full` 2026-11-20 – named in backlog / handoffs
+- `ci/donald-poi-diag` 2026-11-22 – named in backlog / handoffs
+- `ci/donald-poi-follow` 2026-11-22 – named in backlog / handoffs
+- `ci/donald-poi-timing` 2026-11-22 – named in backlog / handoffs
+- `ci/donald-poi-wait` 2026-11-22 – named in backlog / handoffs
+- `ci/donald-readers-all-web` 2026-11-22 – named in backlog / handoffs
+- `ci/donald-stitch-readers` 2026-11-22 – active (captain list / open pull request)
+- `ci/donald-stitch-readers-all` 2026-11-22 – active (captain list / open pull request)
+- `ci/legsplit-app` 2026-11-20 – named in backlog / handoffs
+- `ci/neutral-test-points` 2026-11-20 – named in backlog / handoffs
+- `ci/umbau-day-rows` 2026-11-21 – named in backlog / handoffs
+- `ci/umbau-p2-3` 2026-11-19 – named in backlog / handoffs
+- `claude/upbeat-brahmagupta-nzeu1k` 2026-11-24 – changed today
+- `claude/youthful-mayer-vp3lkn` 2026-11-19 – active (captain list / open pull request)
+- `feat/live-server` 2026-11-20 – named in backlog / handoffs
+- `feat/live-share-ui` 2026-11-20 – named in backlog / handoffs
+- `feat/live-share-ui-2` 2026-11-20 – named in backlog / handoffs
+- `feat/live-share-ui-3` 2026-11-20 – named in backlog / handoffs
+- `feat/live-viewer` 2026-11-20 – named in backlog / handoffs
+- `pr/e2e-first-map-key` 2026-11-20 – active (captain list / open pull request)
+- `pr/live-host-config` 2026-11-20 – active (captain list / open pull request)
+- `pr/live-privacy` 2026-11-20 – active (captain list / open pull request)
+- `sketch/umbau-2026-11-21-day-rows` 2026-11-21 – named in backlog / handoffs
+- `sketch/umbau-2026-11-21-hotel-name` 2026-11-21 – named in backlog / handoffs
+- `sketch/umbau-2026-11-21-same-route` 2026-11-21 – named in backlog / handoffs
+- `try/paper-darker` 2026-11-19 – named in backlog / handoffs
+- `umbau-webready-inputs` 2026-11-19 – active (captain list / open pull request)
+- `web-spike` 2026-11-06 – active (captain list / open pull request)
+- `wip/donald-2026-11-19-honest-progress` 2026-11-19 – start hook: bring to main
+- `wip/donald-2026-11-19-zuhause` 2026-11-19 – start hook: bring to main
+- `wip/donald-2026-11-21-arrival-unreachable` 2026-11-21 – start hook: bring to main
+- `wip/donald-2026-11-21-arrival-unreachable-2` 2026-11-21 – start hook: bring to main
+- `wip/donald-2026-11-21-offroute-fixes` 2026-11-21 – start hook: bring to main
+- `wip/donald-2026-11-21-poi-lookup` 2026-11-21 – named in backlog / handoffs
+- `wip/donald-2026-11-21-ride-question` 2026-11-21 – named in backlog / handoffs
+- `wip/donald-2026-11-21-route-past-unreachable` 2026-11-21 – named in backlog / handoffs
+- `wip/donald-2026-11-22-detour-hint` 2026-11-24 – active (captain list / open pull request)
+- `wip/donald-2026-11-22-poi-follow-test` 2026-11-22 – named in backlog / handoffs
+- `wip/donald-2026-11-22-stitch-readers` 2026-11-22 – active (captain list / open pull request)
+- `wip/donald-2026-11-22-stitch-readers-all` 2026-11-22 – active (captain list / open pull request)
+- `wip/laptop-2026-11-05-terrain-fixes` 2026-11-05 – named in backlog / handoffs
+- `wip/laptop-2026-11-07-parity-colours` 2026-11-06 – named in backlog / handoffs
+- `wip/laptop-2026-11-20-slices` 2026-11-20 – named in backlog / handoffs
+- `wip/laptop-2026-11-22-long-link` 2026-11-22 – active (captain list / open pull request)
+- `wip/laptop-2026-11-22-pair-link` 2026-11-22 – active (captain list / open pull request)
+- `wip/laptop-2026-11-22-saved-work` 2026-11-22 – active (captain list / open pull request)
+- `wip/laptop-2026-11-22-stitch-readers` 2026-11-22 – active (captain list / open pull request)
+- `wip/laptop-2026-11-22-stitch-wasm` 2026-11-22 – active (captain list / open pull request)
+- `wip/mehrtage-2026-11-17-stage23-planner` 2026-11-17 – named in backlog / handoffs
+- `wip/mehrtage-2026-11-17-stage4-phone` 2026-11-17 – named in backlog / handoffs
+- `wip/umbau-2026-11-18-kn-spike` 2026-11-18 – named in backlog / handoffs
+- `wip/umbau-2026-11-21-detour-stitch` 2026-11-22 – named in backlog / handoffs
+- `wip/umbau-2026-11-22-stitch-readers` 2026-11-22 – active (captain list / open pull request)
+- `wip/umbau-web-slices-2026-11-20` 2026-11-19 – named in backlog / handoffs
+
+## Deleted
+Owner's yes 2026-11-24 (question box „Gruppe ‚kann weg‘ löschen?“ → „Ja, löschen“).
+
+- **Worktrees (A): 105 of 105 removed** with `git worktree remove` (no `--force`); each re-checked just before: same HEAD as in the inventory, no changes, no process inside. Their local branches (`worktree-agent-…` etc.) were left as they are – all their content is on GitHub.
+- **Remote branches (A): all 133 deleted** – by the owner himself with `~/aufraeumen-2026-11-24-zweige-loeschen.sh` (the session's permission check had blocked it twice). Checked afterwards: none of the 133 left on GitHub, every B / C / D branch still there.
+
+Removed worktrees: `agent-a056ebbc8e27c20f8` (50a691b71), `agent-a0776b8ee562b0686` (e647f7500), `agent-a08a236b1e87c9a59` (51a27fd96), `agent-a132cf7ae937b483f` (79dd1d816), `agent-a1a165ebee0a51f25` (cd1666e51), `agent-a1c38e60efa9dca09` (53c53a6f1), `agent-a1c54a511ddf1fb8e` (41d4dcbed), `agent-a1cd737a47dd5d502` (be72c0c0d), `agent-a21d4a7550fc33157` (fd4373062), `agent-a239f79fbe0fa5665` (14519200a), `agent-a2746d3788863085e` (03bf29853), `agent-a27de738585a03982` (1de7e4f96), `agent-a29228ce56b604a62` (1f65881d1), `agent-a2e8f1f40b5d364bf` (62e7064c5), `agent-a31c6f225e4e2d69a` (028cdc1c4), `agent-a32cabeb82b0fe6f3` (9383986ae), `agent-a33ac563dd295d4d7` (72a66e39d), `agent-a37d28251eeb68c40` (0128a4a54), `agent-a38582c0bf421e408` (fe2b6d338), `agent-a3b44020b99cca185` (dcecbd4b2), `agent-a3d8e81018e92282c` (7d1a46152), `agent-a405f834d1134ff18` (040ed96ea), `agent-a439886806442d671` (e8bdee285), `agent-a45360899278f7032` (3ae84ff69), `agent-a4ded104e22a8cb8f` (100367195), `agent-a50fb527f0de0d347` (bda58d531), `agent-a58f3f2edf9b1a15f` (9cfd19438), `agent-a5a01d41ecb7d1642` (3b3774856), `agent-a5b67b2439ce6e920` (da93e3eae), `agent-a5cf6b321c3348e34` (0c7c4119a), `agent-a6518ba7b4ed3e9a9` (50ed2c16d), `agent-a675bd67c4a6d2bfd` (316e183cc), `agent-a69f6bc2685310c07` (517c54931), `agent-a6cf548f5ccb62921` (5660efe9b), `agent-a70713b8b69e015bb` (1ff17a775), `agent-a764a2801040a4fec` (074cb525a), `agent-a76ab22ffb5a525f4` (a90e8f4a9), `agent-a8279b74efcbf1b83` (dca80c97d), `agent-a8545770bc65b7dd2` (b3daed4c0), `agent-a8ccf1cc1d4bef206` (dae6fcc64), `agent-a8e177cd46ad2a499` (609341ebb), `agent-a931d1d7016a01445` (ac64075d3), `agent-a9b6c30919aba5783` (bd88f4f4e), `agent-a9d1a7d517610521a` (8f3e3ef4d), `agent-a9ead79827d3fa009` (68c448096), `agent-aa134249d6195d119` (0579439f6), `agent-aa1421abbb8b4bc68` (5f60e61c5), `agent-aa3091443f94a2e5d` (6a8bfbfbc), `agent-aa462c8c13ec72940` (d6d699ac2), `agent-aa853711f5602d417` (be42a1ad5), `agent-aab015f1dd2a4cb7e` (c8789e5e1), `agent-aace14e9b3a5af2e2` (2fcb2c8be), `agent-aad00046005aa0a3a` (7f4db38e7), `agent-aae2f0772a2ef79c4` (b7e7edf1e), `agent-ab2b212f68e6e5824` (bbafe04e4), `agent-ab37cb5a365aa6547` (f1f2f174c), `agent-abdef962922783a3a` (905a8b9dc), `agent-abf9df4e13b32c6ad` (c097160bc), `agent-ac391d63560e91f03` (b25f608d0), `agent-ac5a0a4eb826fabc7` (11149ebaa), `agent-ac644418c702d3d58` (99aa54872), `agent-aca514b882f9df8f4` (52a84e8f0), `agent-acaaf84a2306072bb` (d4f26792f), `agent-acb088265beef1e45` (74510040d), `agent-accd3672e8e6924ed` (141f3fe50), `agent-ad37bdbbb745e6ab7` (75c6bdcb1), `agent-ad398390f6241b88c` (0cd2fa4fa), `agent-ad4360942895a8763` (164d6f450), `agent-ad4aa5ed3e03cf04a` (e4624d7de), `agent-ad6f002a9d28123d3` (2cf88fc05), `agent-ad87888a783a56d47` (eebd3b8d1), `agent-ad89fa2fbb3eb68f3` (ea778d16a), `agent-adfe814201b67b462` (90dbe5879), `agent-adfee2adbf61726ea` (2399c235b), `agent-ae05495236738905a` (556ea840e), `agent-ae584818a662e4ee9` (bec287124), `agent-ae68dcca2947b2bba` (59edf557e), `agent-aeb05b5bc3e5c0f33` (8244d26dd), `agent-aedb76adbd822d7f7` (dbf3de929), `agent-aedde488ae3458771` (4d3775e3b), `agent-af2012f03f0abc57a` (6122c4cf1), `agent-afc049b95affdf534` (6d9a52f71), `agent-afdeb03d87e8aeddf` (b6b47d508), `bridge-cse_01167zC4wv2gKUDADAAUNFEH` (0e2949064), `bridge-cse_01167zC54kXwgAAFeoVtMZfY` (41b112f8a), `bridge-cse_01167zC5MpxRhh4LrBL8RMvt` (c5943729d), `bridge-cse_01167zC5VstbPriZ9obyKhJk` (90ce93002), `bridge-cse_01167zC5bnqnaKyLqK1jY24S` (b90e28b28), `bridge-cse_01167zC5sxRWHJd2LKqziSwP` (f6e86bcd1), `bridge-cse_01167zC63mHLq5HQTJ5qypSY` (b4c7dd590), `bridge-cse_01167zC68cVGgexER3YQGGWG` (69c3c208d), `bridge-cse_01167zC6FhPGtEQkbxks3vH9` (8e2593621), `bridge-cse_01167zC6UPNeQ2jaNjQuHbVp` (79d8233c4), `bridge-cse_01167zC6aSFxvQ4BfZuD8T8n` (4ab5a3c06), `bridge-cse_01167zC6iM1XdgobvvL8HFcd` (af751e27f), `bridge-cse_01167zC74dA4WpWJKxeapSMK` (36db9f14a), `bridge-cse_01167zC7PHKGWoAamcVjNLjj` (981c4b794), `bridge-cse_01167zC7QHMHdu7CPtMm91Sm` (451e1cae6), `bridge-cse_01167zC7QqLNJtmKMiqG1hvy` (ba17a78c5), `bridge-cse_01167zC7XWfxSDxpZuEc53yr` (41027cb37), `bridge-cse_01167zC8fWf3sPSLdWFwkVi2` (a9b6488f5), `bridge-cse_01167zC8mNt5zArXMqTEQxwK` (10681f022), `bridge-cse_01167zC8oGEN7hHJwUMS7CdM` (120bdd983), `bridge-cse_01167zC9JNSwb1SwL9SfGnHR` (9f58708a7), `donald-pixel3-1107` (723b4b3e0)
+
+## Disk space (captain's relay of the owner's word, ~23:00; owner's box: „Build-Reste, 19 GB“ only)
+- Measured ~23:05: 94 % full, 117 GB free. du sees ~673 GB; the rest is in root-only dirs (libvirt / multipass / snap – not ours, not touched).
+- Deleted: 482 `build/` + `.gradle/` dirs (≈19 GB) in OnPath worktrees that no process uses and nothing changed in for 12 h (in use or recent: kept). No tracked file in any of them.
+- Not deleted (owner chose only the build part): Docker leftovers (≈85 GB reclaimable, may be other projects'), emulators `Medium_Phone` + `Pixel_7` (21 GB), Gradle caches (13 GB build cache, 1.8 GB of the unused 9.7.1), `onpath-cells-work` (66 GB, map work), his Downloads / uploads.
+- After: 89 %, 197 GB free (other sessions freed space at the same time).

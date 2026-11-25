@@ -16,6 +16,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.layout.layout
+import org.jetbrains.compose.resources.StringResource
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -117,55 +123,93 @@ private fun LiveRow(icon: ImageVector, label: String, sub: String? = null, onCli
     }
 }
 
+/** How the share button looks (owner 2026-11-24): plain, green filled (sharing), grey filled (waiting for the network). */
+enum class ShareLook { PLAIN, GREEN, GREY }
+
+/** What the share button and the pill show for a sharing state – one place, tested without a screen. */
+object LiveShareLook {
+    fun button(sign: LiveSign): ShareLook = when (sign) {
+        LiveSign.NONE -> ShareLook.PLAIN
+        LiveSign.LIVE -> ShareLook.GREEN
+        LiveSign.WAITING -> ShareLook.GREY
+    }
+
+    /** The pill under the status card: only while waiting (live needs no word, the green button says it). */
+    fun pill(sign: LiveSign): Boolean = sign == LiveSign.WAITING
+
+    /** TalkBack's name of the button: the state when sharing, else what a tap does. */
+    fun description(sign: LiveSign): StringResource = when (sign) {
+        LiveSign.NONE -> Res.string.live_share
+        LiveSign.LIVE -> Res.string.live_sign
+        LiveSign.WAITING -> Res.string.live_sign_waiting
+    }
+
+    /** From this font scale on the pill keeps clear of the map column (it would reach under it on a narrow phone). */
+    const val PILL_CLEAR_FROM_FONT = 1.5f
+}
+
 /**
- * The sign on Navigate that the tour is shared while no turn card carries it (a tour without a route): a small pill
- * "● Standort" at the right of the top column: green = uploads get through, grey = "wartet auf Netz". Nothing when not
- * sharing. A tap opens the two actions ([actions], as in Settings).
+ * The share button on top of Navigate's tour bubble (owner 2026-11-24): the share symbol, plain while not sharing; while
+ * sharing a 40 dp filled circle – green (uploads get through) or grey (waiting for the network) – with a white symbol.
+ * A tap: not sharing → [onAction] SHARE (name question / share sheet); sharing → a small menu "Link nochmal teilen" /
+ * "Teilen beenden". [size] = the map controls' slot (56 dp).
  */
 @Composable
-fun LiveSignOnMap(sign: LiveSign, actions: List<LiveAction> = emptyList(), onAction: (LiveAction) -> Unit = {}) {
-    if (sign == LiveSign.NONE) return
-    val live = sign == LiveSign.LIVE
-    val label = str(if (live) Res.string.live_sign else Res.string.live_sign_waiting)
+fun LiveShareButton(sign: LiveSign, actions: List<LiveAction>, size: Dp, onAction: (LiveAction) -> Unit) {
+    val look = LiveShareLook.button(sign)
+    val label = str(LiveShareLook.description(sign))
     var open by remember { mutableStateOf(false) }
-    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterEnd) {
-        Box {
-            androidx.compose.material3.Surface(onClick = { open = true }, shape = CircleShape, color = OnPathColors.MapGround,
-                modifier = Modifier.floatShadow(CircleShape).semantics { contentDescription = label }) {
-                Row(Modifier.heightIn(min = 32.dp).padding(horizontal = 12.dp),
-                    verticalAlignment = Alignment.CenterVertically) {
-                    Box(Modifier.size(12.dp).background(if (live) OnPathColors.Green else OnPathColors.Grey, CircleShape))
-                    Spacer(Modifier.width(8.dp))
-                    Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1,
-                        color = if (live) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
+    Box {
+        Box(Modifier.size(size).clip(CircleShape)
+            .clickable(role = Role.Button) { if (sign == LiveSign.NONE) onAction(LiveAction.SHARE) else open = true }
+            .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
+            when (look) {
+                ShareLook.PLAIN -> Icon(Icons.Outlined.Share, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
+                else -> Box(Modifier.size(40.dp).background(if (look == ShareLook.GREEN) OnPathColors.Green else OnPathColors.Grey, CircleShape),
+                    contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.Share, null, tint = OnPathColors.CardWhite, modifier = Modifier.size(24.dp))
                 }
             }
-            LiveSignMenu(open, actions, onAction) { open = false }
         }
+        LiveSignMenu(open, actions, onAction) { open = false }
     }
 }
 
 /**
- * The sign inside the green turn card (owner 2026-11-20: proposal C), at its right edge: a small dot with a white ring
- * and "Standort" in the card's white – quiet beside the arrow and the distance; waiting the dot is hollow and the word dimmed.
+ * The pill under Navigate's status card, only while sharing waits for the network: a grey dot and "Standort · wartet auf
+ * Netz" (wraps, never "…"; at a large font it keeps clear of the map column). A tap opens the share button's menu.
  */
 @Composable
-fun LiveSignInTurnCard(sign: LiveSign, actions: List<LiveAction> = emptyList(), onAction: (LiveAction) -> Unit = {}) {
-    if (sign == LiveSign.NONE) return
-    val live = sign == LiveSign.LIVE
-    val label = str(if (live) Res.string.live_sign else Res.string.live_sign_waiting)
+fun LiveWaitingPill(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAction) -> Unit) {
+    if (!LiveShareLook.pill(sign)) return
+    val label = str(Res.string.live_sign_waiting)
     var open by remember { mutableStateOf(false) }
-    Box {
-        Row(Modifier.clip(MaterialTheme.shapes.small).clickable(role = Role.Button) { open = true }
-            .heightIn(min = 48.dp).padding(start = 8.dp, end = 2.dp).semantics(mergeDescendants = true) { contentDescription = label },
-            verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(12.dp).border(2.dp, OnPathColors.CardWhite, CircleShape)
-                .background(if (live) OnPathColors.CardWhite else androidx.compose.ui.graphics.Color.Transparent, CircleShape))
-            Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.live_sign), style = MaterialTheme.typography.labelLarge, maxLines = 1,
-                color = OnPathColors.CardWhite.copy(alpha = if (live) 1f else 0.7f))
+    val lane = LocalControlsLane.current
+    val d = androidx.compose.ui.platform.LocalDensity.current
+    // the map column stands beside the pill's top: the pill keeps clear of it (wider when its tour bubble lies beside the map
+    // bubble). Read while measuring, so the tier the footer just chose counts in the same frame
+    val clearSides = Modifier.layout { m, c ->
+        val clear = if (lane.tier == ControlsTier.SIDE || d.fontScale >= LiveShareLook.PILL_CLEAR_FROM_FONT)
+            ControlsFit.pillClear(lane.tier, 2).roundToPx() else 0
+        val p = m.measure(c.copy(maxWidth = (c.maxWidth - clear).coerceAtLeast(0)))
+        layout(c.maxWidth, p.height) { p.place(0, 0) }
+    }
+    androidx.compose.runtime.DisposableEffect(Unit) { onDispose { lane.pillDp = 0 } }
+    val shape = RoundedCornerShape(24.dp)
+    Box(clearSides.fillMaxWidth().onSizeChanged { lane.pillDp = with(d) { it.height.toDp().value.toInt() } },
+        contentAlignment = Alignment.Center) {
+        Box {
+            androidx.compose.material3.Surface(onClick = { open = true }, shape = shape, color = OnPathColors.MapGround,
+                modifier = Modifier.floatShadow(shape).semantics { contentDescription = label; role = Role.Button }) {
+                Row(Modifier.heightIn(min = 40.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(12.dp).background(OnPathColors.Grey, CircleShape))
+                    Spacer(Modifier.width(8.dp))
+                    Text(label, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.weight(1f, fill = false))
+                }
+            }
+            LiveSignMenu(open, actions, onAction) { open = false }
         }
-        LiveSignMenu(open, actions, onAction) { open = false }
     }
 }
 

@@ -34,7 +34,7 @@ async function run(lang, viewport, shotPrefix) {
   const clickLngLat = async (lon, lat) => {
     const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
       const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
-    await page.mouse.click(p[0], p[1]);
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
   };
   const menuItem = async (label) => { await page.waitForSelector('.holdpopup .pointmenu', { timeout: 10_000 });
     await page.locator('.holdpopup .pointmenu button', { hasText: label }).first().click(); };
@@ -58,7 +58,7 @@ async function run(lang, viewport, shotPrefix) {
   const bar = await page.locator('#trackPanel .trimbar.from').boundingBox();
   const plot = await page.locator('#trackPanel .profplot').boundingBox();
   await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
-  await page.mouse.down();
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.down();
   await page.mouse.move(plot.x + plot.width * 0.2, bar.y + bar.height / 2, { steps: 5 });
   await page.mouse.up();
   const trim = await page.evaluate(() => window.__trim);

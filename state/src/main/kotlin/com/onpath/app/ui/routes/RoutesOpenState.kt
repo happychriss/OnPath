@@ -28,6 +28,8 @@ interface RoutesOpenPorts {
     fun enterMode(m: AppMode)
     /** [t] opened on the map (a planned route becomes the plan, a done tour / track is shown). */
     fun openTour(t: Tour, duringTour: Boolean = false, trackThen: TrackThen = TrackThen.SHOW)
+    /** "Wiederherstellen": the old plan's entry [t] back on the map as [ask] says – its profile, its link; asks nothing again. */
+    fun restore(t: Tour, ask: RestoreAsk)
     /** The tour's "Neuer Plan" line (with an Undo when [undo]). */
     fun noteNewPlan(undo: Boolean)
     /** The "Neuer Plan" line's Undo flag; null = no line. */
@@ -113,13 +115,30 @@ class RoutesOpenState(
         if (ports.followIsTrack && ports.touring) ports.continueNavigation()
     }
 
+    /**
+     * The answer to "Restore your old plan?" ([RestoreAsk], owner 2026-11-24): Behalten – the box goes, nothing changes.
+     * Wiederherstellen swaps: the old plan's entry is opened as a Zuletzt plan is ([RoutesSlice.openTour] – points, pinned points,
+     * names, detour points), with the old plan's activity / T level and its link to a saved route it changed; the plan that
+     * replaced it goes under Zuletzt on the way, with its own profile ([SaveState.keepAsDraft]). Nothing is lost either way.
+     */
+    fun answerRestore(restore: Boolean) {
+        val ask = save.takeRestoreAsk() ?: return
+        if (!restore) { Problems.trace("plan", "Restore your old plan? → Keep (tour ${ask.entryId} stays where it is)"); return }
+        val t = routes.tours.firstOrNull { it.id == ask.entryId && it.deletedMs == null }
+        if (t == null) { Problems.warn("plan", "Restore your old plan? → Restore: tour ${ask.entryId} is gone – nothing restored"); return }
+        if (navigating(ports.touring)) { Problems.warn("plan", "Restore your old plan? → Restore during a tour – nothing restored"); return }
+        Problems.trace("plan", "Restore your old plan? → Restore: \"${t.name}\" (tour ${t.id}) back on the map, ${ask.activity.name} T${ask.sac}" +
+            (ask.link?.let { ", linked to saved route ${it.id}" } ?: "") + "; the plan on the map goes under Zuletzt")
+        ports.restore(t, ask)
+    }
+
     /** Puts a plan from a link into the plan: points, activity, T level, point names, pinned points – a new, unsaved plan. */
     fun openSharedPlan(plan: SharedPlan, via: String = "after asking") {
         val load = PlanLinks.load(plan)
         if (ports.mode != AppMode.PLAN) ports.enterMode(AppMode.PLAN)
         ports.clearShown()
         // the plan it replaces goes under Zuletzt first: with its own activity, T level and detour points
-        save.keepAsDraft("replaced by a plan link")
+        save.keepAsDraft("replaced by a plan link", asks = !ports.touring)
         ports.setActivity(plan.activity)
         ports.setSac(plan.sac.coerceIn(1, 5))
         // pins before the points: the first route already passes them exactly (recalc reads them at once)

@@ -83,6 +83,9 @@ class RoutesGoSlice(
      */
     fun undoNewPlan() = open.undoNewPlan()
 
+    /** "Restore your old plan?" answered ([RoutesOpenState.answerRestore]): true = Wiederherstellen (swap), false = Behalten. */
+    fun answerRestore(restore: Boolean) = open.answerRestore(restore)
+
     /**
      * "Los geht's" in My routes (owner 2026-11-07, [com.onpath.app.domain.routes.RoutesGo]): [t] is loaded as the plan like
      * "Planen" (an unsaved plan on the map goes under Zuletzt – no question), then, once its line is calculated, [start]
@@ -93,7 +96,8 @@ class RoutesGoSlice(
         if (host.touring) { requestOpen(t, "Los geht's in My routes during a tour"); return }
         Problems.trace("routes", "Los geht's on \"${t.name}\" in My routes: loaded as the plan, the tour starts once its line is there")
         goJob?.cancel()
-        flow.openTour(t, lineOf = lineOf) {
+        // straight into a tour: no "Restore your old plan?" in between (the start would drop it a moment later – no flash)
+        flow.openTour(t, lineOf = lineOf, asks = false, planned = {
             val loaded = plan.points.toList()
             goJob = scope.launchSafe("app", "goFromRoutes") {
                 val step = withTimeoutOrNull(com.onpath.app.domain.routes.RoutesGo.MAX_WAIT_MS) {
@@ -107,7 +111,7 @@ class RoutesGoSlice(
                 } else Problems.trace("routes", "Los geht's from My routes: no tour started for \"${t.name}\" (changed meanwhile, " +
                     "no line, or waited too long) – the plan sheet's Los geht's stays")
             }
-        }
+        })
     }
 
     private var goJob: Job? = null
@@ -228,6 +232,7 @@ class RoutesGoSlice(
         override val mode: AppMode get() = host.mode
         override fun enterMode(m: AppMode) = host.enterMode(m)
         override fun openTour(t: Tour, duringTour: Boolean, trackThen: TrackThen) = flow.openTour(t, duringTour, trackThen)
+        override fun restore(t: Tour, ask: RestoreAsk) = flow.openTour(t, restoring = ask)
         override fun noteNewPlan(undo: Boolean) = tour.noteNewPlan(undo = undo)
         override val newPlanUndo: Boolean? get() = tour.newPlanNote?.undo
         override fun dropNewPlanNote() = tour.dropNewPlanNote()

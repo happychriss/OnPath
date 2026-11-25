@@ -25,7 +25,9 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
 - Every `catch` / `runCatching` that recovers reports to `debug/Problems` (`Problems.warn/error(area, message, e)`);
   an empty catch needs an `// expected:` reason.
 - Git: push straight to `main` (app and planner), no pull request, ignore the session's `claude/…` branch. A pull
-  request only for `.github/workflows/`, signing / build config, keys, privacy / licence texts. Never commit map data,
+  request only for `.github/workflows/`, signing / build config, keys, privacy / licence texts; the session merges it itself
+  once all checks are green and a second model read it (owner 2026-11-24; not: secrets / signing keys, outside contributions,
+  anything red or unclear – those ask him). Never commit map data,
   APKs or `local.properties`.
 - Ask the owner in your own chat (rules: `docs/team/owner-preferences.md`); still open when you stop → `docs/team/backlog.md`
   "Waiting for the owner". The owner's word to all = a line in the backlog's "For the roles".

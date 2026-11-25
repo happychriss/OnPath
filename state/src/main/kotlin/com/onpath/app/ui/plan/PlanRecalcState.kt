@@ -340,6 +340,7 @@ open class PlanRecalcState(
         val pins = pinnedIndices()
         val stand = standIn?.takeIf { it.points == pts && it.activity == activity && it.sac == sac }; standIn = null
         routeCancel?.cancel(); routeCancel = null // an older request stops at once
+        newRunStarts()
         planReach = null
         routeProgress = null; routeShare = null
         tour.followCancel?.cancel(); tour.followCancel = null // the tour's follow line of the old plan: a new one comes with this run
@@ -367,6 +368,9 @@ open class PlanRecalcState(
         routeCancel = RouteCancel()
         return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchorsFor(act, level))
     }
+
+    /** In [begin], also when nothing is routed: work the side runs beside the plan's route ends here (the app's detour check). */
+    protected open fun newRunStarts() = Unit
 
     /** Stage 3 (main): the wait card's legs done / to route ([routeProgress]) – only while the run [gen] is the current one. */
     fun progress(gen: Int, done: Int, total: Int) { if (routeRun.isCurrent(gen) && routing) routeProgress = done to total }

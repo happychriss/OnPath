@@ -36,6 +36,9 @@ class FakeNavService(private val sessionFile: File, private val engine: RoutingE
 
     fun fix(f: OffRouteDetector.Fix) = main.execute { navigator?.let { handle(it.onFix(f)) } }
 
+    /** A second without GPS (the service's tick, R-04) or a fix while standing still: no timers, no alarms. */
+    fun gpsLost() = main.execute { navigator?.onGpsLost() }
+
     /** "Take new route" on the question that is open. */
     fun take() = main.execute { navigator?.let { n -> (n.prompt as? NavPrompt.Question)?.let { q -> handle(n.take(q.id)) } } }
 

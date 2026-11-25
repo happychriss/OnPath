@@ -109,6 +109,7 @@ class TourSessionFlowTest {
     private val client = FakeRecordingClient()
     private val db = JdbcTours()
     private val log = ArrayList<String>()
+    private var tourStartsSeen = 0
     private val said = ArrayList<Triple<String, NoticeKind, NoticePlace>>()
 
     // ---------------- threads: main (inline, virtual time), io (held, virtual time), the plan copy's, the routing's ----------------
@@ -550,6 +551,15 @@ class TourSessionFlowTest {
         assertEquals("the start zoom of a hike", 17.0, session.navStartZoom!!, 0.0)
     }
 
+    /** "Restore your old plan?" (owner 2026-11-24) is for planning: a tour start drops it unanswered – the tour follows the plan on the map. */
+    @Test fun aTourStartDropsRestoreYourOldPlan() {
+        create(); routeNow = routeFor(plan.points.toList())
+        ui { save.keepAsDraft("replaced by a test", asks = true) }
+        assertNotNull(save.restoreAsk)
+        ui { session.startNavigation() }
+        assertNull(save.restoreAsk)
+    }
+
     /** Rule 3: no first state in 6 s → the message and the mode stays Plan; the constant is 6,000 ms. */
     @Test fun noStateInSixSecondsSaysSoAndStaysInPlanAndAnOpenErrorBoxGetsNoSecondOne() {
         create(); routeNow = routeFor(plan.points.toList())
@@ -670,6 +680,20 @@ class TourSessionFlowTest {
         assertFalse("and it was closed when the service was told", last.saveOpen)
         assertEquals(AppMode.PLAN, last.mode)
         assertEquals("NAVIGATING off", mapOf<String, Any>(RecordingWire.EXTRA_ON to false), client.sent.last().extras)
+    }
+
+    /** The plan's detour check holds the router: it stops before the recording starts, and on any way into Navigate. */
+    @Test fun aTourStartStopsTheRoutingBesideThePlan() {
+        create()
+        planRun.besideRoute = object : com.onpath.app.ui.plan.BesideRoute {
+            override fun holdMeasures(running: Boolean) = Unit
+            override fun stop() { tourStartsSeen++ }
+        }
+        routeNow = routeFor(plan.points.toList())
+        ui { session.startNavigation() }
+        assertEquals(1, tourStartsSeen)
+        ui { session.enter(AppMode.NAVIGATE) }
+        assertEquals(2, tourStartsSeen)
     }
 
     /** Rule 15: entering Navigate closes the menus THEN follows the position; the zoom is taken once per start; Plan clears it. */

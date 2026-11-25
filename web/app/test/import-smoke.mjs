@@ -44,7 +44,7 @@ const planned = () => page.waitForFunction(() => document.querySelector('#summar
 const clickAt = async (lon, lat) => {
   const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
     const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
-  await page.mouse.click(p[0], p[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
 };
 
 await page.goto(url + 'index.html');
@@ -85,7 +85,7 @@ check(await pins() === 2, 'short plan from a link: 2 points, routed, no question
 // the user takes the map first (a short drag), as a person does: it cancels the route's pending whole-route fit
 // (WholeRoute, 500 ms after its plan) that could otherwise move the map between the projection and the click
 { const r = await page.locator('#map').boundingBox(), x = r.x + r.width * 0.6, y = r.y + r.height * 0.4;
-  await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y + 20, { steps: 5 }); await page.mouse.up(); }
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.move(x, y); await page.mouse.down(); await page.mouse.move(x + 40, y + 20, { steps: 5 }); await page.mouse.up(); }
 await page.evaluate(() => window.__map.jumpTo({ center: [11.16, 51.2], zoom: 5.5, bearing: 0, pitch: 0, padding: { top: 0, bottom: 0, left: 0, right: 0 } }));
 await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
 await clickAt(11.16, 52.05);
@@ -241,15 +241,13 @@ check(!(await page.$('dialog.plans[open]')) && !(await page.$('dialog.overview')
   "a draft's tile opens the plan at once – no overview in between: the plan is on the map");
 // a new route draws itself in 0.5 s (the app's RouteReveal): Reverse → the line grows from start to goal, then whole
 {
-  await page.evaluate(() => { window.__reveal = true; });
-  const counts = page.evaluate(() => new Promise((res) => {
-    const out = [], t0 = performance.now();
-    const n = () => { const d = window.__map.getSource('planned-route').serialize().data; return (d.features ?? []).reduce((a, f) => a + f.geometry.coordinates.length, 0); };
-    const tick = () => { out.push(n()); if (performance.now() - t0 < 4000) requestAnimationFrame(tick); else res(out); };
-    tick();
-  }));
+  // the page records each step it draws (routereveal.ts __revealSteps) – sampling the map's source by frames missed
+  // the partial line on a loaded runner (CI flake 2026-11)
+  await page.evaluate(() => { window.__reveal = true; window.__revealSteps = null; });
   await page.click('#reverse');
-  const c = await counts;
+  await page.waitForFunction(() => { const s = window.__revealSteps; return s && s.length > 1 && s.at(-1) > 2 && !document.body.dataset.planning; }, null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(800); // the reveal's last frame (0.5 s)
+  const c = await page.evaluate(() => window.__revealSteps ?? []);
   await page.evaluate(() => { window.__reveal = false; });
   const last = c[c.length - 1], partial = c.some((x) => x > 1 && x < last);
   check(last > 2 && partial, `Reverse: the new route draws itself (${c.length} frames, a partial line seen, ${last} points at the end)`);
@@ -417,7 +415,8 @@ const red = await page.textContent('#notice');
 console.log('red line:', red);
 // since 2026-11-07 (the app's PlanReach, owner "Meran → Mutkopf"): the line says what reaches it – "② only reachable from
 // T3" / "② not reachable" – else the missing metres as before
-const reachLine = /② (only reachable from T[3-5]|not reachable)/.test(red);
+// – since 2026-11-24 with the detour the level costs when the check finds one ("… detour needed, ② only reachable from Hike T3")
+const reachLine = /② (only reachable from (Hike )?T[3-5]|not reachable)/.test(red);
 check((reachLine || /Last \d+ m to “Ifinger”: no way for Hike/.test(red)) && await page.isVisible('#showGap'), `unreachable summit at T2: the app's red line + Show (${reachLine ? 'what reaches it' : 'missing metres'})`);
 check(await page.evaluate(() => window.__map.getSource('plan-gaps').serialize().data.features.length) === 1, 'the missing piece is drawn grey dashed');
 // Show: like a steep section – the way that reaches the point drawn amber (PlanReach.way), the map fitted on it
@@ -425,6 +424,52 @@ await page.click('#showGap');
 await page.waitForTimeout(800);
 const reachDrawn = await page.evaluate(() => window.__map.getSource('plan-reach')?.serialize().data.features.length ?? -1);
 check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching way amber only with a reach line (${reachDrawn})`);
+
+// 6. a point the T level sends on a long detour (the app's PlanDetour, owner 2026-11-21 / 2026-11-24 his words): Hike T1, 7.3 km
+//    via ② where T2 takes 4.5 km and the neighbours are 1.4 km apart at both – after the route, "② adds a 2.8 km detour" + Show;
+//    the route stays as it is, Show draws the route around the point amber. The same points at T2: no line.
+{
+  const plan = (sac) => page.evaluate((s) => window.__engine.encode({ points: [[46.68895, 11.18446], [46.70009, 11.17894], [46.69748, 11.18970]],
+    activity: 'HIKE', sac: s, pinned: [], names: {}, title: null }), sac);
+  await page.goto(url + 'index.html#p=' + await plan(1));
+  await planned();
+  await page.waitForFunction(() => /detour/.test(document.getElementById('notice').textContent), null, { timeout: 60_000 }).catch(() => {});
+  const line = await page.textContent('#notice');
+  console.log('detour line:', line);
+  // the sheet with the detour line + the warnings on a laptop (1280 × 800): every point row shown, the goal too
+  // (2026-11-25: the list was squeezed to two rows, „Ziel“ hidden inside it)
+  const rows = await page.evaluate(() => { const list = document.getElementById('points'), box = list.getBoundingClientRect(), sh = document.getElementById('sheet').getBoundingClientRect();
+    return [...list.querySelectorAll(':scope > li')].map((li) => { const r = li.getBoundingClientRect(); return r.height > 0 && r.top >= box.top - 1 && r.bottom <= box.bottom + 1 && r.top >= sh.top - 1; }); });
+  check(rows.length === 3 && rows.every(Boolean), `with the detour line every point row is shown, none clipped inside the list (${rows.join(' ')})`);
+  const km = await page.evaluate(() => window.__state.plan.distanceM);
+  check(/② adds a 2[.,][6-9] km detour/.test(line) && await page.isVisible('#showGap'), `T1: "② adds a … km detour" + Show (${line.trim()})`);
+  await page.click('#showGap');
+  await page.waitForTimeout(800);
+  check(km > 7000 && await page.evaluate(() => window.__state.plan.distanceM) === km, `the route stays as it is (${Math.round(km)} m at T1)`);
+  check(await page.evaluate(() => window.__map.getSource('plan-reach')?.serialize().data.features[0]?.geometry.coordinates.length ?? 0) > 10,
+    'Show draws the route around the point amber');
+  await page.goto(url + 'index.html#p=' + await plan(2));
+  await planned();
+  // the check of this plan is over (main.ts checkDetours: body[data-detour] = "<plan>:done")
+  const over = await page.waitForFunction(() => window.__state.sac === 2 && document.body.dataset.planning !== '1' && !!window.__state.plan
+    && document.body.dataset.detour === `${window.__state.latest}:done`,
+    null, { timeout: 60_000 }).then(() => true, () => false);
+  check(over && await page.isHidden('#notice'), `T2: no detour line once its check is over (${over})`);
+
+  // an edit while the check runs long (?slowDetour: each step held 8 s) stops it at once – the app's detourCheck.stop():
+  // the new route comes within a few seconds, not after the check
+  await page.goto(url + 'index.html?slowDetour=8000#p=' + await plan(1));
+  await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 120_000 });
+  await planned();
+  await page.waitForFunction(() => document.body.dataset.detour === `${window.__state.latest}:running`, null, { timeout: 30_000 }).catch(() => {});
+  await page.waitForTimeout(300); // the first step is in the worker now
+  const t0 = Date.now();
+  await page.click('#points li:last-child .del');
+  const back = await page.waitForFunction(() => window.__state.points.length === 2 && !!window.__state.plan && document.body.dataset.planning !== '1'
+    && window.__state.plan.points.length === 2, null, { timeout: 60_000 }).then(() => true, () => false);
+  const ms = Date.now() - t0;
+  check(back && ms < 5000, `an edit during a long detour check: the new route in ${ms} ms (not after the check)`);
+}
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE|ERROR) /.test(e));

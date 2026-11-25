@@ -61,7 +61,7 @@ import org.junit.Test
  *    of the end it is `null` – the service sets `finished` before `state = null`).
  *
  * Test data tells things apart: three recorded tours (a hike of 40 min, a short recording of 12 m, a hike with a bus ride), an
- * interrupted tour whose stats the question carries (8,200 m) and the row does not, two split parts, the user's choices.
+ * interrupted tour whose stats the question carries (25,000 m, more than its points) and the row does not, two split parts, the user's choices.
  * What the tests do NOT prove: the service itself (`RecordingService.finish` – pinned in `TourContractFlowTest`), the
  * view model's own members behind the host (`TourWiringTest` pins the adapters), the sheets' Compose code.
  */
@@ -109,7 +109,7 @@ class TourEndFlowTest {
     private val partB = recorded("Tour 4 Nov 2026, 10:20", "HIKE", walk.segments, 900.0, "uuid-part-b")
     /** An interrupted recording: the row still says "active" and holds no stats; the question carries them. */
     private val interruptedId = recorded("Tour 5 Nov 2026, 07:30", "HIKE", ridden.segments, 0.0, "uuid-interrupted", state = "active")
-    private fun interrupted(): Tour = db.getTour(interruptedId)!!.copy(distanceM = 8_200.0, ascentM = 410.0, descentM = 300.0, durationS = 9_000.0)
+    private fun interrupted(): Tour = db.getTour(interruptedId)!!.copy(distanceM = 25_000.0, ascentM = 410.0, descentM = 300.0, durationS = 9_000.0)
 
     private fun tour(id: Long) = db.getTour(id)!!
 
@@ -729,6 +729,22 @@ class TourEndFlowTest {
         assertTrue(problems.said("recording").any { it == "Interrupted recording of '${t.name}': user chose Save" })
     }
 
+    /**
+     * The process was killed between two stats writes (every 10 s): the row's distance is older than its points (all written at
+     * once). Save counts at least the saved points' length, as Continue does (TourRun.resumed; TourKillFlowTest).
+     */
+    @Test fun saveOfAKilledTourCountsAtLeastItsSavedPoints() {
+        val id = recorded("Tour 6 Nov 2026, 07:30", "HIKE", walk.segments, 100.0, "uuid-killed", state = "active")
+        val t = db.getTour(id)!!.copy(distanceM = 100.0)
+        val pointsM = walk.segments.sumOf { s -> com.onpath.app.data.Geo.length(s.map { it.toGeo() }) }
+        assertTrue("the points are longer than the stale row", pointsM > 1_000.0)
+        ctl.showUnfinished(t, emptyList())
+        ui { slice.saveUnfinished(t) }
+        stepIo()
+        assertEquals("done", tour(id).state)
+        assertEquals(pointsM, tour(id).distanceM, 0.5)
+    }
+
     /** Another tour recording is not "the same tour": the interrupted one is saved. */
     @Test fun saveWhileAnotherTourRecordsSavesTheInterruptedOne() {
         val t = interrupted()
@@ -754,10 +770,10 @@ class TourEndFlowTest {
         stepIo()
         val row = tour(interruptedId)
         assertEquals("done", row.state)
-        assertEquals(8_200.0, row.distanceM, 0.0); assertEquals(410.0, row.ascentM, 0.0); assertEquals(300.0, row.descentM, 0.0); assertEquals(9_000.0, row.durationS, 0.0)
+        assertEquals(25_000.0, row.distanceM, 0.0); assertEquals(410.0, row.ascentM, 0.0); assertEquals(300.0, row.descentM, 0.0); assertEquals(9_000.0, row.durationS, 0.0)
         assertNotNull("the ride found is marked, as recorded", row.rides)
         assertEquals(RideChoice.AS_RECORDED, row.rides!!.choice)
-        assertEquals("the stats of the question are what was recorded", 8_200.0, row.rides!!.recorded.distanceM, 0.0)
+        assertEquals("the stats of the question are what was recorded", 25_000.0, row.rides!!.recorded.distanceM, 0.0)
         assertEquals(listOf("tourChanged($interruptedId) io [box=null]"), log.filter { it.startsWith("tourChanged") })
         assertEquals("the list is read again, on main, last", "refreshTours [rec=null box=null short=null]", log.last())
         assertEquals(emptyList<Triple<String, NoticeKind, NoticePlace>>(), said)
@@ -776,7 +792,7 @@ class TourEndFlowTest {
         val row = tour(interruptedId)
         assertEquals(RideChoice.SPLIT, row.rides!!.choice)
         assertEquals(s.rides, row.rides!!.rides)
-        assertTrue("the split's own stats stay: the recorded stats are written before the choice is applied, not over it", row.distanceM < 8_200.0)
+        assertTrue("the split's own stats stay: the recorded stats are written before the choice is applied, not over it", row.distanceM < 25_000.0)
         val parts = db.listTours().filter { it.id != interruptedId && it.createdMs > 0 && it.uuid.isNotEmpty() && it.id !in listOf(hike, shortTour, busTour, partA, partB) }
         assertEquals("one part after the ride", 1, parts.size)
         assertEquals(listOf("tourChanged($interruptedId) io [box=null]", "tourChanged(${parts.single().id}) io [box=null]"), log.filter { it.startsWith("tourChanged") })
@@ -824,11 +840,11 @@ class TourEndFlowTest {
 
     @Test fun askSaveOfAnInterruptedTourWithoutARideSavesAtOnce() {
         val flat = recorded("Tour 6 Nov 2026, 07:30", "HIKE", walk.segments, 0.0, "uuid-flat", state = "active")
-        val t = tour(flat).copy(distanceM = 3_000.0)
+        val t = tour(flat).copy(distanceM = 4_000.0)
         ui { slice.askSaveUnfinished(t) }
         stepIo()
         assertEquals("done", tour(flat).state)
-        assertEquals(3_000.0, tour(flat).distanceM, 0.0)
+        assertEquals(4_000.0, tour(flat).distanceM, 0.0)
         assertNull(ctl.unfinishedRides)
         assertTrue(log.any { it.startsWith("enterMode(PLAN)") })
     }
@@ -868,7 +884,7 @@ class TourEndFlowTest {
         stepIo()
         assertEquals("the bin write saw the tour already 'done'", "done", stateAtBin)
         val row = tour(interruptedId)
-        assertEquals("done", row.state); assertEquals(8_200.0, row.distanceM, 0.0)
+        assertEquals("done", row.state); assertEquals(25_000.0, row.distanceM, 0.0)
         assertNotNull(row.deletedMs)
         assertEquals(listOf("tourChanged($interruptedId) io [box=null]", "refreshTours [rec=null box=null short=null]"), log.drop(2))
         assertEquals(emptyList<Triple<String, NoticeKind, NoticePlace>>(), said)

@@ -357,14 +357,13 @@ fun NavigateOverlay(
         barOpen = closableBar, sheetOpen = ui.activityCheck != null || ui.settingsOpen)) {
         com.onpath.app.debug.Problems.trace("app", "Back in Navigate while recording: stays in the app (owner 2026-11-15)")
     }
-    Box(Modifier.fillMaxSize()) {
+    ControlsLaneHost { Box(Modifier.fillMaxSize()) {
         Column(
             Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding()
                 .onSizeChanged { topColumnDp = with(density) { it.height.toDp().value.toInt() } }
                 .padding(top = 8.dp, start = 12.dp, end = 12.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) { LocalNavTop.current?.invoke(ui.turn != null) // live sharing's sign when no turn card carries it ([LiveSignLayer])
-            Appearing(ui.turn) { TurnCard(it) } // cards glide in and out instead of popping and pushing the status card
+        ) { Appearing(ui.turn) { TurnCard(it) } // cards glide in and out instead of popping and pushing the status card
             // ONE amber card while off route (owner): "Off route", distance + direction, the state; step 1 of leaving the
             // route – it stays while the question (step 2) is open below it (owner 2026-11-07)
             Appearing(ui.offRoute?.takeIf { it.amber }) { OffRouteCard(it) }
@@ -375,11 +374,12 @@ fun NavigateOverlay(
                     // the lock off (owner 2026-11-06): no buttons in the card – Pause | Planen at the bottom ([TourBottomBar])
                     actions = null)
             }
+            LocalNavBelowCard.current?.invoke() // live sharing's "waiting for network" pill ([LiveSignLayer])
             download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
-            footer() // map controls (compass/orientation, eye, locate) are grouped in the footer
+            ControlsRoom(topColumnDp, sliderDp) { footer() } // map controls: the column gives way to a short screen
             val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
                 .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
             // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
@@ -424,7 +424,7 @@ fun NavigateOverlay(
         androidx.compose.runtime.SideEffect { cover(maxOf(topColumnDp, shownMessageBottom), sliderDp) }
         // over the controls: nothing else is touched by accident while choosing; no tap-outside dismiss
         ui.activityCheck?.let { ActivitySwitchSheet(it, onChooseActivity, onKeepActivity, Modifier.align(Alignment.BottomCenter), onHikeLevel = onHikeLevel) }
-    }
+    } }
 }
 
 /** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
@@ -477,7 +477,7 @@ private fun TurnCard(t: TurnHint) {
                     StopText(t.label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onPrimary,
                         fontWeight = FontWeight.Medium, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis)
                 }
-            }; LocalTurnCardEnd.current?.invoke() // live sharing's sign at the edge, its own button for TalkBack ([LiveSignLayer])
+            }
         }
     }
 }

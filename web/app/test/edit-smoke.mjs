@@ -29,7 +29,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // the page's own pixel of a place: the map's canvas starts below the top bar
 const px = (lon, lat) => page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
   const q = window.__map.project([lo, la]); return [r.left + q.x, r.top + q.y]; }, [lon, lat]);
-const clickAt = async (lon, lat) => { const p = await px(lon, lat); await page.mouse.click(p[0], p[1]); };
+const clickAt = async (lon, lat) => { const p = await px(lon, lat); await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]); };
 const popups = () => page.evaluate(() => [...document.querySelectorAll('.maplibregl-popup')].map((x) => x.textContent.replace(/\s+/g, ' ').trim()));
 await clickAt(11.1600, 46.6766);
 await page.waitForSelector('.pointmenu'); // first click: New route – Start here · Go here
@@ -49,7 +49,7 @@ if (!ruster) console.log('skip: no map-cell POIs here – the POI-then-map click
 // nothing is added (it was: the 2nd click added a point while the POI's menu was still being built, which opened after)
 if (ruster) {
   const a = await px(...ruster), b = await px(...c2);
-  await page.mouse.click(a[0], a[1]); await page.mouse.click(b[0], b[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(a[0], a[1]); await page.mouse.click(b[0], b[1]);
   await page.waitForTimeout(2500);
   const pins = await page.evaluate(() => document.querySelectorAll('.pin').length), open = await popups();
   check(pins === 1 && open.length === 0, `a POI clicked, then the map at once: the POI's menu closed again, nothing added (${pins} points, menus ${JSON.stringify(open)})`);
@@ -60,7 +60,7 @@ if (ruster) {
 // was asked, so the map is not moved away under it (the app's lastMapTouch)
 {
   const a = await px(...c2), b = await px(...c3);
-  await page.mouse.click(a[0], a[1]); await page.mouse.click(b[0], b[1]);
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(a[0], a[1]); await page.mouse.click(b[0], b[1]);
   await page.waitForSelector('.holdaddpopup button', { timeout: 15_000 });
   await page.waitForFunction(() => document.getElementById('summary')?.querySelector('.big') && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
   await page.waitForTimeout(2000); // the first route's fit would come 500 ms after the route
@@ -147,7 +147,7 @@ await page.click('#results .chip[data-cat="PARKING"]');
 await page.waitForFunction(() => document.querySelector('#results .chip[data-cat="PARKING"]')?.getAttribute('aria-pressed') === 'false', null, { timeout: 10_000 }).catch(() => {});
 check(on === 'true' && await page.getAttribute('#results .chip[data-cat="PARKING"]', 'aria-pressed') === 'false', 'a chip click picks "Parking", a second click unpicks it');
 await page.keyboard.press('Escape');
-await page.mouse.click(640, 500);
+await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(640, 500);
 
 // Points list ✕ on the loop's start (the app's PlanPoints.deleteAt): the start goes, the loop closes at the next point –
 // still a round trip with ↺, one marker less (the web used to drop start and end: the loop opened)

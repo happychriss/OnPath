@@ -1475,8 +1475,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * the hiker trusts a line that stops short of where they want to go. Null = every point is reached.
      */
     fun planGapText(gaps: List<PlanGap> = planGaps): String? {
-        if (gaps.isEmpty()) return null
-        PlanGaps.reachText(gaps, planReach)?.let { return it }
+        if (gaps.isEmpty()) return planRecalc.detourText() // no gap: a point the T level sends on a long detour ([PlanDetourCheck])
+        PlanGaps.reachText(gaps, planReach, planRecalc.detours())?.let { return it }
         val pts = plan.points.toList()
         return PlanGaps.text(gaps, planRoute.activity) { i -> pts.getOrNull(i)?.let { searchFlow.stopName(it) ?: planEdit.nearbyNames[it] } }
     }
@@ -1500,7 +1500,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * missing piece.
      */
     fun showPlanGap() {
-        val g = planGaps.firstOrNull() ?: return
+        val g = planGaps.firstOrNull() ?: return planRecalc.detourWay()?.let { map.showPiece(it, null) } ?: Unit // the detour's line
         val way = planReach?.takeIf { it.index == g.index && !g.skipped }?.way
         if (way != null) map.showPiece(way + g.point, null)
         else map.showPiece(listOf(g.routeEnd, g.point), PlanGaps.showTarget(g))

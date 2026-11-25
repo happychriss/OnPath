@@ -2,8 +2,10 @@
 <!-- The live tour's viewer page (web/app/live/, docs/design/live-tracking.md §3). -->
 <resources>
     <string name="web_live_page_title">OnPath – shared location</string>
-    <string name="web_live_title">Live tour</string>
+    <string name="web_live_title">Shared location</string>
     <string name="web_live_title_named">%1$s’s tour</string>
+    <string name="web_live_next_point">next point in %1$s</string>
+    <string name="web_live_waiting">waiting for the phone …</string>
     <string name="web_live_loading">Loading …</string>
     <string name="web_live_moving">On the way · last heard %1$d min ago</string>
     <string name="web_live_moving_now">On the way · just now</string>

@@ -152,6 +152,27 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   check(d?.route === route.length && d.way.length === 1 && d.way[0] === 30, `the plan (${d?.route} points) and the way so far (${JSON.stringify(d?.way)}) are on the map`);
   check(await V.evaluate(() => !!document.querySelector('.livedot')), 'the last place has its dot');
 
+  // ---- 3b. the countdown strip: from the head's nextS (120 s) and the time since the upload, no extra question ----
+  const countOf = (P) => P.evaluate(() => ({ hidden: document.getElementById('count').hidden, text: document.getElementById('countText').textContent,
+    overdue: document.getElementById('count').dataset.overdue === '1', tone: document.getElementById('status').dataset.tone,
+    bar: document.getElementById('countBar').style.transform, top: document.getElementById('top').getBoundingClientRect().bottom,
+    barTop: document.getElementById('count').getBoundingClientRect().top }));
+  clock.t = T0 + 30_000;
+  await ask(V);
+  let c = await countOf(V);
+  const m1 = /^nächster Punkt in 1:(\d\d)$/.exec(c.text);
+  check(!c.hidden && !!m1 && !c.overdue && c.tone === 'good' && c.barTop >= c.top - 1, `countdown after a report: "${c.text}", bar ${c.bar}, directly under the status line`);
+  const asks0 = asked();
+  await V.waitForFunction((s) => { const m = /1:(\d\d)$/.exec(document.getElementById('countText').textContent); return m && Number(m[1]) <= s; }, Number(m1?.[1] ?? 59) - 2, { timeout: 10_000 }).catch(() => {});
+  c = await countOf(V);
+  check(Number(/1:(\d\d)$/.exec(c.text)?.[1] ?? 99) <= Number(m1?.[1] ?? 0) - 2 && asked() === asks0, `the countdown counts down by itself ("${c.text}"), without asking the server`);
+  clock.t = T0 + 2 * MIN + 40_000; // 20 s past the planned moment
+  await ask(V);
+  c = await countOf(V);
+  l = await lineOf(V);
+  check(c.overdue && c.text === 'wartet auf das Handy …' && c.tone === 'amber' && c.bar === 'scaleX(0)' && l.state === 'moving', `overdue: "${c.text}", status line amber, bar empty`);
+  clock.t = T0 + 2 * MIN + 5_000;
+
   // ---- 4. a break ----
   clock.t = T0 + 12 * MIN;
   await ph.push({ head: { state: 'recording', stillS: 420, distanceM: 5400, ascentM: 310, movingS: 4500, lat: pts[29][0], lon: pts[29][1], time: T0 + 5 * MIN, batteryPct: 42, activity: 'HIKE', name: 'Christian', nextS: 600 } });
@@ -246,6 +267,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     await W.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
     await W.clock.runFor(100); await settle(); await settle();
     check(asked() === n3 + 1 && (await lineOf(W)).state === 'moving', 'the tab comes back: one question at once, the line is fresh');
+    check(/^Geteilter Standort( · |$)/.test((await lineOf(W)).title), `no name given: the heading is "${(await lineOf(W)).title}"`);
     // ---- 10. stop sharing: nothing of the tour stays ----
     check(await ph2.stop() === 200, 'the phone stops sharing');
     await run(3 * MIN, false);

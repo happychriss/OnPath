@@ -62,11 +62,21 @@ export class RouteReveal {
     // the clock starts with the first frame (like the app's ValueAnimator): a busy page after the route came (sheet,
     // profile, map) must not eat the 0.5 s, or the line would jump to whole without ever drawing itself
     let start = -1;
+    // a smoke that asks for the reveal (window.__reveal) gets its steps (__revealSteps: points drawn per frame), and its
+    // clock moves at most 100 ms per frame – a loaded test runner's long frames must not skip the drawing (CI flake)
+    const w = window as unknown as { __reveal?: boolean; __revealSteps?: number[] };
+    const test = navigator.webdriver && !!w.__reveal;
+    if (test) w.__revealSteps = [];
+    let at = 0, prev = -1;
     const frame = (now: number) => {
       if (start < 0) start = now;
-      const t = (now - start) / DURATION_MS;
-      if (t >= 1) { this.raf = 0; this.set(legs); return; }
-      this.set(cut(legs, ease(t)));
+      at = test ? at + Math.min(now - (prev < 0 ? now : prev), 100) : now - start;
+      prev = now;
+      const t = at / DURATION_MS;
+      if (t >= 1) { this.raf = 0; this.set(legs); if (test) w.__revealSteps!.push(n); return; }
+      const part = cut(legs, ease(t));
+      this.set(part);
+      if (test) w.__revealSteps!.push(part.reduce((a, l) => a + l.pts.length, 0));
       this.raf = requestAnimationFrame(frame);
     };
     this.set([]);

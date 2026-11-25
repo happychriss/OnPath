@@ -177,8 +177,10 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     `one request through the proxy: ${JSON.stringify(asked)}`);
   check(ids.length === 1 && /^[0-9a-f]{32}$/.test(ids[0] ?? ''), `the request carries the browser's random id (quotas): ${ids[0]}`);
   const p0 = (await win())?.pct ?? 0;
+  // it moves on with the doorman's 40 % – unless a slow runner's time-based bar already stands that high (84 / 94 % on CI
+  // before the answer came): then it may only stand (never back: checked below over the whole window)
   const moved = await page.waitForFunction((a) => +(document.getElementById('waitwin')?.dataset.pct ?? 0) > a, p0, { timeout: 15_000 }).then(() => true, () => false);
-  check(moved, `polling: the doorman's 40 % moves the bar (from ${p0} %)`);
+  check(moved || p0 >= 80, `polling: the doorman's 40 % moves the bar (from ${p0} %${moved ? '' : ', it stood – already that high'})`);
   const gone = await page.waitForFunction(() => !document.getElementById('waitwin') && document.getElementById('mapnotes').hidden, null, { timeout: 20_000 }).then(() => true, () => false);
   check(gone, 'ready: the window closes by itself (no "done" message)');
   // the window of the own area (the last one – the page's first map may have had its own before)
@@ -232,7 +234,8 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     }, 25);
   });
   const before = await page.evaluate(() => +document.getElementById('waitwin').dataset.pct);
-  await page.click('#locate');
+  // the wait window is modal since 56abfc513 (its veil takes clicks): the locate button's own action, as a fix would start it
+  await page.evaluate(() => document.getElementById('locate').click());
   const joined = await page.waitForFunction(() => { const r = document.querySelector('#waitwin .wwsteps li'); return r?.className === 'now' && r.textContent === 'being prepared'; }, null, { timeout: 30_000 }).then(() => true, () => false);
   const during = await page.evaluate(() => ({ running: window.__wait.overlay().isOpen('held'), title: document.querySelector('#waitwin .wwtitle')?.textContent, ...window.__b2, el: undefined }));
   check(joined && during.running, `B2: the area joined while that wait was still running (from ${before} %)`);
@@ -283,7 +286,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   await page.route(/\.rd5/, async (r) => { await new Promise((f) => setTimeout(f, 700)); await r.continue().catch(() => {}); });
   const clickAt = async (lon, lat) => {
     const p = await page.evaluate(([lo, la]) => { const q = window.__map.project([lo, la]); return [q.x, q.y]; }, [lon, lat]);
-    await page.mouse.click(p[0], p[1]);
+    await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
   };
   await clickAt(11.16, 46.67);
   await page.waitForSelector('.pointmenu');

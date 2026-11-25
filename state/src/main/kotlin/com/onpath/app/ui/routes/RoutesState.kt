@@ -132,6 +132,14 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
     }
 
     /**
+     * The tour that holds the plan the last [keepDraft] kept – a new or updated draft, or the saved route / draft that took the
+     * Zuletzt place as it is; -1 = nothing kept (one point, a saved route in the recycle bin, a failure). Read right after
+     * [keepDraft] on the same thread: "Restore your old plan?" asks about it ([RestoreAsk]).
+     */
+    var keptAs: Long = -1L
+        internal set
+
+    /**
      * A plan with the points [key] leaves the map (cleared, replaced by a loaded route / link / track): what stays under
      * Zuletzt? One point is no plan – nothing. Saved as it is ([unsaved] false; [savedId] = the saved route or the draft
      * it was loaded from): that tour takes the place (a draft back out of the bin when needed; gone for good → kept
@@ -146,6 +154,7 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
      */
     fun keepDraft(key: List<Pair<Double, Double>>, unsaved: Boolean, savedId: Long = -1L, update: ((Long) -> Boolean)? = null,
                   insert: () -> Long): Long? {
+        keptAs = -1L
         if (key.size < 2) return null
         if (!unsaved) {
             if (savedId < 0) return null // saved as it is, nowhere known: nothing to keep (as before)
@@ -159,11 +168,11 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
             // "as it is" is the plan's word (its link's points): a draft whose ROW holds other points (updated from another
             // version of this plan, review 2026-11-20) is written below – the plan on the map is never dropped for it
             val stale = own != null && own.draft && update != null && keyOf(own) != key
-            if (own != null && !stale) { takePlace(own.id); return null }
+            if (own != null && !stale) { keptAs = own.id; takePlace(own.id); return null }
             if (own == null) Problems.trace("routes", "Zuletzt: the plan's tour $savedId is gone for good – kept as a new plan")
         }
         val same = store.listTours().firstOrNull { it.kind == TourKind.PLANNED && keyOf(it) == key }
-        if (same != null) { takePlace(same.id); return null }
+        if (same != null) { keptAs = same.id; takePlace(same.id); return null }
         if (!Drafts.keeps(key.size, unsaved = true)) return null
         if (savedId >= 0 && update != null) {
             val binned = store.listDeleted().firstOrNull { it.id == savedId && it.draft }
@@ -174,14 +183,14 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
                 }
                 if (ok) {
                     Problems.trace("routes", "Zuletzt: the changed plan updates its entry $savedId")
-                    takePlace(savedId)
+                    keptAs = savedId; takePlace(savedId)
                     return savedId
                 }
                 if (binned != null) store.setDeleted(savedId, clock()) // not updated: back where it was, the plan is kept below
             }
         }
         val id = insert()
-        takePlace(id)
+        keptAs = id; takePlace(id)
         return id
     }
 

@@ -210,6 +210,9 @@ class TripPace(prior: Factors = Factors.ONE, private val allowance: Double = Tim
     }
 
     private fun refresh(wallMs: Long) {
+        // the phone's clock set back: the waits below would hold the shown time for that long – start the display anew
+        // (ClockJumpFlowTest 2026-11-24: "to go" and the arrival stood still for the hour)
+        if (wallMs < lastShowWall) resetCalm = true
         lastWallMs = wallMs
         val raw = rawToGoS() ?: run { shownArrivalMs = null; shownToGoS = null; showToGoS = null; return }
         if (!matched && shownToGoS == null) return // nothing known yet on this line: "not on route", no number

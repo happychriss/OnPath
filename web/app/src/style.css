@@ -418,6 +418,8 @@ dialog.pair .check b { letter-spacing: .08em; }
 .waitwin { position: fixed; z-index: 16; transform: translate(-50%, -50%); width: min(360px, calc(100vw - 32px)); box-sizing: border-box;
   padding: 18px 12px 6px 20px; background: var(--paper); border-radius: var(--r-card); box-shadow: var(--shadow-high); color: var(--fg); }
 .waitwin.done { pointer-events: none; }
+/* the veil under it while it waits (modal like the app's Dialog); under the message cards (z 15), over map, bar and sheet */
+.waitveil { position: fixed; inset: 0; z-index: 14; background: rgba(0,0,0,.32); touch-action: none; }
 .waitwin .wwhead { display: flex; align-items: center; gap: 10px; padding-right: 8px; }
 .waitwin .wwsign { flex: none; width: 24px; height: 24px; color: var(--go); } .waitwin .wwsign svg { width: 24px; height: 24px; display: block; }
 .waitwin.paused .wwsign { color: var(--muted); }
@@ -867,6 +869,11 @@ body.undo-crowded #pointsSection .pointshead { display: flex; min-height: 48px; 
   #sheet[data-step="points"] { overflow-y: auto; overscroll-behavior: contain; }
   #sheet[data-step="points"] > #pointsSection { flex: none; }
 }
+/* every width (2026-11-25, a laptop 800 px tall: the detour line + the warnings squeezed a 3-point list to two rows, the
+   goal hidden inside it): a short list (up to 4 points) keeps every row, the sheet scrolls as one when it must; a longer
+   list still scrolls inside itself */
+#sheet[data-step="points"] { overflow-y: auto; overscroll-behavior: contain; }
+#sheet[data-step="points"] > #pointsSection:not(:has(#points > li:nth-child(5))) { flex: none; }
 
 /* Meine Touren → Papierkorb (recent.ts, the app's RecycleBinScreen): the keep line, a row's deletion line, Wiederherstellen */
 .planlist li.binkeep, .planlist li.binempty { display: block; border-top: none; padding: 4px 8px 8px; }
