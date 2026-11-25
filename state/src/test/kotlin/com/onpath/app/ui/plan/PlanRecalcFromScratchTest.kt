@@ -19,6 +19,8 @@ import com.onpath.app.ui.PlanSize
 import com.onpath.app.ui.Say
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -210,6 +212,27 @@ class PlanRecalcFromScratchTest {
         assertTrue(edit.canRecalcFromScratch(Activity.HIKE, 2))
         assertTrue(edit.recalcFromScratch(Activity.HIKE, 2))
         assertFalse(plan.hasDetours(Activity.HIKE, 2))
+    }
+
+    /** The plan menu's row (PlanTopBar, picture B): [PlanEditState.recalcRow] is the callback MapScreen hands to the menu, null = no row. */
+    @Test fun theMenuRowIsThereOnlyForAPlanWithAnchorsOnItsProfile() {
+        val pts = listOf(a, b, rome)
+        plan.edit { clear(); addAll(pts) }
+        assertNull("no anchors, no row", edit.recalcRow(Activity.HIKE, 2))
+        withAnchors(plan, pts)
+        assertNotNull("anchors on the profile: the row", edit.recalcRow(Activity.HIKE, 2))
+        assertNull("the anchors belong to another sac level", edit.recalcRow(Activity.HIKE, 3))
+        assertNull("the anchors belong to another activity", edit.recalcRow(Activity.MTB, 2))
+        touring = true
+        assertNull("no row while a tour runs", edit.recalcRow(Activity.HIKE, 2))
+    }
+
+    @Test fun aTapOnTheMenuRowRecalculatesInOneStep() {
+        withAnchors(plan, listOf(a, b, rome))
+        edit.recalcRow(Activity.HIKE, 2)!!.invoke()
+        assertFalse(plan.hasDetours(Activity.HIKE, 2))
+        edit.undoStep()
+        assertTrue("one Undo brings the detours back", plan.hasDetours(Activity.HIKE, 2))
     }
 
     private val hikeProfile = com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 2)
