@@ -893,14 +893,14 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
     // 2026-11-15 on a hike: a tap on a POI works also with a menu open)
     if (terrain3d.on || !pt) return;
     pt = await settledPoint(at);
-    const poi = markerNear(pt) < 0 ? poiAt(pt) : null;
+    const poi = markerNear(pt) < 0 ? poiForPress(pt) : null;
     if (poi) await poiMenu(poi);
     return;
   }
   if (terrain3d.on) { closeMenu(); return; } // 3D is for looking (the note on the map says so); planning is on the flat map
   if (pt) pt = await settledPoint(at);
   if (marker < 0 && pt) marker = markerNear(pt);
-  const poi = pt && marker < 0 ? poiAt(pt) : null;
+  const poi = pt && marker < 0 ? poiForPress(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
   // each waits until its menu is open or its point is in the plan (pressInOrder); the route is not waited for
   if (action.startsWith('PointMenu:')) await pointMenu(Number(action.split(':')[1]));
@@ -961,6 +961,42 @@ function poiAt(pt: maplibregl.Point): MapGeoJSONFeature | null {
     if (d < bestD) { bestD = d; best = x; }
   }
   return best;
+}
+
+/**
+ * The POI under a click, also when MapLibre's symbol placement has not caught up with the screen: after a pan the placement
+ * is redone in 2 ms steps per frame, on a slow phone for longer than a click waits (settledPoint), and the rendered query
+ * then finds nothing (owner 2026-11-17: the click added a point instead of opening the POI). Then the POIs the source holds
+ * near the click are read, as the app's PoiTap reads its list from the tiles: every symbol layer shown at this zoom asks
+ * the source with its own filter (so a POI the style hides – density, tier, zoom – is no target), and the same rule picks
+ * (the icon's box around the click, the nearest wins). Not used while the placement is the current one: a POI the placement
+ * left out (no room) is not drawn, so not a target (PoiHit: only a drawn symbol).
+ */
+function poiAtPlacementFree(pt: maplibregl.Point): MapGeoJSONFeature | null {
+  const src = map.getSource('pois');
+  if (!src) return null;
+  const reach = CLICK_HALF_PX + ICON_HALF_PX, z = map.getZoom();
+  let best: MapGeoJSONFeature | null = null, bestD = Infinity;
+  try {
+    for (const l of map.getStyle().layers) {
+      if (l.type !== 'symbol' || !l.id.startsWith('poi-') || l.id.endsWith('-name') || l.source !== 'pois') continue;
+      if ((l.minzoom != null && z < l.minzoom) || (l.maxzoom != null && z >= l.maxzoom)) continue;
+      const sourceLayer = src.type === 'vector' ? (l['source-layer'] ?? 'pois') : undefined;
+      for (const x of map.querySourceFeatures('pois', { sourceLayer, filter: l.filter as maplibregl.FilterSpecification | undefined })) {
+        if (x.geometry.type !== 'Point') continue;
+        const s = map.project((x.geometry as GeoJSON.Point).coordinates as [number, number]);
+        if (Math.abs(s.x - pt.x) > reach || Math.abs(s.y - pt.y) > reach) continue;
+        const d = (s.x - pt.x) ** 2 + (s.y - pt.y) ** 2;
+        if (d < bestD) { bestD = d; best = x as MapGeoJSONFeature; }
+      }
+    }
+  } catch (e) { problem('map', 'POIs near a click not read from the source; the click found no POI', e); return null; }
+  return best;
+}
+
+/** [poiAt] first; with a stale placement and nothing found, the source's POIs near the click. */
+function poiForPress(pt: maplibregl.Point): MapGeoJSONFeature | null {
+  return poiAt(pt) ?? (placedHere() !== true ? poiAtPlacementFree(pt) : null);
 }
 
 /** A hold's answer from the engine (WebApi.holdOnMap = the app's AppViewModel.holdOnMap). */
