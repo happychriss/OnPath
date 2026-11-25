@@ -136,7 +136,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[laptop] POI click on a slow phone after a pan…** → [detail](items/2026-11-17-poi-click-on-a-slow-phone-after-a-pan-20.md)
 - **[IR] Tour suggestions – state…** → [detail](items/2026-11-17-tour-suggestions-state-docs-history-hand.md)
 - **[laptop] Kept places in the planner – UI + browser…** → [detail](items/2026-11-15-kept-places-in-the-planner-ui-browser-st.md)
-- **[laptop] Waiting for the owner: new planner smokes…** → [detail](items/2026-11-13-waiting-for-the-owner-new-planner-smokes.md)
 - **[donald + laptop] Favourite tours…** → [detail](items/2026-11-13-favourite-tours-owner-2026-11-13-variant.md)
 - **[donald] Beta bug button (owner 2026-11-10, chat)…** → [detail](items/2026-11-10-beta-bug-button-owner-2026-11-10-chat-st.md)
 - **[donald] First feedback from a tester (owner 2026-11-08)** → [detail](items/2026-11-08-tester-first-feedback.md)
@@ -200,6 +199,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [laptop] 2026-11-25 morning: **pull request „Web planner CI: every browser smoke runs“** (stop-smoke with the Ruhr data) – all checks green, a second model read it (no blockers); `gh pr merge` is blocked here without the owner's ask in the laptop chat. Follow-up: routes-smoke can run in CI too (needs no cell store).
 - [aufräumen] 2026-11-25 morning: **Playwright install retry PR (his yes) is blocked by the token** – donald's `gh` token has no `workflow` scope (GitHub refuses any push touching `.github/workflows/`). His step: `gh auth refresh -h github.com -s workflow` on donald (browser login) – then aufräumen pushes `pr/web-playwright-install-retry` (53182aab5) and merges as usual; or he pushes that branch himself.
 - [laptop] 2026-11-25 night: **planner deploy of the…** → [detail](items/2026-11-25-planner-deploy-of-the-detour-line.md)
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
