@@ -90,7 +90,11 @@ class CoreFieldE2ETest : E2EBase() {
 
     private fun fix() { for (p in PROVIDERS) sh("cmd location providers set-test-provider-location $p --location $lat,$lon --accuracy 4") }
 
-    private companion object { val PROVIDERS = listOf("gps", "network") }
+    private companion object {
+        val PROVIDERS = listOf("gps", "network")
+        /** A hold this far from every point is a map hold, not a point's (a point catches 48 dp – MapGestures.MARKER_RADIUS_DP). */
+        const val MIN_DP = 80f
+    }
 
     private fun follow() { scenario.onActivity { vm(it).map.followMe = true }; pause(1_500, "the camera follows me") }
 
@@ -105,7 +109,8 @@ class CoreFieldE2ETest : E2EBase() {
         // (seen 2026-11-19 on a slow emulator) is measured again on the snapped plan (PlaceAddFlowTest
         // .aMeasureForAPlanChangedMeanwhileIsMeasuredAgainOnThePlanNowShown) – it took a few seconds longer there
         routeSettled()
-        hold(w * 0.30f, h * 0.30f)
+        val (sx, sy) = openSpotAwayFromPoints(w, h)
+        hold(sx, sy)
         waitUntil("a stop added", 20_000) { waypointCount() == 3 }
         routeSettled() // route + snapping
         follow() // the map keeps following while the user edits (camera moves under the finger)
@@ -175,6 +180,20 @@ class CoreFieldE2ETest : E2EBase() {
             pause(100, "poll interval of routeSettled")
         }
         pause(700, "snapping + camera, as before")
+    }
+
+    /**
+     * A spot on the open upper map at least [MIN_DP] from every plan point, so a hold there adds a stop instead of
+     * opening a point's menu. The fixed spot (0.30 w, 0.30 h) broke when brouter.de's routing data of 2026-11-24 snapped
+     * „Hierhin“ elsewhere – the point then lay 16–21 dp from it (runs 45508818926, 45512283913; same commit green before).
+     */
+    private fun openSpotAwayFromPoints(w: Float, h: Float): Pair<Float, Float> {
+        val minPx = MIN_DP * androidx.test.platform.app.InstrumentationRegistry.getInstrumentation().targetContext.resources.displayMetrics.density
+        val points = (0 until waypointCount()).map { waypointOnScreen(it) }
+        val spots = listOf(0.30f to 0.30f, 0.70f to 0.30f, 0.30f to 0.40f, 0.70f to 0.40f, 0.50f to 0.40f, 0.20f to 0.35f, 0.80f to 0.35f)
+            .map { (fx, fy) -> w * fx to h * fy }
+        return spots.firstOrNull { (x, y) -> points.all { (px, py) -> kotlin.math.hypot(x - px, y - py) >= minPx } }
+            ?: throw AssertionError("no open spot ${MIN_DP.toInt()} dp away from the points $points – ${state()}")
     }
 
     /**
