@@ -1,5 +1,13 @@
 # Handoff [aufräumen] – 2026-11-25 ~00:30 (night mode)
 
+## STATE AT SHUTDOWN (2026-11-25 ~23:15, owner's word via the captain)
+- Everything is on main; no wip branch needed. Claim freed.
+- Only local on donald: branch `pr/web-playwright-install-retry` (53182aab5, `.github/workflows/web.yml` only) – it
+  cannot be pushed (the `gh` token has no `workflow` scope), so no wip branch either. Its whole diff is in
+  `items/2026-11-24-flaky-tests.md` („Playwright install retry“) – recreate it from there if donald's branch is gone.
+- Next for a fresh aufräumen session: nothing pressing. The Playwright PR once the owner gives the token the `workflow`
+  scope; watch the detour-line smoke flake (`items/2026-11-24-flaky-tests.md`).
+
 Start a fresh session from here: read CLAUDE.md, `docs/team/owner-preferences.md`, then this file. Questions to the
 owner only as a question box (his word 2026-11-24) – but **not at night** (night-job rules: self-answer, one line in
 `items/<date>-night-answers.md`).

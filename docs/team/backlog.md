@@ -124,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free – shutdown 2026-11-25 ~23:10) 0.18.11 planner list: on main PR 23, CSP, restore box, POI click; waiting: `wip/laptop-2026-11-25-pair-verbinden` (owner's yes, merge conflicts noted) + `wip/laptop-2026-11-25-writers-web` (review next) – top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (2026-11-25 ~18:00) **0.18.11 app list done on main** (details in `items/2026-11-25-release-0-18-11-plan.md`). Waiting for the writers on main, then version + notes + full E2E + Rundgang → **publish myself (owner's own word in donald's chat ~16:45)**; the countdown goes live with the planner deploy.
-- [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
+- [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
