@@ -16,6 +16,16 @@ Fränkische Schweiz / Pottenstein 49.77, 11.41, Mittenwald / Garmisch), tell IR;
 - **CELL_SCHEMA 9 on main and on TEST** (suggest layer content 2); donald has the publish commands; cell list `tools/dev/areas/owner-test-cells.txt`.
 - Next for the laptop: follow mehrtage's / IR's web merges (parity, check-web, deploy when green); donald's cleanup may move more shared files.
 
+## State 2026-11-25 ~16:20, session stopped at ~344k context – the fresh laptop session starts HERE
+- Start with the 0.18.11 list: `docs/team/items/2026-11-25-release-0-18-11-plan.md` (captain).
+- **PR 23 („Web planner CI: every browser smoke runs“)**: owner said merge (via the captain, 2026-11-25 16:16); green + read by
+  a second model. `gh pr merge 23 --merge` was blocked for this session (the word came through the captain) – merge it
+  first thing in a session where the owner asks in its own chat, or the owner merges.
+- **Planner not deployed since 7ed2d75cb**: on main and green (rerun of a rare robust-smoke (c) flake): detour hint with
+  reason, short point list keeps every row, smoke fixes. Deploy on the owner's ask in the laptop chat.
+- Tidy-up script for the owner: `~/aufraeumen-laptop-2026-11-25.sh` (not run yet).
+- Everything below (morning state) still holds.
+
 ## State 2026-11-25 morning – the next laptop session starts HERE
 - **On main, not online yet** (deploy waits for the owner's ask in the laptop chat – `gh workflow run` / `gh pr merge` are
   blocked for this session otherwise, even on the captain's word): the detour hint in the planner (`detourStart` →

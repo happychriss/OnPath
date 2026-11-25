@@ -121,7 +121,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [umbau] (2026-11-25 morning, **free** – W4 done) Detour stitch writers W0–W4 + all review fixes on `wip/umbau-2026-11-24-stitch-writers` (dee1e9310): gate full, SameRouteTest 112 + 108, Web planner green at dee1e9310 (45566364051); full E2E 113/1 at 9aeed35b1 (the 1 red is red on main too). Nothing on main. Next: the laptop's planner part, then the writers ship with it → [state](items/2026-11-25-stitch-writers-state.md)
-- [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (2026-11-25 ~16:20) **0.18.11 app list** (`items/2026-11-25-release-0-18-11-plan.md` [donald]): helpers on `wip/donald-2026-11-25-nav-offroute` (1+4), `…-nav-stops` (2+3), `…-small` (5+6+9), `…-emu-leftovers` (8); privacy lines (7) to the owner first. Countdown on main 1ea95b37a, deploy waits for the owner's „online“ in donald's chat.
