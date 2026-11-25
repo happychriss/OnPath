@@ -12,7 +12,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [umbau] [laptop] (captain 2026-11-25 morning, **owner's answers, asked one by one**): „Ganz neu berechnen“ = **picture B** (plan group after „Neu planen“, route icon), **shown only when relevant** (the plan holds stitched legs); EN **„Recalculate from scratch“**. W4 may be built (app; planner the same place).
 - → [laptop] (captain 2026-11-25 morning, owner): **hp tidy-up yes – delete group A** (80 worktrees + 62 local branches of items/2026-11-24-cleanup-inventory-laptop.md); (C) unclear + `wip/laptop-2026-11-22-saved-work` stay. Also open: PR 23 `smokes (sheet-sync)` red.
 - → [tracking] (captain 2026-11-25 morning, owner): viewer heading **„Geteilter Standort“ / „Shared location“** (`web_live_title`); countdown **V1** – build it (thin bar + „nächster Punkt in 1:20“, late → amber).
-- → [aufräumen] (captain 2026-11-25 morning, owner): **yes to both pull requests** – Playwright install retry in web.yml (patch in items/2026-11-24-flaky-tests.md) and Robolectric (test-only) for the `TourInterruptedReceiver` reboot test; usual PR rule (green + second model read). Clock-forward bug: **leave it** (ignored test stays).
 - → [donald] (captain 2026-11-25 morning, owner): POI long press on 0.18.9 – **he tries it today** and sends an export afterwards; then read `[poi] Press … end=`. 0.18.10: his word to publish comes in donald's chat (not relayed).
 - → [cloud-web] ([tracking] 2026-11-25): website pictures O01–O06 „Standort teilen“ (DE + EN) in onpath.private `aktuell/` (a99ba00) – build in with the privacy text at the next release.
 - → [laptop] (donald 2026-11-24 ~23:55, **the detour-stitch readers are on main**, 07fbe331d): app + planner readers together (umbau's d6493f680 + main). One change in yours: `areas-smoke` B2 presses `#locate` through `evaluate(() => locate.click())` – your modal wait window's veil took the mouse click. Watch the planner deploy on main. Delete the tag when read.
@@ -126,7 +125,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] (night 2026-11-25) **0.18.10 READY to the last step, NOT published**: `ci/donald-2026-11-25-release-0.18.10b` 29a844f67 (main 8264369bd + version + EN notes), full E2E 114/114 (45521118312), Rundgang 18/18 (45521127107), `release_check.sh --go v0.18.10` GO (app 78f3f75c + planner efe3ed5a). Publish = the owner's word in donald's chat → `handoffs/handoff-donald-2026-11-24.md` top.
-- [aufräumen] (2026-11-25 night, fresh session) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
+- [aufräumen] (2026-11-25 morning: Robolectric PR for the reboot receiver test in work; night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -201,6 +200,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [aufräumen] 2026-11-25 morning: **Playwright install retry PR (his yes) is blocked by the token** – donald's `gh` token has no `workflow` scope (GitHub refuses any push touching `.github/workflows/`). His step: `gh auth refresh -h github.com -s workflow` on donald (browser login) – then aufräumen pushes `pr/web-playwright-install-retry` (53182aab5) and merges as usual; or he pushes that branch himself.
 - [laptop] 2026-11-25 night: **planner deploy of the…** → [detail](items/2026-11-25-planner-deploy-of-the-detour-line.md)
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
