@@ -379,4 +379,15 @@ class OffRouteDetectorTest {
         val s = run(d, walk(500.0 to 0.0, 500.0 to 100.0, 300.0 to 100.0, t0Ms = 1_000_000))
         assertTrue("the short cut is told (confirmed off route), not silent; progress ${d.progressM}", s.any { it.confirmedNow })
     }
+
+    /** A fast ride with sparse fixes (23 m/s ≈ 82 km/h downhill, one fix every 7 s – under the 8 s that count as GPS lost) moves the
+     *  progress 160 m per fix on a straight route: a continuation, never "another leg" (the skip check scales with time). */
+    @Test fun aFastRideWithSparseFixesStaysOnRoute() {
+        val d = detector(line(0.0 to 0.0, 3000.0 to 0.0))
+        run(d, walk(0.0 to 0.0, 200.0 to 0.0, speed = 20.0))
+        val fixes = (1..12).map { k -> fix(200.0 + k * 160.0, 0.0, tMs = 10_000L + k * 7_000L) }
+        val s = run(d, fixes)
+        assertTrue("never leaving on a straight fast ride: ${s.map { it.state }}", s.all { it.state == State.ON_ROUTE })
+        assertTrue("progress follows the ride: ${d.progressM}", (d.progressM ?: 0.0) > 2_000.0)
+    }
 }
