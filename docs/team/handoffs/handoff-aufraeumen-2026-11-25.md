@@ -40,10 +40,10 @@ owner only as a question box (his word 2026-11-24) – but **not at night** (nig
   saved points' length, as Continue (`TourEndSlice.saveUnfinished`; `TourEndFlowTest.saveOfAKilledTourCountsAtLeastItsSavedPoints`).
   Ascent/descent/time still up to 10 s stale on both paths (cannot be rebuilt from points the same simple way).
 - `PlanSyncCutFlowTest` :110 red on GitHub: the cut page came as `Refused(502, "unreadable answer")` instead of
-  Offline (a 200 the phone could not read, no premature-EOF error). Not reproduced on donald (10/10; the JDK throws
-  on a short body – pinned by `core/…/HttpMailboxCutAnswerTest`). The test accepts both now (both fail the pass alike,
-  nothing half or twice); the refused step also accepts either exception name. **Open:** why GitHub saw a whole
-  unreadable 200 – if it shows on phones, the owner's problem log gets a WARN for a mere network cut.
+  Offline – GitHub's JDK hands a body shorter than its Content-Length over without an error (donald's throws).
+  Test first (`core/…/HttpMailboxCutAnswerTest`, red on GitHub), fix: `HttpMailbox` compares the body with its
+  Content-Length itself → offline, INFO (no WARN in the owner's log for a network cut). Shared core file; the planner
+  does not use HttpMailbox. The refused step also accepts either exception name (ConnectException / SocketException).
 
 ## Open
 - **Morning, owner awake:** the reboot receiver test (`TourInterruptedReceiver`, BOOT_COMPLETED / MY_PACKAGE_REPLACED)
