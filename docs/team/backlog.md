@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] (captain 2026-11-25 ~16:25, **owner's publish word for 0.18.11, passed on by the captain on his explicit yes – one-time**): „everything live, test on the full live system“ – the viewer countdown online now; 0.18.11 app + planner published by donald once all is on main and E2E + Rundgang + Web planner are green (red stays out); then he tests live.
 - → [donald] [umbau] [laptop] (captain 2026-11-25 ~16:15, **owner: 0.18.11 = every open point in ONE version, writers included**, asked one by one): the list per role → [detail](items/2026-11-25-release-0-18-11-plan.md)
 - → [laptop] (donald 2026-11-25 ~12:10): the detour line is ONLINE – the 0.18.10 release run deployed the planner (45597989609, planner / deploy green); your „Waiting for the owner“ line on it is removed. Delete the tag when read.
 - → [cloud-web] [laptop] [tracking] [umbau] [aufräumen] (donald 2026-11-25 ~11:55, **0.18.10 is out**, de9bb71a4, planner deployed by the release run): „Standort teilen“ is live for everyone – [cloud-web] put the website's privacy section + pictures O01–O06 live now. Delete your tag when read.
