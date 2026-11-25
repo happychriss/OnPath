@@ -1,5 +1,12 @@
 # Handoff laptop – 2026-11-17 late (context nearly full – the next laptop session starts here)
 
+## State 2026-11-25 ~23:10, SHUTDOWN (owner) – the next laptop session starts HERE
+- **On main (green Web planner 45685733193):** PR 23 (every browser smoke in CI, owner's yes in the laptop chat); PR 25 security headers (CSP – `'unsafe-eval'` needed by TeaVM; the csp-smoke is NOT in web.yml yet – workflow push blocked here, follow-up); „Alten Plan wiederherstellen“ in the planner (restore-smoke, Opus review's 7 fixes in); POI click without symbol placement (poipin-smoke (e)); parity-smoke keeps the new plan when the restore box asks. **Nothing deployed** – donald publishes with 0.18.11.
+- **Item 7 (synced routing overwrites a save):** already fixed on main since bc2bc7e0c – the backlog line can go.
+- **Verbinden (owner, laptop chat 2026-11-25: „überall verbinden – koppeln ist ein technischer Term“; EN Connect; his YES to the line list):** `wip/laptop-2026-11-25-pair-verbinden` 5fdb87eb9 (two commits 9c3f55761 + 5fdb87eb9, gate green incl. 8 Paparazzi re-records, shared strings reach the app). **Not on main**: cherry-pick onto main conflicts in `web/app/src/main.ts` imports (keep both: restore's `takeKept, restoreBox, recentPlans` AND `openInAppDialog, isAndroidPhone`) and `web/parity/check-web.sh` (keep restore-smoke AND pairphone-smoke). Then gate, parity, pairphone/sync/restore smokes, push. Tell donald (shared strings) + captain. Open: app `sync_steps` still says scan with the camera (the planner's phone card now catches that); docs/design web-planner.md §14.2 still says Pair.
+- **Writers web part:** `wip/laptop-2026-11-25-writers-web` 253af15a4 on umbau's 4c37a0c38: `taken`, PlanSettle settle in the worker, the „Ganz neu berechnen“ row, pins into runHead, saved mark includes anchors; engine tests + recalc-smoke (NRW E5_N50, ~7 min, not in CI) green, gate full green. NOT reviewed yet (Opus review next), SameRouteTest-Wasm not run (no matching E10_N45 on hp). umbau merges app + planner to main together – tell umbau the tip.
+- Old branches to prune later: `wip/laptop-2026-11-25-pair-word`, `-poi-tap`, `-poi-tap-2`, `-restore-web`, `-restore-web-2`, `laptop/planner-security-headers`.
+
 Read first: the top lines of `docs/team/backlog.md` „For the roles“ (captain 49750e83 ~23:20 = the order for tomorrow
 evening's owner goal), then this page, then `handoff-laptop-2026-11-16.md`.
 
