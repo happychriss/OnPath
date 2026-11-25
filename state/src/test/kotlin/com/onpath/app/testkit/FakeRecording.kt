@@ -268,7 +268,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         val waited = queue.size
         val ok = safe("point") { queue.flush { tours.appendPoint(it.tourId, it.seq, it.seg, it.point, it.accuracyM) }?.let { throw it } }
         val late = if (withNewPoint) waited - 1 else waited
-        if (ok && late > 0) Problems.info("recording", "$late track point(s) written late – none lost")
+        if (ok) queue.lateLine(late)?.let { Problems.info("recording", it) }
         if (ok && run.saveFailed) { run.saveFailed = false; saveFailNoticeUp = false }
         if (queue.dropped > 0 && queue.dropped % 1000 == 1) {
             Problems.error("recording", "Storage failed for hours: ${queue.dropped} oldest unwritten point(s) given up")
