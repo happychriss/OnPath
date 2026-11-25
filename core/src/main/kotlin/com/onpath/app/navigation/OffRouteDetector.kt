@@ -179,7 +179,12 @@ class OffRouteDetector(
         lastDistanceM = m.distanceM
         val early = started && reached && (state == State.ON_ROUTE || state == State.LEAVING) && !backward &&
             leavingByHeading(l, f, m.distanceM, h)
-        val within = m.distanceM <= dOff && !early && !(state == State.LEAVING && leaveEarly && m.distanceM >= EARLY_M)
+        // a later leg of a loop passing close by (legs ~100 m apart) is no continuation: the progress never leaps ahead
+        // between two fixes without GPS gap or a walking-direction jump – it would skip the part (and stops) between
+        val skipsAhead = started && !gap && !pick.jumped && (state == State.ON_ROUTE || state == State.LEAVING) &&
+            m.alongM - progressM > SKIP_AHEAD_M
+        val within = m.distanceM <= dOff && !early && !skipsAhead &&
+            !(state == State.LEAVING && leaveEarly && m.distanceM >= EARLY_M)
         onLine = within
         if (!started) {
             // never on the route: a match away from it says nothing about where one is along it (progress = start)
@@ -432,6 +437,8 @@ class OffRouteDetector(
         const val REJOIN_FIXES = 3
         /** While leaving, progress is shown only within this many off distances of the line ([shownAlongM]). */
         const val LEAVING_SHOWN_FACTOR = 2.0
+        /** On the route, a match this far ahead of the progress is another leg of the line, not a continuation. */
+        const val SKIP_AHEAD_M = 150.0
         const val BACK_M = 300.0
         const val AHEAD_M = 2_000.0
         /** While off the route (or after a GPS gap) a rejoin further ahead also counts (shortcut). */

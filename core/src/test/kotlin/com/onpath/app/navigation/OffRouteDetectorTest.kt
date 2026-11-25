@@ -367,4 +367,16 @@ class OffRouteDetectorTest {
         assertTrue(s.none { it.confirmedNow })
         assertEquals(2180.0, d.progressM, 15.0)
     }
+
+    // --- C5 bug 2026-11-25: silent jump to a later leg on a loop whose legs run ~100 m apart ---
+    /** Out 1 km east, 100 m north, 1 km back west (legs 100 m apart). */
+    private val narrowLoop = line(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 100.0, 0.0 to 100.0)
+
+    @Test fun loopLegsOnly100mApartCrossingOverIsNotASilentJump() {
+        val d = detector(narrowLoop)
+        run(d, walk(0.0 to 0.0, 500.0 to 0.0))
+        // the rider cuts across to the return leg (a real short cut) and walks on there
+        val s = run(d, walk(500.0 to 0.0, 500.0 to 100.0, 300.0 to 100.0, t0Ms = 1_000_000))
+        assertTrue("the short cut is told (confirmed off route), not silent; progress ${d.progressM}", s.any { it.confirmedNow })
+    }
 }
