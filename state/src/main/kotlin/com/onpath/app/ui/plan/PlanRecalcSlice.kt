@@ -185,6 +185,8 @@ class PlanRecalcSlice(
         if (cache.epoch != capEpoch) { failures.clear(); capEpoch = cache.epoch } // new routing data: every leg may try again
         val expanded = com.onpath.app.routing.PlanAnchors.expand(now, run.anchors, run.pins)
         val act = run.act; val level = run.level
+        // legs the taken run drew straight (no route): a cold device gets the same, nothing to align – never asked again
+        val noRoute = com.onpath.app.routing.Planner.skipNoRoute(expanded, res.route)
         // the settled line is a re-run of the plan as it stands (its points: those of the run, or snapped onto its line)
         val again = Run(run.gen, now, run.pins, act, level, 1, false, run.f, run.started, null, null, run.anchors)
         val cancel = RouteCancel()
@@ -201,18 +203,30 @@ class PlanRecalcSlice(
                     if (cancel.isCancelled) return@exceptions null
                     Problems.trace("routing", "Settling started: ${expanded.points.size - 1} legs of the plan with detour points")
                     val s = Planner(eng, cancel, legs = cache).settle(expanded, act, level) { a, b ->
-                        tourRuns() || (failures[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP // a tour started: no further leg
+                        tourRuns() || (a to b) in noRoute || (failures[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP // a tour started: no further leg
                     }
-                    for ((a, b) in s.failedLegs) {
+                    // a sub-leg that always falls back to the full leg counts like a failing one (it is asked again every time)
+                    for ((a, b) in s.failedLegs + s.fellBackLegs) {
                         val n = failures.merge(LegId(a, b, act, level), 1, Int::plus) ?: 1
                         if (n == FAIL_CAP) Problems.warn("routing", "A leg of the plan could not be settled twice – skipped until new routing data or a plan without detour points")
                     }
                     Problems.trace("routing", "Settling: routed ${s.routed} / failed ${s.failed}" + if (s.cancelled) " / cancelled" else "")
                     if (s.routed < 1 || s.cancelled || cancel.isCancelled) return@exceptions null
                     if (tourRuns()) { Problems.trace("routing", "Settling stopped: a tour began"); return@exceptions null }
-                    // the quiet re-run: every leg is exact now, so it comes from the cache and does not settle again
+                    // the quiet re-run comes from the cache ALONE (an engine that refuses every request): nothing is routed again, and
+                    // a leg the cache lacks would be straight – a line worse than the taken one – so then nothing is shown
                     Problems.trace("routing", "Settling: the plan is shown again from the settled legs")
-                    PlanRecalcState.route(again, eng, cache, cancel, { _, _ -> })
+                    // a cache miss for any leg that is not a known no-route leg cancels the quiet run's OWN signal (never the settle's or a newer run's):
+                    // no fallback without anchors, no worse line – the taken line stays
+                    val quietCancel = RouteCancel()
+                    var missed = false
+                    val cacheOnly = com.onpath.app.routing.CacheOnlyEngine(known = { x, y -> (x to y) in noRoute }, onMiss = { _, _ -> missed = true; quietCancel.cancel() })
+                    val quiet = try { PlanRecalcState.route(again, cacheOnly, cache, quietCancel, { _, _ -> }) } catch (e: Exception) {
+                        if (!missed) throw e
+                        Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is")
+                        return@exceptions null
+                    }
+                    if (missed) { Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is"); null } else quiet
                 }
             }
             out.onFailure { Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", it) }

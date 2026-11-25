@@ -30,6 +30,11 @@ data class PlannedRoute(
      * ends short of its point's spot: the plan keeps the point where it is and shows the gap (PlanGaps), never moves it.
      */
     val skipped: Set<Int> = emptySet(),
+    /**
+     * The exact ends ([PlanAnchors.exact] of an anchored plan) of the legs the router had NO route for (a straight line; a
+     * timeout is not in it): what a cold device gets again, so the idle settling never asks them twice ([Planner.skipNoRoute]).
+     */
+    val noRoute: List<Pair<GeoPoint, GeoPoint>> = emptyList(),
 ) {
     val points: List<GeoPoint> by lazy {
         val out = ArrayList<GeoPoint>()
@@ -174,6 +179,7 @@ class Planner(
         if (total > 0) progress?.invoke(0, total)
         var error: String? = null
         var timedOut = false
+        val noRoute = ArrayList<Pair<GeoPoint, GeoPoint>>()
         var i = 0
         while (i < results.size) {
             if (settled[i]) { i++; continue }
@@ -223,6 +229,7 @@ class Planner(
                     timedOut = true
                     if (error == null) error = if (nVis == 1) legError(1, 2, e) else TOOK_TOO_LONG
                 } else if (error == null && !isMiniLeg(Geo.distance(pts[i], pts[i + 1]))) error = legError(v + 1, v + 2, e)
+                if (e is RoutingException && !e.timedOut) noRoute += (if (anchored) PlanAnchors.exact(pts[i]) to PlanAnchors.exact(pts[i + 1]) else pts[i] to pts[i + 1])
                 null
             }
             settled[i] = true
@@ -230,13 +237,18 @@ class Planner(
             if (remaining[v] == 0 && !reported[v]) { reported[v] = true; done++; progress?.invoke(done, total) }
             i++
         }
-        return join(cur, results, activity, error, anchored)
+        return join(cur, results, activity, error, anchored).let { if (noRoute.isEmpty()) it else it.copy(noRoute = noRoute) }
     }
 
     /** What [settle] did: legs routed, legs that failed (their old line stays), stopped by a cancel. */
     class Settled(val routed: Int, val failed: Int, val cancelled: Boolean,
                   /** The exact ends of the legs that failed (the caller counts them to stop asking a leg again and again). */
-                  val failedLegs: List<Pair<GeoPoint, GeoPoint>> = emptyList())
+                  val failedLegs: List<Pair<GeoPoint, GeoPoint>> = emptyList(),
+                  /**
+                   * Sub-legs with no route of their own whose full visible leg settled instead (§8.5): they are asked again by
+                   * every settle (a retired cut leg is never exact), so the caller counts them like failed legs.
+                   */
+                  val fellBackLegs: List<Pair<GeoPoint, GeoPoint>> = emptyList())
 
     /**
      * The line settles (§8.15): for a plan WITH anchors, every leg of the expanded list that is not the router's own answer
@@ -250,7 +262,8 @@ class Planner(
         if (cache == null || !plan.hasAnchors || engine is StraightLineEngine) return Settled(0, 0, false)
         var routed = 0
         val failedLegs = ArrayList<Pair<GeoPoint, GeoPoint>>()
-        fun done(cancelled: Boolean) = Settled(routed, failedLegs.size, cancelled, failedLegs)
+        val fellBack = ArrayList<Pair<GeoPoint, GeoPoint>>()
+        fun done(cancelled: Boolean) = Settled(routed, failedLegs.size, cancelled, failedLegs, fellBack)
         // taken now: a leg routed on data from before a cache clear is dropped by put, never written (the epoch)
         val epoch = cache.epoch
         val pts = plan.points
@@ -283,6 +296,7 @@ class Planner(
                             cache.put(fa, fb, activity, sac, full, settled = true, epoch = epoch); routed++
                         }
                         cache.dropCut(a, b, activity, sac)
+                        fellBack += a to b
                     } catch (f: Exception) {
                         if (cancel?.isCancelled == true) return done(true)
                         failedLegs += fa to fb
@@ -494,6 +508,22 @@ class Planner(
     private fun flatSeconds(d: Double, activity: Activity) = com.onpath.app.time.PaceModel.seconds(d, 0.0, activity)
 
     companion object {
+        /**
+         * The legs of [plan] the idle settling leaves alone because the taken run [route] had no route for them (a cold device
+         * gets the same "no route", nothing to align): the straight legs' exact ends, and every sub-leg of a visible leg whose full
+         * leg is straight (its own request would only fall back to that full leg again).
+         */
+        fun skipNoRoute(plan: ExpandedPlan, route: PlannedRoute): Set<Pair<GeoPoint, GeoPoint>> {
+            if (route.noRoute.isEmpty()) return emptySet()
+            val out = HashSet<Pair<GeoPoint, GeoPoint>>(route.noRoute)
+            for (v in 0 until plan.visibleCount - 1) {
+                val from = plan.expandedIndex(v); val to = plan.expandedIndex(v + 1)
+                if (from < 0 || to < 0 || PlanAnchors.exact(plan.points[from]) to PlanAnchors.exact(plan.points[to]) !in out) continue
+                for (k in from until to) out += PlanAnchors.exact(plan.points[k]) to PlanAnchors.exact(plan.points[k + 1])
+            }
+            return out
+        }
+
         /** The legs still to route after a timeout (straight lines at once). */
         val TOOK_TOO_LONG: String get() = Txt.s(Res.string.plan_err_took_too_long)
 
@@ -558,5 +588,24 @@ class Planner(
 
         /** With a cancel signal: the overall wait for the router (each request keeps its own search budget). */
         const val PLAN_LIMIT_MS = 10 * 60_000L
+    }
+}
+
+/**
+ * An engine that never asks a router: every request is a "no route" ([RoutingException]). The idle settling's quiet re-run
+ * plans on it, so the line it shows comes from the leg cache alone; a leg the cache lacks comes out straight, which the
+ * caller sees in [PlannedRoute.noRoute] and then drops the result ([Planner.skipNoRoute]).
+ */
+class CacheOnlyEngine(
+    /** The exact ends of a leg the taken run drew straight: answered "no route" (straight), as the taken run did. */
+    private val known: (GeoPoint, GeoPoint) -> Boolean = { _, _ -> false },
+    /** Any other request is a cache miss: told here (the caller cancels its run), answered as cancelled – no fallback follows. */
+    private val onMiss: (GeoPoint, GeoPoint) -> Unit = { _, _ -> },
+) : RoutingEngine {
+    override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+        val a = waypoints.first(); val b = waypoints.last()
+        if (known(PlanAnchors.exact(a), PlanAnchors.exact(b))) throw RoutingException("no route (known from the taken run)")
+        onMiss(a, b)
+        throw RoutingException(RouterRules.CANCELLED)
     }
 }

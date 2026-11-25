@@ -500,6 +500,80 @@ class DetourSettleTest {
         assertEquals(listOf(PlanAnchors.exact(bad.first) to PlanAnchors.exact(bad.second)), s2.failedLegs)
     }
 
+    // W2 review: a sub-leg that fell back to the full leg is reported (the caller counts it to the cap)
+    @Test fun aSubLegThatFellBackIsReportedSoTheCallerCanCountIt() {
+        val e = ProbeEng { w -> if (w.size == 2 && keyOf(w) == keyOf(listOf(a, v1))) RoutingException("no path") else null }
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        val warm = LegCache()
+        warm.put(v0, a, act, sac, probeLeg(v0, a), cut = true)
+        warm.put(a, v1, act, sac, probeLeg(a, v1), cut = true)
+        val s = Planner(e, legs = warm).settle(plan, act, sac)
+        assertEquals(0, s.failed)
+        assertEquals(listOf(PlanAnchors.exact(a) to PlanAnchors.exact(v1)), s.fellBackLegs)
+        // a second settle asks the same sub-leg again (a retired cut leg is never exact) – that is what the cap stops
+        val again = Planner(e, legs = warm).settle(plan, act, sac)
+        assertEquals(listOf(PlanAnchors.exact(a) to PlanAnchors.exact(v1)), again.fellBackLegs)
+        val skipped = Planner(e, legs = warm).settle(plan, act, sac) { x, y -> x == PlanAnchors.exact(a) && y == PlanAnchors.exact(v1) }
+        assertTrue(skipped.fellBackLegs.isEmpty())
+    }
+
+    // W2 review: the legs the router had no route for are in the plan result, and settle can skip them (and their sub-legs)
+    @Test fun aLegWithNoRouteIsNamedInThePlanResultAndSkipNoRouteCoversItsSubLegs() {
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        // every request for the first visible leg fails, the sub-legs and the full leg: it is drawn straight
+        val e = ProbeEng { w -> if (w.size == 2 && w.first().lat < 51.35) RoutingException("no path") else null }
+        val r = Planner(e, legs = LegCache()).plan(plan, act, sac)
+        val full = PlanAnchors.exact(v0) to PlanAnchors.exact(v1)
+        assertTrue(r.noRoute.toString(), full in r.noRoute)
+        val skip = Planner.skipNoRoute(plan, r)
+        assertTrue("sub-leg v0 -> a", PlanAnchors.exact(v0) to PlanAnchors.exact(a) in skip)
+        assertTrue("sub-leg a -> v1", PlanAnchors.exact(a) to PlanAnchors.exact(v1) in skip)
+        assertFalse("a routed leg is not in it", PlanAnchors.exact(v1) to PlanAnchors.exact(v2) in skip)
+        // a timeout is not "no route": a cold device may well get a line
+        val slow = ProbeEng { w -> if (w.size == 2 && w.first().lat < 51.35) RoutingException("slow", timedOut = true) else null }
+        val rs = Planner(slow, askAtLimit = false, legs = LegCache()).plan(plan, act, sac)
+        assertTrue(rs.noRoute.toString(), rs.noRoute.isEmpty())
+    }
+
+    // W2 review: the quiet re-run's engine never routes; a plan answered from the cache alone comes out whole
+    @Test fun aCacheMissOfCacheOnlyEngineStopsTheRunAtOnceWithoutFallbackOrWarn() {
+        val plan = stitched
+        val warm = cutCache(plan)
+        Planner(Engine(), legs = warm).settle(plan, act, sac)
+        // one settled leg is gone from the cache (the first leg of the plan): the quiet run must not fall back without anchors
+        val gone = PlanAnchors.exact(plan.points[0]) to PlanAnchors.exact(plan.points[1])
+        val thin = LegCache()
+        for (i in 1 until plan.points.size - 1) warm.get(plan.points[i], plan.points[i + 1], act, sac)?.let { thin.put(plan.points[i], plan.points[i + 1], act, sac, it, exact = true) }
+        val cancel = RouteCancel()
+        val misses = ArrayList<Pair<GeoPoint, GeoPoint>>()
+        val eng = CacheOnlyEngine(known = { _, _ -> false }, onMiss = { x, y -> misses += x to y; cancel.cancel() })
+        val r = runCatching { Planner(eng, cancel, legs = thin).plan(plan, act, sac) }
+        assertTrue("the run stopped (cancelled), no line", r.isFailure)
+        assertEquals("exactly one miss: no fallback request followed", listOf(gone), misses.map { PlanAnchors.exact(it.first) to PlanAnchors.exact(it.second) })
+        assertTrue("no warn: ${Problems.snapshot()}", Problems.snapshot().none { it.level == Problems.Level.WARN })
+    }
+
+    @Test fun cacheOnlyEngineAnswersAKnownNoRouteLegAsStraightWithoutAMiss() {
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        var missed = false
+        val known = { x: GeoPoint, y: GeoPoint -> PlanAnchors.exact(x) == PlanAnchors.exact(v0) || PlanAnchors.exact(x) == PlanAnchors.exact(a) && PlanAnchors.exact(y) == PlanAnchors.exact(v1) }
+        val c = LegCache()
+        c.put(v1, v2, act, sac, probeLeg(v1, v2), exact = true)
+        val r = Planner(CacheOnlyEngine(known) { _, _ -> missed = true }, legs = c).plan(plan, act, sac)
+        assertFalse("known no-route legs are no miss", missed)
+        assertTrue(r.legs.first().straight)
+    }
+
+    @Test fun cacheOnlyEngineRoutesNothingAndAFullyCachedPlanIsWhole() {
+        val plan = stitched
+        val warm = cutCache(plan)
+        Planner(Engine(), legs = warm).settle(plan, act, sac)
+        val r = Planner(CacheOnlyEngine(), legs = warm).plan(plan, act, sac)
+        assertTrue("every leg from the cache", r.noRoute.isEmpty() && r.legs.none { it.straight })
+        val cold = Planner(CacheOnlyEngine(), legs = LegCache()).plan(plan, act, sac)
+        assertTrue("a cold cache = every leg missing, named", cold.noRoute.isNotEmpty() && cold.legs.all { it.straight })
+    }
+
     @Test fun aCancelDuringALegsRoutingWritesNothing() {
         val cancel = RouteCancel()
         val e = Engine(); val c = cutCache()
