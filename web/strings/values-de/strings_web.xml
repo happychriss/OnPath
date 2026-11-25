@@ -16,7 +16,7 @@
     <string name="web_page_title">OnPath Planer</string>
     <string name="web_brand_title">onpath.earth (neuer Tab)</string>
     <string name="web_product">Planer</string>
-    <string name="web_pair_phone">Handy koppeln</string>
+    <string name="web_pair_phone">Handy verbinden</string>
     <string name="web_nav_help">Hilfe &amp; Quellen</string>
     <string name="web_header_hint">Ohne Konto · Pläne bleiben in diesem Browser</string>
 
@@ -117,19 +117,19 @@
     <string name="web_plans_new_name">Neuer Name des Plans</string>
 
     <string name="web_pair_preparing">Wird vorbereitet…</string>
-    <string name="web_pair_qr">QR-Code zum Koppeln</string>
+    <string name="web_pair_qr">QR-Code zum Verbinden</string>
     <string name="web_pair_how">Öffne OnPath auf dem Handy → %1$s → scanne diesen Code mit OnPath, nicht mit der Kamera-App.</string>
-    <string name="web_pair_menu_path">☰ → Mit Browser koppeln</string>
+    <string name="web_pair_menu_path">☰ → Mit Browser verbinden</string>
     <string name="web_pair_check">Prüfe: %1$s – die App zeigt dieselben Ziffern.</string>
     <string name="web_pair_privacy">Deine gespeicherten Pläne und importierten Tracks werden in diesem Browser und auf dem Handy verschlüsselt, bevor sie zum Sync-Server gehen (Cloudflare, EU): Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Pläne.</string>
-    <string name="web_pair_link">Kopplungslink</string>
+    <string name="web_pair_link">Verbindungslink</string>
     <string name="web_pair_waiting">Warte auf das Handy…</string>
     <string name="web_pair_done">Verbunden mit %1$s.</string>
     <string name="web_unpair">Trennen</string>
-    <string name="web_join_title">Kopplungscode</string>
-    <string name="web_join_text">Dieser Link koppelt ein Gerät mit deinen gespeicherten Plänen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser koppeln).</string>
-    <string name="web_join_instead">Du kannst stattdessen auch diesen Browser koppeln – dann werden deine gespeicherten Pläne auch hier abgeglichen.</string>
-    <string name="web_join_ok">Diesen Browser koppeln</string>
+    <string name="web_join_title">Verbindungscode</string>
+    <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Plänen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>
+    <string name="web_join_instead">Du kannst stattdessen auch diesen Browser verbinden – dann werden deine gespeicherten Pläne auch hier abgeglichen.</string>
+    <string name="web_join_ok">Diesen Browser verbinden</string>
     <string name="web_openapp_title">In OnPath öffnen</string>
     <string name="web_openapp_text">Dieser Link gehört in die OnPath-App, nicht in den Browser.</string>
     <string name="web_openapp_way">Oder in der App: %1$s, dann den Code scannen.</string>
@@ -139,8 +139,8 @@
     <string name="web_sync_not_kept">Dieser Browser behält gespeicherte Pläne nicht, wenn der Tab zu ist (Speicher blockiert).</string>
     <string name="web_sync_pair_refused">Der Sync-Server hat eine neue Verbindung abgelehnt (%1$d). Versuch es später noch einmal.</string>
     <string name="web_sync_pair_cap">Zu viele neue Verbindungen aus diesem Netz heute. Versuch es morgen noch einmal.</string>
-    <string name="web_sync_pair_offline">Zum Koppeln braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
-    <string name="web_sync_not_a_code">Das ist kein Kopplungscode von OnPath.</string>
+    <string name="web_sync_pair_offline">Zum Verbinden braucht es Internet. Prüfe die Verbindung und versuch es noch einmal.</string>
+    <string name="web_sync_not_a_code">Das ist kein Verbindungscode von OnPath.</string>
     <string name="web_sync_unpaired">Getrennt. Die Pläne von %1$s bleiben in diesem Browser.</string>
     <string name="web_sync_offline">Offline – deine Pläne werden abgeglichen, sobald du wieder Verbindung hast.</string>
     <string name="web_sync_failed">Der Abgleich hat diesmal nicht geklappt – er versucht es von selbst wieder.</string>
@@ -175,7 +175,7 @@
     <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Zwischenpunkte; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
     <string name="web_about_how_3">Rückgängig / Wiederholen, das Auge (halten: Route ausblenden) und Karteninhalt sind oben in der Werkzeugleiste.</string>
-    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder koppele das Handy einmal (Handy koppeln, oben) und speichere Pläne in Meine Touren.</string>
+    <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal (Handy verbinden, oben) und speichere Pläne in Meine Touren.</string>
     <string name="web_credit_photon">Online-Suche: Photon von komoot (OpenStreetMap-Daten)</string>
     <string name="web_credit_maplibre">Kartendarstellung: MapLibre GL JS (BSD-Lizenz)</string>
     <string name="web_credit_font">Schrift: Manrope, © The Manrope Project Authors,</string>
@@ -202,21 +202,21 @@
     <string name="web_sync_tour_cap">%1$d Touren auf dem Handy – lösche erst welche.</string>
     <string name="web_phone_fill">%1$d von %2$d Touren</string>
     <string name="web_phone_fill_use">Postfach: %1$d von %2$d Einträgen (gelöschte zählen mit)</string>
-    <string name="web_pair_other">Anderes Handy koppeln</string>
+    <string name="web_pair_other">Anderes Handy verbinden</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
     <string name="web_saved_title_here">Alles ist in diesem Browser gespeichert</string>
     <string name="web_saved_title_phone">Alles ist auf %1$s gesichert</string>
     <string name="web_phone_synced_ago">abgeglichen %1$s</string>
     <string name="web_sync_now_done">Abgeglichen – alles ist auf dem neuesten Stand.</string>
     <string name="web_sync_now_nothing">Abgeglichen – vom Handy kam nichts Neues.</string>
-    <string name="web_pair_again">Neu koppeln</string>
+    <string name="web_pair_again">Neu verbinden</string>
     <plurals name="web_phone_away">
         <item quantity="one">seit %1$d Tag nicht verbunden</item>
         <item quantity="other">seit %1$d Tagen nicht verbunden</item>
     </plurals>
     <plurals name="web_phone_away_text">
-        <item quantity="one">Dein Handy war %1$d Tag nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu koppeln.</item>
-        <item quantity="other">Dein Handy war %1$d Tage nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu koppeln.</item>
+        <item quantity="one">Dein Handy war %1$d Tag nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu verbinden.</item>
+        <item quantity="other">Dein Handy war %1$d Tage nicht verbunden. Gleicht es nicht mehr ab? Dann einfach neu verbinden.</item>
     </plurals>
     <string name="web_where_browser">In diesem Browser</string>
     <string name="web_where_phone">Auf dem Handy</string>
@@ -268,7 +268,7 @@
     <string name="web_save_more">Weitere Arten zu speichern</string>
     <string name="web_save_as">Speichern unter …</string>
     <string name="web_to_phone">Aufs Handy</string>
-    <string name="web_to_phone_pair">Handy koppeln, dann kommt der Plan darauf</string>
-    <string name="web_phone_menu">Handy-Kopplung …</string>
+    <string name="web_to_phone_pair">Handy verbinden, dann kommt der Plan darauf</string>
+    <string name="web_phone_menu">Handy-Verbindung …</string>
     <string name="web_days_end_of_day">Ende Tag %1$d von %2$d</string>
 </resources>

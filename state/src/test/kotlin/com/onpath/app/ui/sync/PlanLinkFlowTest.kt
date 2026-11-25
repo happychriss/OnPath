@@ -110,7 +110,7 @@ class PlanLinkFlowTest {
         host.log.clear()
         links.receive(PlanLinks.Found.BrokenPairing, "camera")
         assertEquals(listOf("back to the map", "browser sync page",
-            "SETTINGS: This pairing code can't be read. Show the code in the browser again and scan it once more."), host.log)
+            "SETTINGS: This connection code can't be read. Show the code in the browser again and scan it once more."), host.log)
         assertTrue(host.opened.isEmpty())
         assertEquals(1, problems.said("sync", Problems.Level.WARN).size)
     }

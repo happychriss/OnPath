@@ -32,8 +32,8 @@ async function open(opts, lang) {
 
 for (const lang of ['de', 'en']) {
   const want = lang === 'de'
-    ? { title: 'In OnPath öffnen', path: '☰ → Mit Browser koppeln' }
-    : { title: 'Open in OnPath', path: '☰ → Pair with browser' };
+    ? { title: 'In OnPath öffnen', path: '☰ → Mit Browser verbinden' }
+    : { title: 'Open in OnPath', path: '☰ → Connect to browser' };
   // phone: the card, no join
   {
     const { ctx, P } = await open({ userAgent: ANDROID, viewport: { width: 412, height: 839 }, isMobile: true, hasTouch: true }, lang);
@@ -67,7 +67,7 @@ for (const lang of ['de', 'en']) {
     const how = await P.locator('#pairBody').innerText().catch(() => '');
     const re = lang === 'de' ? /mit OnPath[^.]*nicht mit der Kamera-App/ : /with OnPath, not with the camera app/;
     check(re.test(how), `${lang}: pairing dialog says scan with OnPath, not the camera app`);
-    check(!/verbinden|connect/i.test(how), `${lang}: pairing dialog has no verbinden/connect`);
+    check(!(lang === 'de' ? /koppel|kopplung/i : /pair/i).test(how), `${lang}: pairing dialog has no koppeln / pair`);
     await ctx.close();
   }
 }

@@ -200,8 +200,8 @@ data class SyncMenuUi(
     val waiting: Boolean = false,
 ) {
     /**
-     * The ☰ item's one line (owner 2026-11-07): "Browser-Kopplung" while paired here (a browser seen, waiting for its
-     * hello, or a problem), else "Mit Browser koppeln" – also after the browser unpaired itself (pair again).
+     * The ☰ item's one line (owner 2026-11-07): "Browser-Verbindung" while paired here (a browser seen, waiting for its
+     * hello, or a problem), else "Mit Browser verbinden" – also after the browser unpaired itself (pair again).
      */
     val labelPaired: Boolean get() = paired
 

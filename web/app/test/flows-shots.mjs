@@ -149,8 +149,8 @@ const W = {
   B12: { de: ['Als Mehrtagestour planen', 'Gasthof Hochmuth', 'Pfelders'], en: ['Plan as multi-day tour', 'Gasthof Hochmuth', 'Pfelders'] },
   B13: { de: ['Tage festlegen', 'Meraner Höhenweg', 'pro Tag', 'Fertig'], en: ['Set the days', 'Meraner Höhenweg', 'per day', 'Done'] },
   B14: { de: ['Meraner Höhenweg', '5 Tage', 'Eishof', 'Pfelders'], en: ['Meraner Höhenweg', '5 days', 'Eishof', 'Pfelders'] },
-  C01: { de: ['Handy koppeln', 'Wie funktioniert das?'], en: ['Pair phone', 'How does it work?'] },
-  C02: { de: ['Handy koppeln', 'Prüfe:', 'die App zeigt dieselben Ziffern'], en: ['Pair phone', 'Check:', 'the app shows the same digits'] },
+  C01: { de: ['Handy verbinden', 'Wie funktioniert das?'], en: ['Connect phone', 'How does it work?'] },
+  C02: { de: ['Handy verbinden', 'Prüfe:', 'die App zeigt dieselben Ziffern'], en: ['Connect phone', 'Check:', 'the app shows the same digits'] },
   C06: { de: ['Pixel 8', 'Gespeichert'], en: ['Pixel 8', 'Saved'] },
 };
 const tick = async (page) => { await page.waitForTimeout(1500); await settle(page); };
@@ -216,7 +216,7 @@ for (const [lang, locale] of [['de', 'de-DE'], ['en', 'en-GB']]) {
   }
   let phone = null;
   if (want('C02') || want('C06') || want('B07')) {
-    // C02: „Aufs Handy“ unpaired opens „Handy koppeln“: QR, the way in the app, check digits – the code blurred
+    // C02: „Aufs Handy“ unpaired opens „Handy verbinden“: QR, the way in the app, check digits – the code blurred
     await page.click('#syncBadge');
     await page.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
     const code = (await page.inputValue('#pairLink')).split('#pair=')[1];
