@@ -42,6 +42,8 @@ ui/plan/PlanRunSlice.kt
 #   MapDataPort (6; None = no map data), PlanRecalcHost (10), Background (1: run);
 #   stages begin / route (companion, pure) / findReach (companion) / progress / share / slow / legsRouted / taken; PlanRecalcSlice (app) strings them with coroutines
 ui/plan/PlanRecalcState.kt
+# PlanSettle: the idle settling's routing-thread body (prepare / settle, the leg cap); no port, no coroutine – PlanRecalcSlice (app) adds the threads
+ui/plan/PlanSettle.kt
 # RoutingDataCheck: pure rules (differs: „the route changed noticeably“) – PlanRecalcState.taken asks it by its full name
 data/RoutingDataCheck.kt
 # PlanEditState: port PlanEditPorts (29 members: map menus / camera, the tour, search; PlanEditHost adds the suspend pointNames), PointNames (1: label)

@@ -3544,6 +3544,23 @@
         "if (stopped || cancel?.isCancelled == true || now() - started > BUDGET_MS) { stopped = true; return null }",
         "eng.route(listOf(from, to), Activity.HIKE, sac, RouteLimits(TRY_TIMEOUT_MS, cancel))"
       ]
+    },
+    "state/src/main/kotlin/com/onpath/app/ui/plan/PlanSettle.kt": {
+      "blob": "ff20a5ee11c473fcb9125cf7f2a0882d34d94d72",
+      "perf": [
+        "* ([failures] per leg id, [capEpoch], [FAIL_CAP]), what a taken run asks to settle ([prepare]) and the blocking work",
+        "* ([settle]: the settle itself, the cap's count, the quiet re-run from the cache alone). The app's [PlanRecalcSlice] adds",
+        "/** Failures counted for a leg (2 = [FAIL_CAP], skipped); for tests and the page's trace. */",
+        "* the cache alone. null = nothing to show (nothing routed, cancelled, a tour began, or a leg missing from the cache).",
+        "tourRuns() || (a to b) in noRoute || (failures.get()[LegId(a, b, act, level)] ?: 0) >= FAIL_CAP // a tour started: no further leg",
+        "if (n == FAIL_CAP) Problems.warn(\"routing\", \"A leg of the plan could not be settled twice – skipped until new routing data or a plan without detour points\")",
+        "// the quiet re-run comes from the cache ALONE (an engine that refuses every request): nothing is routed again, and",
+        "// a leg the cache lacks would be straight – a line worse than the taken one – so then nothing is shown",
+        "// a cache miss for any leg that is not a known no-route leg cancels the quiet run's OWN signal (never the settle's or a newer run's):",
+        "Problems.trace(\"routing\", \"Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is\")",
+        "if (missed.get()) { Problems.trace(\"routing\", \"Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is\"); return null }",
+        "const val FAIL_CAP = 2"
+      ]
     }
   }
 }
