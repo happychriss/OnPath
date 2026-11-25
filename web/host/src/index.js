@@ -30,9 +30,25 @@ export const ASSET_LINKS = JSON.stringify([{
 const RD5 = /^\/segments\/([EW]\d{1,3}_[NS]\d{1,2}\.rd5)$/;
 const UPSTREAM = "https://brouter.de/brouter/segments4/";
 
+/** The simple security headers on every answer of the worker (/data, /sync, /live/v1, /maps, /segments, version.json).
+ *  The pages and static files get them – plus the Content-Security-Policy – from web/app/public/_headers (assets bypass
+ *  the worker); host.test.js keeps the two lists equal. */
+export const SECURITY_HEADERS = {
+  "x-content-type-options": "nosniff",
+  "referrer-policy": "strict-origin-when-cross-origin",
+  "x-frame-options": "DENY",
+  "permissions-policy": "geolocation=(self), camera=(), microphone=(), payment=(), usb=(), serial=(), interest-cohort=()",
+};
+
+function secured(r) {
+  const out = new Response(r.body, r); // headers of an assets / fetch answer are read-only
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) out.headers.set(k, v);
+  return out;
+}
+
 /** Every answer: noindex until launch; at launch (INDEXING = "on") the page's meta robots is taken out instead. */
 export async function handle(request, env, fetchImpl = fetch) {
-  const r = await route(request, env, fetchImpl);
+  const r = secured(await route(request, env, fetchImpl));
   // the live tour's page (/live/) is never for search engines, also after launch: a shared tour is private
   if (env.INDEXING === "on" && !new URL(request.url).pathname.startsWith("/live")) {
     const html = (r.headers.get("content-type") ?? "").includes("text/html");

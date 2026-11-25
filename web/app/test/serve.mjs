@@ -12,11 +12,13 @@ const types = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/ja
  * [sync] = (Request) => Promise<Response> for /sync/ (the host's mailbox on a fake D1, see sync-smoke.mjs).
  * [live] = the same for /live/v1/ (the live tracking box, see live-smoke.mjs).
  * [maps] = the same for /maps/ (map areas on demand: the host's proxy with a fake doorman, see areas-smoke.mjs).
+ * [headers] = response headers added to every answer (the security headers of public/_headers, csp-smoke.mjs).
  * [log] = an array that gets every request path (what the page fetched).
  * [intercept] = (req, res) => true when it answered the request itself (faults: 404, 429, slow – see cells-smoke.mjs).
  */
-export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, live = null, log = null, intercept = null }) {
+export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {}, port = 0, sync = null, maps = null, live = null, log = null, intercept = null, headers = null }) {
   const server = http.createServer((req, res) => {
+    for (const [k, v] of Object.entries(headers ?? {})) res.setHeader(k, v); // e.g. the host's security headers (csp-smoke.mjs)
     log?.push(req.url);
     if (intercept?.(req, res)) return;
     if (sync && req.url.startsWith('/sync/')) { forward(sync, req, res); return; }
