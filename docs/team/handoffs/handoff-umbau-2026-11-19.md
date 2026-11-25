@@ -5,6 +5,11 @@ Start sentence: „Du bist die Einheit **umbau** (OnPath) auf donald. Lies `docs
 „For the roles“ line of 2026-11-18 (owner's go) – each piece own worktree, `gate --full`, fresh Opus review, then main;
 a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines for the captain under „For the captain“.
 
+## State 2026-11-25 03:30 – WRITERS REVIEWED + FIXED, NIGHT DONE (NEWEST – read this first)
+- **Branch `wip/umbau-2026-11-24-stitch-writers` = 9aeed35b1.** Nothing on main. Fresh Opus reviews of W2 and W3: all findings fixed test-first (W2: tour during a settle, engine drop moves the epoch, atomic stop, current pace; the first review's should-fix: no-route legs skipped, fallback in the cap, quiet re-run cache-only. W3: multi-day clear reaches the tour, a cleared saved route is unsaved incl. snap / rename / restart, no recalc while touring → W4's row uses `planEdit.canRecalcFromScratch`).
+- Checks at 9aeed35b1: gate full (1912 + 2035 + 1010), SameRouteTest verify 112/112 + full 108/108, Web planner green, full E2E 113 / 1 red: the red one (`CoreFieldE2ETest.goHereFromMyLocationThenDeleteWhileFollowing`) is red on main's 0.18.10 run too (line „For the captain“).
+- **Next:** W4 after the owner's A/B; then the laptop's planner part (list in `docs/team/items/2026-11-25-stitch-writers-state.md`). Helper worktrees of this night (merged, can go with the owner's yes): reviewers `agent-a62a68bc3fda43e11`, `agent-a687fbb39b0c77a4f` (probe tests only), helpers `agent-a3fe3b30e05e1eb05`, `agent-a53a67404225598d1`, `agent-a679c5551e8fcd38b`; branches `work/w2-review-fixes`, `work/w3-review-fixes`, `work/w2-noroute`, `ci/umbau-writers`.
+
 ## State 2026-11-25 00:30 – WRITERS W0–W3 ON THE BRANCH, HANDED OFF AT ~330k (NEWEST – read this first)
 - **Branch `wip/umbau-2026-11-24-stitch-writers` = c651906ac**, full gate green (1912 app + 2030 core + 996 state). Nothing on main.
 - **Everything built, checked and open, with the exact next steps: `docs/team/items/2026-11-25-stitch-writers-state.md`.** Next in order: fix W2's review findings (review done after the hand-off, one MUST-FIX: a tour started during the settling gets the quiet line – listed in the state file), the `SameRouteTest` full run (verify 112/112 green), W3's review, W4 the menu row after the owner's pick, full E2E + Web planner, then the laptop's planner part.
