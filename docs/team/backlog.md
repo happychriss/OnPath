@@ -124,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [umbau] (2026-11-25 17:30, **0.18.11: writers + laptop's planner part to main together**) Writers W0–W4 on `wip/umbau-2026-11-24-stitch-writers` (4c37a0c38: main merged, `PlanSettle` for the page; gate full, Web planner green). The laptop builds on it (`wip/laptop-2026-11-25-writers-web`); then [umbau] merges both to main + full E2E / Web planner / SameRouteTest → one line to donald + captain → [state](items/2026-11-25-stitch-writers-state.md)
 - [laptop] (2026-11-25 ~16:40, fresh session) **0.18.11 planner list** (`items/2026-11-25-release-0-18-11-plan.md` [laptop] + writers' web part with [umbau]): helpers on `wip/laptop-2026-11-25-*` worktrees; PR 23 merge waits for the owner's word in the laptop chat.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (2026-11-25 ~16:20) **0.18.11 app list** (`items/2026-11-25-release-0-18-11-plan.md` [donald]): helpers on `wip/donald-2026-11-25-nav-offroute` (1+4), `…-nav-stops` (2+3), `…-small` (5+6+9), `…-emu-leftovers` (8); privacy lines (7) to the owner first. Countdown on main 1ea95b37a, deploy waits for the owner's „online“ in donald's chat.
+- [donald] (2026-11-25 ~18:00) **0.18.11 app list done on main** (details in `items/2026-11-25-release-0-18-11-plan.md`). Waiting for the writers on main, then version + notes + full E2E + Rundgang → **publish myself (owner's own word in donald's chat ~16:45)**; the countdown goes live with the planner deploy.
 - [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
@@ -199,6 +199,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [donald] 2026-11-25: **bike position marker hides…** → [detail](items/2026-11-25-bike-position-marker-hides-point-1.md)
 - [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
 - [laptop] 2026-11-25 morning: **pull request…** → [detail](items/2026-11-25-pull-request-web-planner-ci-every-browse.md)
 - [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)
