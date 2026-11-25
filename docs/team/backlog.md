@@ -107,7 +107,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
-- ← [umbau] (2026-11-25 02:40) **E2E red on main too:** `CoreFieldE2ETest.goHereFromMyLocationThenDeleteWhileFollowing` (0.18.10 run 45508818926) – not the writers; for donald / aufräumen → [detail](items/2026-11-25-stitch-writers-state.md)
 - ← [umbau] (2026-11-25 ~00:00, **for the morning report**): picture „Ganz neu berechnen“ – A (last row, app group) vs B (plan group after „Neu planen“, route icon; recommended), DE/EN/large: https://github.com/happychriss/OnPath/blob/sketch/umbau-2026-11-25-ganz-neu-berechnen/docs/sketches/2026-11-25-ganz-neu-berechnen/README.md – his pick of place + EN word.
 - ← [laptop] (2026-11-24 night): hp cleanup inventory read only, nothing deleted: [items/2026-11-24-cleanup-inventory-laptop.md](items/2026-11-24-cleanup-inventory-laptop.md) – (A) 80 worktrees + 62 local branches, (B) none, (C) 3 worktrees + 1… → [detail](items/2026-11-24-laptop-to-captain-hp-cleanup-inventory.md)
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
