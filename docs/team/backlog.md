@@ -199,6 +199,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [laptop] 2026-11-25 night: **planner deploy of the detour line** – main green (run 45516485706, 3a8d3efde); `gh workflow run` is blocked here unless the owner asks in the laptop chat. Morning: one box „online?“ → he asks me or starts it in Actions (deploy + quick).
 - [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - **[donald] Only our signed apps on the map server?…** → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)

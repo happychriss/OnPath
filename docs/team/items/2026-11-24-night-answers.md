@@ -44,3 +44,6 @@ and may overrule any answer. Nothing is published; the release is ready to the l
 - umbau 03:30: night list done – full E2E at 9aeed35b1: 113 / 1 red (the go-here test red on main too), Web planner green; writers stay on the wip branch, W4 waits for the owner's A/B; claim free (umbau)
 - donald 02:45: 0.18.10 ready to the last step on `ci/donald-2026-11-25-release-0.18.10b` (29a844f67, main 8264369bd + version + notes; the night's storage / save-distance / plan-sync fixes taken in): full E2E 114/114, Rundgang 18/18, release check GO – NOT published, waits for the owner's word in donald's chat. German notes: `items/2026-11-25-release-0-18-10-notes-de.md`
 - captain 06:26: morning report written ([items/2026-11-25-morning-report.md](2026-11-25-morning-report.md)); all roles finished their night lists, laptop unreachable (hp offline) since ~23:30; night captain's loop ends (night captain)
+- Q planner deploy of the detour line at night (captain: allowed) → A blocked by the permission check without the owner's ask in the laptop chat; waits for the morning, line under „Waiting for the owner“ (laptop, ~00:35)
+- Q POI click on a slow phone after a pan: build a placement-free POI lookup? → A not tonight: the app itself reads the shown POIs (ShownPois), no field report from the planner; stays in Next (laptop, ~00:35)
+
