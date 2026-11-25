@@ -86,7 +86,7 @@ try {
   const live = await ctx.newPage();
   watch(live);
   await live.goto(url + 'live/');
-  await live.waitForFunction(() => !!window.__live || document.querySelector('#live')?.textContent?.trim(), null, { timeout: 60_000 }).catch(() => {});
+  await live.waitForFunction(() => !!window.__live, null, { timeout: 60_000 });
   await live.waitForTimeout(3000);
   const lseen = await violations(live);
   check(!lseen.length, 'no securitypolicyviolation on the live page' + (lseen.length ? ': ' + lseen.join(' | ') : ''));
