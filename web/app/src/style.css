@@ -300,6 +300,7 @@ dialog.share .qr svg { display: block; width: 100%; height: auto; }
 dialog.share input { width: 100%; box-sizing: border-box; font: inherit; font-size: .85rem; padding: 6px 8px; margin: 4px 0 10px; }
 dialog.share .row button { padding: 8px 14px; border-radius: 20px; border: 1px solid var(--line); background: var(--bg); }
 dialog.share .row button.primary { border: none; background: var(--green); }
+dialog.pairapp .row a.openapp { padding: 10px 18px; border-radius: 22px; background: var(--green); color: #fff; font-weight: 600; text-decoration: none; }
 /* the app's DecisionDialog: Verwerfen apart on the left (error text), Abbrechen · Speichern (filled, plan blue) right */
 dialog.discard .row button.danger { margin-right: auto; color: var(--error); }
 dialog.discard .row button.primary { background: var(--plan); }

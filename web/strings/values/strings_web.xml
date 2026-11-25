@@ -133,7 +133,7 @@
     <!-- Pair phone, sync -->
     <string name="web_pair_preparing">Preparing…</string>
     <string name="web_pair_qr">QR code for pairing</string>
-    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code.</string>
+    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code with OnPath, not with the camera app.</string>
     <string name="web_pair_menu_path">☰ → Pair with browser</string>
     <string name="web_pair_check">Check: %1$s – the app shows the same digits.</string>
     <string name="web_pair_privacy">Your saved plans and imported tracks are encrypted in this browser and on the phone before they go to the sync server (Cloudflare, EU): only your phone and your browser can read them – we can't. Recorded tours are never sent. Keep this code to yourself: whoever scans it sees your saved plans.</string>
@@ -145,6 +145,9 @@
     <string name="web_join_text">This link pairs a device with your saved plans. Usually you scan it with the OnPath app on your phone (☰ → Pair with browser).</string>
     <string name="web_join_instead">You can also pair this browser instead – then your saved plans sync here too.</string>
     <string name="web_join_ok">Pair this browser</string>
+    <string name="web_openapp_title">Open in OnPath</string>
+    <string name="web_openapp_text">This link belongs in the OnPath app, not in the browser.</string>
+    <string name="web_openapp_way">Or in the app: %1$s, then scan the code.</string>
     <string name="web_join_paired">Paired · check digits %1$s</string>
     <string name="web_sync_no_phone_yet">no phone yet</string>
     <string name="web_sync_paired_with">Paired with %1$s</string>
