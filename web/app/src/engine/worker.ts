@@ -59,6 +59,8 @@ interface WasmEngine {
   runHead(points: string, activity: string, sac: number, askLong: boolean): string;
   runLongAnswer(yes: boolean, points: string): void;
   runEnd(gen: number, outcome: string, rounds: number): void;
+  recalcRow(points: string, activity: string, sac: number): boolean;
+  recalcScratch(points: string, activity: string, sac: number): boolean;
   runSlowAnswer(wait: boolean): void;
   runPlanAnyway(points: string): void;
   runRoutedBefore(points: string): void;
@@ -94,6 +96,8 @@ const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'histo
   'longRoute', 'planCancel',
   // the route run's head (the app's PlanRecalcState.begin + RouteRun in WebPlanChain): asked before each run
   'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore',
+  // the plan menu's "Ganz neu berechnen" (PlanEditState.recalcRow)
+  'recalcRow', 'recalcScratch',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
@@ -404,7 +408,7 @@ const dropped = new Set<number>();
 // planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
 // an open „Weiter warten?“ – WebPlanChain.runExport)
 const HISTORY = new Set(['planArrive', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyImport', 'planCancel',
-  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore']);
+  'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore', 'recalcScratch']);
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;

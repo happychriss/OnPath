@@ -26,6 +26,7 @@ import com.onpath.app.domain.plan.RouteRun
 import com.onpath.app.routing.LegCache
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.SlowPlan
+import com.onpath.app.routing.PlanResult
 import com.onpath.app.ui.Background
 import com.onpath.app.ui.PlanSize
 import com.onpath.app.ui.Say
@@ -44,13 +45,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     val did = ArrayList<String>()
     var line: List<GeoPoint>? = null
 
-    private val store = object : PlanStore {
-        override var points: List<GeoPoint> = points
-        override var pinned: Set<GeoPoint> = emptySet()
-        override var savedName: String? = null
-        override var savedId: Long = -1L
-        override var savedPoints: List<GeoPoint>? = null
-    }
+    private val store = WebPlanStore(points)
     val plan = PlanDocument(store, history)
     val runCauses = RunCause()
     val planRun = PlanRunSlice(runCauses, object : PlanRunHost {
@@ -64,6 +59,8 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     })
 
     private var mark: Place? = null
+    /** The run [head] began last: [end] takes its result. */
+    private var lastRun: PlanRecalcState.Run? = null
 
     val edit: PlanEditState = PlanEditState(plan, planRun, runCauses, object : PlanEditPorts {
         override fun cancelHoldMeasure(why: String) { did += if (why == "Undo" || why == "Redo") why.lowercase() else "cancelHoldMeasure" }
@@ -236,6 +233,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         act = activity; level = sac
         did.clear()
         val run = recalc.begin(askLong)
+        lastRun = run
         val ask = planRun.longRouteAsk
         return when {
             run != null -> Head.Route(run.gen, run.rounds)
@@ -255,21 +253,53 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
      * The run [gen] came back: "ok", "failed" or "slow" (its time limit after [rounds] period(s) – "Weiter warten?" is open).
      * The result itself is the page's; here the run's state follows ([RouteRun]: the question, or Idle again).
      */
-    fun end(gen: Int, outcome: String, rounds: Int) {
-        val back = planRun.routeEvent(RouteRun.Event.Returned(gen, active = true))
-        if (RouteRun.Effect.Superseded in back) return
-        when (outcome) {
-            "slow" -> { planRun.routeEvent(RouteRun.Event.TimeLimit(gen, rounds)); return }
-            "ok" -> planRun.routeEvent(RouteRun.Event.Succeeded(gen, planMode = true, sheetCanRise = false))
-            else -> planRun.routeEvent(RouteRun.Event.Failed(gen))
+    fun end(gen: Int, outcome: String, rounds: Int, resultFor: (List<GeoPoint>) -> PlanResult? = { null }) {
+        val run = lastRun?.takeIf { it.gen == gen }
+        if (run == null) { // not a run this chain began (a plain state change): only the RouteRun follows
+            val back = planRun.routeEvent(RouteRun.Event.Returned(gen, active = true))
+            if (RouteRun.Effect.Superseded in back) return
+            when (outcome) {
+                "slow" -> { planRun.routeEvent(RouteRun.Event.TimeLimit(gen, rounds)); return }
+                "ok" -> planRun.routeEvent(RouteRun.Event.Succeeded(gen, planMode = true, sheetCanRise = false))
+                else -> planRun.routeEvent(RouteRun.Event.Failed(gen))
+            }
+            planRun.routeEvent(RouteRun.Event.Done(gen))
+            return
         }
-        planRun.routeEvent(RouteRun.Event.Done(gen))
+        // the app's stage 4 (PlanRecalcState.taken): the RouteRun events, the snapped plan points and - for the next edit's
+        // stitch - the lines of this route. The page's Cancel is a fresh worker (the run never comes back as cancelled);
+        // the next head supersedes an older run (taken then ignores it, as in the app).
+        val result: Result<PlanResult> = when (outcome) {
+            "ok" -> resultFor(run.pts)?.takeIf { it.activity == run.act && it.sac == run.level }?.let { Result.success(it) }
+                ?: Result.failure(IllegalStateException("Run #$gen came back ok but the engine has no result for its points"))
+            "slow" -> Result.failure(SlowPlan.TimeLimit(rounds))
+            else -> Result.failure(IllegalStateException("Route calculation failed"))
+        }
+        recalc.taken(run, result, reach = null, tries = null, post = null, active = true)
     }
 
     /** The answer to "Weiter warten?" ([PlanRunSlice.answerSlowPlan]): wait on = the next head routes with one period more. */
     fun slowAnswer(wait: Boolean) {
         did.clear()
         planRun.answerSlowPlan(if (wait) SlowPlan.Answer.KEEP_WAITING else SlowPlan.Answer.CANCEL)
+    }
+
+    /**
+     * The plan menu's row "Ganz neu berechnen" (PlanEditState.recalcRow, owner 2026-11-25, picture B): shown only when the plan
+     * [now] has detour or cut points on [activity] / [sac] and no tour runs. Reads only.
+     */
+    fun recalcRowShown(activity: Activity, sac: Int): Boolean = edit.recalcRow(activity, sac) != null
+
+    /**
+     * The row's tap on the plan [now]: PlanEditState.recalcFromScratch (the detour and cut points go in one undoable step, the
+     * plan's run starts as an edit's). True = done – the page then routes the plan again as after any edit; false = no row.
+     */
+    fun recalcFromScratch(now: List<GeoPoint>, activity: Activity, sac: Int): Boolean {
+        plan.replace(now)
+        did.clear()
+        val row = edit.recalcRow(activity, sac) ?: return false
+        row()
+        return true
     }
 
     /** "Plan anyway" / "Calculate" of the not-routed line ([PlanRunSlice.planAnyway]) on the plan [now]. */
@@ -332,4 +362,18 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
             "{\"error\":${Engine.str(e::class.simpleName + ": " + e.message)}}"
         }
     }
+}
+
+/**
+ * The planner's [PlanStore]: the plan's points, pins and saved link as the worker holds them. [savedAnchorsJson] keeps the
+ * detour points the saved route had, so a cleared saved route stays "unsaved" when a [PlanDocument] is made on the same store
+ * again (the page keeps the store's text beside the plan, as the app keeps `Prefs.planSavedAnchors`).
+ */
+class WebPlanStore(override var points: List<GeoPoint> = emptyList()) : PlanStore {
+    override var pinned: Set<GeoPoint> = emptySet()
+    override var savedName: String? = null
+    override var savedId: Long = -1L
+    override var savedPoints: List<GeoPoint>? = null
+    override var anchorsJson: String? = null
+    override var savedAnchorsJson: String? = null
 }
