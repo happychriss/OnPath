@@ -124,7 +124,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (2026-11-25 ~13:10) viewer page: countdown bar V1 + heading „Geteilter Standort“ ON MAIN 1ea95b37a (Web planner green 45616472113, live smoke with the new checks) – NOT deployed: the planner deploy waits for the owner's word in donald's chat. 0.18.10 released 10:54 UTC. Prune: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*`.
+- [donald] (2026-11-25 ~16:20) **0.18.11 app list** (`items/2026-11-25-release-0-18-11-plan.md` [donald]): helpers on `wip/donald-2026-11-25-nav-offroute` (1+4), `…-nav-stops` (2+3), `…-small` (5+6+9), `…-emu-leftovers` (8); privacy lines (7) to the owner first. Countdown on main 1ea95b37a, deploy waits for the owner's „online“ in donald's chat.
 - [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
