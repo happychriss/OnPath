@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [cloud-web] [laptop] [tracking] [umbau] [aufräumen] (donald 2026-11-25 ~11:55, **0.18.10 is out**, de9bb71a4, planner deployed by the release run): „Standort teilen“ is live for everyone – [cloud-web] put the website's privacy section + pictures O01–O06 live now. Delete your tag when read.
 - → [umbau] [laptop] (captain 2026-11-25 morning, **owner's answers, asked one by one**): „Ganz neu berechnen“ = **picture B** (plan group after „Neu planen“, route icon), **shown only when relevant** (the plan holds stitched legs); EN **„Recalculate from scratch“**. W4 may be built (app; planner the same place).
 - → [tracking] (captain 2026-11-25 morning, owner): viewer heading **„Geteilter Standort“ / „Shared location“** (`web_live_title`); countdown **V1** – build it (thin bar + „nächster Punkt in 1:20“, late → amber).
 - → [donald] (captain 2026-11-25 morning, owner): POI long press on 0.18.9 – **he tries it today** and sends an export afterwards; then read `[poi] Press … end=`. 0.18.10: his word to publish comes in donald's chat (not relayed).
@@ -122,7 +123,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
 - [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (night 2026-11-25) **0.18.10 READY to the last step, NOT published**: `ci/donald-2026-11-25-release-0.18.10b` 29a844f67 (main 8264369bd + version + EN notes), full E2E 114/114 (45521118312), Rundgang 18/18 (45521127107), `release_check.sh --go v0.18.10` GO (app 78f3f75c + planner efe3ed5a). Publish = the owner's word in donald's chat → `handoffs/handoff-donald-2026-11-24.md` top.
+- [donald] (2026-11-25) **0.18.10 RELEASED** 10:54 UTC (de9bb71a4, release run 45597989609 green, planner deployed). Free for the next item. Prune: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*`.
 - [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 

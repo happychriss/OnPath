@@ -1,3 +1,5 @@
+# 2026-11-25 ~11:55: 0.18.10 RELEASED on the owner's word („Ok, for the release“) – de9bb71a4 (the release commit cherry-picked onto main ab07f1cd6+docs; only test-only Robolectric + a planner CSS fix came in between, both CI-green), release run 45597989609 green, planner deployed.
+
 # Night 2026-11-25 (fresh donald, ~02:00) – state
 
 **On main:** restore box 2e754723f · detour reason fb38e0ec4 (Web planner jvm with WebDetourTest green) · share-name

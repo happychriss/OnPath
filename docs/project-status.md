@@ -6,12 +6,11 @@ release's notes) and the git history – this file keeps only the current state 
 
 ## Where things are
 <!-- Kept by the captain every round (docs/team/roles/captain.md). -->
-- **GitHub release:** v0.18.7 (2026-11-21 19:35 UTC, 75c6bdcb1, donald): POI press, ride question when saving, off-route
-  sentence with side and metres, far-start warning, day rows, eye on round-trip suggestions. Device test 106/106 on the
-  commit before it. Its release run is red only in the planner part (a test, deploy skipped). On main, not released:
-  arrival with a stop the route cannot reach (cb49cbc22).
-- **Planner (plan.onpath.earth):** deployed 8cee9a2ec (2026-11-22 ~01:00, laptop, on the owner's yes in its chat), with the
-  day rows. The deploy's live smoke was skipped (no Access token in the repo), so the live page is not machine-checked.
+- **GitHub release:** v0.18.10 (2026-11-25 10:54 UTC, de9bb71a4, donald, owner's word in donald's chat): „Standort teilen“
+  for everyone, detours explained, restore the old plan, standing-still GPS, GPS jump / clock / storage / plan-sync fixes.
+  Full E2E 114/114 + Rundgang 18/18 on the same app code; release run 45597989609 green.
+- **Planner (plan.onpath.earth):** deployed by the 0.18.10 release run (planner job green, 2026-11-25), with the detour line
+  and the modal wait window.
 - **Pixel:** the owner gets updates from GitHub this weekend (not on USB); whether 0.18.7 is installed is not known.
 - **Google Play internal test (owner 2026-11-07): live.** App `com.onpath.app`, Play App Signing (Google holds the app key),
   upload key only on donald in `.secrets/` (gitignored), `tools/dev/play_bundle.sh` → `dist/onpath-<version>.aab`,
@@ -21,6 +20,7 @@ release's notes) and the git history – this file keeps only the current state 
   offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/team/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
+- **donald, 2026-11-25 – 0.18.10 released + planner deployed** (night list: restore box, detour reason, share-name blocker fixed test-first, E2E hold test steady under new brouter.de data) – `docs/team/handoffs/handoff-donald-2026-11-24.md` top.
 - **donald, 2026-11-24 late – standing-still GPS by the motion sensor, on main (42ddd8bcc), test APK on his Pixel 23:03:** owner's word after his Pixel lying indoors woke 9 times in 48 min: poor fixes no longer wake while the sensor says still, a sensor minute rests, the sensor moving wakes at once, GPS OFF after 1 h still (owner) – back on at the first move or when the sensor loses its word (`recording/RestGps`, `RestWatch.onTick`). Gate full green; NOT checked: E2E, a real tour.
 - **laptop, 2026-11-24 – long plan link online, wait window modal + pairing-link fix on main (READ `docs/team/handoffs/handoff-laptop-2026-11-17.md`, top):** the owner starts planner deploys in Actions; the next one carries the modal window and the pairing fix. LordTriangel's PRs: planner notes in the laptop chat.
 - **donald, 2026-11-24 – detour line on main in the owner's words** („Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“; gate full, planner check green; the laptop has the web line). Readers-all merged with main (3c7779e2c, gate full green), waits for the captain's Wasm check + [umbau]'s review. Restore-plan box: picture approved, stays until answered, not built. LordTriangel PRs 20–22 read (notes in the backlog „For the captain“). Pixel log 2026-11-24: nothing new (known perf / snapshot warnings).
