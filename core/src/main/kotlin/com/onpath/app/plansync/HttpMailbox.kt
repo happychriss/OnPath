@@ -41,7 +41,11 @@ class HttpMailbox(private val base: String, private val keys: SyncKeys) : Mailbo
                 }
             }
             val status = c.responseCode
-            val text = (if (status in 200..299) c.inputStream else c.errorStream)?.use { it.readBytes().decodeToString() }.orEmpty()
+            val bytes = (if (status in 200..299) c.inputStream else c.errorStream)?.use { it.readBytes() } ?: ByteArray(0)
+            // a body shorter than announced = the network went mid-answer; some JDKs give it without an error (HttpMailboxCutAnswerTest)
+            val want = c.contentLengthLong
+            if (want >= 0 && bytes.size < want) throw IOException("answer cut: ${bytes.size} of $want bytes")
+            val text = bytes.decodeToString()
             reply(status, text, retryAfter(c.getHeaderField("retry-after")))
         } catch (e: IOException) {
             // expected: no network, timeout, DNS – the caller says "offline" (INFO)

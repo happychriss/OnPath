@@ -15,7 +15,8 @@ import kotlin.concurrent.thread
 /**
  * An answer cut in the middle of its body (the network went while a page came in, the socket closed cleanly): the
  * phone takes it as "offline" (a quiet retry, INFO), not as a broken server answer (502 + a WARN in the problem log).
- * Pins the JDK's premature-EOF check HttpMailbox relies on (PlanSyncCutFlowTest's cut step, 2026-11-25).
+ * Red on GitHub 2026-11-25 (its JDK gave the short body without an error; donald's threw) → HttpMailbox now compares
+ * the body with its Content-Length itself (PlanSyncCutFlowTest's cut step).
  */
 class HttpMailboxCutAnswerTest {
     @get:Rule val problems = ProblemsRule()
