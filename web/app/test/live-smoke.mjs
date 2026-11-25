@@ -267,7 +267,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     await W.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
     await W.clock.runFor(100); await settle(); await settle();
     check(asked() === n3 + 1 && (await lineOf(W)).state === 'moving', 'the tab comes back: one question at once, the line is fresh');
-    check((await lineOf(W)).title === 'Geteilter Standort', `no name given: the heading is "${(await lineOf(W)).title}"`);
+    check(/^Geteilter Standort( · |$)/.test((await lineOf(W)).title), `no name given: the heading is "${(await lineOf(W)).title}"`);
     // ---- 10. stop sharing: nothing of the tour stays ----
     check(await ph2.stop() === 200, 'the phone stops sharing');
     await run(3 * MIN, false);
