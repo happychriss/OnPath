@@ -158,7 +158,10 @@ const clickName = async (n) => {
   return dp.evaluate(() => ({ head: document.querySelector('.holdpopup .menuhead')?.textContent ?? null,
     rows: [...document.querySelectorAll('.holdpopup .pointmenu button .txt > span:first-child')].map((b) => b.textContent) }));
 };
-const bare = await onName();
+// the names are placed a few frames after the jump (more on a loaded machine with software GL): asked again until one is
+// drawn (30 s at most) – the check below still asserts that such a name exists
+let bare = await onName();
+for (let i = 0; !bare && i < 60; i++) { await dp.waitForTimeout(500); bare = await onName(); }
 check(!!bare, '(d) a POI name drawn beside its icon at z17+ found in the view');
 if (bare) {
   const cb = await dp.locator('#map canvas').first().boundingBox();
