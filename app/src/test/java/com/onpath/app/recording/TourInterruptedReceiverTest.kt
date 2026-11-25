@@ -10,6 +10,7 @@ import com.onpath.app.debug.Problems
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -27,7 +28,8 @@ import org.robolectric.annotation.SQLiteMode
  * nothing when no tour was recording, ignores other broadcasts and never throws.
  */
 @RunWith(RobolectricTestRunner::class)
-@Config(sdk = [35], application = Application::class) // plain Application: the app's own starts MapLibre (native) // highest level the pinned Robolectric supports; the app's compileSdk is 36
+// plain Application: the app's own starts MapLibre (native); SDK 35 is enough for a receiver (compileSdk 36)
+@Config(sdk = [35], application = Application::class)
 @LooperMode(LooperMode.Mode.LEGACY)
 @SQLiteMode(SQLiteMode.Mode.LEGACY) // native SQLite would load a native runtime that breaks Paparazzi (layoutlib) in the same test JVM
 class TourInterruptedReceiverTest {
@@ -46,6 +48,7 @@ class TourInterruptedReceiverTest {
         app = RuntimeEnvironment.getApplication()
         nm = app.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
         Problems.clear()
+        assertNull("no recording running: the receiver would say nothing", RecordingService.state.value)
     }
 
     @After fun tearDown() { forgetTourDb(); app.deleteDatabase("onpath.db") }
@@ -53,10 +56,14 @@ class TourInterruptedReceiverTest {
     private fun record(state: String): Long = TourDb.get(app).insertTour(
         TourKind.RECORDED, "Meran loop", "hike", 1, 1200.0, 50.0, 40.0, 900.0, emptyList(), state = state)
 
-    /** The receiver works on its own thread (goAsync); wait for its notification or its problem line. */
+    /**
+     * As the system sends it: to the manifest's receiver, so goAsync() has its pending result (a direct onReceive call
+     * has none – pending.finish() threw in the worker). The receiver works on its own thread; wait for its effect.
+     */
     private fun send(action: String?) {
-        val intent = if (action == null) Intent() else Intent(action)
-        TourInterruptedReceiver().onReceive(app, intent)
+        val intent = (if (action == null) Intent() else Intent(action)).setClass(app, TourInterruptedReceiver::class.java)
+        app.sendBroadcast(intent)
+        shadowOf(android.os.Looper.getMainLooper()).idle()
     }
 
     private fun waitFor(what: String, cond: () -> Boolean) {
