@@ -16,6 +16,8 @@ import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.ui.LongRouteCancelCamera
 import com.onpath.app.ui.WholeRoute
+import com.onpath.app.routing.Activity
+import com.onpath.app.ui.routes.RestoreAsk
 import com.onpath.app.ui.routes.RoutesState
 import com.onpath.app.ui.routes.RoutesStore
 import com.onpath.app.ui.routes.SaveDialog
@@ -109,7 +111,18 @@ object WebState {
         nowMs = now.toLong()
         routesSlice.placeIs(recent.toLong())
         val result = action(routesSlice, store)
-        return "{\"result\":$result,\"recent\":${routesSlice.recentId},\"writes\":[${store.writes.joinToString(",")}]}"
+        return "{\"result\":$result,\"recent\":${routesSlice.recentId},\"kept\":${routesSlice.keptAs},\"writes\":[${store.writes.joinToString(",")}]}"
+    }
+
+    /**
+     * "Restore your old plan?" ([RestoreAsk.box], owner 2026-11-24): [entry] = the tour that holds the old plan now (the
+     * answer's `kept` of the keep that replaced it), [tours] = My routes as the page lists them (the entry with its name).
+     * `{"name":…,"underRecent":bool}` = the box shows (the page's words: routes_restore_*), "null" = no box (no question, a
+     * tour runs, the entry is gone or in the bin). The old plan's profile and link stay with the page (it opens the entry).
+     */
+    fun restoreBox(tours: String, entry: Double, touring: Boolean): String {
+        val box = RestoreAsk.box(RestoreAsk(entry.toLong(), Activity.HIKE, 3, null).takeIf { entry >= 0 }, parseTours(tours), touring) ?: return "null"
+        return "{\"name\":${Engine.str(box.name)},\"underRecent\":${box.underRecent}}"
     }
 
     /** RoutesState.keepDraft; [newId] = the id the page writes the draft under ([PageStore.insertDraft]); result = the new id or -1. */
@@ -352,6 +365,7 @@ object WebStateApi {
         WebState.keep(tours, recent, now, points, unsaved, savedId, newId)
     @JvmStatic @JSExport fun routesAfterSaved(tours: String, recent: Double, now: Double, savedId: Double, fromId: Double, points: String): String =
         WebState.afterSaved(tours, recent, now, savedId, fromId, points)
+    @JvmStatic @JSExport fun routesRestoreBox(tours: String, entry: Double, touring: Boolean): String = WebState.restoreBox(tours, entry, touring)
     @JvmStatic @JSExport fun routesTakePlace(tours: String, recent: Double, now: Double, id: Double): String = WebState.takePlace(tours, recent, now, id)
     @JvmStatic @JSExport fun routesToBin(tours: String, recent: Double, now: Double, id: Double): String = WebState.toBin(tours, recent, now, id)
     @JvmStatic @JSExport fun routesRestore(tours: String, recent: Double, now: Double, id: Double): String = WebState.restore(tours, recent, now, id)
