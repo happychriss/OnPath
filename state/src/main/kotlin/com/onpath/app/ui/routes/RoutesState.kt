@@ -66,6 +66,7 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
 
     /** The last chosen tab (Planned / Done); kept while the app runs, Planned after a restart. */
     var tab by mutableStateOf(RoutesTab.PLANNED)
+    var query by mutableStateOf("") // the search text, kept like [tab] (Pixel review 2026-11-06)
 
     /** The order of the saved routes / done tours ([RouteSort]) while My routes is open; "Neueste zuerst" at each opening. */
     var sort by mutableStateOf(RouteSort.DEFAULT)

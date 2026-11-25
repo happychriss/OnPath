@@ -211,7 +211,7 @@ class MainActivity : ComponentActivity() {
                                 onEditRides = { vm.tourEnd.openEditRides(it) },
                                 onPlanFrom = { vm.routesGo.planFromTour(it) },
                                 initialTab = vm.routes.tab,
-                                onTab = { vm.routes.tab = it },
+                                onTab = { vm.routes.tab = it }, initialQuery = vm.routes.query, onQuery = { vm.routes.query = it },
                                 initialSort = vm.routesSort,
                                 onSort = { vm.routesSort = it },
                                 marks = vm.syncDriver.marks.collectAsState().value,

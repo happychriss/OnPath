@@ -89,6 +89,18 @@ class RoutesListFlowTest {
         override fun rename(id: Long, name: String) {}
     }
 
+    /** Pixel review 2026-11-06: back from a route's page, My routes forgot its search (the tab was kept). */
+    @Test fun theSearchTextIsKeptLikeTheTabWhileTheAppRuns() {
+        val r = RoutesState(store)
+        r.open = true
+        r.tab = RoutesTab.DONE
+        r.query = "Zugspitze"
+        r.open = false
+        r.open = true
+        assertEquals(RoutesTab.DONE, r.tab)
+        assertEquals("Zugspitze", r.query)
+    }
+
     /** A sort chosen holds only while My routes is open; a new opening is "Neueste zuerst". */
     @Test fun everyOpeningStartsWithNewestFirst() {
         val r = RoutesState(store)

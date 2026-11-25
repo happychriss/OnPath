@@ -378,7 +378,7 @@ fun RoutesScreen(
     /** Routes from the browser not opened yet (tour uuid → mark): a "New" / "Changed" tag after the name (plansync/SyncMarks). */
     marks: Map<String, SyncMark> = emptyMap(),
     /** The search box's text at the start (screenshots). */
-    initialQuery: String = "",
+    initialQuery: String = "", onQuery: (String) -> Unit = {},
     /** Zuletzt → Speichern: the plan becomes saved (owner 2026-11-06). */
     onSaveDraft: (Tour) -> Unit = {},
     /** Zuletzt → Löschen: to the recycle bin, no question. */
@@ -502,7 +502,7 @@ fun RoutesScreen(
                 }
             }
             if (tours.isNotEmpty()) {
-                RoutesSearchField(query, { query = it }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
+                RoutesSearchField(query, { query = it; onQuery(it) }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
                 // the sort chips (owner 2026-11-12, variant C): a new order starts at the top of the list
                 val scope = androidx.compose.runtime.rememberCoroutineScope()
                 RouteSortChips(sort, { sort = it; onSort(it); scope.launch { listState.scrollToItem(0) } },
