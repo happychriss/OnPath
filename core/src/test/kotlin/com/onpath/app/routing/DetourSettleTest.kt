@@ -536,6 +536,34 @@ class DetourSettleTest {
     }
 
     // W2 review: the quiet re-run's engine never routes; a plan answered from the cache alone comes out whole
+    @Test fun aCacheMissOfCacheOnlyEngineStopsTheRunAtOnceWithoutFallbackOrWarn() {
+        val plan = stitched
+        val warm = cutCache(plan)
+        Planner(Engine(), legs = warm).settle(plan, act, sac)
+        // one settled leg is gone from the cache (the first leg of the plan): the quiet run must not fall back without anchors
+        val gone = PlanAnchors.exact(plan.points[0]) to PlanAnchors.exact(plan.points[1])
+        val thin = LegCache()
+        for (i in 1 until plan.points.size - 1) warm.get(plan.points[i], plan.points[i + 1], act, sac)?.let { thin.put(plan.points[i], plan.points[i + 1], act, sac, it, exact = true) }
+        val cancel = RouteCancel()
+        val misses = ArrayList<Pair<GeoPoint, GeoPoint>>()
+        val eng = CacheOnlyEngine(known = { _, _ -> false }, onMiss = { x, y -> misses += x to y; cancel.cancel() })
+        val r = runCatching { Planner(eng, cancel, legs = thin).plan(plan, act, sac) }
+        assertTrue("the run stopped (cancelled), no line", r.isFailure)
+        assertEquals("exactly one miss: no fallback request followed", listOf(gone), misses.map { PlanAnchors.exact(it.first) to PlanAnchors.exact(it.second) })
+        assertTrue("no warn: ${Problems.snapshot()}", Problems.snapshot().none { it.level == Problems.Level.WARN })
+    }
+
+    @Test fun cacheOnlyEngineAnswersAKnownNoRouteLegAsStraightWithoutAMiss() {
+        val plan = PlanAnchors.expand(listOf(v0, v1, v2), mapOf(1 to Anchors(listOf(a), emptyList())), emptySet())
+        var missed = false
+        val known = { x: GeoPoint, y: GeoPoint -> PlanAnchors.exact(x) == PlanAnchors.exact(v0) || PlanAnchors.exact(x) == PlanAnchors.exact(a) && PlanAnchors.exact(y) == PlanAnchors.exact(v1) }
+        val c = LegCache()
+        c.put(v1, v2, act, sac, probeLeg(v1, v2), exact = true)
+        val r = Planner(CacheOnlyEngine(known) { _, _ -> missed = true }, legs = c).plan(plan, act, sac)
+        assertFalse("known no-route legs are no miss", missed)
+        assertTrue(r.legs.first().straight)
+    }
+
     @Test fun cacheOnlyEngineRoutesNothingAndAFullyCachedPlanIsWhole() {
         val plan = stitched
         val warm = cutCache(plan)

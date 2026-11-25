@@ -596,7 +596,16 @@ class Planner(
  * plans on it, so the line it shows comes from the leg cache alone; a leg the cache lacks comes out straight, which the
  * caller sees in [PlannedRoute.noRoute] and then drops the result ([Planner.skipNoRoute]).
  */
-class CacheOnlyEngine : RoutingEngine {
-    override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult =
-        throw RoutingException("not in the leg cache")
+class CacheOnlyEngine(
+    /** The exact ends of a leg the taken run drew straight: answered "no route" (straight), as the taken run did. */
+    private val known: (GeoPoint, GeoPoint) -> Boolean = { _, _ -> false },
+    /** Any other request is a cache miss: told here (the caller cancels its run), answered as cancelled – no fallback follows. */
+    private val onMiss: (GeoPoint, GeoPoint) -> Unit = { _, _ -> },
+) : RoutingEngine {
+    override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): RouteResult {
+        val a = waypoints.first(); val b = waypoints.last()
+        if (known(PlanAnchors.exact(a), PlanAnchors.exact(b))) throw RoutingException("no route (known from the taken run)")
+        onMiss(a, b)
+        throw RoutingException(RouterRules.CANCELLED)
+    }
 }

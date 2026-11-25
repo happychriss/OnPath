@@ -216,9 +216,17 @@ class PlanRecalcSlice(
                     // the quiet re-run comes from the cache ALONE (an engine that refuses every request): nothing is routed again, and
                     // a leg the cache lacks would be straight – a line worse than the taken one – so then nothing is shown
                     Problems.trace("routing", "Settling: the plan is shown again from the settled legs")
-                    val quiet = PlanRecalcState.route(again, com.onpath.app.routing.CacheOnlyEngine(), cache, cancel, { _, _ -> })
-                    val worse = quiet.result.route.noRoute.any { it !in noRoute }
-                    if (worse) { Problems.warn("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is"); null } else quiet
+                    // a cache miss for any leg that is not a known no-route leg cancels the quiet run's OWN signal (never the settle's or a newer run's):
+                    // no fallback without anchors, no worse line – the taken line stays
+                    val quietCancel = RouteCancel()
+                    var missed = false
+                    val cacheOnly = com.onpath.app.routing.CacheOnlyEngine(known = { x, y -> (x to y) in noRoute }, onMiss = { _, _ -> missed = true; quietCancel.cancel() })
+                    val quiet = try { PlanRecalcState.route(again, cacheOnly, cache, quietCancel, { _, _ -> }) } catch (e: Exception) {
+                        if (!missed) throw e
+                        Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is")
+                        return@exceptions null
+                    }
+                    if (missed) { Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is"); null } else quiet
                 }
             }
             out.onFailure { Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", it) }
