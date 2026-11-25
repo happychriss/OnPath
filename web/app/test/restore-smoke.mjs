@@ -72,6 +72,11 @@ check(s.drafts.length === 1 && s.drafts[0] !== 'Old Lana', `Restore: the link pl
 await page.evaluate((c) => { location.hash = 'p=' + c; }, A);
 await planned();
 check(await waitBox(true), 'replaced again: the box shows');
+// the poll must not redraw the box every tick (a click spanning a redraw is lost): it is drawn once for the same facts
+await page.evaluate(() => { window.__redraws = 0; new MutationObserver(() => { window.__redraws++; }).observe(document.getElementById('msgcards'), { childList: true, subtree: true }); });
+await page.waitForTimeout(6_500);
+const redraws = await page.evaluate(() => window.__redraws);
+check(redraws === 0, `the box is not redrawn by the poll while nothing changed (${redraws} redraws in 6.5 s)`);
 const before = await store();
 await page.click(`${SEL} button:first-child`);
 await page.waitForTimeout(300);
@@ -88,6 +93,63 @@ check(await waitBox(true), 'replaced once more: the box shows');
 await page.click('#newPlan');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 });
 check(await waitBox(false), 'Neu planen: the old entry left My routes (bin) – the question is gone with it, none asked');
+
+const importHike = async () => {
+  let btn = '#menuImportGpx';
+  if (await page.isVisible('#menuBtn')) await page.click('#menuBtn'); else { await page.click('#menuPlans'); btn = '#plansImportGpx'; }
+  const [chooser] = await Promise.all([page.waitForEvent('filechooser'), page.click(btn)]);
+  await chooser.setFiles(path.join(here, 'fixtures/komoot-hike.gpx'));
+  await page.waitForSelector('#trackPanel', { timeout: 30_000 });
+};
+const activity = () => page.evaluate(() => window.__state.activity + ' T' + window.__state.sac);
+
+// a track's plan replaces a Bike plan: the GPX import switched the profile to Hike T2 – Restore brings the Bike plan back
+// with ITS profile, not the track's (the app's TrackToPlanState: leavingProfile)
+const BIKE = await page.evaluate(() => window.__engine.encode({ points: [[46.6773, 11.1302], [46.66, 11.14]], activity: 'BIKE_TOURING', sac: 2, pinned: [], names: {}, title: null }));
+await page.evaluate((c) => { location.hash = 'p=' + c; }, BIKE);
+await planned();
+check((await activity()) === 'BIKE_TOURING T2', `a Bike plan on the map (${await activity()})`);
+await importHike();
+check((await activity()) === 'HIKE T2', `the Komoot track switched the profile to Hike T2 (${await activity()})`);
+await page.click('#planFromTrack');
+const disc = await page.waitForSelector('dialog.discard[open]', { timeout: 1_500 }).catch(() => null);
+if (disc) await page.click('dialog.discard #discardOk');
+await page.waitForFunction(() => !document.getElementById('trackPanel'), null, { timeout: 120_000 });
+await planned();
+check(await waitBox(true), "a track's plan over the Bike plan: the box shows");
+await page.click(`${SEL} button.primary`);
+const bikeBack = await page.waitForFunction(() => window.__state.activity === 'BIKE_TOURING', null, { timeout: 60_000 }).then(() => true, () => false);
+check(bikeBack, `Restore after a track's plan: the old plan's own profile, Bike (${await activity()})`);
+await planned();
+const dr = await page.evaluate(() => JSON.parse(localStorage.getItem('onpath.recent')).filter((r) => r.deletedAt == null).map((r) => r.code));
+const kept = dr.length ? await page.evaluate((c) => window.__engine.parse('p=' + c), dr[0]) : null;
+check(kept?.activity === 'HIKE', `the track's plan went under Zuletzt with its own profile, Hike (${kept?.activity})`);
+
+// a saved route whose points are the plan on the map when it is restored: still applies its profile and keeps the plan
+await page.click('#newPlan');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 0, null, { timeout: 10_000 });
+const REV = await page.evaluate(async (a) => { const sh = await window.__engine.parse('p=' + a);
+  return window.__engine.encode({ ...sh, points: [...sh.points].reverse(), activity: 'BIKE_TOURING', sac: 2, pinned: [], names: {}, title: null }); }, A);
+await page.evaluate((c) => { location.hash = 'p=' + c; }, REV);
+await planned();
+await page.click('#menuSavePlan');
+await page.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 10_000 });
+await page.fill('#saveTitle', 'Reversed');
+await page.click('#saveOk');
+await page.waitForFunction(async () => (await window.__sync.list()).some((p) => p.title === 'Reversed'), null, { timeout: 10_000 });
+await page.waitForFunction(() => !document.getElementById('savedLine').hidden, null, { timeout: 10_000 });
+await page.evaluate((c) => { location.hash = 'p=' + c; }, A);
+await planned();
+check(await waitBox(true), 'a saved route as it is, replaced by a link: the box shows');
+check((await box())?.detail === '“Reversed” is saved.', `… “name” is saved (${(await box())?.detail})`);
+await page.click('#reverse'); // the plan on the map now has exactly the saved route's points
+await planned();
+await page.click(`${SEL} button.primary`);
+const sameBack = await page.waitForFunction(() => window.__state.activity === 'BIKE_TOURING', null, { timeout: 60_000 }).then(() => true, () => false);
+check(sameBack, `Restore with the same points on the map: the saved route's profile applies (${await activity()})`);
+await planned();
+const sid = await page.evaluate(() => window.__state.savedId);
+check(!!sid, 'Restore with the same points: the saved route is the plan on the map again');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
