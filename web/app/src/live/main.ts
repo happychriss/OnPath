@@ -18,6 +18,7 @@ if (link) history.replaceState(null, '', location.pathname + location.search);
 const root = document.getElementById('live')!;
 root.innerHTML = `
   <header id="top"><div id="title"></div><div id="status" class="status" role="status"><span class="dot"></span><span id="line"></span></div></header>
+  <div id="count" hidden><div class="bar"><i id="countBar"></i></div><div id="countText" class="ctext"></div></div>
   <div id="mapbox"><div id="map"></div><button id="toPos" class="topos" hidden></button></div>
   <section id="facts" hidden>
     <div id="numbers" class="row strong"></div>
@@ -60,6 +61,41 @@ function words(l: StatusLine, hasPlace: boolean): string {
   }
 }
 
+/** After the planned moment the page waits this long before it says "waiting for the phone": the viewer itself asks the server
+ *  only that much after it (LivePolicy.VIEWER_SLACK_MS), and an upload takes a moment – no amber flicker every cycle. */
+const OVERDUE_GRACE_S = 10;
+let countTimer = 0;
+const mmss = (sec: number) => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
+
+/** What the strip under the status line shows, from what the page has: the head's nextS (the phone's planned interval,
+ *  LivePolicy.intervalS) minus the time since the last upload (the server's clock, see BoxState.sinceLastWrite). No request.
+ *  null = no strip (nothing known, tour over / no contact); overdue = the planned moment is past. */
+function countdown(): { left: number; total: number; overdue: boolean } | null {
+  const h = state?.head, since = state?.sinceLastWrite();
+  if (!h || since == null || state?.dead || state?.ended != null || h.state === 'ended' || !(h.nextS > 0)) return null;
+  const key = document.body.dataset.state;
+  if (key !== 'moving' && key !== 'pause' && key !== 'off_route') return null; // no contact etc. have their own words
+  const left = Math.ceil(h.nextS - since / 1000);
+  return { left, total: h.nextS, overdue: left < -OVERDUE_GRACE_S };
+}
+/** One timer (1 s) while the strip is there and the tab is visible; the bar's own CSS transition does the smooth part. */
+function updateCount() {
+  const c = countdown(), box = $('count');
+  if (!c || document.hidden) {
+    box.hidden = !c; // hidden tab: nothing runs, the strip is redrawn when the tab is back
+    clearInterval(countTimer); countTimer = 0;
+    return;
+  }
+  box.hidden = false;
+  box.dataset.overdue = c.overdue ? '1' : '';
+  const left = Math.max(0, c.left);
+  ($('countBar') as HTMLElement).style.transform = `scaleX(${c.overdue ? 0 : Math.min(1, left / c.total)})`;
+  $('countText').textContent = c.overdue ? t('web_live_waiting') : t('web_live_next_point', mmss(left));
+  if (c.overdue) $('status').dataset.tone = 'amber';
+  if (!countTimer) countTimer = window.setInterval(updateCount, 1000);
+}
+document.addEventListener('visibilitychange', updateCount);
+
 function render() {
   if (!engine || !state) return;
   const s = state, h = s.head;
@@ -76,6 +112,7 @@ function render() {
   const note = $('note');
   note.hidden = !s.unreachable || dead; note.textContent = t('web_live_server');
   $('facts').hidden = dead || !h;
+  updateCount();
   $('mapbox').hidden = dead;
   if (dead) { // nothing of the tour stays in the page – not in a hidden row either
     map?.clear();

@@ -44,3 +44,12 @@ body[data-dead="1"] #top { border: none; text-align: center; padding: 24px; }
 body[data-dead="1"] .status { justify-content: center; font-size: 19px; }
 body[data-dead="1"] #title { margin-bottom: 8px; }
 body[data-dead="1"] #foot { display: none; }
+
+/* The countdown strip under the status line (owner 2026-11-25, "V1"): runs down to the phone's next planned upload. */
+#count { background: var(--paper); border-bottom: 1px solid var(--line); }
+#count .bar { height: 4px; background: #e3e8de; overflow: hidden; }
+#count .bar i { display: block; height: 4px; background: var(--go); transform-origin: right; transform: scaleX(1); transition: transform 1s linear; }
+#count .ctext { padding: 3px 16px 4px; text-align: right; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+#count[data-overdue="1"] .ctext { color: var(--warn); }
+#count[data-overdue="1"] .bar { visibility: hidden; }
+body:has(#count:not([hidden])) #top { border-bottom: none; }
