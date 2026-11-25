@@ -50,7 +50,7 @@ object NextStop {
     }
 
     /**
-     * The next stop ahead of [alongM] (metres on the navigated line), or null: a followed track has none; reached and
+     * The next stop ahead of [alongM] (metres on the navigated line), or null: a followed track has none; reached, passed-by and
      * left-out stops never come again; the plan's start (stop 0 when the tour follows the whole plan) is not a stop
      * ahead – the far-start box is its place.
      */
@@ -58,7 +58,7 @@ object NextStop {
         if (s.kind != NavKind.PLAN || s.stops.isEmpty()) return null
         val at = alongs(s)
         val i = s.stops.indices
-            .filter { it !in s.visited && it !in s.skipped && (it > 0 || s.firstNumber > 1) }
+            .filter { it !in s.visited && it !in s.skipped && it !in s.passedBy && (it > 0 || s.firstNumber > 1) }
             .filter { (at[it] ?: return@filter false) > alongM + PASSING_M }
             .minByOrNull { at[it]!! } ?: return null
         return StopAhead(s.numberOf(i), s.stops[i].name?.takeIf { it.isNotBlank() }, i == s.stops.lastIndex,
@@ -73,7 +73,7 @@ object NextStop {
         if (s.kind != NavKind.PLAN || s.stops.isEmpty()) return emptyList()
         val at = alongs(s)
         return s.stops.indices
-            .filter { it !in s.visited && it !in s.skipped && (it > 0 || s.firstNumber > 1) }
+            .filter { it !in s.visited && it !in s.skipped && it !in s.passedBy && (it > 0 || s.firstNumber > 1) }
             .filter { (at[it] ?: return@filter false) > alongM + PASSING_M }
             .sortedBy { at[it]!! }
             .take(max)
