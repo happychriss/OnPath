@@ -20,7 +20,23 @@ class PointQueue(private val max: Int = MAX) {
     var dropped = 0
         private set
 
+    private var reported = 0
+
     val size: Int get() = queue.size
+
+    /**
+     * The problem-log line after a successful write of [late] waiting points (null = nothing to say): what really
+     * happened – the points written late and, when the queue was full meanwhile, how many oldest were given up.
+     */
+    fun lateLine(late: Int): String? {
+        val lost = dropped - reported
+        reported = dropped
+        return when {
+            late <= 0 && lost <= 0 -> null
+            lost <= 0 -> "$late track point(s) written late – none lost"
+            else -> "$late track point(s) written late, $lost oldest given up at the queue cap of $max"
+        }
+    }
 
     /** Everything waiting was written another way (a rescued tour, review M7). */
     fun clear() = queue.clear()

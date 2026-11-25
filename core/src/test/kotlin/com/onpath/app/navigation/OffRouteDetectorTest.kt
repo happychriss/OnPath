@@ -367,4 +367,27 @@ class OffRouteDetectorTest {
         assertTrue(s.none { it.confirmedNow })
         assertEquals(2180.0, d.progressM, 15.0)
     }
+
+    // --- C5 bug 2026-11-25: silent jump to a later leg on a loop whose legs run ~100 m apart ---
+    /** Out 1 km east, 100 m north, 1 km back west (legs 100 m apart). */
+    private val narrowLoop = line(0.0 to 0.0, 1000.0 to 0.0, 1000.0 to 100.0, 0.0 to 100.0)
+
+    @Test fun loopLegsOnly100mApartCrossingOverIsNotASilentJump() {
+        val d = detector(narrowLoop)
+        run(d, walk(0.0 to 0.0, 500.0 to 0.0))
+        // the rider cuts across to the return leg (a real short cut) and walks on there
+        val s = run(d, walk(500.0 to 0.0, 500.0 to 100.0, 300.0 to 100.0, t0Ms = 1_000_000))
+        assertTrue("the short cut is told (confirmed off route), not silent; progress ${d.progressM}", s.any { it.confirmedNow })
+    }
+
+    /** A fast ride with sparse fixes (23 m/s ≈ 82 km/h downhill, one fix every 7 s – under the 8 s that count as GPS lost) moves the
+     *  progress 160 m per fix on a straight route: a continuation, never "another leg" (the skip check scales with time). */
+    @Test fun aFastRideWithSparseFixesStaysOnRoute() {
+        val d = detector(line(0.0 to 0.0, 3000.0 to 0.0))
+        run(d, walk(0.0 to 0.0, 200.0 to 0.0, speed = 20.0))
+        val fixes = (1..12).map { k -> fix(200.0 + k * 160.0, 0.0, tMs = 10_000L + k * 7_000L) }
+        val s = run(d, fixes)
+        assertTrue("never leaving on a straight fast ride: ${s.map { it.state }}", s.all { it.state == State.ON_ROUTE })
+        assertTrue("progress follows the ride: ${d.progressM}", (d.progressM ?: 0.0) > 2_000.0)
+    }
 }

@@ -37,6 +37,23 @@ class DataImporterTest {
         assertNull(DataImporter.targetPath("__MACOSX/._base.pmtiles"))
     }
 
+    /** Plan 0.18.11 [donald] 9: a tiny zip that unpacks to 120 MB streams through in small chunks – no memory blow-up, no leftovers. */
+    @Test fun aHugeCompressedEntryIsStreamedAndLeavesNoTempFile() {
+        val dir = tmp.newFolder("bomb")
+        val bos = ByteArrayOutputStream()
+        ZipOutputStream(bos).use { z ->
+            z.putNextEntry(ZipEntry("onpath-data/base.pmtiles"))
+            val chunk = ByteArray(1 shl 20)
+            repeat(120) { z.write(chunk) }
+            z.closeEntry()
+        }
+        assertTrue("the zip itself is small", bos.size() < 1_000_000)
+        val r = DataImporter.import(ByteArrayInputStream(bos.toByteArray()), "bomb.zip", dir)
+        assertEquals(listOf("base.pmtiles"), r.imported)
+        assertEquals(120L * (1 shl 20), File(dir, "base.pmtiles").length())
+        assertEquals(listOf("base.pmtiles"), dir.list()!!.toList()) // no ".importing" temp left
+    }
+
     @Test fun importsZipIntoDataDir() {
         val dir = tmp.newFolder("onpath")
         val r = DataImporter.import(ByteArrayInputStream(zip(
