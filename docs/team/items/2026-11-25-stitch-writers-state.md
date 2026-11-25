@@ -1,6 +1,6 @@
 # Detour stitch: the writer stage, core + state (umbau, night 2026-11-24/25)
 
-Branch **`wip/umbau-2026-11-24-stitch-writers` = dee1e9310** (W4 on top of 9aeed35b1; night 2026-11-25: W2 + W3 review fixes + W2 should-fix; gate full 1916 + 2035 + 1012) (from readers-all d6493f680). **Nothing on main; writers ship only after the readers' release** (design §6), app AND planner together.
+Branch **`wip/umbau-2026-11-24-stitch-writers` = 4c37a0c38** (2026-11-25 afternoon: main merged in b45569bac – gate full 1952 + 2071 + 1099; `PlanSettle` extracted 4c37a0c38 – gate full 1952 + 2071 + 1105, Web planner green 45677461375; before: dee1e9310 (W4 on top of 9aeed35b1; night 2026-11-25: W2 + W3 review fixes + W2 should-fix; gate full 1916 + 2035 + 1012) (from readers-all d6493f680). **Nothing on main; writers ship only after the readers' release** (design §6), app AND planner together.
 
 ## Built (each piece by a Sonnet helper, merged by [umbau], full gate green after each merge; last at 29496f0ec: 1912 app + 2030 core + 1008 state)
 - **W0** (8349b4289): DB columns `tours.anchors` / `tour_plan.anchors` in row format – `AnchorsJson.writeRow` / `readRow`: the row's profile + an FNV-1a 64 hash of all its points (pinned value `62c3b8e261299bd5` for the test points, computed outside Kotlin); another profile or other points → none, reported. Old array still read; backup keeps the old array inside its activity-carrying record.
@@ -36,7 +36,7 @@ The web compiles as they are (`state/web-ready.txt`): `PlanDocument`, `PlanRecal
 - **The row's logic:** `PlanEditState.recalcRow(activity, sac)` (null = no row, else the tap) / `canRecalcFromScratch` / `recalcFromScratch` (one undoable step, `false` while touring). The web needs only the UI: picture B – plan group right after „Neu planen“, route icon, bare label DE „Ganz neu berechnen“ / EN „Recalculate from scratch“ (string `plan_menu_recalc` in `strings/…/strings_plan.xml`, on the writers branch).
 
 App-only (`PlanRecalcSlice`, coroutines) – the web needs its own version of the idle settling (§8.15), hooked into the shared state's open hooks:
-- `beginning()` (called by every `begin`) → stop the settle. `routeTaken(run, res)` (called by `taken`) → start it. Read `PlanRecalcSlice.routeTaken` (~l.180–240 on dee1e9310) as the reference; the rules, each with an app test in `PlanRecalcFlowTest` / `DetourSettleTest`:
+- `beginning()` (called by every `begin`) → stop the settle. `routeTaken(run, res)` (called by `taken`) → start it. **Use `PlanSettle` (4c37a0c38, web-ready): `prepare(run, res, pointsNow, legCache)` in `routeTaken` → `settle(work, engine, legCache, cancel, tourRuns)` off the page thread → `takeQuiet(work.again, result.result)`; `PlanRecalcSlice.routeTaken` is the ~30-line reference.** What it does inside; the rules, each with an app test in `PlanRecalcFlowTest` / `DetourSettleTest`:
   1. only for `run.anchors` not empty; no anchors → `failures.clear()` (the cap starts anew);
   2. not while a tour runs (the web has no tour: skip);
   3. `cache.epoch != capEpoch` → clear the failures (new routing data);
