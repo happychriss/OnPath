@@ -61,6 +61,14 @@ data class Place(
 
     companion object {
         fun fromPoi(p: Poi): Place = Place(p.id, p.name, p.kind, p.lat, p.lon, p.ele, source = Source.POI, poi = p)
+
+        /**
+         * A named route point as a place to keep („Merken“ in the point menu, owner 2026-11-26). The point keeps only its
+         * name and spot, so the kind is "other"; [SavedPlaces.same] matches it by name + spot, so a POI kept from its own
+         * menu shows „Gemerkt“ here too.
+         */
+        fun ofRoutePoint(name: String, lat: Double, lon: Double): Place =
+            Place("pt:%.6f,%.6f".format(java.util.Locale.ROOT, lat, lon), name, "other", lat, lon)
     }
 }
 

@@ -196,22 +196,23 @@
     <string name="plan_location_off">Standort aus</string>
     <string name="plan_searching_gps">GPS wird gesucht…</string>
     <string name="plan_new_route">Neuer Plan</string>
-    <string name="plan_start_here">Hier starten</string>
-    <string name="plan_go_here">Hierhin</string>
+    <string name="plan_start_here">Als Start</string>
+    <string name="plan_go_here">Als Ziel</string>
+    <string name="plan_from_my_position">Start: dein Standort</string>
     <string name="plan_open_google_maps">In Google Maps öffnen</string>
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
     <string name="plan_pin_add">Hinzufügen</string>
-    <string name="plan_add_as_stop">Einfügen</string>
-    <string name="plan_make_destination">Neues Ziel</string>
+    <string name="plan_add_as_stop">Als Stopp</string>
+    <string name="plan_make_destination">Als Ziel</string>
     <string name="plan_pin_more">Mehr</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Löscht den Punkt davor</item>
         <item quantity="other">Löscht die %1$d Punkte davor</item>
     </plurals>
-    <string name="plan_start_finish_here">Hier starten &amp; enden</string>
+    <string name="plan_start_finish_here">Als Start</string>
     <string name="plan_same_round_trip">Gleiche Rundtour, startet hier</string>
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
@@ -235,25 +236,25 @@
     <string name="plan_routing_load_failed">Beim Laden ist etwas schiefgegangen. Bitte versuche es erneut.</string>
     <string name="plan_about_days">etwa %1$d Tage</string>
     <string name="plan_about_hours">etwa %1$d Stunden</string>
-    <string name="plan_err_memory">Nicht genug Speicher für diese Route. Setze Zwischenpunkte oder wähle näher liegende Punkte.</string>
-    <string name="plan_err_complex">Route zu komplex für die Berechnung auf dem Handy. Setze Zwischenpunkte oder wähle näher liegende Punkte.</string>
+    <string name="plan_err_memory">Nicht genug Speicher für diese Route. Setze Stopps oder wähle näher liegende Punkte.</string>
+    <string name="plan_err_complex">Route zu komplex für die Berechnung auf dem Handy. Setze Stopps oder wähle näher liegende Punkte.</string>
     <string name="plan_err_engine">Die Routenberechnung konnte nicht geladen werden.</string>
     <string name="plan_err_set_start_dest">Setze einen Startpunkt und ein Ziel.</string>
     <string name="plan_err_set_start_end">Setze einen Start- und einen Endpunkt.</string>
     <string name="plan_err_no_route_for">Keine Route zwischen diesen Punkten für %1$s gefunden.</string>
-    <string name="plan_err_no_route_for_try">Keine Route zwischen diesen Punkten für %1$s gefunden. Setze einen Punkt an anderer Stelle oder füge einen Zwischenpunkt ein.</string>
+    <string name="plan_err_no_route_for_try">Keine Route zwischen diesen Punkten für %1$s gefunden. Setze einen Punkt an anderer Stelle oder füge einen Stopp ein.</string>
     <string name="plan_err_too_far">%1$s ist zu weit (%2$d m) von jedem Weg entfernt, der für %3$s nutzbar ist. Lösche ihn und setze ihn näher an einem Weg neu.</string>
     <string name="plan_err_not_mapped">%1$s ist mehr als %2$d m von jedem Weg entfernt, der für %3$s nutzbar ist. Lösche ihn und setze ihn näher an einem Weg neu.</string>
-    <string name="plan_err_timeout_hike">Keine Route in %1$d s gefunden. Das Ziel ist evtl. nur über Wege schwerer als SAC T%2$d erreichbar – wähle eine höhere Stufe, setze den Punkt an anderer Stelle oder füge einen Zwischenpunkt ein.</string>
-    <string name="plan_err_timeout">Die Berechnung hat zu lange gedauert (über %1$d s). Wähle näher liegende Punkte oder setze einen Zwischenpunkt.</string>
+    <string name="plan_err_timeout_hike">Keine Route in %1$d s gefunden. Das Ziel ist evtl. nur über Wege schwerer als SAC T%2$d erreichbar – wähle eine höhere Stufe, setze den Punkt an anderer Stelle oder füge einen Stopp ein.</string>
+    <string name="plan_err_timeout">Die Berechnung hat zu lange gedauert (über %1$d s). Wähle näher liegende Punkte oder setze einen Stopp.</string>
     <string name="plan_err_island">Keine Route gefunden: Ein Punkt liegt auf einem abgeschlossenen Wegenetz, das für %1$s nicht nutzbar ist. Lösche ihn und setze ihn auf einem verbundenen Weg neu.</string>
-    <string name="plan_err_too_long">Route zu lang für die Berechnung auf dem Handy. Setze Zwischenpunkte oder wähle näher liegende Punkte.</string>
+    <string name="plan_err_too_long">Route zu lang für die Berechnung auf dem Handy. Setze Stopps oder wähle näher liegende Punkte.</string>
     <string name="plan_err_profile_folder">Ordner für Routing-Profile kann nicht angelegt werden.</string>
     <string name="plan_err_profile_install">Routing-Profil %1$s kann nicht installiert werden.</string>
     <string name="plan_err_profiles">Die Routenplanung konnte nicht eingerichtet werden – der Speicher ist evtl. voll. Starte OnPath neu, um es erneut zu versuchen.</string>
     <string name="plan_err_coordinates">Ungültige Koordinaten.</string>
     <string name="plan_err_start_point">Startpunkt</string>
-    <string name="plan_err_a_stop">Ein Zwischenpunkt</string>
+    <string name="plan_err_a_stop">Ein Stopp</string>
     <string name="plan_err_a_point">Ein Routenpunkt</string>
     <string name="plan_err_cancelled">Die Routenberechnung wurde abgebrochen.</string>
     <string name="plan_err_no_data">Hier gibt es noch keine Detailkarte.</string>
@@ -286,5 +287,5 @@
     <!-- the empty plan during a tour (owner 2026-11-12: „Tour läuft noch“, „neues Ziel festlegen“) -->
     <string name="plan_tour_still_running">Tour läuft noch</string>
     <string name="plan_tour_new_target">Neues Ziel festlegen</string>
-    <string name="plan_tour_new_target_line">Ziel suchen oder Karte gedrückt halten → Hierhin</string>
+    <string name="plan_tour_new_target_line">Ziel suchen oder Karte gedrückt halten → Als Ziel</string>
 </resources>

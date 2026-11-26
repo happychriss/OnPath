@@ -197,22 +197,23 @@
     <string name="plan_location_off">Location off</string>
     <string name="plan_searching_gps">Searching GPS…</string>
     <string name="plan_new_route">New plan</string>
-    <string name="plan_start_here">Start here</string>
-    <string name="plan_go_here">Go here</string>
+    <string name="plan_start_here">Set as start</string>
+    <string name="plan_go_here">Set as destination</string>
+    <string name="plan_from_my_position">Start: your position</string>
     <string name="plan_open_google_maps">Open in Google Maps</string>
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Remove pin</string>
     <string name="plan_pin_chip_desc">%1$s: show options</string>
     <string name="plan_pin_add">Add</string>
-    <string name="plan_add_as_stop">Insert</string>
-    <string name="plan_make_destination">New destination</string>
+    <string name="plan_add_as_stop">Set as stop</string>
+    <string name="plan_make_destination">Set as destination</string>
     <string name="plan_pin_more">More</string>
     <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
-        <item quantity="one">Removes the %1$d point before it</item>
+        <item quantity="one">Removes the point before it</item>
         <item quantity="other">Removes the %1$d points before it</item>
     </plurals>
-    <string name="plan_start_finish_here">Start &amp; finish here</string>
+    <string name="plan_start_finish_here">Set as start</string>
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>
@@ -236,8 +237,8 @@
     <string name="plan_routing_load_failed">Something went wrong while loading it. Please try again.</string>
     <string name="plan_about_days">about %1$d days</string>
     <string name="plan_about_hours">about %1$d hours</string>
-    <string name="plan_err_memory">Not enough memory for this route. Add via points or choose closer points.</string>
-    <string name="plan_err_complex">Route too complex for on-phone routing. Add via points or choose closer points.</string>
+    <string name="plan_err_memory">Not enough memory for this route. Add stops or choose closer points.</string>
+    <string name="plan_err_complex">Route too complex for on-phone routing. Add stops or choose closer points.</string>
     <string name="plan_err_engine">The route planner could not be loaded.</string>
     <string name="plan_err_set_start_dest">Set a start point and a destination.</string>
     <string name="plan_err_set_start_end">Set a start and an end point.</string>
@@ -246,9 +247,9 @@
     <string name="plan_err_too_far">%1$s is too far (%2$d m) from any path or road usable for %3$s. Delete it and set it again closer to a path.</string>
     <string name="plan_err_not_mapped">%1$s is more than %2$d m from any path or road usable for %3$s. Delete it and set it again closer to a path.</string>
     <string name="plan_err_timeout_hike">No route found within %1$d s. The destination may only be reachable via paths harder than SAC T%2$d - try a higher difficulty limit, set the point elsewhere or add a stop in between.</string>
-    <string name="plan_err_timeout">Route calculation took too long (over %1$d s). Try points closer together or add a via point.</string>
+    <string name="plan_err_timeout">Route calculation took too long (over %1$d s). Try points closer together or add a stop.</string>
     <string name="plan_err_island">No route found: a point lies on an isolated path network not usable for %1$s. Delete it and set it again on a connected path.</string>
-    <string name="plan_err_too_long">Route too long for on-phone routing. Add via points or choose closer points.</string>
+    <string name="plan_err_too_long">Route too long for on-phone routing. Add stops or choose closer points.</string>
     <string name="plan_err_profile_folder">Cannot create routing profile folder.</string>
     <string name="plan_err_profile_install">Cannot install routing profile %1$s.</string>
     <string name="plan_err_profiles">The route planner could not be set up – the phone's storage may be full. Restart OnPath to try again.</string>
@@ -287,5 +288,5 @@
     <!-- the empty plan during a tour (owner 2026-11-12: „Tour läuft noch“, „neues Ziel festlegen“) -->
     <string name="plan_tour_still_running">Tour still running</string>
     <string name="plan_tour_new_target">Set a new destination</string>
-    <string name="plan_tour_new_target_line">Search a place or hold the map → Go here</string>
+    <string name="plan_tour_new_target_line">Search a place or hold the map → Set as destination</string>
 </resources>

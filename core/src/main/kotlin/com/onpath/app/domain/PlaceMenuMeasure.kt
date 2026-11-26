@@ -5,7 +5,7 @@ import com.onpath.app.routing.GeoPoint
 /**
  * The add rows of a held place's menu (POI, found pin) while PLANNING – 2+ points, no tour, no round trip (owner
  * 2026-11-17: „wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt zu werden“, F-PLAN-15).
- * Decided exactly as a hold on the empty map: on the drawn line at once („Einfügen“ only); else appending and inserting
+ * Decided exactly as a hold on the empty map: on the drawn line at once („Als Stopp“ only); else appending and inserting
  * are measured on the paths ([HoldPaths]: off the main thread, at most its time limit, the straight lines on a timeout or
  * any failure, a newer measure or [HoldPaths.cancel] stops it), then [PlaceAddMenu.planningRows]. The menu opens only once
  * its rows are decided – nothing jumps. App only (the browser planner decides in its engine).
