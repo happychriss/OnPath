@@ -2,6 +2,7 @@ package com.onpath.app.ui
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -27,7 +28,8 @@ class PlanColourTest {
      * What floats over the map is the website's light sage (owner 2026-11-12: "nimm das leichte Grün auch für die
      * Planseite"): readable for every word on it, the pill row one step deeper, cards and menus still paper.
      */
-    @Test fun mapGroundIsTheLightSage() {
+    /** Since 2026-11-26 (owner, Daumen-Karte variant B) the paper – one surface for everything over the map. */
+    @Test fun mapGroundIsThePaper() {
         val g = OnPathColors.MapGround
         assertTrue("ink", contrast(OnPathColors.Ink, g) >= 7.0) // 10.3:1
         assertTrue("muted", contrast(OnPathColors.InkMuted, g) >= 4.5)
@@ -35,7 +37,7 @@ class PlanColourTest {
         assertTrue("amber ⚠ count", contrast(OnPathColors.Amber, g) >= 4.5)
         assertTrue("grey info", contrast(OnPathColors.Grey, g) >= 4.5)
         assertTrue("pill row one step deeper", contrast(g, OnPathColors.PaperDeep) >= 1.05)
-        assertTrue("cards in it lift", contrast(OnPathColors.Paper, g) >= 1.05)
+        assertEquals(OnPathColors.Paper, g)
         assertTrue("the search pill's line", contrast(g, OnPathColors.Line) >= 1.1)
     }
 
