@@ -19,7 +19,7 @@ class PoiSpriteTest {
         }
         // the snack bar: the burger badge, not the dot
         val ff = PoiSprite.rect(json, "fast_food")!!
-        assertEquals(listOf(0, 96), listOf(ff.x, ff.y))
+        assertEquals(listOf(288, 96), listOf(ff.x, ff.y))
     }
 
     @Test fun aKindWithoutASymbolKeepsItsGlyph() {
