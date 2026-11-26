@@ -9,6 +9,8 @@
     <string name="web_live_waiting">wartet auf das Handy …</string>
     <string name="web_live_last_report">Letzte Meldung %1$s</string>
     <string name="web_live_loading">Lädt …</string>
+    <string name="web_live_late">Etwas später als geplant · Ankunft ca. %1$s</string>
+    <string name="web_live_late_plain">Etwas später als geplant</string>
     <string name="web_live_moving">Alles okay, unterwegs</string>
     <string name="web_live_pause">Macht gerade Pause</string>
     <string name="web_live_off_route">Gerade etwas abseits der Route</string>
@@ -26,9 +28,9 @@
     <string name="web_live_arrival">ca. %1$s · noch %2$s</string>
     <string name="web_live_row_battery">Akku</string>
     <string name="web_live_battery">%1$d %</string>
-    <string name="web_live_battery_at">%1$d % · um %2$s</string>
     <string name="web_live_row_last">Zuletzt</string>
     <string name="web_live_ago_now">gerade eben</string>
+    <string name="web_live_place_from">%2$s · Position von %1$s</string>
     <string name="web_live_ago">vor %1$s</string>
     <string name="web_live_copy">Koordinaten</string>
     <string name="web_live_copied">Kopiert</string>

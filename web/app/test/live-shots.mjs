@@ -49,6 +49,8 @@ await shot('3-abseits', (ph) => { // the way leaves the plan after point 40 (mad
 }, 1 * MIN);
 await shot('3b-akku-niedrig', (ph) => ph.push({ route, points: walked(52, T0 - 78 * MIN),
   head: { ...base, state: 'recording', distanceM: 1200, ascentM: 95, movingS: 2300, toGoM: 1200, arrivalMs: T0 + 42 * MIN, batteryPct: 12 } }), 1 * MIN);
+await shot('3c-spaeter', (ph) => ph.push({ route, points: walked(50, T0 - 75 * MIN),
+  head: { ...base, state: 'recording', distanceM: 1150, ascentM: 90, movingS: 2200, toGoM: 1250, arrivalMs: T0 + 75 * MIN, plannedArrivalMs: T0 + 40 * MIN, batteryPct: 41 } }), 1 * MIN);
 await shot('4-kein-kontakt', (ph) => ph.push({ route, points: walked(55, T0 - 85 * MIN),
   head: { ...base, state: 'recording', distanceM: 1250, ascentM: 100, movingS: 2400, toGoM: 1150, arrivalMs: T0 + 40 * MIN, batteryPct: 36 } }), 25 * MIN + 5000);
 await shot('5-beendet', (ph) => ph.push({ route, points: pts.map((p, i) => [...p, T0 - 190 * MIN + i * 100_000]), ended: true,
