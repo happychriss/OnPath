@@ -70,8 +70,13 @@ export class LiveBox {
     clearTimeout(this.timer);
     if (wait > 0) this.timer = window.setTimeout(() => void this.ask(), wait); else void this.ask();
   }
-  /** Tests only: a question right now, whatever the pacing says. */
-  askNow() { clearTimeout(this.timer); return this.ask(); }
+  /** Tests only: a question right now, whatever the pacing says – after a question still on its way (the page's first
+   *  one at start), which may have left before the test's upload and would make this one a no-op. */
+  async askNow() {
+    clearTimeout(this.timer);
+    while (this.asking) await new Promise((r) => setTimeout(r, 20));
+    return this.ask();
+  }
   private pause() { clearTimeout(this.timer); this.timer = 0; }
 
   private plan() {
