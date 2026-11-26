@@ -2507,6 +2507,9 @@ function recalcFromScratch() {
     if (await engine.call('recalcScratch', enc(state.points), state.activity, state.sac) !== 'true') { void refreshRecalcRow(); return null; }
     runCause = 'edit'; state.otherRouting = false;
     editBefore = { points: state.points, names: state.meta.map((m) => m.name) };
+    // an undo step of the engine's history: the tour beside it gets its step too (as commit does), so Undo of a multi-day
+    // tour brings back its own days and nights, not those of the step before
+    tourUndo.push(state.tour); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0;
     return { planned: changed() };
   });
 }
