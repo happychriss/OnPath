@@ -114,6 +114,36 @@ await page.reload();
 await idle();
 check(await markedUnsaved(), 'reload: it is still unsaved (' + await saveHead() + ': ' + await savedText() + ' anchors=' + (await page.evaluate(() => window.__engine.anchors)).length + ' savedId=' + await page.evaluate(() => window.__state.savedId) + ')');
 
+// no reload between the edits (review 2026-11-26 #1): after a run that snapped the new point, the engine's chain holds the
+// points the page took (6 decimals) – the next point put in keeps the detour points there are (before the fix they were
+// dropped or moved: the chain's points were the router's unrounded ones)
+const putOnLeg = async (leg, n) => {
+  await page.waitForFunction(() => !document.querySelector('.waitveil') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
+  const pts = await page.evaluate((l) => window.__state.plan.legs[l].points, leg);
+  const k = Math.floor(pts.length / 4), p = pts[k], u = pts[Math.max(0, k - 10)], v = pts[Math.min(pts.length - 1, k + 10)];
+  // ~65 m off the line, across its way there: the router snaps it onto a way (BRouter's unrounded coordinates), and it is
+  // no point on the line (set at once, never stitched)
+  const dy = v[0] - u[0], dx = (v[1] - u[1]) * Math.cos(p[0] * Math.PI / 180), len = Math.hypot(dx, dy) || 1;
+  const off = [p[0] + 0.0006 * dx / len, p[1] - 0.0006 * dy / len / Math.cos(p[0] * Math.PI / 180)];
+  await page.evaluate(([la, lo]) => window.__map.jumpTo({ center: [lo, la], zoom: 16 }), off); // the spot in view, the line 40 px away
+  await page.waitForTimeout(300);
+  const at = await page.evaluate(([la, lo]) => { const r = window.__map.getCanvas().getBoundingClientRect(); const q = window.__map.project([lo, la]); return [r.left + q.x, r.top + q.y]; }, off);
+  await page.mouse.click(at[0], at[1]);
+  await page.waitForFunction((k) => window.__state.points.length === k, n, { timeout: 30_000 });
+  await idle();
+  await page.waitForTimeout(500);
+};
+const entries = (a) => (a ? JSON.parse(a).entries : []).map((e) => JSON.stringify([e.b, e.a]));
+const n0 = await page.evaluate(() => window.__state.points.length);
+await putOnLeg(await page.evaluate(() => window.__state.plan.legs.length - 1), n0 + 1);
+const a1 = await page.evaluate(() => window.__engine.anchors);
+console.log('points after the run: ' + await page.evaluate(() => JSON.stringify(window.__state.points)));
+check(entries(a1).length === 1, 'a point put in on the last leg: stitched (' + a1 + ')');
+await putOnLeg(0, n0 + 2);
+const a2 = await page.evaluate(() => window.__engine.anchors);
+// (the new point itself is not stitched on this data – the same before the review's fix; the engine test covers the stitch)
+check(entries(a2).includes(entries(a1)[0]), 'no reload, the next point on the first leg: the detour points stay as they were (' + a2 + ')');
+
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) { console.log('errors:', real); fails.push('page errors'); }
