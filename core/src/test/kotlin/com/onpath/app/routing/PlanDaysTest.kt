@@ -398,4 +398,16 @@ class PlanDaysTest {
         assertEquals(north.last(), p.points[1])
         assertTrue(p.anchors.isEmpty())
     }
+
+    /** Owner 2026-11-26 night: „Als Übernachtung“ for a held place – a lodging is a hotel at once, anything else blue. */
+    @Test fun aPlaceAsOvernightEndsThatDay() {
+        val hut = PlanDays.nightAtPlace(tour, 2, lodging = true, name = "Gasthof Krone")
+        assertEquals(Hotel("Gasthof Krone"), hut.plan.nights[2]?.hotel)
+        val cafe = PlanDays.nightAtPlace(tour, 2, lodging = false, name = "Café")
+        assertEquals(NightMark.OVERNIGHT, cafe.plan.nights[2])
+        // start, finish and a point with a mark stay as they are
+        assertEquals(tour, PlanDays.nightAtPlace(tour, 0, lodging = true, name = "X").plan)
+        assertEquals(tour, PlanDays.nightAtPlace(tour, tour.points.lastIndex, lodging = true, name = "X").plan)
+        assertEquals(cafe.plan, PlanDays.nightAtPlace(cafe.plan, 2, lodging = true, name = "X").plan)
+    }
 }

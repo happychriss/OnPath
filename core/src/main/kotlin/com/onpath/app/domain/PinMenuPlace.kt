@@ -88,11 +88,11 @@ object PinMenuPlace {
  * then „Rundtour ab hier“) → Ort (Merken · In Google Maps öffnen) → Entfernen („Nadel entfernen“, the pin only). Pure.
  */
 object PinMenuItems {
-    enum class Row { START_HERE, ROUND_TRIP, GO_HERE, ADD, ADD_STOP, NEW_DESTINATION, FAVOURITE, HOME, GOOGLE, REMOVE_PIN }
+    enum class Row { START_HERE, ROUND_TRIP, GO_HERE, ADD, ADD_STOP, NEW_DESTINATION, OVERNIGHT, FAVOURITE, HOME, GOOGLE, REMOVE_PIN }
 
     /** The group a row belongs to – a thin line where the group changes ([MenuGroups.lineBefore]). */
     fun group(r: Row): MenuGroups.Group = when (r) {
-        Row.START_HERE, Row.ROUND_TRIP, Row.GO_HERE, Row.ADD, Row.ADD_STOP, Row.NEW_DESTINATION -> MenuGroups.Group.ROUTE
+        Row.START_HERE, Row.ROUND_TRIP, Row.GO_HERE, Row.ADD, Row.ADD_STOP, Row.NEW_DESTINATION, Row.OVERNIGHT -> MenuGroups.Group.ROUTE
         Row.FAVOURITE, Row.HOME, Row.GOOGLE -> MenuGroups.Group.PLACE
         Row.REMOVE_PIN -> MenuGroups.Group.REMOVE
     }
@@ -107,11 +107,13 @@ object PinMenuItems {
      * @param pin the found place's pin: the menu ends with "Nadel entfernen"
      * @param keep the place can be kept (owner 2026-11-15, „Orte merken“): in the Ort group, before Google,
      *   „☆ Merken“ and „⌂ Als Zuhause festlegen“ – what is about the place itself
+     * @param overnight a multi-day tour: „Als Übernachtung“ after the add rows (the planner draws it; the app has no
+     *   multi-day editing)
      * @param roundTrip the tour suggestions are on (developer switch, tour-suggestions.md §7 stage 4): „Rundtour ab hier“
      *   last in the Route group – only where „Als Start“ is offered (owner 2026-11-15 / 2026-11-26)
      */
     fun of(emptyPlan: Boolean, startHere: Boolean, menu: PlaceAddMenu.Menu?, pin: Boolean, keep: Boolean = false,
-           roundTrip: Boolean = false, fromMe: Boolean = true): List<Row> {
+           roundTrip: Boolean = false, fromMe: Boolean = true, overnight: Boolean = false): List<Row> {
         fun row(i: PlaceAddMenu.Item) = when (i) {
             PlaceAddMenu.Item.ADD_STOP -> Row.ADD_STOP
             PlaceAddMenu.Item.NEW_DESTINATION -> Row.NEW_DESTINATION
@@ -131,6 +133,9 @@ object PinMenuItems {
             menu == null -> rows += Row.ADD
             else -> menu.rows.mapTo(rows, ::row)
         }
+        // a multi-day tour (owner 2026-11-26 night: no „Hotel für diese Tour“ dialog any more): „Als Übernachtung“ after
+        // the add rows – the place goes in where it fits the route and ends that day ([com.onpath.app.routing.PlanDays.nightAtPlace])
+        if (overnight && !emptyPlan) rows += Row.OVERNIGHT
         if (keep) { rows += Row.FAVOURITE; rows += Row.HOME }
         rows += Row.GOOGLE
         if (pin) rows += Row.REMOVE_PIN

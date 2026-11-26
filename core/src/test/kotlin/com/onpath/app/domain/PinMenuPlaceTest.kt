@@ -5,6 +5,7 @@ import com.onpath.app.domain.PinMenuItems.Row
 import com.onpath.app.domain.PinMenuPlace.Decision
 import com.onpath.app.domain.PinMenuPlace.Kind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -192,5 +193,16 @@ class PinMenuPlaceTest {
         assertTrue(host, host.contains("Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = gone) { menu(false) }"))
         // the menu's rows are PinMenuItems' – the hold's and the pick's are one list
         assertTrue(src("ui/MapOverlays.kt").substringAfter("fun PoiMenu(").substringBefore("\n}\n").contains("PinMenuItems.of(emptyPlan, startHere, menu"))
+    }
+
+    /** Owner 2026-11-26 night: in a multi-day tour „Als Übernachtung“ follows the add rows; never on an empty plan. */
+    @Test fun aMultiDayTourOffersAsOvernightAfterTheAddRows() {
+        val m = PlaceAddMenu.menu(3, false, PlaceAddMenu.Zone.STOP_FIRST)
+        assertEquals(listOf(Row.ADD_STOP, Row.NEW_DESTINATION, Row.OVERNIGHT, Row.GOOGLE),
+            PinMenuItems.of(false, true, m, pin = false, overnight = true))
+        assertEquals(listOf(Row.ADD, Row.OVERNIGHT, Row.GOOGLE),
+            PinMenuItems.of(false, true, PlaceAddMenu.menu(1, false, null), pin = false, overnight = true))
+        assertFalse(Row.OVERNIGHT in PinMenuItems.of(true, true, null, pin = false, overnight = true))
+        assertFalse(Row.OVERNIGHT in PinMenuItems.of(false, true, m, pin = false))
     }
 }

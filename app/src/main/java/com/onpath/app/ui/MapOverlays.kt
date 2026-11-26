@@ -526,6 +526,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
                 str(if (home) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
             PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
             PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })
+            PinMenuItems.Row.OVERNIGHT -> {} // multi-day editing is the planner's (the app passes overnight = false)
             }
         }
     }
