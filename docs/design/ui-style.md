@@ -8,7 +8,7 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
   No dark bars, no dark boxes – the two dark exceptions are the Navigate slide switch and the rest view while cycling.
 - **Few colours, one meaning each:** green = act (primary button), blue edge = a question, amber = attention,
   red = something failed. Exception in Navigate (Daumen-Karte, owner 2026-11-26): every sign and box there is green – a
-  question's edge too (`NavQuestionEdge`); the only blue things are Anhalten and Planen (`NavPauseStrong`, `ActionEdit`). Map furniture (route blue, track purple, recording orange) never appears in messages.
+  question's edge too (`NavQuestionEdge`); Anhalten green (`NavPauseStrong`), Planen blue (`ActionEdit`) – owner 2026-11-26 evening. Map furniture (route blue, track purple, recording orange) never appears in messages.
 - **Nothing disappears by itself** (owner rule for the whole app – rain, stress): a box stays until it is answered,
   a state shows until it no longer holds. Nothing may flash (`NoFlash`). Exception (owner 2026-11-26, `VISION.md`): a short
   info line **without a button** may go after a few seconds; a line or card with a button stays.

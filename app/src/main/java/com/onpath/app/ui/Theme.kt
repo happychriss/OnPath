@@ -196,12 +196,12 @@ object OnPathColors {
     /** Navigate: the left edge of a question box (FRAGE) – green there, an exception to "blue edge = question". */
     val NavQuestionEdge = Green
     /**
-     * Navigate: the only blue things are Anhalten and Planen (owner 2026-11-26). Anhalten's strong (a tap) and pale (a hold)
-     * tone – the plan ink blue family, so it reads with Planen.
+     * Navigate: Anhalten's strong (a tap) and pale (a hold) tone – green like every tour action, Planen stays blue (owner
+     * 2026-11-26 evening on the Pixel: "Anhalten grün und Planen bläulich"; first both blue).
      */
-    val NavPauseStrong = ActionEdit
-    val NavPauseTonal = EditTonal
-    val OnNavPauseTonal = OnEditTonal
+    val NavPauseStrong = ActionGo
+    val NavPauseTonal = Color(0xFFD5EADF)
+    val OnNavPauseTonal = Color(0xFF0D3A27)
 
     /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn

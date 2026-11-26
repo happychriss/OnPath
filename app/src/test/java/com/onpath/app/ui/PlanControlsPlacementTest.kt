@@ -15,14 +15,15 @@ class PlanControlsPlacementTest {
     private val gap = 30
 
     @Test fun fixedTopIsAThirdDownButNeverAboveTheBand() {
-        assertEquals(624, ControlsPlacement.fixedTop(screen, limit))
+        assertEquals(864, ControlsPlacement.fixedTop(screen, limit)) // 36 % since the Daumen-Karte (owner 2026-11-26)
         assertEquals(900, ControlsPlacement.fixedTop(screen, 900)) // large font: a deep band wins
     }
 
     @Test fun theSheetSmallOrHalfDoesNotMoveTheColumn() {
         val top = ControlsPlacement.fixedTop(screen, limit)
-        // the same top for a small and a half sheet, with 4 or 6 buttons: nothing moves
-        for (sheetTop in listOf(1900, 1570)) for (h in listOf(600, 900)) {
+        // the same top for a small sheet, with 4 or 6 buttons: nothing moves (since the Daumen-Karte the column stands lower,
+        // closer to the thumb – a half-open sheet may push it up, owner 2026-11-26)
+        for (sheetTop in listOf(1900)) for (h in listOf(600, 900)) {
             assertEquals("sheet $sheetTop, height $h", top, ControlsPlacement.place(top, h, sheetTop, limit, gap))
         }
     }

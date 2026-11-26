@@ -187,13 +187,12 @@ fun MapControls(
             add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         }
         if (compass != null) add(compassText(compass) to { CompassControl(compass, size, onTint, north = if (plan) OnPathColors.CompassNorth else OnPathColors.NavAccent) })
-        if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
-        // eye and whole route are always there (owner 2026-11-06: "ausgrauen statt ausblenden – dann springt nichts und
-        // man sieht, was man tun könnte"): grey without a route, the long press still says what they do
-        add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint, enabled = showEye) })
+        // one order in both modes (owner 2026-11-26, Daumen-Karte): compass · locate · whole route · eye – the eye always at
+        // the bottom; eye and whole route are always there, greyed when they cannot act (owner 2026-11-06)
+        add(locate)
         add(str(Res.string.plan_show_whole_route) to { IconControl(Icons.Filled.FitScreen, Res.string.plan_show_whole_route,
             onFitRoute ?: {}, size, tint, enabled = onFitRoute != null) })
-        if (!plan) add(locate) // Navigate: locate at the bottom, as before
+        add(str(Res.string.plan_hold_hide_route) to { EyeControl(onPeek, peeking, size, tint, enabled = showEye) })
     }
     val items = tips.mapIndexed { i, (text, control) -> @Composable { MapTip(text, i == tipShown) { control() } } }
     // Navigate: two bubbles with a gap, the tour's (share, ⚙) above the map's (compass, eye, ⛶, locate); on a short screen
