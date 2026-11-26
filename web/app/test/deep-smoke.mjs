@@ -55,7 +55,8 @@ try {
     if (!ok) console.log('     page: ' + (await page.evaluate(() => document.body.innerText)).replace(/\s+/g, ' ').slice(0, 400));
     check(ok && stack.length === 0, `${name}: planned in ${ms} ms (${km})${stack.length ? ' – ' + stack[0].slice(0, 120) : ''}`);
   }
-  const bad = errors.filter((e) => !/Failed to load resource|favicon/.test(e));
+  // the engine's own log lines (its stderr reaches the console) are no errors – same filter as the other smokes
+  const bad = errors.filter((e) => !/Failed to load resource|favicon/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
   check(bad.length === 0, `no page errors (${bad.slice(0, 3).join(' | ')})`);
 } finally {
   await browser.close();
