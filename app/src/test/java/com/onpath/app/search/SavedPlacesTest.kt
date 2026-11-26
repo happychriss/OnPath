@@ -102,7 +102,7 @@ class SavedPlacesTest {
     }
 
     @Test fun theHeldPlacesMenuOffersMerkenAndZuhauseAfterTheRouteRows() {
-        assertEquals(listOf(PinMenuItems.Row.START_HERE, PinMenuItems.Row.GO_HERE, PinMenuItems.Row.FAVOURITE,
+        assertEquals(listOf(PinMenuItems.Row.GO_HERE, PinMenuItems.Row.START_HERE, PinMenuItems.Row.FAVOURITE,
             PinMenuItems.Row.HOME, PinMenuItems.Row.GOOGLE, PinMenuItems.Row.REMOVE_PIN),
             PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = true, keep = true))
         assertFalse(PinMenuItems.Row.FAVOURITE in PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false))
