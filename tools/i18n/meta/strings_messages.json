@@ -271,12 +271,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "msg_check_no_route_followed": {
-    "area": "Navigate: switch activity",
-    "context": "Note at the top of the activity switch sheet during a tour without a followed route.",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "msg_check_waiting_gps": {
     "area": "Navigate: switch activity",
     "context": "Note in the activity switch sheet until GPS has a position (the rest of the route is checked from there).",

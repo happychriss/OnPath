@@ -220,8 +220,8 @@ private fun EndKeepAndDelete(keepLabel: String, onKeep: GuardedTap, onDelete: Gu
     }
 }
 
-/** How long „Löschen“ in the end sheet is held (owner 2026-11-26: a few seconds longer than the bar's hold). */
-internal const val DELETE_HOLD_MS = 2_000
+/** How long „Löschen“ in the end sheet is held: about a second (owner 2026-11-26 night: „die Hälfte“ of the first 2 s). */
+internal const val DELETE_HOLD_MS = 1_000
 
 /** The main action, filled green, full width, 56 dp. */
 @Composable

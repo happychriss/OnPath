@@ -45,7 +45,6 @@
     <string name="msg_name_date_pattern">d MMM, HH:mm</string>
     <string name="msg_date_pattern_area">d MMM yyyy</string>
     <string name="msg_recording_not_started">The tour did not start. Allow precise location and notifications for OnPath, then try again.</string>
-    <string name="msg_check_no_route_followed">No route is followed – the new activity applies to the tour and the plan.</string>
     <string name="msg_check_waiting_gps">Waiting for GPS…</string>
     <string name="msg_check_nothing_left">Nothing left of the route to check</string>
     <string name="msg_check_cannot_route">Can't check routes right now</string>

@@ -106,8 +106,8 @@ class ActivityCheckSlice(
         val others = Activity.entries.filter { it != cur }
         checkSession = session
         if (session == null) {
-            activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Plain) },
-                note = Txt.s(Res.string.msg_check_no_route_followed))
+            // no note (owner 2026-11-26 night: „Du folgst keiner Route …“ told the user nothing)
+            activityCheck = ActivityCheckUi(cur, curSac, others.map { ActivityRow(it, sacFor(it), ActivityRowState.Plain) }, note = null)
             return
         }
         // the position is needed only once the route was reached (never reached: from the route's start, ActivityCheck.rest)

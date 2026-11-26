@@ -107,6 +107,13 @@
     <string name="routes_more_without_breaks">ohne Pausen</string>
     <string name="routes_more_clock_desc">Unterwegs von %1$s bis %2$s</string>
     <string name="routes_followed_plan_missing">Der Plan dieser Tour konnte nicht gelesen werden.</string>
+    <!-- the T level picker's rows (owner 2026-11-26 night): name (T n) over one short line, readable before the tap -->
+    <string name="routes_sac_1_short">Gut ausgebauter Weg, kaum steil</string>
+    <string name="routes_sac_2_short">Durchgehender Weg, teils steil, Trittsicherheit hilft</string>
+    <string name="routes_sac_3_short">Weg nicht immer sichtbar, ausgesetzt, Trittsicherheit nötig</string>
+    <string name="routes_sac_4_short">Teils weglos, Hände nötig, alpine Erfahrung</string>
+    <string name="routes_sac_5_short">Oft weglos, einfache Kletterstellen, alpine Erfahrung</string>
+    <string name="routes_sac_row">%1$s (T%2$d)</string>
     <string name="routes_sac_line">T%1$d · %2$s: %3$s</string>
     <!-- Meine Touren: die Sortier-Chips (Owner 2026-11-12, Variante C) -->
     <string name="routes_sort_newest">Neueste zuerst</string>
