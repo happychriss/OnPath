@@ -1,5 +1,6 @@
 package com.onpath.web
 
+import com.onpath.app.poi.PoiKinds
 import com.onpath.app.data.Format
 import com.onpath.app.data.Geo
 import com.onpath.app.debug.Problems
@@ -279,7 +280,7 @@ object WebDays {
     internal fun placeNight(p: SharedPlan, stop: Int, place: GeoPoint, text: String): String {
         val f = text.split('\t')
         val name = f.getOrNull(0)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_NAME)
-        val lodging = f.getOrNull(3)?.trim() == "1"
+        val lodging = PoiKinds.isLodging(f.getOrNull(3)?.trim()) // the shared „Übernachten“ set (hotel, guest house, hostel, hut, bivouac, camping)
         val here = p.points.indices.filter { Geo.distance(p.points[it], place) <= PlanDays.SAME_POINT_M }
             .minByOrNull { Geo.distance(p.points[it], place) }
         val (base, index) = if (here != null) p to here else {

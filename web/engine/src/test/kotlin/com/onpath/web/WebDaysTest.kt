@@ -75,8 +75,8 @@ class WebDaysTest {
     @Test fun aPlaceBecomesANightWhereItIsPutIn() {
         fun rule(tour: String, stop: Int, lat: Double, lon: Double, text: String) =
             WebDays.rule("placeNight", pts, "BIKE_TOURING", 2, "", "", tour, stop, lat, lon, text)
-        val hotel = "Gasthof Linde\tDorfstr. 1\t\t1"
-        val inn = "Aussichtspunkt\t\t\t0"
+        val hotel = "Gasthof Linde\tDorfstr. 1\t\tguest_house"
+        val inn = "Aussichtspunkt\t\t\tviewpoint"
         // near a grey proposal (3 days, no night yet): a hotel between ① and ② – the grey one goes, N stays
         val near = rule("d\t3", 1, 46.625, 11.21, hotel)
         assertTrue(near, near.contains("\"points\":[[46.600000,11.200000],[46.625000,11.210000],[46.650000,11.200000]"))

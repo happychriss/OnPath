@@ -82,18 +82,6 @@ export function endPill(kind: EndKind, day: number | null): string {
   return `<span class="daypill ${cls}">${icon(kind === 'HOTEL' ? 'bed' : 'moon', 15)}<span class="daytxt">${day ? esc(t('multiday_day_n', day)) : ''}</span></span>`;
 }
 
-/**
- * A place to sleep (owner 2026-11-26 22:56: hotel, guesthouse, hostel, camp site, hut): the POI kinds of the HUT group
- * that sleep (hut, bivouac, camping – PoiKinds) and an online result's OSM tourism class. TODO: switch to the core's
- * lodging helper once PoiKinds knows hotel / guest_house / hostel (branch work/laptop-overnight-pois).
- */
-const LODGING_KINDS = new Set(['hut', 'bivouac', 'camping']);
-const LODGING_SUBS = new Set(['hotel', 'guest_house', 'hostel', 'motel', 'chalet', 'apartment', 'alpine_hut', 'wilderness_hut',
-  'camp_site', 'caravan_site']);
-export function isLodging(h: Pick<Hit, 'kind' | 'sub'>): boolean {
-  return LODGING_KINDS.has(h.kind) || (h.sub != null && LODGING_SUBS.has(h.sub)) || LODGING_SUBS.has(h.kind);
-}
-
 export class MultiDay {
   /** The guide panel is open (☰ → Mehrtagestour planen) – step 1 until „Weiter: Tage festlegen“. */
   guideOpen = false;
@@ -471,11 +459,11 @@ export class MultiDay {
 
   /**
    * „Als Übernachtung“ in a found place's / POI's menu (owner 2026-11-26 22:56): the place goes into the plan where a stop
-   * fits ([stop] – the engine's placeMenu) and becomes a night; a lodging ([isLodging]) is that night's hotel at once
+   * fits ([stop] – the engine's placeMenu) and becomes a night; a lodging (core PoiKinds.isLodging on the hit's kind, in the engine) is that night's hotel at once
    * (the green bed), anything else a blue moon. One undo step.
    */
   async placeNight(hit: Hit, stop: number) {
-    const text = [clean(hit.name ?? hit.title), clean(hit.address), '', isLodging(hit) ? '1' : '0'].join('\t');
+    const text = [clean(hit.name ?? hit.title), clean(hit.address), '', clean(hit.kind)].join('\t'); // the engine: PoiKinds.isLodging
     await this.take(await this.rule('placeNight', stop, hit.lat, hit.lon, text));
   }
 
