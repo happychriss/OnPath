@@ -28,5 +28,6 @@
     <string name="web_live_copied">Kopiert</string>
     <string name="web_live_open_maps">In Karten-App öffnen</string>
     <string name="web_live_to_position">Zur Position</string>
+    <string name="web_live_map_wait">Warte auf den ersten Standort …</string>
     <string name="web_live_no_rescue">Kein Notruf-Dienst – im Notfall 112.</string>
 </resources>

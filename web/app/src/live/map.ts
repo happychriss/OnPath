@@ -35,10 +35,14 @@ export class LiveMap {
   private dot = document.createElement('div');
   private following = true;
   private last: [number, number] | null = null;
-  private fitted = false;
+  /** What the first view was fitted to: nothing yet (the map stays hidden, the box says "waiting for the first place"),
+   *  the planned route only (no fix yet), or the place (the way so far and the plan around it). */
+  private fitted: 'none' | 'route' | 'place' = 'none';
 
-  private constructor(style: StyleSpecification, box: HTMLElement, private back: HTMLButtonElement, cells: Cells | null) {
-    this.map = new maplibregl.Map({ container: box, style, center: [11.16, 46.67], zoom: 9, attributionControl: false, maxPitch: 0 });
+  private constructor(style: StyleSpecification, private box: HTMLElement, private back: HTMLButtonElement, cells: Cells | null) {
+    // No fixed start place (field report 2026-11-26: a tour just started showed a far-away area until the first fix):
+    // the map stays hidden until it has the tour's route or place to show ([showView]); the camera here never shows.
+    this.map = new maplibregl.Map({ container: box, style, center: [10, 50], zoom: 3, attributionControl: false, maxPitch: 0 });
     this.dot.className = 'livedot';
     this.marker = new maplibregl.Marker({ element: this.dot });
     if (cells) { followCover(this.map, cells.found); cells.attach(this.map); followPackages(this.map, cells.packages); }
@@ -89,22 +93,34 @@ export class LiveMap {
       if (at) this.marker.setLngLat(at).addTo(this.map); else this.marker.remove();
       const moved = !!at && (!this.last || at[0] !== this.last[0] || at[1] !== this.last[1]);
       this.last = at;
-      if (!at) return;
-      if (!this.fitted) { // first data: the whole way so far (and the plan) in view
-        this.fitted = true;
+      this.stats = { way: way.map((s) => s.length), route: route.length, view: this.fitted };
+      if (at && this.fitted !== 'place') { // the first place: the whole way so far (and the plan) in view
+        this.fitted = 'place';
         const b = new maplibregl.LngLatBounds(at, at);
         for (const s of way) for (const p of s) b.extend(p);
         for (const [la, lo] of route) b.extend([lo, la]);
-        this.map.fitBounds(b, { padding: 48, maxZoom: 15, animate: false });
-      } else if (moved && this.following) this.map.easeTo({ center: at });
-      this.stats = { way: way.map((s) => s.length), route: route.length };
+        this.fit(b);
+      } else if (!at && this.fitted === 'none' && route.length) { // no fix yet (the phone just started): the plan in view
+        this.fitted = 'route';
+        const [la0, lo0] = route[0];
+        const b = new maplibregl.LngLatBounds([lo0, la0], [lo0, la0]);
+        for (const [la, lo] of route) b.extend([lo, la]);
+        this.fit(b);
+      } else if (at && moved && this.following) this.map.easeTo({ center: at });
+      this.stats.view = this.fitted;
     };
     if (this.ready) draw(); else this.pending = draw;
   }
 
+  /** The first view of the tour, then the map is shown (until then the box says "waiting for the first place"). */
+  private fit(b: maplibregl.LngLatBounds) {
+    this.map.fitBounds(b, { padding: 48, maxZoom: 15, animate: false });
+    this.box.parentElement!.dataset.view = this.fitted;
+  }
+
   /** Nothing of the tour stays on the map (sharing stopped). */
-  clear() { this.show([], [], null, 'ended'); this.stats = { way: [], route: 0 }; }
+  clear() { this.show([], [], null, 'ended'); this.stats = { way: [], route: 0, view: this.fitted }; }
 
   /** What is drawn – for the browser tests. */
-  stats: { way: number[]; route: number } = { way: [], route: 0 };
+  stats: { way: number[]; route: number; view: 'none' | 'route' | 'place' } = { way: [], route: 0, view: 'none' };
 }
