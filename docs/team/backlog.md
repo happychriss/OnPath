@@ -150,9 +150,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [donald] 2026-11-25: **bike position marker hides…** (owner 2026-11-26: comparison picture bike vs. arrow first) → [detail](items/2026-11-25-bike-position-marker-hides-point-1.md)
 - [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
-- [laptop] 2026-11-25 morning: **pull request…** → [detail](items/2026-11-25-pull-request-web-planner-ci-every-browse.md)
 - [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)
 - **[donald] Only our signed apps on the map server?…** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
