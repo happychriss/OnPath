@@ -719,11 +719,8 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
     LaunchedEffect(c) {
         snapshotFlow { vm.trackLook() }.collect { c.setTrackLook(it) }
     }
-    // the route changed during a tour: the position is the activity's sign (the guidance rests) – the mode visible at
-    // the position too (owner 2026-11-01)
-    val planPuck = rememberPlanPuck(vm.planRoute.activity)
-    val changingRoute = vm.tourSession.mode == AppMode.PLAN && rec != null
-    LaunchedEffect(c, changingRoute, planPuck) { c.setPlanPuck(planPuck.takeIf { changingRoute }) }
+    // the route changed during a tour: the normal blue dot with its direction, never the activity's badge – the badge
+    // covered point ① (owner 2026-11-26: „wir nehmen einfach Variante B, wichtig ist, dass man den Startpunkt sieht“)
     // the GPS accuracy circle only in Navigate (owner 2026-11-06: in Plan it only gets in the way)
     LaunchedEffect(c, vm.tourSession.mode) { c.setNavigateMode(vm.tourSession.mode == AppMode.NAVIGATE) }
     LaunchedEffect(c, vm.settingsSlice.settings) { c.layers.apply(vm.settingsSlice.settings) }

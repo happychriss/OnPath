@@ -363,23 +363,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         return bmp
     }
 
-    /**
-     * The route is being changed during a tour (owner 2026-11-01: "an dem Punkt sehen, dass man im Planmodus ist"): the
-     * position is the activity's sign in a white circle with a green ring ([badge], ui/PlanPuck) – no accuracy circle,
-     * no "where I face" cone; null = the normal blue dot (Navigate, planning at home). Never throws.
-     */
-    fun setPlanPuck(badge: android.graphics.Bitmap?) {
-        if (badge === planBadge) return
-        planBadge = badge
-        try {
-            if (!live()) return
-            applyPuck(heading.arrowGrey)
-        } catch (e: Exception) {
-            Problems.warn("map", "Position sign (plan / navigate) not changed", e)
-        }
-    }
-    private var planBadge: android.graphics.Bitmap? = null
-
     /** Navigate (true) or Plan (false, the start): the GPS accuracy circle shows only in Navigate ([PositionDot.accuracyAlpha]). */
     private var navigateMode = false
 
@@ -396,7 +379,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
 
     /** Position dot look; [grey] = the "where I face" image grey (compass unsure, map/CompassTrust). */
     private fun puckOptions(grey: Boolean): LocationComponentOptions = LocationComponentOptions.builder(context)
-        .accuracyAlpha(PositionDot.accuracyAlpha(navigate = navigateMode && planBadge == null))
+        .accuracyAlpha(PositionDot.accuracyAlpha(navigate = navigateMode))
         .enableStaleState(true)
         .staleStateTimeout(30_000)
         // HeadingEngine turns smoothly at display rate itself
@@ -413,19 +396,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** Applies the dot's look ([puckOptions]); may throw (callers report). */
     private fun applyPuck(grey: Boolean) {
         map.locationComponent.applyStyle(puckOptions(grey))
-        showPlanPuckImages()
-    }
-
-    /**
-     * The native location layer draws only MapLibre's own image names and writes them again on every [applyPuck] and
-     * every render mode change: while the route is changed during a tour the plan sign goes under the dot's names and
-     * every other part (direction triangle, ring, shadow) becomes an empty image ([PositionDot.planSignImages]).
-     * May throw (callers report).
-     */
-    private fun showPlanPuckImages() {
-        val badge = planBadge ?: return
-        val none = android.graphics.Bitmap.createBitmap(1, 1, android.graphics.Bitmap.Config.ARGB_8888)
-        PositionDot.planSignImages(planSign = true).forEach { (name, sign) -> style.addImage(name, if (sign) badge else none) }
     }
 
     @SuppressLint("MissingPermission")
@@ -442,12 +412,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                     .locationComponentOptions(puckOptions(heading.arrowGrey))
                     .build()
             )
-            // the plan sign may have been asked for before the dot existed
-            try { showPlanPuckImages() } catch (e: Exception) { Problems.warn("map", "Plan sign on the position not shown", e) }
-            // a render mode change (Plan ⇄ following, heading-up) writes MapLibre's own images again: the plan sign back on
-            lc.addOnRenderModeChangedListener {
-                try { showPlanPuckImages() } catch (e: Exception) { Problems.warn("map", "Plan sign on the position not shown after a render mode change", e) }
-            }
             lc.setCompassEngine(heading)
             heading.onViewHeading = { h -> facing.viewHeading = h.toFloat() }
             facing.unsure = heading.arrowGrey
