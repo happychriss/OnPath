@@ -63,22 +63,19 @@ async function menus(vp, tag) {
   await page.click('#results .hit');
   await page.waitForSelector('.holdpopup.pinmenu .pointmenu, #placecard.pinmenucard .pointmenu', { timeout: 30_000 });
   await shot(page, menusDir, `${tag}-2-pin-empty-plan`);
-  // Als Start, then a goal and a stop on the line
-  await page.locator('.holdpopup.pinmenu .pointmenu button, #placecard.pinmenucard .pointmenu button', { hasText: 'Nadel entfernen' }).first().click();
-  await page.fill('#q', '');
-  await clickLngLat(page, 11.16, 46.67);
-  await menuItem(page, 'Als Start');
-  await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 20_000 });
-  const s = await page.evaluate(() => window.__state.points[0]);
-  await clickLngLat(page, s[1] + 0.03, s[0] + 0.02);
-  await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2, null, { timeout: 20_000 });
-  await settled(page);
-  await page.click('#fitRoute').catch(() => {}); await page.waitForTimeout(1200);
-  const mid = await linePoint(page, 0.5);
-  await clickLngLat(page, mid[1], mid[0]);
-  await page.waitForFunction(() => document.querySelectorAll('.pin').length === 3, null, { timeout: 30_000 }).catch(() => log('no stop on the line'));
+  // a plan of three points (a named stop, so it has „Merken“ · Google) from a plan link
+  const code = await page.evaluate(() => window.__engine.encode({ points: [[46.665, 11.155], [46.671, 11.1605], [46.675, 11.168]],
+    activity: 'HIKE', sac: 2, pinned: [1], names: { 1: 'Gasthof Vellau' }, title: null }));
+  await page.goto(url + 'index.html?waitMs=0#p=' + code);
+  await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+  await page.evaluate(() => {
+    const engine = window.__engine, search = engine.search.bind(engine);
+    engine.search = async (text, ...rest) => { const hits = await search(text, ...rest); window.__searched = text; return hits; };
+  });
+  await page.waitForFunction(() => window.__state.points.length === 3, null, { timeout: 30_000 });
   await settled(page);
   await smallSheet(page, vp);
+  await idle(page);
   // 3 · the stop's menu: Als Start (Löscht den Punkt davor) | Google? (unnamed: no) | Löschen
   await page.locator('.pin').nth(1).click();
   await page.waitForSelector('.holdpopup .pointmenu');
