@@ -131,10 +131,10 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   check(l.state === 'no_data' && /Noch keine Daten/.test(l.text) && l.numbers === null, `before the first upload: "${l.text}"`);
   check(!(await V.evaluate(() => location.href)).includes('t='), 'the key is taken out of the address bar');
   check(l.foot === 'Kein Notruf-Dienst – im Notfall 112.', 'the fixed line: no emergency service');
-  const viewOf = (P) => P.evaluate(() => { const m = window.__map, b = m.getBounds();
+  const viewOf = async (P) => { await P.waitForFunction(() => window.__map, null, { timeout: 30_000 }); return P.evaluate(() => { const m = window.__map, b = m.getBounds();
     return { view: document.getElementById('mapbox').dataset.view ?? null, hiddenMap: getComputedStyle(document.getElementById('map')).visibility === 'hidden',
       wait: getComputedStyle(document.getElementById('mapWait')).display !== 'none' ? document.getElementById('mapWait').textContent : null,
-      w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() }; });
+      w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() }; }); };
   const inView = (v, lat, lon) => lat >= v.s && lat <= v.n && lon >= v.w && lon <= v.e;
   let v = await viewOf(V);
   check(v.view === null && v.hiddenMap && v.wait === 'Warte auf den ersten Standort …', `before the first upload: no fixed place on the map, "${v.wait}"`);
