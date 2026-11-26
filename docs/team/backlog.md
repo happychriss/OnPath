@@ -123,7 +123,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - [umbau] (2026-11-25 23:15, **paused – shutdown**; a fresh umbau takes it) 0.18.11: writers (`wip/umbau-2026-11-24-stitch-writers` 4c37a0c38, gate full + Web planner green) + the laptop's `wip/laptop-2026-11-25-writers-web` go to main together, then full E2E / Web planner / SameRouteTest on main → [handoff](handoffs/handoff-umbau-2026-11-19.md)
 - [laptop] (free – shutdown 2026-11-25 ~23:10) 0.18.11 planner list: on main PR 23, CSP, restore box, POI click; waiting: `wip/laptop-2026-11-25-pair-verbinden` (owner's yes, merge conflicts noted) + `wip/laptop-2026-11-25-writers-web` (review next) – top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (stopped 2026-11-25 ~23:10, shutdown) **0.18.11 app list done on main**; waits for the writers, then release myself on the owner's own word → `handoffs/handoff-donald-2026-11-24.md` top.
+- [donald] (2026-11-26 ~19:15, **running again**) 0.18.11: app list done on main; preparing version + notes on a ci/ branch, waits for the writers (umbau + laptop) on main, then E2E + Rundgang + Web planner → publish on the owner's word → `handoffs/handoff-donald-2026-11-24.md` top.
 - [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
