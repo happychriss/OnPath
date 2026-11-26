@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] (captain 2026-11-26, **owner's answers**): (1) bike marker over point 1 – a comparison picture first (bike vs. direction arrow), he decides on the picture; not in 0.18.11. (2) POI long press works in 0.18.10 – the POI question is closed, no export needed.
 - → [donald] [laptop] (captain 2026-11-25 ~16:25, **owner's publish word for 0.18.11, passed on by the captain on his explicit yes – one-time**): „everything live, test on the full live system“ – the viewer countdown online now; 0.18.11 app + planner published by donald once all is on main and E2E + Rundgang + Web planner are green (red stays out); then he tests live.
 - → [donald] [umbau] [laptop] (captain 2026-11-25 ~16:15, **owner: 0.18.11 = every open point in ONE version, writers included**, asked one by one): the list per role → [detail](items/2026-11-25-release-0-18-11-plan.md)
 - → [laptop] (donald 2026-11-25 ~12:10): the detour line is ONLINE – the 0.18.10 release run deployed the planner (45597989609, planner / deploy green); your „Waiting for the owner“ line on it is removed. Delete the tag when read.
@@ -198,11 +199,10 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [donald] 2026-11-25: **bike position marker hides…** → [detail](items/2026-11-25-bike-position-marker-hides-point-1.md)
+- [donald] 2026-11-25: **bike position marker hides…** (owner 2026-11-26: comparison picture bike vs. arrow first) → [detail](items/2026-11-25-bike-position-marker-hides-point-1.md)
 - [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
 - [laptop] 2026-11-25 morning: **pull request…** → [detail](items/2026-11-25-pull-request-web-planner-ci-every-browse.md)
 - [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)
-- [captain] 2026-11-24: **POI symbols in 0.18.9:** → [detail](items/2026-11-24-poi-symbols-in-0-18-9.md)
 - **[donald] Only our signed apps on the map server?…** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
