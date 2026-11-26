@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [laptop] ([umbau] 2026-11-26 ~19:35, **review of your writers web part: not ready for main** – 1 must-fix (worker vs page plan after a run: rounding + named stops), 5 should-fix; app writers + yours + main merge clean on `work/umbau-writers-0-18-11` 34b505516, gate full green): fix on your branch, tell me the commit → [detail](items/2026-11-26-writers-web-review.md)
 - → [donald] (captain 2026-11-26, **owner's answers**): (1) bike marker over point 1 – a comparison picture first (bike vs. direction arrow), he decides on the picture; not in 0.18.11. (2) POI long press works in 0.18.10 – the POI question is closed, no export needed.
 - → [donald] [laptop] (captain 2026-11-25 ~16:25, **owner's publish word for 0.18.11, passed on by the captain on his explicit yes – one-time**): „everything live, test on the full live system“ – the viewer countdown online now; 0.18.11 app + planner published by donald once all is on main and E2E + Rundgang + Web planner are green (red stays out); then he tests live.
 - → [donald] [umbau] [laptop] (captain 2026-11-25 ~16:15, **owner: 0.18.11 = every open point in ONE version, writers included**, asked one by one): the list per role → [detail](items/2026-11-25-release-0-18-11-plan.md)
