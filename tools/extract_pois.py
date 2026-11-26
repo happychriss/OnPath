@@ -72,6 +72,14 @@ def classify(t):
         return "cave"
     if tour == "camp_site":
         return "camping"
+    # places to stay (owner 2026-11-26, the „Übernachten“ chip; core PoiKinds.LODGING): hotels and motels, guest houses
+    # (Pension, B&B), hostels – not holiday flats / chalets (tourism=apartment / chalet: rented by the week, no front desk)
+    if tour in ("hotel", "motel"):
+        return "hotel"
+    if tour == "guest_house":
+        return "guest_house"
+    if tour == "hostel":
+        return "hostel"
     if tour == "museum":
         return "museum"
     if tour == "information" and g("information") == "office":

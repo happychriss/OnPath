@@ -3,92 +3,92 @@
   "height": 16,
   "pixelRatio": 1,
   "width": 16,
-  "x": 48,
-  "y": 168
+  "x": 0,
+  "y": 192
  },
  "bike-both-ways": {
   "height": 10,
   "pixelRatio": 1,
   "width": 18,
-  "x": 96,
-  "y": 168
+  "x": 48,
+  "y": 192
  },
  "bike-oneway-arrow": {
   "height": 8,
   "pixelRatio": 1,
   "width": 14,
-  "x": 120,
-  "y": 168
+  "x": 72,
+  "y": 192
  },
  "oneway-arrow": {
   "height": 8,
   "pixelRatio": 1,
   "width": 14,
-  "x": 72,
-  "y": 168
+  "x": 24,
+  "y": 192
  },
  "pattern-orchard": {
   "height": 12,
   "pixelRatio": 1,
   "width": 14,
   "x": 32,
-  "y": 192
+  "y": 216
  },
  "pattern-rock": {
   "height": 32,
   "pixelRatio": 1,
   "width": 32,
   "x": 54,
-  "y": 192
+  "y": 216
  },
  "pattern-sand": {
   "height": 9,
   "pixelRatio": 1,
   "width": 9,
   "x": 86,
-  "y": 192
+  "y": 216
  },
  "pattern-vineyard": {
   "height": 12,
   "pixelRatio": 1,
   "width": 8,
   "x": 46,
-  "y": 192
+  "y": 216
  },
  "pattern-wetland": {
   "height": 26,
   "pixelRatio": 1,
   "width": 32,
   "x": 0,
-  "y": 192
+  "y": 216
  },
  "poi-bar": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 24
+  "x": 96,
+  "y": 48
  },
  "poi-bar-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 24
+  "x": 120,
+  "y": 48
  },
  "poi-bike_shop": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 96,
-  "y": 144
+  "x": 48,
+  "y": 168
  },
  "poi-bike_shop-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 120,
-  "y": 144
+  "x": 72,
+  "y": 168
  },
  "poi-bivouac": {
   "height": 24,
@@ -108,29 +108,29 @@
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 96
+  "x": 96,
+  "y": 120
  },
  "poi-bus-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 96
+  "x": 120,
+  "y": 120
  },
  "poi-cafe": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 96,
-  "y": 24
+  "x": 48,
+  "y": 48
  },
  "poi-cafe-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 120,
-  "y": 24
+  "x": 72,
+  "y": 48
  },
  "poi-camping": {
   "height": 24,
@@ -150,99 +150,141 @@
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 48,
-  "y": 72
+  "x": 0,
+  "y": 96
  },
  "poi-castle-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 72,
-  "y": 72
+  "x": 24,
+  "y": 96
  },
  "poi-cave": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 48,
-  "y": 96
+  "x": 0,
+  "y": 120
  },
  "poi-cave-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 72,
-  "y": 96
+  "x": 24,
+  "y": 120
  },
  "poi-chapel": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 0,
+  "x": 144,
   "y": 96
  },
  "poi-chapel-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 24,
+  "x": 168,
   "y": 96
  },
  "poi-charging": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 144
+  "x": 96,
+  "y": 168
  },
  "poi-charging-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 144
+  "x": 120,
+  "y": 168
  },
  "poi-church": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 72
+  "x": 96,
+  "y": 96
  },
  "poi-church-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 72
+  "x": 120,
+  "y": 96
  },
  "poi-default": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 0,
+  "x": 144,
   "y": 168
  },
  "poi-default-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 24,
+  "x": 168,
   "y": 168
  },
  "poi-fast_food": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 0,
+  "x": 144,
   "y": 48
  },
  "poi-fast_food-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 24,
+  "x": 168,
   "y": 48
+ },
+ "poi-guest_house": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 96,
+  "y": 24
+ },
+ "poi-guest_house-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 120,
+  "y": 24
+ },
+ "poi-hostel": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 144,
+  "y": 24
+ },
+ "poi-hostel-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 168,
+  "y": 24
+ },
+ "poi-hotel": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 48,
+  "y": 24
+ },
+ "poi-hotel-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 72,
+  "y": 24
  },
  "poi-hut": {
   "height": 24,
@@ -262,99 +304,99 @@
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 48,
-  "y": 144
+  "x": 0,
+  "y": 168
  },
  "poi-info-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 72,
-  "y": 144
+  "x": 24,
+  "y": 168
  },
  "poi-lift": {
-  "height": 24,
-  "pixelRatio": 1,
-  "width": 24,
-  "x": 48,
-  "y": 120
- },
- "poi-lift-small": {
-  "height": 12,
-  "pixelRatio": 1,
-  "width": 12,
-  "x": 72,
-  "y": 120
- },
- "poi-museum": {
-  "height": 24,
-  "pixelRatio": 1,
-  "width": 24,
-  "x": 96,
-  "y": 96
- },
- "poi-museum-small": {
-  "height": 12,
-  "pixelRatio": 1,
-  "width": 12,
-  "x": 120,
-  "y": 96
- },
- "poi-parking": {
-  "height": 24,
-  "pixelRatio": 1,
-  "width": 24,
-  "x": 96,
-  "y": 120
- },
- "poi-parking-small": {
-  "height": 12,
-  "pixelRatio": 1,
-  "width": 12,
-  "x": 120,
-  "y": 120
- },
- "poi-picnic": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
   "x": 0,
   "y": 144
  },
- "poi-picnic-small": {
+ "poi-lift-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
   "x": 24,
   "y": 144
  },
- "poi-restaurant": {
+ "poi-museum": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
   "x": 48,
-  "y": 24
+  "y": 120
+ },
+ "poi-museum-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 72,
+  "y": 120
+ },
+ "poi-parking": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 48,
+  "y": 144
+ },
+ "poi-parking-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 72,
+  "y": 144
+ },
+ "poi-picnic": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 144,
+  "y": 144
+ },
+ "poi-picnic-small": {
+  "height": 12,
+  "pixelRatio": 1,
+  "width": 12,
+  "x": 168,
+  "y": 144
+ },
+ "poi-restaurant": {
+  "height": 24,
+  "pixelRatio": 1,
+  "width": 24,
+  "x": 0,
+  "y": 48
  },
  "poi-restaurant-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 72,
-  "y": 24
+  "x": 24,
+  "y": 48
  },
  "poi-ruins": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 96,
-  "y": 72
+  "x": 48,
+  "y": 96
  },
  "poi-ruins-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 120,
-  "y": 72
+  "x": 72,
+  "y": 96
  },
  "poi-shelter": {
   "height": 24,
@@ -374,56 +416,56 @@
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 48,
-  "y": 48
+  "x": 0,
+  "y": 72
  },
  "poi-shop-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 72,
-  "y": 48
+  "x": 24,
+  "y": 72
  },
  "poi-spring": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 48
+  "x": 96,
+  "y": 72
  },
  "poi-spring-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 48
+  "x": 120,
+  "y": 72
  },
  "poi-toilets": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 144,
-  "y": 120
+  "x": 96,
+  "y": 144
  },
  "poi-toilets-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 168,
-  "y": 120
+  "x": 120,
+  "y": 144
  },
  "poi-train": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 0,
+  "x": 144,
   "y": 120
  },
  "poi-train-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 24,
+  "x": 168,
   "y": 120
  },
  "poi-viewpoint": {
@@ -444,28 +486,28 @@
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 96,
-  "y": 48
+  "x": 48,
+  "y": 72
  },
  "poi-water-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 120,
-  "y": 48
+  "x": 72,
+  "y": 72
  },
  "poi-waterfall": {
   "height": 24,
   "pixelRatio": 1,
   "width": 24,
-  "x": 0,
+  "x": 144,
   "y": 72
  },
  "poi-waterfall-small": {
   "height": 12,
   "pixelRatio": 1,
   "width": 12,
-  "x": 24,
+  "x": 168,
   "y": 72
  }
 }

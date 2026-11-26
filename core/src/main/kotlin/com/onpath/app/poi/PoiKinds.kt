@@ -31,6 +31,9 @@ object PoiKinds {
         PoiKind("bivouac", PoiGroup.HUT, "☗", Res.string.poi_kind_bivouac),
         PoiKind("shelter", PoiGroup.HUT, "☂", Res.string.poi_kind_shelter),
         PoiKind("camping", PoiGroup.HUT, "⛺", Res.string.poi_kind_camping),
+        PoiKind("hotel", PoiGroup.HUT, "⌂", Res.string.poi_kind_hotel),
+        PoiKind("guest_house", PoiGroup.HUT, "⌂", Res.string.poi_kind_guest_house),
+        PoiKind("hostel", PoiGroup.HUT, "⌂", Res.string.poi_kind_hostel),
         PoiKind("restaurant", PoiGroup.FOOD, "♨", Res.string.poi_kind_restaurant),
         PoiKind("cafe", PoiGroup.FOOD, "☕", Res.string.poi_kind_cafe),
         PoiKind("bar", PoiGroup.FOOD, "▼", Res.string.poi_kind_bar),
@@ -67,16 +70,31 @@ object PoiKinds {
      */
     val defaultHidden: Set<String> = setOf(
         "shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
+        // hotels, guest houses, hostels (2026-11-26): a town full of beds is no hiking map – found with the
+        // „Übernachten“ chip ([LODGING]), shown on the map once the user turns them on
+        "hotel", "guest_house", "hostel",
     )
 
     /** Bumped whenever [defaultHidden] changes; stored next to the user's hidden kinds ([upgradeHidden]). */
-    const val DEFAULTS_VERSION = 2
+    const val DEFAULTS_VERSION = 3
+
+    /**
+     * Places to stay – THE one definition (owner 2026-11-26, the „Übernachten“ chip in app and planner,
+     * `SearchKinds.Category.SLEEP`; the multi-day tour's „Als Übernachtung“ sets a lodging place as the night's hotel at
+     * once): staffed huts, bivouacs, campsites, hotels / motels, guest houses, hostels. Not shelters (a roof against the
+     * rain, not planned to sleep in).
+     */
+    val LODGING: Set<String> = setOf("hut", "bivouac", "camping", "hotel", "guest_house", "hostel")
+
+    /** True for a place to stay ([LODGING]); null / unknown kinds are not. */
+    fun isLodging(kind: String?): Boolean = kind != null && kind in LODGING
 
     /** Earlier [defaultHidden] sets (oldest first): a stored set equal to one was never changed by the user. */
     private val oldDefaults: List<Set<String>> = listOf(
         setOf("bar", "fast_food", "shop", "bus", "parking", "toilets", "picnic", "info", "bike_shop", "charging",
             "church", "chapel"),
         setOf("shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging", "church", "chapel"),
+        setOf("shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging"),
     )
 
     /**

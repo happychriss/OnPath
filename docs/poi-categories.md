@@ -26,6 +26,9 @@ Named POIs win over unnamed ones of the same kind. Place and peak labels always 
 | `cafe` | food | Café | z14 | z15 | on |
 | `shelter` | hut | Shelter / Unterstand | z14 | z15 | on |
 | `camping` | hut | Campsite / Campingplatz | z14 | z15 | on |
+| `hotel` | hut | Hotel (OSM tourism=hotel, motel) | z14 | z15 | off |
+| `guest_house` | hut | Guest house / Pension (tourism=guest_house) | z14 | z15 | off |
+| `hostel` | hut | Hostel (tourism=hostel) | z14 | z15 | off |
 | `church` | sight | Church / Kirche | z14 | z15 | on |
 | `ruins` | sight | Ruins / Ruine | z14 | z15 | on |
 | `cave` | sight | Cave / Höhle | z14 | z15 | on |
@@ -94,3 +97,11 @@ bivouac 21, cave 15.
 ## Data change
 `tools/extract_pois.py` now merges bus stops with the same name within 40 m (both directions of a road)
 into one point at their midpoint (820 merged in the test region). Re-push `pois.geojson` to the phone.
+
+## Places to stay – „Übernachten“ (owner 2026-11-26)
+
+`PoiKinds.LODGING` (core) is the one definition: hut, bivouac, camping, hotel, guest_house, hostel (not shelter). It is the
+search chip „Übernachten“ / „Lodging“ (`SearchKinds.Category.SLEEP`, app and planner – huts are in Essen too) and
+`PoiKinds.isLodging` for the multi-day tour (a lodging place set as a night becomes its hotel). Hotels, guest houses and
+hostels are off on the map by default (calm map; `DEFAULTS_VERSION` 3). Holiday flats / chalets stay out. A Gasthof
+tagged amenity=restaurant stays a restaurant. Map areas built before 2026-11-27 have no hotels (rebuild needed).
