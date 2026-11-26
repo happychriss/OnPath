@@ -27,24 +27,23 @@ object OnPathColors {
      * Primary: the muted forest green of onpath.earth (white on it 7.5:1). The launcher icon keeps its brighter
      * `#1F6E43` (res/values/colors.xml) – the logo is separate from the UI palette.
      */
-    // owner 2026-11-26 night, colour option 3 (warm off-white, one green, no walnut / sage) – own commit, easy to revert
-    val Green = Color(0xFF2D7050)
+    val Green = Color(0xFF245F46)
     /**
      * Navigate's one green (owner 2026-11-26 evening: "ist das Grün etwas zu dunkel?") – every go button ([ActionGo]),
      * Anhalten, the map-button icons and the question edge in Navigate; the brand [Green] stays.
      */
-    val NavGreen = Color(0xFF2D7050)
+    val NavGreen = Color(0xFF245F46)
 
     /**
      * Light olive container: the selection – selected chips / segments / picker rows, the activity chip (the theme's
      * secondary + primary container, owner 2026-11-12 palette D "wie die Webseite"; was walnut) and the "easy" badge.
      * Two shades stronger than the website's `#EDF1E3`, so it still stands out in sunlight; [Ink] on it 9.6:1.
      */
-    val GreenLight = Color(0xFFE3EEE7)
+    val GreenLight = Color(0xFFE1EAD5)
     /** Text on light surfaces: the website's dark green-grey (11.4:1 on [Paper], 10.3:1 on the sage page [PaperDim]). */
-    val Ink = Color(0xFF22231F)
+    val Ink = Color(0xFF243C31)
     /** Secondary text: detail lines, explanations (Material `onSurfaceVariant`); ≥ 6.7:1 on every ground. */
-    val InkMuted = Color(0xFF55534D)
+    val InkMuted = Color(0xFF4A4F4A)
     /** White: fields one types into, rings around point signs and text / icons on a coloured button – no surfaces. */
     val CardWhite = Color(0xFFFFFFFF)
 
@@ -54,23 +53,23 @@ object OnPathColors {
      * The paper of every surface – menus, dialogs, sheets, what floats over the map (search pill, message boxes,
      * Navigate's cards): the website's `#FAFAF6`.
      */
-    val Paper = Color(0xFFFAF8F4)
+    val Paper = Color(0xFFFAFAF6)
     /**
      * Cards in lists (Settings, Meine Touren): the same paper as [Paper] – they lift off the sage page ([PaperDim], 1.1:1)
      * with the warm low shadow.
      */
-    val CardPaper = Color(0xFFFAF8F4)
+    val CardPaper = Color(0xFFFAFAF6)
     /**
      * A deeper sage for groups inside a paper surface: the plan sheet's pill row, filled fields, a lifted row (the theme's
      * surfaceContainerHighest), 1.2:1 against [Paper]; plan blue on it 5.7:1.
      */
-    val PaperDeep = Color(0xFFEDE9E1)
+    val PaperDeep = Color(0xFFE4E8DD)
     /**
      * The page: the website's soft sage `#EEF0E8` (its `--site-soft`) behind paper cards (Settings, My routes) and the
      * boxes inside a paper surface (the facts box, preview tiles) – the cards stand out without any white. Also the
      * theme's surfaceVariant.
      */
-    val PaperDim = Color(0xFFF3F0EA)
+    val PaperDim = Color(0xFFEEF0E8)
     /**
      * The ground of what floats over the map in Plan and Navigate (owner 2026-11-12 on the Pixel: "nimm das leichte Grün
      * auch für die Planseite"): Plan's top band, search pill and ☰, the map control column + undo, the plan sheet (all its
@@ -87,7 +86,7 @@ object OnPathColors {
      * app's dark green, stops near black, the goal dark red – no white ring; they stand apart from the blue route by hue.
      * Keep in step with MapController.POINT_*.
      */
-    val PointStart = Color(0xFF2D7050)
+    val PointStart = Color(0xFF245F46)
     val PointStop = Color(0xFF262A2E)
     val PointGoal = Color(0xFFA32020)
     val Gpx = Color(0xFF8E24AA)
@@ -144,7 +143,7 @@ object OnPathColors {
      * without a meaning of its own – Cancel, OK, Close, settings – a dark earth tone, so green means only "to the
      * navigation" and blue only "plan" (white 10.2:1; told apart from green also with red-green weakness).
      */
-    val Walnut = Color(0xFF3A3934)
+    val Walnut = Color(0xFF4A3F37)
     /**
      * The map compass's needle (owner 2026-11-07 00:50: "die rote Nadel ist unstylisch – ein blauer Kompass"): north half ink
      * blue ([ActionEdit], 6.8:1 on paper), south half a walnut-tinted grey (3.6:1 on paper, ≥ 3:1 for a graphic) – no red
@@ -153,7 +152,7 @@ object OnPathColors {
     val CompassNorth = ActionEdit
     val CompassSouth = Color(0xFF8C827A)
     /** Fine lines on paper and sage (dividers, a card's edge – the theme's outlineVariant): the website's line tone. */
-    val Line = Color(0xFFE5E0D6)
+    val Line = Color(0xFFD2DACD)
 
     // ---- Plan mode (owner 2026-11-06 23:00, variant C): recognised by signs, not by tinted surfaces – the PLANEN pill,
     // the sheet's blue top edge and handle, blue icons and blue buttons; no light blue surfaces, no blue glow round the
@@ -170,7 +169,7 @@ object OnPathColors {
      * the route overview's "Los geht's" / "Folgen"): the plan ink blue, white words 7.1:1 – owner 2026-11-12 ("Der ist
      * dann auch blau"; one rule: in Plan every go button blue, in Navigate everything green). [ActionButtons.planGo].
      */
-    val PlanGo = Green
+    val PlanGo = ActionEdit
     /** The "Ohne Netz ✓" sign on the plan's mode pill ([PlanAccent]): a light green, ≥ 4.5:1 on it (OfflineReady). */
     val OnPlanGood = Color(0xFFB9F6CA)
     /** The "Ohne Netz ⚠" sign on the plan's mode pill: a light amber, ≥ 4.5:1 on [PlanAccent]. */
@@ -273,14 +272,14 @@ private val scheme = lightColorScheme(
     error = OnPathColors.Error,
     errorContainer = OnPathColors.ErrorContainer,
     onErrorContainer = OnPathColors.OnErrorContainer,
-    inversePrimary = Color(0xFFCFCBC2),
-    outline = Color(0xFF77746C),
+    inversePrimary = Color(0xFFD9C8BA),
+    outline = Color(0xFF737970),
     outlineVariant = OnPathColors.Line,
     // Neutral (slightly green) containers instead of Material's default purple tint:
     // menus, sheets, cards and chips all take these.
     surfaceTint = OnPathColors.Walnut,
     surfaceBright = OnPathColors.Paper,
-    surfaceDim = Color(0xFFDFDBD3),
+    surfaceDim = Color(0xFFDADDD7),
     surfaceContainerLowest = Color.White,
     surfaceContainerLow = OnPathColors.Paper,
     surfaceContainer = OnPathColors.Paper,       // menus
