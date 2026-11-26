@@ -12,13 +12,13 @@
     <string name="sync_waiting_browser">Wartet auf den Browser …</string>
     <string name="sync_menu_synced">abgeglichen %1$s</string>
     <string name="sync_intro">Deine gespeicherten Pläne und importierten GPX-Tracks können auch im Web-Planer auf deinem Computer sein – in beide Richtungen, verschlüsselt, bevor sie das Gerät verlassen.</string>
-    <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth und klicke oben auf „Handy verbinden“. Scanne den Code dort mit der Kamera deines Handys – OnPath öffnet sich und zeigt sechs Prüfziffern.</string>
+    <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth und klicke oben auf „Handy koppeln“. Scanne den Code dort mit der Kamera deines Handys – OnPath öffnet sich und zeigt sechs Prüfziffern.</string>
     <string name="sync_open_camera">Kamera öffnen</string>
     <string name="sync_no_camera">Keine Kamera-App gefunden – öffne die Kamera selbst und scanne den Code.</string>
-    <string name="sync_pair_hint">Öffne am PC plan.onpath.earth → ‚Handy verbinden‘ und scanne den Code</string>
-    <string name="sync_ask_title">Mit diesem Browser verbinden?</string>
+    <string name="sync_pair_hint">Öffne am PC plan.onpath.earth → ‚Handy koppeln‘ und scanne den Code</string>
+    <string name="sync_ask_title">Mit diesem Browser koppeln?</string>
     <string name="sync_ask_check">Prüfe: %1$s – der Browser zeigt dieselben sechs Ziffern.</string>
-    <string name="sync_pair">Verbinden</string>
+    <string name="sync_pair">Koppeln</string>
     <string name="sync_paired_plan">Verbunden. Was du im Browser speicherst, kommt auf dein Handy – dort bleibt alles gespeichert.</string>
     <string name="sync_paired_with">Verbunden mit %1$s</string>
     <string name="sync_paired_browser">Mit einem Browser verbunden</string>
@@ -50,7 +50,7 @@
     <string name="sync_already_paired">Dieses Handy ist schon mit diesem Browser verbunden.</string>
     <string name="sync_join_offline">Der Browser war nicht erreichbar – prüfe die Verbindung und scanne den Code noch einmal.</string>
     <string name="sync_join_used">Dieser Code gilt nicht mehr – lass dir im Browser einen neuen Code zeigen und scanne ihn.</string>
-    <string name="sync_join_failed">Verbinden mit diesem Browser hat nicht geklappt – lass dir im Browser einen neuen Code zeigen und scanne ihn noch einmal.</string>
+    <string name="sync_join_failed">Koppeln mit diesem Browser hat nicht geklappt – lass dir im Browser einen neuen Code zeigen und scanne ihn noch einmal.</string>
     <string name="sync_copy">Kopie</string>
     <string name="sync_link_broken">Dieser Verbindungscode lässt sich nicht lesen. Lass den Code im Browser noch einmal anzeigen und scanne ihn erneut.</string>
     <string name="sync_during_tour">Pläne gleichen sich nach der Tour ab</string>
