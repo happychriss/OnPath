@@ -80,7 +80,7 @@
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "1f5326371178d3f828ae14bc6df75262f386c249"
+      "blob": "a0351e59727be8e51fec5d82aecc5e4b311e14f2"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/poi/PinnedPoiKinds.kt",
