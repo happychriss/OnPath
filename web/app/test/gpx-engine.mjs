@@ -60,12 +60,12 @@ e.historyImport(e.historyExport()); // a fresh worker gets the history and the r
 check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true)).what === 'ROUTE', '„Plan anyway“ survives a fresh worker');
 // „Weiter warten?“: the time limit, then wait on → the next run has one period more
 const slow = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true));
-e.runEnd(slow.gen, 'slow', 1);
+e.runEnd(slow.gen, 'slow', 1, '');
 e.historyImport(e.historyExport()); // the open question survives a fresh worker too
 e.runSlowAnswer(true);
 const again = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true));
 check(again.what === 'ROUTE' && again.rounds === 2, `„Weiter warten“: the run again with 2 periods (${JSON.stringify(again)})`);
-e.runEnd(again.gen, 'ok', 2);
+e.runEnd(again.gen, 'ok', 2, '');
 check(JSON.parse(e.runHead(dayHike, 'HIKE', 2, true)).rounds === 1, 'the next run starts at one period again');
 // Cancel of the question with nothing to take back (a plan opened): left as too long – „Plan anyway“ then plans it unasked
 e.historyImport('#');

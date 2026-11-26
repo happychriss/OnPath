@@ -75,13 +75,14 @@ export class EngineClient {
     if (req.type === 'call' && req.fn === 'paceSet') this.pace = req.args;
     // a GPX track's fit routes for minutes on a long tour (multi-day tours stage 3): stoppable like a plan (dropPlans)
     if (req.type === 'plan' || req.type === 'planFromTrack') this.plans.set(id, 0);
-    // a step of the detour check (WebApi.detourAt, the app's PlanDetourCheck): the next edit stops it at once like the app's
-    // detourCheck.stop() – it counts as routing for longer than the grace already, so dropPlans replaces a worker still in it
-    // … and the idle settling of a plan with detour points (WebApi.settleRun – one long call, the lowest priority)
-    if (req.type === 'call' && (req.fn === 'detourAt' || req.fn === 'settleRun')) this.plans.set(id, performance.now() - EngineClient.DROP_GRACE_MS);
+    // a step of the detour check (WebApi.detourAt, the app's PlanDetourCheck) or of the idle settling (WebApi.settleStep, the
+    // app's PlanSettle – one leg a step as well): the next edit stops it at once like the app's detourCheck.stop() / stopSettle()
+    // – it counts as routing for longer than the grace already, so dropPlans replaces a worker still in it
+    if (req.type === 'call' && EngineClient.STEPS.includes(req.fn)) this.plans.set(id, performance.now() - EngineClient.DROP_GRACE_MS);
     // … and so does every request an edit, a link, Neu or Undo begins with (they come before the plan's dropPlans and would
-    // wait behind the step); a hold's measure does not – the check gives way to it by itself (main.ts checkDetours)
-    else if (EngineClient.endsDetour(req)) this.stopDetour();
+    // wait behind the step). A hold's measure, a menu or a tap on the map does not: it waits one step at most, and the
+    // check gives way to a hold by itself (main.ts checkDetours, settleLine)
+    else this.stopSteps([...(EngineClient.endsDetour(req) ? ['detourAt'] : []), ...(EngineClient.endsSettle(req) ? ['settleStep'] : [])]);
     return new Promise((resolve) => {
       const noAnswer = () => {
         if (!this.waiting.delete(id)) return;
@@ -98,16 +99,29 @@ export class EngineClient {
     });
   }
 
+  /** The background steps an edit stops (detour check, idle settling): one leg each, never waited for. */
+  private static readonly STEPS = ['detourAt', 'settleStep'];
+
   /** A request that begins a new plan or an edit (the app's newRunStarts → detourCheck.stop()). */
   private static endsDetour(req: NoId<EngineRequest>): boolean {
     if (req.type === 'plan' || req.type === 'edit' || req.type === 'parse' || req.type === 'planFromTrack' || req.type === 'gpxRead') return true;
-    // (a hold or a menu on the map also: the one worker would keep them waiting behind the settling)
-    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch', 'holdOnMap', 'pointMenu', 'placeMenu', 'placeEdit', 'gesture'].includes(req.fn);
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch'].includes(req.fn);
   }
 
-  /** A detour step still in the worker is stopped at once: a fresh worker ([restart]); its promise answers {cancelled}. */
-  private stopDetour() {
-    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return r?.type === 'call' && (r.fn === 'detourAt' || r.fn === 'settleRun'); });
+  /**
+   * A request that begins a run of a changed plan (the app's PlanRecalcState.begin → stopSettle()): the settling of the plan
+   * before it would only be dropped. A link read, a GPX file opened or fitted (parse, gpxRead, planFromTrack – a suggestion
+   * fits tracks while the plan stays) may leave the plan as it is: they wait their one leg instead of throwing the settle away.
+   */
+  private static endsSettle(req: NoId<EngineRequest>): boolean {
+    if (req.type === 'plan' || req.type === 'edit') return true;
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch'].includes(req.fn);
+  }
+
+  /** The steps [fns] still in the worker are stopped at once: one fresh worker ([restart]); their promises answer {cancelled}. */
+  private stopSteps(fns: string[]) {
+    if (!fns.length) return;
+    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return r?.type === 'call' && fns.includes(r.fn); });
     if (ids.length) this.restart(ids);
   }
 
@@ -119,7 +133,9 @@ export class EngineClient {
    * {cancelled: true} – the page ignores it as it ignores every superseded plan.
    */
   dropPlans() {
-    const ids = [...this.plans.keys()];
+    // not a settling step: it waits one leg at most, and every change of the plan ends it by its first request ([endsSettle]) –
+    // a GPX import's Cancel (gpximport.ts) must not throw away the settling of the plan it leaves as it is
+    const ids = [...this.plans.keys()].filter((i) => { const r = this.sent.get(i); return !(r?.type === 'call' && r.fn === 'settleStep'); });
     if (!ids.length) return;
     for (const target of ids) this.worker.postMessage({ type: 'drop', id: 0, target } as EngineRequest);
     const blocking = () => ids.some((i) => { const at = this.plans.get(i) ?? 0; return at > 0 && performance.now() - at >= EngineClient.DROP_GRACE_MS; });

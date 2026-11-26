@@ -867,25 +867,35 @@ object Engine {
     /** The answer to the long-plan question for the plan [points] (RouteRun.LongAnswer): yes = not asked again for them. */
     fun runLongAnswer(yes: Boolean, points: String) = chain.longAnswer(yes, parsePoints(points))
 
-    /** The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open). */
-    fun runEnd(gen: Int, outcome: String, rounds: Int) {
+    /**
+     * The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open).
+     * [names] = the run's named stops, lines "index<TAB>name" (as for [plan]): they keep their place in the chain's snap too.
+     */
+    fun runEnd(gen: Int, outcome: String, rounds: Int, names: String = "") {
         if (gen / EPOCH != epoch) { Problems.trace("plan", "the end of a run of an earlier chain – ignored ($outcome)"); return }
-        chain.end(gen % EPOCH, outcome, rounds) { lastResultFor(it) }
+        chain.end(gen % EPOCH, outcome, rounds, parseNames(names)) { lastResultFor(it) }
     }
 
     /**
-     * The idle settling of the run last taken (the app's PlanRecalcSlice.routeTaken, §8.15): every leg of a plan with detour points
-     * routed on its own so each device ends on the same line, then the line again from the cache. The page's plan JSON of the
-     * settled line, or "null" (nothing to settle, an edit came first, a leg missing from the cache: the line stays). One blocking
-     * call, started once the taken line is shown; an edit replaces the worker still in it (client.ts, as the detour check).
+     * One step of the idle settling of the run last taken (the app's PlanRecalcSlice.routeTaken, §8.15): the next leg of a plan
+     * with detour points routed on its own so each device ends on the same line; at the end the line again from the cache.
+     * "more" (call again), the page's plan JSON of the settled line, or "null" (nothing to settle, an edit came first, a leg
+     * missing from the cache: the line stays). One leg a call, like [detourAt]: a menu or a hold waits one leg at most; an
+     * edit replaces the worker still in it (client.ts).
      */
-    fun settleRun(names: String): String {
+    fun settleStep(names: String): String {
         val t0 = System.currentTimeMillis()
         return try {
-            val res = chain.settleNow(engine())?.withNamed(parseNames(names).filterValues { it.isNotBlank() }.keys) ?: return "null"
-            lastResult = res
-            planJson(res, parseNames(names), System.currentTimeMillis() - t0, null, lastReach)
+            when (val st = chain.settleStep(engine())) {
+                WebPlanChain.SettleStep.More -> "more"
+                is WebPlanChain.SettleStep.Done -> {
+                    val res = st.res?.withNamed(parseNames(names).filterValues { it.isNotBlank() }.keys) ?: return "null"
+                    lastResult = res
+                    planJson(res, parseNames(names), System.currentTimeMillis() - t0, null, lastReach)
+                }
+            }
         } catch (e: Exception) {
+            chain.stopSettle()
             Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", e)
             "null"
         }
@@ -1336,10 +1346,10 @@ external fun planProgress(text: String)
 @JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
 @JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String): String = Engine.runHead(points, activity, sac, askLong, pinned)
 @JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
-@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
+@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int, names: String) = Engine.runEnd(gen, outcome, rounds, names)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
 
-@JSExport fun settleRun(names: String): String = Engine.settleRun(names)
+@JSExport fun settleStep(names: String): String = Engine.settleStep(names)
 
 @JSExport fun recalcRow(points: String, activity: String, sac: Int): Boolean = Engine.recalcRow(points, activity, sac)
 

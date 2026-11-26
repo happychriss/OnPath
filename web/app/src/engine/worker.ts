@@ -58,8 +58,8 @@ interface WasmEngine {
   planCancel(cause: string, points: string, activity: string, sac: number, why: string): string;
   runHead(points: string, activity: string, sac: number, askLong: boolean, pinned: string): string;
   runLongAnswer(yes: boolean, points: string): void;
-  runEnd(gen: number, outcome: string, rounds: number): void;
-  settleRun(names: string): string;
+  runEnd(gen: number, outcome: string, rounds: number, names: string): void;
+  settleStep(names: string): string;
   recalcRow(points: string, activity: string, sac: number): boolean;
   recalcScratch(points: string, activity: string, sac: number): boolean;
   runSlowAnswer(wait: boolean): void;
@@ -99,8 +99,8 @@ const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'histo
   'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore',
   // the plan menu's "Ganz neu berechnen" (PlanEditState.recalcRow)
   'recalcRow', 'recalcScratch',
-  // the idle settling of a plan with detour points (WebApi.settleRun – the app's PlanSettle)
-  'settleRun',
+  // the idle settling of a plan with detour points (WebApi.settleStep – the app's PlanSettle, one leg a call)
+  'settleStep',
   // the app's texts for map areas on demand and waits (WebMaps.kt)
   'mapTexts',
   // plan sync (WebSync.kt – the app's com.onpath.app.sync)
@@ -462,7 +462,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const out = fn(...req.args);
       reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined,
         anchors: HISTORY.has(req.fn) ? e.anchorsNow() : undefined });
-      if (req.fn === 'historySnap' || req.fn === 'settleRun') legsOut(e); // the legs kept under the snapped points (the plan as saved)
+      if (req.fn === 'historySnap' || req.fn === 'settleStep') legsOut(e); // the legs kept under the snapped points (the plan as saved), each settled leg
       return;
     }
     if (req.type === 'prefetch') {

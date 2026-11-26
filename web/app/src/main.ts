@@ -1480,6 +1480,15 @@ function fitPadding(): maplibregl.PaddingOptions {
 }
 
 /** The open plan, as it routes now, runs through the same hidden via points as [shared] (the same points alone are not the same route). */
+/** The open plan's detour points as a plan code of [plan]'s profile keeps them (the engine's anchorsCounting). */
+async function anchorsCountingFor(plan: SharedPlan): Promise<string> {
+  try {
+    return await engine.call('anchorsCounting', enc(state.points), plan.activity, plan.sac);
+  } catch (e) {
+    problem('plan', 'the detour points of the saved route\'s profile not read – all of them compared', e);
+    return engine.anchors;
+  }
+}
 async function sameAnchors(shared: SharedPlan) {
   return (shared.anchors ?? '') === await engine.call('anchorsCounting', enc(shared.points), state.activity, state.sac);
 }
@@ -1706,7 +1715,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   if (state.points.length < 2) {
     problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`);
     // the run [gen] ends here: the engine's RouteRun must not stay in Routing with nothing running
-    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds).catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
+    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds, '').catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
     return;
   }
   const id = ++state.latest;
@@ -1719,7 +1728,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   // app's cancelRouting); a fast route shows nothing (no flash)
   let run: PlanIn = { done: 0, total: 0, checking: false, join: null, names: namesText(), points: state.points.length, known: false };
   overlay.plan(run, () => { cancelRouting(); });
-  const routed = state.points;
+  const routed = state.points, routedNames = namesText(); // the run's named stops: the engine's chain keeps them in place as the plan does (runEnd)
   const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
     run = { ...run, known: true };
@@ -1735,9 +1744,9 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
       if (pr.phase === 'legs') run = { ...run, join: null, done: pr.done ?? 0, total: pr.total ?? 0, checking: (pr.total ?? 0) > 0 && (pr.done ?? 0) >= (pr.total ?? 0) };
     }
     if (id === state.latest && state.planning) overlay.plan(run);
-  }, namesText(), rounds);
+  }, routedNames, rounds);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
-  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds)
+  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds, routedNames)
     .catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
   setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
@@ -1773,23 +1782,37 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
 /**
  * The idle settling (detour-stitch.md §8.15, the app's PlanRecalcSlice.routeTaken): a plan with detour points has its legs routed on
  * their own so every device ends on the same line; then the line is shown again, quietly – no fit, no sheet, no notice, no undo step.
- * The engine does it in one long call (WebApi.settleRun) after the taken run; an edit, a hold or Neu replaces the worker still in
- * it (client.ts), and the plan is not touched. Only for the plan still shown. body[data-settle] = "<plan>:done|shown" (the tests).
+ * The engine does it one leg a call (WebApi.settleStep, like the detour check's detourAt) after the taken run, so Save, a menu or a
+ * search waits one leg at most and the legs routed so far are kept; it gives way to a hold as the detour check does. An edit, Undo
+ * or a new run replaces the worker still in it (client.ts endsSettle), and the plan is not touched. Only for the plan still shown.
+ * A step stopped while the plan stayed (a fresh worker for another reason) is quiet and asked again – a fresh worker has no taken
+ * run to settle, so it ends there and the next run settles. body[data-settle] = "<plan>:running|done|shown" (the tests).
  */
 async function settleLine(id: number) {
   const points = enc(state.points);
-  const same = () => id === state.latest && !state.planning && enc(state.points) === points && !state.tour;
+  // a multi-day tour settles too: the app's PlanRecalcSlice.tourRuns skips only a tour that runs (touring, recording,
+  // navigating) – the planner has none, its multi-day tour is a plan
+  const same = () => id === state.latest && !state.planning && enc(state.points) === points;
   if (!same() || !engine.anchors) return; // no detour points: nothing to settle (the page's copy of the engine's)
   document.body.dataset.settle = `${id}:running`;
   try {
-    const text = await engine.call('settleRun', namesText());
-    if (text === 'null' || !same()) { if (same()) document.body.dataset.settle = `${id}:done`; return; }
-    state.plan = JSON.parse(text);
-    planGaps.set(state.plan!.gaps);
-    document.body.dataset.settle = `${id}:shown`;
-    render();
+    for (;;) {
+      await holdsOver(); // a hold measures first (the one worker): the settling goes on after it
+      if (!same()) return;
+      const text = await engine.call('settleStep', namesText());
+      if (!same()) return; // an edit is on its way: its run settles anew
+      if (text === 'more') continue;
+      if (text === 'null') { document.body.dataset.settle = `${id}:done`; return; }
+      const plan = JSON.parse(text);
+      if (plan.cancelled) { console.info('[settle] a step was stopped with the plan as it is – asked again'); continue; }
+      state.plan = plan;
+      planGaps.set(state.plan!.gaps);
+      document.body.dataset.settle = `${id}:shown`;
+      render();
+      return;
+    }
   } catch (e) {
-    // a settling of a replaced worker answers {cancelled}: nothing to report – the edit is on its way
+    // the engine itself did not answer (a crashed or hanging worker): the line stays as it is
     if (same()) problem('routing', 'Settling the plan\'s line failed – the line stays as it is', e, 'warn');
   }
 }
@@ -2106,8 +2129,9 @@ async function savedPlanChanged(): Promise<boolean> {
   // a multi-day tour's days and nights are part of it (multi-day tours §1 #10: saved as every plan – so a change asks for Save)
   const saved = await savedPoints(state.savedCode).plan;
   // the detour points are saved with the route (the app's PlanDocument.unsaved: points alike, other detour points = not saved –
-  // "Ganz neu berechnen" on a saved route): the saved code carries them, so the mark holds across a reload
-  if ((saved?.anchors ?? '') !== engine.anchors) return true;
+  // "Ganz neu berechnen" on a saved route): the saved code carries them, so the mark holds across a reload. Those of the saved
+  // route's profile only, as the code keeps them (sameAnchors): detour points of another profile are not saved, never a change
+  if ((saved?.anchors ?? '') !== (saved ? await anchorsCountingFor(saved) : engine.anchors)) return true;
   return tourText(saved?.tour) !== tourText(state.tour);
 }
 /** The plan on the map differs from its saved version (or was never saved) – Meine Touren's „Speichern“ on its row. */
@@ -2521,6 +2545,9 @@ function recalcFromScratch() {
     if (await engine.call('recalcScratch', enc(state.points), state.activity, state.sac) !== 'true') { void refreshRecalcRow(); return null; }
     runCause = 'edit'; state.otherRouting = false;
     editBefore = { points: state.points, names: state.meta.map((m) => m.name) };
+    // an undo step of the engine's history: the tour beside it gets its step too (as commit does), so Undo of a multi-day
+    // tour brings back its own days and nights, not those of the step before
+    tourUndo.push(state.tour); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0;
     return { planned: changed() };
   });
 }
