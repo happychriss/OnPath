@@ -132,7 +132,7 @@ abstract class E2EBase {
     protected fun startPlanWithTwoPoints() {
         val (w, h) = mapSize()
         hold(w * 0.35f, h * 0.40f)
-        clickText("Start here")
+        clickText("Set as start")
         waitUntil("first point") { waypointCount() == 1 }
         hold(w * 0.65f, h * 0.45f)
         waitUntil("second point by a hold") { waypointCount() == 2 }
