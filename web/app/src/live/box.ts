@@ -17,6 +17,8 @@ export interface BoxState {
   ended: number | null;
   /** ms since the phone's last upload, by the server's clock plus the time since that answer; null = no answer yet. */
   sinceLastWrite: () => number | null;
+  /** When the phone last uploaded, by the server's clock (ms) – the viewer's own clock may be wrong; null = no answer yet. */
+  lastWriteMs: number | null;
   /** The last question failed (offline, 429, 5xx): the page says so quietly. */
   unreachable: boolean;
 }
@@ -35,6 +37,7 @@ export class LiveBox {
   private unreachable = false;
   /** server now − lastWrite at the last answer, and when (this page's steady clock) that answer came */
   private age: { ms: number; at: number } | null = null;
+  private lastWrite: number | null = null;
   private emptyAsks = 0;
   private retryAfter = -1;
   private timer = 0;
@@ -56,7 +59,7 @@ export class LiveBox {
     const max = this.head?.chunks;
     const chunks = [...this.chunks.values()].filter((c) => max == null || c.n < max).sort((a, b) => a.n - b.n);
     return { dead: this.dead, head: this.head, headBlob: this.headBlob, route: this.route, chunks, ended: this.ended,
-      sinceLastWrite: () => (this.age ? this.age.ms + (performance.now() - this.age.at) : null), unreachable: this.unreachable };
+      sinceLastWrite: () => (this.age ? this.age.ms + (performance.now() - this.age.at) : null), lastWriteMs: this.lastWrite, unreachable: this.unreachable };
   }
 
   private get over() { return this.dead != null || this.ended != null || this.head?.state === 'ended'; }
@@ -106,6 +109,7 @@ export class LiveBox {
           items: { name: string; rev: number; blob: string }[] };
         this.unreachable = false;
         this.age = { ms: Math.max(0, j.now - j.lastWrite), at: performance.now() };
+        this.lastWrite = j.lastWrite;
         if (j.ended != null) this.ended = j.ended;
         if (j.rev > this.since) fresh = true;
         for (const it of j.items) if (!this.take(it.name, it.blob)) { this.dead = 'broken'; break; }

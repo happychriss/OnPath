@@ -60,45 +60,58 @@ dot and a line in the Problems log – nothing else.
 `https://plan.onpath.earth/live/` – a page of its own beside the planner, made for a phone screen (she opens it from
 the chat), works on a desktop too. No app, no login. German / English by the browser's language.
 
+Look (owner 2026-11-26, design „A“ of three, chosen from pictures): friendly and calm like the location apps people
+know – not a navigation or hiking app. Only what matters to the family now (VISION.md); no distance walked / time /
+ascent any more.
+
 ```
 ┌──────────────────────────────────────┐
-│ Christians Tour · Wandern            │
-│ ● Unterwegs · zuletzt vor 2 Min.     │   ← the one line that matters
-├──────────────────────────────────────┤
+│      ( ● Live · nächster Punkt in 1:12 )   ← pill: countdown / „gleich …“ / „Letzte Meldung 14:32“
 │                                      │
-│      our map (same look as the app)  │
+│      our map (same look as the app), full height
 │      ─── planned route (if any)      │
 │      ━━━ the way so far              │
 │        ◉ last place                  │
-│                                      │
-├──────────────────────────────────────┤
-│ 12,4 km · 3:10 h · ↑ 640 m           │
-│ noch 6,2 km · Ankunft ca. 16:40      │   ← only when he follows a plan
-│ Handy-Akku 43 %                      │
-│ Letzter Ort 14:02 · 46.6890, 11.1400 │   ← tap: copy / open in a map app
+╭──────────────────────────────────────╮   ← a soft rounded sheet
+│ (C) Christian                        │   ← initial (no name: a person symbol, „Geteilter Standort“)
+│     Alles okay, unterwegs            │   ← the one sentence that matters
+│ ┌──────────────────────────────────┐ │
+│ │ ⚑ Ankunft   ca. 16:40 · noch 4,2 km │   ← only when he follows a plan
+│ │ ▭ Akku                       64 %│ │   ← no contact: „41 % · um 14:32“
+│ │ ◉ Zuletzt              vor 2 Min.│ │
+│ │            14:02 · 46.68900, 11.14000 │   ← the last place as text, always
+│ └──────────────────────────────────┘ │
+│ [ Koordinaten ]  [ In Karten öffnen ] │
+│   Kein Notruf-Dienst – im Notfall 112.│
 └──────────────────────────────────────┘
 ```
 
-The status line, in this order of priority (calm words – a dead zone in the mountains is normal and must not frighten):
+The status sentence, in this order of priority – **the fact only, never a guess why** (owner 2026-11-26: „nur was die
+Tatsache ist“; a dead zone in the mountains is normal and must not frighten):
 
-| State | Line |
+| State | Sentence |
 | --- | --- |
-| moving, fresh | „● Unterwegs · zuletzt vor 2 Min.“ (green) |
-| paused / standing > 5 min | „● Pause seit 12 Min.“ |
-| away from the planned route (the app's own off-route alarm) | „● Abseits der geplanten Route (150 m)“ (amber) |
-| no upload for > 10 min | „● Kein Kontakt seit 25 Min. – ohne Netz normal. Letzter Ort 14:02“ (grey, amber after 60 min) |
-| tour ended | „Tour beendet 16:42“ (+ „am Ziel“ when the plan's end was reached) |
+| tour ended | „Angekommen · 16:52“ (green) when the plan's end was reached, else „Tour beendet · 16:42“ |
+| no upload for > 10 min (and > twice the phone's interval) | „Seit 25 Min. keine Meldung“ (grey, amber after 60 min) |
+| phone battery below 15 % | „Akku 12 %“ (amber) |
+| away from the planned route (the app's own off-route alarm) | „Gerade etwas abseits der Route“ (amber) |
+| paused / standing ≥ 10 min | „Macht gerade Pause“ (calm blue) |
+| moving, fresh | „Alles okay, unterwegs“ (green) |
 | sharing stopped / expired | „Diese Tour wird nicht mehr geteilt.“ (nothing else, no map) |
 | link broken / key wrong | „Dieser Link funktioniert nicht.“ |
+
+Later (needs the phone to send the planned arrival at the start): „Etwas später als geplant · Ankunft ca. 17:10“ when the
+arrival is more than 30 % of the remaining time later than planned.
 
 - **„Wie es mir geht“** in version 1 = what the phone knows by itself: moving or pausing, on the route or not, how far,
   phone battery, when last heard. A deliberate sign from him („Alles gut 👍“, a short text) is a later step (§11).
 - **The last place** is always on the page with its time and coordinates as text – what one reads to the mountain rescue.
-  A tap copies it; „In Karten-App öffnen“ is a `geo:` link.
+  „Koordinaten“ copies it; „In Karten öffnen“ is a `geo:` link.
 - **After a gap the whole way appears**, not a straight jump: the phone uploads everything it recorded meanwhile.
 - A small fixed line at the bottom: „Kein Notruf-Dienst – im Notfall 112.“
 - The page asks the server **only when something new can be there**: the phone's head says when its next upload is due
-  (2 min moving, 10 min standing), the page asks shortly after that; at once when the tab comes back; nothing while
+  (2 min moving, 10 min standing), the page asks 3 s after that, so the point moves when the countdown reaches 0 (owner
+  2026-11-26), and every 5 s for 15 s more if the phone is a little late; at once when the tab comes back; nothing while
   hidden; slower and slower while there is no contact; never again after the end (§5.1).
 - Age („vor 2 Min.“) is computed from the **server's** clock (the answer carries the server's time and the time of the
   last upload), so a wrong clock on either phone does not matter.
@@ -161,7 +174,7 @@ server and plan sync. So live tracking counts every request:
 | Who | Rule | Requests |
 | --- | --- | --- |
 | Phone | one `push` per upload (blocks + head together) | 30 an hour moving, 6 standing |
-| Viewer page | no fixed tick. The head carries `nextS` (seconds to the phone's next planned upload); the page asks `nextS` + 10 s after the last upload it saw. Nothing new → again after 1, 2, 5, then every 10 min („kein Kontakt“). Tab hidden → nothing. Ended / stopped → never again | ≤ 30 an hour while watched and moving, ~6 an hour in a dead zone |
+| Viewer page | no fixed tick. The head carries `nextS` (seconds to the phone's next planned upload); the page asks `nextS` + 3 s after the last upload it saw (the countdown's 0, owner 2026-11-26), then every 5 s for 15 s while the upload is late. Later still → by how late: after 1, 2, 5, then every 10 min („keine Meldung“). Tab hidden → nothing. Ended / stopped → never again | ≤ 30 an hour while watched and moving (+ up to 4 per late upload), ~6 an hour in a dead zone (≤ 13 in its first hour) |
 | Both | 429 / 5xx → wait as told, at least 1 min; no retry storms | – |
 
 A ten-hour tour with the page open the whole day: about 300 + 300 = **600 requests** (0.6 % of a day's budget); looked at

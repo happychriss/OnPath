@@ -9,8 +9,10 @@ object LiveStatusLine {
     const val NO_CONTACT_MS = 10 * 60_000L
     /** From here "no contact" turns from grey to amber. */
     const val NO_CONTACT_LONG_MS = 60 * 60_000L
-    /** Standing still shorter than this still reads as "on the way". */
-    const val PAUSE_MS = 5 * 60_000L
+    /** Standing still shorter than this still reads as "on the way" (owner 2026-11-26: „Macht gerade Pause“ from 10 min). */
+    const val PAUSE_MS = 10 * 60_000L
+    /** The phone's battery below this (per cent) is the line itself – „Akku 12 %“ (owner 2026-11-26). */
+    const val LOW_BATTERY_PCT = 15
 
     enum class Key {
         /** "Diese Tour wird nicht mehr geteilt." – the box is gone (stopped or expired); nothing else is shown. */
@@ -19,15 +21,17 @@ object LiveStatusLine {
         BROKEN,
         /** The box is not there yet or holds no head: "noch keine Daten". */
         NO_DATA,
-        /** "Tour beendet 16:42" ([Line.atMs]; [Line.arrived] adds "am Ziel"). */
+        /** "Angekommen · 16:52" when [Line.arrived], else "Tour beendet · 16:42" ([Line.atMs]). */
         ENDED,
-        /** "Kein Kontakt seit 25 Min. – ohne Netz normal. Letzter Ort 14:02" ([Line.minutes], [Line.atMs]; [Line.amber] after an hour). */
+        /** "Seit 25 Min. keine Meldung" – the fact only, no guess why ([Line.minutes], [Line.atMs]; [Line.amber] after an hour). */
         NO_CONTACT,
-        /** "Abseits der geplanten Route (150 m)" ([Line.metres]). */
+        /** "Akku 12 %" ([Line.percent]) – below [LOW_BATTERY_PCT]; it explains a phone that may go silent. */
+        LOW_BATTERY,
+        /** "Gerade etwas abseits der Route" ([Line.metres]). */
         OFF_ROUTE,
-        /** "Pause seit 12 Min." ([Line.minutes]). */
+        /** "Macht gerade Pause" ([Line.minutes] = how long). */
         PAUSE,
-        /** "Unterwegs · zuletzt vor 2 Min." ([Line.minutes]). */
+        /** "Alles okay, unterwegs" ([Line.minutes] = since the last contact). */
         MOVING,
     }
 
@@ -41,6 +45,8 @@ object LiveStatusLine {
         val atMs: Long? = null,
         val amber: Boolean = false,
         val arrived: Boolean = false,
+        /** The phone's battery in per cent (LOW_BATTERY). */
+        val percent: Int? = null,
     )
 
     /**
@@ -62,6 +68,8 @@ object LiveStatusLine {
         val quiet = maxOf(NO_CONTACT_MS, head.nextS.coerceIn(0, 3600) * 2000L)
         if (sinceLastWriteMs > quiet)
             return Line(Key.NO_CONTACT, minutes = ago, atMs = head.fix?.timeMs, amber = sinceLastWriteMs >= NO_CONTACT_LONG_MS)
+        val battery = head.batteryPct
+        if (battery != null && battery < LOW_BATTERY_PCT) return Line(Key.LOW_BATTERY, percent = battery, amber = true)
         if (!head.arrived && head.offRouteM != null && head.state == LiveState.RECORDING)
             return Line(Key.OFF_ROUTE, metres = head.offRouteM, amber = true)
         val still = head.stillS

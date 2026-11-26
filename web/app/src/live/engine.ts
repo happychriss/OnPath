@@ -24,8 +24,8 @@ export interface Head {
 export interface Route { kind: 'route'; line: [number, number][] }
 /** points: [segment, lat, lon, ele | null, timeMs] */
 export interface Chunk { kind: 'chunk'; n: number; points: [number, number, number, number | null, number][] }
-export interface StatusLine { key: 'stopped' | 'broken' | 'no_data' | 'ended' | 'no_contact' | 'off_route' | 'pause' | 'moving';
-  minutes: number | null; metres: number | null; atMs: number | null; amber: boolean; arrived: boolean }
+export interface StatusLine { key: 'stopped' | 'broken' | 'no_data' | 'ended' | 'no_contact' | 'low_battery' | 'off_route' | 'pause' | 'moving';
+  minutes: number | null; metres: number | null; atMs: number | null; amber: boolean; arrived: boolean; percent: number | null }
 
 /** Loads the engine once; [base] = the site's root (where engine/ lies). */
 export async function loadEngine(base: string, lang: string): Promise<LiveEngine> {

@@ -54,11 +54,14 @@ class WebLiveTest {
         assertEquals("ended", key(WebLive.status(link, moving, false, false, 0.0, 7000.0)))
         assertEquals("stopped", key(WebLive.status(link, moving, true, false, 0.0, -1.0)))
         assertEquals("no_data", key(WebLive.status(link, "", false, false, 0.0, -1.0)))
+        val low = WebLive.sealHead(link, "state=recording&lat=46.1&lon=11.1&time=5000&nextS=120&batteryPct=12", nonce)
+        assertEquals("low_battery", key(WebLive.status(link, low, false, false, 60_000.0, -1.0)))
+        assertTrue(WebLive.status(link, low, false, false, 60_000.0, -1.0).contains("\"percent\":12"))
         // a link without a key, or a head that does not open with it: broken – never "no data"
         assertEquals("broken", key(WebLive.status("#t=abc", "", false, false, 0.0, -1.0)))
         assertEquals("broken", key(WebLive.status(link, moving.dropLast(2) + "AA", false, false, 0.0, -1.0)))
-        // the pacing: shortly after the phone's next planned upload; never again when it is over
-        assertEquals(120_000.0, WebLive.next(10_000.0, 120, 0, false, -1.0), 0.0)
+        // the pacing: just after the phone's next planned upload (3 s); never again when it is over
+        assertEquals(113_000.0, WebLive.next(10_000.0, 120, 0, false, -1.0), 0.0)
         assertEquals(60_000.0, WebLive.next(0.0, -1, 1, false, -1.0), 0.0)
         assertEquals(-1.0, WebLive.next(0.0, 120, 0, true, -1.0), 0.0)
     }

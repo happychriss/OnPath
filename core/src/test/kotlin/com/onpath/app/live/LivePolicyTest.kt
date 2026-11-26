@@ -73,18 +73,23 @@ class LivePolicyTest {
         assertEquals("only after a failure", t0 + 120_000, due(t0, t0, back = true))
     }
 
-    /** Guards: the page's pacing follows the phone's own plan – it asks just after the next upload is due, never before. */
+    /**
+     * Guards: the page's pacing follows the phone's own plan – it asks just after the next upload is due (owner 2026-11-26:
+     * the point jumps when the countdown reaches 0), never before; a phone a little late is asked every 5 s for a moment.
+     */
     @Test
     fun theViewerAsksJustAfterThePhonesNextUpload() {
-        assertEquals(130_000L, LivePolicy.viewerNext(0, 120, 0, false))
-        assertEquals(100_000L, LivePolicy.viewerNext(30_000, 120, 0, false))
-        assertEquals(610_000L, LivePolicy.viewerNext(0, 600, 0, false))
-        assertEquals("never faster than the floor", 5_000L, LivePolicy.viewerNext(129_000, 120, 0, false))
-        assertEquals("the upload is overdue: the quiet steps", 60_000L, LivePolicy.viewerNext(200_000, 120, 0, false))
+        assertEquals(123_000L, LivePolicy.viewerNext(0, 120, 0, false))
+        assertEquals(93_000L, LivePolicy.viewerNext(30_000, 120, 0, false))
+        assertEquals(603_000L, LivePolicy.viewerNext(0, 600, 0, false))
+        assertEquals("never faster than the floor", 5_000L, LivePolicy.viewerNext(121_000, 120, 0, false))
+        assertEquals("a little late: every 5 s", listOf(5_000L, 5_000L, 5_000L), listOf(123_000L, 128_000L, 133_000L).map { LivePolicy.viewerNext(it, 120, 1, false) })
+        assertEquals("the upload is overdue: the quiet steps", 60_000L, LivePolicy.viewerNext(138_000, 120, 4, false))
+        assertEquals("… by how late", listOf(60L, 120, 300, 600, 600), listOf(150_000L, 250_000L, 500_000L, 700_000L, 9_999_999L).map { LivePolicy.viewerNext(it, 120, 9, false)!! / 1000 })
         assertEquals("no head yet", 60_000L, LivePolicy.viewerNext(0, null, 0, false))
-        assertEquals(listOf(60L, 120, 300, 600, 600, 600), (1..6).map { LivePolicy.viewerNext(9_999_999, 120, it, false)!! / 1000 })
-        assertEquals("a silly nextS cannot make the page hammer", 20_000L, LivePolicy.viewerNext(0, 0, 0, false))
-        assertEquals("… or sleep for a day", 3_610_000L, LivePolicy.viewerNext(0, 999_999, 0, false))
+        assertEquals(listOf(60L, 120, 300, 600, 600, 600), (1..6).map { LivePolicy.viewerNext(9_999_999, null, it, false)!! / 1000 })
+        assertEquals("a silly nextS cannot make the page hammer", 13_000L, LivePolicy.viewerNext(0, 0, 0, false))
+        assertEquals("… or sleep for a day", 3_603_000L, LivePolicy.viewerNext(0, 999_999, 0, false))
     }
 
     /** Guards: after the end or a stop the page never asks again; a busy server is left alone for at least a minute. */
@@ -99,7 +104,7 @@ class LivePolicyTest {
 
     /**
      * Guards: the request budget of §5.1 – a ten-hour moving tour watched the whole day stays under 350 page requests
-     * (a 30-s tick would be 1,200), also when every sixth upload comes late.
+     * (a 30-s tick would be 1,200); when every sixth upload comes late, each late one costs a few quick questions more.
      */
     @Test
     fun aWatchedTenHourTourStaysUnder350Requests() {
@@ -109,7 +114,7 @@ class LivePolicyTest {
             var t = 0L
             while (t < 10 * 3_600_000L) { uploads += t; t += 120_000 + if (lateEvery > 0 && rnd.nextInt(lateEvery) == 0) 15_000 + rnd.nextInt(60_000) else rnd.nextInt(3000) }
             val asks = watch(uploads, nextS = 120, hours = 10)
-            assertTrue("$asks requests (late every $lateEvery)", asks in 200..349)
+            assertTrue("$asks requests (late every $lateEvery)", asks in 200..(if (lateEvery == 0) 349 else 549))
         }
     }
 
@@ -127,7 +132,7 @@ class LivePolicyTest {
         val asked = ArrayList<Long>()
         watch(listOf(0L), nextS = 120, hours = 10, asked = asked)
         val perHour = (0 until 10).map { h -> asked.count { it >= h * 3_600_000L && it < (h + 1) * 3_600_000L } }
-        assertTrue("first hour ${perHour[0]}", perHour[0] <= 9) // opening the page, then after 2, 3, 5, 10 minutes …
+        assertTrue("first hour ${perHour[0]}", perHour[0] <= 13) // opening, 4 quick ones at 0, then after 1, 2, 5, 10 minutes …
         assertTrue("later hours $perHour", perHour.drop(1).all { it <= 6 })
         assertTrue("${asked.size} requests in 10 h", asked.size < 8 * 10)
     }
