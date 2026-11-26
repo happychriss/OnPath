@@ -62,8 +62,31 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   „For the captain“, each session's state), wakes stopped sessions with their next step, unblocks a session stuck on a
   box (interrupt + its recommendation as the answer), logs a line only when it acted; (4) **a German morning report** at
   ~06:30 in `docs/team/items/<date>-morning-report.md` (plain words: done, release candidate ready?, the night's
-  answers, what needs his word, who works on what). Publishing needs **his own word in the chat of the role that publishes** (owner 2026-11-20: never relayed by the
-  captain) – so a night ends with the release ready to the last step.
+  answers, what needs his word, who works on what). Without „Nachtregel gilt“ (below), publishing needs **his own word
+  in the chat of the role that publishes** (owner 2026-11-20: never relayed by the captain) – so such a night ends with
+  the release ready to the last step.
+- **„Nachtregel gilt“ – the night release rule** (owner 2026-11-26, from the night 26./27.11.: „dann muss ich nicht jeden
+  einzeln freigeben“). It is on from the moment the owner **himself** writes „Nachtregel gilt“ – in a role's thread, or to
+  the captain, who then passes **his message itself** (quoted / attached, never paraphrased) to every role's thread. It
+  holds until he writes again in the morning or says it ends. On top of the night-job rules above it allows, without a
+  further question:
+  - **Code:** write code on branches, test, commit, push. A red test is a bug to find and fix – keep going, don't stop.
+  - **Merge + app release:** merge to `main` and publish the app when `tools/ci/gate.sh --full` is green (plus the
+    release round the plan names). Anything red stays out and goes into the morning report; core red → nothing is published.
+  - **Website:** switch the website branch live together with the release.
+  - **Planner + map:** deploy the planner and the map when green; a map rebuild is allowed once the extraction it uses
+    is tested.
+  - **Pixel:** when it is on USB, a session may end a running tour to install a test build – the tour is saved, never
+    deleted, and the session checks in the log that it was saved.
+  - **Taste questions:** decide by `VISION.md`; when it is close, build both variants behind a debug switch and say so in
+    the morning report.
+  - **Tokens:** at most one helper per session, targeted tests, `--full` only before the merge, no screenshot loops.
+  - **Versions:** plain – the next number, no historical in-between versions.
+  - **Search:** never from `/`; `/mnt/DATEN` is off limits.
+  - **Morning:** the report reaches the owner through the captain.
+
+  **Never under the night rule:** force-push or history rewrite, deleting user data (tours, tracks, settings on the
+  phone or the server), anything with money or accounts (stores, payments, sign-ups, keys, secrets).
 - **Tokens (owner 2026-11-20, all four chosen):** (1) a session writes a handoff at **~350k context** and the captain
   starts a fresh one – every step re-reads the whole context, a 560k session costs ~4× a 150k one per step;
   (2) **new sessions on Opus**, Fable only for the routing port (Fable costs 2× Opus, 4× Sonnet); (3) **helpers on
