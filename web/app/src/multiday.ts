@@ -71,6 +71,17 @@ export function endSymbol(kind: EndKind, size = 26): string {
   return `<span class="daysym ${cls}" style="width:${size}px;height:${size}px">${icon(kind === 'HOTEL' ? 'bed' : 'moon', Math.round(size * 0.62))}</span>`;
 }
 
+/**
+ * A night's marker on the map (owner 2026-11-26, „Variante 1 · Tag N“): a pill with the symbol and „Tag N“ (N = the day
+ * that ends there) – undecided = an opaque white pill with a dark moon outline (the light-grey dashed circle was barely
+ * visible), Übernachtung = blue with a white moon, Hotel = green with a white bed. [day] null = not worked out yet: the
+ * symbol alone (nightTitles sets the day once the view is there).
+ */
+export function endPill(kind: EndKind, day: number | null): string {
+  const cls = kind === 'PROPOSAL' ? 'open' : kind === 'OVERNIGHT' ? 'blue' : 'green';
+  return `<span class="daypill ${cls}">${icon(kind === 'HOTEL' ? 'bed' : 'moon', 15)}<span class="daytxt">${day ? esc(t('multiday_day_n', day)) : ''}</span></span>`;
+}
+
 export class MultiDay {
   /** The guide panel is open (☰ → Mehrtagestour planen) – step 1 until „Weiter: Tage festlegen“. */
   guideOpen = false;
@@ -300,7 +311,7 @@ export class MultiDay {
       if (e.kind !== 'PROPOSAL') continue;
       const el = document.createElement('div');
       el.className = 'dayend proposal';
-      el.innerHTML = endSymbol('PROPOSAL');
+      el.innerHTML = endPill('PROPOSAL', e.night);
       // which day of how many ends here (owner 2026-11-20): a grey one left between two blue moons is the day count's
       // – „Ende Tag 2 von 4“ says so; the click (a phone: the tap) shows it in the menu's head too
       const label = `${this.endOfDay(e.night)} · ${t('days_open_night')}`;
@@ -345,7 +356,10 @@ export class MultiDay {
   /** The night points' labels once the days are worked out (the points are drawn before the view is there). */
   private nightTitles() {
     document.querySelectorAll<HTMLElement>('.pin.night[data-plan]').forEach((el) => {
-      const label = this.nightLabel(Number(el.dataset.plan));
+      const i = Number(el.dataset.plan), label = this.nightLabel(i), night = this.nightNo(i);
+      // „Tag N“ in the pill once the days are worked out
+      const txt = el.querySelector<HTMLElement>('.daytxt');
+      if (txt && night) txt.textContent = t('multiday_day_n', night);
       if (!label) return;
       el.title = t('web_marker_title', label); el.setAttribute('aria-label', label);
     });
@@ -380,6 +394,9 @@ export class MultiDay {
   }
 
   /** The night number of plan point [i] (its day end), from the last view. */
+  /** The day that ends at plan point [i]'s night (its „Tag N“), null when not worked out yet. */
+  nightDay(i: number): number | null { return this.nightNo(i) || null; }
+
   private nightNo(i: number): number { return this.view?.ends.find((e) => e.plan === i)?.night ?? 0; }
 
   /**

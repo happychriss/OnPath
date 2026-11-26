@@ -101,6 +101,9 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.days === 3, 'the overview with 3 days');
   check(await page.locator('#tourOverview .today').count() === 3, 'the overview: one row per day');
   check(await page.locator('.dayend.proposal').count() === 2, 'two grey moons on the map');
+  // the night markers say their day (owner 2026-11-26, „Variante 1 · Tag N“): a white pill „☾ Tag 1“, „☾ Tag 2“
+  const pillTexts = await page.$$eval('.dayend.proposal .daypill.open', (ps) => ps.map((p) => p.textContent.trim()).join('|'));
+  check(pillTexts === (lang === 'de' ? 'Tag 1|Tag 2' : 'Day 1|Day 2'), `the undecided nights are white „Tag N“ pills (${pillTexts})`);
   // the day rows (owner 2026-11-21, variant A): bold „Tag 1“, the day's km · ↑ m · time on its right, a grey „von – nach“
   // under it only when both places are known – never a km position, never „Start“ / „Ziel“, no third line
   const dayRows = () => page.$$eval('#tourOverview .today', (ls) => ls.map((l) => ({ day: l.querySelector('.dn')?.textContent ?? '',
@@ -141,7 +144,7 @@ async function run(lang, viewport, shotPrefix) {
   await settled();
   let v = await view();
   check(v.days === 3 && v.ends.filter((k) => k === 'PROPOSAL').length === 1, `Übernachtung hier: N stays 3, one grey left (${v.ends})`);
-  check(await page.locator('.pin.night .daysym.blue').count() === 1, 'the night point is drawn as a blue moon');
+  check(await page.locator('.pin.night .daypill.blue').count() === 1, 'the night point is drawn as a blue pill');
   await page.waitForFunction(() => /\d/.test(document.querySelector('.pin.night')?.getAttribute('aria-label') ?? ''), null, { timeout: 10_000 }).catch(() => {});
   const blueAt = v.ends.indexOf('OVERNIGHT') + 1;
   const dayEnds = [...await endDays('.dayend.proposal'), ...await endDays('.pin.night')].map((x) => x && x[0]).sort();
@@ -181,7 +184,7 @@ async function run(lang, viewport, shotPrefix) {
   await page.click('#hotelRes button');
   await waitView(() => window.__days.lastView?.ends.some((e) => e.kind === 'HOTEL'), 'a green bed');
   await settled();
-  check(await page.locator('.pin.night .daysym.green').count() === 1, 'Hotel: the night is a green bed');
+  check(await page.locator('.pin.night .daypill.green').count() === 1, 'Hotel: the night is a green pill (bed)');
   check(await page.evaluate(() => Object.values(window.__days.h.tour().nights)[0]?.hotel?.name === 'Gasthof Test'), 'the hotel keeps its name');
   const hotelRows = await dayRows();
   console.log('day rows with the hotel:', JSON.stringify(hotelRows));
@@ -194,7 +197,7 @@ async function run(lang, viewport, shotPrefix) {
   await page.click('.pin.night');
   await menuItem(lang === 'de' ? 'Hotel entfernen' : 'Remove hotel');
   await waitView(() => window.__days.lastView?.ends.some((e) => e.kind === 'OVERNIGHT') && !window.__days.lastView?.ends.some((e) => e.kind === 'HOTEL'), 'blue again');
-  check(await page.locator('.pin.night .daysym.blue').count() === 1, 'Hotel entfernen: the night stays as a blue moon');
+  check(await page.locator('.pin.night .daypill.blue').count() === 1, 'Hotel entfernen: the night stays as a blue pill');
 
   // 8 · N − / + (R5): − takes the last grey one, then − is not possible
   await settled();
@@ -271,7 +274,7 @@ async function run(lang, viewport, shotPrefix) {
   v = await view();
   check(v.days === 3 && v.ends.filter((k) => k === 'OVERNIGHT').length === 2 && !v.ends.includes('PROPOSAL'),
     `the point is an Übernachtung: N stays 3, the grey one goes (${v.ends})`);
-  check(await page.locator('.pin.night .daysym.blue').count() === 2, 'the point is drawn as a blue moon');
+  check(await page.locator('.pin.night .daypill.blue').count() === 2, 'the point is drawn as a blue pill');
   // the grey one goes from the map too (owner 2026-11-20: a grey moon left between two blue ones) – no stale marker
   check(await page.locator('.dayend.proposal').count() === 0, 'no grey moon left on the map');
   await page.evaluate(() => document.getElementById('undo').click());

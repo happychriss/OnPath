@@ -56,7 +56,7 @@ import { keepShape } from './routeshape';
 import { RouteReveal } from './routereveal';
 import { poiFeatureAt } from './poipin';
 import { installSuggestSwitch, setupSuggest, SUGGEST_LAYERS, suggestOn, type SuggestUi } from './suggest';
-import { MultiDay, endSymbol, type DayPlan } from './multiday';
+import { MultiDay, endPill, type DayPlan } from './multiday';
 import { tourText, type Tour } from './tourtext';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
@@ -711,13 +711,13 @@ async function drawPoints() {
   state.points.forEach(([lat, lon], i) => {
     if (state.roundTrip && i === last) return; // the closing point sits on the start
     const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
-    // a night of a multi-day tour: its blue moon / green bed (owner 2026-11-17, round 3 A) instead of the number
+    // a night of a multi-day tour: its blue / green „Tag N“ pill (owner 2026-11-17 round 3 A, 2026-11-26) instead of the number
     const night = multiDay?.nightOf(i) ?? null;
     // a point on a POI (a station picked as a stop) is the plain numbered point too – the planner's look on a big screen
     // (owner 2026-11-20: „ein normaler Punkt reicht“; the app keeps the POI's symbol in a blue ring, MapController.poiMarker);
     // its name is in the title and the Points list, its details in its menu
     const el = document.createElement('div');
-    if (night) { el.className = 'pin night'; el.innerHTML = endSymbol(night, 28); el.dataset.plan = String(i); }
+    if (night) { el.className = 'pin night'; el.innerHTML = endPill(night, multiDay?.nightDay(i) ?? null); el.dataset.plan = String(i); }
     else {
       el.className = 'pin';
       el.style.background = color;
