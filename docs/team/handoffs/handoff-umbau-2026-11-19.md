@@ -5,6 +5,11 @@ Start sentence: „Du bist die Einheit **umbau** (OnPath) auf donald. Lies `docs
 „For the roles“ line of 2026-11-18 (owner's go) – each piece own worktree, `gate --full`, fresh Opus review, then main;
 a tag `umbau-phase-N` per phase after unit CI + planner run + full E2E; lines for the captain under „For the captain“.
 
+## State 2026-11-26 ~22:30 – DONE, CLAIM FREE (NEWEST – read this first)
+- Checks on main after the writers: **full E2E 114/0** (run 45893835030), **Web planner green** (45895197044, after `d377e4846` fixed two stale planner tests that were red on main too: `gpx-engine.mjs` lacked `runHead`'s `pinned` arg, `deep-smoke.mjs` counted the engine's `[Problems] TRACE` lines as page errors; one areas-smoke B2 flake on the first try), **SameRouteTest on main: verify 112/112, full 108/108 + 4 controls** (EXTRA_KT now needs `PlanDetour.kt` – header fixed).
+- Nothing of umbau open. The re-review's nits (section below) are the laptop's, not urgent.
+- Lesson: a helper ran `find /` for the rd5 file and stalled donald's DATEN disk for 30 min – give helpers exact paths (rule now in CLAUDE.md).
+
 ## State 2026-11-26 ~21:10 – WRITERS ON MAIN (NEWEST – read this first)
 - **Owner 2026-11-26: 0.18.11 is not released; the writers go to main anyway** (the new donald session for the surface rebuild builds on them).
 - **On main 642904377:** `wip/umbau-2026-11-24-stitch-writers` + the laptop's `wip/laptop-2026-11-25-writers-web` (293339573) + main. Fresh Opus read the planner part (1 must-fix, 5 should-fix → `items/2026-11-26-writers-web-review.md`), the laptop fixed them, a second fresh Opus read the fixes: yes for main. Gate full 1953 + 2081 + 1105. Parity: MapController (donald's plan-puck removal + PointsOverDot) marked app-only – this also turns main's Web planner run green again at the parity step.

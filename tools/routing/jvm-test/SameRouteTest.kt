@@ -21,7 +21,7 @@
 // Run (needs E10_N45.rd5; own workDir, one JVM at a time; about 1-2 h for the whole corpus):
 //   KTTEST=tools/routing/jvm-test/SameRouteTest.kt EXTRA_KT="core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt
 //     core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt core/src/main/kotlin/com/onpath/app/routing/PlanReach.kt
-//     core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt" JAVA_XMX=2g tools/routing/jvm-test/run.sh <segmentsDir> <workDir>
+//     core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt" JAVA_XMX=2g tools/routing/jvm-test/run.sh <segmentsDir> <workDir>
 // Env: MODE=run (default) | verify (read core/src/test/resources/same-route/*.sha, route every plan code cold from an
 //   empty cache, reproduce every hash); TOURS=<comma list of tour names> (default all); ADDS=<n> (default 20, a smoke
 //   run); SHA_DIR=<dir> reads / writes the .sha files there instead of core/src/test/resources/same-route;
