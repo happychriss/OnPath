@@ -237,7 +237,8 @@ abstract class E2EBase {
         val prefix = com.onpath.app.map.MapController.POSITION_LAYER_PREFIX
         val dot = ids.indexOfFirst { it.startsWith(prefix) }
         if (dot < 0) { shot("no-position-$where"); throw AssertionError("$where: no position layers – $ids") }
-        val above = ids.drop(dot).filterNot { it.startsWith(prefix) }
+        // the plan points' copy over the dot is the one exception (owner 2026-11-26, shown in Plan only)
+        val above = ids.drop(dot).filterNot { it.startsWith(prefix) || it == com.onpath.app.map.PointsOverDot.LAYER }
         if (above.isNotEmpty()) { shot("dot-covered-$where"); throw AssertionError("$where: above the position dot: $above") }
     }
 

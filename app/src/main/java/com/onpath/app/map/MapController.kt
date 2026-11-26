@@ -224,6 +224,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         addTurnLayer()
         addUTurnLayer()
         activateLocation()
+        PointsOverDot.add(style, SRC_WPT) // visible = Plan; the controller is made in Plan, setNavigateMode hides it
     }
 
     private fun addLine(id: String, color: String, width: Float, casing: Boolean) {
@@ -369,7 +370,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
     /** The mode for the position dot's look (accuracy circle only in Navigate). Never throws. */
     fun setNavigateMode(navigate: Boolean) {
         if (navigate == navigateMode) return
-        navigateMode = navigate
+        navigateMode = navigate; PointsOverDot.apply(style, navigateMode, routeOverlaysVisible, ::live)
         try {
             if (live() && locationReady) applyPuck(heading.arrowGrey)
         } catch (e: Exception) {
@@ -598,6 +599,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
             runCatching { style.getLayer(id)?.setProperties(v) }
                 .onFailure { if (live()) Problems.warn("map", "Route overlay layer $id not shown / hidden", it) }
         }
+        PointsOverDot.apply(style, navigateMode, routeOverlaysVisible, ::live)
     }
 
     /**
@@ -884,10 +886,8 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         .onFailure { Problems.warn("map", "Map did not move to make room for the place's menu", it) }
 
     /**
-     * Adds every layer of the app (owner: the dot must never be under a line or a route point). On a style reload
-     * MapLibre puts its position layers back before this controller adds its own, so a plain addLayer would land above
-     * the dot. Directly below
-     * MapLibre's location layers ("mapbox-location-*", LocationComponentConstants), or on top if there are none.
+     * Adds every layer of the app (owner: the dot never under a line or a route point – Plan's [PointsOverDot] aside)
+     * directly below MapLibre's location layers ("mapbox-location-*"), which a style reload puts back first.
      */
     private fun addBelowPosition(l: org.maplibre.android.style.layers.Layer) {
         val firstPosition = style.layers.firstOrNull { it.id.startsWith(POSITION_LAYER_PREFIX) }?.id

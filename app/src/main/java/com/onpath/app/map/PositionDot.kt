@@ -21,4 +21,11 @@ object PositionDot {
      * during a tour, where the position is the activity sign anyway).
      */
     fun accuracyAlpha(navigate: Boolean): Float = if (navigate) ACCURACY_ALPHA else 0f
+
+    /**
+     * The numbered plan points over the dot (owner 2026-11-26, option 1): in Plan they are on top so point ① is seen
+     * when you stand on it; in Navigate the dot is on top (owner: "the dot never under a route point" while you ride).
+     * Hidden while the eye hides the route.
+     */
+    fun pointsOverDot(navigate: Boolean, overlaysVisible: Boolean): Boolean = !navigate && overlaysVisible
 }
