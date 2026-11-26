@@ -36,7 +36,7 @@
     <string name="days_change_hotel">Change hotel</string>
     <string name="days_remove_hotel">Remove hotel</string>
     <string name="days_remove_overnight">Remove overnight stop</string>
-    <string name="days_hotel_for_tour">Set as hotel</string>
+    <string name="days_hotel_for_tour">Hotel for this tour</string>
     <string name="days_open_night">Night not decided</string>
     <string name="days_overnight">Overnight stop</string>
     <string name="days_hotel">Hotel</string>

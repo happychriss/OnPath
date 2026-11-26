@@ -1331,9 +1331,10 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'),
     act: () => { if (info.google) window.open(info.google, '_blank', 'noopener'); else google(hit.name ?? '', lat, lon, hit.name ? '' : hit.title); } };
   const main = await Promise.all(pm.main.map(row));
-  // a multi-day tour: a found place can be the hotel of a night (scenario F) – the nearest day end is offered
+  // a multi-day tour: „Als Übernachtung“ (owner 2026-11-26 22:56, replacing „Hotel für diese Tour“ and its „Welche
+  // Nacht?“ box): the place goes in where a stop fits and becomes a night – a lodging with its hotel at once
   if (multiDay?.isTour && pm.main.length && state.points.length >= 2)
-    main.push({ icon: 'bed', label: t('days_hotel_for_tour'), key: 'HOTEL', act: () => { void multiDay?.hotelForTour(hit); } });
+    main.push({ icon: 'moon', label: t('days_overnight_here'), key: 'OVERNIGHT', act: () => { fromPin(); void multiDay?.placeNight(hit, pm.stop); } });
   // „Rundtour ab hier“ only while the plan is empty (owner 2026-11-18: only when setting the very first point); placeItems
   // puts it last in the route group (PinMenuItems.of)
   return { head, main: suggestUi && !state.points.length ? suggestUi.withRow(main, main.length - 1, p, info.title) : main, keep: await keepRows(hit.code), google: googleRow };

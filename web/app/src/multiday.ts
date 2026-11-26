@@ -82,6 +82,18 @@ export function endPill(kind: EndKind, day: number | null): string {
   return `<span class="daypill ${cls}">${icon(kind === 'HOTEL' ? 'bed' : 'moon', 15)}<span class="daytxt">${day ? esc(t('multiday_day_n', day)) : ''}</span></span>`;
 }
 
+/**
+ * A place to sleep (owner 2026-11-26 22:56: hotel, guesthouse, hostel, camp site, hut): the POI kinds of the HUT group
+ * that sleep (hut, bivouac, camping – PoiKinds) and an online result's OSM tourism class. TODO: switch to the core's
+ * lodging helper once PoiKinds knows hotel / guest_house / hostel (branch work/laptop-overnight-pois).
+ */
+const LODGING_KINDS = new Set(['hut', 'bivouac', 'camping']);
+const LODGING_SUBS = new Set(['hotel', 'guest_house', 'hostel', 'motel', 'chalet', 'apartment', 'alpine_hut', 'wilderness_hut',
+  'camp_site', 'caravan_site']);
+export function isLodging(h: Pick<Hit, 'kind' | 'sub'>): boolean {
+  return LODGING_KINDS.has(h.kind) || (h.sub != null && LODGING_SUBS.has(h.sub)) || LODGING_SUBS.has(h.kind);
+}
+
 export class MultiDay {
   /** The guide panel is open (☰ → Mehrtagestour planen) – step 1 until „Weiter: Tage festlegen“. */
   guideOpen = false;
@@ -457,28 +469,14 @@ export class MultiDay {
     ], '');
   }
 
-  /** „Hotel für diese Tour“ in a found place's menu (scenario F): which night – the nearest offered. */
-  async hotelForTour(hit: Hit) {
-    const near = await this.rule('nearest', 0, hit.lat, hit.lon);
-    const k = (near as unknown as { night?: number } | null)?.night ?? 1;
-    const ends = this.view?.ends ?? [];
-    if (!ends.length) return;
-    const d = document.createElement('dialog');
-    d.className = 'share nightpick';
-    d.innerHTML = `<h2>${esc(t('days_which_night'))}</h2><div class="nightlist">${ends.map((e) => `<label class="nightrow">
-        <input type="radio" name="night" value="${e.night}" ${e.night === k ? 'checked' : ''}>${endSymbol(e.kind, 20)}
-        <span>${esc(e.night === k ? t('days_night_nearest', e.night) : t('days_night_n', e.night))} · ${esc(e.name)}</span></label>`).join('')}</div>
-      <div class="row end"><button id="npCancel">${esc(t('common_cancel'))}</button><button class="primary" id="npTake">${esc(t('days_hotel_for_tour'))}</button></div>`;
-    document.body.append(d);
-    d.querySelector<HTMLButtonElement>('#npCancel')!.onclick = () => d.close();
-    d.querySelector<HTMLButtonElement>('#npTake')!.onclick = async () => {
-      const n = Number(d.querySelector<HTMLInputElement>('input[name=night]:checked')?.value ?? k);
-      d.close();
-      const e = ends.find((x) => x.night === n);
-      if (e) await this.setHotel(e.plan ?? -1, [e.lat, e.lon], hit.lat, hit.lon, hit.name ?? hit.title, hit.address ?? hit.subtitle, null);
-    };
-    d.addEventListener('close', () => d.remove());
-    d.showModal();
+  /**
+   * „Als Übernachtung“ in a found place's / POI's menu (owner 2026-11-26 22:56): the place goes into the plan where a stop
+   * fits ([stop] – the engine's placeMenu) and becomes a night; a lodging ([isLodging]) is that night's hotel at once
+   * (the green bed), anything else a blue moon. One undo step.
+   */
+  async placeNight(hit: Hit, stop: number) {
+    const text = [clean(hit.name ?? hit.title), clean(hit.address), '', isLodging(hit) ? '1' : '0'].join('\t');
+    await this.take(await this.rule('placeNight', stop, hit.lat, hit.lon, text));
   }
 
   private async setHotel(index: number, end: LatLon, lat: number, lon: number, name: string | null, address: string | null, link: string | null) {

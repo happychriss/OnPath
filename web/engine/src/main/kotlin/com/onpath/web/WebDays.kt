@@ -218,7 +218,8 @@ object WebDays {
      * (R1 / R7 at the line point nearest [lat] / [lon]), `addNightAt` (R1 on plan point [n]), `removeNight` (plan point [n]), `setHotel` (R3: plan point [n]
      * – or, [n] < 0, the grey proposal at the line point nearest [text]'s 4th / 5th field: R1 + R3 –, the hotel at
      * [lat] / [lon], [text] = "name\taddress\tlink\t…"), `removeHotel` (R4, plan point [n]), `afterEdit` (R6: the points
-     * changed to [text] = "lat,lon;…"; marks follow, a dragged night stays one), `nearest` (the day end nearest
+     * changed to [text] = "lat,lon;…"; marks follow, a dragged night stays one), `placeNight` (a found place as a night,
+     * [placeNight]), `nearest` (the day end nearest
      * [lat] / [lon]: `{"night": k}`, scenario F). The whole new plan as JSON, or "null" when nothing changes (not
      * possible, not routed yet).
      */
@@ -253,6 +254,7 @@ object WebDays {
                 val r = PlanDays.setHotel(base, index, hotel, GeoPoint(lat, lon))
                 planOut(r.plan, added || r.dayAdded, index)
             }
+            "placeNight" -> placeNight(p, n, GeoPoint(lat, lon), text)
             "nearest" -> {
                 val l = line(p) ?: return "null"
                 val ends = PlanDays.of(l, pointAt(p, l), p.days ?: 1, p.limits, p.nights).days.mapNotNull { it.end }
@@ -264,6 +266,43 @@ object WebDays {
     } catch (e: Exception) {
         Problems.error("days", "Tour rule $op failed", e)
         "null"
+    }
+
+    /**
+     * „Als Übernachtung“ in a found place's / POI's menu of a multi-day tour (owner 2026-11-26 22:56, replacing „Hotel für
+     * diese Tour“ and its „Welche Nacht?“ box): the place goes into the plan where a stop fits ([stop] = the page's
+     * placeMenu „stop“ – WaypointInsertion, never behind the goal), pinned and named, and becomes a night. A lodging
+     * ([text] = "name\taddress\tlink\t1") is the night's hotel at once (R3 – the green bed), anything else an Übernachtung
+     * (the blue moon). N stays while a grey proposal goes; with none left N + 1 (R1, as PlanDays.withNight). A plan point
+     * on the place already (within [PlanDays.SAME_POINT_M]) takes the night itself – a lodging on a night without a hotel
+     * gets it; a point with a mark otherwise, the start or the finish: "null". No line needed – the caller routes the
+     * new legs.
+     */
+    internal fun placeNight(p: SharedPlan, stop: Int, place: GeoPoint, text: String): String {
+        val f = text.split('\t')
+        val name = f.getOrNull(0)?.trim()?.ifEmpty { null }
+        val lodging = f.getOrNull(3)?.trim() == "1"
+        val hotel = Hotel(name?.take(PlanCode.MAX_NAME), f.getOrNull(1)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_ADDRESS),
+            f.getOrNull(2)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_LINK))
+        val here = p.points.indices.filter { Geo.distance(p.points[it], place) <= PlanDays.SAME_POINT_M }
+            .minByOrNull { Geo.distance(p.points[it], place) }
+        val (base, index) = if (here != null) p to here else {
+            if (stop <= 0 || stop > p.points.lastIndex) return "null"
+            val pts = p.points.take(stop) + place + p.points.drop(stop)
+            val moved = PlanDays.afterEdit(p, pts)
+            moved.copy(pinned = moved.pinned + stop, names = if (name != null) moved.names + (stop to name) else moved.names) to stop
+        }
+        if (index <= 0 || index >= base.points.lastIndex) return "null"
+        val mark = base.nights[index]
+        return when {
+            mark != null && (mark.isHotel || !lodging) -> "null"
+            lodging -> PlanDays.setHotel(base, index, hotel, place).let { r -> planOut(r.plan, r.dayAdded, index) }
+            else -> {
+                val noGrey = PlanDays.proposalCount(base) == 0
+                val days = ((base.days ?: 1) + if (noGrey) 1 else 0).coerceAtMost(PlanCode.MAX_DAYS)
+                planOut(base.copy(days = days, nights = base.nights + (index to NightMark.OVERNIGHT)), noGrey, index)
+            }
+        }
     }
 
     /** R1 at line point [at]: the plan, the marked point's index, whether a day was added; null = not possible. */

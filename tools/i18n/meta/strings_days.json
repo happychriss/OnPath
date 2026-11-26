@@ -32,7 +32,7 @@
   "days_change_hotel": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_remove_hotel": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_remove_overnight": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
-  "days_hotel_for_tour": {"area": "Planner · multi-day tour", "context": "Menu row of a found place / POI in a multi-day tour (and the night dialog's button): the place becomes the hotel of a night. Owner's words 2026-11-26: every route action „Als …“.", "priority": 2, "confidence": "sicher"},
+  "days_hotel_for_tour": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_open_night": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_overnight": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},
   "days_hotel": {"area": "Planner · multi-day tour", "context": "Multi-day tour (docs/design/multi-day-tours.md §3)", "priority": 2, "confidence": "bitte prüfen"},

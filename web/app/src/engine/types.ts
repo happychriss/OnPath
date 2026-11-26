@@ -110,6 +110,8 @@ export interface PointRows { roundTrip: boolean; canRoundTrip?: boolean; canReve
 /** One search result (the app's SearchHit, with the app's row texts). */
 export interface Hit {
   id: string; title: string; name: string | null; kind: string; lat: number; lon: number;
+  /** The finer class (the app's Place.sub): "village" for a place, "hotel" / "guest_house" for an online lodging. */
+  sub?: string | null;
   subtitle: string; address: string | null; glyph: string; color: string; online: boolean;
   /** The place as the app's SearchStore line – what a kept place / „Zuletzt gesucht“ stores (keptplaces.ts). */
   code?: string;

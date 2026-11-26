@@ -13,11 +13,11 @@ export function lineBefore(groups: (MenuGroup | undefined)[], i: number): boolea
   return i >= 1 && i < groups.length && groups[i] != null && groups[i - 1] != null && groups[i] !== groups[i - 1];
 }
 
-/** The group of a place menu's row by its key – the app's PinMenuItems.group (+ the planner's HOTEL, a route row). */
+/** The group of a place menu's row by its key – the app's PinMenuItems.group (+ the planner's OVERNIGHT, a route row). */
 export function placeRowGroup(key: string | undefined): MenuGroup | undefined {
   switch (key) {
     case 'START_HERE': case 'ROUND_TRIP_HERE': case 'GO_HERE': case 'ADD': case 'SET_DESTINATION': case 'ADD_STOP':
-    case 'NEW_DESTINATION': case 'HOTEL': return 'ROUTE';
+    case 'NEW_DESTINATION': case 'OVERNIGHT': return 'ROUTE';
     case 'FAVOURITE': case 'HOME': case 'GOOGLE': return 'PLACE';
     case 'REMOVE_PIN': return 'REMOVE';
     default: return undefined;
