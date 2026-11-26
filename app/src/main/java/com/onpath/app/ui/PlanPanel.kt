@@ -471,7 +471,7 @@ private fun ThumbHead(ui: PlanUi, cb: PlanCallbacks) {
         ThumbActivityChip(ui.activity, ui.sac, cb.onActivity, words = false)
         Spacer(Modifier.width(8.dp))
         androidx.compose.foundation.layout.FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (route == null) Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, null, cb.onTimeDetails) }
+            if (route == null) Spacer(Modifier.height(40.dp)) // no title (owner 2026-11-26: „Neuer Plan“ goes)
             // with a route: time · km · ↑ as pieces that wrap between them, never "…" (a tap on the time = Time details)
             else {
                 Text(instrument(Format.duration(route.durationS), MaterialTheme.typography.titleLarge),

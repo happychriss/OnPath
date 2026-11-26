@@ -74,6 +74,8 @@ fun ElevationProfile(
         return
     }
     val steep = remember(data, gradient) { if (gradient) data.steepness() else null }
+    // the gradient profile is one green in steps (owner 2026-11-26, variant A): light = flat, strong = steep
+    @Suppress("NAME_SHADOWING") val color = if (gradient) OnPathColors.ProfileFlat else color
     val cache = remember(data, steep, color) { ProfileCache(data, steep, color) }
     var cursor by remember { mutableStateOf<Int?>(null) }
     // the gesture survives new data (a GPS fix shortens the remaining profile mid-drag)
@@ -82,6 +84,7 @@ fun ElevationProfile(
     val highlight by androidx.compose.runtime.rememberUpdatedState(onHighlight)
     val release by androidx.compose.runtime.rememberUpdatedState(onRelease)
     val measurer = rememberTextMeasurer()
+    val leftWord = str(com.onpath.strings.Res.string.profile_scrub_left, "%1\$s")
     val labelStyle = remember { TextStyle(fontSize = 12.sp, color = Color(0xFF555A55)) }
     // the sign's number is sized with the sign (map furniture), not with the font setting
     val fs = androidx.compose.ui.platform.LocalDensity.current.fontScale
@@ -172,7 +175,10 @@ fun ElevationProfile(
             drawLine(Color(0xFF333333), Offset(cx, top), Offset(cx, bottom), 1.5f)
             drawCircle(Color.White, 6.dp.toPx(), Offset(cx, cy))
             drawCircle(color, 4.dp.toPx(), Offset(cx, cy))
-            val t = measurer.measure(instrument("${data.ele[i].toInt()} m · ${Format.distance(data.dist[i])}", labelStyle), labelStyle)
+            // "1,2 km · noch 3,4 km · ↑ 200 m · 8 %" (owner 2026-11-26, [ProfileScrub])
+            val said = "${Format.distance(data.dist[i])} · ${leftWord.replace("%1\$s", Format.distance(data.total - data.dist[i]))} · " +
+                "↑ ${ProfileScrub.ascentTo(data, i).toInt()} m · ${ProfileScrub.gradeAt(data, i)} %"
+            val t = measurer.measure(instrument(said, labelStyle), labelStyle)
             val tx = (cx - t.size.width / 2).coerceIn(left, (size.width - t.size.width).coerceAtLeast(left))
             drawRect(Color(0xEEFFFFFF), Offset(tx - 4, top), androidx.compose.ui.geometry.Size(t.size.width + 8f, t.size.height.toFloat()))
             drawText(t, topLeft = Offset(tx, top))
@@ -273,7 +279,8 @@ internal class ProfileCache(private val data: ProfileData, private val steep: Li
     }
 }
 
-private val STEEP_COLORS = listOf(Color(0xFFF2B33D), Color(0xFFEF7C1A), Color(0xFFD32F2F))
+// one green in steps (owner 2026-11-26, variant A – was amber / orange / red): tokens in OnPathColors
+private val STEEP_COLORS get() = listOf(OnPathColors.ProfileModerate, OnPathColors.ProfileSteep, OnPathColors.ProfileVerySteep)
 
 private fun steepColor(s: RouteSummary.Steepness, flat: Color) = when (s) {
     RouteSummary.Steepness.FLAT -> flat

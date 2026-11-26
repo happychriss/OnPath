@@ -211,6 +211,15 @@ object OnPathColors {
     val NavPauseTonal = Color(0xFFD5EADF)
     val OnNavPauseTonal = Color(0xFF0D3A27)
 
+    /**
+     * The elevation profile's steepness (owner 2026-11-26, variant A: "ein Grün in Stufen, hell für flach, kräftig für
+     * steil" – was amber / orange / red): < 5 %, 5–10 %, 10–15 %, > 15 %.
+     */
+    val ProfileFlat = Color(0xFF8DBF9E)
+    val ProfileModerate = Color(0xFF5A9C74)
+    val ProfileSteep = Color(0xFF2F7A52)
+    val ProfileVerySteep = Color(0xFF17492F)
+
     /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn
     val Bad = Error

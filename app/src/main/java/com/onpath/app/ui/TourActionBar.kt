@@ -219,18 +219,12 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
                 TourActions.OnGoTonal, held(UnlockWindow.BarButton.END), onEnd, m) }
             val plan = @Composable { m: Modifier -> one(planWord, Icons.Filled.Edit, OnPathColors.ActionEdit, TourActions.EditTonal,
                 TourActions.OnEditTonal, held(UnlockWindow.BarButton.PLAN), onPlan, m) }
-            val side = TourBottomBarRules.stoppedSide(w(endWord), w(planWord))
-            when (TourBottomBarRules.stopped(TourBottomBarRules.stoppedNeed(w(resumeWord)), side, width, density.fontScale)) {
-                TourBottomBarRules.Stopped.ONE_ROW -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.weight(1f)); end(Modifier.width(side.dp)); plan(Modifier.width(side.dp))
-                }
-                TourBottomBarRules.Stopped.TWO_ROWS -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.fillMaxWidth())
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { end(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
-                }
-                TourBottomBarRules.Stopped.STACK -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.fillMaxWidth()); end(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth())
-                }
+            // owner 2026-11-26: the pause shows only ▶ Weiter (the wider) and ■ Tour beenden – Planen was the button before
+            // the pause and comes back with Weiter; a large font stacks them
+            if (density.fontScale >= 1.5f) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                resume(Modifier.fillMaxWidth()); end(Modifier.fillMaxWidth())
+            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                resume(Modifier.weight(1.3f)); end(Modifier.weight(1f))
             }
         }
     }

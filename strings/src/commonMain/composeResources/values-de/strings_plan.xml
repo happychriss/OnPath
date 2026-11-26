@@ -160,6 +160,8 @@
     <string name="plan_surface_unknown">Unbekannt</string>
     <string name="plan_other">Sonstige</string>
     <string name="plan_route_details">Routendetails</string>
+    <!-- the profile under the finger (owner 2026-11-26): "1,2 km · noch 3,4 km · ↑ 200 m · 8 %" -->
+    <string name="profile_scrub_left">noch %1$s</string>
     <string name="plan_no_elevation">Keine Höhendaten für diese Route</string>
     <string name="plan_difficulty_easy">Leicht</string>
     <string name="plan_difficulty_moderate">Mittel</string>

@@ -161,6 +161,8 @@
     <string name="plan_surface_unknown">Unknown</string>
     <string name="plan_other">Other</string>
     <string name="plan_route_details">Route details</string>
+    <!-- the profile under the finger (owner 2026-11-26): "1,2 km · noch 3,4 km · ↑ 200 m · 8 %" -->
+    <string name="profile_scrub_left">%1$s left</string>
     <string name="plan_no_elevation">No elevation data for this route</string>
     <string name="plan_difficulty_easy">Easy</string>
     <string name="plan_difficulty_moderate">Moderate</string>
