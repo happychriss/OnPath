@@ -5,6 +5,7 @@ import com.onpath.app.domain.PinMenuItems.Row
 import com.onpath.app.domain.PinMenuPlace.Decision
 import com.onpath.app.domain.PinMenuPlace.Kind
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.io.File
@@ -110,28 +111,67 @@ class PinMenuPlaceTest {
     @Test fun theRowsAreAHoldsRowsWithRemovePinLastOnlyOnThePin() {
         val stop = PlaceAddMenu.menu(3, touring = false, zone = PlaceAddMenu.Zone.STOP)
         // empty plan; during a tour no "Hier starten"
-        assertEquals("empty plan", listOf(Row.START_HERE, Row.GO_HERE, Row.GOOGLE, Row.REMOVE_PIN), rows(true, true, null, pin = true))
+        assertEquals("empty plan", listOf(Row.GO_HERE, Row.START_HERE, Row.GOOGLE, Row.REMOVE_PIN), rows(true, true, null, pin = true))
         assertEquals("empty plan during a tour offers no start here", listOf(Row.GO_HERE, Row.GOOGLE, Row.REMOVE_PIN),
             rows(true, MapGestures.offersStartHere(touring = true), null, pin = true))
         // one point
         assertEquals("one point", listOf(Row.ADD, Row.GOOGLE, Row.REMOVE_PIN), rows(false, true, PlaceAddMenu.menu(1, false, null), pin = true))
-        // Owner 2026-11-15: both add rows always, the likelier first – nothing under „⋯ Mehr“.
+        // Owner 2026-11-26 night: the likeliest on top (tinted), the rest below
         assertEquals("a clear stop", listOf(Row.ADD_STOP, Row.NEW_DESTINATION, Row.GOOGLE, Row.REMOVE_PIN), rows(false, true, stop, pin = true))
-        assertEquals("doubtful", listOf(Row.NEW_DESTINATION, Row.ADD_STOP, Row.GOOGLE, Row.REMOVE_PIN),
+        assertEquals("doubtful, the goal likelier", listOf(Row.NEW_DESTINATION, Row.ADD_STOP, Row.GOOGLE, Row.REMOVE_PIN),
             rows(false, true, PlaceAddMenu.menu(3, false, PlaceAddMenu.Zone.GOAL_FIRST), pin = true))
         assertEquals("far", listOf(Row.NEW_DESTINATION, Row.ADD_STOP, Row.GOOGLE, Row.REMOVE_PIN),
             rows(false, true, PlaceAddMenu.menu(3, false, PlaceAddMenu.Zone.GOAL), pin = true))
+        assertEquals("planning, only the goal", listOf(Row.NEW_DESTINATION, Row.GOOGLE, Row.REMOVE_PIN),
+            rows(false, true, PlaceAddMenu.planningRows(PlaceAddMenu.HoldAction.NEW_GOAL, PlaceAddMenu.Detours(500.0, 50.0)), pin = true))
         assertEquals("during a tour the same add entries as a hold", listOf(Row.ADD_STOP, Row.NEW_DESTINATION, Row.GOOGLE, Row.REMOVE_PIN),
             rows(false, false, PlaceAddMenu.menu(3, true, PlaceAddMenu.Zone.STOP), pin = true))
         // a map POI has no Remove pin
-        assertEquals("a map POI", listOf(Row.START_HERE, Row.GO_HERE, Row.GOOGLE), rows(true, true, null, pin = false))
+        assertEquals("a map POI", listOf(Row.GO_HERE, Row.START_HERE, Row.GOOGLE), rows(true, true, null, pin = false))
     }
 
-    /** Tour suggestions on (the default since 2026-11-18): „Rundtour von hier“ directly after „Hier starten“ – only where that row is. */
+    /**
+     * Tour suggestions on (the default since 2026-11-18): „Rundtour ab hier“ last in the route group, after „Als Ziel“
+     * (owner 2026-11-26) – only where „Als Start“ is offered.
+     */
     @Test fun roundTripFollowsStartHere() {
-        assertEquals(listOf(Row.START_HERE, Row.ROUND_TRIP, Row.GO_HERE, Row.GOOGLE), rows(true, true, null, pin = false, roundTrip = true))
+        assertEquals(listOf(Row.GO_HERE, Row.START_HERE, Row.ROUND_TRIP, Row.GOOGLE), rows(true, true, null, pin = false, roundTrip = true))
         assertEquals(listOf(Row.GO_HERE, Row.GOOGLE), rows(true, false, null, pin = false, roundTrip = true))
         assertEquals(listOf(Row.ADD, Row.GOOGLE), rows(false, true, PlaceAddMenu.menu(1, false, null), pin = false, roundTrip = true))
+    }
+
+    /**
+     * The spec's table „New point“ for a POI / search pin (owner 2026-11-26, docs/team/items/2026-11-26-context-menus-wording.md):
+     * groups Route → Ort → Entfernen, a thin line where the group changes – never inside a group, never on top.
+     */
+    @Test fun theSpecTableNewPointGroupsAndLines() {
+        fun lines(r: List<Row>) = r.indices.filter { PinMenuItems.lineBefore(r, it) }
+        // POI / pin, empty plan: Als Start · Als Ziel · Rundtour ab hier | Merken · (Zuhause) · Google | Nadel entfernen
+        val empty = PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = true, keep = true, roundTrip = true)
+        assertEquals(listOf(Row.GO_HERE, Row.START_HERE, Row.ROUND_TRIP, Row.FAVOURITE, Row.HOME, Row.GOOGLE, Row.REMOVE_PIN), empty)
+        assertEquals(listOf(3, 6), lines(empty))
+        // 1 point: Als Ziel | Merken · Google | Nadel entfernen
+        val one = PinMenuItems.of(false, true, PlaceAddMenu.menu(1, false, null), pin = true, keep = true).filter { it != Row.HOME }
+        assertEquals(listOf(Row.ADD, Row.FAVOURITE, Row.GOOGLE, Row.REMOVE_PIN), one)
+        assertEquals(listOf(1, 3), lines(one))
+        // 2+: Als Stopp · Als Ziel | Merken · Google | Nadel entfernen
+        val two = PinMenuItems.of(false, true, PlaceAddMenu.menu(3, false, PlaceAddMenu.Zone.GOAL), pin = true, keep = true)
+            .filter { it != Row.HOME }
+        assertEquals(listOf(Row.NEW_DESTINATION, Row.ADD_STOP, Row.FAVOURITE, Row.GOOGLE, Row.REMOVE_PIN), two)
+        assertEquals(listOf(2, 4), lines(two))
+        // tour running, empty plan: Als Ziel only (no Start, no Rundtour)
+        val tour = PinMenuItems.of(true, MapGestures.offersStartHere(touring = true), null, pin = true, keep = true, roundTrip = true)
+            .filter { it != Row.HOME }
+        assertEquals(listOf(Row.GO_HERE, Row.FAVOURITE, Row.GOOGLE, Row.REMOVE_PIN), tour)
+        // a map POI (no pin): no Entfernen group, so no line after Google
+        val poi = PinMenuItems.of(true, true, null, pin = false)
+        assertEquals(listOf(Row.GO_HERE, Row.START_HERE, Row.GOOGLE), poi)
+        assertEquals(listOf(2), lines(poi))
+        // the groups themselves
+        assertEquals(MenuGroups.Group.ROUTE, PinMenuItems.group(Row.ROUND_TRIP))
+        assertEquals(MenuGroups.Group.PLACE, PinMenuItems.group(Row.FAVOURITE))
+        assertEquals(MenuGroups.Group.REMOVE, PinMenuItems.group(Row.REMOVE_PIN))
+        assertEquals(emptyList<Int>(), lines(listOf(Row.ADD_STOP, Row.NEW_DESTINATION)))
     }
 
     /** Owner 2026-11-18: „Rundtour von hier“ only for the very first point – a plan with a point never offers it. */
@@ -153,5 +193,16 @@ class PinMenuPlaceTest {
         assertTrue(host, host.contains("Anchored(c, GeoPoint(poi.lat, poi.lon), cameraTick, topPx, bottomPx, onGone = gone) { menu(false) }"))
         // the menu's rows are PinMenuItems' – the hold's and the pick's are one list
         assertTrue(src("ui/MapOverlays.kt").substringAfter("fun PoiMenu(").substringBefore("\n}\n").contains("PinMenuItems.of(emptyPlan, startHere, menu"))
+    }
+
+    /** Owner 2026-11-26 night: in a multi-day tour „Als Übernachtung“ follows the add rows; never on an empty plan. */
+    @Test fun aMultiDayTourOffersAsOvernightAfterTheAddRows() {
+        val m = PlaceAddMenu.menu(3, false, PlaceAddMenu.Zone.STOP_FIRST)
+        assertEquals(listOf(Row.ADD_STOP, Row.NEW_DESTINATION, Row.OVERNIGHT, Row.GOOGLE),
+            PinMenuItems.of(false, true, m, pin = false, overnight = true))
+        assertEquals(listOf(Row.ADD, Row.OVERNIGHT, Row.GOOGLE),
+            PinMenuItems.of(false, true, PlaceAddMenu.menu(1, false, null), pin = false, overnight = true))
+        assertFalse(Row.OVERNIGHT in PinMenuItems.of(true, true, null, pin = false, overnight = true))
+        assertFalse(Row.OVERNIGHT in PinMenuItems.of(false, true, m, pin = false))
     }
 }

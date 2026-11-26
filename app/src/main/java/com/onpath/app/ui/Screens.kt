@@ -87,6 +87,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -256,49 +257,24 @@ fun ActivityDialog(
 }
 
 /**
- * Hike's T1–T5 under its row: one tap = Hike with that level; [selected] 0 = none marked. Under the chips the selected
- * level's line "T2 · Bergwandern: …" ([SacScale.line], owner 2026-11-08) – always there while a level is chosen, so a
- * "T2" never stands without its word, on every phone width and font size (it wraps, never cut).
+ * Hike's T1–T5 under its row (owner 2026-11-26 night: the picker closed on the tap, the description was never readable):
+ * five rows, each „Bergwandern (T2)“ over one short line, so the words are read BEFORE the tap; one tap = Hike with that
+ * level; [chosen] 0 = none marked. A row wraps at a large font, never cut.
  */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class, androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-internal fun SacChips(selected: Int, onPick: (Int) -> Unit) {
-    // a T tapped on a small phone / large font: the picker scrolls so its line is in view (not on the first showing)
-    val lineInView = androidx.compose.runtime.remember { androidx.compose.foundation.relocation.BringIntoViewRequester() }
-    var shown by androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(selected) }
-    androidx.compose.runtime.LaunchedEffect(selected) {
-        if (selected != shown && SacScale.lineLevel(selected) != null) lineInView.bringIntoView()
-        shown = selected
-    }
-    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth()) {
-        SacChipRow(selected, onPick)
-        SacScale.lineLevel(selected)?.let { l ->
-            Text(SacScale.line(l), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 12.dp, end = 4.dp, bottom = 8.dp).bringIntoViewRequester(lineInView))
-        }
-    }
-}
-
-@Composable
-private fun SacChipRow(selected: Int, onPick: (Int) -> Unit) {
-    // one row of five equal chips (never a lone T5 on a second line). Not Material's FilterChip: its fixed 8 dp label
-    // padding cut the number on a 360 dp phone at font 1.3 – only "T" was left (owner 2026-11-08, father's S10); the
-    // same chip look (outlined, the chosen one filled) with the whole width for "T2"
-    Row(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+internal fun SacChips(chosen: Int, onPick: (Int) -> Unit) {
+    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp)) {
         SacScale.levels.forEach { l ->
+            val sel = l.level == chosen
             val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
-            val sel = l.level == selected
-            androidx.compose.material3.Surface(
-                selected = sel, onClick = { onPick(l.level) }, shape = OnPathShapes.Small,
-                color = if (sel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent,
-                contentColor = if (sel) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
-                border = if (sel) null else androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline),
-                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { contentDescription = desc },
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Text("T${l.level}", style = MaterialTheme.typography.bodyMedium, maxLines = 1, softWrap = false,
-                        fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
-                }
+            Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(OnPathShapes.Small)
+                .background(if (sel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
+                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onPick(l.level) }
+                .semantics(mergeDescendants = true) { contentDescription = desc; if (sel) this.selected = true }
+                .padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.Center) {
+                Text(str(Res.string.routes_sac_row, l.name, l.level), style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
+                Text(l.short, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -310,16 +286,18 @@ private fun SacChipRow(selected: Int, onPick: (Int) -> Unit) {
  */
 internal object SacScale {
     /** [name] / [text] in the app's language (strings_routes.xml; German = the SAC's own German wording). */
-    class Level(val level: Int, private val nameRes: StringResource, private val textRes: StringResource) {
+    class Level(val level: Int, private val nameRes: StringResource, private val textRes: StringResource, private val shortRes: StringResource) {
         val name: String get() = Txt.s(nameRes)
         val text: String get() = Txt.s(textRes)
+        /** One short line under the name in the picker (owner 2026-11-26 night). */
+        val short: String get() = Txt.s(shortRes)
     }
     val levels = listOf(
-        Level(1, Res.string.routes_sac_1_name, Res.string.routes_sac_1_text),
-        Level(2, Res.string.routes_sac_2_name, Res.string.routes_sac_2_text),
-        Level(3, Res.string.routes_sac_3_name, Res.string.routes_sac_3_text),
-        Level(4, Res.string.routes_sac_4_name, Res.string.routes_sac_4_text),
-        Level(5, Res.string.routes_sac_5_name, Res.string.routes_sac_5_text),
+        Level(1, Res.string.routes_sac_1_name, Res.string.routes_sac_1_text, Res.string.routes_sac_1_short),
+        Level(2, Res.string.routes_sac_2_name, Res.string.routes_sac_2_text, Res.string.routes_sac_2_short),
+        Level(3, Res.string.routes_sac_3_name, Res.string.routes_sac_3_text, Res.string.routes_sac_3_short),
+        Level(4, Res.string.routes_sac_4_name, Res.string.routes_sac_4_text, Res.string.routes_sac_4_short),
+        Level(5, Res.string.routes_sac_5_name, Res.string.routes_sac_5_text, Res.string.routes_sac_5_short),
     )
     fun of(level: Int): Level = levels[level.coerceIn(1, 5) - 1]
 

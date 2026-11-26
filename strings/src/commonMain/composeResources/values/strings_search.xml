@@ -19,6 +19,7 @@
 
     <string name="search_cat_places">Places</string>
     <string name="search_cat_food">Food</string>
+    <string name="search_cat_sleep">Lodging</string>
     <string name="search_cat_sights">Sights</string>
     <string name="search_cat_water">Water</string>
     <string name="search_cat_transit">Transit</string>
@@ -44,7 +45,7 @@
     <string name="search_card_set_start">Set as start</string>
     <string name="search_card_on_the_way">Add as a stop on the way</string>
     <string name="search_card_set_destination">Set as destination</string>
-    <string name="search_card_new_destination">New destination</string>
+    <string name="search_card_new_destination">Set as destination</string>
     <string name="search_add_on_route">on your route</string>
     <string name="search_add_fits_best">fits best there</string>
     <string name="search_card_as_start">As start</string>

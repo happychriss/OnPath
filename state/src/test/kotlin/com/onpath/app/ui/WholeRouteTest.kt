@@ -65,10 +65,10 @@ class WholeRouteTest {
     @Test fun paddingKeepsClearOfTopAndBottomElements() {
         val d = 2.5f
         val status = 60
-        // Plan: below the search pill (76 dp) or the strip / box under it, above the sheet
+        // Plan: below the status bar (no top band since the Daumen-Karte) or the strip / box under it, above the sheet
         // map button column not measured yet: a MAP_FAB column (56 dp, owner 2026-11-03) beside, no room above it
         val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
-        assertEquals(FitPadding(60, status + 230, (MAP_FAB_DP * d).toInt() + 80, 800 + 120), p)
+        assertEquals(FitPadding(60, status + 40, (MAP_FAB_DP * d).toInt() + 80, 800 + 120), p)
         val withBox = FitPaddingRule.of(plan, d, status, planTopDp = 180, sheetPx = 800, navTopDp = 0, navBottomDp = 0)
         assertEquals(status + ((180 + 16) * d).toInt(), withBox.top)
         // Navigate: below the turn / status column (or the box under it), above the slider, clear of the big buttons
@@ -178,9 +178,8 @@ class WholeRouteTest {
         // since onpath.private#43 (2026-11-06) the column stands at a fixed place above the middle, not on the sheet: the
         // fit keeps beside it; the "above the column, full width" room no longer exists in the app (pick() still serves it)
         assertTrue(screen.contains("fabWidthPx = planFab[0],") && screen.contains("fabHeightPx = 0,"))
-        // the activity button's measured edges go into the rule (beside or below it; 2026-11-07)
-        assertTrue(screen.contains("activityRightPx = if (vm.routesFlow.shown == null) planActivity[0] else 0"))
-        assertTrue(screen.contains("onActivityBox(b.right.toInt(), b.bottom.toInt())"))
+        // no activity button on the map since the Daumen-Karte (owner 2026-11-26): it is a chip in the plan card
+        assertTrue(!screen.contains("ActivityMapButton("))
         assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
 

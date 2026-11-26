@@ -29,7 +29,7 @@
     <string name="days_remove_first">Erst eine Übernachtung entfernen</string>
     <string name="days_day_added">Ein Tag mehr – alle Nächte waren schon festgelegt</string>
     <string name="days_limits_line">Höchstens %1$s pro Tag</string>
-    <string name="days_overnight_here">Übernachtung hier</string>
+    <string name="days_overnight_here">Als Übernachtung</string>
     <string name="days_set_hotel">Hotel hinterlegen</string>
     <string name="days_change_hotel">Hotel ändern</string>
     <string name="days_remove_hotel">Hotel entfernen</string>

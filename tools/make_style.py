@@ -1629,7 +1629,9 @@ POI_TIERS = [
     # lost the collision to every tier-1 POI, water, bars and snack bars; a roof in the rain matters on foot and by bike)
     (1, 12, 14, ["hut", "bivouac", "shelter", "restaurant", "cafe", "viewpoint", "spring", "waterfall", "lift", "castle"]),
     # bars / snack bars and bus stops from z14
-    (2, 14, 15, ["water", "bar", "fast_food", "camping", "church", "ruins", "cave", "museum", "chapel"]),
+    # places to stay (owner 2026-11-26, „Übernachten“) next to camping; hidden by default (PoiKinds.defaultHidden)
+    (2, 14, 15, ["water", "bar", "fast_food", "camping", "hotel", "guest_house", "hostel", "church", "ruins", "cave",
+                 "museum", "chapel"]),
     (3, 15, 16, ["picnic", "toilets", "info", "bike_shop", "charging", "shop", "parking"]),
 ]
 # Bus stops have their own two layers (see pois()): zoomed out one symbol per stop name (the pair of stops on both

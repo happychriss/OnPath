@@ -20,7 +20,8 @@ object ControlsPlacement {
      * The column's top as a share of the screen height. The owner's preview had ~30 %; 26 % keeps all six buttons (with
      * Undo AND Redo) clear of the half-open sheet on the Pixel (sheet top ≈ 61 %), so a half sheet never pushes it.
      */
-    const val SCREEN_FRACTION = 0.26f
+    // owner 2026-11-26 (Daumen-Karte): lower, closer to the thumb like in Navigate – a half-open sheet now pushes it up
+    const val SCREEN_FRACTION = 0.36f
 
     /** Air between the column and the sheet / the top band. */
     const val GAP_DP = 12

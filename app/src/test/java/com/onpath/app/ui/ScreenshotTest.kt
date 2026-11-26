@@ -119,12 +119,8 @@ class ScreenshotTest {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
-                // the paper band behind the search pill and ☰ (owner 2026-11-05; paper since 2026-11-06 C) – as MapScreen draws it
-                Box(Modifier.fillMaxWidth().edgeShadow(androidx.compose.ui.graphics.RectangleShape, up = false).background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
+                // no top band since the Daumen-Karte (owner 2026-11-26): search, ☰ and the activity are in the plan card
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, menu, Modifier.fillMaxWidth(), editing = editing, offline = offline)
-                    // the activity as a button on the map (owner 2026-11-05, R5) – as MapScreen places it
-                    ActivityMapButton(act, sac, {}, Modifier.padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp, start = 12.dp))
                     // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)

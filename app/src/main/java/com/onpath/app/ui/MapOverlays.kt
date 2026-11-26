@@ -192,9 +192,13 @@ fun MapOverlayHost(
         if (i == null || p == null) { LaunchedEffect(t) { vm.placeMenus.closePointMenu("its point is no longer in the plan") }; return@let }
         val name = vm.searchFlow.stopName(p)
         Anchored(c, p, cameraTick, topPx, bottomPx, onGone = { vm.placeMenus.closePointMenu("point left the visible map (onGone)") }) {
-            PointMenu(i, vm.plan.points.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0) { a ->
+            // „Merken“ on a named route point (owner 2026-11-26): the same kept places as a held POI's „☆ Merken“
+            val kept = name?.takeIf { it.isNotBlank() }?.let { com.onpath.app.search.Place.ofRoutePoint(it, p.lat, p.lon) }
+            PointMenu(i, vm.plan.points.size, name, roundTrip = vm.isRoundTrip(), loopStart = vm.loopStart() ?: 0,
+                favourite = kept?.let(vm.keptPlaces::isFavourite)) { a ->
                 when (a) {
                     PointAction.MAKE_START, PointAction.LOOP_START -> vm.placeMenus.makeStartFromMenu()
+                    PointAction.KEEP -> kept?.let { vm.keptPlaces.setFavourite(it, !vm.keptPlaces.isFavourite(it)) }
                     PointAction.GOOGLE -> vm.googleFromMenu()?.let { g ->
                         com.onpath.app.poi.PoiIntents.openGoogleMaps(ctx, PoiLinks.googleMaps(name, g.lat, g.lon))
                     }
@@ -430,31 +434,42 @@ fun HoldAddOverlay(anchor: Offset, topPx: Int, bottomPx: Int, onGone: () -> Unit
 private const val HOLD_RING_DP = 12
 
 /**
- * First hold on an empty plan: "Start here" or "Go here" (this spot = destination). The second
- * one is disabled with a short reason ([fromMeBlocked], e.g. "Searching GPS…") while there is no usable position.
+ * First hold on an empty plan (owner 2026-11-26: no title – the menu belongs to nothing yet): „Als Start“ · „Als Ziel“
+ * (this spot = destination, ↳ „Start: dein Standort“) · „Rundtour ab hier“. „Als Ziel“ is disabled with a short reason
+ * ([fromMeBlocked], e.g. "Searching GPS…") in place of that line while there is no usable position.
  */
 @Composable
 fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier,
-                   /** false during a tour ([MapGestures.offersStartHere]): only "Hierhin". */
+                   /** false during a tour ([MapGestures.offersStartHere]): only „Als Ziel“. */
                    startHere: Boolean = true,
-                   /** „Rundtour von hier“ right after „Hier starten“ (tour suggestions on); null = not offered. */
+                   /** „Rundtour ab hier“ last in the route rows (tour suggestions on); null = not offered. */
                    onRoundTrip: (() -> Unit)? = null) {
     MenuSurface(modifier) {
-        Text(str(Res.string.plan_new_route), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
-            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp))
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
+        Spacer(Modifier.height(4.dp))
+        // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“
+        if (fromMeBlocked == null) { GoHereRow(null, onFromMe); if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere) }
+        else { if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere); GoHereRow(fromMeBlocked, onFromMe) }
         if (startHere && onRoundTrip != null) HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = onRoundTrip)
-        HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
-            supporting = fromMeBlocked, onClick = onFromMe)
     }
 }
 
+/** „Als Ziel“ from my position: ↳ „Start: dein Standort“, or why it is off ([fromMeBlocked]) – then disabled. */
+@Composable
+private fun GoHereRow(fromMeBlocked: String?, onFromMe: () -> Unit) =
+    HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
+        supporting = fromMeBlocked ?: str(Res.string.plan_from_my_position), onClick = onFromMe)
+
+/** The thin line between two groups of a menu ([com.onpath.app.domain.MenuGroups]: Route → Ort → Entfernen). */
+@Composable
+private fun GroupLine() =
+    HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant)
+
 /**
- * Menu of a held POI that is not a route point: its name + how to add it · "Open in Google Maps". With 2+ points the
- * entries of [menu] ([PlaceAddMenu], owner 2026-11-07 / 2026-11-15): always „Einfügen“ and „Neues Ziel“, the likelier one
- * first and emphasised (tinted), one line each (owner: where it goes shows on the map). With one point [addLabel] ("Set as
- * destination"). On an empty plan it asks like the first-point menu (owner): "Start here" · "Go here" · "Open in Google Maps".
+ * Menu of a held POI that is not a route point: its name as the title, then the groups Route → Ort → Entfernen with a thin
+ * line between them ([PinMenuItems], owner 2026-11-26). Route: on an empty plan like the first-point menu – „Als Start“ ·
+ * „Als Ziel“ (↳ Start: dein Standort) · „Rundtour ab hier“; with one point [addLabel] („Als Ziel“); with 2+ the entries of
+ * [menu] ([PlaceAddMenu]) in the fixed order „Als Stopp“ → „Als Ziel“, the likelier one tinted. Ort: Merken · In Google
+ * Maps öffnen. Entfernen: „Nadel entfernen“ (the pin only).
  */
 @Composable
 fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifier = Modifier,
@@ -475,7 +490,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
              */
             favourite: Boolean? = null, home: Boolean = false,
             onFavourite: () -> Unit = {}, onHome: () -> Unit = {},
-            /** „Rundtour von hier“ right after „Hier starten“ (tour suggestions on, [PinMenuItems]); null = not offered. */
+            /** „Rundtour ab hier“ last in the route rows (tour suggestions on, [PinMenuItems]); null = not offered. */
             onRoundTrip: (() -> Unit)? = null) {
     val place = Place.fromPoi(poi)
     MenuSurface(modifier, card) {
@@ -492,31 +507,39 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // the rows in their order (PinMenuItems): the same for a hold and for a picked search result (owner 2026-11-13)
         // „⌂ Als Zuhause festlegen“ only while the Zuhause row shows in the search (off since 2026-11-19, HOME_ROW_SHOWN)
-        for (r in com.onpath.app.ui.search.shownMenuRows(
-            PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null))) when (r) {
+        val rows = com.onpath.app.ui.search.shownMenuRows(
+            PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null,
+                fromMe = fromMeBlocked == null))
+        rows.forEachIndexed { i, r ->
+            // a thin line between the groups Route → Ort → Entfernen (owner 2026-11-26)
+            if (PinMenuItems.lineBefore(rows, i)) GroupLine()
+            when (r) {
             PinMenuItems.Row.START_HERE -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             PinMenuItems.Row.ROUND_TRIP -> HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = { onRoundTrip?.invoke() })
-            PinMenuItems.Row.GO_HERE -> HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
-                supporting = fromMeBlocked, onClick = onFromMe)
-            PinMenuItems.Row.ADD -> HoldMenuItem(Icons.Outlined.AddLocationAlt, addLabel, onClick = onAdd)
+            PinMenuItems.Row.GO_HERE -> GoHereRow(fromMeBlocked, onFromMe)
+            PinMenuItems.Row.ADD -> HoldMenuItem(if (addLabel == str(Res.string.plan_add_as_stop)) Icons.Outlined.AddLocationAlt else Icons.Outlined.Flag,
+                addLabel, onClick = onAdd)
             PinMenuItems.Row.ADD_STOP -> AddRow(PlaceAddMenu.Item.ADD_STOP, menu, onAddStop)
             PinMenuItems.Row.NEW_DESTINATION -> AddRow(PlaceAddMenu.Item.NEW_DESTINATION, menu, onNewDestination)
-            PinMenuItems.Row.FAVOURITE -> {
-                // a thin line between the route rows and what is about the place itself (sketch B4a5St5Q…, picture 2)
-                HorizontalDivider(Modifier.padding(horizontal = 16.dp, vertical = 2.dp), color = MaterialTheme.colorScheme.outlineVariant)
-                if (favourite == true) HoldMenuItem(Icons.Filled.Star, str(Res.string.place_favourite_on), iconTint = OnPathColors.Favourite, onClick = onFavourite)
-                else HoldMenuItem(Icons.Outlined.StarOutline, str(Res.string.place_favourite_add), onClick = onFavourite)
-            }
+            PinMenuItems.Row.FAVOURITE -> KeepRow(favourite == true, onFavourite)
             PinMenuItems.Row.HOME -> HoldMenuItem(Icons.Outlined.Home,
                 str(if (home) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
             PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
             PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })
+            PinMenuItems.Row.OVERNIGHT -> {} // multi-day editing is the planner's (the app passes overnight = false)
+            }
         }
     }
 }
 
+/** „☆ Merken“ / „★ Gemerkt“ – a held place's and a named route point's row (owner 2026-11-15 / 2026-11-26). */
+@Composable
+private fun KeepRow(kept: Boolean, onClick: () -> Unit) =
+    if (kept) HoldMenuItem(Icons.Filled.Star, str(Res.string.place_favourite_on), iconTint = OnPathColors.Favourite, onClick = onClick)
+    else HoldMenuItem(Icons.Outlined.StarOutline, str(Res.string.place_favourite_add), onClick = onClick)
+
 /**
- * „Einfügen“ or „Neues Ziel“ – one row of an add menu ([PlaceAddMenu], owner's words 2026-11-15), tinted when it is the
+ * „Als Stopp“ or „Als Ziel“ – one row of an add menu ([PlaceAddMenu], owner's words 2026-11-26), tinted when it is the
  * likelier one ([PlaceAddMenu.Menu.emphasised]). The same row for a held place ([PoiMenu]) and a held spot ([HoldAddMenu]).
  */
 @Composable
@@ -526,25 +549,26 @@ private fun AddRow(item: PlaceAddMenu.Item, menu: PlaceAddMenu.Menu?, onClick: (
     else HoldMenuItem(Icons.Outlined.Flag, str(Res.string.plan_make_destination), strong = menu?.emphasised == item, onClick = onClick)
 
 /**
- * A hold on the empty map in a doubtful spot (owner 2026-11-15, [PlaceAddMenu.asksOnHold]): only the two rows of [menu],
- * „Einfügen“ and „Neues Ziel“, the likelier first and tinted – no title (the spot is just a spot; where it goes shows on the
- * map once chosen). Back / a tap elsewhere adds nothing.
+ * A hold on the empty map in a doubtful spot (owner 2026-11-15, [PlaceAddMenu.asksOnHold]): only the two rows of [menu]
+ * in the fixed order „Als Stopp“ → „Als Ziel“ ([PlaceAddMenu.Menu.rows], owner 2026-11-26), the likelier one tinted – no
+ * title (the spot is just a spot; where it goes shows on the map once chosen). Back / a tap elsewhere adds nothing.
  */
 @Composable
 fun HoldAddMenu(menu: PlaceAddMenu.Menu, onAddStop: () -> Unit, onNewDestination: () -> Unit, modifier: Modifier = Modifier) {
     MenuSurface(modifier) {
         Spacer(Modifier.height(4.dp))
-        for (item in menu.main) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
+        for (item in menu.rows) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
     }
 }
 
 /**
- * Menu of a held route point: its number + name as a small title, then only the options that make sense
- * there ([MapGestures.pointMenu]): Make starting point · End route here · Open in Google Maps · Delete.
+ * Menu of a held route point: its number + name as a small title, then only the options that make sense there
+ * ([MapGestures.pointMenu]) in the groups Route → Ort → Entfernen (owner 2026-11-26): „Als Start“ · Merken · In Google
+ * Maps öffnen · Löschen. [favourite] = whether the named point is kept („★ Gemerkt“); null = no „Merken“ row.
  */
 @Composable
 fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifier, roundTrip: Boolean = false,
-              loopStart: Int = 0, onAction: (PointAction) -> Unit) {
+              loopStart: Int = 0, favourite: Boolean? = null, onAction: (PointAction) -> Unit) {
     MenuSurface(modifier) {
         Row(verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 10.dp)) {
@@ -556,14 +580,20 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
                 maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        for (a in MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip, loopStart = loopStart)) when (a) {
+        val rows = MapGestures.pointMenu(index, count, isPlace = !name.isNullOrBlank(), roundTrip = roundTrip, loopStart = loopStart,
+            keep = favourite != null)
+        rows.forEachIndexed { i, a ->
+            if (MapGestures.pointLineBefore(rows, i)) GroupLine()
+            when (a) {
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here),
                 supporting = plural(Res.plurals.plan_removes_points, index, index)) { onAction(a) }
             PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_finish_here),
                 supporting = str(Res.string.plan_same_round_trip)) { onAction(a) }
+            PointAction.KEEP -> KeepRow(favourite == true) { onAction(a) }
             PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps)) { onAction(a) }
             PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, str(Res.string.common_delete), danger = true) { onAction(a) }
+            }
         }
     }
 }

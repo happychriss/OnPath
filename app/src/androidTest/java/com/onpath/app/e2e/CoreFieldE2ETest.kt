@@ -17,7 +17,7 @@ import com.onpath.strings.nav_change_plan
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_keep_recording
-import com.onpath.strings.plan_guide_find_title
+import com.onpath.strings.plan_hint_first_point_question
 import com.onpath.strings.nav_hold_hint
 import com.onpath.strings.nav_status_paused
 import com.onpath.strings.nav_settings_cd
@@ -47,6 +47,7 @@ import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -492,7 +493,7 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
             assertEquals("back in Plan", AppMode.PLAN, mode())
             scenario.onActivity { vm(it).closeSavedTour() } // the "Tour gespeichert" box
-            assertNotNull("the empty sheet's guide", findFresh(By.text(Txt.s(Res.string.plan_guide_find_title)), 10_000))
+            assertNotNull("the empty card's search field (Daumen-Karte)", findFresh(By.desc(Txt.s(Res.string.plan_hint_first_point_question)), 10_000))
             shot("start-after-arrival")
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync { com.onpath.app.recording.DemoLocation.stop("E2E arrival done") }
@@ -1331,19 +1332,21 @@ class CoreFieldE2ETest : E2EBase() {
             clickText(resumeWord)
             waitUntil("resumed by a tap on Weiter in the window", 10_000) { !paused() }
             waitUntil("locked at once after Weiter: Anhalten is a held button", 5_000) { lockedLook(pauseWord) }
-            // 2 held Anhalten again → a tap on Planen goes to Plan; back with "Weiter geht's" the bar is locked
-            holdButton(pauseWord, ms = holdMs + 1_000)
-            waitUntil("paused again", 10_000) { paused() }
-            clickText(planWord)
+            // 2 the pause has no Planen any more (owner 2026-11-26): a held Planen goes to Plan; back with "Weiter geht's"
+            // the bar is locked
+            holdButton(planWord, ms = holdMs + 1_000)
             waitUntil("Plan", 10_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).tourSession.continueNavigation(force = true) }
             waitUntil("back in Navigate", 10_000) { mode() == AppMode.NAVIGATE }
-            waitUntil("back from Plan the bar is locked: Weiter and Tour beenden held", 5_000) {
-                lockedLook(resumeWord) && lockedLook(endWord)
+            waitUntil("back from Plan the bar is locked: Anhalten and Planen held", 5_000) {
+                lockedLook(pauseWord) && lockedLook(planWord)
             }
-            // 3 a held Weiter resumes and leaves the moving bar locked too (no window after it)
-            holdButton(resumeWord, ms = holdMs + 1_000)
-            waitUntil("resumed by a held Weiter", 10_000) { !paused() }
+            // 3 held Anhalten, Weiter in the window resumes and leaves the moving bar locked too
+            holdButton(pauseWord, ms = holdMs + 1_000)
+            waitUntil("paused for step 3", 10_000) { paused() }
+            assertNull("the pause has no Planen (owner 2026-11-26)", findFresh(By.text(planWord), 1_000))
+            clickText(resumeWord)
+            waitUntil("resumed by Weiter", 10_000) { !paused() }
             waitUntil("locked after a held Weiter: Anhalten is a held button", 5_000) { lockedLook(pauseWord) }
             // 4 held Anhalten → Beenden is a plain button in the window – a tap, no hold
             holdButton(pauseWord, ms = holdMs + 1_000)

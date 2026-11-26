@@ -158,7 +158,8 @@ fun BoxScope.MessageSlot(message: Message?, topDp: Int, modifier: Modifier = Mod
  */
 @Composable
 fun MessageCard(message: Message, modifier: Modifier = Modifier) {
-    val edge = message.kind.edge()
+    // Navigate's questions have a green edge (owner 2026-11-26: "in der Navigation sind alle Meldungen grün")
+    val edge = if (message.navigate && message.kind == MessageKind.FRAGE) OnPathColors.NavQuestionEdge else message.kind.edge()
     val large = LocalDensity.current.fontScale > LARGE_FONT
     val beside = message.buttons.size == 1 && !large && !message.navigate
     Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, contentColor = OnPathColors.Ink, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, OnPathShapes.Card)) {

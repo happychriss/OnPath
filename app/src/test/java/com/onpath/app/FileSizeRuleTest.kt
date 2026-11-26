@@ -54,12 +54,12 @@ class FileSizeRuleTest {
             "com/onpath/app/ui/NavigateScreen.kt" to 1_318,
             "com/onpath/app/cells/MapCells.kt" to 1_296,
             "com/onpath/app/map/MapController.kt" to 1_226,
-            "com/onpath/app/ui/Screens.kt" to 1_065,
+            "com/onpath/app/ui/Screens.kt" to 1_043,
             "com/onpath/app/ui/SettingsScreen.kt" to 1_032,
             "com/onpath/app/ui/MapDataFlow.kt" to 992,
-            "com/onpath/app/ui/MapScreen.kt" to 920,
+            "com/onpath/app/ui/MapScreen.kt" to 904,
             "com/onpath/app/MainActivity.kt" to 923,
-            "com/onpath/app/ui/PlanPanel.kt" to 837,
+            "com/onpath/app/ui/PlanPanel.kt" to 835,
             "com/onpath/app/cells/CellStore.kt" to 806,
         )
     }

@@ -166,12 +166,13 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
     val tm = rememberTextMeasurer()
     val style = MaterialTheme.typography.titleMedium
     val density = LocalDensity.current
-    val green = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = OnPathColors.CardWhite)
     val blue = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
+    // Anhalten is blue (owner 2026-11-26: "das Einzige, was in der Navigation blau ist, ist Anhalten und Planen")
+    val pauseColors = ButtonDefaults.buttonColors(containerColor = OnPathColors.NavPauseStrong, contentColor = OnPathColors.CardWhite)
     val go = @Composable { word: String, icon: ImageVector?, m: Modifier, hold: Boolean, act: () -> Unit ->
-        if (hold) HoldButton(word, OnPathColors.ActionGo, TourActions.GoTonal, TourActions.OnGoTonal, act, hintOr,
+        if (hold) HoldButton(word, OnPathColors.NavPauseStrong, OnPathColors.NavPauseTonal, OnPathColors.OnNavPauseTonal, act, hintOr,
             m.height(56.dp)) { c -> HoldLabel(icon, word, c) }
-        else Button(onClick = act, colors = green, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
+        else Button(onClick = act, colors = pauseColors, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
             modifier = m.heightIn(min = 56.dp)) {
             if (icon != null) { Icon(icon, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
             Text(word, style = style, maxLines = 1, softWrap = false)
@@ -218,18 +219,12 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
                 TourActions.OnGoTonal, held(UnlockWindow.BarButton.END), onEnd, m) }
             val plan = @Composable { m: Modifier -> one(planWord, Icons.Filled.Edit, OnPathColors.ActionEdit, TourActions.EditTonal,
                 TourActions.OnEditTonal, held(UnlockWindow.BarButton.PLAN), onPlan, m) }
-            val side = TourBottomBarRules.stoppedSide(w(endWord), w(planWord))
-            when (TourBottomBarRules.stopped(TourBottomBarRules.stoppedNeed(w(resumeWord)), side, width, density.fontScale)) {
-                TourBottomBarRules.Stopped.ONE_ROW -> Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.weight(1f)); end(Modifier.width(side.dp)); plan(Modifier.width(side.dp))
-                }
-                TourBottomBarRules.Stopped.TWO_ROWS -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.fillMaxWidth())
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { end(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
-                }
-                TourBottomBarRules.Stopped.STACK -> Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    resume(Modifier.fillMaxWidth()); end(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth())
-                }
+            // owner 2026-11-26: the pause shows only ▶ Weiter (the wider) and ■ Tour beenden – Planen was the button before
+            // the pause and comes back with Weiter; a large font stacks them
+            if (density.fontScale >= 1.5f) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                resume(Modifier.fillMaxWidth()); end(Modifier.fillMaxWidth())
+            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                resume(Modifier.weight(1.3f)); end(Modifier.weight(1f))
             }
         }
     }

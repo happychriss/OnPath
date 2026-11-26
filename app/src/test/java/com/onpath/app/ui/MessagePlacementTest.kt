@@ -21,8 +21,8 @@ class MessagePlacementTest {
         for (h in listOf(0, 8, 120, 260, 600)) assertEquals(h + 12, MessagePlacement.topDp(MessageScreen.NAVIGATE, h))
         // not measured yet: still below the status bar, never above it
         assertEquals(12, MessagePlacement.topDp(MessageScreen.NAVIGATE, -5))
-        // the small download chip stays right under ☰, above where a box goes
-        assertTrue(MessagePlacement.CHIP_TOP_DP < MessagePlacement.topDp(MessageScreen.PLAN))
+        // the small download chip sits top left where a box goes (Daumen-Karte): it shows only while no box does
+        assertTrue(MessagePlacement.CHIP_TOP_DP <= MessagePlacement.topDp(MessageScreen.PLAN))
     }
 
     /** The headers the rule assumes: My routes title row (56 dp button + 2×4) + 48 dp tabs, Settings title row. */

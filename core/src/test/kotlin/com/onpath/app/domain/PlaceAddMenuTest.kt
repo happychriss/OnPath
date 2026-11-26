@@ -13,8 +13,9 @@ import org.junit.Test
 
 /**
  * The place menu's add entries (owner 2026-11-07 11:20 / 11:25 / 11:30; 2026-11-15; 2026-11-17): on a tour / a round trip
- * both „Einfügen“ and „Neues Ziel“, the likelier one first (by the zone) and emphasised; while planning only the matching
- * row in a clear case, both in between (the hold rule [PlaceAddMenu.planningHold]); one line each, only the label.
+ * both „Als Stopp“ and „Als Ziel“, the likelier one (by the zone) emphasised; while planning only the matching row in a
+ * clear case, both in between (the hold rule [PlaceAddMenu.planningHold]); one line each, only the label. Shown always
+ * Start → Stopp → Ziel ([PlaceAddMenu.Menu.rows], owner 2026-11-26).
  */
 class PlaceAddMenuTest {
 
@@ -116,18 +117,62 @@ class PlaceAddMenuTest {
         assertEquals(null, PlaceAddMenu.menu(0, false, null).emphasised)
     }
 
-    /** The owner's words (2026-11-15), one line each – where it goes shows on the map. */
+    /**
+     * The owner's words (2026-11-26, docs/team/items/2026-11-26-context-menus-wording.md – replaces „Einfügen“ / „Neues
+     * Ziel“ of 2026-11-15): Start · Stopp · Ziel, every route action „Als …“; one line each – where it goes shows on the map.
+     */
     @Test fun inGermanTheOwnersWords() {
         val before = java.util.Locale.getDefault()
         java.util.Locale.setDefault(java.util.Locale.GERMANY)
         try {
-            assertEquals("Einfügen", Txt.s(Res.string.plan_add_as_stop))
-            assertEquals("Neues Ziel", Txt.s(Res.string.plan_make_destination))
+            assertEquals("Als Start", Txt.s(Res.string.plan_start_here))
+            assertEquals("Als Stopp", Txt.s(Res.string.plan_add_as_stop))
+            assertEquals("Als Ziel", Txt.s(Res.string.plan_make_destination))
+            assertEquals("Als Ziel", Txt.s(Res.string.plan_go_here))
+            assertEquals("Start: dein Standort", Txt.s(Res.string.plan_from_my_position))
+            assertEquals("Als Ziel", Txt.s(Res.string.search_card_set_destination))
+            assertEquals("Als Ziel", Txt.s(Res.string.search_card_new_destination))
+            assertEquals("Als Start", Txt.s(Res.string.plan_start_finish_here))
+            assertEquals("Rundtour ab hier", Txt.s(Res.string.suggest_ui_from_here))
+            assertEquals("Ein Stopp", Txt.s(Res.string.plan_err_a_stop))
+            assertEquals("Löscht den Punkt davor", Txt.p(Res.plurals.plan_removes_points, 1, 1))
         } finally {
             java.util.Locale.setDefault(before)
         }
-        assertEquals("Insert", Txt.s(Res.string.plan_add_as_stop))
-        assertEquals("New destination", Txt.s(Res.string.plan_make_destination))
+        assertEquals("Set as start", Txt.s(Res.string.plan_start_here))
+        assertEquals("Set as stop", Txt.s(Res.string.plan_add_as_stop))
+        assertEquals("Set as destination", Txt.s(Res.string.plan_make_destination))
+        assertEquals("Set as destination", Txt.s(Res.string.plan_go_here))
+        assertEquals("Start: your position", Txt.s(Res.string.plan_from_my_position))
+        assertEquals("Round trip from here", Txt.s(Res.string.suggest_ui_from_here))
+        // the plural's one-form without the number (owner 2026-11-26: „Removes the point before it“)
+        assertEquals("Removes the point before it", Txt.p(Res.plurals.plan_removes_points, 1, 1))
+        assertEquals("Removes the 3 points before it", Txt.p(Res.plurals.plan_removes_points, 3, 3))
+    }
+
+    /**
+     * Owner 2026-11-26 night: the menu shows the likeliest on top, tinted, the rest below („das Daumengefühl“) – the fixed
+     * Start → Stopp → Ziel of that afternoon is gone.
+     */
+    @Test fun theRowsAreShownLikeliestFirstAndTinted() {
+        for (z in Zone.values()) for (touring in listOf(false, true)) {
+            val m = PlaceAddMenu.menu(3, touring, z)
+            assertEquals("$z", m.main, m.rows)
+            m.emphasised?.let { assertEquals("$z: the tinted one on top", it, m.rows.first()) }
+        }
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), PlaceAddMenu.menu(3, true, Zone.GOAL_FIRST).rows)
+        assertEquals(listOf(Item.ADD_STOP, Item.NEW_DESTINATION), PlaceAddMenu.menu(3, true, Zone.STOP_FIRST).rows)
+        // a hold that asks: the cheaper on top, tinted
+        val goalCheaper = PlaceAddMenu.planningMenu(PlaceAddMenu.Detours(100.0, 90.0))
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), goalCheaper.rows)
+        assertEquals(Item.NEW_DESTINATION, goalCheaper.emphasised)
+        // empty plan: Als Start · Als Ziel; during a tour Als Ziel only; one point: Als Ziel
+        assertEquals(listOf(Item.START_HERE, Item.GO_HERE), PlaceAddMenu.menu(0, false, null).rows)
+        assertEquals(listOf(Item.GO_HERE), PlaceAddMenu.menu(0, true, null).rows)
+        assertEquals(listOf(Item.SET_DESTINATION), PlaceAddMenu.menu(1, false, null).rows)
+        // one row alone stays one row
+        assertEquals(listOf(Item.NEW_DESTINATION),
+            PlaceAddMenu.planningRows(PlaceAddMenu.HoldAction.NEW_GOAL, PlaceAddMenu.Detours(1.0, 1.0)).rows)
     }
 
     @Test fun fewerThanTwoPointsKeepTheFirstPointWording() {

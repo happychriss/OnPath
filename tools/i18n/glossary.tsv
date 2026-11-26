@@ -13,8 +13,8 @@ on the way (state)	Unterwegs	The state while a tour runs (owner 2026-11-03, fewe
 track (GPX)	Track	Only for GPX files (owner 2026-11-03, A-022): "GPX-Track", imported tracks; imported GPX stays in the tab "Geplant" with its "GPX" tag
 plan (mode)	Planen	Mode name ("PLANEN"); the thing you plan and save is a Plan (owner 2026-11-03, A-022): "Plan speichern", "Plan teilen", "Plan-Link", "Neuer Plan", "Plan ändern"; EN plan
 Navigate (mode)	Unterwegs	Shown as "Unterwegs" (owner 2026-11-03); "Navigation" only as the Settings page name and the Android channel name; start button "Los geht’s · ‹Ziel›", back to it "Weiter"
-point (route point)	Punkt	Start, via points, destination
-via point	Zwischenpunkt	A point between start and destination (bitte prüfen: alternative "Via-Punkt")
+point (route point)	Punkt	Start, stops, destination (owner 2026-11-26: Start · Stopp · Ziel)
+stop	Stopp	A point between start and destination (owner 2026-11-26: not Zwischenpunkt or Zwischenziel; route actions read Als Start, Als Stopp, Als Ziel)
 start / destination	Start / Ziel
 round trip	Rundtour
 reverse (route)	umkehren	Button "Umkehren"

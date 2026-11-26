@@ -98,6 +98,10 @@ object SearchText {
         add(setOf("cafe"), "cafe", "café", "kaffee", "coffee")
         add(setOf("bar"), "bar", "pub", "kneipe")
         add(setOf("camping"), "camping", "campingplatz", "campsite", "zelt")
+        add(setOf("hotel", "guest_house", "hostel"), "hotel", "hotels", "motel", "unterkunft", "übernachtung", "übernachten",
+            "albergo", "lodging", "accommodation")
+        add(setOf("guest_house"), "pension", "gästehaus", "ferienhof", "b&b", "guesthouse", "garni", "pensione")
+        add(setOf("hostel"), "hostel", "jugendherberge", "herberge", "ostello")
         add(setOf("castle"), "burg", "schloss", "castello", "castle")
         add(setOf("ruins"), "ruine", "ruins", "rovine")
         add(setOf("church", "chapel"), "kirche", "kapelle", "church", "chapel", "chiesa")

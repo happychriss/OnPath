@@ -297,6 +297,18 @@ object PlanDays {
         return withNight(moved, index, NightMark.OVERNIGHT)
     }
 
+    /**
+     * „Als Übernachtung“ for a held place or a found pin (owner 2026-11-26 night – replaces the „Hotel für diese Tour“ /
+     * „Welche Nacht?“ dialog): the caller has put the place in as a stop at [index] the normal „Als Stopp“ way (where it
+     * fits the route); it now ends that day. A lodging ([lodging]: hotel, guest house, hostel, hut – the caller knows the
+     * kind) is a hotel at once with its [name], anything else an Übernachtung. Start, finish or a point that has a mark:
+     * unchanged. N stays and a grey proposal goes; with none left N + 1, as R1.
+     */
+    fun nightAtPlace(plan: SharedPlan, index: Int, lodging: Boolean, name: String?): DayEdit {
+        if (index <= 0 || index >= plan.points.lastIndex || plan.nights.containsKey(index)) return DayEdit(plan)
+        return withNight(plan, index, if (lodging) NightMark(Hotel(name?.takeIf { it.isNotBlank() })) else NightMark.OVERNIGHT)
+    }
+
     /** A night mark [mark] on plan point [index] (no mark yet); N + 1 when no grey proposal was left (R1). */
     private fun withNight(plan: SharedPlan, index: Int, mark: NightMark): DayEdit {
         val noGrey = proposalCount(plan) == 0

@@ -139,9 +139,12 @@ object PlanTopBand {
     /** From this font scale on the mode label would cover the search text: it gets its own line. */
     fun largeLabel(fontScale: Float): Boolean = fontScale >= 1.3f
 
-    /** Bottom of the top bar below the status bar: one row (also during a tour), + the label line at a large font. */
-    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp =
-        TOP_BAR_BOTTOM + if (largeLabel(fontScale)) labelRow(fontScale) else 0.dp
+    /**
+     * Bottom of the top band below the status bar. Since the Daumen-Karte (owner 2026-11-26) Plan has no top band: the
+     * search and ☰ are in the card at the bottom, the boxes sit 12 dp under the status bar.
+     */
+    @Suppress("UNUSED_PARAMETER")
+    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp = TOP_BAR_BOTTOM
 
     /** Where the mode label starts: over the search pill's left part. */
     val LABEL_START = 28.dp
@@ -259,10 +262,15 @@ private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
 }
 
 @Composable
-private fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean) {
+internal fun AppMenuButton(menu: PlanMenu, initiallyOpen: Boolean = false, square: Boolean = false) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Box {
-        Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.MapGround, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.floatShadow(CircleShape)) {
+        // square: the Daumen-Karte's ☰ in the card's top row (owner 2026-11-26); the menu opens upward over the thumb
+        if (square) Surface(onClick = { menu.onOpened(); open = true }, shape = ThumbInner, color = OnPathColors.ThumbField,
+            modifier = Modifier.size(48.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }) {
+            Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
+        }
+        else Surface(onClick = { menu.onOpened(); open = true }, shape = CircleShape, color = OnPathColors.MapGround, modifier = Modifier.size(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_menu) }.floatShadow(CircleShape)) {
             Box(contentAlignment = Alignment.Center) { Icon(Icons.Filled.Menu, contentDescription = null, tint = OnPathColors.PlanAccent) }
         }
         // amber dot: the browser sync needs a look (never for plain offline) – the ☰ item says why. Unsaved changes have

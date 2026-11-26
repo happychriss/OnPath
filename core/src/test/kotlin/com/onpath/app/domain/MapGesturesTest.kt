@@ -118,6 +118,31 @@ class MapGesturesTest {
     }
     @Test fun pointMenuOnSinglePoint() = assertEquals(listOf(PointAction.DELETE), MapGestures.pointMenu(0, 1, isPlace = false))
 
+    /**
+     * The spec's table „Point in the plan“ (owner 2026-11-26, docs/team/items/2026-11-26-context-menus-wording.md): Route
+     * (Als Start) | Ort (Merken³ · Google³ – named place / POI only) | Löschen, a thin line between the groups. Start and
+     * Ziel get no route row; „Merken“ only where the host can keep places ([keep]).
+     */
+    @Test fun pointMenuSpecTable() {
+        fun m(i: Int, n: Int, place: Boolean, round: Boolean = false) = MapGestures.pointMenu(i, n, place, round, keep = true)
+        fun lines(r: List<PointAction>) = r.indices.filter { MapGestures.pointLineBefore(r, it) }
+        val (S, L, K, G, D) = listOf(PointAction.MAKE_START, PointAction.LOOP_START, PointAction.KEEP, PointAction.GOOGLE, PointAction.DELETE)
+        assertEquals("Start, named", listOf(K, G, D), m(0, 4, true))
+        assertEquals("Start, unnamed", listOf(D), m(0, 4, false))
+        assertEquals("Stopp, named", listOf(S, K, G, D), m(1, 4, true))
+        assertEquals(listOf(1, 3), lines(m(1, 4, true)))
+        assertEquals("Stopp, unnamed", listOf(S, D), m(2, 4, false))
+        assertEquals(listOf(1), lines(m(2, 4, false)))
+        assertEquals("Ziel, named", listOf(K, G, D), m(3, 4, true))
+        assertEquals(listOf(2), lines(m(3, 4, true)))
+        assertEquals("round-trip start", listOf(K, G, D), m(0, 5, true, round = true))
+        assertEquals("round-trip point", listOf(L, K, G, D), m(2, 5, true, round = true))
+        // without keep (the planner today) no Merken row – the rest unchanged
+        assertEquals(listOf(S, G, D), MapGestures.pointMenu(1, 4, isPlace = true))
+    }
+
+    private operator fun <T> List<T>.component5() = this[4]
+
     // --- Navigate / shown track: read-only ---
     @Test fun navigateIsReadOnly() {
         for (p in Press.entries) {
@@ -169,5 +194,35 @@ class MapGesturesTest {
         }
         assertFalse(MapGestures.buzzNeedsPoi(true, false, -1)) // the usual pan in Plan: no query
         assertTrue(MapGestures.buzzNeedsPoi(true, true, -1))
+    }
+
+    // --- a hold that vibrated is never lost (owner's Pixel 2026-11-26: "it vibrates, but nothing happened") ---
+    /**
+     * Field bug: the ring buzzed at 300 ms, the finger slid past the touch slop before the long-press timeout (400 ms)
+     * and before lifting – MapLibre panned and sent neither click nor long click, so the press did nothing.
+     */
+    @Test fun aHoldThatVibratedAndThenSlidIsPlayedByTheApp() {
+        val h = MapGestures.ArmedHold()
+        h.down(); h.armed()
+        assertTrue("the slide after the buzz must play the hold", h.leftHold())
+        // MapLibre's late long click / click of the same press (a bigger slop on some phones) is dropped: one action only
+        assertFalse(h.mapEvent())
+        assertFalse(h.leftHold())
+    }
+
+    @Test fun aHoldMapLibreReportedIsNotPlayedTwice() {
+        val h = MapGestures.ArmedHold()
+        h.down(); h.armed()
+        assertTrue(h.mapEvent()) // the long click at the timeout
+        assertFalse("the finger moving on after the long click adds nothing", h.leftHold())
+    }
+
+    @Test fun aSlideBeforeTheBuzzIsAPlainPan() {
+        val h = MapGestures.ArmedHold()
+        h.down()
+        assertFalse(h.leftHold()) // no vibration, no promise: a pan
+        assertTrue(h.mapEvent()) // taps and holds of a new press still count
+        h.down(); h.armed()
+        assertTrue("every new press starts afresh", h.leftHold())
     }
 }

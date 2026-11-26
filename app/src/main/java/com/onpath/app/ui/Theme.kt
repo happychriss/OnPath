@@ -29,6 +29,12 @@ object OnPathColors {
      */
     val Green = Color(0xFF245F46)
     /**
+     * Navigate's one green (owner 2026-11-26 evening: "ist das Grün etwas zu dunkel?") – every go button ([ActionGo]),
+     * Anhalten, the map-button icons and the question edge in Navigate; the brand [Green] stays.
+     */
+    val NavGreen = Color(0xFF245F46)
+
+    /**
      * Light olive container: the selection – selected chips / segments / picker rows, the activity chip (the theme's
      * secondary + primary container, owner 2026-11-12 palette D "wie die Webseite"; was walnut) and the "easy" badge.
      * Two shades stronger than the website's `#EDF1E3`, so it still stands out in sunlight; [Ink] on it 9.6:1.
@@ -71,7 +77,9 @@ object OnPathColors {
      * Inside it the pill row and filled fields stay one step deeper ([PaperDeep]), cards stay [Paper] so they lift; menus,
      * dialogs and message boxes stay [Paper]. Ink 10.3:1, plan blue 6.2:1, amber 4.7:1 on it.
      */
-    val MapGround = PaperDim
+    // owner 2026-11-26 evening (Daumen-Karte, variant B): one surface for everything that floats over the map – the paper
+    // of the menus and boxes, like Komoot / Google / Apple Maps; was the sage [PaperDim] since 2026-11-12
+    val MapGround = Paper
     val Route = Color(0xFF1E3FAE)
     /**
      * The plan's numbered points, on the map and in the Points list (owner 2026-11-01, like Komoot): the start in the
@@ -119,7 +127,7 @@ object OnPathColors {
      * one green (owner 2026-11-06: "alles blau, und was zur Navigation geht, grün"; white 7.5:1). It is [Green]: the big
      * green buttons used to take the theme's primary, which is [Walnut] now.
      */
-    val ActionGo = Color(0xFF245F46)
+    val ActionGo = NavGreen
     /**
      * Edit / plan: change the route – ink blue (owner 2026-11-06 23:00, variant C of the blue page: "das Blau sieht
      * verspielt aus"; like the trail marks on a printed map), a tick lighter since 2026-11-07 09:50 (owner: #2B4C6F "sieht
@@ -184,6 +192,33 @@ object OnPathColors {
     val Error = Color(0xFFC62828)
     val ErrorContainer = Color(0xFFFDE0DC)
     val OnErrorContainer = Color(0xFF5F1410)
+
+    // ---- Daumen-Karte (owner 2026-11-26, docs/team/items/2026-11-26-daumen-karte.md): every new colour a named token, so
+    // the owner can turn them later ("bei den Farbtönen flexibel sein") – never a hex in a screen ----
+    /** The floating card at the bottom (Plan's search / plan sheet, Navigate's Anhalten · Planen): the paper over the map. */
+    val ThumbCard = MapGround
+    /** Inside the thumb card: the search field, the ☰ / 🔍 squares – one step deeper than the card. */
+    val ThumbField = PaperDeep
+    /** Navigate's accent (owner: "in der Navigation sind alle Meldungen und alle Zeichen grün"): map-button icons, signs. */
+    val NavAccent get() = NavGreen
+    /** Navigate: the left edge of a question box (FRAGE) – green there, an exception to "blue edge = question". */
+    val NavQuestionEdge get() = NavGreen
+    /**
+     * Navigate: Anhalten's strong (a tap) and pale (a hold) tone – green like every tour action, Planen stays blue (owner
+     * 2026-11-26 evening on the Pixel: "Anhalten grün und Planen bläulich"; first both blue).
+     */
+    val NavPauseStrong get() = NavGreen
+    val NavPauseTonal = Color(0xFFD5EADF)
+    val OnNavPauseTonal = Color(0xFF0D3A27)
+
+    /**
+     * The elevation profile's steepness (owner 2026-11-26, variant A: "ein Grün in Stufen, hell für flach, kräftig für
+     * steil" – was amber / orange / red): < 5 %, 5–10 %, 10–15 %, > 15 %.
+     */
+    val ProfileFlat = Color(0xFF8DBF9E)
+    val ProfileModerate = Color(0xFF5A9C74)
+    val ProfileSteep = Color(0xFF2F7A52)
+    val ProfileVerySteep = Color(0xFF17492F)
 
     /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn
@@ -388,6 +423,10 @@ object OnPathShapes {
     const val CARD_DP = 20
     const val SMALL_DP = 12
     const val SHEET_DP = 28
+    /** The floating thumb card at the bottom (Daumen-Karte, owner 2026-11-26): 22 dp corners, 12 dp from the edges. */
+    const val THUMB_DP = 22
+    const val THUMB_EDGE_DP = 12
+    val Thumb = androidx.compose.foundation.shape.RoundedCornerShape(THUMB_DP.dp)
     val Pill = androidx.compose.foundation.shape.RoundedCornerShape(percent = PILL_PERCENT)
     val Card = androidx.compose.foundation.shape.RoundedCornerShape(CARD_DP.dp)
     val Small = androidx.compose.foundation.shape.RoundedCornerShape(SMALL_DP.dp)

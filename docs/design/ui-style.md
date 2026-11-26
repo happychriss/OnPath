@@ -7,7 +7,8 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
 - **Light and calm:** white cards over the map, a light page background (`Paper`), dark green-grey text (`Ink`).
   No dark bars, no dark boxes – the two dark exceptions are the Navigate slide switch and the rest view while cycling.
 - **Few colours, one meaning each:** green = act (primary button), blue edge = a question, amber = attention,
-  red = something failed. Map furniture (route blue, track purple, recording orange) never appears in messages.
+  red = something failed. Exception in Navigate (Daumen-Karte, owner 2026-11-26): every sign and box there is green – a
+  question's edge too (`NavQuestionEdge`); Anhalten green (`NavPauseStrong`), Planen blue (`ActionEdit`) – owner 2026-11-26 evening. Map furniture (route blue, track purple, recording orange) never appears in messages.
 - **Nothing disappears by itself** (owner rule for the whole app – rain, stress): a box stays until it is answered,
   a state shows until it no longer holds. Nothing may flash (`NoFlash`). Exception (owner 2026-11-26, `VISION.md`): a short
   info line **without a button** may go after a few seconds; a line or card with a button stays.
@@ -233,13 +234,23 @@ My routes (owner 2026-10-31).
   number (→ the detail line), a kind of item (→ the icon in the circle), or the result of an action (→ `vm.say`).
   No bold titles or extra grey lines to mark a state – that is what the tag is for.
 
+## Daumen-Karte (owner 2026-11-26)
+Plan and Navigate put everything one presses into ONE floating card at the bottom (`OnPathShapes.Thumb`, 22 dp corners,
+12 dp from the edges, `ThumbCard`), the map above stays free. Plan, empty: the search field "Wohin soll’s gehen?" + ☰ in
+one row, under it the activity ("Wandern · T2") and "Meine Touren" as chips; with a plan the same row holds the activity,
+time · km · ↑ + 🔍 + ☰ and the card is the plan sheet with its steps (profile, points). ☰ opens upward over the thumb. The
+PLANEN tab sits in the card's handle strip. The download chip and "Nur Übersichtskarte" sit top left. Navigate: the
+status card on top; Anhalten · Planen in the same floating card – no mode tab, no recording sign. Every colour of it is a
+named token in `OnPathColors` (`ThumbCard`, `ThumbField`, `NavAccent`, `NavQuestionEdge`, `NavPause*`) so the owner can
+turn the tones later. Picture page: https://claude.ai/artifact/7KYwpPhWZqMbJhfc5ctpsk
+
 ## Positions per screen
 Boxes (FRAGE, HINWEIS) always sit **12 dp under the top element** (`MessagePlacement`, one rule, unit-tested),
 12 dp from the sides:
 
 | Screen | Top element | Box top (below the status bar) |
 | --- | --- | --- |
-| Plan | search pill + ☰ row (`TOP_BAR_BOTTOM` 76 dp) | 88 dp; the plan sheet is drawn over it, so it never covers the primary button |
+| Plan | the status bar – no top band since the Daumen-Karte (owner 2026-11-26; `TOP_BAR_BOTTOM` 0 dp) | 12 dp; the plan card is drawn over it, so it never covers the primary button |
 | Navigate | turn card / status card column (measured) | column height + 12 dp – the re-route and activity-switch questions too (moved from the bottom) |
 | My routes | title row + Planned / Done tabs (112 dp) | 124 dp, over the list |
 | Settings | title row (64 dp) | 76 dp, over the page |

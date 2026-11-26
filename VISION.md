@@ -37,6 +37,11 @@ A UI text the owner chose stays; a change to it is proposed as a question.
 The flow is: choose a destination, check the route, go.
 Komoot is the bar for ease of use and the look of the map.
 Options for experienced planners are welcome only when they stay invisible in that flow and do not make it longer.
+The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
+OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts.
+Texts state facts, not guesses.
+The app looks polished, simple and friendly, never technical, and not in the style of navigation or hiking apps.
+Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes only from colour and type, never from controls of its own.
 There are exactly six activities.
 After the tour you save and put the phone away, with no prompts for photos, sharing or ratings.
 Public texts say plainly what happens, without superlatives and without running down other apps.

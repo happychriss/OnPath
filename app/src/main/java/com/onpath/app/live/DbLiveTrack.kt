@@ -73,6 +73,9 @@ class DbLiveTrack(
         }
         val nav = s.nav
         val toGo = nav?.shownAlongM?.let { along -> nav.line.takeIf { it.size >= 2 }?.let { FollowProgress(it).at(along, null)?.distanceM } }
+        val arrival = if (toGo != null) s.time?.arrivalMs else null
+        val planned = PlannedArrival.next(plannedNow, tourId, nav?.takeIf { it.line.size >= 2 }?.let(::versionOf), arrival)
+        plannedNow = planned
         return LiveHead(
             state = if (s.paused) LiveState.PAUSED else LiveState.RECORDING,
             fix = last?.let {
@@ -86,12 +89,16 @@ class DbLiveTrack(
             movingS = whole(s.time?.movingS ?: s.elapsedS.toDouble()),
             startedMs = tour?.createdMs ?: 0L,
             toGoM = toGo?.let(::whole),
-            arrivalMs = if (toGo != null) s.time?.arrivalMs else null,
+            arrivalMs = arrival,
+            plannedArrivalMs = planned?.arrivalMs?.takeIf { arrival != null },
             stillS = still?.coerceAtMost(Int.MAX_VALUE.toLong())?.toInt(),
             batteryPct = batteryPct()?.coerceIn(0, 100),
             activity = nav?.session?.activity?.name ?: tour?.activity.orEmpty(),
         )
     }
+
+    /** The arrival as planned for the line followed now ([PlannedArrival]). */
+    @Volatile private var plannedNow: PlannedArrival? = null
 
     /** True when the tour [tourId] will not go on: its row says so, or is gone. Throws when the database cannot be read. */
     fun over(tourId: Long): Boolean = points.tour(tourId)?.over ?: true
@@ -120,6 +127,21 @@ class DbLiveTrack(
                 h = 31 * h + p.lon.hashCode()
             }
             return if (h == LiveShare.NO_ROUTE) LiveShare.NO_ROUTE - 1 else h
+        }
+    }
+}
+
+/**
+ * The arrival as planned (owner 2026-11-26, the viewer's „Etwas später als geplant“): the first arrival estimate for a
+ * tour's followed line; a new line (re-plan, [version]) or another tour plans anew. Pure.
+ */
+data class PlannedArrival(val tourId: Long, val version: Int, val arrivalMs: Long) {
+    companion object {
+        fun next(before: PlannedArrival?, tourId: Long, version: Int?, estimateMs: Long?): PlannedArrival? = when {
+            version == null -> null
+            before != null && before.tourId == tourId && before.version == version -> before
+            estimateMs == null -> null
+            else -> PlannedArrival(tourId, version, estimateMs)
         }
     }
 }

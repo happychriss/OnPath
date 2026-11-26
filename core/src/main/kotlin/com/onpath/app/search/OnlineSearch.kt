@@ -145,6 +145,9 @@ object PhotonParser {
             "alpine_hut" -> "hut" to null
             "wilderness_hut" -> "bivouac" to null
             "camp_site", "caravan_site" -> "camping" to null
+            "hotel", "motel" -> "hotel" to null
+            "guest_house" -> "guest_house" to null
+            "hostel" -> "hostel" to null
             "viewpoint" -> "viewpoint" to null
             "museum" -> "museum" to null
             "information" -> "info" to null

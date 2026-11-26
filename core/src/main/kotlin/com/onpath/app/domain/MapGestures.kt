@@ -11,9 +11,9 @@ import kotlin.math.min
  *
  * | hold ≥ 0.3 s on…                         | vibration | result |
  * | --- | --- | --- |
- * | empty map, plan still empty              | 1×        | first-point menu: Start here · Go here (from my location) |
+ * | empty map, plan still empty              | 1×        | first-point menu: Als Start · Als Ziel (from my location) |
  * | empty map / route line                   | 1×        | add point (smart insertion), no message |
- * | POI that is not a route point            | 1×        | POI menu: Add to route · Open in Google Maps |
+ * | POI that is not a route point            | 1×        | POI menu ([PinMenuItems]) |
  * | route point (incl. a POI that is a stop) | 2×        | point menu ([pointMenu]) |
  *
  * The vibration comes at the moment the hold is recognised (ring full), never after the edit ([PlanHaptics]) – menu
@@ -43,7 +43,7 @@ object MapGestures {
         data class PointMenu(val index: Int) : Action
         data object PoiMenu : Action
         data object AddPoint : Action
-        /** First hold on an empty plan: "Start here" · "Go here". */
+        /** First hold on an empty plan: „Als Start“ · „Als Ziel“. */
         data object FirstPointMenu : Action
         data object CloseMenu : Action
         data object PoiDetails : Action
@@ -54,7 +54,17 @@ object MapGestures {
     enum class Buzz { NONE, ONE, TWO }
 
     /** Entries of the point menu, in display order. */
-    enum class PointAction { MAKE_START, LOOP_START, GOOGLE, DELETE }
+    enum class PointAction { MAKE_START, LOOP_START, KEEP, GOOGLE, DELETE }
+
+    /** The group of a point menu's row (owner 2026-11-26): Route (Als Start) → Ort (Merken · Google) → Entfernen (Löschen). */
+    fun pointGroup(a: PointAction): MenuGroups.Group = when (a) {
+        PointAction.MAKE_START, PointAction.LOOP_START -> MenuGroups.Group.ROUTE
+        PointAction.KEEP, PointAction.GOOGLE -> MenuGroups.Group.PLACE
+        PointAction.DELETE -> MenuGroups.Group.REMOVE
+    }
+
+    /** Whether row [i] of the point menu [rows] gets a thin line above it (it starts a new group). */
+    fun pointLineBefore(rows: List<PointAction>, i: Int): Boolean = MenuGroups.lineBefore(rows.map(::pointGroup), i)
 
     /**
      * A quick tap on the open map in Plan sets nothing (hold-only, owner) – it shows the calm line "Gedrückt halten, um
@@ -85,7 +95,7 @@ object MapGestures {
     }
 
     /**
-     * Why "Go here" in the first-point menu is disabled, or null when a usable position exists.
+     * Why „Als Ziel“ (from my position) in the first-point menu is disabled, or null when a usable position exists.
      * A stale fix (status SEARCHING) is not used: the route would start in the wrong place.
      */
     fun fromMeBlocked(status: GpsStatus, hasFix: Boolean): String? = when (status) {
@@ -96,8 +106,8 @@ object MapGestures {
     }
 
     /**
-     * Whether the hold menus on an empty plan (first-point menu, POI menu) offer "Hier starten": not during a tour – the
-     * tour already runs from here, a held spot is where to go ("Hierhin"), never a new start (field 2026-11-07).
+     * Whether the hold menus on an empty plan (first-point menu, POI menu) offer „Als Start“: not during a tour – the
+     * tour already runs from here, a held spot is where to go („Als Ziel“), never a new start (field 2026-11-07).
      */
     fun offersStartHere(touring: Boolean): Boolean = !touring
 
@@ -119,16 +129,55 @@ object MapGestures {
     fun buzzNeedsPoi(editable: Boolean, menuOpen: Boolean, marker: Int): Boolean = editable && marker < 0 && menuOpen
 
     /**
-     * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
-     * points before). Round trip: "Start & finish here" (rotates the loop) on
-     * every loop point except ①; with stops on the way before the loop ([loopStart] > 0, owner 2026-11-03) those and ①
-     * get "Start here" like a normal route's middle points. "Open in Google Maps" (named place / POI only), "Delete"
-     * (always). Start and destination of a normal route get neither (⋯ → Reverse swaps them).
+     * A hold that vibrated is never lost (owner 2026-11-26, Pixel: "it vibrates, but nothing happened – never lose a
+     * symbol or anything after the vibration"). The ring is full and buzzes after 300 ms (MapHost's HOLD_MS) by our own
+     * clock, but MapLibre reports the press only later: as a long click at the phone's long-press timeout (400 ms and
+     * more), or as a click when the finger lifts inside the touch slop. A finger that slides past the slop between the
+     * buzz and that moment (often while lifting) makes MapLibre's detector drop the press and pan the map: no click, no
+     * long click, nothing. One per press: [down] → [armed] (the buzz) → MapLibre's [mapEvent] or the slide ([leftHold]);
+     * whichever comes first plays the hold, the other is dropped.
      */
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false, loopStart: Int = 0): List<PointAction> = buildList {
+    class ArmedHold {
+        private var armed = false
+        private var mapSaid = false
+        private var playedByApp = false
+
+        /** A finger went down: a new press. */
+        fun down() { armed = false; mapSaid = false; playedByApp = false }
+
+        /** The hold's ring is full: it vibrated, the hold is promised. */
+        fun armed() { armed = true }
+
+        /** MapLibre reports a click / long click: true = act on it; false = the app already played this press. */
+        fun mapEvent(): Boolean {
+            if (playedByApp) return false
+            mapSaid = true
+            return true
+        }
+
+        /** The finger slid past the touch slop: true = play the hold now (it vibrated, MapLibre will not report it). */
+        fun leftHold(): Boolean {
+            if (!armed || mapSaid || playedByApp) return false
+            playedByApp = true
+            return true
+        }
+    }
+
+    /**
+     * Sensible options for route point [index] of [count] (owner 2026-11-26: groups Route → Ort → Entfernen). Middle points
+     * of a normal route: „Als Start“ (drops the points before – „Löscht die N Punkte davor“). Round trip: „Als Start“
+     * (rotates the loop – „Gleiche Rundtour, startet hier“) on every loop point except ①; with stops on the way before the
+     * loop ([loopStart] > 0, owner 2026-11-03) those and ① get the normal route's „Als Start“. A named place / POI
+     * ([isPlace]): „Merken“ ([keep] – the host can keep places; the planner passes false until it draws the row) and „In
+     * Google Maps öffnen“. „Löschen“ always. Start and Ziel of a normal route get no route row (owner: „Umkehren braucht
+     * nicht ins Menü“ – it is in the plan sheet).
+     */
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean = false, loopStart: Int = 0,
+                  keep: Boolean = false): List<PointAction> = buildList {
         val middle = index in 1 until count - 1
         if (roundTrip) { if (middle) add(if (index > loopStart) PointAction.LOOP_START else PointAction.MAKE_START) }
         else if (middle) add(PointAction.MAKE_START)
+        if (isPlace && keep) add(PointAction.KEEP)
         if (isPlace) add(PointAction.GOOGLE)
         add(PointAction.DELETE)
     }
@@ -195,7 +244,7 @@ object MapGestures {
     }
 
     /**
-     * A menu BESIDE a held spot (the hold menu „Einfügen“ / „Neues Ziel“, owner 2026-11-15): it never covers the spot
+     * A menu BESIDE a held spot (the hold menu „Als Stopp“ / „Als Ziel“, owner 2026-11-15): it never covers the spot
      * (its ring shows where the point goes). Right of the spot when it fits left of the map's control column
      * ([rightColumn] px wide at the right edge), else left of the spot, else right over the column, else above / below
      * ([placeOverlay]). Vertically centred on the spot, kept inside [top]..[bottom]. Pure.

@@ -31,7 +31,7 @@
     <string name="days_remove_first">Remove an overnight stop first</string>
     <string name="days_day_added">One day more – every night was already set</string>
     <string name="days_limits_line">At most %1$s per day</string>
-    <string name="days_overnight_here">Overnight stop here</string>
+    <string name="days_overnight_here">Set as overnight stop</string>
     <string name="days_set_hotel">Add hotel</string>
     <string name="days_change_hotel">Change hotel</string>
     <string name="days_remove_hotel">Remove hotel</string>

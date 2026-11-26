@@ -91,7 +91,8 @@ fun EndTourDialog(
     title: String = str(Res.string.nav_end_tour_title),
     activity: com.onpath.app.routing.Activity? = null,
     stats: EndStats? = null,
-    keepLabel: String = keepGoingLabel(),
+    // owner 2026-11-26: „ein ganz normaler Abbrechen-Button“ – back to the pause (was „Weiter“)
+    keepLabel: String = Txt.s(Res.string.common_cancel),
     /** Screenshot tests: the sheet drawn at the bottom of the screen itself (Paparazzi draws no sheet window). */
     inline: Boolean = false,
 ) {
@@ -193,11 +194,18 @@ private fun EndKeepAndDelete(keepLabel: String, onKeep: GuardedTap, onDelete: Gu
             Text(keepLabel, color = OnPathColors.ActionGo, style = MaterialTheme.typography.titleMedium, maxLines = 1)
         }
     }
+    // Löschen only when held ~2 s, the red band fills (owner 2026-11-26: „bei Löschen muss man ein paar Sekunden länger
+    // drauf“) – a tap does nothing but the „Gedrückt halten“ tick
     val delete: @Composable (Modifier) -> Unit = { m ->
-        OutlinedButton(onClick = onDelete.onClick, interactionSource = onDelete.source, modifier = m.heightIn(min = 56.dp),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)) {
-            Icon(Icons.Outlined.DeleteOutline, null); Spacer(Modifier.width(6.dp))
-            Text(str(Res.string.nav_delete_tour_short), style = MaterialTheme.typography.titleMedium, maxLines = 1)
+        val word = str(Res.string.nav_delete_tour_short)
+        androidx.compose.runtime.CompositionLocalProvider(LocalHoldMs provides DELETE_HOLD_MS) {
+            HoldButton(word, OnPathColors.Error, OnPathColors.ErrorContainer, OnPathColors.OnErrorContainer, onDelete.onClick, {},
+                m.height(56.dp)) { c ->
+                Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.DeleteOutline, null, tint = c); Spacer(Modifier.width(6.dp))
+                    Text(word, style = MaterialTheme.typography.titleMedium, color = c, maxLines = 1)
+                }
+            }
         }
     }
     Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
@@ -211,6 +219,9 @@ private fun EndKeepAndDelete(keepLabel: String, onKeep: GuardedTap, onDelete: Gu
             textAlign = androidx.compose.ui.text.style.TextAlign.Center)
     }
 }
+
+/** How long „Löschen“ in the end sheet is held: about a second (owner 2026-11-26 night: „die Hälfte“ of the first 2 s). */
+internal const val DELETE_HOLD_MS = 1_000
 
 /** The main action, filled green, full width, 56 dp. */
 @Composable

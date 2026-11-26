@@ -60,16 +60,17 @@ class SearchTextRulesTest {
     private val searchable = PoiKinds.all.map { it.key }.toSet() +
         setOf("peak", "saddle", "place", "trail", "address", "street", "store", "other")
 
-    @Test fun theOwnersSixChips() {
-        // every kind in at most one chip; every chip names only kinds that exist
+    @Test fun theOwnersChips() {
+        // every kind in at most one chip – huts excepted (Essen + Übernachten, owner 2026-11-26); every chip names only
+        // kinds that exist
         for (k in searchable) {
             val chips = SearchKinds.Category.entries.filter { k in it.kinds }
-            assertTrue("$k is in ${chips.size} chips: $chips", chips.size <= 1)
+            assertTrue("$k is in ${chips.size} chips: $chips", chips.size <= if (k == "hut") 2 else 1)
             assertEquals("Category.of($k)", chips.firstOrNull(), SearchKinds.Category.of(k))
         }
         for (c in SearchKinds.Category.entries) for (k in c.kinds) assertTrue("$c: unknown kind $k", k in searchable)
-        assertEquals(listOf("PLACES", "FOOD", "SIGHTS", "WATER", "TRANSIT", "PARKING"), SearchKinds.Category.entries.map { it.name })
-        assertEquals(listOf("Places", "Food", "Sights", "Water", "Transit", "Parking"), SearchKinds.Category.entries.map { it.label })
+        assertEquals(listOf("PLACES", "FOOD", "SLEEP", "SIGHTS", "WATER", "TRANSIT", "PARKING"), SearchKinds.Category.entries.map { it.name })
+        assertEquals(listOf("Places", "Food", "Lodging", "Sights", "Water", "Transit", "Parking"), SearchKinds.Category.entries.map { it.label })
         assertTrue(SearchKinds.Category.entries.all { ' ' !in it.label })
         // what the owner listed per chip
         val table = listOf(
@@ -78,7 +79,24 @@ class SearchTextRulesTest {
             "peak" to SearchKinds.Category.SIGHTS, "waterfall" to SearchKinds.Category.SIGHTS,
             "spring" to SearchKinds.Category.WATER, "lift" to SearchKinds.Category.TRANSIT,
             "parking" to SearchKinds.Category.PARKING, "toilets" to null,
+            "hotel" to SearchKinds.Category.SLEEP, "guest_house" to SearchKinds.Category.SLEEP,
+            "hostel" to SearchKinds.Category.SLEEP, "camping" to SearchKinds.Category.SLEEP,
+            "bivouac" to SearchKinds.Category.SLEEP, "shelter" to null,
         )
         for ((kind, chip) in table) assertEquals("chip of $kind", chip, SearchKinds.Category.of(kind))
+        // „Übernachten“ is the one shared set (PoiKinds.LODGING): a hut is in it as well as in Essen
+        assertEquals(PoiKinds.LODGING, SearchKinds.Category.SLEEP.kinds)
+        assertTrue("hut" in SearchKinds.Category.SLEEP.kinds && "hut" in SearchKinds.Category.FOOD.kinds)
+    }
+
+    @Test fun lodging() {
+        for (k in listOf("hut", "bivouac", "camping", "hotel", "guest_house", "hostel")) assertTrue(k, PoiKinds.isLodging(k))
+        for (k in listOf("shelter", "restaurant", null, "unknown")) assertTrue("$k", !PoiKinds.isLodging(k))
+        for (k in listOf("hotel", "guest_house", "hostel")) assertTrue("$k hidden by default", k in PoiKinds.defaultHidden)
+        // a user who never chose (old default stored) gets today's default with the beds hidden
+        assertEquals(PoiKinds.defaultHidden,
+            PoiKinds.upgradeHidden(setOf("shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging")))
+        for ((word, kind) in listOf("pension" to "guest_house", "jugendherberge" to "hostel", "hotel" to "hotel"))
+            assertTrue("$word → $kind", kind in SearchText.kindsFor(word))
     }
 }

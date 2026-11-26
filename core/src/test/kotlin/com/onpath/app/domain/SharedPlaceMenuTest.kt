@@ -76,20 +76,20 @@ class SharedPlaceMenuTest {
     /** The labels the menu shows: what a hold on the ring shows (PoiMenu + vm.poiAddLabel → AddPreview.label). */
     @Test fun labelsEmptyPlanVsPlanWithPoints() {
         val p = GeoPoint(place.lat, place.lon)
-        // empty plan: PoiMenu(emptyPlan = true) → "Start here" · "Go here" · "Open in Google Maps"
+        // empty plan: PoiMenu(emptyPlan = true) → "Set as start" · "Set as destination" (GoHereRow) · "Open in Google Maps"
         val overlays = File("../app/src/main/java/com/onpath/app/ui/MapOverlays.kt").readText()
         assertTrue(overlays.contains("emptyPlan = vm.plan.points.isEmpty()"))
         val menu = overlays.substringAfter("fun PoiMenu(").substringBefore("fun PointMenu(")
-        assertTrue(menu.contains("Res.string.plan_start_here") && menu.contains("Res.string.plan_go_here") &&
+        assertTrue(menu.contains("Res.string.plan_start_here") && menu.contains("GoHereRow(fromMeBlocked, onFromMe)") &&
             menu.contains("Res.string.plan_open_google_maps"))
         // a plan with only a start: the place becomes the destination
         val a = GeoPoint(46.60, 11.10)
         assertEquals("Set as destination", AddPreview.label(WaypointInsertion.decide(listOf(a), p, null, 30.0), 1))
         // a route A → B: beyond B a new destination, beside the middle a stop
         val b = GeoPoint(46.65, 11.14)
-        assertEquals("New destination", AddPreview.label(WaypointInsertion.decide(listOf(a, b), p, null, 30.0), 2))
+        assertEquals("Set as destination", AddPreview.label(WaypointInsertion.decide(listOf(a, b), p, null, 30.0), 2))
         val c = GeoPoint(46.75, 11.20)
-        assertEquals("Insert", AddPreview.label(WaypointInsertion.decide(listOf(a, c), p, null, 30.0), 2))
+        assertEquals("Set as stop", AddPreview.label(WaypointInsertion.decide(listOf(a, c), p, null, 30.0), 2))
     }
 
 

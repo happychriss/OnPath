@@ -306,9 +306,10 @@ class ActivityCheckFlowTest {
         assertNull(slice.activityCheck!!.note)
     }
 
-    @Test fun noRouteFollowedGivesPlainRowsAndTheNote() {
+    /** Owner 2026-11-26 night: no note any more („Du folgst keiner Route …“ told the user nothing). */
+    @Test fun noRouteFollowedGivesPlainRowsWithoutANote() {
         // (1) free recording: the service has a state without a navigation; (2) a followed line of one point; (3) no tour at all
-        val note = "No route is followed – the new activity applies to the tour and the plan."
+        val note: String? = null
         touring(null)
         slice.openActivityCheck()
         assertEquals(note, slice.activityCheck!!.note)
