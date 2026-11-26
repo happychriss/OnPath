@@ -25,7 +25,6 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -54,7 +53,6 @@ fun MapHost(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val density = LocalDensity.current.density
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val mapView = remember {
         MapView(context).apply {
@@ -77,6 +75,9 @@ fun MapHost(
     // Power is saved where nothing is seen – screen off, pocket, background (docs/design/battery-audit.md).
     // Plan mode: only a short hold (HOLD_MS) does something, so stray taps never change the plan.
     val hold = remember { HoldTracker() }
+    // a hold that vibrated is never lost (MapGestures.ArmedHold, owner 2026-11-26)
+    val armedHold = remember { MapGestures.ArmedHold() }
+    val touchSlopPx = remember(context) { android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat() }
     val holdAt = remember { mutableStateOf<Offset?>(null) }
     val holdBuzz = remember { mutableStateOf(MapGestures.Buzz.NONE) }
 
@@ -324,18 +325,38 @@ fun MapHost(
                 return handlePress(ll, press, note, down)
             }
             map.addOnMapClickListener { ll ->
+                // the app already played this press: it vibrated and the finger slid on (armedHold.leftHold)
+                if (!armedHold.mapEvent()) return@addOnMapClickListener true
                 // A hold of HOLD_MS (ring under the finger, vibration) ends as a click with lastHoldMs ≥ HOLD_MS.
                 handle(ll, if (hold.lastHoldMs >= HOLD_MS) MapGestures.Press.HOLD else MapGestures.Press.TAP)
             }
             map.addOnMapLongClickListener { ll ->
+                if (!armedHold.mapEvent()) return@addOnMapLongClickListener true
                 // A longer press is just a hold (no dragging).
                 holdAt.value = null
                 handle(ll, MapGestures.Press.HOLD)
             }
+            // where the finger went down, on the camera of that moment: a hold the app plays itself acts there
+            var downLatLng: LatLng? = null
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
                 if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.map.onMapTouch()
-                hold.track(ev, slopPx = 8 * density)
+                val wasPressing = hold.pressing
+                // the same slop as MapLibre's tap / long-press detector: a press that stays a hold here is one there too
+                hold.track(ev, slopPx = touchSlopPx)
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
+                    armedHold.down()
+                    downLatLng = try { map.projection.fromScreenLocation(PointF(ev.x, ev.y)) } catch (e: Exception) {
+                        Problems.warn("map", "Finger-down not placed on the map: a hold that slides after its vibration is lost", e); null
+                    }
+                }
+                // it vibrated, then the finger slid past the slop: MapLibre pans and reports nothing – the hold acts here
+                if (wasPressing && !hold.pressing && ev.actionMasked == MotionEvent.ACTION_MOVE && armedHold.leftHold()) {
+                    downLatLng?.let { ll ->
+                        Problems.trace("map", "Hold played by the app: the finger slid after the vibration (no click from the map)")
+                        mapView.post { if (!host.isGone) handle(ll, MapGestures.Press.HOLD) }
+                    }
+                }
                 if (!hold.pressing) holdAt.value = null
                 else if (ev.actionMasked == MotionEvent.ACTION_DOWN) {
                     // Decide once per press what an armed hold feels like: 2× on a route point, 1× elsewhere.
@@ -403,7 +424,7 @@ fun MapHost(
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
-        HoldRing(holdAt.value, onArmed = { Haptics.play(mapView.context, holdBuzz.value, vm.settingsSlice.settings.planVibrate) })
+        HoldRing(holdAt.value, onArmed = { armedHold.armed(); Haptics.play(mapView.context, holdBuzz.value, vm.settingsSlice.settings.planVibrate) })
     }
 }
 

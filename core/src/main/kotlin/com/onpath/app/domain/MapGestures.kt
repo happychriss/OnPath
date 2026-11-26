@@ -119,6 +119,41 @@ object MapGestures {
     fun buzzNeedsPoi(editable: Boolean, menuOpen: Boolean, marker: Int): Boolean = editable && marker < 0 && menuOpen
 
     /**
+     * A hold that vibrated is never lost (owner 2026-11-26, Pixel: "it vibrates, but nothing happened – never lose a
+     * symbol or anything after the vibration"). The ring is full and buzzes after 300 ms (MapHost's HOLD_MS) by our own
+     * clock, but MapLibre reports the press only later: as a long click at the phone's long-press timeout (400 ms and
+     * more), or as a click when the finger lifts inside the touch slop. A finger that slides past the slop between the
+     * buzz and that moment (often while lifting) makes MapLibre's detector drop the press and pan the map: no click, no
+     * long click, nothing. One per press: [down] → [armed] (the buzz) → MapLibre's [mapEvent] or the slide ([leftHold]);
+     * whichever comes first plays the hold, the other is dropped.
+     */
+    class ArmedHold {
+        private var armed = false
+        private var mapSaid = false
+        private var playedByApp = false
+
+        /** A finger went down: a new press. */
+        fun down() { armed = false; mapSaid = false; playedByApp = false }
+
+        /** The hold's ring is full: it vibrated, the hold is promised. */
+        fun armed() { armed = true }
+
+        /** MapLibre reports a click / long click: true = act on it; false = the app already played this press. */
+        fun mapEvent(): Boolean {
+            if (playedByApp) return false
+            mapSaid = true
+            return true
+        }
+
+        /** The finger slid past the touch slop: true = play the hold now (it vibrated, MapLibre will not report it). */
+        fun leftHold(): Boolean {
+            if (!armed || mapSaid || playedByApp) return false
+            playedByApp = true
+            return true
+        }
+    }
+
+    /**
      * Sensible options for route point [index] of [count]. Middle points of a normal route: "Start here" (drops the
      * points before). Round trip: "Start & finish here" (rotates the loop) on
      * every loop point except ①; with stops on the way before the loop ([loopStart] > 0, owner 2026-11-03) those and ①
