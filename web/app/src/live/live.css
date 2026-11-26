@@ -20,6 +20,10 @@ body { font-family: Manrope, system-ui, sans-serif; color: var(--fg); background
 #mapbox { position: relative; flex: 1 1 auto; min-height: 180px; background: var(--sage); }
 #mapbox[hidden] { display: none; }
 #map { position: absolute; inset: 0; }
+/* no fixed start place: until the tour's route or first place is known the map stays hidden, a line says why (map.ts) */
+#mapbox:not([data-view]) #map { visibility: hidden; }
+.mapwait { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; padding: 0 24px; text-align: center; color: var(--muted); font-weight: 600; }
+#mapbox[data-view] .mapwait { display: none; }
 .topos { position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%); border: none; border-radius: 22px; padding: 10px 18px;
   background: var(--paper); color: var(--fg); font: inherit; font-weight: 700; box-shadow: 0 2px 8px var(--shadow); }
 .livedot { width: 18px; height: 18px; border-radius: 50%; background: #1E3FAE; border: 3px solid #fff; box-shadow: 0 1px 6px rgba(0,0,0,.45); }

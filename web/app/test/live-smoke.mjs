@@ -131,6 +131,35 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   check(l.state === 'no_data' && /Noch keine Daten/.test(l.text) && l.numbers === null, `before the first upload: "${l.text}"`);
   check(!(await V.evaluate(() => location.href)).includes('t='), 'the key is taken out of the address bar');
   check(l.foot === 'Kein Notruf-Dienst – im Notfall 112.', 'the fixed line: no emergency service');
+  const viewOf = (P) => P.evaluate(() => { const m = window.__map, b = m.getBounds();
+    return { view: document.getElementById('mapbox').dataset.view ?? null, hiddenMap: getComputedStyle(document.getElementById('map')).visibility === 'hidden',
+      wait: getComputedStyle(document.getElementById('mapWait')).display !== 'none' ? document.getElementById('mapWait').textContent : null,
+      w: b.getWest(), e: b.getEast(), s: b.getSouth(), n: b.getNorth() }; });
+  const inView = (v, lat, lon) => lat >= v.s && lat <= v.n && lon >= v.w && lon <= v.e;
+  let v = await viewOf(V);
+  check(v.view === null && v.hiddenMap && v.wait === 'Warte auf den ersten Standort …', `before the first upload: no fixed place on the map, "${v.wait}"`);
+
+  // ---- 2b. a tour just started (field report 2026-11-26): the plan is there, no fix yet – the plan in view, then the
+  //      first place; never a far-away start view (the page used to start at a fixed place until the first fix) ----
+  {
+    const far = hike().map((p) => [p[0] + 4.7, p[1] - 4.4]); // the fixture's line moved near Düsseldorf
+    const ph3 = await phone(idle, live, url, clock);
+    await ph3.claim();
+    const S = await openViewer(browser, url, '#' + ph3.link.split('#')[1]);
+    await ph3.push({ route: far, head: { state: 'recording', distanceM: 0, ascentM: 0, movingS: 0, startedMs: T0, activity: 'HIKE', nextS: 120 } });
+    await ask(S);
+    await S.waitForFunction(() => window.__live.drawn?.route > 0, null, { timeout: 30_000 }).catch(() => {});
+    v = await viewOf(S);
+    check(v.view === 'route' && !v.hiddenMap && v.wait === null && inView(v, far[0][0], far[0][1]) && inView(v, far[far.length - 1][0], far[far.length - 1][1]),
+      `no fix yet: the planned route is in view (${JSON.stringify(v)})`);
+    const first = [far[3][0], far[3][1], 40, T0 + 60_000];
+    await ph3.push({ points: [first], head: { state: 'recording', distanceM: 50, ascentM: 0, movingS: 60, startedMs: T0, activity: 'HIKE', nextS: 120 } });
+    await ask(S);
+    v = await viewOf(S);
+    check(v.view === 'place' && inView(v, first[0], first[1]), `the first fix: its place is in view (${JSON.stringify(v)})`);
+    check(S.errors.length === 0, `no page errors (${S.errors.join(' | ')})`);
+    await S.context().close();
+  }
 
   // ---- 3. on the way: plan, way so far, numbers ----
   check(await ph.claim() === 201, 'the phone claims the box');
