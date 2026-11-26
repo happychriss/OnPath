@@ -40,6 +40,7 @@ Options for experienced planners are welcome only when they stay invisible in th
 There are exactly six activities.
 After the tour you save and put the phone away, with no prompts for photos, sharing or ratings.
 Public texts say plainly what happens, without superlatives and without running down other apps.
+A dated, sourced comparison with other apps is fair, even where it shows what they lack.
 
 ## Open, free, no account
 
