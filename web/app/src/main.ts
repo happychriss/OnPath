@@ -800,10 +800,38 @@ let placeCard: PlaceCard = { close: () => {}, isOpen: () => false, removePin: ()
 function closeMenu() { menu?.remove(); menu = null; }
 function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   closeMenu();
-  const m = new maplibregl.Popup({ offset: 18, closeButton: false, closeOnClick: false, maxWidth: '320px', className: 'holdpopup' })
-    .setDOMContent(holdMenu(head, items, closeMenu)).setLngLat(at).addTo(map);
+  const box = holdMenu(head, items, closeMenu);
+  const make = (anchor?: maplibregl.PositionAnchor) => new maplibregl.Popup({ offset: MENU_OFFSET, anchor, closeButton: false, closeOnClick: false,
+    maxWidth: '320px', className: 'holdpopup' }).setDOMContent(box).setLngLat(at).addTo(map);
+  let m = make();
+  // the whole menu in the free map (owner 2026-11-26: „Löschen“ under the big profile): below or above the point, whichever
+  // fits between the top bar and the profile / sheet / footer – maplibre itself only knows the map's own edges
+  {
+    const s = map.project(at), w = map.getCanvas().clientWidth, r = m.getElement().getBoundingClientRect(); // with its tail
+    const fit = menuAnchor(s.x, s.y, r.width, r.height, w, menuRoom(s.x));
+    if (fit.anchor !== anchorOf(m)) { m.remove(); m = make(fit.anchor); }
+    if (fit.panY) map.panBy([0, fit.panY], { duration: 200 });
+  }
   m.on('close', () => { if (menu === m) menu = null; });
   menu = m;
+}
+const MENU_OFFSET = 18;
+const anchorOf = (m: maplibregl.Popup) => /maplibregl-popup-anchor-([a-z-]+)/.exec(m.getElement().className)?.[1] as maplibregl.PositionAnchor | undefined;
+
+/**
+ * Where a point's menu [mw × mh] goes for a point at [px, py] (map pixels, map [w] wide): below it („top“ anchor) when it
+ * fits above [room]'s bottom, else above it, else on the side with more room and the map moved by [panY] so it fits; to
+ * the left / right edge when it would leave the map sideways.
+ */
+function menuAnchor(px: number, py: number, mw: number, mh: number, w: number, room: { top: number; bottom: number }):
+  { anchor: maplibregl.PositionAnchor; panY: number } {
+  const air = 8, need = MENU_OFFSET + mh + air;
+  const below = room.bottom - py, above = py - room.top;
+  const v = below >= need ? 'top' : above >= need ? 'bottom' : below >= above ? 'top' : 'bottom';
+  // neither fits: the map goes up (menu below) or down (menu above) just enough, never past the other side
+  const panY = below >= need || above >= need ? 0 : v === 'top' ? Math.min(need - below, Math.max(0, above - 24)) : -Math.min(need - above, Math.max(0, below - 24));
+  const h = px - mw / 2 < air ? '-left' : px + mw / 2 > w - air ? '-right' : '';
+  return { anchor: (v + h) as maplibregl.PositionAnchor, panY: Math.round(panY) };
 }
 
 map.on('click', (e) => pressInOrder(e.lngLat, -1, e.point));
