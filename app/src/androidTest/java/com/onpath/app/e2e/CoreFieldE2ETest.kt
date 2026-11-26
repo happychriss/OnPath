@@ -17,7 +17,7 @@ import com.onpath.strings.nav_change_plan
 import com.onpath.strings.nav_end_tour_title
 import com.onpath.strings.nav_arrived_title
 import com.onpath.strings.nav_keep_recording
-import com.onpath.strings.plan_guide_find_title
+import com.onpath.strings.plan_hint_first_point_question
 import com.onpath.strings.nav_hold_hint
 import com.onpath.strings.nav_status_paused
 import com.onpath.strings.nav_settings_cd
@@ -492,7 +492,7 @@ class CoreFieldE2ETest : E2EBase() {
             waitUntil("the map is empty", 10_000) { waypointCount() == 0 }
             assertEquals("back in Plan", AppMode.PLAN, mode())
             scenario.onActivity { vm(it).closeSavedTour() } // the "Tour gespeichert" box
-            assertNotNull("the empty sheet's guide", findFresh(By.text(Txt.s(Res.string.plan_guide_find_title)), 10_000))
+            assertNotNull("the empty card's search field (Daumen-Karte)", findFresh(By.desc(Txt.s(Res.string.plan_hint_first_point_question)), 10_000))
             shot("start-after-arrival")
         } finally {
             InstrumentationRegistry.getInstrumentation().runOnMainSync { com.onpath.app.recording.DemoLocation.stop("E2E arrival done") }
