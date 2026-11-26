@@ -42,8 +42,8 @@
     <string name="search_card_remove">Aus dem Plan entfernen</string>
     <string name="search_card_set_start">Als Start setzen</string>
     <string name="search_card_on_the_way">Als Halt auf dem Hinweg</string>
-    <string name="search_card_set_destination">Als Ziel setzen</string>
-    <string name="search_card_new_destination">Neues Ziel</string>
+    <string name="search_card_set_destination">Als Ziel</string>
+    <string name="search_card_new_destination">Als Ziel</string>
     <string name="search_add_on_route">liegt auf deiner Route</string>
     <string name="search_add_fits_best">passt dort am besten</string>
     <string name="search_card_as_start">Als Start</string>

@@ -34,7 +34,7 @@ class TourRunningTest {
     @Test fun `the texts in both languages`() {
         val de = File("../strings/src/commonMain/composeResources/values-de/strings_plan.xml").readText()
         val en = File("../strings/src/commonMain/composeResources/values/strings_plan.xml").readText()
-        assertTrue(de.contains(">Tour läuft noch<") && de.contains(">Neues Ziel festlegen<") && de.contains("→ Hierhin<"))
-        assertTrue(en.contains(">Tour still running<") && en.contains(">Set a new destination<") && en.contains("→ Go here<"))
+        assertTrue(de.contains(">Tour läuft noch<") && de.contains(">Neues Ziel festlegen<") && de.contains("→ Als Ziel<"))
+        assertTrue(en.contains(">Tour still running<") && en.contains(">Set a new destination<") && en.contains("→ Set as destination<"))
     }
 }

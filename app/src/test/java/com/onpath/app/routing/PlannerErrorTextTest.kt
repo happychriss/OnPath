@@ -23,7 +23,7 @@ class PlannerErrorTextTest {
         assertEquals("Point 1 → 2: no path found", Planner.legError(1, 2, RoutingException("No route found.")))
         assertEquals("Point 1 → 2: took too long", Planner.legError(1, 2, RoutingException("x", timedOut = true)))
         assertEquals("Point 3 → 4: too long – add a point between",
-            Planner.legError(3, 4, RoutingException("Not enough memory for this route. Add via points or choose closer points.")))
+            Planner.legError(3, 4, RoutingException("Not enough memory for this route. Add stops or choose closer points.")))
         // missing routing data keeps its text: the plan sheet turns it into the grey "Map loading" line
         assertEquals(BRouterEngine.NO_DATA, Planner.legError(1, 2, RoutingException(BRouterEngine.NO_DATA)))
         listOf("Leg", "dashed", "Try moving").forEach { w ->

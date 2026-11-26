@@ -83,19 +83,32 @@ object PinMenuPlace {
 
 /**
  * The rows of a held place's menu ([PoiMenu]: a map POI or the found place's pin), in their order – the same for a hold
- * and for a picked search result (owner 2026-11-13). Pure.
+ * and for a picked search result (owner 2026-11-13). Since 2026-11-26 (owner, `docs/team/items/2026-11-26-context-menus-wording.md`)
+ * in three groups, a thin line between them ([group], [MenuGroups.lineBefore]): Route (Als Start → Als Stopp → Als Ziel,
+ * then „Rundtour ab hier“) → Ort (Merken · In Google Maps öffnen) → Entfernen („Nadel entfernen“, the pin only). Pure.
  */
 object PinMenuItems {
     enum class Row { START_HERE, ROUND_TRIP, GO_HERE, ADD, ADD_STOP, NEW_DESTINATION, FAVOURITE, HOME, GOOGLE, REMOVE_PIN }
 
+    /** The group a row belongs to – a thin line where the group changes ([MenuGroups.lineBefore]). */
+    fun group(r: Row): MenuGroups.Group = when (r) {
+        Row.START_HERE, Row.ROUND_TRIP, Row.GO_HERE, Row.ADD, Row.ADD_STOP, Row.NEW_DESTINATION -> MenuGroups.Group.ROUTE
+        Row.FAVOURITE, Row.HOME, Row.GOOGLE -> MenuGroups.Group.PLACE
+        Row.REMOVE_PIN -> MenuGroups.Group.REMOVE
+    }
+
+    /** Whether row [i] of [rows] gets a thin line above it (it starts a new group). */
+    fun lineBefore(rows: List<Row>, i: Int): Boolean = MenuGroups.lineBefore(rows.map(::group), i)
+
     /**
      * @param emptyPlan no point yet; [startHere] false during a tour ([MapGestures.offersStartHere])
-     * @param menu the add entries with 2+ points ([PlaceAddMenu]); null = one entry "Set as destination" / its [Row.ADD]
+     * @param menu the add entries with 2+ points ([PlaceAddMenu]), shown in [PlaceAddMenu.Menu.rows]' fixed order
+     *   Stopp → Ziel; null = one entry „Als Ziel“ / its [Row.ADD]
      * @param pin the found place's pin: the menu ends with "Nadel entfernen"
-     * @param keep the place can be kept (owner 2026-11-15, „Orte merken“): after the route rows, behind a thin line,
+     * @param keep the place can be kept (owner 2026-11-15, „Orte merken“): in the Ort group, before Google,
      *   „☆ Merken“ and „⌂ Als Zuhause festlegen“ – what is about the place itself
-     * @param roundTrip the tour suggestions are on (developer switch, tour-suggestions.md §7 stage 4): „Rundtour von hier“
-     *   right after „Hier starten“ – wherever that row is offered (owner 2026-11-15)
+     * @param roundTrip the tour suggestions are on (developer switch, tour-suggestions.md §7 stage 4): „Rundtour ab hier“
+     *   last in the Route group – only where „Als Start“ is offered (owner 2026-11-15 / 2026-11-26)
      */
     fun of(emptyPlan: Boolean, startHere: Boolean, menu: PlaceAddMenu.Menu?, pin: Boolean, keep: Boolean = false,
            roundTrip: Boolean = false): List<Row> {
@@ -108,9 +121,9 @@ object PinMenuItems {
         }
         val rows = mutableListOf<Row>()
         when {
-            emptyPlan -> { if (startHere) { rows += Row.START_HERE; if (roundTrip) rows += Row.ROUND_TRIP }; rows += Row.GO_HERE }
+            emptyPlan -> { if (startHere) rows += Row.START_HERE; rows += Row.GO_HERE; if (startHere && roundTrip) rows += Row.ROUND_TRIP }
             menu == null -> rows += Row.ADD
-            else -> menu.main.mapTo(rows, ::row)
+            else -> menu.rows.mapTo(rows, ::row)
         }
         if (keep) { rows += Row.FAVOURITE; rows += Row.HOME }
         rows += Row.GOOGLE

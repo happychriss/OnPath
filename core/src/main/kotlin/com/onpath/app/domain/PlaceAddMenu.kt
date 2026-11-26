@@ -5,17 +5,22 @@ import com.onpath.app.routing.GeoPoint
 
 /**
  * What the menu of a held place (POI, found pin, shared place) offers to add it (owner 2026-11-07 11:20 / 11:25 / 11:30,
- * 2026-11-15). Pure.
+ * 2026-11-15, words and order 2026-11-26). Pure.
  *
- * - No point yet: "Hier starten" · "Hierhin" – during a tour only "Hierhin" (the tour already runs from here).
- * - One point (or no route ahead): today's wording, "Als Ziel setzen" (one entry).
- * - Two or more: „Einfügen“ (the best place on the route ahead, the goal stays) and „Neues Ziel“ (the route goes on there,
+ * The words (owner 2026-11-26, `docs/team/items/2026-11-26-context-menus-wording.md` – replaces the words of 2026-11-15
+ * „Einfügen“ / „Neues Ziel“ that were „never reworded“): three words for points, **Start · Stopp · Ziel**, every route
+ * action reads „Als …“.
+ * - No point yet: „Als Start“ · „Als Ziel“ (↳ Start: dein Standort) – during a tour only „Als Ziel“ (the tour already
+ *   runs from here).
+ * - One point (or no route ahead): „Als Ziel“ (one entry).
+ * - Two or more: „Als Stopp“ (the best place on the route ahead, the goal stays) and „Als Ziel“ (the route goes on there,
  *   the old goal stays as the last stop while planning; during a tour it replaces the old goal – owner 2026-11-14
- *   [keepsOldGoal]; Undo brings the plan before back). The owner's words (2026-11-15), never reworded. On a tour or a
- *   round trip both, the likelier one ([zone]) first and emphasised. While PLANNING (owner 2026-11-17, replacing „both
- *   always“ of 2026-11-15): only the matching row in a clear case, both in between – the rule of a hold on the empty map
- *   ([planningRows]). One line each, only the label – where it goes shows on the map (owner 2026-11-15: „nur einzeilig …
- *   das sehe ich ja auf der Karte“); no stop numbers ("Stopp 2" confused the owner).
+ *   [keepsOldGoal]; Undo brings the plan before back). On a tour or a round trip both, the likelier one ([zone]) tinted.
+ *   While PLANNING (owner 2026-11-17): only the matching row in a clear case, both in between – the rule of a hold on the
+ *   empty map ([planningRows]). One line each, only the label – where it goes shows on the map; no stop numbers.
+ *
+ * [Menu.main] keeps the decision's order (the likelier first, [Menu.emphasised]); the menu SHOWS [Menu.rows]: the fixed
+ * order Start → Stopp → Ziel (owner 2026-11-26: no more „cheaper first“, the likelier row is only shown by the tint).
  */
 object PlaceAddMenu {
 
@@ -30,13 +35,22 @@ object PlaceAddMenu {
     /** How clear the case is: only stop · both, stop first · both, goal first · only goal. */
     enum class Zone { STOP, STOP_FIRST, GOAL_FIRST, GOAL }
 
-    /** [main] = the menu's rows in order – with 2+ points both add rows, the first one emphasised ([emphasised]). */
+    /**
+     * [main] = the add rows in the decision's order – with 2+ points both add rows, the likelier first ([emphasised]).
+     * What the menu shows is [rows].
+     */
     data class Menu(val main: List<Item>) {
-        /** The likelier row (shown strong): the first of the two add rows; null with one point or none. */
+        /** The likelier row (shown tinted): the first of the two add rows; null with one point or none. */
         val emphasised: Item? get() = main.firstOrNull()?.takeIf { main.size == 2 && it in ADD_ITEMS }
+
+        /** The rows as the menu shows them: always Start → Stopp → Ziel (owner 2026-11-26), whatever is likelier. */
+        val rows: List<Item> get() = main.sortedBy { SHOWN_ORDER.indexOf(it) }
     }
 
     private val ADD_ITEMS = setOf(Item.ADD_STOP, Item.NEW_DESTINATION)
+
+    /** Start → Stopp → Ziel: the order every menu shows its route rows in (owner 2026-11-26). */
+    private val SHOWN_ORDER = listOf(Item.START_HERE, Item.ADD_STOP, Item.SET_DESTINATION, Item.GO_HERE, Item.NEW_DESTINATION)
 
     // Thresholds on the detour d = (route ahead with the place as its best stop) − (route ahead), straight lines. They are
     // conservative: a case near a border is DOUBTFUL (both entries) rather than one entry that is wrong.
@@ -71,7 +85,7 @@ object PlaceAddMenu {
 
     /**
      * What a hold on the empty map does while planning ([planningHold]): [ON_LINE] = the smart insertion into that leg,
-     * [STOP] = „Einfügen“ (stop-only, never behind the goal), [NEW_GOAL] = „Neues Ziel“ (appended), [ASK] = the menu.
+     * [STOP] = „Als Stopp“ (stop-only, never behind the goal), [NEW_GOAL] = „Als Ziel“ (appended), [ASK] = the menu.
      */
     enum class HoldAction { ON_LINE, STOP, NEW_GOAL, ASK }
 
@@ -170,8 +184,8 @@ object PlaceAddMenu {
     }
 
     /**
-     * Both add rows while planning, the cheaper first and tinted (a hold that asks, a held place in doubt – [planningRows]),
-     * ordered on the numbers the decision took (the paths when measured).
+     * Both add rows while planning, the cheaper first in [Menu.main] and tinted (a hold that asks, a held place in doubt –
+     * [planningRows]), decided on the numbers the decision took (the paths when measured); shown in [Menu.rows]' fixed order.
      */
     fun planningMenu(d: Detours): Menu =
         Menu(if (d.insertM < d.appendM) listOf(Item.ADD_STOP, Item.NEW_DESTINATION) else listOf(Item.NEW_DESTINATION, Item.ADD_STOP))
@@ -180,7 +194,7 @@ object PlaceAddMenu {
      * The add rows of a held PLACE's menu (POI, found pin) while planning – owner 2026-11-17, replacing „both rows always“
      * of 2026-11-15: „wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt zu werden.“ Decided by
      * the same [planningHold] (and the same numbers) a hold on the empty map takes: [HoldAction.ON_LINE] / [HoldAction.STOP]
-     * → only „Einfügen“, [HoldAction.NEW_GOAL] → only „Neues Ziel“, [HoldAction.ASK] → both, the cheaper first and tinted
+     * → only „Als Stopp“, [HoldAction.NEW_GOAL] → only „Als Ziel“, [HoldAction.ASK] → both, the cheaper one tinted
      * ([planningMenu]). One row alone is not tinted ([Menu.emphasised]: nothing to choose between).
      */
     fun planningRows(action: HoldAction, d: Detours): Menu = when (action) {
@@ -189,7 +203,7 @@ object PlaceAddMenu {
         HoldAction.ASK -> planningMenu(d)
     }
 
-    /** [planningRows] for a place [lineDp] from the drawn line (a place on the line → „Einfügen“ only) with the numbers [d]. */
+    /** [planningRows] for a place [lineDp] from the drawn line (a place on the line → „Als Stopp“ only) with the numbers [d]. */
     fun planningPlaceMenu(lineDp: Double?, d: Detours, snapDp: Double = LINE_SNAP_DP): Menu =
         planningRows(planningHold(lineDp, d, snapDp), d)
 

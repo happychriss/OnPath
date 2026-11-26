@@ -906,17 +906,16 @@
   },
   "plan_start_here": {
     "area": "Map (Plan)",
-    "context": "Hold menu item: this spot is the start",
+    "context": "Menu row (new place on an empty plan, a stop in the plan): the place / point becomes the start. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
     "priority": 1,
     "confidence": "sicher",
     "max": 24
   },
   "plan_go_here": {
     "area": "Map (Plan)",
-    "context": "Hold menu item: route from my position to this spot",
+    "context": "Menu row on an empty plan: route from my position to this spot (the line under it: plan_from_my_position or why it is off). Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
     "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Alternative \"Hierher navigieren\" / \"Ziel hier\"",
+    "confidence": "sicher",
     "max": 24
   },
   "plan_open_google_maps": {
@@ -934,7 +933,7 @@
   },
   "plan_start_finish_here": {
     "area": "Map (Plan)",
-    "context": "Point menu item of a round trip",
+    "context": "Menu row on a round-trip point: the loop starts (and ends) here – the line under it says „Same round trip, starts here“. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
     "priority": 2,
     "confidence": "sicher"
   },
@@ -1348,14 +1347,14 @@
   },
   "plan_add_as_stop": {
     "area": "Plan place menu",
-    "context": "Menu entry of a held place (POI / found pin) with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number (owner 2026-11-07). The owner's word „Einfügen“ (2026-11-15) – never reword.",
+    "context": "Menu row of a held place / spot with a plan of 2+ points: insert it at the best place on the route ahead, the goal stays. No number. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
     "priority": 1,
     "confidence": "sicher",
     "max": 28
   },
   "plan_make_destination": {
     "area": "Plan place menu",
-    "context": "Menu entry of a held place with a plan of 2+ points: the route goes on there (planning: the old goal stays as a stop; on a tour it replaces it). The owner's word „Neues Ziel“ (2026-11-15) – never reword.",
+    "context": "Menu row of a held place / spot with a plan of 2+ points: the route goes on there (new goal). Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
     "priority": 1,
     "confidence": "sicher",
     "max": 28
@@ -1439,5 +1438,12 @@
     "context": "Wait window step row: a section of the route when its points have no names",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "plan_from_my_position": {
+    "area": "Map (Plan)",
+    "context": "Grey line under „Als Ziel“ on an empty plan: the route starts at my GPS position. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 28
   }
 }

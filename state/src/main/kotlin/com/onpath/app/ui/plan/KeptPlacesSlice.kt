@@ -55,6 +55,9 @@ class KeptPlacesSlice(private val store: PlacesStore, private val host: KeptPlac
     fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isFavourite(placeOf(poi))
     fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isHome(placeOf(poi))
 
+    /** Whether [p] is kept – a named route point's „Merken“ / „Gemerkt“ (owner 2026-11-26, [Place.ofRoutePoint]). */
+    fun isFavourite(p: Place): Boolean = saved().isFavourite(p)
+
     /** „☆ Merken“ / „★ Gemerkt“ in a held place's menu: one tap sets / removes; the menu stays and shows the new state. */
     fun toggleFavouritePlace(poi: com.onpath.app.poi.Poi) {
         val p = placeOf(poi)

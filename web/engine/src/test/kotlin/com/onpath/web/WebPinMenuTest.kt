@@ -33,11 +33,12 @@ class WebPinMenuTest {
         assertEquals("[\"ADD\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("SET_DESTINATION", true, false))
         assertEquals("[\"ADD\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("ADD", true, false))
         assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("ADD_STOP,NEW_DESTINATION", true, false))
-        assertEquals("[\"NEW_DESTINATION\",\"ADD_STOP\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("NEW_DESTINATION,ADD_STOP", true, false))
+        // owner 2026-11-26: shown Stopp → Ziel always, the likelier one only tinted (addMenuEmphasised)
+        assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("NEW_DESTINATION,ADD_STOP", true, false))
         assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\"]", WebRules.pinMenuRows("ADD_STOP,NEW_DESTINATION", false, false))
         assertEquals("[\"START_HERE\",\"GO_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("START_HERE,GO_HERE", true, true))
-        // the page's „Rundtour von hier“ right after „Hier starten“ (the app's Row.ROUND_TRIP), under the page's key
-        assertEquals("[\"START_HERE\",\"ROUND_TRIP_HERE\",\"GO_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]",
+        // the page's „Rundtour ab hier“ last in the route group (owner 2026-11-26, the app's Row.ROUND_TRIP), under the page's key
+        assertEquals("[\"START_HERE\",\"GO_HERE\",\"ROUND_TRIP_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]",
             WebRules.pinMenuRows("START_HERE,ROUND_TRIP_HERE,GO_HERE", true, true))
         assertEquals("null", WebRules.addMenuEmphasised("START_HERE,ROUND_TRIP_HERE,GO_HERE"))
         assertEquals("\"ADD_STOP\"", WebRules.addMenuEmphasised("ADD_STOP,NEW_DESTINATION"))
