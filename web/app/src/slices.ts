@@ -48,7 +48,7 @@ interface Slices {
   /** The app's PinMenuPlace.cardPan. */
   pinMenuCardPan(headY: number, tipY: number, cardTop: number, top: number, tipRoom: number): string;
   /** The app's PinMenuItems.of for the add entries ("ADD_STOP,NEW_DESTINATION"): the rows' names in order. */
-  pinMenuRows(main: string, pin: boolean, keep: boolean): string;
+  pinMenuRows(main: string, pin: boolean, keep: boolean, fromMe: boolean): string;
   /** The app's PlaceAddMenu.Menu.emphasised: the tinted row's name or null. */
   addMenuEmphasised(main: string): string;
 }

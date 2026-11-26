@@ -64,7 +64,10 @@ async function menus(vp, tag) {
   await page.waitForSelector('.holdpopup.pinmenu .pointmenu, #placecard.pinmenucard .pointmenu', { timeout: 30_000 });
   await shot(page, menusDir, `${tag}-2-pin-empty-plan`);
   // Als Start, then a goal and a stop on the line
-  await page.locator('.holdpopup.pinmenu .pointmenu button, #placecard.pinmenucard .pointmenu button', { hasText: 'Als Start' }).first().click();
+  await page.locator('.holdpopup.pinmenu .pointmenu button, #placecard.pinmenucard .pointmenu button', { hasText: 'Nadel entfernen' }).first().click();
+  await page.fill('#q', '');
+  await clickLngLat(page, 11.16, 46.67);
+  await menuItem(page, 'Als Start');
   await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 20_000 });
   const s = await page.evaluate(() => window.__state.points[0]);
   await clickLngLat(page, s[1] + 0.03, s[0] + 0.02);
@@ -149,7 +152,7 @@ async function multiday(vp, tag) {
 try {
   for (const [vp, tag] of [[{ width: 1440, height: 900 }, 'desktop'], [{ width: 390, height: 844 }, 'phone']]) {
     try { await menus(vp, tag); } catch (e) { log(`${tag} menus failed: ${e}`); }
-    try { await multiday(vp, tag); } catch (e) { log(`${tag} multiday failed: ${e}`); }
+    if (!process.env.MENUS_ONLY) try { await multiday(vp, tag); } catch (e) { log(`${tag} multiday failed: ${e}`); }
   }
 } finally {
   await browser.close();

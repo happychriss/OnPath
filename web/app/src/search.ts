@@ -25,7 +25,9 @@ export type PlaceRole = 'SMART' | 'START' | 'DESTINATION' | 'REMOVE';
 export interface PinRows { head: string; main: MenuItem[];
   /** „☆ Merken“ / „⌂ Als Zuhause festlegen“ (the app's PinMenuItems FAVOURITE, HOME) – empty when the place cannot be kept. */
   keep: MenuItem[];
-  google: MenuItem }
+  google: MenuItem;
+  /** „Als Ziel“ from my position can be used now (the app's fromMeBlocked == null): it goes on top of an empty plan's rows. */
+  fromMe?: boolean }
 
 /**
  * A held place's rows in the app's order (PinMenuItems.of in the engine – the shared code decides it, owner 2026-11-26):
@@ -34,7 +36,7 @@ export interface PinRows { head: string; main: MenuItem[];
  */
 export function placeItems(rows: PinRows, remove: MenuItem | null, adds: (m: MenuItem) => MenuItem = (m) => m): MenuItem[] {
   const byKey = new Map(rows.main.map((m) => [m.key ?? '', m] as const));
-  const order = shownMenuRows(pinRows(rows.main.filter((m) => m.key !== 'OVERNIGHT').map((m) => m.key ?? ''), remove != null, rows.keep.length > 0));
+  const order = shownMenuRows(pinRows(rows.main.filter((m) => m.key !== 'OVERNIGHT').map((m) => m.key ?? ''), remove != null, rows.keep.length > 0, rows.fromMe ?? false));
   const out: MenuItem[] = [];
   for (const r of order) {
     const add = byKey.get(r);

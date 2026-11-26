@@ -1210,6 +1210,12 @@ function locateNotice() {
 }
 
 /**
+ * „Als Ziel“ from my position is the likeliest row of an empty plan's menu (owner 2026-11-26 night, the app's
+ * fromMeBlocked == null): only with a position the page has – a browser that has not been asked yet puts „Als Start“ on top.
+ */
+const fromMeNow = (goHere: MenuItem) => !goHere.disabled && position.fix != null;
+
+/**
  * „Als Ziel“ from my position: the item, with „Start: dein Standort“ under it or the reason it cannot be used (the app's
  * MapGestures.fromMeBlocked) – owner 2026-11-26: the same line as the app (the browser asks for the position itself).
  */
@@ -1234,10 +1240,10 @@ async function fromMe(to: LatLon, toMeta: Meta) {
  */
 async function firstPointMenu(at: maplibregl.LngLat) {
   const p: LatLon = [at.lat, at.lng];
-  const items: MenuItem[] = [
-    { icon: 'tripOrigin', label: t('plan_start_here'), key: 'START_HERE', group: 'ROUTE', act: () => commit([p], [{ pinned: false }]) },
-    await goHereItem(() => fromMe(p, { pinned: false })),
-  ];
+  const start: MenuItem = { icon: 'tripOrigin', label: t('plan_start_here'), key: 'START_HERE', group: 'ROUTE', act: () => commit([p], [{ pinned: false }]) };
+  const goHere = await goHereItem(() => fromMe(p, { pinned: false }));
+  // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“
+  const items: MenuItem[] = fromMeNow(goHere) ? [goHere, start] : [start, goHere];
   // „Rundtour ab hier“ last in the route group, only for the very first point (owner 2026-11-18 / 2026-11-26)
   openMenu(at, suggestUi && !state.points.length ? suggestUi.withRow(items, items.length - 1, p) : items, '');
 }
@@ -1337,7 +1343,9 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
     main.push({ icon: 'moon', label: t('days_overnight_here'), key: 'OVERNIGHT', act: () => { fromPin(); void multiDay?.placeNight(hit, pm.stop); } });
   // „Rundtour ab hier“ only while the plan is empty (owner 2026-11-18: only when setting the very first point); placeItems
   // puts it last in the route group (PinMenuItems.of)
-  return { head, main: suggestUi && !state.points.length ? suggestUi.withRow(main, main.length - 1, p, info.title) : main, keep: await keepRows(hit.code), google: googleRow };
+  const goHere = main.find((m) => m.key === 'GO_HERE');
+  return { head, main: suggestUi && !state.points.length ? suggestUi.withRow(main, main.length - 1, p, info.title) : main, keep: await keepRows(hit.code), google: googleRow,
+    fromMe: goHere ? fromMeNow(goHere) : false };
 }
 
 // ---- kept places (owner 2026-11-15, „Orte merken“ – the app's b2504c3d, F-PLAN-14; keptplaces.ts) ----

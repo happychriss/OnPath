@@ -48,8 +48,8 @@ export const cardPan = (headY: number, tipY: number, cardTop: number, top: numbe
  * add row), [pin] = the found place's pin (the menu ends with "Remove pin"), [keep] = the place can be kept („☆ Merken“,
  * „⌂ Als Zuhause festlegen“ after the route rows). Without the instance: the add rows alone.
  */
-export function pinRows(main: string[], pin: boolean, keep = false): PinRow[] {
-  return slice<PinRow[]>('pinMenuRows', main.join(','), pin, keep) ?? main.map((i): PinRow => (i === 'SET_DESTINATION' ? 'ADD' : i as PinRow));
+export function pinRows(main: string[], pin: boolean, keep = false, fromMe = true): PinRow[] {
+  return slice<PinRow[]>('pinMenuRows', main.join(','), pin, keep, fromMe) ?? main.map((i): PinRow => (i === 'SET_DESTINATION' ? 'ADD' : i as PinRow));
 }
 
 /** The app's PlaceAddMenu.Menu.emphasised: the likelier add row, shown strong (tinted); null with one point or none. */

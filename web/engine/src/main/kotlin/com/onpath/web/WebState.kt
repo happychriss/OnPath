@@ -347,11 +347,12 @@ object WebRules {
      * ("ADD_STOP,NEW_DESTINATION"; an empty plan's "START_HERE,ROUND_TRIP_HERE,GO_HERE"), [pin] = the found place's pin
      * (ends with REMOVE_PIN), [keep] = the place can be kept. Row names are the page's keys (ROUND_TRIP = ROUND_TRIP_HERE).
      */
-    fun pinMenuRows(main: String, pin: Boolean, keep: Boolean): String {
+    fun pinMenuRows(main: String, pin: Boolean, keep: Boolean, fromMe: Boolean = true): String {
         val n = names(main)
         val menu = addMenu(n)
         val emptyPlan = menu.main.any { it == PlaceAddMenu.Item.START_HERE || it == PlaceAddMenu.Item.GO_HERE }
-        return PinMenuItems.of(emptyPlan, startHere = "START_HERE" in n, menu = menu, pin = pin, keep = keep, roundTrip = "ROUND_TRIP_HERE" in n)
+        return PinMenuItems.of(emptyPlan, startHere = "START_HERE" in n, menu = menu, pin = pin, keep = keep, roundTrip = "ROUND_TRIP_HERE" in n,
+            fromMe = fromMe)
             .joinToString(",", "[", "]") { "\"${if (it == PinMenuItems.Row.ROUND_TRIP) "ROUND_TRIP_HERE" else it.name}\"" }
     }
 
@@ -395,6 +396,7 @@ object WebStateApi {
         WebRules.pinMenuDecide(headY, tipY, menuH, top, bottom, gap, tipRoom, mayPan)
     @JvmStatic @JSExport fun pinMenuCardPan(headY: Double, tipY: Double, cardTop: Int, top: Int, tipRoom: Int): String =
         WebRules.pinMenuCardPan(headY, tipY, cardTop, top, tipRoom)
-    @JvmStatic @JSExport fun pinMenuRows(main: String, pin: Boolean, keep: Boolean): String = WebRules.pinMenuRows(main, pin, keep)
+    @JvmStatic @JSExport fun pinMenuRows(main: String, pin: Boolean, keep: Boolean, fromMe: Boolean): String =
+        WebRules.pinMenuRows(main, pin, keep, fromMe)
     @JvmStatic @JSExport fun addMenuEmphasised(main: String): String = WebRules.addMenuEmphasised(main)
 }
