@@ -11,9 +11,11 @@
 **Planen**
 - **Umwege bleiben, wenn du den Plan änderst** – ein neuer oder verschobener Punkt lässt die Umweg-Linien der anderen Teile stehen; das Plan-Menü hat **„Ganz neu berechnen“**, wenn der Plan solche Linien hat.
 - **Meine Routen behält den Suchtext**, wenn du zurückkommst.
+- **Dein Standort beim Planen** ist der blaue Punkt mit Richtung, auch wenn du während einer Tour die Route änderst – und die nummerierten Punkte liegen darüber, so siehst du ① immer.
 
 **Standort teilen**
 - **Die Browser-Ansicht zählt bis zu deinem nächsten Punkt herunter** und heißt „Geteilter Standort“.
+- **Vor deinem ersten Standort** zeigt die Browser-Ansicht die geplante Route oder „Warte auf den ersten Standort …“ statt einer fernen Gegend.
 
 **Browser-Planer**
 - **Umwege bleiben, wenn du den Plan änderst**, wie in der App, mit „Ganz neu berechnen“.
