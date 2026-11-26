@@ -77,13 +77,29 @@ class WebLegStoreTest {
         assertNull(store.get(cut)); assertNotNull(store.get(plain))
     }
 
+    /** Owner 2026-11-26 (München–Venedig opened again routed every leg): a plan code without anchors keeps its points in
+     *  1e-5°, so a plain leg is also kept under its points as the code brings them back. */
+    @Test fun aPlainLegIsAlsoKeptUnderThePointsAsThePlanCodeKeepsThem() {
+        val store = WebLegStore({ "fp" }, { "1" })
+        val from = GeoPoint(46.6873324, 11.2349281); val to = GeoPoint(46.7017574, 11.2429993)
+        store.put(LegCache.key(from, to, Activity.HIKE, 2), from, to, leg())
+        val code = PlanCode.encode(com.onpath.app.routing.SharedPlan(listOf(from, to), Activity.HIKE, 2))
+        val back = PlanCode.decode(code)!!.points
+        assertNotNull("the leg under the code's points", store.get(LegCache.key(back[0], back[1], Activity.HIKE, 2)))
+        assertEquals(2, store.taken().size)
+        val cut = LegCache.key(from, to, Activity.HIKE, 2, cut = true)
+        store.put(cut, from, to, leg())
+        assertEquals("a cut leg keeps only its own key", 1, store.taken().size)
+    }
+
     @Test fun aStoredLegCountsOnlyWithTheSameFingerprintAndData() {
         var fp = "r1-0123456789ab"; var version = "100"; var missing = false
         val s = WebLegStore({ fp }, { version }, { missing })
         val k = LegCache.key(a, b, Activity.HIKE, 3)
         s.put(k, a, b, leg())
         val name = WebLegStore.name(k)
-        assertEquals(listOf(name), s.taken())
+        // also under the points as a plan code keeps them (1e-5°, aPlainLegIsAlsoKeptUnderThePointsAsThePlanCodeKeepsThem)
+        assertEquals(listOf(name, WebLegStore.name(WebLegStore.codeGrid(k))), s.taken())
         val text = s.text(name)
         assertTrue(text.contains("E11_N46=100"))
         // a fresh page: the worker hands it over
