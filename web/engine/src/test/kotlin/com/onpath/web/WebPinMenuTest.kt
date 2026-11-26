@@ -43,6 +43,8 @@ class WebPinMenuTest {
         assertEquals("[\"START_HERE\",\"GO_HERE\",\"ROUND_TRIP_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]",
             WebRules.pinMenuRows("START_HERE,ROUND_TRIP_HERE,GO_HERE", true, true, false))
         assertEquals("[\"GO_HERE\",\"START_HERE\",\"ROUND_TRIP_HERE\",\"GOOGLE\"]", WebRules.pinMenuRows("START_HERE,ROUND_TRIP_HERE,GO_HERE", false, false))
+        // a multi-day tour: „Als Übernachtung“ after the add rows (the shared PinMenuItems overnight, owner 2026-11-26 night)
+        assertEquals("[\"NEW_DESTINATION\",\"OVERNIGHT\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("NEW_DESTINATION,OVERNIGHT", true, false))
         assertEquals("null", WebRules.addMenuEmphasised("START_HERE,ROUND_TRIP_HERE,GO_HERE"))
         assertEquals("\"ADD_STOP\"", WebRules.addMenuEmphasised("ADD_STOP,NEW_DESTINATION"))
         assertEquals("\"NEW_DESTINATION\"", WebRules.addMenuEmphasised("NEW_DESTINATION,ADD_STOP"))

@@ -12,7 +12,7 @@ import { slice } from './slices';
 export type PinMenuKind = 'ABOVE' | 'BELOW' | 'CARD';
 /** [panPx] > 0: the map moves its content down by this much first, so the menu fits above the pin. */
 export interface PinMenuDecision { kind: PinMenuKind; panPx: number }
-export type PinRow = 'START_HERE' | 'GO_HERE' | 'ADD' | 'ADD_STOP' | 'NEW_DESTINATION' | 'FAVOURITE' | 'HOME' | 'GOOGLE' | 'REMOVE_PIN';
+export type PinRow = 'START_HERE' | 'GO_HERE' | 'ADD' | 'ADD_STOP' | 'NEW_DESTINATION' | 'OVERNIGHT' | 'FAVOURITE' | 'HOME' | 'GOOGLE' | 'REMOVE_PIN';
 
 let sizes: { gap: number; tipRoom: number } | null = null;
 /**

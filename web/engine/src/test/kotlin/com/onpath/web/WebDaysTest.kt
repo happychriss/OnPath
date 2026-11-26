@@ -69,8 +69,8 @@ class WebDaysTest {
 
     /**
      * „Als Übernachtung“ for a found place / POI (owner 2026-11-26 22:56, replacing „Hotel für diese Tour“): the place goes
-     * in where a stop fits and becomes a night – a lodging with its hotel (green bed), else a blue moon; N stays while a
-     * grey proposal goes, else N + 1. No routed line needed.
+     * in where a stop fits and becomes a night (the shared PlanDays.nightAtPlace) – a lodging with its hotel (green bed),
+     * else a blue moon; N stays while a grey proposal goes, else N + 1. No routed line needed.
      */
     @Test fun aPlaceBecomesANightWhereItIsPutIn() {
         fun rule(tour: String, stop: Int, lat: Double, lon: Double, text: String) =
@@ -80,9 +80,8 @@ class WebDaysTest {
         // near a grey proposal (3 days, no night yet): a hotel between ① and ② – the grey one goes, N stays
         val near = rule("d\t3", 1, 46.625, 11.21, hotel)
         assertTrue(near, near.contains("\"points\":[[46.600000,11.200000],[46.625000,11.210000],[46.650000,11.200000]"))
-        // a hotel's point carries its name and is not pinned (R3: the route leads to the hotel)
-        assertTrue(near, near.contains("\"pinned\":[]") && near.contains("\"1\":\"Gasthof Linde\""))
-        assertTrue(near, near.contains("\"tour\":{\"days\":3") && near.contains("\"nights\":{\"1\":{\"hotel\":{\"name\":\"Gasthof Linde\",\"address\":\"Dorfstr. 1\""))
+        assertTrue(near, near.contains("\"pinned\":[1]") && near.contains("\"1\":\"Gasthof Linde\""))
+        assertTrue(near, near.contains("\"tour\":{\"days\":3") && near.contains("\"nights\":{\"1\":{\"hotel\":{\"name\":\"Gasthof Linde\""))
         assertTrue(near, near.contains("\"dayAdded\":false") && near.contains("\"index\":1"))
         // not a lodging: a blue moon (no hotel)
         val moon = rule("d\t3", 1, 46.625, 11.21, inn)
@@ -99,11 +98,11 @@ class WebDaysTest {
         val after = rule(t3, 3, 46.73, 11.21, hotel)
         assertTrue(after, after.contains("\"points\":[[46.600000,11.200000],[46.650000,11.200000],[46.700000,11.200000],[46.730000,11.210000],[46.750000,11.200000]]"))
         assertTrue(after, after.contains("\"3\":{\"hotel\":{\"name\":\"Gasthof Linde\"") && after.contains("\"index\":3"))
-        // the place IS a night already (an Übernachtung): a lodging becomes its hotel – it replaces the blue moon, N stays
-        val replace = rule(t3, 2, 46.65, 11.2, hotel)
-        assertTrue(replace, replace.contains("\"points\":[[46.600000,11.200000],[46.650000,11.200000],[46.700000,11.200000],[46.750000,11.200000]]") && replace.contains("\"days\":3"))
-        assertTrue(replace, replace.contains("\"1\":{\"hotel\":{\"name\":\"Gasthof Linde\""))
-        // … a plain place there, a hotel there already, the start or the finish: nothing changes
+        // the place IS a night already: nothing changes (its own menu has „Hotel hinterlegen“ / „Übernachtung entfernen“)
+        assertEquals("null", rule(t3, 2, 46.65, 11.2, hotel))
+        // a plan point there without a mark takes the night
+        val onPoint = rule("d\t3", 2, 46.65, 11.2, hotel)
+        assertTrue(onPoint, onPoint.contains("\"points\":[[46.600000,11.200000],[46.650000,11.200000],[46.700000,11.200000],[46.750000,11.200000]]") && onPoint.contains("\"index\":1"))
         assertEquals("null", rule(t3, 2, 46.65, 11.2, inn))
         assertEquals("null", rule("d\t3\nn\t1\tH\tKrone\t\t", 2, 46.65, 11.2, hotel))
         assertEquals("null", rule(t3, 1, 46.6, 11.2, hotel))

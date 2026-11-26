@@ -31,26 +31,18 @@ export interface PinRows { head: string; main: MenuItem[];
 
 /**
  * A held place's rows in the app's order (PinMenuItems.of in the engine – the shared code decides it, owner 2026-11-26):
- * Route (the add rows, „Rundtour ab hier“ always last of them, then the planner's „Als Übernachtung“) · Ort (Merken, Google) · Entfernen ([remove]: the found place's „Nadel entfernen“, not
+ * Route (the add rows, „Rundtour ab hier“ always last of them, a multi-day tour's „Als Übernachtung“ after them) · Ort (Merken, Google) · Entfernen ([remove]: the found place's „Nadel entfernen“, not
  * red), each with its group so the menu draws a thin line between them. [adds] wraps an add row (the pin goes with an add).
  */
 export function placeItems(rows: PinRows, remove: MenuItem | null, adds: (m: MenuItem) => MenuItem = (m) => m): MenuItem[] {
   const byKey = new Map(rows.main.map((m) => [m.key ?? '', m] as const));
-  const order = shownMenuRows(pinRows(rows.main.filter((m) => m.key !== 'OVERNIGHT').map((m) => m.key ?? ''), remove != null, rows.keep.length > 0, rows.fromMe ?? false));
+  const order = shownMenuRows(pinRows(rows.main.map((m) => m.key ?? ''), remove != null, rows.keep.length > 0, rows.fromMe ?? false));
   const out: MenuItem[] = [];
   for (const r of order) {
     const add = byKey.get(r);
     const it = r === 'GOOGLE' ? rows.google : r === 'REMOVE_PIN' ? remove : r === 'FAVOURITE' ? rows.keep[0] : r === 'HOME' ? rows.keep[1]
       : add ? adds(add) : null;
     if (it) out.push({ ...it, divider: false, group: placeRowGroup(r) });
-  }
-  // „Als Übernachtung“ (a multi-day tour, owner 2026-11-26 22:56 – the app's PinMenuItems has no such row): the last
-  // route row; an add, so the pin goes with it
-  const night = byKey.get('OVERNIGHT');
-  if (night) {
-    let k = -1;
-    out.forEach((m, j) => { if (m.group === 'ROUTE') k = j; });
-    out.splice(k + 1, 0, { ...adds(night), group: 'ROUTE' });
   }
   return out;
 }

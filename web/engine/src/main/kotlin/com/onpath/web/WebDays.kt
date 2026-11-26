@@ -269,40 +269,26 @@ object WebDays {
     }
 
     /**
-     * „Als Übernachtung“ in a found place's / POI's menu of a multi-day tour (owner 2026-11-26 22:56, replacing „Hotel für
+     * „Als Übernachtung“ in a found place's / POI's menu of a multi-day tour (owner 2026-11-26 night, replacing „Hotel für
      * diese Tour“ and its „Welche Nacht?“ box): the place goes into the plan where a stop fits ([stop] = the page's
-     * placeMenu „stop“ – WaypointInsertion, never behind the goal), pinned and named, and becomes a night. A lodging
-     * ([text] = "name\taddress\tlink\t1") is the night's hotel at once (R3 – the green bed), anything else an Übernachtung
-     * (the blue moon). N stays while a grey proposal goes; with none left N + 1 (R1, as PlanDays.withNight). A plan point
-     * on the place already (within [PlanDays.SAME_POINT_M]) takes the night itself – a lodging on a night without a hotel
-     * gets it; a point with a mark otherwise, the start or the finish: "null". No line needed – the caller routes the
-     * new legs.
+     * placeMenu „stop“ – WaypointInsertion, never behind the goal), pinned and named, and ends that day –
+     * [PlanDays.nightAtPlace] (a lodging, [text] = "name\t…\t…\t1", is a hotel at once). A plan point on the place already
+     * (within [PlanDays.SAME_POINT_M]) takes the night itself. "null" when nothing changes (start, finish, a point with a
+     * mark). No line needed – the caller routes the new legs.
      */
     internal fun placeNight(p: SharedPlan, stop: Int, place: GeoPoint, text: String): String {
         val f = text.split('\t')
-        val name = f.getOrNull(0)?.trim()?.ifEmpty { null }
+        val name = f.getOrNull(0)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_NAME)
         val lodging = f.getOrNull(3)?.trim() == "1"
-        val hotel = Hotel(name?.take(PlanCode.MAX_NAME), f.getOrNull(1)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_ADDRESS),
-            f.getOrNull(2)?.trim()?.ifEmpty { null }?.take(PlanCode.MAX_LINK))
         val here = p.points.indices.filter { Geo.distance(p.points[it], place) <= PlanDays.SAME_POINT_M }
             .minByOrNull { Geo.distance(p.points[it], place) }
         val (base, index) = if (here != null) p to here else {
             if (stop <= 0 || stop > p.points.lastIndex) return "null"
-            val pts = p.points.take(stop) + place + p.points.drop(stop)
-            val moved = PlanDays.afterEdit(p, pts)
+            val moved = PlanDays.afterEdit(p, p.points.take(stop) + place + p.points.drop(stop))
             moved.copy(pinned = moved.pinned + stop, names = if (name != null) moved.names + (stop to name) else moved.names) to stop
         }
-        if (index <= 0 || index >= base.points.lastIndex) return "null"
-        val mark = base.nights[index]
-        return when {
-            mark != null && (mark.isHotel || !lodging) -> "null"
-            lodging -> PlanDays.setHotel(base, index, hotel, place).let { r -> planOut(r.plan, r.dayAdded, index) }
-            else -> {
-                val noGrey = PlanDays.proposalCount(base) == 0
-                val days = ((base.days ?: 1) + if (noGrey) 1 else 0).coerceAtMost(PlanCode.MAX_DAYS)
-                planOut(base.copy(days = days, nights = base.nights + (index to NightMark.OVERNIGHT)), noGrey, index)
-            }
-        }
+        val r = PlanDays.nightAtPlace(base, index, lodging, name)
+        return if (r.plan === base) "null" else planOut(r.plan, r.dayAdded, index)
     }
 
     /** R1 at line point [at]: the plan, the marked point's index, whether a day was added; null = not possible. */

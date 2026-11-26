@@ -352,7 +352,7 @@ object WebRules {
         val menu = addMenu(n)
         val emptyPlan = menu.main.any { it == PlaceAddMenu.Item.START_HERE || it == PlaceAddMenu.Item.GO_HERE }
         return PinMenuItems.of(emptyPlan, startHere = "START_HERE" in n, menu = menu, pin = pin, keep = keep, roundTrip = "ROUND_TRIP_HERE" in n,
-            fromMe = fromMe)
+            fromMe = fromMe, overnight = "OVERNIGHT" in n)
             .joinToString(",", "[", "]") { "\"${if (it == PinMenuItems.Row.ROUND_TRIP) "ROUND_TRIP_HERE" else it.name}\"" }
     }
 
