@@ -20,8 +20,9 @@ class PlanColourTest {
     }
 
     /** Every big go button in Plan is plan blue (owner 2026-11-12, variant F + one rule), white on it ≥ 7:1 (7.1:1). */
-    @Test fun goButtonsInPlanArePlanBlue() {
-        assertTrue(contrast(OnPathColors.CardWhite, OnPathColors.PlanGo) >= 7.0)
+    /** Colour option 3 (owner 2026-11-26 night): the main button is the one green; white words stay well readable. */
+    @Test fun goButtonsInPlanAreReadable() {
+        assertTrue(contrast(OnPathColors.CardWhite, OnPathColors.PlanGo) >= 5.5)
     }
 
     /**
