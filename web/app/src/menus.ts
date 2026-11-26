@@ -1,8 +1,8 @@
 // The app's hold menus (ui/MapOverlays: FirstPointMenu, PoiMenu, PointMenu): a small title – only where the menu belongs
 // to something (a place, a route point, a night) – then one row per action (icon + label, an optional line under it); a
 // danger row in red. The rows come in three groups, always in this order with a thin line between them (owner 2026-11-26,
-// docs/team/items/2026-11-26-context-menus-wording.md – the app's MenuGroups): ROUTE (what the point becomes, Start →
-// Stopp → Ziel), PLACE (Merken · In Google Maps öffnen), REMOVE (always last). Shown in a maplibre popup at the point.
+// docs/team/items/2026-11-26-context-menus-wording.md – the app's MenuGroups): ROUTE (what the point becomes – the order
+// from the shared code), PLACE (Merken · In Google Maps öffnen), REMOVE (always last). Shown in a maplibre popup at the point.
 import { icon, type IconName } from './icons';
 
 /** The app's MenuGroups.Group. */

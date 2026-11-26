@@ -623,14 +623,14 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   });
 
   // beside the goal: on straight lines appending is clearly shorter (+386 m vs 254 m – the new goal at once), on the paths
-  // the two are near equal (+465 m vs 397 m) → the menu, „New destination“ first and tinted
+  // the two are near equal (+465 m vs 397 m) → the menu, „Set as destination“ first and tinted
   const besideGoal = [46.666, LON + 0.003];
   const [gStraight, gPaths] = [await engineSays(besideGoal, ''), await engineSays(besideGoal, 'HIKE')];
   check(gStraight === 'ADD2' && gPaths === 'ASK NEW_DESTINATION/ADD_STOP', `hold rule data: straight lines say the new goal, the paths ask (${gStraight} / ${gPaths})`);
   const q1 = await clickCentred(besideGoal);
   const m1 = await asked() ? await holdMenuNow() : null;
-  check(m1 && m1.rows.join('|') === 'Set as stop|Set as destination' && m1.strong.join() === 'false,true' && m1.head === 'none',
-    `hold rule on the paths: near equal detours ask – Stopp before Ziel, „Set as destination“ the only tinted row, no title (${JSON.stringify(m1)})`);
+  check(m1 && m1.rows.join('|') === 'Set as destination|Set as stop' && m1.strong.join() === 'true,false' && m1.head === 'none',
+    `hold rule on the paths: near equal detours ask – „Set as destination“ on top and the only tinted row (owner 2026-11-26 22:42: the likeliest first), no title (${JSON.stringify(m1)})`);
   check(m1 && m1.free && Math.abs(m1.ring[0] - (canvas.x + q1[0])) < 2 && Math.abs(m1.ring[1] - (canvas.y + q1[1])) < 2,
     'hold rule: a ring marks the spot, the menu beside it (never over it)');
   // a click elsewhere: closed, nothing added
@@ -638,23 +638,23 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   await hp.waitForTimeout(500);
   check(await hp.locator('.holdaddpopup').count() === 0 && await hp.locator('.holdring').count() === 0 && (await pts()).length === 2,
     'hold rule: a click elsewhere closes the menu and its ring, nothing added');
-  // „Insert“ from the menu: between start and goal (never behind the goal)
+  // „Set as stop“ from the menu: between start and goal (never behind the goal)
   await clickCentred(besideGoal);
   await asked();
-  await hp.click('.holdaddpopup button:nth-of-type(2)');
+  await hp.click('.holdaddpopup button:has-text("Set as stop")');
   await count(3);
   const p3 = await pts();
   check(p3.length === 3 && nearSnap(p3[1], besideGoal), `hold menu: Insert puts the spot between start and goal (${JSON.stringify(p3)})`);
   await back();
 
   // nearer the start than the goal, far out: inserting a little shorter on the paths (+765 m vs 835 m) → the menu,
-  // „Insert“ first and tinted
+  // „Set as stop“ first and tinted
   const farOut = [46.663, LON + 0.00785];
   await clickCentred(farOut);
   const m2 = await asked() ? await holdMenuNow() : null;
   check(m2 && m2.rows.join('|') === 'Set as stop|Set as destination' && m2.strong.join() === 'true,false',
-    `hold rule: similar detours, inserting cheaper – „Set as stop“ tinted (${JSON.stringify(m2)})`);
-  await hp.click('.holdaddpopup button:nth-of-type(2)'); // „New destination“: appended, the old goal stays
+    `hold rule: similar detours, inserting cheaper – „Set as stop“ on top and tinted (${JSON.stringify(m2)})`);
+  await hp.click('.holdaddpopup button:has-text("Set as destination")'); // appended, the old goal stays
   await count(3);
   const p4 = await pts();
   check(p4.length === 3 && nearSnap(p4[2], farOut) && near(p4[1], sB), `hold menu: New destination appends, the old goal stays (${JSON.stringify(p4)})`);

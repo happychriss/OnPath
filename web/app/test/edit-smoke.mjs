@@ -106,12 +106,12 @@ check(!(await page.isDisabled('#roundTrip')) && await page.evaluate(() => docume
   && await page.getAttribute('#roundTrip', 'aria-pressed') === 'true',
   'Round trip is a switch: on (filled, ✓) once it is one, still clickable (onpath.private#40)');
 
-// point menu on point 2 → "Start & finish here" rotates the loop
+// point menu on point 2 → „Set as start“ (same round trip, starts here) rotates the loop
 const loopBefore = await page.textContent('#points');
 await page.locator('.pin').nth(1).click();
 await page.waitForSelector('.pointmenu');
 const items = await page.$$eval('.pointmenu button .txt > span:first-child', (b) => b.map((x) => x.textContent));
-check(items.join('|') === 'Start & finish here|Delete', 'point menu of a loop point: Start & finish here · Delete');
+check(items.join('|') === 'Set as start|Delete', 'point menu of a loop point: Set as start (same round trip) · Delete');
 await page.click('.pointmenu button:first-of-type');
 await page.waitForFunction((b) => document.getElementById('points').textContent !== b, loopBefore, { timeout: 10_000 }).catch(() => {});
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');

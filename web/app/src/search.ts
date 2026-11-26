@@ -28,8 +28,8 @@ export interface PinRows { head: string; main: MenuItem[];
   google: MenuItem }
 
 /**
- * A held place's rows in the app's order (PinMenuItems.of, owner 2026-11-26): Route (Start → Stopp → Ziel, „Rundtour ab
- * hier“, the planner's „Als Hotel“) · Ort (Merken, Google) · Entfernen ([remove]: the found place's „Nadel entfernen“, not
+ * A held place's rows in the app's order (PinMenuItems.of in the engine – the shared code decides it, owner 2026-11-26):
+ * Route (the add rows, „Rundtour ab hier“ always last of them, then the planner's „Als Hotel“) · Ort (Merken, Google) · Entfernen ([remove]: the found place's „Nadel entfernen“, not
  * red), each with its group so the menu draws a thin line between them. [adds] wraps an add row (the pin goes with an add).
  */
 export function placeItems(rows: PinRows, remove: MenuItem | null, adds: (m: MenuItem) => MenuItem = (m) => m): MenuItem[] {

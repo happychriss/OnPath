@@ -1306,6 +1306,9 @@ external fun planProgress(text: String)
 
 // kept places (WebKept.kt – the app's search/SavedPlaces, owner 2026-11-15 „Orte merken“) and „Zuletzt gesucht“
 @JSExport fun keptState(home: String, favourites: String, code: String): String = WebKept.state(home, favourites, code)
+/** A named route point's kept-place line (its „Merken“ in the point menu, owner 2026-11-26 – the app's Place.ofRoutePoint). */
+@JSExport fun routePointCode(name: String, lat: Double, lon: Double): String =
+    WebKept.encode(com.onpath.app.search.Place.ofRoutePoint(name, lat, lon))
 @JSExport fun keptApply(home: String, favourites: String, op: String, code: String): String = WebKept.apply(home, favourites, op, code)
 @JSExport fun keptStart(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double): String =
     WebKept.start(home, favourites, recent, all, lat, lon)

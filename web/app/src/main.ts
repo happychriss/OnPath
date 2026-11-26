@@ -1089,16 +1089,15 @@ const HOLD_RING_PX = 12;
 
 /**
  * The hold menu at a held spot (the app's HoldAddOverlay + HoldAddMenu, owner 2026-11-15): a small ring marks the spot,
- * beside it only the two rows „Als Stopp“ / „Als Ziel“ (in this order, the cheaper one tinted – owner 2026-11-26), no title – never over the spot
+ * beside it only the two rows „Als Stopp“ / „Als Ziel“ (the likelier on top and tinted, the order from the shared code), no title – never over the spot
  * (MapGestures.placeBeside, in the engine). A click elsewhere / Escape adds nothing; the menu closes when the spot leaves
  * the map.
  */
 function holdAddMenu(at: maplibregl.LngLat, a: { main: string[]; stop: number }, lineSnapM: number) {
   const p: LatLon = [at.lat, at.lng];
-  const strong = emphasised(a.main); // [main] in the decision order, the likelier first
-  // shown Stopp before Ziel (owner 2026-11-26, the app's PlaceAddMenu.Menu.rows), the likelier one only tinted
-  const shown = [...a.main].sort((x, y) => Number(x !== 'ADD_STOP') - Number(y !== 'ADD_STOP'));
-  const items = shown.map((item): MenuItem => item === 'ADD_STOP'
+  // the rows in the engine's order – the shared code decides it (owner 2026-11-26 22:42: the likeliest on top and tinted)
+  const strong = emphasised(a.main);
+  const items = a.main.map((item): MenuItem => item === 'ADD_STOP'
     // „Als Stopp“ / „Als Ziel“: the app's holdAsStop / holdAsNewDestination on the points as they are then (PlaceAddState)
     ? { icon: 'addLocation', label: t('plan_add_as_stop'), key: item, strong: item === strong, act: () => {
       void queueEdit(() => placeEdit('holdStop', p, lineSnapM, { pinned: false }));
@@ -1259,9 +1258,9 @@ async function pointMenu(i: number) {
   const pr = poi?.properties ?? {};
   const info: { title: string; sub: string; color: string; code?: string } | null = poi
     ? JSON.parse(await engine.call('poiMenu', String(pr.kind ?? ''), String(pr.name ?? ''), pr.ele != null ? String(pr.ele) : '', lat, lon)) : null;
-  // „Merken“ on a route point (new, owner 2026-11-26): a named place the page can keep – a POI under it or a place added
-  // from a menu / the search (its line came with it)
-  const code = state.meta[i]?.code || info?.code || undefined;
+  // „Merken“ on a named route point (new, owner 2026-11-26): its own line when it came from a POI or the search, else the
+  // app's Place.ofRoutePoint (name + spot – SavedPlaces matches a kept place by name and spot either way)
+  const code = name?.trim() ? (state.meta[i]?.code || info?.code || await engine.call('routePointCode', name, lat, lon)) : undefined;
   const keep = code ? (await keepRows(code))[0] : undefined;
   const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip, enc(state.points), !!keep));
   // the rows in their groups (the app's MapGestures.pointMenu / pointGroup): Route · Ort · Entfernen
@@ -1286,7 +1285,8 @@ async function pointMenu(i: number) {
 
 /**
  * POI menu (ui/MapOverlays.PoiMenu): name, kind · elevation; Route – what adding it does (empty plan: Als Start · Als Ziel ·
- * Rundtour ab hier; one point: Als Ziel; 2+: Als Stopp and / or Als Ziel · Als Hotel) – Ort: Merken · Google (owner 2026-11-26).
+ * Rundtour ab hier; one point: Als Ziel; 2+: Als Stopp and / or Als Ziel · Als Hotel), the order from the shared code
+ * (PinMenuItems.of) – Ort: Merken · Google (owner 2026-11-26).
  */
 async function poiMenu(f: MapGeoJSONFeature) {
   const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
@@ -1303,7 +1303,7 @@ async function poiMenu(f: MapGeoJSONFeature) {
  * The rows of a held place's menu (the app's PoiMenu + PinMenuItems): its head, the add entries (the app's PlaceAddMenu,
  * owner 2026-11-07 / 2026-11-15 / 2026-11-17: one line each, nothing behind „⋯ Mehr“; while planning only the matching row
  * in a clear case – „Als Stopp“ on the line or when inserting is clearly shorter on the paths, „Als Ziel“ when appending
- * is – and both, Stopp before Ziel and the cheaper one tinted, only when near equal: the rows a hold on the place gives, the app's
+ * is – and both, in the shared code's order with the likelier tinted, only when near equal: the rows a hold on the place gives, the app's
  * PlaceMenuMeasure) and Google. [pin] = the found place's pin (search.ts, owner 2026-11-13): an add is a place from the
  * search – the new route is fitted (fitAfterPlace) and a Cancel of the long-route question brings the pin back (TakenPin).
  */
@@ -1315,7 +1315,7 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
   /** Before an add from the pin: TakenPin + fit the new route (the old place card's host.add). */
   const fromPin = () => { if (pin) { pinTaken = { hit, at: p, plan: null }; placeFit = true; } };
-  const strong = emphasised(pm.main); // the decision order: the likelier first (only tinted – shown Start → Stopp → Ziel)
+  const strong = emphasised(pm.main);
   const row = async (item: string): Promise<MenuItem> =>
     ({ ...(await row0(item)), key: item === 'SET_DESTINATION' ? 'ADD' : item, strong: item === strong });
   const row0 = async (item: string): Promise<MenuItem> => {
@@ -1323,8 +1323,9 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
     if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind, code: hit.code }); });
     if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void placeAddAs(hit, 'poiStop'); } };
     if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAddAs(hit, 'poiGoal'); } };
-    return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
-      act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
+    const label = (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination');
+    // the app's PoiMenu ADD row: the flag unless the one add makes it a stop
+    return { icon: label === t('plan_add_as_stop') ? 'addLocation' : 'flag', label, act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
   const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'),

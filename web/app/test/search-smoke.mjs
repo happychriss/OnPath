@@ -176,9 +176,9 @@ console.log('third place:', rows.join(' · '), '– tinted:', await strongRows(P
 // while planning (owner 2026-11-17): only the matching row in a clear case – Meran lies beside the leg, „Insert“ alone –
 // both only when near equal (the likelier first and tinted)
 const addRows = rows.slice(0, rows.indexOf('Add to favourites'));
-check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination'].includes(addRows.join('|'))
+check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination', 'Set as destination|Set as stop'].includes(addRows.join('|'))
   && rows.slice(addRows.length).join('|') === 'Add to favourites|Open in Google Maps|Remove pin',
-  `two points: the matching add row ("Set as stop" / "Set as destination", both – in this order – when near equal), Google, Remove pin last, no More (${rows.join(' · ')})`);
+  `two points: the matching add row ("Set as stop" / "Set as destination", both when near equal, the likelier first), Google, Remove pin last, no More (${rows.join(' · ')})`);
 check((await strongRows(PIN_BUTTONS)).join('|') === (addRows.length === 2 ? addRows[0] : '') && await oneLine(PIN_BUTTONS),
   `one add row untinted, two: the likelier first and the only one tinted; every row one line (${(await strongRows(PIN_BUTTONS)).join()})`);
 check(!rows.some((r) => /Add as a stop|Make it the destination|Add as new destination|^More$/.test(r)), 'none of the old words');
@@ -292,7 +292,7 @@ for (const tried = []; tried.length < 6;) {
   const strong = await strongRows(POI_BUTTONS), one = await oneLine(POI_BUTTONS);
   const add = rows.slice(0, rows.indexOf('Add to favourites'));
   console.log('POI menu:', p.name, '–', rows.join(' · '), '– tinted:', strong);
-  check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination'].includes(add.join('|'))
+  check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination', 'Set as destination|Set as stop'].includes(add.join('|'))
     && rows.slice(add.length).join('|') === 'Add to favourites|Open in Google Maps'
     && strong.join('|') === (add.length === 2 ? add[0] : '') && one,
     `a POI's menu: one add row in a clear case (untinted), both when near equal (the cheaper first and tinted), Google, no More (${rows.join(' · ')})`);
