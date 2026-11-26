@@ -30,6 +30,13 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
   once all checks are green and a second model read it (owner 2026-11-24; not: secrets / signing keys, outside contributions,
   anything red or unclear – those ask him). Never commit map data,
   APKs or `local.properties`.
+- Never search from `/`, `~`, `/mnt` or `/media` (`find`, `bfs`, `fd`, `du`, `grep -r`, `locate`): the 3.6 TB disk
+  `/mnt/DATEN` and the photo share stall donald. Search only in the repo or these known paths: routing + map data
+  `~/onpath-routing/` (rd5 in `segments/`), cell builds `~/onpath-cells-work/`, tour POC `~/onpath-suggest-poc/` +
+  `~/.cache/onpath-suggest-poc/`, private notes `~/onpath.private/`, other clones `~/Projects/work/onpath-owner|onpath-test`,
+  POI pictures `~/Projects/work/poi-pictures/`, session worktrees `<repo>/.claude/worktrees/`, Gradle `~/.gradle/`
+  (JDKs in `jdks/`), Android SDK `~/Android/Sdk`, emulators `~/.android/`, config `~/.config/onpath/`. A path not
+  listed: ask, don't search. Give helpers exact paths.
 - Ask the owner in your own chat (rules: `docs/team/owner-preferences.md`); still open when you stop → `docs/team/backlog.md`
   "Waiting for the owner". The owner's word to all = a line in the backlog's "For the roles".
 - A word for the captain → backlog "For the captain" (`← [role] …`); never ask the owner to pass it on.
