@@ -136,7 +136,7 @@ async function run(lang, viewport, shotPrefix) {
   const onLine = await lineOf();
   const pointsBefore = await page.evaluate(() => window.__state.points.length);
   await clickLngLat(spot[1], spot[0]);
-  await menuItem(lang === 'de' ? 'Übernachtung hier' : 'Overnight stop here');
+  await menuItem(lang === 'de' ? 'Als Übernachtung' : 'Set as overnight stop');
   await waitView(() => window.__days.lastView?.ends.some((e) => e.kind === 'OVERNIGHT'), 'a blue moon');
   await settled();
   let v = await view();
@@ -152,9 +152,10 @@ async function run(lang, viewport, shotPrefix) {
     await page.waitForSelector('.holdpopup .menuhead', { timeout: 10_000 });
     const head = await page.textContent('.holdpopup .menuhead');
     check(head.includes(lang === 'de' ? 'von 3' : 'of 3'), `the grey moon's menu head says the day: "${head}"`);
-    // a grey moon not wanted (owner 2026-11-20: one left between two blue ones): „Ein Tag weniger“ right there (R5)
+    // a grey moon's menu (owner 2026-11-26): „Als Übernachtung“ · „Hotel hinterlegen“, no „Ein Tag weniger“ (gone 2026-11-20)
     const greyRows = await page.$$eval('.holdpopup .pointmenu button', (bs) => bs.map((b) => b.textContent.trim()));
-    check(greyRows.some((r) => r.includes(lang === 'de' ? 'Ein Tag weniger' : 'One day fewer')), `the grey moon's menu offers one day fewer (${greyRows.join(' | ')})`);
+    check(greyRows.join('|') === (lang === 'de' ? 'Als Übernachtung|Hotel hinterlegen' : 'Set as overnight stop|Add hotel'),
+      `the grey moon's menu: overnight stop · hotel, no day fewer (${greyRows.join(' | ')})`);
     await shot('3b-grey-menu');
     await page.keyboard.press('Escape');
   }
@@ -237,7 +238,7 @@ async function run(lang, viewport, shotPrefix) {
   if (viewport.width <= 700) {
     for (let k = 0; k < 3 && await page.$eval('#sheet', (s) => s.dataset.step) !== 'small'; k++) await page.click('#sheetStep');
   }
-  const overnight = lang === 'de' ? 'Übernachtung hier' : 'Overnight stop here';
+  const overnight = lang === 'de' ? 'Als Übernachtung' : 'Set as overnight stop';
   const menuRows = () => page.$$eval('.holdpopup .pointmenu button', (bs) => bs.map((b) => b.textContent.trim()));
   const pressPin = (k) => page.evaluate((k) => document.querySelectorAll('.pin')[k].dispatchEvent(new MouseEvent('click', { bubbles: true })), k);
   await pressPin(0);
@@ -252,7 +253,7 @@ async function run(lang, viewport, shotPrefix) {
     await page.waitForTimeout(1200);
     const at = await page.evaluate(() => { const pts = window.__days.h.routedPlan().legs.flatMap((l) => l.points); return pts[Math.floor(pts.length * 0.8)]; });
     await clickLngLat(at[1], at[0]);
-    await menuItem(lang === 'de' ? 'Einfügen' : 'Insert');
+    await menuItem(lang === 'de' ? 'Als Stopp' : 'Set as stop');
     await page.waitForFunction((n) => document.querySelectorAll('.pin').length > n, n0, { timeout: 30_000 }).catch(() => {});
     await settled();
     await waitView(() => window.__days.lastView?.ends.length === 2, 'the overview after Einfügen');

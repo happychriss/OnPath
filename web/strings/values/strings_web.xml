@@ -67,8 +67,6 @@
     <string name="web_locate_denied">Location is not allowed for this page. To allow it, click the icon left of the address, turn on Location, then click Locate again.</string>
     <string name="web_locate_off">Your position is not available – location is off or this device cannot find it.</string>
     <string name="web_position_unavailable">Your position is not available. Set the start on the map.</string>
-    <string name="web_from_position">From your position</string>
-    <string name="web_from_position_ask">From your position – asks for it</string>
 
     <!-- engine and planning (status line) -->
     <string name="web_engine_loading">Loading the routing engine…</string>
@@ -277,7 +275,7 @@
     <string name="web_fly_needs_route">Plan a route first to fly along it</string>
     <string name="web_fly_pause">Pause</string>
     <string name="web_fly_resume">Resume</string>
-    <string name="web_fly_stop">Stop</string>
+    <string name="web_fly_stop">End</string>
     <string name="web_fly_speed">Speed: 1× or 2×</string>
     <string name="web_terrain_turn_mouse">Turn and tilt: hold the right mouse button and drag (or Shift + arrow keys).</string>
     <string name="web_terrain_turn_touch">Turn and tilt: with two fingers.</string>

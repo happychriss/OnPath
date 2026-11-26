@@ -92,7 +92,7 @@ const emptySearch = async (page) => {
 
   const vellau = await pickFirst(page, 'Vellau');
   let rows = await menuRows(page);
-  check(rows.join('|') === 'Start here|Round trip from here|Go here|Add to favourites|Open in Google Maps|Remove pin',
+  check(rows.join('|') === 'Set as start|Set as destination|Round trip from here|Add to favourites|Open in Google Maps|Remove pin',
     `found place's menu: the kept-place row after the route rows, before Google (${rows.join(' · ')})`);
   check(!rows.includes('Set as home') && !rows.includes('Remove home'), 'Zuhause off: no „Set as home“ in the found place\'s menu');
   check(await page.evaluate((sel) => [...document.querySelectorAll(sel)].some((d) =>

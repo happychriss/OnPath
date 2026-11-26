@@ -248,13 +248,15 @@ dialog.share #exportGpx { margin-top: 8px; }
 .holdpopup.maplibregl-popup-anchor-left .maplibregl-popup-tip { border-right-color: var(--bg); }
 .holdpopup.maplibregl-popup-anchor-right .maplibregl-popup-tip { border-left-color: var(--bg); }
 .pointmenu { display: flex; flex-direction: column; min-width: 220px; padding-bottom: 4px; }
-/* the thin line before a held place's kept-place rows (the app's PoiMenu HorizontalDivider, outlineVariant) */
+/* no title (the empty map, the multi-day line – owner 2026-11-26): a little air above the first row */
+.pointmenu.nohead { padding-top: 4px; }
+/* the thin line between two groups Route · Ort · Entfernen (owner 2026-11-26; the app's HorizontalDivider, outlineVariant) */
 .menudivider { height: 1px; background: var(--line); margin: 2px 16px; flex: none; }
 .menuhead { display: flex; gap: 10px; align-items: center; padding: 12px 16px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .pointmenu button { display: flex; gap: 16px; align-items: center; border: none; background: none; padding: 10px 16px; min-height: 48px; text-align: left; font-size: 15px; }
 .pointmenu button:hover:not(:disabled) { background: var(--surface2); }
 .pointmenu button.danger { color: var(--error); }
-/* the likelier add row („Einfügen“ / „Neues Ziel“, owner 2026-11-15) – the app's HoldMenuItem strong: EditTonal behind,
+/* the likelier add row („Als Stopp“ / „Als Ziel“, owner 2026-11-15 / 2026-11-26) – the app's HoldMenuItem strong: EditTonal behind,
    the label OnEditTonal semibold, the icon ActionEdit, inset 6 / 2 with the small corner */
 .pointmenu button.strong { margin: 2px 6px; padding: 10px 10px; border-radius: var(--r-small); background: var(--plan-light); color: var(--plan-ink); font-weight: 600; }
 .pointmenu button.strong:hover { background: var(--plan-light); filter: brightness(.97); }

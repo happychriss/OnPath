@@ -130,7 +130,7 @@ const emptyPlan = async () => { await page.evaluate(() => window.__sync.setDraft
 await emptyPlan();
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
 await toHilden();
-await hildenAs('Start here'); // empty plan: the menu's "Start here" (the app's hold menu)
+await hildenAs('Set as start'); // empty plan: the menu's "Start here" (the app's hold menu)
 await page.waitForTimeout(1500);
 check(!(await page.$('dialog.longroute')) && await pins() === 1 && (await summaryText()).includes('1 point · Hilden'),
   `empty plan + Hilden as start: no question, "1 point · Hilden" (${await summaryText()})`);
@@ -183,9 +183,9 @@ await planned();
 await toHilden();
 // far past the goal: appending is clearly shorter – only „Neues Ziel“, untinted (nothing to choose between; owner
 // 2026-11-17 „wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt zu werden“)
-await hildenAs('New destination');
-check(hildenRows[0] === 'New destination' && !hildenRows.includes('Insert') && !hildenRows.includes('More'),
-  `far past the goal: only "New destination", not tinted, no Insert, no More (${hildenRows.join(' · ')})`);
+await hildenAs('Set as destination');
+check(hildenRows[0] === 'Set as destination' && !hildenRows.includes('Set as stop') && !hildenRows.includes('More'),
+  `far past the goal: only "Set as destination", not tinted, no "Set as stop", no More (${hildenRows.join(' · ')})`);
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
 const farRoute = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
 check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.test(farRoute), `a far route: "${farRoute}"`);

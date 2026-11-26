@@ -19,14 +19,14 @@ import { FlyOver } from './flyover';
 import { STEEP_COLOURS } from './profile';
 import { PACKED, usePacked, packedGlyphs } from './packed';
 import { Cells } from './cells';
-import { PIN_CHIP_HALF_W, setupSearch, type PinRows, type PlaceCard, type PlaceRole } from './search';
+import { PIN_CHIP_HALF_W, placeItems, setupSearch, type PinRows, type PlaceCard, type PlaceRole } from './search';
 import { HOME_ROW_SHOWN } from './pinmenu';
 import { emphasised } from './pinplace';
 import { NO_PADDING, roomFor } from './cardanchor';
 import { icon, activityIcon, needle, logo, type IconName } from './icons';
 import { ActivityPicker, type ActivityRow, type PaceChoices } from './activity';
 import { RouteThumbs } from './routethumbs';
-import { holdMenu, setRow, type MenuItem } from './menus';
+import { holdMenu, pointRowGroup, setRow, type MenuItem } from './menus';
 import { keptStore, searchRecent, type KeptPlaces, type KeptRules } from './keptplaces';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
@@ -81,7 +81,8 @@ const lastView = (() => {
 const startAt = (params.get('at') ?? lastView ?? import.meta.env.VITE_START ?? '11.16,46.67,12').split(',').map(Number);
 
 /** [kind]: the POI a pinned point was picked from (tap / search hit); not stored – the planner draws the plain point (owner 2026-11-20). */
-type Meta = { pinned: boolean; name?: string; kind?: string };
+/** [code] = the kept-place line of a place added from a menu or the search (its „Merken“ in the point menu, owner 2026-11-26). */
+type Meta = { pinned: boolean; name?: string; kind?: string; code?: string };
 type LatLon = [number, number];
 const state = {
   points: [] as LatLon[],
@@ -907,7 +908,7 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
   if (action.startsWith('PointMenu:')) await pointMenu(Number(action.split(':')[1]));
   else if (action === 'PoiMenu' && poi) await poiMenu(poi);
   else if (action === 'FirstPointMenu') await firstPointMenu(at);
-  // a multi-day tour: a click on its route asks „Übernachtung hier“ or „Einfügen“ (multi-day tours §3.6)
+  // a multi-day tour: a click on its route asks „Als Übernachtung“ or „Als Stopp“ (multi-day tours §3.6, owner 2026-11-26)
   else if (action === 'AddPoint' && multiDay?.isTour && pt && onRouteLine(pt)) multiDay.routeMenu(at);
   else if (action === 'AddPoint') { void addPoint(at); await editChain; }
   else if (action === 'CloseMenu') closeMenu();
@@ -1065,7 +1066,7 @@ function measuringRing(at: maplibregl.LngLat): () => void {
  * A click (the app's hold) on the empty map or the line – the app's holdOnMap (F-PLAN-15, owner 2026-11-17 21:40: „die
  * echte Routendifferenz … die kürzere gewinnt; nur fast gleich → fragen“): fewer than 2 points or on the line → where
  * WaypointInsertion puts it; else appending and inserting measured on the real paths (a turning ring meanwhile): the
- * clearly shorter at once (the new goal / a stop), within 20 % of each other the small menu „Einfügen“ / „Neues Ziel“
+ * clearly shorter at once (the new goal / a stop), within 20 % of each other the small menu „Als Stopp“ / „Als Ziel“
  * beside a ring at the spot (holdAddMenu). The next click waits for this one's answer (pressInOrder).
  */
 function addPoint(at: maplibregl.LngLat) {
@@ -1088,15 +1089,17 @@ const HOLD_RING_PX = 12;
 
 /**
  * The hold menu at a held spot (the app's HoldAddOverlay + HoldAddMenu, owner 2026-11-15): a small ring marks the spot,
- * beside it only the two rows „Einfügen“ / „Neues Ziel“, the cheaper first and tinted, no title – never over the spot
+ * beside it only the two rows „Als Stopp“ / „Als Ziel“ (in this order, the cheaper one tinted – owner 2026-11-26), no title – never over the spot
  * (MapGestures.placeBeside, in the engine). A click elsewhere / Escape adds nothing; the menu closes when the spot leaves
  * the map.
  */
 function holdAddMenu(at: maplibregl.LngLat, a: { main: string[]; stop: number }, lineSnapM: number) {
   const p: LatLon = [at.lat, at.lng];
-  const strong = emphasised(a.main);
-  const items = a.main.map((item): MenuItem => item === 'ADD_STOP'
-    // „Einfügen“ / „Neues Ziel“: the app's holdAsStop / holdAsNewDestination on the points as they are then (PlaceAddState)
+  const strong = emphasised(a.main); // [main] in the decision order, the likelier first
+  // shown Stopp before Ziel (owner 2026-11-26, the app's PlaceAddMenu.Menu.rows), the likelier one only tinted
+  const shown = [...a.main].sort((x, y) => Number(x !== 'ADD_STOP') - Number(y !== 'ADD_STOP'));
+  const items = shown.map((item): MenuItem => item === 'ADD_STOP'
+    // „Als Stopp“ / „Als Ziel“: the app's holdAsStop / holdAsNewDestination on the points as they are then (PlaceAddState)
     ? { icon: 'addLocation', label: t('plan_add_as_stop'), key: item, strong: item === strong, act: () => {
       void queueEdit(() => placeEdit('holdStop', p, lineSnapM, { pinned: false }));
     } }
@@ -1207,10 +1210,13 @@ function locateNotice() {
   }
 }
 
-/** "Go here": the item and its reason when it cannot be used (the app's MapGestures.fromMeBlocked). */
+/**
+ * „Als Ziel“ from my position: the item, with „Start: dein Standort“ under it or the reason it cannot be used (the app's
+ * MapGestures.fromMeBlocked) – owner 2026-11-26: the same line as the app (the browser asks for the position itself).
+ */
 async function goHereItem(onGo: () => void): Promise<MenuItem> {
   const blocked = position.status === 'UNKNOWN' ? '' : await engine.call('fromMeBlocked', position.status, position.fix != null);
-  return { icon: 'gpsFixed', label: t('plan_go_here'), sub: blocked || (position.fix ? t('web_from_position') : t('web_from_position_ask')),
+  return { icon: 'gpsFixed', label: t('plan_go_here'), sub: blocked || t('plan_from_my_position'), key: 'GO_HERE', group: 'ROUTE',
     disabled: !!blocked, act: onGo };
 }
 
@@ -1223,15 +1229,18 @@ async function fromMe(to: LatLon, toMeta: Meta) {
   await commit([me, to], [{ pinned: false }, toMeta]);
 }
 
-/** First press on an empty plan: "Start here" · "Go here" (ui/MapOverlays.FirstPointMenu). */
+/**
+ * First press on an empty plan (ui/MapOverlays.FirstPointMenu, owner 2026-11-26): no title, „Als Start“ · „Als Ziel“
+ * (↳ Start: dein Standort) · „Rundtour ab hier“.
+ */
 async function firstPointMenu(at: maplibregl.LngLat) {
   const p: LatLon = [at.lat, at.lng];
   const items: MenuItem[] = [
-    { icon: 'tripOrigin', label: t('plan_start_here'), act: () => commit([p], [{ pinned: false }]) },
+    { icon: 'tripOrigin', label: t('plan_start_here'), key: 'START_HERE', group: 'ROUTE', act: () => commit([p], [{ pinned: false }]) },
     await goHereItem(() => fromMe(p, { pinned: false })),
   ];
-  // „Rundtour von hier“ only for the very first point (owner 2026-11-18): never once the plan has a point
-  openMenu(at, suggestUi && !state.points.length ? suggestUi.withRow(items, 0, p) : items, `<b>${escapeHtml(t('plan_new_route'))}</b>`);
+  // „Rundtour ab hier“ last in the route group, only for the very first point (owner 2026-11-18 / 2026-11-26)
+  openMenu(at, suggestUi && !state.points.length ? suggestUi.withRow(items, items.length - 1, p) : items, '');
 }
 
 /**
@@ -1246,20 +1255,28 @@ async function pointMenu(i: number) {
   if (nm) { const [la, lo] = state.points[i]; openMenu(new maplibregl.LngLat(lo, la), nm.items, nm.head); return; }
   const n = state.points.length, name = state.meta[i]?.name;
   const [lat, lon] = state.points[i];
-  const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip, enc(state.points)));
   const poi = state.meta[i]?.pinned ? poiFeatureAt(map, lat, lon) : null;
   const pr = poi?.properties ?? {};
-  const info: { title: string; sub: string; color: string } | null = poi
+  const info: { title: string; sub: string; color: string; code?: string } | null = poi
     ? JSON.parse(await engine.call('poiMenu', String(pr.kind ?? ''), String(pr.name ?? ''), pr.ele != null ? String(pr.ele) : '', lat, lon)) : null;
-  const items: MenuItem[] = acts.map((a): MenuItem => {
-    if (a === 'MAKE_START') return { icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), act: () => applyEdit('startHere', i) };
-    if (a === 'LOOP_START') return { icon: 'tripOrigin', label: t('plan_start_finish_here'), sub: t('plan_same_round_trip'), act: () => applyEdit('startHere', i) };
-    if (a === 'GOOGLE') return { icon: 'map', label: t('plan_open_google_maps'), act: () => google(name ?? '', lat, lon, '') };
-    return { icon: 'delete', label: t('common_delete'), danger: true, act: () => deletePoint(i) };
+  // „Merken“ on a route point (new, owner 2026-11-26): a named place the page can keep – a POI under it or a place added
+  // from a menu / the search (its line came with it)
+  const code = state.meta[i]?.code || info?.code || undefined;
+  const keep = code ? (await keepRows(code))[0] : undefined;
+  const acts: string[] = JSON.parse(await engine.call('pointMenu', i, n, !!name?.trim(), state.roundTrip, enc(state.points), !!keep));
+  // the rows in their groups (the app's MapGestures.pointMenu / pointGroup): Route · Ort · Entfernen
+  const items: MenuItem[] = acts.flatMap((a): MenuItem[] => {
+    const group = pointRowGroup(a);
+    if (a === 'MAKE_START') return [{ icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), group, act: () => applyEdit('startHere', i) }];
+    if (a === 'LOOP_START') return [{ icon: 'tripOrigin', label: t('plan_start_finish_here'), sub: t('plan_same_round_trip'), group, act: () => applyEdit('startHere', i) }];
+    if (a === 'KEEP') return keep ? [{ ...keep, divider: false, group }] : [];
+    if (a === 'GOOGLE') return [{ icon: 'map', label: t('plan_open_google_maps'), group, act: () => google(name ?? '', lat, lon, '') }];
+    return [{ icon: 'delete', label: t('common_delete'), danger: true, group, act: () => deletePoint(i) }];
   });
-  // a multi-day tour: „Übernachtung hier“ first (owner 2026-11-18) – this point becomes a night (blue moon)
+  // a multi-day tour: „Als Übernachtung“ first in the route group (owner 2026-11-18 / 2026-11-26) – this point becomes a
+  // night (blue moon)
   const night = multiDay?.pointNightItem(i);
-  if (night) items.unshift(night);
+  if (night) items.unshift({ ...night, group: 'ROUTE' });
   const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
   const title = `<b>${escapeHtml(stopLabel(i, n, name))}</b>`;
   openMenu(new maplibregl.LngLat(lon, lat), items,
@@ -1268,8 +1285,8 @@ async function pointMenu(i: number) {
 }
 
 /**
- * POI menu (ui/MapOverlays.PoiMenu): name, kind · elevation; what adding it does – "Set as destination", "Add as stop
- * 2", … (the app's poiAddLabel = AddPreview.label) – (empty plan: Start here · Go here); Google.
+ * POI menu (ui/MapOverlays.PoiMenu): name, kind · elevation; Route – what adding it does (empty plan: Als Start · Als Ziel ·
+ * Rundtour ab hier; one point: Als Ziel; 2+: Als Stopp and / or Als Ziel · Als Hotel) – Ort: Merken · Google (owner 2026-11-26).
  */
 async function poiMenu(f: MapGeoJSONFeature) {
   const [lon, lat] = (f.geometry as GeoJSON.Point).coordinates;
@@ -1279,14 +1296,14 @@ async function poiMenu(f: MapGeoJSONFeature) {
   const hit = { title: info.title, name: pr.name ? String(pr.name) : null, kind: String(pr.kind ?? ''), lat, lon, code: info.code } as Hit;
   const r = await placeRows(hit, info, false);
   const at = new maplibregl.LngLat(lon, lat);
-  openMenu(at, [...r.main, ...r.keep, r.google], r.head);
+  openMenu(at, placeItems(r, null), r.head);
 }
 
 /**
  * The rows of a held place's menu (the app's PoiMenu + PinMenuItems): its head, the add entries (the app's PlaceAddMenu,
  * owner 2026-11-07 / 2026-11-15 / 2026-11-17: one line each, nothing behind „⋯ Mehr“; while planning only the matching row
- * in a clear case – „Einfügen“ on the line or when inserting is clearly shorter on the paths, „Neues Ziel“ when appending
- * is – and both, the cheaper first and tinted, only when near equal: the rows a hold on the place gives, the app's
+ * in a clear case – „Als Stopp“ on the line or when inserting is clearly shorter on the paths, „Als Ziel“ when appending
+ * is – and both, Stopp before Ziel and the cheaper one tinted, only when near equal: the rows a hold on the place gives, the app's
  * PlaceMenuMeasure) and Google. [pin] = the found place's pin (search.ts, owner 2026-11-13): an add is a place from the
  * search – the new route is fitted (fitAfterPlace) and a Cancel of the long-route question brings the pin back (TakenPin).
  */
@@ -1298,12 +1315,12 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
   const p: LatLon = [Number(lat.toFixed(6)), Number(lon.toFixed(6))];
   /** Before an add from the pin: TakenPin + fit the new route (the old place card's host.add). */
   const fromPin = () => { if (pin) { pinTaken = { hit, at: p, plan: null }; placeFit = true; } };
-  const strong = emphasised(pm.main);
+  const strong = emphasised(pm.main); // the decision order: the likelier first (only tinted – shown Start → Stopp → Ziel)
   const row = async (item: string): Promise<MenuItem> =>
     ({ ...(await row0(item)), key: item === 'SET_DESTINATION' ? 'ADD' : item, strong: item === strong });
   const row0 = async (item: string): Promise<MenuItem> => {
     if (item === 'START_HERE') return { icon: 'tripOrigin', label: t('plan_start_here'), act: () => { fromPin(); void addPlace(hit, 'START', pin); } };
-    if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind }); });
+    if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind, code: hit.code }); });
     if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void placeAddAs(hit, 'poiStop'); } };
     if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAddAs(hit, 'poiGoal'); } };
     return { icon: 'addLocation', label: (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination'),
@@ -1314,9 +1331,11 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
     act: () => { if (info.google) window.open(info.google, '_blank', 'noopener'); else google(hit.name ?? '', lat, lon, hit.name ? '' : hit.title); } };
   const main = await Promise.all(pm.main.map(row));
   // a multi-day tour: a found place can be the hotel of a night (scenario F) – the nearest day end is offered
-  if (multiDay?.isTour && pm.main.length) main.push({ icon: 'bed', label: t('days_hotel_for_tour'), key: 'HOTEL', act: () => { void multiDay?.hotelForTour(hit); } });
-  // „Rundtour von hier“ only while the plan is empty (owner 2026-11-18: only when setting the very first point)
-  return { head, main: suggestUi && !state.points.length ? suggestUi.withRow(main, pm.main.indexOf('START_HERE'), p, info.title) : main, keep: await keepRows(hit.code), google: googleRow };
+  if (multiDay?.isTour && pm.main.length && state.points.length >= 2)
+    main.push({ icon: 'bed', label: t('days_hotel_for_tour'), key: 'HOTEL', act: () => { void multiDay?.hotelForTour(hit); } });
+  // „Rundtour ab hier“ only while the plan is empty (owner 2026-11-18: only when setting the very first point); placeItems
+  // puts it last in the route group (PinMenuItems.of)
+  return { head, main: suggestUi && !state.points.length ? suggestUi.withRow(main, main.length - 1, p, info.title) : main, keep: await keepRows(hit.code), google: googleRow };
 }
 
 // ---- kept places (owner 2026-11-15, „Orte merken“ – the app's b2504c3d, F-PLAN-14; keptplaces.ts) ----
@@ -1360,13 +1379,13 @@ async function keepRows(code: string | undefined): Promise<MenuItem[]> {
 }
 
 /**
- * Place menu → „Einfügen“ (poiStop: the app's addPoiAsStop – the best place on the route, never behind the goal) or „Neues
+ * Place menu → „Als Stopp“ (poiStop: the app's addPoiAsStop – the best place on the route, never behind the goal) or „Als
  * Ziel“ (poiGoal: poiAsNewDestination – while planning the old goal stays as the last stop, owner 2026-11-14), pinned with
  * its name. One Undo brings the plan before back.
  */
 async function placeAddAs(h: Hit, op: 'poiStop' | 'poiGoal') {
   const p: LatLon = [Number(h.lat.toFixed(6)), Number(h.lon.toFixed(6))];
-  await queueEdit(() => placeEdit(op, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
+  await queueEdit(() => placeEdit(op, p, 30, { pinned: true, name: h.title, kind: h.kind, code: h.code }, h.title ?? '', h.kind ?? ''));
 }
 
 /** "Open in Google Maps": the app's link (PoiLinks.googleMaps), in a new tab – Google content is never drawn here. */
@@ -2461,7 +2480,7 @@ async function addPlace(h: Hit, role: PlaceRole, fit = false) {
   if (role === 'REMOVE') { if (pv.existing != null) await deletePoint(pv.existing); return; }
   // the app's PlaceAddState.addPlace on the points as they are then: a planned place – „As start“ = Start here, „As
   // destination“ moves it to the end; else a pinned stop where the card said (WaypointInsertion), at the start or the end
-  await queueEdit(() => placeEdit(role, p, 30, { pinned: true, name: h.title, kind: h.kind }, h.title ?? '', h.kind ?? ''));
+  await queueEdit(() => placeEdit(role, p, 30, { pinned: true, name: h.title, kind: h.kind, code: h.code }, h.title ?? '', h.kind ?? ''));
 }
 
 // ---- menus, sheet, dialogs ----

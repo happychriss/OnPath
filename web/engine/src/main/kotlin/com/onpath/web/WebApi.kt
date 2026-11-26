@@ -930,7 +930,10 @@ object Engine {
             else -> a.toString()
         }
 
-    /** The point menu's entries ([MapGestures.pointMenu]) as JSON names: MAKE_START, LOOP_START, GOOGLE, DELETE. */
+    /**
+     * The point menu's entries ([MapGestures.pointMenu]) as JSON names in their groups (owner 2026-11-26): MAKE_START,
+     * LOOP_START · KEEP (Merken – [keep]: the page can keep this place), GOOGLE · DELETE.
+     */
     /**
      * A held place's add entries – the app's PlaceAddMenu (owner 2026-11-07 / 2026-11-15 / 2026-11-17): `{"main":[…],"more":[],
      * "stop":i,"why":…}`, items START_HERE / GO_HERE / SET_DESTINATION / ADD_STOP / NEW_DESTINATION; [stop] = where
@@ -1125,11 +1128,11 @@ object Engine {
         com.onpath.app.domain.LocateDistance.label(plan = true, located = located, me = if (located) GeoPoint(lat, lon) else null,
             view = com.onpath.app.domain.LocateDistance.View(south, west, north, east)) ?: ""
 
-    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String = ""): String {
+    fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String = "", keep: Boolean = false): String {
         // the loop's first point ([PlanEdits.loopStart]): with stops on the way before a round trip, ① of the loop reads
         // "Start here" (drops the stops) and the later loop points "Start & finish here" – the app's MapOverlays call
         val loopStart = if (points.isBlank()) 0 else PlanEdits.loopStart(parsePoints(points)) ?: 0
-        return MapGestures.pointMenu(index, count, isPlace, roundTrip, loopStart).joinToString(",", "[", "]") { str(it.name) }
+        return MapGestures.pointMenu(index, count, isPlace, roundTrip, loopStart, keep).joinToString(",", "[", "]") { str(it.name) }
     }
 
     /** Why "Go here" is disabled ([MapGestures.fromMeBlocked]), or "" when the position can be used. */
@@ -1324,8 +1327,8 @@ external fun planProgress(text: String)
 @JSExport fun gesture(menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): String =
     Engine.gesture(menuOpen, marker, poi, planEmpty)
 
-@JSExport fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String): String =
-    Engine.pointMenu(index, count, isPlace, roundTrip, points)
+@JSExport fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String, keep: Boolean): String =
+    Engine.pointMenu(index, count, isPlace, roundTrip, points, keep)
 
 @JSExport fun fromMeBlocked(status: String, hasFix: Boolean): String = Engine.fromMeBlocked(status, hasFix)
 

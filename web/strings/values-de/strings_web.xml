@@ -61,8 +61,6 @@
     <string name="web_locate_denied">Der Standort ist für diese Seite nicht erlaubt. Klicke links neben der Adresse auf das Symbol, schalte Standort ein und klicke dann noch einmal auf Standort.</string>
     <string name="web_locate_off">Dein Standort ist nicht verfügbar – er ist ausgeschaltet oder dieses Gerät findet ihn nicht.</string>
     <string name="web_position_unavailable">Dein Standort ist nicht verfügbar. Setze den Start in der Karte.</string>
-    <string name="web_from_position">Ab deinem Standort</string>
-    <string name="web_from_position_ask">Ab deinem Standort – fragt danach</string>
 
     <string name="web_engine_loading">Routenplaner wird geladen…</string>
     <string name="web_engine_ready">Routenplaner bereit (%1$d ms)</string>
@@ -172,7 +170,7 @@
     <string name="web_about_title">OnPath-Planer</string>
     <string name="web_about_text">Der Planungscode der OnPath-App in deinem Browser. Dein Plan steckt im Link und, wenn du ihn speicherst, in diesem Browser (und auf deinem verbundenen Handy, Ende-zu-Ende verschlüsselt). Ohne Konto.</string>
     <string name="web_about_how">So planst du</string>
-    <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Zwischenpunkte; ein Klick auf einen Punkt öffnet sein Menü.</string>
+    <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Stopps; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
     <string name="web_about_how_3">Rückgängig / Wiederholen, das Auge (halten: Route ausblenden) und Karteninhalt sind oben in der Werkzeugleiste.</string>
     <string name="web_about_how_4">Teilen: ein QR-Code, den die OnPath-App scannt – oder verbinde das Handy einmal (Handy verbinden, oben) und speichere Pläne in Meine Touren.</string>
@@ -258,7 +256,7 @@
     <string name="web_fly_needs_route">Zum Abfliegen erst eine Route planen</string>
     <string name="web_fly_pause">Pause</string>
     <string name="web_fly_resume">Weiter</string>
-    <string name="web_fly_stop">Stopp</string>
+    <string name="web_fly_stop">Beenden</string>
     <string name="web_fly_speed">Geschwindigkeit: 1× oder 2×</string>
     <string name="web_terrain_turn_mouse">Drehen und kippen: rechte Maustaste gedrückt halten und ziehen (oder Shift + Pfeiltasten).</string>
     <string name="web_terrain_turn_touch">Drehen und kippen: mit zwei Fingern.</string>

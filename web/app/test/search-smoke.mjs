@@ -135,14 +135,14 @@ const box = (sel) => page.evaluate((s) => { const r = document.querySelector(s)?
 await pickFirst('Vellau');
 let rows = await menuRows();
 console.log('empty plan, menu:', rows.join(' · '));
-check(rows.join('|') === 'Start here|Round trip from here|Go here|Add to favourites|Open in Google Maps|Remove pin', `empty plan: the pin's menu opens by itself with the hold's rows + Remove pin, no „Set as home“ (Zuhause off, owner 2026-11-19) (${rows.join(' · ')})`);
+check(rows.join('|') === 'Set as start|Set as destination|Round trip from here|Add to favourites|Open in Google Maps|Remove pin', `empty plan: the pin's menu opens by itself with the hold's rows + Remove pin, no „Set as home“ (Zuhause off, owner 2026-11-19) (${rows.join(' · ')})`);
 check(await page.locator('#placecard #cadd, #placecard #cstart, .pinchip .pinadd').count() === 0, 'no old place card / "Hierhin" button');
 const pinBox = await box('.candidate'), menuBox = await box('.holdpopup.pinmenu');
 check(!!menuBox && menuBox.y + menuBox.h <= pinBox.y + 2, `wide map: the menu above the pin (menu bottom ${menuBox && Math.round(menuBox.y + menuBox.h)}, pin top ${Math.round(pinBox.y)})`);
 check(await page.locator('.pinchip').isHidden(), 'the name chip hides while the menu is open (the menu has the name on top)');
-await page.click('.holdpopup.pinmenu button:has-text("Start here")');
+await page.click('.holdpopup.pinmenu button:has-text("Set as start")');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 });
-check(await page.locator('.candidate').count() === 0 && await page.locator('.holdpopup.pinmenu').count() === 0, 'Start here: the place is the start, pin and menu gone');
+check(await page.locator('.candidate').count() === 0 && await page.locator('.holdpopup.pinmenu').count() === 0, 'Set as start: the place is the start, pin and menu gone');
 await pickFirst('Ifinger');
 rows = await menuRows();
 check(rows.join('|') === 'Set as destination|Add to favourites|Open in Google Maps|Remove pin', `only a start: "Set as destination", Google, Remove pin (${rows.join(' · ')})`);
@@ -176,9 +176,9 @@ console.log('third place:', rows.join(' · '), '– tinted:', await strongRows(P
 // while planning (owner 2026-11-17): only the matching row in a clear case – Meran lies beside the leg, „Insert“ alone –
 // both only when near equal (the likelier first and tinted)
 const addRows = rows.slice(0, rows.indexOf('Add to favourites'));
-check(['Insert', 'New destination', 'Insert|New destination', 'New destination|Insert'].includes(addRows.join('|'))
+check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination'].includes(addRows.join('|'))
   && rows.slice(addRows.length).join('|') === 'Add to favourites|Open in Google Maps|Remove pin',
-  `two points: the matching add row ("Insert" / "New destination", both when near equal), Google, Remove pin last, no More (${rows.join(' · ')})`);
+  `two points: the matching add row ("Set as stop" / "Set as destination", both – in this order – when near equal), Google, Remove pin last, no More (${rows.join(' · ')})`);
 check((await strongRows(PIN_BUTTONS)).join('|') === (addRows.length === 2 ? addRows[0] : '') && await oneLine(PIN_BUTTONS),
   `one add row untinted, two: the likelier first and the only one tinted; every row one line (${(await strongRows(PIN_BUTTONS)).join()})`);
 check(!rows.some((r) => /Add as a stop|Make it the destination|Add as new destination|^More$/.test(r)), 'none of the old words');
@@ -292,18 +292,18 @@ for (const tried = []; tried.length < 6;) {
   const strong = await strongRows(POI_BUTTONS), one = await oneLine(POI_BUTTONS);
   const add = rows.slice(0, rows.indexOf('Add to favourites'));
   console.log('POI menu:', p.name, '–', rows.join(' · '), '– tinted:', strong);
-  check(['Insert', 'New destination', 'Insert|New destination', 'New destination|Insert'].includes(add.join('|'))
+  check(['Set as stop', 'Set as destination', 'Set as stop|Set as destination'].includes(add.join('|'))
     && rows.slice(add.length).join('|') === 'Add to favourites|Open in Google Maps'
     && strong.join('|') === (add.length === 2 ? add[0] : '') && one,
     `a POI's menu: one add row in a clear case (untinted), both when near equal (the cheaper first and tinted), Google, no More (${rows.join(' · ')})`);
-  if (add.includes('New destination')) { poi = p; poiRows = rows; tinted = strong; break; }
+  if (add.includes('Set as destination')) { poi = p; poiRows = rows; tinted = strong; break; }
   tried.push(p.name);
   await page.keyboard.press('Escape');
   await page.waitForTimeout(300);
 }
 check(!!poi, `a POI whose menu offers "New destination" found (${poi?.name})`);
 console.log('POI for a new destination:', poi, poiRows.join(' · '), tinted);
-await page.locator('.pointmenu button', { hasText: 'New destination' }).first().click();
+await page.locator('.pointmenu button', { hasText: 'Set as destination' }).first().click();
 await page.waitForFunction(() => document.querySelectorAll('#points li').length === 3, null, { timeout: 15_000 }).catch(() => {});
 const after = await rowNames();
 console.log('after "New destination":', before, '→', after);

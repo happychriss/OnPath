@@ -13,7 +13,7 @@ import type { Hit } from './engine/types';
 import { icon } from './icons';
 import { t } from './i18n';
 import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
-import { holdMenu, type MenuItem } from './menus';
+import { holdMenu, placeRowGroup, type MenuItem } from './menus';
 import { problem } from './diag';
 import type { KeptStore, SearchRecent } from './keptplaces';
 import { HOME_ROW_SHOWN, shownMenuRows } from './pinmenu';
@@ -26,6 +26,32 @@ export interface PinRows { head: string; main: MenuItem[];
   /** „☆ Merken“ / „⌂ Als Zuhause festlegen“ (the app's PinMenuItems FAVOURITE, HOME) – empty when the place cannot be kept. */
   keep: MenuItem[];
   google: MenuItem }
+
+/**
+ * A held place's rows in the app's order (PinMenuItems.of, owner 2026-11-26): Route (Start → Stopp → Ziel, „Rundtour ab
+ * hier“, the planner's „Als Hotel“) · Ort (Merken, Google) · Entfernen ([remove]: the found place's „Nadel entfernen“, not
+ * red), each with its group so the menu draws a thin line between them. [adds] wraps an add row (the pin goes with an add).
+ */
+export function placeItems(rows: PinRows, remove: MenuItem | null, adds: (m: MenuItem) => MenuItem = (m) => m): MenuItem[] {
+  const byKey = new Map(rows.main.map((m) => [m.key ?? '', m] as const));
+  const order = shownMenuRows(pinRows(rows.main.filter((m) => m.key !== 'HOTEL').map((m) => m.key ?? ''), remove != null, rows.keep.length > 0));
+  const out: MenuItem[] = [];
+  for (const r of order) {
+    const add = byKey.get(r);
+    const it = r === 'GOOGLE' ? rows.google : r === 'REMOVE_PIN' ? remove : r === 'FAVOURITE' ? rows.keep[0] : r === 'HOME' ? rows.keep[1]
+      : add ? adds(add) : null;
+    if (it) out.push({ ...it, divider: false, group: placeRowGroup(r) });
+  }
+  // „Als Hotel“ (a multi-day tour – the app's PinMenuItems has no such row): the last route row; it was dropped from the
+  // search pin's menu before (bug found 2026-11-26). Its dialog may be cancelled, so the pin stays.
+  const hotel = byKey.get('HOTEL');
+  if (hotel) {
+    let k = -1;
+    out.forEach((m, j) => { if (m.group === 'ROUTE') k = j; });
+    out.splice(k + 1, 0, { ...hotel, group: 'ROUTE' });
+  }
+  return out;
+}
 
 /** The empty search's lists (the engine's keptStart – SavedPlaces.start): each row's subtitle is its grey part. */
 interface StartLists { home: Hit | null; favourites: Hit[]; more: number; recent: Hit[] }
@@ -271,13 +297,10 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   };
   /** The rows in the app's order (PinMenuItems), then placed: [decided] keeps the place of a menu that is open already. */
   const showMenu = (h: Hit, rows: PinRows, decided: PinMenuDecision | null) => {
-    const byKey = new Map(rows.main.map((m) => [m.key ?? '', m] as const));
     const remove: MenuItem = { icon: 'wrongLocation', label: t('plan_remove_pin'), act: () => removePin() };
     // an add takes the place: its pin goes (the app: the mark stays until the place is added)
     const adds = (m: MenuItem): MenuItem => ({ ...m, act: (b) => { removePin(); m.act(b); } });
-    const items = shownMenuRows(pinRows(rows.main.map((m) => m.key ?? ''), true, rows.keep.length > 0)).map((r) =>
-      r === 'GOOGLE' ? rows.google : r === 'REMOVE_PIN' ? remove : r === 'FAVOURITE' ? rows.keep[0] : r === 'HOME' ? rows.keep[1]
-        : adds(byKey.get(r)!));
+    const items = placeItems(rows, remove, adds);
     const map = host.map, c = map.getContainer();
     const at = map.project([h.lon, h.lat]);
     const { top, bottom } = host.menuRoom(at.x);

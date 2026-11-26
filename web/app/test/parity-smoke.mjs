@@ -51,7 +51,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // 1. first click on an empty plan: "New route" – Start here · Go here (MapGestures.FirstPointMenu)
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
-check((await page.textContent('.menuhead')).includes('New plan') && (await menuItems()).join('|') === 'Start here|Round trip from here|Go here', 'first click: New plan – Start here · Round trip from here · Go here (round trips on for everyone, 72a66e39)');
+check(await page.locator('.pointmenu .menuhead').count() === 0 && (await menuItems()).join('|') === 'Set as start|Set as destination|Round trip from here', 'first click: no title – Set as start · Set as destination · Round trip from here (owner 2026-11-26) (round trips on for everyone, 72a66e39)');
 check(await page.isHidden('#undoPill') && await page.isHidden('#undo'), 'no undo before the first change (the undo pill is hidden – the app\'s UndoPill)');
 check(await page.$('#toolbar #undo, #toolbar #redo') === null, 'undo / redo are not in the tool row (owner 2026-11-08: ↶ ↷ there read as „turn the map“)');
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
@@ -64,7 +64,7 @@ check(await page.evaluate(() => document.fonts.check('600 14px Manrope') && [...
   'Manrope served by the page itself');
 await page.click('.pointmenu button:first-of-type');
 await waitPins(1);
-check(await pins() === 1, 'Start here sets the start');
+check(await pins() === 1, 'Set as start sets the start');
 await page.waitForSelector('#undo', { state: 'visible', timeout: 10_000 }).catch(() => {}); // the state comes back from the engine worker
 await page.waitForFunction(() => !document.getElementById('undo').disabled, null, { timeout: 10_000 }).catch(() => {});
 check(await page.isEnabled('#undo') && await page.isDisabled('#redo'), 'undo possible, redo greyed');
@@ -134,7 +134,7 @@ await page.evaluate(async () => {
 await page.locator('.pin').nth(1).click();
 await page.waitForSelector('.pointmenu');
 const mid = await menuItems();
-check(mid[0] === 'Start here' && mid.at(-1) === 'Delete', 'point menu of a middle point: Start here … Delete');
+check(mid[0] === 'Set as start' && mid.at(-1) === 'Delete', 'point menu of a middle point: Set as start … Delete');
 await page.keyboard.press('Escape');
 // drag ≡ of the first row below the last: the row follows the pointer, the others move aside; drop = new order
 const order = () => page.evaluate(() => location.hash); // the plan's points, in order (rows are named by position)
@@ -377,10 +377,10 @@ await waitPins(0);
 check(await page.isDisabled('#newPlan'), 'plan bar: + New greyed on an empty map');
 await clickAt(11.1350, 46.6840);
 await page.waitForSelector('.pointmenu');
-await page.locator('.pointmenu button', { hasText: 'Go here' }).click();
+await page.locator('.pointmenu button', { hasText: 'Set as destination' }).click();
 await planned();
 const first = await page.evaluate(() => window.__engine && location.hash);
-check(await pins() === 2 && first.length > 10, 'Go here: route from my position to the clicked spot');
+check(await pins() === 2 && first.length > 10, 'Set as destination: route from my position to the clicked spot');
 
 // a plan link over a plan asks „Restore your old plan?“ (RestoreAsk, the app's FRAGE box) – this smoke keeps the new plan
 async function keepIfAsked() {
@@ -618,7 +618,7 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
     const box = pop.querySelector('.maplibregl-popup-content').getBoundingClientRect();
     const rc = ring ? [ring.left + ring.width / 2, ring.top + ring.height / 2] : null;
     return { rows: rows.map((b) => b.querySelector('.txt > span').textContent), strong: rows.map((b) => b.classList.contains('strong')),
-      head: getComputedStyle(pop.querySelector('.menuhead')).display, ring: rc,
+      head: pop.querySelector('.menuhead') ? getComputedStyle(pop.querySelector('.menuhead')).display : 'none', ring: rc,
       free: !!rc && (rc[0] < box.left || rc[0] > box.right || rc[1] < box.top || rc[1] > box.bottom) };
   });
 
@@ -629,8 +629,8 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   check(gStraight === 'ADD2' && gPaths === 'ASK NEW_DESTINATION/ADD_STOP', `hold rule data: straight lines say the new goal, the paths ask (${gStraight} / ${gPaths})`);
   const q1 = await clickCentred(besideGoal);
   const m1 = await asked() ? await holdMenuNow() : null;
-  check(m1 && m1.rows.join('|') === 'New destination|Insert' && m1.strong.join() === 'true,false' && m1.head === 'none',
-    `hold rule on the paths: near equal detours ask – New destination first and the only tinted row, no title (${JSON.stringify(m1)})`);
+  check(m1 && m1.rows.join('|') === 'Set as stop|Set as destination' && m1.strong.join() === 'false,true' && m1.head === 'none',
+    `hold rule on the paths: near equal detours ask – Stopp before Ziel, „Set as destination“ the only tinted row, no title (${JSON.stringify(m1)})`);
   check(m1 && m1.free && Math.abs(m1.ring[0] - (canvas.x + q1[0])) < 2 && Math.abs(m1.ring[1] - (canvas.y + q1[1])) < 2,
     'hold rule: a ring marks the spot, the menu beside it (never over it)');
   // a click elsewhere: closed, nothing added
@@ -652,8 +652,8 @@ check(await page.getAttribute('#paceRow [data-pace=FIT]', 'aria-checked').catch(
   const farOut = [46.663, LON + 0.00785];
   await clickCentred(farOut);
   const m2 = await asked() ? await holdMenuNow() : null;
-  check(m2 && m2.rows.join('|') === 'Insert|New destination' && m2.strong.join() === 'true,false',
-    `hold rule: similar detours, inserting cheaper – Insert first and tinted (${JSON.stringify(m2)})`);
+  check(m2 && m2.rows.join('|') === 'Set as stop|Set as destination' && m2.strong.join() === 'true,false',
+    `hold rule: similar detours, inserting cheaper – „Set as stop“ tinted (${JSON.stringify(m2)})`);
   await hp.click('.holdaddpopup button:nth-of-type(2)'); // „New destination“: appended, the old goal stays
   await count(3);
   const p4 = await pts();

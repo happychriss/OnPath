@@ -57,7 +57,7 @@ export interface DaysHost {
   markRange(r: [number, number] | null): void;
   fitPadding(): maplibregl.PaddingOptions;
   openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string): void;
-  /** „Einfügen“ at a spot on the route – the page's normal add. */
+  /** „Als Stopp“ at a spot on the route – the page's normal add. */
   addPoint(at: maplibregl.LngLat): void;
 }
 
@@ -312,12 +312,11 @@ export class MultiDay {
       el.addEventListener('click', (ev) => {
         ev.stopPropagation();
         if (Date.now() - dragged < 300) return;
-        const days = this.view?.days ?? 0;
+        // a grey night (owner 2026-11-26): „Als Übernachtung“ · „Hotel hinterlegen“, nothing to remove – „Ein Tag weniger“
+        // went (owner 2026-11-20: „eigentlich sollte der jetzt ja weg sein“; the overview's „−“ does it)
         this.h.openMenu(new maplibregl.LngLat(e.lon, e.lat), [
-          { icon: 'moon', label: t('days_overnight_here'), act: async () => this.take(await this.rule('addNight', 0, e.lat, e.lon)) },
-          { icon: 'bed', label: t('days_set_hotel'), act: () => { void this.hotelDialog(e.night, -1, [e.lat, e.lon]); } },
-          // not needed (owner 2026-11-20: „eigentlich sollte der jetzt ja weg sein“): R5 „−“, the overview's own button
-          { icon: 'close', label: t('days_fewer'), act: async () => this.take(await this.rule('setDays', days - 1), t('days_remove_first')) },
+          { icon: 'moon', label: t('days_overnight_here'), group: 'ROUTE', act: async () => this.take(await this.rule('addNight', 0, e.lat, e.lon)) },
+          { icon: 'bed', label: t('days_set_hotel'), group: 'ROUTE', act: () => { void this.hotelDialog(e.night, -1, [e.lat, e.lon]); } },
         ], this.head('PROPOSAL', t('days_night_n', e.night), `${this.endOfDay(e.night)} · ${t('days_open_night')}`));
       });
       this.proposals.push(m);
@@ -383,19 +382,23 @@ export class MultiDay {
   /** The night number of plan point [i] (its day end), from the last view. */
   private nightNo(i: number): number { return this.view?.ends.find((e) => e.plan === i)?.night ?? 0; }
 
-  /** The menu of a blue moon / green bed (owner 2026-11-17): blue „Hotel hinterlegen“ · „Übernachtung entfernen“; green „Hotel ändern“ · „Hotel entfernen“ · „Übernachtung entfernen“. */
+  /**
+   * The menu of a blue moon / green bed (owner 2026-11-17, groups 2026-11-26): blue „Hotel hinterlegen“ | „Übernachtung
+   * entfernen“ (red); green „Hotel ändern“ | „Hotel entfernen“ (the bed, not red – the night stays) · „Übernachtung
+   * entfernen“ (red).
+   */
   nightMenu(i: number): { items: MenuItem[]; head: string } | null {
     const kind = this.nightOf(i);
     if (!kind) return null;
     const night = this.nightNo(i), hotel = this.h.tour()?.nights[String(i)]?.hotel;
     const pt = this.h.points()[i];
     const items: MenuItem[] = kind === 'HOTEL' ? [
-      { icon: 'bed', label: t('days_change_hotel'), act: () => { void this.hotelDialog(night, i, pt); } },
-      { icon: 'moon', label: t('days_remove_hotel'), act: async () => this.take(await this.rule('removeHotel', i)) },
-      { icon: 'delete', label: t('days_remove_overnight'), danger: true, act: async () => this.take(await this.rule('removeNight', i)) },
+      { icon: 'bed', label: t('days_change_hotel'), group: 'ROUTE', act: () => { void this.hotelDialog(night, i, pt); } },
+      { icon: 'bed', label: t('days_remove_hotel'), group: 'REMOVE', act: async () => this.take(await this.rule('removeHotel', i)) },
+      { icon: 'delete', label: t('days_remove_overnight'), danger: true, group: 'REMOVE', act: async () => this.take(await this.rule('removeNight', i)) },
     ] : [
-      { icon: 'bed', label: t('days_set_hotel'), act: () => { void this.hotelDialog(night, i, pt); } },
-      { icon: 'delete', label: t('days_remove_overnight'), danger: true, act: async () => this.take(await this.rule('removeNight', i)) },
+      { icon: 'bed', label: t('days_set_hotel'), group: 'ROUTE', act: () => { void this.hotelDialog(night, i, pt); } },
+      { icon: 'delete', label: t('days_remove_overnight'), danger: true, group: 'REMOVE', act: async () => this.take(await this.rule('removeNight', i)) },
     ];
     const title = hotel?.name || (night ? t('days_night_n', night) : t(kind === 'HOTEL' ? 'days_hotel' : 'days_overnight'));
     const line = night ? `${this.endOfDay(night)} · ${t(kind === 'HOTEL' ? 'days_hotel' : 'days_overnight')}` : '';
@@ -419,21 +422,21 @@ export class MultiDay {
   }
 
   /**
-   * „Übernachtung hier“ as the first row of a normal plan point's menu in a multi-day tour (owner 2026-11-18): R1 on
+   * „Als Übernachtung“ as the first row of a normal plan point's menu in a multi-day tour (owner 2026-11-18): R1 on
    * that point – one undo step, the grey proposals spread anew. Never on the start or the last point (no marks there);
    * a point with a night has its night menu instead. Null = not offered.
    */
   pointNightItem(i: number): MenuItem | null {
     const n = this.h.points().length;
     if (!this.isTour || i <= 0 || i >= n - 1 || this.nightOf(i)) return null;
-    return { icon: 'moon', label: t('days_overnight_here'), act: async () => this.take(await this.rule('addNightAt', i)) };
+    return { icon: 'moon', label: t('days_overnight_here'), group: 'ROUTE', act: async () => this.take(await this.rule('addNightAt', i)) };
   }
 
-  /** A click on the route of a multi-day tour: „Übernachtung hier“ and the normal „Einfügen“. */
+  /** A click on the route of a multi-day tour: no title, „Als Übernachtung“ · „Als Stopp“ (the normal add – owner 2026-11-26). */
   routeMenu(at: maplibregl.LngLat) {
     this.h.openMenu(at, [
-      { icon: 'moon', label: t('days_overnight_here'), act: async () => this.take(await this.rule('addNight', 0, at.lat, at.lng)) },
-      { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => this.h.addPoint(at) },
+      { icon: 'moon', label: t('days_overnight_here'), group: 'ROUTE', act: async () => this.take(await this.rule('addNight', 0, at.lat, at.lng)) },
+      { icon: 'addLocation', label: t('plan_add_as_stop'), group: 'ROUTE', act: () => this.h.addPoint(at) },
     ], '');
   }
 

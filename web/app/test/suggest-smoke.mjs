@@ -63,7 +63,7 @@ try {
   {
     const { ctx, page } = await open('de', false);
     const rows = await firstMenu(page);
-    check(!rows.includes('Rundtour von hier') && rows[0] === 'Hier starten', `switch off: no „Rundtour von hier“ (${rows.join(' · ')})`);
+    check(!rows.includes('Rundtour ab hier') && rows[0] === 'Als Start', `switch off: no „Rundtour ab hier“ (${rows.join(' · ')})`);
     check(await page.evaluate(() => !document.body.dataset.suggest), 'switch off: nothing set up');
     await ctx.close();
   }
@@ -71,8 +71,8 @@ try {
   {
     const { ctx, page, errors } = await open('de', true);
     const rows = await firstMenu(page);
-    check(rows[0] === 'Hier starten' && rows[1] === 'Rundtour von hier', `the row directly below „Hier starten“ (${rows.join(' · ')})`);
-    await page.click('.pointmenu button:nth-of-type(2)');
+    check(rows[0] === 'Als Start' && rows[1] === 'Als Ziel' && rows[2] === 'Rundtour ab hier', `the row last in the route group, after „Als Ziel“ (${rows.join(' · ')})`);
+    await page.click('.pointmenu button:nth-of-type(3)');
     await page.waitForSelector('#suggestPanel #sgOk');
     const wish = await page.evaluate(() => ({
       head: document.querySelector('#suggestPanel .sghead')?.textContent?.trim(),
@@ -83,7 +83,7 @@ try {
       buttons: [...document.querySelectorAll('#suggestPanel .sgfoot button')].map((x) => x.textContent),
       icons: document.querySelectorAll('#suggestPanel .sgrow svg').length,
     }));
-    check(wish.head === 'Rundtour von hier', `wish: title (${wish.head})`);
+    check(wish.head === 'Rundtour ab hier', `wish: title (${wish.head})`);
     check(JSON.stringify(wish.labels) === JSON.stringify(['Aktivität', 'Zeit', 'Höhenmeter', 'Ziel']), `wish: rows ${wish.labels.join(' · ')}`);
     check(wish.ranges === 4, 'wish: time and ascent as two-handle range sliders');
     check(JSON.stringify(wish.chips) === JSON.stringify(['Gipfel', 'Wasser', 'Aussicht', 'Einkehr', 'Kultur']), `wish: Ziel chips ${wish.chips.join(' · ')}`);
@@ -159,8 +159,8 @@ try {
       await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
       await page.waitForTimeout(1500);
       const rows = await page.$$eval('.pointmenu button[role=menuitem] .txt > span:first-child', (b) => b.map((x) => x.textContent));
-      check(!rows.includes('Rundtour von hier') && !(await page.evaluate(() => document.body.textContent.includes('Rundtour von hier'))),
-        `plan with points: no „Rundtour von hier“ (menu: ${rows.join(' · ') || 'none'})`);
+      check(!rows.includes('Rundtour ab hier') && !(await page.evaluate(() => document.body.textContent.includes('Rundtour ab hier'))),
+        `plan with points: no „Rundtour ab hier“ (menu: ${rows.join(' · ') || 'none'})`);
       await page.keyboard.press('Escape');
     }
     const bad = errors.filter((e) => !/Failed to load resource|favicon|\[Problems\] (TRACE|INFO)/.test(e));
@@ -208,8 +208,8 @@ try {
   {
     const { ctx, page } = await open('en', true);
     const rows = await firstMenu(page);
-    check(rows[1] === 'Round trip from here', `English: ${rows.join(' · ')}`);
-    await page.click('.pointmenu button:nth-of-type(2)');
+    check(rows[2] === 'Round trip from here', `English: ${rows.join(' · ')}`);
+    await page.click('.pointmenu button:nth-of-type(3)');
     await page.waitForSelector('#suggestPanel #sgOk');
     const chips = await page.$$eval('#suggestPanel .sgz', (b) => b.map((x) => x.textContent));
     check(chips.join(',') === 'Summit,Water,View,Food stop,Culture', `English chips ${chips.join(' · ')}`);

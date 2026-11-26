@@ -65,7 +65,7 @@ if (ruster) {
   await page.waitForFunction(() => document.getElementById('summary')?.querySelector('.big') && !document.getElementById('status').textContent.includes('Planning'), null, { timeout: 120_000 });
   await page.waitForTimeout(2000); // the first route's fit would come 500 ms after the route
   const open = await popups();
-  check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 2 && open.length === 1 && /New destination/.test(open[0]),
+  check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 2 && open.length === 1 && /Set as destination/.test(open[0]),
     `2nd and 3rd click back to back: the hold menu asks with the 2nd point in the plan and stays open (${JSON.stringify(open)})`);
 }
 // its first row, „New destination“
@@ -119,7 +119,7 @@ check((await page.textContent('#points')) !== loopBefore, 'Start & finish here r
 // its later points "Start & finish here" – the app's MapGestures.pointMenu(loopStart)
 {
   const way = '46.670000,11.160000;46.680000,11.150000;46.690000,11.150000;46.690000,11.170000;46.680000,11.150000';
-  const menu = (i) => page.evaluate(([i, w]) => window.__engine.call('pointMenu', i, 5, false, true, w), [i, way]).then(JSON.parse);
+  const menu = (i) => page.evaluate(([i, w]) => window.__engine.call('pointMenu', i, 5, false, true, w, false), [i, way]).then(JSON.parse);
   const [m1, m2] = [await menu(1), await menu(2)];
   check(m1.join() === 'MAKE_START,DELETE' && m2.join() === 'LOOP_START,DELETE', `stop on the way: ① of the loop "Start here", ② "Start & finish here" (${m1} / ${m2})`);
 }

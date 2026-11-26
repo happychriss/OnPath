@@ -380,15 +380,15 @@ export function setupSuggest(host: SuggestHost) {
     await host.plan(pts, c.name);
   }
 
-  /** „Rundtour von hier“ – one row, directly below „Hier starten“ wherever that is offered. */
+  /** „Rundtour ab hier“ – one row, the last of the route group wherever „Als Start“ is offered (owner 2026-11-26). */
   function menuRow(at: LatLon, name?: string): MenuItem {
-    return { icon: 'loop', label: t('suggest_ui_from_here'), key: 'ROUND_TRIP_HERE', act: () => openWish([Number(at[0].toFixed(6)), Number(at[1].toFixed(6))], name) };
+    return { icon: 'loop', label: t('suggest_ui_from_here'), key: 'ROUND_TRIP_HERE', group: 'ROUTE', act: () => openWish([Number(at[0].toFixed(6)), Number(at[1].toFixed(6))], name) };
   }
 
-  /** [items] with the row put right after the „Hier starten“ row ([startIndex]); unchanged when that row is not there. */
-  function withRow(items: MenuItem[], startIndex: number, at: LatLon, name?: string): MenuItem[] {
-    if (startIndex < 0 || startIndex >= items.length) return items;
-    return [...items.slice(0, startIndex + 1), menuRow(at, name), ...items.slice(startIndex + 1)];
+  /** [items] with the row put right after row [afterIndex] (the last route row – owner 2026-11-26); unchanged when that row is not there. */
+  function withRow(items: MenuItem[], afterIndex: number, at: LatLon, name?: string): MenuItem[] {
+    if (afterIndex < 0 || afterIndex >= items.length) return items;
+    return [...items.slice(0, afterIndex + 1), menuRow(at, name), ...items.slice(afterIndex + 1)];
   }
 
   return { menuRow, withRow, close, active: () => panel != null, openWish, loopShown: () => !!cards[chosen] };

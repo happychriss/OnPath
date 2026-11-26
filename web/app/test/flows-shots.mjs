@@ -339,7 +339,7 @@ async function multiDayShots(ctx, lang) {
     for (const name of ['Unterstell', 'Eishof', 'Pfelders']) {
       const n0 = await nights('OVERNIGHT');
       await pressPin(name);
-      await menuItem(de ? 'Übernachtung hier' : 'Overnight stop here');
+      await menuItem(de ? 'Als Übernachtung' : 'Set as overnight stop');
       await p.waitForFunction((n) => (window.__days.lastView?.ends.filter((e) => e.kind === 'OVERNIGHT').length ?? 0) > n, n0, { timeout: 60_000 });
       await settled();
     }
