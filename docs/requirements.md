@@ -4,16 +4,8 @@ Oct 17, 2026 · Requirements maintained in Claude Docs
 
 ## 1. Vision and guiding principles
 
-A simple hiking and biking app with Komoot-quality maps and smart routing that works fully offline on the phone. It does five things well: show the map, show where you are, plan a route, follow or record a route, and import/export GPX. Everything else is left out.
-
-**Guiding principles** (every feature decision is checked against these, in this order):
-
-1. **Robust first.** The app must never lose a track, a plan or the user's position because of missing network, GPS loss, a phone call, low battery or an app crash.
-2. **Offline by design, not offline as a fallback.** After a region is downloaded, every feature works in airplane mode. The network is only used to download maps and app updates.
-3. **On the phone.** Map rendering, routing, elevation, search and GPX processing all run on the device. No server is needed to use the app.
-4. **Simple.** One main screen, few buttons, sensible defaults. A first-time user plans a route in under 60 seconds without help.
-5. **Smart where it counts.** Routing understands the activity (hike vs. trekking bike vs. MTB), surfaces, path difficulty and elevation.
-6. **Open.** Open source code, open map data (OpenStreetMap), open elevation data, worldwide coverage, no account required.
+The project vision is [`VISION.md`](../VISION.md) (owner 2026-11-26). It replaces the vision and principles that stood here
+since 2026-10-17. Where a requirement below differs from it, the vision wins and the requirement is out of date.
 
 ## 2. Scope
 
