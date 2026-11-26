@@ -63,7 +63,7 @@ object WebLive {
         ",\"distanceM\":" + h.distanceM + ",\"ascentM\":" + h.ascentM + ",\"movingS\":" + h.movingS + ",\"startedMs\":" + h.startedMs +
         ",\"toGoM\":" + num(h.toGoM) + ",\"arrivalMs\":" + num(h.arrivalMs) + ",\"stillS\":" + num(h.stillS) +
         ",\"batteryPct\":" + num(h.batteryPct) + ",\"activity\":" + str(h.activity) + ",\"name\":" + str(h.name) +
-        ",\"counter\":" + h.counter + ",\"nextS\":" + h.nextS + ",\"chunks\":" + num(h.chunks) +
+        ",\"counter\":" + h.counter + ",\"nextS\":" + h.nextS + ",\"chunks\":" + num(h.chunks) + ",\"plannedArrivalMs\":" + num(h.plannedArrivalMs) +
         // the numbers as the app writes them (data/Format, in the page's language – setLanguage)
         ",\"distanceText\":" + str(Format.distance(h.distanceM.toDouble())) + ",\"movingText\":" + str(Format.durationShort(h.movingS.toDouble())) +
         ",\"ascentText\":" + str(Format.meters(h.ascentM.toDouble())) +
@@ -114,7 +114,7 @@ object WebLive {
     /**
      * A sealed head. [fields] = "key=value" joined by "&" (missing = the default): state (recording / paused / ended),
      * lat, lon, ele, time, accuracy, gpsLost, arrived, offRouteM, distanceM, ascentM, movingS, startedMs, toGoM,
-     * arrivalMs, stillS, batteryPct, activity, name, counter, nextS, chunks.
+     * arrivalMs, stillS, batteryPct, activity, name, counter, nextS, chunks, plannedArrivalMs.
      */
     fun sealHead(link: String, fields: String, nonce: String): String {
         val f = fields.split('&').mapNotNull { p -> p.indexOf('=').takeIf { it > 0 }?.let { p.substring(0, it) to p.substring(it + 1) } }.toMap()
@@ -128,7 +128,7 @@ object WebLive {
             distanceM = int("distanceM") ?: 0, ascentM = int("ascentM") ?: 0, movingS = int("movingS") ?: 0,
             startedMs = long("startedMs") ?: 0, toGoM = int("toGoM"), arrivalMs = long("arrivalMs"), stillS = int("stillS"),
             batteryPct = int("batteryPct"), activity = f["activity"] ?: "", name = f["name"] ?: "", counter = int("counter") ?: 0,
-            nextS = int("nextS") ?: LivePolicy.MOVING_S, chunks = int("chunks"),
+            nextS = int("nextS") ?: LivePolicy.MOVING_S, chunks = int("chunks"), plannedArrivalMs = long("plannedArrivalMs"),
         )
         return seal(link, LiveItem.HEAD, LiveItem.head(h), nonce)
     }

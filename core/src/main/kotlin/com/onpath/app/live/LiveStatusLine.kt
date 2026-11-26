@@ -13,6 +13,14 @@ object LiveStatusLine {
     const val PAUSE_MS = 10 * 60_000L
     /** The phone's battery below this (per cent) is the line itself – „Akku 12 %“ (owner 2026-11-26). */
     const val LOW_BATTERY_PCT = 15
+    /**
+     * „Etwas später als geplant“ (owner 2026-11-26: „in 30 % der Zeit ankommen“): the arrival the phone now expects is later
+     * than the planned one by more than this share of the planned time still to go (planned arrival − the last place's
+     * time) …
+     */
+    const val LATE_SHARE = 0.3
+    /** … and by at least this much – near the end a few minutes are no news. */
+    const val LATE_MIN_MS = 15 * 60_000L
 
     enum class Key {
         /** "Diese Tour wird nicht mehr geteilt." – the box is gone (stopped or expired); nothing else is shown. */
@@ -31,6 +39,8 @@ object LiveStatusLine {
         OFF_ROUTE,
         /** "Macht gerade Pause" ([Line.minutes] = how long). */
         PAUSE,
+        /** "Etwas später als geplant · Ankunft ca. 17:10" ([Line.atMs] = the expected arrival) – [late]. */
+        LATE,
         /** "Alles okay, unterwegs" ([Line.minutes] = since the last contact). */
         MOVING,
     }
@@ -41,7 +51,7 @@ object LiveStatusLine {
         val minutes: Int? = null,
         /** Metres off the route (OFF_ROUTE). */
         val metres: Int? = null,
-        /** A clock time to show (phone clock, ms): the end (ENDED) or the last place's time (NO_CONTACT). */
+        /** A clock time to show (phone clock, ms): the end (ENDED), the last place's time (NO_CONTACT), the arrival (LATE). */
         val atMs: Long? = null,
         val amber: Boolean = false,
         val arrived: Boolean = false,
@@ -78,6 +88,21 @@ object LiveStatusLine {
             val pause = (still ?: 0) * 1000L + sinceLastWriteMs.coerceAtLeast(0)
             if (head.state == LiveState.PAUSED || pause >= PAUSE_MS) return Line(Key.PAUSE, minutes = (pause / 60_000L).toInt())
         }
+        if (late(head)) return Line(Key.LATE, atMs = head.arrivalMs, amber = true)
         return Line(Key.MOVING, minutes = ago)
+    }
+
+    /**
+     * The expected arrival later than the planned one by more than [LATE_SHARE] of the planned time still to go, and by at
+     * least [LATE_MIN_MS]. Both times are the phone's own clock, so its skew cancels; no planned arrival (an older app, no
+     * plan), no arrival now, arrived or no place → never late.
+     */
+    fun late(head: LiveHead): Boolean {
+        val planned = head.plannedArrivalMs ?: return false
+        val now = head.arrivalMs ?: return false
+        val at = head.fix?.timeMs ?: return false
+        if (head.arrived || head.state != LiveState.RECORDING) return false
+        val delay = now - planned
+        return delay >= LATE_MIN_MS && delay > LATE_SHARE * (planned - at).coerceAtLeast(0)
     }
 }

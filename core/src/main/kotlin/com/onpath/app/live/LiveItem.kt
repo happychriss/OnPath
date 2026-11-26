@@ -38,6 +38,11 @@ data class LiveHead(
     /** Only while following a plan. */
     val toGoM: Int? = null,
     val arrivalMs: Long? = null,
+    /**
+     * The arrival as planned (owner 2026-11-26: the viewer says „Etwas später als geplant“): the first estimate for the
+     * line followed now – a new line (a re-plan) plans anew; null without a route.
+     */
+    val plannedArrivalMs: Long? = null,
     /** Seconds the pause or the standing still has lasted at this upload; null while moving. */
     val stillS: Int? = null,
     val batteryPct: Int? = null,
@@ -67,7 +72,8 @@ data class LivePoint(val seg: Int, val lat: Double, val lon: Double, val eleM: I
  * - **Head:** then only fields until the end – tag (varint), length (varint), bytes. 1 state, 2 fix (zigzag lat, zigzag
  *   lon in 1e-5°, time ms, flags: bit 0 elevation, bit 1 accuracy, then those as zigzag m / varint m), 3 flags (bit 0
  *   GPS lost, bit 1 arrived), 4 off-route m, 5 distance m, 6 ascent m, 7 moving s, 8 started ms, 9 to go m, 10 arrival
- *   ms, 11 still for s, 12 battery %, 13 activity (UTF-8), 14 name (UTF-8), 15 counter, 16 next upload s, 17 chunks that count.
+ *   ms, 11 still for s, 12 battery %, 13 activity (UTF-8), 14 name (UTF-8), 15 counter, 16 next upload s, 17 chunks that count,
+ *   18 planned arrival ms.
  * - **Route:** flags (bit 0 = elevation), point count, per point lat / lon in 1e-5° as zigzag deltas (with elevation
  *   also whole metres as a zigzag delta); then fields (none yet).
  * - **Chunk:** flags (bit 0 = elevation), point count, per point: segment as a delta (never back), lat / lon as zigzag
@@ -142,6 +148,7 @@ object LiveItem {
         out.number(15, h.counter.toLong())
         out.number(16, h.nextS.toLong())
         h.chunks?.let { out.number(17, it.toLong()) }
+        h.plannedArrivalMs?.let { out.number(18, it) }
         return out.toArray()
     }
 
@@ -180,6 +187,7 @@ object LiveItem {
                 15L -> h = h.copy(counter = int())
                 16L -> h = h.copy(nextS = int())
                 17L -> h = h.copy(chunks = int())
+                18L -> h = h.copy(plannedArrivalMs = num())
                 else -> Unit // a field from a newer app: skip it
             }
         }

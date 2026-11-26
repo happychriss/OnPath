@@ -96,16 +96,20 @@ Tatsache ist“; a dead zone in the mountains is normal and must not frighten):
 | phone battery below 15 % | „Akku 12 %“ (amber) |
 | away from the planned route (the app's own off-route alarm) | „Gerade etwas abseits der Route“ (amber) |
 | paused / standing ≥ 10 min | „Macht gerade Pause“ (calm blue) |
+| the arrival now later than the planned one by > 30 % of the planned time still to go and ≥ 15 min | „Etwas später als geplant · Ankunft ca. 17:10“ (amber) – only with the phone's planned arrival (head field 18 `plannedArrivalMs`, fixed at the start); an older app sends none → never |
 | moving, fresh | „Alles okay, unterwegs“ (green) |
 | sharing stopped / expired | „Diese Tour wird nicht mehr geteilt.“ (nothing else, no map) |
 | link broken / key wrong | „Dieser Link funktioniert nicht.“ |
 
-Later (needs the phone to send the planned arrival at the start): „Etwas später als geplant · Ankunft ca. 17:10“ when the
-arrival is more than 30 % of the remaining time later than planned.
+Both arrival times are the phone's clock, so its skew cancels; „the planned time still to go“ = planned arrival − the last
+place's time (LiveStatusLine.late).
 
 - **„Wie es mir geht“** in version 1 = what the phone knows by itself: moving or pausing, on the route or not, how far,
   phone battery, when last heard. A deliberate sign from him („Alles gut 👍“, a short text) is a later step (§11).
-- **The last place** is always on the page with its time and coordinates as text – what one reads to the mountain rescue.
+- **The last place** is always on the page with its coordinates as text – what one reads to the mountain rescue. One
+  moment for "when" (owner 2026-11-26, night): the last upload on the server's clock – the status line, the pill
+  („Letzte Meldung 10:00“) and the row („vor 25 Min.“) all count from it; only a place clearly older than that upload
+  (> 10 min and > two intervals, a lost GPS) says its own time („Position von 09:30“).
   „Koordinaten“ copies it; „In Karten öffnen“ is a `geo:` link.
 - **After a gap the whole way appears**, not a straight jump: the phone uploads everything it recorded meanwhile.
 - A small fixed line at the bottom: „Kein Notruf-Dienst – im Notfall 112.“
@@ -144,7 +148,7 @@ name in the additional data so the server cannot move a blob elsewhere):
 
 | Item | Content | Size | Written |
 | --- | --- | --- | --- |
-| `h` head | version, state (recording / paused / ended / arrived), last fix (lat, lon, ele, time, accuracy), GPS lost, off-route metres, distance, ascent, moving time, to go + arrival (when following), battery %, activity, display name, upload counter | ~80 bytes | every upload (replaced) |
+| `h` head | version, state (recording / paused / ended / arrived), last fix (lat, lon, ele, time, accuracy), GPS lost, off-route metres, distance, ascent, moving time, to go + arrival (when following), planned arrival (fixed at the start), battery %, activity, display name, upload counter | ~80 bytes | every upload (replaced) |
 | `r` route | the followed line, thinned (≤ 2000 points), delta-coded like `TrackCode` | ≤ 12 KB | at start, again after a re-route or a new plan |
 | `t<n>` track chunk | the recorded points since the last chunk: segment marks, lat / lon / ele / time as deltas | ~7 bytes a point; ≤ 16 KB a chunk | appended, never changed |
 

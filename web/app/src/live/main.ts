@@ -65,6 +65,18 @@ let map: LiveMap | null = null;
 let box: LiveBox | null = null;
 let state: BoxState | null = null;
 
+/**
+ * One moment for "when was the last report" (owner 2026-11-26, night: the pill said 10:00, the list 09:56 – two times for
+ * one question): the phone's last upload, on the server's clock (no phone clock, no skew) – the status line, the pill and
+ * the "Zuletzt" row all count from it, and the place's row shows only the coordinates. Only a place clearly older than
+ * that report ([OLD_FIX_MS] or two of the phone's intervals – a lost GPS while it still reports) says its own time.
+ */
+const OLD_FIX_MS = 10 * 60_000;
+function oldFix(s: BoxState): boolean {
+  const fix = s.head?.fix, up = s.lastWriteMs;
+  return !!fix && up != null && up - fix.time > Math.max(OLD_FIX_MS, 2 * (s.head?.nextS ?? 0) * 1000);
+}
+
 /** The one sentence that matters, from the shared rule (LiveStatusLine): the words for its key – the fact only, never a
  *  guess why (owner 2026-11-26). */
 function words(l: StatusLine): string {
@@ -77,6 +89,7 @@ function words(l: StatusLine): string {
     case 'low_battery': return t('web_live_low_battery', l.percent ?? 0);
     case 'off_route': return t('web_live_off_route');
     case 'pause': return t('web_live_pause');
+    case 'late': return l.atMs != null ? t('web_live_late', clock(l.atMs)) : t('web_live_late_plain');
     case 'moving': return t('web_live_moving');
   }
 }
@@ -94,7 +107,7 @@ function countdown(): { left: number; total: number; overdue: boolean } | null {
   const h = state?.head, since = state?.sinceLastWrite();
   if (!h || since == null || state?.dead || state?.ended != null || h.state === 'ended' || !(h.nextS > 0)) return null;
   const key = document.body.dataset.state;
-  if (key !== 'moving' && key !== 'pause' && key !== 'off_route' && key !== 'low_battery') return null; // no contact etc. have their own words
+  if (key !== 'moving' && key !== 'pause' && key !== 'off_route' && key !== 'low_battery' && key !== 'late') return null; // no contact etc. have their own words
   const left = Math.ceil(h.nextS - since / 1000);
   return { left, total: h.nextS, overdue: left < -OVERDUE_GRACE_S };
 }
@@ -156,7 +169,8 @@ function render() {
   bat.hidden = h.batteryPct == null;
   if (h.batteryPct != null) {
     // with no contact the number is old: it says when it was true
-    $('batteryText').textContent = line.key === 'no_contact' && s.lastWriteMs != null ? t('web_live_battery_at', h.batteryPct, clock(s.lastWriteMs)) : t('web_live_battery', h.batteryPct);
+    // no second clock time here: the status line, the pill and the row below already say when it was true
+    $('batteryText').textContent = t('web_live_battery', h.batteryPct);
     bat.dataset.low = h.batteryPct < 15 ? '1' : '';
   }
   const place = $('place');
@@ -166,7 +180,7 @@ function render() {
   if (h.fix) {
     // the last place is always on the page as text – what one reads out to the mountain rescue (§3)
     const coords = `${h.fix.lat.toFixed(5)}, ${h.fix.lon.toFixed(5)}`;
-    $('coords').textContent = clock(h.fix.time) + ' · ' + coords;
+    $('coords').textContent = oldFix(s) ? t('web_live_place_from', clock(h.fix.time), coords) : coords;
     place.dataset.coords = coords;
     ($('geo') as HTMLAnchorElement).href = `geo:${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}?q=${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}`;
   } else { $('coords').textContent = ''; delete place.dataset.coords; }

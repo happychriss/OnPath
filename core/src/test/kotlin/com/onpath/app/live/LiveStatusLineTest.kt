@@ -107,4 +107,36 @@ class LiveStatusLineTest {
         assertEquals(Line(Key.PAUSE, minutes = 10), line(moving.copy(stillS = 480), sinceMin = 2.0))
         assertEquals("a wrong clock gives no negative age", Line(Key.MOVING, minutes = 0), line(moving, sinceMin = -3.0))
     }
+
+    /**
+     * Guards: „Etwas später als geplant“ only with the phone's planned arrival (an older app sends none → never), only when
+     * the delay is more than 30 % of the planned time still to go and at least 15 min, and below every other line.
+     */
+    @Test
+    fun lateAgainstThePlan() {
+        val min = 60_000L
+        val planned = fixAt + 100 * min // 100 min still to go by the plan
+        val onTime = moving.copy(arrivalMs = planned + 20 * min, plannedArrivalMs = planned)
+        assertEquals("20 min of 100 is no news", Line(Key.MOVING, minutes = 2), line(onTime))
+        val late = moving.copy(arrivalMs = planned + 31 * min, plannedArrivalMs = planned)
+        assertEquals(Line(Key.LATE, atMs = planned + 31 * min, amber = true), line(late))
+        assertEquals("no planned arrival (an older app) -> never late", Line(Key.MOVING, minutes = 2), line(late.copy(plannedArrivalMs = null)))
+        assertEquals("no expected arrival -> never late", Line(Key.MOVING, minutes = 2), line(late.copy(arrivalMs = null)))
+        val nearEnd = moving.copy(arrivalMs = fixAt + 12 * min, plannedArrivalMs = fixAt + 2 * min)
+        assertEquals("near the end 10 min late is no news", Line(Key.MOVING, minutes = 2), line(nearEnd))
+        val pastPlan = moving.copy(arrivalMs = fixAt + 10 * min, plannedArrivalMs = fixAt - 10 * min)
+        assertEquals("past the planned arrival, 20 min late", Line(Key.LATE, atMs = fixAt + 10 * min, amber = true), line(pastPlan))
+        assertEquals("off the route wins", Key.OFF_ROUTE, line(late.copy(offRouteM = 150)).key)
+        assertEquals("a pause wins", Key.PAUSE, line(late.copy(stillS = 900)).key)
+        assertEquals("arrived -> never late", Key.MOVING, line(late.copy(arrived = true)).key)
+        assertEquals("no contact wins", Key.NO_CONTACT, line(late, sinceMin = 30.0).key)
+    }
+
+    /** Guards: the planned arrival survives the head's bytes, and a head without it reads as before. */
+    @Test
+    fun plannedArrivalInTheHead() {
+        val h = moving.copy(arrivalMs = fixAt + 90 * 60_000L, plannedArrivalMs = fixAt + 60 * 60_000L)
+        assertEquals(h.plannedArrivalMs, LiveItem.readHead(LiveItem.head(h))?.plannedArrivalMs)
+        assertEquals(null, LiveItem.readHead(LiveItem.head(moving))?.plannedArrivalMs)
+    }
 }

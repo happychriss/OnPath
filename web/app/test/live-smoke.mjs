@@ -176,7 +176,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   check(l.title === 'Christian' && await V.evaluate(() => document.getElementById('initial').textContent) === 'C', `the name from the sealed data: "${l.title}", its initial`);
   check(/^ca\. \d\d:\d\d · noch 6,2 km$/.test(l.togo ?? ''), `arrival and to go: "${l.togo}"`);
   check(l.battery === '43 %', `battery: "${l.battery}"`);
-  check(l.place === 'vor 2 Min.' && /^\d\d:\d\d · 46\.\d{5}, 11\.\d{5}$/.test(l.coords ?? '') && /^geo:46\.\d+,11\.\d+/.test(l.geo ?? ''), `last report "${l.place}", the place's time and coordinates as text "${l.coords}", geo link`);
+  check(l.place === 'vor 2 Min.' && /^46\.\d{5}, 11\.\d{5} · Position von \d\d:\d\d$/.test(l.coords ?? '') && /^geo:46\.\d+,11\.\d+/.test(l.geo ?? ''), `last report "${l.place}", the coordinates as text – the place 11 min older than the upload says its own time "${l.coords}", geo link`);
   await V.waitForFunction(() => window.__live.drawn?.route > 0, null, { timeout: 30_000 }).catch(() => {});
   let d = await drawn(V);
   check(d?.route === route.length && d.way.length === 1 && d.way[0] === 30, `the plan (${d?.route} points) and the way so far (${JSON.stringify(d?.way)}) are on the map`);
@@ -228,7 +228,8 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   l = await lineOf(V);
   check(l.state === 'no_contact' && l.text === 'Seit 25 Min. keine Meldung' && l.tone === 'grey', `no contact: "${l.text}" (the fact, no guess)`);
   check(/^Letzte Meldung \d\d:\d\d$/.test(l.pill ?? ''), `no contact: the pill says when ("${l.pill}")`);
-  check(l.place === 'vor 25 Min.' && l.coords != null && /^41 % · um \d\d:\d\d$/.test(l.battery ?? ''), `no contact: the last place stays, the battery says when it was true ("${l.battery}")`);
+  check(l.place === 'vor 25 Min.' && l.coords != null && l.battery === '41 %', `no contact: the last place stays, the battery without a second time ("${l.battery}")`);
+  check(/^46\.\d{5}, 11\.\d{5}$/.test(l.coords ?? ''), `no contact: one moment – only the pill says a clock time, the place just its coordinates ("${l.pill}" / "${l.coords}")`);
   clock.t = T0 + 85 * MIN;
   await ask(V);
   l = await lineOf(V);
@@ -246,6 +247,18 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   await ask(V);
   d = await drawn(V);
   check(d.way.length === 2 && d.way[0] + d.way[1] === 62, `a stale chunk above head.chunks is not drawn (${JSON.stringify(d.way)})`);
+
+  // ---- 7b. later than planned (the phone's plannedArrivalMs; without it – step 3 – never) ----
+  await ph.push({ head: { state: 'recording', distanceM: 8200, ascentM: 520, movingS: 8000, lat: pts[69][0], lon: pts[69][1], time: clock.t,
+    toGoM: 3400, arrivalMs: clock.t + 100 * MIN, plannedArrivalMs: clock.t + 60 * MIN, batteryPct: 30, activity: 'HIKE', name: 'Christian', nextS: 120 } });
+  await ask(V);
+  l = await lineOf(V);
+  check(l.state === 'late' && /^Etwas später als geplant · Ankunft ca\. \d\d:\d\d$/.test(l.text) && l.tone === 'amber', `later than planned: "${l.text}"`);
+  await ph.push({ head: { state: 'recording', distanceM: 8200, ascentM: 520, movingS: 8000, lat: pts[69][0], lon: pts[69][1], time: clock.t,
+    toGoM: 3400, arrivalMs: clock.t + 100 * MIN, batteryPct: 30, activity: 'HIKE', name: 'Christian', nextS: 120 } });
+  await ask(V);
+  l = await lineOf(V);
+  check(l.state === 'moving', `the same without a planned arrival (an older app): "${l.text}"`);
 
   // ---- 8. the end ----
   clock.t = T0 + 130 * MIN;
