@@ -116,8 +116,8 @@ object SearchKinds {
 
     /**
      * Category chips in the search view, in order, with one short word each (owner 2026-10-31: Orte · Essen · Sehenswert
-     * · Wasser · Bahn · Parken). [kinds] is THE table of which search kinds a chip shows – every kind is in at most one
-     * chip (`SearchTextRulesTest.theOwnersSixChips`); kinds in none (shops, toilets, bivouacs, trails …) are found by text only. Pure, also
+     * · Wasser · Bahn · Parken; 2026-11-26 + Übernachten after Essen). [kinds] is THE table of which search kinds a chip shows – every kind is in at most one
+     * chip, huts excepted (Essen + Übernachten; `SearchTextRulesTest.theOwnersChips`); kinds in none (shops, toilets, bivouacs, trails …) are found by text only. Pure, also
      * compiled by the web planner.
      */
     enum class Category(private val res: StringResource, val kinds: Set<String>) {
@@ -125,6 +125,11 @@ object SearchKinds {
         PLACES(Res.string.search_cat_places, setOf("place", "street", "address")),
         /** Restaurants, inns, cafés, beer gardens (OSM biergarten → bar), snack bars, huts / Almen. */
         FOOD(Res.string.search_cat_food, setOf("restaurant", "cafe", "bar", "fast_food", "hut")),
+        /**
+         * Places to stay (owner 2026-11-26 „Übernachten“): [PoiKinds.LODGING]. Huts are also in [FOOD] (a hut feeds and
+         * beds you) – the one kind in two chips; [of] keeps giving FOOD for it.
+         */
+        SLEEP(Res.string.search_cat_sleep, PoiKinds.LODGING),
         /** Worth a look: peaks, passes, viewpoints, castles, ruins, churches, chapels, caves, museums, waterfalls. */
         SIGHTS(Res.string.search_cat_sights,
             setOf("peak", "saddle", "viewpoint", "castle", "ruins", "church", "chapel", "cave", "museum", "waterfall")),
@@ -150,7 +155,9 @@ object SearchKinds {
         "bivouac", "viewpoint", "train", "lift" -> 8.0
         "place" -> when (sub) { "city", "town" -> 14.0; "village" -> 10.0; "suburb" -> 6.0; "hamlet" -> 4.0; else -> 2.0 }
         "saddle", "waterfall", "castle" -> 6.0
-        "trail", "shelter", "camping", "spring", "ruins", "museum" -> 4.0
+        "trail", "shelter", "camping", "spring", "ruins", "museum", "hostel" -> 4.0
+        "guest_house" -> 3.0
+        "hotel" -> 2.0
         "restaurant", "cafe", "water" -> 3.0
         "bus", "church", "chapel" -> 2.0
         "parking", "toilets" -> 0.0

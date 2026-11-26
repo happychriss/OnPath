@@ -68,5 +68,25 @@ class Priority(unittest.TestCase):
             self.assertEqual(pr % ep.PR_TIE, ep.priority(0, lon, lat))
 
 
+class Lodging(unittest.TestCase):
+    """Places to stay (owner 2026-11-26, the „Übernachten“ chip; core PoiKinds.LODGING)."""
+
+    def test_kinds(self):
+        self.assertEqual(ep.classify({"tourism": "hotel"}), "hotel")
+        self.assertEqual(ep.classify({"tourism": "motel"}), "hotel")
+        self.assertEqual(ep.classify({"tourism": "guest_house"}), "guest_house")
+        self.assertEqual(ep.classify({"tourism": "hostel"}), "hostel")
+        # huts / bivouacs / campsites as before; holiday flats and chalets stay out
+        self.assertEqual(ep.classify({"tourism": "alpine_hut"}), "hut")
+        self.assertEqual(ep.classify({"tourism": "wilderness_hut"}), "bivouac")
+        self.assertEqual(ep.classify({"tourism": "camp_site"}), "camping")
+        self.assertIsNone(ep.classify({"tourism": "apartment"}))
+        self.assertIsNone(ep.classify({"tourism": "chalet"}))
+
+    def test_a_hotel_with_a_restaurant_stays_a_restaurant(self):
+        # the restaurant rule comes first: a Gasthof tagged amenity=restaurant keeps showing as a restaurant (as today)
+        self.assertEqual(ep.classify({"tourism": "hotel", "amenity": "restaurant"}), "restaurant")
+
+
 if __name__ == "__main__":
     unittest.main()

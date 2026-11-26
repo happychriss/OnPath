@@ -1,5 +1,12 @@
 # Handoff laptop – 2026-11-17 late (context nearly full – the next laptop session starts here)
 
+## State 2026-11-26 ~22:40 – the next laptop session starts HERE
+- **Planner online at ac639ace2** (owner's „ja ausliefern“ in the laptop thread; deploy-quick run 45897961409). Contains: verbinden (a79671ba5), writers web part (293339573, umbau's review fixed; landed with umbau's 642904377), live viewer start view (8f418ca96), live-smoke race fix 937c1b807 (test-only `askNow` waits for an in-flight question).
+- App 0.18.11 NOT released (owner: thumb card first); planner stays compatible with 0.18.10 (stitch readers are in 0.18.10).
+- Open: umbau's second-review nits (spare WARN on settle cancel etc., list in handoff-umbau); PlanSettle step API in `state/` (umbau's call); second new point on Köln→Münster not stitched in recalc-smoke (old engine too); app `sync_steps` camera text (donald changed steps f63af904c – check).
+- Owner rule: the backlog wakes nobody – handovers explicitly in the thread reply (who, what, commit).
+- Old branches to prune (box to the owner): `wip/laptop-2026-11-25-*` (pair-verbinden, writers-web now on main), plus the list above.
+
 ## State 2026-11-25 ~23:10, SHUTDOWN (owner) – the next laptop session starts HERE
 - **On main (green Web planner 45685733193):** PR 23 (every browser smoke in CI, owner's yes in the laptop chat); PR 25 security headers (CSP – `'unsafe-eval'` needed by TeaVM; the csp-smoke is NOT in web.yml yet – workflow push blocked here, follow-up); „Alten Plan wiederherstellen“ in the planner (restore-smoke, Opus review's 7 fixes in); POI click without symbol placement (poipin-smoke (e)); parity-smoke keeps the new plan when the restore box asks. **Nothing deployed** – donald publishes with 0.18.11.
 - **Item 7 (synced routing overwrites a save):** already fixed on main since bc2bc7e0c – the backlog line can go.
