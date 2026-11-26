@@ -76,8 +76,8 @@ object WebLive {
     }
 
     /**
-     * The status line (LiveStatusLine – §3's table and its priority): {key, minutes, metres, atMs, amber, arrived}, key =
-     * "stopped" | "broken" | "no_data" | "ended" | "no_contact" | "off_route" | "pause" | "moving".
+     * The status line (LiveStatusLine – §3's table and its priority): {key, minutes, metres, atMs, amber, arrived, percent},
+     * key = "stopped" | "broken" | "no_data" | "ended" | "no_contact" | "low_battery" | "off_route" | "pause" | "moving".
      * [headBlob] = the newest head as the server gave it ("" = none yet); [sinceLastWriteMs] = the server's `now` minus
      * its `lastWrite` plus the time since that answer; [endedMs] = the server's end mark, < 0 = none.
      * A link without a key, or a head that does not open with it, is "broken" whatever [broken] says.
@@ -87,7 +87,7 @@ object WebLive {
         val bad = broken || LiveKeys.of(link) == null || (headBlob.isNotEmpty() && h == null)
         val l = LiveStatusLine.of(h, gone, bad, sinceLastWriteMs.toLong(), endedMs.takeIf { it >= 0 }?.toLong())
         return "{\"key\":" + str(l.key.name.lowercase()) + ",\"minutes\":" + num(l.minutes) + ",\"metres\":" + num(l.metres) +
-            ",\"atMs\":" + num(l.atMs) + ",\"amber\":" + l.amber + ",\"arrived\":" + l.arrived + "}"
+            ",\"atMs\":" + num(l.atMs) + ",\"amber\":" + l.amber + ",\"arrived\":" + l.arrived + ",\"percent\":" + num(l.percent) + "}"
     }
 
     /**
