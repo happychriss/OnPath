@@ -1,7 +1,8 @@
 // The live tour's viewer page (docs/design/live-tracking.md §3): the link's key comes after "#", is read once, taken out
 // of the address bar and kept in memory only – a reload needs the link again. Everything shown is decided by the app's
 // shared code in the engine (which status line wins, when to ask the server again, the numbers' format); this file only
-// turns it into words and a map.
+// turns it into words and a map. Look (owner 2026-11-26, design „A“): the map fills the screen, a small pill on top, a
+// soft sheet below with the name, the one sentence that matters and three facts – friendly, not technical.
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../fonts/manrope.css';
 import './live.css';
@@ -15,20 +16,33 @@ const base = new URL('../', location.href.split('#')[0].split('?')[0]).href;
 const link = location.hash;
 if (link) history.replaceState(null, '', location.pathname + location.search);
 
+const svg = (d: string) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+const ICON = {
+  flag: svg('<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>'),
+  battery: svg('<rect x="2.5" y="7" width="17" height="10" rx="2.5"/><path d="M22 11v2"/><rect x="5" y="9.5" width="7" height="5" rx="1" fill="currentColor" stroke="none"/>'),
+  pin: svg('<path d="M12 21s-6.5-6.2-6.5-11.2a6.5 6.5 0 0 1 13 0C18.5 14.8 12 21 12 21z"/><circle cx="12" cy="9.8" r="2.3"/>'),
+  copy: svg('<rect x="8" y="8" width="12" height="12" rx="2.5"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>'),
+  map: svg('<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>'),
+  person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
+};
 const root = document.getElementById('live')!;
 root.innerHTML = `
-  <header id="top"><div id="title"></div><div id="status" class="status" role="status"><span class="dot"></span><span id="line"></span></div></header>
-  <div id="count" hidden><div class="bar"><i id="countBar"></i></div><div id="countText" class="ctext"></div></div>
-  <div id="mapbox"><div id="map"></div><div id="mapWait" class="mapwait"></div><button id="toPos" class="topos" hidden></button></div>
-  <section id="facts" hidden>
-    <div id="numbers" class="row strong"></div>
-    <div id="togo" class="row" hidden></div>
-    <div id="battery" class="row" hidden></div>
-    <div id="place" class="row" hidden><span id="placeText"></span>
-      <span class="acts"><button id="copy" class="act"></button><a id="geo" class="act"></a></span></div>
-  </section>
-  <div id="note" class="note" hidden></div>
-  <footer id="foot"></footer>`;
+  <div id="mapbox"><div id="map"></div><div id="mapWait" class="mapwait"></div><button id="toPos" class="topos" hidden></button>
+    <div id="count" hidden><span class="pdot"></span><span id="countText"></span></div></div>
+  <section id="sheet">
+    <div class="grab"></div>
+    <div id="who" class="who"><div id="avatar" class="avatar"><span id="initial"></span><i class="badge"></i></div>
+      <div class="whotext"><div id="title"></div><div id="status" class="status" role="status"><span id="line"></span></div></div></div>
+    <div id="note" class="note" hidden></div>
+    <div id="facts" class="list" hidden>
+      <div id="togo" class="li" hidden><span class="ic go">${ICON.flag}</span><span id="togoLabel" class="lbl"></span><span id="togoText" class="val"></span></div>
+      <div id="battery" class="li" hidden><span class="ic bat">${ICON.battery}</span><span id="batteryLabel" class="lbl"></span><span id="batteryText" class="val"></span></div>
+      <div id="place" class="li" hidden><span class="ic pin">${ICON.pin}</span><span id="placeLabel" class="lbl"></span>
+        <span class="val"><span id="placeText"></span><span id="coords" class="sub"></span></span></div>
+    </div>
+    <div id="acts" class="acts" hidden><button id="copy" class="btn">${ICON.copy}<span id="copyText"></span></button><a id="geo" class="btn">${ICON.map}<span id="geoText"></span></a></div>
+    <footer id="foot"></footer>
+  </section>`;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 document.title = t('web_live_page_title');
 $('title').textContent = t('web_live_title');
@@ -36,8 +50,12 @@ $('line').textContent = t('web_live_loading');
 $('foot').textContent = t('web_live_no_rescue');
 $('toPos').textContent = t('web_live_to_position');
 $('mapWait').textContent = t('web_live_map_wait');
-$('copy').textContent = t('web_live_copy');
-$('geo').textContent = t('web_live_open_maps');
+$('copyText').textContent = t('web_live_copy');
+$('geoText').textContent = t('web_live_open_maps');
+$('togoLabel').textContent = t('web_live_row_arrival');
+$('batteryLabel').textContent = t('web_live_row_battery');
+$('placeLabel').textContent = t('web_live_row_last');
+$('initial').innerHTML = ICON.person;
 
 const clock = (ms: number) => new Intl.DateTimeFormat(lang, { hour: '2-digit', minute: '2-digit' }).format(new Date(ms));
 const span = (min: number) => (min < 60 ? t('web_live_minutes', min) : t('web_live_hours', Math.floor(min / 60), String(min % 60).padStart(2, '0')));
@@ -45,54 +63,59 @@ const span = (min: number) => (min < 60 ? t('web_live_minutes', min) : t('web_li
 let engine: LiveEngine | null = null;
 let map: LiveMap | null = null;
 let box: LiveBox | null = null;
-let activities: Record<string, string> = {};
 let state: BoxState | null = null;
 
-/** The one line that matters, from the shared rule (LiveStatusLine): the words for its key. */
-function words(l: StatusLine, hasPlace: boolean): string {
+/** The one sentence that matters, from the shared rule (LiveStatusLine): the words for its key – the fact only, never a
+ *  guess why (owner 2026-11-26). */
+function words(l: StatusLine): string {
   switch (l.key) {
     case 'stopped': return t('web_live_stopped');
     case 'broken': return t('web_live_broken');
     case 'no_data': return t('web_live_no_data');
-    case 'ended': return l.atMs != null ? t(l.arrived ? 'web_live_ended_arrived' : 'web_live_ended', clock(l.atMs)) : t('web_live_ended', '');
-    case 'no_contact': return hasPlace && l.atMs != null ? t('web_live_no_contact', span(l.minutes ?? 0), clock(l.atMs)) : t('web_live_no_contact_plain', span(l.minutes ?? 0));
-    case 'off_route': return t('web_live_off_route', `${l.metres ?? 0} m`);
-    case 'pause': return t('web_live_pause', span(l.minutes ?? 0));
-    case 'moving': return (l.minutes ?? 0) < 1 ? t('web_live_moving_now') : t('web_live_moving', l.minutes ?? 0);
+    case 'ended': return t(l.arrived ? 'web_live_ended_arrived' : 'web_live_ended', l.atMs != null ? clock(l.atMs) : '').replace(/ · $/, '');
+    case 'no_contact': return t('web_live_no_contact', span(l.minutes ?? 0));
+    case 'low_battery': return t('web_live_low_battery', l.percent ?? 0);
+    case 'off_route': return t('web_live_off_route');
+    case 'pause': return t('web_live_pause');
+    case 'moving': return t('web_live_moving');
   }
 }
 
-/** After the planned moment the page waits this long before it says "waiting for the phone": the viewer itself asks the server
- *  only that much after it (LivePolicy.VIEWER_SLACK_MS), and an upload takes a moment – no amber flicker every cycle. */
-const OVERDUE_GRACE_S = 10;
+/** After the planned moment the pill says "gleich …" this long before "waiting for the phone": the viewer asks right after
+ *  the moment and then every 5 s for a while (LivePolicy.VIEWER_SLACK_MS + VIEWER_EAGER_MS) – no amber flicker every cycle. */
+const OVERDUE_GRACE_S = 20;
 let countTimer = 0;
 const mmss = (sec: number) => Math.floor(sec / 60) + ':' + String(sec % 60).padStart(2, '0');
 
-/** What the strip under the status line shows, from what the page has: the head's nextS (the phone's planned interval,
- *  LivePolicy.intervalS) minus the time since the last upload (the server's clock, see BoxState.sinceLastWrite). No request.
- *  null = no strip (nothing known, tour over / no contact); overdue = the planned moment is past. */
+/** What the pill counts down, from what the page has: the head's nextS (the phone's planned interval, LivePolicy.intervalS)
+ *  minus the time since the last upload (the server's clock, see BoxState.sinceLastWrite). No request.
+ *  null = no countdown (nothing known, tour over, no contact); overdue = the planned moment is long past. */
 function countdown(): { left: number; total: number; overdue: boolean } | null {
   const h = state?.head, since = state?.sinceLastWrite();
   if (!h || since == null || state?.dead || state?.ended != null || h.state === 'ended' || !(h.nextS > 0)) return null;
   const key = document.body.dataset.state;
-  if (key !== 'moving' && key !== 'pause' && key !== 'off_route') return null; // no contact etc. have their own words
+  if (key !== 'moving' && key !== 'pause' && key !== 'off_route' && key !== 'low_battery') return null; // no contact etc. have their own words
   const left = Math.ceil(h.nextS - since / 1000);
   return { left, total: h.nextS, overdue: left < -OVERDUE_GRACE_S };
 }
-/** One timer (1 s) while the strip is there and the tab is visible; the bar's own CSS transition does the smooth part. */
+/** One timer (1 s) while the countdown runs and the tab is visible. With no contact the pill says when it last reported. */
 function updateCount() {
-  const c = countdown(), box = $('count');
-  if (!c || document.hidden) {
-    box.hidden = !c; // hidden tab: nothing runs, the strip is redrawn when the tab is back
+  const c = countdown(), pill = $('count');
+  if (!c) {
     clearInterval(countTimer); countTimer = 0;
+    const at = state?.lastWriteMs;
+    const quiet = document.body.dataset.state === 'no_contact' && at != null;
+    pill.hidden = !quiet;
+    pill.dataset.kind = 'quiet'; pill.dataset.overdue = '';
+    if (quiet) $('countText').textContent = t('web_live_last_report', clock(at!));
     return;
   }
-  box.hidden = false;
-  box.dataset.overdue = c.overdue ? '1' : '';
-  const left = Math.max(0, c.left);
-  ($('countBar') as HTMLElement).style.transform = `scaleX(${c.overdue ? 0 : Math.min(1, left / c.total)})`;
-  $('countText').textContent = c.overdue ? t('web_live_waiting') : t('web_live_next_point', mmss(left));
-  if (c.overdue) $('status').dataset.tone = 'amber';
+  pill.hidden = false;
+  pill.dataset.kind = 'live';
+  pill.dataset.overdue = c.overdue ? '1' : '';
+  $('countText').textContent = c.overdue ? t('web_live_waiting') : c.left <= 0 ? t('web_live_soon') : t('web_live_next_point', mmss(c.left));
+  if (c.overdue) { $('status').dataset.tone = 'amber'; $('who').dataset.tone = 'amber'; }
+  if (document.hidden) { clearInterval(countTimer); countTimer = 0; return; } // hidden tab: nothing runs, redrawn when it is back
   if (!countTimer) countTimer = window.setInterval(updateCount, 1000);
 }
 document.addEventListener('visibilitychange', updateCount);
@@ -105,46 +128,55 @@ function render() {
   const dead = line.key === 'stopped' || line.key === 'broken';
   document.body.dataset.state = line.key;
   document.body.dataset.dead = dead ? '1' : '';
-  const status = $('status');
-  status.dataset.tone = dead || line.key === 'no_data' || line.key === 'ended' ? 'plain' : line.amber ? 'amber' : line.key === 'no_contact' ? 'grey' : line.key === 'pause' ? 'calm' : 'good';
-  $('line').textContent = words(line, !!h?.fix);
-  $('title').textContent = h?.name ? t('web_live_title_named', h.name) + (activities[h.activity] ? ' · ' + activities[h.activity] : '')
-    : t('web_live_title') + (h && activities[h.activity] ? ' · ' + activities[h.activity] : '');
+  const tone = dead || line.key === 'no_data' ? 'plain' : line.key === 'ended' ? (line.arrived ? 'good' : 'plain')
+    : line.amber ? 'amber' : line.key === 'no_contact' ? 'grey' : line.key === 'pause' ? 'calm' : 'good';
+  $('status').dataset.tone = tone; $('who').dataset.tone = tone;
+  $('line').textContent = words(line);
+  $('title').textContent = (!dead && h?.name) || t('web_live_title');
+  const initial = !dead && h?.name ? [...h.name.trim()][0]?.toUpperCase() : undefined;
+  if (initial) $('initial').textContent = initial; else $('initial').innerHTML = ICON.person;
   const note = $('note');
   note.hidden = !s.unreachable || dead; note.textContent = t('web_live_server');
   $('facts').hidden = dead || !h;
+  $('acts').hidden = dead || !h?.fix;
   updateCount();
   $('mapbox').hidden = dead;
   if (dead) { // nothing of the tour stays in the page – not in a hidden row either
     map?.clear();
-    for (const id of ['numbers', 'togo', 'battery', 'placeText']) $(id).textContent = '';
+    for (const id of ['togoText', 'batteryText', 'placeText', 'coords']) $(id).textContent = '';
     for (const id of ['togo', 'battery', 'place']) $(id).hidden = true;
     delete $('place').dataset.coords; $('geo').removeAttribute('href');
     return;
   }
   if (!h) return;
-  $('numbers').textContent = `${h.distanceText} · ${h.movingText} · ↑ ${h.ascentText}`;
   const togo = $('togo');
   togo.hidden = !(h.toGoText && h.arrivalMs != null && line.key !== 'ended');
-  if (!togo.hidden) togo.textContent = t('web_live_to_go', h.toGoText!, clock(h.arrivalMs!));
+  if (!togo.hidden) $('togoText').textContent = t('web_live_arrival', clock(h.arrivalMs!), h.toGoText!);
   const bat = $('battery');
   bat.hidden = h.batteryPct == null;
-  if (h.batteryPct != null) { bat.textContent = t('web_live_battery', h.batteryPct); bat.dataset.low = h.batteryPct < 15 ? '1' : ''; }
+  if (h.batteryPct != null) {
+    // with no contact the number is old: it says when it was true
+    $('batteryText').textContent = line.key === 'no_contact' && s.lastWriteMs != null ? t('web_live_battery_at', h.batteryPct, clock(s.lastWriteMs)) : t('web_live_battery', h.batteryPct);
+    bat.dataset.low = h.batteryPct < 15 ? '1' : '';
+  }
   const place = $('place');
-  place.hidden = !h.fix;
+  place.hidden = false;
+  const min = Math.floor(Math.max(0, since) / 60_000);
+  $('placeText').textContent = min < 1 ? t('web_live_ago_now') : t('web_live_ago', span(min));
   if (h.fix) {
+    // the last place is always on the page as text – what one reads out to the mountain rescue (§3)
     const coords = `${h.fix.lat.toFixed(5)}, ${h.fix.lon.toFixed(5)}`;
-    $('placeText').textContent = t('web_live_last_place', clock(h.fix.time)) + ' · ' + coords;
+    $('coords').textContent = clock(h.fix.time) + ' · ' + coords;
     place.dataset.coords = coords;
     ($('geo') as HTMLAnchorElement).href = `geo:${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}?q=${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}`;
-  }
+  } else { $('coords').textContent = ''; delete place.dataset.coords; }
   map?.show(s.route, s.chunks, h.fix, line.key === 'ended' ? 'ended' : line.key === 'no_contact' ? 'quiet' : 'live');
 }
 
 $('copy').addEventListener('click', async () => {
   const c = $('place').dataset.coords ?? '';
-  try { await navigator.clipboard.writeText(c); $('copy').textContent = t('web_live_copied'); setTimeout(() => { $('copy').textContent = t('web_live_copy'); }, 2000); }
-  catch { /* expected: the clipboard is blocked – the coordinates stand there as text to read out */ }
+  try { await navigator.clipboard.writeText(c); $('copyText').textContent = t('web_live_copied'); setTimeout(() => { $('copyText').textContent = t('web_live_copy'); }, 2000); }
+  catch { /* expected: the clipboard is blocked – the coordinates stand under "Zuletzt" as text to read out */ }
 });
 
 async function boot() {
@@ -154,8 +186,6 @@ async function boot() {
     $('line').textContent = t('web_live_server'); // the page's own files did not load (offline / an old browser)
     return;
   }
-  try { activities = Object.fromEntries((JSON.parse(engine.activities()) as { key: string; label: string }[]).map((a) => [a.key, a.label])); }
-  catch { /* expected: without the list the title simply has no activity word */ }
   const keys = JSON.parse(engine.liveKeys(link)) as { box: string; token: string } | null;
   box = new LiveBox(engine, link, base + 'live/v1/', keys, (s) => {
     state = s; render();

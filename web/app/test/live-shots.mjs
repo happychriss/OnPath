@@ -39,7 +39,7 @@ async function shot(name, feed, after) {
 const walked = (n, t0) => pts.slice(0, n).map((p, i) => [...p, t0 + i * 90_000]);
 
 await shot('1-unterwegs', (ph) => ph.push({ route, points: walked(48, T0 - 72 * MIN),
-  head: { ...base, state: 'recording', distanceM: 1100, ascentM: 85, movingS: 2100, toGoM: 1300, arrivalMs: T0 + 45 * MIN, batteryPct: 43 } }), 2 * MIN + 5000);
+  head: { ...base, state: 'recording', distanceM: 1100, ascentM: 85, movingS: 2100, toGoM: 1300, arrivalMs: T0 + 45 * MIN, batteryPct: 43 } }), 1 * MIN);
 await shot('2-pause', (ph) => ph.push({ route, points: walked(60, T0 - 100 * MIN),
   head: { ...base, state: 'recording', stillS: 600, nextS: 600, distanceM: 1400, ascentM: 110, movingS: 2600, toGoM: 1000, arrivalMs: T0 + 50 * MIN, batteryPct: 39 } }), 2 * MIN);
 await shot('3-abseits', (ph) => { // the way leaves the plan after point 40 (made up: the real hike stays on it)
@@ -47,6 +47,8 @@ await shot('3-abseits', (ph) => { // the way leaves the plan after point 40 (mad
   return ph.push({ route, points: [...walked(40, T0 - 75 * MIN), ...off],
     head: { ...base, state: 'recording', offRouteM: 150, distanceM: 950, ascentM: 70, movingS: 1800, toGoM: 1500, arrivalMs: T0 + 55 * MIN, batteryPct: 47 } });
 }, 1 * MIN);
+await shot('3b-akku-niedrig', (ph) => ph.push({ route, points: walked(52, T0 - 78 * MIN),
+  head: { ...base, state: 'recording', distanceM: 1200, ascentM: 95, movingS: 2300, toGoM: 1200, arrivalMs: T0 + 42 * MIN, batteryPct: 12 } }), 1 * MIN);
 await shot('4-kein-kontakt', (ph) => ph.push({ route, points: walked(55, T0 - 85 * MIN),
   head: { ...base, state: 'recording', distanceM: 1250, ascentM: 100, movingS: 2400, toGoM: 1150, arrivalMs: T0 + 40 * MIN, batteryPct: 36 } }), 25 * MIN + 5000);
 await shot('5-beendet', (ph) => ph.push({ route, points: pts.map((p, i) => [...p, T0 - 190 * MIN + i * 100_000]), ended: true,

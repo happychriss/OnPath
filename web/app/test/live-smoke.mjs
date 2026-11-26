@@ -6,7 +6,7 @@
 // Guards: a wrong or missing key says so and asks nothing; the key leaves the address bar; each status line of §3 with
 // its priority; the way so far and the plan are drawn; a gap is filled later as its own stretch (no straight jump); a
 // stale chunk above the head's `chunks` is not drawn; the end and "no longer shared" (nothing of the tour stays); and
-// the request budget of §5.1 – a watched hour ≈ 30 questions, a dead zone 9 in its first hour, none while hidden, none
+// the request budget of §5.1 – a watched hour ≈ 30 questions, a dead zone ≤ 13 in its first hour, none while hidden, none
 // after the end.
 // Needs no map data (the lines draw on an empty map). Usage: node test/live-smoke.mjs [segmentsDir – ignored] [cellStoreDir]
 import path from 'node:path';
@@ -93,10 +93,12 @@ export async function openViewer(browser, url, hash, { lang = 'de', width = 390,
 }
 export const lineOf = (P) => P.evaluate(() => ({ text: document.getElementById('line').textContent, tone: document.getElementById('status').dataset.tone,
   state: document.body.dataset.state, title: document.getElementById('title').textContent,
-  numbers: document.getElementById('facts').hidden ? null : document.getElementById('numbers').textContent,
-  togo: document.getElementById('togo').hidden ? null : document.getElementById('togo').textContent,
-  battery: document.getElementById('battery').hidden ? null : document.getElementById('battery').textContent,
-  place: document.getElementById('place').hidden ? null : document.getElementById('placeText').textContent,
+  facts: !document.getElementById('facts').hidden,
+  togo: document.getElementById('facts').hidden || document.getElementById('togo').hidden ? null : document.getElementById('togoText').textContent,
+  battery: document.getElementById('facts').hidden || document.getElementById('battery').hidden ? null : document.getElementById('batteryText').textContent,
+  place: document.getElementById('facts').hidden || document.getElementById('place').hidden ? null : document.getElementById('placeText').textContent,
+  coords: document.getElementById('coords').textContent || null,
+  pill: document.getElementById('count').hidden ? null : document.getElementById('countText').textContent,
   geo: document.getElementById('geo').getAttribute('href'), map: !document.getElementById('mapbox').hidden,
   foot: document.getElementById('foot').textContent, note: document.getElementById('note').hidden ? null : document.getElementById('note').textContent }));
 /** A question to the server right now, then the page drawn again. */
@@ -116,7 +118,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // ---- 1. no key / a wrong key: one sentence, nothing asked ----
   const idle = await openViewer(browser, url, '');
   let l = await lineOf(idle);
-  check(l.state === 'broken' && l.text === 'Dieser Link funktioniert nicht.' && !l.map && l.numbers === null, `no key in the link: "${l.text}", no map, no numbers`);
+  check(l.state === 'broken' && l.text === 'Dieser Link funktioniert nicht.' && !l.map && !l.facts, `no key in the link: "${l.text}", no map, no facts`);
   check(asked() === 0, 'no key: the server is not asked');
   const bad = await openViewer(browser, url, '#t=abc');
   check((await lineOf(bad)).state === 'broken' && asked() === 0, 'a damaged code: "Dieser Link funktioniert nicht.", the server is not asked');
@@ -128,7 +130,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const V = await openViewer(browser, url, '#' + ph.link.split('#')[1]);
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'no_data' && /Noch keine Daten/.test(l.text) && l.numbers === null, `before the first upload: "${l.text}"`);
+  check(l.state === 'no_data' && /Noch keine Daten/.test(l.text) && !l.facts, `before the first upload: "${l.text}"`);
   check(!(await V.evaluate(() => location.href)).includes('t='), 'the key is taken out of the address bar');
   check(l.foot === 'Kein Notruf-Dienst – im Notfall 112.', 'the fixed line: no emergency service');
   const viewOf = async (P) => { await P.waitForFunction(() => window.__map, null, { timeout: 30_000 }); return P.evaluate(() => { const m = window.__map, b = m.getBounds();
@@ -170,12 +172,11 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   clock.t = T0 + 2 * MIN + 5_000;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'moving' && l.text === 'Unterwegs · zuletzt vor 2 Min.' && l.tone === 'good', `moving: "${l.text}"`);
-  check(/^Tour von Christian/.test(l.title), `the name from the sealed data: "${l.title}"`);
-  check(l.numbers === '5,4 km · 1:15 h · ↑ 310 m', `numbers as the app writes them: "${l.numbers}"`);
-  check(/^noch 6,2 km · Ankunft ca. \d\d:\d\d$/.test(l.togo ?? ''), `to go and arrival: "${l.togo}"`);
-  check(l.battery === 'Handy-Akku 43 %', `battery: "${l.battery}"`);
-  check(/^Letzter Ort \d\d:\d\d · 46\.\d{5}, 11\.\d{5}$/.test(l.place ?? '') && /^geo:46\.\d+,11\.\d+/.test(l.geo ?? ''), `last place with time and coordinates, geo link: "${l.place}"`);
+  check(l.state === 'moving' && l.text === 'Alles okay, unterwegs' && l.tone === 'good', `moving: "${l.text}"`);
+  check(l.title === 'Christian' && await V.evaluate(() => document.getElementById('initial').textContent) === 'C', `the name from the sealed data: "${l.title}", its initial`);
+  check(/^ca\. \d\d:\d\d · noch 6,2 km$/.test(l.togo ?? ''), `arrival and to go: "${l.togo}"`);
+  check(l.battery === '43 %', `battery: "${l.battery}"`);
+  check(l.place === 'vor 2 Min.' && /^\d\d:\d\d · 46\.\d{5}, 11\.\d{5}$/.test(l.coords ?? '') && /^geo:46\.\d+,11\.\d+/.test(l.geo ?? ''), `last report "${l.place}", the place's time and coordinates as text "${l.coords}", geo link`);
   await V.waitForFunction(() => window.__live.drawn?.route > 0, null, { timeout: 30_000 }).catch(() => {});
   let d = await drawn(V);
   check(d?.route === route.length && d.way.length === 1 && d.way[0] === 30, `the plan (${d?.route} points) and the way so far (${JSON.stringify(d?.way)}) are on the map`);
@@ -184,22 +185,25 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // ---- 3b. the countdown strip: from the head's nextS (120 s) and the time since the upload, no extra question ----
   const countOf = (P) => P.evaluate(() => ({ hidden: document.getElementById('count').hidden, text: document.getElementById('countText').textContent,
     overdue: document.getElementById('count').dataset.overdue === '1', tone: document.getElementById('status').dataset.tone,
-    bar: document.getElementById('countBar').style.transform, top: document.getElementById('top').getBoundingClientRect().bottom,
-    barTop: document.getElementById('count').getBoundingClientRect().top }));
+    top: document.getElementById('count').getBoundingClientRect().top, mapTop: document.getElementById('mapbox').getBoundingClientRect().top }));
   clock.t = T0 + 30_000;
   await ask(V);
   let c = await countOf(V);
-  const m1 = /^nächster Punkt in 1:(\d\d)$/.exec(c.text);
-  check(!c.hidden && !!m1 && !c.overdue && c.tone === 'good' && c.barTop >= c.top - 1, `countdown after a report: "${c.text}", bar ${c.bar}, directly under the status line`);
+  const m1 = /^Live · nächster Punkt in 1:(\d\d)$/.exec(c.text);
+  check(!c.hidden && !!m1 && !c.overdue && c.tone === 'good' && c.top >= c.mapTop && c.top < c.mapTop + 40, `countdown after a report: "${c.text}", a pill at the top of the map`);
   const asks0 = asked();
   await V.waitForFunction((s) => { const m = /1:(\d\d)$/.exec(document.getElementById('countText').textContent); return m && Number(m[1]) <= s; }, Number(m1?.[1] ?? 59) - 2, { timeout: 10_000 }).catch(() => {});
   c = await countOf(V);
   check(Number(/1:(\d\d)$/.exec(c.text)?.[1] ?? 99) <= Number(m1?.[1] ?? 0) - 2 && asked() === asks0, `the countdown counts down by itself ("${c.text}"), without asking the server`);
-  clock.t = T0 + 2 * MIN + 40_000; // 20 s past the planned moment
+  clock.t = T0 + 2 * MIN + 5_000; // 5 s past the planned moment: the viewer asks on, the pill says "gleich"
+  await ask(V);
+  c = await countOf(V);
+  check(!c.overdue && c.text === 'Live · nächster Punkt gleich …' && c.tone === 'good', `at 0: "${c.text}", no alarm`);
+  clock.t = T0 + 2 * MIN + 30_000; // 30 s past the planned moment
   await ask(V);
   c = await countOf(V);
   l = await lineOf(V);
-  check(c.overdue && c.text === 'wartet auf das Handy …' && c.tone === 'amber' && c.bar === 'scaleX(0)' && l.state === 'moving', `overdue: "${c.text}", status line amber, bar empty`);
+  check(c.overdue && c.text === 'wartet auf das Handy …' && c.tone === 'amber' && l.state === 'moving', `overdue: "${c.text}", status line amber`);
   clock.t = T0 + 2 * MIN + 5_000;
 
   // ---- 4. a break ----
@@ -208,7 +212,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   clock.t = T0 + 17 * MIN;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'pause' && l.text === 'Pause seit 12 Min.' && l.tone === 'calm', `a break: "${l.text}"`);
+  check(l.state === 'pause' && l.text === 'Macht gerade Pause' && l.tone === 'calm', `a break: "${l.text}"`);
 
   // ---- 5. off the planned route (the app's alarm) ----
   clock.t = T0 + 18 * MIN;
@@ -216,18 +220,19 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   clock.t = T0 + 18 * MIN + 30_000;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'off_route' && l.text === 'Abseits der geplanten Route (150 m)' && l.tone === 'amber', `off the route: "${l.text}"`);
+  check(l.state === 'off_route' && l.text === 'Gerade etwas abseits der Route' && l.tone === 'amber', `off the route: "${l.text}"`);
 
   // ---- 6. a dead zone: no contact, the last place stays; then the whole stretch arrives as its own line ----
   clock.t = T0 + 43 * MIN;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'no_contact' && /^Kein Kontakt seit 25 Min\. – ohne Netz normal\. Letzter Ort \d\d:\d\d$/.test(l.text) && l.tone === 'grey', `no contact: "${l.text}"`);
-  check(l.place != null && l.numbers != null, 'no contact: the last place and the numbers stay');
+  check(l.state === 'no_contact' && l.text === 'Seit 25 Min. keine Meldung' && l.tone === 'grey', `no contact: "${l.text}" (the fact, no guess)`);
+  check(/^Letzte Meldung \d\d:\d\d$/.test(l.pill ?? ''), `no contact: the pill says when ("${l.pill}")`);
+  check(l.place === 'vor 25 Min.' && l.coords != null && /^41 % · um \d\d:\d\d$/.test(l.battery ?? ''), `no contact: the last place stays, the battery says when it was true ("${l.battery}")`);
   clock.t = T0 + 85 * MIN;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'no_contact' && /seit 1 h 07 min/.test(l.text) && l.tone === 'amber', `after an hour amber: "${l.text}"`);
+  check(l.state === 'no_contact' && l.text === 'Seit 1 h 07 min keine Meldung' && l.tone === 'amber', `after an hour amber: "${l.text}"`);
   ph.newSegment(); // the GPS was lost in between: the app starts a new segment
   await ph.push({ points: pts.slice(40, 70).map((p, i) => [...p, T0 + 50 * MIN + i * 60_000]), head: { state: 'recording', distanceM: 8100, ascentM: 520, movingS: 7900, toGoM: 3500, arrivalMs: T0 + 150 * MIN, batteryPct: 33, activity: 'HIKE', name: 'Christian', nextS: 120 } });
   clock.t += 30_000;
@@ -249,7 +254,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const before = asked();
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'ended' && /^Tour beendet \d\d:\d\d · am Ziel$/.test(l.text) && l.togo === null, `the end: "${l.text}", no "to go" any more`);
+  check(l.state === 'ended' && /^Angekommen · \d\d:\d\d$/.test(l.text) && l.togo === null && l.pill === null, `the end: "${l.text}", no "to go", no countdown any more`);
   check((await drawn(V)).way.reduce((a, b) => a + b, 0) === pts.length - 8, 'the end: the whole way is there');
   await ask(V); await ask(V);
   check(asked() === before + 1 && await V.evaluate(() => window.__live.planned) === -1, 'after the end the server is never asked again');
@@ -283,7 +288,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const n1 = asked();
     await run(60 * MIN, false);
     const dead1 = asked() - n1;
-    check(dead1 >= 7 && dead1 <= 10, `a dead zone, first hour: ${dead1} questions (1, 2, 5, then every 10 min)`);
+    check(dead1 >= 9 && dead1 <= 13, `a dead zone, first hour: ${dead1} questions (4 quick ones at 0, then 1, 2, 5, then every 10 min)`);
     const n2 = asked();
     await run(60 * MIN, false);
     check(asked() - n2 >= 5 && asked() - n2 <= 7, `a dead zone, every further hour: ${asked() - n2} questions`);
@@ -296,12 +301,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     await W.evaluate(() => { Object.defineProperty(document, 'hidden', { configurable: true, get: () => false }); document.dispatchEvent(new Event('visibilitychange')); });
     await W.clock.runFor(100); await settle(); await settle();
     check(asked() === n3 + 1 && (await lineOf(W)).state === 'moving', 'the tab comes back: one question at once, the line is fresh');
-    check(/^Geteilter Standort( · |$)/.test((await lineOf(W)).title), `no name given: the heading is "${(await lineOf(W)).title}"`);
+    check((await lineOf(W)).title === 'Geteilter Standort', `no name given: the heading is "${(await lineOf(W)).title}"`);
     // ---- 10. stop sharing: nothing of the tour stays ----
     check(await ph2.stop() === 200, 'the phone stops sharing');
     await run(3 * MIN, false);
     l = await lineOf(W);
-    check(l.state === 'stopped' && l.text === 'Diese Tour wird nicht mehr geteilt.' && !l.map && l.numbers === null && l.place === null, `stopped: "${l.text}", no map, no numbers, no place`);
+    check(l.state === 'stopped' && l.text === 'Diese Tour wird nicht mehr geteilt.' && !l.map && !l.facts && l.place === null && l.coords === null, `stopped: "${l.text}", no map, no facts, no place`);
     const n4 = asked();
     await run(30 * MIN, false);
     check(asked() === n4, 'a stopped tour is never asked again');

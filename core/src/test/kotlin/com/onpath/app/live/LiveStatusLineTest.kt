@@ -84,13 +84,27 @@ class LiveStatusLineTest {
         assertEquals(Line(Key.PAUSE, minutes = 2), line(moving.copy(offRouteM = 150, state = LiveState.PAUSED)))
     }
 
+    /**
+     * Guards: a low battery (below 15 %) is the line – it beats off route, pause and moving, but not silence or the end
+     * (owner 2026-11-26: „Akku 12 %“, the fact only).
+     */
+    @Test
+    fun lowBatteryBeatsOffRoutePauseAndMoving() {
+        assertEquals(Line(Key.LOW_BATTERY, percent = 12, amber = true), line(moving.copy(batteryPct = 12)))
+        assertEquals(Line(Key.LOW_BATTERY, percent = 12, amber = true), line(moving.copy(batteryPct = 12, offRouteM = 150, stillS = 900)))
+        assertEquals(Line(Key.MOVING, minutes = 2), line(moving.copy(batteryPct = 15)))
+        assertEquals(Line(Key.NO_CONTACT, minutes = 25, atMs = fixAt), line(moving.copy(batteryPct = 5), sinceMin = 25.0))
+        assertEquals(Line(Key.ENDED, atMs = fixAt), line(moving.copy(batteryPct = 5, state = LiveState.ENDED)))
+    }
+
     /** Guards: a pause counts on while nothing comes; a short stop (a photo, a gate) still reads "on the way". */
     @Test
     fun pauseAndShortStops() {
         assertEquals(Line(Key.PAUSE, minutes = 0), line(moving.copy(state = LiveState.PAUSED), sinceMin = 0.5))
         assertEquals(Line(Key.PAUSE, minutes = 14), line(moving.copy(state = LiveState.PAUSED, stillS = 720), sinceMin = 2.0))
         assertEquals(Line(Key.MOVING, minutes = 2), line(moving.copy(stillS = 120), sinceMin = 2.0))
-        assertEquals(Line(Key.PAUSE, minutes = 5), line(moving.copy(stillS = 200), sinceMin = 2.0))
+        assertEquals("standing 8 min is still on the way (owner: Pause from 10 min)", Line(Key.MOVING, minutes = 2), line(moving.copy(stillS = 360), sinceMin = 2.0))
+        assertEquals(Line(Key.PAUSE, minutes = 10), line(moving.copy(stillS = 480), sinceMin = 2.0))
         assertEquals("a wrong clock gives no negative age", Line(Key.MOVING, minutes = 0), line(moving, sinceMin = -3.0))
     }
 }
