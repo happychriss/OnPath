@@ -19,8 +19,8 @@ import com.onpath.app.routing.GeoPoint
  *   While PLANNING (owner 2026-11-17): only the matching row in a clear case, both in between – the rule of a hold on the
  *   empty map ([planningRows]). One line each, only the label – where it goes shows on the map; no stop numbers.
  *
- * [Menu.main] keeps the decision's order (the likelier first, [Menu.emphasised]); the menu SHOWS [Menu.rows]: the fixed
- * order Start → Stopp → Ziel (owner 2026-11-26: no more „cheaper first“, the likelier row is only shown by the tint).
+ * [Menu.main] keeps the decision's order (the likelier first, [Menu.emphasised]) and the menu shows it as it is
+ * (owner 2026-11-26 night: the likeliest on top, tinted).
  */
 object PlaceAddMenu {
 
@@ -43,14 +43,14 @@ object PlaceAddMenu {
         /** The likelier row (shown tinted): the first of the two add rows; null with one point or none. */
         val emphasised: Item? get() = main.firstOrNull()?.takeIf { main.size == 2 && it in ADD_ITEMS }
 
-        /** The rows as the menu shows them: always Start → Stopp → Ziel (owner 2026-11-26), whatever is likelier. */
-        val rows: List<Item> get() = main.sortedBy { SHOWN_ORDER.indexOf(it) }
+        /**
+         * The rows as the menu shows them: the likeliest on top, tinted, the rest below (owner 2026-11-26 night: „immer oben
+         * das Wahrscheinlichste … das ist so das Daumengefühl“ – the fixed Start → Stopp → Ziel of that afternoon is gone).
+         */
+        val rows: List<Item> get() = main
     }
 
     private val ADD_ITEMS = setOf(Item.ADD_STOP, Item.NEW_DESTINATION)
-
-    /** Start → Stopp → Ziel: the order every menu shows its route rows in (owner 2026-11-26). */
-    private val SHOWN_ORDER = listOf(Item.START_HERE, Item.ADD_STOP, Item.SET_DESTINATION, Item.GO_HERE, Item.NEW_DESTINATION)
 
     // Thresholds on the detour d = (route ahead with the place as its best stop) − (route ahead), straight lines. They are
     // conservative: a case near a border is DOUBTFUL (both entries) rather than one entry that is wrong.

@@ -151,19 +151,20 @@ class PlaceAddMenuTest {
     }
 
     /**
-     * Owner 2026-11-26: the menu SHOWS Start → Stopp → Ziel, always – no more „cheaper first“; the likelier row is only
-     * tinted ([PlaceAddMenu.Menu.emphasised], unchanged).
+     * Owner 2026-11-26 night: the menu shows the likeliest on top, tinted, the rest below („das Daumengefühl“) – the fixed
+     * Start → Stopp → Ziel of that afternoon is gone.
      */
-    @Test fun theRowsAreShownStartStopGoalTheLikelierOnlyTinted() {
+    @Test fun theRowsAreShownLikeliestFirstAndTinted() {
         for (z in Zone.values()) for (touring in listOf(false, true)) {
             val m = PlaceAddMenu.menu(3, touring, z)
-            assertEquals("$z", listOf(Item.ADD_STOP, Item.NEW_DESTINATION), m.rows)
+            assertEquals("$z", m.main, m.rows)
+            m.emphasised?.let { assertEquals("$z: the tinted one on top", it, m.rows.first()) }
         }
-        assertEquals(Item.NEW_DESTINATION, PlaceAddMenu.menu(3, true, Zone.GOAL_FIRST).emphasised)
-        assertEquals(Item.ADD_STOP, PlaceAddMenu.menu(3, true, Zone.STOP_FIRST).emphasised)
-        // a hold that asks: the cheaper is tinted, the order stays
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), PlaceAddMenu.menu(3, true, Zone.GOAL_FIRST).rows)
+        assertEquals(listOf(Item.ADD_STOP, Item.NEW_DESTINATION), PlaceAddMenu.menu(3, true, Zone.STOP_FIRST).rows)
+        // a hold that asks: the cheaper on top, tinted
         val goalCheaper = PlaceAddMenu.planningMenu(PlaceAddMenu.Detours(100.0, 90.0))
-        assertEquals(listOf(Item.ADD_STOP, Item.NEW_DESTINATION), goalCheaper.rows)
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), goalCheaper.rows)
         assertEquals(Item.NEW_DESTINATION, goalCheaper.emphasised)
         // empty plan: Als Start · Als Ziel; during a tour Als Ziel only; one point: Als Ziel
         assertEquals(listOf(Item.START_HERE, Item.GO_HERE), PlaceAddMenu.menu(0, false, null).rows)

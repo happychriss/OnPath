@@ -111,7 +111,7 @@ object PinMenuItems {
      *   last in the Route group – only where „Als Start“ is offered (owner 2026-11-15 / 2026-11-26)
      */
     fun of(emptyPlan: Boolean, startHere: Boolean, menu: PlaceAddMenu.Menu?, pin: Boolean, keep: Boolean = false,
-           roundTrip: Boolean = false): List<Row> {
+           roundTrip: Boolean = false, fromMe: Boolean = true): List<Row> {
         fun row(i: PlaceAddMenu.Item) = when (i) {
             PlaceAddMenu.Item.ADD_STOP -> Row.ADD_STOP
             PlaceAddMenu.Item.NEW_DESTINATION -> Row.NEW_DESTINATION
@@ -121,7 +121,13 @@ object PinMenuItems {
         }
         val rows = mutableListOf<Row>()
         when {
-            emptyPlan -> { if (startHere) rows += Row.START_HERE; rows += Row.GO_HERE; if (startHere && roundTrip) rows += Row.ROUND_TRIP }
+            // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“;
+            // „Rundtour ab hier“ always last
+            emptyPlan -> {
+                if (fromMe || !startHere) { rows += Row.GO_HERE; if (startHere) rows += Row.START_HERE }
+                else { rows += Row.START_HERE; rows += Row.GO_HERE }
+                if (startHere && roundTrip) rows += Row.ROUND_TRIP
+            }
             menu == null -> rows += Row.ADD
             else -> menu.rows.mapTo(rows, ::row)
         }

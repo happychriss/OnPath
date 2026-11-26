@@ -446,8 +446,9 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
                    onRoundTrip: (() -> Unit)? = null) {
     MenuSurface(modifier) {
         Spacer(Modifier.height(4.dp))
-        if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere)
-        GoHereRow(fromMeBlocked, onFromMe)
+        // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“
+        if (fromMeBlocked == null) { GoHereRow(null, onFromMe); if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere) }
+        else { if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere); GoHereRow(fromMeBlocked, onFromMe) }
         if (startHere && onRoundTrip != null) HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = onRoundTrip)
     }
 }
@@ -507,7 +508,8 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         // the rows in their order (PinMenuItems): the same for a hold and for a picked search result (owner 2026-11-13)
         // „⌂ Als Zuhause festlegen“ only while the Zuhause row shows in the search (off since 2026-11-19, HOME_ROW_SHOWN)
         val rows = com.onpath.app.ui.search.shownMenuRows(
-            PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null))
+            PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null,
+                fromMe = fromMeBlocked == null))
         rows.forEachIndexed { i, r ->
             // a thin line between the groups Route → Ort → Entfernen (owner 2026-11-26)
             if (PinMenuItems.lineBefore(rows, i)) GroupLine()
