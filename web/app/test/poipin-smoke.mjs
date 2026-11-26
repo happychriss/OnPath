@@ -158,7 +158,10 @@ const clickName = async (n) => {
   return dp.evaluate(() => ({ head: document.querySelector('.holdpopup .menuhead')?.textContent ?? null,
     rows: [...document.querySelectorAll('.holdpopup .pointmenu button .txt > span:first-child')].map((b) => b.textContent) }));
 };
-const bare = await onName();
+// the names are placed a few frames after the jump (more on a loaded machine with software GL): asked again until one is
+// drawn (30 s at most) – the check below still asserts that such a name exists
+let bare = await onName();
+for (let i = 0; !bare && i < 60; i++) { await dp.waitForTimeout(500); bare = await onName(); }
 check(!!bare, '(d) a POI name drawn beside its icon at z17+ found in the view');
 if (bare) {
   const cb = await dp.locator('#map canvas').first().boundingBox();
@@ -172,6 +175,39 @@ if (bare) {
   await dp.keyboard.press('Escape');
 }
 await dctx.close();
+
+// (e) a click on a POI while MapLibre's symbol placement has not caught up with the screen (a slow phone after a pan: the
+// placement is redone in 2 ms steps per frame, more than the click waits for): the rendered query finds nothing, the click
+// must still open the POI's menu (a lookup in the POI source, independent of the placement) and add no point (owner 2026-11-17,
+// item poi-click-on-a-slow-phone-after-a-pan). Simulated: the rendered query comes back empty and the committed
+// placement is the one of another camera.
+const ectx = await browser.newContext({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 2 });
+await ectx.route('https://photon.komoot.io/**', (r) => r.abort());
+const ep = await ectx.newPage();
+ep.on('pageerror', (e) => errors.push(String(e)));
+await ep.goto(url + 'index.html?lang=en&at=' + VIEW);
+await ep.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+const stale = await findPoi(ep);
+await ep.waitForFunction(() => window.__map.loaded() && !window.__map.isMoving(), null, { timeout: 30_000 }).catch(() => {});
+await ep.waitForTimeout(1000);
+const staleAt = await ep.evaluate(([lo, la]) => { // the POI's pixel now, then the stale placement
+  const map = window.__map, p = map.project([lo, la]);
+  const real = map.style?.placement;
+  // another camera: the committed placement is old (kept so: a frame in between would replace a changed copy)
+  if (real) Object.defineProperty(map.style, "placement", { get: () => new Proxy(real, { get: (o, k) => k === "transform" ? { center: { lng: 0, lat: 0 }, zoom: 1 } : Reflect.get(o, k) }), set: () => {}, configurable: true });
+  map.queryRenderedFeatures = () => []; // what the old placement finds at this spot
+  return { x: p.x, y: p.y, staleSet: !!real };
+}, [stale.lon, stale.lat]);
+check(staleAt.staleSet, '(e) the committed symbol placement could be set to another camera (test set-up)');
+await ep.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {});
+const eb = await ep.locator('#map canvas').first().boundingBox();
+await ep.mouse.click(eb.x + staleAt.x, eb.y + staleAt.y);
+await ep.waitForSelector('.holdpopup .menuhead', { timeout: 15_000 }).catch(() => {});
+const eMenu = await ep.evaluate(() => ({ head: document.querySelector('.holdpopup .menuhead')?.textContent ?? null, points: window.__state.points.length }));
+check(eMenu.points === 0, `(e) the click on the ${stale.kind} with a stale placement added no point (${eMenu.points})`);
+check(eMenu.head != null && eMenu.head !== 'New plan' && eMenu.head.includes(stale.kind.charAt(0).toUpperCase() + stale.kind.slice(1)),
+  `(e) … and opened the POI's menu with its details (${JSON.stringify(eMenu.head)})`);
+await ectx.close();
 
 // as search-smoke: a missing map file (404) or a dropped request is no fault of this page
 const real = errors.filter((e) => !/status of 404/.test(e) && !/ERR_FAILED|net::|CORS policy/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

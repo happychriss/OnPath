@@ -21,7 +21,9 @@ import kotlin.math.min
  */
 class StopsBesideRoute {
     /** The place on a line nearest to a stop: where, how far along it, how far from the stop. */
-    class Spot(val point: GeoPoint, val alongM: Double, val distanceM: Double)
+    class Spot(val point: GeoPoint, val alongM: Double, val distanceM: Double,
+               /** The planned line DOES reach the stop (it only counts as passed by walking past it, never as "at it"). */
+               val reachable: Boolean = false)
 
     private var line: NavLine? = null
     private var stops: List<NavStop>? = null
@@ -38,11 +40,11 @@ class StopsBesideRoute {
      */
     fun passedNow(s: NavSession, planned: NavLine, now: NavLine, p: GeoPoint, accuracyM: Double, progressM: Double,
                   visited: Set<Int>, inOrder: (Int) -> Boolean): Set<Int> {
-        if (line !== planned || stops !== s.stops) { line = planned; stops = s.stops; spots = of(s, planned); followed = null }
+        if (line !== planned || stops !== s.stops) { line = planned; stops = s.stops; spots = of(s, planned, withReachable = true); followed = null }
         if (spots.isEmpty()) return emptySet()
         if (followed !== now) {
             followed = now; lastAlongM = null; crossed.clear()
-            followedSpots = if (now === planned) spots else onTaken(s, now, spots)
+            followedSpots = if (now === planned) spots else onTaken(s, now, spots.filterValues { !it.reachable })
         }
         val before = lastAlongM
         lastAlongM = progressM
@@ -51,20 +53,22 @@ class StopsBesideRoute {
         val good = accuracyM <= NavSession.VISITED_MAX_ACCURACY_M
         fun at(spot: Spot?) = good && spot != null && Geo.distance(p, spot.point) <= radius
         // on the followed line also by the progress: a hairpin's other branch can run within the radius of the place
-        fun atHere(spot: Spot?) = at(spot) && abs(progressM - spot!!.alongM) <= radius * PAST_FACTOR
-        val past = walkedPast(now, p, before, progressM, if (good) radius * PAST_FACTOR else radius)
+        fun atHere(spot: Spot?) = spot?.reachable == false && at(spot) && abs(progressM - spot!!.alongM) <= radius * PAST_FACTOR
+        val past = walkedPast(now, p, before, progressM, if (good) radius * PAST_FACTOR else radius, good)
         return spots.keys.filter { i ->
             i !in visited && i !in s.passedBy && inOrder(i) &&
-                ((now !== planned && at(spots[i])) || atHere(followedSpots[i]) || i in past)
+                ((now !== planned && spots[i]?.reachable == false && at(spots[i])) || atHere(followedSpots[i]) || i in past)
         }.toSet()
     }
 
     /** The places on the followed line the rider has now walked past (see the class comment). */
-    private fun walkedPast(now: NavLine, p: GeoPoint, before: Double?, progressM: Double, reachM: Double): Set<Int> {
+    private fun walkedPast(now: NavLine, p: GeoPoint, before: Double?, progressM: Double, reachM: Double, good: Boolean): Set<Int> {
         if (before == null) return emptySet()
         val out = HashSet<Int>()
         for ((i, spot) in followedSpots) {
             if (progressM < spot.alongM) { crossed -= i; continue }
+            // a stop the line reaches counts as passed only from a GOOD fix (a poor one near it may hide a visit: it stays open)
+            if (spot.reachable && !good) continue
             if (before < spot.alongM && progressM - before <= STEP_M && Geo.distance(p, spot.point) <= reachM) crossed += i
             if (i in crossed && progressM >= min(spot.alongM + ON_M, now.lengthM - 1.0)) out += i
         }
@@ -85,16 +89,27 @@ class StopsBesideRoute {
         /** A taken line's place counts only when at most this much farther from the stop than the plan's own place. */
         const val TAKEN_SLACK_M = 100.0
 
-        /** Stop index → the place on [line] nearest to it, for the stops [line] does not reach. */
-        fun of(s: NavSession, line: NavLine): Map<Int, Spot> {
+        /**
+         * Stop index → the place on [line] nearest to it, for the stops [line] does not reach; with [withReachable] also
+         * the stops it does reach (flagged [Spot.reachable]): a rider who walked past one at up to [PAST_FACTOR] × the radius
+         * (good fix) and left the line keeps it open no longer (2026-11-25).
+         */
+        fun of(s: NavSession, line: NavLine, withReachable: Boolean = false): Map<Int, Spot> {
             if (!line.isUsable) return emptyMap()
             val radius = NavSession.visitedM(s.activity)
             val out = LinkedHashMap<Int, Spot>()
             for (i in 0 until s.stops.lastIndex) {
                 val st = s.stops[i]
                 // the usual case without a search of the whole line: its place on the line is close enough
-                if (Geo.distance(st.point, line.pointAt(st.alongM)) <= radius) continue
-                if ((line.match(st.point)?.distanceM ?: continue) <= radius) continue
+                if (Geo.distance(st.point, line.pointAt(st.alongM)) <= radius) {
+                    if (withReachable && i > 0) out[i] = Spot(line.pointAt(st.alongM), st.alongM, Geo.distance(st.point, line.pointAt(st.alongM)), true)
+                    continue
+                }
+                val near = line.match(st.point) ?: continue
+                if (near.distanceM <= radius) {
+                    if (withReachable && i > 0) out[i] = Spot(near.point, near.alongM, near.distanceM, true)
+                    continue
+                }
                 // to the end of the line: the next stop's place can lie on an earlier pass of the same way (out and back)
                 val m = line.match(st.point, st.alongM) ?: continue
                 out[i] = Spot(m.point, m.alongM, m.distanceM)

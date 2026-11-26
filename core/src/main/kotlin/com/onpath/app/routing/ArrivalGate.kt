@@ -19,6 +19,14 @@ class ArrivalGate(
     companion object {
         /** The progress along the line must be within this of its end. */
         const val END_M = 50.0
+
+        /** A fix this good is taken at its word; a worse one (noise ±20–45 m) must be closer by the excess (2026-11-25). */
+        const val CLEAN_ACCURACY_M = 10.0
+        /** The arrival radius / end window never shrink below this, however poor the fix (still under [maxAccuracyM]). */
+        const val MIN_REACH_M = 10.0
+
+        /** How much closer than the clean radius [accuracyM] asks for (0 for a clean or unknown accuracy). */
+        fun noiseM(accuracyM: Double?): Double = if (accuracyM == null) 0.0 else (accuracyM - CLEAN_ACCURACY_M).coerceAtLeast(0.0)
     }
 
     /**
@@ -50,7 +58,10 @@ class ArrivalGate(
         val d = Geo.distance(position, destination)
         if (d > awayM) { away = true; asked = false; return false }
         if (!away || asked) return false
-        if (openStops > 0 || remainingAlongM == null || remainingAlongM > END_M) return false
+        // noisy fix (accuracy above CLEAN): both the distance and the progress window shrink by the excess, never below MIN_REACH_M
+        val noise = noiseM(accuracyM)
+        if (openStops > 0 || remainingAlongM == null || remainingAlongM > maxOf(END_M - noise, MIN_REACH_M)) return false
+        if (d > maxOf(RouteProgress.ARRIVAL_RADIUS_M - noise, MIN_REACH_M)) return false
         if (!RouteProgress.arrived(position, destination, remainingAlongM)) return false
         asked = true
         return true

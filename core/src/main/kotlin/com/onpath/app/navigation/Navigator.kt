@@ -325,8 +325,10 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             is Rerouter.Found -> takeLine(outcome.line, outcome.legM, outcome.resumeAlongM, skipStop = null, turnRound = false)
                 .also { session = session.copy(lead = true) }
             is Rerouter.Failed -> {
-                if (outcome.reason != Rerouter.Reason.CANCELLED) prompt = NavPrompt.LeadFailed(++questionId)
-                Step()
+                if (outcome.reason == Rerouter.Reason.CANCELLED) return Step()
+                prompt = NavPrompt.LeadFailed(++questionId)
+                // the search failed: no new one by itself after a plan edit – only when the user asks again
+                withdrawLead()
             }
         }
         return when (outcome) {
@@ -710,6 +712,8 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
         val s = session
         if (s.stops.isEmpty()) return Step()
         val radius = NavSession.visitedM(s.activity)
+        // a fix worse than the clean one (noise ±20 m) must be closer by the excess: 25 m hike at accuracy 20 → 15 m (2026-11-25)
+        val reach = maxOf(radius - com.onpath.app.routing.ArrivalGate.noiseM(accuracyM), NavSession.VISITED_NOW_M)
         var v: MutableSet<Int>? = null
         if (accuracyM <= NavSession.VISITED_MAX_ACCURACY_M) for (i in s.stops.indices) {
             if (i in s.visited) continue
@@ -717,9 +721,9 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
             if (!s.inOrder(i, v ?: s.visited, detector.progressM)) continue
             val d = Geo.distance(p, s.stops[i].point)
             val closest = stopClosest[s.stops[i].point]
-            if (d <= radius) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
+            if (d <= reach) stopClosest[s.stops[i].point] = minOf(closest ?: d, d)
             val reached = d <= NavSession.VISITED_NOW_M ||
-                (closest != null && closest <= radius && d > closest + NavSession.VISITED_AWAY_M)
+                (closest != null && closest <= reach && d > closest + NavSession.VISITED_AWAY_M)
             if (reached) (v ?: s.visited.toMutableSet().also { v = it }).add(i)
         }
         val nv = v ?: s.visited

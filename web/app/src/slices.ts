@@ -11,6 +11,8 @@ interface Slices {
   routesKeep(tours: string, recent: number, now: number, points: string, unsaved: boolean, savedId: number, newId: number): string;
   routesAfterSaved(tours: string, recent: number, now: number, savedId: number, fromId: number, points: string): string;
   routesTakePlace(tours: string, recent: number, now: number, id: number): string;
+  /** The app's RestoreAsk.box (WebState.restoreBox): `{ name, underRecent }` or null = no box. */
+  routesRestoreBox(tours: string, entry: number, touring: boolean): string;
   routesToBin(tours: string, recent: number, now: number, id: number): string;
   routesRestore(tours: string, recent: number, now: number, id: number): string;
   routesTrim(tours: string, recent: number, now: number): string;
@@ -108,7 +110,7 @@ export function tourLine(key: string, draft: boolean, deletedAt: number | null |
 }
 
 /** What a My routes action of the slice wrote: [writes] for the page's store, [recent] the Zuletzt place now. */
-export interface RoutesAnswer<R> { result: R; recent: number; writes: ({ op: 'bin'; id: number; ms: number } | { op: 'unbin' | 'gone'; id: number }
+export interface RoutesAnswer<R> { result: R; recent: number; /** The tour that holds the plan a keep just wrote (RoutesState.keptAs, -1 = none). */ kept?: number; writes: ({ op: 'bin'; id: number; ms: number } | { op: 'unbin' | 'gone'; id: number }
   | { op: 'rename'; id: number; name: string } | { op: 'draft'; id: number; draft: boolean })[] }
 
 /** Save's name dialog as the slice holds it: [no] = which opening, [kind] NEW / OVERWRITE / COPY. */

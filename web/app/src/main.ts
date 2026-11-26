@@ -31,7 +31,7 @@ import { keptStore, searchRecent, type KeptPlaces, type KeptRules } from './kept
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
 import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
-import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, type RecentPlan } from './recent';
+import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, takeKept, restoreBox, recentPlans, type RecentPlan } from './recent';
 import { fitsFirstRoute, settleMs, slice, slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
 import { sortable } from './sortable';
@@ -894,14 +894,14 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
     // 2026-11-15 on a hike: a tap on a POI works also with a menu open)
     if (terrain3d.on || !pt) return;
     pt = await settledPoint(at);
-    const poi = markerNear(pt) < 0 ? poiAt(pt) : null;
+    const poi = markerNear(pt) < 0 ? poiForPress(pt) : null;
     if (poi) await poiMenu(poi);
     return;
   }
   if (terrain3d.on) { closeMenu(); return; } // 3D is for looking (the note on the map says so); planning is on the flat map
   if (pt) pt = await settledPoint(at);
   if (marker < 0 && pt) marker = markerNear(pt);
-  const poi = pt && marker < 0 ? poiAt(pt) : null;
+  const poi = pt && marker < 0 ? poiForPress(pt) : null;
   const action = await engine.call('gesture', menu != null, marker, poi != null, state.points.length === 0);
   // each waits until its menu is open or its point is in the plan (pressInOrder); the route is not waited for
   if (action.startsWith('PointMenu:')) await pointMenu(Number(action.split(':')[1]));
@@ -962,6 +962,42 @@ function poiAt(pt: maplibregl.Point): MapGeoJSONFeature | null {
     if (d < bestD) { bestD = d; best = x; }
   }
   return best;
+}
+
+/**
+ * The POI under a click, also when MapLibre's symbol placement has not caught up with the screen: after a pan the placement
+ * is redone in 2 ms steps per frame, on a slow phone for longer than a click waits (settledPoint), and the rendered query
+ * then finds nothing (owner 2026-11-17: the click added a point instead of opening the POI). Then the POIs the source holds
+ * near the click are read, as the app's PoiTap reads its list from the tiles: every symbol layer shown at this zoom asks
+ * the source with its own filter (so a POI the style hides – density, tier, zoom – is no target), and the same rule picks
+ * (the icon's box around the click, the nearest wins). Not used while the placement is the current one: a POI the placement
+ * left out (no room) is not drawn, so not a target (PoiHit: only a drawn symbol).
+ */
+function poiAtPlacementFree(pt: maplibregl.Point): MapGeoJSONFeature | null {
+  const src = map.getSource('pois');
+  if (!src) return null;
+  const reach = CLICK_HALF_PX + ICON_HALF_PX, z = map.getZoom();
+  let best: MapGeoJSONFeature | null = null, bestD = Infinity;
+  try {
+    for (const l of map.getStyle().layers) {
+      if (l.type !== 'symbol' || !l.id.startsWith('poi-') || l.id.endsWith('-name') || l.source !== 'pois') continue;
+      if ((l.minzoom != null && z < l.minzoom) || (l.maxzoom != null && z >= l.maxzoom)) continue;
+      const sourceLayer = src.type === 'vector' ? (l['source-layer'] ?? 'pois') : undefined;
+      for (const x of map.querySourceFeatures('pois', { sourceLayer, filter: l.filter as maplibregl.FilterSpecification | undefined })) {
+        if (x.geometry.type !== 'Point') continue;
+        const s = map.project((x.geometry as GeoJSON.Point).coordinates as [number, number]);
+        if (Math.abs(s.x - pt.x) > reach || Math.abs(s.y - pt.y) > reach) continue;
+        const d = (s.x - pt.x) ** 2 + (s.y - pt.y) ** 2;
+        if (d < bestD) { bestD = d; best = x as MapGeoJSONFeature; }
+      }
+    }
+  } catch (e) { problem('map', 'POIs near a click not read from the source; the click found no POI', e); return null; }
+  return best;
+}
+
+/** [poiAt] first; with a stale placement and nothing found, the source's POIs near the click. */
+function poiForPress(pt: maplibregl.Point): MapGeoJSONFeature | null {
+  return poiAt(pt) ?? (placedHere() !== true ? poiAtPlacementFree(pt) : null);
 }
 
 /** A hold's answer from the engine (WebApi.holdOnMap = the app's AppViewModel.holdOnMap). */
@@ -1367,7 +1403,7 @@ async function openLink() {
   if (!shared) { overlay.remove('link'); status(t('msg_plan_link_unreadable'), 'error'); return; }
   if (shared.points.length < 2) overlay.remove('link'); // nothing to route: no routing data to wait for
   if (shared.points.map(key).join(';') === state.points.map(key).join(';') && shared.activity === state.activity && shared.sac === state.sac && await sameAnchors(shared)) { overlay.remove('link'); return; } // our own address update
-  if (state.points.length) await keepAsRecent('plan link opened');
+  if (state.points.length) await keepAsRecent('plan link opened', true);
   forgetSaved();
   // a shared plan opened in the browser: the one calm line about the app, in the sheet (never over the route – it is
   // there before the camera fits the plan beside the sheet)
@@ -2494,14 +2530,133 @@ async function newPlan() { engine.dropPlans(); await keepAsRecent('new plan'); c
  * Zuletzt – no question (the app's keepAsDraft, owner 2026-11-06). The name: the plan's own, else the Save dialog's
  * proposal (waited for in the background), else the date name.
  */
-async function keepAsRecent(why: string) {
+let keepsPending = 0;
+let keepChain: Promise<unknown> = Promise.resolve();
+/**
+ * One keep at a time (recent.ts' takeKept and the restore ask are single): a second keep waits for the first's awaits. With
+ * none pending it starts at once (the plan is read before any await). [prof] = the plan's own activity / T level when the
+ * profile was switched before the plan left (a track's import, the app's TrackToPlanState leavingProfile).
+ */
+function keepAsRecent(why: string, asks = false, prof?: { activity: typeof state.activity; sac: number }): Promise<void> {
+  const run = () => keepAsRecentOne(why, asks, prof);
+  const p = keepsPending === 0 ? run() : keepChain.then(run);
+  keepsPending++;
+  const done = p.then(() => undefined, (e) => { problem('routes', 'Zuletzt: keeping the plan failed', e); });
+  keepChain = done;
+  void done.then(() => { keepsPending--; });
+  return p;
+}
+async function keepAsRecentOne(why: string, asks: boolean, prof?: { activity: typeof state.activity; sac: number }) {
+  // a replacement asks about the plan it replaces (the app's SaveState.keepAsDraft with asks): a newer one sets its own
+  if (asks) forgetRestoreAsk();
+  const old = { activity: prof?.activity ?? state.activity, sac: prof?.sac ?? state.sac, folder: state.savedFolder ?? sync.open, name: state.savedTitle ?? '',
+    link: state.savedId && planUnsaved ? { id: state.savedId, title: state.savedTitle, code: state.savedCode, folder: state.savedFolder, stored: state.storedCode } : null };
+  takeKept(); keptIn = null;
+  await keepAsRecentNow(why, prof);
+  const entry = takeKept();
+  if (!asks || !entry) return;
+  const link = old.link && entry !== 's:' + old.link.id ? old.link : null; // a link to the entry itself comes back with the entry
+  restoreAsk = { entry, activity: old.activity, sac: old.sac, link, folder: foundIn()?.folder ?? old.folder, name: foundIn()?.name ?? old.name };
+  console.info(`[Problems] TRACE plan: Restore your old plan? asked (${why}): ${entry}, ${old.activity} T${old.sac}${link ? ', linked to saved route ' + link.id : ''}`);
+  void refreshRestoreAsk();
+}
+/**
+ * "Deinen alten Plan wiederherstellen?" (owner 2026-11-24, the app's RestoreAsk + RoutesOpenState.answerRestore): the plan on
+ * the map was REPLACED (a saved / Zuletzt plan opened, a plan link, a track's plan) – the old one is under Zuletzt, or it was a
+ * saved route as it is. FRAGE Behalten · Wiederherstellen, until answered; it goes when the old entry leaves My routes
+ * (the app's RestoreAsk.box on the page's list). Memory only: a reload drops it.
+ */
+interface RestoreAsk { entry: string; activity: typeof state.activity; sac: number; folder: string; name: string;
+  link: { id: string; title: string | null; code: string | null; folder: string | null; stored: string | null } | null }
+let restoreAsk: RestoreAsk | null = null;
+let restorePoll: number | null = null;
+let restoreShown: string | null = null; // the facts the box shows now: drawn again only when they change
+let restoreListWarned = false;
+function forgetRestoreAsk() {
+  restoreAsk = null; restoreShown = null; restoreListWarned = false; dismiss('restore');
+  if (restorePoll != null) { clearInterval(restorePoll); restorePoll = null; }
+}
+/** The box as the app's RestoreAsk.box says now (the entry may have left My routes, or been renamed): shown, updated or taken away. */
+async function refreshRestoreAsk() {
+  const a = restoreAsk;
+  if (!a) return;
+  let saved: { title: string; deletedAt?: number | null } | null = null;
+  if (a.entry.startsWith('s:')) {
+    const id = a.entry.slice(2);
+    try {
+      await syncReady;
+      const p = (await sync.list(a.folder)).find((x) => x.id === id);
+      saved = p ? { title: p.title ?? a.name } : (await sync.binnedRoutes()).some((e) => e.id === id) ? { title: a.name, deletedAt: Date.now() } : null;
+    } catch (e) {
+      if (!restoreListWarned) { restoreListWarned = true; problem('routes', 'Restore your old plan?: the saved routes could not be read – the question stays', e); }
+      saved = { title: a.name };
+    }
+  }
+  if (a !== restoreAsk) return; // answered or replaced meanwhile
+  const box = restoreBox(a.entry, saved);
+  if (!box) { console.info('[Problems] TRACE plan: Restore your old plan? dropped: the old plan is gone from My routes'); forgetRestoreAsk(); return; }
+  if (!box.name) { restoreShown = null; dismiss('restore'); } // no name to show yet: the box waits hidden
+  else if (restoreShown !== `${box.underRecent}|${box.name}`) {
+    restoreShown = `${box.underRecent}|${box.name}`;
+    post({ id: 'restore', kind: 'frage', tone: 'edit', title: t('routes_restore_title'),
+      detail: t(box.underRecent ? 'routes_restore_recent' : 'routes_restore_saved', box.name),
+      buttons: [{ label: t('routes_restore_keep'), act: () => { void answerRestore(false); } }, { label: t('common_restore'), act: () => { void answerRestore(true); } }] });
+  }
+  if (restorePoll == null) restorePoll = window.setInterval(() => { void refreshRestoreAsk(); }, 2_500);
+}
+/** The answer (the app's RoutesOpenState.answerRestore): Keep = as it is; Restore = the old entry back as it was, the plan on the map goes under Zuletzt. */
+async function answerRestore(restore: boolean) {
+  const a = restoreAsk;
+  forgetRestoreAsk();
+  if (!a) return;
+  if (!restore) { console.info(`[Problems] TRACE plan: Restore your old plan? → Keep (${a.entry} stays where it is)`); return; }
+  try {
+    const id = a.entry.slice(2);
+    if (a.entry.startsWith('d:')) {
+      const r = recentPlans().find((x) => x.id === id);
+      if (!r) { problem('plan', `Restore your old plan? → Restore: ${a.entry} is gone – nothing restored`); return; }
+      await plansHost.openRecent(r, a);
+    } else {
+      const p = (await sync.list(a.folder)).find((x) => x.id === id);
+      if (!p) { problem('plan', `Restore your old plan? → Restore: ${a.entry} is gone – nothing restored`); return; }
+      await plansHost.open(p, a.folder, a);
+    }
+    console.info(`[Problems] TRACE plan: Restore your old plan? → Restore: ${a.entry} back on the map, ${a.activity} T${a.sac}${a.link ? ', linked to saved route ' + a.link.id : ''}; the plan on the map went under Zuletzt`);
+  } catch (e) { problem('plan', 'Restore your old plan? → Restore failed – the old plan is still under Zuletzt', e, 'error'); }
+}
+/** Restore: a changed saved route is linked to that route again (Save overwrites it, as before the replacement). */
+function relinkRestored(a: RestoreAsk) {
+  const l = a.link;
+  if (!l) return;
+  state.savedId = l.id; state.savedTitle = l.title; state.savedCode = l.code; state.savedFolder = l.folder; state.storedCode = l.stored;
+  render(); rememberInAddress();
+}
+/** Where the entry of the last keep was found (its folder, its name): the saved route as it is, or a twin of the open folder. */
+let keptIn: { folder: string; name: string } | null = null;
+const foundIn = () => keptIn;
+/**
+ * A track's import switched the activity before the track replaced the plan: the plan leaves with the profile it had before
+ * (the app's TrackToPlanState leavingProfile) – for the Zuletzt draft and for Restore. A chain of tracks keeps the first note.
+ */
+let profileSwitch: { from: { activity: typeof state.activity; sac: number }; to: { activity: typeof state.activity; sac: number }; points: string } | null = null;
+function noteProfileSwitch(activity: typeof state.activity, sac: number) {
+  const now = { activity: state.activity, sac: state.sac }, pts = enc(state.points);
+  const keep = profileSwitch && profileSwitch.to.activity === now.activity && profileSwitch.to.sac === now.sac && profileSwitch.points === pts;
+  profileSwitch = { from: keep ? profileSwitch!.from : now, to: { activity, sac }, points: pts };
+}
+function leavingProfile(): { activity: typeof state.activity; sac: number } | undefined {
+  const w = profileSwitch;
+  return w && w.to.activity === state.activity && w.to.sac === state.sac && w.points === enc(state.points) ? w.from : undefined;
+}
+async function keepAsRecentNow(why: string, prof?: { activity: typeof state.activity; sac: number }) {
+  keptIn = null;
   const fromRecent = state.recentId;
   state.recentId = null;
   if (state.points.length < 2) return; // one point is no plan
   // the plan itself unsaved (never saved, or changed since) – not Save's dark state, which also counts routes waiting for the phone
   // (read at once, like Save's state was: renderSaved keeps planUnsaved current; no await before the plan is read)
   const savedId = state.savedId && !planUnsaved ? state.savedId : null, savedFolder = state.savedFolder;
-  const pts = enc(state.points), plan = { ...sharedPlan(), points: [...state.points] }, n = state.points.length;
+  const pts = enc(state.points), plan = { ...sharedPlan(), points: [...state.points], ...(prof ? { activity: prof.activity, sac: prof.sac } : {}) }, n = state.points.length;
   // its anchors as they count for these points, asked now: the worker answers behind every edit already sent, before any later one
   const anchorsKept = engine.anchors ? engine.call('anchorsCounting', pts, plan.activity, plan.sac).catch((e) => {
     problem('routes', 'Zuletzt: the detour points could not be read – the plan is kept without them', e); return ''; }) : Promise.resolve('');
@@ -2516,7 +2671,10 @@ async function keepAsRecent(why: string) {
     try {
       await syncReady;
       const folders = [...new Set([sync.open, savedFolder].filter((f): f is string => !!f))];
-      there = (await Promise.all(folders.map((f) => sync.list(f)))).some((l) => l.some((p) => p.id === savedId));
+      const lists = await Promise.all(folders.map((f) => sync.list(f)));
+      const at = lists.findIndex((l) => l.some((p) => p.id === savedId));
+      there = at >= 0;
+      if (there) keptIn = { folder: folders[at], name: lists[at].find((p) => p.id === savedId)?.title ?? '' };
     } catch (e) { there = false; problem('routes', 'Zuletzt: the saved routes could not be read – the plan is kept as a draft too (never lost)', e); }
     let binned = false;
     if (!there) {
@@ -2532,6 +2690,7 @@ async function keepAsRecent(why: string) {
   // never a twin draft beside it (RouteRules.isUnsaved: points only – the page compares them, the slice decides)
   plan.anchors = await anchorsKept; plan.live = false;
   const twin = await savedTwin(plan.points, plan.anchors);
+  if (twin) keptIn = { folder: sync.open, name: twin.title ?? '' };
   const code = await engine.encode(plan);
   const dated = datedName();
   const id = keepPlan({ code, title: own || dated, points: pts, replaces: fromRecent, savedId, saved, twin: twin?.id ?? null });
@@ -2591,7 +2750,7 @@ const plansHost = {
   note: (text: string) => status(text),
   engineCall: (fn: string, ...args: (string | number)[]) => engine.call(fn, ...args),
   openFolder: () => (state.savedId && state.savedFolder) || sync.open,
-  open: async (p: SavedPlan, folder: string) => {
+  open: async (p: SavedPlan, folder: string, restoring?: RestoreAsk) => {
     if (p.kind === 'track') {
       const before = gpxImport.shown;
       await gpxImport.showGpx(await sync.trackGpx(p), shownTitle(p.title, t('web_route_default_name')));
@@ -2602,18 +2761,20 @@ const plansHost = {
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     // the multi-day guide's „Noch etwas anhängen“ → „Gespeicherte Route öffnen“: appended behind the route, not opened
-    if (multiDay?.takeAppend()) { await appendRoute(shared.points); return; }
-    if (shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('another plan opened');
+    if (!restoring && multiDay?.takeAppend()) { await appendRoute(shared.points); return; }
+    if (restoring || shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('another plan opened', !restoring);
     state.recentId = null;
     state.savedId = p.id; state.savedTitle = p.title; state.savedCode = p.plan; state.savedFolder = folder; state.storedCode = p.plan;
     // the same points with other anchors are another route: opened, not only renamed
-    if (state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';') && await sameAnchors(shared)) {
+    if (!restoring && state.points.length && shared.points.map(key).join(';') === state.points.map(key).join(';') && await sameAnchors(shared)) {
       state.title = p.title; state.otherRouting = !!p.otherRouting; render(); rememberInAddress(); keepPlanStats(p.plan); return;
     }
     openedOtherRouting = !!p.otherRouting;
-    await loadShared({ ...shared, title: p.title });
+    // restored: the old plan's own profile (a saved route may have been switched after loading), as the app's openTour(restoring)
+    await loadShared({ ...shared, title: p.title, ...(restoring ? { activity: restoring.activity, sac: restoring.sac } : {}) });
     rememberInAddress();
     keepPlanStats(p.plan); // routed by now (loadShared waits for the plan) – My routes shows its numbers from now on
+    if (restoring) relinkRestored(restoring);
   },
   saved: (p: SavedPlan, folder: string) => {
     if (state.recentId) justSavedFromRecent = p.id;
@@ -2627,15 +2788,16 @@ const plansHost = {
   },
   suggestName,
   /** Meine Touren → Zuletzt → a click: the plan comes back, still belonging to its entry (saving it moves it). */
-  openRecent: async (r: RecentPlan) => {
+  openRecent: async (r: RecentPlan, restoring?: RestoreAsk) => {
     const shared = await engine.parse('p=' + r.code);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
-    if (shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('a plan from Zuletzt opened');
+    if (restoring || shared.points.map(key).join(';') !== state.points.map(key).join(';') || !(await sameAnchors(shared))) await keepAsRecent('a plan from Zuletzt opened', !restoring);
     forgetSaved();
-    await loadShared({ ...shared, title: r.title });
+    await loadShared({ ...shared, title: r.title, ...(restoring ? { activity: restoring.activity, sac: restoring.sac } : {}) });
     state.recentId = r.id;
     rememberInAddress();
     keepPlanStats(r.code);
+    if (restoring) relinkRestored(restoring);
   },
   /** „✓ Gerade gespeichert“: the plan just saved from Zuletzt (its id), shown once in Meine Touren. */
   justSaved: () => { const id = justSavedFromRecent; justSavedFromRecent = null; return id; },
@@ -2789,7 +2951,7 @@ $('mapContent').onclick = () => { closeMenus(); picker.close(); mapContent.open(
 const gpxImport = setupGpxImport({
   map, engine, status, fitPadding,
   activity: () => ({ activity: state.activity, sac: state.sac }),
-  setActivity: (a, sac) => setActivity(a, sac, true),
+  setActivity: (a, sac) => { noteProfileSwitch(a, sac); setActivity(a, sac, true); },
   plan: async (points, title, names, pinned) => {
     state.title = title; forgetSaved();
     nextTour = null; // a new route from a track: a normal plan until the days are set
@@ -2799,7 +2961,7 @@ const gpxImport = setupGpxImport({
   mayReplacePlan: async () => { await keepAsRecent('GPX opened'); return true; }, // the app: the replaced plan goes under Zuletzt, no question
   // the app's TrackToPlanState decides on the plan's points whether it goes under Zuletzt (keepAsDraft), after the fit
   points: () => state.points.slice(),
-  keepAsDraft: async () => { await keepAsRecent('replaced by a track\'s plan'); },
+  keepAsDraft: async () => { await keepAsRecent('replaced by a track\'s plan', true, leavingProfile()); },
   // multi-day tours (stage 3): trim handles while the guide is open; „An die Route anhängen“ once it has a route
   tourMode: () => multiDay?.gpxMode() ?? 'off',
   append: async (points) => { await appendRoute(points); },

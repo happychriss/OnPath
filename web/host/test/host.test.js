@@ -126,3 +126,16 @@ test("the per-IP limits never see a plain IP: a daily salted hash is the key (ow
   assert.equal(keys.length, 1);
   assert.ok(!keys[0].includes("203.0.113.7") && /^[0-9a-f]{16,}$/.test(keys[0]), keys[0]);
 });
+
+test("security headers: on every worker answer and equal to web/app/public/_headers (pages carry the CSP from there)", async () => {
+  const { readFileSync } = await import("node:fs");
+  const { SECURITY_HEADERS } = await import("../src/index.js");
+  const file = readFileSync(new URL("../../app/public/_headers", import.meta.url), "utf8");
+  const fromFile = Object.fromEntries([...file.matchAll(/^\s+([A-Za-z-]+):\s*(.*)$/gm)].map((m) => [m[1].toLowerCase(), m[2].trim()]));
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) assert.equal(fromFile[k], v, k + " differs from _headers");
+  assert.match(fromFile["content-security-policy"], /default-src 'self'.*frame-ancestors 'none'/);
+  for (const p of ["/data/cells/f2/10/543/361/current.json", "/segments/nope", "/.well-known/x", "/version.json", "/page"]) {
+    const r = await handle(new Request(H + p), env);
+    for (const [k, v] of Object.entries(SECURITY_HEADERS)) assert.equal(r.headers.get(k), v, p + " " + k);
+  }
+});

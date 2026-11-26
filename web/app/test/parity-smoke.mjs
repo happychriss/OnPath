@@ -382,9 +382,17 @@ await planned();
 const first = await page.evaluate(() => window.__engine && location.hash);
 check(await pins() === 2 && first.length > 10, 'Go here: route from my position to the clicked spot');
 
+// a plan link over a plan asks „Restore your old plan?“ (RestoreAsk, the app's FRAGE box) – this smoke keeps the new plan
+async function keepIfAsked() {
+  const b = page.locator('.msgcard.frage[data-id="restore"] .msgbuttons button', { hasText: 'Keep' });
+  if (await b.count()) await b.first().click();
+}
+
 // 8. Google Maps link-out from a named point (new tab, the app's PoiLinks link, nothing drawn here)
 await page.goto(url + 'index.html#p=' + CODE);
 await page.waitForFunction(() => document.querySelector('#summary .big'), null, { timeout: 120_000 });
+await page.waitForSelector('.msgcard.frage[data-id="restore"]', { timeout: 10_000 }).catch(() => {}); // expected: asks only over a plan
+await keepIfAsked();
 await page.locator('.pin').nth(1).click(); // Vellau, the named destination
 await page.waitForSelector('.pointmenu');
 check((await menuItems()).includes('Open in Google Maps'), 'named point: Open in Google Maps in the menu');
@@ -398,6 +406,7 @@ await tab.close();
 const steep = await page.evaluate(() => window.__engine.encode({ points: [[46.6870, 11.2350], [46.7006, 11.2585]], activity: 'MTB', sac: 2, pinned: [], names: {}, title: null }));
 await page.goto(url + 'index.html#p=' + steep); // only the hash changes: the page opens the plan (hashchange)
 await page.waitForFunction(() => !document.getElementById('warning').hidden, null, { timeout: 120_000 }).catch(() => {});
+await keepIfAsked();
 const wl = await page.textContent('#warning');
 console.log('warning:', wl);
 // MTB: no 'steep' line any more (app's RouteWarnings.isMtb, main 2026-10-27); the ford there stays

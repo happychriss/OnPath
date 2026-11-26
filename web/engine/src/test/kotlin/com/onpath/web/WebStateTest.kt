@@ -123,4 +123,29 @@ class WebStateTest {
     @Test fun theFirstRouteFitWaitsTheAppsSettleTime() {
         assertEquals(com.onpath.app.ui.WholeRoute.SETTLE_MS.toString(), WebRules.settleMs())
     }
+
+    // ---------------- "Restore your old plan?" (RestoreAsk, owner 2026-11-24) ----------------
+
+    @Test fun aKeptPlanSaysWhereItIsKeptForTheRestoreQuestion() {
+        // a new draft: the entry the old plan lives under = the draft just written
+        val r = WebState.keep("", -1.0, T0, "9,9;10,10", unsaved = true, savedId = -1.0, newId = 7.0)
+        assertEquals("7", field(r, "kept"))
+        // saved as it is: the saved route itself holds it
+        val saved = WebState.keep(line(50, false, 100, "S", ""), -1.0, T0, "1,1;2,2", false, 50.0, 9.0)
+        assertEquals("50", field(saved, "kept"))
+        // one point is no plan: nothing kept, nothing to ask
+        assertEquals("-1", field(WebState.keep("", -1.0, T0, "1,1", true, -1.0, 9.0), "kept"))
+    }
+
+    @Test fun theRestoreBoxIsTheAppsRestoreAskBox() {
+        val t = listOf(line(50, false, 100, "Gespeichert A", ""), line(7, true, 3000, "Algund → Meran", "3,3;4,4")).joinToString("\n")
+        // a plan under Zuletzt: "…is kept safe"; a saved route as it is: "…is saved"
+        assertEquals("{\"name\":\"Algund → Meran\",\"underRecent\":true}", WebState.restoreBox(t, 7.0, false))
+        assertEquals("{\"name\":\"Gespeichert A\",\"underRecent\":false}", WebState.restoreBox(t, 50.0, false))
+        // no box while a tour runs, when the entry is gone (not listed / in the bin) or none is asked
+        assertEquals("null", WebState.restoreBox(t, 7.0, true))
+        assertEquals("null", WebState.restoreBox(t, 99.0, false))
+        assertEquals("null", WebState.restoreBox(line(7, true, 3000, "X", "3,3;4,4", deleted = 5), 7.0, false))
+        assertEquals("null", WebState.restoreBox(t, -1.0, false))
+    }
 }

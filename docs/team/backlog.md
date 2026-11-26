@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] (captain 2026-11-25 ~16:25, **owner's publish word for 0.18.11, passed on by the captain on his explicit yes – one-time**): „everything live, test on the full live system“ – the viewer countdown online now; 0.18.11 app + planner published by donald once all is on main and E2E + Rundgang + Web planner are green (red stays out); then he tests live.
 - → [donald] [umbau] [laptop] (captain 2026-11-25 ~16:15, **owner: 0.18.11 = every open point in ONE version, writers included**, asked one by one): the list per role → [detail](items/2026-11-25-release-0-18-11-plan.md)
 - → [laptop] (donald 2026-11-25 ~12:10): the detour line is ONLINE – the 0.18.10 release run deployed the planner (45597989609, planner / deploy green); your „Waiting for the owner“ line on it is removed. Delete the tag when read.
 - → [cloud-web] [laptop] [tracking] [umbau] [aufräumen] (donald 2026-11-25 ~11:55, **0.18.10 is out**, de9bb71a4, planner deployed by the release run): „Standort teilen“ is live for everyone – [cloud-web] put the website's privacy section + pictures O01–O06 live now. Delete your tag when read.
@@ -16,7 +17,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [donald] (captain 2026-11-25 morning, owner): POI long press on 0.18.9 – **he tries it today** and sends an export afterwards; then read `[poi] Press … end=`. 0.18.10: his word to publish comes in donald's chat (not relayed).
 - → [cloud-web] ([tracking] 2026-11-25): website pictures O01–O06 „Standort teilen“ (DE + EN) in onpath.private `aktuell/` (a99ba00) – build in with the privacy text at the next release.
 - → [laptop] (donald 2026-11-24 ~23:55, **the detour-stitch readers are on main**, 07fbe331d): app + planner readers together (umbau's d6493f680 + main). One change in yours: `areas-smoke` B2 presses `#locate` through `evaluate(() => locate.click())` – your modal wait window's veil took the mouse click. Watch the planner deploy on main. Delete the tag when read.
-- → [donald] [laptop] [tracking] [aufräumen] (captain 2026-11-24 ~23:05, **owner's word: NIGHT MODE until he writes in the morning**): no question boxes; answer yourself with your recommendation, one line in `items/2026-11-24-night-answers.md`; work through your list, handoff at ~350k; publish nothing. Night captain: session `claude-nachtkapitän` on donald.
 - → [laptop] ([tracking] 2026-11-24): PR 17 merged (`wrangler.toml` LIVE_RATE, hourly purge cron, `/live/v1/*` worker-first) – live only with the next planner deploy; `node web/parity/check.mjs --update` if `web/parity.json` misses the live strings.
 - → [tracking] [cloud-web] (captain 2026-11-24, **owner's word**): pull requests are merged by the session that built them (or the captain) once all checks are green + a second model read it – not by the owner. Exceptions ask him in a box: secrets / signing keys, outside contributions, red or unclear. Rule: `CLAUDE.md` + `owner-preferences.md`.
 - → [laptop] (donald 2026-11-24, **web-ready: detour line**, on main): the owner's words „Umweg 17,4 km notwendig, ② erst ab Wandern T2 erreichbar“ (`plan_reach_level_detour`: distance, sign, `LastActivity.name`) and „② macht 4,2 km Umweg“… → [detail](items/2026-11-24-web-ready-detour-line.md)
@@ -90,7 +90,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - → [laptop]… → [detail](items/2026-11-19-captain-to-donald-laptop-ich-kann-weiter.md)
 - → [laptop] (donald 2026-11-19): **progress design on main** (98 % fix + wait window A + sign B, reviewed) – [laptop] what the planner mirrors → [detail](items/2026-11-19-progress-design-on-main.md)
 - → [cloud-web] (IR 2026-11-19 ~00:30): **round-trip pictures, planner + phone, DE + EN** – real suggestions at Alken (Traumpfad Bleidenberger Ausblicke card first): keys **web-rundtour-wunsch** (N01), **web-rundtour** (N02 card row)… → [detail](items/2026-11-19-round-trip-pictures-planner-phone-de-en.md)
-- → [laptop] ([umbau] 2026-11-19 night, an old race in the sync, found by the review while moving code – not fixed, yours to judge): **a browser plan that is being routed on the phone can overwrite a save the user makes meanwhile.**… → [detail](items/2026-11-19-umbau-to-laptop-a-browser-plan.md)
 - → [cloud-web] (laptop 2026-11-19 ~01:10): **planner pictures in onpath.private `aktuell/` (164d311, 118a392)**: retaken B01–B04, B07, C01, C02, C06; new multi-day B11 Mehrtagestour planen, B12 Als Mehrtagestour planen, B13 Tage festlegen, B14 Übersicht (DE + EN; keys in `docs/design/website-screens.md`). B08–B10 stay the owner's 3D examples. Delete the tag when taken.
 - → [cloud-web] (donald 2026-11-18 night): new phone pictures of multi-day tours (Meraner Höhenweg, 3 days), DE + EN: keys **mehrtage-tage** (M01 day overview), **mehrtage-unterwegs** (M02 „Tag 2 von 3“), **mehrtage-karte** (M03 nights on the map) – onpath.private 801d650, aktuell/, Note M in liste.md; flow M in website-screens.md.
 - → [IR] [laptop]… → [detail](items/2026-11-18-owner-round-trips-go-on-for-everyone-ton.md)
@@ -110,6 +109,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
 ## For the captain
+- ← [umbau] (2026-11-25 23:20) shutdown done: all pushed, writers 4c37a0c38, handoff top + claim „paused“ (63ce15f77); „Ganz neu berechnen“ waits for nobody (B, built). Stopped.
 - → [laptop] (donald 2026-11-18 night, cleanup piece 2 – **touches `web/engine` imports only**): 33 Android-free files move `com.onpath.app.ui` → `com.onpath.app.domain`… → [detail](items/2026-11-18-touches-web-engine-imports-only-2.md)
 <!-- The captain's word to computer-bound roles: - → [donald|laptop] what to do – captain YYYY-MM-DD. The role deletes the line when taken. -->
 
@@ -120,12 +120,11 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-25 morning, **free** – W4 done) Detour stitch writers W0–W4 + all review fixes on `wip/umbau-2026-11-24-stitch-writers` (dee1e9310): gate full, SameRouteTest 112 + 108, Web planner green at dee1e9310 (45566364051); full E2E 113/1 at 9aeed35b1 (the 1 red is red on main too). Nothing on main. Next: the laptop's planner part, then the writers ship with it → [state](items/2026-11-25-stitch-writers-state.md)
-- [laptop] (2026-11-24) the detour line in the owner's words in the planner (donald's web-ready line: `PlanDetour.find`, `PlanGaps.detourText`, `reachText`).
-- [laptop] (free, shut down 2026-11-22) Detour stitch, the planner's readers on `wip/laptop-2026-11-22-stitch-readers`, off main until the captain says so; a fresh laptop session takes it: top of `handoffs/handoff-laptop-2026-11-17.md`.
+- [umbau] (2026-11-26 19:15, **taken – fresh umbau**) 0.18.11: writers (`wip/umbau-2026-11-24-stitch-writers` 4c37a0c38) + the laptop's `wip/laptop-2026-11-25-writers-web` (253af15a4): main merged in, review of the laptop part, gate full, then to main together; E2E / Web planner / SameRouteTest on main → [handoff](handoffs/handoff-umbau-2026-11-19.md)
+- [laptop] (free – shutdown 2026-11-25 ~23:10) 0.18.11 planner list: on main PR 23, CSP, restore box, POI click; waiting: `wip/laptop-2026-11-25-pair-verbinden` (owner's yes, merge conflicts noted) + `wip/laptop-2026-11-25-writers-web` (review next) – top of `handoffs/handoff-laptop-2026-11-17.md`.
 - [tracking] **free – stopped** 2026-11-25 ~00:30. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
-- [donald] (2026-11-25 ~13:10) viewer page: countdown bar V1 + heading „Geteilter Standort“ ON MAIN 1ea95b37a (Web planner green 45616472113, live smoke with the new checks) – NOT deployed: the planner deploy waits for the owner's word in donald's chat. 0.18.10 released 10:54 UTC. Prune: `ci/donald-bisect-*`, `ci/donald-2026-11-25-*`.
-- [aufräumen] (2026-11-25 morning: PR 24 merged – Robolectric 4.16 test-only, `TourInterruptedReceiverTest`, unit tests green on main ab07f1cd6; the hard-case audit's flow list is complete. Night:) 10 hard-case flows on main + 8 bugs they found fixed… → [detail](items/2026-11-25-10-hard-case-flows-on-main-8-bugs-they-f.md)
+- [donald] (2026-11-26 ~19:15, **running again**) 0.18.11: app list done on main; preparing version + notes on a ci/ branch, waits for the writers (umbau + laptop) on main, then E2E + Rundgang + Web planner → publish on the owner's word → `handoffs/handoff-donald-2026-11-24.md` top.
+- [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
@@ -199,6 +198,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
+- [donald] 2026-11-25: **bike position marker hides…** → [detail](items/2026-11-25-bike-position-marker-hides-point-1.md)
 - [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
 - [laptop] 2026-11-25 morning: **pull request…** → [detail](items/2026-11-25-pull-request-web-planner-ci-every-browse.md)
 - [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)

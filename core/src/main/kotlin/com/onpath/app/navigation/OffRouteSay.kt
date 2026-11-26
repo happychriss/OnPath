@@ -62,6 +62,9 @@ class OffRouteSay {
         val heading = heading() ?: return null
         val gps = gpsBearingDeg ?: return null
         if (!gps.isFinite() || abs(Geo.angleDiff(heading, gps)) > AGREE_DEG) return null
+        // the side is read from the chord, which lags: when the receiver's bearing (the way walked now) gives another
+        // side for the same route point, the side is a coin toss and the plain sentence stays
+        if (RouteSide.of(heading, hint.bearingDeg) != RouteSide.of(gps, hint.bearingDeg)) return null
         return Numbers(heading, hint.distanceM, hint.bearingDeg)
     }
 
