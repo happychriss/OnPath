@@ -98,4 +98,5 @@ class SearchTextRulesTest {
             PoiKinds.upgradeHidden(setOf("shop", "parking", "toilets", "picnic", "info", "bike_shop", "charging")))
         for ((word, kind) in listOf("pension" to "guest_house", "jugendherberge" to "hostel", "hotel" to "hotel"))
             assertTrue("$word → $kind", kind in SearchText.kindsFor(word))
+    }
 }
