@@ -56,7 +56,7 @@ A paid extra may need an account, for example one that backs up your tours; pair
 OnPath is not a social network: no profile, no feed, no followers, no leaderboards.
 Sharing your location sends it one way to people you choose, with no groups and no shared map of each other.
 For browsing, OnPath shows only signposted trails from OpenStreetMap, never other users' tours, photos or ratings.
-Weather, sunset warnings, an emergency screen and a battery check at the start are deliberately left out.
+Weather, sunset warnings, an emergency screen and a battery check at the start are deliberately left out; weather may return one day only as a paid extra.
 Android comes first; the iPhone comes only after the public launch, and until then only the core stays free of Android.
 Marketing, private tour data and internal planning live only in the private repository.
 
