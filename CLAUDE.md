@@ -3,6 +3,7 @@
 Offline hiking and biking app for Android (Kotlin, Compose, MapLibre, BRouter). Owner: happychriss.
 Priorities: **robust first** (never lose a track, never crash on missing data/GPS/network) → offline → everything on
 the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new IDs at the end of a section).
+**North Star: `VISION.md`** (owner 2026-11-26) – check a change, and a question to the owner, against its last two lines.
 
 ## Working together
 - Several sessions work on this repo. Start: read your role file (donald → `docs/team/roles/start.md`, captain →

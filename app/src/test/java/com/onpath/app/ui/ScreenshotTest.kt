@@ -109,7 +109,7 @@ class ScreenshotTest {
                           if (route) UndoPill(onUndo = {}, onRedo = null)
                       },
                       menu: PlanMenu = PlanMenu(onUpdates = {}),
-                      /** "Plan ändern" during a tour: the mode label and the blue position sign in the map's middle. */
+                      /** "Plan ändern" during a tour: the mode label (the position is the normal blue dot, owner 2026-11-26). */
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
                       offline: OfflineReady.State? = null,
@@ -119,8 +119,6 @@ class ScreenshotTest {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
-                if (editing) androidx.compose.foundation.Image(rememberPlanPuck(Activity.HIKE).asImageBitmap(), null,
-                    Modifier.align(Alignment.Center))
                 // the paper band behind the search pill and ☰ (owner 2026-11-05; paper since 2026-11-06 C) – as MapScreen draws it
                 Box(Modifier.fillMaxWidth().edgeShadow(androidx.compose.ui.graphics.RectangleShape, up = false).background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {

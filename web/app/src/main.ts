@@ -30,7 +30,7 @@ import { holdMenu, setRow, type MenuItem } from './menus';
 import { keptStore, searchRecent, type KeptPlaces, type KeptRules } from './keptplaces';
 import { Position } from './position';
 import { PlanSync, shownTitle, type SavedPlan } from './sync';
-import { myPlansDialog, joinDialog, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
+import { myPlansDialog, joinDialog, openInAppDialog, isAndroidPhone, saveRoute, saveRouteAs, phoneDialog, pairDialog, phonePill, appDate, datedName } from './plans';
 import { keepPlan, afterSaved, renameRecentIf, startUp as zuletztStartUp, takeKept, restoreBox, recentPlans, type RecentPlan } from './recent';
 import { fitsFirstRoute, settleMs, slice, slicesReady } from './slices';
 import { MapContentPanel } from './mapcontent';
@@ -463,7 +463,7 @@ const syncReady = ready.then(async (ok) => {
   await sync.init();
   // the saved routes in the recycle bin (deleted without a phone, owner 2026-11-15): older than 30 days → gone
   try { await sync.binStartUp(); } catch (e) { problem('routes', 'recycle bin: the start-up clean-up failed – tried again at the next start', e); }
-  if (pairLink) joinDialog(sync, pairLink);
+  if (pairLink) { if (isAndroidPhone()) openInAppDialog(pairLink); else joinDialog(sync, pairLink); }
   syncBadge();
   sync.onChange(syncBadge);
   sync.onChange(() => saveEntry(saveState)); // dark while anything is to save or waits for the phone (§14.6)

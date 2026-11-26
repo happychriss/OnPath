@@ -9,7 +9,8 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
 - **Few colours, one meaning each:** green = act (primary button), blue edge = a question, amber = attention,
   red = something failed. Map furniture (route blue, track purple, recording orange) never appears in messages.
 - **Nothing disappears by itself** (owner rule for the whole app – rain, stress): a box stays until it is answered,
-  a state shows until it no longer holds. Nothing may flash (`NoFlash`).
+  a state shows until it no longer holds. Nothing may flash (`NoFlash`). Exception (owner 2026-11-26, `VISION.md`): a short
+  info line **without a button** may go after a few seconds; a line or card with a button stays.
 - **Big targets:** gloves, one hand, sunlight.
 
 ## Colours (`ui/Theme.kt` → `OnPathColors`)
@@ -72,8 +73,8 @@ the compass, the route and the blue dot say enough there): the plan sheet, the s
 very light blue (`PlanTint` `#EEF3F7`), their signs, the sheet's handle and a top edge in the edit blue (`PlanAccent` =
 `ActionEdit`), no band at the top (owner 2026-11-03 – removed) and a soft blue edge round the
 screen (`PlanEdge`, only drawn – no touches taken; `ui/PlanTopBar.PlanFrame`), a small label "PLANEN" on the search
-pill ("ROUTE ÄNDERN" during a tour), and the position sign while the route is changed during a tour in blue
-(`ui/PlanPuck`). Kept: the blue route line, red for stop /
+pill ("ROUTE ÄNDERN" during a tour); the position stays the normal blue dot with its direction also while the route
+is changed during a tour (owner 2026-11-26, variant B – the old activity badge covered point ①). Kept: the blue route line, red for stop /
 errors. Since 2026-11-12 (owner, variant F + "one rule"): **in Plan every big go button is plan ink blue with white
 words** (`OnPathColors.PlanGo` via `ActionButtons.planGo()`, 7.1:1) – "▶ Los geht's", "▲ Weiter geht's" back to
 Navigate, "Tour nachfahren" under a shown tour, the route overview's "Los geht's" / "Folgen"; **in Navigate everything

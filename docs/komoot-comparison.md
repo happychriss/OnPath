@@ -48,8 +48,8 @@ since: no dragging of points or the route line – Plan uses hold-only gestures 
 ### Adopt now (small, high value)
 | What | Why | Effort |
 | --- | --- | --- |
-| **Smart insert on tap:** a new point near the current line (e.g. < 150 m, or a long-press menu "Insert here") goes into the nearest leg; elsewhere it is appended | Fixes the out-and-back spike, which is the most common planning annoyance. Appending stays the predictable default, which avoids Komoot's "where did my point go" confusion | S |
-| **Drag a point to move it** (order kept) | Basic editing, F-PLAN-04. Each drag re-routes only the two legs next to the point | M |
+| ~~**Smart insert on tap:** a new point near the current line (e.g. < 150 m, or a long-press menu "Insert here") goes into the nearest leg; elsewhere it is appended~~ dropped: hold-only, no tap actions, no dragging (owner; `VISION.md`) | Fixes the out-and-back spike, which is the most common planning annoyance. Appending stays the predictable default, which avoids Komoot's "where did my point go" confusion | S |
+| ~~**Drag a point to move it** (order kept)~~ dropped: hold-only, no tap actions, no dragging (owner; `VISION.md`) | Basic editing, F-PLAN-04. Each drag re-routes only the two legs next to the point | M |
 | **Reverse route** button | One line of code on the waypoint list; useful for loops and the way back | S |
 | **Round trip toggle:** "back to start" adds the start again as the last point | F-PLAN-03. Simple and transparent, with no automatic loop generation | S |
 | **Redo** next to undo | F-PLAN-08 Must; the undo stack is already there | S |
@@ -62,7 +62,7 @@ since: no dragging of points or the route line – Plan uses hold-only gestures 
 ### Adopt later
 | What | Why | Effort |
 | --- | --- | --- |
-| Drag the route line to insert a point (map gesture) | Komoot-style shaping. It needs hit-testing on the line and a ghost marker, so do it after smart insert | M |
+| ~~Drag the route line to insert a point (map gesture)~~ dropped: hold-only, no tap actions, no dragging (owner; `VISION.md`) | Komoot-style shaping. It needs hit-testing on the line and a ghost marker, so do it after smart insert | M |
 | Reorder points in a list sheet (drag handles) | Rarely needed once insert and move work, but needed for F-PLAN-04 | M |
 | Route warnings list (F-PLAN-11): steps, push sections (path/track on a bike profile above SAC/MTB scale), > 15 % gradient, ferry, private access | Safety value; BRouter tags allow it. Tap a warning to zoom to the spot | M |
 | Per-leg "straight line" (off-grid) option (F-PLAN-09) | Covers crossing a meadow or a missing path; the dashed fallback already renders | S |

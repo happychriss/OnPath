@@ -206,7 +206,7 @@ const ctxA = await browser.newContext({ viewport: { width: 1280, height: 800 } }
 const A = await open(ctxA, '#p=' + CODE);
 await A.waitForFunction(() => document.getElementById('points')?.textContent?.includes('Vellau'), null, { timeout: 60_000 });
 let e = await entry(A);
-check(e.label === 'To phone' && !e.dot && e.sub === '' && e.title.startsWith('Pair your phone'), `not paired: "To phone" without dot and second line, its title says it pairs (${JSON.stringify(e)})`);
+check(e.label === 'To phone' && !e.dot && e.sub === '' && e.title.startsWith('Connect your phone'), `not paired: "To phone" without dot and second line, its title says it pairs (${JSON.stringify(e)})`);
 await A.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
 let sb = await saveBtn(A);
 check(sb.state === 'dark' && sb.filled && sb.label === 'Save' && !sb.hint, `not paired, a new route: "Save", dark (filled), no hint beside it (${JSON.stringify(sb)})`);
@@ -261,8 +261,8 @@ const p1 = await showCode(A);
 check(/^[A-Za-z0-9_-]{44}$/.test(p1.code) && /^\d{3} \d{3}$/.test(p1.check), 'Pair phone: a new 44-character code and six check digits');
 await sendMark(A);
 await phone.pairDirect(p1.code);
-await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
-check((await A.textContent('#pairBody')).includes('Paired with Pixel 8'), 'the browser says "Paired with Pixel 8" (the phone\'s hello, role 1)');
+await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Connected to Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
+check((await A.textContent('#pairBody')).includes('Connected to Pixel 8'), 'the browser says "Connected to Pixel 8" (the phone\'s hello, role 1)');
 check((await A.textContent('#pairBody')).includes('What you save in the browser comes to your phone – everything is kept there.') && (await A.textContent('#closePair')) === 'OK',
   'after pairing: the app\'s sentence (sync_paired_plan) with OK');
 await A.click('#closePair');
@@ -299,9 +299,9 @@ check(buttons.join() === 'Sync now', 'the Phone window: Sync now in the button r
 const unp = await A.evaluate(() => { const u = document.getElementById('unpair'), s = document.getElementById('syncNow');
   return { shown: !u.hidden, red: getComputedStyle(u).color === 'rgb(198, 40, 40)', below: u.getBoundingClientRect().top - s.getBoundingClientRect().bottom,
     focused: document.activeElement === u, text: u.textContent }; });
-check(unp.shown && unp.red && unp.below > 40 && !unp.focused && unp.text === 'Unpair',
+check(unp.shown && unp.red && unp.below > 40 && !unp.focused && unp.text === 'Disconnect',
   `Unpair: a red text button at the bottom, away from Sync now, never focused (${JSON.stringify(unp)})`);
-check((await A.textContent('#phoneWhy')) === 'Paired with Pixel 8', 'the Phone window names the folder\'s phone');
+check((await A.textContent('#phoneWhy')) === 'Connected to Pixel 8', 'the Phone window names the folder\'s phone');
 check(await A.isHidden('#howBox') && await A.isVisible('#pairOther'), 'the explanation is behind "How does it work?"; "Pair another phone" small at the bottom');
 await A.click('#howToggle');
 check(await A.isVisible('#howBox') && /End-to-end encrypted/.test(await A.textContent('#howBox')) && await A.getAttribute('#howToggle', 'aria-expanded') === 'true',
@@ -310,7 +310,7 @@ await A.click('#closePhone');
 // field 2026-11-12 (owner): the phone had lost its pairing (it showed "Pair with browser"), the browser still said
 // "Paired · phone last 4 days ago" – and "Sync now" showed nothing. Owner's rule ("like WhatsApp Web"): a click on
 // Sync now answers in a short line; silent for 3 days and more the phone turns yellow, and its window says it in one
-// sentence with one button "Pair again" (unpair + a new code in one step; the plans stay in the browser).
+// sentence with one button "Connect again" (unpair + a new code in one step; the plans stay in the browser).
 const byHand = async (P) => {
   await phoneWin(P);
   await P.waitForSelector('dialog.phone[open] #syncNow:not([hidden])');
@@ -339,16 +339,16 @@ const away = await A.evaluate(() => ({ head: document.getElementById('phoneHead'
   buttons: [...document.querySelectorAll('#phoneRow button')].filter((b) => !b.hidden).map((b) => b.textContent),
   other: !document.getElementById('pairOther').hidden, removes: document.querySelectorAll('dialog.phone .removefolder').length,
   kind: document.getElementById('phoneState').dataset.kind }));
-check(away.kind === 'stale' && away.head === 'Your phone has not connected for 4 days. Not syncing any more? Then just pair again.' && !away.why
-  && JSON.stringify(away.buttons) === '["Pair again"]' && !away.other && away.removes === 0,
-  `the Phone window, phone silent: one sentence, one button "Pair again" (${JSON.stringify(away)})`);
+check(away.kind === 'stale' && away.head === 'Your phone has not connected for 4 days. Not syncing any more? Then just connect again.' && !away.why
+  && JSON.stringify(away.buttons) === '["Connect again"]' && !away.other && away.removes === 0,
+  `the Phone window, phone silent: one sentence, one button "Connect again" (${JSON.stringify(away)})`);
 if (process.env.SHOT) await A.screenshot({ path: process.env.SHOT });
 await A.click('dialog.phone #pairAgain');
 await A.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 }).catch(() => {});
 const again = await A.evaluate(() => ({ link: document.getElementById('pairLink')?.value ?? '', paired: window.__sync.status.paired }));
 check(/#pair=[A-Za-z0-9_-]{44}$/.test(again.link) && !again.paired, `"Pair again": unpaired and a new code shown in one step (${JSON.stringify(again)})`);
 await phone.pairDirect(again.link.split('#pair=')[1]);
-await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
+await A.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Connected to Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
 await A.click('#closePair').catch(() => {});
 st = await status(A);
 check(st.paired && st.folder.key === phone.device && JSON.stringify(await titles(A)) === before4,
@@ -509,8 +509,8 @@ const L = await open(ctxL);
 const pL = await showCode(L);
 const kL = await phone.keys(pL.code);
 check(await phone.redirect(pL.code) === 200, 'the phone writes one JOIN into the laptop\'s fresh mailbox');
-await L.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
-check((await L.textContent('#pairBody')).includes('Paired with Pixel 8'), 'the laptop: "Paired with Pixel 8"');
+await L.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Connected to Pixel 8'), null, { timeout: 30_000 }).catch(() => {});
+check((await L.textContent('#pairBody')).includes('Connected to Pixel 8'), 'the laptop: "Connected to Pixel 8"');
 await L.click('#closePair');
 st = await status(L);
 check(st.folder.key === phone.device && JSON.stringify(await titles(L)) === JSON.stringify(await phone.titles()), 'the laptop opened the phone\'s folder and read its mailbox from the start ' + JSON.stringify(await titles(L)));
@@ -547,15 +547,15 @@ sb = await saveBtn(L);
 check(sb.state !== 'dark' && !(await L.textContent('#points')).includes('Vellau'), `the friend's phone: none of the first phone's routes is seen, Save not dark (${JSON.stringify(sb)})`);
 await phone.round();
 check(!(await phone.titles()).includes('Laptop unsaved') && !(await phone.titles()).includes('Freundesweg'), 'nothing crossed to the first phone');
-check(st.closed.length === 1 && /^Pixel 8 · paired /.test(st.closed[0].name) && /^Pixel 8 · paired /.test(st.phone), 'two phones named "Pixel 8": the pairing date is added ' + JSON.stringify([st.phone, st.closed]));
+check(st.closed.length === 1 && /^Pixel 8 · connected /.test(st.closed[0].name) && /^Pixel 8 · connected /.test(st.phone), 'two phones named "Pixel 8": the pairing date is added ' + JSON.stringify([st.phone, st.closed]));
 // unpair in the browser: no question, the folder closes, the quiet "Remove routes of …" lines
 await phoneWin(L);
 await L.click('dialog.phone #unpair');
 await L.waitForFunction(() => window.__sync.status.folder.key === 'none' && document.getElementById('unpair')?.hidden, null, { timeout: 30_000 }).catch(() => {});
 check(await L.locator('dialog.phone .confirm').count() === 0 && (await status(L)).folder.key === 'none', 'Unpair: no question, the folder closes (Without phone)');
-await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Unpaired. The plans of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
+await L.waitForFunction(() => document.getElementById('phoneStatus')?.textContent?.startsWith('Disconnected. The plans of Pixel 8'), null, { timeout: 10_000 }).catch(() => {}); // CI draws it a moment later
 const quiet = await L.textContent('#phoneStatus');
-check(quiet.startsWith('Unpaired. The plans of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
+check(quiet.startsWith('Disconnected. The plans of Pixel 8'), 'the quiet line says the routes stay ' + quiet);
 // old phones' folders stay quietly in this browser (owner 2026-11-12, "like WhatsApp Web"): no "Remove plans of …" lines
 check(await L.locator('dialog.phone .removefolder').count() === 0 && (await status(L)).closed.length === 2
   && (await titles(L, phone.device)).includes('Laptop unsaved'), 'no remove lines for old phones; their folders and plans stay');
@@ -727,7 +727,7 @@ env.SYNC_NEW_PER_IP_DAY = '1';
 await phoneWin(A);
 await A.click('dialog.phone #pairPhone');
 await A.waitForSelector('#pairBody .status.error', { timeout: 30_000 }).catch(() => {});
-check(((await A.textContent('#pairBody').catch(() => '')) ?? '').includes('Too many new pairings from this network today'), 'over the new-mailbox cap: the page says so');
+check(((await A.textContent('#pairBody').catch(() => '')) ?? '').includes('Too many new connections from this network today'), 'over the new-mailbox cap: the page says so');
 
 // ---- 16. the owner's two scenarios with the plan bar (owner 2026-11-06, A): + Neu · Öffnen · Speichern ▾ · Aufs Handy ----
 // (1) first visit: empty, not paired → a plan → Speichern keeps it in this browser → after a reload Öffnen lists it →
@@ -764,7 +764,7 @@ await O.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
 await O.evaluate(() => { const l = document.getElementById('savedLine'); window.__savedLine = [l.hidden ? 'hidden' : l.textContent];
   new MutationObserver(() => window.__savedLine.push(l.hidden ? 'hidden' : l.textContent)).observe(l, { attributes: true, childList: true, subtree: true, characterData: true }); });
 await ownerPhone.pairDirect((await O.inputValue('#pairLink')).split('#pair=')[1]);
-await O.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Paired with Owner phone'), null, { timeout: 30_000 }).catch(() => {});
+await O.waitForFunction(() => document.getElementById('pairBody')?.textContent?.includes('Connected to Owner phone'), null, { timeout: 30_000 }).catch(() => {});
 // the owner reads the dialog a moment: the pairing's own first round has sent "Meine Runde" before OK – OK then found
 // nothing waiting and Save asked for the name of the saved plan (CI 2026-11-13 run 43396231433: the slow machine's
 // timing; here made certain by waiting for that round)

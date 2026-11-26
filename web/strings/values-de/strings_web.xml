@@ -118,7 +118,7 @@
 
     <string name="web_pair_preparing">Wird vorbereitet…</string>
     <string name="web_pair_qr">QR-Code zum Verbinden</string>
-    <string name="web_pair_how">OnPath auf dem Handy öffnen → %1$s → diesen Code scannen.</string>
+    <string name="web_pair_how">Öffne OnPath auf dem Handy → %1$s → scanne diesen Code mit OnPath, nicht mit der Kamera-App.</string>
     <string name="web_pair_menu_path">☰ → Mit Browser verbinden</string>
     <string name="web_pair_check">Prüfe: %1$s – die App zeigt dieselben Ziffern.</string>
     <string name="web_pair_privacy">Deine gespeicherten Pläne und importierten Tracks werden in diesem Browser und auf dem Handy verschlüsselt, bevor sie zum Sync-Server gehen (Cloudflare, EU): Lesen kannst du sie nur auf deinem Handy und in deinem Browser – wir können es nicht. Aufgezeichnete Touren werden nie übertragen. Behalte den Code für dich: Wer ihn scannt, sieht deine gespeicherten Pläne.</string>
@@ -130,6 +130,9 @@
     <string name="web_join_text">Dieser Link verbindet ein Gerät mit deinen gespeicherten Plänen. Meist scannst du ihn mit der OnPath-App auf dem Handy (☰ → Mit Browser verbinden).</string>
     <string name="web_join_instead">Du kannst stattdessen auch diesen Browser verbinden – dann werden deine gespeicherten Pläne auch hier abgeglichen.</string>
     <string name="web_join_ok">Diesen Browser verbinden</string>
+    <string name="web_openapp_title">In OnPath öffnen</string>
+    <string name="web_openapp_text">Dieser Link gehört in die OnPath-App, nicht in den Browser.</string>
+    <string name="web_openapp_way">Oder in der App: %1$s, dann den Code scannen.</string>
     <string name="web_join_paired">Verbunden · Prüfziffern %1$s</string>
     <string name="web_sync_no_phone_yet">noch kein Handy</string>
     <string name="web_sync_paired_with">Verbunden mit %1$s</string>

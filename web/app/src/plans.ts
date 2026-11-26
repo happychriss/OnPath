@@ -1018,6 +1018,27 @@ export async function pairDialog(sync: PlanSync, page: string, then?: () => void
   sync.syncNow();
 }
 
+/** An Android phone browser (a #pair= link there belongs in the app: the camera app / a chat opened it in the browser). */
+export const isAndroidPhone = (ua = navigator.userAgent) => /Android/i.test(ua);
+
+/**
+ * The pairing link as an Android intent for OnPath. Host and path are the app's App Link (AndroidManifest: https,
+ * plan.onpath.earth, path "/"), whatever host this page runs on; without the app the browser keeps the link.
+ */
+export function openInAppIntent(link: string): string {
+  const hash = new URL(link).hash;
+  return `intent://plan.onpath.earth/${hash}#Intent;scheme=https;package=com.onpath.app;S.browser_fallback_url=${encodeURIComponent(link)};end`;
+}
+
+/** A pairing link opened in a PHONE browser: do not join the browser – "Open in OnPath" and the way inside the app. */
+export function openInAppDialog(link: string) {
+  const d = dialog('pairapp', `<h2>${esc(t('web_openapp_title'))}</h2>
+    <p>${esc(t('web_openapp_text'))}</p>
+    <p class="muted small">${t('web_openapp_way', `<b>${esc(t('web_pair_menu_path'))}</b>`)}</p>
+    <div class="row end"><a class="openapp primary" role="button" href="${esc(openInAppIntent(link))}">${esc(t('web_openapp_title'))}</a></div>`);
+  return d;
+}
+
 /** A pairing link opened in a browser (normally the phone app scans it): pair this browser instead? */
 export function joinDialog(sync: PlanSync, link: string) {
   const d = dialog('join', `<h2>${esc(t('web_join_title'))}</h2>

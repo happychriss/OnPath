@@ -19,7 +19,7 @@
     <string name="web_page_title">OnPath Planner</string>
     <string name="web_brand_title">onpath.earth (new tab)</string>
     <string name="web_product">Planner</string>
-    <string name="web_pair_phone">Pair phone</string>
+    <string name="web_pair_phone">Connect phone</string>
     <string name="web_nav_help">Help &amp; credits</string>
     <string name="web_header_hint">No account · plans stay in this browser</string>
 
@@ -125,35 +125,38 @@
 
     <!-- My plans -->
     <string name="web_plans_sync_now">Sync now</string>
-    <string name="web_sync_paired">Paired</string>
+    <string name="web_sync_paired">Connected</string>
     <string name="web_saved_short">Saved</string>
     <string name="web_plans_open">Open this plan</string>
     <string name="web_plans_new_name">New name of the plan</string>
 
-    <!-- Pair phone, sync -->
+    <!-- Connect phone, sync -->
     <string name="web_pair_preparing">Preparing…</string>
-    <string name="web_pair_qr">QR code for pairing</string>
-    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code.</string>
-    <string name="web_pair_menu_path">☰ → Pair with browser</string>
+    <string name="web_pair_qr">QR code for connecting</string>
+    <string name="web_pair_how">Open OnPath on the phone → %1$s → scan this code with OnPath, not with the camera app.</string>
+    <string name="web_pair_menu_path">☰ → Connect to browser</string>
     <string name="web_pair_check">Check: %1$s – the app shows the same digits.</string>
     <string name="web_pair_privacy">Your saved plans and imported tracks are encrypted in this browser and on the phone before they go to the sync server (Cloudflare, EU): only your phone and your browser can read them – we can't. Recorded tours are never sent. Keep this code to yourself: whoever scans it sees your saved plans.</string>
-    <string name="web_pair_link">Pairing link</string>
+    <string name="web_pair_link">Connection link</string>
     <string name="web_pair_waiting">Waiting for the phone…</string>
-    <string name="web_pair_done">Paired with %1$s.</string>
-    <string name="web_unpair">Unpair</string>
-    <string name="web_join_title">Pairing code</string>
-    <string name="web_join_text">This link pairs a device with your saved plans. Usually you scan it with the OnPath app on your phone (☰ → Pair with browser).</string>
-    <string name="web_join_instead">You can also pair this browser instead – then your saved plans sync here too.</string>
-    <string name="web_join_ok">Pair this browser</string>
-    <string name="web_join_paired">Paired · check digits %1$s</string>
+    <string name="web_pair_done">Connected to %1$s.</string>
+    <string name="web_unpair">Disconnect</string>
+    <string name="web_join_title">Connection code</string>
+    <string name="web_join_text">This link connects a device to your saved plans. Usually you scan it with the OnPath app on your phone (☰ → Connect to browser).</string>
+    <string name="web_join_instead">You can also connect this browser instead – then your saved plans sync here too.</string>
+    <string name="web_join_ok">Connect this browser</string>
+    <string name="web_openapp_title">Open in OnPath</string>
+    <string name="web_openapp_text">This link belongs in the OnPath app, not in the browser.</string>
+    <string name="web_openapp_way">Or in the app: %1$s, then scan the code.</string>
+    <string name="web_join_paired">Connected · check digits %1$s</string>
     <string name="web_sync_no_phone_yet">no phone yet</string>
-    <string name="web_sync_paired_with">Paired with %1$s</string>
+    <string name="web_sync_paired_with">Connected to %1$s</string>
     <string name="web_sync_not_kept">This browser does not keep saved plans after the tab is closed (storage blocked).</string>
-    <string name="web_sync_pair_refused">The sync server refused a new pairing (%1$d). Try again later.</string>
-    <string name="web_sync_pair_cap">Too many new pairings from this network today. Try again tomorrow.</string>
-    <string name="web_sync_pair_offline">Pairing needs the internet. Check the connection and try again.</string>
-    <string name="web_sync_not_a_code">This is not a pairing code of OnPath.</string>
-    <string name="web_sync_unpaired">Unpaired. The plans of %1$s stay in this browser.</string>
+    <string name="web_sync_pair_refused">The sync server refused a new connection (%1$d). Try again later.</string>
+    <string name="web_sync_pair_cap">Too many new connections from this network today. Try again tomorrow.</string>
+    <string name="web_sync_pair_offline">Connecting needs the internet. Check the connection and try again.</string>
+    <string name="web_sync_not_a_code">This is not a connection code of OnPath.</string>
+    <string name="web_sync_unpaired">Disconnected. The plans of %1$s stay in this browser.</string>
     <string name="web_sync_offline">Offline – your plans sync when the connection is back.</string>
     <string name="web_sync_failed">Sync did not work this time – it tries again by itself.</string>
     <string name="web_eye_hotkey">Hold to hide the route – or hold the Space bar</string>
@@ -183,20 +186,20 @@
 
     <!-- Help & credits -->
     <string name="web_about_title">OnPath planner</string>
-    <string name="web_about_text">The OnPath app's own planning code in your browser. Your plan stays in the link and, once saved, in this browser (and on your paired phone, end-to-end encrypted). No account.</string>
+    <string name="web_about_text">The OnPath app's own planning code in your browser. Your plan stays in the link and, once saved, in this browser (and on your connected phone, end-to-end encrypted). No account.</string>
     <string name="web_about_how">How to plan</string>
     <string name="web_about_how_1">Click the map to set the start, then the destination and stops; click a point for its menu.</string>
     <string name="web_about_how_2">Search a place, then add it from its card. Drag ≡ in Points to change the order.</string>
     <string name="web_about_how_3">Undo / redo, the eye (hold: hide the route) and Map content are in the toolbar at the top.</string>
-    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or pair the phone once (Pair phone, at the top) and save plans in My tours.</string>
+    <string name="web_about_how_4">Share: a QR code the OnPath app scans – or connect the phone once (Connect phone, at the top) and save plans in My tours.</string>
     <string name="web_credit_photon">Search online: Photon by komoot (OpenStreetMap data)</string>
     <string name="web_credit_maplibre">Map renderer: MapLibre GL JS (BSD licence)</string>
     <string name="web_credit_font">Typeface: Manrope, © The Manrope Project Authors,</string>
     <string name="web_phone_title">Phone</string>
     <string name="web_phone_why">Your plans appear on the phone and here.</string>
-    <string name="web_phone_fresh">Paired · synced %1$s</string>
+    <string name="web_phone_fresh">Connected · synced %1$s</string>
     <string name="web_phone_stale_why">Open OnPath on the phone, then the plans sync. Changes from here wait until then.</string>
-    <string name="web_phone_browser_synced">Paired · this browser synced %1$s</string>
+    <string name="web_phone_browser_synced">Connected · this browser synced %1$s</string>
     <string name="web_ago_now">just now</string>
     <string name="web_phone_how_2">They sync while OnPath is open on the phone – and while this page is open.</string>
     <string name="web_phone_how_3">On a conflict the newer change wins; the older one stays as a copy.</string>
@@ -205,7 +208,7 @@
     <!-- folders, one per phone (owner order A-017) -->
     <string name="web_folder_none">Without phone</string>
     <string name="web_folder_phone">Phone</string>
-    <string name="web_folder_paired_on">%1$s · paired %2$s</string>
+    <string name="web_folder_paired_on">%1$s · connected %2$s</string>
     <!-- Remove a closed folder that holds routes never sent to its phone: the question (owner 2026-11-02) -->
     <!-- My routes, the open folder empty: the closed folders' routes are still here (owner 2026-11-02) -->
     <string name="web_copy_suffix">(copy)</string>
@@ -215,21 +218,21 @@
     <string name="web_sync_tour_cap">%1$d tours on the phone – delete some first.</string>
     <string name="web_phone_fill">%1$d of %2$d tours</string>
     <string name="web_phone_fill_use">Mailbox: %1$d of %2$d entries (deleted ones count too)</string>
-    <string name="web_pair_other">Pair another phone</string>
+    <string name="web_pair_other">Connect another phone</string>
     <!-- Save, Phone, My routes as the owner wants them shown (docs/design/web-sync.md §14.6) -->
     <string name="web_saved_title_here">Everything is saved in this browser</string>
     <string name="web_saved_title_phone">Everything is on %1$s</string>
     <string name="web_phone_synced_ago">synced %1$s</string>
     <string name="web_sync_now_done">Synced – everything is up to date.</string>
     <string name="web_sync_now_nothing">Synced – nothing new from the phone.</string>
-    <string name="web_pair_again">Pair again</string>
+    <string name="web_pair_again">Connect again</string>
     <plurals name="web_phone_away">
         <item quantity="one">not connected for %1$d day</item>
         <item quantity="other">not connected for %1$d days</item>
     </plurals>
     <plurals name="web_phone_away_text">
-        <item quantity="one">Your phone has not connected for %1$d day. Not syncing any more? Then just pair again.</item>
-        <item quantity="other">Your phone has not connected for %1$d days. Not syncing any more? Then just pair again.</item>
+        <item quantity="one">Your phone has not connected for %1$d day. Not syncing any more? Then just connect again.</item>
+        <item quantity="other">Your phone has not connected for %1$d days. Not syncing any more? Then just connect again.</item>
     </plurals>
     <string name="web_where_browser">In this browser</string>
     <string name="web_where_phone">On the phone</string>
@@ -284,7 +287,7 @@
     <string name="web_save_more">More ways to save</string>
     <string name="web_save_as">Save as …</string>
     <string name="web_to_phone">To phone</string>
-    <string name="web_to_phone_pair">Pair your phone, then the plan goes onto it</string>
+    <string name="web_to_phone_pair">Connect your phone, then the plan goes onto it</string>
     <string name="web_phone_menu">Phone connection …</string>
     <!-- a multi-day tour's day end on the map (grey / blue moon, green bed): which day of how many ends there (owner 2026-11-20) -->
     <string name="web_days_end_of_day">End of day %1$d of %2$d</string>

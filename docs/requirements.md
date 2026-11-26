@@ -4,16 +4,8 @@ Oct 17, 2026 · Requirements maintained in Claude Docs
 
 ## 1. Vision and guiding principles
 
-A simple hiking and biking app with Komoot-quality maps and smart routing that works fully offline on the phone. It does five things well: show the map, show where you are, plan a route, follow or record a route, and import/export GPX. Everything else is left out.
-
-**Guiding principles** (every feature decision is checked against these, in this order):
-
-1. **Robust first.** The app must never lose a track, a plan or the user's position because of missing network, GPS loss, a phone call, low battery or an app crash.
-2. **Offline by design, not offline as a fallback.** After a region is downloaded, every feature works in airplane mode. The network is only used to download maps and app updates.
-3. **On the phone.** Map rendering, routing, elevation, search and GPX processing all run on the device. No server is needed to use the app.
-4. **Simple.** One main screen, few buttons, sensible defaults. A first-time user plans a route in under 60 seconds without help.
-5. **Smart where it counts.** Routing understands the activity (hike vs. trekking bike vs. MTB), surfaces, path difficulty and elevation.
-6. **Open.** Open source code, open map data (OpenStreetMap), open elevation data, worldwide coverage, no account required.
+The project vision is [`VISION.md`](../VISION.md) (owner 2026-11-26). It replaces the vision and principles that stood here
+since 2026-10-17. Where a requirement below differs from it, the vision wins and the requirement is out of date.
 
 ## 2. Scope
 
@@ -23,7 +15,7 @@ Version 1 is a single-user, offline tool for Android, with iOS as a second step.
 | --- | --- | --- |
 | Komoot-like topographic map, offline | Points of interest guides, photos, reviews | Social feed, followers, likes |
 | Own position, heading, accuracy | Cloud sync between devices | Mandatory account or login |
-| Route planning: start, end, via points, drag to change | Live tracking / sharing position with others | Ads, tracking, analytics without opt-in |
+| Route planning: start, end, via points, hold to change (no dragging – owner) | Live tracking / sharing position with others | Ads, tracking, analytics without opt-in |
 | Smart routing per activity type, fully offline | Weather, sunset times | Paid map regions |
 | Elevation profile, distance, ascent, time estimate | Heart rate / sensor pairing (Bluetooth) |  |
 | Follow a route with off-route warning | Full voice turn-by-turn in all languages |  |
@@ -268,7 +260,7 @@ Targets are measured on a reference mid-range phone (about 3 years old, 4 GB RAM
 | Reliability | Recorded tracks lost | zero (tested by killing the app, rebooting, draining battery) |
 | Accuracy | Recorded distance vs. reference track | within 2% |
 | Accuracy | Recorded ascent vs. elevation model | within 10% |
-| Compatibility | Android versions | Android 9 and newer |
+| Compatibility | Android versions | Android 8 and newer (minSdk 26) |
 | Accessibility | Font scaling, screen reader labels, colour-blind safe route colours | Required |
 | Privacy | No location data leaves the phone; no trackers; no account | Required |
 | Licensing | App source code under Apache-2.0; all data attributions shown in the app | Required |
@@ -308,4 +300,4 @@ The build order puts the map style and robustness first, because those are what 
 - [x] Komoot GPX: reading GPX exported from Komoot is a Should (F-GPX-08).
 - [x] First test region: Bozen / Meran / Algund (South Tyrol).
 - [x] App name: OnPath. Code: github.com/happychriss/OnPath.
-- [x] Distribution: Google Play only to start (test builds sideloaded as APK).
+- [x] Distribution: Google Play test plus GitHub releases with the in-app updater (test builds sideloaded as APK).

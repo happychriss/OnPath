@@ -303,19 +303,19 @@ class SettingsPagesTest {
     // ---- from SyncSettingsTest.kt ----
     // Settings → Browser sync: the list line and the status line of the last pass follow the Messages rules.
     @Test fun listLine() {
-        assertEquals(Summary("Not paired · your plans in the web planner too"), SettingsSummary.sync(SyncUi()))
-        assertEquals(Summary("Paired with Chrome on Linux"), SettingsSummary.sync(SyncUi(paired = true, peer = "Chrome on Linux")))
-        assertEquals(Summary("Paired with a browser"), SettingsSummary.sync(SyncUi(paired = true)))
+        assertEquals(Summary("Not connected · your plans in the web planner too"), SettingsSummary.sync(SyncUi()))
+        assertEquals(Summary("Connected to Chrome on Linux"), SettingsSummary.sync(SyncUi(paired = true, peer = "Chrome on Linux")))
+        assertEquals(Summary("Connected to a browser"), SettingsSummary.sync(SyncUi(paired = true)))
         // offline is no problem worth red; a refused / unreadable / not saved pass is
         assertEquals(Summary.Attention.NONE, SettingsSummary.sync(SyncUi(paired = true, problem = SyncProblem.Offline)).attention)
         assertEquals(Summary.Attention.PROBLEM, SettingsSummary.sync(SyncUi(paired = true, problem = SyncProblem.NewerApp(1))).attention)
         // a scanned code waits for an answer
-        assertEquals(Summary("Pair with this browser?", Summary.Attention.ACCENT), SettingsSummary.sync(SyncUi(askCheck = "395 514")))
+        assertEquals(Summary("Connect to this browser?", Summary.Attention.ACCENT), SettingsSummary.sync(SyncUi(askCheck = "395 514")))
     }
 
     /**
      * After Pair (owner 2026-10-30): a pairing made – the first one or another browser joining (A-017) – goes straight
-     * back to the Plan screen with "Paired. …" + OK; already paired or a failure stays on the pairing step, no note.
+     * back to the Plan screen with "Connected. …" + OK; already paired or a failure stays on the pairing step, no note.
      */
     @Test fun pairLanding() {
         val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = null)
@@ -330,7 +330,7 @@ class SettingsPagesTest {
         assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync))
         // a failure never leaves an older note behind
         assertEquals(onSync, PairLanding.after(PairResult.JOIN_FAILED, onSync.copy(note = SyncNote.PAIRED)))
-        assertEquals("Paired. What you save in the browser comes to your phone – everything is kept there.",
+        assertEquals("Connected. What you save in the browser comes to your phone – everything is kept there.",
             Txt.s(Res.string.sync_paired_plan))
         val before = Locale.getDefault()
         Locale.setDefault(Locale.GERMANY)
@@ -342,25 +342,25 @@ class SettingsPagesTest {
 
     /**
      * After Unpair (owner 2026-10-30: as simple as pairing): the one question, then straight back to the Plan screen
-     * with "Unpaired. …" + OK; the server not reached → the same strip asks to unpair the browser too; the phone could
+     * with "Disconnected. …" + OK; the server not reached → the same strip asks to unpair the browser too; the phone could
      * not forget the pairing → stay on Browser sync (its red line), no strip.
      */
     @Test fun unpairLanding() {
         val onSync = PairLanding.Screens(settingsOpen = true, settingsPage = SettingsPage.SYNC, routesOpen = false, note = null)
         fun plan(n: SyncNote) = PairLanding.Screens(settingsOpen = false, settingsPage = null, routesOpen = false, note = n)
-        // the mailbox ended (or was gone already): Plan + "Unpaired. …"
+        // the mailbox ended (or was gone already): Plan + "Disconnected. …"
         assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(200, onSync))
         assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(404, onSync))
         assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(410, onSync.copy(routesOpen = true)))
         // offline (-1) or another answer: unpaired on the phone anyway – the strip with the extra sentence
         assertEquals(plan(SyncNote.UNPAIRED_OFFLINE), PairLanding.afterUnpair(-1, onSync))
         assertEquals(plan(SyncNote.UNPAIRED_OFFLINE), PairLanding.afterUnpair(503, onSync))
-        // an older "Paired. …" never stays behind
+        // an older "Connected. …" never stays behind
         assertEquals(plan(SyncNote.UNPAIRED), PairLanding.afterUnpair(200, onSync.copy(note = SyncNote.PAIRED)))
         // not forgotten here: stay, no strip
         assertEquals(onSync, PairLanding.afterUnpair(PairLanding.UNPAIR_NOT_STORED, onSync.copy(note = SyncNote.PAIRED)))
-        assertEquals("Unpaired. Your plans stay on your phone.", Txt.s(Res.string.sync_unpaired_plan))
-        assertEquals("Unpaired. Your plans stay on your phone – the browser couldn't be reached, unpair it there too.",
+        assertEquals("Disconnected. Your plans stay on your phone.", Txt.s(Res.string.sync_unpaired_plan))
+        assertEquals("Disconnected. Your plans stay on your phone – the browser couldn't be reached, disconnect it there too.",
             Txt.s(Res.string.sync_unpaired_plan_offline))
         val before = Locale.getDefault()
         Locale.setDefault(Locale.GERMANY)
@@ -441,28 +441,28 @@ class SettingsPagesTest {
         assertEquals("Pixel 8 ↔ browser", SyncMenuUi.of(ok.copy(peer = null, lastOkMs = 0, checkedMs = 0), "Pixel 8", now).line)
         assertEquals(SyncMenuUi(true, "Browser sync is full", SyncAttention.FULL),
             SyncMenuUi.of(ok.copy(problem = SyncProblem.Refused(507, null)), "Pixel 8", now))
-        assertEquals(SyncMenuUi(false, "Pairing ended in the browser", SyncAttention.ENDED), SyncMenuUi.of(SyncState(ended = true), "Pixel 8", now))
+        assertEquals(SyncMenuUi(false, "Connection ended in the browser", SyncAttention.ENDED), SyncMenuUi.of(SyncState(ended = true), "Pixel 8", now))
         assertEquals(SyncMenuUi(), SyncMenuUi.of(SyncState(), "Pixel 8", now))
     }
 
     /**
-     * Field bug 2026-10-31: the browser unpaired itself, the phone still has its pairing. ☰ reads "Pair with browser"
-     * again with the grey "Unpaired in the browser" – no amber, no dot (the user's own action), and no "1 min ago" of
+     * Field bug 2026-10-31: the browser unpaired itself, the phone still has its pairing. ☰ reads "Connect to browser"
+     * again with the grey "Disconnected in the browser" – no amber, no dot (the user's own action), and no "1 min ago" of
      * the phone's own pass as if the browser was seen. Just paired, no browser hello yet: [waitingForTheBrowser].
      */
     @Test fun unpairedInTheBrowser() {
         val now = 1_761_150_000_000L
         val ok = SyncState(paired = true, peer = null, lastOkMs = now - 60_000, sinceMs = now - 86_400_000, checkedMs = now - 60_000)
         val gone = ok.copy(browser = BrowserLink.UNPAIRED)
-        assertEquals(SyncMenuUi(false, "Unpaired in the browser", null), SyncMenuUi.of(gone, "Pixel 8", now))
+        assertEquals(SyncMenuUi(false, "Disconnected in the browser", null), SyncMenuUi.of(gone, "Pixel 8", now))
         assertNull(SyncMenuUi.attention(gone))
         // a real problem still wins (amber, the page)
         assertEquals(SyncAttention.FULL, SyncMenuUi.of(gone.copy(problem = SyncProblem.Refused(507, null)), "Pixel 8", now).warning)
         // Settings list line + the page's state
         val ui = SyncUi.of(gone, askCheck = null)
         assertTrue(ui.unpairedInBrowser)
-        assertEquals(Summary("Unpaired in the browser"), SettingsSummary.sync(ui))
-        assertEquals(Summary("Unpaired in the browser"), SettingsSummary.sync(ui.copy(problem = SyncProblem.Offline)))
+        assertEquals(Summary("Disconnected in the browser"), SettingsSummary.sync(ui))
+        assertEquals(Summary("Disconnected in the browser"), SettingsSummary.sync(ui.copy(problem = SyncProblem.Offline)))
         assertEquals(false, SyncUi.of(ok.copy(browser = BrowserLink.WAITING), null).unpairedInBrowser)
         assertEquals(false, SyncUi.of(SyncState(browser = BrowserLink.UNPAIRED), null).unpairedInBrowser)
         // German
@@ -507,8 +507,8 @@ class SettingsPagesTest {
     }
 
     /**
-     * The ☰ item is one plain line (owner 2026-11-07): "Browser-Kopplung" while paired here (also waiting for the browser
-     * or with a problem), "Mit Browser koppeln" when not paired or the browser unpaired itself; the state only in the icon.
+     * The ☰ item is one plain line (owner 2026-11-07): "Browser-Verbindung" while paired here (also waiting for the browser
+     * or with a problem), "Mit Browser verbinden" when not paired or the browser unpaired itself; the state only in the icon.
      */
     @Test fun menuLabelIsOnePlainLine() {
         val now = 1_000_000_000_000L
