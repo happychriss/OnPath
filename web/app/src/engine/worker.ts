@@ -58,7 +58,7 @@ interface WasmEngine {
   planCancel(cause: string, points: string, activity: string, sac: number, why: string): string;
   runHead(points: string, activity: string, sac: number, askLong: boolean, pinned: string): string;
   runLongAnswer(yes: boolean, points: string): void;
-  runEnd(gen: number, outcome: string, rounds: number): void;
+  runEnd(gen: number, outcome: string, rounds: number, names: string): void;
   settleRun(names: string): string;
   recalcRow(points: string, activity: string, sac: number): boolean;
   recalcScratch(points: string, activity: string, sac: number): boolean;

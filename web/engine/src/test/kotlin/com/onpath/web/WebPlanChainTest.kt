@@ -244,4 +244,68 @@ class WebPlanChainTest {
         chain.end(g2, "ok", 1) { routedPinned(three, setOf(0, 2)) }
         assertTrue("and settles", chain.settleNow(bulging) != null)
     }
+
+    // ---- the chain holds what the page adopts (review 2026-11-26 #1)
+
+    /**
+     * Like [bulging], but the waypoints of [off] are matched ~9 m off themselves, with unrounded coordinates (BRouter:
+     * getILat()/1e6 - 90.0); a detour point - a line point - is matched where it is.
+     */
+    private fun nudging(off: Set<com.onpath.app.routing.GeoPoint>) = object : com.onpath.app.routing.RoutingEngine {
+        override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int) =
+            route(waypoints, activity, sacLimit, com.onpath.app.routing.RouteLimits(30_000))
+        override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int,
+                           limits: com.onpath.app.routing.RouteLimits): com.onpath.app.routing.RouteResult {
+            val on = waypoints.map { if (it in off) com.onpath.app.routing.GeoPoint(it.lat + 0.0000812345678, it.lon + 0.0000123456789) else it }
+            return bulging.route(on, activity, sacLimit, limits).copy(matched = on)
+        }
+    }
+
+    /**
+     * A run whose snapped points are unrounded and whose middle point is a named stop: the chain's plan is what the page
+     * adopts (6 decimals, the named stop in place), so the page's next commit keeps the detour points, stitches the new
+     * point, and Undo brings the named stop back where it was.
+     */
+    @Test
+    fun theChainHoldsThePointsThePageAdopts() {
+        val two = listOf(la, lb)
+        val chain = WebPlanChain(two)
+        chain.end(run(chain, two), "ok", 1) { routed(two) }
+        val three = listOf(la, bulge(la, lb), lb)
+        chain.record(two, three)
+        val stitched = chain.plan.anchorsFor(hike, 2)
+        assertTrue(stitched.isNotEmpty())
+        // the run of the three points (WebApi.plan: the named stops keep their place - PlanResult.withNamed)
+        val gen = run(chain, three)
+        val exp = com.onpath.app.routing.PlanAnchors.expand(three, stitched, emptySet())
+        val planner = com.onpath.app.routing.Planner(nudging(three.toSet()), com.onpath.app.routing.RouteCancel(), legs = com.onpath.app.routing.LegCache())
+        val res = com.onpath.app.routing.PlanResult.plan(planner, exp, hike, 2, emptySet(), WebPace.factors(hike)).withNamed(setOf(1))
+        assertTrue("the run moved points", res.moved)
+        assertTrue("unrounded", res.points[0] != WebPlanChain.round6(res.points[0]))
+        chain.end(gen, "ok", 1, mapOf(1 to "Hütte")) { res }
+        // what the page adopts: the plan JSON's points (6 decimals), the named stop where it was
+        val page = res.points.map { WebPlanChain.round6(it) }
+        org.junit.Assert.assertEquals(three[1], page[1])
+        org.junit.Assert.assertEquals("the chain holds the page's points", page, chain.plan.points.toList())
+        // the page's next commit: a point put 550 m off the routed last leg
+        val four = page.take(2) + bulge(page[1], page[2]) + page.drop(2)
+        chain.record(page, four)
+        val now = chain.plan.anchorsFor(hike, 2)
+        assertTrue("the detour points stay ($now)", now.containsKey(1))
+        assertTrue("the new point is stitched ($now)", now.containsKey(2))
+        // Undo: the plan as the page showed it, the named stop in place
+        org.junit.Assert.assertEquals(page, chain.step(undo = true, now = four))
+        assertTrue("Undo brings the detour points back", chain.plan.anchorsFor(hike, 2).containsKey(1))
+    }
+
+    /** A failed run is reported once, by the page: the chain's taken adds no error line of its own (review 2026-11-26 #8). */
+    @Test
+    fun aFailedRunIsReportedOnceByThePage() {
+        val pts = listOf(la, lb)
+        val chain = WebPlanChain(pts)
+        com.onpath.app.debug.Problems.drain()
+        chain.end(run(chain, pts), "failed", 1)
+        val said = com.onpath.app.debug.Problems.drain()
+        assertFalse(said.toString(), said.any { "Route calculation failed" in it })
+    }
 }

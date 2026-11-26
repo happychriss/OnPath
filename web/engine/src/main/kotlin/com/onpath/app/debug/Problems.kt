@@ -22,7 +22,21 @@ object Problems {
     /** Web only: every message also goes here while set (WebPlaceAdd hands a shared decision's traces back as its „why“). */
     var tap: ((area: String, message: String) -> Unit)? = null
 
+    /** Web only: the one message [quiet] leaves out (area to message), while set. */
+    private var muted: Pair<String, String>? = null
+
+    /**
+     * Web only: runs [block] without the message [message] in [area] – a shared decision's report the page makes itself
+     * (WebPlanChain.end: a failed run is reported once, by the page). Every other message goes through.
+     */
+    fun <T> quiet(area: String, message: String, block: () -> T): T {
+        val before = muted
+        muted = area to message
+        try { return block() } finally { muted = before }
+    }
+
     private fun add(level: String, area: String, message: String, t: Throwable?) {
+        if (muted == area to message) return
         tap?.invoke(area, message)
         val line = "$level $area: $message" + (t?.let { " ($it)" } ?: "")
         System.err.println("[Problems] $line")

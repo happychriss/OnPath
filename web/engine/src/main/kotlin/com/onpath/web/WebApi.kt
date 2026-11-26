@@ -867,10 +867,13 @@ object Engine {
     /** The answer to the long-plan question for the plan [points] (RouteRun.LongAnswer): yes = not asked again for them. */
     fun runLongAnswer(yes: Boolean, points: String) = chain.longAnswer(yes, parsePoints(points))
 
-    /** The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open). */
-    fun runEnd(gen: Int, outcome: String, rounds: Int) {
+    /**
+     * The run [gen] came back: [outcome] "ok", "failed", "slow" (the time limit after [rounds] periods – the question is open).
+     * [names] = the run's named stops, lines "index<TAB>name" (as for [plan]): they keep their place in the chain's snap too.
+     */
+    fun runEnd(gen: Int, outcome: String, rounds: Int, names: String = "") {
         if (gen / EPOCH != epoch) { Problems.trace("plan", "the end of a run of an earlier chain – ignored ($outcome)"); return }
-        chain.end(gen % EPOCH, outcome, rounds) { lastResultFor(it) }
+        chain.end(gen % EPOCH, outcome, rounds, parseNames(names)) { lastResultFor(it) }
     }
 
     /**
@@ -1336,7 +1339,7 @@ external fun planProgress(text: String)
 @JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
 @JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String): String = Engine.runHead(points, activity, sac, askLong, pinned)
 @JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
-@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int) = Engine.runEnd(gen, outcome, rounds)
+@JSExport fun runEnd(gen: Int, outcome: String, rounds: Int, names: String) = Engine.runEnd(gen, outcome, rounds, names)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
 
 @JSExport fun settleRun(names: String): String = Engine.settleRun(names)

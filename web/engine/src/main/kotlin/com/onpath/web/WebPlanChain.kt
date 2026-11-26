@@ -65,6 +65,11 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     })
 
     private var mark: Place? = null
+    /**
+     * The page's named stops by value, as of the run last ended ([end]): the app's `nameOfStop` / `stopName` answer – a named
+     * stop keeps its place when the run's points are snapped (PlanResult.withNamed), as on the page.
+     */
+    private var stopNames: Map<GeoPoint, String> = emptyMap()
     /** The run [head] began last: [end] takes its result. */
     private var lastRun: PlanRecalcState.Run? = null
 
@@ -97,7 +102,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         override fun endGuidanceIfPlanEmpty() = Unit
         override fun clearFollow() = Unit
         override fun guidanceEndedByEmptyPlan() = Unit
-        override fun stopName(p: GeoPoint): String? = null
+        override fun stopName(p: GeoPoint): String? = stopNames[p]
         override var searchMark: Place?
             get() = mark
             set(v) { mark = v }
@@ -204,7 +209,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         override var planReach: com.onpath.app.routing.PlanReach? = null
         override var planResult: com.onpath.app.routing.PlanResult? = null
         override val mode: AppMode get() = AppMode.PLAN // the planner is always Plan
-        override fun nameOfStop(p: GeoPoint): String? = null
+        override fun nameOfStop(p: GeoPoint): String? = stopNames[p]
         override val multiDayOverview: Boolean get() = false
         override fun menuFollowsSnap(moves: Map<GeoPoint, GeoPoint>) = Unit
         override fun checkRoutingDataFor(line: List<GeoPoint>) = Unit
@@ -298,9 +303,10 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
 
     /**
      * The run [gen] came back: "ok", "failed" or "slow" (its time limit after [rounds] period(s) – "Weiter warten?" is open).
-     * The result itself is the page's; here the run's state follows ([RouteRun]: the question, or Idle again).
+     * The result itself is the page's; here the run's state follows ([RouteRun]: the question, or Idle again). [names] = the
+     * page's named stops of the run's points by index (they keep their place when the points are snapped).
      */
-    fun end(gen: Int, outcome: String, rounds: Int, resultFor: (List<GeoPoint>) -> PlanResult? = { null }) {
+    fun end(gen: Int, outcome: String, rounds: Int, names: Map<Int, String> = emptyMap(), resultFor: (List<GeoPoint>) -> PlanResult? = { null }) {
         val run = lastRun?.takeIf { it.gen == gen }
         if (run == null) { // not a run this chain began (a plain state change): only the RouteRun follows
             val back = planRun.routeEvent(RouteRun.Event.Returned(gen, active = true))
@@ -313,16 +319,37 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
             planRun.routeEvent(RouteRun.Event.Done(gen))
             return
         }
+        stopNames = names.filterValues { it.isNotBlank() }.mapNotNull { (i, n) -> run.pts.getOrNull(i)?.let { it to n } }.toMap()
         // the app's stage 4 (PlanRecalcState.taken): the RouteRun events, the snapped plan points and - for the next edit's
         // stitch - the lines of this route. The page's Cancel is a fresh worker (the run never comes back as cancelled);
         // the next head supersedes an older run (taken then ignores it, as in the app).
-        val result: Result<PlanResult> = when (outcome) {
-            "ok" -> resultFor(run.pts)?.takeIf { it.activity == run.act && it.sac == run.level }?.let { Result.success(it) }
-                ?: Result.failure(IllegalStateException("Run #$gen came back ok but the engine has no result for its points"))
-            "slow" -> Result.failure(SlowPlan.TimeLimit(rounds))
+        val res = if (outcome == "ok") resultFor(run.pts)?.takeIf { it.activity == run.act && it.sac == run.level } else null
+        val result: Result<PlanResult> = when {
+            res != null -> Result.success(asAdopted(res, run.pts))
+            outcome == "ok" -> {
+                Problems.warn("plan", "Run #$gen came back ok but the engine has no result for its points – the next edit is not stitched")
+                Result.failure(IllegalStateException("no result for the run's points"))
+            }
+            outcome == "slow" -> Result.failure(SlowPlan.TimeLimit(rounds))
             else -> Result.failure(IllegalStateException("Route calculation failed"))
         }
-        recalc.taken(run, result, reach = null, tries = null, post = null, active = true)
+        // a failed run is reported once, by the page (main.ts planRun) – taken's own error line would say it again
+        if (result.isFailure) Problems.quiet("routing", "Route calculation failed") {
+            recalc.taken(run, result, reach = null, tries = null, post = null, active = true)
+        } else recalc.taken(run, result, reach = null, tries = null, post = null, active = true)
+    }
+
+    /**
+     * The result as the page adopts it (review 2026-11-26 #1): its named stops in place ([PlanResult.withNamed], the names
+     * [PlanRecalcHost.nameOfStop] answers) and the snapped points at the page's 6 decimals – the plan's points here are then
+     * bit for bit those the page sends back with its next call, so the anchors, the saved mark and the stitch lines stay
+     * with them.
+     */
+    private fun asAdopted(res: PlanResult, pts: List<GeoPoint>): PlanResult {
+        val named = res.withNamed(pts.indices.filter { stopNames[pts[it]] != null }.toSet())
+        if (!named.moved) return named
+        val shown = named.points.map { round6(it) }
+        return named.copy(points = shown, moved = shown != named.routed)
     }
 
     /** The answer to "Weiter warten?" ([PlanRunSlice.answerSlowPlan]): wait on = the next head routes with one period more. */
@@ -392,6 +419,9 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     }
 
     companion object {
+        /** A point at the page's 6 decimals: the value the page parses from the plan JSON (WebApi.planJson) and sends back. */
+        fun round6(p: GeoPoint): GeoPoint = p.copy(lat = Engine.num(p.lat, 6).toDouble(), lon = Engine.num(p.lon, 6).toDouble())
+
         /**
          * Builds the chain and runs it once through the spot umbau asked about: a point edit whose run is cancelled – the
          * edit is undone, and cancelRun logs the cause's `simpleName`. `{"afterEdit":3,"points":2,"canRedo":true,"did":[…]}`

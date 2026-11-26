@@ -1670,7 +1670,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   if (state.points.length < 2) {
     problem('plan', `plan run for ${state.points.length} point(s) – nothing to plan`);
     // the run [gen] ends here: the engine's RouteRun must not stay in Routing with nothing running
-    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds).catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
+    if (gen >= 0) engine.call('runEnd', gen, 'failed', rounds, '').catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
     return;
   }
   const id = ++state.latest;
@@ -1683,7 +1683,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   // app's cancelRouting); a fast route shows nothing (no flash)
   let run: PlanIn = { done: 0, total: 0, checking: false, join: null, names: namesText(), points: state.points.length, known: false };
   overlay.plan(run, () => { cancelRouting(); });
-  const routed = state.points;
+  const routed = state.points, routedNames = namesText(); // the run's named stops: the engine's chain keeps them in place as the plan does (runEnd)
   const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
     run = { ...run, known: true };
@@ -1699,9 +1699,9 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
       if (pr.phase === 'legs') run = { ...run, join: null, done: pr.done ?? 0, total: pr.total ?? 0, checking: (pr.total ?? 0) > 0 && (pr.done ?? 0) >= (pr.total ?? 0) };
     }
     if (id === state.latest && state.planning) overlay.plan(run);
-  }, namesText(), rounds);
+  }, routedNames, rounds);
   if (id !== state.latest) return; // a newer request supersedes this one (or Cancel dropped it)
-  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds)
+  if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds, routedNames)
     .catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
   setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
