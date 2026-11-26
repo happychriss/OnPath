@@ -84,6 +84,12 @@ class WebLegStore(
             val n = name(key)
             fresh.remove(n)
             fresh[n] = encode(Entry(key, fp, data, leg, exact))
+            // the plan as saved: a plan without anchors keeps its points in 1e-5° (PlanCode format 1), so the address, the
+            // draft and a saved route come back up to ~0.5 m off – the leg under those points too, else a reopened tour
+            // routes every leg again (owner 2026-11-26, München–Venedig; legcache-tour-smoke). Plain legs only: a plan
+            // with anchors keeps its points to 1e-6°.
+            val saved = codeGrid(key)
+            if (saved != key) { val sn = name(saved); fresh.remove(sn); fresh[sn] = encode(Entry(saved, fp, data, leg, exact = false)) }
             // the worker takes them after each answer; a page that never does (JVM run) keeps only the newest
             while (fresh.size > MAX_PENDING) fresh.remove(fresh.keys.first())
         } catch (e: Exception) {
@@ -132,6 +138,12 @@ class WebLegStore(
         /** Legs kept for the worker at most (a plan's expanded legs – its points and anchors – each also under snapped points). */
         const val MAX_PENDING = 2 * (com.onpath.app.routing.PlanCode.MAX_POINTS + com.onpath.app.routing.PlanCode.MAX_ANCHORS)
         private const val MAGIC = "onpath-web-leg 1"
+
+        /** [k] with both points as a plan code without anchors keeps them (1e-5°); [k] itself for a cut or settled leg. */
+        internal fun codeGrid(k: LegCache.Key): LegCache.Key = if (k.cut || k.settled) k else {
+            fun g(v: Long) = Math.floorDiv(v + 5, 10) * 10
+            k.copy(fromLat = g(k.fromLat), fromLon = g(k.fromLon), toLat = g(k.toLat), toLon = g(k.toLon))
+        }
 
         /** The phone's file name without ".leg" (LegFiles.name): both points, the activity, the T level, a cut / settled leg's mark. */
         fun name(k: LegCache.Key) = "${k.fromLat}_${k.fromLon}_${k.toLat}_${k.toLon}_${k.activity.name}_${k.sac}" +

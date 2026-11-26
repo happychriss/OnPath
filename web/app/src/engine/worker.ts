@@ -504,6 +504,8 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
         : e.planFromTrack(req.points, req.activity, req.sac), stats: { bytesFetched: fetched } as RouteStats,
         problems: JSON.parse(e.problems()) });
       } finally { gp.onpathPlanProgress = undefined; }
+      // its legs into the browser like a plan's (owner 2026-11-26: a tour made from a track, opened again, routed every leg)
+      legsOut(e);
       return;
     }
     // the plan's legs kept in the browser (a reopened tour, a reload): read before routing – the router then skips them
