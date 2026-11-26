@@ -380,14 +380,14 @@ fun NavigateOverlay(
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
             ControlsRoom(topColumnDp, sliderDp) { footer() } // map controls: the column gives way to a short screen
-            val bottom = Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }
-                .navigationBarsPadding().padding(start = 16.dp, end = 16.dp, bottom = 16.dp)
-            // a tour: Pause | Planen (paused: the pause band over ▶ Weiter · Beenden · ✎); no tour: one big blue Planen –
-            // held while locked, plain inside the unlock window
-            androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
-                if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = lock,
-                    windowOpen = barOpen)
-                else ChangePlanButton(barPlan, bottom, hold = planHeld)
+            NavThumbCard(Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }) { bottom ->
+                // a tour: Anhalten | Planen (paused: ▶ Weiter · Beenden · ✎); no tour: one big blue Planen – held while
+                // locked, plain inside the unlock window
+                androidx.compose.runtime.CompositionLocalProvider(LocalOnHoldFired provides unlockOnFire) {
+                    if (ui.recordedM != null) TourBottomBar(ui.paused, barPause, onEnd = barEnd, onPlan = barPlan, bottom, hold = lock,
+                        windowOpen = barOpen)
+                    else ChangePlanButton(barPlan, bottom, hold = planHeld)
+                }
             }
         }
         // "Neuer Plan – deine Aufnahme läuft weiter" just above the bottom bar, over the map (nothing moves under it), left
@@ -447,7 +447,7 @@ internal fun NewPlanLine(onUndo: (() -> Unit)?, modifier: Modifier = Modifier) {
                 modifier = Modifier.weight(1f).padding(vertical = 8.dp))
             onUndo?.let {
                 androidx.compose.material3.TextButton(onClick = it, modifier = Modifier.heightIn(min = 48.dp),
-                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.ActionEdit)) {
+                    colors = androidx.compose.material3.ButtonDefaults.textButtonColors(contentColor = OnPathColors.NavAccent)) {
                     Text(str(Res.string.plan_undo), style = MaterialTheme.typography.labelLarge)
                 }
             }
@@ -544,12 +544,12 @@ internal fun turnIcon(k: TurnKind): ImageVector = when (k) {
 
 /** Compass needle: ink-blue half pointing north with a walnut "N" above it, walnut-grey half south (owner 2026-11-07, no red). */
 @Composable
-internal fun NorthNeedle(modifier: Modifier) {
+internal fun NorthNeedle(modifier: Modifier, north: Color = OnPathColors.CompassNorth) {
     val measurer = rememberTextMeasurer()
     Canvas(modifier) {
         val w = size.width; val h = size.height
         val cx = w / 2; val top = h * 0.36f; val bottom = h * 0.98f; val mid = (top + bottom) / 2; val half = w * 0.16f
-        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassNorth)
+        drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, north)
         drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassSouth)
         val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnPathColors.Walnut))
         drawText(label, topLeft = Offset(cx - label.size.width / 2f, top - label.size.height + 1f))

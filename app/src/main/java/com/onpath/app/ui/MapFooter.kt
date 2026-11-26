@@ -173,18 +173,20 @@ fun MapControls(
     // Navigate: the column gives way to a short screen ([ControlsRoom]); Plan stays as it is
     val tier = if (onSettings != null) LocalControlsTier.current else ControlsTier.FULL
     val size = tier.slot
-    val tint = if (plan) OnPathColors.PlanAccent else MaterialTheme.colorScheme.onSurfaceVariant
+    // Navigate is green (Daumen-Karte, owner 2026-11-26: "alle Zeichen grün"), Plan blue
+    val tint = if (plan) OnPathColors.PlanAccent else OnPathColors.NavAccent
+    val onTint = if (plan) OnPathColors.Route else OnPathColors.NavAccent
     // the light sage over the map in both modes (owner 2026-11-12, [OnPathColors.MapGround]); Plan differs by its blue icons
     val bg = OnPathColors.MapGround
     // every control says its name on a long press (owner 2026-11-03, novice fix: "what does the eye do?")
     val tips = buildList<Pair<String, @Composable () -> Unit>> {
-        val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
+        val locate: Pair<String, @Composable () -> Unit> = locateTip(gps) to { LocateControl(gps, following, onLocate, size, tint, onTint = onTint, dot = PlanGps.showDot(plan), greyed = locateGreyed, label = locateLabel) }
         // Navigate (owner 2026-11-24): the "tour" bubble on top – share (only while sharing is offered) and ⚙ – over the map bubble
         if (onSettings != null) {
             if (tourShare != null) add(str(Res.string.live_share) to { tourShare(size) })
             add(str(Res.string.nav_settings_cd) to { IconControl(Icons.Outlined.Settings, Res.string.nav_settings_cd, onSettings, size, tint) })
         }
-        if (compass != null) add(compassText(compass) to { CompassControl(compass, size) })
+        if (compass != null) add(compassText(compass) to { CompassControl(compass, size, onTint, north = if (plan) OnPathColors.CompassNorth else OnPathColors.NavAccent) })
         if (plan) add(locate) // Plan: the always-there buttons first – the column grows only downwards
         // eye and whole route are always there (owner 2026-11-06: "ausgrauen statt ausblenden – dann springt nichts und
         // man sieht, was man tun könnte"): grey without a route, the long press still says what they do
@@ -329,7 +331,7 @@ private fun GroupDivider() =
     HorizontalDivider(Modifier.width(28.dp), color = MaterialTheme.colorScheme.outlineVariant)
 
 @Composable
-private fun CompassControl(c: CompassSpec, size: Dp) {
+private fun CompassControl(c: CompassSpec, size: Dp, onTint: Color = OnPathColors.Route, north: Color = OnPathColors.CompassNorth) {
     val what = when {
         c.headingUp == true -> str(Res.string.plan_compass_heading)
         kotlin.math.abs(c.bearing) > 1f -> str(Res.string.plan_compass_turned)
@@ -339,8 +341,8 @@ private fun CompassControl(c: CompassSpec, size: Dp) {
         Modifier.size(size).clip(CircleShape).clickable(onClick = c.onClick).semantics { contentDescription = what },
         contentAlignment = Alignment.Center,
     ) {
-        if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = OnPathColors.Route, modifier = Modifier.size(iconSize(size)))
-        else NorthNeedle(Modifier.size(40.dp).rotate(-c.bearing))
+        if (c.headingUp == true) Icon(Icons.Filled.Navigation, null, tint = onTint, modifier = Modifier.size(iconSize(size)))
+        else NorthNeedle(Modifier.size(40.dp).rotate(-c.bearing), north)
     }
 }
 
@@ -372,6 +374,8 @@ private fun EyeControl(onPeek: (Boolean) -> Unit, peekingPreview: Boolean, size:
 @Composable
 private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> Unit, size: Dp,
                           tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
+                          /** The icon's colour while following: the route blue in Plan, green in Navigate. */
+                          onTint: Color = OnPathColors.Route,
                           /** The GPS colour dot – Navigate only; Plan is quiet about GPS (owner 2026-11-06 23:35, [PlanGps]). */
                           dot: Boolean = true, greyed: Boolean = false,
                           /** The distance to me while I am off the map ([LocateDistance]); the icon steps up to make room. */
@@ -387,7 +391,7 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
         Icon(if (following) Icons.Filled.GpsFixed else Icons.Filled.GpsNotFixed, null,
             tint = when {
                 greyed -> MapControlState.tint(tint, enabled = false)
-                following -> OnPathColors.Route
+                following -> onTint
                 else -> tint
             },
             modifier = Modifier.size(iconSize(size) * (if (label != null) 0.8f else 1f))

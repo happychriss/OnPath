@@ -183,6 +183,13 @@ fun StepSheet(
      * tap AND drag); null = "Größe ändern".
      */
     handleLabel: String? = null,
+    /**
+     * The Daumen-Karte (owner 2026-11-26): a card floating 12 dp over the bottom edge, rounded all round
+     * ([OnPathShapes.Thumb]); the caller puts it above the navigation bar. False = the classic edge-to-edge sheet.
+     */
+    floating: Boolean = false,
+    /** Left of the handle, in its strip: the mode tab ("PLANEN") on the card's top edge; null = none. */
+    handleStart: (@Composable () -> Unit)? = null,
     bottomBar: @Composable ColumnScope.() -> Unit,
     body: @Composable StepSheetScope.() -> Unit,
 ) {
@@ -274,9 +281,11 @@ fun StepSheet(
     Layout(
         contents = listOf(
             {
-                Surface(shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), color = surface, modifier = Modifier.edgeShadow(RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp), up = true).warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp))) {
-                    // Plan's blue top edge (owner 2026-11-03): a stripe along the top, clipped by the rounded shape
-                    if (accent != null) Box(Modifier.fillMaxWidth().height(SHEET_EDGE)) {
+                val sheetShape = if (floating) OnPathShapes.Thumb else RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp)
+                Surface(shape = sheetShape, color = surface, modifier = if (floating) Modifier else Modifier.edgeShadow(sheetShape, up = true).warmShadow(OnPathShadow.HIGH, sheetShape)) {
+                    // Plan's blue top edge (owner 2026-11-03): a stripe along the top, clipped by the rounded shape – not on
+                    // the floating card (its tab says the mode)
+                    if (accent != null && !floating) Box(Modifier.fillMaxWidth().height(SHEET_EDGE)) {
                         Box(Modifier.fillMaxWidth().height(SHEET_EDGE).background(accent))
                     }
                 }
@@ -294,6 +303,7 @@ fun StepSheet(
                         contentAlignment = Alignment.Center) {
                         Box(Modifier.width(32.dp).height(4.dp).clip(CircleShape)
                             .background(accent ?: MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)))
+                        if (handleStart != null) Box(Modifier.align(Alignment.CenterStart)) { handleStart() }
                     }
                     sheetScope.body()
                 }
@@ -308,12 +318,14 @@ fun StepSheet(
                 // the foot: [foot] + navigation bar + a little air, opaque in every step (the bar slides out behind it)
                 Column(Modifier.fillMaxWidth().background(surface)
                     .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } }
-                    .navigationBarsPadding().padding(bottom = FOOT_AIR)) {
+                    .then(if (floating) Modifier else Modifier.navigationBarsPadding()).padding(bottom = if (floating) THUMB_FOOT_AIR else FOOT_AIR)) {
                     if (foot != null) Column(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 4.dp), content = foot)
                 }
             },
         ),
         modifier = modifier.fillMaxWidth()
+            // floating: the shadow follows the shown height, the clip keeps the body (laid out at full height) inside it
+            .then(if (floating) Modifier.warmShadow(OnPathShadow.HIGH, OnPathShapes.Thumb).clip(OnPathShapes.Thumb) else Modifier)
             .nestedScroll(nested)
             .draggable(
                 state = rememberDraggableState { drag(it) },
@@ -350,6 +362,8 @@ private val SHEET_EDGE = 3.dp
 internal val HANDLE_HEIGHT = 24.dp
 /** Air under the bottom bar (above the navigation bar). */
 private val FOOT_AIR = 10.dp
+/** Air under the floating card's foot (the card has its own 12 dp to the screen's edge). */
+private val THUMB_FOOT_AIR = 12.dp
 
 /** Frame times while the sheet moves → events trace. Not in previews / tests. */
 @Composable

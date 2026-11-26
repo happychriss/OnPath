@@ -185,6 +185,24 @@ object OnPathColors {
     val ErrorContainer = Color(0xFFFDE0DC)
     val OnErrorContainer = Color(0xFF5F1410)
 
+    // ---- Daumen-Karte (owner 2026-11-26, docs/team/items/2026-11-26-daumen-karte.md): every new colour a named token, so
+    // the owner can turn them later ("bei den Farbtönen flexibel sein") – never a hex in a screen ----
+    /** The floating card at the bottom (Plan's search / plan sheet, Navigate's Anhalten · Planen): the paper over the map. */
+    val ThumbCard = MapGround
+    /** Inside the thumb card: the search field, the ☰ / 🔍 squares – one step deeper than the card. */
+    val ThumbField = PaperDeep
+    /** Navigate's accent (owner: "in der Navigation sind alle Meldungen und alle Zeichen grün"): map-button icons, signs. */
+    val NavAccent = Green
+    /** Navigate: the left edge of a question box (FRAGE) – green there, an exception to "blue edge = question". */
+    val NavQuestionEdge = Green
+    /**
+     * Navigate: the only blue things are Anhalten and Planen (owner 2026-11-26). Anhalten's strong (a tap) and pale (a hold)
+     * tone – the plan ink blue family, so it reads with Planen.
+     */
+    val NavPauseStrong = ActionEdit
+    val NavPauseTonal = EditTonal
+    val OnNavPauseTonal = OnEditTonal
+
     /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn
     val Bad = Error
@@ -388,6 +406,10 @@ object OnPathShapes {
     const val CARD_DP = 20
     const val SMALL_DP = 12
     const val SHEET_DP = 28
+    /** The floating thumb card at the bottom (Daumen-Karte, owner 2026-11-26): 22 dp corners, 12 dp from the edges. */
+    const val THUMB_DP = 22
+    const val THUMB_EDGE_DP = 12
+    val Thumb = androidx.compose.foundation.shape.RoundedCornerShape(THUMB_DP.dp)
     val Pill = androidx.compose.foundation.shape.RoundedCornerShape(percent = PILL_PERCENT)
     val Card = androidx.compose.foundation.shape.RoundedCornerShape(CARD_DP.dp)
     val Small = androidx.compose.foundation.shape.RoundedCornerShape(SMALL_DP.dp)

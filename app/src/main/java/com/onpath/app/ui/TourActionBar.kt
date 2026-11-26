@@ -166,12 +166,13 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
     val tm = rememberTextMeasurer()
     val style = MaterialTheme.typography.titleMedium
     val density = LocalDensity.current
-    val green = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionGo, contentColor = OnPathColors.CardWhite)
     val blue = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
+    // Anhalten is blue (owner 2026-11-26: "das Einzige, was in der Navigation blau ist, ist Anhalten und Planen")
+    val pauseColors = ButtonDefaults.buttonColors(containerColor = OnPathColors.NavPauseStrong, contentColor = OnPathColors.CardWhite)
     val go = @Composable { word: String, icon: ImageVector?, m: Modifier, hold: Boolean, act: () -> Unit ->
-        if (hold) HoldButton(word, OnPathColors.ActionGo, TourActions.GoTonal, TourActions.OnGoTonal, act, hintOr,
+        if (hold) HoldButton(word, OnPathColors.NavPauseStrong, OnPathColors.NavPauseTonal, OnPathColors.OnNavPauseTonal, act, hintOr,
             m.height(56.dp)) { c -> HoldLabel(icon, word, c) }
-        else Button(onClick = act, colors = green, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
+        else Button(onClick = act, colors = pauseColors, contentPadding = if (icon == null) PaddingValues(horizontal = 16.dp) else ButtonDefaults.ContentPadding,
             modifier = m.heightIn(min = 56.dp)) {
             if (icon != null) { Icon(icon, null, modifier = Modifier.size(22.dp)); Spacer(Modifier.width(8.dp)) }
             Text(word, style = style, maxLines = 1, softWrap = false)

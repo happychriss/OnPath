@@ -269,7 +269,7 @@ fun MapScreen(
             val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
             FirstMapCardView(firstCard, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                 top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                start = OverviewPillPlace.startDp(activityButtonShown = vm.routesFlow.shown == null).dp,
+                start = OverviewPillPlace.startDp(activityButtonShown = false).dp,
                 end = OverviewPillPlace.EDGE_DP.dp))
         }
         // not while the strip asks "Detailed map for here?" or the load question is open – they say the same.
@@ -280,7 +280,7 @@ fun MapScreen(
             OverviewPill(onLoad = { OverviewHintRule.centre(cam.hintKey)?.let(vm.mapData::mapTapped) },
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = OverviewPillPlace.startDp(activityButtonShown = vm.routesFlow.shown == null).dp,
+                    start = OverviewPillPlace.startDp(activityButtonShown = false).dp,
                     end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan's only GPS words: a short neutral note after the user's own tap (owner 2026-11-06 23:35, PlanGps)
@@ -294,7 +294,7 @@ fun MapScreen(
                 }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = PlanGps.noteStartDp(activityButtonShown = vm.routesFlow.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = false).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // A short INFO for the map (vm.say → NoticeSurface.MAP_LINE, e.g. "Relief off – the map runs smoother"): the quiet
         // pill at the GPS note's place (PlanGps.noteTopDp / noteStartDp), after the GPS note (a tap of the user's) – goes
@@ -304,7 +304,7 @@ fun MapScreen(
             QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = PlanGps.noteStartDp(activityButtonShown = vm.routesFlow.shown == null).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = PlanGps.noteStartDp(activityButtonShown = false).dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, { cam.tick },
@@ -356,15 +356,9 @@ private fun PlanMode(
 ) {
     val helpContext = androidx.compose.ui.platform.LocalContext.current
     Box(Modifier.fillMaxSize()) {
-        // the paper band behind the search pill and ☰ (owner 2026-11-05 b; paper since 2026-11-06 variant C – no blue
-        // surfaces, no blue glow round the screen): from the screen's top edge (status bar) to the bar's bottom; during a
-        // tour one row more ("‹ Zur Tour")
+        // no top band any more (Daumen-Karte, owner 2026-11-26): search, ☰ and the activity are in the card at the bottom
         val topBar = planTopBarDp()
-        Box(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().edgeShadow(androidx.compose.ui.graphics.RectangleShape, up = false).background(PlanTopBand.Color)
-            .statusBarsPadding().height(topBar.dp))
-        PlanTopBar(
-            onSearch = vm.searchFlow::openSearch,
-            menu = PlanMenu(
+        val menu = PlanMenu(
                 state = vm.routesGo.menuState(recording = rec != null),
                 onManage = { vm.routesGo.openRoutes() },
                 onSettings = { vm.settingsSlice.openSettings() },
@@ -390,19 +384,7 @@ private fun PlanMode(
                 onUpdates = null,
                 // owner 2026-11-08 (father's feedback): "? Hilfe" first – the website's help in the app language
                 onHelp = { OnPathLinks.open(helpContext, OnPathLinks.help()) },
-            ),
-            modifier = Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).fillMaxWidth().statusBarsPadding(),
-            editing = rec != null,
-            offline = vm.offlineReady?.state,
-            onOffline = vm::toggleOfflineInfo,
-        )
-        // the activity as a round button on the map, top left under the search pill (owner 2026-11-05, R5): the plan
-        // sheet has no activity chip any more; not over a shown track / place card (their own panels)
-        if (vm.routesFlow.shown == null) ActivityMapButton(vm.planRoute.activity, vm.planRoute.sac, onActivity,
-            Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
-                .padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = topBar).dp, start = 12.dp)
-                // where it really is (badge and font size included): route fits keep clear of it (FitPaddingRule)
-                .onGloballyPositioned { val b = it.boundsInRoot(); onActivityBox(b.right.toInt(), b.bottom.toInt()) })
+            )
         // "Ohne Netz ✓ / ⟳ / ⚠" (owner 2026-11-03): recomputed off the main thread when the route changes, every 3 s
         // while loading, else every 20 s (a map region joined, the network back) – file checks only, no downloads
         val offlineLine = vm.route?.points
@@ -451,7 +433,7 @@ private fun PlanMode(
                             Modifier.navigationBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp))
                     }
                 }
-                else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour, onRequestLocation)
+                else PlanBottom(vm, rec, onStartNavigation, onActivity, onEndTour, onRequestLocation, menu)
             }
         })
         com.onpath.app.ui.suggest.SuggestWishHost(vm) // the wish sheet of the round-trip suggestions while open
@@ -550,9 +532,10 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
             .padding(top = top.dp, start = 16.dp, end = 16.dp).measured(top))
     } else if (chipOn) {
+        // top left, 12 dp under the status bar (Daumen-Karte, owner 2026-11-26: the place under ☰ is gone)
         BackgroundDownloadChip(bg!!, onClick = { vm.mapData.downloadDetailsOpen = true },
-            modifier = Modifier.align(Alignment.TopEnd).modeEdge(ModeEdge.TOP).statusBarsPadding()
-                .padding(top = MessagePlacement.CHIP_TOP_DP.dp, end = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
+            modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
+                .padding(top = MessagePlacement.CHIP_TOP_DP.dp, start = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
     }
     BackgroundDownloadDetails(vm, bg)
 }
@@ -566,7 +549,7 @@ private fun backToNavigation(vm: AppViewModel, r: RecState) {
 @OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
 private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
-                       onRequestLocation: () -> Unit = {}) {
+                       onRequestLocation: () -> Unit = {}, menu: PlanMenu = PlanMenu()) {
     val shown = vm.routesFlow.shown
     if (shown != null) {
         TrackPanel(
@@ -622,7 +605,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             notRouted = vm.planRun.notRouted, gapText = vm.planGapText(), warnText = vm.planRoute.warningLineText(), warnCount = vm.planRoute.warningCount(),
             changedText = vm.planRoute.routeChangedLineText(), syncRoutingText = vm.planRoute.syncRoutingNote, tapHint = vm.tapHoldHint,
             offlineInfo = vm.offlineReady?.takeIf { vm.offlineInfo }?.let { OfflineReady.explain(it) },
-            days = vm.multiDay.daysUi(), dayHead = vm.multiDay.dayHeadUi()),
+            days = vm.multiDay.daysUi(), dayHead = vm.multiDay.dayHeadUi(), offline = vm.offlineReady?.state),
         PlanCallbacks(
             onSheetDrag = { if (it) vm.tapHoldHint = false; vm.mapGesture(it) }, onUndo = vm.planEdit::undoStep, onRedo = vm.planEdit::redoStep, onClear = vm.planEdit::clearPlan,
             onStartNavigation = onStartNavigation, onContinue = vm.tourSession::continueNavigation,
@@ -639,6 +622,7 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onSearch = vm.searchFlow::openSearch, onMyRoutes = vm.routesGo::openRoutes,
             onDayTap = vm.multiDay::tapDay, onDayHold = vm.multiDay::holdDay, onRideDays = vm.multiDay::rideDays, onAllDays = vm.multiDay::allDays,
             onLoadDayMaps = vm.multiDay::loadDayMaps,
+            menu = menu, onOffline = vm::toggleOfflineInfo,
         ),
     )
     if (vm.planRoute.spotsOpen) {

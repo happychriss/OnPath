@@ -29,6 +29,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -52,6 +54,8 @@ import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Cancel
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material3.CircularProgressIndicator
 import com.onpath.app.data.RoutingDataNotice
 import androidx.compose.material3.Button
@@ -141,6 +145,10 @@ class PlanCallbacks(
     val onRideDays: () -> Unit = {},
     val onAllDays: () -> Unit = {},
     val onLoadDayMaps: () -> Unit = {},
+    /** The ☰ app menu in the card's top row (Daumen-Karte, owner 2026-11-26: it moved down from the top band). */
+    val menu: PlanMenu = PlanMenu(),
+    /** A tap on the PLANEN tab with a route: the offline state explained in one line. */
+    val onOffline: () -> Unit = {},
 )
 
 /** Recording status shown at the top of the plan sheet during a tour. */
@@ -197,6 +205,8 @@ data class PlanUi(
     val days: DaysUi? = null,
     /** A followed day of a multi-day tour ("Tag 4 von 6"); null otherwise. */
     val dayHead: DayHeadUi? = null,
+    /** The route's offline state on the PLANEN tab ("Ohne Netz ✓ / ⟳ / ⚠"); null = no route. */
+    val offline: com.onpath.app.domain.OfflineReady.State? = null,
 ) {
     /** What Start does (the shown track has its own panel): navigate the line, wait for it, or only record. */
     val start: PlanStart get() = PlanStart.of(trackPoints = null, hasRoute = route != null, pointCount = pointCount)
@@ -217,7 +227,7 @@ data class PlanUi(
  * the route details only. The ONE filled primary button rides on the sheet's bottom edge from the summary step on.
  */
 @Composable
-fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null) {
+fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null, modifier: Modifier = Modifier) {
     val state = sheetState ?: rememberStepSheetState(PlanSize.entries.size, ui.shownSize.step)
     val scroll = rememberScrollState()
     val size = ui.shownSize
@@ -244,6 +254,11 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null)
             PlanFoot.Kind.NONE -> null
         },
         bottomBar = { PlanBar() },
+        // the Daumen-Karte (owner 2026-11-26): the sheet floats 12 dp over the bottom edge, PLANEN on its top edge
+        floating = true,
+        handleStart = { PlanModeLabel(editing = ui.tourRunning, offline = ui.offline, onOffline = cb.onOffline) },
+        modifier = modifier.navigationBarsPadding()
+            .padding(start = OnPathShapes.THUMB_EDGE_DP.dp, end = OnPathShapes.THUMB_EDGE_DP.dp, bottom = OnPathShapes.THUMB_EDGE_DP.dp),
     ) {
         // the pulled-up sheet has ONE fixed height (owner): deleting / adding / moving points (or the routing
         // bar) never makes its top edge jump; the scrolling area takes what is left
@@ -297,18 +312,19 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val full = ui.shownSize == PlanSize.FULL
     // What the rolled-up step hides is not for TalkBack / tests (it lies under the sheet's bottom edge)
     val belowStep = if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
-    Box(Modifier.fillMaxWidth()) {
-        Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
-        // the rolled-up row lies over the summary's first line and fades with the bar sliding in (one body, no rebuild)
-        CollapsedRow(ui, cb, barShown, with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
-    }
-    // the empty plan's first step belongs to the summary step: the sheet opens at it, so a first start sees how to begin
-    // (owner 2026-11-02: "beim ersten Öffnen … sieht man es gar nicht"; 2026-11-07: the 3-step guide, EmptyGuide)
-    val guide = EmptyGuide.shows(ui.pointCount, ui.tour != null || ui.tourRunning)
-    if (ui.pointCount == 0) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) {
-        // during a tour (owner 2026-11-12, TourStillRunning): only a new destination – the search, or hold the map →
-        // Hierhin (every route during a tour starts where you are); "Weiter geht's" below goes back to the tour
-        if (guide) EmptyGuideFirst(cb.onSearch) else TourNewTargetRow(cb.onSearch)
+    // the card's top row (Daumen-Karte, owner 2026-11-26): empty – "Wohin soll's gehen?" + ☰, the activity and Meine
+    // Touren as chips; with a plan – activity · time · km · ↑↓ + 🔍 + ☰ in the same row, at the same place. The rolled-up
+    // step is this row (over the foot's button)
+    ThumbHead(ui, cb)
+    Spacer(with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
+    // no step guide any more (owner 2026-11-26: the search card says how to begin)
+    val guide = false
+    // during a tour (owner 2026-11-12, TourStillRunning): "● Tour läuft noch" and only a new destination – the search, or
+    // hold the map → Hierhin; "Weiter geht's" below goes back to the tour
+    if (ui.pointCount == 0 && (ui.tour != null || ui.tourRunning)) Column(Modifier.fillMaxWidth().padding(top = 8.dp).then(belowStep)) {
+        TourStillRunningTitle(paused = ui.tour?.paused == true)
+        TourNewTargetRow(cb.onSearch)
     }
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
@@ -325,7 +341,6 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     var viewport by remember { mutableStateOf<androidx.compose.ui.layout.LayoutCoordinates?>(null) }
     Column(Modifier.fillMaxWidth().weight(1f).onGloballyPositioned { viewport = it }.then(belowStep)
         .verticalScroll(scroll, enabled = full)) {
-        if (guide) EmptyGuideRest(cb.onMyRoutes)
         if (route != null) SavedLine(ui)
         // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet
         // went down and up on Reverse / Round trip – the profile, the badge and the lines vanished and came back)
@@ -337,15 +352,14 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
                 val highlight = cb.onHighlight
                 // the gradient legend lives on Route details only
-                if (factsOneLine(route)) Box {
+                Box {
                     ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
                         onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
-                    // the difficulty sits on the profile's top right while the facts keep one line (else it ends them)
+                    // the difficulty sits on the profile's top right (the facts are in the card's top row)
                     DifficultyBadge(rememberRating(route, ui.activity),
                         Modifier.align(Alignment.TopEnd)
                             .clickable(enabled = !ui.routing, role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
-                } else ElevationProfile(route.points, height = PROFILE_HEIGHT, gradient = true,
-                    onHighlight = highlight, onRelease = remember(highlight) { { highlight(null) } })
+                }
             }
         }
         Spacer(with(sheet) { Modifier.height(4.dp).stepEnd(PlanSize.COMPACT.step) { scroll.value.toFloat() } })
@@ -429,35 +443,62 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
         if (ui.routing) RoutingBar(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
         else HorizontalDivider(thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
     }
-    val route = ui.route
-    if (route == null) { Title(ui, null, cb.onTimeDetails); return }
-    val oneLine = factsOneLine(route)
-    androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, route, cb.onTimeDetails) }
-        Text(instrument("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", MaterialTheme.typography.bodyLarge),
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.align(Alignment.CenterVertically))
-        // the facts wrap anyway (a large font): the difficulty goes at the end of their second line, off the profile
-        if (!oneLine) DifficultyBadge(rememberRating(route, ui.activity),
-            Modifier.align(Alignment.CenterVertically).calculating(ui.routing)
-                .clickable(enabled = !ui.routing, role = Role.Button, onClickLabel = str(Res.string.plan_show_route_details), onClick = cb.onDetails))
-    }
 }
 
-/** Time + km + ↑ ↓ fit on one line of the sheet (then the difficulty sits on the profile, else in the facts). */
+/**
+ * The Daumen-Karte's top row (owner 2026-11-26, picture page B1): one fixed row in the thumb's reach. Empty plan: the
+ * search field "Wohin soll’s gehen?" + ☰, under it the activity ("Wandern · T2") and "Meine Touren" as chips. With a
+ * plan: the activity, the facts (time · km · ↑ ↓; a tap on the time = Time details) + 🔍 (add a goal) + ☰.
+ */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
-private fun factsOneLine(route: PlannedRoute): Boolean {
-    val tm = androidx.compose.ui.text.rememberTextMeasurer()
-    val density = androidx.compose.ui.platform.LocalDensity.current
-    val t = MaterialTheme.typography
-    val w = with(density) {
-        // measured as drawn: big digits, small units (Instrument)
-        (tm.measure(instrument(Format.duration(route.durationS), t.titleLarge), t.titleLarge).size.width +
-            tm.measure(instrument(Format.distance(route.distanceM), t.titleMedium), t.titleMedium).size.width +
-            tm.measure(instrument("↑ ${Format.meters(route.ascentM)}  ↓ ${Format.meters(route.descentM)}", t.bodyLarge), t.bodyLarge).size.width).toDp()
+private fun ThumbHead(ui: PlanUi, cb: PlanCallbacks) {
+    if (ui.pointCount == 0) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            ThumbSearchField(cb.onSearch, Modifier.weight(1f))
+            Spacer(Modifier.width(8.dp))
+            AppMenuButton(cb.menu, square = true)
+        }
+        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().padding(top = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            ThumbActivityChip(ui.activity, ui.sac, cb.onActivity, words = true)
+            ThumbChip(Icons.Outlined.FolderOpen, str(Res.string.plan_menu_my_routes), cb.onMyRoutes)
+        }
+        return
     }
-    // the sheet's 16 dp sides; 8 dp inside the title, 10 dp between the pieces
-    return PlanRow.factsOneLine(w.value, LocalConfiguration.current.screenWidthDp.toFloat())
+    val route = ui.route
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        ThumbActivityChip(ui.activity, ui.sac, cb.onActivity, words = false)
+        Spacer(Modifier.width(8.dp))
+        androidx.compose.foundation.layout.FlowRow(Modifier.weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (route == null) Box(Modifier.align(Alignment.CenterVertically)) { Title(ui, null, cb.onTimeDetails) }
+            // with a route: time · km · ↑ as pieces that wrap between them, never "…" (a tap on the time = Time details)
+            else {
+                Text(instrument(Format.duration(route.durationS), MaterialTheme.typography.titleLarge),
+                    style = MaterialTheme.typography.titleLarge, maxLines = 1, softWrap = false,
+                    modifier = Modifier.align(Alignment.CenterVertically).heightIn(min = 40.dp).clip(MaterialTheme.shapes.small)
+                        .clickable(role = Role.Button, onClickLabel = str(Res.string.plan_time_details), onClick = cb.onTimeDetails)
+                        .wrapContentHeight(Alignment.CenterVertically).calculating(ui.routing))
+                Text(instrument(Format.distance(route.distanceM), MaterialTheme.typography.titleMedium),
+                    style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                    softWrap = false, modifier = Modifier.align(Alignment.CenterVertically).calculating(ui.routing))
+            }
+            if (route != null) Text(instrument("↑${Format.meters(route.ascentM)}", MaterialTheme.typography.bodyLarge),
+                style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1,
+                softWrap = false, modifier = Modifier.align(Alignment.CenterVertically).calculating(ui.routing))
+            // rolled up the warning line is hidden: its ⚠ count stays in the row
+            if (ui.collapsed && !ui.routing && ui.warnText != null && ui.warnCount > 0) Row(Modifier.align(Alignment.CenterVertically),
+                verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Amber, modifier = Modifier.size(20.dp))
+                Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
+                    color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp))
+            }
+        }
+        Spacer(Modifier.width(8.dp))
+        ThumbSquare(Icons.Outlined.Search, str(Res.string.plan_search_hint), cb.onSearch)
+        Spacer(Modifier.width(8.dp))
+        AppMenuButton(cb.menu, square = true)
+    }
 }
 
 /**
@@ -485,49 +526,6 @@ object PlanRow {
 
     /** Time + km + ↑ ↓ ([textWidthDp] together, 18 dp between them) fit one line of the sheet (16 dp sides). */
     fun factsOneLine(textWidthDp: Float, screenWidthDp: Float): Boolean = textWidthDp + 18f <= screenWidthDp - 32f
-}
-
-/**
- * The rolled-up sheet (owner 2026-11-07, variant A): the facts centred `4 h 36 min · 12,5 km · ↑842 ↓310  ⚠2` – the
- * hints' ⚠ count at their end – over the full-width green button in the sheet's foot ([PlanFoot]). No activity sign (it
- * is on the map). A large font wraps between the values, never inside one. A tap on the row opens the summary step;
- * laid over the summary and faded by [barShown] (1 = the summary's bar is fully in → gone).
- */
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
-@Composable
-private fun CollapsedRow(ui: PlanUi, cb: PlanCallbacks, barShown: () -> Float, stop: Modifier) {
-    val on = ui.collapsed
-    val route = ui.route
-    val variant = MaterialTheme.colorScheme.onSurfaceVariant
-    Column(Modifier.fillMaxWidth().graphicsLayer { alpha = 1f - barShown() }
-        .background(OnPathColors.PlanTint)
-        .then(if (on) Modifier.clickable(role = Role.Button, onClickLabel = str(Res.string.plan_sheet_expand)) {
-            cb.onResize(PlanSize.MINI)
-        } else Modifier.clearAndSetSemantics { })) {
-        androidx.compose.foundation.layout.FlowRow(Modifier.fillMaxWidth().heightIn(min = 48.dp),
-            horizontalArrangement = Arrangement.Center, verticalArrangement = Arrangement.Center) {
-            val mid = Modifier.align(Alignment.CenterVertically)
-            when {
-                route != null -> CollapsedFacts.pieces(route.durationS, route.distanceM, route.ascentM, route.descentM)
-                    .forEachIndexed { i, piece ->
-                        val st = if (i == 0) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyLarge
-                        // one value never breaks (no-break spaces inside, one line each); the line wraps between them
-                        Text(if (i == 0) instrument(piece, st) else Instrument.styled(piece, st, numberWeight = FontWeight.Normal),
-                            style = st, color = if (i == 0) Color.Unspecified else variant, maxLines = 1, softWrap = false,
-                            modifier = mid)
-                    }
-                ui.routing -> Text(PlanStatus.CALCULATING, style = MaterialTheme.typography.bodyMedium, color = variant, modifier = mid)
-                else -> Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleMedium, modifier = mid)
-            }
-            if (!ui.routing && ui.warnText != null && ui.warnCount > 0) Row(mid.padding(start = 8.dp),
-                verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Amber, modifier = Modifier.size(20.dp))
-                Text("${ui.warnCount}", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold,
-                    color = OnPathColors.Amber, modifier = Modifier.padding(start = 2.dp))
-            }
-        }
-        Spacer(stop)
-    }
 }
 
 /** The rolled-up row's pieces (pure). */
