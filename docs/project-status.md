@@ -1,6 +1,6 @@
 # OnPath – project status and decisions
 
-Current release **v0.17.2** (2026-11-07). Open work: `docs/team/backlog.md`. Core features and their tests:
+Current release: see "Where things are" below. Open work: `docs/team/backlog.md`. Core features and their tests:
 `docs/core-features.md`. What each release changed: GitHub Releases (`docs/release-notes/` holds only the current
 release's notes) and the git history – this file keeps only the current state and the decisions that still apply.
 
@@ -76,7 +76,7 @@ How we work together: `docs/team/owner-preferences.md`.
 | Re-routing | Only after asking; skip passed stops; show the original route grey |
 | Navigate | Only the followed line (no numbered points); what Plan shows = what Navigate follows |
 | Deleting all points in a tour | Guidance ends, recording goes on, Undo restores |
-| Messages | `docs/design/ui-style.md`: FRAGE box (blue edge, two verbs) / HINWEIS box (one button; grey, amber ⚠, red ⚠) / ANZEIGE (no box); one box at a time, 12 dp under the top; no dark bar. **Nothing disappears by itself** – everything stays until answered or the situation is gone ("we are a hiking app – it can rain, stress…"); nothing may flash |
+| Messages | `docs/design/ui-style.md`: FRAGE box (blue edge, two verbs) / HINWEIS box (one button; grey, amber ⚠, red ⚠) / ANZEIGE (no box); one box at a time, 12 dp under the top; no dark bar. **Nothing disappears by itself** – everything stays until answered or the situation is gone ("we are a hiking app – it can rain, stress…"); nothing may flash. Exception (owner 2026-11-26): a short info line **without a button** may go after a few seconds; anything with a button stays |
 | The owner's words | A UI text the owner picked stays (owner 2026-11-01, "Hierhin"): a review or polish pass never rewords it – it proposes the change as a question |
 | Core features | A field bug first gets a reproducing test, then the fix (`docs/core-features.md`) |
 | Public texts | README, pitch, store: factual and calm, like telling a friend or a magazine review – what happens, no slogans, no superlatives, no exclamation marks, no competitor bashing; Komoot only as dated, sourced facts with credit where it is stronger. Everyday usability first; internals are basic requirements. Drafts to the owner before anything goes public |

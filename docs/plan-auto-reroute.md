@@ -112,6 +112,8 @@ automatic re-route. The owner's decision (above) takes C's routing but asks firs
 
 ### 5.2 Recommendation: C + automatic, with these defaults
 
+> Superseded: the app never re-routes without asking (owner decision at the top, `VISION.md`). Kept as history.
+
 | Parameter | Default | Note |
 | --- | --- | --- |
 | Off-route distance | Settings 25 / **40** / 75 m + accuracy margin (≤ 20 m) | existing setting |
@@ -126,7 +128,7 @@ automatic re-route. The owner's decision (above) takes C's routing but asks firs
 | Cache | keep BRouter's LRU; candidates are new coordinates each time, so no reliance on cache | |
 
 **Settings (simple):** one row under the existing off-route setting:
-"When off route: **Reroute automatically** · Only warn · Off" (default: Reroute automatically).
+"When off route: **Reroute automatically** · Only warn · Off" (default: Reroute automatically). *Superseded – not built; the app always asks.*
 The distance chips stay. Nothing else exposed.
 
 **Passed stops:** a stop is passed when visited (≤ 40 m, `RouteProgress.PASSED_RADIUS_M`) **or** behind the progress

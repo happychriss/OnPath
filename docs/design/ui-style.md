@@ -9,7 +9,8 @@ The one place for how OnPath's screens look and talk. New UI follows it; a chang
 - **Few colours, one meaning each:** green = act (primary button), blue edge = a question, amber = attention,
   red = something failed. Map furniture (route blue, track purple, recording orange) never appears in messages.
 - **Nothing disappears by itself** (owner rule for the whole app – rain, stress): a box stays until it is answered,
-  a state shows until it no longer holds. Nothing may flash (`NoFlash`).
+  a state shows until it no longer holds. Nothing may flash (`NoFlash`). Exception (owner 2026-11-26, `VISION.md`): a short
+  info line **without a button** may go after a few seconds; a line or card with a button stays.
 - **Big targets:** gloves, one hand, sunlight.
 
 ## Colours (`ui/Theme.kt` → `OnPathColors`)

@@ -27,7 +27,8 @@ Everything you need on the tour works on the phone; the browser planner may add 
 
 In planning you edit only by holding, with no quick-tap actions and no dragging of points.
 A new route comes only after asking.
-Nothing disappears by itself and nothing flashes; a message stays until it is answered or the situation is gone.
+Nothing with a button disappears by itself and nothing flashes; a message stays until it is answered or the situation is gone.
+Only a short information line without a button may go by itself after a few seconds.
 What Plan shows is exactly what Navigate follows.
 A UI text the owner chose stays; a change to it is proposed as a question.
 

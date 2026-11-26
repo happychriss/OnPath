@@ -15,7 +15,7 @@ Version 1 is a single-user, offline tool for Android, with iOS as a second step.
 | --- | --- | --- |
 | Komoot-like topographic map, offline | Points of interest guides, photos, reviews | Social feed, followers, likes |
 | Own position, heading, accuracy | Cloud sync between devices | Mandatory account or login |
-| Route planning: start, end, via points, drag to change | Live tracking / sharing position with others | Ads, tracking, analytics without opt-in |
+| Route planning: start, end, via points, hold to change (no dragging – owner) | Live tracking / sharing position with others | Ads, tracking, analytics without opt-in |
 | Smart routing per activity type, fully offline | Weather, sunset times | Paid map regions |
 | Elevation profile, distance, ascent, time estimate | Heart rate / sensor pairing (Bluetooth) |  |
 | Follow a route with off-route warning | Full voice turn-by-turn in all languages |  |
@@ -260,7 +260,7 @@ Targets are measured on a reference mid-range phone (about 3 years old, 4 GB RAM
 | Reliability | Recorded tracks lost | zero (tested by killing the app, rebooting, draining battery) |
 | Accuracy | Recorded distance vs. reference track | within 2% |
 | Accuracy | Recorded ascent vs. elevation model | within 10% |
-| Compatibility | Android versions | Android 9 and newer |
+| Compatibility | Android versions | Android 8 and newer (minSdk 26) |
 | Accessibility | Font scaling, screen reader labels, colour-blind safe route colours | Required |
 | Privacy | No location data leaves the phone; no trackers; no account | Required |
 | Licensing | App source code under Apache-2.0; all data attributions shown in the app | Required |
@@ -300,4 +300,4 @@ The build order puts the map style and robustness first, because those are what 
 - [x] Komoot GPX: reading GPX exported from Komoot is a Should (F-GPX-08).
 - [x] First test region: Bozen / Meran / Algund (South Tyrol).
 - [x] App name: OnPath. Code: github.com/happychriss/OnPath.
-- [x] Distribution: Google Play only to start (test builds sideloaded as APK).
+- [x] Distribution: Google Play test plus GitHub releases with the in-app updater (test builds sideloaded as APK).
