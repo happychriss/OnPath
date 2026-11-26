@@ -1,3 +1,16 @@
+# STOP 2026-11-26 ~21:00 (owner: 0.18.11 is NOT released – the Daumen-Karte rebuild goes first, in a fresh donald) – start here
+
+**On main today (each gated, pushed):** position while the route is changed on a tour = the normal blue dot with
+direction, the activity badge gone (owner's pick B, aa4b9f419); **in Plan the numbered points lie over the dot**
+(`map/PointsOverDot`, owner's option 1 – point ① seen when you stand on it; Navigate: dot on top) 162e66f13 – CorePlan +
+CoreField E2E green on GitHub (35/35), **not seen by eye** (the emulator draws no route points) → look on the Pixel;
+viewer start view from [tracking] merged 8f418ca96; pairing steps text option 1 („sonst im Browser auf „In OnPath öffnen“
+tippen“) f63af904c. The detour writers are on main too (642904377, umbau).
+**0.18.11 draft (not released):** `wip/donald-2026-11-26-release-0.18.11` = version 0.18.11 + EN notes + German item,
+written before the writers landed; the next release takes what fits from it. The owner's publish word of 2026-11-25 is
+withdrawn (backlog line removed). No device job running, no wip work open.
+**Prune later:** `ci/donald-2026-11-26-points-over-dot` (merged), the branches named below.
+
 # SHUTDOWN 2026-11-25 ~23:10 (owner's word via the captain) – start here, fresh donald
 
 **On main (all gated):** 0.18.10 released 10:54 UTC (de9bb71a4, planner deployed). Viewer countdown V1 + „Geteilter
