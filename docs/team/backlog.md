@@ -80,6 +80,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[donald] Shorter phone setup: first start asks only location; notifications + battery at the first tour; brand / saver hints only where affected (owner 2026-11-26)…** → [detail](items/2026-11-26-shorter-phone-setup.md)
 - **[donald + laptop] Context menus: one scheme for order and wording – Start · Stopp · Ziel, „Als …“, three groups (owner 2026-11-26)…** → [detail](items/2026-11-26-context-menus-wording.md)
 - **[donald + laptop] LordTriangel's PRs 20–22 – parked by the owner 2026-11-24 (to-do, other work first)…** → [detail](items/2026-11-24-lordtriangel-prs-20-22.md)
 - **[laptop] Restore the replaced plan – the app's box is on main (2e754723f), the planner part is yours (owner 2026-11-24, picture approved)…** → [detail](items/2026-11-24-restore-replaced-plan.md)
@@ -155,6 +156,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
 ## Later
+- **Plain words: „Routing-Daten“ → „Karte und Wege“, explain the SAC scale, tidy error texts (owner 2026-11-26: later; colours, dark mode, English diagnostics stay for now)…** → [detail](items/2026-11-26-plain-words-cleanup.md)
 - **Multi-day tours – concept complete, nothing built…** → [detail](items/2026-11-17-multi-day-tours-concept-complete-nothing.md)
 - **Plan sheet "a third lower"** – reached only ~23 % (d2885035); more needs touch targets smaller than 48 dp, owner
   said no (2026-10-31).
