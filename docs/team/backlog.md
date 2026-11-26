@@ -74,7 +74,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [umbau] (2026-11-26 ~21:10) **detour writers W0–W4 + the planner part (laptop 293339573) on main 642904377** (gate full green, both parts read by a fresh Opus). Open: two red Web planner steps on the branch (GPX/long-route in Wasm timeout, München plan page error – checking if main has them too), full E2E on main running, SameRouteTest. 0.18.11 not released (owner).
-- [laptop] (2026-11-26 ~19:20, **running again on hp**) 0.18.11: verbinden on main (a79671ba5); review fixes on `wip/laptop-2026-11-25-writers-web` 293339573 – waiting for umbau's merge to main.
+- [laptop] (2026-11-26 ~21:45) planner: verbinden + writers web on main, live-smoke race fixed (937c1b807), Web planner green on main – deploy waits for the owner's yes in the laptop thread (classifier). 0.18.10-compatible (readers in 0.18.10).
 - [tracking] **free – stopped** 2026-11-26 ~21:10. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] **free – stopped** 2026-11-26 ~21:00: 0.18.11 NOT released (owner: the Daumen-Karte rebuild first, a fresh donald). On main today: position dot B + points over the dot in Plan 162e66f13, viewer start view 8f418ca96, pairing steps f63af904c → `handoffs/handoff-donald-2026-11-24.md` top.
 - [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
