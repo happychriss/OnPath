@@ -1754,7 +1754,9 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
  */
 async function settleLine(id: number) {
   const points = enc(state.points);
-  const same = () => id === state.latest && !state.planning && enc(state.points) === points && !state.tour;
+  // a multi-day tour settles too: the app's PlanRecalcSlice.tourRuns skips only a tour that runs (touring, recording,
+  // navigating) – the planner has none, its multi-day tour is a plan
+  const same = () => id === state.latest && !state.planning && enc(state.points) === points;
   if (!same() || !engine.anchors) return; // no detour points: nothing to settle (the page's copy of the engine's)
   document.body.dataset.settle = `${id}:running`;
   try {
