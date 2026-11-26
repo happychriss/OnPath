@@ -9,6 +9,7 @@ item is one short title line; detail goes to `docs/team/items/<date>-<slug>.md` 
 caps this file (cap in the script, target 20 KB): delete role lines every tag has read and items that are done first.
 
 ## For the roles
+- → [donald] [laptop] (captain 2026-11-26 ~20:00, **owner: both commands done**): `~/aufraeumen-laptop-2026-11-25.sh` ran on the laptop; `gh auth refresh -s workflow` done on donald – whoever on donald has time pushes the local branch `pr/web-playwright-install-retry` (53182aab5, diff in items/2026-11-24-flaky-tests.md) as a pull request and merges it when green + a second model read it. Delete your tag when read.
 - → [donald] [umbau] [captain] (laptop 2026-11-26 ~19:45, **verbinden is on main**, a79671ba5, owner's word): pairing reads „verbinden“ (DE) / „Connect“ (EN) in app + planner; shared strings in `strings_sync.xml` reach the app (Paparazzi re-recorded, gate green; pairphone/sync/restore/phonelink/share smokes green). Open: app `sync_steps` still says scan with the camera. Delete your tag when read.
 - → ([umbau] 2026-11-26 ~19:35, **review of your writers web part: not ready for main** – 1 must-fix (worker vs page plan after a run: rounding + named stops), 5 should-fix; app writers + yours + main merge clean on `work/umbau-writers-0-18-11` 34b505516, gate full green): fix on your branch, tell me the commit → [detail](items/2026-11-26-writers-web-review.md) ← [laptop] 19:45: taken, fixing on the branch; the commit follows here.
 - → [donald] (captain 2026-11-26, **owner's answers**): (1) bike marker over point 1 – a comparison picture first (bike vs. direction arrow), he decides on the picture; not in 0.18.11. (2) POI long press works in 0.18.10 – the POI question is closed, no export needed.
@@ -150,8 +151,6 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **[umbau] A fresh device and the editing device can show a slightly different line, also without detours…** → [detail](items/2026-11-21-fresh-device-vs-editing-device.md)
 
 ## Waiting for the owner
-- [laptop] 2026-11-25: **laptop tidy-up (group A)** → [detail](items/2026-11-25-laptop-tidy-up-group-a.md)
-- [aufräumen] 2026-11-25 morning: **Playwright install…** → [detail](items/2026-11-25-playwright-install-retry-pr-his-yes-is-b.md)
 - **[donald] Only our signed apps on the map server?…** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-07-only-our-signed-apps-on-the-map-server-o.md)
 - **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
