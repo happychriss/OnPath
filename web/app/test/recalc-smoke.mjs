@@ -48,7 +48,7 @@ check(/Ganz neu berechnen|Recalculate from scratch/.test(label), `the row says "
 check(await page.evaluate(() => document.querySelector('#newPlan').nextElementSibling.id) === 'menuRecalc', 'the row sits right after Neu planen');
 let before = await page.evaluate(() => JSON.stringify(window.__state.points));
 
-// the idle settling (WebApi.settleRun – the app's PlanSettle): the taken run's legs routed on their own, the line shown again quietly
+// the idle settling (WebApi.settleStep – the app's PlanSettle, one leg a step): the taken run's legs routed on their own, the line shown again quietly
 const settleDone = (id) => page.waitForFunction((i) => /:(shown|done)$/.test(document.body.dataset.settle ?? '') && document.body.dataset.settle.startsWith(i ? '' : ''), id, { timeout: 600_000 });
 await settleDone();
 const settledAs = await page.evaluate(() => document.body.dataset.settle.split(':')[1]);

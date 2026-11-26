@@ -1737,8 +1737,11 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
 /**
  * The idle settling (detour-stitch.md §8.15, the app's PlanRecalcSlice.routeTaken): a plan with detour points has its legs routed on
  * their own so every device ends on the same line; then the line is shown again, quietly – no fit, no sheet, no notice, no undo step.
- * The engine does it in one long call (WebApi.settleRun) after the taken run; an edit, a hold or Neu replaces the worker still in
- * it (client.ts), and the plan is not touched. Only for the plan still shown. body[data-settle] = "<plan>:done|shown" (the tests).
+ * The engine does it one leg a call (WebApi.settleStep, like the detour check's detourAt) after the taken run, so Save, a menu or a
+ * search waits one leg at most and the legs routed so far are kept; it gives way to a hold as the detour check does. An edit, Undo
+ * or a new run replaces the worker still in it (client.ts endsSettle), and the plan is not touched. Only for the plan still shown.
+ * A step stopped while the plan stayed (a fresh worker for another reason) is quiet and asked again – a fresh worker has no taken
+ * run to settle, so it ends there and the next run settles. body[data-settle] = "<plan>:running|done|shown" (the tests).
  */
 async function settleLine(id: number) {
   const points = enc(state.points);
@@ -1746,14 +1749,23 @@ async function settleLine(id: number) {
   if (!same() || !engine.anchors) return; // no detour points: nothing to settle (the page's copy of the engine's)
   document.body.dataset.settle = `${id}:running`;
   try {
-    const text = await engine.call('settleRun', namesText());
-    if (text === 'null' || !same()) { if (same()) document.body.dataset.settle = `${id}:done`; return; }
-    state.plan = JSON.parse(text);
-    planGaps.set(state.plan!.gaps);
-    document.body.dataset.settle = `${id}:shown`;
-    render();
+    for (;;) {
+      await holdsOver(); // a hold measures first (the one worker): the settling goes on after it
+      if (!same()) return;
+      const text = await engine.call('settleStep', namesText());
+      if (!same()) return; // an edit is on its way: its run settles anew
+      if (text === 'more') continue;
+      if (text === 'null') { document.body.dataset.settle = `${id}:done`; return; }
+      const plan = JSON.parse(text);
+      if (plan.cancelled) { console.info('[settle] a step was stopped with the plan as it is – asked again'); continue; }
+      state.plan = plan;
+      planGaps.set(state.plan!.gaps);
+      document.body.dataset.settle = `${id}:shown`;
+      render();
+      return;
+    }
   } catch (e) {
-    // a settling of a replaced worker answers {cancelled}: nothing to report – the edit is on its way
+    // the engine itself did not answer (a crashed or hanging worker): the line stays as it is
     if (same()) problem('routing', 'Settling the plan\'s line failed – the line stays as it is', e, 'warn');
   }
 }

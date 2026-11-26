@@ -308,4 +308,46 @@ class WebPlanChainTest {
         val said = com.onpath.app.debug.Problems.drain()
         assertFalse(said.toString(), said.any { "Route calculation failed" in it })
     }
+
+    /** The settling goes one leg a step (review 2026-11-26 #3): each step routes one leg, the last one shows the line. */
+    @Test
+    fun theSettlingGoesOneLegAStep() {
+        val (chain, _) = takenWithAnchors()
+        var calls = 0
+        val counting = object : com.onpath.app.routing.RoutingEngine {
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int) =
+                bulging.route(waypoints, activity, sacLimit).also { calls++ }
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int,
+                               limits: com.onpath.app.routing.RouteLimits) = bulging.route(waypoints, activity, sacLimit, limits).also { calls++ }
+        }
+        val legs = com.onpath.app.routing.PlanAnchors.expand(chain.plan.points.toList(), chain.plan.anchorsFor(hike, 2), emptySet()).points.size - 1
+        var steps = 0
+        var last: WebPlanChain.SettleStep
+        do {
+            val before = calls
+            last = chain.settleStep(counting)
+            if (last == WebPlanChain.SettleStep.More) { steps++; org.junit.Assert.assertEquals("one leg a step", before + 1, calls) }
+        } while (last == WebPlanChain.SettleStep.More && steps < 50)
+        org.junit.Assert.assertEquals("a step for each leg", legs, steps)
+        assertTrue("the last step shows the settled line", (last as WebPlanChain.SettleStep.Done).res != null)
+    }
+
+    /** A leg that cannot be settled is tried once in a pass (the cap counts one failure), and the settling ends. */
+    @Test
+    fun aFailingLegIsTriedOnceAPass() {
+        val (chain, three) = takenWithAnchors()
+        val refusing = object : com.onpath.app.routing.RoutingEngine {
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int) =
+                throw com.onpath.app.routing.RoutingException("no route")
+            override fun route(waypoints: List<com.onpath.app.routing.GeoPoint>, activity: com.onpath.app.routing.Activity, sacLimit: Int,
+                               limits: com.onpath.app.routing.RouteLimits) = route(waypoints, activity, sacLimit)
+        }
+        assertTrue(chain.settleNow(refusing) == null)
+        val exp = com.onpath.app.routing.PlanAnchors.expand(three, chain.plan.anchorsFor(hike, 2), emptySet()).points
+        // the cut legs and the full visible legs a cold device falls back to (§8.5)
+        val ids = (0 until exp.size - 1).map { exp[it] to exp[it + 1] } + (0 until three.size - 1).map { three[it] to three[it + 1] }
+        val counts = ids.map { (a, b) -> chain.settle.failuresOf(com.onpath.app.routing.PlanAnchors.exact(a), com.onpath.app.routing.PlanAnchors.exact(b), hike, 2) }
+        assertTrue("no leg counted twice in one pass: $counts", counts.all { it <= 1 })
+        assertTrue("the legs were tried: $counts", chain.settle.failureCount() > 0)
+    }
 }

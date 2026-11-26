@@ -223,13 +223,21 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     }
 
     /**
-     * The idle settling (detour-stitch.md §8.15, piece W2): the app's pure [PlanSettle] (cap, what to settle, the blocking work);
-     * the page runs [settleNow] as one call of the routing worker once the taken run's line is shown, and an edit stops it (a
-     * fresh worker, client.ts) – here every [PlanRecalcState.begin] drops the work not yet started. No tour in the planner.
+     * The idle settling (detour-stitch.md §8.15, piece W2): the app's pure [PlanSettle] (cap, what to settle, the blocking work).
+     * The page steps it once the taken run's line is shown – [settleStep], one leg a call, like the detour check's detourAt –
+     * so a menu, a hold or Save waits one leg at most, and the legs routed so far are kept (the browser's store) after each
+     * step. An edit stops it (a fresh worker, client.ts); here every [PlanRecalcState.begin] drops the work. No tour runs in
+     * the planner (a multi-day tour is a plan; the app's PlanRecalcSlice.tourRuns = touring, recording, navigating).
      */
     val settle = PlanSettle()
     private var pending: PlanSettle.Work? = null
-    private var settleCancel: RouteCancel? = null
+
+    /** The settling under way: its [work], its cancel signal, the legs routed so far and those tried in vain this pass. */
+    private class Settling(val work: PlanSettle.Work, val cancel: RouteCancel) {
+        var routed = 0
+        val tried = HashSet<Pair<GeoPoint, GeoPoint>>()
+    }
+    private var settling: Settling? = null
 
     val recalc: PlanRecalcState = object : PlanRecalcState(plan, planRun, recalcPorts, PlanTourPort.None, MapDataPort.None,
         Say { _, _, _ -> }, recalcHost, background, elapsedMs = { System.currentTimeMillis() }) {
@@ -242,25 +250,94 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     }
 
     /** The settling stops: the work not yet started goes, the cancel signal fires (new routing data, a cache clear, an edit). */
-    fun stopSettle() { settleCancel?.cancel(); settleCancel = null; pending = null }
+    fun stopSettle() { settling?.cancel?.cancel(); settling = null; pending = null }
+
+    /** What one [settleStep] did. */
+    sealed interface SettleStep {
+        /** A leg was routed or tried: call again. */
+        data object More : SettleStep
+        /** The settling ended: the settled line taken quietly ([res]), or null – nothing to show (the line stays). */
+        data class Done(val res: PlanResult?) : SettleStep
+    }
 
     /**
-     * The settling of the run last taken (blocking, in the routing worker): the plan's own legs routed one by one, then the
-     * line shown again from the cache alone ([PlanSettle.settle]) and taken quietly ([PlanRecalcState.takeQuiet]: only while the plan
-     * is still exactly the run's). Null = nothing to show. Exceptions go to the caller.
+     * One step of the settling of the run last taken (blocking, in the routing worker): the next leg of the plan routed on its
+     * own ([PlanSettle.settle], stopped after one leg that routed), and once no leg is left the line shown again from the
+     * cache alone and taken quietly ([PlanRecalcState.takeQuiet]: only while the plan is still exactly the run's). A leg that
+     * fails is counted by the settle's cap and not asked again in this pass. Exceptions go to the caller.
      */
-    fun settleNow(engine: RoutingEngine): PlanResult? {
-        val work = pending ?: return null
-        pending = null
-        val cancel = RouteCancel()
-        settleCancel = cancel
-        val res = settle.settle(work, engine, legCache, cancel) { false } ?: return null
-        if (cancel.isCancelled) return null
-        if (!recalc.takeQuiet(work.again, res)) {
+    fun settleStep(engine: RoutingEngine): SettleStep {
+        val s = settling ?: pending?.let { Settling(it, RouteCancel()) }?.also { settling = it; pending = null }
+            ?: return SettleStep.Done(null)
+        val w = s.work
+        if (s.cancel.isCancelled || engine is com.onpath.app.routing.StraightLineEngine) { settling = null; return SettleStep.Done(null) }
+        val left = legsLeft(s)
+        if (left.isEmpty()) { settling = null; return SettleStep.Done(finish(s)) }
+        val counts = left.map { (a, b) -> settle.failuresOf(a, b, w.act, w.level) }
+        var routedOne = false
+        val oneLeg = object : RoutingEngine {
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int) =
+                engine.route(waypoints, activity, sacLimit).also { routedOne = true }
+            override fun route(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, limits: com.onpath.app.routing.RouteLimits) =
+                engine.route(waypoints, activity, sacLimit, limits).also { routedOne = true }
+        }
+        // the settle's own "stop before the next leg" (its tour check) ends the step once a leg routed; the legs tried in
+        // vain this pass are left out like the no-route legs. Its answer is null then: the quiet line comes in [finish].
+        settle.settle(PlanSettle.Work(w.expanded, w.act, w.level, w.noRoute + s.tried, w.again), oneLeg, legCache, s.cancel) { routedOne }
+        if (s.cancel.isCancelled) { settling = null; return SettleStep.Done(null) }
+        if (routedOne) s.routed++
+        left.forEachIndexed { k, (a, b) ->
+            // a leg whose count rose failed; with nothing routed, the settle went over every leg left (or stopped at a time
+            // limit, as the app's pass does): none of them is asked again in this pass
+            if (!legCache.isExact(a, b, w.act, w.level) && (!routedOne || settle.failuresOf(a, b, w.act, w.level) > counts[k])) s.tried += a to b
+        }
+        return SettleStep.More
+    }
+
+    /** The settling's legs not routed yet: not exact in the cache, not drawn straight by the run, not capped, not tried in vain. */
+    private fun legsLeft(s: Settling): List<Pair<GeoPoint, GeoPoint>> {
+        val w = s.work
+        val pts = w.expanded.points
+        return (0 until pts.size - 1).map { com.onpath.app.routing.PlanAnchors.exact(pts[it]) to com.onpath.app.routing.PlanAnchors.exact(pts[it + 1]) }
+            .filter { (a, b) ->
+                !legCache.isExact(a, b, w.act, w.level) && (a to b) !in w.noRoute && (a to b) !in s.tried &&
+                    settle.failuresOf(a, b, w.act, w.level) < PlanSettle.FAIL_CAP
+            }
+    }
+
+    /**
+     * The end of the settling: with a leg routed, the plan again from the cache ALONE ([PlanSettle.settle]'s quiet run – a leg
+     * the cache lacks would be straight, a line worse than the taken one, so then nothing is shown), taken quietly.
+     */
+    private fun finish(s: Settling): PlanResult? {
+        val w = s.work
+        if (s.routed < 1) return null
+        Problems.trace("routing", "Settling: the plan is shown again from the settled legs")
+        val quietCancel = RouteCancel()
+        var missed = false
+        val cacheOnly = com.onpath.app.routing.CacheOnlyEngine(known = { x, y -> (x to y) in w.noRoute },
+            onMiss = { _, _ -> missed = true; quietCancel.cancel() })
+        val quiet = try { PlanRecalcState.route(w.again, cacheOnly, legCache, quietCancel, { _, _ -> }) } catch (e: Exception) {
+            if (!missed) throw e
+            null
+        }
+        if (missed || quiet == null) {
+            Problems.trace("routing", "Settling: a leg is missing from the cache – the settled line is not shown, the line stays as it is")
+            return null
+        }
+        if (!recalc.takeQuiet(w.again, quiet.result)) {
             Problems.trace("routing", "Settling: a newer run began – the settled line is not shown")
             return null
         }
-        return res
+        return quiet.result
+    }
+
+    /** The whole settling at once ([settleStep] until it ends) – for the tests. */
+    fun settleNow(engine: RoutingEngine): PlanResult? {
+        while (true) when (val st = settleStep(engine)) {
+            SettleStep.More -> Unit
+            is SettleStep.Done -> return st.res
+        }
     }
 
     /** What [head] decided. */

@@ -877,18 +877,25 @@ object Engine {
     }
 
     /**
-     * The idle settling of the run last taken (the app's PlanRecalcSlice.routeTaken, §8.15): every leg of a plan with detour points
-     * routed on its own so each device ends on the same line, then the line again from the cache. The page's plan JSON of the
-     * settled line, or "null" (nothing to settle, an edit came first, a leg missing from the cache: the line stays). One blocking
-     * call, started once the taken line is shown; an edit replaces the worker still in it (client.ts, as the detour check).
+     * One step of the idle settling of the run last taken (the app's PlanRecalcSlice.routeTaken, §8.15): the next leg of a plan
+     * with detour points routed on its own so each device ends on the same line; at the end the line again from the cache.
+     * "more" (call again), the page's plan JSON of the settled line, or "null" (nothing to settle, an edit came first, a leg
+     * missing from the cache: the line stays). One leg a call, like [detourAt]: a menu or a hold waits one leg at most; an
+     * edit replaces the worker still in it (client.ts).
      */
-    fun settleRun(names: String): String {
+    fun settleStep(names: String): String {
         val t0 = System.currentTimeMillis()
         return try {
-            val res = chain.settleNow(engine())?.withNamed(parseNames(names).filterValues { it.isNotBlank() }.keys) ?: return "null"
-            lastResult = res
-            planJson(res, parseNames(names), System.currentTimeMillis() - t0, null, lastReach)
+            when (val st = chain.settleStep(engine())) {
+                WebPlanChain.SettleStep.More -> "more"
+                is WebPlanChain.SettleStep.Done -> {
+                    val res = st.res?.withNamed(parseNames(names).filterValues { it.isNotBlank() }.keys) ?: return "null"
+                    lastResult = res
+                    planJson(res, parseNames(names), System.currentTimeMillis() - t0, null, lastReach)
+                }
+            }
         } catch (e: Exception) {
+            chain.stopSettle()
             Problems.warn("routing", "Settling the plan's line failed – the line stays as it is", e)
             "null"
         }
@@ -1342,7 +1349,7 @@ external fun planProgress(text: String)
 @JSExport fun runEnd(gen: Int, outcome: String, rounds: Int, names: String) = Engine.runEnd(gen, outcome, rounds, names)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
 
-@JSExport fun settleRun(names: String): String = Engine.settleRun(names)
+@JSExport fun settleStep(names: String): String = Engine.settleStep(names)
 
 @JSExport fun recalcRow(points: String, activity: String, sac: Int): Boolean = Engine.recalcRow(points, activity, sac)
 
