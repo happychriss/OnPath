@@ -71,7 +71,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [laptop] **context menus** (since 2026-11-26 ~23:20, branch `claude/project-thread-eltk1x`): shared rows (core `PlaceAddMenu`/`MapGestures`/`PinMenuItems`, strings) + planner. [donald]: only your own Compose views (`MapOverlays`, dividers) – take the words from my commit, don't edit the shared rows. Merge after the owner's yes.
+- [laptop] **context menus – web part only** (since 2026-11-26 ~23:25, branch `work/laptop-context-menus` on top of donald's `feat/context-menus` e23b72bbf): planner groups, multi-day rows, hint, web_fly_stop, web smokes. Shared core/strings are donald's. Merge after the owner's yes.
 - [umbau] **free – done** 2026-11-26 ~22:30: detour writers + planner part on main 642904377; on main: full E2E 114/0, Web planner green (2 stale tests fixed d377e4846), SameRouteTest verify 112/112 + full 108/108. Nits for the laptop in the umbau handoff.
 - [laptop] (free – 2026-11-26 ~22:40) planner ONLINE at ac639ace2 (owner's yes in the laptop thread, run 45897961409): verbinden, writers web + „Ganz neu berechnen“, live viewer start view, live-smoke race fix. Open: umbau's second-review nits (handoff-umbau).
 - [tracking] **free – stopped** 2026-11-26 ~21:10. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
