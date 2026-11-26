@@ -73,7 +73,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
-- [umbau] (2026-11-26 ~21:10) **detour writers W0–W4 + the planner part (laptop 293339573) on main 642904377** (gate full green, both parts read by a fresh Opus). Open: two red Web planner steps on the branch (GPX/long-route in Wasm timeout, München plan page error – checking if main has them too), full E2E on main running, SameRouteTest. 0.18.11 not released (owner).
+- [umbau] **free – done** 2026-11-26 ~22:30: detour writers + planner part on main 642904377; on main: full E2E 114/0, Web planner green (2 stale tests fixed d377e4846), SameRouteTest verify 112/112 + full 108/108. Nits for the laptop in the umbau handoff.
 - [laptop] (2026-11-26 ~21:45) planner: verbinden + writers web on main, live-smoke race fixed (937c1b807), Web planner green on main – deploy waits for the owner's yes in the laptop thread (classifier). 0.18.10-compatible (readers in 0.18.10).
 - [tracking] **free – stopped** 2026-11-26 ~21:10. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] **free – stopped** 2026-11-26 ~21:00: 0.18.11 NOT released (owner: the Daumen-Karte rebuild first, a fresh donald). On main today: position dot B + points over the dot in Plan 162e66f13, viewer start view 8f418ca96, pairing steps f63af904c → `handoffs/handoff-donald-2026-11-24.md` top.
