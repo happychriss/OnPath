@@ -19,7 +19,7 @@ const root = document.getElementById('live')!;
 root.innerHTML = `
   <header id="top"><div id="title"></div><div id="status" class="status" role="status"><span class="dot"></span><span id="line"></span></div></header>
   <div id="count" hidden><div class="bar"><i id="countBar"></i></div><div id="countText" class="ctext"></div></div>
-  <div id="mapbox"><div id="map"></div><button id="toPos" class="topos" hidden></button></div>
+  <div id="mapbox"><div id="map"></div><div id="mapWait" class="mapwait"></div><button id="toPos" class="topos" hidden></button></div>
   <section id="facts" hidden>
     <div id="numbers" class="row strong"></div>
     <div id="togo" class="row" hidden></div>
@@ -35,6 +35,7 @@ $('title').textContent = t('web_live_title');
 $('line').textContent = t('web_live_loading');
 $('foot').textContent = t('web_live_no_rescue');
 $('toPos').textContent = t('web_live_to_position');
+$('mapWait').textContent = t('web_live_map_wait');
 $('copy').textContent = t('web_live_copy');
 $('geo').textContent = t('web_live_open_maps');
 

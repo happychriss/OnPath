@@ -16,4 +16,11 @@ class PositionDotTest {
         assertTrue(PositionDot.accuracyAlpha(navigate = true) > 0f)
         assertTrue(PositionDot.accuracyAlpha(navigate = false) == 0f)
     }
+
+    /** Owner 2026-11-26 (option 1): planning, point ① stays seen under you; navigating, you stay on top. */
+    @Test fun pointsOverTheDotOnlyInPlanAndNotWhileTheEyeHidesTheRoute() {
+        assertTrue(PositionDot.pointsOverDot(navigate = false, overlaysVisible = true))
+        assertFalse(PositionDot.pointsOverDot(navigate = true, overlaysVisible = true))
+        assertFalse(PositionDot.pointsOverDot(navigate = false, overlaysVisible = false))
+    }
 }

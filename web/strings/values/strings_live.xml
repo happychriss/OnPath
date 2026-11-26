@@ -28,5 +28,6 @@
     <string name="web_live_copied">Copied</string>
     <string name="web_live_open_maps">Open in a map app</string>
     <string name="web_live_to_position">To the position</string>
+    <string name="web_live_map_wait">Waiting for the first location …</string>
     <string name="web_live_no_rescue">Not an emergency service – in an emergency call 112.</string>
 </resources>
