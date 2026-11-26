@@ -1444,6 +1444,15 @@ function fitPadding(): maplibregl.PaddingOptions {
 }
 
 /** The open plan, as it routes now, runs through the same hidden via points as [shared] (the same points alone are not the same route). */
+/** The open plan's detour points as a plan code of [plan]'s profile keeps them (the engine's anchorsCounting). */
+async function anchorsCountingFor(plan: SharedPlan): Promise<string> {
+  try {
+    return await engine.call('anchorsCounting', enc(state.points), plan.activity, plan.sac);
+  } catch (e) {
+    problem('plan', 'the detour points of the saved route\'s profile not read – all of them compared', e);
+    return engine.anchors;
+  }
+}
 async function sameAnchors(shared: SharedPlan) {
   return (shared.anchors ?? '') === await engine.call('anchorsCounting', enc(shared.points), state.activity, state.sac);
 }
@@ -2082,8 +2091,9 @@ async function savedPlanChanged(): Promise<boolean> {
   // a multi-day tour's days and nights are part of it (multi-day tours §1 #10: saved as every plan – so a change asks for Save)
   const saved = await savedPoints(state.savedCode).plan;
   // the detour points are saved with the route (the app's PlanDocument.unsaved: points alike, other detour points = not saved –
-  // "Ganz neu berechnen" on a saved route): the saved code carries them, so the mark holds across a reload
-  if ((saved?.anchors ?? '') !== engine.anchors) return true;
+  // "Ganz neu berechnen" on a saved route): the saved code carries them, so the mark holds across a reload. Those of the saved
+  // route's profile only, as the code keeps them (sameAnchors): detour points of another profile are not saved, never a change
+  if ((saved?.anchors ?? '') !== (saved ? await anchorsCountingFor(saved) : engine.anchors)) return true;
   return tourText(saved?.tour) !== tourText(state.tour);
 }
 /** The plan on the map differs from its saved version (or was never saved) – Meine Touren's „Speichern“ on its row. */
