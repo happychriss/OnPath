@@ -74,7 +74,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 
 ## In progress
 - [umbau] **free – done** 2026-11-26 ~22:30: detour writers + planner part on main 642904377; on main: full E2E 114/0, Web planner green (2 stale tests fixed d377e4846), SameRouteTest verify 112/112 + full 108/108. Nits for the laptop in the umbau handoff.
-- [laptop] (2026-11-26 ~21:45) planner: verbinden + writers web on main, live-smoke race fixed (937c1b807), Web planner green on main – deploy waits for the owner's yes in the laptop thread (classifier). 0.18.10-compatible (readers in 0.18.10).
+- [laptop] (free – 2026-11-26 ~22:40) planner ONLINE at ac639ace2 (owner's yes in the laptop thread, run 45897961409): verbinden, writers web + „Ganz neu berechnen“, live viewer start view, live-smoke race fix. Open: umbau's second-review nits (handoff-umbau).
 - [tracking] **free – stopped** 2026-11-26 ~21:10. Open: name-dialog blocker, viewer wishes – handoff `docs/team/handoffs/handoff-tracking-2026-11-20.md` top.
 - [donald] **free – stopped** 2026-11-26 ~21:00: 0.18.11 NOT released (owner: the Daumen-Karte rebuild first, a fresh donald). On main today: position dot B + points over the dot in Plan 162e66f13, viewer start view 8f418ca96, pairing steps f63af904c → `handoffs/handoff-donald-2026-11-24.md` top.
 - [aufräumen] **free – stopped** 2026-11-25 ~23:15 (shutdown). Hard-case audit's flows complete; open: Playwright PR waits for the token (Waiting for the owner) → [handoff](handoffs/handoff-aufraeumen-2026-11-25.md)
