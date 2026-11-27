@@ -237,7 +237,9 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   // the wait window is modal since 56abfc513 (its veil takes clicks): the locate button's own action, as a fix would start it
   await page.evaluate(() => document.getElementById('locate').click());
   const joined = await page.waitForFunction(() => { const r = document.querySelector('#waitwin .wwsteps li'); return r?.className === 'now' && r.textContent === 'being prepared'; }, null, { timeout: 30_000 }).then(() => true, () => false);
-  const during = await page.evaluate(() => ({ running: window.__wait.overlay().isOpen('held'), title: document.querySelector('#waitwin .wwtitle')?.textContent, ...window.__b2, el: undefined }));
+  // a join that comes within the first 25 ms leaves no sample yet (CI flaked with „()“): the window's number now is one
+  const during = await page.evaluate(() => { const w = document.getElementById('waitwin'); if (w) window.__b2.pcts.push(+w.dataset.pct);
+    return { running: window.__wait.overlay().isOpen('held'), title: document.querySelector('#waitwin .wwtitle')?.textContent, ...window.__b2, el: undefined }; });
   check(joined && during.running, `B2: the area joined while that wait was still running (from ${before} %)`);
   check(during.title === 'Map for your area', `B2: the joined window says the area's title ("${during.title}")`);
   check(during.gaps === 0 && during.other === 0, `B2: one window through the join (${during.gaps} samples without it, ${during.other} in another)`);

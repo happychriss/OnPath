@@ -84,6 +84,11 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 @keyframes runbar { from { left: -40%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .runbar > i { animation: none; left: 0; width: 100%; opacity: .6; } }
 body:not([data-wait="bar"]) .runbar { display: none; } /* one wait at a time (onewait.ts): the load card, the box, the strip win */
+/* while the wait window shows, only it moves (owner 2026-11-27: „nur das Wartefenster bewegt sich“): every other
+   animation – the locate button's spin, the position dot's pulse, spinners, busy lines, chips – stands still meanwhile */
+body[data-loadover="1"] *:not(#waitwin):not(#waitwin *), body[data-loadover="1"] *::before, body[data-loadover="1"] *::after { animation-play-state: paused !important; }
+body[data-loadover="1"] #waitwin *, body[data-loadover="1"] #waitwin *::before, body[data-loadover="1"] #waitwin *::after { animation-play-state: running !important; }
+body[data-loadover="1"] .runbar { display: none; }
 .topbar .tool:hover:not(:disabled), .undopill .tool:hover:not(:disabled) { background: var(--paper-deep); }
 #searchbox { flex: 1; min-width: 220px; position: relative; align-self: stretch; }
 .barsep { flex: none; width: 1px; height: 28px; background: var(--line); }

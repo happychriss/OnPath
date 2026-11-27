@@ -37,6 +37,20 @@ try {
   await page.goto(url + 'index.html?lang=de#p=' + code);
   const win = await page.waitForSelector('#waitwin .wwcancel', { state: 'visible', timeout: 30_000 }).then(() => true, () => false);
   check(win, `the routing data held back: the wait window with Abbrechen shows (${waiting.length} requests held)`);
+  // one wait at a time (owner 2026-11-27: „zwei Sachen bewegen sich“): while the wait window shows, nothing else moves –
+  // no run bar, no sheet wait line, no other running animation outside the window
+  // a spinner elsewhere on the page (like the locate button's or a busy line's) must stand still while the window shows
+  await page.evaluate(() => { const sp = document.createElement('span'); sp.className = 'spin'; sp.id = 'testspin';
+    sp.style.cssText = 'position:fixed;left:8px;bottom:8px;width:14px;height:14px;border:2px solid #ccc;border-top-color:#335A85;border-radius:50%;animation:spin 1s linear infinite'; document.body.append(sp); });
+  await page.waitForTimeout(1500);
+  const moving = await page.evaluate(() => {
+    const vis = (el) => { if (!el) return false; const s = getComputedStyle(el); const r = el.getBoundingClientRect(); return s.display !== 'none' && s.visibility !== 'hidden' && !el.hidden && r.width > 0 && r.height > 0 && el.getClientRects().length > 0; };
+    const others = document.getAnimations().filter((a) => a.playState === 'running').map((a) => a.effect?.target).filter((t) => t instanceof Element && !t.closest('#waitwin') && vis(t))
+      .map((t) => (t.id ? '#' + t.id : '') + '.' + [...t.classList].join('.') + (t.parentElement ? ' in ' + (t.parentElement.id || t.parentElement.className) : ''));
+    return { win: vis(document.getElementById('waitwin')), bar: vis(document.getElementById('runbar')), waitline: vis(document.querySelector('#summary .subline.waitline')), others: [...new Set(others)] };
+  });
+  check(moving.win && !moving.bar && !moving.waitline && moving.others.length === 0, `the wait window shows alone: no run bar, no sheet wait line, nothing else moving (${JSON.stringify(moving)})`);
+  await page.waitForSelector('#waitwin .wwcancel', { state: 'visible', timeout: 30_000 });
   await page.click('#waitwin .wwcancel');
   await page.waitForTimeout(500);
   release(); // the data would come now – a stopped run must not route with it
