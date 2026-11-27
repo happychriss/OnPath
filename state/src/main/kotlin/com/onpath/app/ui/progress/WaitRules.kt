@@ -31,7 +31,7 @@ data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsL
 object WaitChain {
     /** The route window follows the map's within this long. */
     const val FOLLOWS_MS = 10_000L
-    @Volatile var mapDoneAt: Long = -1L
+    var mapDoneAt: Long = -1L // main thread only (the map window and the route window tick there)
     fun follows(routeStartMs: Long): Boolean = mapDoneAt >= 0 && routeStartMs - mapDoneAt in 0..FOLLOWS_MS
 }
 
