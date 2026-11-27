@@ -961,7 +961,8 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
  * at once, "New route" shows a spinner until the way is found (then the normal question, [rerouteMessage]).
  */
 internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
-    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_title_searching), NavText.toRoute(o.toRoute),
+    // "Abseits der Route" only: "New route" spins, no waiting sentence (owner 2026-11-27)
+    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_off_route), NavText.toRoute(o.toRoute),
         listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE) {}.apply { busy = true }),
         icon = Icons.Outlined.AltRoute, navigate = true)
 

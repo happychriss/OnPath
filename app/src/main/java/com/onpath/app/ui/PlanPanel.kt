@@ -317,7 +317,10 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // step is this row (over the foot's button)
     ThumbHead(ui, cb)
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
-    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
+    // „Berechnen“ / „Trotzdem planen“ tapped (owner 2026-11-27): only that button spins while its run goes, no sentence
+    var calcAsked by remember { mutableStateOf<NotRouted?>(null) }
+    if (!ui.routing && calcAsked != null) androidx.compose.runtime.SideEffect { calcAsked = null }
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, calcAsked) { calcAsked = it } }
     // no step guide any more (owner 2026-11-26: the search card says how to begin)
     val guide = false
     // during a tour (owner 2026-11-12, TourStillRunning): "● Tour läuft noch" and only a new destination – the search, or
@@ -330,7 +333,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
     // without a route, what to do next ("Halte die Karte gedrückt, um das Ziel zu setzen.") belongs to the summary step
     // too – below it, the low sheet hid it behind its foot (the navigation bar; Meran pictures D04)
-    if (route == null) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
+    if (route == null && !(ui.routing && calcAsked != null)) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
     // a multi-day tour: "München – Venedig · 6 Tage"; a followed day: "Tag 4 von 6" (stage 4)
     if (ui.days != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DaysTitle(ui.days) }
     if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead, cb.onAllDays, cb.onLoadDayMaps) }
@@ -381,11 +384,13 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
 
 /** The plan head ([PlanHead]: plan row · facts), then the route state lines under it (ERROR, WARNING, INFO). */
 @Composable
-private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, calcAsked: NotRouted? = null, onCalcAsked: (NotRouted) -> Unit = {}) {
     val route = ui.route
     PlanHead(ui, cb)
     // a long calculation: the wait window over the map (form A, owner 2026-11-19 – progress/RouteWait.kt) with Cancel
-    if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
+    val notRouted = if (ui.routing) calcAsked else ui.notRouted
+    if (route == null && ui.pointCount >= 2 && notRouted != null)
+        NotRoutedBar(notRouted, busy = ui.routing) { onCalcAsked(notRouted); cb.onPlanAnyway() }
     // route state, one line per kind: ERROR, WARNING, INFO
     val loadingNotice = RoutingDataNotice.isNotice(ui.error)
     val routeError = ui.error?.takeIf { !loadingNotice }
@@ -638,13 +643,22 @@ object PlanFoot {
     val HEIGHT = 56.dp
 }
 
-/** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
+/**
+ * The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). [busy]: the
+ * run its button started goes – the button spins, no waiting sentence (owner 2026-11-27).
+ */
 @Composable
-private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
+private fun NotRoutedBar(why: NotRouted, busy: Boolean = false, onPlanAnyway: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
+        androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway, enabled = !busy) {
+            if (busy) {
+                androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = OnPathColors.PlanAccent)
+                Spacer(Modifier.width(8.dp))
+            }
+            Text(PlanStatus.notRoutedAction(why))
+        }
     }
 }
 

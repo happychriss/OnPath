@@ -477,11 +477,12 @@ private fun Modifier.fadeAtEdges(scroll: ScrollState) = drawWithContent {
 private fun Take(chosen: Boolean, taking: Boolean, onTake: () -> Unit) {
     val pad = PaddingValues(horizontal = 14.dp)
     if (chosen) Button(colors = ActionButtons.edit(), onClick = onTake, enabled = !taking, contentPadding = pad) {
+        // taking: only the button spins, its word stays (owner 2026-11-27: no waiting sentence where the user tapped)
         if (taking) {
             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
             Spacer(Modifier.width(8.dp))
-            Text(str(Res.string.suggest_ui_taking), maxLines = 1)
-        } else Text(str(Res.string.suggest_ui_take), maxLines = 1)
+        }
+        Text(str(Res.string.suggest_ui_take), maxLines = 1)
     } else OutlinedButton(colors = ActionButtons.editOutlined(), onClick = onTake, contentPadding = pad,
         border = BorderStroke(1.dp, OnPathColors.ActionEdit.copy(alpha = 0.55f))) {
         Text(str(Res.string.suggest_ui_take), maxLines = 1)
