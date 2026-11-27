@@ -411,7 +411,6 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
 @Composable
 private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val canClear = RouteRules.canClear(ui.pointCount)
-    val two = ui.pointCount >= 2
     val clear = str(Res.string.plan_close_plan)
     val rev = str(Res.string.plan_reverse)
     val loop = str(Res.string.plan_round_trip)
@@ -419,21 +418,25 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val tm = androidx.compose.ui.text.rememberTextMeasurer()
     val density = androidx.compose.ui.platform.LocalDensity.current
     val style = MaterialTheme.typography.labelMedium
-    if (ui.pointCount >= 1) androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val wordW = with(density) { listOf(clear, rev, loop).sumOf { tm.measure(it, style).size.width }.toDp() }
-        // three pills (12 + 20 + 6 + word + 12) + room between
-        val words = PlanRow.wordsFit(wordW.value, maxWidth.value)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = if (words) Arrangement.SpaceBetween else Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically) {
-            if (words) {
-                PlanAction(Icons.Filled.Close, clear, canClear, cb.onClear)
-                PlanAction(Icons.Outlined.SwapVert, rev, two && ui.canReverse, cb.onReverse)
-                PlanAction(Icons.Outlined.Loop, loop, ui.roundTrip || (two && ui.canRoundTrip), cb.onRoundTrip, on = ui.roundTrip, onDesc = loopOn)
-            } else {
-                PlanIconPill(Icons.Filled.Close, clear, canClear, cb.onClear)
-                PlanIconPill(Icons.Outlined.SwapVert, rev, two && ui.canReverse, cb.onReverse)
-                PlanIconPill(Icons.Outlined.Loop, if (ui.roundTrip) loopOn else loop, ui.roundTrip || (two && ui.canRoundTrip), cb.onRoundTrip,
-                    on = ui.roundTrip)
+    // a pill that cannot act is not there (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“)
+    val pills = PlanRow.pills(ui.pointCount, ui.canReverse, ui.roundTrip, ui.canRoundTrip, multiDay = ui.days != null || ui.dayHead != null)
+    if (pills.isNotEmpty()) androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+        fun word(p: PlanRow.Pill) = when (p) { PlanRow.Pill.CLEAR -> clear; PlanRow.Pill.REVERSE -> rev; PlanRow.Pill.LOOP -> loop }
+        val wordW = with(density) { pills.sumOf { tm.measure(word(it), style).size.width }.toDp() }
+        // the pills (12 + 20 + 6 + word + 12 each) + room between
+        val words = PlanRow.wordsFit(wordW.value, maxWidth.value, pills.size)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = when {
+                !words -> Arrangement.SpaceEvenly
+                pills.size == 3 -> Arrangement.SpaceBetween
+                else -> Arrangement.spacedBy(8.dp)
+            }, verticalAlignment = Alignment.CenterVertically) {
+            for (p in pills) when (p) {
+                PlanRow.Pill.CLEAR -> if (words) PlanAction(Icons.Filled.Close, clear, canClear, cb.onClear)
+                    else PlanIconPill(Icons.Filled.Close, clear, canClear, cb.onClear)
+                PlanRow.Pill.REVERSE -> if (words) PlanAction(Icons.Outlined.SwapVert, rev, true, cb.onReverse)
+                    else PlanIconPill(Icons.Outlined.SwapVert, rev, true, cb.onReverse)
+                PlanRow.Pill.LOOP -> if (words) PlanAction(Icons.Outlined.Loop, loop, true, cb.onRoundTrip, on = ui.roundTrip, onDesc = loopOn)
+                    else PlanIconPill(Icons.Outlined.Loop, if (ui.roundTrip) loopOn else loop, true, cb.onRoundTrip, on = ui.roundTrip)
             }
         }
     }
@@ -518,15 +521,6 @@ private fun Modifier.calculating(on: Boolean): Modifier = if (!on) this else thi
             while (true) awaitPointerEvent(androidx.compose.ui.input.pointer.PointerEventPass.Initial).changes.forEach { it.consume() }
         }
     }
-
-/** The plan head's fit rules (pure, dp). */
-object PlanRow {
-    /** Three pills with words (each 12 + 20 + 6 + word + 12 dp) fit the row – else signs only. */
-    fun wordsFit(wordsWidthDp: Float, maxWidthDp: Float): Boolean = 150f + wordsWidthDp <= maxWidthDp
-
-    /** Time + km + ↑ ↓ ([textWidthDp] together, 18 dp between them) fit one line of the sheet (16 dp sides). */
-    fun factsOneLine(textWidthDp: Float, screenWidthDp: Float): Boolean = textWidthDp + 18f <= screenWidthDp - 32f
-}
 
 /** The rolled-up row's pieces (pure). */
 object CollapsedFacts {

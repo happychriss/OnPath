@@ -43,6 +43,22 @@ class PlanSheetLayoutTest {
         // the facts on one line → the difficulty sits on the profile; else at the end of the facts
         assertTrue(PlanRow.factsOneLine(320f, 390f))
         assertFalse(PlanRow.factsOneLine(360f, 390f))
+        // fewer pills leave more room for the words
+        assertTrue(PlanRow.wordsFit(250f, 358f, count = 2))
+    }
+
+    /** A pill that cannot act is hidden, not greyed (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“). */
+    @Test fun planRowShowsOnlyThePillsThatCanAct() {
+        val all = listOf(PlanRow.Pill.CLEAR, PlanRow.Pill.REVERSE, PlanRow.Pill.LOOP)
+        fun pills(n: Int, rev: Boolean = true, on: Boolean = false, canLoop: Boolean = true, days: Boolean = false) =
+            PlanRow.pills(n, rev, on, canLoop, days)
+        assertEquals(emptyList<PlanRow.Pill>(), pills(0))
+        assertEquals("one point: only Neu planen", listOf(PlanRow.Pill.CLEAR), pills(1))
+        assertEquals(all, pills(2))
+        assertEquals("A → B → A: Umkehren would change nothing", listOf(PlanRow.Pill.CLEAR, PlanRow.Pill.LOOP), pills(3, rev = false))
+        assertEquals("a multi-day tour: no Rundtour", listOf(PlanRow.Pill.CLEAR, PlanRow.Pill.REVERSE), pills(5, days = true))
+        assertEquals("a round trip shows Rundtour on, to take the way back out", all, pills(3, on = true, canLoop = false))
+        assertEquals(listOf(PlanRow.Pill.CLEAR, PlanRow.Pill.REVERSE), pills(3, canLoop = false))
     }
 
     /** The rolled-up row (owner 2026-11-07, A): centred facts in whole pieces – a large font wraps between them, never inside. */
