@@ -15,7 +15,7 @@ apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` 
 | 4 | `chore/web-aufraeumen` | HP | now (web only, independent) |
 | 5 | `chore/aufraeumen-0.18.11-on-main` | Wartefenster (donald) | 3 pushed |
 | 6 | `feat/wait-step-bar` + MapScreen:242 + PlanTopBar redo (`creditBlockDp`) | Wartefenster | 5 pushed |
-| R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ |
+| R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ + build on the Pixel (tomorrow, Pixel unplugged) |
 
 Push order is the order of the table; a thread that is ready early waits for the commit before it. A red step stays
 out (morning report), the next one goes on.
@@ -34,8 +34,9 @@ worker changed. Suchkategorie does not touch it.
 ## Release R (Wartefenster)
 `tools/ci/release_check.sh --go v0.18.12`, `gate.sh --full`, `tools/ci/e2e_github.sh` (core classes) → install on the
 Pixel (`adb install -r`, save a running tour, check the log) → version 0.18.12 + `docs/release-notes/v0.18.12.md`
-(DE/EN plain words, delete v0.18.11.md) → push main → release.yml. Not before ~06:00 and not before HP's „parity done“;
-red → no release, the Pixel build stays, morning report.
+(DE/EN plain words, delete v0.18.11.md) → push main → release.yml. Not before HP's „parity done“; red → no release, morning report.
+**Owner unplugged the Pixel at 23:06:** the night goes up to a release-ready `main` (checks green, notes written on a
+branch, not pushed). The version push waits until the owner plugs the Pixel in tomorrow and the build is on it.
 
 ## Cloud
 Tracker thread: planner picker check, then browser layout + logo – pick by `VISION.md`, push to main; ships with the
