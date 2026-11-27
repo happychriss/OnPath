@@ -72,6 +72,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
      * 8 → 9 (multi-day tours, stage 4): `tours.days` – a planned route's days ([Tour.days], JSON); every existing tour
      * null (a normal route).
      * 9 → 10 (detour stitch): `tours.anchors` and `tour_plan.anchors` – a plan's hidden via points; every existing row null.
+     * 10 → 11 (owner 2026-11-27): `tour_plan.day` – the day of a multi-day route a recorded tour rode; every existing row null.
      */
     override fun onUpgrade(db: SQLiteDatabase, oldVersion: Int, newVersion: Int) {
         if (oldVersion < 2) {
@@ -107,7 +108,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
         if (!db.isReadOnly) try { assignMissingUuids(db) } catch (e: Exception) { Problems.warn("db", "Tour ids for the backup not assigned", e) }
         // the plan copies' table (schema 6) must exist before My routes reads `has_plan` – also when the upgrade could not add it
         if (!db.isReadOnly) try { db.execSQL(TourSchema.CREATE_PLAN) } catch (e: Exception) { Problems.error("db", "Table of the followed plans not there", e) }
-        // schema 10: a swallowed ALTER must not leave a database at version 10 without the columns (every route write would fail)
+        // schema 10 / 11: a swallowed ALTER must not leave a database at version 10 / 11 without the columns (every route write would fail)
         if (!db.isReadOnly) for (step in TourSchema.stepsFrom(9)) addColumn(db, step, quiet = true)
     }
 
@@ -168,12 +169,12 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
 
     /** My routes: everything not in the recycle bin. */
     fun listTours(): List<Tour> = readableDatabase.rawQuery(
-        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NULL ORDER BY created DESC", null
+        "SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE deleted_at IS NULL ORDER BY created DESC", null
     ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
 
     /** The recycle bin, most recently deleted first. */
     fun listDeleted(): List<Tour> = readableDatabase.rawQuery(
-        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC", null
+        "SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC", null
     ).use { c -> buildList { while (c.moveToNext()) add(readTour(c)) } }
 
     /** Number of tours including the recycle bin (restore offer on an empty database). */
@@ -211,7 +212,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
     }
 
     fun getTour(id: Long): Tour? = readableDatabase.rawQuery(
-        "SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE id=?", arrayOf(id.toString())
+        "SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE id=?", arrayOf(id.toString())
     ).use { c -> if (c.moveToFirst()) readTour(c) else null }
 
     fun findActiveRecording(): Tour? = readableDatabase.rawQuery(
@@ -370,7 +371,8 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
                 waypoints = waypoints, pinned = jsonToPinned(s("pinned")),
                 line = TourPlan.lineFromJson(s("line")), distanceM = d("distance"), ascentM = d("ascent"),
                 descentM = d("descent"), durationS = d("duration"), sourceUuid = s("source_uuid"),
-                updatedMs = d("updated").toLong(), anchors = AnchorsJson.readRow(s("anchors"), waypoints.map { GeoPoint(it.lat, it.lon) }, s("activity") ?: "HIKE", d("sac").toInt())).takeIf { it.usable }
+                updatedMs = d("updated").toLong(), anchors = AnchorsJson.readRow(s("anchors"), waypoints.map { GeoPoint(it.lat, it.lon) }, s("activity") ?: "HIKE", d("sac").toInt()),
+                day = s("day")?.toIntOrNull()?.takeIf { it > 0 }).takeIf { it.usable }
         } catch (e: Exception) { Problems.warn("db", "The followed plan of tour $tourId is unreadable – the tour stays without it", e); null }
     }
 
@@ -500,6 +502,7 @@ class TourDb internal constructor(context: Context, name: String = "onpath.db") 
             favourite = opt(c, "favourite")?.let { c.getInt(it) == 1 } ?: false,
             days = opt(c, "days")?.let { MultiDay.fromJson(c.getString(it)) },
             anchors = opt(c, "anchors")?.let { i -> AnchorsJson.readRow(c.getString(i), jsonToWaypoints(s("waypoints")).map { GeoPoint(it.lat, it.lon) }, s("activity"), c.getInt(c.getColumnIndexOrThrow("sac"))) } ?: emptyMap(),
+            planUuid = opt(c, "plan_uuid")?.let { c.getString(it) }, planDay = opt(c, "plan_day")?.let { c.getInt(it) },
         )
     }
 

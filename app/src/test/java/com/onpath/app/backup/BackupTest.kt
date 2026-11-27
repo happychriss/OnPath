@@ -106,6 +106,26 @@ class BackupTest {
         assertSameLine(track, back.segments)
     }
 
+    /**
+     * Owner 2026-11-27: a tour that rode one day of a multi-day route keeps that through backup and restore – the day travels in
+     * the plan of the record (key "day"), and the restore's write of the plan (Backups.restore: insertTour, then setTourPlan)
+     * gives the tour back its planUuid / planDay.
+     */
+    @Test fun aTourThatRodeADayKeepsTheRouteAndTheDayThroughBackupAndRestore() {
+        val rode = followed.copy(sourceUuid = "uuid-hilden", day = 3)
+        val back = BackupCodec.decode(BackupCodec.encode(tourMeta.copy(plan = rode), track))!!.meta
+        assertEquals(3, back.plan!!.day)
+        assertEquals("uuid-hilden", back.plan!!.sourceUuid)
+        assertNull("a whole route's copy carries no day", BackupCodec.decode(BackupCodec.encode(tourMeta.copy(plan = followed), track))!!.meta.plan!!.day)
+        com.onpath.app.testkit.JdbcTours().use { db ->
+            val id = db.insertTour(TourKind.RECORDED, back.name, back.activity, back.sac, track, uuid = back.uuid)
+            db.setTourPlan(id, back.plan!!)
+            val t = db.getTour(id)!!
+            assertEquals("uuid-hilden" to 3, t.planUuid to t.planDay)
+            assertEquals(3, db.getTourPlan(id)!!.day)
+        }
+    }
+
     /** Files written before the plan copy (and "Nur aufzeichnen" tours) read back without one. */
     @Test fun anOlderRecordHasNoPlanAndAPlannedRouteNeverCarriesOne() {
         assertNull(BackupCodec.decode(BackupCodec.encode(tourMeta, track))!!.meta.plan)
