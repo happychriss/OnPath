@@ -226,7 +226,7 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing), not over the cycling rest view
         if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } }
         // Plan: the credit over the scale, top right (the top left holds the boxes, the recording pill, the download chip)
-        if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
+        if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, vm.offlineReady?.state, vm::toggleOfflineInfo, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
         // hints go below the background-download strip while it shows (measured: a box is taller than the chip)
         val hintTop = if (vm.mapData.backgroundStripShown && vm.tourSession.mode == AppMode.PLAN)
             (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
@@ -520,8 +520,8 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val firstCard by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
     val pill = notice?.takeIf { message == null && !vm.searchFlow.searchOpen && mapNoticeKind(it) == null && firstCard == null && !vm.mapData.loadWindowShown }
     val chipOn = bg != null && !vm.searchFlow.searchOpen && message == null && notice == null && firstCard == null
-    val recOn = RecordingPillRule.shows(rec?.paused == false, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)
-    LaunchedEffect(chipOn, message != null, pill != null, recOn) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null || recOn }
+    // the recording shows on Plan's tab (owner 2026-11-27, „● PLANEN · 0:42 ■“), no pill at the top any more
+    LaunchedEffect(chipOn, message != null, pill != null) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null }
     val density = LocalDensity.current
     fun Modifier.measured(topDp: Int) = // the bottom below the status bar: top + measured height (hints under the search bar go below it)
         onSizeChanged { vm.mapData.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
@@ -535,7 +535,6 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
             modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
                 .padding(top = top.dp, start = 12.dp).measured(top))
     }
-    if (recOn) RecordingPill(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top), onEnd = { vm.tourEnd.askEndTour() })
     BackgroundDownloadDetails(vm, bg)
 }
 

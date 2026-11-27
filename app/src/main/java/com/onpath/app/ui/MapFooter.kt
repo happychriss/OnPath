@@ -7,6 +7,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.material.icons.filled.FitScreen
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Sync
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
@@ -428,8 +431,26 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
  * Legal & credits. Reads the camera's scale itself, so a zoom recomposes only this block.
  */
 @Composable
-internal fun MapCreditTop(cam: MapCameraState, demo: Boolean, onCredits: () -> Unit, modifier: Modifier = Modifier) {
+internal fun MapCreditTop(cam: MapCameraState, demo: Boolean, onCredits: () -> Unit,
+                          /** The route's offline state (owner 2026-11-27: map information, top right); null = no route. */
+                          offline: com.onpath.app.domain.OfflineReady.State? = null, onOffline: () -> Unit = {},
+                          modifier: Modifier = Modifier) {
     Column(modifier, horizontalAlignment = Alignment.End) {
+        // quiet while all is there (Apple: the normal state quiet, the exception visible) – amber when incomplete
+        offline?.let { st ->
+            val warn = st == com.onpath.app.domain.OfflineReady.State.MISSING
+            val ink = if (warn) OnPathColors.Warn else Color(0xFF333333)
+            Row(Modifier.padding(bottom = 4.dp).clip(OnPathShapes.Small).clickable(role = androidx.compose.ui.semantics.Role.Button, onClick = onOffline)
+                .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(when (st) {
+                    com.onpath.app.domain.OfflineReady.State.READY -> Icons.Filled.Check
+                    com.onpath.app.domain.OfflineReady.State.LOADING -> Icons.Filled.Sync
+                    com.onpath.app.domain.OfflineReady.State.MISSING -> Icons.Filled.Warning
+                }, null, tint = ink, modifier = Modifier.size(12.dp))
+                Spacer(Modifier.width(3.dp))
+                Text(com.onpath.app.domain.OfflineReady.pillWord(st), style = MaterialTheme.typography.labelSmall, color = ink, maxLines = 1)
+            }
+        }
         val d = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, CREDIT_MAX_FONT))) {
             Text(MAP_CREDIT, style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 2,
@@ -454,7 +475,10 @@ internal fun MapCreditTop(cam: MapCameraState, demo: Boolean, onCredits: () -> U
  */
 object CreditPlace {
     const val TOP_DP = 4
-    /** The block's bottom below the status bar: top + credit line (15 sp + 6 dp) + 4 dp + scale (15 sp + 6 dp) + 2 dp air. */
+    /**
+     * The block's bottom below the status bar: top + the offline line (15 sp + 6 dp + 4 dp, always reserved so nothing
+     * moves when a route comes) + credit line (15 sp + 6 dp) + 4 dp + scale (15 sp + 6 dp) + 2 dp air.
+     */
     fun blockDp(fontScale: Float): Int =
-        TOP_DP + 6 + 4 + 6 + 2 + kotlin.math.ceil(15f * minOf(fontScale, CREDIT_MAX_FONT) + 15f * fontScale).toInt()
+        TOP_DP + 10 + 6 + 4 + 6 + 2 + kotlin.math.ceil(15f * fontScale + 15f * minOf(fontScale, CREDIT_MAX_FONT) + 15f * fontScale).toInt()
 }

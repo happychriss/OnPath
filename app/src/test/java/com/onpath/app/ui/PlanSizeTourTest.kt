@@ -42,6 +42,8 @@ class PlanSizeTourTest {
         for (s in listOf("Res.string.nav_action_pause", "Res.string.common_resume", "Res.string.nav_change_plan", "Res.string.nav_end_tour"))
             assertEquals(s, true, bar.contains(s))
         val panel = java.io.File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
-        assertEquals(false, panel.contains("cb.onEndTour"))
+        // the plan sheet has no end button; only the recording tab asks „Tour beenden?“ (owner 2026-11-27, variant 1 + ■)
+        assertEquals(1, Regex("cb\\.onEndTour").findAll(panel).count())
+        assertEquals(true, panel.contains("onEnd = cb.onEndTour)"))
     }
 }

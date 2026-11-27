@@ -210,31 +210,40 @@ fun PlanTopBar(
  */
 @Composable
 internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offline: OfflineReady.State? = null,
-                           onOffline: () -> Unit = {}) {
-    // always "PLANEN", also during a tour (owner 2026-11-06: one word for the plan mode; was "PLAN ÄNDERN")
+                           onOffline: () -> Unit = {},
+                           /** A tour records (not stopped): its time so far – the tab reads „● PLANEN · 0:42 ■“. */
+                           recElapsedS: Long? = null,
+                           /** A tap on the recording tab: „Tour beenden?“ (the same question as Navigate's). */
+                           onEnd: () -> Unit = {}) {
+    // always "PLANEN", also during a tour (owner 2026-11-06). The offline state lives top right since 2026-11-27
+    // (MapCreditTop) – [offline] / [onOffline] are kept for the old frames only
     val mode = str(Res.string.plan_mode_label).uppercase()
     val style = MaterialTheme.typography.labelSmall
-    if (offline == null) {
+    if (recElapsedS == null) {
         Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,
             modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
                 .padding(horizontal = 8.dp, vertical = 2.dp))
         return
     }
-    val desc = OfflineReady.pillWord(offline)
+    // planning during a recording (owner 2026-11-27, variant 1 + ■): one tab says both – the red dot and the time run,
+    // the ■ says „stop“; a tap asks „Tour beenden?“
+    val time = RecTab.time(recElapsedS)
+    val said = "$mode. ${str(Res.string.plan_rec_running)} $time. ${str(Res.string.plan_rec_end)}"
     Row(modifier.clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
-        .clickable(role = Role.Button, onClick = onOffline)
-        .clearAndSetSemantics { contentDescription = "$mode · $desc"; role = Role.Button }
+        .clickable(role = Role.Button, onClick = onEnd)
+        .clearAndSetSemantics { contentDescription = said; role = Role.Button }
         .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("$mode · $desc", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
-            maxLines = 1)
-        Spacer(Modifier.width(3.dp))
-        val (icon, tint) = when (offline) {
-            OfflineReady.State.READY -> Icons.Filled.Check to OnPathColors.OnPlanGood
-            OfflineReady.State.LOADING -> Icons.Filled.Sync to OnPathColors.CardWhite
-            OfflineReady.State.MISSING -> Icons.Filled.Warning to OnPathColors.OnPlanWarn
-        }
-        Icon(icon, null, tint = tint, modifier = Modifier.size(12.dp))
+        Box(Modifier.size(7.dp).background(OnPathColors.RecDot, CircleShape))
+        Spacer(Modifier.width(5.dp))
+        Text("$mode · $time", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1)
+        Spacer(Modifier.width(7.dp))
+        Box(Modifier.size(8.dp).background(OnPathColors.CardWhite))
     }
+}
+
+/** The recording tab's time (pure): „0:42“ = hours:minutes since the start. */
+object RecTab {
+    fun time(elapsedS: Long): String { val m = (elapsedS.coerceAtLeast(0) / 60); return "${m / 60}:${(m % 60).toString().padStart(2, '0')}" }
 }
 
 @Composable

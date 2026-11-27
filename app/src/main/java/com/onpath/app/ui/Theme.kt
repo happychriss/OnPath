@@ -220,6 +220,9 @@ object OnPathColors {
     val ProfileSteep = Color(0xFF2F7A52)
     val ProfileVerySteep = Color(0xFF17492F)
 
+    /** The recording dot on Plan's tab while a tour records (owner 2026-11-27): a clear red, a sign only. */
+    val RecDot = Color(0xFFFF453A)
+
     /** Aliases where the colour's name reads better at the call site. */
     val Amber = Warn
     val Bad = Error

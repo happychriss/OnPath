@@ -256,7 +256,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null,
         bottomBar = { PlanBar() },
         // the Daumen-Karte (owner 2026-11-26): the sheet floats 12 dp over the bottom edge, PLANEN on its top edge
         floating = true,
-        handleStart = { PlanModeLabel(editing = ui.tourRunning, offline = ui.offline, onOffline = cb.onOffline) },
+        handleStart = { PlanModeLabel(editing = ui.tourRunning, recElapsedS = ui.tour?.takeIf { !it.paused }?.elapsedS, onEnd = cb.onEndTour) },
         modifier = modifier.navigationBarsPadding()
             .padding(start = OnPathShapes.THUMB_EDGE_DP.dp, end = OnPathShapes.THUMB_EDGE_DP.dp, bottom = OnPathShapes.THUMB_EDGE_DP.dp),
     ) {

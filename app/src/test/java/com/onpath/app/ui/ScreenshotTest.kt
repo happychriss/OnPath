@@ -129,7 +129,7 @@ class ScreenshotTest {
                     }, sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) { bottom() } })
                     // as MapScreen in Plan: credit over the scale, top right (owner 2026-11-27, layout 2)
                     val cam = androidx.compose.runtime.remember { MapCameraState().apply { scale = "500 m" to 64.dp } }
-                    MapCreditTop(cam, demo = false, onCredits = {}, Modifier.align(Alignment.TopEnd)
+                    MapCreditTop(cam, demo = false, onCredits = {}, offline = offline ?: OfflineReady.State.READY, modifier = Modifier.align(Alignment.TopEnd)
                         .padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
                     Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }

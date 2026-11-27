@@ -17,13 +17,12 @@ class RecordingPillRuleTest {
         assertFalse("the wait window", RecordingPillRule.shows(true, false, false, false, false, true))
     }
 
-    /** The rule is what the Plan screen uses (Compose is not run on the JVM). */
+    /** Since 2026-11-27 (owner, variant 1 + ■) the recording shows on Plan's tab, no pill at the top. */
     @Test fun wiring() {
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("val recOn = RecordingPillRule.shows(rec?.paused == false, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)"))
-        assertTrue(map.contains("if (recOn) RecordingPill(Modifier"))
-        // „Beenden“ in the pill asks the end question (owner 2026-11-27, A) – the same EndTourDialog as Navigate's
-        assertTrue(map.contains(".measured(top), onEnd = { vm.tourEnd.askEndTour() })"))
-        assertTrue("the hints under it move down", map.contains("pill != null || recOn }"))
+        assertFalse(map.contains("RecordingPill(Modifier"))
+        val panel = File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
+        assertTrue(panel.contains("PlanModeLabel(editing = ui.tourRunning, recElapsedS = ui.tour?.takeIf { !it.paused }?.elapsedS, onEnd = cb.onEndTour)"))
+        assertTrue(RecTab.time(42 * 60) == "0:42" && RecTab.time(3 * 3600 + 5 * 60) == "3:05")
     }
 }
