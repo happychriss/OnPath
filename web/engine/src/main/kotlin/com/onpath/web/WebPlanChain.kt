@@ -24,6 +24,8 @@ import com.onpath.app.domain.AppMode
 import com.onpath.app.domain.RouteSpot
 import com.onpath.app.domain.plan.RouteRun
 import com.onpath.app.routing.LegCache
+import com.onpath.app.routing.LongAsk
+import com.onpath.app.routing.PhoneLongRule
 import com.onpath.app.routing.RouteCancel
 import com.onpath.app.routing.RoutingEngine
 import com.onpath.app.debug.Problems
@@ -46,7 +48,9 @@ import com.onpath.app.ui.Say
  */
 class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = PlanHistory(),
                    /** The engine's own leg cache: the snap aliases legs in it, the settle reads and fills it. */
-                   private val legCache: LegCache = LegCache()) {
+                   private val legCache: LegCache = LegCache(),
+                   /** The browser's routing speed and memory (RouteCost, owner 2026-11-27): null = today's day rule (tests). */
+                   browserCost: (() -> Pair<Double, Int>)? = null) {
     /** What the slice asked the host, in order (one word each, e.g. "recalc", "restoreActivity"). */
     val did = ArrayList<String>()
     var line: List<GeoPoint>? = null
@@ -54,6 +58,17 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     private val store = WebPlanStore(points)
     val plan = PlanDocument(store, history)
     val runCauses = RunCause()
+    /**
+     * The app's long-leg rule with the browser's numbers (owner 2026-11-27 – like LongLegAsk.rule): asks only when the slowest
+     * leg still to route takes longer than RouteCost.ASK_ABOVE_MS here, or is beyond the browser's memory; a leg in this
+     * engine's leg cache is routed already.
+     */
+    val longRule: PhoneLongRule? = browserCost?.let { cost ->
+        PhoneLongRule({ cost().first }) { a, b, quick ->
+            if (quick) legCache.inMemory(a, b, act, level) != null else legCache.has(a, b, act, level)
+        }.also { r -> r.memoryCapMb = { cost().second } }
+    }
+
     val planRun = PlanRunSlice(runCauses, object : PlanRunHost {
         override fun points() = plan.points.toList()
         override fun clearRoute() { did += "clearRoute" }
@@ -62,7 +77,8 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         override fun recalc() { did += "recalc" }
         // the page does every Cancel itself (in edit order, through [cancel]): here it is only recorded
         override fun cancelRun(why: NotRouted) { did += "cancel:" + why.name }
-    })
+    // the browser's rule and no "Weiter warten?" (the app's since 2026-11-27): the time limit allows twice the estimate
+    }, longRule?.let { RouteRun(longRule = it, askSlow = false) } ?: RouteRun())
 
     private var mark: Place? = null
     /**
@@ -344,8 +360,8 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     sealed interface Head {
         /** Route the run [gen] with [rounds] time-limit periods. */
         data class Route(val gen: Int, val rounds: Int) : Head
-        /** "This route is very long" first ([estimateS] seconds); nothing is routed until the answer. */
-        data class Ask(val estimateS: Double) : Head
+        /** The long-plan question first ([ask]: its seconds, leg and km); nothing is routed until the answer. */
+        data class Ask(val ask: LongAsk) : Head
         /** Nothing to route (fewer than two points). */
         data object None : Head
     }
@@ -363,7 +379,7 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
         did.clear()
         val run = recalc.begin(askLong)
         lastRun = run
-        val ask = planRun.longRouteAsk
+        val ask = planRun.routeRun.longAskLeg
         return when {
             run != null -> Head.Route(run.gen, run.rounds)
             ask != null -> Head.Ask(ask)

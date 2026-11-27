@@ -115,12 +115,26 @@ class WebWaitTest {
             map = 6_000, legs = 1, legMs = 120_000, checkMs = 4_000))
     }
 
-    @Test fun equalLegsGiveATimeOnceOneIsDone() {
-        // three legs of 20 s each: after the first the time left is the legs' measured pace – an honest number shows
+    @Test fun theRoutePartSaysHowLongItRunsLikeTheApp() {
+        // the app's RouteWaitUi line (owner 2026-11-27 „realistischer … transparenter“): how long it runs, no time left
+        WebWait.estimate(-1.0)
         val seen = run(fresh(), map = 0, legs = 3, legMs = 20_000, checkMs = 3_000)
         assertHonest("three legs of 20 s", seen)
-        assertTrue("a number once a leg is done: ${seen.map { it.second }.distinct()}",
-            seen.filter { it.first in 21_000..39_000 }.any { claimedS(it.second) != null })
+        assertEquals("running for 0:42", seen.first { it.first == 42_000L }.second)
+        assertTrue("no estimate without one: ${seen.map { it.second }.distinct()}", seen.none { it.second?.contains("about") == true })
+    }
+
+    @Test fun aLongRunsEstimateShowsInTheLine() {
+        // the run head's estimate (the app's RouteEstimate from LongRule.runS): above 5 s it reads „· about 1–2 min“
+        WebWait.estimate(90.0)
+        try {
+            val u = fresh().let { w -> w.tick(WebWait.Tick(0, route = WebWait.Route(0, 1, false, null))); w.tick(WebWait.Tick(42_000, route = WebWait.Route(0, 1, false, null))) }
+            assertTrue("estimate in the line: ${u.line}", u.line!!.startsWith("running for 0:42 · ") && u.line!!.contains("about"))
+            // a short run (4 s estimate): no estimate shown
+            WebWait.estimate(4.0)
+            val v = fresh().let { w -> w.tick(WebWait.Tick(0, route = WebWait.Route(0, 1, false, null))); w.tick(WebWait.Tick(3_000, route = WebWait.Route(0, 1, false, null))) }
+            assertEquals("running for 0:03", v.line)
+        } finally { WebWait.estimate(-1.0) }
     }
 
     @Test fun aLegLongerThanTheOnesBeforeDropsTheNumber() {

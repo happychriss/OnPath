@@ -362,6 +362,9 @@ object SearchRanking {
             val dc = if (centreLat == q.refLat && centreLon == q.refLon) d else Geo.distance(centreLat, centreLon, p.lat, p.lon)
             var score = 100.0 * text + SearchKinds.boost(p.kind, p.sub) - distancePenalty(dc) - 1.5 * i - ONLINE_PENALTY
             if (p.town != null && SearchText.normalize(p.town) in queryTowns) score += QUERY_TOWN_BONUS
+            // a town / city named exactly like the query is what was meant, however far – also over a nearby shop of that
+            // name (owner's Pixel 2026-11-27: „Paris“ from Hilden showed the hairdresser „Paris“ in Düsseldorf first)
+            if (p.kind == "place" && p.name != null && SearchText.normalize(p.name) == qFull) score += OnlineRanking.EXACT_PLACE_BONUS
             SearchHit(p, score, tier, d, false)
         }
     }

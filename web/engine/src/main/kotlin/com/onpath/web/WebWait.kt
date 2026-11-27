@@ -206,6 +206,10 @@ class WebWait(private var shares: StepShares, private var check: Double, private
         val late = running && bar.late
         val line = when {
             t.paused -> Txt.s(Res.string.maps_offline_text)
+            // the route part: the app's RouteWaitUi line – how long it runs, with the run's estimate above 5 s („läuft seit
+            // 0:42 · etwa 1–2 min“, owner 2026-11-27); the planner's estimate comes from its run head ([estimate])
+            !inMap && startMs >= 0 -> com.onpath.app.ui.progress.RouteWaitUi(pct, emptyList(), null,
+                elapsedS = ((now - startMs) / 1000).toInt(), estimateS = estimateS).line
             late || overLeg -> TimeLeft.LATE
             else -> left?.let(TimeLeft::text)
         }
@@ -321,6 +325,16 @@ class WebWait(private var shares: StepShares, private var check: Double, private
 
         // ---- the page's one wait (one window at a time) ----
         private var current: WebWait? = null
+
+        /**
+         * The search estimate of the run the page starts (WebApi.runHead's `estimateS`, the app's RouteEstimate): seconds;
+         * null = none. Kept until the next run head; read by the route part's line.
+         */
+        var estimateS: Double? = null
+            private set
+
+        /** [seconds] < 0 = none. */
+        fun estimate(seconds: Double) { estimateS = seconds.takeIf { it >= 0 && !it.isInfinite() } }
 
         /** A new wait with the learned values as stored ("v1:…", "r1:…", "p1:…"; anything else = the start values). */
         fun start(shares: String, check: String, part: String) {

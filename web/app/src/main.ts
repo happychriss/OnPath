@@ -44,7 +44,7 @@ import { PlanGapsLayer } from './plangaps';
 import { MapNotices } from './mapnotice';
 import { LoadOverlay, watchTiles, ENGINE_UNITS, LINK_UNITS, type PlanIn } from './loadoverlay';
 import { BesideSign } from './besidesign';
-import { loadWaitEngine, waitEngineReady, loadMs as waitLoadMs } from './waitengine';
+import { loadWaitEngine, waitEngineReady, waitEstimate, loadMs as waitLoadMs } from './waitengine';
 import { MapAreas, type MapTexts } from './areas';
 import { t, tp, lang, languages, switchLanguage, number, distance, locale } from './i18n';
 import { appHint } from './apphint';
@@ -471,7 +471,36 @@ const paceReady: Promise<void> = ready.then(async (ok) => {
   } catch (e) { console.warn('pace not set – the default (Average) is used', e); }
   try { trails = Number(await engine.call('markedTrailsSet', trails)); } // a broken stored value → Standard (MarkedTrails.of)
   catch (e) { problem('plan', 'marked trails not set – Standard is used', e); }
+  await costTell(Number(localStorageGet('routeFactor') ?? '0'));
 });
+
+/**
+ * The browser's routing memory for the long-leg question (RouteCost.capKm in the phone's MB, owner 2026-11-27): measured on
+ * a 32 GB laptop München (629 km) took 2 GB for the page. navigator.deviceMemory (Chrome, at most 8): about 85 km a GB,
+ * 300 km at least (a phone's), 700 km at most; without it (Firefox, Safari) as a 4 GB device, 340 km.
+ */
+const routeMemoryMb = (() => {
+  const gb = (navigator as unknown as { deviceMemory?: number }).deviceMemory ?? 4;
+  const km = Math.min(700, Math.max(300, gb * 85));
+  return Math.round(km * 256 / 300);
+})();
+let routeFactor = 0;
+/** Tells the engine the browser's factor ([f] ≤ 0 = the engine's start value) and memory; keeps what it uses. */
+async function costTell(f: number) {
+  try { routeFactor = Number(await engine.call('costSet', f, routeMemoryMb)); }
+  catch (e) { problem('routing', 'the browser\'s routing speed not set – the start value is used', e); }
+}
+/** After a plan: the factor the engine learned from its legs (RouteCost.factorAfter) is kept in this browser. */
+async function costKeep() {
+  try {
+    const f = Number(await engine.call('costFactor'));
+    if (!(f > 0) || Math.abs(f - routeFactor) < 0.01) return;
+    console.info(`[routing] browser routing factor ${routeFactor.toFixed(2)} → ${f.toFixed(2)} (memory ${routeMemoryMb} MB)`);
+    routeFactor = f;
+    localStorageSet('routeFactor', f.toFixed(3));
+    await costTell(f); // a fresh worker is told the learned one
+  } catch (e) { problem('routing', 'the browser\'s routing speed not kept – it is learned again', e); }
+}
 ready.then(async (ok) => {
   if (ok) { await paceReady; openFromLink(); prefetchView(); }
   else overlay.remove('link'); // no engine: the link cannot be opened – its wait ends (the engine's error line says why)
@@ -1762,23 +1791,24 @@ async function changed() {
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
   if (few) {
     // the run in the engine learns there is nothing to route (RouteRun leaves Routing) – never left „routing“ there
-    void runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned);
+    void runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned, namesText());
     render(); return;
   }
   planGaps.clear(); // the last plan's gaps belong to other points
   // the app's run head (PlanRecalcState.begin + RouteRun, in the engine): route now, or the long-route question first –
   // nothing is routed or downloaded until it is answered; a multi-day tour is never asked (owner 2026-11-18)
   const multiDay = !!state.tour;
-  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned);
+  let head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned, namesText());
   if (stale()) return;
   if (head.what === 'ASK') {
     const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale);
     if (stale()) return;
     if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
     if (answer !== 'plan') { await startFresh(answer.fresh); return; }
-    head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned); // „Plan anyway“: not asked again
+    head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned, namesText()); // „Warten“: not asked again
     if (stale()) return;
   }
+  waitEstimate(head.what === 'ROUTE' ? head.estimateS ?? -1 : -1); // the wait's „läuft seit 0:42 · etwa 1–2 min“ (the app's RouteEstimate)
   await planRun(routeHead(head));
 }
 
@@ -1810,7 +1840,7 @@ function askSlowPlan(rounds: number) {
       // the app's answerSlowPlan (RouteRun.SlowAnswer): the run again with one more period – the head knows how many
       const run = changeRun; // an edit meanwhile starts its own run: this one is not routed then
       try { await engine.call('runSlowAnswer', true); } catch (e) { problem('routing', 'the slow plan\'s answer not told to the engine', e); }
-      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned);
+      const head = await runHead(engine, state.points, state.activity, state.sac, !!state.tour, sharedPlan().pinned, namesText());
       // never fewer periods than this answer asked for: an engine that missed the time limit (no end told, a run of an
       // earlier chain) would give one period again – „Weiter warten?“ at the same limit for ever (review 2026-11-20)
       const rr = routeHead(head, rounds + 1);
@@ -1863,6 +1893,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   if (gen >= 0) engine.call('runEnd', gen, r.ok && r.plan?.slow ? 'slow' : r.ok && r.plan && !r.plan.failed ? 'ok' : 'failed', r.plan?.slow ?? rounds, routedNames)
     .catch((e) => problem('routing', 'the run\'s end not told to the engine', e));
   setPlanning(false, r.ok && !!r.plan && !r.plan.failed && !r.plan.slow);
+  void costKeep(); // what the legs taught about this browser's speed (RouteCost)
   if (r.ok && r.plan?.slow) { askSlowPlan(r.plan.slow); render(); return; }
   if (!r.ok || !r.plan || r.plan.failed) {
     // with what was asked (points, activity, rounds): the next failure tells which plan it was

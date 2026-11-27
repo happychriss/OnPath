@@ -155,7 +155,10 @@ object Engine {
 
     internal fun engine(): BRouterEngine {
         if (dirty.isNotEmpty()) writeParts()
-        return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments")) { markedTrails }.also { engine = it }
+        return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments"), markedTrails = { markedTrails },
+            // the browser's search cost (RouteCost, owner 2026-11-27): the time limit >= twice the leg's estimate, each searched
+            // leg teaches the browser's factor - the page keeps it (costFactor / costSet)
+            searchCost = com.onpath.app.routing.SearchCost({ routeFactor }, { routeFactor = it })).also { engine = it }
     }
 
     internal fun parsePoints(points: String): List<GeoPoint> = points.split(';').filter { it.isNotBlank() }.map { p ->
@@ -240,6 +243,25 @@ object Engine {
      */
     internal var markedTrails: Int = com.onpath.app.routing.MarkedTrails.STANDARD
         private set
+
+    /** This browser's routing factor (RouteCost: x the desktop JVM's search time) - learned per leg, kept by the page. */
+    internal var routeFactor: Double = BROWSER_FACTOR
+    /** This browser's routing memory in the phone's MB ([com.onpath.app.routing.RouteCost.capKm]) - set by the page. */
+    internal var routeMemoryMb: Int = BROWSER_MEMORY_MB
+    /**
+     * Start factor of a browser (hp, Ryzen 7 5850U, hike T2, pure search, 2026-11-27): 66 km straight 6 s -> 3.2, 180 km
+     * 21 s -> 2.4, 474 km 67 s -> 1.3; 3 asks from about 190 km straight - a slower computer learns its own after the first legs.
+     */
+    const val BROWSER_FACTOR = 3.0
+    /** Default memory: a 4 GB device's 340 km ([costSet] gets the page's own from navigator.deviceMemory). */
+    const val BROWSER_MEMORY_MB = 290
+
+    /** The page's stored factor and memory ([routeFactor], [routeMemoryMb]); returns the factor in use. */
+    fun costSet(factor: Double, memoryMb: Int): Double {
+        routeFactor = com.onpath.app.routing.RouteCost.bounded(if (factor > 0) factor else BROWSER_FACTOR)
+        routeMemoryMb = memoryMb.coerceAtLeast(com.onpath.app.routing.RouteCost.PHONE_MEMORY_MB)
+        return routeFactor
+    }
 
     /** Sets the level ([markedTrails]); a change drops the legs of the old level (memory; the browser's store by fingerprint). */
     fun setMarkedTrails(level: Int): Int {
@@ -496,7 +518,8 @@ object Engine {
             // the wait window (WebWait, owner 2026-11-19 „Route berechnet ist auch A“): the legs the router works on are its
             // steps – each time a leg is done, {"done":2,"total":5} (the app's RouteWait reads the same Planner report)
             val run = PlanRecalcState.Run(gen = 0, pts = wps, pins = parseIndices(pinned), act = act, level = sac,
-                rounds = rounds.coerceAtLeast(1), askAtLimit = rounds >= 1, f = WebPace.factors(act), started = t0,
+                // no "Weiter warten?" (the app's since 2026-11-27): the limit allows twice the leg's estimate, a leg beyond it a straight line
+                rounds = rounds.coerceAtLeast(1), askAtLimit = false, f = WebPace.factors(act), started = t0,
                 changeBefore = null, standBefore = null, anchors = anchorsOf(wps, act, sac))
             var planner: Planner? = null
             val res = try {
@@ -798,7 +821,9 @@ object Engine {
     // ---- undo / redo: the app's PlanDocument + PlanEditState (WebPlanChain) around one PlanHistory ----
     private val history = PlanHistory()
     /** The app's plan-editing chain on this engine's history (rebuilt after an import: its Undo / Redo flags are read at construction). */
-    private var chain = WebPlanChain(history = history, legCache = legCache)
+    private var chain = WebPlanChain(history = history, legCache = legCache, browserCost = ::browserCost)
+
+    private fun browserCost(): Pair<Double, Int> = routeFactor to routeMemoryMb
 
     /** One undoable change of the points [before] → [after] (PlanEditState.change). */
     fun historyRecord(before: String, after: String) = chain.record(parsePoints(before), parsePoints(after))
@@ -864,7 +889,7 @@ object Engine {
             return steps.indices.map { i -> AnchorsJson.readSet(texts.getOrNull(i)?.ifEmpty { null }, steps[i]) }
         }
         history.restore(undo, redo, sets(parts.getOrNull(6), undo), sets(parts.getOrNull(7), redo))
-        chain = WebPlanChain(history = history, legCache = legCache)
+        chain = WebPlanChain(history = history, legCache = legCache, browserCost = ::browserCost)
         parts.getOrNull(4)?.takeIf { it.isNotEmpty() }?.let { planArrive(it, parts.getOrNull(5).orEmpty()) }
         parts.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { chain.runImport(it) }
         epoch = (maxOf(epoch, parts.getOrNull(3)?.toIntOrNull() ?: 0) + 1) % 2000
@@ -877,11 +902,14 @@ object Engine {
      * question first `{"what":"ASK","seconds":…,"title":…,"text":…,"plan":…,"cancel":…,"notRouted":…,"again":…}` (the app's
      * LongRouteDialog texts), or `{"what":"NONE"}`. [askLong] false: a multi-day tour is never asked (owner 2026-11-18).
      */
-    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String = ""): String {
+    fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String = "", names: String = ""): String {
         val act = Activity.valueOf(activity)
         return when (val h = chain.head(parsePoints(points), act, sac, askLong, parseIndices(pinned))) {
-            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds + "}"
-            is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longAsk(h.estimateS, act) + "}"
+            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds +
+                // the run's search estimate (the app's RouteEstimate from LongRule.runS): the wait window's „· etwa 1–2 min“
+                (chain.longRule?.runS(parsePoints(points), act)?.takeIf { it > 0 && !it.isInfinite() }
+                    ?.let { ",\"estimateS\":" + num(it, 1) } ?: "") + "}"
+            is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longLeg(h.ask, parseNames(names)) + "}"
             WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
         }
     }
@@ -1379,7 +1407,11 @@ external fun planProgress(text: String)
 // plan rules before routing (WebPlanRules.kt) and GPX import (WebImport.kt)
 @JSExport fun longRoute(points: String, activity: String, multiDay: Boolean): String = WebPlanRules.longRoute(points, activity, multiDay)
 @JSExport fun planCancel(cause: String, points: String, activity: String, sac: Int, why: String): String = Engine.planCancel(cause, points, activity, sac, why)
-@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String): String = Engine.runHead(points, activity, sac, askLong, pinned)
+@JSExport fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String, names: String): String = Engine.runHead(points, activity, sac, askLong, pinned, names)
+/** The browser's routing factor and memory (RouteCost, owner 2026-11-27); returns the factor in use. */
+@JSExport fun costSet(factor: Double, memoryMb: Int): Double = Engine.costSet(factor, memoryMb)
+/** The browser's routing factor as learned so far (the page keeps it). */
+@JSExport fun costFactor(): Double = Engine.routeFactor
 @JSExport fun runLongAnswer(yes: Boolean, points: String) = Engine.runLongAnswer(yes, points)
 @JSExport fun runEnd(gen: Int, outcome: String, rounds: Int, names: String) = Engine.runEnd(gen, outcome, rounds, names)
 @JSExport fun runSlowAnswer(wait: Boolean) = Engine.runSlowAnswer(wait)
@@ -1514,6 +1546,8 @@ fun main() {}
 
 // ---- the wait window (form A) and the sign beside (form B): WebWait.kt, the page's second engine (waitengine.ts) ----
 @JSExport fun waitStart(shares: String, check: String, part: String) = WebWait.start(shares, check, part)
+/** The search estimate of the run the page starts (runHead's estimateS; < 0 = none): the route wait's line. */
+@JSExport fun waitEstimate(seconds: Double) = WebWait.estimate(seconds)
 @JSExport fun waitTick(now: Double, areas: String, dlDone: Double, dlTotal: Double, map: Boolean, routing: Boolean, join: Double,
                        routeDone: Int, routeTotal: Int, checking: Boolean, names: String, points: Int, paused: Boolean): String =
     WebWait.tick(now, areas, dlDone, dlTotal, map, routing, join, routeDone, routeTotal, checking, names, points, paused)

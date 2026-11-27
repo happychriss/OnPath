@@ -19,6 +19,7 @@ interface Exports {
   waitTick(now: number, areas: string, dlDone: number, dlTotal: number, map: boolean, routing: boolean, join: number,
     routeDone: number, routeTotal: number, checking: boolean, names: string, points: number, paused: boolean): string;
   waitEnd(now: number, finished: boolean): string;
+  waitEstimate(seconds: number): void;
   signTick(now: number, areas: string): number;
   signSeed(percent: number): void;
   /** The app's screen-state slices (WebState.kt) – slices.ts drives them. */
@@ -70,6 +71,8 @@ function guard<T>(what: string, f: (e: Exports) => T, fallback: T): T {
 }
 
 export const waitStart = (shares: string, check: string, part: string) => guard('start', (e) => e.waitStart(shares, check, part), undefined);
+/** The search estimate of the run the page starts (the run head's estimateS; −1 = none): the route wait's „· etwa 1–2 min“. */
+export const waitEstimate = (seconds: number) => guard('estimate', (e) => e.waitEstimate(seconds), undefined);
 export function waitTick(...a: Parameters<Exports['waitTick']>): WaitUi | null {
   return guard('tick', (e) => JSON.parse(e.waitTick(...a)) as WaitUi, null);
 }

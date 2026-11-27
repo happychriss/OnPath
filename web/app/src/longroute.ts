@@ -12,7 +12,9 @@ import { t } from './i18n';
 import { problem } from './diag';
 
 type LatLon = [number, number];
-interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string }
+interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string;
+  /** The browser's long-leg question (RouteCost): the leg, its straight km, beyond the browser's memory (only „Zwischenziel“). */
+  leg?: number; km?: number; beyond?: boolean }
 
 const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixed(6)}`).join(';');
 
@@ -20,18 +22,19 @@ const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixe
  * What the app's run head decided for a plan (WebApi.runHead = PlanRecalcState.begin): route the run [gen] with [rounds]
  * time-limit periods, ask first (the question's texts), or nothing to route (fewer than two points).
  */
-export type Head = { what: 'ROUTE'; gen: number; rounds: number } | { what: 'NONE' } | ({ what: 'ASK' } & Ask);
+export type Head = { what: 'ROUTE'; gen: number; rounds: number; /** the run's search estimate, s (the wait's „etwa …“) */ estimateS?: number } | { what: 'NONE' } | ({ what: 'ASK' } & Ask);
 
 /**
  * The run's head for [points]: a multi-day tour is never asked ([multiDay], owner 2026-11-18 – its day rows show a long day).
  * A head the engine could not answer routes at once (one period, never blocked on a question that can't be put).
  */
-export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false, pinned: number[] = []): Promise<Head> {
+export async function runHead(engine: EngineClient, points: LatLon[], activity: Activity, sac: number, multiDay = false, pinned: number[] = [],
+  names = ''): Promise<Head> {
   try {
     // said yes to earlier on this page: the run knows it (RouteRun.RoutedBefore) – also on a fresh chain (an opened plan,
     // a fresh worker), so it is never asked again in this page session, as before the shared run
     if (allowed.has(keyOf(points))) await engine.call('runRoutedBefore', keyOf(points));
-    return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay, pinned.join(','))) as Head;
+    return JSON.parse(await engine.call('runHead', keyOf(points), activity, sac, !multiDay, pinned.join(','), names)) as Head;
   } catch (e) {
     problem('routing', 'the route run\'s head failed – routed without the long-plan question', e);
     return { what: 'ROUTE', gen: -1, rounds: 1 };
@@ -42,7 +45,8 @@ export async function runHead(engine: EngineClient, points: LatLon[], activity: 
 export async function planAnyway(engine: EngineClient, points: LatLon[]) {
   // the line said "very long": these points are said yes to – kept page-side too, so the yes holds even when the run did
   // not reach "not routed, too long" (a Cancel whose take-back failed – review 2026-11-20)
-  if (notRoutedLong) allowed.add(keyOf(points));
+  // (the browser's long-leg rule, owner 2026-11-27: „Berechnen“ asks again with the estimate – no blind yes kept here;
+  // the engine's run decides, RouteRun.PlanAnyway without askSlow)
   try { await engine.call('runPlanAnyway', keyOf(points)); } catch (e) { problem('routing', '„Plan anyway“ not kept – the question may come again', e); }
 }
 
@@ -147,11 +151,15 @@ function question(a: Ask): Promise<boolean> {
   return new Promise((resolve) => {
     const d = document.createElement('dialog');
     d.className = 'share longroute';
-    d.innerHTML = `<h2>⚠ ${esc(a.title ?? '')}</h2><p>${esc(a.text ?? '')}</p>
-      <div class="row"><button id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button><button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_anyway'))}</button></div>`;
+    // a leg beyond the browser's memory: only „Zwischenziel setzen“ (the app's „Zu lang für das Handy“ in the browser's words)
+    const title = a.beyond ? t('web_too_long_title') : a.title ?? '';
+    const text = a.beyond ? t('web_too_long_text', String(Math.round(a.km ?? 0))) : a.text ?? '';
+    const plan = a.beyond ? '' : `<button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_anyway'))}</button>`;
+    d.innerHTML = `<h2>⚠ ${esc(title)}</h2><p>${esc(text)}</p>
+      <div class="row"><button id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button>${plan}</div>`;
     document.body.append(d);
     const done = (v: boolean) => { d.close(); d.remove(); resolve(v); };
-    d.querySelector<HTMLButtonElement>('#lrPlan')!.onclick = () => done(true);
+    d.querySelector<HTMLButtonElement>('#lrPlan')?.addEventListener('click', () => done(true));
     d.querySelector<HTMLButtonElement>('#lrCancel')!.onclick = () => done(false);
     d.addEventListener('cancel', (e) => e.preventDefault());
     d.showModal();
