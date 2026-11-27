@@ -149,7 +149,9 @@ class ImportExport(
 
     fun checkRestoreOffer() {
         scope.launchSafe("app", "checkRestoreOffer", io) {
-            val offer = try { !Backups.restoreOffered(app) && db.countAll() == 0 } catch (e: Exception) {
+            val offer = try {
+                RestoreOfferRule.offer(Backups.restoreOffered(app), db.countAll(), com.onpath.app.backup.BackupFolder.documentsOnPathExists())
+            } catch (e: Exception) {
                 Problems.warn("backup", "Restore offer not checked", e); false
             }
             if (offer) withContext(Dispatchers.Main) { host.restoreOffer = true }

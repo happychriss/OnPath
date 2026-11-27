@@ -22,6 +22,14 @@ class UxReviewFixesTest {
     }
 
     /** Problem 10: on a first start the restore offer waits for the welcome / phone setup guide and the loading modal. */
+    /** Owner 2026-11-27: the restore question only when Documents/OnPath is on the phone – a new user never sees it. */
+    @Test fun restoreIsOfferedOnlyWhenAnOldBackupFolderIsThere() {
+        assertTrue(RestoreOfferRule.offer(offeredBefore = false, toursInApp = 0, folderThere = true))
+        assertFalse("a new user: no folder", RestoreOfferRule.offer(offeredBefore = false, toursInApp = 0, folderThere = false))
+        assertFalse("asked once", RestoreOfferRule.offer(offeredBefore = true, toursInApp = 0, folderThere = true))
+        assertFalse("tours in the app already", RestoreOfferRule.offer(offeredBefore = false, toursInApp = 3, folderThere = true))
+    }
+
     @Test fun firstStartDialogsComeOneAfterTheOther() {
         assertTrue(RestoreOfferRule.show(offer = true, recording = false, locationAsking = false, loadModalOpen = false))
         assertFalse("location request open", RestoreOfferRule.show(true, recording = false, locationAsking = true, loadModalOpen = false))

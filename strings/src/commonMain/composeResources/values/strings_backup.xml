@@ -19,10 +19,10 @@
     <string name="backup_choose_folder">Choose another folder (e.g. Drive, Nextcloud)</string>
     <string name="backup_use_documents">Use Documents/OnPath again</string>
     <string name="backup_restore_button">Restore tours and plans</string>
-    <string name="backup_offer_title">Used OnPath before?</string>
-    <string name="backup_offer_text">Then your tours and plans may be in Documents/OnPath. To restore them, Android shows the folder – tap “Use this folder” and “Allow”.\n\nLater: Settings → Backup → Restore.</string>
-    <string name="backup_offer_new">No, I’m new</string>
-    <string name="backup_offer_restore">Yes, restore</string>
+    <string name="backup_offer_title">OnPath backup found</string>
+    <string name="backup_offer_text">There is a backup in Documents/OnPath. To restore it, Android shows the folder next – tap “Use this folder” and “Allow”.</string>
+    <string name="backup_offer_new">Start fresh</string>
+    <string name="backup_offer_restore">Restore</string>
     <string name="backup_restoring_title">Restoring tours and plans</string>
     <string name="backup_progress_reading">Reading backup files %1$d / %2$d</string>
     <string name="backup_progress_restoring">Restoring %1$d / %2$d</string>

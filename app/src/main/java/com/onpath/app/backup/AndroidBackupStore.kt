@@ -214,6 +214,15 @@ object BackupFolder {
 
     fun rootDoc(tree: Uri): Uri = DocumentsContract.buildDocumentUriUsingTree(tree, DocumentsContract.getTreeDocumentId(tree))
 
+    /**
+     * Documents/OnPath is on the phone (owner 2026-11-27: ask „restore?“ only then). An app sees the folders of the
+     * shared storage (Android 11+), not the files a former install wrote – so the folder, not its content, is the sign.
+     * Android 10 hides it: false there, the restore stays in Settings → Backup.
+     */
+    fun documentsOnPathExists(): Boolean = try {
+        java.io.File(android.os.Environment.getExternalStoragePublicDirectory(android.os.Environment.DIRECTORY_DOCUMENTS), "OnPath").isDirectory
+    } catch (e: Exception) { Problems.info("backup", "Documents/OnPath not checked", e); false }
+
     /** The picked folder is the default Documents/OnPath (restored files then count as this folder's files). */
     fun isDocumentsOnPath(tree: Uri): Boolean = try {
         tree.authority == "com.android.externalstorage.documents" &&

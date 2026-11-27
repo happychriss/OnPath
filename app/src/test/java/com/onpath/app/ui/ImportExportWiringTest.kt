@@ -68,7 +68,7 @@ class ImportExportWiringTest {
         has(ie, "host.savedPlaces = null")
         has(ie, "if (r != null) host.sync.changed(\"restored from the backup folder\")")
         // the restore offer: once, only with an empty database
-        has(ie, "!Backups.restoreOffered(app) && db.countAll() == 0")
+        has(ie, "RestoreOfferRule.offer(Backups.restoreOffered(app), db.countAll(), com.onpath.app.backup.BackupFolder.documentsOnPathExists())")
         // Export all / GPX share: the cache folder, the file provider authority, the mime types
         has(ie, "File(app.cacheDir, \"export\")")
         has(ie, "app.packageName + \".files\"")

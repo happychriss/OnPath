@@ -178,14 +178,19 @@ fun BackupSection(b: BackupUi, cb: BackupCallbacks) {
  * restore offer waits for the location answer and for the loading modal to close (and never during a tour).
  */
 object RestoreOfferRule {
+    /**
+     * Whether to ask at all (owner 2026-11-27: „da kriegt man ja einen Schreck“): once, with no tours in the app, and only
+     * when Documents/OnPath is on the phone – OnPath ran here before or the folder was copied over; a new user never sees it.
+     */
+    fun offer(offeredBefore: Boolean, toursInApp: Int, folderThere: Boolean): Boolean = !offeredBefore && toursInApp == 0 && folderThere
+
     fun show(offer: Boolean, recording: Boolean, locationAsking: Boolean, loadModalOpen: Boolean): Boolean =
         offer && !recording && !locationAsking && !loadModalOpen
 }
 
 /**
- * First start with no tours: offer the restore once (a reinstalled app may read the old folder only after the picker).
- * Every new user sees it (no way to look for an old folder before the picker), so it asks "Used OnPath before?" with
- * "No, I'm new" as the main answer (UX review B3).
+ * First start with no tours and a Documents/OnPath folder on the phone ([RestoreOfferRule.offer]): offer the restore
+ * once (a reinstalled app may read the old folder only after the picker). „Neu anfangen“ stays the main answer.
  */
 @Composable
 fun RestoreOfferDialog(onRestore: () -> Unit, onNotNow: () -> Unit) {

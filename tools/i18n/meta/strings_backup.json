@@ -17,7 +17,7 @@
   "backup_choose_folder": {"area": "Settings · Backup", "context": "Button", "priority": 2, "confidence": "sicher", "max": 44},
   "backup_use_documents": {"area": "Settings · Backup", "context": "Button when a custom folder is chosen", "priority": 3, "confidence": "sicher", "max": 36},
   "backup_restore_button": {"area": "Settings · Backup", "context": "Button", "priority": 2, "confidence": "sicher", "max": 36},
-  "backup_offer_title": {"area": "Restore offer", "context": "Dialog title at the first start with no tours", "priority": 2, "confidence": "sicher"},
+  "backup_offer_title": {"area": "Restore offer", "context": "Dialog title at the first start with no tours, only when Documents/OnPath exists (owner 2026-11-27)", "priority": 2, "confidence": "sicher"},
   "backup_offer_text": {"area": "Restore offer", "context": "Dialog text; names the buttons of Android's folder picker", "priority": 2, "confidence": "bitte prüfen", "doubt": "„Diesen Ordner verwenden“ / „Zulassen“ must match the German Android folder picker"},
   "backup_offer_new": {"area": "Restore offer", "context": "Main button: a new user, nothing to restore", "priority": 2, "confidence": "sicher"},
   "backup_offer_restore": {"area": "Restore offer", "context": "Second button: opens Android's folder picker to restore", "priority": 2, "confidence": "sicher"},
