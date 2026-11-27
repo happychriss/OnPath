@@ -24,14 +24,16 @@ object LegSplit {
 
     /**
      * Before a plan of [wps]: each point [k] whose two legs are not known while the leg [k − 1] → [k + 1] is (the point was
-     * put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut.
+     * put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut. [memoryOnly]: the
+     * legs read from memory only (no store read – the main thread's [seedBeforeRun]).
      */
-    fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int): Int {
+    fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int, memoryOnly: Boolean = false): Int {
+        val leg = { a: GeoPoint, b: GeoPoint -> if (memoryOnly) cache.inMemory(a, b, activity, sac) else cache.get(a, b, activity, sac) }
         var cut = 0
         for (k in 1 until wps.lastIndex) {
             val a = wps[k - 1]; val p = wps[k]; val c = wps[k + 1]
-            if (cache.get(a, p, activity, sac) != null || cache.get(p, c, activity, sac) != null) continue
-            val whole = cache.get(a, c, activity, sac) ?: continue
+            if (leg(a, p) != null || leg(p, c) != null) continue
+            val whole = leg(a, c) ?: continue
             val (x, y) = split(whole, p) ?: continue
             cache.put(a, p, activity, sac, x)
             cache.put(p, c, activity, sac, y)
@@ -39,6 +41,15 @@ object LegSplit {
         }
         return cut
     }
+
+    /**
+     * Before a run is weighed (owner 2026-11-27, Hilden – Venedig: a point set ON the route made the run head estimate – and on
+     * a long leg ask about – the two halves of a known leg as new): the legs a point put in on the line cuts, from MEMORY
+     * only (main thread), so the long-leg rule ([LongRule], [RouteCost]) and the wait estimate see them as routed. The run
+     * cuts again with the store ([seed]) – nothing lost when memory had it not. Returns the number of legs stored.
+     */
+    fun seedBeforeRun(cache: LegCache, plan: ExpandedPlan, activity: Activity, sac: Int): Int =
+        if (plan.hasAnchors) seed(cache, plan, activity, sac) else seed(cache, plan.points, activity, sac, memoryOnly = true)
 
     /** A parent leg of [seed] over an [ExpandedPlan] spans at most this many legs of the expanded list. */
     const val MAX_SPAN = 40
