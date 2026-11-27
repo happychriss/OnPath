@@ -204,7 +204,7 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
     sheet = document.getElementById('sheet').getBoundingClientRect();
     return { text: c.textContent, bar: !!c.querySelector('.wwbar > i'), pct: c.querySelector('.wwpct').textContent, rows: c.querySelectorAll('.wwsteps li').length,
       cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth, clock: document.getElementById('status').classList.contains('busy') }; }) : null;
-  check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area/.test(card.text),
+  check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area|Map for this place/.test(card.text),
     `the wait window: title, bar, "${card?.pct}", ${card?.rows} rows, Cancel ("${card?.text}")`);
   check(box && !!card && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
   // modal like the app's window (owner 2026-11-24): a tap on the map, a drag, a key and Escape change nothing – Cancel is the way out
@@ -310,7 +310,7 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const open = log.filter((x) => !x.gone);
   console.log('(the window: ' + open.map((x) => `${Math.round(x.t)} ${x.num} ${x.title} [${x.rows.join(', ')}] ${x.line}`).join(' ; ') + ')');
   check(open.length > 0 && open.every((x) => /^\d{1,3} %$/.test(x.num)), 'long plan: a percent all the way – the downloads and the calculation');
-  check(open.some((x) => /Map for your area/.test(x.title)) && open.some((x) => /Calculating the route/.test(x.title)),
+  check(open.some((x) => /Map for (your area|this place)/.test(x.title)) && open.some((x) => /Calculating the route/.test(x.title)),
     `long plan: the map's step, then the route's – one window (${[...new Set(open.map((x) => x.title))].join(' → ')})`);
   check(open.every((x) => x.rows.length <= 3), `long plan: never more than 3 rows (${Math.max(...open.map((x) => x.rows.length))})`);
   const sections = [...new Set(open.flatMap((x) => x.rows).map((r) => r.match(/^now:Section (\d)$/)?.[1]).filter(Boolean))];
