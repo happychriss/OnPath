@@ -217,6 +217,7 @@ fun MapOverlayHost(
  */
 @Composable
 fun RoutingRing(center: Offset, stillProgress: Float? = null) {
+    if (!com.onpath.app.ui.progress.WaitMotion.othersMove()) return // the wait window is the one thing that moves
     val d = LocalDensity.current
     val r = with(d) { 21.dp.roundToPx() }
     val label = com.onpath.app.domain.PlanStatus.CALCULATING

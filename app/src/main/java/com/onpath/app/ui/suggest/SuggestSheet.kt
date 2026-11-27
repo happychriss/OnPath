@@ -284,7 +284,7 @@ fun SuggestPanel(ui: SuggestPanelUi, cb: SuggestPanelCallbacks, modifier: Modifi
                 SuggestPhase.WAIT, SuggestPhase.LOADING -> Column(Modifier.padding(horizontal = 16.dp)) {
                     Summary(ui.summary)
                     Row(Modifier.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 3.dp, color = OnPathColors.ActionEdit)
+                        if (com.onpath.app.ui.progress.WaitMotion.othersMove()) CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 3.dp, color = OnPathColors.ActionEdit)
                         Spacer(Modifier.width(12.dp))
                         Text(str(if (ui.phase == SuggestPhase.LOADING) Res.string.suggest_ui_loading_routing else Res.string.suggest_ui_wait),
                             style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
@@ -478,7 +478,7 @@ private fun Take(chosen: Boolean, taking: Boolean, onTake: () -> Unit) {
     val pad = PaddingValues(horizontal = 14.dp)
     if (chosen) Button(colors = ActionButtons.edit(), onClick = onTake, enabled = !taking, contentPadding = pad) {
         // taking: only the button spins, its word stays (owner 2026-11-27: no waiting sentence where the user tapped)
-        if (taking) {
+        if (taking && com.onpath.app.ui.progress.WaitMotion.othersMove()) {
             CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
             Spacer(Modifier.width(8.dp))
         }

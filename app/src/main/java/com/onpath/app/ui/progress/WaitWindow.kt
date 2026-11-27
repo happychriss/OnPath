@@ -160,6 +160,8 @@ private fun StepRow(step: WaitStep, large: Boolean) {
 /** The window over the map (a Dialog: back and a tap outside do nothing – Cancel is the way out). */
 @Composable
 fun WaitWindowDialog(ui: WaitWindowUi, buttons: List<WaitButton>) {
+    // the one thing that moves while it is up (WaitMotion): every other busy sign stands still meanwhile
+    androidx.compose.runtime.DisposableEffect(Unit) { WaitMotion.opened(); onDispose { WaitMotion.closed() } }
     androidx.compose.ui.window.Dialog(onDismissRequest = {},
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)) {
         WaitWindowView(ui, buttons)

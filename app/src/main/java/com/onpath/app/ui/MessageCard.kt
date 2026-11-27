@@ -238,7 +238,7 @@ private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, to
     val size = modifier.heightIn(min = heightDp.dp).widthIn(min = 64.dp)
     val shape = OnPathShapes.Card
     val content: @Composable () -> Unit = {
-        if (b.busy) {
+        if (b.busy && com.onpath.app.ui.progress.WaitMotion.othersMove()) {
             androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = OnPathColors.InkMuted)
             Spacer(Modifier.width(10.dp))
         }

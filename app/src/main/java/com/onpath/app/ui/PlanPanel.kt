@@ -443,7 +443,7 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     // the hairline under the plan row; while a route is calculated the bar runs in its place (same 7 dp – nothing moves);
     // its number is the wait window's when it takes a while (progress/RouteWait.kt)
     if (ui.pointCount >= 1) Box(Modifier.fillMaxWidth().padding(top = 3.dp, bottom = 1.dp).height(3.dp), contentAlignment = Alignment.Center) {
-        if (ui.routing) RoutingBar(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
+        if (ui.routing && com.onpath.app.ui.progress.WaitMotion.othersMove()) RoutingBar(Modifier.fillMaxWidth().height(3.dp).clip(CircleShape))
         else HorizontalDivider(thickness = 1.dp, color = OnPathColors.PlanAccent.copy(alpha = 0.18f))
     }
 }
@@ -668,7 +668,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(MaterialTheme.shapes.small)
         .then(if (onTap != null) Modifier.clickable(role = Role.Button) { onTap() } else Modifier)
         .padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (spinner) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = grey)
+        if (spinner && com.onpath.app.ui.progress.WaitMotion.othersMove()) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = grey)
         else Icon(Icons.Outlined.Info, null, tint = grey, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, color = grey,

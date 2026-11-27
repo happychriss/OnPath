@@ -45,6 +45,7 @@ import com.onpath.strings.*
  */
 @Composable
 fun BesideSign(percent: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+    if (!WaitMotion.othersMove()) return // a wait window is up: it is the one thing that moves
     val cd = str(Res.string.maps_bg_chip_cd, "$percent %")
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = str(Res.string.maps_bg_chip_click), onClick = onClick)
         .semantics { contentDescription = cd }, contentAlignment = Alignment.Center) {

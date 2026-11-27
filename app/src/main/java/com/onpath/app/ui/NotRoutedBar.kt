@@ -26,7 +26,7 @@ internal fun NotRoutedBar(why: NotRouted, busy: Boolean = false, onPlanAnyway: (
         Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
         androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway, enabled = !busy) {
-            if (busy) {
+            if (busy && com.onpath.app.ui.progress.WaitMotion.othersMove()) {
                 androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = OnPathColors.PlanAccent)
                 Spacer(Modifier.width(8.dp))
             }

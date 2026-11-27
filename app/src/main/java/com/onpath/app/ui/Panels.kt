@@ -156,7 +156,7 @@ fun TrackPanel(
             OutlinedButton(onClick = onPlan, enabled = !planBusy, modifier = Modifier.fillMaxWidth().height(48.dp),
                 border = androidx.compose.foundation.BorderStroke(1.5.dp, if (planBusy) OnPathColors.ActionEdit.copy(alpha = 0.38f) else OnPathColors.ActionEdit),
                 colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.ActionEdit)) {
-                if (planBusy) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                if (planBusy && com.onpath.app.ui.progress.WaitMotion.othersMove()) androidx.compose.material3.CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
                 else Icon(Icons.Filled.Edit, null)
                 Spacer(Modifier.width(8.dp))
                 Text(str(Res.string.plan_from_track), maxLines = 1, overflow = TextOverflow.Ellipsis)
