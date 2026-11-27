@@ -3,14 +3,14 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683)",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683) · 2026-11-27 c3fb65034: My routes „8 Tage“ badge + day sheet (load a day) – next planner task (backlog parity line, captain 4fe615177); ridden ✓ / „Tag 3 von …“ app only (owner: done tours only on the phone)",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/plans.ts",
         "web/app/src/routefilter.ts",
         "web/app/src/style.css"
       ],
-      "blob": "dac1c6a1550014bb1a1cca3ed3c9c2981ed1caa8"
+      "blob": "1e8b0468077f0df2a1fd60e7dd902dde1274b59c"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -169,7 +169,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "e159dd9d1695f753db4b7b8a44f0b224b07a9e45"
+      "blob": "9277fca8cdea20ffd04bca5d717c0240138b03fe"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -495,20 +495,20 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RoutePreview.kt",
-      "what": "the preview tile's look (line width, start dot on a paper ring, goal dark red; a draft paler) – routeshape.ts shapeSvg; the fit itself is the engine's RouteShape.of (found 2026-11-27, was untracked)",
+      "what": "the preview tile's look (line width, start dot on a paper ring, goal dark red; a draft paler) – routeshape.ts shapeSvg; the fit itself is the engine's RouteShape.of (found 2026-11-27, was untracked) · 2026-11-27 c3fb65034: the day sheet's tiles – with the planner's My routes day sheet (next task)",
       "web": [
         "web/app/src/routeshape.ts"
       ],
-      "blob": "71878be0c76a237de43e1e185763a2d3e226ac3c"
+      "blob": "8d33e5fecfa4e6baf1b117fc1f636f1461b7e2aa"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ActivityPicker.kt",
-      "what": "ActivityPicker / GroupSwitch – activity choice variant C (owner 2026-11-27): Rad | Wandern switch, the group's cards (bikes: icon, name, line; hiking: T badge, name, short line), one tap picks – activity.ts",
+      "what": "ActivityPicker / GroupSwitch – activity choice variant C (owner 2026-11-27): Rad | Wandern switch, the group's cards (bikes: icon, name, line; hiking: T badge, name, short line), one tap picks – activity.ts · 2026-11-27 checked 685aa078f / bec36c639: navigation-bar insets are phone only; both groups laid out so the switch does not jump – the planner's drop-down lists one group at a time in a fixed-width menu (no jump seen)",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/style.css"
       ],
-      "blob": "7be4962de8c25f70fd16e6ed643f98f39e20c06f"
+      "blob": "1a72656e6559e9bf7c0257169b28b0c140ce9167"
     }
   ],
   "watch": [
