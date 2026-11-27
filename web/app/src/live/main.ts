@@ -90,7 +90,7 @@ function words(l: StatusLine): string {
     case 'off_route': return t('web_live_off_route');
     case 'pause': return t('web_live_pause');
     case 'late': return l.atMs != null ? t('web_live_late', clock(l.atMs)) : t('web_live_late_plain');
-    case 'moving': return t('web_live_moving');
+    case 'moving': return state?.route.length ? t('web_live_moving') : t('web_live_moving_free'); // owner 2026-11-27, hint list 20
   }
 }
 

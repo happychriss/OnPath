@@ -188,7 +188,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   clock.t = T0 + 2 * MIN + 5_000;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'moving' && l.text === 'Alles okay, unterwegs' && l.tone === 'good', `moving: "${l.text}"`);
+  check(l.state === 'moving' && l.text === 'Unterwegs, auf der Route' && l.tone === 'good', `moving with a route (owner 2026-11-27): "${l.text}"`);
   check(l.title === 'Christian' && await V.evaluate(() => document.getElementById('initial').textContent) === 'C', `the name from the sealed data: "${l.title}", its initial`);
   check(/^ca\. \d\d:\d\d · noch 6,2 km$/.test(l.togo ?? ''), `arrival and to go: "${l.togo}"`);
   check(l.battery === '43 %', `battery: "${l.battery}"`);

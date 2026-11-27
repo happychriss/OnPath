@@ -702,7 +702,8 @@ function stopLabel(i: number, count: number, name?: string | null) {
 }
 /** A stop's sign: ↺ for a loop's start, a white flag for the goal (the app's GoalFlag, owner 2026-11-06 polish 7), else its number. */
 const FLAG = '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path fill="#fff" d="M14.4 6 14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>';
-const stopSign = (i: number, count: number, loop: boolean) => (loop ? '↺' : count > 1 && i === count - 1 ? FLAG : String(i + 1));
+// a round trip's start is its goal too: the goal flag instead of „1“ (owner 2026-11-27, the app's look)
+const stopSign = (i: number, count: number, loop: boolean) => (loop || (count > 1 && i === count - 1) ? FLAG : String(i + 1));
 const stopColor = (i: number, count: number) => (i === 0 ? COLORS.start : i === count - 1 && count > 1 ? COLORS.end : COLORS.via);
 
 
@@ -715,7 +716,7 @@ async function drawPoints() {
   const n = state.points.length, last = n - 1;
   state.points.forEach(([lat, lon], i) => {
     if (state.roundTrip && i === last) return; // the closing point sits on the start
-    const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
+    const color = state.roundTrip && i === 0 ? COLORS.end : stopColor(i, n), sign = stopSign(i, n, state.roundTrip && i === 0);
     // a night of a multi-day tour: its blue / green „Tag N“ pill (owner 2026-11-17 round 3 A, 2026-11-26) instead of the number
     const night = multiDay?.nightOf(i) ?? null;
     // a point on a POI (a station picked as a stop) is the plain numbered point too – the planner's look on a big screen
@@ -758,7 +759,7 @@ async function drawPoints() {
   });
   // the row texts come from the app's PlanPoints.roleText / legText (shared, web review M15) – the page only renders them
   $('points').innerHTML = r.rows.map((row) => {
-    const color = row.loop ? COLORS.start : stopColor(row.i, n);
+    const color = row.loop ? COLORS.end : stopColor(row.i, n);
     return `<li data-i="${row.i}">
       <button class="grip" title="${escapeHtml(t('web_grip_title'))}" aria-label="${escapeHtml(t('web_grip_move', row.name))}">${icon('drag', 20)}</button>
       <span class="num" style="background:${color}">${stopSign(row.i, n, row.loop)}</span>
@@ -1265,7 +1266,7 @@ const fromMeNow = (goHere: MenuItem) => !goHere.disabled && position.fix != null
  */
 async function goHereItem(onGo: () => void): Promise<MenuItem> {
   const blocked = position.status === 'UNKNOWN' ? '' : await engine.call('fromMeBlocked', position.status, position.fix != null);
-  return { icon: 'gpsFixed', label: t('plan_go_here'), sub: blocked || t('plan_from_my_position'), key: 'GO_HERE', group: 'ROUTE',
+  return { icon: 'gpsFixed', label: t('plan_go_here'), sub: blocked || undefined, key: 'GO_HERE', group: 'ROUTE',
     disabled: !!blocked, act: onGo };
 }
 
@@ -1317,7 +1318,8 @@ async function pointMenu(i: number) {
   const items: MenuItem[] = acts.flatMap((a): MenuItem[] => {
     const group = pointRowGroup(a);
     if (a === 'MAKE_START') return [{ icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), group, act: () => applyEdit('startHere', i) }];
-    if (a === 'LOOP_START') return [{ icon: 'tripOrigin', label: t('plan_start_finish_here'), sub: t('plan_same_round_trip'), group, act: () => applyEdit('startHere', i) }];
+    // one row, no line under it (owner 2026-11-27, hint list 0b)
+    if (a === 'LOOP_START') return [{ icon: 'tripOrigin', label: t('web_loop_start'), group, act: () => applyEdit('startHere', i) }];
     if (a === 'KEEP') return keep ? [{ ...keep, divider: false, group }] : [];
     if (a === 'GOOGLE') return [{ icon: 'map', label: t('plan_open_google_maps'), group, act: () => google(name ?? '', lat, lon, '') }];
     return [{ icon: 'delete', label: t('common_delete'), danger: true, group, act: () => deletePoint(i) }];
@@ -1326,7 +1328,7 @@ async function pointMenu(i: number) {
   // night (blue moon)
   const night = multiDay?.pointNightItem(i);
   if (night) items.unshift({ ...night, group: 'ROUTE' });
-  const color = state.roundTrip && i === 0 ? COLORS.start : stopColor(i, n);
+  const color = state.roundTrip && i === 0 ? COLORS.end : stopColor(i, n);
   const title = `<b>${escapeHtml(stopLabel(i, n, name))}</b>`;
   openMenu(new maplibregl.LngLat(lon, lat), items,
     `<span class="num" style="background:${color}">${stopSign(i, n, state.roundTrip && i === 0)}</span>` + (info
@@ -2112,10 +2114,11 @@ function render() {
     const n = state.points.length;
     const waiting = linkOpening && n >= 2 && !state.notRouted;
     head.innerHTML = `<span class="title">${escapeHtml(waiting && state.title ? state.title : t('plan_plan_a_route'))}</span>`;
-    sub.textContent = n === 0 ? t('web_hint_first_point')
-      : n === 1 ? t('web_hint_destination') : state.notRouted ? notRoutedTexts.line : t('plan_calculating');
+    // no hint on an empty plan or with one point (owner 2026-11-27, hint list 1); while a plan the user started runs only
+    // the run bar shows (hint list 10b) – a link the page opens by itself keeps its short line
+    sub.textContent = n < 2 ? '' : state.notRouted ? notRoutedTexts.line : waiting ? t('plan_calculating') : '';
     // the sheet's wait line steps back while another wait shows (onewait.ts, body[data-wait], style.css)
-    sub.classList.toggle('waitline', n >= 2 && !state.notRouted);
+    sub.classList.toggle('waitline', waiting);
     sheetWait();
     // one point: which one, also in the small step where the Points list is hidden (owner 2026-10-30)
     if (n === 1) sub.prepend(Object.assign(document.createElement('span'), { className: 'onepoint',

@@ -36,8 +36,6 @@
     <string name="web_profile_big_row">Höhenprofil groß</string>
     <string name="web_share">Teilen</string>
     <string name="web_share_needs_two">Erst Start und Ziel setzen</string>
-    <string name="web_hint_first_point">Klicke in die Karte, wo du starten oder hin willst.</string>
-    <string name="web_hint_destination">Klicke in die Karte, um das Ziel zu setzen.</string>
     <string name="web_marker_title">%1$s – klicken für Optionen, ziehen zum Verschieben</string>
     <string name="web_grip_title">Ziehen ändert die Reihenfolge (oder Pfeil hoch / runter)</string>
     <string name="web_grip_move">%1$s verschieben</string>
@@ -101,7 +99,8 @@
 
     <string name="web_share_scan">Mit der OnPath-App scannen</string>
     <string name="web_share_qr">QR-Code des Plan-Links</string>
-    <string name="web_share_text">Wer den Link hat, kann den Plan öffnen – er steckt im Link, auf keinem Server wird etwas gespeichert.</string>
+    <string name="web_share_text">Für deine Begleiter: Der Link öffnet den Plan im Browser oder in der OnPath-App.</string>
+    <string name="web_loop_start">Als Start der Rundtour</string>
     <string name="web_share_link">Plan-Link</string>
     <string name="web_copy_link">Link kopieren</string>
     <string name="web_share_system">Teilen…</string>
@@ -168,7 +167,7 @@
     <string name="web_device_browser">Browser</string>
 
     <string name="web_about_title">OnPath-Planer</string>
-    <string name="web_about_text">Der Planungscode der OnPath-App in deinem Browser. Dein Plan steckt im Link und, wenn du ihn speicherst, in diesem Browser (und auf deinem verbundenen Handy, Ende-zu-Ende verschlüsselt). Ohne Konto.</string>
+    <string name="web_about_text">Plane deine Tour im Browser – mit denselben Wegen wie die OnPath-App. Ohne Konto.</string>
     <string name="web_about_how">So planst du</string>
     <string name="web_about_how_1">Klicke in die Karte für den Start, dann für Ziel und Stopps; ein Klick auf einen Punkt öffnet sein Menü.</string>
     <string name="web_about_how_2">Suche einen Ort und füge ihn über seine Karte hinzu. Ziehe ≡ bei den Punkten, um die Reihenfolge zu ändern.</string>
@@ -183,8 +182,6 @@
     <string name="web_phone_stale_why">Öffne OnPath auf dem Handy, dann werden die Pläne abgeglichen. Änderungen von hier warten so lange.</string>
     <string name="web_phone_browser_synced">Verbunden · dieser Browser abgeglichen %1$s</string>
     <string name="web_ago_now">gerade eben</string>
-    <string name="web_phone_how_2">Abgeglichen wird, wenn OnPath auf dem Handy offen ist – und solange diese Seite offen ist.</string>
-    <string name="web_phone_how_3">Bei Konflikten gewinnt die neuere Änderung, die ältere bleibt als Kopie.</string>
     <string name="web_phone_privacy">Ende-zu-Ende verschlüsselt, kein Konto – der Server sieht keine Inhalte.</string>
     <string name="web_phone_more">Mehr dazu</string>
     <!-- folders, one per phone (owner order A-017) -->

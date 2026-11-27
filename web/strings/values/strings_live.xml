@@ -11,7 +11,8 @@
     <string name="web_live_loading">Loading …</string>
     <string name="web_live_late">A bit later than planned · arriving around %1$s</string>
     <string name="web_live_late_plain">A bit later than planned</string>
-    <string name="web_live_moving">All fine, on the way</string>
+    <string name="web_live_moving">On the way, on the route</string>
+    <string name="web_live_moving_free">On the way</string>
     <string name="web_live_pause">Taking a break</string>
     <string name="web_live_off_route">A little off the route right now</string>
     <string name="web_live_low_battery">Battery %1$d %</string>
