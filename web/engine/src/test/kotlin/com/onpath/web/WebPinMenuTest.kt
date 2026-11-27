@@ -29,16 +29,16 @@ class WebPinMenuTest {
     }
 
     @Test fun rowsAndTheTintedRow() {
-        assertEquals("[\"START_HERE\",\"GO_HERE\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("START_HERE,GO_HERE", true, false))
+        assertEquals("[\"GO_HERE\",\"START_HERE\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("START_HERE,GO_HERE", true, false))
         assertEquals("[\"ADD\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("SET_DESTINATION", true, false))
         assertEquals("[\"ADD\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("ADD", true, false))
         assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("ADD_STOP,NEW_DESTINATION", true, false))
-        // owner 2026-11-26: shown Stopp → Ziel always, the likelier one only tinted (addMenuEmphasised)
-        assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("NEW_DESTINATION,ADD_STOP", true, false))
+        // owner 2026-11-26 night: the likeliest on top, tinted (addMenuEmphasised); an empty plan: Als Ziel first
+        assertEquals("[\"NEW_DESTINATION\",\"ADD_STOP\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("NEW_DESTINATION,ADD_STOP", true, false))
         assertEquals("[\"ADD_STOP\",\"NEW_DESTINATION\",\"GOOGLE\"]", WebRules.pinMenuRows("ADD_STOP,NEW_DESTINATION", false, false))
-        assertEquals("[\"START_HERE\",\"GO_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("START_HERE,GO_HERE", true, true))
+        assertEquals("[\"GO_HERE\",\"START_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]", WebRules.pinMenuRows("START_HERE,GO_HERE", true, true))
         // the page's „Rundtour ab hier“ last in the route group (owner 2026-11-26, the app's Row.ROUND_TRIP), under the page's key
-        assertEquals("[\"START_HERE\",\"GO_HERE\",\"ROUND_TRIP_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]",
+        assertEquals("[\"GO_HERE\",\"START_HERE\",\"ROUND_TRIP_HERE\",\"FAVOURITE\",\"HOME\",\"GOOGLE\",\"REMOVE_PIN\"]",
             WebRules.pinMenuRows("START_HERE,ROUND_TRIP_HERE,GO_HERE", true, true))
         assertEquals("null", WebRules.addMenuEmphasised("START_HERE,ROUND_TRIP_HERE,GO_HERE"))
         assertEquals("\"ADD_STOP\"", WebRules.addMenuEmphasised("ADD_STOP,NEW_DESTINATION"))
