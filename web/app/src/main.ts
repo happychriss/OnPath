@@ -2801,7 +2801,7 @@ async function keepAsRecentNow(why: string, prof?: { activity: typeof state.acti
   // changed (or new) but exactly the points of a saved route of the open folder: that route takes the Zuletzt place –
   // never a twin draft beside it (RouteRules.isUnsaved: points only – the page compares them, the slice decides)
   plan.anchors = await anchorsKept; plan.live = false;
-  const twin = await savedTwin(plan.points, plan.anchors);
+  const twin = await savedTwin(plan.points, plan.anchors, plan.tour);
   if (twin) keptIn = { folder: sync.open, name: twin.title ?? '' };
   const code = await engine.encode(plan);
   const dated = datedName();
@@ -2819,14 +2819,20 @@ async function keepAsRecentNow(why: string, prof?: { activity: typeof state.acti
   }).catch((e) => problem('routes', 'no name for the plan under Zuletzt', e));
 }
 /**
- * The saved route of the open folder with exactly [points] (lat/lon, as [samePointsAs]), or null – the newest when there
- * are several. A failure reads as none: the plan is then kept as a draft (never lost).
+ * The saved route of the open folder with exactly [points] (lat/lon, as [samePointsAs]), its detour points and its
+ * multi-day tour [tour] (days, limits, nights – part of the plan as [savedPlanChanged] counts it, and RoutesState.keepDraft's
+ * `days`: a 4-day plan on the points of a saved 3-day route is another plan, kept under Zuletzt), or null – the newest
+ * when there are several. A failure reads as none: the plan is then kept as a draft (never lost).
  */
-async function savedTwin(points: SharedPlan['points'], anchors: string): Promise<SavedPlan | null> {
+async function savedTwin(points: SharedPlan['points'], anchors: string, tour: Tour | null | undefined): Promise<SavedPlan | null> {
   try {
     if (!(await syncReady)) return null;
-    for (const p of await sync.list(sync.open)) if (p.kind === 'plan' && p.plan && (await samePointsAs(p.plan, points)) &&
-      ((await savedPoints(p.plan).plan)?.anchors ?? '') === anchors) return p; // other hidden via points: another route, kept
+    for (const p of await sync.list(sync.open)) {
+      if (p.kind !== 'plan' || !p.plan || !(await samePointsAs(p.plan, points))) continue;
+      const saved = await savedPoints(p.plan).plan;
+      // other hidden via points or other days / nights: another plan, kept
+      if ((saved?.anchors ?? '') === anchors && tourText(saved?.tour) === tourText(tour)) return p;
+    }
   } catch (e) { problem('routes', 'Zuletzt: the saved routes could not be compared – the plan is kept as a draft', e); }
   return null;
 }

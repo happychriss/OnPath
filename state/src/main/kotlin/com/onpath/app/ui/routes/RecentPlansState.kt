@@ -102,7 +102,7 @@ open class RecentPlansState(
         val id = runCatching {
             // not twice: no second draft with these points, none for a saved route with them; a changed plan opened from
             // Zuletzt updates its entry (RoutesState)
-            routes.keepDraft(key, plan.unsaved, plan.savedId, update = { own -> host.updateDraft(own, row()).also { updated = it } }) {
+            routes.keepDraft(key, plan.unsaved, plan.savedId, update = { own -> host.updateDraft(own, row()).also { updated = it } }, days = plan.days) {
                 host.insertDraft(row())
             }
         }.onFailure { Problems.error("db", "The plan could not be kept under Zuletzt", it) }.getOrNull()

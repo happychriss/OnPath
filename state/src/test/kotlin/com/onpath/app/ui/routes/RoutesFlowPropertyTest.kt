@@ -484,6 +484,31 @@ class RoutesFlowPropertyTest {
         assertEquals("that route is the Zuletzt row then", saved, r.recentId)
     }
 
+    /**
+     * Field bug 2026-11-27 (planner multiday-smoke, step 13): a saved 3-day tour, the plan on its points set to 4 days, then
+     * Neu – the saved route took the Zuletzt place and the 4 days were gone. Other days, limits or nights = another plan:
+     * kept as a draft. The same days (or none on both) still make no draft beside the route.
+     */
+    @Test fun aPlanWithASavedRoutesPointsButOtherDaysIsADraft() {
+        val store = FakeStore(); val r = RoutesState(store)
+        val key = listOf(0.0 to 0.0, 0.01 to 0.01, 0.02 to 0.02)
+        val three = com.onpath.app.data.MultiDay(3); val four = com.onpath.app.data.MultiDay(4)
+        val saved = store.insert(TourKind.PLANNED, key, draft = false)
+        store.rows[saved] = store.rows.getValue(saved).copy(days = three)
+        assertNull("the same 3 days: the saved route takes the place", r.keepDraft(key, unsaved = true, days = three) { error("no insert") })
+        assertEquals(saved, r.recentId)
+        val draft = r.keepDraft(key, unsaved = true, days = four) {
+            store.insert(TourKind.PLANNED, key, draft = true).also { store.rows[it] = store.rows.getValue(it).copy(days = four) } }
+        assertNotNull("4 days on the 3-day route's points: kept under Zuletzt", draft)
+        assertEquals(draft, r.recentId)
+        assertNotNull("a normal plan on the tour's points is another plan too",
+            r.keepDraft(key, unsaved = true, days = null) { store.insert(TourKind.PLANNED, key, draft = true) })
+        val night = three.copy(nights = mapOf(1 to com.onpath.app.routing.NightMark.OVERNIGHT))
+        assertNotNull("a night set is a change too", r.keepDraft(key, unsaved = true, days = night) {
+            store.insert(TourKind.PLANNED, key, draft = true).also { store.rows[it] = store.rows.getValue(it).copy(days = night) } })
+        assertNull("…and that plan twice is one draft", r.keepDraft(key, unsaved = true, days = night) { error("no insert") })
+    }
+
     /** Owner 2026-11-07: "Los geht's" with a changed saved route updates it; the version before is kept under Zuletzt. */
     @Test fun aChangedSavedRouteStartedKeepsItsVersionBeforeUnderZuletzt() {
         val store = FakeStore(); val r = RoutesState(store)
