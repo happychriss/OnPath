@@ -130,7 +130,14 @@ check(r.act === 'MTB · Round trip', `a planned round trip (its points end at th
 await pickAct(P, 'BIKE_TOURING');
 check(same(await names(P), ['Etschradweg Meran – Bozen']), 'Bike at once: only the bike tour (exactly Bike)');
 await pickAct(P, 'EBIKE');
-check((await P.textContent('#planList')).trim() === 'No E-bike tours here.', 'E-bike: the app\'s empty text – ' + (await P.textContent('#planList')).trim());
+check((await P.textContent('#planList .emptyline')).trim() === 'No E-bike tours here.', 'E-bike: the app\'s empty text – ' + (await P.textContent('#planList')).trim());
+// what the activity hides (the app's savedHeader, owner 2026-11-27 variant A): „SAVED · ONLY E-BIKE“ + „5 more“ – a click shows All
+{ const head = await P.$eval('#planList li.sectionhead', (h) => ({ text: h.firstChild?.textContent ?? '', more: h.querySelector('.showall')?.textContent ?? '' })).catch(() => ({ text: '', more: '' }));
+  check(/^SAVED · ONLY E-BIKE$/.test(head.text.trim()) && head.more === '5 more', `the header says what is hidden: "${head.text}" · "${head.more}"`);
+  await P.click('#planList li.sectionhead .showall');
+  await P.waitForFunction(() => document.querySelectorAll('#planList li[data-id]').length === 5, null, { timeout: 5_000 }).catch(() => {});
+  check((await names(P)).length === 5 && (await chipRow(P))[1].text === 'All' && !(await P.$('#planList .showall')), `„5 more“: All at once, the header gone (${(await names(P)).length}, ${JSON.stringify(await chipRow(P))})`);
+  await pickAct(P, 'EBIKE'); }
 await pickAct(P, 'ALL');
 c = await chipRow(P);
 check(c[1].text === 'All' && !c[1].on && (await names(P)).length === 5, 'All: every tour, the chip outlined');

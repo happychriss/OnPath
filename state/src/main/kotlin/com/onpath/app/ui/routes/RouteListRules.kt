@@ -31,6 +31,21 @@ object ActivityFilter {
      */
     fun saved(shown: List<Tour>, sort: RouteSort.Choice, onlyFavourites: Boolean, act: Activity?): List<Tour> =
         RouteSort.sort(Favourites.shown(shown.filter { !it.draft }, onlyFavourites).filter { keep(it, act) }, sort)
+
+    /** What the activity hides right now: [count] tours, all of [activity] (null = several or unknown). */
+    data class Hidden(val count: Int, val activity: Activity?)
+
+    /**
+     * The tours [act] hides from [shown] (with the same star filter) – the list header says „1 weitere mit Rad“ and a tap
+     * shows all (owner 2026-11-27, variant A: a bike route from the browser hid behind the preset „Wandern“). Null = none.
+     */
+    fun hidden(shown: List<Tour>, onlyFavourites: Boolean, act: Activity?): Hidden? {
+        if (act == null) return null
+        val h = Favourites.shown(shown.filter { !it.draft }, onlyFavourites).filter { !keep(it, act) }
+        if (h.isEmpty()) return null
+        val acts = h.map { t -> Activity.entries.firstOrNull { it.name == t.activity } }.distinct()
+        return Hidden(h.size, acts.singleOrNull())
+    }
 }
 
 /**

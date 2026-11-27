@@ -46,6 +46,23 @@ class RoutesListFlowTest {
     private fun shown(act: Activity?) = acts.filter { ActivityFilter.keep(it, act) }.map { it.id }
 
     /**
+     * Owner's Pixel 2026-11-27: a bike route from the browser hid behind the preset „Wandern“. The header says what is
+     * hidden – „1 weitere mit Rad“ (one activity) or „3 weitere“ –, with the star filter as the list has it; nothing with „Alle“.
+     */
+    @Test fun theHeaderSaysWhatTheActivityHides() {
+        val list = listOf(tour(1, act = "HIKE"), tour(2, act = "BIKE_TOURING", fav = true), tour(3, act = "HIKE"))
+        assertEquals(ActivityFilter.Hidden(1, Activity.BIKE_TOURING), ActivityFilter.hidden(list, false, Activity.HIKE))
+        assertEquals(7, ActivityFilter.hidden(acts, false, Activity.HIKE)!!.count)
+        assertEquals("several activities: no name", null, ActivityFilter.hidden(acts, false, Activity.HIKE)!!.activity)
+        assertEquals("nothing hidden with Alle", null, ActivityFilter.hidden(list, false, null))
+        assertEquals("nothing hidden when all are hikes", null, ActivityFilter.hidden(listOf(tour(1)), false, Activity.HIKE))
+        assertEquals("the star filter counts too", ActivityFilter.Hidden(1, Activity.BIKE_TOURING), ActivityFilter.hidden(list, true, Activity.HIKE))
+        assertEquals("a draft is no hidden tour", null, ActivityFilter.hidden(listOf(tour(1), tour(9, act = "MTB").copy(draft = true)), false, Activity.HIKE))
+        val screens = java.io.File("src/main/java/com/onpath/app/ui/Screens.kt").readText()
+        assertTrue(screens.contains("com.onpath.app.ui.routes.ActivityFilter.hidden(shown, favOnly, act), act) { act = null }"))
+    }
+
+    /**
      * Owner 2026-11-13 on the Pixel: „wenn ich E-Bike anklicke, will ich nur E-Bike sehen; Bike nur Bike“.
      * "Alle" shows everything, even unknown activities.
      */

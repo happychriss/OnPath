@@ -34,6 +34,24 @@ class WebRunHeadTest {
         assertFalse(ask, ask.contains("Weiter warten") || ask.contains("Keep waiting"))
     }
 
+    /**
+     * A long tour saved with support points (owner 2026-11-27, „Lange Browser-Touren auf dem Handy“: the browser shows a
+     * reloaded long tour at once): the run head weighs the legs between them, so the reload is routed without a question.
+     */
+    @Test fun aReloadedTourWithSupportPointsIsRoutedAtOnce() {
+        Engine.historyImport("")
+        val a = com.onpath.app.routing.GeoPoint(46.67, 11.16); val b = com.onpath.app.routing.GeoPoint(48.92, 11.16)
+        assertEquals("without support points: asked", "ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+        Engine.historyImport("")
+        val supports = (1..4).map { com.onpath.app.routing.GeoPoint(46.67 + it * 0.45, 11.16) }
+        val set = com.onpath.app.routing.AnchorSet(mapOf(0 to com.onpath.app.routing.Anchors(after = supports.take(2)),
+            1 to com.onpath.app.routing.Anchors(before = supports.drop(2))), com.onpath.app.routing.AnchorProfile.of(com.onpath.app.routing.Activity.HIKE, 2))
+        Engine.planArrive(mid, com.onpath.app.data.AnchorsJson.writeSet(listOf(a, b), set)!!)
+        val head = Engine.runHead(mid, "HIKE", 2, true)
+        assertEquals("with support points every ~50 km: routed at once ($head)", "ROUTE", what(head))
+        assertFalse("no long estimate in the wait line for short pieces ($head)", head.contains("estimateS\":4") || head.contains("estimateS\":5"))
+    }
+
     @Test fun aLegBeyondTheBrowsersMemoryOnlyOffersAStop() {
         Engine.historyImport("")
         val beyond = Engine.runHead(long, "HIKE", 2, true)

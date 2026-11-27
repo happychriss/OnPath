@@ -145,6 +145,19 @@ class PlanRecalcNoTourTest {
     private val start = GeoPoint(46.0, 11.0)
     private val middle = GeoPoint(46.009, 11.75) // ~1 km off the middle of that leg
 
+    /** Owner 2026-11-27: a leg over 150 km gets support points after its route – saved with the plan, nothing routed for them. */
+    @Test fun aVeryLongRoutedLegGetsSupportPointsWithoutRoutingAgain() {
+        val farther = GeoPoint(46.0, 14.3) // ~255 km along lat 46
+        plan.replace(listOf(start, farther))
+        assertNotNull(run(askLong = false))
+        val calls = engine.calls.size
+        val got = plan.anchorsFor(Activity.HIKE, 2)
+        assertEquals(setOf(0, 1), got.keys)
+        assertTrue(got.values.sumOf { it.size } in 4..5) // ~255 km of drawn line: about every 50 km
+        assertEquals("nothing routed for them", calls, engine.calls.size)
+        assertEquals(listOf(start, farther), plan.points.toList()) // hidden: the visible plan stays
+    }
+
     @Test fun aPointPutOnALongRoutedLegGetsItsAnchorsAndTheNextRunCarriesThem() {
         plan.replace(listOf(start, far))
         assertNotNull(run(askLong = false))

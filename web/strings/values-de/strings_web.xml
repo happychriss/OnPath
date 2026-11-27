@@ -220,15 +220,12 @@
     <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
     <string name="web_too_long_title">Zu lang am Stück</string>
     <string name="web_too_long_text">%1$s km am Stück. Setz ein Zwischenziel.</string>
-    <string name="web_far_title">Weit weg von deiner Route</string>
-    <string name="web_far_point">Dein Punkt %1$s liegt %2$s von hier entfernt.</string>
-    <string name="web_far_point_unnamed">Dein Punkt liegt %1$s von hier entfernt.</string>
-    <string name="web_far_route">Deine Route bei %1$s liegt %2$s von hier entfernt.</string>
-    <string name="web_far_route_unnamed">Deine Route liegt %1$s von hier entfernt.</string>
-    <string name="web_far_bike">%1$s mit dem Rad</string>
-    <string name="web_far_foot">%1$s zu Fuß</string>
-    <string name="web_far_new">Neuen Plan hier beginnen</string>
-    <string name="web_far_add">Zum Plan hinzufügen</string>
+    <string name="web_far_title_named">%1$s ist ca. %2$s km weit weg</string>
+    <string name="web_far_title_unnamed">Dein Punkt ist ca. %1$s km weit weg</string>
+    <string name="web_far_calc">Berechnung %1$s.</string>
+    <string name="web_far_too_far">Zu weit, um es am Stück zu rechnen.</string>
+    <string name="web_far_start">Von hier starten</string>
+    <string name="web_far_calculate">Route berechnen</string>
     <string name="web_route_off_map">Deine Route liegt außerhalb der Karte</string>
     <string name="web_one_point">1 Punkt · %1$s</string>
     <string name="web_no_webgl_title">Dein Browser kann die Karte nicht zeichnen</string>

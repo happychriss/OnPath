@@ -18,7 +18,7 @@ export interface Message {
   /** A wait the user started (the route being calculated): a spinner before the title; its one button is the way out. */
   busy?: boolean;
   /** The primary button's colour by what it does (the app's ButtonTone, colour rule 2026-11-06): 'edit' = it plans
-   * (blue), else walnut. The web never goes to a navigation, so there is no green. */
+   * (blue), else the one green (owner 2026-11-27 colour rule 1, was walnut). */
   tone?: 'edit' | 'neutral';
   /** Where the box's centre goes (page pixels) instead of 12 px under the top bar – e.g. the middle of the free map. */
   at?: () => { x: number; y: number };

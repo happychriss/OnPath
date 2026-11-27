@@ -147,6 +147,48 @@ object PlanAnchors {
         return Anchors(listOfNotNull(before), listOfNotNull(after))
     }
 
+    /**
+     * A leg whose routed line is longer than this gets support points (owner 2026-11-27, „Lange Browser-Touren auf dem
+     * Handy“): a device that did not route it (the phone after a browser plan, the browser after a reload) then routes
+     * short pieces, the first ones first, instead of one leg of hundreds of km (Pixel: 630 km in one leg 5–7 min; ~100 km
+     * takes 15–24 s – no supports needed there).
+     */
+    const val SUPPORT_LEG_M = 150_000.0
+    /** Support points about this far apart along the line – wider on a leg so long that 2 × the side limit would not do. */
+    const val SUPPORT_EVERY_M = 50_000.0
+
+    /**
+     * The support points of ONE leg (visible points [prev] → [next], routed line [legLine]), in route order: exact line
+     * points (plain [GeoPoint]s, like every anchor) about every [SUPPORT_EVERY_M] – at most 2 × [MAX_SIDE] of them, then
+     * evenly spread –, never the line's ends, never at [prev]'s or [next]'s place, strictly in line order. Empty when the
+     * line is not longer than [SUPPORT_LEG_M]. They are hidden via points like a stitch's anchors, so a device with the
+     * leg cached cuts them out of it ([LegSplit.seed], no routing) and every other device routes the same pieces.
+     */
+    fun supportsFor(legLine: List<GeoPoint>, prev: GeoPoint, next: GeoPoint): List<GeoPoint> {
+        if (legLine.size < 3) return emptyList()
+        val cum = Geo.cumulative(legLine)
+        val total = cum.last()
+        if (total <= SUPPORT_LEG_M) return emptyList()
+        val n = minOf(kotlin.math.ceil(total / SUPPORT_EVERY_M).toInt() - 1, 2 * MAX_SIDE)
+        if (n <= 0) return emptyList()
+        val step = total / (n + 1)
+        val out = ArrayList<GeoPoint>(n)
+        var from = 1
+        for (k in 1..n) {
+            if (from > legLine.lastIndex - 1) break
+            var bi = -1
+            for (i in from until legLine.lastIndex) {
+                if (!usable(legLine[i], prev, next)) continue
+                if (bi < 0 || abs(cum[i] - k * step) < abs(cum[bi] - k * step)) bi = i
+                if (cum[i] > k * step) break // the line only grows: the nearest is this one or the one before
+            }
+            if (bi < 0) break
+            out += GeoPoint(legLine[bi].lat, legLine[bi].lon)
+            from = bi + 1
+        }
+        return out
+    }
+
     /** A line point is no anchor where a visible point of the leg sits (lat / lon): that would be a zero-length leg. */
     private fun usable(g: GeoPoint, vararg visible: GeoPoint) = visible.none { it.lat == g.lat && it.lon == g.lon }
 

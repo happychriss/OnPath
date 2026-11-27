@@ -1,6 +1,14 @@
 package com.onpath.app.ui.routes
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
@@ -63,4 +71,26 @@ fun ActivityFilterItems(chosen: Activity?, onPick: (Activity?) -> Unit) {
         leadingIcon = { Spacer(Modifier.size(24.dp)) },
         trailingIcon = { RadioButton(selected = chosen == null, onClick = null) },
         modifier = Modifier.heightIn(min = 48.dp).semantics { role = Role.RadioButton })
+}
+
+/**
+ * The header over the saved routes / done tours (owner 2026-11-27, variant A): „GESPEICHERT“, and while the activity hides
+ * tours „GESPEICHERT · NUR WANDERN“ with „1 weitere mit Rad“ on the right – a tap shows „Alle“. Shown with Zuletzt above
+ * ([withRecent]) or whenever something is hidden. [scope]: the list's.
+ */
+fun savedHeader(scope: LazyListScope, withRecent: Boolean, label: org.jetbrains.compose.resources.StringResource, hidden: ActivityFilter.Hidden?, act: Activity?, onAll: () -> Unit) {
+    if (!withRecent && hidden == null) return
+    scope.item(key = "h-saved") {
+        Row(Modifier.fillMaxWidth().padding(start = 8.dp, top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            val only = if (hidden != null && act != null) " · " + str(Res.string.routes_only, act.chip) else ""
+            Text((str(label) + only).uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f).semantics { heading() })
+            if (hidden != null) {
+                val more = hidden.activity?.let { plural(Res.plurals.routes_more_with, hidden.count, hidden.count, it.chip) }
+                    ?: plural(Res.plurals.routes_more, hidden.count, hidden.count)
+                Text(more, style = MaterialTheme.typography.labelLarge, color = OnPathColors.ActionEdit,
+                    modifier = Modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClick = onAll).padding(horizontal = 8.dp, vertical = 14.dp))
+            }
+        }
+    }
 }

@@ -1801,7 +1801,7 @@ async function changed() {
   let head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned, namesText());
   if (stale()) return;
   if (head.what === 'ASK') {
-    const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale);
+    const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale, state.meta.map((m) => m?.name));
     if (stale()) return;
     if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
     if (answer !== 'plan') { await startFresh(answer.fresh); return; }

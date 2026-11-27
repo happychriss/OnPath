@@ -207,15 +207,15 @@ const greens = () => page.evaluate(() => {
 });
 const contrastFails = [];
 const light = await greens();
-// the app's colour rule (b873458a, owner 2026-11-06): the brand's word stays the navigation green, plain buttons and icons
-// are walnut (the theme's primary)
-const appGreen = 'rgb(36, 95, 70)', walnut = 'rgb(74, 63, 55)';
-for (const [sel, want] of [['.product', appGreen], ['#menuPlans .ic', walnut], ['.chip .ic', walnut]]) {
+// the app's colour rule 1 (owner 2026-11-27 „ein Grün für alles“, was walnut since 2026-11-06): the brand's word, plain
+// buttons and icons all in the one green (the theme's primary)
+const appGreen = 'rgb(36, 95, 70)';
+for (const [sel, want] of [['.product', appGreen], ['#menuPlans .ic', appGreen], ['.chip .ic', appGreen]]) {
   const g = light.find((x) => x.sel === sel);
   if (g && g.color !== want) contrastFails.push(`${sel} is ${g.color}, not ${want}`);
 }
 const prim = light.find((x) => x.sel === 'button.primary');
-if (prim && prim.fill !== walnut) contrastFails.push(`button.primary fill ${prim.fill}, not walnut`);
+if (prim && prim.fill !== appGreen) contrastFails.push(`button.primary fill ${prim.fill}, not the one green`);
 for (const x of light) if (x.ratio < x.min) contrastFails.push(`${x.sel} ${x.color} contrast ${x.ratio.toFixed(2)} < ${x.min}`);
 // always light like the app (owner 2026-10-30): a dark system setting changes nothing
 await page.emulateMedia({ colorScheme: 'dark' });

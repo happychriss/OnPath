@@ -370,6 +370,10 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
      * The head of a run of the page's plan [now] ([PlanRecalcState.begin]): the run to route, the long-plan question first, or
      * nothing to route. [askLong] false: never asked (the planner's multi-day tour, owner 2026-11-18) – on every head of it.
      */
+    /** The plan's points as routed – its anchors and support points between the visible ones (PlanAnchors.expand). */
+    fun routedPoints(activity: Activity, sac: Int): List<GeoPoint> =
+        com.onpath.app.routing.PlanAnchors.expand(plan.points.toList(), plan.anchorsFor(activity, sac), plan.pinnedIndices()).points
+
     fun head(now: List<GeoPoint>, activity: Activity, sac: Int, askLong: Boolean, pinned: Set<Int> = emptySet()): Head {
         plan.replace(now)
         // the page's POI / place points (routed exactly): by value in the plan, so the run's pins - and the settle's, and every

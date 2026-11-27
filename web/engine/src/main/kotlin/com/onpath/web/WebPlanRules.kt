@@ -54,6 +54,7 @@ object WebPlanRules {
             ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate))
         if (ask.beyond) return head
         return head + ",\"seconds\":" + Engine.num(ask.estimateS, 0) +
+            ",\"words\":" + Engine.str(com.onpath.app.routing.RouteCost.words(ask.estimateS)) +
             ",\"title\":" + Engine.str(com.onpath.app.routing.RouteCost.askTitle(ask)) +
             ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1))) +
             ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_wait))

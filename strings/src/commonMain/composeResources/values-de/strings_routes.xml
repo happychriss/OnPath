@@ -66,6 +66,15 @@
     <string name="routes_short_recording_text">In den Papierkorb gelegt. %1$d Tage lang wiederherstellbar.</string>
     <string name="routes_section_recent">Zuletzt</string>
     <string name="routes_section_saved">Gespeichert</string>
+    <string name="routes_only">nur %1$s</string>
+    <plurals name="routes_more_with">
+        <item quantity="one">1 weitere mit %2$s</item>
+        <item quantity="other">%1$d weitere mit %2$s</item>
+    </plurals>
+    <plurals name="routes_more">
+        <item quantity="one">1 weitere</item>
+        <item quantity="other">%1$d weitere</item>
+    </plurals>
     <string name="routes_just_saved">✓ Gerade gespeichert</string>
     <string name="routes_overview_show">Übersicht anzeigen</string>
     <string name="routes_overview_enlarge">Übersicht vergrößern</string>

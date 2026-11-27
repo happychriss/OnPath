@@ -386,6 +386,32 @@ class RouteRunTest {
         assertEquals(Phase.AskLong(LongRoute.estimateS(far, Activity.HIKE)), ask)
     }
 
+    /**
+     * Support points (owner 2026-11-27, „Lange Browser-Touren auf dem Handy“): the question weighs the legs as routed
+     * ([Event.Recalc.longPoints]) – a long visible leg cut by support points is not asked about; a long routed leg is,
+     * named by its visible leg ([Event.Recalc.longLegs]).
+     */
+    @Test fun theQuestionWeighsTheRoutedLegsBetweenSupportPoints() {
+        // asks when a leg is longer than 1° of latitude (~111 km)
+        val rule = com.onpath.app.routing.LongRule { pts, _ ->
+            pts.zipWithNext().withIndex().firstOrNull { (_, ab) -> kotlin.math.abs(ab.first.lat - ab.second.lat) > 1.0 }
+                ?.let { com.onpath.app.routing.LongAsk(300.0, it.index, 200.0) } }
+        val s = GeoPoint(48.0, 11.0); val e = GeoPoint(51.0, 11.0)
+        val supports = listOf(s, GeoPoint(48.8, 11.0), GeoPoint(49.6, 11.0), GeoPoint(50.4, 11.0), e)
+        val run = RouteRun(longRule = rule)
+        assertTrue("visible leg only: asked", run.on(Event.Recalc(listOf(s, e), Activity.HIKE, true, false)).state.phase is Phase.AskLong)
+        assertTrue("cut by support points: routed at once",
+            run.on(Event.Recalc(listOf(s, e), Activity.HIKE, true, false, longPoints = supports, longLegs = listOf(0, 0, 0, 0))).state.routing)
+        // one routed leg still long: asked, named by its visible leg
+        val partly = listOf(GeoPoint(46.0, 11.0), s, GeoPoint(49.6, 11.0), e)
+        val ask = run.on(Event.Recalc(listOf(GeoPoint(46.0, 11.0), s, e), Activity.HIKE, true, false,
+            longPoints = partly, longLegs = listOf(0, 1, 1))).state.phase as Phase.AskLong
+        assertEquals(0, ask.leg)
+        val ask2 = run.on(Event.Recalc(listOf(GeoPoint(46.0, 11.0), s, e), Activity.HIKE, true, false,
+            longPoints = listOf(GeoPoint(46.0, 11.0), GeoPoint(47.0, 11.0), s, GeoPoint(49.6, 11.0), e), longLegs = listOf(0, 0, 1, 1))).state.phase as Phase.AskLong
+        assertEquals("the second routed leg of the second visible leg (48 → 49.6) is long: named as visible leg 1", 1, ask2.leg)
+    }
+
     @Test fun anInjectedRuleDecidesTheQuestionAndItsLeg() {
         val rule = com.onpath.app.routing.LongRule { pts, _ -> if (pts.size > 2) com.onpath.app.routing.LongAsk(45.0, 1, 120.0) else null }
         val run = RouteRun(longRule = rule)

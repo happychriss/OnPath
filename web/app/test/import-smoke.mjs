@@ -3,7 +3,7 @@
 //    words, RouteCost – owner 2026-11-27) – no routing data is fetched until it is answered; „Add a stop“ on a link's
 //    plan keeps the points unrouted („Calculate“ asks again, „Wait“ routes), on a clicked point it takes that point
 //    back (PlanStatus.onCancel);
-//    "Far from your route" (web): an empty plan + a far search result as start is never asked; a single point left in
+//    the far question (web, variant C 2026-11-27 – was "Far from your route"): an empty plan + a far search result as start is never asked; a single point left in
 //    Algund + Hilden "As start" → the question names the point, "Start a new route here" (undo brings it back) /
 //    "Add to the route" (= Plan anyway); "1 point · Algund" in the small step; "Your route is outside the map · Show";
 //    Delete (Clear route) in the Points head + undo;
@@ -97,18 +97,20 @@ await clickAt(11.16, 52.05);
 // far past the goal, nearly straight on: the hold menu may ask (the app's hold rule, F-PLAN-15) – „New destination“
 await page.waitForSelector('dialog.longroute, .holdaddpopup button', { timeout: 30_000 });
 if (await page.locator('.holdaddpopup').count()) await page.click('.holdaddpopup button:first-of-type');
-await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
-await page.click('#lrCancel');
-await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2, null, { timeout: 60_000 }).catch(() => {});
+// one new point far from a short plan: the far question (owner 2026-11-27 variant C) instead of the long-leg question –
+// „… is about N km away“ · [Start from here] [Calculate route]; „Start from here“ + ↶ brings the short route back
+await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
+{ const t = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
+  const ids = await page.$$eval('dialog.longroute button', (b) => b.map((x) => x.id));
+  check(/is about \d+ km away/.test(t) && !/Add a stop|Wait/.test(t) && ids[0] === 'lrFresh' && !ids.includes('lrCancel'),
+    `a far clicked point: one question, no second one ("${t}", ${ids.join(' · ')})`); }
+await page.click('#lrFresh');
+await page.waitForFunction(() => !document.querySelector('dialog.longroute') && document.querySelectorAll('.pin').length === 1, null, { timeout: 30_000 }).catch(() => {});
+check(await pins() === 1 && !(await page.$('dialog.longroute')), 'Start from here: a new plan with only the clicked point, no question');
+await page.click('#undo');
+await page.waitForFunction(() => document.querySelectorAll('.pin').length === 2, null, { timeout: 30_000 }).catch(() => {});
 await page.waitForTimeout(500); await planned().catch(() => {});
-console.log('after cancel:', await pins(), await page.textContent('#summary'), await page.textContent('#status'));
-check(await pins() === 2 && !!(await page.$('#summary .big')), 'Cancel (a clicked point): the point is taken back, the short route stays');
-// the map goes back to the plan from before (app 4216a144, owner 2026-11-13): two points – the whole plan, not the far
-// spot up north the click was on (zoom 5.5 there)
-await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
-{ const cam = await page.evaluate(() => { const c = window.__map.getCenter(); return { lat: c.lat, lon: c.lng, zoom: window.__map.getZoom() }; });
-  console.log('camera after cancel:', cam);
-  check(Math.abs(cam.lat - 46.68) < 0.1 && Math.abs(cam.lon - 11.15) < 0.15 && cam.zoom > 10, `Cancel: the map is back on the plan from before (${cam.lat.toFixed(3)}, ${cam.lon.toFixed(3)} z${cam.zoom.toFixed(1)})`); }
+check(await pins() === 2 && !!(await page.$('#summary .big')) && !(await page.$('dialog.longroute')), '↶ after Start from here: the short route is back, no question');
 
 // 1d. "Far from your route" (owner 2026-10-30: "war in Meran, suche nach Hilden, gebe als Start" – a point left in
 // Algund made Hilden's "As start" a 35 h plan). A fake Photon answer for "Hilden"; the map jumps there first.
@@ -156,25 +158,16 @@ check((await page.textContent('#offmap')).includes('Your route is outside the ma
 await page.click('#showPlan');
 await page.waitForFunction(() => window.__map.getBounds().contains([11.1302, 46.6773]) && !window.__map.isMoving(), null, { timeout: 15_000 }).catch(() => {});
 check(await page.evaluate(() => window.__map.getBounds().contains([11.1302, 46.6773])) && !(await page.isVisible('#offmap')), 'Show: the plan in view, the line gone');
-// Cancel: the map goes back to Algund (one point: that point at the one-place zoom – app 4216a144), Hilden's pin is back
-await toHilden();
-await hildenAs('Set as destination');
-await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
-await page.click('#lrCancel');
-await page.waitForFunction(() => !document.querySelector('dialog.longroute') && document.querySelectorAll('.pin').length === 1, null, { timeout: 30_000 }).catch(() => {});
-await page.waitForTimeout(300);
-await page.waitForFunction(() => !window.__map.isMoving(), null, { timeout: 10_000 }).catch(() => {});
-{ const cam = await page.evaluate(() => { const c = window.__map.getCenter(); return { lat: c.lat, lon: c.lng, zoom: window.__map.getZoom(),
-    algund: window.__map.getBounds().contains([11.1302, 46.6773]) }; });
-  check(cam.algund && cam.zoom > 14 && await pins() === 1 && await page.locator('.candidate').count() === 1,
-    `Cancel of the far question: the map back on Algund (z${cam.zoom.toFixed(1)}), Hilden's pin back`); }
+// (variant C, owner 2026-11-27: no Cancel in the far question – „Set as start“ is undone with ↶, checked below)
 await toHilden();
 await hildenAs('Set as destination');
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
 const farText = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
 const order = await page.$$eval('dialog.longroute button', (b) => b.map((x) => x.id));
-check(/Far from your route/.test(farText) && /Your point Algund is about \d+ hours by bike from here\./.test(farText) &&
-  order.join() === 'lrFresh,lrPlan,lrCancel' && !/very long/.test(farText), `a single far point: "${farText}" (${order.join(' · ')})`);
+// one question (owner 2026-11-27 variant C): „Hilden is about 700 km away“ · „Calculating takes about …“ (or too far for
+// the browser's memory: only „Set as start“) – [Set as start] [Calculate route], never a second question after it
+check(/is about \d+ km away/.test(farText) && (/Calculating takes about /.test(farText) || /Too far to calculate in one go\./.test(farText)) &&
+  (order.join() === 'lrFresh,lrPlan' || order.join() === 'lrFresh') && !/very long|Wait|Add a stop/.test(farText), `a single far point: "${farText}" (${order.join(' · ')})`);
 await page.locator('dialog.longroute').screenshot({ path: path.join(here, '../../engine/build/far-from-route.png') }).catch(() => {});
 await page.click('#lrFresh');
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1, null, { timeout: 10_000 }).catch(() => {});
@@ -193,10 +186,17 @@ check(hildenRows[0] === 'Set as destination' && !hildenRows.includes('Set as sto
   `far past the goal: only "Set as destination", not tinted, no "Set as stop", no More (${hildenRows.join(' · ')})`);
 await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 });
 const farRoute = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ').trim();
-check(/Your route near Vellau is about \d+ (hours|days) on foot from here\./.test(farRoute), `a far route: "${farRoute}"`);
-await page.click('#lrPlan');
-await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
-check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Add to the route: three points, planned without asking again');
+check(/is about \d+ km away/.test(farRoute), `a far route: "${farRoute}"`);
+if (await page.$('dialog.longroute #lrPlan')) {
+  await page.click('#lrPlan');
+  await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|Planning|Calculating/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 }).catch(() => {});
+  check(!(await page.$('dialog.longroute')) && await pins() === 3, 'Calculate route: three points, planned without asking again');
+} else {
+  // too far for the browser's memory: only „Set as start“
+  await page.click('#lrFresh');
+  await page.waitForFunction(() => !document.querySelector('dialog.longroute') && document.querySelectorAll('.pin').length === 1, null, { timeout: 30_000 }).catch(() => {});
+  check(!(await page.$('dialog.longroute')) && await pins() === 1, 'too far: Set as start – only the new point');
+}
 // (d) + New in the plan bar (owner 2026-11-06: the one way – the plan row has no ✕ any more): no question any more (the
 // app's Zuletzt, owner 2026-11-06) – the unsaved plan goes under Meine Touren → Recent; undo brings it back.
 // On a freshly loaded page (a new engine worker): (c)'s Meran → Hilden plan may still be running in the engine's one

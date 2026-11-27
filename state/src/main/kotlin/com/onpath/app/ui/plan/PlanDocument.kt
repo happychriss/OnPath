@@ -171,6 +171,18 @@ class PlanDocument(
     /** The hidden via points with their profile: they follow every edit, Undo brings them back; this stage never makes new ones. */
     val anchorSet: AnchorSet get() = session.anchorSet
 
+    /**
+     * Support points on the long legs of the route just taken (owner 2026-11-27, [com.onpath.app.routing.PlanStitch.withSupports]):
+     * no Undo step, stored and saved with the plan like detour points; a saved plan that matched its save keeps matching.
+     */
+    fun addSupports(lines: com.onpath.app.routing.VisibleLines): Boolean {
+        val clean = savedAnchors?.let { it == session.anchorSet } ?: false
+        if (!session.addSupports(lines)) return false
+        stored()
+        if (clean) { savedAnchors = session.anchorSet; storeSavedAnchors() }
+        return true
+    }
+
     /** The anchors that count for [activity] / [sac]: what is routed, saved and shared (none under another profile). */
     fun anchorsFor(activity: Activity, sac: Int): Map<Int, Anchors> = session.anchorsFor(activity, sac)
 

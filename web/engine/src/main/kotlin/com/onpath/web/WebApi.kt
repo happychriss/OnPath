@@ -907,7 +907,8 @@ object Engine {
         return when (val h = chain.head(parsePoints(points), act, sac, askLong, parseIndices(pinned))) {
             is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds +
                 // the run's search estimate (the app's RouteEstimate from LongRule.runS): the wait window's „· etwa 1–2 min“
-                (chain.longRule?.runS(parsePoints(points), act)?.takeIf { it > 0 && !it.isInfinite() }
+                // over the legs as routed: support points cut a long leg into short ones (owner 2026-11-27)
+                (chain.longRule?.runS(chain.routedPoints(act, sac), act)?.takeIf { it > 0 && !it.isInfinite() }
                     ?.let { ",\"estimateS\":" + num(it, 1) } ?: "") + "}"
             is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longLeg(h.ask, parseNames(names)) + "}"
             WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
