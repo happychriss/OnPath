@@ -92,7 +92,7 @@ abstract class PlaceMenusGalleryFullTest : PlaceMenusGalleryTest() {
             }
             cell("poiMenuEmptyPlan") {
                 InOverlay {
-                    PoiMenu(Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {}, emptyPlan = true)
+                    PoiMenu(Poi("n1", "hut", "Meraner Hütte", 46.68, 11.25, ele = 1960), onAdd = {}, onGoogle = {}, emptyPlan = true, onRoundTrip = {})
                 }
             }
         }
@@ -104,7 +104,7 @@ abstract class PlaceMenusGalleryFullTest : PlaceMenusGalleryTest() {
      */
     @Test fun firstPointMenuAndNoGps() = paparazzi.snapshot {
         Gallery {
-            cell("firstPointMenu") { InOverlay { FirstPointMenu(null, onStartHere = {}, onFromMe = {}) } }
+            cell("firstPointMenu") { InOverlay { FirstPointMenu(null, onStartHere = {}, onFromMe = {}, onRoundTrip = {}) } }
             cell("firstPointMenuNoGps") { InOverlay { FirstPointMenu(MapGestures.fromMeBlocked(GpsStatus.SEARCHING, false), onStartHere = {}, onFromMe = {}) } }
         }
     }

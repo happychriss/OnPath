@@ -449,7 +449,8 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
         // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“
         if (fromMeBlocked == null) { GoHereRow(null, onFromMe); if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere) }
         else { if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere); GoHereRow(fromMeBlocked, onFromMe) }
-        if (startHere && onRoundTrip != null) HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = onRoundTrip)
+        // „Rundtour ab hier“ under its own thin line (owner 2026-11-27, PinMenuItems' LOOP group)
+        if (startHere && onRoundTrip != null) { GroupLine(); HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = onRoundTrip) }
     }
 }
 

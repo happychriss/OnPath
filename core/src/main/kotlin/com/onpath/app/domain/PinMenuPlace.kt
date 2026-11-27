@@ -92,7 +92,8 @@ object PinMenuItems {
 
     /** The group a row belongs to – a thin line where the group changes ([MenuGroups.lineBefore]). */
     fun group(r: Row): MenuGroups.Group = when (r) {
-        Row.START_HERE, Row.ROUND_TRIP, Row.GO_HERE, Row.ADD, Row.ADD_STOP, Row.NEW_DESTINATION, Row.OVERNIGHT -> MenuGroups.Group.ROUTE
+        Row.START_HERE, Row.GO_HERE, Row.ADD, Row.ADD_STOP, Row.NEW_DESTINATION, Row.OVERNIGHT -> MenuGroups.Group.ROUTE
+        Row.ROUND_TRIP -> MenuGroups.Group.LOOP // its own line above it (owner 2026-11-27)
         Row.FAVOURITE, Row.HOME, Row.GOOGLE -> MenuGroups.Group.PLACE
         Row.REMOVE_PIN -> MenuGroups.Group.REMOVE
     }

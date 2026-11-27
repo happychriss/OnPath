@@ -7,7 +7,11 @@ package com.onpath.app.domain
  * [MapGestures.pointMenu] / [PlaceAddMenu.Menu.rows]; app and planner draw the line where [lineBefore] says. Pure.
  */
 object MenuGroups {
-    enum class Group { ROUTE, PLACE, REMOVE }
+    /**
+     * [LOOP]: „Rundtour ab hier“ in a place menu – a sub-group at the end of Route with its own thin line above it
+     * (owner 2026-11-27: it is not one more thing the point becomes, like Als Start / Als Ziel / Als Stopp).
+     */
+    enum class Group { ROUTE, LOOP, PLACE, REMOVE }
 
     /** Row [i] of a menu whose rows belong to [groups] gets a thin line above it: it starts a new group. */
     fun lineBefore(groups: List<Group>, i: Int): Boolean = i in 1 until groups.size && groups[i] != groups[i - 1]

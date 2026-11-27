@@ -149,7 +149,7 @@ class PinMenuPlaceTest {
         // POI / pin, empty plan: Als Start · Als Ziel · Rundtour ab hier | Merken · (Zuhause) · Google | Nadel entfernen
         val empty = PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = true, keep = true, roundTrip = true)
         assertEquals(listOf(Row.GO_HERE, Row.START_HERE, Row.ROUND_TRIP, Row.FAVOURITE, Row.HOME, Row.GOOGLE, Row.REMOVE_PIN), empty)
-        assertEquals(listOf(3, 6), lines(empty))
+        assertEquals("a line above Rundtour ab hier too (owner 2026-11-27)", listOf(2, 3, 6), lines(empty))
         // 1 point: Als Ziel | Merken · Google | Nadel entfernen
         val one = PinMenuItems.of(false, true, PlaceAddMenu.menu(1, false, null), pin = true, keep = true).filter { it != Row.HOME }
         assertEquals(listOf(Row.ADD, Row.FAVOURITE, Row.GOOGLE, Row.REMOVE_PIN), one)
@@ -168,7 +168,7 @@ class PinMenuPlaceTest {
         assertEquals(listOf(Row.GO_HERE, Row.START_HERE, Row.GOOGLE), poi)
         assertEquals(listOf(2), lines(poi))
         // the groups themselves
-        assertEquals(MenuGroups.Group.ROUTE, PinMenuItems.group(Row.ROUND_TRIP))
+        assertEquals(MenuGroups.Group.LOOP, PinMenuItems.group(Row.ROUND_TRIP))
         assertEquals(MenuGroups.Group.PLACE, PinMenuItems.group(Row.FAVOURITE))
         assertEquals(MenuGroups.Group.REMOVE, PinMenuItems.group(Row.REMOVE_PIN))
         assertEquals(emptyList<Int>(), lines(listOf(Row.ADD_STOP, Row.NEW_DESTINATION)))
