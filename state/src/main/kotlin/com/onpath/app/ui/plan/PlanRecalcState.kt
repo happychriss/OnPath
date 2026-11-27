@@ -180,6 +180,8 @@ open class PlanRecalcState(
         val started: Long, val changeBefore: PlannedRoute?, val standBefore: List<GeoPoint>?,
         /** The plan's hidden via points by index of [pts] (docs/design/detour-stitch.md): routed too, never shown. */
         val anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
+        /** The stand-in [standBefore] came from: armed again when this run could only draw straight legs (data missing). */
+        val stand: PlanStandIn? = null,
     )
 
     /**
@@ -366,7 +368,7 @@ open class PlanRecalcState(
         }
         val started = elapsedMs()
         routeCancel = RouteCancel()
-        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchorsFor(act, level))
+        return Run(gen, pts, pins, act, level, rounds, askAtLimit, f, started, changeBefore, standBefore, plan.anchorsFor(act, level), stand)
     }
 
     /** In [begin], also when nothing is routed: work the side runs beside the plan's route ends here (the app's detour check). */
@@ -411,7 +413,15 @@ open class PlanRecalcState(
         var takenRes: com.onpath.app.routing.PlanResult? = null
         result.onSuccess { res ->
             val it = res.route
-            route = it; planReach = reach; snapToRoute(pts, res, run)
+            // a loaded route whose run could only draw straight legs because routing data is still missing (field bug
+            // 2026-11-27): the saved line stays on the map and waits for the run after the data – no straight lines
+            // over a real route, and no "changed" compared with a fallback
+            val keepStored = standBefore != null && post?.tilesMissing == true && it.legs.any { l -> l.straight }
+            if (keepStored) {
+                standIn = run.stand
+                Problems.trace("routing", "Route #$gen: routing data missing – the stored line stays until the data is there")
+            } else route = it
+            planReach = reach; snapToRoute(pts, res, run)
             rememberLines(run, res)
             // the plan's first route: the sheet rises once to its middle step (owner 2026-11-08, [SheetRise] – once per
             // plan is the run's: [RouteRun.sheetRisen])
@@ -442,7 +452,10 @@ open class PlanRecalcState(
             if (host.multiDayOverview) mapData.corridorFollowsPlan(it.points, act) else mapData.routeComputed(it.points, post?.cells, dest, act) // a multi-day tour: its map question (§7)
             if (take.freshen) freshenAfterRoute(it.points, post?.cells, act)
             if (take.viaData) routingDataRouteChanged(it)
-            else if (standBefore != null && com.onpath.app.data.RoutingDataCheck.differs(standBefore, it.points))
+            // "newer map data" only when it is a fact: legs of the saved route were on older routing data, and the real
+            // route (no straight leg) takes another way
+            else if (standBefore != null && !keepStored && (run.stand?.preview?.stale ?: 0) > 0 && it.legs.none { l -> l.straight } &&
+                com.onpath.app.data.RoutingDataCheck.differs(standBefore, it.points))
                 routeChangedNotice = Txt.s(Res.string.msg_route_updated_newer_data)
             // the plan re-computed for an activity switched while navigating: not an edit (Continue keeps the tour)
             if (take.adoptBaseline) planBaseline = it.points
