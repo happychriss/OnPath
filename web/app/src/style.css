@@ -215,7 +215,8 @@ body.undo-crowded .undopill { display: none; }
 #pointsSection > .pointshead { flex: none; }
 .savedline { display: flex; gap: 6px; align-items: center; margin-top: -4px; } .savedline .ic { color: var(--green-fg); }
 /* head: chip · Share · chevron in one line, then time + distance (never wrapped), then ↑/↓ + badge */
-.sheethead { position: relative; display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 2px; align-items: center; }
+/* the app's PlanSpacing (owner 2026-11-27 „Abstände ein bisschen größer“, planplatz2): +8 under the head, +10 before the plan row */
+.sheethead { margin-top: 8px; position: relative; display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 2px; align-items: center; }
 #activityChip { grid-row: 1; grid-column: 1; }
 #share, #sheetStep { grid-row: 1; height: 40px; } #sheetStep { width: 40px; }
 /* Share = icon + text next to the chevron (owner 2026-10-30), always there */
@@ -241,7 +242,7 @@ body.undo-crowded .undopill { display: none; }
 #profile .profplot > svg { width: 100%; height: 90px; display: block; } .axis { display: flex; justify-content: space-between; font-size: 11px; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
 /* the app's PlanActions: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary, icon + word, spread evenly, wrapping */
-.planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: -2px 0 2px; }
+.planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: 8px 0 2px; }
 .planactions.none { display: none; }
 .planactions .textbtn { white-space: nowrap; min-height: 40px; color: var(--fg); font-weight: 500; } /* the app: onSurface, not green */
 /* a switch that is on (the app's PlanAction on=: "↻ Rundtour" on a round trip, #40): filled plan blue, the sign is ✓ */
