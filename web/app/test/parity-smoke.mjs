@@ -218,15 +218,15 @@ await planned();
 // 6c. Map content: the app's POI kinds by group, applied live to the poi- layers (PoiFilter), remembered
 await page.click('#mapContent');
 await page.waitForSelector('dialog.mapcontent[open] [data-kind=hut]');
-check(await page.locator('dialog.mapcontent [data-kind]').count() === 28 && await page.isChecked('[data-kind=hut]') && !(await page.isChecked('[data-kind=parking]')),
-  'Map content: 28 kinds, the app\'s defaults (huts on, parking off)');
+check(await page.locator('dialog.mapcontent [data-kind]').count() === 31 && await page.isChecked('[data-kind=hut]') && !(await page.isChecked('[data-kind=parking]')),
+  'Map content: 31 kinds (hotel, guest house, hostel since 0.18.11), the app\'s defaults (huts on, parking off)');
 await page.uncheck('[data-kind=hut]');
 const kindsOn = () => page.evaluate(() => { const f = window.__map.getFilter('poi-tier1'); return f?.[0] === 'all' ? f.at(-1)[2][1] : null; });
 await page.waitForFunction(() => { const f = window.__map.getFilter('poi-tier1'); return f?.[0] === 'all' && !f.at(-1)[2][1].includes('hut'); }, null, { timeout: 5_000 }).catch(() => {});
 const on = await kindsOn();
 check(Array.isArray(on) && on.includes('bivouac') && !on.includes('hut'), 'unticking Mountain hut filters it out of the map at once (PoiFilter)');
 await page.fill('#kindFilter', 'water');
-check(await page.locator('dialog.mapcontent [data-kind]').count() < 28 && await page.isVisible('[data-kind=water]'), 'the filter box narrows the kinds');
+check(await page.locator('dialog.mapcontent [data-kind]').count() < 31 && await page.isVisible('[data-kind=water]'), 'the filter box narrows the kinds');
 await page.uncheck('#mcContours');
 check(await page.evaluate(() => window.__map.getLayer('contour-minor') ? window.__map.getLayoutProperty('contour-minor', 'visibility') === 'none' : true), 'contour lines off');
 await page.click('#mcReset'); await page.check('#mcContours');

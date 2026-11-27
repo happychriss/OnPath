@@ -83,18 +83,18 @@ tcheck(axis.length === 2 && /km$/.test(axis[1]), `profile axis "0 … total km" 
 const steep = await page.evaluate(() => window.__map.getLayoutProperty('profile-steep', 'visibility') ?? 'none');
 tcheck(steep !== 'visible', `the route stays plan blue beside the bottom profile (${steep})`);
 // the app's profile look (variant A, owner 2026-11-12): the area in the route blue fading out (gradients only, no
-// coloured strips), steepness colours only on the thin line – < 5 % route blue, amber, orange, red – and in the legend
+// coloured strips), steepness colours only on the thin line – one green in steps since 2026-11-26 – and in the legend
 const colours = await page.evaluate(async () => ({
   legend: [...document.querySelectorAll('#bigProfile .bplegend i')].map((i) => getComputedStyle(i).backgroundColor),
   line: [...new Set((await window.__map.getSource('profile-steep').getData()).features.map((f) => f.properties.colour))],
   fills: [...new Set([...document.querySelectorAll('#bigProfile .profplot > svg path:not(.pfline)')].map((p) => p.getAttribute('fill')))],
   strokes: [...new Set([...document.querySelectorAll('#bigProfile .profplot > svg path.pfline')].map((p) => p.getAttribute('stroke')))],
   stops: [...new Set([...document.querySelectorAll('#bigProfile .profplot > svg stop')].map((p) => p.getAttribute('stop-color')))] }));
-const APP = ['#1E3FAE', '#F2B33D', '#EF7C1A', '#D32F2F'];
-tcheck(JSON.stringify(colours.legend) === JSON.stringify(['rgb(30, 63, 174)', 'rgb(242, 179, 61)', 'rgb(239, 124, 26)', 'rgb(211, 47, 47)'])
+const APP = ['#8DBF9E', '#5A9C74', '#2F7A52', '#17492F']; // one green in steps (app 2026-11-26)
+tcheck(JSON.stringify(colours.legend) === JSON.stringify(['rgb(141, 191, 158)', 'rgb(90, 156, 116)', 'rgb(47, 122, 82)', 'rgb(23, 73, 47)'])
   && colours.line.every((c) => APP.includes(c)) && colours.fills.length > 0 && colours.fills.every((c) => /^url\(#/.test(c))
-  && colours.strokes.length > 0 && colours.strokes.every((c) => APP.includes(c)) && JSON.stringify(colours.stops) === '["#1E3FAE"]',
-  `profile = the app's look: route-blue fill, steepness only on the line (${JSON.stringify(colours)})`);
+  && colours.strokes.length > 0 && colours.strokes.every((c) => APP.includes(c)) && JSON.stringify(colours.stops) === '["#8DBF9E"]',
+  `profile = the app's look: the flat green fill, steepness only on the line (${JSON.stringify(colours)})`);
 // a marked range (owner 2026-11-06): press and drag in the big profile → length · time · climb, the stretch on the map;
 // a click clears it
 const bigSvg = await page.locator('#bigProfile .profplot > svg').boundingBox();

@@ -809,8 +809,14 @@ function openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string) {
   // the whole menu in the free map (owner 2026-11-26: „Löschen“ under the big profile): below or above the point, whichever
   // fits between the top bar and the profile / sheet / footer – maplibre itself only knows the map's own edges
   {
-    const s = map.project(at), w = map.getCanvas().clientWidth, r = m.getElement().getBoundingClientRect(); // with its tail
-    const fit = menuAnchor(s.x, s.y, r.width, r.height, w, menuRoom(s.x));
+    const s = map.project(at), w = map.getCanvas().clientWidth, room = menuRoom(s.x);
+    // a menu taller than the whole free map (a low window, three groups): it scrolls inside, so it is never cut
+    const most = room.bottom - room.top - MENU_OFFSET - 8 - 48; // 48: the point keeps 24 px to the top bar, the tail its own
+    if (most > 80 && m.getElement().getBoundingClientRect().height > most + MENU_OFFSET) {
+      box.style.maxHeight = `${most}px`; box.style.overflowY = 'auto';
+    }
+    const r = m.getElement().getBoundingClientRect(); // with its tail
+    const fit = menuAnchor(s.x, s.y, r.width, r.height, w, room);
     if (fit.anchor !== anchorOf(m)) { m.remove(); m = make(fit.anchor); }
     if (fit.panY) map.panBy([0, fit.panY], { duration: 200 });
   }
