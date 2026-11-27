@@ -332,6 +332,23 @@ open class PlanRecalcState(
      * planner's multi-day tour – owner 2026-11-18: its day rows show a long day). Not kept: the host passes the same [askLong]
      * on every [begin] of that plan, also the reruns of [RouteRun.Effect.Rerun] ("Weiter warten", "Plan anyway").
      */
+    /**
+     * The legs of [pts] as routed: support points / anchors cut a long visible leg into short ones (owner 2026-11-27) –
+     * (the expanded points, each one's visible leg), both null without any.
+     */
+    private fun longLegsOf(pts: List<GeoPoint>, act: com.onpath.app.routing.Activity, level: Int, pins: Set<Int>): Pair<List<GeoPoint>?, List<Int>?> {
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, plan.anchorsFor(act, level), pins)
+        if (!expanded.hasAnchors) return null to null
+        return expanded.points to (0 until expanded.points.size - 1).map { e ->
+            var k = e; while (k > 0 && expanded.visibleOf(k) < 0) k--; maxOf(0, expanded.visibleOf(k)) }
+    }
+
+    /** The long-leg question [pts] would get now, weighed on the legs as routed (the maps of new points wait for it, T1). */
+    fun longAsk(pts: List<GeoPoint>): com.onpath.app.routing.LongAsk? {
+        val (longPoints, longLegs) = longLegsOf(pts, activity, sac, pinnedIndices())
+        return routeRun.asks(pts, activity, longPoints, longLegs)
+    }
+
     fun begin(askLong: Boolean = true): Run? {
         runCauses.start()
         beginning()
@@ -351,12 +368,9 @@ open class PlanRecalcState(
         // another country by mistake, owner) is asked about first – nothing is routed or loaded until the answer; else
         // it is routed. A new run (an edit, an activity change …) starts at one time-limit period and drops an open
         // "Weiter warten?"; in Plan the time limit asks (SlowPlan), a run for Navigate keeps the straight lines
-        // the legs as routed: support points / anchors cut a long visible leg into short ones (owner 2026-11-27)
-        val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, plan.anchorsFor(act, level), pins)
-        val longLegs = if (expanded.hasAnchors) (0 until expanded.points.size - 1).map { e ->
-            var k = e; while (k > 0 && expanded.visibleOf(k) < 0) k--; maxOf(0, expanded.visibleOf(k)) } else null
+        val (longPoints, longLegs) = longLegsOf(pts, act, level, pins)
         val effects = routeEvent(RouteRun.Event.Recalc(pts, act, planMode = mode == AppMode.PLAN, newPlan = SheetRise.resets(pts.size), askLong = askLong,
-            longPoints = if (expanded.hasAnchors) expanded.points else null, longLegs = longLegs))
+            longPoints = longPoints, longLegs = longLegs))
         perform(effects)
         val start = effects.filterIsInstance<RouteRun.Effect.StartRouting>().firstOrNull() ?: return null
         val gen = start.gen; val rounds = start.rounds; val askAtLimit = start.askAtLimit

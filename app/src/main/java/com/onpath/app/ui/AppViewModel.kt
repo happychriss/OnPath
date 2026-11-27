@@ -460,13 +460,13 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * question is answered: Plan anyway → it loads then; Cancel → nothing was loaded.
      */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
-        if (after.size >= 2 && planRun.routeRun.asks(after.toList(), planRoute.activity) != null) {
+        if (after.size >= 2 && planRecalc.longAsk(after.toList()) != null) {
             // the earliest points before the long plan stay the base (a second edit that still asks keeps them)
             planRun.longRouteDeferred = planRun.longRouteDeferred ?: before.toList()
             Problems.trace("cells", "Long plan: maps and routing data for the new point wait for the answer")
             return
         }
-        // points kept after "Zwischenziel setzen": their maps load now that the plan can be routed
+        // points kept unrouted after the long-leg question: their maps load now that the plan can be routed
         val from = planRun.longRouteDeferred ?: before
         planRun.longRouteDeferred = null
         mapData.pointsSet(from, after)
