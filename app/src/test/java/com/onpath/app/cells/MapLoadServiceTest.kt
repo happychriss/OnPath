@@ -18,7 +18,7 @@ class MapLoadServiceTest {
 
     /** The notification says the sign's number (one action, [com.onpath.app.ui.BackgroundAction]) – "loading 34 %". */
     @Test fun theNotificationSaysTheActionsNumber() {
-        assertEquals("loading 34 % – you can put the phone aside", MapLoadService.text(34))
-        assertEquals("Preparing – you can put the phone aside", MapLoadService.text(null))
+        assertEquals("loading 34 %", MapLoadService.text(34))
+        assertEquals("Preparing", MapLoadService.text(null))
     }
 }

@@ -117,7 +117,7 @@
     <string name="maps_btn_allow_location">Standort erlauben</string>
     <string name="maps_btn_load">Laden</string>
     <string name="maps_here_ask">Detailkarte für hier? · %1$d MB</string>
-    <string name="maps_here_ask_detail">Die Vorbereitung dauert ein paar Minuten.</string>
+    <string name="maps_here_ask_detail">Für diese Gegend gibt es noch keine OnPath-Karte. Das Erstellen dauert ein paar Minuten.</string>
 
     <!-- Laden im Hintergrund -->
     <plurals name="maps_areas_count">
@@ -128,7 +128,6 @@
     <string name="maps_bg_chip_click">Downloads im Hintergrund anzeigen</string>
     <string name="maps_bg_dialog_title">Laden im Hintergrund</string>
     <string name="maps_bg_newer_ready">Neuere Karte in etwa %1$d min bereit.</string>
-    <string name="maps_bg_maps_stay">Deine vorhandenen Karten bleiben.</string>
     <string name="maps_group_areas">%1$s (%2$d Gebiete)</string>
     <string name="maps_name_near">bei %1$s</string>
     <string name="maps_name_area">Kartengebiet</string>
@@ -180,8 +179,7 @@
     </plurals>
     <string name="maps_ask_title">Karte für dieses Gebiet laden?</string>
     <string name="maps_notif_channel">Karten laden</string>
-    <string name="maps_notif_progress">%1$s – du kannst das Handy weglegen</string>
-    <string name="maps_notif_preparing">Wird vorbereitet – du kannst das Handy weglegen</string>
+    <string name="maps_notif_preparing">Wird vorbereitet</string>
 
     <!-- Zustand eines Kartengebiets -->
     <string name="maps_state_not_on_phone">nicht auf dem Handy</string>

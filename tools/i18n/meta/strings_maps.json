@@ -471,12 +471,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "maps_bg_maps_stay": {
-    "area": "Background downloads",
-    "context": "Dialog line: Cancel all keeps the installed maps",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "maps_group_areas": {
     "area": "Background downloads",
     "context": "Dialog line head: %1$s = name like \"Around Meran\", %2$d = areas (only for 2 or more)",
@@ -655,12 +649,6 @@
     "area": "Notification",
     "context": "Android notification channel name (Settings → Apps → OnPath → Notifications)",
     "priority": 3,
-    "confidence": "sicher"
-  },
-  "maps_notif_progress": {
-    "area": "Notification",
-    "context": "Text of the notification while the map loads with the screen off: %1$d = percent",
-    "priority": 2,
     "confidence": "sicher"
   },
   "maps_notif_preparing": {

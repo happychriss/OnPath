@@ -147,8 +147,8 @@ class MapLoadService : Service() {
         fun loading(s: CellState) = s is CellState.Requested || s is CellState.Queued || s is CellState.Building ||
             s is CellState.Downloading || s is CellState.Installing
 
-        /** The notification's line: "lädt 34 % – …" (the sign's number), "wird vorbereitet – …" before there is one. */
-        fun text(percent: Int?): String = percent?.let { Txt.s(Res.string.maps_notif_progress, Txt.s(Res.string.wait_loading_pct, it)) }
+        /** The notification's line: "lädt 34 %" (the sign's number), "Wird vorbereitet" before there is one (owner 2026-11-27: no "put the phone aside"). */
+        fun text(percent: Int?): String = percent?.let { Txt.s(Res.string.wait_loading_pct, it) }
             ?: Txt.s(Res.string.maps_notif_preparing)
 
         /**

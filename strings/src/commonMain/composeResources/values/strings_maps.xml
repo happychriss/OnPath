@@ -119,7 +119,7 @@
     <string name="maps_btn_allow_location">Allow location</string>
     <string name="maps_btn_load">Load</string>
     <string name="maps_here_ask">Detailed map for here? · %1$d MB</string>
-    <string name="maps_here_ask_detail">Takes a few minutes to prepare.</string>
+    <string name="maps_here_ask_detail">There is no OnPath map for this area yet. Making it takes a few minutes.</string>
 
     <!-- Background downloads: chip and details -->
     <plurals name="maps_areas_count">
@@ -130,7 +130,6 @@
     <string name="maps_bg_chip_click">Show background downloads</string>
     <string name="maps_bg_dialog_title">Loading in the background</string>
     <string name="maps_bg_newer_ready">Newer map ready in about %1$d min.</string>
-    <string name="maps_bg_maps_stay">The maps you have stay.</string>
     <string name="maps_group_areas">%1$s (%2$d areas)</string>
     <string name="maps_name_near">near %1$s</string>
     <string name="maps_name_area">map area</string>
@@ -182,8 +181,7 @@
     </plurals>
     <string name="maps_ask_title">Load the map for this area?</string>
     <string name="maps_notif_channel">Loading maps</string>
-    <string name="maps_notif_progress">%1$s – you can put the phone aside</string>
-    <string name="maps_notif_preparing">Preparing – you can put the phone aside</string>
+    <string name="maps_notif_preparing">Preparing</string>
 
     <!-- State of one map area (rows, Offline maps list) -->
     <string name="maps_state_not_on_phone">not on the phone</string>
