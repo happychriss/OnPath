@@ -1299,5 +1299,19 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 24
+  },
+  "nav_notif_later": {
+    "area": "Navigate",
+    "context": "Notifications-off question (owner 2026-11-27): the answer that asks again on the next tour",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
+  },
+  "nav_notif_turn_on": {
+    "area": "Navigate",
+    "context": "Notifications-off question (owner 2026-11-27): opens the phone setup step for notifications",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 16
   }
 }

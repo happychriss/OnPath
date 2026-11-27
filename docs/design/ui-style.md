@@ -162,6 +162,7 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | App opened where no detailed map is | FRAGE | "Detailed map for here? · 21 MB" – Not now / Load |
 | Areas wait for Wi-Fi, Settings says Wi-Fi only | FRAGE | "3 map areas wait for Wi-Fi" – Not now / Load over mobile data |
 | A new app version | FRAGE | "OnPath 0.4.1 is available" – Later / Install |
+| Notifications off during a tour | FRAGE (Navigate) | "Abzweigungen auf dem Sperrbildschirm?" + "Mit Benachrichtigungen siehst du sie, ohne das Handy zu entsperren." – Später / Einschalten (= the setup step; owner 2026-11-27, was a HINWEIS_WARN) |
 | Off route, a way back found | FRAGE (56 dp) | "Off route – new route found" – Keep original / Take new route |
 | Activity switched during a tour | FRAGE (56 dp) | "New route for MTB" – Keep original / Take new route |
 | First ☰ → Pair with browser | FRAGE | "On your computer open plan.onpath.earth …" – Cancel / Open camera |
@@ -170,7 +171,6 @@ MessageSlot(Messages.pick(listOf(question, m)), MessagePlacement.topDp(MessageSc
 | Paired / unpaired | HINWEIS | "Paired." + what it means – OK |
 | No map downloads in this build | HINWEIS | OK |
 | The map needs the location | HINWEIS | "Allow location" |
-| Notifications off during a tour | HINWEIS_WARN | "Notifications off" + lock screen line – OK (tap = setup step) |
 | Map areas could not be loaded | HINWEIS_WARN | "Map couldn't be loaded" – Try again |
 | A shared place found only as a namesake elsewhere (no coordinate, not in the shared town) | HINWEIS_WARN | "Place not clear" + "No sure match – search for “Olive Hilden” in OnPath." – Search (opens the search, text typed in); no ring |
 | An error without a screen of its own (background, link / share into the app) | HINWEIS_ERROR | "Couldn't find this place." – OK |

@@ -276,19 +276,19 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
     }
 
-    /** Owner 2026-11-03: the route works without a network – "PLANEN · Ohne Netz ✓", the tap's line in the sheet. */
+    /** Owner 2026-11-03: the route works without a network – "PLANEN · Offline verfügbar ✓" (words 2026-11-27), the tap's line in the sheet. */
     fun planOfflineReady() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.READY, 0.0, false, 0)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
     }
 
-    /** Still loading: "PLANEN · Ohne Netz ⟳", "Karte und Wege werden geladen (12 MB)." */
+    /** Still loading: "PLANEN · Offline: lädt … ⟳", "Karte und Wege werden geladen (12 MB)." */
     fun planOfflineLoading() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.LOADING, 0.0, true, 12L * 1_048_576)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
     }
 
-    /** Something missing, nothing loading: "PLANEN · Ohne Netz ⚠", "Für 3,0 km dieser Route fehlt die Karte …". */
+    /** Something missing, nothing loading: "PLANEN · Offline: unvollständig ⚠", "Für 3,0 km dieser Route fehlt die Karte …". */
     fun planOfflineMissing() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.MISSING, 3_000.0, false, 0)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
@@ -1132,6 +1132,15 @@ class ScreenshotTest {
         OnPathTheme {
             OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(340.dp, 470.dp)) {
                 PointMenu(1, 4, "Leiter Alm") {}
+            }
+        }
+    }
+
+    /** A round trip's point (owner 2026-11-27): one row „Als Start der Rundtour“, no line under it; „Google Maps ↗“. */
+    @Test fun pointMenuRoundTrip() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(200.dp, 470.dp)) {
+                PointMenu(2, 4, "Leiter Alm", roundTrip = true) {}
             }
         }
     }

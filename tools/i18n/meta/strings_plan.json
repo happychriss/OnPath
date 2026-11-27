@@ -1377,5 +1377,19 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 28
+  },
+  "plan_offline_pill_loading": {
+    "area": "Plan",
+    "context": "Plan's mode pill after „PLANEN · “ while map / ways for the route still load (owner 2026-11-27)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "plan_offline_pill_missing": {
+    "area": "Plan",
+    "context": "Plan's mode pill after „PLANEN · “ when something for the route is missing and nothing loads (owner 2026-11-27)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 24
   }
 }

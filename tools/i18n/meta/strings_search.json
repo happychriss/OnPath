@@ -1,403 +1,63 @@
 {
-  "search_placeholder": {
-    "area": "Search",
-    "context": "Placeholder in the search field (tap the search pill in Plan)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 30
-  },
-  "search_clear_query": {
-    "area": "Search",
-    "context": "Content description (accessibility) of the x in the search field",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_clear_recent": {
-    "area": "Search",
-    "context": "Text button next to 'Recent': clears the list of recent searches",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_recent": {
-    "area": "Search",
-    "context": "Heading over the recent searches",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "'Zuletzt gesucht' – or 'Zuletzt'",
-    "max": 20
-  },
-  "search_nothing_of_kind": {
-    "area": "Search",
-    "context": "A category chip is chosen but the offline map has nothing of that kind",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_no_match": {
-    "area": "Search",
-    "context": "No offline result for the typed text",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_online_attribution": {
-    "area": "Search",
-    "context": "Small line under online results (licence credit)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_searching_online": {
-    "area": "Search",
-    "context": "Small grey line while online results load",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_google_maps": {
-    "area": "Search",
-    "context": "One fixed row under the results, above the keyboard (owner 2026-11-27): hands the typed text to Google Maps; the app draws ↗ after it. Same in both languages.",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 40
-  },
-  "search_preparing": {
-    "area": "Search",
-    "context": "Spinner text the very first time the offline search index is built",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "search_near_route": {
-    "area": "Search",
-    "context": "Part of a result's second line ('Mountain hut · 2325 m · 3.4 km · near your route')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 20
-  },
-  "search_online": {
-    "area": "Search",
-    "context": "Part of a result's second line: the result came from the online search",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 10
-  },
-  "search_cat_places": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): towns, villages, streets, addresses",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_food": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): restaurants, inns, cafés, beer gardens, huts / Almen",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_sleep": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-11-26 „Übernachten“): huts, bivouacs, campsites, hotels, guest houses, hostels",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_sights": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): worth a look – peaks, viewpoints, castles, ruins, chapels, caves, museums, waterfalls ('Sehenswert')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_water": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): drinking water, fountains, springs",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_transit": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): train stations, bus stops, cable cars / lifts ('Bahn')",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_cat_parking": {
-    "area": "Search",
-    "context": "Category chip, ONE short word (owner 2026-10-31): car parks, hiking car parks",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_kind_peak": {
-    "area": "Search",
-    "context": "Kind of a search result / place card (natural=peak)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_kind_saddle": {
-    "area": "Search",
-    "context": "Kind: mountain pass / saddle",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_kind_place": {
-    "area": "Search",
-    "context": "Kind: a place (town / village) when no finer class is known; also any unnamed unknown place",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_kind_trail": {
-    "area": "Search",
-    "context": "Kind: a named trail",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Weg' – or 'Wanderweg' (also bike trails)"
-  },
-  "search_kind_address": {
-    "area": "Search",
-    "context": "Kind: an address (street + number)",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_kind_street": {
-    "area": "Search",
-    "context": "Kind: a street without number",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_kind_store": {
-    "area": "Search",
-    "context": "Kind: a shop from the online search",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_city": {
-    "area": "Search",
-    "context": "Kind of a place result: city",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_town": {
-    "area": "Search",
-    "context": "Kind of a place result: town",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_village": {
-    "area": "Search",
-    "context": "Kind of a place result: village",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_place_hamlet": {
-    "area": "Search",
-    "context": "Kind of a place result: hamlet",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_suburb": {
-    "area": "Search",
-    "context": "Kind of a place result: suburb (OSM place=suburb)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_neighbourhood": {
-    "area": "Search",
-    "context": "Kind of a place result: neighbourhood",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_quarter": {
-    "area": "Search",
-    "context": "Kind of a place result: quarter",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_isolated_dwelling": {
-    "area": "Search",
-    "context": "Kind of a place result: a single farm or house",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_place_locality": {
-    "area": "Search",
-    "context": "Kind of a place result: named area without houses (OSM place=locality)",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Flur / Örtlichkeit' kept from the earlier German label"
-  },
-  "search_card_set_start": {
-    "area": "Place card",
-    "context": "Main button (also the map's POI hold menu): the plan is empty, the place becomes the start",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "search_card_set_destination": {
-    "area": "Place card",
-    "context": "Main button (also the POI hold menu): the plan has only a start, the place becomes the destination. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "search_card_new_destination": {
-    "area": "Place card",
-    "context": "Main button (also the POI hold menu): the place goes after the current destination and becomes the new destination. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 28
-  },
-  "search_add_on_route": {
-    "area": "Place card",
-    "context": "Line under 'Add as a stop': the place lies on the route line",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 32
-  },
-  "search_add_fits_best": {
-    "area": "Place card",
-    "context": "Line under 'Add as a stop': inserted where the detour is smallest; followed by ' · about +0.9 km, +15 min'",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "search_card_remove": {
-    "area": "Place card",
-    "context": "Main button when the place already is a route point",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "search_card_as_start": {
-    "area": "Place card",
-    "context": "Small button: make the place the start",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "search_card_as_destination": {
-    "area": "Place card",
-    "context": "Small button: make the place the destination",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 14
-  },
-  "search_add_about": {
-    "area": "Place card",
-    "context": "Detour estimate after ' · ': %1$s = '+0.9 km, +15 min' (distance and time, built in code)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "search_is_start": {
-    "area": "Place card",
-    "context": "Line under 'Remove from route': the place is the start",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_is_destination": {
-    "area": "Place card",
-    "context": "Line under 'Remove from route': the place is the destination",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "search_is_stop": {
-    "area": "Place card",
-    "context": "Line under 'Remove from route': %1$d = stop number",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "'Stopp' as above"
-  },
-  "search_note_from_address": {
-    "area": "Place card",
-    "context": "Note that stays on the card of a place shared from Google Maps when its position came from the address search (may be off)",
-    "priority": 3,
-    "confidence": "sicher"
-  },
-  "search_route_round_to": {
-    "area": "Route names",
-    "context": "Suggested name of a round trip without a known start: %1$s = the farthest landmark. Saved into the route name (data once saved)",
-    "priority": 2,
-    "confidence": "Zweifel",
-    "doubt": "German preposition depends on the place ('zur Hütte', 'auf den Gipfel'); 'zu' is neutral but reads stiff"
-  },
-  "search_route_round_from": {
-    "area": "Route names",
-    "context": "Suggested name of a round trip: %1$s = start place ('Round trip from Algund')",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_route_in": {
-    "area": "Route names",
-    "context": "Suggested name of a tour that starts and ends in the same place without going out and back (a short ride across a town): %1$s = the place ('In Hilden')",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_route_from": {
-    "area": "Route names",
-    "context": "Suggested route name when only the start is known: %1$s = start place",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_route_to": {
-    "area": "Route names",
-    "context": "Suggested route name when only the destination is known: %1$s = destination",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "'Nach' fits towns; for huts/peaks 'Zur …'/'Auf …' would be better German"
-  },
-  "search_route_via": {
-    "area": "Route names",
-    "context": "Route name with a via stop: %1$s = 'Algund → Hochmuth', %2$s = the via stop ('Leiter Alm')",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "search_home": {
-    "area": "Search",
-    "context": "Top row of the empty search: the place set as home (owner 2026-11-15)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 16
-  },
-  "search_favourites": {
-    "area": "Search",
-    "context": "Small capital heading over the favourite places (shown upper case)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 20
-  },
-  "search_all_favourites": {
-    "area": "Search",
-    "context": "Row under the first 5 favourite places: shows all of them",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "place_favourite_add": {
-    "area": "Place menu",
-    "context": "Row in a held place's menu: keep the place as a favourite (owner's word „Merken“)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "place_favourite_on": {
-    "area": "Place menu",
-    "context": "The same row when the place is a favourite; a tap removes it (owner's word „Gemerkt“)",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 24
-  },
-  "place_home_set": {
-    "area": "Place menu",
-    "context": "Row in a held place's menu: this place becomes Home",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 28
-  },
-  "place_home_remove": {
-    "area": "Place menu",
-    "context": "The same row on the place that is Home: forget it as Home",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 28
-  }
+  "search_placeholder": {"area": "Search", "context": "Placeholder in the search field (tap the search pill in Plan)", "priority": 1, "confidence": "sicher", "max": 30},
+  "search_clear_query": {"area": "Search", "context": "Content description (accessibility) of the x in the search field", "priority": 2, "confidence": "sicher"},
+  "search_clear_recent": {"area": "Search", "context": "Text button next to 'Recent': clears the list of recent searches", "priority": 2, "confidence": "sicher", "max": 12},
+  "search_recent": {"area": "Search", "context": "Heading over the recent searches", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Zuletzt gesucht' – or 'Zuletzt'", "max": 20},
+  "search_nothing_of_kind": {"area": "Search", "context": "A category chip is chosen but the offline map has nothing of that kind", "priority": 2, "confidence": "sicher"},
+  "search_no_match": {"area": "Search", "context": "No offline result for the typed text", "priority": 2, "confidence": "sicher"},
+  "search_online_attribution": {"area": "Search", "context": "Small line under online results (licence credit)", "priority": 2, "confidence": "sicher"},
+  "search_searching_online": {"area": "Search", "context": "Small grey line while online results load", "priority": 2, "confidence": "sicher"},
+  "search_google_maps": {"area": "Search", "context": "One fixed row under the results, above the keyboard (owner 2026-11-27): hands the typed text to Google Maps; the app draws ↗ after it. Same in both languages.", "priority": 2, "confidence": "sicher", "max": 40},
+  "search_preparing": {"area": "Search", "context": "Spinner text the very first time the offline search index is built", "priority": 3, "confidence": "sicher"},
+  "search_near_route": {"area": "Search", "context": "Part of a result's second line ('Mountain hut · 2325 m · 3.4 km · near your route')", "priority": 1, "confidence": "sicher", "max": 20},
+  "search_online": {"area": "Search", "context": "Part of a result's second line: the result came from the online search", "priority": 1, "confidence": "sicher", "max": 10},
+  "search_cat_places": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): towns, villages, streets, addresses", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_food": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): restaurants, inns, cafés, beer gardens, huts / Almen", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_sleep": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-11-26 „Übernachten“): huts, bivouacs, campsites, hotels, guest houses, hostels", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_sights": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): worth a look – peaks, viewpoints, castles, ruins, chapels, caves, museums, waterfalls ('Sehenswert')", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_water": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): drinking water, fountains, springs", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_transit": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): train stations, bus stops, cable cars / lifts ('Bahn')", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_parking": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): car parks, hiking car parks", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_kind_peak": {"area": "Search", "context": "Kind of a search result / place card (natural=peak)", "priority": 1, "confidence": "sicher"},
+  "search_kind_saddle": {"area": "Search", "context": "Kind: mountain pass / saddle", "priority": 2, "confidence": "sicher"},
+  "search_kind_place": {"area": "Search", "context": "Kind: a place (town / village) when no finer class is known; also any unnamed unknown place", "priority": 1, "confidence": "sicher"},
+  "search_kind_trail": {"area": "Search", "context": "Kind: a named trail", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Weg' – or 'Wanderweg' (also bike trails)"},
+  "search_kind_address": {"area": "Search", "context": "Kind: an address (street + number)", "priority": 1, "confidence": "sicher"},
+  "search_kind_street": {"area": "Search", "context": "Kind: a street without number", "priority": 2, "confidence": "sicher"},
+  "search_kind_store": {"area": "Search", "context": "Kind: a shop from the online search", "priority": 2, "confidence": "sicher"},
+  "search_place_city": {"area": "Search", "context": "Kind of a place result: city", "priority": 2, "confidence": "sicher"},
+  "search_place_town": {"area": "Search", "context": "Kind of a place result: town", "priority": 2, "confidence": "sicher"},
+  "search_place_village": {"area": "Search", "context": "Kind of a place result: village", "priority": 1, "confidence": "sicher"},
+  "search_place_hamlet": {"area": "Search", "context": "Kind of a place result: hamlet", "priority": 2, "confidence": "sicher"},
+  "search_place_suburb": {"area": "Search", "context": "Kind of a place result: suburb (OSM place=suburb)", "priority": 2, "confidence": "sicher"},
+  "search_place_neighbourhood": {"area": "Search", "context": "Kind of a place result: neighbourhood", "priority": 2, "confidence": "sicher"},
+  "search_place_quarter": {"area": "Search", "context": "Kind of a place result: quarter", "priority": 2, "confidence": "sicher"},
+  "search_place_isolated_dwelling": {"area": "Search", "context": "Kind of a place result: a single farm or house", "priority": 2, "confidence": "sicher"},
+  "search_place_locality": {"area": "Search", "context": "Kind of a place result: named area without houses (OSM place=locality)", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Flur / Örtlichkeit' kept from the earlier German label"},
+  "search_card_set_start": {"area": "Place card", "context": "Main button (also the map's POI hold menu): the plan is empty, the place becomes the start", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_card_set_destination": {"area": "Place card", "context": "Main button (also the POI hold menu): the plan has only a start, the place becomes the destination. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_card_new_destination": {"area": "Place card", "context": "Main button (also the POI hold menu): the place goes after the current destination and becomes the new destination. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.", "priority": 1, "confidence": "sicher", "max": 28},
+  "search_add_on_route": {"area": "Place card", "context": "Line under 'Add as a stop': the place lies on the route line", "priority": 1, "confidence": "sicher", "max": 32},
+  "search_add_fits_best": {"area": "Place card", "context": "Line under 'Add as a stop': inserted where the detour is smallest; followed by ' · about +0.9 km, +15 min'", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_card_remove": {"area": "Place card", "context": "Main button when the place already is a route point", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_card_as_start": {"area": "Place card", "context": "Small button: make the place the start", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_card_as_destination": {"area": "Place card", "context": "Small button: make the place the destination", "priority": 1, "confidence": "sicher", "max": 14},
+  "search_add_about": {"area": "Place card", "context": "Detour estimate after ' · ': %1$s = '+0.9 km, +15 min' (distance and time, built in code)", "priority": 1, "confidence": "sicher", "max": 24},
+  "search_is_start": {"area": "Place card", "context": "Line under 'Remove from route': the place is the start", "priority": 1, "confidence": "sicher"},
+  "search_is_destination": {"area": "Place card", "context": "Line under 'Remove from route': the place is the destination", "priority": 1, "confidence": "sicher"},
+  "search_is_stop": {"area": "Place card", "context": "Line under 'Remove from route': %1$d = stop number", "priority": 1, "confidence": "bitte prüfen", "doubt": "'Stopp' as above"},
+  "search_note_from_address": {"area": "Place card", "context": "Note that stays on the card of a place shared from Google Maps when its position came from the address search (may be off)", "priority": 3, "confidence": "sicher"},
+  "search_route_round_to": {"area": "Route names", "context": "Suggested name of a round trip without a known start: %1$s = the farthest landmark. Saved into the route name (data once saved)", "priority": 2, "confidence": "Zweifel", "doubt": "German preposition depends on the place ('zur Hütte', 'auf den Gipfel'); 'zu' is neutral but reads stiff"},
+  "search_route_round_from": {"area": "Route names", "context": "Suggested name of a round trip: %1$s = start place ('Round trip from Algund')", "priority": 2, "confidence": "sicher"},
+  "search_route_in": {"area": "Route names", "context": "Suggested name of a tour that starts and ends in the same place without going out and back (a short ride across a town): %1$s = the place ('In Hilden')", "priority": 2, "confidence": "sicher"},
+  "search_route_from": {"area": "Route names", "context": "Suggested route name when only the start is known: %1$s = start place", "priority": 2, "confidence": "sicher"},
+  "search_route_to": {"area": "Route names", "context": "Suggested route name when only the destination is known: %1$s = destination", "priority": 2, "confidence": "bitte prüfen", "doubt": "'Nach' fits towns; for huts/peaks 'Zur …'/'Auf …' would be better German"},
+  "search_route_via": {"area": "Route names", "context": "Route name with a via stop: %1$s = 'Algund → Hochmuth', %2$s = the via stop ('Leiter Alm')", "priority": 2, "confidence": "sicher"},
+  "search_home": {"area": "Search", "context": "Top row of the empty search: the place set as home (owner 2026-11-15)", "priority": 1, "confidence": "sicher", "max": 16},
+  "search_favourites": {"area": "Search", "context": "Small capital heading over the favourite places (shown upper case)", "priority": 1, "confidence": "sicher", "max": 20},
+  "search_all_favourites": {"area": "Search", "context": "Row under the first 5 favourite places: shows all of them", "priority": 2, "confidence": "sicher", "max": 24},
+  "place_favourite_add": {"area": "Place menu", "context": "Row in a held place's menu: keep the place as a favourite (owner's word „Merken“)", "priority": 1, "confidence": "sicher", "max": 24},
+  "place_favourite_on": {"area": "Place menu", "context": "The same row when the place is a favourite; a tap removes it (owner's word „Gemerkt“)", "priority": 1, "confidence": "sicher", "max": 24},
+  "place_home_set": {"area": "Place menu", "context": "Row in a held place's menu: this place becomes Home", "priority": 1, "confidence": "sicher", "max": 28},
+  "place_home_remove": {"area": "Place menu", "context": "The same row on the place that is Home: forget it as Home", "priority": 2, "confidence": "sicher", "max": 28}
 }
