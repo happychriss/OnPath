@@ -22,6 +22,13 @@ class FarCitySearchTest {
         assertTrue(u.contains("q=New+York"))
     }
 
+    /** The shared list both app and planner send (owner 2026-11-27): normal first, places only second. */
+    @Test fun theRequestsAreTheNormalAndThePlacesOne() {
+        val p = PhotonProvider("x")
+        assertEquals(listOf(p.url("berlin", 51.17, 6.94, 10), p.placesUrl("berlin", 51.17, 6.94, PhotonProvider.PLACES_LIMIT)),
+            PhotonProvider.requests("berlin", 51.17, 6.94))
+    }
+
     @Test fun namedPlacesGoFirstAndTwiceIsOnce() {
         val m = PhotonProvider.mergePlaces("New York", listOf(city, mills, shop("9", "Paris", 48.8, 2.3, "place")),
             listOf(bistro, city.copy(id = "o:N99"), yorker))

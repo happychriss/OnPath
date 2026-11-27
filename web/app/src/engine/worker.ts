@@ -90,6 +90,8 @@ interface WasmEngine {
 const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
+  // the online search's requests (the app's PhotonProvider.requests – the page sends exactly these)
+  'photonUrls',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
   'activityLayers',
   // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again

@@ -8,7 +8,6 @@ import type { EngineClient } from './engine/client';
 import type { Activity, Hit, PlanResult } from './engine/types';
 import type { MenuItem } from './menus';
 import { icon } from './icons';
-import { photonUrl } from './search';
 import { t, tp, locale } from './i18n';
 import { tourText, type Tour } from './tourtext';
 import './multiday.css';
@@ -529,8 +528,7 @@ export class MultiDay {
       if (s.length < 3) return;
       let mixed: Hit[] | null = null;
       try {
-        const r = await fetch(photonUrl(s, end[0], end[1]));
-        if (r.ok) mixed = await this.h.engine.searchOnline(s, await r.text(), '');
+        mixed = await this.h.engine.searchOnlineFetch(s, end[0], end[1]);
       } catch { /* expected: offline or Photon unreachable – the offline rows stay */ }
       if (my !== gen) return;
       const all = mixed ?? offline;

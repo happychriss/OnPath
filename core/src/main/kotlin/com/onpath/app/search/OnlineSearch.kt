@@ -25,33 +25,25 @@ interface SearchProvider {
 /** Photon geocoder by Komoot (OpenStreetMap data): https://photon.komoot.io */
 class PhotonProvider(
     private val userAgent: String,
-    private val baseUrl: String = "https://photon.komoot.io/api/",
+    private val baseUrl: String = BASE_URL,
     private val timeoutMs: Int = 6000,
 ) : SearchProvider {
     override val attribution = "Photon · © OpenStreetMap"
 
-    fun url(query: String, lat: Double, lon: Double, limit: Int): String {
-        val q = URLEncoder.encode(query.trim(), "UTF-8")
-        // The server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix (owner; Settings →
-        // Privacy says ~1 km); results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
-        val f = { v: Double -> coarse(v) }
-        // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
-        // with higher importance win; a stronger bias dropped towns named in the query.
-        return "$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
-    }
+    fun url(query: String, lat: Double, lon: Double, limit: Int): String = urlOf(baseUrl, query, lat, lon, limit)
 
     /** The same search for places only (towns, regions, countries) – far big cities are not lost behind shops. */
-    fun placesUrl(query: String, lat: Double, lon: Double, limit: Int): String =
-        url(query, lat, lon, limit) + PLACE_LAYERS.joinToString("") { "&layer=$it" }
+    fun placesUrl(query: String, lat: Double, lon: Double, limit: Int): String = placesUrlOf(baseUrl, query, lat, lon, limit)
 
     /**
      * Two requests (owner: a far city like "New York" must not be lost behind nearby shops – the location bias wins
-     * over it): the normal one, and one for places only, merged with [mergePlaces]. The places
+     * over it): [requests] – the normal one, and one for places only, merged with [mergePlaces]. The places
      * request failing never costs the normal results.
      */
     override fun search(query: String, lat: Double, lon: Double, limit: Int): List<Place> {
-        val main = get(url(query, lat, lon, limit))
-        val places = try { get(placesUrl(query, lat, lon, PLACES_LIMIT)) } catch (e: Exception) {
+        val (mainUrl, placesUrl) = requests(query, lat, lon, limit, baseUrl)
+        val main = get(mainUrl)
+        val places = try { get(placesUrl) } catch (e: Exception) {
             Problems.info("search", "Online search for places failed; shown without it", e); emptyList()
         }
         return mergePlaces(query, places, main)
@@ -72,6 +64,30 @@ class PhotonProvider(
     }
 
     companion object {
+        const val BASE_URL = "https://photon.komoot.io/api/"
+        /** Rows asked of the normal request (the app's SearchSession, the web planner). */
+        const val LIMIT = 10
+
+        /**
+         * THE requests of an online search, in order: the normal one, then the places-only one (owner 2026-11-27: app and
+         * planner send exactly these – the planner had only the first and lost „Berlin“ near Hilden). Pure: the web
+         * planner fetches them itself (WebApi.photonUrls).
+         */
+        fun requests(query: String, lat: Double, lon: Double, limit: Int = LIMIT, base: String = BASE_URL): List<String> =
+            listOf(urlOf(base, query, lat, lon, limit), placesUrlOf(base, query, lat, lon, PLACES_LIMIT))
+
+        fun urlOf(base: String, query: String, lat: Double, lon: Double, limit: Int): String {
+            val q = URLEncoder.encode(query.trim(), "UTF-8")
+            // The server gets only a rough position (2 decimals ≈ 1 km), never the exact GPS fix (owner; Settings →
+            // Privacy says ~1 km); results are ranked by the exact position on the phone (OnlineRanking / SearchRanking).
+            // zoom 12 / scale 0.3: nearby first without losing far cities ("Innsbruck"). A lower zoom let DE/AT results
+            // with higher importance win; a stronger bias dropped towns named in the query.
+            return "$base?q=$q&lat=${coarse(lat)}&lon=${coarse(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de"
+        }
+
+        fun placesUrlOf(base: String, query: String, lat: Double, lon: Double, limit: Int): String =
+            urlOf(base, query, lat, lon, limit) + PLACE_LAYERS.joinToString("") { "&layer=$it" }
+
         /** Photon layers of the places request. */
         val PLACE_LAYERS = listOf("city", "locality", "district", "county", "state", "country")
         const val PLACES_LIMIT = 5
