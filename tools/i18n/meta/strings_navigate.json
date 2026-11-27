@@ -1326,6 +1326,12 @@
     "priority": 1,
     "confidence": "sicher"
   },
+  "nav_long_leg_text_plain": {
+    "area": "Plan (long route question, app)",
+    "context": "Text of that question in the app (no stop hint); %1$s = 'Hilden → Munich' or nav_long_leg_points, %2$s = straight km.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
   "nav_long_leg_points": {
     "area": "Plan (long route question)",
     "context": "The leg's ends when they have no names ('Point 1 → 2').",

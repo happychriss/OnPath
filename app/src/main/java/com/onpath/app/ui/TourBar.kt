@@ -396,9 +396,9 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
 
 /**
  * Before a long run (owner 2026-11-27, [com.onpath.app.routing.RouteCost]): the longest leg's search on this phone,
- * honest as a range – „Lange Strecke: etwa 3–6 Minuten“, „Hilden → München, 475 km am Stück. Mit einem Zwischenziel
- * geht es schneller.“, buttons „Zwischenziel setzen“ ([onCancel]: the points stay without a route) · „Warten“ ([onPlan]).
- * A leg beyond the phone's capacity ([seconds] infinite): „Zu lang für das Handy“ with „Zwischenziel setzen“ only.
+ * honest as a range – „Lange Strecke: etwa 3–6 Minuten“, „Hilden → München, 475 km am Stück.“, buttons „Abbrechen“
+ * ([onCancel]: the points stay without a route) · „Berechnen“ ([onPlan]) – no „Zwischenziel setzen“ (owner 2026-11-27).
+ * A leg beyond the phone's capacity ([seconds] infinite): „Zu weit für das Handy“ with OK only (the point is taken back).
  * Without a [leg] (a plan beyond a day, the old rule): the day question as before. Stays until a button is tapped: an
  * outside tap or Back must not undo anything.
  */
@@ -411,13 +411,13 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
             onDismissRequest = {},
             icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
             title = { Text(com.onpath.app.routing.RouteCost.askTitle(shown.ask)) },
-            text = { DialogText(com.onpath.app.routing.RouteCost.askText(shown.ask, shown.from, shown.to)) },
+            text = { DialogText(com.onpath.app.routing.RouteCost.askText(shown.ask, shown.from, shown.to, stopHint = false)) },
             confirmButton = {
                 if (shown.ask.beyond) TextButton(onClick = onCancel) { Text(str(Res.string.common_ok)) }
-                else TextButton(onClick = onPlan) { Text(str(Res.string.nav_wait)) }
+                else TextButton(onClick = onPlan) { Text(str(Res.string.plan_calculate)) }
             },
             dismissButton = if (shown.ask.beyond) null else ({
-                TextButton(colors = ActionButtons.editText(), onClick = onCancel) { Text(str(Res.string.nav_add_stop)) }
+                TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) }
             }),
             properties = LongRouteDialogRules.properties,
         )

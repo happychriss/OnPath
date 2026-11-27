@@ -33,10 +33,10 @@ internal object LongLegs {
     /** The app's [RouteRun.longRule]: this phone's learned factor; a leg in the leg cache (memory, or its file unless quick) is routed. */
     fun rule(context: Context, planRoute: () -> PlanRouteSlice): PhoneLongRule {
         val memory = com.onpath.app.data.progressMemoryOf(context)
-        return PhoneLongRule({ memory.phoneFactor }) { a, b, quick ->
+        return PhoneLongRule({ memory.phoneFactor }, { a, b, quick ->
             val r = planRoute()
             if (quick) r.legCache.inMemory(a, b, r.activity, r.sac) != null else r.legCache.has(a, b, r.activity, r.sac)
-        }
+        }, lowEnd = true)
     }
 
     /** The question for [ask] is open: its leg's names from the Points list [rows] of a plan of [points] points, for the dialog. */
@@ -48,8 +48,8 @@ internal object LongLegs {
     }
 
     /**
-     * The answer: „Warten“ ([yes]) → routed, not asked again; „Zwischenziel setzen“ → the points stay without a route (the map
-     * shows the whole plan, so a hold adds the stop on the way) – during a tour ([touring]) the change that made it so long is
+     * The answer: „Berechnen“ ([yes]) → routed, not asked again; „Abbrechen“ → the points stay without a route (the
+     * not-routed line's „Berechnen“ asks again; owner 2026-11-27: no „Zwischenziel setzen“ – nobody knows where it belongs) – during a tour ([touring]) the change that made it so long is
      * taken back instead, so the tour keeps its line. True = the camera goes to the plan ([LongRouteCancelCamera]).
      */
     fun answer(yes: Boolean, planRun: PlanRunSlice, planEdit: PlanEditSlice, points: List<GeoPoint>, touring: Boolean,

@@ -82,12 +82,15 @@ object RouteCost {
      * a leg already routed is passed as 0 ms and 0.0 km): the longest leg beyond [capKm] of [memoryCapMb] → [Decision.SplitOnly];
      * else the slowest leg above [ASK_ABOVE_MS] → [Decision.Ask] with its range ([RANGE_LOW] … [RANGE_HIGH]); else [Decision.Now].
      */
-    fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB): Decision {
+    fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB, lowEnd: Boolean = false): Decision {
         val cap = capKm(memoryCapMb)
         legKm.indices.filter { legKm[it] > cap }.maxByOrNull { legKm[it] }?.let { return Decision.SplitOnly(it) }
         val slow = legEstimatesMs.indices.maxByOrNull { legEstimatesMs[it] } ?: return Decision.Now
         val ms = legEstimatesMs[slow]
-        return if (ms > ASK_ABOVE_MS) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now
+        // [lowEnd] (the app, owner 2026-11-27): asked only when even the range's low end is above the limit – „20–60
+        // Sekunden“ read as asking below 30 s
+        val over = if (lowEnd) ms * RANGE_LOW > ASK_ABOVE_MS else ms > ASK_ABOVE_MS
+        return if (over) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now
     }
 
     /**
@@ -153,13 +156,14 @@ object RouteCost {
      * The question's text: "Hilden → München, 475 km in one go. …" – [from] / [to] the names of the leg's ends (both
      * known, else "Point 1 → 2"); beyond capacity: "475 km in one go. Add a stop or plan in the browser."
      */
-    fun askText(ask: LongAsk, from: String?, to: String?): String {
+    fun askText(ask: LongAsk, from: String?, to: String?, stopHint: Boolean = true): String {
         val km = ask.km.roundToInt().toString()
         val leg = if (!from.isNullOrBlank() && !to.isNullOrBlank()) "$from → $to"
             else Txt.s(Res.string.nav_long_leg_points, ask.leg + 1, ask.leg + 2)
         // owner 2026-11-27: too far – a closer destination; the browser only as a sentence (no button: on the phone it helps not)
         if (ask.beyond) return Txt.s(Res.string.nav_too_long_text, leg, km)
-        return Txt.s(Res.string.nav_long_leg_text, leg, km)
+        // the app has no „Zwischenziel setzen“ (owner 2026-11-27: nobody knows where a stop belongs) – no sentence about it
+        return Txt.s(if (stopHint) Res.string.nav_long_leg_text else Res.string.nav_long_leg_text_plain, leg, km)
     }
 }
 
@@ -196,6 +200,8 @@ fun interface LongRule {
 class PhoneLongRule(
     private val factor: () -> Double,
     private val routed: (GeoPoint, GeoPoint, Boolean) -> Boolean = { _, _, _ -> false },
+    /** Asks only when the range's low end is above the limit ([RouteCost.decide]); the app's, not the planner's. */
+    private val lowEnd: Boolean = false,
 ) : LongRule {
     /**
      * The device's routing memory in the phone's MB ([RouteCost.capKm]): the phone's [RouteCost.PHONE_MEMORY_MB] unless set –
@@ -211,7 +217,7 @@ class PhoneLongRule(
         val ms = MutableList(km.size) { RouteCost.estimateMs(km[it], activity, f) }
         // the leg the decision is about, unless it is routed already (only those legs are looked up): then without it
         while (true) {
-            val i = when (val d = RouteCost.decide(ms, km, mb)) {
+            val i = when (val d = RouteCost.decide(ms, km, mb, lowEnd)) {
                 RouteCost.Decision.Now -> return null
                 is RouteCost.Decision.Ask -> d.legIndex
                 is RouteCost.Decision.SplitOnly -> d.legIndex

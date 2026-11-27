@@ -59,6 +59,16 @@ class RouteCostTest {
 
     // ---------------- the model ----------------
 
+    /** Owner 2026-11-27: „20–60 Sekunden“ read as asking below 30 s – the app asks only when the low end is above 30 s. */
+    @Test fun theAppAsksOnlyWhenTheRangesLowEndIsAboveTheLimit() {
+        val ms = 35_000L // low end 24.5 s
+        assertTrue(RouteCost.decide(listOf(ms), listOf(50.0)) is RouteCost.Decision.Ask) // the planner: asked
+        assertEquals(RouteCost.Decision.Now, RouteCost.decide(listOf(ms), listOf(50.0), lowEnd = true)) // the app: routed
+        val slow = 50_000L // low end 35 s
+        val ask = RouteCost.decide(listOf(slow), listOf(50.0), lowEnd = true) as RouteCost.Decision.Ask
+        assertTrue("the shown range starts above 30 s: ${ask.loMs}", ask.loMs > RouteCost.ASK_ABOVE_MS)
+    }
+
     @Test fun desktopTimeGrowsWithDistance() {
         var last = -1.0
         for (km in 0..600 step 5) { val t = RouteCost.desktopMs(km.toDouble()); assertTrue(t > last || km == 0); last = t }
