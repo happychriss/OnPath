@@ -178,7 +178,6 @@
     <string name="nav_save_recording">Save tour</string>
     <string name="nav_action_pause">Stop</string>
     <string name="nav_route_back_title">No destination ahead any more.</string>
-    <string name="nav_route_back_text">The tour goes on. Undo brings the point back.</string>
     <string name="nav_route_back">Back to the start</string>
     <string name="nav_just_record">Go on without a route</string>
     <string name="nav_long_route_foot">%1$s on foot. Calculating and loading its maps takes long.</string>

@@ -396,7 +396,7 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
         onDismissRequest = {},
         icon = { Icon(Icons.Filled.Flag, null) },
         title = { Text(str(Res.string.nav_route_back_title)) },
-        text = { DialogText(str(Res.string.nav_route_back_text)) },
+        // title + two buttons, no text (owner 2026-11-27)
         confirmButton = { TextButton(colors = ActionButtons.goText(), onClick = onYes) { Text(str(Res.string.nav_route_back)) } },
         dismissButton = { TextButton(onClick = onNo) { Text(str(Res.string.nav_just_record)) } },
         properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false),

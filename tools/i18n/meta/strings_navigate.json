@@ -789,12 +789,6 @@
     "priority": 3,
     "confidence": "sicher"
   },
-  "nav_route_back_text": {
-    "area": "Tour card (Plan)",
-    "context": "Dialog text",
-    "priority": 3,
-    "confidence": "sicher"
-  },
   "nav_route_back": {
     "area": "Tour card (Plan)",
     "context": "Button: plan the way back to the start",
