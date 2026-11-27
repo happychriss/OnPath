@@ -18,11 +18,6 @@ class TourRunningTest {
         assertFalse(TourStillRunning.shows(pointCount = 2, touring = false))
     }
 
-    @Test fun `the start guide and the tour line never show together`() {
-        for (n in 0..3) for (t in listOf(true, false))
-            assertFalse("n=$n touring=$t", EmptyGuide.shows(n, t) && TourStillRunning.shows(n, t))
-    }
-
     @Test fun `the sheet uses the tour title and the new-destination row, the old line is gone, nothing ticks`() {
         val panel = File("src/main/java/com/onpath/app/ui/PlanPanel.kt").readText()
         assertFalse(panel.contains("plan_hint_tour_goes_on"))

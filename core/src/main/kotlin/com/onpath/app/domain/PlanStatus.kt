@@ -65,10 +65,12 @@ object PlanStatus {
         Cause.Other -> OnCancel.KEEP_POINTS
     }
 
-    /** Second line of the sheet when there is no route yet, for [pointCount] points. */
-    fun noRouteLine(pointCount: Int, routing: Boolean, notRouted: NotRouted?): String = when {
-        pointCount == 0 -> Txt.s(Res.string.plan_hint_first_point)
-        pointCount == 1 -> Txt.s(Res.string.plan_hint_destination)
+    /**
+     * Second line of the sheet when there is no route yet, for [pointCount] points; null = none: an empty plan and one
+     * point say nothing (owner 2026-11-27 – the hold / search hints went, the sheet's question is enough).
+     */
+    fun noRouteLine(pointCount: Int, routing: Boolean, notRouted: NotRouted?): String? = when {
+        pointCount < 2 -> null
         routing -> CALCULATING
         else -> notRoutedText(notRouted)
     }

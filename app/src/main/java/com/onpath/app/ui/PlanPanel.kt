@@ -135,7 +135,7 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
-    /** The empty sheet's guide, step 1 "Ziel finden ›": opens the search ([EmptyGuide]). */
+    /** Opens the search. */
     val onSearch: () -> Unit = {},
     /** The empty sheet's guide, "Meine Touren öffnen". */
     val onMyRoutes: () -> Unit = {},
@@ -789,10 +789,9 @@ private fun OfflineInfoLine(text: String) {
 private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     if (route != null) return
     if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
-    if (ui.pointCount == 0) return // the hint sits in the summary step (FirstPointHint, PlanBody)
-    // "Calculating the route…" only while a request runs (not after Cancel)
-    Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
-        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // "Calculating the route…" only while a request runs (not after Cancel); no line with 0 / 1 point (owner 2026-11-27)
+    val line = PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted) ?: return
+    Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 internal fun stopColor(i: Int, count: Int): Color = when {
