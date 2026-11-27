@@ -223,6 +223,8 @@ class MapLoadCallbacks(
     val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {},
     /** "Load now over mobile data" while it waits for Wi-Fi (once; the setting stays). */
     val onLoadOnMobile: () -> Unit = {},
+    /** The window shows / went (after its no-flash gate): the other map notices stay away meanwhile (owner 2026-11-27). */
+    val onShown: (Boolean) -> Unit = {},
 )
 
 
@@ -235,7 +237,9 @@ fun MapLoadModal(ui: MapLoadUi?, cb: MapLoadCallbacks) {
     val gate = remember { NoFlash<MapLoadUi.Kind>(urgent = { it == MapLoadUi.Kind.FAILED }) }
     val lastRef = remember { arrayOfNulls<MapLoadUi>(1) }
     if (ui != null) lastRef[0] = ui
-    val kind = rememberNoFlash(ui?.kind, gate) ?: return
+    val gated = rememberNoFlash(ui?.kind, gate)
+    androidx.compose.runtime.LaunchedEffect(gated != null) { cb.onShown(gated != null) }
+    val kind = gated ?: return
     val shown = (ui ?: lastRef[0])?.copy(kind = kind) ?: return
     fun acted(f: () -> Unit): () -> Unit = { gate.userActed(android.os.SystemClock.uptimeMillis()); f() }
     val c = MapLoadCallbacks(acted(cb.onCancel), acted(cb.onRetry), acted(cb.onClose), acted(cb.onLoadOnMobile))

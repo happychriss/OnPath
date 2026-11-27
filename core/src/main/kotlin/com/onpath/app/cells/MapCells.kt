@@ -57,11 +57,7 @@ sealed interface CellState {
     /** Downloaded during a tour ([MapCells.holdUpdates]): joined into the map after the tour / back in Plan. */
     data object Downloaded : CellState
     data class Ready(val version: String) : CellState
-    /**
-     * No connection / server not reachable: retried by itself. [message] is plain language for the card. [serverSide]: the
-     * server answered – busy (429) or its own error (5xx) – so the phone IS online; never said as "no internet" (owner
-     * 2026-11-27: Madrid while donald rebuilt the maps showed „Keine Internetverbindung“ on Wi-Fi).
-     */
+    /** No connection / server not reachable: retried by itself; [message] plain language. [serverSide]: busy / 5xx – online. */
     data class Offline(val message: String, val serverSide: Boolean = false) : CellState
     /** [retryable]: asking again later may work (server failed to build, damaged download); false: e.g. app too old. */
     data class Failed(val message: String, val retryable: Boolean = true) : CellState

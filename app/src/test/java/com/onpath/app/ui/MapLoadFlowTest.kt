@@ -452,10 +452,9 @@ class MapLoadFlowTest {
         assertTrue(here, here.contains("?.copy(own = null)"))
         assertTrue(here, here.contains("routingFor(listOf(at), wait = false)"))
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("val waitShown = MapLoadWait.shown(loadUi, vm.setup.setupOpen)"))
-        assertTrue(map.contains("MapLoadModal(waitShown,"))
+        assertTrue(map.contains("MapLoadModal(MapLoadWait.shown(loadUi, vm.setup.setupOpen),"))
         // one notice (owner 2026-11-27): while the window shows, the quiet pill, the failure box and the overview pill stay away
-        assertTrue(map.contains("vm.mapData.loadWindowShown = waitShown != null"))
+        assertTrue(map.contains("onShown = { vm.mapData.loadWindowShown = it }"))
         assertTrue(map.contains("firstCard == null && !vm.mapData.loadWindowShown }"))
         assertTrue(map.contains("it.kind != MessageKind.FRAGE && !vm.mapData.loadWindowShown"))
         assertTrue(map.contains("overviewView && !viewComing && !vm.mapData.loadWindowShown"))
