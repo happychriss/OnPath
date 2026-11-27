@@ -40,12 +40,14 @@ interface LivePoints {
  * never skips a point that arrives late.
  *
  * @param now wall clock (ms) – pauses and point times are wall / GPS time
+ * @param plannedStore where the planned arrival is kept across app restarts ([PlannedArrivals]); null = memory only
  */
 class DbLiveTrack(
     private val points: LivePoints,
     private val state: () -> RecState?,
     private val batteryPct: () -> Int?,
     private val now: () -> Long,
+    plannedStore: LiveStore? = null,
 ) : LiveTrack {
 
     override fun pointsAfter(tourId: Long, seq: Int, max: Int): List<LiveTrackPoint> {
@@ -74,8 +76,7 @@ class DbLiveTrack(
         val nav = s.nav
         val toGo = nav?.shownAlongM?.let { along -> nav.line.takeIf { it.size >= 2 }?.let { FollowProgress(it).at(along, null)?.distanceM } }
         val arrival = if (toGo != null) s.time?.arrivalMs else null
-        val planned = PlannedArrival.next(plannedNow, tourId, nav?.takeIf { it.line.size >= 2 }?.let(::versionOf), arrival)
-        plannedNow = planned
+        val planned = plannedArrivals.next(tourId, nav?.takeIf { it.line.size >= 2 }?.let(::versionOf), arrival)
         return LiveHead(
             state = if (s.paused) LiveState.PAUSED else LiveState.RECORDING,
             fix = last?.let {
@@ -97,8 +98,8 @@ class DbLiveTrack(
         )
     }
 
-    /** The arrival as planned for the line followed now ([PlannedArrival]). */
-    @Volatile private var plannedNow: PlannedArrival? = null
+    /** The arrival as planned for the line followed now ([PlannedArrival]), kept per tour across restarts. */
+    private val plannedArrivals = PlannedArrivals(plannedStore)
 
     /** True when the tour [tourId] will not go on: its row says so, or is gone. Throws when the database cannot be read. */
     fun over(tourId: Long): Boolean = points.tour(tourId)?.over ?: true
@@ -133,15 +134,49 @@ class DbLiveTrack(
 
 /**
  * The arrival as planned (owner 2026-11-26, the viewer's „Etwas später als geplant“): the first arrival estimate for a
- * tour's followed line; a new line (re-plan, [version]) or another tour plans anew. Pure.
+ * tour's followed line; a new line (re-plan, [version]) or another tour plans anew. While the followed line is briefly
+ * missing (`version` null: a re-route in the making, the navigator restarting) the tour keeps its last plan – only
+ * another line or another tour replaces it. Pure.
  */
 data class PlannedArrival(val tourId: Long, val version: Int, val arrivalMs: Long) {
+    /** One line for the file ([decode] reads it back). */
+    fun encode(): String = "$MARK $tourId $version $arrivalMs"
+
     companion object {
+        private const val MARK = "planned1"
+
         fun next(before: PlannedArrival?, tourId: Long, version: Int?, estimateMs: Long?): PlannedArrival? = when {
-            version == null -> null
+            version == null -> before?.takeIf { it.tourId == tourId }
             before != null && before.tourId == tourId && before.version == version -> before
             estimateMs == null -> null
             else -> PlannedArrival(tourId, version, estimateMs)
         }
+
+        /** [encode]'s line back; null = no text or not such a line (an older / damaged file: the tour plans anew). */
+        fun decode(text: String?): PlannedArrival? {
+            val p = text?.trim()?.split(' ') ?: return null
+            if (p.size != 4 || p[0] != MARK) return null
+            return PlannedArrival(p[1].toLongOrNull() ?: return null, p[2].toIntOrNull() ?: return null, p[3].toLongOrNull() ?: return null)
+        }
+    }
+}
+
+/**
+ * [PlannedArrival] for the live head, kept in [store] (`files/live/planned.txt`, [LiveFiles]) so an app restart during a
+ * tour keeps the tour's plan instead of taking the late estimate of the moment as the new plan. Read once, written only
+ * when the plan changes. Only the live lane's thread calls it.
+ */
+class PlannedArrivals(private val store: LiveStore?) {
+    @Volatile private var now: PlannedArrival? = null
+    @Volatile private var loaded = store == null
+
+    fun next(tourId: Long, version: Int?, estimateMs: Long?): PlannedArrival? {
+        if (!loaded) { loaded = true; now = PlannedArrival.decode(store?.read()) }
+        val before = now
+        val next = PlannedArrival.next(before, tourId, version, estimateMs)
+        // no plan right now (a new line without its estimate yet): memory and file keep the last one
+        if (next != null && next != before) store?.write(next.encode())
+        now = next ?: before
+        return next
     }
 }
