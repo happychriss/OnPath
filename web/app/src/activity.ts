@@ -162,14 +162,16 @@ export class ActivityPicker {
     }).catch((err) => console.warn('pace choices not loaded', err));
   }
 
-  /** One row of three under the pace (the app's Settings → Planen „Markierten Wegen folgen“, same words). */
+  /** One row of three under the pace (the app's Settings → Planen, same words): „Wanderrouten folgen“ on foot,
+   *  „Radrouten folgen“ on a bike (the app's Planen row title, owner 2026-11-27). */
   private drawTrails(level = this.trailsHost?.level() ?? 1) {
     if (!this.trailsHost) return;
     let sec = this.box.querySelector<HTMLDivElement>('#trailsRow');
     if (!sec) { sec = document.createElement('div'); sec.id = 'trailsRow'; sec.className = 'pacerow'; this.box.insertBefore(sec, this.box.querySelector('.actdone')); }
     const words = ['settings_trails_less', 'settings_trails_standard', 'settings_trails_more'].map((k) => t(k));
-    sec.innerHTML = `<div class="pacehead"><b>${esc(t('settings_trails_title'))}</b></div>
-      <div class="seg" role="group" aria-label="${esc(t('settings_trails_title'))}">${words.map((w, i) =>
+    const title = t(this.act === 'HIKE' ? 'settings_trails_hike' : 'settings_trails_bike');
+    sec.innerHTML = `<div class="pacehead"><b>${esc(title)}</b></div>
+      <div class="seg" role="group" aria-label="${esc(title)}">${words.map((w, i) =>
         `<button data-trails="${i}" role="menuitemradio" aria-checked="${i === level}" class="${i === level ? 'on' : ''}">${esc(w)}</button>`).join('')}</div>`;
   }
 

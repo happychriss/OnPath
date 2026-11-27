@@ -65,8 +65,8 @@ internal fun TourTimesText(t: com.onpath.app.time.TourTimes) {
  * [AppSettings.markedTrails], every routing engine follows it (routing/MarkedTrails).
  */
 @Composable
-internal fun MarkedTrailsRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+internal fun MarkedTrailsRow(settings: AppSettings, onChange: (AppSettings) -> Unit, activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE) {
     val levels = listOf(AppSettings.MARKED_TRAILS_LESS, AppSettings.MARKED_TRAILS_STANDARD, AppSettings.MARKED_TRAILS_MORE)
-    ChoiceRow(str(Res.string.settings_trails_title), null, levels.map { Choice(it, SettingsSummary.markedTrailsLabel(it)) },
+    ChoiceRow(SettingsSummary.markedTrailsTitle(activity), null, levels.map { Choice(it, SettingsSummary.markedTrailsLabel(it)) },
         AppSettings.markedTrailsOf(settings.markedTrails), onPick = { onChange(settings.copy(markedTrails = it)) })
 }

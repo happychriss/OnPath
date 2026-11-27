@@ -141,6 +141,13 @@ object SettingsSummary {
     fun plan(s: AppSettings, activity: Activity): Summary =
         Summary(Txt.s(Res.string.settings_sum_plan, (if (TimeEstimate.isBike(activity)) s.bikePace else s.hikePace).label, markedTrailsLabel(s.markedTrails)))
 
+    /**
+     * The setting's own name by activity (owner 2026-11-27): „Wanderrouten folgen“ on foot, „Radrouten folgen“ on any bike
+     * – the BRouter profiles follow hiking route relations resp. cycle route relations (routing/MarkedTrails).
+     */
+    fun markedTrailsTitle(activity: Activity): String =
+        Txt.s(if (TimeEstimate.isBike(activity)) Res.string.settings_trails_bike else Res.string.settings_trails_hike)
+
     /** The word of a "Marked trails" level: Weniger · Standard · Mehr. */
     fun markedTrailsLabel(level: Int): String = Txt.s(when (AppSettings.markedTrailsOf(level)) {
         AppSettings.MARKED_TRAILS_LESS -> Res.string.settings_trails_less

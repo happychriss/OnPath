@@ -188,7 +188,8 @@
     <string name="settings_page_plan">Plan</string>
     <string name="settings_page_backup_sync">Backup &amp; browser</string>
     <string name="settings_sum_plan">Pace %1$s · routes %2$s</string>
-    <string name="settings_trails_title">Follow hiking and cycling routes</string>
+    <string name="settings_trails_hike">Follow hiking routes</string>
+    <string name="settings_trails_bike">Follow cycling routes</string>
     <string name="settings_trails_less">Less</string>
     <string name="settings_trails_standard">Standard</string>
     <string name="settings_trails_more">More</string>
