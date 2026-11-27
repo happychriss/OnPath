@@ -985,13 +985,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "nav_rides_kept_note": {
-    "area": "End tour – rides",
-    "context": "Small note under the choices; 'Edit rides' must match the menu item in My routes",
-    "priority": 2,
-    "confidence": "bitte prüfen",
-    "doubt": "Menu item name 'Fahrten bearbeiten' must match My routes"
-  },
   "nav_row_on_foot": {
     "area": "End tour – rides",
     "context": "Timeline row kind",

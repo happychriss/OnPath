@@ -210,7 +210,6 @@
         <item quantity="one">Ein Teil dieser Tour sieht nach einer Fahrt aus (Bus, Auto oder Lift). Was soll zählen?</item>
         <item quantity="other">%1$d Teile dieser Tour sehen nach Fahrten aus (Bus, Auto oder Lift). Was soll zählen?</item>
     </plurals>
-    <string name="nav_rides_kept_note">Alle gefahrenen Punkte bleiben erhalten – du kannst das später in Meine Touren ändern (⋮ → Fahrten bearbeiten).</string>
     <string name="nav_ride_q_end">Am Ende bist du gefahren</string>
     <string name="nav_ride_q_along">Unterwegs bist du gefahren</string>
     <string name="nav_ride_q_several">%1$d Fahrten · %2$s</string>
