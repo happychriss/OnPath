@@ -10,7 +10,9 @@ declare const __BUILD_ID__: string;
 const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
 
 export interface WaitStepUi { label: string; state: 'done' | 'now' | 'later' }
-export interface WaitUi { title: string; route: boolean; percent: number; steps: WaitStepUi[]; line: string | null; paused: boolean; late: boolean }
+export interface WaitUi { title: string; route: boolean; percent: number; steps: WaitStepUi[]; line: string | null; paused: boolean; late: boolean;
+  /** A sentence under the title (the server builds the map first – the app's MapLoadUi.note). */
+  note?: string | null }
 export interface WaitEnd { full: WaitUi | null; shares?: string; check?: string; part?: string }
 
 interface Exports {

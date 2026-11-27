@@ -287,7 +287,7 @@ export class LoadOverlay {
       el.className = 'waitwin';
       el.setAttribute('role', 'status');
       el.setAttribute('aria-live', 'polite');
-      el.innerHTML = '<div class="wwhead"><span class="wwsign"></span><span class="wwtitle"></span></div>'
+      el.innerHTML = '<div class="wwhead"><span class="wwsign"></span><span class="wwtitle"></span></div><div class="wwnote" hidden></div>'
         + '<div class="wwprog"><div class="wwbar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div><span class="wwpct"></span></div>'
         + '<ul class="wwsteps"></ul><div class="wwfoot"><span class="wwline"></span><button type="button" class="wwcancel"></button></div>';
       el.querySelector<HTMLButtonElement>('.wwcancel')!.onclick = () => this.cancel();
@@ -297,6 +297,8 @@ export class LoadOverlay {
     const s = el.querySelector<HTMLElement>('.wwsign')!;
     if (s.dataset.sign !== sign) { s.dataset.sign = sign; s.innerHTML = ICON[sign]; }
     el.querySelector('.wwtitle')!.textContent = u.title;
+    const note = el.querySelector<HTMLElement>('.wwnote')!;
+    note.hidden = !u.note; note.textContent = u.note ?? '';
     el.dataset.pct = String(u.percent);
     el.classList.toggle('paused', u.paused);
     const bar = el.querySelector<HTMLElement>('.wwbar')!;

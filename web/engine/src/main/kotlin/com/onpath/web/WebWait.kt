@@ -46,7 +46,9 @@ class WebWait(private var shares: StepShares, private var check: Double, private
 
     /** The window: title, sign (map / route), the bar's percent, at most 3 rows, the line under them. */
     data class Ui(val title: String, val route: Boolean, val percent: Int, val steps: List<WaitStep>, val line: String?,
-                  val paused: Boolean, val late: Boolean)
+                  val paused: Boolean, val late: Boolean,
+                  /** A sentence under the title – the server builds the map for this place first (the app's MapLoadUi.note, owner 2026-11-27, Hinweistext 12). */
+                  val note: String? = null)
 
     private val bar = OneBar()
     /** The map part's time left as said: only down, +10 s at first (the app's MapLoad, owner 2026-11-27). */
@@ -216,7 +218,9 @@ class WebWait(private var shares: StepShares, private var check: Double, private
             else -> left?.let(TimeLeft::text)
         }
         val title = if (inMap) Txt.s(Res.string.wait_title_map) else Txt.s(Res.string.wait_title_route)
-        return Ui(title, !inMap, pct, WaitSteps.shown(WaitSteps.of(labels, cur)), line, t.paused, late || overLeg).also { last = it }
+        val building = inMap && mapStep == LoadStep.PREPARE && t.areas.any { it.state == "queued" || it.state == "building" }
+        return Ui(title, !inMap, pct, WaitSteps.shown(WaitSteps.of(labels, cur)), line, t.paused, late || overLeg,
+            note = if (building) com.onpath.app.ui.MapLoadUi.BUILD_TEXT else null).also { last = it }
     }
 
     /**
@@ -378,7 +382,8 @@ class WebWait(private var shares: StepShares, private var check: Double, private
                 append("{\"label\":").append(Engine.str(s.label)).append(",\"state\":").append(Engine.str(s.state.name.lowercase())).append('}')
             }
             append("],\"line\":").append(u.line?.let { Engine.str(it) } ?: "null")
-            append(",\"paused\":").append(u.paused).append(",\"late\":").append(u.late).append('}')
+            append(",\"paused\":").append(u.paused).append(",\"late\":").append(u.late)
+            append(",\"note\":").append(u.note?.let { Engine.str(it) } ?: "null").append('}')
         }
     }
 }

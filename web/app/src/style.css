@@ -971,3 +971,6 @@ dialog.plans .actchip.on { padding: 0 6px 0 8px; }
 .actfilter .actpick .alabel { flex: 1; font-weight: 500; }
 .actfilter .radio { width: 20px; height: 20px; box-sizing: border-box; border: 2px solid var(--muted); border-radius: 50%; flex: none; }
 .actfilter .radio.on { border-color: var(--fg); background: radial-gradient(circle, var(--fg) 0 4px, transparent 5px); }
+
+/* the server builds the map first: one sentence under the title (the app's WaitWindow note, owner 2026-11-27) */
+.waitwin .wwnote { font-size: 14px; color: var(--muted, #5f6368); margin: -2px 0 8px; }
