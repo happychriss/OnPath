@@ -3,14 +3,14 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none)",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683)",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/plans.ts",
         "web/app/src/routefilter.ts",
         "web/app/src/style.css"
       ],
-      "blob": "12b2241fe23db98bb61cb2e1ccdca29dd5c9cccf"
+      "blob": "dac1c6a1550014bb1a1cca3ed3c9c2981ed1caa8"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
@@ -49,12 +49,12 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
-      "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible)",
+      "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible) · 2026-11-27 checked: the recording on the „PLANEN · 0:42 ■“ tab and „✓ Offline verfügbar“ top right are app only (no recording, no offline in the browser); credit top right / no logo on the map is the phone layout – the planner keeps its header logo and the credit at the map foot (big screen)",
       "web": [
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "09e556a285c7df683fa32fcd1d385ba234c8a8a1"
+      "blob": "f50f6be668a705c96f9e98640482cbe8823aa0fb"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
@@ -142,11 +142,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“); a far new point (owner 2026-11-27 variant C): one web question „… ist ca. N km weit weg“ · Berechnung etwa … · [Von hier starten] [Route berechnen] in its place (longroute.ts farQuestion)",
+      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“); a far new point (owner 2026-11-27 variant C): one web question „… ist ca. N km weit weg“ · Berechnung etwa … · [Von hier starten] [Route berechnen] in its place (longroute.ts farQuestion) · 2026-11-27 checked: the app's long-leg question „Abbrechen / Berechnen“ asked only above the range's low end (lowEnd) is the app's – the planner keeps „Zwischenziel setzen · Warten“ and its far-point dialog (decided 2026-11-27, PhoneLongRule.lowEnd „the app's, not the planner's“)",
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "06414bc234b5afd87dab65283326835f1549852f"
+      "blob": "a9000ef031b297fb7beb20cd1dcc16fc61351e79"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
@@ -160,16 +160,16 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
-      "what": "importGpx (its note is the shared GpxData.skippedNote; the activity from the file's sport, the one import stats, the name rule ImportRules.gpxName) = gpximport.ts / WebImport.kt – moved here from AppViewModel, rebuild phase 2 piece 7; the rest (map-data import, Export all, restore, the GPX share sheet) is the phone's",
+      "what": "importGpx (its note is the shared GpxData.skippedNote; the activity from the file's sport, the one import stats, the name rule ImportRules.gpxName) = gpximport.ts / WebImport.kt – moved here from AppViewModel, rebuild phase 2 piece 7; the rest (map-data import, Export all, restore, the GPX share sheet) is the phone's · 2026-11-27 checked: the restore question only with Documents/OnPath on the phone – app only (no phone backup folder in the browser)",
       "web": [
         "web/app/src/gpximport.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebImport.kt"
       ],
-      "blob": "499622447c9e20301ee5411c5c22c96397a8669f"
+      "blob": "d6672fedd89afb2189f887d1a0842c318ea2ba4f"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "037608db50fef48dc84582f20573358857f68699"
+      "blob": "e159dd9d1695f753db4b7b8a44f0b224b07a9e45"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -344,11 +344,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/BackupScreens.kt",
-      "what": "RecycleBinScreen / BinCard – the planner's Papierkorb for its drafts: keep line, „Plan · date · km“, „Gelöscht am … · noch N Tage“, Wiederherstellen (no „Jetzt löschen“: its question speaks of the phone)",
+      "what": "RecycleBinScreen / BinCard – the planner's Papierkorb for its drafts: keep line, „Plan · date · km“, „Gelöscht am … · noch N Tage“, Wiederherstellen (no „Jetzt löschen“: its question speaks of the phone) · 2026-11-27 checked: „OnPath-Sicherung gefunden“ restore question is app only (phone backup); the planner's bin unchanged",
       "web": [
         "web/app/src/plans.ts"
       ],
-      "blob": "8cf36ab390dde82bfaf06cd5bf93499d1c6db016"
+      "blob": "0706d4611d4c1065297b75576eaff43593d96d6c"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/cells/PoiDensity.kt",
@@ -361,53 +361,53 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchScreen.kt",
-      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead; HOME_ROW_SHOWN / shownMenuRows (Zuhause off since 2026-11-19: no Zuhause row, no „Als Zuhause festlegen“ in a place menu) – pinmenu.ts",
+      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead; HOME_ROW_SHOWN / shownMenuRows (Zuhause off since 2026-11-19: no Zuhause row, no „Als Zuhause festlegen“ in a place menu) – pinmenu.ts · 2026-11-27 checked: round coloured category signs + the category staying while typing (b2cfe13b6, d1a00154a) – NOT yet in the planner: next planner task „search signs like the app“ (owner's yes 2026-11-27, backlog [laptop])",
       "web": [
         "web/app/src/pinmenu.ts",
         "web/app/src/search.ts",
         "web/app/src/style.css",
         "web/engine/src/main/kotlin/com/onpath/web/WebKept.kt"
       ],
-      "blob": "9d6157c9e72352004cac22e3fe286609c7ddc4ea"
+      "blob": "5e0cb389e3c1e1540b1bad8c35fc868b8d50549d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
-      "what": "the wait window for the map of a place (form A, owner 2026-11-19): MapLoadUi's steps and words („vorbereitet · lädt Karte + Routendaten · einfügen“, wait_* / maps_phase_*), MapWait's measurement per step (prepare = the server's time left, download = bytes, join), the ONE bar (OneBar), when it shows and closes, Cancel – the planner's WebWait.kt (map part) + loadoverlay.ts; MapLoadWait.waits (own point / search, or a view without detailed map) – areas.ts show() (MapWait stays here; MapLoadUi + MapLoadWait/Cancel/Loads moved to :state ui/MapWaitRules.kt, web-ready)",
+      "what": "the wait window for the map of a place (form A, owner 2026-11-19): MapLoadUi's steps and words („vorbereitet · lädt Karte + Routendaten · einfügen“, wait_* / maps_phase_*), MapWait's measurement per step (prepare = the server's time left, download = bytes, join), the ONE bar (OneBar), when it shows and closes, Cancel – the planner's WebWait.kt (map part) + loadoverlay.ts; MapLoadWait.waits (own point / search, or a view without detailed map) – areas.ts show() (MapWait stays here; MapLoadUi + MapLoadWait/Cancel/Loads moved to :state ui/MapWaitRules.kt, web-ready) · 2026-11-27: the „noch keine OnPath-Karte“ note while the server builds → WebWait Ui.note + loadoverlay .wwnote",
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "75f5e5bc648eec01483ce029aae4564a6769b298"
+      "blob": "ebe0b3a8e64831bbddafb490232c077231c52519"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt",
-      "what": "(moved from ui/MapLoad.kt, web-ready) MapLoadUi's steps and words, MapLoadWait.waits, MapLoadCancel, MapLoads sizes – WebWait.kt (map part), loadoverlay.ts, areas.ts",
+      "what": "(moved from ui/MapLoad.kt, web-ready) MapLoadUi's steps and words, MapLoadWait.waits, MapLoadCancel, MapLoads sizes – WebWait.kt (map part), loadoverlay.ts, areas.ts · 2026-11-27: MapLoadUi.note / BUILD_TEXT → WebWait Ui.note (building areas in the prepare step)",
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "2fb7c92f089c6cdcf97348ab5594a4f49ed17344"
+      "blob": "fc4163c0541a5f4cbadaca18f7f4933e0c5a11e6"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/WaitWindow.kt",
-      "what": "form A's look: sign + title, the ONE bar with its number beside it, at most 3 step rows (✓ done, ● now, ○ later), the time left / why it waits, Cancel; paused = grey bar – loadoverlay.ts draw(), style.css .waitwin",
+      "what": "form A's look: sign + title, the ONE bar with its number beside it, at most 3 step rows (✓ done, ● now, ○ later), the time left / why it waits, Cancel; paused = grey bar – loadoverlay.ts draw(), style.css .waitwin · 2026-11-27: the note under the title → loadoverlay .wwnote; the app's step bar without percent is the next planner task (VISION 2026-11-27 honest waiting)",
       "web": [
         "web/app/src/loadoverlay.ts",
         "web/app/src/style.css"
       ],
-      "blob": "99d0c48310f375a17d24a4d6a6dda35b97c52e0b"
+      "blob": "0f062e978d372983f74791ed60d73356f57b1863"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/progress/WaitRules.kt",
-      "what": "(moved to :state, web-ready: RouteWait, RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow) the route's wait (form A): the legs the router works on + „prüfen“ as steps, their shares (RouteShares), the check's time learned at the end, the legs' names „A → B“ (legLabels), the window after a slow second – WebWait.kt (route part), loadoverlay.ts plan(), main.ts planRun",
+      "what": "(moved to :state, web-ready: RouteWait, RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow) the route's wait (form A): the legs the router works on + „prüfen“ as steps, their shares (RouteShares), the check's time learned at the end, the legs' names „A → B“ (legLabels), the window after a slow second – WebWait.kt (route part), loadoverlay.ts plan(), main.ts planRun · 2026-11-27: WaitWindowUi.note → WebWait Ui.note; the step bar without percent: next planner task",
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/loadoverlay.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "038e343c634921a4025022d86f75ec8391bcd2cc"
+      "blob": "4ab9095c0b339e287fa5d0d0a910a9492579049e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/BesideSign.kt",
@@ -437,11 +437,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MessageCard.kt",
-      "what": "the one message box: Messages.pick (a question first, then the oldest), MessagePlacement (12 px under the top element), ButtonTone (the primary button's colour by what it does) – msgcard.ts (found 2026-11-27, was untracked)",
+      "what": "the one message box: Messages.pick (a question first, then the oldest), MessagePlacement (12 px under the top element), ButtonTone (the primary button's colour by what it does) – msgcard.ts (found 2026-11-27, was untracked) · 2026-11-27 checked: colour rule 1 (one green, blue in a plan box) – the planner follows since cef54cb6c",
       "web": [
         "web/app/src/msgcard.ts"
       ],
-      "blob": "e87b8d5057848ddc4b2019365f3989cc72c09f72"
+      "blob": "edc8949c5383047cb7f0b561834bb635b78dd360"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/RouteReveal.kt",
@@ -500,6 +500,15 @@
         "web/app/src/routeshape.ts"
       ],
       "blob": "71878be0c76a237de43e1e185763a2d3e226ac3c"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/ActivityPicker.kt",
+      "what": "ActivityPicker / GroupSwitch – activity choice variant C (owner 2026-11-27): Rad | Wandern switch, the group's cards (bikes: icon, name, line; hiking: T badge, name, short line), one tap picks – activity.ts",
+      "web": [
+        "web/app/src/activity.ts",
+        "web/app/src/style.css"
+      ],
+      "blob": "7be4962de8c25f70fd16e6ed643f98f39e20c06f"
     }
   ],
   "watch": [
@@ -3528,7 +3537,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/progress/WaitRules.kt": {
-      "blob": "038e343c634921a4025022d86f75ec8391bcd2cc",
+      "blob": "4ab9095c0b339e287fa5d0d0a910a9492579049e",
       "perf": [
         "const val FOLLOWS_MS = 10_000L",
         "fun follows(routeStartMs: Long): Boolean = mapDoneAt >= 0 && routeStartMs - mapDoneAt in 0..FOLLOWS_MS",
@@ -3543,7 +3552,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt": {
-      "blob": "2fb7c92f089c6cdcf97348ab5594a4f49ed17344",
+      "blob": "fc4163c0541a5f4cbadaca18f7f4933e0c5a11e6",
       "perf": [
         "const val ESTIMATED_REGION_BYTES = 9L * 1_048_576",
         "/** Total size: known sizes, [ESTIMATED_REGION_BYTES] for the rest. */",
