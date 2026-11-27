@@ -37,7 +37,7 @@ class MapWaits(
             Problems.warn("cells", "Wait window not updated; it shows its last picture", e)
             return last
         }
-        if (ui == null) { end(w); return null }
+        if (ui == null) { end(w, now); return null }
         last = ui
         return ui
     }
@@ -52,7 +52,8 @@ class MapWaits(
     /** Cancel / Close: the wait is over without teaching anything. */
     fun drop() { wait = null; key = null; last = null; hiddenAt = -1L }
 
-    private fun end(w: MapWait) {
+    private fun end(w: MapWait, now: Long) {
+        com.onpath.app.ui.progress.WaitChain.mapDoneAt = now // the route's window may follow („Karte geladen ✓“)
         if (w.learnable) try { learn(w.durations()) } catch (e: Exception) {
             Problems.warn("cells", "Wait window step times not learned", e)
         }

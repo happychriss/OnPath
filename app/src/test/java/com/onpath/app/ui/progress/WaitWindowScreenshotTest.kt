@@ -107,7 +107,7 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
 
     private val routeUi: RouteWaitUi get() {
         val names = listOf("Algund → Stopp 2", "Stopp 2 → Leiter Alm", "Leiter Alm → Vellau", "Vellau → Meran")
-        return RouteWaitUi(55, WaitSteps.of(names.map { it to null } + (Txt.s(Res.string.wait_step_check) to null), 2), 10)
+        return RouteWaitUi(55, WaitSteps.of(names.map { it to null } + (Txt.s(Res.string.wait_step_check) to null), 2), 10, elapsedS = 42)
     }
 
     /** Never more than 3 rows: the window moves along the legs. */

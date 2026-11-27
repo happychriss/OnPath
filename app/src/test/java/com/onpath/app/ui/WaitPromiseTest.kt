@@ -10,6 +10,8 @@ import com.onpath.app.ui.progress.RouteWait
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Test
 
 /**
@@ -43,7 +45,8 @@ class WaitPromiseTest {
         for (i in 1 until shown.size) assertTrue("never back: $shown", shown[i] >= shown[i - 1])
         assertStandsAtMost("route window, long check", shown.take(120), 30)
         assertTrue(shown.all { it <= 99 })
-        assertEquals("taking a bit longer…", uis[200].window.line)
+        assertEquals("the window shows how long it runs, no number (owner 2026-11-27)", "running for 3:20", uis[200].window.line)
+        assertEquals(false, uis[200].window.bar)
     }
 
     /**
@@ -53,14 +56,14 @@ class WaitPromiseTest {
     @Test fun routeWindow_aLegWithoutAnyProgressPromisesNoTime() {
         val rw = RouteWait(ProgressMemory.InMemory())
         val lines = (0 until 600).map { t -> rw.update(true, 0 to 1, null, null, t * 1000L, gen = 1)!!.window.line }.toSet()
-        assertTrue("no time is promised: $lines", lines.all { it == null || it == "taking a bit longer…" })
+        assertTrue("no time is promised: $lines", lines.all { it?.startsWith("running for ") == true })
     }
 
     /** A quick first leg, then a long one the router reports nothing of: no „10 seconds“ counting up or down – no time. */
     @Test fun routeWindow_aLongLegAfterAQuickOneWithoutProgressPromisesNoTime() {
         val rw = RouteWait(ProgressMemory.InMemory())
         val lines = (0 until 300).map { t -> rw.update(true, (if (t < 3) 0 else 1) to 2, null, null, t * 1000L, gen = 1)!!.window.line }.toSet()
-        assertTrue("no time is promised: $lines", lines.all { it == null || it == "taking a bit longer…" })
+        assertTrue("no time is promised: $lines", lines.all { it?.startsWith("running for ") == true })
     }
 
     /** The router reported 30 % in 10 s and then nothing for minutes: the time left never counts down while nothing happens. */
@@ -166,5 +169,29 @@ class WaitPromiseTest {
             run = if (shown[i] == shown[i - 1] && shown[i] < 99) run + 1 else 0
             assertTrue("$what: ${shown[i]} % stands for more than $maxS s (second $i): $shown", run <= maxS)
         }
+    }
+
+    /**
+     * Owner's Pixel 2026-11-27 (Hilden → München): the map window ended, the route's opened at 0, its time limit asked
+     * „Weiter warten?“ and a third window began at 6 %. Now: „Karte geladen ✓“ first, and a second try within a minute
+     * goes on with the same time.
+     */
+    @Test fun routeWindow_followsTheMapAndASecondTryGoesOn() {
+        com.onpath.app.ui.progress.WaitChain.mapDoneAt = 100_000L
+        val rw = RouteWait(ProgressMemory.InMemory())
+        val first = rw.update(true, 0 to 1, null, null, 101_000L, gen = 1)!!
+        assertTrue("the map was just loaded", first.afterMap)
+        assertEquals("Map loaded", first.window.steps.first().label)
+        val at45 = rw.update(true, 0 to 1, null, null, 146_000L, gen = 1)!!
+        assertEquals("running for 0:45", at45.window.line)
+        assertNull(rw.update(false, null, null, null, 147_000L, gen = 1)) // the time limit: the run ends, the question asks
+        val again = rw.update(true, 0 to 1, null, null, 157_000L, gen = 2)!!
+        assertEquals("one wait: the time goes on", "running for 0:56", again.window.line)
+        assertTrue(again.afterMap)
+        assertNull(rw.update(false, null, null, null, 160_000L, gen = 2))
+        val later = rw.update(true, 0 to 1, null, null, 400_000L, gen = 3)!!
+        assertEquals("a later route is a new wait", "running for 0:00", later.window.line)
+        assertFalse(later.afterMap)
+        com.onpath.app.ui.progress.WaitChain.mapDoneAt = -1L
     }
 }

@@ -191,7 +191,8 @@ class PercentStallTest {
         val shown = uis.map { it.percent }
         assertMovesOn("route window", shown, maxS = 15)
         assertTrue("a leg that overruns borrows slowly from the rest: ${shown.last()}", shown.last() < 70)
-        assertEquals("taking a bit longer…", uis.last().window.line)
+        assertTrue("it says it takes longer (inside)", uis.last().late)
+        assertEquals("the window shows how long it runs, no number (owner 2026-11-27)", "running for 1:04", uis.last().window.line)
     }
 
     /** Every leg routed; the times, warnings and the reach search follow: „prüfen“ is its own step – no bar standing full. */
