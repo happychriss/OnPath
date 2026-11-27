@@ -417,6 +417,27 @@ async function run(lang, viewport, shotPrefix) {
   await page.waitForSelector('dialog.daysbox[open]');
   check(await page.evaluate(() => document.activeElement?.id) === 'dbAscent', 'the ascent chip opens the days box at the ascent');
   await page.click('#dbBack');
+  // a short day limit, then another activity: the days follow the limits (owner 2026-11-27: Hilden → München on foot
+  // 40 days, on the bike still 40 – PlanDays.followLimits); back on foot they come back
+  await page.click('#toHours');
+  await page.waitForSelector('dialog.daysbox[open]');
+  await page.fill('#dbHours', '0.25'); await page.waitForTimeout(800);
+  await page.click('#dbDone');
+  await page.waitForTimeout(1500);
+  await waitView(() => (window.__days.lastView?.days ?? 0) > 2, 'days for 15 min a day');
+  const footDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
+  await page.click('#activityChip'); await page.click('#activityMenu [data-act=BIKE_TOURING]');
+  await page.waitForFunction((n) => (window.__days.lastView?.days ?? n) < n, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for fewer days on the bike'));
+  const bikeDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
+  check(bikeDays < footDays, `another activity: the days follow the limits (on foot ${footDays}, by bike ${bikeDays})`);
+  await page.click('#activityChip'); await page.click('#activityMenu [data-act=HIKE]');
+  await page.waitForFunction((n) => (window.__days.lastView?.days ?? 0) === n, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for the foot days again'));
+  check(await page.evaluate(() => window.__days.lastView?.days) === footDays, `back on foot: ${footDays} days again`);
+  await page.click('#toHours');
+  await page.waitForSelector('dialog.daysbox[open]');
+  await page.fill('#dbHours', '6'); await page.waitForTimeout(800);
+  await page.click('#dbDone');
+  await page.waitForTimeout(1500);
   await page.click('#toDays');
   await page.waitForSelector('dialog.daysbox[open]');
   for (let k = 0; k < 6 && !/^4\b/.test(await page.textContent('#dbN')); k++) { await page.click(/^[123]\b/.test(await page.textContent('#dbN')) ? '#dbPlus' : '#dbMinus'); await page.waitForTimeout(200); }

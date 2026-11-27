@@ -40,6 +40,8 @@ export interface DaysHost {
   namesText(): string;
   activity(): Activity;
   sac(): number;
+  /** What makes the route's times: activity, T level, pace, marked trails – one string (a change re-splits the days). */
+  profile(): string;
   title(): string | null;
   setTitle(title: string | null): void;
   tour(): Tour | null;
@@ -115,6 +117,8 @@ export class MultiDay {
   /** My routes opened a saved route: append it instead of opening it (once). */
   takeAppend(): boolean { const a = this.appendSaved && this.guideOpen && this.h.points().length >= 2; this.appendSaved = false; return a; }
   get lastView(): DaysView | null { return this.view; }
+  /** The profile the shown days were worked out for (activity, T level, pace, marked trails); '' = none yet. */
+  private profileSeen = '';
 
   // ---- engine calls ----
 
@@ -247,8 +251,16 @@ export class MultiDay {
   render() {
     this.renderGuide();
     const tour = this.h.tour(), plan = this.h.routedPlan();
-    if (!tour || !plan) { this.box.hidden = true; this.clearSymbols(); this.view = null; this.viewFor = ''; this.borders(); if (!tour) this.select(null); return; }
-    const key = enc(this.h.points()) + '|' + tourText(tour) + '|' + this.h.activity() + this.h.sac() + '|' + this.h.namesText() + '|' + plan.distanceM;
+    if (!tour || !plan) { this.box.hidden = true; this.clearSymbols(); this.view = null; this.viewFor = ''; this.borders(); if (!tour) { this.select(null); this.profileSeen = ''; } return; }
+    // the activity, T level, pace or marked trails changed (the new route is there): with day limits the number of days
+    // follows them (owner 2026-11-27: Hilden → München on foot 40 days, on the bike still 40 – PlanDays.followLimits)
+    const profile = this.h.profile();
+    if (this.profileSeen && profile !== this.profileSeen) {
+      this.profileSeen = profile;
+      void this.rule('followLimits').then((p) => (p ? this.take(p) : undefined), (e) => console.warn('[Problems] WARN days: the days did not follow the limits', e));
+    }
+    this.profileSeen = profile;
+    const key = enc(this.h.points()) + '|' + tourText(tour) + '|' + profile + '|' + this.h.namesText() + '|' + plan.distanceM;
     if (key === this.viewFor && this.view) { this.box.hidden = false; return; }
     const my = ++this.viewAsk;
     // the day ends are named after the places nearby (the planner's place index of the map areas along the route)
