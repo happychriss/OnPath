@@ -71,7 +71,7 @@ await page.waitForTimeout(200);
 const c1 = await cursorNow();
 const label1 = await page.locator('#bigProfile .proflabel').textContent();
 tcheck(c1 && c1.at && c1.m > 0, `bottom profile: pointer → cursor on the route (${JSON.stringify(c1)})`);
-tcheck(/\d+ m · .+ · -?\d+ %/.test(label1 ?? '') && await page.locator('#bigProfile .proflabel').isVisible(), `bottom profile label "${label1}"`);
+tcheck(/^[\d.,]+\s?k?m · .+ · ↑ \d+\s?m · -?\d+ %$/.test(label1 ?? '') && await page.locator('#bigProfile .proflabel').isVisible(), `bottom profile label "${label1}"`);
 // the dot is a DOM marker on the map (no map redraw per move – 3D + big profile were slow, owner 2026-11-06)
 const dot = () => page.evaluate(() => { const d = document.querySelector('.profdot'); return !!d && !d.hidden && d.getBoundingClientRect().width > 0; });
 tcheck(await dot(), 'the dot on the map follows the profile');

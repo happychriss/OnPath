@@ -199,10 +199,11 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="searchbox"></div>
   <span class="barsep" aria-hidden="true"></span>
   <div id="toolbar" class="toolbar" role="toolbar" aria-label="${escapeHtml(t('web_map_tools'))}">
-    <button id="eye" class="tool" aria-label="${escapeHtml(t('plan_hold_hide_route'))}" title="${escapeHtml(t('plan_hold_hide_route'))}" disabled>${icon('eye')}</button>
+    <!-- the app's one order (MapFooter, owner 2026-11-26 Daumen-Karte): compass · locate · whole route · eye -->
     <button id="compass" class="tool"></button>
     <button id="locate" class="tool"></button>
     <button id="fitRoute" class="tool" aria-label="${escapeHtml(t('web_fit_route'))}" disabled>${icon('fitScreen')}</button>
+    <button id="eye" class="tool" aria-label="${escapeHtml(t('plan_hold_hide_route'))}" title="${escapeHtml(t('plan_hold_hide_route'))}" disabled>${icon('eye')}</button>
     <button id="terrain3d" class="tool three" aria-pressed="false" disabled>${escapeHtml(t('web_terrain_3d'))}</button>
     <span class="sep"></span>
     <button id="mapContent" class="tool wide" aria-haspopup="dialog" title="${escapeHtml(t('web_map_content_title'))}">${icon('layers')}<span>${escapeHtml(t('web_map_content'))}</span>${icon('dropDown', 18)}</button>

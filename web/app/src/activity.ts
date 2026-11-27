@@ -20,10 +20,11 @@ export interface PaceHost {
 }
 
 const SAC_KEYS = [
-  ['routes_sac_1_name', 'routes_sac_1_text'], ['routes_sac_2_name', 'routes_sac_2_text'], ['routes_sac_3_name', 'routes_sac_3_text'],
-  ['routes_sac_4_name', 'routes_sac_4_text'], ['routes_sac_5_name', 'routes_sac_5_text'],
+  ['routes_sac_1_name', 'routes_sac_1_text', 'routes_sac_1_short'], ['routes_sac_2_name', 'routes_sac_2_text', 'routes_sac_2_short'],
+  ['routes_sac_3_name', 'routes_sac_3_text', 'routes_sac_3_short'], ['routes_sac_4_name', 'routes_sac_4_text', 'routes_sac_4_short'],
+  ['routes_sac_5_name', 'routes_sac_5_text', 'routes_sac_5_short'],
 ];
-const SAC = SAC_KEYS.map(([n, d]) => [t(n), t(d)]);
+const SAC = SAC_KEYS.map(([n, d, s]) => [t(n), t(d), t(s)]);
 
 /**
  * A drop-down anchored to the activity chip (owner 2026-10-28: no dialog, no Done): a click on an activity picks it and
@@ -162,14 +163,12 @@ export class ActivityPicker {
       const row = `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}">
           ${activityIcon(r.key)}<span class="txt"><b>${esc(r.label)}</b><span class="muted small">${esc(r.line)}</span></span></button>`;
       if (r.key !== 'HIKE') return row;
-      const [name, text] = SAC[this.sac - 1];
-      return row + `<div id="sacRow" class="sacrow">
-          <div class="seg" role="group" aria-label="${esc(t('routes_sac_title'))}">${[1, 2, 3, 4, 5].map((n) => {
-            const [name, text] = SAC[n - 1];
+      // five rows „Bergwandern (T2)“ over one short line, read BEFORE the click (the app's SacChips, owner 2026-11-26 night)
+      return row + `<div id="sacRow" class="sacrow" role="group" aria-label="${esc(t('routes_sac_title'))}">${[1, 2, 3, 4, 5].map((n) => {
+            const [name, text, short] = SAC[n - 1];
             const sel = this.act === 'HIKE' && n === this.sac;
-            return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="${sel ? 'on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}">T${n}</button>`;
-          }).join('')}</div>
-          <div class="muted small sacline">${esc(t('routes_sac_line', this.sac, name, text))}</div></div>`;
+            return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="sacpick${sel ? ' on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}"><b>${esc(t('routes_sac_row', name, n))}</b><span class="muted small">${esc(short)}</span></button>`;
+          }).join('')}</div>`;
     }).join('') + (this.levelPicked ? `<div class="actdone"><button id="actDone" class="textbtn">${esc(t('common_done'))}</button></div>` : '');
   }
 }

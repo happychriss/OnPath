@@ -283,9 +283,13 @@ dialog.share #exportGpx { margin-top: 8px; }
 .actmenu > button b { color: var(--fg); font-weight: 500; font-size: 15px; }
 .actmenu > button:hover { background: var(--surface2); }
 .actmenu > button.on { background: var(--green-light); } .actmenu > button.on b { font-weight: 700; } .actmenu > button.on .ic { color: var(--green-fg); }
-.sacrow { padding: 0 10px 8px 48px; }
-.sacrow .seg { margin: 4px 0 6px; }
-.sacrow .seg button { padding: 6px 0; }
+.sacrow { padding: 0 10px 8px 48px; display: flex; flex-direction: column; gap: 2px; }
+/* five rows „Bergwandern (T2)“ over a short line (the app's SacChips, owner 2026-11-26 night) */
+.sacrow .sacpick { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; min-height: 48px; padding: 6px 12px;
+  border: none; border-radius: 8px; background: none; text-align: left; cursor: pointer; }
+.sacrow .sacpick:hover { background: rgba(0, 0, 0, .05); }
+.sacrow .sacpick.on { background: var(--green-light); } .sacrow .sacpick.on b { font-weight: 700; }
+.sacrow .sacpick b { font-weight: 500; }
 /* the pace section (the app's Settings → Pace) under the activities: a setting, the list stays open */
 .pacerow { border-top: 1px solid var(--line); margin-top: 4px; padding: 8px 10px 6px; display: flex; flex-direction: column; gap: 4px; }
 .pacerow .pacehead b { font-weight: 600; font-size: 14px; }

@@ -9,8 +9,10 @@ import { t, number, distance } from './i18n';
 export type Profile = NonNullable<PlanResult['profile']>;
 /** The route's colour (OnPathColors.Route): the profile's fill and the line where it is flatter than 5 %. */
 export const ROUTE_COLOUR = '#1E3FAE';
-/** The line's colours per gradient class – the app's steepColor: < 5 % the route colour, then amber, orange, red. */
-export const STEEP_COLOURS = [ROUTE_COLOUR, '#F2B33D', '#EF7C1A', '#D32F2F']; // flat, moderate, steep, very steep
+/** The line's colours per gradient class – the app's steepColor, one green in steps (owner 2026-11-26, variant A – was
+ *  route blue / amber / orange / red): OnPathColors.ProfileFlat, ProfileModerate, ProfileSteep, ProfileVerySteep. The
+ *  gradient profile's fill is the flat green too (ElevationProfile). */
+export const STEEP_COLOURS = ['#8DBF9E', '#5A9C74', '#2F7A52', '#17492F']; // flat, moderate, steep, very steep
 
 /**
  * The app's ProfileFill (owner 2026-11-06, polish 8; variant A for the planner, owner 2026-11-12): the fill is
@@ -67,8 +69,9 @@ let gradIds = 0;
  * in the same colour (layered, so it shades without seams), and on top the thin line – with [gradient] coloured by
  * steepness (STEEP_COLOURS), else in [colour].
  */
-function drawing(p: Profile, W: number, H: number, colour: string, gradient: boolean): string {
+function drawing(p: Profile, W: number, H: number, colourIn: string, gradient: boolean): string {
   const { dist: d, ele, steep } = p;
+  const colour = gradient ? STEEP_COLOURS[0] : colourIn; // the gradient profile is one green in steps (app 2026-11-26)
   const total = d[d.length - 1] || 1;
   const lo = Math.min(...ele), hi = Math.max(...ele);
   const range = Math.max(hi - lo, 20), minE = lo - range * 0.08, maxE = hi + range * 0.08;
@@ -137,6 +140,13 @@ export function profileSvg(p: Profile, W = 300, H = 90, extra = '', inPlot = '',
     <div class="axis muted"><span>0</span><span>${number(total / 1000, 1)} km</span></div>`;
 }
 
+/** Metres climbed from the profile's start up to point [i], only the ups (the app's ProfileScrub.ascentTo). */
+export function ascentTo(p: Profile, i: number): number {
+  let up = 0;
+  for (let k = 1; k <= Math.min(Math.max(0, i), p.ele.length - 1); k++) { const dh = p.ele[k] - p.ele[k - 1]; if (dh > 0) up += dh; }
+  return up;
+}
+
 /** The gradient in % around kept point [i] over about 100 m (the window RouteSummary.steepness uses). */
 export function gradeAt(p: Profile, i: number): number {
   const { dist: d, ele } = p;
@@ -181,7 +191,8 @@ export function mountProfile(host: HTMLElement, p: Profile, onCursor: (m: number
     const i = indexAt(p, m);
     const f = Math.min(1, Math.max(0, p.dist[i] / total));
     line.style.left = `${(f * 100).toFixed(2)}%`;
-    label.textContent = `${Math.round(p.ele[i])} m · ${distance(p.dist[i])} · ${number(gradeAt(p, i), 0)} %`;
+    // "1,2 km · noch 3,4 km · ↑ 200 m · 8 %" (the app's ProfileScrub, owner 2026-11-26)
+    label.textContent = `${distance(p.dist[i])} · ${t('profile_scrub_left', distance(Math.max(0, total - p.dist[i])))} · ↑ ${Math.round(ascentTo(p, i))} m · ${number(gradeAt(p, i), 0)} %`;
     // the label beside the line, on the side with room
     label.style.left = f < 0.6 ? `calc(${(f * 100).toFixed(2)}% + 6px)` : '';
     label.style.right = f < 0.6 ? '' : `calc(${((1 - f) * 100).toFixed(2)}% + 6px)`;
