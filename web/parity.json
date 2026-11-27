@@ -535,7 +535,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "94d9a558427f78c463ed20fd1d52ad3fbc7ec2f9"
+      "blob": "d31a32a7607bba2ccf2abb84df829bc871f759ce"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanGuidance.kt",
@@ -1863,6 +1863,10 @@
         "nowElapsed - lastNetElapsed > NET_FRESH_MS || lastNetAccuracyM * 2 > gpsAccuracyM"
       ]
     },
+    "core/src/main/kotlin/com/onpath/app/recording/GapSplit.kt": {
+      "blob": "9d8e1594bf96504a0cf6caeb3aec5b9a7ceb2898",
+      "perf": []
+    },
     "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt": {
       "blob": "cdb0c3c4cfb30c02ee3b8953ef5b7f63760a6c75",
       "perf": []
@@ -1914,7 +1918,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/recording/PointFilter.kt": {
-      "blob": "364a83387811619a270573281cccf7e94ac78911",
+      "blob": "27266dbe9980254c956aa38b70fb3627e26e24bf",
       "perf": [
         "* - Fixes worse than [MAX_ACCURACY_M] are dropped. 50 m keeps the track whole in gorges and under forest, where",
         "* - An impossible speed since the previous point ([MAX_SPEED_MS]) is a GPS jump: dropped.",
@@ -1939,7 +1943,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/recording/RecState.kt": {
-      "blob": "7e391f2df8ce1f3052a266aea0591f50ef6ae86a",
+      "blob": "bc22d1567bdb1b3e1e2c101ea3a5495427f5a22f",
       "perf": [
         "* for less than [com.onpath.app.navigation.VoiceGuide.GPS_LOST_MS] – the warning comes with the spoken one."
       ]
@@ -1953,15 +1957,17 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/recording/RestWatch.kt": {
-      "blob": "e8a5359273ec6d63bd0555f55f962135f14044f1",
+      "blob": "67f4261309b9fec0b56033957133ecc7895100c8",
       "perf": [
         "* - Resting: all good fixes (≤ [REST_MAX_ACCURACY_M]) for [REST_AFTER_MS] stayed within [STILL_M] of the first one, none",
         "*   reported a speed above [STILL_SPEED_MS], and there was no gap longer than [MAX_GAP_MS] between them. So never while",
         "* - Moving again at once: the first fix more than [WAKE_M] from the rest point or faster than [WAKE_SPEED_MS] – also a",
+        "*   lying in a moving car or train); [SENSOR_REST_AFTER_MS] still by the sensor rests without good fixes ([onTick]); the sensor saying",
         "*   leer“): resting and still by the sensor for [OFF_AFTER_MS] without a break → [Change.OFF]; the sensor saying moving",
         "const val NORMAL_MS = 1_000L",
         "const val REST_MS = 10_000L",
         "const val REST_AFTER_MS = 60_000L",
+        "const val SENSOR_REST_AFTER_MS = 30_000L",
         "const val STILL_SPEED_MS = 0.5f",
         "const val MAX_GAP_MS = 15_000L",
         "const val WAKE_SPEED_MS = 0.7f",
@@ -1969,7 +1975,7 @@
         "fun lostAfterMs(resting: Boolean): Long = if (resting) REST_MS * 2 + 5_000L else 8_000L",
         "/** GPS switched off: still by the sensor for [OFF_AFTER_MS] ([resting] stays true). */",
         "val intervalMs: Long get() = if (resting) REST_MS else NORMAL_MS",
-        "if (!resting && nowMs - since >= REST_AFTER_MS) { resting = true; anchorLat = Double.NaN; return Change.REST }",
+        "if (!resting && nowMs - since >= SENSOR_REST_AFTER_MS) { resting = true; anchorLat = Double.NaN; return Change.REST }",
         "if (resting && !off && nowMs - since >= OFF_AFTER_MS) { off = true; return Change.OFF }",
         "val gap = lastMs != Long.MIN_VALUE && timeMs - lastMs > MAX_GAP_MS",
         "if (anchorLat.isNaN() && good && (speedMs == null || speedMs <= WAKE_SPEED_MS)) { anchor(timeMs, lat, lon); return null }",
@@ -1985,6 +1991,10 @@
         "const val SETTLE_MS = 15_000L",
         "if (sinceFirstFixMs < SETTLE_MS) return null"
       ]
+    },
+    "core/src/main/kotlin/com/onpath/app/recording/StillDot.kt": {
+      "blob": "d3bd8dfedd0ac96d6618159eb7cbf74834c9475a",
+      "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/recording/StopQuiet.kt": {
       "blob": "9b07c2d27fc5e674c0301c873019105b7aa143ac",
