@@ -711,8 +711,8 @@ class ScreenshotTest {
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
     /**
-     * The empty plan during a tour (owner 2026-11-12, "Tour läuft noch – neues Ziel festlegen"): the title "● Tour läuft
-     * noch", the row "Neues Ziel festlegen ›" (search or hold → Hierhin) and "Weiter geht's" back to the tour.
+     * The empty plan during a tour – only when Planen is tapped in a tour without a route: emptying the plan itself goes
+     * back to Navigate (owner 2026-11-27, no „Tour läuft noch“ sheet any more); "Weiter geht's" back to the tour.
      */
     @Test fun planEmptyDuringTour() = paparazzi.snapshot {
         Frame(editing = true, route = false) {

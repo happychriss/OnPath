@@ -215,8 +215,8 @@ class CoreFieldE2ETest : E2EBase() {
         pause(1_500, "the camera follows after the delete")
         scenario.onActivity { vm(it).planEdit.deletePointFromList(0) }
         waitUntil("plan empty", 10_000) { waypointCount() == 0 }
-        scenario.onActivity { vm(it).tourSession.continueNavigation() }
-        waitUntil("Navigate again", 10_000) { mode() == AppMode.NAVIGATE }
+        // owner 2026-11-27: no „Tour läuft noch“ sheet – the emptied plan goes back to Navigate by itself
+        waitUntil("Navigate again, by itself", 10_000) { mode() == AppMode.NAVIGATE }
         waitUntil("no route followed any more", 15_000) { !guided() }
         assertTrue("the recording goes on", recording())
         scenario.onActivity { vm(it).tourSession.switchToPlan() }
@@ -982,8 +982,12 @@ class CoreFieldE2ETest : E2EBase() {
             val changed = waypointList()
             scenario.onActivity { vm(it).planEdit.clearPlan() }
             waitUntil("cleared at once, no question", 5_000) { waypointCount() == 0 }
+            // owner 2026-11-27: back to Navigate without a route, no „Tour läuft noch“ sheet
+            waitUntil("Navigate without a route", 5_000) { mode() == AppMode.NAVIGATE }
             assertTrue("the recording goes on", recording())
             waitUntil("the changed plan under Zuletzt", 10_000) { draftOf(changed) != null }
+            scenario.onActivity { vm(it).tourSession.switchToPlan() }
+            waitUntil("Planen: one tap", 5_000) { mode() == AppMode.PLAN }
             scenario.onActivity { vm(it).planEdit.undoStep() }
             waitUntil("Undo: the plan is back", 10_000) { waypointCount() == 3 }
         } finally {

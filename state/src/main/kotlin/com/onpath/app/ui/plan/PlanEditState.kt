@@ -79,6 +79,11 @@ interface PlanEditPorts {
     fun clearFollow()
     /** The route guidance ended by an empty plan (Undo brings it back). */
     fun guidanceEndedByEmptyPlan()
+    /**
+     * The user emptied the plan during a tour (owner 2026-11-27, no „Tour läuft noch“ sheet any more): back to Navigate
+     * without a route – time and distance only, „Planen“ one tap away. The recording never stops.
+     */
+    fun planEmptiedDuringTour() {}
 
     // ---- search
     /** Name of a route point added from a place, or null. */
@@ -158,7 +163,12 @@ open class PlanEditState(
         host.endGuidanceIfPlanEmpty()
         runCauses.pointEdit()
         host.recalc()
+        // the last points deleted during a tour: back to Navigate (owner 2026-11-27); Clear does it once it is done
+        if (!clearing && before.isNotEmpty() && waypoints.isEmpty() && host.touring()) host.planEmptiedDuringTour()
     }
+
+    /** [clearPlan] runs: its own [change] does not go to Navigate before the clear is finished. */
+    private var clearing = false
 
     /**
      * "Ganz neu berechnen" (docs/design/detour-stitch.md §2): the plan's detours and cut points all go in one undoable step and
@@ -327,7 +337,8 @@ open class PlanEditState(
         host.keepAsDraft("cleared")
         Problems.trace("plan", "Clear route: plan ${waypoints.size} → 0 points" + if (host.touring()) " (tour running)" else "")
         val planLine = host.routeLine()
-        if (waypoints.isNotEmpty()) change { clear() } else host.recalc()
+        clearing = true
+        try { if (waypoints.isNotEmpty()) change { clear() } else host.recalc() } finally { clearing = false }
         host.closePointMenu("plan cleared"); host.clearFirstPointMenu(); host.clearHoldAddMenu(); host.clearHighlight()
         host.removePin("plan cleared")
         // the empty sheet says how to start a plan: not rolled up
@@ -345,6 +356,8 @@ open class PlanEditState(
             host.clearFollow()
             host.guidanceEndedByEmptyPlan()
         }
+        // during a tour no empty sheet (owner 2026-11-27): back to Navigate without a route, the recording goes on
+        if (host.touring()) host.planEmptiedDuringTour()
     }
 
     /**

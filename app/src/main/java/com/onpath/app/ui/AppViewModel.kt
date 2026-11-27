@@ -645,6 +645,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun endGuidanceIfPlanEmpty() = tourEdits.endGuidanceIfPlanEmpty()
             override fun clearFollow() = this@AppViewModel.tourFollow.clearFollow()
             override fun guidanceEndedByEmptyPlan() { this@AppViewModel.tourFollow.guidanceEndedByEmptyPlan = true }
+            override fun planEmptiedDuringTour() = this@AppViewModel.tourSession.backToNavigateWithEmptyPlan()
             override fun stopName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override suspend fun pointNames(): com.onpath.app.ui.plan.PointNames {
                 val index = search.offlineIndex()
