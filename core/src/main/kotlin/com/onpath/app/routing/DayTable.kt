@@ -63,6 +63,9 @@ object DayTable {
     /** „↑ 1.783 m“. */
     fun up(m: Double): String = "↑ " + meters(m)
 
+    /** „↓ 1.321 m“ (the whole trip's line). */
+    fun down(m: Double): String = "↓ " + meters(m)
+
     private fun meters(m: Double): String = String.format(Format.locale(), "%,d m", Math.round(m.coerceAtLeast(0.0)))
 
     /** „4 h 10“ (the table's short time, rounded like every planned time), under an hour „45 min“. */

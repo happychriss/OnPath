@@ -312,9 +312,9 @@ export class MultiDay {
     const lim = tour.limits ?? { timeMin: null, ascentM: null };
     const num = (x: number) => x.toLocaleString(locale, { maximumFractionDigits: 1 });
     const chip = (id: string, text: string, cls = '') => `<button class="tochip${cls}" id="${id}">${text}</button>`;
-    this.box.innerHTML = `<div class="tochips"><span class="tolabel">${esc(t('web_days_planning'))}</span>${chip('toDays', `${esc(v.countText)} ${icon('edit', 14)}`)}${
-        lim.timeMin ? chip('toHours', esc(t('web_days_chip_hours', num(lim.timeMin / 60)))) : ''}${
-        lim.ascentM ? chip('toAscent', esc(t('web_days_chip_ascent', num(lim.ascentM)))) : ''}${
+    this.box.innerHTML = `<div class="tochips"><span class="tolabel">${esc(t('days_planning'))}</span>${chip('toDays', `${esc(v.countText)} ${icon('edit', 14)}`)}${
+        lim.timeMin ? chip('toHours', esc(t('days_chip_hours', num(lim.timeMin / 60)))) : ''}${
+        lim.ascentM ? chip('toAscent', esc(t('days_chip_ascent', num(lim.ascentM)))) : ''}${
         !lim.timeMin && !lim.ascentM ? chip('toLimit', esc(t('web_days_chip_add_limit')), ' add') : ''}</div>
       ${this.selected != null && v.rows[this.selected - 1] ? this.dayHtml(v, v.rows[this.selected - 1]) : this.tableHtml(v)}`;
     const b = (id: string) => this.box.querySelector<HTMLButtonElement>('#' + id);
@@ -379,7 +379,7 @@ export class MultiDay {
     const tourOn = document.body.classList.contains('tourpanel');
     this.profTitle.hidden = !tourOn;
     if (!tourOn) return;
-    this.profTitle.textContent = r ? t('web_profile_day', r.day) : t('web_profile_whole_trip');
+    this.profTitle.textContent = r ? t('days_profile_day', r.day) : t('days_profile_whole_trip');
     this.h.dayProfile(r ? [r.fromM, r.toM] : null);
   }
 
@@ -387,12 +387,12 @@ export class MultiDay {
   renderHead() {
     if (this.head0.hidden) return;
     const st = this.h.saveState();
-    const state = !st.everSaved ? t('web_days_not_saved') : st.unsaved ? t('web_days_changed') : t('web_saved_short');
+    const state = !st.everSaved ? t('days_not_saved') : st.unsaved ? t('days_changed') : t('web_saved_short');
     const whole = this.h.wholeTrip();
     this.head0.innerHTML = `<div class="thtop"><button class="toname" id="toName" title="${esc(t('days_box_title'))}">${esc(this.h.title() || t('days_multi_day_tour'))}</button>
         <button class="tosave" id="toSave" ${st.canSave ? '' : 'disabled'}>${icon('save', 18)}<span>${esc(t('common_save'))}</span></button></div>
       <div class="thstate muted small" id="toState">${esc(state)}</div>
-      ${whole ? `<div class="thwhole"><b>${esc(t('web_days_whole_trip'))}</b><span>${esc(whole)}</span></div>` : ''}`;
+      ${whole ? `<div class="thwhole"><b>${esc(t('days_whole_trip'))}</b><span>${esc(whole)}</span></div>` : ''}`;
     this.head0.querySelector<HTMLButtonElement>('#toName')!.onclick = () => { void this.daysBox(); };
     this.head0.querySelector<HTMLButtonElement>('#toSave')!.onclick = () => this.h.save();
   }
