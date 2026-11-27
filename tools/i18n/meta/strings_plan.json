@@ -760,6 +760,12 @@
     "priority": 2,
     "confidence": "sicher"
   },
+  "plan_search_goal": {
+    "area": "Plan card (only the start set)",
+    "context": "The search field in the plan card when only the start point is set; a tap opens the search for the destination.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
   "plan_search_hint": {
     "area": "Top bar",
     "context": "Search pill at the top of the map (Plan)",

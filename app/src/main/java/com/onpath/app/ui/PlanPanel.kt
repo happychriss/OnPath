@@ -450,8 +450,8 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
 
 /**
  * The Daumen-Karte's top row (owner 2026-11-26, picture page B1): one fixed row in the thumb's reach. Empty plan: the
- * search field "Wohin soll’s gehen?" + ☰, under it the activity ("Wandern · T2") and "Meine Touren" as chips. With a
- * plan: the activity, the facts (time · km · ↑ ↓; a tap on the time = Time details) + 🔍 (add a goal) + ☰.
+ * search field "Wohin soll’s gehen?" + ☰, under it the activity and "Meine Touren" as chips; only the start: [ThumbGoalRow].
+ * With a route: the activity, the facts (time · km · ↑ ↓; a tap on the time = Time details) + 🔍 (add a goal) + ☰.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -469,7 +469,7 @@ private fun ThumbHead(ui: PlanUi, cb: PlanCallbacks) {
         }
         return
     }
-    val route = ui.route
+    val route = ui.route; if (ui.pointCount == 1 && route == null) return ThumbGoalRow(ui.activity, ui.sac, cb.onActivity, cb.onSearch) { AppMenuButton(cb.menu, square = true) }
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         ThumbActivityChip(ui.activity, ui.sac, cb.onActivity, words = false)
         Spacer(Modifier.width(8.dp))
