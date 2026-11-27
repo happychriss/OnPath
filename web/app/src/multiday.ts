@@ -9,7 +9,7 @@ import type { Activity, Hit, PlanResult } from './engine/types';
 import type { MenuItem } from './menus';
 import { icon } from './icons';
 import { photonUrl } from './search';
-import { t, tp } from './i18n';
+import { t, tp, locale } from './i18n';
 import { tourText, type Tour } from './tourtext';
 import './multiday.css';
 
@@ -175,7 +175,7 @@ export class MultiDay {
   // ---- the days box ----
 
   /** „Weiter: Tage festlegen“ / „Als Mehrtagestour planen“ / the overview's name or limits: one box, everything under each other. */
-  async daysBox() {
+  async daysBox(focus?: 'days' | 'hours' | 'ascent') {
     if (document.querySelector('dialog.daysbox')) return;
     if (!this.h.routedPlan()) { this.h.status(t('plan_calculating')); return; }
     const now = this.h.tour();
@@ -190,6 +190,7 @@ export class MultiDay {
       <div class="dbrow"><span class="dblabel">${esc(t('days_days'))}</span><span class="stepper">
         <button id="dbMinus" class="iconbtn" aria-label="${esc(t('days_fewer'))}" title="${esc(t('days_fewer'))}">−</button><b id="dbN"></b>
         <button id="dbPlus" class="iconbtn" aria-label="${esc(t('days_more'))}" title="${esc(t('days_more'))}">+</button></span></div>
+      <div class="muted small" id="dbFewer" hidden>${esc(t('days_remove_first'))}</div>
       <div class="muted small" id="dbSuggest"></div>
       <div class="dbper" id="dbPer"></div>
       <div class="row end"><button id="dbBack">${esc(t('common_back'))}</button><button class="primary" id="dbDone">${esc(t('common_done'))}</button></div>`;
@@ -216,6 +217,7 @@ export class MultiDay {
       n = Math.max(1, nights + 1, Math.min(99, n));
       $('dbN').textContent = tp('days_count', n, n);
       $<HTMLButtonElement>('dbMinus').disabled = n <= Math.max(1, nights + 1);
+      $('dbFewer').hidden = !(nights > 0 && n <= nights + 1); // why fewer days are not possible (R5)
       const v = await this.days(tourOf());
       if (my !== ask || !v) return;
       $('dbSuggest').textContent = v.suggestedText ?? '';
@@ -236,6 +238,7 @@ export class MultiDay {
     };
     d.addEventListener('close', () => d.remove());
     d.showModal();
+    if (focus) $(focus === 'days' ? 'dbPlus' : focus === 'hours' ? 'dbHours' : 'dbAscent').focus();
     await show(false);
   }
 
@@ -262,22 +265,27 @@ export class MultiDay {
     this.box.hidden = !v || !tour;
     if (!v || !tour) return;
     if (this.selected != null && this.selected > v.rows.length) this.select(null);
-    this.box.innerHTML = `<div class="tohead"><button class="toname" id="toName" title="${esc(t('days_box_title'))}">${esc(this.h.title() || t('days_multi_day_tour'))}</button>
-        <span class="stepper"><button id="toMinus" class="iconbtn" ${v.canRemove ? '' : 'disabled'} aria-label="${esc(t('days_fewer'))}" title="${esc(v.canRemove ? t('days_fewer') : t('days_remove_first'))}">−</button>
-        <b id="toCount">${esc(v.countText)}</b>
-        <button id="toPlus" class="iconbtn" aria-label="${esc(t('days_more'))}" title="${esc(t('days_more'))}">+</button></span></div>
+    // the tour's settings as chips under its name (owner 2026-11-27, variant 2 – replacing the − N Tage + stepper and the
+    // grey limits line): each chip opens the days box at its field; no limit set → a dashed „+ Tageslimit“
+    const lim = tour.limits ?? { timeMin: null, ascentM: null };
+    const num = (x: number) => x.toLocaleString(locale, { maximumFractionDigits: 1 });
+    const chip = (id: string, text: string, cls = '') => `<button class="tochip${cls}" id="${id}">${text}</button>`;
+    this.box.innerHTML = `<div class="tohead"><button class="toname" id="toName" title="${esc(t('days_box_title'))}">${esc(this.h.title() || t('days_multi_day_tour'))}</button></div>
+      <div class="tochips">${chip('toDays', `${esc(v.countText)} ${icon('edit', 14)}`)}${
+        lim.timeMin ? chip('toHours', esc(t('web_days_chip_hours', num(lim.timeMin / 60)))) : ''}${
+        lim.ascentM ? chip('toAscent', esc(t('web_days_chip_ascent', num(lim.ascentM)))) : ''}${
+        !lim.timeMin && !lim.ascentM ? chip('toLimit', esc(t('web_days_chip_add_limit')), ' add') : ''}</div>
       <div class="tototals muted">${esc(v.totals)}</div>
-      ${v.limits ? `<button class="tolimits muted small" id="toLimits">${esc(v.limits)}</button>` : ''}
-      ${v.canRemove ? '' : `<div class="tohint muted small">${esc(t('days_remove_first'))}</div>`}
       <ol class="todays">${v.rows.map((r) => `<li><button class="today${r.over ? ' over' : ''}${this.selected === r.n ? ' sel' : ''}" data-day="${r.n}" aria-pressed="${this.selected === r.n}">
           <span class="txt"><span class="dl1"><b class="dn">${esc(r.day)}</b><span class="dv">${esc(r.stats)}</span></span>
           ${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}</span>
           ${r.kind ? endSymbol(r.kind, 22) : `<span class="daysym goal">${icon('flag', 14)}</span>`}</button></li>`).join('')}</ol>`;
     const b = (id: string) => this.box.querySelector<HTMLButtonElement>('#' + id);
     b('toName')!.onclick = () => { void this.daysBox(); };
-    if (b('toLimits')) b('toLimits')!.onclick = () => { void this.daysBox(); };
-    b('toMinus')!.onclick = async () => this.take(await this.rule('setDays', v.days - 1), t('days_remove_first'));
-    b('toPlus')!.onclick = async () => this.take(await this.rule('setDays', v.days + 1));
+    b('toDays')!.onclick = () => { void this.daysBox('days'); };
+    for (const [id, f] of [['toHours', 'hours'], ['toAscent', 'ascent'], ['toLimit', 'hours']] as const) {
+      const c = b(id); if (c) c.onclick = () => { void this.daysBox(f); };
+    }
     this.box.querySelectorAll<HTMLButtonElement>('.today').forEach((row) => {
       row.onclick = () => { const n = Number(row.dataset.day); this.select(this.selected === n ? null : n, true); };
       // a mouse click does not leave the focus on the row: the space bar (the map's keys) must not click it again and

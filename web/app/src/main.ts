@@ -196,6 +196,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="stage">
   <div id="map"></div>
   <div id="topbar" class="topbar">
+  <div id="runbar" class="runbar" role="progressbar" aria-label="${escapeHtml(t('plan_calculating'))}" hidden><i></i></div>
   <div id="searchbox"></div>
   <span class="barsep" aria-hidden="true"></span>
   <div id="toolbar" class="toolbar" role="toolbar" aria-label="${escapeHtml(t('web_map_tools'))}">
@@ -1641,8 +1642,22 @@ async function restoreDraft() {
 function setPlanning(on: boolean, routed = false) {
   state.planning = on;
   document.body.dataset.planning = on ? '1' : '';
+  planBar(on);
   if (!on) { linkOpened(); overlay.finish('route'); overlay.plan(null, undefined, routed); } // [routed]: only a route that came ends the wait at 100 %
   sheetWait();
+}
+/**
+ * „Der Planer rechnet“ even for a short run (owner 2026-11-27, variant A – the usual Google Maps / Komoot sign): a thin
+ * running bar under the search / tool row and the route faded, both only after [PLAN_BAR_MS] so a quick run does not
+ * flicker; the long run's wait box shows alone (one wait at a time: style.css hides the bar (.runbar) under body[data-wait="box"]).
+ */
+const PLAN_BAR_MS = Number(params.get('barMs') ?? 300); // ?barMs=0: the browser tests' quick runs show it too
+let planBarTimer = 0;
+function planBar(on: boolean) {
+  clearTimeout(planBarTimer); planBarTimer = 0;
+  const show = (yes: boolean) => { $('runbar').hidden = !yes; routeProfile.setBusy(yes); };
+  if (!on) { show(false); return; }
+  planBarTimer = window.setTimeout(() => { planBarTimer = 0; if (state.planning) show(true); }, PLAN_BAR_MS);
 }
 /** The sheet's wait line („Calculating the route…“) wants to show while a plan runs (onewait.ts decides whether it does). */
 function sheetWait() {

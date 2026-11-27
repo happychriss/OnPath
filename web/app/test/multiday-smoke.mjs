@@ -31,6 +31,16 @@ async function run(lang, viewport, shotPrefix) {
   const pins = () => page.evaluate(() => document.querySelectorAll('.pin').length);
   const view = () => page.evaluate(() => { const v = window.__days.lastView; return v ? { days: v.days, ends: v.ends.map((e) => e.kind), canRemove: v.canRemove } : null; });
   const waitView = (f, what) => page.waitForFunction(f, null, { timeout: 60_000 }).catch(() => check(false, 'waited for ' + what));
+  /** One day more / fewer through the „N Tage ✎“ chip's days box ([btn] = #dbPlus / #dbMinus), then Fertig. */
+  const daysStep = async (btn) => {
+    await page.click('#toDays');
+    await page.waitForSelector('dialog.daysbox[open]');
+    const before = await page.textContent('#dbN');
+    await page.click(btn);
+    await page.waitForFunction((b) => document.getElementById('dbN')?.textContent !== b, before, { timeout: 10_000 }).catch(() => {});
+    await page.click('#dbDone');
+    await page.waitForFunction(() => !document.querySelector('dialog.daysbox'), null, { timeout: 10_000 }).catch(() => {});
+  };
   const clickLngLat = async (lon, lat) => {
     const p = await page.evaluate(([lo, la]) => { const r = window.__map.getCanvas().getBoundingClientRect();
       const q = window.__map.project([lo, la]); return [q.x + r.left, q.y + r.top]; }, [lon, lat]);
@@ -39,7 +49,14 @@ async function run(lang, viewport, shotPrefix) {
   const menuItem = async (label) => { await page.waitForSelector('.holdpopup .pointmenu', { timeout: 10_000 });
     await page.locator('.holdpopup .pointmenu button', { hasText: label }).first().click(); };
 
-  await page.goto(url + `index.html?lang=${lang}&waitMs=0`);
+  await page.goto(url + `index.html?lang=${lang}&waitMs=0&barMs=0`); // barMs=0: the run bar at once (the runs here are quick)
+  // the plan run's bar (owner 2026-11-27 variant A): record whether it ever shows and the route's opacity while it does
+  await page.evaluate(() => {
+    const w = window; w.__planBar = { shown: 0, faded: null };
+    const bar = document.getElementById('runbar');
+    new MutationObserver(() => { if (!bar.hidden) { w.__planBar.shown++; w.__planBar.faded = w.__map?.getPaintProperty('planned-route', 'line-opacity') ?? null; } })
+      .observe(bar, { attributes: true, attributeFilter: ['hidden'] });
+  });
   await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
   const T = await page.evaluate(() => window.__texts ?? null);
 
@@ -205,14 +222,30 @@ async function run(lang, viewport, shotPrefix) {
   if (viewport.width <= 700) { // the overview is in the full sheet
     for (let k = 0; k < 3 && await page.$eval('#sheet', (s) => s.dataset.step) !== 'points'; k++) await page.click('#sheetStep');
   }
-  await page.click('#toMinus');
+  // the settings are chips under the name now (owner 2026-11-27 variant 2): „N Tage ✎“ opens the days box
+  check(await page.locator('#toMinus, #toPlus').count() === 0 && await page.locator('#toDays').count() === 1,
+    'no − / + in the overview: a „N Tage ✎“ chip instead');
+  check(await page.locator('#toLimit').count() === 1 && await page.locator('#toHours, #toAscent').count() === 0, 'no day limit set: a dashed „+ Tageslimit“ chip');
+  await shot('3c-chips-no-limit');
+  await daysStep('#dbMinus');
   await waitView(() => window.__days.lastView?.days === 2, '2 days');
   v = await view();
-  check(v.days === 2 && !v.canRemove && await page.$eval('#toMinus', (b) => b.disabled), 'N − : 2 days, − greyed (no grey moon left)');
-  await page.click('#toPlus');
+  check(v.days === 2 && !v.canRemove, 'N − in the days box: 2 days (no grey moon left)');
+  await page.click('#toDays');
+  await page.waitForSelector('dialog.daysbox[open]');
+  check(await page.$eval('#dbMinus', (b) => b.disabled) && await page.$eval('#dbFewer', (e) => !e.hidden),
+    'the days box: − greyed and says why („Erst eine Übernachtung entfernen“)');
+  await page.click('#dbBack');
+  await daysStep('#dbPlus');
   await waitView(() => window.__days.lastView?.days === 3, '3 days again');
   check((await view()).days === 3, 'N + : 3 days again');
 
+  // the bar showed during a longer run (after 300 ms), the route faded meanwhile; now it is gone and the route whole
+  await settled();
+  const pbar = await page.evaluate(() => ({ ...window.__planBar, hidden: document.getElementById('runbar').hidden,
+    now: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(pbar.shown > 0 && pbar.faded === 0.45 && pbar.hidden && (pbar.now ?? 1) === 1,
+    `while the planner computes: the thin bar under the tool row and the route faded, then both gone (${JSON.stringify(pbar)})`);
   // 9 · a day row highlights that day
   await page.click('#tourOverview .today[data-day="2"]');
   const range = await page.evaluate(() => window.__profileRange ?? null);
@@ -242,7 +275,7 @@ async function run(lang, viewport, shotPrefix) {
   const back = await page.evaluate(() => window.__engine.parse(location.href));
   check(back?.tour?.days === 3 && Object.keys(back.tour.nights).length === 1, `the plan in the address carries the tour (${JSON.stringify(back?.tour)?.slice(0, 80)})`);
   // a night change after Save asks for Save again
-  await page.click('#toPlus');
+  await daysStep('#dbPlus');
   await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});
   check(await page.$eval('#menuSavePlan', (b) => b.dataset.state) === 'dark', 'a day more after Save: Speichern again');
   await page.evaluate(() => document.getElementById('undo').click()); // (a phone: the full sheet may cover the undo pill)
@@ -355,7 +388,25 @@ async function run(lang, viewport, shotPrefix) {
   if (viewport.width <= 700) { // the overview is in the full sheet (step 11 left it small)
     for (let k = 0; k < 3 && await page.$eval('#sheet', (s) => s.dataset.step) !== 'points'; k++) await page.click('#sheetStep');
   }
-  await page.click('#toPlus');
+  // a day limit through „+ Tageslimit“: chips „6 h / Tag“ and „1000 m ↑ / Tag“, each opens the box at its field
+  await page.click('#toLimit');
+  await page.waitForSelector('dialog.daysbox[open]');
+  check(await page.evaluate(() => document.activeElement?.id) === 'dbHours', '„+ Tageslimit“ opens the days box at the hours');
+  await page.fill('#dbHours', '6'); await page.fill('#dbAscent', '1000');
+  await page.waitForTimeout(500);
+  await page.click('#dbDone');
+  await page.waitForSelector('#toHours', { timeout: 20_000 }).catch(() => {});
+  const chips = await page.$$eval('.tochips .tochip', (cs) => cs.map((c) => c.textContent.trim()));
+  check(chips.length === 3 && /^6 h \/ (Tag|day)$/.test(chips[1]) && /^1[.,]?000 m ↑ \/ (Tag|day)$/.test(chips[2]), `the limit chips (${chips.join(' | ')})`);
+  await shot('3d-chips-limits');
+  await page.click('#toAscent');
+  await page.waitForSelector('dialog.daysbox[open]');
+  check(await page.evaluate(() => document.activeElement?.id) === 'dbAscent', 'the ascent chip opens the days box at the ascent');
+  await page.click('#dbBack');
+  await page.click('#toDays');
+  await page.waitForSelector('dialog.daysbox[open]');
+  for (let k = 0; k < 6 && !/^4\b/.test(await page.textContent('#dbN')); k++) { await page.click(/^[123]\b/.test(await page.textContent('#dbN')) ? '#dbPlus' : '#dbMinus'); await page.waitForTimeout(200); }
+  await page.click('#dbDone');
   await waitView(() => window.__days.lastView?.days === 4, '4 days before + New');
   if (viewport.width <= 700) await page.click('#menuBtn'); // a phone: Neu is in Plan ▾
   await page.click('#newPlan');
