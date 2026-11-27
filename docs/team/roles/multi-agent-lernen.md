@@ -1,4 +1,4 @@
-# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-07)
+# Multi-Agent-Betrieb: Was wir gelernt haben (OnPath, Stand 2026-11-27)
 
 Ein Owner, ein mittelgroßes Projekt (Android-App + Web-Planer + Website), zwei Rechner, mehrere Claude-Sitzungen.
 Diese Datei hält fest, was **geprüft** funktioniert, was nicht, und welche Regeln daraus folgen – als Grundlage für
@@ -139,7 +139,48 @@ geplant; heute schützen Auto-Modus, Deny-Regeln und der Push-Hook.
 5. **Eine Datei je Thema, überschreiben statt anhängen.** Konzept-Fassungen gehören in den Chat, nicht auf `main`.
 6. **Höchstens eine Setup-Änderung pro Tag**, damit die Sitzungen nicht stündlich neue Regeln lesen.
 
-## 7. Wo was liegt
+## 7. Coordinator and threads (from 2026-11-26)
+*New sections are in English (repo rule); §1–6 keep their German.*
+
+### 7.1 The setup now
+- The owner talks to **one coordinator** in a Claude project chat. The coordinator has no repo access; it starts one
+  **thread per task** and passes messages between them.
+- Role threads are **Remote Control sessions** on the owner's computers: the app on donald, the planner on HP. Captain,
+  website and doc work run as cloud threads.
+- The repo stays the memory (backlog, handoffs, `owner-preferences.md`). The coordinator's own memory is the
+  **project memory**: it holds what the coordinator must not forget between threads.
+
+### 7.2 Incidents and the rules they became
+| Incident | Why it went wrong | Rule now |
+| --- | --- | --- |
+| Items with a condition („after X“) were lost, e.g. the shorter setup waited and nobody picked it up (2026-11-27) | **The backlog wakes nobody.** A role reads it only when it starts; the coordinator does not read it at all | Conditional items stand in a „waits for a trigger“ list in project memory; on every „done“ from a thread the coordinator checks that list and names what is due; after each wave a cloud thread reads `docs/team/backlog.md` and shows the open items to the owner |
+| A standing permission did not travel: a session asked again whether it may end a tour on the USB-connected Pixel (2026-11-26/27) | Permissions lived in one chat or in one role's notes, not where the next session looks | Standing permissions live in **one place**, `owner-preferences.md`; whoever hands over a task sends the permission with it |
+| A Remote Control session refused a permission the coordinator passed on | By design such a session takes a permission for writing, deploying or deleting data only from the owner directly | The owner writes the permission **in that thread personally**; the coordinator asks for that, instead of relaying it |
+| Two sessions built the same thing in parallel (2026-11-26) | A parallel session was started without asking the running one | Before starting a parallel session, ask the running session whether it is already built or under way |
+| The planner's search did not find „Berlin“ from Hilden although the app did (2026-11-27) | The planner kept an **unlisted copy** of the app's Photon requests and missed the app's second request | One shared core instead of copies (`PhotonProvider.requests`, 670bedf74); the parity check now finds hidden copies (70ccda157) |
+| The long-leg limit was set at 40 km (2026-11-27) | A guess, too careful; real phones route much longer legs within ~30 s | **Measure before you assume**: the limit now comes per device from real routes. Same for „the planner got slower“: measured, it had not |
+| Proposals were accepted too easily, and „a simple app“ was read as „few features“ | Sessions agreed instead of judging; the vision was ambiguous | Propose critically and compare with Google Maps, Komoot and Apple; `VISION.md` was sharpened („powerful, clear and calm“, c6352aa78) and every proposal is checked against it |
+| Handovers between roles stalled | A note in the backlog or in a reply did not reach the waiting role | A handover goes as a **direct message** to the waiting thread (who, what, which commit); the coordinator forwards it at once |
+
+### 7.3 What works
+- **Say handovers out loud.** A thread that hands over or waits says so in its reply: who, what, which commit.
+- **File ownership.** One role owns an area (menu core: donald; POI kinds and extraction: HP); the other asks or
+  hands over instead of editing it.
+- **Thread titles follow the current task**, and every message that mentions a thread links it, so the owner can find
+  it in a list.
+- **Spread work by queue length.** Before giving a task, check how much the thread already has; use free sessions.
+- **Fresh start after a wave.** A long session writes its state into a handoff and a fresh one takes over (cheaper
+  per step, fewer stale assumptions); finished threads are closed after asking the owner.
+
+### 7.4 Where the rules live
+| What | Where |
+| --- | --- |
+| Standing permissions, how to ask the owner, night rule | `docs/team/owner-preferences.md` |
+| Trigger list, the coordinator's working rules | project memory of the Claude project |
+| Product decisions | `docs/project-status.md` „Decisions“ |
+| North Star for proposals | `VISION.md` |
+
+## 8. Wo was liegt
 | Thema | Datei |
 | --- | --- |
 | Wer arbeitet wo | `docs/team/roles/README.md` |
