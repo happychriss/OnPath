@@ -253,6 +253,8 @@ data class RouteRun(
         } ?: stay()
         is Event.PlanAnyway -> when {
             e.points.size < 2 -> stay()
+            // the app (no "Weiter warten", owner 2026-11-27): „Berechnen“ asks again with the leg's estimate – never a blind yes
+            notRouted == NotRouted.LONG && !askSlow -> to(this, Effect.Rerun(sameCause = false))
             notRouted == NotRouted.LONG -> to(copy(longOk = e.points), Effect.LoadDeferredMaps, Effect.Rerun(sameCause = false))
             else -> to(this, Effect.Rerun(sameCause = false))
         }

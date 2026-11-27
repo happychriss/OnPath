@@ -408,4 +408,15 @@ class RouteRunTest {
         val start = RouteRun(askSlow = false).on(recalc(near)).effects.single() as Effect.StartRouting
         assertFalse(start.askAtLimit)
     }
+
+    /** The app's not-routed notice after „Zwischenziel setzen“: „Berechnen“ asks again with the estimate – never a blind yes. */
+    @Test fun withoutSlowAskCalculateAgainAsksInsteadOfPlanningAnyway() {
+        val rule = com.onpath.app.routing.LongRule { pts, _ -> if (pts == far) com.onpath.app.routing.LongAsk(240.0, 0, 120.0) else null }
+        val asked = RouteRun(longRule = rule, askSlow = false).on(recalc(far)).state
+        val left = asked.on(Event.LongAnswer(planAnyway = false, points = far)).state.on(Event.Unrouted(NotRouted.LONG)).state
+        val again = left.on(Event.PlanAnyway(far))
+        assertEquals(listOf(Effect.Rerun(sameCause = false)), again.effects)
+        assertNull("no yes taken", again.state.longOk)
+        assertTrue("the question comes again", again.state.on(recalc(far)).state.phase is Phase.AskLong)
+    }
 }
