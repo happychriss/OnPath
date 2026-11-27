@@ -408,7 +408,7 @@ class TourEndSlice(
 
     fun stopRecording() {
         host.routeBackAsk = false // a question about this tour's plan never reaches the next tour
-        host.planSize = PlanSize.afterTour(host.planSize)
+        host.planSize = PlanSize.ON_ARRIVAL
         tour.stop()
     }
 }

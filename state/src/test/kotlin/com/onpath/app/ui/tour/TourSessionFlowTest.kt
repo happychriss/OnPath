@@ -735,7 +735,7 @@ class TourSessionFlowTest {
         runningTour()
         planEdit.planSize = PlanSize.FULL
         ui { session.enter(AppMode.PLAN) }
-        assertEquals("the sheet is one row", PlanSize.backInPlan(PlanSize.FULL, true), planEdit.planSize)
+        assertEquals("the sheet is at its summary step", PlanSize.ON_ARRIVAL, planEdit.planSize)
         assertTrue("the size was stepped when the service was told", last.size != PlanSize.FULL)
         assertEquals(listOf("NAVIGATING"), actions())
         main.advance(500); stepIo()

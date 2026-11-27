@@ -300,7 +300,7 @@ class TourSession(
         // map); north up stops following
         else map.followMe = host.headingUp && map.followMe && host.hasGpsFix
         // Plan during a tour: the sheet is one row (tour status + Continue), the map free for holds (owner 2026-10-31)
-        if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planEdit.planSize = PlanSize.backInPlan(planEdit.planSize, recState.value != null)
+        if (m == AppMode.PLAN && was == AppMode.NAVIGATE) planEdit.planSize = PlanSize.ON_ARRIVAL
         // Navigate → Plan (also the end of a tour): the plan in front, not the position (owner 2026-11-06, PlanCamera)
         if (m == AppMode.PLAN && was == AppMode.NAVIGATE && waypoints.isNotEmpty())
             map.showPlanWhole(if (recState.value == null) PlanCamera.Moment.TOUR_END else PlanCamera.Moment.FROM_NAVIGATE)

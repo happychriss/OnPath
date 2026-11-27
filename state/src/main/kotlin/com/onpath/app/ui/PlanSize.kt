@@ -23,10 +23,11 @@ enum class PlanSize {
     companion object {
         fun ofStep(i: Int): PlanSize = when { i <= 0 -> COLLAPSED; i == 1 -> MINI; i == 2 -> COMPACT; else -> FULL }
 
-        /** Back in Plan from Navigate: during a tour the sheet starts at its one-row step (owner 2026-10-31). */
-        fun backInPlan(current: PlanSize, tourRunning: Boolean): PlanSize = if (tourRunning) MINI else current
-
-        /** The tour ended: its one-row step becomes the usual profile step again (the plan sheet as before the tour). */
-        fun afterTour(current: PlanSize): PlanSize = if (current == MINI) COMPACT else current
+        /**
+         * Coming to Plan (from Navigate, with or without a tour, and after the tour ended) the sheet starts at its summary
+         * step: activity, time, ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour – no elevation profile; one drag up shows it
+         * (owner 2026-11-27: „default immer die Stufe zwei unten … ohne Höhenprofil, immer wenn ich nach Planen komme“).
+         */
+        val ON_ARRIVAL = MINI
     }
 }
