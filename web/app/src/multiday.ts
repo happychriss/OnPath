@@ -582,10 +582,10 @@ export class MultiDay {
     return n ? (n.hotel ? 'HOTEL' : 'OVERNIGHT') : null;
   }
 
-  /** The night number of plan point [i] (its day end), from the last view. */
   /** The day that ends at plan point [i]'s night (its „Tag N“), null when not worked out yet. */
   nightDay(i: number): number | null { return this.nightNo(i) || null; }
 
+  /** The night number of plan point [i] (its day end), from the last view. */
   private nightNo(i: number): number { return this.view?.ends.find((e) => e.plan === i)?.night ?? 0; }
 
   /**

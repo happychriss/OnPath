@@ -237,8 +237,7 @@ object WebDays {
      * – or, [n] < 0, the grey proposal at the line point nearest [text]'s 4th / 5th field: R1 + R3 –, the hotel at
      * [lat] / [lon], [text] = "name\taddress\tlink\t…"), `removeHotel` (R4, plan point [n]), `afterEdit` (R6: the points
      * changed to [text] = "lat,lon;…"; marks follow, a dragged night stays one), `placeNight` (a found place as a night,
-     * [placeNight]), `nearest` (the day end nearest
-     * [lat] / [lon]: `{"night": k}`, scenario F). The whole new plan as JSON, or "null" when nothing changes (not
+     * [placeNight]). The whole new plan as JSON, or "null" when nothing changes (not
      * possible, not routed yet).
      */
     fun rule(op: String, points: String, activity: String, sac: Int, pinned: String, names: String, tour: String,
@@ -275,12 +274,6 @@ object WebDays {
                 planOut(r.plan, added || r.dayAdded, index)
             }
             "placeNight" -> placeNight(p, n, GeoPoint(lat, lon), text)
-            "nearest" -> {
-                val l = line(p) ?: return "null"
-                val ends = PlanDays.of(l, pointAt(p, l), p.days ?: 1, p.limits, p.nights).days.mapNotNull { it.end }
-                val k = ends.indices.minByOrNull { Geo.distance(lat, lon, ends[it].point.lat, ends[it].point.lon) } ?: return "null"
-                "{\"night\":" + (k + 1) + "}"
-            }
             else -> "null"
         }
     } catch (e: Exception) {

@@ -1428,9 +1428,11 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
     if (item === 'GO_HERE') return goHereItem(() => { fromPin(); void fromMe(p, { pinned: true, name: info.title, kind: hit.kind, code: hit.code }); });
     if (item === 'ADD_STOP') return { icon: 'addLocation', label: t('plan_add_as_stop'), act: () => { fromPin(); void placeAddAs(hit, 'poiStop'); } };
     if (item === 'NEW_DESTINATION') return { icon: 'flag', label: t('plan_make_destination'), act: () => { fromPin(); void placeAddAs(hit, 'poiGoal'); } };
-    const label = (await engine.placePreview(state.points, lat, lon)).label ?? t('search_card_set_destination');
-    // the app's PoiMenu ADD row: the flag unless the one add makes it a stop
-    return { icon: label === t('plan_add_as_stop') ? 'addLocation' : 'flag', label, act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
+    const pv = await engine.placePreview(state.points, lat, lon);
+    const label = pv.label ?? t('search_card_set_destination');
+    // the app's PoiMenu ADD row: the flag unless the one add makes it a stop (by the insertion's kind, not its words)
+    const stop = pv.kind === 'VIA_ON_LINE' || pv.kind === 'VIA_BEST_FIT';
+    return { icon: stop ? 'addLocation' : 'flag', label, act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
   const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'), leaves: true,

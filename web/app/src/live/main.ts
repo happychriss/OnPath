@@ -177,7 +177,7 @@ function render() {
     // with no contact the number is old: it says when it was true
     // no second clock time here: the status line, the pill and the row below already say when it was true
     $('batteryText').textContent = t('web_live_battery', h.batteryPct);
-    bat.dataset.low = h.batteryPct < 15 ? '1' : '';
+    bat.dataset.low = h.batteryLow ? '1' : ''; // the engine's LiveStatusLine.LOW_BATTERY_PCT
   }
   const place = $('place');
   place.hidden = false;

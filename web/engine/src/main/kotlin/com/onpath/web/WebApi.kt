@@ -748,7 +748,7 @@ object Engine {
         val k = pr.decision.kind
         // where it would join the route – the candidate marker's thin dashed preview line (the app's MapController.setSearchMark)
         val join = WaypointInsertion.joinPoint(w, p, plan?.points, pr.decision)
-        return "{\"index\":" + pr.decision.index + ",\"label\":" + str(pr.label) + ",\"subtitle\":" + str(pr.subtitle) +
+        return "{\"index\":" + pr.decision.index + ",\"kind\":" + str(k.name) + ",\"label\":" + str(pr.label) + ",\"subtitle\":" + str(pr.subtitle) +
             ",\"addIsStart\":" + (k == WaypointInsertion.Kind.START) +
             ",\"addIsDestination\":" + (k == WaypointInsertion.Kind.DESTINATION && w.size <= 1) +
             ",\"join\":" + (join?.let { "[" + num(it.lat, 6) + "," + num(it.lon, 6) + "]" } ?: "null") + "}"
