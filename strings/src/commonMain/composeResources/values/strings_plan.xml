@@ -216,7 +216,6 @@
     <!-- after "Save tour": a line instead of the box "Tour saved" (owner 2026-11-06, onpath.private#35) -->
     <string name="plan_mode_label">Plan</string>
     <string name="plan_rec_running">Recording</string>
-    <string name="plan_rec_paused">Recording paused</string>
     <string name="plan_stat_distance">Distance</string>
     <string name="plan_stat_ascent">Ascent</string>
     <string name="plan_stat_descent">Descent</string>

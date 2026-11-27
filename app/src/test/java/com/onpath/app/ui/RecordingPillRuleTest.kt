@@ -20,8 +20,8 @@ class RecordingPillRuleTest {
     /** The rule is what the Plan screen uses (Compose is not run on the JVM). */
     @Test fun wiring() {
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(map.contains("val recOn = RecordingPillRule.shows(rec != null, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)"))
-        assertTrue(map.contains("if (recOn) RecordingPill(rec!!.paused,"))
+        assertTrue(map.contains("val recOn = RecordingPillRule.shows(rec?.paused == false, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)"))
+        assertTrue(map.contains("if (recOn) RecordingPill(Modifier"))
         assertTrue("the hints under it move down", map.contains("pill != null || recOn }"))
     }
 }

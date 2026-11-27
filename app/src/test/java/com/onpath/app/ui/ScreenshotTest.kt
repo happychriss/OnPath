@@ -458,10 +458,10 @@ class ScreenshotTest {
      * The plan during a tour, profile step (owner 2026-11-05, R5): plan row ✕ Neu planen · ⇅ Umkehren · ↻ Rundtour, the
      * facts, the profile, at the bottom the green "▶ Weiter geht's".
      */
-    /** Planning during a tour (owner 2026-11-27, A with sign 3): „◉ Aufnahme läuft“ at the top; stopped: grey, „Aufnahme angehalten“. */
-    fun planTourRecordingPill(paused: Boolean = false) = paparazzi.snapshot {
-        Frame(editing = true, top = { RecordingPill(paused) }) {
-            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = paused)), PlanCallbacks())
+    /** Planning during a tour (owner 2026-11-27, A with sign 3): „◉ Aufnahme läuft“ at the top. */
+    fun planTourRecordingPill() = paparazzi.snapshot {
+        Frame(editing = true, top = { RecordingPill() }) {
+            PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
         }
     }
 
