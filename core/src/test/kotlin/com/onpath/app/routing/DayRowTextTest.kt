@@ -17,7 +17,7 @@ class DayRowTextTest {
     }
 
     @Test fun placesOnlyWhenBothAreKnown() {
-        assertEquals("München – Bad Tölz", DayRowText.places("München", "Bad Tölz"))
+        assertEquals("München → Bad Tölz", DayRowText.places("München", "Bad Tölz"))
         assertNull(DayRowText.places("München", null)); assertNull(DayRowText.places(null, "Brixen"))
         assertNull(DayRowText.places("", "Brixen")); assertNull(DayRowText.places("München", "  ")); assertNull(DayRowText.places(null, null))
     }
@@ -32,7 +32,7 @@ class DayRowTextTest {
     }
 
     @Test fun theHotelRuleChangesNothingElse() {
-        assertEquals("both known: von – nach, hotel or not", "Krone – Post", DayRowText.places("Krone", "Post", fromIsHotel = true, toIsHotel = true))
+        assertEquals("both known: von → nach, hotel or not", "Krone → Post", DayRowText.places("Krone", "Post", fromIsHotel = true, toIsHotel = true))
         assertNull("the known end is no hotel, the other end is", DayRowText.places("München", null, toIsHotel = true))
         assertNull("the known end is no hotel, the other end is", DayRowText.places(null, "Brixen", fromIsHotel = true))
         assertNull("a hotel without a name", DayRowText.places("  ", null, fromIsHotel = true, toIsHotel = true))

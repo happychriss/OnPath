@@ -20,6 +20,7 @@ class DayTableTest {
         assertEquals(DayTable.Cells("87,1 km", "Σ 87 km", "↑ 36 m", "4 h 10"), rows[0])
         assertEquals("Σ 172 km", rows[1].sum)
         assertEquals("↑ 1.783 m", rows[1].up)
+        assertEquals("↓ 1.321 m", DayTable.down(1321.0))
     }
 
     @Test fun theTotalRow() {

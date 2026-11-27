@@ -45,7 +45,7 @@
     <string name="days_hotel_hint">Search the hotel, or paste a Google Maps or Booking link or an address</string>
     <string name="days_hotel_none">Nothing found – try the name or the address</string>
     <string name="days_remove_hotel_ask">Remove the overnight stop with its hotel?</string>
-    <string name="days_from_to">%1$s – %2$s</string>
+    <string name="days_from_to">%1$s → %2$s</string>
     <string name="days_from_hotel">from %1$s</string>
     <string name="days_to_hotel">to %1$s</string>
     <string name="days_km_at">km %1$s</string>
@@ -57,4 +57,14 @@
     <string name="days_and">%1$s and %2$s</string>
     <string name="days_over_day">%1$s over your day</string>
     <string name="days_add_to_day">Add a place to day %1$s</string>
+    <!-- the multi-day panel (owner's sketch 2026-11-27, planner d7d01bd7b) – shared by the app and the planner -->
+    <string name="days_planning">Planning</string>
+    <string name="days_not_saved">Not saved</string>
+    <string name="days_changed">Changed · not saved</string>
+    <string name="days_saved">Saved</string>
+    <string name="days_whole_trip">Whole trip</string>
+    <string name="days_profile_whole_trip">Elevation profile · whole trip</string>
+    <string name="days_profile_day">Elevation profile · %1$s</string>
+    <string name="days_chip_hours">%1$s h / day</string>
+    <string name="days_chip_ascent">%1$s m ↑ / day</string>
 </resources>
