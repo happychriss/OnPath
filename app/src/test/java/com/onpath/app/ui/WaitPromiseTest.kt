@@ -46,7 +46,8 @@ class WaitPromiseTest {
         assertStandsAtMost("route window, long check", shown.take(120), 30)
         assertTrue(shown.all { it <= 99 })
         assertEquals("the window shows how long it runs, no number (owner 2026-11-27)", "running for 3:20", uis[200].window.line)
-        assertEquals(false, uis[200].window.bar)
+        // the step bar (owner 2026-11-27 evening): pieces, still no number
+        assertTrue(uis[200].window.bar && uis[200].window.pieces >= 1)
     }
 
     /** Owner 2026-11-27: the run's estimate on this phone beside the time it runs – only for its own run and above 5 s. */

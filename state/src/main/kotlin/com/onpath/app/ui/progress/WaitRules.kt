@@ -12,7 +12,8 @@ import com.onpath.strings.*
 
 /**
  * The route's wait window (owner 2026-11-27, „realistischer … transparenter“): the legs + „prüfen“ as steps (at most 3
- * shown) and how long it runs – no percent: how long a route takes cannot be measured beforehand (2–5× apart on long
+ * shown), how long it runs, and a bar in pieces – one per leg routed, the running one filling slowly (owner 2026-11-27
+ * evening, „Schritt-Balken“) – no percent: how long a route takes cannot be measured beforehand (2–5× apart on long
  * ones), a number crept to 99 % and stood there. [elapsedS] counts from the start of the wait, across a second try with
  * more time; [afterMap]: the map for the place was just loaded in its own window – „Karte geladen ✓“ is the first row, so
  * it reads as one way on, not a new start.
@@ -20,10 +21,12 @@ import com.onpath.strings.*
 data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsLeft: Int?, val late: Boolean = false,
                        val elapsedS: Int = 0, val afterMap: Boolean = false,
                        /** The run's search estimate on this phone ([RouteEstimate], app only); shown above 5 s: „· etwa 1–2 min“. */
-                       val estimateS: Double? = null) {
+                       val estimateS: Double? = null,
+                       /** The bar's pieces: the plan's legs as the router reports them (visible legs; support points inside one leg make it fill evenly, not more pieces). */
+                       val pieces: Int = 1) {
     val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent,
         if (afterMap) WaitSteps.shown(listOf(WaitStep(Txt.s(Res.string.wait_step_map_loaded), com.onpath.app.domain.WaitStepState.DONE, null)) + steps) else steps,
-        line, bar = false)
+        line, pieces = pieces.coerceAtLeast(1))
 
     /** „läuft seit 0:42“, with an estimate „läuft seit 0:42 · etwa 1–2 min“. */
     val line: String get() {
@@ -113,7 +116,7 @@ class RouteWait(private val memory: ProgressMemory) {
         // „noch etwa 5 Sekunden“ and then minutes); the planner's WebWait has the same rule
         val left = if (checking || share != null) TimeLeft.seconds(bar.measured, gone, null) else null
         return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late,
-            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen))
+            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen), pieces = total)
     }
 
     /** The run ended: its legs' and check's times teach the check's share; the next run starts afresh. */
@@ -167,7 +170,22 @@ data class WaitWindowUi(
     val bar: Boolean = true,
     /** A sentence under the title, e.g. why it takes minutes (the server builds the map first); null = none. */
     val note: String? = null,
-)
+    /**
+     * > 0: the bar in pieces without a number (the route, owner 2026-11-27: „ein Stück pro fertigem Abschnitt, keine Prozent“)
+     * – one piece per leg routed, filled up to [percent] of the whole so the running piece fills slowly ([filledPieces]);
+     * 0: the bar with its number (map loads).
+     */
+    val pieces: Int = 0,
+) {
+    /** How many pieces are filled, the running one partly: [percent] of [shownPieces]. */
+    val filledPieces: Float get() = shownPieces * percent / 100f
+    /** The pieces drawn: at most [MAX_PIECES] (more legs than that share a piece – never a hairline). */
+    val shownPieces: Int get() = pieces.coerceIn(0, MAX_PIECES)
+
+    companion object {
+        const val MAX_PIECES = 20
+    }
+}
 
 /** A button of the window: a verb ("Abbrechen", "Erneut versuchen"). */
 class WaitButton(val label: String, val onClick: () -> Unit)

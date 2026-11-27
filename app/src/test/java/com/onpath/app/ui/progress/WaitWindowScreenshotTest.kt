@@ -109,7 +109,20 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
 
     private val routeUi: RouteWaitUi get() {
         val names = listOf("Algund → Stopp 2", "Stopp 2 → Leiter Alm", "Leiter Alm → Vellau", "Vellau → Meran")
-        return RouteWaitUi(55, WaitSteps.of(names.map { it to null } + (Txt.s(Res.string.wait_step_check) to null), 2), 10, elapsedS = 42)
+        return RouteWaitUi(55, WaitSteps.of(names.map { it to null } + (Txt.s(Res.string.wait_step_check) to null), 2), 10, elapsedS = 42, pieces = 4)
+    }
+
+    /** The step bar (owner 2026-11-27 evening): a long route cut by support points – 13 pieces, no number. */
+    @Test fun routeWithSupportPoints() = shot(points = 2) {
+        val names = listOf("Hilden → bei Ludwigshafen", "bei Ludwigshafen → Germering")
+        Window(RouteWaitUi(57, WaitSteps.of(names.map { it to null } + (Txt.s(Res.string.wait_step_check) to null), 1), null,
+            elapsedS = 15, estimateS = 30.0, pieces = 13).window, listOf(WaitButton(str(Res.string.common_cancel)) {}))
+    }
+
+    /** A short route, one leg: one bar that creeps, no number. */
+    @Test fun routeOneLeg() = shot(points = 2) {
+        Window(RouteWaitUi(40, WaitSteps.of(listOf("Hilden → Wuppertal" to null, Txt.s(Res.string.wait_step_check) to null), 0), null,
+            elapsedS = 4, pieces = 1).window, listOf(WaitButton(str(Res.string.common_cancel)) {}))
     }
 
     /** Never more than 3 rows: the window moves along the legs. */

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,6 +36,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.onpath.app.domain.WaitStep
@@ -67,7 +70,8 @@ fun WaitWindowView(ui: WaitWindowUi, buttons: List<WaitButton>, modifier: Modifi
                 Text(ui.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Ink)
             }
             ui.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(top = 8.dp, end = 8.dp)) }
-            if (ui.bar) Row(Modifier.padding(top = 14.dp, end = 8.dp).semantics(mergeDescendants = true) {
+            if (ui.bar && ui.shownPieces > 0) PieceBar(ui, Modifier.padding(top = 14.dp, end = 8.dp))
+            else if (ui.bar) Row(Modifier.padding(top = 14.dp, end = 8.dp).semantics(mergeDescendants = true) {
                 contentDescription = "${ui.percent} %"
             }, verticalAlignment = Alignment.CenterVertically) {
                 LinearProgressIndicator(progress = { ui.percent / 100f },
@@ -99,6 +103,28 @@ fun WaitWindowView(ui: WaitWindowUi, buttons: List<WaitButton>, modifier: Modifi
                 Text(ui.line ?: "", style = MaterialTheme.typography.bodyMedium, color = OnPathColors.InkMuted,
                     modifier = Modifier.weight(1f))
                 btns()
+            }
+        }
+    }
+}
+
+/**
+ * The route's bar in pieces (owner 2026-11-27 evening): one piece per leg routed, 3 dp apart, rounded; the filled ones
+ * green, the running one filled to its part; ONE piece (a short route) = one bar that creeps. No number – TalkBack hears
+ * the progress as a range.
+ */
+@Composable
+private fun PieceBar(ui: WaitWindowUi, modifier: Modifier) {
+    val n = ui.shownPieces
+    val filled = ui.filledPieces
+    val on = if (ui.paused) OnPathColors.InkMuted else OnPathColors.Green
+    Row(modifier.fillMaxWidth().height(8.dp).semantics(mergeDescendants = true) {
+        progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(ui.percent / 100f, 0f..1f)
+    }, horizontalArrangement = Arrangement.spacedBy(if (n > 1) 3.dp else 0.dp)) {
+        for (k in 0 until n) {
+            val part = (filled - k).coerceIn(0f, 1f)
+            Box(Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(OnPathColors.PaperDeep)) {
+                if (part > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(part).clip(CircleShape).background(on))
             }
         }
     }
