@@ -165,7 +165,8 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
                 else if (failed.any { it.retryable }) Txt.s(Res.string.maps_load_failed_retry) else failed.firstOrNull()?.message,
             retryable = kind == MapLoadUi.Kind.FAILED && (!map || failed.any { it.retryable }),
             regions = focus.size, bytes = mapBytes + rTotal, routing = routingSeen, regionsDone = focus.size - open.size,
-            at = step.takeIf { !running }, late = running && bar.late).also { last = it }
+            at = step.takeIf { !running }, late = running && bar.late,
+            building = openStates.any { it is CellState.Queued || it is CellState.Building }).also { last = it }
     }
 
     /** How long each step of this wait really ran – what [StepShares.learn] learns from. */

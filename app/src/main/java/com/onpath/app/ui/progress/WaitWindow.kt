@@ -66,6 +66,7 @@ fun WaitWindowView(ui: WaitWindowUi, buttons: List<WaitButton>, modifier: Modifi
                 Spacer(Modifier.width(10.dp))
                 Text(ui.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Ink)
             }
+            ui.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(top = 8.dp, end = 8.dp)) }
             if (ui.bar) Row(Modifier.padding(top = 14.dp, end = 8.dp).semantics(mergeDescendants = true) {
                 contentDescription = "${ui.percent} %"
             }, verticalAlignment = Alignment.CenterVertically) {

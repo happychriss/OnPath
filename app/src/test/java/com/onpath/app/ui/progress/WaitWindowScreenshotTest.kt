@@ -72,6 +72,8 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
 
     /** The first map of the area: the server prepares it (12 %, its time left). */
     @Test fun mapPreparing() = map(MapLoadUi(MapLoadUi.Kind.PREPARING, 12, 180, regions = 1, bytes = 9 * mb))
+    /** The server builds the map first: the window says why it takes minutes (owner 2026-11-27, Hinweistext 12). */
+    @Test fun mapBuilding() = map(MapLoadUi(MapLoadUi.Kind.PREPARING, 8, 720, regions = 1, bytes = 9 * mb, here = false, building = true))
 
     /** The map and the routing data load (34 %): one row „lädt Karte + Routendaten“, never a 4th. */
     @Test fun mapLoading() = map(MapLoadUi(MapLoadUi.Kind.LOADING, 34, 20, regions = 2, bytes = 27 * mb, routing = true))

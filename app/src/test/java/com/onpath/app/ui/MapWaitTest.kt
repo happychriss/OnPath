@@ -33,6 +33,8 @@ class MapWaitTest {
         assertTrue("the server's time left: ${later.secondsLeft}", (later.secondsLeft ?: 0) >= 170)
         assertEquals("Map for your area", later.title)
         assertEquals(listOf("being prepared", "load", "add to the map"), later.steps.map { it.label })
+        assertTrue("the server builds: the window says why it takes minutes", later.building)
+        assertEquals(MapLoadUi.BUILD_TEXT, later.window.note)
     }
 
     @Test fun offlinePausesAndSaysWhy() {

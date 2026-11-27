@@ -43,6 +43,8 @@ data class MapLoadUi(
     val late: Boolean = false,
     /** The wait is for the user's own area (first map, own position); false = a searched / set / tapped place (owner 2026-11-27: Madrid is not „deine Gegend“). */
     val here: Boolean = true,
+    /** The server builds the map for this place first (queued / building): the window says so (owner 2026-11-27, Hinweistext 12). */
+    val building: Boolean = false,
 ) {
     /**
      * FINISHING: everything is downloaded and is joined into the map / written into the routing file. SERVER: online, the
@@ -99,11 +101,14 @@ data class MapLoadUi(
     /** The window's look ([WaitWindowView]). */
     val window: WaitWindowUi get() = WaitWindowUi(
         when (kind) { Kind.FAILED -> WaitSign.FAILED; Kind.OFFLINE -> WaitSign.OFFLINE; else -> WaitSign.MAP },
-        title, percent, if (kind == Kind.FAILED) emptyList() else steps, line, paused = paused, bar = kind != Kind.FAILED)
+        title, percent, if (kind == Kind.FAILED) emptyList() else steps, line, paused = paused, bar = kind != Kind.FAILED,
+        note = if (building && kind == Kind.PREPARING) BUILD_TEXT else null)
 
     companion object {
         val OFFLINE_TEXT: String get() = Txt.s(Res.string.maps_offline_text)
         val WIFI_TEXT: String get() = Txt.s(Res.string.maps_wifi_text)
+        /** „Für diese Gegend gibt es noch keine OnPath-Karte. Das Erstellen dauert ein paar Minuten.“ */
+        val BUILD_TEXT: String get() = Txt.s(Res.string.maps_here_ask_detail)
         /** One-time load over mobile data while "Maps only on Wi-Fi" waits (window and question box; setting unchanged). */
         val LOAD_ON_MOBILE: String get() = Txt.s(Res.string.maps_load_on_mobile)
     }

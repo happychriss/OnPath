@@ -165,6 +165,8 @@ data class WaitWindowUi(
     val line: String?,
     val paused: Boolean = false,
     val bar: Boolean = true,
+    /** A sentence under the title, e.g. why it takes minutes (the server builds the map first); null = none. */
+    val note: String? = null,
 )
 
 /** A button of the window: a verb ("Abbrechen", "Erneut versuchen"). */
