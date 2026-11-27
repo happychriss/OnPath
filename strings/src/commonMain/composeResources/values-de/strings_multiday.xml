@@ -25,4 +25,12 @@
     <string name="multiday_end_overnight">Übernachtung</string>
     <string name="multiday_end_hotel">Hotel</string>
     <string name="multiday_end_finish">Ziel</string>
+    <string name="daypick_question">Welchen Tag möchtest du fahren?</string>
+    <string name="daypick_from_to">%1$s → %2$s</string>
+    <string name="daypick_ridden">✓ Tag %1$s · gefahren am %2$s</string>
+    <string name="daypick_date">d. MMM</string>
+    <string name="daypick_day_of">Tag %1$s von %2$s</string>
+    <string name="daypick_details">Tag %1$s im Detail</string>
+    <string name="daypick_next">nächster Tag</string>
+    <string name="daypick_touring">Beende zuerst die laufende Tour – dann lässt sich ein Tag laden.</string>
 </resources>

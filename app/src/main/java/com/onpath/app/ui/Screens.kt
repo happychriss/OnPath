@@ -388,6 +388,8 @@ fun RoutesScreen(
      * "Alle". A pick holds until My routes closes ([com.onpath.app.ui.routes.ActivityFilter]).
      */
     initialActivity: Activity? = null,
+    /** A saved multi-day route's card / Gemacht's „Tag 3 von …“: that route's day sheet (owner 2026-11-27, DayPickSlice) by uuid. */
+    onDays: (String) -> Unit = {},
 ) {
     var tab by remember { mutableStateOf(initialTab) }
     var sort by remember { mutableStateOf(initialSort) }
@@ -490,9 +492,9 @@ fun RoutesScreen(
                         hasRides = !t.rides?.rides.isNullOrEmpty(), hasDistance = TrackLine.hasDistance(t.distanceM),
                         waypoints = t.waypoints.size, touring = touring, hasPlan = t.hasPlan)
                     fun has(a: RouteRowActions.Action) = a in row.menu
-                    TourCard(t, tag = tag, row = row, onOpen = { overview = t }, justSaved = justSaved, line = line(t),
+                    TourCard(t, tag = tag, row = row, onOpen = { if (com.onpath.app.ui.routes.DayPick.opens(t)) onDays(t.uuid) else overview = t }, justSaved = justSaved, line = line(t),
                         recording = t.id == recordingId, thumb = com.onpath.app.ui.routes.rememberThumb(t, thumbs, thumbVersion),
-                        onFavourite = { onFavourite(t, it) },
+                        onFavourite = { onFavourite(t, it) }, onDays = onDays,
                         onRename = { rename = t }, onExport = { onExport(t) },
                         onCopy = if (has(RouteRowActions.Action.COPY)) ({ onCopy(t) }) else null,
                         onShare = if (has(RouteRowActions.Action.SHARE)) ({ onShare(t) }) else null,
@@ -661,6 +663,8 @@ private fun TourCard(
     thumb: androidx.compose.ui.graphics.ImageBitmap? = null,
     /** The star under ⋮ (owner 2026-11-13); null = none (Zuletzt's draft, the plan on the map). */
     onFavourite: ((Boolean) -> Unit)? = null,
+    /** A multi-day route's day sheet by uuid (Gemacht's „Tag 3 von …“, owner 2026-11-27). */
+    onDays: (String) -> Unit = {},
 ) {
     val (icon, color) = when (t.kind) {
         TourKind.PLANNED -> Icons.Filled.Route to OnPathColors.Route
@@ -699,6 +703,7 @@ private fun TourCard(
                             Icon(icon, contentDescription = t.kind.label, tint = color.copy(alpha = pale.icon))
                         }
                     })
+                    com.onpath.app.ui.routes.DaysBadge(t, Modifier.align(Alignment.TopStart)) // a multi-day route: „8 Tage“ (owner 2026-11-27)
                 }
                 Spacer(Modifier.width(12.dp))
                 Column(Modifier.weight(1f)) {
@@ -712,6 +717,7 @@ private fun TourCard(
                     Text(instrument(days + facts.line, MaterialTheme.typography.bodySmall, muted), style = MaterialTheme.typography.bodySmall)
                     // its map areas are not all on the phone (§7: no dialog by itself – the question comes when it is opened)
                     if (t.days != null && t.mapsMissing == true) Tag(str(Res.string.multiday_maps_missing), Modifier.padding(top = 4.dp))
+                    com.onpath.app.ui.routes.DayOfLine(t, onDays) // Gemacht: „Tag 3 von …“ (owner 2026-11-27)
                     if (recording) Text(str(Res.string.routes_recording_now), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Rec)
                     if (justSaved) Text(str(Res.string.routes_just_saved), style = MaterialTheme.typography.labelLarge,
                         color = OnPathColors.ActionEdit, modifier = Modifier.padding(top = 2.dp))
@@ -855,7 +861,7 @@ private fun RoutesMenu(onExportAll: () -> Unit, onRecycleBin: () -> Unit, canExp
  * Share plan (planned), Delete (asks first; not for the tour being recorded).
  */
 @Composable
-private fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null,
+internal fun TourItemMenu(t: Tour, onRename: () -> Unit, onExport: () -> Unit, onDelete: (() -> Unit)?, onEditRides: (() -> Unit)? = null,
                          onCopy: (() -> Unit)? = null, onShare: (() -> Unit)? = null, onPlanFrom: (() -> Unit)? = null,
                          onPlan: (() -> Unit)? = null, onGo: (() -> Unit)? = null) {
     var open by remember { mutableStateOf(false) }
@@ -915,21 +921,6 @@ fun NameDialog(title: String, initial: String, onDone: (String) -> Unit, onDismi
         text = { OutlinedTextField(value = text, onValueChange = { text = it }, singleLine = true, label = { Text(str(Res.string.routes_name_label)) }) },
         confirmButton = { TextButton(onClick = { onDone(text) }, modifier = Modifier.heightIn(min = 48.dp)) { Text(confirmLabel) } },
         dismissButton = { TextButton(onClick = onDismiss, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_cancel)) } },
-    )
-}
-
-/**
- * A recording was interrupted (app or phone restarted without the service): Delete · Continue · Save, like End tour.
- * Delete asks once more, then the tour goes to the recycle bin. Stays until answered.
- */
-@Composable
-fun UnfinishedDialog(t: Tour, onContinue: () -> Unit, onSave: () -> Unit, onDelete: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = {},
-        title = { Text(str(Res.string.routes_unfinished_title)) },
-        text = { DialogText(str(Res.string.routes_unfinished_text, Format.distance(t.distanceM), Format.duration(t.durationS))) },
-        confirmButton = { DeleteApartButtons(onDelete, str(Res.string.routes_unfinished_continue), onContinue,
-            str(Res.string.common_save), onSave) },
     )
 }
 

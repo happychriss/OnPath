@@ -269,6 +269,26 @@ class MultiDaySlice(
         }
     }
 
+    /**
+     * My routes' day sheet (owner 2026-11-27): the tour was just opened as the plan ([opened]) – its days are worked out along
+     * its stored [line] (the split the sheet showed, no wait for the router) and day [n] becomes the plan as "Tag n fahren"
+     * does. False when it could not be taken (reported by the steps).
+     */
+    suspend fun rideDayAlong(line: List<GeoPoint>, n: Int): Boolean {
+        if (host.touring || !flow.overview || line.size < 2) return false
+        val whole = wholePlan() ?: return false
+        val f = planRoute.planFactors()
+        val v = withContext(default) { flow.compute(whole, line, f, line) } ?: return false
+        if (!flow.overview || n !in 1..v.days.days.size) return false
+        flow.show(v)
+        flow.selected = n..n
+        rideDays()
+        return flow.following
+    }
+
+    /** The plan is one day of a saved multi-day route: its uuid and the day (several days in a row: null) – the recorded tour keeps them. */
+    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.part.single }?.let { it.tour.uuid to it.part.first }
+
     /** "‹ Alle Tage" (not during a tour): the whole tour – with the day's changes – is the plan again. */
     fun allDays() {
         if (host.touring) return
