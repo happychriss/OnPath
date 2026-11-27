@@ -29,9 +29,7 @@ In the main controls, app and planner behave the same and look as alike as they 
 
 In planning you edit only by holding, with no quick-tap actions and no dragging of points.
 A new route comes only after asking.
-Nothing with a button disappears by itself and nothing flashes; a message stays until it is answered or the situation is gone.
-Only a short information line without a button may go by itself after a few seconds.
-A wait shows its steps and how long it has run, never a made-up percent; a computation of more than about half a minute asks first.
+Nothing flashes, and a message with a button stays until it is answered or the situation is gone; only a short line without a button may go by itself.
 What Plan shows is exactly what Navigate follows.
 A UI text the owner chose stays; a change to it is proposed as a question.
 
@@ -64,7 +62,6 @@ A paid extra may need an account, for example one that backs up your tours; pair
 
 OnPath is not a social network: no profile, no feed, no followers, no leaderboards.
 Sharing your location sends it one way to people you choose, with no groups and no shared map of each other.
-A diary stays private on the phone: no photo feed, no sharing of it.
 For browsing, OnPath shows only signposted trails from OpenStreetMap, never other users' tours, photos or ratings.
 Weather, sunset warnings, an emergency screen and a battery check at the start are deliberately left out; weather may return one day only as a paid extra.
 Android comes first; the iPhone comes only after the public launch, and until then only the core stays free of Android.

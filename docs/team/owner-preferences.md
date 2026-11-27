@@ -32,6 +32,9 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
 ## Product rules
+- **Vision first** (owner 2026-11-27): before asking the owner, check whether `VISION.md` answers it. If it does, decide,
+  name the line in the commit or reply, and go on. Ask only real choices of taste or product (pictures, words, numbers).
+  The captain checks this.
 One place: `docs/project-status.md` "Decisions" (no disappearing messages, the owner's chosen words stay, hold-only
 gestures, re-routing only after asking, core-feature bugs test first, public text tone, private material in
 `happychriss/onpath.private`).

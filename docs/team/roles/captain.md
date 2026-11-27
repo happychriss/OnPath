@@ -27,7 +27,8 @@ questions, tells the owner what is new. It writes no product code and decides no
 - **Vision gate (owner 2026-11-27):** every task and every branch in the merge queue is checked against `VISION.md`
   (its last two lines first). A change that should be resisted gets no go – the captain says which line and asks the
   owner through the project lead. The captain also proposes changes or additions to `VISION.md` it finds sensible;
-  the owner decides, the captain writes only what he approved.
+  the owner decides, the captain writes only what he approved. A question to the owner that the vision already answers
+  → tell the coordinator the line instead (owner-preferences „Vision first“). Keep the vision short.
 - **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
   „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
