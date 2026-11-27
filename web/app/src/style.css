@@ -816,6 +816,7 @@ dialog.plans > .row.spread { margin-top: 16px; }
    pale, its Speichern (plan blue, tonal) · Löschen (red) on the card, „✓ Gerade gespeichert“ under a plan just saved */
 .planlist li.sectionhead { display: block; border-top: none; padding: 10px 8px 2px; font-size: 12px; font-weight: 700; letter-spacing: .04em; color: var(--muted); }
 .planlist li.sectionhead + li { border-top: none; }
+.planlist li.sectionhead .showall { float: right; margin: -8px 0 -6px; min-height: 32px; padding: 0 8px; border: none; background: none; color: var(--plan); font: inherit; font-weight: 600; letter-spacing: 0; text-transform: none; cursor: pointer; }
 .planlist .justsavedline { color: var(--plan); font-weight: 600; font-size: 13px; }
 
 /* ---- plan sheet A (owner 2026-11-07, „Punkte zuerst“): the points list on top, + Ziel hinzufügen, the facts in one row ---- */
