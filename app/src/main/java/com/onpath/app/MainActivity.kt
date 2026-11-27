@@ -294,8 +294,6 @@ class MainActivity : ComponentActivity() {
                                 onReload = vm::reloadMapStyle,
                             ),
                             suggestTest = if (!vm.settingsSlice.devToolsShown) null else com.onpath.app.ui.SuggestTestUi(vm.suggest.on, vm.suggest::switch),
-                            dayTableOneRow = if (!vm.settingsSlice.devToolsShown) null else com.onpath.app.ui.SuggestTestUi(com.onpath.app.ui.DayTableLayout.oneRow) {
-                                com.onpath.app.ui.DayTableLayout.oneRow = it; vm.prefs.dayTableOneRow = it },
                             demo = if (!vm.settingsSlice.devToolsShown) null else com.onpath.app.ui.DemoUi(
                                 state = com.onpath.app.recording.DemoLocation.state.collectAsState().value,
                                 rideLabel = vm.demo.demoLine()?.first,

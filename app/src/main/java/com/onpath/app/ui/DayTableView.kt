@@ -52,10 +52,27 @@ import com.onpath.strings.*
  * How the day table lays out its numbers on a phone (owner 2026-11-27, night answers 27./28.11.): five columns km · Σ km · ↑ m ·
  * time · sign do not fit beside „Tag N“ at 360 dp and the default font, so by default the running total („gesamt“) sits grey
  * under the day's km (two lines in the km column, [oneRow] false). Developer tools → „Day table: all columns in one row“
- * switches to the planner's one-row layout (kept in Prefs.dayTableOneRow; AppViewModel reads it at start).
+ * switches to the planner's one-row layout (kept in Prefs.dayTableOneRow, read once on first use; never in screenshots).
  */
 object DayTableLayout {
-    var oneRow by mutableStateOf(false)
+    private var saved by mutableStateOf<Boolean?>(null)
+
+    /** The layout now: the developer switch as kept, false in previews / screenshots or when it cannot be read. */
+    @Composable
+    fun oneRow(): Boolean {
+        if (androidx.compose.ui.platform.LocalInspectionMode.current) return false
+        val ctx = androidx.compose.ui.platform.LocalContext.current
+        return saved ?: try { com.onpath.app.data.Prefs(ctx).dayTableOneRow } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("ui", "Day table layout switch not read – Σ km under km", e); false
+        }.also { saved = it }
+    }
+
+    /** Developer tools: switch and keep it. */
+    fun set(ctx: android.content.Context, on: Boolean) {
+        saved = on
+        try { com.onpath.app.data.Prefs(ctx).dayTableOneRow = on }
+        catch (e: Exception) { com.onpath.app.debug.Problems.warn("ui", "Day table layout switch not kept", e) }
+    }
 }
 
 /**
@@ -71,7 +88,7 @@ object DayTableLayout {
 fun DayTableView(
     table: DayTableUi,
     modifier: Modifier = Modifier,
-    oneRow: Boolean = DayTableLayout.oneRow,
+    oneRow: Boolean = DayTableLayout.oneRow(),
     picked: (Int) -> Boolean = { false },
     onTap: ((Int) -> Unit)? = null,
     onHold: ((Int) -> Unit)? = null,
