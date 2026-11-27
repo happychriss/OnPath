@@ -288,11 +288,8 @@ fun SettingsScreen(
                                 SettingsGroupHeader(SettingsPage.PACE.title)
                                 PaceSection(settings, onChange, activity) // PaceSettings.kt
                             } }
-                            item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SettingsGroupHeader(str(Res.string.settings_trails_title))
-                                MarkedTrailsCard(settings, onChange)
-                            } }
                             item { SettingsCard {
+                                MarkedTrailsRow(settings, onChange) // PaceSettings.kt
                                 SwitchRow(str(Res.string.settings_map_vibrate), null, settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
                             } }
                         }
@@ -546,8 +543,8 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         // how the turns are told – either / or (owner 2026-11-01): off / vibration / voice; one test of the chosen kind
         SettingsGroupHeader(str(Res.string.settings_group_junctions))
         SettingsCard {
-            // one tap to choose (owner 2026-11-27): Aus · Vibration · Stimme in place, no sheet
-            SegmentedChoiceRow(str(Res.string.settings_nav_guide),
+            // a value row like every choice (owner 2026-11-27): Aus · Vibration · Stimme in its menu
+            ChoiceRow(str(Res.string.settings_nav_guide), null,
                 listOf(Choice(com.onpath.app.data.JunctionGuide.OFF, str(Res.string.settings_nav_guide_off)),
                     Choice(com.onpath.app.data.JunctionGuide.VIBRATION, str(Res.string.settings_nav_guide_vibration)),
                     Choice(com.onpath.app.data.JunctionGuide.VOICE, str(Res.string.settings_nav_guide_voice))),

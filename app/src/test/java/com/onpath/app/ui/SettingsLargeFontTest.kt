@@ -31,7 +31,7 @@ abstract class SettingsLargeFontTest {
     @Test fun navigation() = shots.navigation()
     @Test fun onTheWay() = shots.onTheWay()
     @Test fun navigationPhoneMissing() = shots.navigationPhoneMissing()
-    @Test fun navigationChoiceSheet() = shots.navigationChoiceSheet()
+    @Test fun navigationChoiceMenu() = shots.navigationChoiceMenu()
     @Test fun pace() = shots.pace()
     @Test fun map() = shots.map()
     /** About with the website links: the longer addresses wrap, the ↗ stays at the right. */

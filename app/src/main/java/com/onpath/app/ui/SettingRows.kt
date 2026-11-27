@@ -1,6 +1,11 @@
 package com.onpath.app.ui
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -20,7 +25,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
-import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -42,10 +46,11 @@ import com.onpath.strings.*
 /**
  * Settings in "value rows" (owner 2026-11-06 23:05, variant C of the Settings → Navigation round: "Ich mag Wertezeilen
  * am meisten, das sollten wir auch bei allen anderen Einstellungen so machen"): a choice is one row – title, the current
- * value in Walnuss, a chevron – and a tap opens the choice as a bottom sheet with radio rows; the tap on one applies it
- * and closes the sheet. A bottom sheet, not a dialog: docs/design/ui-style.md keeps dialogs for decisions that can lose
- * something, and picking a setting loses nothing (the old value is one tap away). Switches stay switches. NOT for the
- * hiking T1–T5 choice (owner: those stay buttons, wherever they appear).
+ * value in Walnuss, a chevron – and a tap opens a small menu anchored at the row (owner 2026-11-27, one control standard:
+ * Material 3 DropdownMenu, no sheet, no sub page, no segmented buttons); the tap on one applies it and closes the menu.
+ * Not a dialog: docs/design/ui-style.md keeps dialogs for decisions that can lose something, and picking a setting loses
+ * nothing (the old value is one tap away). Switches stay switches. NOT for the hiking T1–T5 choice (owner: those stay
+ * buttons, wherever they appear).
  */
 object SettingRows {
     /**
@@ -112,7 +117,8 @@ internal fun SettingsCard(content: @Composable () -> Unit) =
     }
 
 /**
- * A value row: [title] (+ [sub]), the chosen option's word in Walnuss, a chevron; a tap opens the choice sheet.
+ * A value row: [title] (+ [sub]), the chosen option's word in Walnuss, a chevron; a tap opens the choice menu
+ * ([ChoiceMenuItems] in a DropdownMenu anchored at the row).
  * [indent]: depends on the switch above it; [enabled] false = greyed (38 %) and not tappable.
  */
 @Composable
@@ -147,70 +153,51 @@ internal fun <T> ChoiceRow(title: String, sub: String?, options: List<Choice<T>>
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
     }
-    }
-    if (open) ChoiceSheet(title, options, selected, onPick = { open = false; if (it != selected) onPick(it) }, onDismiss = { open = false })
-}
-
-/**
- * A short choice in place (owner 2026-11-27, Material 3 segmented buttons): [title] (optional) over one row of 2–3
- * options; one tap chooses, no sheet. For choices whose words fit side by side (Aus · Vibration · Stimme).
- */
-@Composable
-internal fun <T> SegmentedChoiceRow(title: String?, options: List<Choice<T>>, selected: T, onPick: (T) -> Unit) {
-    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
-        if (title != null) Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 8.dp))
-        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-            options.forEachIndexed { i, o ->
-                SegmentedButton(
-                    selected = o.value == selected, onClick = { if (o.value != selected) onPick(o.value) },
-                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, options.size),
-                    modifier = Modifier.heightIn(min = 48.dp),
-                ) { Text(o.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1) }
-            }
+    // the menu opens under the value, at the row's end (the eye is there after the tap)
+    Box(Modifier.align(Alignment.BottomEnd)) {
+        androidx.compose.material3.DropdownMenu(expanded = open, onDismissRequest = { open = false },
+            containerColor = OnPathColors.Paper) {
+            ChoiceMenuItems(options, selected) { open = false; if (it != selected) onPick(it) }
         }
     }
+    }
 }
 
 /**
- * The choice of a [ChoiceRow] as a bottom sheet: title, one radio row per option (with its line), the tap applies it
- * and closes. Drag down / Back / a tap outside close without a change. [inline]: drawn in place (screenshot tests –
- * Paparazzi draws no sheet window).
+ * The options of a [ChoiceRow]'s menu: one item per option – a ✓ before the chosen one, the word, its line under it when
+ * it has one (pace: "etwa 4 km/h · 300 Höhenmeter pro Stunde"); a tap picks it. Inside a DropdownMenu, or – screenshot
+ * tests, Paparazzi draws no popup window – in a [ChoiceMenuCard].
  */
-@OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 @Composable
-internal fun <T> ChoiceSheet(title: String, options: List<Choice<T>>, selected: T, onPick: (T) -> Unit, onDismiss: () -> Unit,
-                             inline: Boolean = false) {
-    val content: @Composable () -> Unit = {
-        Column(Modifier.fillMaxWidth().padding(bottom = 16.dp).selectableGroup()) {
-            Text(title, style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(start = 24.dp, end = 24.dp, bottom = 8.dp))
-            options.forEach { o ->
-                Row(Modifier.fillMaxWidth().heightIn(min = 56.dp)
-                    .selectable(selected = o.value == selected, onClick = { onPick(o.value) }, role = Role.RadioButton)
-                    .padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = o.value == selected, onClick = null, modifier = Modifier.padding(horizontal = 12.dp),
-                        colors = RadioButtonDefaults.colors(selectedColor = OnPathColors.Walnut))
-                    Column(Modifier.weight(1f).padding(vertical = 6.dp)) {
-                        Text(o.label, style = MaterialTheme.typography.bodyLarge)
-                        o.line?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                    }
+internal fun <T> ChoiceMenuItems(options: List<Choice<T>>, selected: T, onPick: (T) -> Unit) {
+    options.forEach { o ->
+        val chosen = o.value == selected
+        androidx.compose.material3.DropdownMenuItem(
+            text = {
+                Column(Modifier.padding(vertical = 4.dp)) {
+                    Text(o.label, style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal)
+                    o.line?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                 }
-            }
-        }
+            },
+            leadingIcon = {
+                if (chosen) Icon(Icons.Filled.Check, null, tint = OnPathColors.Walnut, modifier = Modifier.size(20.dp))
+                else Spacer(Modifier.size(20.dp))
+            },
+            onClick = { onPick(o.value) },
+            modifier = Modifier.heightIn(min = 48.dp).widthIn(max = 320.dp)
+                .semantics { this.selected = chosen },
+        )
     }
-    if (inline) {
-        val sheet = RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp)
-        Surface(Modifier.fillMaxWidth().warmShadow(OnPathShadow.LOW, sheet), shape = sheet, color = OnPathColors.Paper) {
-            Column {
-                androidx.compose.material3.BottomSheetDefaults.DragHandle(Modifier.align(Alignment.CenterHorizontally))
-                content()
-            }
-        }
-        return
-    }
-    androidx.compose.material3.ModalBottomSheet(onDismissRequest = onDismiss,
-        sheetState = androidx.compose.material3.rememberModalBottomSheetState(skipPartiallyExpanded = true),
-        containerColor = OnPathColors.Paper) { content() }
 }
+
+/** A choice menu drawn in place, like the DropdownMenu's own surface (screenshot tests). */
+@Composable
+internal fun <T> ChoiceMenuCard(options: List<Choice<T>>, selected: T) =
+    Surface(shape = RoundedCornerShape(4.dp), color = OnPathColors.Paper, shadowElevation = 3.dp, tonalElevation = 3.dp,
+        modifier = Modifier.widthIn(min = 112.dp, max = 320.dp)) {
+        Column(Modifier.padding(vertical = 8.dp)) { ChoiceMenuItems(options, selected) {} }
+    }
 
 /**
  * "Handy einrichten" as a row: plain with a chevron when all is set up; at the top of the Navigation page with ⚠ (red:

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -62,12 +61,12 @@ internal fun TourTimesText(t: com.onpath.app.time.TourTimes) {
 }
 
 /**
- * Plan → "Follow marked trails" (owner 2026-11-27): Weniger · Standard · Mehr, one tap; stored in
- * [AppSettings.markedTrails] (routing follows it in a later step).
+ * Plan → "Follow marked trails" (owner 2026-11-27): a value row, Weniger · Standard · Mehr in its menu; stored in
+ * [AppSettings.markedTrails], every routing engine follows it (routing/MarkedTrails).
  */
 @Composable
-internal fun MarkedTrailsCard(settings: AppSettings, onChange: (AppSettings) -> Unit) = SettingsCard {
+internal fun MarkedTrailsRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
     val levels = listOf(AppSettings.MARKED_TRAILS_LESS, AppSettings.MARKED_TRAILS_STANDARD, AppSettings.MARKED_TRAILS_MORE)
-    SegmentedChoiceRow(null, levels.map { Choice(it, SettingsSummary.markedTrailsLabel(it)) },
+    ChoiceRow(str(Res.string.settings_trails_title), null, levels.map { Choice(it, SettingsSummary.markedTrailsLabel(it)) },
         AppSettings.markedTrailsOf(settings.markedTrails), onPick = { onChange(settings.copy(markedTrails = it)) })
 }

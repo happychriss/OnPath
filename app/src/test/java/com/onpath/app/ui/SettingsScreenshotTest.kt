@@ -113,11 +113,11 @@ class SettingsScreenshotTest {
     fun navigationPhoneMissing() = paparazzi.snapshot {
         Screen(SettingsPage.NAVIGATION, phone = phoneOk.copy(locationOn = false, backgroundRestricted = true))
     }
-    /** A value row's choice as a bottom sheet (drawn in place – Paparazzi draws no sheet window): screen while cycling. */
-    fun navigationChoiceSheet() = paparazzi.snapshot {
+    /** A value row's choice as its menu (owner 2026-11-27; drawn in place – Paparazzi draws no popup): screen while cycling. */
+    fun navigationChoiceMenu() = paparazzi.snapshot {
         OnPathTheme {
-            Box(Modifier.fillMaxSize()) {
-                Box(Modifier.align(androidx.compose.ui.Alignment.BottomCenter)) {
+            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                Box(Modifier.padding(start = 64.dp, top = 120.dp, end = 12.dp)) {
                     val b = listOf(
                         Choice(com.onpath.app.data.BikeScreen.ALWAYS, str(Res.string.settings_nav_bike_screen_always),
                             str(Res.string.settings_nav_bike_screen_always_sub)),
@@ -125,8 +125,7 @@ class SettingsScreenshotTest {
                             str(Res.string.settings_nav_bike_screen_smart_sub)),
                         Choice(com.onpath.app.data.BikeScreen.PHONE, str(Res.string.settings_nav_bike_screen_phone),
                             str(Res.string.settings_nav_bike_screen_phone_sub)))
-                    ChoiceSheet(str(Res.string.settings_nav_bike_screen), b, com.onpath.app.data.BikeScreen.SMART,
-                        onPick = {}, onDismiss = {}, inline = true)
+                    ChoiceMenuCard(b, com.onpath.app.data.BikeScreen.SMART)
                 }
             }
         }
