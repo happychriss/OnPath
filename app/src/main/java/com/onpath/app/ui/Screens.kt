@@ -590,8 +590,8 @@ fun RoutesScreen(
                                     thumb = com.onpath.app.ui.routes.rememberThumb(t, thumbs, thumbVersion))
                             } else savedCard(t, RouteTag.SAVED, false)
                         } }
-                        if (saved.isNotEmpty()) item(key = "h-saved") { SectionHeader(str(Res.string.routes_section_saved)) }
                     }
+                    com.onpath.app.ui.routes.savedHeader(this, hasRecent && saved.isNotEmpty(), if (tab == RoutesTab.PLANNED) Res.string.routes_section_saved else Res.string.routes_tab_done, com.onpath.app.ui.routes.ActivityFilter.hidden(shown, favOnly, act), act) { act = null }
                     items(saved, key = { it.id }) { t -> savedCard(t, RouteTag.of(t, marks), t.id == justSavedId) }
                 }
             }
