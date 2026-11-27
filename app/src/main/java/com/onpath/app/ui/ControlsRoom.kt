@@ -85,3 +85,6 @@ fun ControlsRoom(topDp: Int, bottomDp: Int, content: @Composable () -> Unit) {
         CompositionLocalProvider(LocalControlsTier provides tier, content = content)
     }
 }
+
+/** Navigate's map buttons higher than the bottom card, closer to the thumb (owner 2026-11-27: „ein kleines Stück höher“, then a bit more than 56 dp). */
+internal val NAV_FABS_LIFT = 80.dp

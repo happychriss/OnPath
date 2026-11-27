@@ -323,16 +323,11 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, calcAsked) { calcAsked = it } }
     // no step guide any more (owner 2026-11-26: the search card says how to begin)
     val guide = false
-    // during a tour (owner 2026-11-12, TourStillRunning): "● Tour läuft noch" and only a new destination – the search, or
-    // hold the map → Hierhin; "Weiter geht's" below goes back to the tour
-    if (ui.pointCount == 0 && (ui.tour != null || ui.tourRunning)) Column(Modifier.fillMaxWidth().padding(top = 8.dp).then(belowStep)) {
-        TourStillRunningTitle(paused = ui.tour?.paused == true)
-        TourNewTargetRow(cb.onSearch)
-    }
+    // an empty plan during a tour shows no „Tour läuft noch“ sheet: emptying it goes back to Navigate (owner 2026-11-27)
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
-    else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
-    // without a route, what to do next ("Halte die Karte gedrückt, um das Ziel zu setzen.") belongs to the summary step
-    // too – below it, the low sheet hid it behind its foot (the navigation bar; Meran pictures D04)
+    if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
+    // without a route, the calculation's state belongs to the summary step too – below it, the low sheet hid it behind
+    // its foot (the navigation bar; Meran pictures D04)
     if (route == null && !(ui.routing && calcAsked != null)) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
     // a multi-day tour: "München – Venedig · 6 Tage"; a followed day: "Tag 4 von 6" (stage 4)
     if (ui.days != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DaysTitle(ui.days) }
@@ -723,10 +718,6 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
-        // an empty plan during a tour: "● Tour läuft noch" instead of "Neuer Plan" (owner 2026-11-12, TourStillRunning)
-        if (TourStillRunning.shows(ui.pointCount, ui.tour != null || ui.tourRunning)) {
-            TourStillRunningTitle(paused = ui.tour?.paused == true); return
-        }
         Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
