@@ -57,8 +57,8 @@ sealed interface CellState {
     /** Downloaded during a tour ([MapCells.holdUpdates]): joined into the map after the tour / back in Plan. */
     data object Downloaded : CellState
     data class Ready(val version: String) : CellState
-    /** No connection / server not reachable: retried by itself. [message] is plain language for the card. */
-    data class Offline(val message: String) : CellState
+    /** No connection / server not reachable: retried by itself; [message] plain language. [serverSide]: busy / 5xx – online. */
+    data class Offline(val message: String, val serverSide: Boolean = false) : CellState
     /** [retryable]: asking again later may work (server failed to build, damaged download); false: e.g. app too old. */
     data class Failed(val message: String, val retryable: Boolean = true) : CellState
 }
@@ -1005,7 +1005,7 @@ class MapCells(
     private fun packagesFailed(e: CellApi.ApiException, pkgs: List<Pending>) {
         when (e.failure) {
             CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY ->
-                pkgs.forEach { set(it.id, CellState.Offline(Txt.s(Res.string.maps_err_unreachable))) }
+                pkgs.forEach { set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_unreachable)), serverSide = e.answered)) }
             else -> {
                 Problems.info("cells", "Region packages not available from the map server (${e.failure}); asked again at the next start", e)
                 packagesRefused = true // else every join of this run asks again and is refused again
@@ -1081,7 +1081,7 @@ class MapCells(
             }
             CellApi.Failure.OFFLINE, CellApi.Failure.UNREACHABLE, CellApi.Failure.SERVER, CellApi.Failure.BUSY -> {
                 Problems.info("cells", "Map server not reachable (${e.failure}); retrying", e)
-                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_unreachable)))) }
+                pending.forEach { if (state(it.id) !is CellState.Downloading) set(it.id, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_unreachable)), serverSide = e.answered)) }
             }
             else -> {
                 Problems.warn("cells", "Map server answer not usable; retrying", e)
@@ -1186,7 +1186,7 @@ class MapCells(
             } else { damaged += c; Problems.info("cells", "Map cell $c download damaged; loading again", e); set(c, READY_ON_SERVER) }
         } catch (e: CellApi.ApiException) {
             if (e.failure == CellApi.Failure.NOT_READY) { sent -= c; set(c, CellState.Requested); return }
-            set(c, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_stopped))))
+            set(c, CellState.Offline(com.onpath.app.debug.UserText.of(e, Txt.s(Res.string.maps_err_stopped)), serverSide = e.answered))
             Problems.info("cells", "Map cell $c download stopped (${e.failure})", e)
             throw e
         } catch (e: CellStore.StoreException) {

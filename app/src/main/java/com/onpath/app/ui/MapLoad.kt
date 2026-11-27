@@ -130,7 +130,9 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
         val kind = when {
             (map && openStates.isNotEmpty() && openStates.all { it is CellState.Failed }) || (!map && rp == RoutingDataLoader.Phase.FAILED) ->
                 MapLoadUi.Kind.FAILED
-            openStates.any { it is CellState.Offline } || rp == RoutingDataLoader.Phase.OFFLINE -> MapLoadUi.Kind.OFFLINE
+            openStates.any { it is CellState.Offline && !it.serverSide } || rp == RoutingDataLoader.Phase.OFFLINE -> MapLoadUi.Kind.OFFLINE
+            // the server answered "busy" / its own error: online, it waits for the server – said as such, never "no internet"
+            openStates.any { it is CellState.Offline } -> MapLoadUi.Kind.SERVER
             openStates.none { it is CellState.Queued || it is CellState.Building || it == CellState.Requested || it == CellState.None ||
                 it is CellState.Downloading || it == CellState.Installing } &&
                 (openStates.any { it is CellState.WaitingForWifi } || rp == RoutingDataLoader.Phase.WIFI) &&
@@ -139,7 +141,7 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
             step == LoadStep.JOIN -> MapLoadUi.Kind.FINISHING
             else -> MapLoadUi.Kind.LOADING
         }
-        val running = kind != MapLoadUi.Kind.FAILED && kind != MapLoadUi.Kind.OFFLINE && kind != MapLoadUi.Kind.WIFI
+        val running = kind != MapLoadUi.Kind.FAILED && kind != MapLoadUi.Kind.OFFLINE && kind != MapLoadUi.Kind.WIFI && kind != MapLoadUi.Kind.SERVER
         // paused: no step time, and the rates measure afresh afterwards
         if (running) { measureRate(mapGot + rGot, now); measureJoin(joinFrac, now); joining?.let { j -> measureJoinSpeed(j.done, now) } }
         else { rateAt = -1L; joinAt = -1L; speedAt = -1L }
@@ -158,7 +160,8 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
         val left = if (running) TimeLeft.seconds(bar.share, clock.elapsed, stepLeftS) else null
         val failed = openStates.filterIsInstance<CellState.Failed>()
         return MapLoadUi(kind, pct, left,
-            reason = if (kind != MapLoadUi.Kind.FAILED) null else if (!map) RoutingLoads.FAILED_TEXT
+            reason = if (kind == MapLoadUi.Kind.SERVER) openStates.firstNotNullOfOrNull { (it as? CellState.Offline)?.message }
+                else if (kind != MapLoadUi.Kind.FAILED) null else if (!map) RoutingLoads.FAILED_TEXT
                 else if (failed.any { it.retryable }) Txt.s(Res.string.maps_load_failed_retry) else failed.firstOrNull()?.message,
             retryable = kind == MapLoadUi.Kind.FAILED && (!map || failed.any { it.retryable }),
             regions = focus.size, bytes = mapBytes + rTotal, routing = routingSeen, regionsDone = focus.size - open.size,
@@ -220,6 +223,8 @@ class MapLoadCallbacks(
     val onCancel: () -> Unit = {}, val onRetry: () -> Unit = {}, val onClose: () -> Unit = {},
     /** "Load now over mobile data" while it waits for Wi-Fi (once; the setting stays). */
     val onLoadOnMobile: () -> Unit = {},
+    /** The window shows / went (after its no-flash gate): the other map notices stay away meanwhile (owner 2026-11-27). */
+    val onShown: (Boolean) -> Unit = {},
 )
 
 
@@ -232,7 +237,9 @@ fun MapLoadModal(ui: MapLoadUi?, cb: MapLoadCallbacks) {
     val gate = remember { NoFlash<MapLoadUi.Kind>(urgent = { it == MapLoadUi.Kind.FAILED }) }
     val lastRef = remember { arrayOfNulls<MapLoadUi>(1) }
     if (ui != null) lastRef[0] = ui
-    val kind = rememberNoFlash(ui?.kind, gate) ?: return
+    val gated = rememberNoFlash(ui?.kind, gate)
+    androidx.compose.runtime.LaunchedEffect(gated != null) { cb.onShown(gated != null) }
+    val kind = gated ?: return
     val shown = (ui ?: lastRef[0])?.copy(kind = kind) ?: return
     fun acted(f: () -> Unit): () -> Unit = { gate.userActed(android.os.SystemClock.uptimeMillis()); f() }
     val c = MapLoadCallbacks(acted(cb.onCancel), acted(cb.onRetry), acted(cb.onClose), acted(cb.onLoadOnMobile))

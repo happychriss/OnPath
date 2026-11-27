@@ -196,6 +196,7 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
   <div id="stage">
   <div id="map"></div>
   <div id="topbar" class="topbar">
+  <div id="runbar" class="runbar" role="progressbar" aria-label="${escapeHtml(t('plan_calculating'))}" hidden><i></i></div>
   <div id="searchbox"></div>
   <span class="barsep" aria-hidden="true"></span>
   <div id="toolbar" class="toolbar" role="toolbar" aria-label="${escapeHtml(t('web_map_tools'))}">
@@ -767,13 +768,15 @@ async function drawPoints() {
   const loop = $<HTMLButtonElement>('roundTrip');
   // not on a multi-day tour (owner 2026-11-27: „Rundtour können wir rausnehmen, das kann viel durcheinanderbringen“ –
   // München → Hilden turned into a way back of the same length); Umkehren stays
-  loop.hidden = !!multiDay?.isTour;
-  loop.disabled = !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
+  // what cannot be used is not shown (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“ – was grey with
+  // one point, Umkehren grey on A → B → A)
+  loop.hidden = !!multiDay?.isTour || !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
   loop.classList.toggle('on', state.roundTrip);
   loop.setAttribute('aria-pressed', String(state.roundTrip));
   loop.title = state.roundTrip ? t('plan_round_trip_on_desc') : '';
   loop.innerHTML = `${icon(state.roundTrip ? 'check' : 'loop', 18)}${escapeHtml(t('plan_round_trip'))}`;
-  $<HTMLButtonElement>('reverse').disabled = n < 2 || !(r.canReverse ?? true);
+  $<HTMLButtonElement>('reverse').hidden = n < 2 || !(r.canReverse ?? true);
+  $('planActions').classList.toggle('none', loop.hidden === true && $('reverse').hidden === true); // no empty row
   $('pointsSection').hidden = n === 0;
   sheetSteps.refresh(); // the phone's chevron says „3 Punkte“
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
@@ -1641,8 +1644,22 @@ async function restoreDraft() {
 function setPlanning(on: boolean, routed = false) {
   state.planning = on;
   document.body.dataset.planning = on ? '1' : '';
+  planBar(on);
   if (!on) { linkOpened(); overlay.finish('route'); overlay.plan(null, undefined, routed); } // [routed]: only a route that came ends the wait at 100 %
   sheetWait();
+}
+/**
+ * „Der Planer rechnet“ even for a short run (owner 2026-11-27, variant A – the usual Google Maps / Komoot sign): a thin
+ * running bar under the search / tool row and the route faded, both only after [PLAN_BAR_MS] so a quick run does not
+ * flicker; the long run's wait box shows alone (one wait at a time: style.css hides the bar (.runbar) under body[data-wait="box"]).
+ */
+const PLAN_BAR_MS = Number(params.get('barMs') ?? 300); // ?barMs=0: the browser tests' quick runs show it too
+let planBarTimer = 0;
+function planBar(on: boolean) {
+  clearTimeout(planBarTimer); planBarTimer = 0;
+  const show = (yes: boolean) => { $('runbar').hidden = !yes; routeProfile.setBusy(yes); };
+  if (!on) { show(false); return; }
+  planBarTimer = window.setTimeout(() => { planBarTimer = 0; if (state.planning) show(true); }, PLAN_BAR_MS);
 }
 /** The sheet's wait line („Calculating the route…“) wants to show while a plan runs (onewait.ts decides whether it does). */
 function sheetWait() {

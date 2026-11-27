@@ -586,6 +586,36 @@ class PlanRecalcFlowTest {
         assertNull(planRoute.routeChangedNotice)
     }
 
+    /**
+     * Field bug 2026-11-27 (owner's Pixel, "Rabland → Saykogel" opened where the phone had no routing data yet): the run
+     * gave straight legs, they replaced the saved line and were compared with it – „Plan mit neueren Kartendaten neu
+     * berechnet“ although the route, once the data was there, was exactly the saved one (49.7 km both).
+     */
+    @Test fun aStoredLineStaysWhileRoutingDataIsMissingAndNothingIsSaidWhenTheRealRouteIsTheSame() {
+        plan(a, b); create()
+        val saved = engine.inner.route(listOf(a, b), Activity.HIKE, 3).points
+        standIn(listOf(a, b), line = saved, stale = 0, fromLine = 1)
+        // no routing data under the points yet: the router finds no way, the planner draws a straight leg
+        engine.noRouteFor = { true }; tilesMissing = true; loadingNow = true
+        recalcNow(); finishRun()
+        assertNull("a straight fallback is no changed route", planRoute.routeChangedNotice)
+        assertEquals("the saved line stays on the map, not the straight line", saved, routeNow?.points)
+        assertNotNull("the saved line waits for the run after the data", recalc.standIn)
+        // the routing data arrived: the plan is computed again (AppViewModel.routingDataArrived → recalc)
+        engine.noRouteFor = { false }; tilesMissing = false; loadingNow = false
+        recalcNow(); finishRun()
+        assertNull("the same way as saved: nothing to say", planRoute.routeChangedNotice)
+        assertNull(recalc.standIn)
+    }
+
+    @Test fun aSavedRouteWithNoLegOnOlderDataNeverSaysNewerData() {
+        plan(a, b); create()
+        // the stored line differs from the router's, but none of its legs was on older routing data
+        standIn(listOf(a, b), line = listOf(a, GeoPoint(46.7, 11.4), b), stale = 0, fromLine = 1)
+        recalcNow(); finishRun()
+        assertNull("„neuere Kartendaten“ only when the data was newer", planRoute.routeChangedNotice)
+    }
+
     // ======================================================================================================================
     // superseded runs and progress
     // ======================================================================================================================

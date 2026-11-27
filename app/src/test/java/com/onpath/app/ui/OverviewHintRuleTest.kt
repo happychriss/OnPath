@@ -1,6 +1,7 @@
 package com.onpath.app.ui
 
 import com.onpath.app.cells.CellId
+import com.onpath.app.cells.CellState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -67,5 +68,17 @@ class OverviewHintRuleTest {
         assertEquals(120, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = null))
         assertEquals(150 + MessagePlacement.GAP_DP, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = 150))
         assertEquals(120, OverviewPillPlace.topDp(rowTopDp = 120, stripBottomDp = 90)) // a short strip: the row stays
+    }
+
+    /** Field bug 2026-11-27: „Nur Übersichtskarte · Detailkarte laden“ while those very areas were loading (Rabland, Madrid). */
+    @Test fun noOfferToLoadWhatIsAlreadyOnItsWay() {
+        val other = CellId(542, 361)
+        val missing = setOf(cell, other)
+        assertTrue(OverviewHintRule.coming(missing, mapOf(cell to CellState.Downloading(1, 10), other to CellState.Queued(2, 60))))
+        assertTrue("a busy server: still on its way",
+            OverviewHintRule.coming(missing, mapOf(cell to CellState.Offline("busy", serverSide = true), other to CellState.Requested)))
+        assertFalse("one area nobody asked for: the offer is real", OverviewHintRule.coming(missing, mapOf(cell to CellState.Downloading(1, 10))))
+        assertFalse("failed: the offer comes back", OverviewHintRule.coming(missing, mapOf(cell to CellState.Failed("x"), other to CellState.Requested)))
+        assertFalse("nothing missing: nothing to say", OverviewHintRule.coming(emptySet(), emptyMap()))
     }
 }

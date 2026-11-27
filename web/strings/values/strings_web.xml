@@ -289,4 +289,7 @@
     <string name="web_phone_menu">Phone connection …</string>
     <!-- a multi-day tour's day end on the map (grey / blue moon, green bed): which day of how many ends there (owner 2026-11-20) -->
     <string name="web_days_end_of_day">End of day %1$d of %2$d</string>
+    <string name="web_days_chip_hours">%1$s h / day</string>
+    <string name="web_days_chip_ascent">%1$s m ↑ / day</string>
+    <string name="web_days_chip_add_limit">+ Day limit</string>
 </resources>

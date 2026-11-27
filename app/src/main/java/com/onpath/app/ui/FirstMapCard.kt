@@ -60,7 +60,8 @@ object FirstMapCard {
         if (open.isEmpty()) return null // the map is there: the card goes by itself
         val going = open.filter { s[it] !is CellState.Failed }
         if (going.isEmpty()) return null // all failed: the HINWEIS box with Try again
-        if (going.all { s[it] is CellState.Offline }) return Ui.Offline
+        // "loads when you are online" only when the phone is offline – a busy server says so in the pill (serverSide)
+        if (going.all { (s[it] as? CellState.Offline)?.serverSide == false }) return Ui.Offline
         if (going.all { s[it] is CellState.WaitingForWifi || s[it] is CellState.Offline }) return null // the Wi-Fi question / note
         return Ui.Loading
     }

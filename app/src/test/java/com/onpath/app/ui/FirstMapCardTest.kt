@@ -82,7 +82,7 @@ class FirstMapCardTest {
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue(map.contains("FirstMapCardView(firstCard"))
         assertTrue(map.contains("if (overviewOnly && firstCardTarget == null && firstCard == null"))
-        assertTrue(map.contains("mapNoticeKind(it) == null && firstCard == null }"))
+        assertTrue(map.contains("mapNoticeKind(it) == null && firstCard == null && !vm.mapData.loadWindowShown }"))
         assertTrue(map.contains("message == null && notice == null && firstCard == null"))
         val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
         assertTrue(vm.contains("FirstMapCard.of(mapData.cellJob, states, installed.associate { it.id to it.totalBytes }, mapData.viewWithoutDetail, setup.setupOpen,"))

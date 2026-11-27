@@ -40,7 +40,10 @@ class CellApi(
     enum class Failure { OFFLINE, UNREACHABLE, REFUSED, BUSY, NOT_READY, SERVER, BAD_ANSWER }
 
     class ApiException(val failure: Failure, message: String, val retryAfterS: Int? = null, cause: Throwable? = null) :
-        IOException(message, cause)
+        IOException(message, cause) {
+        /** The server answered (busy or its own error): the phone is online – never shown as "no internet". */
+        val answered: Boolean get() = failure == Failure.BUSY || failure == Failure.SERVER
+    }
 
     /** POST /cells/request – ask for cells ([reason]: point, near, corridor, refresh). */
     fun request(ids: List<String>, reason: String, formats: List<Int> = listOf(FORMAT)): StatusAnswer {

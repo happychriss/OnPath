@@ -69,6 +69,14 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
 /* ---- top bar: ONE unit – search field (flexible) | eye compass locate | Map content; undo / redo a pill below it ---- */
 .topbar { position: absolute; z-index: 5; top: 12px; left: 12px; width: min(860px, calc(100% - 24px)); height: 52px; box-sizing: border-box;
   display: flex; align-items: center; background: var(--map-ground); border-radius: 26px; box-shadow: var(--float-shadow), inset 0 0 0 1px var(--edge-line); }
+/* the plan run's thin running bar under the search / tool row (main.ts planBar, owner 2026-11-27 variant A) */
+.runbar { position: absolute; left: 24px; right: 24px; bottom: -7px; height: 3px; border-radius: 2px; overflow: hidden;
+  background: var(--plan-light); pointer-events: none; }
+.runbar > i { position: absolute; top: 0; bottom: 0; left: -40%; width: 40%; border-radius: 2px; background: var(--plan);
+  animation: runbar 1.2s ease-in-out infinite; }
+@keyframes runbar { from { left: -40%; } to { left: 100%; } }
+@media (prefers-reduced-motion: reduce) { .runbar > i { animation: none; left: 0; width: 100%; opacity: .6; } }
+body[data-wait="box"] .runbar { display: none; } /* the long run's wait box shows alone */
 .topbar .tool:hover:not(:disabled), .undopill .tool:hover:not(:disabled) { background: var(--paper-deep); }
 #searchbox { flex: 1; min-width: 220px; position: relative; align-self: stretch; }
 .barsep { flex: none; width: 1px; height: 28px; background: var(--line); }
@@ -222,6 +230,7 @@ body.undo-crowded .undopill { display: none; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
 /* the app's PlanActions: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary, icon + word, spread evenly, wrapping */
 .planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: -2px 0 2px; }
+.planactions.none { display: none; }
 .planactions .textbtn { white-space: nowrap; min-height: 40px; color: var(--fg); font-weight: 500; } /* the app: onSurface, not green */
 /* a switch that is on (the app's PlanAction on=: "↻ Rundtour" on a round trip, #40): filled plan blue, the sign is ✓ */
 .planactions .textbtn.on { background: var(--plan); color: #fff; border-radius: 20px; padding: 8px 12px; }

@@ -222,6 +222,29 @@ object OverviewHintRule {
     /** [detailed]: per sample point whether the detailed map covers it. */
     fun show(zoom: Double, detailed: List<Boolean>): Boolean =
         zoom >= MIN_ZOOM && detailed.isNotEmpty() && detailed.count { !it } >= MIN_SHARE * detailed.size
+
+    /** A large part of the box has no detailed map ([show], any zoom): the areas of those sample points; null = it has. */
+    fun without(south: Double, west: Double, north: Double, east: Double, detailed: (com.onpath.app.routing.GeoPoint) -> Boolean): Set<CellId>? = try {
+        val pts = samples(south, west, north, east).map { (lat, lon) -> com.onpath.app.routing.GeoPoint(lat, lon) }
+        val has = pts.map(detailed)
+        if (!show(MIN_ZOOM, has)) null else pts.filterIndexed { i, _ -> !has[i] }.mapNotNull { CellId.at(it) }.toSet()
+    } catch (e: Exception) {
+        com.onpath.app.debug.Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); null
+    }
+
+    /**
+     * Every area of the view without detailed map ([missing]) is already on its way – asked, prepared, loading, joining,
+     * or waiting for the network / Wi-Fi / a busy server: "Detailkarte laden" would offer what already happens, so the
+     * pill stays away; the loading sign / the wait window say it (owner 2026-11-27, one notice at a time). An area not
+     * asked for or failed brings the pill back.
+     */
+    fun coming(missing: Set<CellId>, states: Map<CellId, CellState>): Boolean =
+        missing.isNotEmpty() && missing.all { c ->
+            when (states[c]) {
+                null, CellState.None, is CellState.Failed, is CellState.Ready -> false
+                else -> true
+            }
+        }
 }
 
 /**

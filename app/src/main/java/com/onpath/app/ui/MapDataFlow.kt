@@ -362,7 +362,8 @@ class MapDataFlow(
             loadModalFor.isNotEmpty() || routingModal || r != null -> "modal"
             else -> null
         }
-        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }
+        val here = first || job?.why == com.onpath.app.cells.CellWhy.HERE
+        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }?.let { if (it.here == here) it else it.copy(here = here) }
         if (ui == null && key == "modal") loadModalFor = emptySet() // everything there
         return ui
     }
@@ -720,13 +721,11 @@ class MapDataFlow(
     /** Boxes of the installed region packages (z7–9, map-cells.md §20): the style's region view there. */
     fun packageAreas(): List<DoubleArray> = cells.packageAreas()
 
-    /** True when a large part of the visible box has no detailed map ([OverviewHintRule], any zoom). */
-    fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = try {
-        OverviewHintRule.show(OverviewHintRule.MIN_ZOOM,
-            OverviewHintRule.samples(south, west, north, east).map { (lat, lon) -> cells.hasDetailedMap(GeoPoint(lat, lon)) })
-    } catch (e: Exception) {
-        Problems.warn("cells", "Detailed-map check failed; overview hint hidden", e); false
-    }
+    /** The wait window is on screen: the quiet map pill and the overview pill stay away (one notice, owner 2026-11-27). */
+    var loadWindowShown by mutableStateOf(false)
+
+    /** A large part of the visible box has no detailed map ([OverviewHintRule], any zoom): its areas; null = no. */
+    fun overviewOnly(south: Double, west: Double, north: Double, east: Double) = OverviewHintRule.without(south, west, north, east, cells::hasDetailedMap)
 
     /** Every fix: T3 (first usable fix after start / return in Plan). */
     private fun cellsForFix(loc: android.location.Location) {

@@ -147,6 +147,7 @@
     <string name="maps_phase_preparing">being prepared</string>
     <string name="maps_phase_waiting">waiting</string>
     <string name="wait_title_map">Map for your area</string>
+    <string name="wait_title_map_place">Map for this place</string>
     <string name="wait_step_prepare">prepare</string>
     <string name="wait_step_prepared">prepared</string>
     <string name="wait_step_load">load</string>
@@ -165,6 +166,7 @@
     <!-- Loading window (modal) -->
     <string name="maps_load_preparing">Preparing the map for your area</string>
     <string name="maps_load_failed">The map for your area could not be loaded</string>
+    <string name="maps_load_failed_place">The map for this place could not be loaded</string>
     <string name="maps_load_loading">Loading the map for your area</string>
     <string name="maps_about_mb">about %1$d MB</string>
     <string name="maps_offline_text">No internet connection – the map will load as soon as you're online.</string>
