@@ -43,7 +43,9 @@ class BrandOnceTest {
         assertEquals(setOf(CheckId.VIBRATION, CheckId.BRAND), PhoneCheck.quietBeforeTour(setOf(CheckId.VIBRATION), setOf(CheckId.BRAND)))
     }
 
-    @Test fun theFirstSetupStillOffersItOnce() {
-        assertEquals(listOf(CheckId.BRAND), PhoneCheck.steps(Purpose.FIRST_SETUP, samsung))
+    /** Shorter setup (owner 2026-11-26/27): not at the first start – at the first „Los geht's“, once. */
+    @Test fun theFirstTourOffersItOnce_notTheFirstStart() {
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, samsung))
+        assertEquals(listOf(CheckId.BRAND), PhoneCheck.steps(Purpose.BEFORE_TOUR, samsung))
     }
 }

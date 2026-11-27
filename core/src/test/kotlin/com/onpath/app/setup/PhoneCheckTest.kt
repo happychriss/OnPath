@@ -20,9 +20,12 @@ class PhoneCheckTest {
         assertEquals(Need.OPTIONAL, all.first { it.id == CheckId.UNUSED_RESET }.need)
     }
 
-    @Test fun freshInstallFirstSetupAsksLocationFirstThenTheRest() {
-        val fresh = PhoneState(sdk = 35, manufacturer = "Google")
-        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.VIBRATION), PhoneCheck.steps(Purpose.FIRST_SETUP, fresh))
+    /** Shorter setup (owner 2026-11-26/27): the first start asks only for the location; the rest comes at „Los geht's“. */
+    @Test fun freshInstallFirstSetupAsksOnlyTheLocation() {
+        val fresh = PhoneState(sdk = 35, manufacturer = "Google", notificationsOn = false, backgroundRestricted = true)
+        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE), PhoneCheck.steps(Purpose.FIRST_SETUP, fresh))
+        assertEquals("notifications and battery before the first recording",
+            listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.NOTIFICATIONS, CheckId.BATTERY), PhoneCheck.steps(Purpose.BEFORE_TOUR, fresh))
         assertFalse(PhoneCheck.tourReady(fresh))
         assertEquals(listOf(CheckId.LOCATION), PhoneCheck.steps(Purpose.LOCATE, fresh))
     }
@@ -36,26 +39,30 @@ class PhoneCheckTest {
 
     @Test fun recommendedItemsBeforeATourCanBeSnoozedRequiredNever() {
         val s = good.copy(notificationsOn = false, vibrationFelt = Felt.UNKNOWN, backgroundRestricted = true, locationOn = false)
-        assertEquals(listOf(CheckId.LOCATION_ON, CheckId.NOTIFICATIONS, CheckId.VIBRATION, CheckId.BATTERY),
+        assertEquals(listOf(CheckId.LOCATION_ON, CheckId.NOTIFICATIONS, CheckId.BATTERY),
             PhoneCheck.steps(Purpose.BEFORE_TOUR, s))
-        val snoozed = setOf(CheckId.NOTIFICATIONS, CheckId.VIBRATION, CheckId.BATTERY, CheckId.LOCATION_ON)
+        val snoozed = setOf(CheckId.NOTIFICATIONS, CheckId.BATTERY, CheckId.LOCATION_ON)
         assertEquals("location off is required", listOf(CheckId.LOCATION_ON), PhoneCheck.steps(Purpose.BEFORE_TOUR, s, snoozed = snoozed))
         // the settings guide ignores snoozes
         assertTrue(CheckId.NOTIFICATIONS in PhoneCheck.steps(Purpose.SETTINGS, s, snoozed = snoozed))
     }
 
-    @Test fun vibrationOnlyWhenTheUserUsesItAndThePhoneCanVibrate() {
+    /** Owner 2026-11-26/27: the vibration is never asked in a guide – it simply works; the test stays in Settings. */
+    @Test fun vibrationIsNeverAskedOnlyOfferedInSettings() {
         val s = good.copy(vibrationFelt = Felt.NO)
-        assertEquals(listOf(CheckId.VIBRATION), PhoneCheck.steps(Purpose.BEFORE_TOUR, s))
-        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, s, vibrationOn = false))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, s))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, s))
+        assertTrue(CheckId.VIBRATION in PhoneCheck.steps(Purpose.SETTINGS, s))
+        assertFalse(CheckId.VIBRATION in PhoneCheck.steps(Purpose.SETTINGS, s, vibrationOn = false))
         assertTrue("no vibrator: nothing to test", PhoneCheck.isOk(CheckId.VIBRATION, s.copy(hasVibrator = false)))
     }
 
     @Test fun voiceStepOnlyWithSpokenDirectionsOn_okOnceHeard() {
         // off: no step, no row
         assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good))
-        // on, not tested yet: after the vibration step, recommended (snoozable before a tour)
-        assertEquals(listOf(CheckId.VOICE), PhoneCheck.steps(Purpose.FIRST_SETUP, good, voiceOn = true))
+        // on, not tested yet: not at the first start, before a tour – recommended (snoozable there)
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good, voiceOn = true))
+        assertEquals(listOf(CheckId.VOICE), PhoneCheck.steps(Purpose.BEFORE_TOUR, good, voiceOn = true))
         assertEquals(Need.RECOMMENDED, PhoneCheck.need(CheckId.VOICE))
         assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, good, snoozed = setOf(CheckId.VOICE), voiceOn = true))
         val heard = good.copy(voice = VoiceStatus.READY, voiceHeard = Felt.YES)
@@ -65,8 +72,7 @@ class PhoneCheckTest {
         // no speech output at all: nothing to set up
         assertFalse(PhoneCheck.applies(CheckId.VOICE, good.copy(voice = VoiceStatus.NO_ENGINE), voiceOn = true))
         val fresh = PhoneState(sdk = 35, manufacturer = "Google")
-        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.VIBRATION, CheckId.VOICE),
-            PhoneCheck.steps(Purpose.FIRST_SETUP, fresh, voiceOn = true))
+        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE), PhoneCheck.steps(Purpose.FIRST_SETUP, fresh, voiceOn = true))
     }
 
     @Test fun channelSwitchedOffCountsAsNotificationsOff() {
@@ -93,8 +99,9 @@ class PhoneCheckTest {
         assertEquals(Brand.ONEPLUS, Brand.of("realme"))
         assertEquals(null, Brand.of("Google"))
         val sam = good.copy(manufacturer = "samsung")
-        assertEquals(listOf(CheckId.BRAND), PhoneCheck.steps(Purpose.FIRST_SETUP, sam))
-        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, sam.copy(brandDone = true)))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, sam)) // not at the first start any more
+        assertEquals(listOf(CheckId.BRAND), PhoneCheck.steps(Purpose.BEFORE_TOUR, sam))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, sam.copy(brandDone = true)))
         assertFalse(PhoneCheck.all(good).any { it.id == CheckId.BRAND })
     }
 
@@ -130,23 +137,25 @@ class SetupGuideTest {
         assertEquals(CheckId.PRECISE, after.current)
         assertEquals(CheckId.LOCATION, after.justDone)
         val precise = after.refresh(fresh.copy(location = LocationGrant.PRECISE))
-        assertEquals(CheckId.VIBRATION, precise.current)
+        assertTrue("nothing else is missing", precise.finished)
     }
 
     @Test fun noLocationAtAllSkipsThePreciseStep() {
-        val g = SetupGuide.of(Purpose.FIRST_SETUP, fresh)!!.denied(CheckId.LOCATION).putOff().refresh(fresh)
-        assertEquals(CheckId.VIBRATION, g.current)
+        val restricted = fresh.copy(backgroundRestricted = true)
+        val g = SetupGuide.of(Purpose.BEFORE_TOUR, restricted)!!.denied(CheckId.LOCATION).putOff().refresh(restricted)
+        assertEquals(CheckId.BATTERY, g.current)
         assertEquals(null, g.justDone)
     }
 
     @Test fun endsSayWhatIsLeft() {
-        val ready = fresh.copy(location = LocationGrant.PRECISE)
-        val g = SetupGuide.of(Purpose.BEFORE_TOUR, fresh)!!
-        // everything allowed, vibration felt
-        val done = g.refresh(ready.copy(vibrationFelt = Felt.YES))
+        val restricted = fresh.copy(backgroundRestricted = true)
+        val ready = restricted.copy(location = LocationGrant.PRECISE)
+        val g = SetupGuide.of(Purpose.BEFORE_TOUR, restricted)!!
+        // everything allowed, battery not restricted any more
+        val done = g.refresh(ready.copy(backgroundRestricted = false))
         assertTrue(done.finished)
-        assertEquals(SetupGuide.End.ALL_SET, done.end(ready.copy(vibrationFelt = Felt.YES)))
-        // vibration put off
+        assertEquals(SetupGuide.End.ALL_SET, done.end(ready.copy(backgroundRestricted = false)))
+        // battery put off
         val later = g.refresh(ready).putOff()
         assertTrue(later.finished)
         assertEquals(SetupGuide.End.SOME_LATER, later.end(ready))
@@ -157,7 +166,15 @@ class SetupGuideTest {
 
     @Test fun stepNumbersAndSingleStep() {
         val g = SetupGuide.of(Purpose.FIRST_SETUP, fresh)!!
-        assertEquals(1, g.stepNumber); assertEquals(3, g.steps.size)
+        assertEquals(1, g.stepNumber); assertEquals(2, g.steps.size) // location + precise only (shorter setup)
+        assertEquals("location + precise are one ask of Android: no counter", 1, g.shownCount)
+        val tour = SetupGuide.of(Purpose.BEFORE_TOUR, fresh.copy(notificationsOn = false, backgroundRestricted = true))!!
+        assertEquals(listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.NOTIFICATIONS, CheckId.BATTERY), tour.steps)
+        assertEquals(3, tour.shownCount)
+        val atPrecise = tour.refresh(fresh.copy(location = LocationGrant.APPROXIMATE, notificationsOn = false, backgroundRestricted = true))
+        assertEquals(CheckId.PRECISE, atPrecise.current); assertEquals(1, atPrecise.shownNumber)
+        val atNotif = atPrecise.refresh(fresh.copy(location = LocationGrant.PRECISE, notificationsOn = false, backgroundRestricted = true))
+        assertEquals(CheckId.NOTIFICATIONS, atNotif.current); assertEquals(2, atNotif.shownNumber)
         assertEquals(listOf(CheckId.BATTERY), SetupGuide.single(CheckId.BATTERY).steps)
         assertEquals(null, SetupGuide.of(Purpose.LOCATE, fresh.copy(location = LocationGrant.APPROXIMATE)))
     }

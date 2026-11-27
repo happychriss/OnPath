@@ -58,6 +58,17 @@ data class SetupGuide(
     /** "Step 2 of 3" – counted over the steps the guide started with. */
     val stepNumber: Int get() = (index + 1).coerceAtMost(steps.size)
 
+    /**
+     * „Schritt 1 von 2“ as the user sees it: location and precise location after it are ONE ask of Android (the precise
+     * page comes only when „ungefähr“ was chosen), so they count as one step – the first start reads as one step
+     * (shorter setup, owner 2026-11-27). [shownCount] ≤ 1: no counter.
+     */
+    private val preciseFollowsLocation: Boolean get() =
+        steps.indexOf(CheckId.LOCATION).let { l -> l >= 0 && steps.indexOf(CheckId.PRECISE) == l + 1 }
+    val shownCount: Int get() = steps.size - if (preciseFollowsLocation) 1 else 0
+    val shownNumber: Int get() =
+        (stepNumber - if (preciseFollowsLocation && index >= steps.indexOf(CheckId.PRECISE)) 1 else 0).coerceIn(1, maxOf(1, shownCount))
+
     companion object {
         /** A guide for [purpose], or null when nothing is missing. */
         fun of(purpose: Purpose, s: PhoneState, vibrationOn: Boolean = true, snoozed: Set<CheckId> = emptySet(),

@@ -170,10 +170,13 @@ object PhoneCheck {
               voiceOn: Boolean = false): List<CheckId> {
         val ids = when (purpose) {
             Purpose.LOCATE -> listOf(CheckId.LOCATION, CheckId.LOCATION_ON)
-            Purpose.FIRST_SETUP -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.NOTIFICATIONS,
-                CheckId.VIBRATION, CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND)
+            // shorter setup (owner 2026-11-26, built 2026-11-27 „ja, mach es so“): the first start asks only what the map
+            // needs to know where you are; notifications, battery, brand, saver and voice come at „Los geht's“ – before
+            // the first recording, so no point is lost; the vibration is never asked (it simply works; the test stays in
+            // Settings → Phone setup)
+            Purpose.FIRST_SETUP -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON)
             Purpose.BEFORE_TOUR -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.NOTIFICATIONS,
-                CheckId.VIBRATION, CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
+                CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
             Purpose.SETTINGS -> CheckId.entries
         }
         return ids.filter { id ->

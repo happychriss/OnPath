@@ -45,11 +45,16 @@ abstract class SetupScreenshotTest {
         val approx = fresh.copy(location = LocationGrant.APPROXIMATE)
         shot(SetupGuide.of(Purpose.BEFORE_TOUR, fresh)!!.refresh(approx), phone = approx)
     }
-    @Test fun vibrationQuestion() = shot(SetupGuide.of(Purpose.FIRST_SETUP, located)!!.vibrationPlayed(), phone = located)
+    // the vibration test is only offered from Settings → Phone setup since the shorter setup (owner 2026-11-26/27)
+    @Test fun vibrationQuestion() = shot(SetupGuide.single(CheckId.VIBRATION).vibrationPlayed(), phone = located)
     @Test fun vibrationNotFelt() =
-        shot(SetupGuide.of(Purpose.FIRST_SETUP, located)!!.vibrationPlayed().vibrationAnswer(Felt.NO), phone = located)
-    @Test fun samsungSteps() = shot(SetupGuide.of(Purpose.FIRST_SETUP, samsung), phone = samsung)
-    @Test fun endSomeLater() = shot(SetupGuide.of(Purpose.FIRST_SETUP, located)!!.putOff(), phone = located)
+        shot(SetupGuide.single(CheckId.VIBRATION).vibrationPlayed().vibrationAnswer(Felt.NO), phone = located)
+    // the brand page comes at the first „Los geht's“, not at the first start
+    @Test fun samsungSteps() = shot(SetupGuide.of(Purpose.BEFORE_TOUR, samsung), phone = samsung)
+    @Test fun endSomeLater() {
+        val restricted = located.copy(backgroundRestricted = true)
+        shot(SetupGuide.of(Purpose.BEFORE_TOUR, restricted)!!.putOff(), phone = restricted)
+    }
 
     private val settingsPhone = samsung.copy(notificationsOn = false, vibrationFelt = Felt.UNKNOWN, unusedReset = ResetStatus.ON, brandDone = true)
     @Test fun settingsPage() = settings(settingsPhone)

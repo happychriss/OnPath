@@ -222,7 +222,7 @@ fun SetupGuideScreen(guide: SetupGuide?, welcome: Boolean, phone: PhoneState, ta
                         val id = guide.current!!
                         guide.justDone?.let { DoneLine(checkTitle(it, phone)) }
                         taken[id]?.let { NoteBox(str(if (it == Taken.BY_PHONE) Res.string.setup_taken_phone else Res.string.setup_taken_off)) }
-                        val counter = if (guide.steps.size > 1) str(Res.string.setup_step_of, guide.stepNumber, guide.steps.size) else null
+                        val counter = if (guide.shownCount > 1) str(Res.string.setup_step_of, guide.shownNumber, guide.shownCount) else null
                         Page(checkIcon(id), counter, checkTitle(id, phone), checkWhy(id, phone),
                             checkDo(id, phone, id in guide.denied).takeIf { it.isNotEmpty() && (id != CheckId.VIBRATION || phone.hasVibrator) })
                         if (id == CheckId.VIBRATION && guide.vibrationPlayed && guide.vibrationAnswer == Felt.NO) {
