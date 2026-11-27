@@ -116,8 +116,8 @@ data class SearchActions(
 
 /**
  * Full-screen search (Plan mode only), Apple-style (owner 2026-11-27, variant A): a grey rounded field with 🔍 and
- * „Abbrechen“; under it the categories as one row of round coloured signs ([CATEGORY_ROW], the map's POI colours) while
- * nothing is typed or a category is on; favourites, recent searches and the hits in light rounded groups, every row
+ * „Abbrechen“; under it the categories as one row of round coloured signs ([CATEGORY_ROW], the map's POI colours) –
+ * always, while typing too (a filter on the typed text); favourites, recent searches and the hits in light rounded groups, every row
  * with its kind's coloured sign; ONE mixed result list – offline places, POIs, trails, addresses and online results,
  * best match first, each row saying "near your route" / "online"; and one fixed row above the keyboard that hands the
  * query to Google Maps („Google Maps ↗“).
@@ -136,8 +136,9 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
                 SearchField(ui.query, actions, Modifier.weight(1f).focusRequester(focus)) { focusManager.clearFocus() }
                 TextButton(onClick = actions.onBack) { Text(str(Res.string.common_cancel), style = MaterialTheme.typography.bodyLarge) }
             }
-            // the categories while nothing is typed – and while one is on, so the filter stays visible and can be undone
-            if (ui.query.isBlank() || ui.category != null) CategoryRow(ui.category, actions.onCategory)
+            // the categories always – while typing too: a category filters the typed text, a second tap undoes it, nothing to
+            // clear first (owner 2026-11-27)
+            CategoryRow(ui.category, actions.onCategory)
             LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
                 // only the very first time (no index yet); later a new index is built while the old one answers
                 if (ui.indexing) item { Preparing() }
