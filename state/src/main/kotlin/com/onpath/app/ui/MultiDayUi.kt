@@ -17,7 +17,11 @@ data class DayRowUi(val n: Int, val places: String?, val distanceM: Double, val 
  * the day borders ([borders]: share of the route + kind), one row per day; [selected] = the picked day(s).
  */
 data class DaysUi(val name: String?, val count: Int, val profile: List<GeoPoint>, val borders: List<Pair<Float, DayEndKind>>,
-                  val rows: List<DayRowUi>, val selected: IntRange?)
+                  val rows: List<DayRowUi>, val selected: IntRange?,
+                  /** The rows as the planner's day table (owner 2026-11-27, [DayTables]); null = the plain rows. */
+                  val table: DayTableUi? = null,
+                  /** The tour's limits per day (the „Planung“ chips). */
+                  val limits: com.onpath.app.routing.DayLimits = com.onpath.app.routing.DayLimits())
 
 /**
  * A followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" when the whole tour can come back (no tour
