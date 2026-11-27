@@ -241,25 +241,22 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
     checkMenu(g, `${P} far result (Hilden):`);
     check(g.tip.x > g.sheet.x + g.sheet.w && g.tip.y > g.bar.y + g.bar.h && g.tip.y < vp.height - 40, `${P} far result: the point is in the free map room (${JSON.stringify(g.tip)})`);
     await page.screenshot({ path: path.join(shots, `${name}-card-far.png`) });
-    // the far place added, then Cancel at "very long" (the app's TakenPin, field 2026-11-07 S10): the add is taken
-    // back and the place stays as its pin – never forgotten
+    // the far place added: one question „… is about N km away“ (owner 2026-11-27 variant C) – or none when it routes in
+    // time; „Start from here“ starts a new plan there and ↶ brings the plan from before back – never forgotten
     {
       const before = await page.locator('.pin').count();
       await page.locator(`:is(${MENU}) button`).first().click();
-      const asked = await page.waitForSelector('dialog.longroute', { timeout: 30_000 }).then(() => true).catch(() => false);
+      const asked = await page.waitForSelector('dialog.longroute.far', { timeout: 30_000 }).then(() => true).catch(() => false);
       if (asked) {
-        await page.click('#lrCancel');
-        await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n && !!document.querySelector('.candidate'), before, { timeout: 30_000 }).catch(() => {});
+        const t = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' ');
+        check(/is about \d+ km away/.test(t) && !(await page.$('#lrCancel')), `${P} far place added: one question, no Cancel ("${t.trim()}")`);
+        await page.click('#lrFresh');
+        await page.waitForFunction(() => !document.querySelector('dialog.longroute') && document.querySelectorAll('.pin').length === 1, null, { timeout: 30_000 }).catch(() => {});
+        check(await page.locator('.pin').count() === 1, `${P} Start from here: a new plan at the far place`);
+        await page.click('#undo');
+        await page.waitForFunction((n) => document.querySelectorAll('.pin').length === n, before, { timeout: 30_000 }).catch(() => {});
       }
-      check(asked && await page.locator('.pin').count() === before && await page.locator('.candidate').count() === 1 && await page.isVisible('.pinchip'),
-        `${P} far place added, Cancel at "very long": the add is taken back, its pin is shown again (asked ${asked})`);
-      // the map went back to the plan from before (app 4216a144): the route in the free room, the far pin out of view
-      // (the next pick replaces it)
-      await page.waitForTimeout(400); await settle(page);
-      const back = await freeRoom(page);
-      const far = (await menuGeom()).tip, farInView = !!far && far.x > 0 && far.x < vp.width && far.y > 0 && far.y < vp.height;
-      check(back.bad === 0 && !farInView,
-        `${P} Cancel: the map is back on the plan from before, not on the far place (${JSON.stringify(back)})`);
+      check(await page.locator('.pin').count() === before, `${P} far place: the plan from before is back (asked ${asked})`);
     }
     await page.keyboard.press('Escape');
   }
