@@ -11,7 +11,7 @@ import { fitShape, shapeOf, shapeSvg, type Seg } from './routeshape';
 import { recentPlans, binnedPlans, afterSaved, toBin, restoreRecent, savedRestored, renameRecent, recentRow, daysLeft, zuletztReady, BIN_DAYS, type RecentPlan } from './recent';
 import { sortRoutes, sortChipsHtml, sortChoice, searchNames, type SortText } from './routesort';
 import { slice, slicesReady, numOf, type SaveAsk, type SaveWrite } from './slices';
-import { filterSaved, favouritesPill, favChipHtml, actChipHtml, actMenuHtml, starHtml, activityLineHtml } from './routefilter';
+import { filterSaved, keepActivity, favouritesPill, favChipHtml, actChipHtml, actMenuHtml, starHtml, activityLineHtml } from './routefilter';
 import { thumbKey, type RouteThumbs } from './routethumbs';
 import type { Activity } from './engine/types';
 import type { ActivityRow } from './activity';
@@ -632,6 +632,22 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
       : favouritesPill.get() ? t('routes_fav_none')
       : openAct && all.length ? t('routes_act_none', actChip)
       : t('routes_empty_planned');
+    // what the activity hides (the app's ActivityFilter.hidden + savedHeader, owner 2026-11-27 variant A): the header
+    // says „GESPEICHERT · NUR WANDERN“ and „1 weitere mit Rad“ on the right – a click shows Alle
+    const hiddenList = openAct ? filterSaved(searchPlans(all, query), favouritesPill.get(), null).filter((p) => !keepActivity(p.activity, openAct)) : [];
+    const savedHead = () => {
+      const li = sectionHead(t('routes_section_saved') + (hiddenList.length ? ' · ' + t('routes_only', actChip) : ''));
+      if (hiddenList.length) {
+        const acts = [...new Set(hiddenList.map((p) => p.activity ?? ''))];
+        const one = acts.length === 1 && acts[0] ? actRows().find((r) => r.key === acts[0])?.chip ?? acts[0] : null;
+        const n = hiddenList.length;
+        const more = Object.assign(document.createElement('button'), { type: 'button', className: 'showall',
+          textContent: one ? tp('routes_more_with', n, n, one) : tp('routes_more', n, n) });
+        more.onclick = () => { openAct = null; drawChips(); toTop(); };
+        li.append(more);
+      }
+      return li;
+    };
     ul.innerHTML = plans.length || recent.length || liveItem || placeSaved.length ? '' : `<li class="muted emptyline">${esc(empty)}</li>`;
     if (recent.length || liveItem || placeSaved.length) {
       ul.append(sectionHead(t('routes_section_recent')));
@@ -650,8 +666,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
         li.dataset.zuletzt = '1';
         ul.append(li);
       }
-      if (plans.length) ul.append(sectionHead(t('routes_section_saved')));
     }
+    // the header over the saved rows: with Zuletzt above, or whenever the activity hides some
+    if ((plans.length && (recent.length || liveItem || placeSaved.length)) || hiddenList.length) ul.append(savedHead());
     for (const p of plans) {
       const it = savedItem(p);
       ul.append(row(it, rowActions('saved', it.kind), folder, paired, { tags: tagOf(p), mark: true }));
