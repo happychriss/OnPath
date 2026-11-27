@@ -127,10 +127,9 @@ private fun HoldLabel(icon: ImageVector?, text: String?, color: Color, compact: 
  * https://claude.ai/artifact/VhoxV9qrd4nNfz9FzgAULi): the status card carries no buttons; at the bottom green
  * "⏸ Anhalten" | blue "✎ Planen" (56 dp, equally wide; owner 2026-11-07: "Anhalten" says both – pause and end).
  * Stopped (owner 2026-11-07, variant 3 of the "Anhalten" sketch): no band of its own – the status card says
- * "⏸ Angehalten seit 14:32" ([StoppedText]) – and three same-built buttons with icons: green "▶ Weiter" (the widest),
- * dark green "■ Tour beenden" (asks first: the end sheet; never red – red is only for delete), blue "✎ Planen"; one row
- * where it fits, else Weiter full width over the other two, a large font stacks all three ([TourBottomBarRules]) – never
- * a cut word. One rule everywhere (owner 2026-11-08): **pale = hold, strong = tap**. Locked ([hold], owner 2026-11-06
+ * "⏸ Angehalten seit 14:32" ([StoppedText]) – and two buttons with icons (owner 2026-11-26: no Planen in the pause):
+ * green "▶ Weiter" (the wider) and dark green "■ Tour beenden" (asks first: the end sheet; never red – red is only for
+ * delete); side by side, a large font stacks them – never a cut word. One rule everywhere (owner 2026-11-08): **pale = hold, strong = tap**. Locked ([hold], owner 2026-11-06
  * 22:20, variant A of https://claude.ai/artifact/3noAFaW5cjWVYBDHReLUrN): every button pale, each fires only when held
  * ~1 s ([HoldButton]; the band fills in its strong colour); inside the unlock window ([windowOpen]) and with the lock off
  * every button strong on a plain tap.
