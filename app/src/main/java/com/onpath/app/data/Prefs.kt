@@ -24,6 +24,15 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
 
     // ---- small app state, all in this one place (review Arch 11: written around Prefs before) ----
 
+    /**
+     * Settings → Plan → „Markierten Wegen folgen“ alone (the same key as [settings]' markedTrails): what every routing
+     * engine reads at each route (routing/EngineProvider). A value of the wrong type never crashes: Standard, reported.
+     */
+    val markedTrails: Int
+        get() = try { AppSettings.markedTrailsOf(sp.getInt("markedTrails", AppSettings.MARKED_TRAILS_STANDARD)) } catch (e: ClassCastException) {
+            Problems.warn("settings", "Setting markedTrails unreadable, routing with Standard", e); AppSettings.MARKED_TRAILS_STANDARD
+        }
+
     /** When the automatic update check last ran (epoch ms; 0 = never). */
     var updateCheckMs: Long
         get() = sp.getLong("updateCheck", 0)

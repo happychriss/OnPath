@@ -52,6 +52,7 @@ object AppSuggest {
             suggestFileOf = { x, y -> store.suggestFile(CellId(x, y)) },
             settingsText = { settingsText },
             routingMissing = { AppRouting.get(app).missing(it) },
+            markedTrails = com.onpath.app.routing.EngineProvider.markedTrails(app),
         )
     }
 

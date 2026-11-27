@@ -1,6 +1,7 @@
 package com.onpath.app.suggest
 
 import com.onpath.app.routing.Activity
+import com.onpath.app.routing.MarkedTrails
 import com.onpath.app.routing.RouterRules
 import java.io.File
 
@@ -15,15 +16,15 @@ import java.io.File
  */
 object RouterProfile {
     /** [profileDir] = where the app keeps lookups.dat and the .brf files (BRouterEngine copies them from the assets). */
-    fun of(profileDir: File, activity: Activity, sacLimit: Int): NetReader.Profile =
-        NetReader.Profile(File(profileDir, RouterRules.profileFile(activity)), keyValues(activity, sacLimit))
+    fun of(profileDir: File, activity: Activity, sacLimit: Int, trails: Int = MarkedTrails.STANDARD): NetReader.Profile =
+        NetReader.Profile(File(profileDir, RouterRules.profileFile(activity)), keyValues(activity, sacLimit, trails))
 
     private const val MAX_SNAP_M = 1000.0
 
     private fun viaCorrectionM(activity: Activity): Double = RouterRules.viaCorrectionM(activity)
 
     // ---- copy of BRouterEngine.keyValues (RouterProfileTest) ----
-    internal fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
+    internal fun keyValues(activity: Activity, sacLimit: Int, trails: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
         // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner).
         // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
@@ -54,6 +55,8 @@ object RouterProfile {
             }
             else -> Unit
         }
+        // „Markierten Wegen folgen“ (Settings → Plan, owner 2026-11-27): how strongly marked trails are preferred
+        kv.putAll(MarkedTrails.keyValues(activity, trails))
         return kv
     }
     // ---- end of copy ----

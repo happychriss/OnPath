@@ -37,7 +37,15 @@ import btools.router.RoutingEngine as BRouter
  * with `correctMisplacedViaPoints`, cuts out the out-and-back spike a via point slightly off the
  * natural line would otherwise cause (up to [VIA_CORRECTION_M] one way, [VIA_CORRECTION_HIKE_M] for hiking).
  */
-class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEngine {
+class BRouterEngine(
+    context: Context, private val segmentsDir: File,
+    /**
+     * „Markierten Wegen folgen“ ([MarkedTrails] level), read at every route: part of the profile parameters and of the
+     * result cache's key. The app passes the setting (EngineProvider – the same for planning and a tour's re-routing);
+     * the web planner passes its own; default Standard.
+     */
+    private val markedTrails: () -> Int = { MarkedTrails.STANDARD },
+) : RoutingEngine {
 
     private val appContext: Context = context.applicationContext ?: context
     private val profileDir = File(appContext.filesDir, "brouter/profiles")
@@ -80,7 +88,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE
     }
 
-    private data class CacheKey(val coords: List<Long>, val activity: Activity, val sac: Int)
+    private data class CacheKey(val coords: List<Long>, val activity: Activity, val sac: Int, val trails: Int)
 
     override fun lastLockWaitMs(): Long = RouterRules.lastLockWaitMs()
 
@@ -98,10 +106,11 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             else if (!LOCK.tryLock(limits.timeoutMs, TimeUnit.MILLISECONDS)) throw RoutingException(BUSY, timedOut = true)
             RouterRules.lastLockWait.set(System.currentTimeMillis() - start)
             try {
-                val key = cacheKey(waypoints, activity, sacLimit)
+                val trails = MarkedTrails.of(markedTrails())
+                val key = cacheKey(waypoints, activity, sacLimit, trails)
                 cache[key] ?: run {
                     val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }
-                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)
+                    routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1, trails)
                 }.also { cache[key] = it }
             } finally {
                 LOCK.unlock()
@@ -126,17 +135,17 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             throw RoutingException(UNEXPECTED)
         }
 
-    private fun cacheKey(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int): CacheKey {
+    private fun cacheKey(waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, trails: Int): CacheKey {
         val c = ArrayList<Long>(waypoints.size * 2)
         for (p in waypoints) {
             c.add(Math.round(p.lat * 1_000_000.0)); c.add(Math.round(p.lon * 1_000_000.0))
         }
-        return CacheKey(c, activity, if (activity == Activity.HIKE) sacLimit.coerceIn(1, 5) else 0)
+        return CacheKey(c, activity, if (activity == Activity.HIKE) sacLimit.coerceIn(1, 5) else 0, trails)
     }
 
     private fun routeLocked(
         waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, budgetMs: Long? = null, cancel: RouteCancel? = null,
-        rounds: Int = 1,
+        rounds: Int = 1, trails: Int,
     ): RouteResult {
         if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
         checkSegments(waypoints)
@@ -146,7 +155,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
         val (track, nodes) = try {
-            search(waypoints, activity, sacLimit, timeoutMs, cancel)
+            search(waypoints, activity, sacLimit, timeoutMs, cancel, trails)
         } catch (e: RoutingException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -167,14 +176,14 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
      * a point that cannot be routed takes the closest usable way).
      */
     private fun search(
-        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?,
+        waypoints: List<GeoPoint>, activity: Activity, sacLimit: Int, timeoutMs: Long, cancel: RouteCancel?, trails: Int,
     ): Pair<OsmTrack, List<OsmNodeNamed>> {
         val t0 = System.currentTimeMillis()
         val skipWays = ArrayList<LongArray>()
         while (true) {
             val rc = RoutingContext()
             rc.localFunction = File(profileDir, profileFile(activity)).absolutePath
-            rc.keyValues = keyValues(activity, sacLimit)
+            rc.keyValues = keyValues(activity, sacLimit, trails)
             val nodes = bRouterNodes(waypoints)
             val engine = BRouter(null, null, segmentsDir, nodes, rc)
             engine.quite = true
@@ -362,7 +371,7 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
     }
 
     /** Profile parameter overrides; BRouter injects these as numeric `assign`s that win over the .brf. */
-    private fun keyValues(activity: Activity, sacLimit: Int): MutableMap<String, String> {
+    private fun keyValues(activity: Activity, sacLimit: Int, trails: Int): MutableMap<String, String> {
         val kv = HashMap<String, String>()
         // BRouter's turn instructions at real junctions → GeoPoint.turn (junction vibration + lock screen, owner).
         // A mode > 1 makes BRouter compute them (1 = "auto-choose" leaves the field 0 = none in RoutingContext); the mode
@@ -393,6 +402,8 @@ class BRouterEngine(context: Context, private val segmentsDir: File) : RoutingEn
             }
             else -> Unit
         }
+        // „Markierten Wegen folgen“ (Settings → Plan, owner 2026-11-27): how strongly marked trails are preferred
+        kv.putAll(MarkedTrails.keyValues(activity, trails))
         return kv
     }
 

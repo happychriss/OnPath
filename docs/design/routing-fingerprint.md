@@ -17,6 +17,7 @@ them weekly). This note says how they are made visible.
   – simpler and safer than `RouterClassHash`'s normalising, which follows WayClass.java for another purpose).
 - `BROUTER_VERSION = "1.7.11-beta-onpath1"` (BRouter 1.7.11-beta with OnPath's one jar patch, `docs/design/web-planner.md` §22)
   – `RoutingFingerprintTest` fails when the jars in `app/libs` are another version.
+- `trails=<0|1|2>` in the header (2026-11-27): the „Markierten Wegen folgen“ level (`MarkedTrails`, Settings → Plan) – another level is another fingerprint, so stored legs route again and a synced plan from another level shows the hint. `PLANNER_VERSION` 5 since then.
 - `PLANNER_VERSION = 2` (2 = the short-trip detour retry, 2026-10-31) – raised by hand with every change that can give another route for the same points, activity
   and data: Planner passes / splits, `WaypointSnap` rules, the profile parameters and via handling in `BRouterEngine`.
   Not raised for refactors that keep every route (e.g. `PlanResult`).

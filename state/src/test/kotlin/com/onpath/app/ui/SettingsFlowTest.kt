@@ -84,6 +84,7 @@ class SettingsFlowTest {
             override val tourRecording: Boolean get() = recordingRunning
             override fun recordingSettingsChanged() { log += "recording told"; storedAtCall += "recording:" + prefs.inner.settings.contours + "/" + slice.settings.contours }
             override fun mapsWifiOnly(on: Boolean) { log += "wifi only $on"; storedAtCall += "wifi:" + prefs.inner.settings.mapsWifiOnly + "/" + slice.settings.mapsWifiOnly }
+            override fun markedTrailsChanged() { log += "trails changed"; storedAtCall += "trails:" + prefs.inner.settings.markedTrails }
         }
         init { slice = SettingsSlice(board, prefs, host, CoroutineScope(Job() + Dispatchers.Unconfined), io) { now } }
     }
@@ -194,6 +195,18 @@ class SettingsFlowTest {
         App().slice.updateSettings(AppSettings(contours = false, mapsWifiOnly = true))
         val again = App()
         assertFalse(again.slice.settings.contours); assertTrue(again.slice.settings.mapsWifiOnly)
+    }
+
+    /** „Markierten Wegen folgen“: a new level drops the legs and routes the plan again – after it is stored (the engines read it there). */
+    @Test fun aNewMarkedTrailsLevelRoutesAgainAfterItIsStored() {
+        val app = App()
+        app.slice.updateSettings(app.slice.settings.copy(contours = !app.slice.settings.contours))
+        assertTrue("another setting does not", "trails changed" !in app.log)
+        app.slice.updateSettings(app.slice.settings.copy(markedTrails = com.onpath.app.routing.MarkedTrails.MORE))
+        assertEquals(1, app.log.count { it == "trails changed" })
+        assertTrue(app.storedAtCall.contains("trails:2"))
+        app.slice.updateSettings(app.slice.settings.copy(markedTrails = com.onpath.app.routing.MarkedTrails.MORE))
+        assertEquals("the same level again: nothing", 1, app.log.count { it == "trails changed" })
     }
 
     @Test fun aNewPaceRetimesAndOtherSettingsDoNot() {

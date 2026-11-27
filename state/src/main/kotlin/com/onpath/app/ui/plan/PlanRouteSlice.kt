@@ -207,10 +207,18 @@ class PlanRouteSlice(
      * The routing fingerprint (BRouter, profiles, PLANNER_VERSION) the phone routes with – stored legs ([legCache]'s
      * store, data/LegFiles) count only with the same one. Read on a routing thread at the first leg.
      */
-    private val legFingerprint: String? by lazy {
-        try { router.fingerprint() } catch (e: Exception) {
+    private val legFingerprint: String?
+        get() = try { router.fingerprint() } catch (e: Exception) { // the router caches it per „Markierte Wege“ level
             Problems.warn("routing", "Routing fingerprint not computed – stored legs are routed again", e); null
         }
+
+    /**
+     * „Markierten Wegen folgen“ changed (Settings → Plan): the legs in memory were routed with the old level – they go
+     * (stored legs carry the fingerprint, which holds the level), and the plan routes again with the new one.
+     */
+    fun markedTrailsChanged() {
+        beforeClear?.invoke(); legCache.clear()
+        host.recalc()
     }
 
     // ---------------- time estimate (docs/plan-time-estimate.md) ----------------

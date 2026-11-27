@@ -37,6 +37,8 @@ class SuggestService(
     private val settingsText: () -> String,
     /** Of the given rd5 part keys ([Rd5Parts.Part.key]) the ones not on the phone (the app: RoutingDataLoader.missing). */
     private val routingMissing: (Collection<String>) -> List<String> = { emptyList() },
+    /** „Markierten Wegen folgen“ (Settings → Plan): the same profile parameters the routing engines use. */
+    private val markedTrails: () -> Int = { com.onpath.app.routing.MarkedTrails.STANDARD },
 ) {
     /** What a wish needs: the rd5 parts within reach (keys for RoutingDataLoader.ensure) and the zoom-10 cells [x, y]. */
     class Need(val routingParts: List<String>, val cells: List<IntArray>)
@@ -78,7 +80,7 @@ class SuggestService(
             if (read.containsKey(key)) read[key] else readCell(x, y).also { read[key] = it }
         }
         val reader = NetReader(segmentsDir)
-        val source = ReaderNetSource(reader) { _ -> RouterProfile.of(profileDir, ask.activity, ask.sac) }
+        val source = ReaderNetSource(reader) { _ -> RouterProfile.of(profileDir, ask.activity, ask.sac, markedTrails()) }
         val t0 = System.currentTimeMillis()
         val r = try {
             TourSuggester.suggest(wish, source, files, S, check, lapped)

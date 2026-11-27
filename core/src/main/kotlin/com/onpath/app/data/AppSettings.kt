@@ -92,8 +92,8 @@ data class AppSettings(
     val mapsWifiOnly: Boolean = false,
     /**
      * Settings → Plan → "Marked trails" (owner 2026-11-27): how strongly routes follow marked hiking and cycling trails –
-     * [MARKED_TRAILS_LESS], [MARKED_TRAILS_STANDARD] (default) or [MARKED_TRAILS_MORE]. Stored and shown only for now;
-     * the routing link (the profiles' weight on marked trails) comes next, after the owner's yes to the page.
+     * [MARKED_TRAILS_LESS], [MARKED_TRAILS_STANDARD] (default) or [MARKED_TRAILS_MORE]; every engine routes with it
+     * ([com.onpath.app.routing.MarkedTrails], the BRouter profile parameters) and it is part of the routing fingerprint.
      */
     val markedTrails: Int = MARKED_TRAILS_STANDARD,
 ) {
@@ -102,10 +102,10 @@ data class AppSettings(
 
     companion object {
         val OFF_ROUTE_CHOICES = listOf(25, 40, 75)
-        const val MARKED_TRAILS_LESS = 0
-        const val MARKED_TRAILS_STANDARD = 1
-        const val MARKED_TRAILS_MORE = 2
+        const val MARKED_TRAILS_LESS = com.onpath.app.routing.MarkedTrails.LESS
+        const val MARKED_TRAILS_STANDARD = com.onpath.app.routing.MarkedTrails.STANDARD
+        const val MARKED_TRAILS_MORE = com.onpath.app.routing.MarkedTrails.MORE
         /** A stored value outside 0..2 (a newer or broken store) reads as the default. */
-        fun markedTrailsOf(stored: Int): Int = stored.takeIf { it in MARKED_TRAILS_LESS..MARKED_TRAILS_MORE } ?: MARKED_TRAILS_STANDARD
+        fun markedTrailsOf(stored: Int): Int = com.onpath.app.routing.MarkedTrails.of(stored)
     }
 }

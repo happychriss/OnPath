@@ -24,9 +24,10 @@ object RoutingFingerprint {
      * Our routing code's version: raise it with every change that can give another route for the same points,
      * activity and data (Planner passes and splits, WaypointSnap rules, BRouterEngine's profile parameters / via
      * handling). Not raised for refactors that keep every route the same. 4 (2026-11-05): leg by leg + LegCache, the
-     * via correction at leg joins in the Planner (docs/design/long-bike-routes.md).
+     * via correction at leg joins in the Planner (docs/design/long-bike-routes.md). 5 (2026-11-27): „Markierten Wegen
+     * folgen“ ([MarkedTrails]) – Standard prefers hiking routes more than the profile did (0.5 instead of 0.20).
      */
-    const val PLANNER_VERSION = 4
+    const val PLANNER_VERSION = 5
 
     /** The files BRouter routes with (assets/brouter), in hash order. */
     val FILES = listOf("lookups.dat", "hiking-mountain.brf", "mtb.brf", "touring.brf", "trekking.brf")
@@ -36,11 +37,16 @@ object RoutingFingerprint {
     /** A fingerprint of the format this code computes; anything else (a newer format, garbage) is not comparable. */
     fun isComparable(fp: String?): Boolean = fp != null && FORMAT_1.matches(fp)
 
-    /** The fingerprint of the files [read] gives by name (assets/brouter/<name> in the app, the served files in the web). */
-    fun of(read: (String) -> ByteArray, brouter: String = BROUTER_VERSION, planner: Int = PLANNER_VERSION): String {
+    /**
+     * The fingerprint of the files [read] gives by name (assets/brouter/<name> in the app, the served files in the web),
+     * routed with the „Markierten Wegen folgen“ level [trails] ([MarkedTrails]): another level = another fingerprint, so
+     * legs stored with it route again and a synced plan from it shows the "other routing" hint.
+     */
+    fun of(read: (String) -> ByteArray, brouter: String = BROUTER_VERSION, planner: Int = PLANNER_VERSION,
+           trails: Int = MarkedTrails.STANDARD): String {
         val out = java.io.ByteArrayOutputStream(1 shl 17)
         fun add(b: ByteArray) = out.write(b, 0, b.size)
-        add("onpath-routing\nbrouter=$brouter\nplanner=$planner\n".encodeToByteArray())
+        add("onpath-routing\nbrouter=$brouter\nplanner=$planner\ntrails=${MarkedTrails.of(trails)}\n".encodeToByteArray())
         for (f in FILES) {
             val bytes = read(f).filter { it != '\r'.code.toByte() }.toByteArray()
             add("$f\n${bytes.size}\n".encodeToByteArray())

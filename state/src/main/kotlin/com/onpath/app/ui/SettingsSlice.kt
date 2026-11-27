@@ -49,6 +49,8 @@ interface SettingsHost {
     val tourRecording: Boolean
     /** The recording service reads the settings again (voice, units). */
     fun recordingSettingsChanged()
+    /** „Markierten Wegen folgen“ changed: legs routed with the old level go, the plan routes again. */
+    fun markedTrailsChanged()
 }
 
 /**
@@ -184,9 +186,11 @@ class SettingsSlice(
             reliefAuto = com.onpath.app.map.ReliefAuto.userSet(reliefAuto); store.reliefAuto = reliefAuto
             Problems.trace("map", "Relief ${if (s.hillshade) "on" else "off"} by hand – the app no longer switches it by itself")
         }
+        val trailsChanged = s.markedTrails != settings.markedTrails
         settings = s; store.settings = s
         host.mapsWifiOnly(s.mapsWifiOnly)
         if (paceChanged) host.retime()
+        if (trailsChanged) host.markedTrailsChanged() // after the store: the engines read the stored level
         if (host.tourRecording) host.recordingSettingsChanged()
     }
 }

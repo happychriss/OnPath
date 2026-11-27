@@ -17,11 +17,21 @@ object EngineProvider {
     var isRealRouter = false
         private set
 
+    /**
+     * „Markierten Wegen folgen“ for an engine (Settings → Plan): read from the stored setting at every route, so planning
+     * (AppViewModel) and a tour's re-routing (RecordingService) – both engines come from [create] – always route with the
+     * same level, and a change counts from the next route on.
+     */
+    fun markedTrails(context: Context): () -> Int {
+        val prefs = com.onpath.app.data.Prefs(context)
+        return { prefs.markedTrails }
+    }
+
     fun create(context: Context, segmentsDir: File): RoutingEngine = try {
         // the BRouter classes load here, not first in a request (review routing L7: broken jars showed only per leg and
         // this fallback never ran)
         Class.forName(BROUTER_CLASS); Class.forName(BROUTER_CONTEXT)
-        BRouterEngine(context.applicationContext, segmentsDir).also { isRealRouter = true }
+        BRouterEngine(context.applicationContext, segmentsDir, markedTrails(context)).also { isRealRouter = true }
     } catch (e: Throwable) {
         Problems.error("routing", "Offline router (BRouter) could not start; using straight lines", e)
         isRealRouter = false

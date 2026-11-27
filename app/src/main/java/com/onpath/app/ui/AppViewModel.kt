@@ -326,6 +326,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun retime() = this@AppViewModel.planRoute.retime()
         override val tourRecording: Boolean get() = recState.value != null
         override fun recordingSettingsChanged() = recording.settingsChanged()
+        override fun markedTrailsChanged() = this@AppViewModel.planRoute.markedTrailsChanged()
     }
     val settingsSlice: com.onpath.app.ui.SettingsSlice = com.onpath.app.ui.SettingsSlice(notices, settingsStore, settingsHost, viewModelScope, Dispatchers.IO)
     /**
@@ -340,9 +341,15 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = settingsSlice.showSettings
         set(v) { settingsSlice.showSettings = v }
 
-    private val routingFingerprint by lazy {
-        com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } })
-    }
+    /** The routing fingerprint per „Markierten Wegen folgen“ level (read once each; the level is the engines' own, [Prefs.markedTrails]). */
+    private val routingFingerprints = java.util.concurrent.ConcurrentHashMap<Int, String>()
+    private val routingFingerprint: String
+        get() = prefs.markedTrails.let { t ->
+            routingFingerprints.getOrPut(t) {
+                com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } },
+                    trails = t)
+            }
+        }
 
     /** Round trips („Rundtour von hier“, tour-suggestions.md §7 stage 4) – ui/suggest/SuggestSlice; Übernehmen → [planFromLine]. */
     val suggest = com.onpath.app.ui.suggest.SuggestSlice(viewModelScope, com.onpath.app.ui.suggest.AppSuggestHost(app, prefs, { mapData.routingData },
