@@ -468,7 +468,7 @@ private fun GroupLine() =
  * Menu of a held POI that is not a route point: its name as the title, then the groups Route → Ort → Entfernen with a thin
  * line between them ([PinMenuItems], owner 2026-11-26). Route: on an empty plan like the first-point menu – „Als Start“ ·
  * „Als Ziel“ (↳ Start: dein Standort) · „Rundtour ab hier“; with one point [addLabel] („Als Ziel“); with 2+ the entries of
- * [menu] ([PlaceAddMenu]) in the fixed order „Als Stopp“ → „Als Ziel“, the likelier one tinted. Ort: Merken · In Google
+ * [menu] ([PlaceAddMenu]): likeliest first, tinted; „Rundtour ab hier“ last. Ort: Merken · In Google
  * Maps öffnen. Entfernen: „Nadel entfernen“ (the pin only).
  */
 @Composable
@@ -550,14 +550,14 @@ private fun AddRow(item: PlaceAddMenu.Item, menu: PlaceAddMenu.Menu?, onClick: (
 
 /**
  * A hold on the empty map in a doubtful spot (owner 2026-11-15, [PlaceAddMenu.asksOnHold]): only the two rows of [menu]
- * in the fixed order „Als Stopp“ → „Als Ziel“ ([PlaceAddMenu.Menu.rows], owner 2026-11-26), the likelier one tinted – no
+ * ([PlaceAddMenu.Menu.main], owner 2026-11-26 night): likeliest first, tinted – no
  * title (the spot is just a spot; where it goes shows on the map once chosen). Back / a tap elsewhere adds nothing.
  */
 @Composable
 fun HoldAddMenu(menu: PlaceAddMenu.Menu, onAddStop: () -> Unit, onNewDestination: () -> Unit, modifier: Modifier = Modifier) {
     MenuSurface(modifier) {
         Spacer(Modifier.height(4.dp))
-        for (item in menu.rows) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
+        for (item in menu.main) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
     }
 }
 

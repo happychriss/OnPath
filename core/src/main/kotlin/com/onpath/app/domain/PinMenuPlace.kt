@@ -102,8 +102,8 @@ object PinMenuItems {
 
     /**
      * @param emptyPlan no point yet; [startHere] false during a tour ([MapGestures.offersStartHere])
-     * @param menu the add entries with 2+ points ([PlaceAddMenu]), shown in [PlaceAddMenu.Menu.rows]' fixed order
-     *   Stopp → Ziel; null = one entry „Als Ziel“ / its [Row.ADD]
+     * @param menu the add entries with 2+ points ([PlaceAddMenu]), shown in [PlaceAddMenu.Menu.main]'s order: likeliest
+     *   first, tinted; „Rundtour ab hier“ last; null = one entry „Als Ziel“ / its [Row.ADD]
      * @param pin the found place's pin: the menu ends with "Nadel entfernen"
      * @param keep the place can be kept (owner 2026-11-15, „Orte merken“): in the Ort group, before Google,
      *   „☆ Merken“ and „⌂ Als Zuhause festlegen“ – what is about the place itself
@@ -131,7 +131,7 @@ object PinMenuItems {
                 if (startHere && roundTrip) rows += Row.ROUND_TRIP
             }
             menu == null -> rows += Row.ADD
-            else -> menu.rows.mapTo(rows, ::row)
+            else -> menu.main.mapTo(rows, ::row)
         }
         // a multi-day tour (owner 2026-11-26 night: no „Hotel für diese Tour“ dialog any more): „Als Übernachtung“ after
         // the add rows – the place goes in where it fits the route and ends that day ([com.onpath.app.routing.PlanDays.nightAtPlace])

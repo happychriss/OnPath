@@ -14,8 +14,8 @@ import org.junit.Test
 /**
  * The place menu's add entries (owner 2026-11-07 11:20 / 11:25 / 11:30; 2026-11-15; 2026-11-17): on a tour / a round trip
  * both „Als Stopp“ and „Als Ziel“, the likelier one (by the zone) emphasised; while planning only the matching row in a
- * clear case, both in between (the hold rule [PlaceAddMenu.planningHold]); one line each, only the label. Shown always
- * Start → Stopp → Ziel ([PlaceAddMenu.Menu.rows], owner 2026-11-26).
+ * clear case, both in between (the hold rule [PlaceAddMenu.planningHold]); one line each, only the label. Shown likeliest
+ * first, tinted ([PlaceAddMenu.Menu.main], owner 2026-11-26 night).
  */
 class PlaceAddMenuTest {
 
@@ -157,22 +157,21 @@ class PlaceAddMenuTest {
     @Test fun theRowsAreShownLikeliestFirstAndTinted() {
         for (z in Zone.values()) for (touring in listOf(false, true)) {
             val m = PlaceAddMenu.menu(3, touring, z)
-            assertEquals("$z", m.main, m.rows)
-            m.emphasised?.let { assertEquals("$z: the tinted one on top", it, m.rows.first()) }
+            m.emphasised?.let { assertEquals("$z: the tinted one on top", it, m.main.first()) }
         }
-        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), PlaceAddMenu.menu(3, true, Zone.GOAL_FIRST).rows)
-        assertEquals(listOf(Item.ADD_STOP, Item.NEW_DESTINATION), PlaceAddMenu.menu(3, true, Zone.STOP_FIRST).rows)
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), PlaceAddMenu.menu(3, true, Zone.GOAL_FIRST).main)
+        assertEquals(listOf(Item.ADD_STOP, Item.NEW_DESTINATION), PlaceAddMenu.menu(3, true, Zone.STOP_FIRST).main)
         // a hold that asks: the cheaper on top, tinted
         val goalCheaper = PlaceAddMenu.planningMenu(PlaceAddMenu.Detours(100.0, 90.0))
-        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), goalCheaper.rows)
+        assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), goalCheaper.main)
         assertEquals(Item.NEW_DESTINATION, goalCheaper.emphasised)
         // empty plan: Als Start · Als Ziel; during a tour Als Ziel only; one point: Als Ziel
-        assertEquals(listOf(Item.START_HERE, Item.GO_HERE), PlaceAddMenu.menu(0, false, null).rows)
-        assertEquals(listOf(Item.GO_HERE), PlaceAddMenu.menu(0, true, null).rows)
-        assertEquals(listOf(Item.SET_DESTINATION), PlaceAddMenu.menu(1, false, null).rows)
+        assertEquals(listOf(Item.START_HERE, Item.GO_HERE), PlaceAddMenu.menu(0, false, null).main)
+        assertEquals(listOf(Item.GO_HERE), PlaceAddMenu.menu(0, true, null).main)
+        assertEquals(listOf(Item.SET_DESTINATION), PlaceAddMenu.menu(1, false, null).main)
         // one row alone stays one row
         assertEquals(listOf(Item.NEW_DESTINATION),
-            PlaceAddMenu.planningRows(PlaceAddMenu.HoldAction.NEW_GOAL, PlaceAddMenu.Detours(1.0, 1.0)).rows)
+            PlaceAddMenu.planningRows(PlaceAddMenu.HoldAction.NEW_GOAL, PlaceAddMenu.Detours(1.0, 1.0)).main)
     }
 
     @Test fun fewerThanTwoPointsKeepTheFirstPointWording() {
