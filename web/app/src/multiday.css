@@ -154,3 +154,5 @@ body.tourpanel #sheet .sheethead > #sheetStep { grid-column: 5; }
 .touroverview .tolabel { font-weight: 700; margin-right: 4px; }
 .touroverview .dvstats .dvsep { align-self: stretch; width: 1px; background: var(--line); }
 .proftitle { font-weight: 700; margin: 10px 0 2px; }
+/* the big profile along the map (desktop, pinned) replaces the sheet's: its title goes with it */
+@media (min-width: 701px) { body.bigprofile-open #sheet > #profTitle { display: none; } }

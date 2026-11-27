@@ -148,6 +148,7 @@ async function run(lang, viewport, shotPrefix) {
       summary: vis(document.getElementById('summary')), revInHead: !!document.querySelector('.sheethead #reverse'),
       loop: vis(document.getElementById('roundTrip')), label: document.querySelector('.tochips .tolabel')?.textContent ?? '',
       prof: document.getElementById('profTitle')?.textContent ?? '', profShown: vis(document.getElementById('profTitle')),
+      profVisible: vis(document.getElementById('profile')),
       borders: document.querySelectorAll('#profile .dayborder').length,
       order: [...document.getElementById('sheet').children].filter(vis).map((e) => e.id || e.className).join(' > ') };
   });
@@ -157,7 +158,8 @@ async function run(lang, viewport, shotPrefix) {
     && new RegExp(`^${de ? 'Gesamte Reise' : 'Whole trip'}[\\d.,]+ k?m · .+ · ↑ [\\d.,]+ m · ↓ [\\d.,]+ m$`).test(panel.whole) && !panel.summary,
     `the panel's head: title + Speichern, the save state, „Gesamte Reise“ (${panel.state} / ${panel.whole})`);
   check(panel.revInHead && !panel.loop && panel.label === (de ? 'Planung' : 'Planning'), 'Umkehren in the activity row, no Rundtour, „Planung“ before the chips');
-  check(panel.profShown && panel.prof === (de ? 'Höhenprofil · gesamte Reise' : 'Elevation profile · whole trip') && panel.borders >= 1,
+  // the sheet's profile title goes with the sheet's profile (desktop: the big one along the map replaces it)
+  check(panel.prof === (de ? 'Höhenprofil · gesamte Reise' : 'Elevation profile · whole trip') && panel.borders >= 1 && panel.profShown === panel.profVisible,
     `„Höhenprofil · gesamte Reise“ with the day borders (${panel.prof}, ${panel.borders})`);
   const overRows = await page.$$eval('#tourOverview .today.over', (rs) => rs.map((r) => r.querySelectorAll('.cu.over, .ct.over').length));
   check(overRows.every((n) => n >= 1), `a day over its limits: only the exceeded values marked (${JSON.stringify(overRows)})`);
