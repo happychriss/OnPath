@@ -120,7 +120,11 @@ fun DaysOverview(days: DaysUi, onTap: (Int) -> Unit, onHold: (Int) -> Unit, onHi
             ElevationProfile(days.profile, height = 96.dp, onHighlight = onHighlight, onRelease = { onHighlight(null) })
             DayBorders(days)
         }
-        Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        // the planner's day table (owner 2026-11-27): aligned columns from the shared DayTable; the plain rows without one
+        val table = days.table
+        if (table != null) DayTableView(table, Modifier.padding(top = 6.dp), picked = { n -> days.selected?.let { n in it } == true },
+            onTap = onTap, onHold = onHold)
+        else Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             for (r in days.rows) DayRow(r, days.selected?.let { r.n in it } == true, { onTap(r.n) }, { onHold(r.n) })
         }
     }
@@ -128,7 +132,7 @@ fun DaysOverview(days: DaysUi, onTap: (Int) -> Unit, onHold: (Int) -> Unit, onHi
 
 /** The day borders over the profile – the same plot area as [ElevationProfile] (40 dp axis left, 6 dp top, 16 dp bottom). */
 @Composable
-private fun DayBorders(days: DaysUi) {
+internal fun DayBorders(days: DaysUi) {
     Canvas(Modifier.fillMaxWidth().height(96.dp)) {
         val left = 40.dp.toPx(); val top = 6.dp.toPx(); val bottom = size.height - 16.dp.toPx()
         if (size.width - left < 24.dp.toPx() || bottom <= top) return@Canvas

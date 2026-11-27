@@ -41,17 +41,23 @@ abstract class MultiDayScreenshotTest(private val locale: Locale) {
 
     private val line = (0..300).map { i -> GeoPoint(47.5 - i * 0.0063, 11.6 + i * 0.002, 550.0 + 700 * sin(i / 40.0) + 300 * sin(i / 9.0)) }
     private val route = PlannedRoute(listOf(PlannedLeg(line, false)), 564_000.0, 6_480.0, 6_900.0, 34.5 * 3600, null)
-    private val days = DaysUi("München – Venedig", 6, line,
+    private val days by lazy { DaysUi("München – Venedig", 6, line,
         listOf(0.16f to DayEndKind.PROPOSAL, 0.33f to DayEndKind.HOTEL, 0.47f to DayEndKind.OVERNIGHT, 0.64f to DayEndKind.PROPOSAL,
             0.82f to DayEndKind.PROPOSAL),
         listOf(
-            DayRowUi(1, "München – Bad Tölz", 92_000.0, 640.0, DayEndKind.PROPOSAL, false),
-            DayRowUi(2, "Bad Tölz – Gasthof Krone", 96_000.0, 1_420.0, DayEndKind.HOTEL, true),
-            DayRowUi(3, "Gasthof Krone – Brixen", 79_000.0, 980.0, DayEndKind.OVERNIGHT, false),
+            DayRowUi(1, "München → Bad Tölz", 92_000.0, 640.0, DayEndKind.PROPOSAL, false),
+            DayRowUi(2, "Bad Tölz → Gasthof Krone", 96_000.0, 1_420.0, DayEndKind.HOTEL, true),
+            DayRowUi(3, "Gasthof Krone → Brixen", 79_000.0, 980.0, DayEndKind.OVERNIGHT, false),
             DayRowUi(4, null, 95_000.0, 420.0, DayEndKind.PROPOSAL, false),
             DayRowUi(5, null, 101_000.0, 1_120.0, DayEndKind.PROPOSAL, false),
-            DayRowUi(6, "Bassano – Venedig", 101_000.0, 220.0, null, false),
-        ), selected = 4..4)
+            DayRowUi(6, "Bassano → Venedig", 101_000.0, 220.0, null, false),
+        ), selected = 4..4).let { d ->
+            // the planner's day table (owner 2026-11-27) as MultiDaySlice.daysUi builds it
+            val h = listOf(5.2, 7.9, 5.4, 5.1, 5.6, 4.9)
+            d.copy(table = DayTables.of(d.rows.mapIndexed { i, r -> DayTables.day(r.n, r.distanceM, r.ascentM, h[i] * 3600, r.end,
+                if (r.over) setOf(com.onpath.app.routing.DayLimitKind.TIME, com.onpath.app.routing.DayLimitKind.ASCENT) else emptySet()) },
+                d.rows.map { it.places }))
+        } }
 
     private fun sheet(ui: PlanUi) = paparazzi.snapshot {
         OnPathTheme {

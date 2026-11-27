@@ -47,7 +47,7 @@ import com.onpath.app.data.Format
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.DayRowText
 import com.onpath.app.routing.GeoPoint
-import com.onpath.app.ui.DayEndSign
+import com.onpath.app.ui.DayTableView
 import com.onpath.app.ui.OnPathColors
 import com.onpath.app.ui.OnPathShapes
 import com.onpath.app.ui.OverviewSnapshot
@@ -58,8 +58,9 @@ import com.onpath.strings.*
  * My routes' day sheet of a saved multi-day route (owner 2026-11-27, "ja"; rows as the planner's day overview, owner
  * 2026-11-27 later): drawn in place over the list like the overview. The route's name with its ⋮ ([menu]: rename, copy,
  * export, share, delete – as on the card), the facts line, the whole line (display only), „Welchen Tag möchtest du fahren?“
- * and one row per day: pill „Tag 3“, „Koblenz → Mainz“ when the plan names both ends, aligned columns km · ↑ m · time, the
- * night sign (open night / Übernachtung / Hotel; none at the finish) and ›. One tap on a row loads that day ([onRide]), ›
+ * and the planner's day table ([DayTableView], owner 2026-11-27): pill „Tag 3“, „Koblenz → Mainz“ when the plan names both
+ * ends, aligned columns km · Σ km · ↑ m · time, the night sign (open night / Übernachtung / Hotel; the goal flag at the
+ * finish), ›, and the total row. One tap on a row loads that day ([onRide]), ›
  * opens its own overview ([onDetail]). The next open day has the filled pill, a ridden day says „✓ Tag 2 · gefahren am 2. Dez.“.
  * During a tour ([canRide] false) rows load nothing and a line says why.
  */
@@ -84,10 +85,15 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                     modifier = Modifier.padding(top = 16.dp, bottom = 6.dp))
                 if (!canRide) Text(str(Res.string.daypick_touring), style = MaterialTheme.typography.bodySmall, color = OnPathColors.Warn,
                     modifier = Modifier.padding(bottom = 6.dp))
-                val cols = columnWidths(ui.rows)
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    for (r in ui.rows) DayPickRowView(r, r.n == ui.next, cols, canRide, { onRide(r.n) }, { onDetail(r.n) })
-                }
+                // the planner's day table (owner 2026-11-27): the shared DayTable columns, the total row; one tap loads the day, › its overview
+                val table = remember(ui.rows) { DayPick.table(ui.rows) }
+                val byN = remember(ui.rows) { ui.rows.associateBy { it.n } }
+                val nextDesc = str(Res.string.daypick_next)
+                DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null, trailingWidth = 44.dp,
+                    title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
+                    trailing = { l -> IconButton(onClick = { onDetail(l.n) }, modifier = Modifier.size(44.dp)) {
+                        Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, l.n.toString()), tint = muted)
+                    } })
             }
         }
     }
@@ -103,73 +109,19 @@ private fun factsLine(ui: DayPickUi): String {
         Format.distance(t.distanceM), "↑ " + Format.meters(t.ascentM)).joinToString(" · ")
 }
 
-/** A day's time as the owner's sketch writes it: „4 h 30“, under an hour „45 min“. */
-internal fun dayTime(s: Double): String {
-    val total = (s / 60).toLong()
-    val h = total / 60; val m = total % 60
-    return if (h > 0) "$h h ${m.toString().padStart(2, '0')}" else "$m min"
-}
-
-private fun cells(r: DayPickRow) = listOf(Format.distance(r.distanceM), "↑ " + Format.meters(r.ascentM), dayTime(r.timeS))
-
-/** The widths of the three columns: the widest value of each over all rows (so they line up at any font size). */
-@Composable
-private fun columnWidths(rows: List<DayPickRow>): List<Dp> {
-    val tm = rememberTextMeasurer()
-    val style = MaterialTheme.typography.bodySmall
-    val density = LocalDensity.current
-    return remember(rows, density, style) {
-        (0..2).map { k -> with(density) { (rows.maxOfOrNull { tm.measure(cells(it)[k], style).size.width } ?: 0).toDp() + 2.dp } }
-    }
-}
-
-@Composable
-private fun DayPickRowView(r: DayPickRow, next: Boolean, cols: List<Dp>, canRide: Boolean, onRide: () -> Unit, onDetail: () -> Unit) {
-    val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    val large = LocalDensity.current.fontScale >= LARGE_FONT
-    val ridden = r.riddenMs != null
-    val nextDesc = str(Res.string.daypick_next)
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(OnPathShapes.Small)
-        .background(if (next) OnPathColors.PlanAccent.copy(alpha = 0.08f) else androidx.compose.ui.graphics.Color.Transparent)
-        .then(if (canRide) Modifier.clickable(role = Role.Button, onClick = onRide) else Modifier)
-        .semantics { selected = next; if (next) contentDescription = nextDesc }
-        .padding(start = 8.dp, top = 6.dp, bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            if (ridden) Text(str(Res.string.daypick_ridden, r.n.toString(), riddenDate(r.riddenMs!!)), style = MaterialTheme.typography.bodySmall,
-                fontWeight = FontWeight.SemiBold, color = OnPathColors.Green)
-            else DayPill(r.n, next)
-            places(r)?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 2,
-                overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp)) }
-            if (large) Columns(r, cols, muted, Modifier.padding(top = 2.dp))
-        }
-        if (!large) Columns(r, cols, muted, Modifier.padding(start = 8.dp))
-        Box(Modifier.padding(start = 6.dp).size(22.dp), contentAlignment = Alignment.Center) { if (r.end != null) DayEndSign(r.end, 20.dp) }
-        IconButton(onClick = onDetail, modifier = Modifier.size(44.dp)) {
-            Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, r.n.toString()), tint = muted)
-        }
-    }
-}
-
-/** „Koblenz → Mainz“ when the plan names both ends of the day; null otherwise (the row says „Tag 3“ only). */
-private fun places(r: DayPickRow): String? {
-    val a = r.from?.trim().orEmpty(); val b = r.to?.trim().orEmpty()
-    return if (a.isNotEmpty() && b.isNotEmpty()) Txt.s(Res.string.daypick_from_to, a, b) else null
-}
+/** „Koblenz → Mainz“ when the plan names both ends of the day (the shared DayRowText); null otherwise (the row says „Tag 3“ only). */
+private fun places(r: DayPickRow): String? = DayRowText.places(r.from, r.to)
 
 /** „2. Dez.“ / „2 Dec“ – the app language's short day and month. */
 private fun riddenDate(ms: Long): String =
     java.text.SimpleDateFormat(Txt.s(Res.string.daypick_date), Format.locale()).format(java.util.Date(ms))
 
-@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+/** The day's name in the table: „✓ Tag 2 · gefahren am 2. Dez.“ for a ridden day, else its pill (the next one filled). */
 @Composable
-private fun Columns(r: DayPickRow, cols: List<Dp>, color: androidx.compose.ui.graphics.Color, modifier: Modifier) {
-    // a value is never cut: at the largest font a column that does not fit goes to the next line
-    androidx.compose.foundation.layout.FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        cells(r).forEachIndexed { k, s ->
-            Text(com.onpath.app.ui.instrument(s, MaterialTheme.typography.bodySmall, color), style = MaterialTheme.typography.bodySmall, color = color,
-                maxLines = 1, softWrap = false, textAlign = TextAlign.End, modifier = Modifier.widthIn(min = cols[k]))
-        }
-    }
+private fun DayName(r: DayPickRow, next: Boolean, nextDesc: String) {
+    if (r.riddenMs != null) Text(str(Res.string.daypick_ridden, r.n.toString(), riddenDate(r.riddenMs!!)), style = MaterialTheme.typography.bodySmall,
+        fontWeight = FontWeight.SemiBold, color = OnPathColors.Green, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    else Box(if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier) { DayPill(r.n, next) }
 }
 
 /** „Tag 3“: the next open day filled plan blue, the others a plan-blue outline. */
@@ -181,9 +133,6 @@ private fun DayPill(n: Int, filled: Boolean) {
             color = if (filled) OnPathColors.CardWhite else OnPathColors.PlanAccent, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
     }
 }
-
-/** From this font scale the columns go under the day's name (no room beside it). */
-private const val LARGE_FONT = 1.3f
 
 /** The stand-in route of day [r] for its own overview (the route's overview of one day): name, numbers, its ends as points. */
 fun dayTour(ui: DayPickUi, r: DayPickRow, line: List<GeoPoint>): com.onpath.app.data.Tour {
