@@ -229,7 +229,7 @@
         "web/app/src/activity.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
-      "blob": "2ffdc12269ed5caa4459673edfeac00e0475499d"
+      "blob": "60bc4ad823aeedf86c41853e9ef5c55fdf655f09"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
