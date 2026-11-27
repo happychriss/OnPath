@@ -242,6 +242,10 @@ class PlanRecalcSlice(
     fun recalc() {
         val run = begin() ?: return
         val gen = run.gen
+        // the wait window's „etwa 1–2 min“: the legs still to route on this phone (RouteCost)
+        com.onpath.app.ui.progress.RouteEstimate.set(gen, try { planRun.routeRun.longRule.runS(run.pts, run.act) } catch (e: Exception) {
+            com.onpath.app.debug.Problems.warn("routing", "Route #$gen: no search estimate for the wait window", e); null
+        })
         // begin() made it just now; never null – if it were, the run would stay "calculating" unseen
         val cancel = planRun.routeCancel ?: run { com.onpath.app.debug.Problems.error("routing", "Route #$gen: no cancel signal after the head – not routed"); return }
         routeJob = scope.launchSafe("app", "recalc") {

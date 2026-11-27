@@ -45,6 +45,11 @@ class BRouterEngine(
      * the web planner passes its own; default Standard.
      */
     private val markedTrails: () -> Int = { MarkedTrails.STANDARD },
+    /**
+     * The app's search cost (owner 2026-11-27, [RouteCost]): the time limit becomes at least twice the leg's phone
+     * estimate, and each searched leg teaches the phone's factor. Null (the web planner, the JVM tests) = today's limit.
+     */
+    private val searchCost: SearchCost? = null,
 ) : RoutingEngine {
 
     private val appContext: Context = context.applicationContext ?: context
@@ -150,12 +155,13 @@ class BRouterEngine(
         if (waypoints.size < 2) throw RoutingException(Txt.s(Res.string.plan_err_set_start_dest))
         checkSegments(waypoints)
         ensureProfiles()
-        val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)
+        val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds).let { today -> searchCost?.limitMs(waypoints, today) ?: today }
         val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit
         if (cancel?.isCancelled == true) throw RoutingException(CANCELLED)
 
+        val searchStart = System.currentTimeMillis()
         val (track, nodes) = try {
-            search(waypoints, activity, sacLimit, timeoutMs, cancel, trails)
+            search(waypoints, activity, sacLimit, timeoutMs, cancel, trails).also { learn(waypoints, System.currentTimeMillis() - searchStart) }
         } catch (e: RoutingException) {
             throw e
         } catch (e: OutOfMemoryError) {
@@ -167,6 +173,14 @@ class BRouterEngine(
         }
 
         return toResult(track, waypoints, activity, matchedPoints(track, nodes))
+    }
+
+    /** A search that found its way teaches the phone's factor ([SearchCost.searched]); never fails the route. */
+    private fun learn(waypoints: List<GeoPoint>, searchMs: Long) {
+        val cost = searchCost ?: return
+        try { cost.searched(waypoints, searchMs) } catch (e: Exception) {
+            Problems.warn("routing", "Router speed of this phone not learned from a ${searchMs} ms search", e)
+        }
     }
 
     /**

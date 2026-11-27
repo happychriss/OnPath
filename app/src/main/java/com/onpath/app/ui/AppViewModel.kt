@@ -460,13 +460,16 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      * question is answered: Plan anyway → it loads then; Cancel → nothing was loaded.
      */
     private fun cellsForNewPoints(before: List<GeoPoint>, after: List<GeoPoint>) {
-        if (after.size >= 2 && after.toList() != planRun.routeRun.longOk && com.onpath.app.routing.LongRoute.needsAsk(after.toList(), planRoute.activity)) {
-            planRun.longRouteDeferred = before.toList()
-            Problems.trace("cells", "Very long plan: maps and routing data for the new point wait for the answer")
+        if (after.size >= 2 && planRun.routeRun.asks(after.toList(), planRoute.activity) != null) {
+            // the earliest points before the long plan stay the base (a second edit that still asks keeps them)
+            planRun.longRouteDeferred = planRun.longRouteDeferred ?: before.toList()
+            Problems.trace("cells", "Long plan: maps and routing data for the new point wait for the answer")
             return
         }
+        // points kept after "Zwischenziel setzen": their maps load now that the plan can be routed
+        val from = planRun.longRouteDeferred ?: before
         planRun.longRouteDeferred = null
-        mapData.pointsSet(before, after)
+        mapData.pointsSet(from, after)
     }
 
     /**
@@ -607,8 +610,26 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun loadDeferredMaps(before: List<GeoPoint>) = cellsForNewPoints(before, plan.points)
             override fun recalc() = this@AppViewModel.recalc()
             override fun cancelRun(why: NotRouted) = planEdit.cancelRun(why)
+            override fun longAsked(ask: com.onpath.app.routing.LongAsk) {
+                val names = planPointRows().associate { it.planIndex to it.name.takeIf { n -> n.isNotBlank() } }
+                val n = plan.points.size
+                // a round trip's closing point is no row: its name is the start's
+                fun name(i: Int) = names[i] ?: if (i == n - 1) names[0] else null
+                LongLegShown.leg = LongLegNames(ask, ask.leg.takeIf { it >= 0 }?.let(::name), ask.leg.takeIf { it >= 0 }?.let { name(it + 1) })
+            }
         },
+        // the app asks by the phone's search time of the longest leg still to route (owner 2026-11-27, RouteCost) and never
+        // "Weiter warten?": the engine's limit is twice the leg's estimate already (EngineProvider.searchCost)
+        initial = RouteRun(longRule = phoneLongRule(), askSlow = false),
     )
+    /** The app's [RouteRun.longRule]: this phone's learned factor; a leg in the leg cache (memory, or its file unless quick) is routed. */
+    private fun phoneLongRule(): com.onpath.app.routing.PhoneLongRule {
+        val memory = com.onpath.app.data.progressMemoryOf(getApplication())
+        return com.onpath.app.routing.PhoneLongRule({ memory.phoneFactor }) { a, b, quick ->
+            val act = planRoute.activity; val sac = planRoute.sac
+            if (quick) planRoute.legCache.inMemory(a, b, act, sac) != null else planRoute.legCache.has(a, b, act, sac)
+        }
+    }
     /**
      * The plan's points edited ([PlanEditSlice], rebuild phase 2 piece 10): the one [change] every edit goes through, the
      * Points list, reverse / round trip, Undo / Redo, Clear, Cancel's take-back and the names of unnamed points. The tour
@@ -1430,15 +1451,20 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- shared places (another app → OnPath): [SearchFlow] ----------------
 
     fun answerLongRoute(plan: Boolean) {
+        LongLegShown.leg = null
         val effects = planRun.routeEvent(RouteRun.Event.LongAnswer(plan, this.plan.points.toList()))
-        // Plan anyway: not asked again for these points, now the new point's maps load, the run again
+        // „Warten“: not asked again for these points, now the new point's maps load, the run again
         if (plan) { planRun.perform(effects); return }
-        // points kept unrouted: "Plan anyway" later loads them (an undo replaces it)
-        if (planRun.longRouteDeferred != null) Problems.trace("cells", "Very long plan cancelled: nothing was loaded for it")
-        // only the change that made it so long is taken back (Redo brings it again); nothing to take back (a plan
-        // restored at start or loaded, newer routing data): the points stay without a route – never "Calculating…"
-        // with nothing running
-        planRun.perform(effects) // [cancelRun]
+        // points kept unrouted: their maps load with the next edit that can be routed, or "Plan anyway" (an undo replaces it)
+        if (planRun.longRouteDeferred != null) Problems.trace("cells", "Long plan not routed: nothing was loaded for it yet")
+        if (recState.value == null) {
+            // „Zwischenziel setzen“ (owner 2026-11-27): the points stay without a route, the map shows the whole plan, so a
+            // hold on the map adds the stop on the way
+            planEdit.keepUnrouted(NotRouted.LONG)
+        } else {
+            // during a tour: only the change that made it so long is taken back (Redo brings it again) – the tour keeps its line
+            planRun.perform(effects) // [cancelRun]
+        }
         // the map goes back to what was planned before the far point (owner 2026-11-13): the point / the whole plan, during
         // a tour my position; the found place's pin and its chip stay (cancelRun)
         val target = LongRouteCancelCamera.after(this.plan.points.toList(), route?.points, touring = recState.value != null,

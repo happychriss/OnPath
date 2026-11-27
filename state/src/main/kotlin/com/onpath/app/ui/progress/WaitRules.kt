@@ -18,10 +18,31 @@ import com.onpath.strings.*
  * it reads as one way on, not a new start.
  */
 data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsLeft: Int?, val late: Boolean = false,
-                       val elapsedS: Int = 0, val afterMap: Boolean = false) {
+                       val elapsedS: Int = 0, val afterMap: Boolean = false,
+                       /** The run's search estimate on this phone ([RouteEstimate], app only); shown above 5 s: „· etwa 1–2 min“. */
+                       val estimateS: Double? = null) {
     val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent,
         if (afterMap) WaitSteps.shown(listOf(WaitStep(Txt.s(Res.string.wait_step_map_loaded), com.onpath.app.domain.WaitStepState.DONE, null)) + steps) else steps,
-        Txt.s(Res.string.wait_running_since, "${elapsedS / 60}:${(elapsedS % 60).toString().padStart(2, '0')}"), bar = false)
+        line, bar = false)
+
+    /** „läuft seit 0:42“, with an estimate „läuft seit 0:42 · etwa 1–2 min“. */
+    val line: String get() {
+        val since = "${elapsedS / 60}:${(elapsedS % 60).toString().padStart(2, '0')}"
+        val est = estimateS?.takeIf { it > com.onpath.app.routing.RouteCost.SHOW_IN_WAIT_ABOVE_S && !it.isInfinite() }
+        return if (est == null) Txt.s(Res.string.wait_running_since, since)
+            else Txt.s(Res.string.wait_running_since_est, since, com.onpath.app.routing.RouteCost.words(est, short = true))
+    }
+}
+
+/**
+ * The search estimate of the plan run [gen] ([com.onpath.app.routing.LongRule.runS]): set where the app starts a run, read by
+ * the route's wait window (its call site passes no estimate). Main thread only; null = none (the planner sets none).
+ */
+object RouteEstimate {
+    var gen: Int = -1
+    var seconds: Double? = null
+    fun set(gen: Int, seconds: Double?) { this.gen = gen; this.seconds = seconds }
+    fun of(gen: Int): Double? = seconds.takeIf { this.gen == gen }
 }
 
 /**
@@ -92,7 +113,7 @@ class RouteWait(private val memory: ProgressMemory) {
         // „noch etwa 5 Sekunden“ and then minutes); the planner's WebWait has the same rule
         val left = if (checking || share != null) TimeLeft.seconds(bar.measured, gone, null) else null
         return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late,
-            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap)
+            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen))
     }
 
     /** The run ended: its legs' and check's times teach the check's share; the next run starts afresh. */

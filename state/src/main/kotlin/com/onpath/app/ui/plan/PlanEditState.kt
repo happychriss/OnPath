@@ -383,4 +383,15 @@ open class PlanEditState(
             Problems.trace("plan", "Cancel took back the add of \"${p.title()}\": its pin is shown again")
         }
     }
+
+    /**
+     * „Zwischenziel setzen“ at the app's long-leg question (owner 2026-11-27): nothing is taken back – the points (and the
+     * activity) stay, without a route, so the user can hold the map to add a stop on the way; what started the run is used up.
+     */
+    fun keepUnrouted(why: NotRouted) {
+        val cause = runCauses.takeForCancel()
+        pinTaken = null
+        Problems.trace("routing", "Long plan: points kept without a route after ${cause::class.simpleName}")
+        planRun.leaveUnrouted(why)
+    }
 }

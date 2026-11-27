@@ -10,6 +10,7 @@ private const val FILE = "onpath_progress"
 private const val KEY_SHARES = "map_steps"
 private const val KEY_ROUTE = "route_check"
 private const val KEY_SUGGEST = "suggest_steps"
+private const val KEY_FACTOR = "phone_factor"
 
 @Volatile private var app: ProgressMemory? = null
 
@@ -23,6 +24,7 @@ private class Stored(private val context: Context) : ProgressMemory {
     @Volatile private var s: StepShares? = null
     @Volatile private var r: Double? = null
     @Volatile private var g: StepShares? = null
+    @Volatile private var f: Double? = null
 
     private fun prefs() = context.getSharedPreferences(FILE, Context.MODE_PRIVATE)
 
@@ -59,6 +61,21 @@ private class Stored(private val context: Context) : ProgressMemory {
             g = v
             try { prefs().edit().putString(KEY_SUGGEST, v.encode()).apply() } catch (e: Exception) {
                 Problems.warn("progress", "Learned shares of the round-trip search not stored; kept for this session", e)
+            }
+        }
+
+    override var phoneFactor: Double
+        get() = f ?: (try {
+            com.onpath.app.routing.RouteCost.bounded(prefs().getString(KEY_FACTOR, null)?.toDoubleOrNull() ?: com.onpath.app.routing.RouteCost.DEFAULT_FACTOR)
+        } catch (e: Exception) {
+            Problems.warn("progress", "Learned router speed of this phone not readable; the start value is used", e)
+            com.onpath.app.routing.RouteCost.DEFAULT_FACTOR
+        }).also { f = it }
+        set(v) {
+            val b = com.onpath.app.routing.RouteCost.bounded(v)
+            f = b
+            try { prefs().edit().putString(KEY_FACTOR, b.toString()).apply() } catch (e: Exception) {
+                Problems.warn("progress", "Learned router speed of this phone not stored; kept for this session", e)
             }
         }
 }
