@@ -338,6 +338,10 @@ open class PlanRecalcState(
      */
     private fun longLegsOf(pts: List<GeoPoint>, act: com.onpath.app.routing.Activity, level: Int, pins: Set<Int>): Pair<List<GeoPoint>?, List<Int>?> {
         val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, plan.anchorsFor(act, level), pins)
+        // a point put in ON the known line (a stop, a night – owner 2026-11-27): its leg cut first, from memory, so the long-leg
+        // rule and the wait estimate weigh the halves as routed (no question, no estimate) – app and planner alike
+        val cut = com.onpath.app.routing.LegSplit.seedBeforeRun(legCache, expanded, act, level)
+        if (cut > 0) Problems.trace("routing", "$cut leg(s) cut at a point put in on the line before the run is weighed")
         if (!expanded.hasAnchors) return null to null
         return expanded.points to (0 until expanded.points.size - 1).map { e ->
             var k = e; while (k > 0 && expanded.visibleOf(k) < 0) k--; maxOf(0, expanded.visibleOf(k)) }

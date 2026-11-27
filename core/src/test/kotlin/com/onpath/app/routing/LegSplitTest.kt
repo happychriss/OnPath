@@ -73,6 +73,31 @@ class LegSplitTest {
         assertEquals(before.legs[0].points, after.legs[0].points + after.legs[1].points.drop(1))
     }
 
+    /**
+     * Owner 2026-11-27 (Hilden – Venedig, a point set ON the route): before a run is weighed, the halves are cut from
+     * MEMORY – so the long-leg rule sees them as routed; a leg only in the store is left to the run's own [LegSplit.seed].
+     */
+    @Test fun beforeTheRunThePointOnTheLineIsCutFromMemory() {
+        val e = Engine(); val cache = LegCache()
+        val before = plan(e, cache, a, c, d)
+        val spot = before.legs[0].points[13]
+        val expanded = PlanAnchors.expand(listOf(a, spot, c, d), emptyMap(), emptySet())
+        assertEquals(1, LegSplit.seedBeforeRun(cache, expanded, act, sac))
+        assertNotNull(cache.inMemory(a, spot, act, sac)); assertNotNull(cache.inMemory(spot, c, act, sac))
+        e.calls.clear()
+        assertSameRoute(before, plan(e, cache, a, spot, c, d))
+        assertTrue("no router call: ${e.calls}", e.calls.isEmpty())
+        assertEquals(0, LegSplit.seedBeforeRun(cache, expanded, act, sac)) // nothing left to cut
+    }
+
+    @Test fun beforeTheRunAnEmptyMemoryCutsNothing() {
+        val cache = LegCache()
+        val leg = Engine().route(listOf(a, c), act, sac)
+        val spot = leg.points[13]
+        assertEquals(0, LegSplit.seedBeforeRun(cache, PlanAnchors.expand(listOf(a, spot, c), emptyMap(), emptySet()), act, sac))
+        assertNull(cache.inMemory(a, spot, act, sac))
+    }
+
     @Test fun theHalvesAddUpToTheWhole() {
         val leg = Engine().route(listOf(a, c), act, sac)
         val (x, y) = LegSplit.split(leg, leg.points[25])!!
