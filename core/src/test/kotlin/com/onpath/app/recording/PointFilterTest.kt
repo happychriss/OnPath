@@ -94,7 +94,26 @@ class PointFilterTest {
         // never lose a real move: beyond twice the accuracy it counts, sensor or not (a smooth train, a wrong sensor)
         val (v, d) = PointFilter.judge(p(0.0, 0), p(0.002, 10_000), 35.0, continuous = true, still = true)
         assertEquals(Verdict.ACCEPT, v); assertTrue(d > 140)
-        // a new track piece always starts
-        assertEquals(Verdict.ACCEPT, PointFilter.judge(p(0.0, 0), drift, 35.0, continuous = false, still = true).first)
+        // a new track piece starts after a gap – unless the phone lay still (next test)
+        assertEquals(Verdict.ACCEPT, PointFilter.judge(p(0.0, 0), drift, 35.0, continuous = false, still = false).first)
+    }
+
+    /**
+     * Owner's Pixel 2026-11-27 23:00–23:33 (Hilden, indoors, tour 24, the phone on the table): GPS came only every few
+     * minutes (gaps of 41–517 s), each fix 18–49 m off the last point at 26–49 m accuracy – every one became a new track
+     * piece („No usable GPS fix for 189 s; 33 m since the last point – new track piece“): the track and the live share
+     * jumped about. Still by the sensor, a fix within twice its accuracy of the last point is drift after a gap too.
+     */
+    @Test fun afterAGapAFixNearTheLastPointWhileStillIsDrift() {
+        // the real points of tour 24: 33 m after 189 s at 49 m, 38 m after 66 s at 47 m, 47 m after 517 s at 47 m
+        val last = TrackPoint(51.1692447372274, 6.92546263224504, null, 0)
+        for ((fix, acc) in listOf(TrackPoint(51.1693647853983, 6.92590769386294, null, 189_000) to 49.4,
+                TrackPoint(51.1691751927047, 6.92545369745193, null, 66_000) to 46.7,
+                TrackPoint(51.1691831427485, 6.92587754032961, null, 517_000) to 46.7))
+            assertEquals("$fix", Verdict.STANDING_STILL, PointFilter.judge(last, fix, acc, continuous = false, still = true).first)
+        // a real move during the gap still starts its piece (300 m off), and without the sensor's word nothing changes
+        assertEquals(Verdict.ACCEPT, PointFilter.judge(last, TrackPoint(51.1692447, 6.9297, null, 300_000), 40.0, continuous = false, still = true).first)
+        assertEquals(Verdict.ACCEPT, PointFilter.judge(last, TrackPoint(51.1693647853983, 6.92590769386294, null, 189_000), 49.4,
+            continuous = false, still = false).first)
     }
 }

@@ -51,4 +51,6 @@ data class RecState(
      * keeps its time when the app is reopened.
      */
     val pausedSinceMs: Long? = null,
+    /** The motion sensor says the phone lies still now (GPS or not): the dot stays on the last track point ([StillDot]). */
+    val sensorStill: Boolean = false,
 )

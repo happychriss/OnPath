@@ -772,7 +772,7 @@ private fun MapSync(vm: AppViewModel, c: MapController?, rec: RecState?, fix: an
             val n = rec?.nav
             val on = com.onpath.app.navigation.SnapToRoute.position(vm.settingsSlice.settings.positionOnRoute && vm.tourSession.mode == AppMode.NAVIGATE,
                 snapLine, n?.shownAlongM, n?.offM, n?.prompt)
-            c.updateLocation(if (on == null) loc else android.location.Location(loc).apply { latitude = on.lat; longitude = on.lon })
+            c.updateLocation(StillDotFeed.shown(loc, on, rec)) // lying still: on the last track point (StillDot)
             vm.map.checkFreeLook(loc.latitude, loc.longitude)
         }
     }
