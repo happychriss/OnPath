@@ -33,7 +33,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
@@ -55,7 +57,9 @@ import com.onpath.strings.*
 @Composable
 internal fun ActivityPickerSheet(current: Activity, onSelect: (Activity) -> Unit, onDismiss: () -> Unit, sac: Int, onSac: (Int) -> Unit) {
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        // decorFitsSystemWindows = false: the sheet gets the navigation bar's inset (navigationBarsPadding) – else its last
+        // card (T5) lay under the bar (owner's Pixel 2026-11-27)
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
         Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss), contentAlignment = Alignment.BottomCenter) {
             // the sheet itself swallows taps (a tap beside a card must not close it)
             Box(Modifier.fillMaxWidth().clickable(interactionSource = null, indication = null) {}) {
@@ -87,16 +91,36 @@ internal fun ActivityPickerContent(current: Activity, onSelect: (Activity) -> Un
         }
         GroupSwitch(hike) { hike = it }
         Spacer(Modifier.size(12.dp))
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            if (!hike) BIKES.forEach { a ->
-                ChoiceCard(a == current, onClick = { onSelect(a) }, lead = { Icon(a.icon, null, tint = OnPathColors.Green) }, name = a.label, line = a.line)
-            } else SacScale.levels.forEach { l ->
-                val sel = current == Activity.HIKE && sac == l.level
-                ChoiceCard(sel, onClick = { onSac(l.level) }, lead = { LevelBadge(l.level, sel) }, name = l.name, line = l.short,
-                    description = str(Res.string.routes_sac_button_desc, l.level, l.name))
+        // both groups are laid out, the hidden one invisible: the sheet is as tall as the taller group, so the switch never
+        // makes it jump (owner's Pixel 2026-11-27: „springt doof hoch und runter“); it scrolls only on a very small screen
+        Box(Modifier.verticalScroll(rememberScrollState())) {
+            val bikes: @Composable () -> Unit = {
+                Group(visible = !hike) {
+                    BIKES.forEach { a ->
+                        ChoiceCard(a == current, enabled = !hike, onClick = { onSelect(a) }, lead = { Icon(a.icon, null, tint = OnPathColors.Green) }, name = a.label, line = a.line)
+                    }
+                }
             }
+            val levels: @Composable () -> Unit = {
+                Group(visible = hike) {
+                    SacScale.levels.forEach { l ->
+                        val sel = current == Activity.HIKE && sac == l.level
+                        ChoiceCard(sel, enabled = hike, onClick = { onSac(l.level) }, lead = { LevelBadge(l.level, sel) }, name = l.name, line = l.short,
+                            description = str(Res.string.routes_sac_button_desc, l.level, l.name))
+                    }
+                }
+            }
+            // the shown group drawn last – on top, it gets the taps
+            if (hike) { bikes(); levels() } else { levels(); bikes() }
         }
     }
+}
+
+/** One group's cards; an invisible group keeps its height (no jump) but is neither drawn nor read out (its cards are off). */
+@Composable
+private fun Group(visible: Boolean, content: @Composable () -> Unit) {
+    Column(Modifier.fillMaxWidth()
+        .then(if (visible) Modifier else Modifier.alpha(0f).clearAndSetSemantics {}), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
 }
 
 /** Rad | Wandern: two halves, the shown one white and raised on the deeper sage (like iOS's segmented control). */
@@ -123,12 +147,12 @@ private fun Half(icon: ImageVector, label: String, on: Boolean, modifier: Modifi
 
 /** One choice: a card with its sign, the name and one line; the chosen one with a green edge on light green. */
 @Composable
-private fun ChoiceCard(chosen: Boolean, onClick: () -> Unit, lead: @Composable () -> Unit, name: String, line: String, description: String? = null) {
+private fun ChoiceCard(chosen: Boolean, enabled: Boolean, onClick: () -> Unit, lead: @Composable () -> Unit, name: String, line: String, description: String? = null) {
     val shape = RoundedCornerShape(16.dp)
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(shape)
         .background(if (chosen) OnPathColors.GreenLight else OnPathColors.PaperDim, shape)
         .then(if (chosen) Modifier.border(2.dp, OnPathColors.Green, shape) else Modifier)
-        .selectable(chosen, role = Role.Button, onClick = onClick)
+        .selectable(chosen, enabled = enabled, role = Role.Button, onClick = onClick)
         .then(if (description != null) Modifier.semantics(mergeDescendants = true) { contentDescription = description } else Modifier)
         .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) { lead() }
