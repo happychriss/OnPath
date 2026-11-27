@@ -36,6 +36,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -67,10 +68,18 @@ import com.onpath.app.recording.GpsStatus
  */
 @Composable
 fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolean = false,
+              /** The OnPath logo left of the scale (owner 2026-11-27, variant C – Plan only): a tap opens About OnPath; null = none. */
+              onLogo: (() -> Unit)? = null,
               fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (onLogo != null) {
+                    val label = str(Res.string.settings_page_about)
+                    OnPathLogo(MAP_LOGO_DP.dp, Modifier.clickable(onClickLabel = label, onClick = onLogo)
+                        .semantics { contentDescription = label })
+                    Spacer(Modifier.width(6.dp))
+                }
                 scale?.let { (label, width) -> ScaleBar(label, width) }
                 // simulated GPS (Developer tools → Demo): said honestly, also in screenshots – beside the scale, so the
                 // credit below keeps the whole width
@@ -98,6 +107,9 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
  * the same in every language. Non-breaking spaces keep "© OpenStreetMap ·" together; a wrap goes before "OpenMapTiles".
  */
 const val MAP_CREDIT = "©\u00A0OpenStreetMap\u00A0· OpenMapTiles"
+
+/** The map footer's OnPath logo (owner 2026-11-27, variant C): small, beside the scale bar. */
+const val MAP_LOGO_DP = 26
 
 /** The credit line's largest font scale (the phone's own scale up to this; the rest of the screen takes it all). */
 const val CREDIT_MAX_FONT = 1.3f

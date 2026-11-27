@@ -341,15 +341,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         get() = settingsSlice.showSettings
         set(v) { settingsSlice.showSettings = v }
 
-    /** The routing fingerprint per „Markierten Wegen folgen“ level (read once each; the level is the engines' own, [Prefs.markedTrails]). */
-    private val routingFingerprints = java.util.concurrent.ConcurrentHashMap<Int, String>()
-    private val routingFingerprint: String
-        get() = prefs.markedTrails.let { t ->
-            routingFingerprints.getOrPut(t) {
-                com.onpath.app.routing.RoutingFingerprint.of(read = { n -> getApplication<Application>().assets.open("brouter/$n").use { it.readBytes() } },
-                    trails = t)
-            }
-        }
+    /** The routing fingerprint with the engines' „Markierten Wegen folgen“ level (EngineProvider). */
+    private val routingFingerprint: String get() = EngineProvider.fingerprint(getApplication())
 
     /** Round trips („Rundtour von hier“, tour-suggestions.md §7 stage 4) – ui/suggest/SuggestSlice; Übernehmen → [planFromLine]. */
     val suggest = com.onpath.app.ui.suggest.SuggestSlice(viewModelScope, com.onpath.app.ui.suggest.AppSuggestHost(app, prefs, { mapData.routingData },

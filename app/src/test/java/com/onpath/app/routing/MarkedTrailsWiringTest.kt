@@ -30,7 +30,8 @@ class MarkedTrailsWiringTest {
         assertTrue(src("src/main/java/com/onpath/app/suggest/app/AppSuggest.kt")
             .contains("markedTrails = com.onpath.app.routing.EngineProvider.markedTrails(app),"))
         // the fingerprint follows the same stored level
-        assertTrue(vm.contains("get() = prefs.markedTrails.let { t ->"))
+        assertTrue(vm.contains("private val routingFingerprint: String get() = EngineProvider.fingerprint(getApplication())"))
+        assertTrue(provider.contains("fun fingerprint(context: Context): String = markedTrails(context)().let { t ->"))
     }
 
     @Test fun theEngineRoutesAndCachesWithTheLevel() {

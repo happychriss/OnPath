@@ -27,6 +27,18 @@ object EngineProvider {
         return { prefs.markedTrails }
     }
 
+    private val fingerprints = java.util.concurrent.ConcurrentHashMap<Int, String>()
+
+    /**
+     * The routing fingerprint the engines from [create] route with: the shipped profiles ([RoutingFingerprint]) and the
+     * stored „Markierten Wegen folgen“ level – the same reader as the engines ([markedTrails]). Read once per level.
+     */
+    fun fingerprint(context: Context): String = markedTrails(context)().let { t ->
+        fingerprints.getOrPut(t) {
+            RoutingFingerprint.of(read = { n -> context.applicationContext.assets.open("brouter/$n").use { it.readBytes() } }, trails = t)
+        }
+    }
+
     fun create(context: Context, segmentsDir: File): RoutingEngine = try {
         // the BRouter classes load here, not first in a request (review routing L7: broken jars showed only per leg and
         // this fallback never ran)

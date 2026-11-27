@@ -34,11 +34,11 @@ class MapFooterCreditTest {
     private fun narrow(font: Float) = DeviceConfig.PIXEL_5.copy(screenWidth = 1080, screenHeight = 900, xdpi = 480, ydpi = 480,
         density = Density.XXHIGH, fontScale = font)
 
-    private fun shot(demo: Boolean) = paparazzi.snapshot {
+    private fun shot(demo: Boolean, logo: Boolean = false) = paparazzi.snapshot {
         OnPathTheme {
             Box(Modifier.width(360.dp).background(Color(0xFFE8E4D8))) {
                 Column(Modifier.fillMaxWidth().padding(top = 24.dp)) {
-                    MapFooter("500 m" to 64.dp, demo = demo) {
+                    MapFooter("500 m" to 64.dp, demo = demo, onLogo = if (logo) ({}) else null) {
                         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                             Box(Modifier.size(MAP_FAB).background(Color.White))
                         }
@@ -60,4 +60,13 @@ class MapFooterCreditTest {
     @Test fun normalFontWithDemo() = shot(demo = true)
     @Test fun largestFont() { paparazzi.unsafeUpdateConfig(deviceConfig = narrow(2.0f)); shot(demo = false) }
     @Test fun largestFontWithDemo() { paparazzi.unsafeUpdateConfig(deviceConfig = narrow(2.0f)); shot(demo = true) }
+
+    // the OnPath logo left of the scale (owner 2026-11-27, variant C), Plan only: scale, DEMO and © stay whole
+    @Test fun planLogo() = shot(demo = false, logo = true)
+    @Test fun planLogoLargestFontWithDemo() { paparazzi.unsafeUpdateConfig(deviceConfig = narrow(2.0f)); shot(demo = true, logo = true) }
+
+    @Test fun theLogoIsPlanOnlyAndOpensAbout() {
+        val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
+        assertTrue(screen.contains("onLogo = if (mode == AppMode.PLAN) ({ vm.settingsSlice.openSettings(SettingsPage.ABOUT) }) else null"))
+    }
 }
