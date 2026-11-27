@@ -134,8 +134,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         // pace is learned per tour only (owner): drop the cross-tour pace older installs stored
         try { if (prefs.dropOldLearnedPace()) Problems.info("time", "Pace learned across tours removed (learning per tour only)") }
         catch (e: Exception) { Problems.warn("time", "Old learned pace could not be removed; it is not used", e) }
-        // Developer tools → the multi-day day table's one-row layout (DayTableLayout)
-        DayTableLayout.oneRow = prefs.dayTableOneRow
     }
 
     val tracker = LocationTracker(app)
