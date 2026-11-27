@@ -442,12 +442,17 @@ const ready = configureEngine().then((r) => {
 });
 // the pace setting (the app's Settings → Pace, Prefs keys hikePaceLevel / bikePaceLevel) before the first plan
 const pace = { hike: localStorageGet('hikePaceLevel') ?? 'AVERAGE', bike: localStorageGet('bikePaceLevel') ?? 'AVERAGE' };
+// „Markierten Wegen folgen“ (the app's Settings → Planen, core MarkedTrails, owner 2026-11-27: 0 Weniger · 1 Standard ·
+// 2 Mehr): kept in this browser (the app does not sync it), handed to the engine before the first plan
+let trails = Number(localStorageGet('markedTrails') ?? '1');
 const paceReady: Promise<void> = ready.then(async (ok) => {
   if (!ok) return;
   try {
     const r = JSON.parse(await engine.call('paceSet', pace.hike, pace.bike));
     pace.hike = r.hike; pace.bike = r.bike; // unknown names → the app's rule (Pace.of)
   } catch (e) { console.warn('pace not set – the default (Average) is used', e); }
+  try { trails = Number(await engine.call('markedTrailsSet', trails)); } // a broken stored value → Standard (MarkedTrails.of)
+  catch (e) { problem('plan', 'marked trails not set – Standard is used', e); }
 });
 ready.then(async (ok) => {
   if (ok) { await paceReady; openFromLink(); prefetchView(); }
@@ -2309,7 +2314,16 @@ async function headerSave() {
 const picker = new ActivityPicker((a, sac) => setActivity(a, sac, true), {
   choices: async (a) => { await paceReady; return JSON.parse(await engine.call('paceChoices', a)) as PaceChoices; },
   pick: setPace,
-});
+}, { level: () => trails, pick: setTrails });
+/** „Markierten Wegen folgen“: remembered here, handed to the engine, the shown plan routed again with it. */
+async function setTrails(level: number) {
+  if (level === trails) return;
+  trails = level;
+  localStorageSet('markedTrails', String(level));
+  await paceReady;
+  trails = Number(await engine.call('markedTrailsSet', level));
+  if (state.points.length >= 2) changed(); // another level, another route (its legs were dropped in the engine)
+}
 /** A pace level for hiking or cycling: remembered here, handed to the engine, the shown plan's time again (no new route). */
 async function setPace(group: 'hike' | 'bike', level: string) {
   pace[group] = level;

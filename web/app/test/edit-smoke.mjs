@@ -83,6 +83,23 @@ const inView = await page.evaluate(() => { const m = window.__map, b = m.getBoun
   return { n: pts.length, out: pts.filter(([lo, la]) => !b.contains([lo, la])).length }; });
 check(inView.n > 2 && inView.out === 0, `the route shows whole (${inView.n} line points, ${inView.out} outside the view)`);
 
+// „Markierten Wegen folgen“ (the app's Settings → Planen, owner 2026-11-27): a row of three in the activity drop-down,
+// Standard by default; Mehr reaches the engine (another routing fingerprint) and is kept; the list stays open
+const fpBefore = await page.evaluate(() => window.__engine.call('routingInfo'));
+await page.click('#activityChip');
+await page.waitForSelector('#trailsRow [data-trails]', { timeout: 5_000 }).catch(() => {});
+const trailsRow = await page.$$eval('#trailsRow [data-trails]', (b) => b.map((x) => `${x.textContent}${x.getAttribute('aria-checked') === 'true' ? '*' : ''}`));
+check(trailsRow.length === 3 && /\*$/.test(trailsRow[1]), `the drop-down has „Markierten Wegen folgen“, Standard checked (${trailsRow.join(' · ')})`);
+await page.click('#trailsRow [data-trails="2"]');
+await page.waitForFunction((fp) => window.__engine.call('routingInfo').then((x) => x !== fp), fpBefore, { timeout: 10_000 }).catch(() => {});
+const fpMore = await page.evaluate(() => window.__engine.call('routingInfo'));
+check(fpMore !== fpBefore && !(await page.isHidden('#activityMenu')) && await page.evaluate(() => localStorage.getItem('onpath.markedTrails')) === '2',
+  `Mehr reaches the engine (fingerprint ${fpBefore.slice(0, 16)} → ${fpMore.slice(0, 16)}), is kept, the list stays open`);
+await page.click('#trailsRow [data-trails="1"]'); // back to the app's default for the rest of this smoke
+await page.waitForFunction((fp) => window.__engine.call('routingInfo').then((x) => x === fp), fpBefore, { timeout: 10_000 }).catch(() => {});
+await page.click('#activityChip'); // closes the drop-down
+await planned(null).catch(() => {}); // a re-plan with Standard again (the same route as before)
+
 // activity switch re-plans
 await page.click('#activityChip');
 await page.click('[data-act=BIKE_TOURING]');

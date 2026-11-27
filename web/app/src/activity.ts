@@ -13,6 +13,15 @@ export interface PaceChoices {
   levels: { key: string; label: string; meaning: string }[];
 }
 
+/**
+ * „Markierten Wegen folgen“ (the app's Settings → Planen, core MarkedTrails, owner 2026-11-27): the level 0 Weniger ·
+ * 1 Standard · 2 Mehr and where a pick goes (main.ts: engine + localStorage, the plan routes again).
+ */
+export interface TrailsHost {
+  level(): number;
+  pick(level: number): Promise<void>;
+}
+
 /** Where the pace section gets its rows and where a pick goes (main.ts: engine + localStorage). */
 export interface PaceHost {
   choices(a: Activity): Promise<PaceChoices>;
@@ -41,7 +50,7 @@ export class ActivityPicker {
 
   private pace: PaceChoices | null = null;
 
-  constructor(private onPick: (a: Activity, sac: number) => void, private paceHost?: PaceHost) {
+  constructor(private onPick: (a: Activity, sac: number) => void, private paceHost?: PaceHost, private trailsHost?: TrailsHost) {
     this.box = document.createElement('div');
     this.box.className = 'actmenu';
     this.box.id = 'activityMenu';
@@ -58,6 +67,15 @@ export class ActivityPicker {
         this.drawPace();
         this.box.querySelector<HTMLElement>(`[data-pace="${pace}"]`)?.focus();
         this.paceHost.pick(group, pace).catch((err) => console.warn('pace not set', err));
+        return;
+      }
+      const trails = t.closest<HTMLElement>('[data-trails]')?.dataset.trails;
+      if (trails != null && this.trailsHost) {
+        // a setting, not a pick: the list stays open, the plan routes again (main.ts)
+        const l = Number(trails);
+        this.drawTrails(l);
+        this.box.querySelector<HTMLElement>(`[data-trails="${l}"]`)?.focus();
+        this.trailsHost.pick(l).catch((err) => console.warn('marked trails not set', err));
         return;
       }
       const s = t.closest<HTMLElement>('[data-sac]')?.dataset.sac;
@@ -144,16 +162,26 @@ export class ActivityPicker {
     }).catch((err) => console.warn('pace choices not loaded', err));
   }
 
+  /** One row of three under the pace (the app's Settings → Planen „Markierten Wegen folgen“, same words). */
+  private drawTrails(level = this.trailsHost?.level() ?? 1) {
+    if (!this.trailsHost) return;
+    let sec = this.box.querySelector<HTMLDivElement>('#trailsRow');
+    if (!sec) { sec = document.createElement('div'); sec.id = 'trailsRow'; sec.className = 'pacerow'; this.box.insertBefore(sec, this.box.querySelector('.actdone')); }
+    const words = ['settings_trails_less', 'settings_trails_standard', 'settings_trails_more'].map((k) => t(k));
+    sec.innerHTML = `<div class="pacehead"><b>${esc(t('settings_trails_title'))}</b></div>
+      <div class="seg" role="group" aria-label="${esc(t('settings_trails_title'))}">${words.map((w, i) =>
+        `<button data-trails="${i}" role="menuitemradio" aria-checked="${i === level}" class="${i === level ? 'on' : ''}">${esc(w)}</button>`).join('')}</div>`;
+  }
+
   private drawPace() {
     let sec = this.box.querySelector<HTMLDivElement>('#paceRow');
     if (!this.pace) { sec?.remove(); return; }
-    if (!sec) { sec = document.createElement('div'); sec.id = 'paceRow'; sec.className = 'pacerow'; this.box.insertBefore(sec, this.box.querySelector('.actdone')); }
+    if (!sec) { sec = document.createElement('div'); sec.id = 'paceRow'; sec.className = 'pacerow'; this.box.insertBefore(sec, this.box.querySelector('#trailsRow') ?? this.box.querySelector('.actdone')); }
     const c = this.pace, on = c.levels.find((l) => l.key === c.selected) ?? c.levels[2];
     sec.innerHTML = `<div class="pacehead"><b>${esc(c.title)}</b> <span class="muted small">${esc(c.groupLabel)}</span></div>
       <div class="seg" role="group" aria-label="${esc(c.title + ' – ' + c.groupLabel)}">${c.levels.map((l) =>
         `<button data-pace="${l.key}" role="menuitemradio" aria-checked="${l.key === on.key}" class="${l.key === on.key ? 'on' : ''}" title="${esc(l.label + ' – ' + l.meaning)}">${esc(l.label)}</button>`).join('')}</div>
-      <div class="muted small" id="paceMeaning">${esc(on.label)} · ${esc(on.meaning)}</div>
-      <div class="muted small">${esc(c.intro)}</div>`;
+      <div class="muted small" id="paceMeaning">${esc(on.label)} · ${esc(on.meaning)}</div>`; // no intro (the app's PaceSection, owner 2026-11-27)
   }
 
   private draw() {
@@ -170,6 +198,7 @@ export class ActivityPicker {
             return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="sacpick${sel ? ' on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}"><b>${esc(t('routes_sac_row', name, n))}</b><span class="muted small">${esc(short)}</span></button>`;
           }).join('')}</div>`;
     }).join('') + (this.levelPicked ? `<div class="actdone"><button id="actDone" class="textbtn">${esc(t('common_done'))}</button></div>` : '');
+    this.drawTrails();
   }
 }
 

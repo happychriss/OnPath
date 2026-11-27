@@ -19,6 +19,8 @@ export class EngineClient {
   /** What a fresh worker must be told first: the page's config, the pace levels, the undo / redo history. */
   private cfg: NoId<EngineRequest> | null = null;
   private pace: (string | number | boolean)[] | null = null;
+  /** „Markierten Wegen folgen“ (markedTrailsSet): a fresh worker is told it before any plan. */
+  private trails: (string | number | boolean)[] | null = null;
   private history = '';
   /** The open plan's anchors as of the engine's last history answer: what the page's plan code carries ("" = none). */
   anchors = '';
@@ -73,6 +75,7 @@ export class EngineClient {
     if (onProgress) this.progress.set(id, onProgress);
     if (req.type === 'config') this.cfg = req;
     if (req.type === 'call' && req.fn === 'paceSet') this.pace = req.args;
+    if (req.type === 'call' && req.fn === 'markedTrailsSet') this.trails = req.args;
     // a GPX track's fit routes for minutes on a long tour (multi-day tours stage 3): stoppable like a plan (dropPlans)
     if (req.type === 'plan' || req.type === 'planFromTrack') this.plans.set(id, 0);
     // a step of the detour check (WebApi.detourAt, the app's PlanDetourCheck) or of the idle settling (WebApi.settleStep, the
@@ -172,6 +175,7 @@ export class EngineClient {
     });
     if (this.history) internal({ type: 'call', fn: 'historyImport', args: [this.history] });
     if (this.pace) internal({ type: 'call', fn: 'paceSet', args: this.pace });
+    if (this.trails) internal({ type: 'call', fn: 'markedTrailsSet', args: this.trails });
     for (const id of [...this.sent.keys()].sort((a, b) => a - b)) this.worker.postMessage(this.sent.get(id)!);
   }
 

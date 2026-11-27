@@ -126,7 +126,7 @@ const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'histo
   // the phone unpaired itself (its hello deleted – the app's guard)
   'syncPhoneGone',
   // the app's shared rules wired since main 2e50efbc: mailbox restart (M4), save as copy (H3), route names, route fit
-  'syncRestart', 'saveKeepsOtherEdit', 'planNewRouteName', 'planCopyName', 'routeFirst', 'routeFitAfterPlace',
+  'syncRestart', 'saveKeepsOtherEdit', 'planNewRouteName', 'planCopyName', 'routeFirst', 'routeFitAfterPlace', 'markedTrailsSet',
   // multi-day tours (WebDays.kt, stages 2 + 3): days, rules R1–R7, a pasted hotel, the trim and the append of a GPX track
   'daysView', 'daysRule', 'hotelText', 'trackCut', 'trackAppend']);
 
