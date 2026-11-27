@@ -343,7 +343,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet
         // went down and up on Reverse / Round trip – the profile, the badge and the lines vanished and came back)
         // a multi-day tour: the profile with its day borders and one row per day (stage 4) in place of the plain profile
-        if (route != null && ui.days != null) DaysOverview(ui.days, cb.onDayTap, cb.onDayHold, cb.onHighlight)
+        if (route != null && ui.days != null) MultiDayOverview(ui.days, cb.onDayTap, cb.onDayHold, cb.onHighlight)
         else if (route != null) {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).calculating(ui.routing)
                 .semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
