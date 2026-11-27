@@ -26,9 +26,9 @@ day choice, activity picker if the cloud check finds it) → multi-day sheet dra
 (standing rule). Last: tell the project lead „parity done“ with the commit. The release run deploys the planner too.
 
 ## Map build (donald, **Wartefenster thread owns it** – resumed 23:03, 570/725, 1 failed, ETA ~01:18)
-Low priority beside the Gradle runs; rebuild cell 10-538-357 after the run; the end + `failed.txt` to the project lead.
-Publish from donald with `tools/dev/publish_cells.sh <cells…>` (TEST R2 fast lane, the doorman adopts them,
-`docs/design/map-hosting.md` §7h). HP does nothing for the upload; the doorman deploy (`maps-deploy.yml`) only if the
+Low priority beside the Gradle runs; cell 10-538-357 was already built today 18:52 (s10), no rebuild. The unit runs
+`tools/dev/publish_area.sh`, which builds **and publishes** each cell into TEST R2 itself (`map-hosting.md` §7h);
+`publish_cells.sh <cells…>` only for cells in `failed.txt`. The end + `failed.txt` to the project lead. HP does nothing for the upload; the doorman deploy (`maps-deploy.yml`) only if the
 worker changed. Suchkategorie does not touch it.
 
 ## Release R (Wartefenster)
