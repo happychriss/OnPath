@@ -15,6 +15,7 @@ apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` 
 | 4 | `chore/web-aufraeumen` | HP | now (web only, independent) |
 | 5 | `chore/aufraeumen-0.18.11-on-main` | Wartefenster (donald) | 3 pushed |
 | 6 | `feat/wait-step-bar` + MapScreen:242 + PlanTopBar redo (`creditBlockDp`) | Wartefenster | 5 pushed |
+| N | release notes 0.18.12 draft (DE/EN, `docs/release-notes/v0.18.12.md` on branch `release/0.18.12-notes`, not pushed to main) + second-model read of `feat/wait-step-bar` | Suchkategorie | now |
 | 7 | app multi-day day table (core `DayTable.kt`, item 2026-11-27-app-day-table) + HP's multi-day sheet parity | Mehrtagestouren | build now in own files; push after 6 |
 | R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ + build on the Pixel (tomorrow, Pixel unplugged) |
 
@@ -34,8 +35,7 @@ worker changed. Suchkategorie does not touch it.
 
 ## Release R (Wartefenster)
 `tools/ci/release_check.sh --go v0.18.12`, `gate.sh --full`, `tools/ci/e2e_github.sh` (core classes) → install on the
-Pixel (`adb install -r`, save a running tour, check the log) → version 0.18.12 + `docs/release-notes/v0.18.12.md`
-(DE/EN plain words, delete v0.18.11.md) → push main → release.yml. Not before HP's „parity done“; red → no release, morning report.
+Pixel (`adb install -r`, save a running tour, check the log) → version 0.18.12 + the notes from `release/0.18.12-notes` (Suchkategorie's draft; delete v0.18.11.md) → push main → release.yml. Not before HP's „parity done“; red → no release, morning report.
 **Owner unplugged the Pixel at 23:06:** the night goes up to a release-ready `main` (checks green, notes written on a
 branch, not pushed). The version push waits until the owner plugs the Pixel in tomorrow and the build is on it.
 
