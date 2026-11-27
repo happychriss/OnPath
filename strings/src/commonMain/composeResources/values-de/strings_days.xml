@@ -43,7 +43,7 @@
     <string name="days_hotel_hint">Hotel suchen oder Google-Maps-, Booking-Link oder Adresse einfügen</string>
     <string name="days_hotel_none">Nichts gefunden – versuch den Namen oder die Adresse</string>
     <string name="days_remove_hotel_ask">Übernachtung mit Hotel entfernen?</string>
-    <string name="days_from_to">%1$s – %2$s</string>
+    <string name="days_from_to">%1$s → %2$s</string>
     <string name="days_from_hotel">ab %1$s</string>
     <string name="days_to_hotel">bis %1$s</string>
     <string name="days_km_at">km %1$s</string>
@@ -55,4 +55,14 @@
     <string name="days_and">%1$s und %2$s</string>
     <string name="days_over_day">%1$s über deinem Tag</string>
     <string name="days_add_to_day">Ort zu Tag %1$s hinzufügen</string>
+    <!-- the multi-day panel (owner's sketch 2026-11-27, planner d7d01bd7b) – shared by the app and the planner -->
+    <string name="days_planning">Planung</string>
+    <string name="days_not_saved">Nicht gespeichert</string>
+    <string name="days_changed">Geändert · nicht gespeichert</string>
+    <string name="days_saved">Gespeichert</string>
+    <string name="days_whole_trip">Gesamte Reise</string>
+    <string name="days_profile_whole_trip">Höhenprofil · gesamte Reise</string>
+    <string name="days_profile_day">Höhenprofil · %1$s</string>
+    <string name="days_chip_hours">%1$s h / Tag</string>
+    <string name="days_chip_ascent">%1$s m ↑ / Tag</string>
 </resources>
