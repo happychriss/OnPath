@@ -1319,6 +1319,10 @@ external fun planProgress(text: String)
 @JSExport fun search(text: String, lat: Double, lon: Double, route: String, category: String): String =
     WebSearch.search(text, lat, lon, route, category)
 
+/** The online search's requests in order (the app's PhotonProvider.requests): the normal one, the places-only one. */
+@JSExport fun photonUrls(text: String, lat: Double, lon: Double): String =
+    com.onpath.app.search.PhotonProvider.requests(text, lat, lon).joinToString(",", "[", "]") { "\"" + it.replace("\\", "\\\\").replace("\"", "\\\"") + "\"" }
+
 @JSExport fun searchOnline(text: String, photonJson: String, category: String, placesJson: String): String = WebSearch.online(text, photonJson, category, placesJson)
 
 /** The six search chips (the app's SearchKinds.Category): [[name, label], …]. */

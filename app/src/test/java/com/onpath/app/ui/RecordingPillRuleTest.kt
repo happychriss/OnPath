@@ -22,6 +22,8 @@ class RecordingPillRuleTest {
         val map = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue(map.contains("val recOn = RecordingPillRule.shows(rec?.paused == false, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)"))
         assertTrue(map.contains("if (recOn) RecordingPill(Modifier"))
+        // „Beenden“ in the pill asks the end question (owner 2026-11-27, A) – the same EndTourDialog as Navigate's
+        assertTrue(map.contains(".measured(top), onEnd = { vm.tourEnd.askEndTour() })"))
         assertTrue("the hints under it move down", map.contains("pill != null || recOn }"))
     }
 }

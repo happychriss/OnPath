@@ -535,7 +535,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
             modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
                 .padding(top = top.dp, start = 12.dp).measured(top))
     }
-    if (recOn) RecordingPill(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top))
+    if (recOn) RecordingPill(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top), onEnd = { vm.tourEnd.askEndTour() })
     BackgroundDownloadDetails(vm, bg)
 }
 

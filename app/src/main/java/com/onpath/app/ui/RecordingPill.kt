@@ -1,6 +1,12 @@
 package com.onpath.app.ui
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
+import androidx.compose.material3.minimumInteractiveComponentSize
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,17 +39,31 @@ object RecordingPillRule {
         recording && !box && !mapPill && !search && !firstCard && !waitWindow
 }
 
+/**
+ * [onEnd] (owner 2026-11-27, variant A): „◉ Aufnahme läuft | Beenden“ – a fine line and the blue word, no filled button;
+ * the whole pill (48 dp touch) opens the usual "Tour beenden?" sheet (save · cancel · delete to the bin), so a stray tap
+ * loses nothing and nothing jumps to Navigate. null = the plain sign.
+ */
 @Composable
-fun RecordingPill(modifier: Modifier = Modifier) {
+fun RecordingPill(modifier: Modifier = Modifier, onEnd: (() -> Unit)? = null) {
     val text = str(Res.string.plan_rec_running)
+    val end = str(Res.string.plan_rec_end)
     Box(modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-        Surface(shape = OnPathShapes.Pill, color = OnPathColors.Paper,
-            modifier = Modifier.semantics(mergeDescendants = true) { contentDescription = text }.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
-            Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Outlined.RadioButtonChecked, null, tint = OnPathColors.Error,
-                    modifier = Modifier.size(14.dp))
-                Spacer(Modifier.width(8.dp))
-                Text(text, style = MaterialTheme.typography.bodySmall, color = OnPathColors.Walnut, maxLines = 1)
+        val touch = if (onEnd == null) Modifier.semantics(mergeDescendants = true) { contentDescription = text }
+            else Modifier.minimumInteractiveComponentSize().clickable(role = Role.Button, onClickLabel = end, onClick = onEnd)
+                .semantics(mergeDescendants = true) { contentDescription = "$text. $end" }
+        Box(touch, contentAlignment = Alignment.Center) {
+            Surface(shape = OnPathShapes.Pill, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Pill)) {
+                Row(Modifier.padding(horizontal = 12.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Outlined.RadioButtonChecked, null, tint = OnPathColors.Error, modifier = Modifier.size(14.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(text, style = MaterialTheme.typography.bodySmall, color = OnPathColors.Walnut, maxLines = 1)
+                    if (onEnd != null) {
+                        Box(Modifier.padding(horizontal = 10.dp).width(1.dp).height(16.dp).background(OnPathColors.Line))
+                        Text(end, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.Medium,
+                            color = OnPathColors.ActionEdit, maxLines = 1)
+                    }
+                }
             }
         }
     }

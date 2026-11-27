@@ -224,6 +224,19 @@ export class EngineClient {
   }
 
   /** Offline + online hits for the last query, given Photon's answer (the app's merge). */
+  /**
+   * The online search (the app's PhotonProvider.search): the shared code's requests fetched here – the normal one must
+   * answer, the places-only one may fail – then merged and ranked in the engine. null = the normal request failed.
+   */
+  async searchOnlineFetch(text: string, lat: number, lon: number, category = ''): Promise<Hit[] | null> {
+    const [main, places] = JSON.parse(await this.call('photonUrls', text, lat, lon)) as string[];
+    const placesAsk = places ? fetch(places).then((p) => (p.ok ? p.text() : ''), () => '') : Promise.resolve('');
+    const r = await fetch(main);
+    if (!r.ok) return null;
+    const body = await r.text();
+    return this.searchOnline(text, body, category, await placesAsk);
+  }
+
   async searchOnline(text: string, photon: string, category = '', places = ''): Promise<Hit[] | null> {
     const r = await this.ask({ type: 'searchOnline', text, photon, category, places });
     return r.ok && r.text ? JSON.parse(r.text) : null;
