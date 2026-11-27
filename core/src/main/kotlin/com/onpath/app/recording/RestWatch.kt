@@ -15,7 +15,7 @@ import com.onpath.app.data.Geo
  *   recorded as usual: the rate only decides how often fixes come, never which are stored.
  * - The motion sensor (owner 2026-11-24, his Pixel lying indoors woke 9 times in 48 min from fixes of ±49 m): while it
  *   says the phone lies still, a poor fix (over [REST_MAX_ACCURACY_M]) does not wake – a good one still does (a phone
- *   lying in a moving car or train); a minute still by the sensor rests without good fixes ([onTick]); the sensor saying
+ *   lying in a moving car or train); [SENSOR_REST_AFTER_MS] still by the sensor rests without good fixes ([onTick]); the sensor saying
  *   "moving" wakes at once, also without any fix. No sensor word (none, not sure) = the GPS rules above.
  * - GPS off (owner 2026-11-24: „wenn mehr als 1h Ruhe, dann kann GPS auch ganz aus, dann ist das Handy wenigstens nicht
  *   leer“): resting and still by the sensor for [OFF_AFTER_MS] without a break → [Change.OFF]; the sensor saying moving
@@ -28,6 +28,11 @@ class RestWatch {
         /** Rate while standing still. */
         const val REST_MS = 10_000L
         const val REST_AFTER_MS = 60_000L
+        /**
+         * Still by the motion sensor this long: rest (owner 2026-11-27, „kürzer“). The sensor says „moving“ at the first step,
+         * so a stop at a junction (10–30 s) costs nothing; shorter would slow GPS at every traffic light.
+         */
+        const val SENSOR_REST_AFTER_MS = 30_000L
         const val STILL_M = 10.0
         const val STILL_SPEED_MS = 0.5f
         const val REST_MAX_ACCURACY_M = 20f
@@ -72,7 +77,7 @@ class RestWatch {
             return Change.MOVING
         }
         val since = sensorStillSince ?: return null
-        if (!resting && nowMs - since >= REST_AFTER_MS) { resting = true; anchorLat = Double.NaN; return Change.REST }
+        if (!resting && nowMs - since >= SENSOR_REST_AFTER_MS) { resting = true; anchorLat = Double.NaN; return Change.REST }
         if (resting && !off && nowMs - since >= OFF_AFTER_MS) { off = true; return Change.OFF }
         return null
     }
