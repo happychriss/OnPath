@@ -33,6 +33,8 @@ abstract class PlanSmallPhone(widthDp411: Boolean, font: Float = 1.0f) {
     }
 
     @Test fun plan() = shots.plan()
+    /** The recording pill and the credit top right never overlap (owner 2026-11-27). */
+    @Test fun planTourRecordingPill() = shots.planTourRecordingPill()
     @Test fun planSummaryStep() = shots.planPointsSmallShot()
 }
 

@@ -226,7 +226,7 @@ fun MapScreen(
         // "Where I face" arrow at the dot in heading-up following (MapController.Facing), not over the cycling rest view
         if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } }
         // Plan: the credit over the scale, top right (the top left holds the boxes, the recording pill, the download chip)
-        if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = MessagePlacement.GAP_DP.dp, end = 12.dp))
+        if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
         // hints go below the background-download strip while it shows (measured: a box is taller than the chip)
         val hintTop = if (vm.mapData.backgroundStripShown && vm.tourSession.mode == AppMode.PLAN)
             (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
@@ -533,7 +533,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     } else if (chipOn) { // top left, 12 dp under the status bar (Daumen-Karte, owner 2026-11-26: the place under ☰ is gone)
         BackgroundDownloadChip(bg!!, onClick = { vm.mapData.downloadDetailsOpen = true },
             modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
-                .padding(top = MessagePlacement.CHIP_TOP_DP.dp, start = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
+                .padding(top = top.dp, start = 12.dp).measured(top))
     }
     if (recOn) RecordingPill(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top))
     BackgroundDownloadDetails(vm, bg)

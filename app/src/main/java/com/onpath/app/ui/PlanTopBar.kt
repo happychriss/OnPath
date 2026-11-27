@@ -144,7 +144,7 @@ object PlanTopBand {
      * search and ☰ are in the card at the bottom, the boxes sit 12 dp under the status bar.
      */
     @Suppress("UNUSED_PARAMETER")
-    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp = TOP_BAR_BOTTOM
+    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp = CreditPlace.blockDp(fontScale).dp // the credit block (2026-11-27)
 
     /** Where the mode label starts: over the search pill's left part. */
     val LABEL_START = 28.dp
