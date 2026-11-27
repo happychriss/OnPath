@@ -202,9 +202,9 @@ const MSG_429 = 'The map server is busy'; // a 429 is said as busy, not as not r
   const page = await open();
   await page.evaluate(() => window.__map.jumpTo({ zoom: 13.5 }));
   const w = await page.waitForFunction(() => { const e = document.getElementById('waitwin');
-    return e && /\d+ %/.test(e.querySelector('.wwpct').textContent) && [...e.querySelectorAll('.wwsteps li')].some((l) => /loading map/.test(l.textContent))
+    return e && !/\d+ %/.test(e.textContent) && [...e.querySelectorAll('.wwsteps li')].some((l) => /loading map/.test(l.textContent))
       ? e.querySelector('.wwtitle').textContent : null; }, null, { timeout: 30_000 }).then((h) => h.jsonValue(), () => null);
-  check(w === 'Map for your area', `G slow: the wait window "Map for your area" with its percent and "loading map" while the tiles come (${w})`);
+  check(w === 'Map for your area', `G slow: the wait window "Map for your area" – no percent (VISION 2026-11-27) – and "loading map" while the tiles come (${w})`);
   check(await waitBase(page, 45_000), 'G slow: the cell draws');
   const d = await diag(page);
   check(!/\[cells\]/.test(d), 'G slow: nothing failed (no cells problem)');

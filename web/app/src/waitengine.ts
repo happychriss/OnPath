@@ -12,7 +12,10 @@ const BUILD = typeof __BUILD_ID__ === 'string' ? __BUILD_ID__ : 'dev';
 export interface WaitStepUi { label: string; state: 'done' | 'now' | 'later' }
 export interface WaitUi { title: string; route: boolean; percent: number; steps: WaitStepUi[]; line: string | null; paused: boolean; late: boolean;
   /** A sentence under the title (the server builds the map first – the engine's WebWait note). */
-  note?: string | null }
+  note?: string | null;
+  /** The bar in pieces (the app's step bar, owner 2026-11-27, no percent): pieces drawn (0 = one plain bar), how many are
+   *  filled (the running one partly when measured), the piece with the calm indeterminate bar (-1 = none). */
+  pieces?: number; filled?: number; running?: number }
 export interface WaitEnd { full: WaitUi | null; shares?: string; check?: string; part?: string }
 
 interface Exports {

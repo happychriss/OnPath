@@ -288,7 +288,7 @@ export class LoadOverlay {
       el.setAttribute('role', 'status');
       el.setAttribute('aria-live', 'polite');
       el.innerHTML = '<div class="wwhead"><span class="wwsign"></span><span class="wwtitle"></span></div><div class="wwnote" hidden></div>'
-        + '<div class="wwprog"><div class="wwbar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div><span class="wwpct"></span></div>'
+        + '<div class="wwprog"><div class="wwbar" role="progressbar" aria-valuemin="0" aria-valuemax="100"><i></i></div></div>'
         + '<ul class="wwsteps"></ul><div class="wwfoot"><span class="wwline"></span><button type="button" class="wwcancel"></button></div>';
       el.querySelector<HTMLButtonElement>('.wwcancel')!.onclick = () => this.cancel();
       document.body.append(el);
@@ -301,10 +301,25 @@ export class LoadOverlay {
     note.hidden = !u.note; note.textContent = u.note ?? '';
     el.dataset.pct = String(u.percent);
     el.classList.toggle('paused', u.paused);
+    // no number (VISION 2026-11-27: honest waiting, never a made-up percent): the route as the app's step bar – one piece
+    // per visible leg, the finished ones full, the running one with a calm indeterminate bar; the map as one plain bar
     const bar = el.querySelector<HTMLElement>('.wwbar')!;
-    bar.setAttribute('aria-valuenow', String(u.percent));
-    bar.querySelector('i')!.style.width = `${u.percent}%`;
-    el.querySelector('.wwpct')!.textContent = `${u.percent} %`; // the app's "34 %" in every language
+    const pieces = u.pieces ?? 0;
+    bar.classList.toggle('pieces', pieces > 0);
+    if (pieces > 0) {
+      bar.removeAttribute('aria-valuenow');
+      const filled = u.filled ?? 0;
+      if (bar.children.length !== pieces || !bar.firstElementChild?.classList.contains('pc')) bar.innerHTML = '<span class="pc"><i></i></span>'.repeat(pieces);
+      [...bar.children].forEach((pc, i) => {
+        const f = Math.max(0, Math.min(1, filled - i));
+        (pc.firstElementChild as HTMLElement).style.width = `${(f * 100).toFixed(1)}%`;
+        pc.classList.toggle('run', i === (u.running ?? -1));
+      });
+    } else {
+      if (!bar.querySelector(':scope > i')) bar.innerHTML = '<i></i>';
+      bar.setAttribute('aria-valuenow', String(u.percent));
+      bar.querySelector('i')!.style.width = `${u.percent}%`;
+    }
     const ul = el.querySelector('.wwsteps')!;
     const rows = u.steps.slice(0, 3); // never more than 3 (the engine's WaitSteps.shown already keeps it so)
     while (ul.children.length > rows.length) ul.lastElementChild!.remove();

@@ -54,7 +54,8 @@ async function open(ctxOpts, at, serverOpts, before = null) {
       // one message at a time: no map note beside the wait window (owner 2026-11-19 – „Nur Übersicht …“ while that map loads)
       const note = [...document.querySelectorAll('#mapnotes .mapnote')].find((n) => n.getClientRects().length && getComputedStyle(n).display !== 'none');
       if (o && note && window.__beside.length < 5) window.__beside.push(note.textContent);
-      const ot = o && `[busy] ${o.querySelector('.wwtitle')?.textContent} · ${o.querySelector('.wwpct')?.textContent}`;
+      if (o && /\d+ %/.test(o.textContent)) window.__shownPct = (window.__shownPct ?? 0) + 1; // a number on screen (never – VISION 2026-11-27)
+      const ot = o && `[busy] ${o.querySelector('.wwtitle')?.textContent} · ${o.dataset.pct} %`;
       if (ot && window.__statusLog.at(-1) !== ot) window.__statusLog.push(ot);
       if (!o && window.__statusLog.length && window.__statusLog.at(-1) !== '[gone]' && window.__statusLog.at(-1).includes(' %')) window.__statusLog.push('[gone]');
       const rows = o && [...o.querySelectorAll('.wwsteps li')].map((l) => l.className + ':' + l.textContent).join(', ') + ' | ' + o.querySelector('.wwline')?.textContent;
@@ -316,13 +317,13 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   const beside = await page.evaluate(() => window.__beside);
   check(beside.length === 0, `no map note while the wait window shows – it comes back after if still true (${JSON.stringify(beside)})`);
   // the routing data from this test server comes in a moment: the window may first show at its route step already
-  check(seen.some((t) => /^\[busy\] (Map for your area|Map for this place|Calculating the route) · \d+ %$/.test(t)), `the plan's wait: the window with a percent ("${seen.find((t) => t.includes('%')) ?? 'not seen'}")`);
+  check(seen.some((t) => /^\[busy\] (Map for your area|Map for this place|Calculating the route) · \d+ %$/.test(t)) && !(await page.evaluate(() => window.__shownPct ?? 0)), `the plan's wait: the window, its bar moving, never a number on screen (VISION 2026-11-27) ("${seen.find((t) => t.includes('%')) ?? 'not seen'}")`);
   console.log(`(the window's rows: ${(await page.evaluate(() => window.__winLog)).slice(0, 6).join(' ; ')})`);
   const lastWin = seen.slice(seen.lastIndexOf('[gone]', seen.length - 2) + 1);
   const pcts = lastWin.map((x) => /· (\d+) %$/.exec(x)?.[1]).filter(Boolean).map(Number);
   check(pcts.every((v, i) => !i || v >= pcts[i - 1]), `the window's percent never goes back (${pcts.join(' ')})`);
   check(seen.filter((t) => / %$/.test(t)).every((t) => /^\[busy\] (Map for your area|Map for this place|Calculating the route) · \d+ %$/.test(t)),
-    `one window: the map's title, then the route's – a percent all the way (${JSON.stringify([...new Set(seen.filter((t) => t.includes('%')).map((t) => t.replace(/ · \d+ %/, '')))])})`);
+    `one window: the map's title, then the route's (${JSON.stringify([...new Set(seen.filter((t) => t.includes('%')).map((t) => t.replace(/ · \d+ %/, '')))])})`);
   await page.waitForFunction(() => !document.getElementById('waitwin'), null, { timeout: 10_000 }).catch(() => {});
   check(!(await page.evaluate(() => document.getElementById('status').classList.contains('busy') || !!document.getElementById('waitwin'))), 'after the plan: no spinner, no window left');
   await ctx.close(); server.close();

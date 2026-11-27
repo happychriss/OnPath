@@ -430,7 +430,7 @@ async function run(lang, viewport, shotPrefix) {
   check(!(await page.$('dialog.longroute')), 'a far point in a multi-day tour: no long-route question');
   const t0 = Date.now();
   if (viewport.width > 700) await shot('5-wait-box');
-  check(await page.locator('#waitwin .wwbar i').count() === 1, 'the wait window: one bar');
+  check(await page.locator('#waitwin .wwbar').count() === 1 && !/\d+ %/.test(await page.locator('#waitwin').textContent()), 'the wait window: one bar, no percent');
   check(await page.locator('#waitwin .wwcancel', { hasText: lang === 'de' ? 'Abbrechen' : 'Cancel' }).count() === 1, 'the wait window keeps Cancel');
   await settled();
   const waited = Date.now() - t0;

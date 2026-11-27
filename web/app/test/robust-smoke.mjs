@@ -202,9 +202,9 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const at = Date.now() - t0;
   const card = box ? await p.evaluate(() => { const c = document.getElementById('waitwin'); if (!c) return null; const r = c.getBoundingClientRect(),
     sheet = document.getElementById('sheet').getBoundingClientRect();
-    return { text: c.textContent, bar: !!c.querySelector('.wwbar > i'), pct: c.querySelector('.wwpct').textContent, rows: c.querySelectorAll('.wwsteps li').length,
+    return { text: c.textContent, bar: !!c.querySelector('.wwbar > i, .wwbar .pc'), pct: /\d+ %/.test(c.textContent) ? 'a percent' : 'no number', rows: c.querySelectorAll('.wwsteps li').length,
       cx: r.left + r.width / 2, sheetRight: sheet.right, w: innerWidth, clock: document.getElementById('status').classList.contains('busy') }; }) : null;
-  check(box && !!card && card.bar && /^\d+ %$/.test(card.pct) && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area|Map for this place/.test(card.text),
+  check(box && !!card && card.bar && card.pct === 'no number' && card.rows <= 3 && /Cancel/.test(card.text) && /Calculating the route|Map for your area|Map for this place/.test(card.text),
     `the wait window: title, bar, "${card?.pct}", ${card?.rows} rows, Cancel ("${card?.text}")`);
   check(box && !!card && card.cx > card.sheetRight && !card.clock, 'in the free map beside the sheet; no small spinner in the sheet');
   // modal like the app's window (owner 2026-11-24): a tap on the map, a drag, a key and Escape change nothing – Cancel is the way out
@@ -309,7 +309,7 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   const { log, now } = await p.evaluate(() => ({ log: window.__card, now: performance.now() }));
   const open = log.filter((x) => !x.gone);
   console.log('(the window: ' + open.map((x) => `${Math.round(x.t)} ${x.num} ${x.title} [${x.rows.join(', ')}] ${x.line}`).join(' ; ') + ')');
-  check(open.length > 0 && open.every((x) => /^\d{1,3} %$/.test(x.num)), 'long plan: a percent all the way – the downloads and the calculation');
+  check(open.length > 0 && open.every((x) => x.num === ''), 'long plan: the window all the way, never a percent number (VISION 2026-11-27)');
   check(open.some((x) => /Map for (your area|this place)/.test(x.title)) && open.some((x) => /Calculating the route/.test(x.title)),
     `long plan: the map's step, then the route's – one window (${[...new Set(open.map((x) => x.title))].join(' → ')})`);
   check(open.every((x) => x.rows.length <= 3), `long plan: never more than 3 rows (${Math.max(...open.map((x) => x.rows.length))})`);
@@ -349,7 +349,7 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
   await p.waitForFunction((n) => new Set(window.__card.slice(n).filter((x) => !x.gone).map((x) => x.pct)).size > 1, from, { timeout: 6_000 }).catch(() => {});
   console.log(`(without downloads: the percent's first move within ${((Date.now() - cameAt) / 1000).toFixed(1)} s)`);
   const second = (await p.evaluate((n) => window.__card.slice(n), from)).filter((x) => !x.gone);
-  check(came && second.every((x) => /^\d{1,3} %$/.test(x.num) && x.rows.length <= 3) && second.some((x) => x.rows.some((r) => /Section/.test(r))),
+  check(came && second.every((x) => x.num === '' && x.rows.length <= 3) && second.some((x) => x.rows.some((r) => /Section/.test(r))),
     `without downloads: the route's window – its percent, its legs as steps (${second.slice(-3).map((x) => `${x.num} [${x.rows.join(', ')}]`).join(' ; ')})`);
   check(second.every((x, i) => i === 0 || x.pct >= second[i - 1].pct) && new Set(second.map((x) => x.pct)).size > 1,
     `without downloads: the percent moves, never back (${second.map((x) => x.pct).join(' ')})`);

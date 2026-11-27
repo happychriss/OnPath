@@ -48,7 +48,14 @@ class WebWait(private var shares: StepShares, private var check: Double, private
     data class Ui(val title: String, val route: Boolean, val percent: Int, val steps: List<WaitStep>, val line: String?,
                   val paused: Boolean, val late: Boolean,
                   /** A sentence under the title – the server builds the map for this place first (the app's MapLoadUi.note, owner 2026-11-27, Hinweistext 12). */
-                  val note: String? = null)
+                  val note: String? = null,
+                  /**
+                   * The bar in pieces like the app's step bar (WaitWindowUi.pieces, owner 2026-11-27 „ein Stück pro fertigem
+                   * Abschnitt, keine Prozent“): one per visible leg once the route part runs, 0 = one plain bar (map loads).
+                   */
+                  val pieces: Int = 0, val piecesDone: Int = 0,
+                  /** Real progress of the pieces (WaitWindowUi.pieceFill): 1 while „prüfen“ runs, -1 = not measured (the running piece's calm indeterminate bar). */
+                  val pieceFill: Float = -1f)
 
     private val bar = OneBar()
     /** The map part's time left as said: only down, +10 s at first (the app's MapLoad, owner 2026-11-27). */
@@ -220,7 +227,11 @@ class WebWait(private var shares: StepShares, private var check: Double, private
         val title = if (inMap) Txt.s(Res.string.wait_title_map) else Txt.s(Res.string.wait_title_route)
         val building = inMap && mapStep == LoadStep.PREPARE && t.areas.any { it.state == "queued" || it.state == "building" }
         return Ui(title, !inMap, pct, WaitSteps.shown(WaitSteps.of(labels, cur)), line, t.paused, late || overLeg,
-            note = if (building) com.onpath.app.ui.MapLoadUi.BUILD_TEXT else null).also { last = it }
+            note = if (building) com.onpath.app.ui.MapLoadUi.BUILD_TEXT else null,
+            // the route part: one piece per visible leg, the finished ones full, all of them while checking; the router tells
+            // the planner nothing within a leg, so the running piece is never filled by time (VISION: honest waiting)
+            pieces = if (!inMap && hadRoute) legs else 0, piecesDone = if (checking) legs else done,
+            pieceFill = if (checking) 1f else -1f).also { last = it }
     }
 
     /**
@@ -259,7 +270,7 @@ class WebWait(private var shares: StepShares, private var check: Double, private
 
     /** The last window shown, at 100 % (the wait is over: a moment of the full bar before it goes). */
     fun full(now: Long): Ui? = last?.let { it.copy(percent = bar.next(1.0, 1.0, null, now, finished = true), line = null, late = false,
-        steps = it.steps.map { s -> s.copy(state = WaitStepState.DONE) }) }
+        steps = it.steps.map { s -> s.copy(state = WaitStepState.DONE) }, piecesDone = it.pieces, pieceFill = 1f) }
 
     data class Learned(val shares: StepShares, val check: Double, val routePart: Double)
 
@@ -383,7 +394,12 @@ class WebWait(private var shares: StepShares, private var check: Double, private
             }
             append("],\"line\":").append(u.line?.let { Engine.str(it) } ?: "null")
             append(",\"paused\":").append(u.paused).append(",\"late\":").append(u.late)
-            append(",\"note\":").append(u.note?.let { Engine.str(it) } ?: "null").append('}')
+            append(",\"note\":").append(u.note?.let { Engine.str(it) } ?: "null")
+            // the bar as drawn: the app's WaitWindowUi rules (at most MAX_PIECES, legs share a piece beyond them)
+            val w = com.onpath.app.ui.progress.WaitWindowUi(com.onpath.app.ui.progress.WaitSign.ROUTE, u.title, u.percent, u.steps, u.line,
+                pieces = u.pieces, piecesDone = u.piecesDone, pieceFill = u.pieceFill)
+            append(",\"pieces\":").append(w.shownPieces).append(",\"filled\":").append(w.filledPieces)
+            append(",\"running\":").append(w.runningPiece ?: -1).append('}')
         }
     }
 }

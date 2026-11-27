@@ -479,7 +479,12 @@ dialog.pair .check b { letter-spacing: .08em; }
 .waitwin .wwbar { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
 .waitwin .wwbar > i { display: block; height: 100%; width: 0; border-radius: 2px; background: var(--green); transition: width .45s linear; }
 .waitwin.paused .wwbar > i { background: var(--muted); }
-.waitwin .wwpct { flex: none; min-width: 3.4em; text-align: right; font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* the route as the app's step bar: one piece per leg, the running one with a calm indeterminate stripe (no number) */
+.waitwin .wwbar.pieces { display: flex; gap: 3px; background: none; border-radius: 0; overflow: visible; }
+.waitwin .wwbar.pieces .pc { flex: 1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; position: relative; }
+.waitwin .wwbar.pieces .pc > i { display: block; height: 100%; width: 0; background: var(--green); transition: width .45s linear; }
+.waitwin .wwbar.pieces .pc.run::after { content: ''; position: absolute; inset: 0; width: 40%; border-radius: 2px; background: var(--green); opacity: .6; animation: wwrun 1.6s ease-in-out infinite; }
+@keyframes wwrun { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
 .waitwin .wwsteps { list-style: none; margin: 12px 0 0; padding: 0 8px 0 0; display: flex; flex-direction: column; gap: 4px; }
 .waitwin .wwsteps li { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); min-width: 0; }
 .waitwin .wwsteps li .lab { min-width: 0; overflow-wrap: anywhere; }
@@ -494,7 +499,7 @@ dialog.pair .check b { letter-spacing: .08em; }
 .waitwin .wwcancel { flex: none; min-height: 48px; padding: 0 12px; border: 0; border-radius: 24px; background: transparent; color: var(--green);
   font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
 .waitwin .wwcancel:hover { background: var(--paper-deep); }
-@media (prefers-reduced-motion: reduce) { .waitwin .wwbar > i { transition: none; } }
+@media (prefers-reduced-motion: reduce) { .waitwin .wwbar > i, .waitwin .wwbar.pieces .pc > i { transition: none; } .waitwin .wwbar.pieces .pc.run::after { animation: none; transform: none; } }
 /* the sign beside the map (form B, besidesign.ts – the app's BesideSign): a small pill, a ring and ONE percent; covers nothing */
 .besidesign { position: absolute; z-index: 6; right: 12px; top: var(--beside-top, 72px); display: inline-flex; align-items: center; gap: 7px;
   min-height: 32px; padding: 5px 12px 5px 6px; border: 0; border-radius: 999px; background: var(--tag-bg); color: var(--tag-fg);

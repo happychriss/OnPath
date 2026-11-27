@@ -71,7 +71,7 @@ function checkPercent(log, who) {
   check(!back, `${who}: the percent never goes back (${log.pct.map((x) => x.s + ':' + x.p).join(' ')})`);
   check(first.at(-1) === 100, `${who}: the percent reaches 100`);
   // one bar 0–100 over all steps, the route calculation too (owner 2026-11-19 – no running bar without a number any more)
-  check(log.pct.every((x) => /^\d{1,3}\s?%$/.test(x.text)), `${who}: the percent reads "45 %" all the way (${log.pct.at(-1)?.text})`);
+  check(log.pct.every((x) => x.text === ''), `${who}: no percent number in the window (VISION 2026-11-27: honest waiting) (${log.pct.at(-1)?.text})`);
   check(log.pct.every((x) => x.rows <= 3), `${who}: never more than 3 step rows (${Math.max(...log.pct.map((x) => x.rows))})`);
 }
 
