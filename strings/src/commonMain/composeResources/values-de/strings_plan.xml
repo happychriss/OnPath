@@ -215,7 +215,6 @@
     <!-- after "Tour speichern": a line instead of the box "Tour gespeichert" (owner 2026-11-06, onpath.private#35) -->
     <string name="plan_mode_label">Planen</string>
     <string name="plan_rec_running">Aufnahme läuft</string>
-    <string name="plan_rec_paused">Aufnahme angehalten</string>
     <string name="plan_stat_distance">Strecke</string>
     <string name="plan_stat_ascent">Aufstieg</string>
     <string name="plan_stat_descent">Abstieg</string>

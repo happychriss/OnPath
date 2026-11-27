@@ -521,7 +521,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val firstCard by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
     val pill = notice?.takeIf { message == null && !vm.searchFlow.searchOpen && mapNoticeKind(it) == null && firstCard == null && !vm.mapData.loadWindowShown }
     val chipOn = bg != null && !vm.searchFlow.searchOpen && message == null && notice == null && firstCard == null
-    val recOn = RecordingPillRule.shows(rec != null, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)
+    val recOn = RecordingPillRule.shows(rec?.paused == false, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)
     LaunchedEffect(chipOn, message != null, pill != null, recOn) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null || recOn }
     val density = LocalDensity.current
     fun Modifier.measured(topDp: Int) = // the bottom below the status bar: top + measured height (hints under the search bar go below it)
@@ -536,7 +536,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
             modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
                 .padding(top = MessagePlacement.CHIP_TOP_DP.dp, start = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
     }
-    if (recOn) RecordingPill(rec!!.paused, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top))
+    if (recOn) RecordingPill(Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top))
     BackgroundDownloadDetails(vm, bg)
 }
 
