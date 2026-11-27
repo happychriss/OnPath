@@ -84,8 +84,6 @@ class PlanEditFlowTest {
         var nameCalls = 0
         var tourReads = 0
         var guidanceEnded = false
-        /** Times the slice sent the app back to Navigate because the plan was emptied during a tour (owner 2026-11-27). */
-        var toNavigate = 0
         var restoredActivity: PlanStatus.Cause.ActivityChange? = null
 
         private fun st() = "[stored=${ids(store.points)} ask=${slice.routeBackAsk} undo=${plan.canUndo} redo=${plan.canRedo} " +
@@ -122,7 +120,6 @@ class PlanEditFlowTest {
             override fun endGuidanceIfPlanEmpty() { log += "endGuidanceIfEmpty ${st()}" }
             override fun clearFollow() { followLine = null; log += "clearFollow ${st()}" }
             override fun guidanceEndedByEmptyPlan() { guidanceEnded = true; log += "guidanceEnded" }
-            override fun planEmptiedDuringTour() { toNavigate++; log += "toNavigate" }
             override fun stopName(p: GeoPoint): String? = stopNames[p]
             override suspend fun pointNames(): PointNames {
                 nameCalls++
@@ -526,37 +523,8 @@ class PlanEditFlowTest {
         assertTrue(app.touring) // the recording goes on: only the host's follow is touched, nothing else exists to stop it
         val order = app.log.map { it.substringBefore("(").substringBefore(" ") }
         assertTrue(order.indexOf("recalc") < order.indexOf("clearFollow"))
-        assertEquals(listOf("guidanceEnded", "toNavigate"), app.log.takeLast(2))
-        assertEquals("back to Navigate once, after the clear (owner 2026-11-27)", 1, app.toNavigate)
+        assertEquals("guidanceEnded", app.log.last())
         assertEquals(listOf("Clear route: plan 3 → 0 points (tour running)", "Plan cleared during the tour: route guidance ended, recording continues"), app.problemsPlan())
-    }
-
-    /**
-     * Owner 2026-11-27: the plan emptied during a tour shows no „Tour läuft noch“ sheet – the app goes back to Navigate
-     * without a route. Only when the plan really became empty, only during a tour, once; the recording is never touched.
-     */
-    @Test fun anEmptiedPlanDuringATourGoesBackToNavigate() {
-        val cleared = App(listOf(a, b))
-        cleared.touring = true
-        cleared.slice.clearPlan()
-        assertEquals(1, cleared.toNavigate)
-        assertTrue(cleared.touring)
-
-        val deleted = App(listOf(a))
-        deleted.touring = true
-        deleted.slice.deletePointFromList(0)
-        assertEquals("", deleted.stored())
-        assertEquals("the last point deleted", 1, deleted.toNavigate)
-        assertTrue(deleted.touring)
-
-        val left = App(listOf(a, b, c))
-        left.touring = true
-        left.slice.deletePointFromList(1)
-        assertEquals("points left: Plan stays", 0, left.toNavigate)
-
-        val noTour = App(listOf(a, b))
-        noTour.slice.clearPlan()
-        assertEquals("without a tour the empty plan stays in Plan", 0, noTour.toNavigate)
     }
 
     @Test fun clearDuringATourWithoutGuidanceEndsNothing() {

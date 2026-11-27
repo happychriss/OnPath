@@ -416,17 +416,6 @@ class TourSession(
     /** The slide switch in Navigate. Recording continues. */
     fun switchToPlan() = enter(AppMode.PLAN)
 
-    /**
-     * The plan was emptied in Plan during a tour (owner 2026-11-27): no „Tour läuft noch“ sheet – back to Navigate
-     * without a route (time and distance only), „Planen“ one tap away. Only the mode changes: the recording goes on,
-     * nothing is followed any more ([PlanEditState.clearPlan] / the guidance rule ended it), Undo in Plan brings the plan.
-     */
-    fun backToNavigateWithEmptyPlan() {
-        if (recState.value == null || mode != AppMode.PLAN || waypoints.isNotEmpty()) return
-        Problems.trace("tour", "Plan emptied during the tour: back to Navigate without a route, recording continues")
-        enter(AppMode.NAVIGATE)
-    }
-
     /** The service gets its START: the tour follows what [startNavigation] decided. */
     fun startRecording() {
         Problems.trace("tour", "Tour start (${activity.name}, plan ${waypoints.size} points, " +

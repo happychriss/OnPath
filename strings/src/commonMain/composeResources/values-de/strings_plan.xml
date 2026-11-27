@@ -275,4 +275,8 @@
     <string name="plan_save_ask_text">Dein Plan ist noch nicht gespeichert.</string>
     <string name="plan_menu_record_without_plan">Nur aufzeichnen</string>
     <string name="plan_menu_help">Hilfe</string>
+    <!-- the empty plan during a tour (owner 2026-11-12: „Tour läuft noch“, „neues Ziel festlegen“) -->
+    <string name="plan_tour_still_running">Tour läuft noch</string>
+    <string name="plan_tour_new_target">Neues Ziel festlegen</string>
+    <string name="plan_tour_new_target_line">Ziel suchen oder Karte gedrückt halten → Als Ziel</string>
 </resources>

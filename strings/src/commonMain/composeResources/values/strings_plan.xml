@@ -276,4 +276,8 @@
     <string name="plan_save_ask_text">Your plan is not saved yet.</string>
     <string name="plan_menu_record_without_plan">Just record</string>
     <string name="plan_menu_help">Help</string>
+    <!-- the empty plan during a tour (owner 2026-11-12: „Tour läuft noch“, „neues Ziel festlegen“) -->
+    <string name="plan_tour_still_running">Tour still running</string>
+    <string name="plan_tour_new_target">Set a new destination</string>
+    <string name="plan_tour_new_target_line">Search a place or hold the map → Set as destination</string>
 </resources>
