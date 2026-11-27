@@ -12,7 +12,8 @@ import com.onpath.app.gpx.TrackPoint
  * - Moving less than [minMoveM] (half the accuracy, 3–25 m) within 30 s is standing still: dropped, so a break
  *   with GPS drift adds no distance (R-05).
  * - The motion sensor says the phone is still ([judge]'s `still`): a fix within twice its accuracy of the last point is
- *   drift, however long ago that was – no scribble on the map or in the live share (owner's Pixel 2026-11-27). Farther
+ *   drift, however long ago that was and after a GPS gap too – no scribble or new track piece on the map or in the live
+ *   share (owner's Pixel 2026-11-27, twice). Farther
  *   is a real move and counts, so a wrong sensor never loses the way.
  */
 object PointFilter {
@@ -36,8 +37,11 @@ object PointFilter {
      * compared: a new segment starts). Returns the verdict and the distance to add when accepted.
      */
     fun judge(prev: TrackPoint?, p: TrackPoint, accuracyM: Double, continuous: Boolean, still: Boolean = false): Pair<Verdict, Double> {
-        if (prev == null || !continuous) return Verdict.ACCEPT to 0.0
+        if (prev == null) return Verdict.ACCEPT to 0.0
         val d = Geo.distance(prev.lat, prev.lon, p.lat, p.lon)
+        // still by the sensor after a GPS gap too (owner's Pixel 2026-11-27, indoors: a fix every few minutes 20–50 m off
+        // became a new track piece each time): near the last point it is drift, no new piece
+        if (!continuous) return if (still && d < 2 * accuracyM) Verdict.STANDING_STILL to 0.0 else Verdict.ACCEPT to 0.0
         val dt = ((p.timeMs ?: 0) - (prev.timeMs ?: 0)) / 1000.0
         if (dt > 0 && d / dt > MAX_SPEED_MS) return Verdict.JUMP to 0.0
         if (d < minMoveM(accuracyM) && dt < STILL_WINDOW_S) return Verdict.STANDING_STILL to 0.0
