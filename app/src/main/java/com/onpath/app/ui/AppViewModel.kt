@@ -1436,7 +1436,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- shared places (another app → OnPath): [SearchFlow] ----------------
 
     fun answerLongRoute(plan: Boolean) {
-        if (!LongLegs.answer(plan, planRun, planEdit, this.plan.points.toList(), touring = recState.value != null)) return
+        if (!LongLegs.answer(plan, planRun, planEdit, this.plan.points.toList(), touring = recState.value != null, placeMenus::removePin)) return
         // the map shows the plan (owner 2026-11-13 / 2026-11-27): the whole plan, during a tour my position
         val target = LongRouteCancelCamera.after(this.plan.points.toList(), route?.points, touring = recState.value != null,
             hasPosition = tracker.location.value != null)
