@@ -56,7 +56,7 @@ class WebSearchTest {
         assertEquals(listOf("Parkplatz Algund Süd"), titles(WebSearch.search("", 46.68, 11.12, "", "PARKING")))
         assertEquals(listOf("Algunder Alm"), titles(WebSearch.search("algund", 46.68, 11.12, "", "FOOD")))
         val chips = WebSearch.categories()
-        assertTrue(chips, chips.startsWith("[[\"PLACES\",\"Places\",[\"place\",\"street\",\"address\"]],[\"FOOD\",\"Food\",[") &&
+        assertTrue(chips, chips.startsWith("[[\"PLACES\",\"Places\",[\"place\",\"street\",\"address\"]],[\"SIGHTS\",\"Sights\",[") &&
             chips.contains("[\"PARKING\",\"Parking\",[\"parking\"]]"))
     }
 

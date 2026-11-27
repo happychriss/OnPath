@@ -179,12 +179,8 @@ private fun SearchField(query: String, actions: SearchActions, modifier: Modifie
     )
 }
 
-/**
- * The categories in the owner's order (2026-11-27: Orte, Sehenswert, Essen, Wasser, Bahn, Parken, Schlafen) – the app's
- * row only; the chips' table and the planner's order stay [SearchKinds.Category].
- */
-internal val CATEGORY_ROW = listOf(SearchKinds.Category.PLACES, SearchKinds.Category.SIGHTS, SearchKinds.Category.FOOD,
-    SearchKinds.Category.WATER, SearchKinds.Category.TRANSIT, SearchKinds.Category.PARKING, SearchKinds.Category.SLEEP)
+/** The categories in the owner's order (2026-11-27): [SearchKinds.Category] itself – app row and planner chips alike. */
+internal val CATEGORY_ROW = SearchKinds.Category.entries
 
 /** A category's sign and colour: the map's colour of a kind it shows. */
 private fun SearchKinds.Category.sign(): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> = when (this) {
@@ -197,11 +193,6 @@ private fun SearchKinds.Category.sign(): Pair<androidx.compose.ui.graphics.vecto
     SearchKinds.Category.SLEEP -> Icons.Filled.Hotel to SearchKinds.argb("hotel")
 }
 
-/** The word under a category's sign: short, one word („Schlafen“ for the lodging chip – owner 2026-11-27). */
-@Composable
-private fun SearchKinds.Category.short(): String =
-    if (this == SearchKinds.Category.SLEEP) str(Res.string.search_cat_sleep_short) else label
-
 /**
  * One row of round coloured signs with a word under each (Apple Maps' „In der Nähe“): all seven side by side when each
  * gets ≥ 52 dp and the font is not enlarged, else a row to swipe – never a cut word. The chosen one: a green ring,
@@ -211,7 +202,7 @@ private fun SearchKinds.Category.short(): String =
 private fun CategoryRow(selected: SearchKinds.Category?, onPick: (SearchKinds.Category) -> Unit) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     val style = CategoryWord.copy(fontWeight = FontWeight.Bold)
-    val words = CATEGORY_ROW.map { it.short() }
+    val words = CATEGORY_ROW.map { it.label }
     val density = androidx.compose.ui.platform.LocalDensity.current
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
         // side by side when every sign keeps its own width (≥ 40 dp, or its word's) with ≥ 2 dp between them – the long
@@ -243,7 +234,7 @@ private fun CategorySign(c: SearchKinds.Category, selected: SearchKinds.Category
                 Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
             }
         }
-        Text(c.short(), style = CategoryWord, maxLines = 1, softWrap = false,
+        Text(c.label, style = CategoryWord, maxLines = 1, softWrap = false,
             fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
             color = if (on) OnPathColors.Green else MaterialTheme.colorScheme.onSurface)
     }

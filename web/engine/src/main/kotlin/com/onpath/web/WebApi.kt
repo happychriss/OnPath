@@ -1273,6 +1273,9 @@ external fun planProgress(text: String)
 @JSExport fun legsTaken(): String = Engine.legStore.taken().joinToString(",", "[", "]") { Engine.str(it) }
 @JSExport fun legText(name: String): String = Engine.legStore.text(name)
 @JSExport fun legsLast(): String = Engine.lastLegs
+/** The browser store's bounds = the phone's leg store ([com.onpath.app.data.LegFiles]): `{"files":3000,"bytes":41943040}` (legstore.ts). */
+@JSExport fun legLimits(): String =
+    "{\"files\":${com.onpath.app.data.LegFiles.MAX_FILES},\"bytes\":${com.onpath.app.data.LegFiles.MAX_BYTES}}"
 
 /** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
 @JSExport fun routingInfo(): String = Engine.routingInfo()

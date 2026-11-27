@@ -1,13 +1,11 @@
 // The planner's finished legs in the browser (owner 2026-11-18: München–Venedig opened again routed every leg for
 // minutes) – the phone's leg store (data/LegFiles, files/legs/) in IndexedDB. The engine decides everything about a leg
 // (its key, whether it is still fresh – WebLegStore.kt); this file only keeps the texts, bounded like LegFiles: at most
-// MAX_LEGS legs and MAX_BYTES, the least recently used go first (down to 80 %). Runs in the engine worker.
+// the phone's number of legs and bytes (the engine's legLimits = LegFiles.MAX_FILES / MAX_BYTES, set by the worker once the
+// engine is loaded – never copied here, 2026-11-27), the least recently used go first (down to 80 %). Runs in the engine worker.
 // Robust first: no IndexedDB (an old browser, a blocked private window), a full quota, a broken store – the plan routes
 // its legs as before; each failure is reported once ([note] → the page's problem log), never thrown.
 
-/** Legs kept: as the phone (LegFiles.MAX_FILES / MAX_BYTES) – a 35 km bike leg is ~50–100 KB of text. */
-export const MAX_LEGS = 3_000;
-export const MAX_BYTES = 40 * 1024 * 1024;
 const DB = 'onpath-legs', LEGS = 'legs', META = 'meta';
 interface Meta { bytes: number; used: number }
 
@@ -24,7 +22,17 @@ export class LegStoreIdb {
   private count = -1;
   private bytes = 0;
 
-  constructor(private note: (message: string, e?: unknown) => void, private maxLegs = MAX_LEGS, private maxBytes = MAX_BYTES) {}
+  /** The bounds (the engine's legLimits); 0 = not known yet – nothing is stored until the engine said them. */
+  private maxLegs = 0;
+  private maxBytes = 0;
+
+  constructor(private note: (message: string, e?: unknown) => void) {}
+
+  /** The phone's bounds from the engine ([files] legs, [bytes] of text) – called once the engine is loaded. */
+  setLimits(files: number, bytes: number) {
+    if (files > 0 && bytes > 0) { this.maxLegs = files; this.maxBytes = bytes; }
+    else this.note(`Leg store: unusable bounds from the engine (${files} legs, ${bytes} bytes) – legs are not stored`);
+  }
 
   private db(): Promise<IDBDatabase | null> {
     return (this.dbp ??= new Promise((res) => {
@@ -62,7 +70,7 @@ export class LegStoreIdb {
 
   /** Keeps [legs] (name, text); beyond the bounds the least recently used go. Never throws. */
   async write(legs: [string, string][]): Promise<void> {
-    if (!legs.length) return;
+    if (!legs.length || !this.maxLegs) return; // expected: no bounds yet = the engine is not loaded, nothing was routed
     const d = await this.db();
     if (!d) return;
     try {

@@ -78,6 +78,8 @@ interface WasmEngine {
   planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string, anchors: string): string;
   legsWanted(points: string, activity: string, sac: number): string;
   legGive(name: string, text: string): void;
+  /** The phone's leg store bounds (LegFiles.MAX_FILES / MAX_BYTES): `{"files":…,"bytes":…}`. */
+  legLimits(): string;
   legsTaken(): string;
   legText(name: string): string;
   legsLast(): string;
@@ -161,6 +163,8 @@ function getEngine(): Promise<WasmEngine> {
     const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm?v=' + BUILD, base).href);
     exports.init('/onpath');
     exports.setLanguage(lang); // the page's language (i18n.ts) for the app's texts the engine writes
+    try { const l = JSON.parse(exports.legLimits()); legStore.setLimits(Number(l.files), Number(l.bytes)); }
+    catch (e) { note('routing', 'Leg store: no bounds from the engine – legs are not stored', e); }
     const list: string[] = await (await fetch(new URL('brouter/index.json?v=' + BUILD, base))).json();
     await Promise.all(list.map(async (f) => {
       const buf = await (await fetch(new URL('brouter/' + f + '?v=' + BUILD, base))).arrayBuffer();
