@@ -36,7 +36,7 @@
       "web": [
         "web/app/src/search.ts"
       ],
-      "blob": "bd9f5c746cff4986b5c285a705706aeddf63056a"
+      "blob": "34cd7681b65132420e95f7eeacb030715f54d8c9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/PlaceCard.kt",
@@ -142,11 +142,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss)",
+      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“)",
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "9de427bc9ba296f0018f0063d9595adc3e25af9a"
+      "blob": "06414bc234b5afd87dab65283326835f1549852f"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "3edbd835f7b88e3891d54827204f1daf9e1b91f9"
+      "blob": "037608db50fef48dc84582f20573358857f68699"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -378,7 +378,7 @@
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "3c1072c63a351ddd1b7e5d2c05fa40a8fe4a3f29"
+      "blob": "75f5e5bc648eec01483ce029aae4564a6769b298"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt",
@@ -433,7 +433,7 @@
       "web": [
         "web/app/src/search.ts"
       ],
-      "blob": "bd9f5c746cff4986b5c285a705706aeddf63056a"
+      "blob": "34cd7681b65132420e95f7eeacb030715f54d8c9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MessageCard.kt",
@@ -3466,7 +3466,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/search/SearchState.kt": {
-      "blob": "bd9f5c746cff4986b5c285a705706aeddf63056a",
+      "blob": "34cd7681b65132420e95f7eeacb030715f54d8c9",
       "perf": [
         "const val DEBOUNCE_MS = 350L"
       ]

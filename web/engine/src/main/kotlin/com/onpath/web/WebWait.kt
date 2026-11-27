@@ -49,6 +49,8 @@ class WebWait(private var shares: StepShares, private var check: Double, private
                   val paused: Boolean, val late: Boolean)
 
     private val bar = OneBar()
+    /** The map part's time left as said: only down, +10 s at first (the app's MapLoad, owner 2026-11-27). */
+    private val countdown = com.onpath.app.domain.Countdown()
     private val clock = StepClock()
     private val prep = PrepareProgress()
     // what this wait had (it never forgets a part: a done part counts as done)
@@ -175,7 +177,7 @@ class WebWait(private var shares: StepShares, private var check: Double, private
             inMap -> TimeLeft.seconds(raw, now - startMs, stepLeftS)
             checking -> TimeLeft.seconds(raw, now - startMs, stepLeftS)
             else -> legsLeftS(legs, done, now)
-        }
+        }.let { raw -> if (inMap && running) countdown.next(raw, now, paused = t.paused) else raw }
         val overLeg = running && !inMap && !checking && done > 0 && left == null
         // the rows: the map steps' words as the app's MapLoadUi, the legs as the app's RouteWait
         val load = when {
@@ -203,7 +205,7 @@ class WebWait(private var shares: StepShares, private var check: Double, private
             names.forEach { labels += it to null }
             labels += (if (checking) Txt.s(Res.string.wait_step_checking) else Txt.s(Res.string.wait_step_check)) to null
         }
-        val late = running && bar.late
+        val late = running && (bar.late || (inMap && countdown.expired))
         val line = when {
             t.paused -> Txt.s(Res.string.maps_offline_text)
             // the route part: the app's RouteWaitUi line – how long it runs, with the run's estimate above 5 s („läuft seit
