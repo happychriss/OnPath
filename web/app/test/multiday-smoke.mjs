@@ -218,6 +218,11 @@ async function run(lang, viewport, shotPrefix) {
   const range = await page.evaluate(() => window.__profileRange ?? null);
   check(await page.locator('#tourOverview .today.sel').count() === 1, 'a day row is selected (its part marked on the map and in the profile)');
   void range;
+  const look = await page.evaluate(() => ({ range: window.__map.getPaintProperty('profile-range', 'line-color'),
+    rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(look.range === '#1E3FAE' && look.rest === 0.35, `the day in route blue, the other days faded – no yellow (owner 2026-11-27 variant 3) (${JSON.stringify(look)})`);
+  await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
+  check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
 
   // 10 · Speichern as every plan: the saved code carries the days and the night
   await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});

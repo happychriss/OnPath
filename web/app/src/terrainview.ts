@@ -16,6 +16,8 @@ import { t } from './i18n';
 import { problem } from './diag';
 
 const STEEP = 'profile-steep', RANGE = 'profile-range';
+/** The plan's own route layers (main.ts) faded while a range is marked, and how much of them stays. */
+const FADED = ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows'], FADE = 0.35;
 const MIN_ZOOM_3D = 11;
 
 export class RouteProfile {
@@ -64,9 +66,12 @@ export class RouteProfile {
     const m = this.map;
     m.addSource(STEEP, { type: 'geojson', data: empty() });
     m.addSource(RANGE, { type: 'geojson', data: empty() });
-    // the marked range: a wide highlighter under the route (owner 2026-11-06)
+    // the marked range (a day of a multi-day tour, a range dragged in the profile – owner 2026-11-27 variant 3, was a
+    // yellow highlighter): the range in full route blue with a soft glow, the rest of the route faded ([fadeRoute])
+    m.addLayer({ id: RANGE + '-glow', type: 'line', source: RANGE, layout: { 'line-join': 'round', 'line-cap': 'round' },
+      paint: { 'line-color': this.routeColour, 'line-width': 14, 'line-blur': 6, 'line-opacity': 0.35 } }, before);
     m.addLayer({ id: RANGE, type: 'line', source: RANGE, layout: { 'line-join': 'round', 'line-cap': 'round' },
-      paint: { 'line-color': '#FFD54F', 'line-width': 18, 'line-opacity': 0.85 } }, before);
+      paint: { 'line-color': this.routeColour, 'line-width': 7 } }, before);
     // a white edge under the steepness colours: the flat green must stay visible on the green map
     m.addLayer({ id: STEEP + '-edge', type: 'line', source: STEEP, layout: { 'line-join': 'round', 'line-cap': 'round', visibility: 'none' },
       paint: { 'line-color': '#fff', 'line-width': 9 } }, before);
@@ -194,6 +199,7 @@ export class RouteProfile {
     if (!fromProfile) this.big?.range(r);
     (this.map.getSource(RANGE) as GeoJSONSource | undefined)?.setData(r ? { type: 'Feature', properties: {},
       geometry: { type: 'LineString', coordinates: lineBetween(this.line, r[0], r[1]) } } : empty());
+    this.fadeRoute(r != null);
     const lbl = this.panel.querySelector<HTMLElement>('.bprange');
     const ask = ++this.rangeAsk;
     if (!lbl) return;
@@ -203,6 +209,15 @@ export class RouteProfile {
       lbl.hidden = !st; lbl.textContent = st?.text ?? '';
     }, (e) => problem('plan', 'range numbers not computed', e));
     (window as unknown as { __profileRange: unknown }).__profileRange = r; // for the browser tests
+  }
+
+  /** The route outside a marked range: 35 % (owner 2026-11-27 variant 3), whole again without a range. */
+  private fadeRoute(on: boolean) {
+    for (const id of FADED) {
+      if (!this.map.getLayer(id)) continue;
+      try { this.map.setPaintProperty(id, id.endsWith('arrows') ? 'icon-opacity' : 'line-opacity', on ? FADE : 1); }
+      catch (e) { problem('map', `route layer ${id} not faded`, e); }
+    }
   }
 
   /** The route coloured by steepness under the big profile (the app's gradient profile colours), else hidden. */
