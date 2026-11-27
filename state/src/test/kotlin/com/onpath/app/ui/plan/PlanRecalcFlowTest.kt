@@ -1033,7 +1033,9 @@ class PlanRecalcFlowTest {
         ui { planEdit.change { add(1, spot) } }
         finishRun()
         assertEquals("no router call", calls, engine.inner.calls.size)
-        assertEquals(listOf("Route #2: 1 leg(s) cut at a point put in on the line – not routed"),
+        // cut before the run is weighed (owner 2026-11-27: no estimate, no long-leg question for the halves); the run finds
+        // both halves known then
+        assertEquals(listOf("1 leg(s) cut at a point put in on the line before the run is weighed"),
             problems.traced("routing").filter { it.contains("cut at a point") })
         assertEquals(listOf(a, spot, b, c), plan.points.toList())
         assertEquals(before.points, routeNow!!.points)
