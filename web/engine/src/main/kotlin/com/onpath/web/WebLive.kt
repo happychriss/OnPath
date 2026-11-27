@@ -35,7 +35,7 @@ object WebLive {
      * The sealed item [blob] (Base64url, as the server gives it) stored as [name], opened with the link's key:
      * head → {kind:"head", state:"recording"|"paused"|"ended", fix:{lat,lon,ele,time,accuracy}|null, gpsLost, arrived,
      *   offRouteM, distanceM, ascentM, movingS, startedMs, toGoM, arrivalMs, stillS, batteryPct, activity, name,
-     *   counter, nextS, chunks, distanceText, movingText, ascentText, toGoText (the app's Format)};
+     *   counter, nextS, chunks, batteryLow (LiveStatusLine.LOW_BATTERY_PCT), toGoText (the app's Format)};
      * route → {kind:"route", line:[[lat,lon],…]} (empty = the plan was dropped);
      * chunk → {kind:"chunk", n, points:[[seg,lat,lon,ele|null,timeMs],…]}.
      * "null" = not ours, damaged, moved, or a newer format.
@@ -65,8 +65,7 @@ object WebLive {
         ",\"batteryPct\":" + num(h.batteryPct) + ",\"activity\":" + str(h.activity) + ",\"name\":" + str(h.name) +
         ",\"counter\":" + h.counter + ",\"nextS\":" + h.nextS + ",\"chunks\":" + num(h.chunks) + ",\"plannedArrivalMs\":" + num(h.plannedArrivalMs) +
         // the numbers as the app writes them (data/Format, in the page's language – setLanguage)
-        ",\"distanceText\":" + str(Format.distance(h.distanceM.toDouble())) + ",\"movingText\":" + str(Format.durationShort(h.movingS.toDouble())) +
-        ",\"ascentText\":" + str(Format.meters(h.ascentM.toDouble())) +
+        ",\"batteryLow\":" + ((h.batteryPct ?: 100) < LiveStatusLine.LOW_BATTERY_PCT) +
         ",\"toGoText\":" + (h.toGoM?.let { str(Format.distance(it.toDouble())) } ?: "null") + "}"
 
     private fun head(link: String, headBlob: String): LiveHead? {

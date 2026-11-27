@@ -110,8 +110,6 @@ export interface PointRows { roundTrip: boolean; canRoundTrip?: boolean; canReve
 /** One search result (the app's SearchHit, with the app's row texts). */
 export interface Hit {
   id: string; title: string; name: string | null; kind: string; lat: number; lon: number;
-  /** The finer class (the app's Place.sub): "village" for a place, "hotel" / "guest_house" for an online lodging. */
-  sub?: string | null;
   subtitle: string; address: string | null; glyph: string; color: string; online: boolean;
   /** The place as the app's SearchStore line – what a kept place / „Zuletzt gesucht“ stores (keptplaces.ts). */
   code?: string;
@@ -121,7 +119,7 @@ export interface Hit {
 /** The place card's "Add to route" line (the app's AddPreview). */
 /** What adding a place does (the app's AddPreview / placeCardUi): button text, reason, index; or its role when planned. */
 export interface PlacePreview {
-  index?: number; existing?: number; label?: string; subtitle: string; addIsStart?: boolean; addIsDestination?: boolean;
+  index?: number; existing?: number; /** WaypointInsertion.Kind: START, DESTINATION, VIA_ON_LINE, VIA_BEST_FIT, ON_THE_WAY */ kind?: string; label?: string; subtitle: string; addIsStart?: boolean; addIsDestination?: boolean;
   /** Where adding it would join the route (WaypointInsertion.joinPoint) – the candidate's dashed preview line; null without a route. */
   join?: [number, number] | null;
 }

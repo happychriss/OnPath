@@ -156,7 +156,7 @@ object WebSearch {
     /** One row of the list: the place's fields, the row's [subtitle] and its [WebKept] line (`code`, to keep it). */
     internal fun hitJson(p: Place, subtitle: String): String =
         "{\"id\":" + s(p.id) + ",\"title\":" + s(p.title()) + ",\"name\":" + (p.name?.let { s(it) } ?: "null") +
-            ",\"kind\":" + s(p.kind) + ",\"sub\":" + (p.sub?.let { s(it) } ?: "null") + ",\"lat\":" + p.lat + ",\"lon\":" + p.lon +
+            ",\"kind\":" + s(p.kind) + ",\"lat\":" + p.lat + ",\"lon\":" + p.lon +
             ",\"subtitle\":" + s(subtitle) + ",\"address\":" + (p.address?.let { s(it) } ?: "null") +
             ",\"glyph\":" + s(p.kindInfo.glyph) + ",\"color\":" + s(color(p.kind)) +
             ",\"online\":" + (p.source == Place.Source.ONLINE) + ",\"code\":" + s(WebKept.encode(p)) + "}"

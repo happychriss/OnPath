@@ -19,7 +19,7 @@ export interface Head {
   kind: 'head'; state: 'recording' | 'paused' | 'ended'; fix: Fix | null; gpsLost: boolean; arrived: boolean; offRouteM: number | null;
   distanceM: number; ascentM: number; movingS: number; startedMs: number; toGoM: number | null; arrivalMs: number | null;
   stillS: number | null; batteryPct: number | null; activity: string; name: string; counter: number; nextS: number; chunks: number | null;
-  distanceText: string; movingText: string; ascentText: string; toGoText: string | null;
+  batteryLow: boolean; toGoText: string | null;
 }
 export interface Route { kind: 'route'; line: [number, number][] }
 /** points: [segment, lat, lon, ele | null, timeMs] */

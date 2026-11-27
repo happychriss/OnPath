@@ -32,7 +32,7 @@ class WebLiveTest {
             "&toGoM=6200&arrivalMs=9000&batteryPct=43&activity=HIKE&name=Christian&nextS=600&chunks=2&stillS=420", nonce)
         val h = WebLive.open(link, "h", head)
         for (part in listOf("\"kind\":\"head\"", "\"state\":\"paused\"", "\"lat\":46.6935", "\"ele\":1890", "\"distanceM\":5400", "\"toGoM\":6200",
-            "\"batteryPct\":43", "\"name\":\"Christian\"", "\"nextS\":600", "\"chunks\":2", "\"stillS\":420", "\"movingText\":\"1:15 h\""))
+            "\"batteryPct\":43", "\"name\":\"Christian\"", "\"nextS\":600", "\"chunks\":2", "\"stillS\":420", "\"batteryLow\":false"))
             assertTrue("$part in $h", h.contains(part))
         val route = WebLive.sealRoute(link, "46.1,11.1;46.2,11.2", nonce)
         assertEquals("{\"kind\":\"route\",\"line\":[[46.1,11.1],[46.2,11.2]]}", WebLive.open(link, "r", route))
