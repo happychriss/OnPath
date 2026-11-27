@@ -500,14 +500,6 @@
         "web/app/src/routeshape.ts"
       ],
       "blob": "71878be0c76a237de43e1e185763a2d3e226ac3c"
-    },
-    {
-      "app": "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt",
-      "what": "PhotonProvider.url / placesUrl – the Photon requests search.ts builds itself (photonUrl, photonPlacesUrl): the copy that lost „Berlin“ (2026-11-27). Compiled into the engine too; drop this mirror once search.ts asks the engine for the requests",
-      "web": [
-        "web/app/src/search.ts"
-      ],
-      "blob": "a9c013254c62e07a000f45d63062dc07769e8a31"
     }
   ],
   "watch": [
@@ -3746,6 +3738,7 @@
       "core/src/main/kotlin/com/onpath/app/routing/Planner.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
       "core/src/main/kotlin/com/onpath/app/routing/TrackToPlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
       "core/src/main/kotlin/com/onpath/app/routing/WaypointInsertion.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt": "engine: PhotonProvider.requests via photonUrls, the merge via searchOnline – no copy since 670bedf74 (2026-11-27)",
       "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDetourCheck.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
       "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
       "state/src/main/kotlin/com/onpath/app/ui/plan/PlanSettle.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
@@ -3770,6 +3763,7 @@
       "app/src/main/java/com/onpath/app/ui/progress/RouteWait.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
       "core/src/main/kotlin/com/onpath/app/gpx/GpxParser.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
       "core/src/main/kotlin/com/onpath/app/routing/TrackToPlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt": "engine: PhotonProvider.requests via photonUrls, the merge via searchOnline – no copy since 670bedf74 (2026-11-27)",
       "core/src/main/kotlin/com/onpath/app/search/SavedPlaces.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
       "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDetourCheck.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
       "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
