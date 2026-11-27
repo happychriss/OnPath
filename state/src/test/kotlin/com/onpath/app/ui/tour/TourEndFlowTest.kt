@@ -536,7 +536,7 @@ class TourEndFlowTest {
         assertEquals("STOP", s.action)
         assertNull(s.endAsk); assertFalse(s.arrival)
         assertFalse(s.routeBack)
-        assertEquals("another size stays as it is", PlanSize.FULL, s.size)
+        assertEquals("any size: the summary step (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
         // …and what the service then reports is a DELETE (taken once): proven by aDeletedTourGoesToTheBin…
         client.finish(hike); stepIo()
         assertNotNull(tour(hike).deletedMs)
