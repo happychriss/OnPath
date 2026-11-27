@@ -524,7 +524,7 @@ class TourEndFlowTest {
         assertNull("the decision (end(false)) was set before STOP: the sheet is gone", s.endAsk)
         assertFalse("…the arrival box too", s.arrival)
         assertFalse("the route-back question of this tour is closed before STOP", s.routeBack)
-        assertEquals("the one-row sheet steps to the usual one before STOP", PlanSize.COMPACT, s.size)
+        assertEquals("the sheet is at its summary step before STOP (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
     }
 
     @Test fun endTourAndDeleteClosesTheSheetsThenStopsTheService() {
