@@ -50,7 +50,9 @@ let P = await open(ctx);
 await P.evaluate(async ({ A, B, C }) => {
   const s = window.__sync, st = window.__planStats, wait = () => new Promise((r) => setTimeout(r, 20));
   await s.save(A, 'Waalweg Köln'); st.keepStats(st.planKey(A), { m: 12000, up: 800, down: 300, s: 14400 }); await wait();
+  st.keepShape(st.planKey(A), [[[46.67, 11.15], [46.68, 11.17], [46.69, 11.16]]]); // a line: the engine's RouteShape draws it
   await s.save(B, 'Leiteralm'); st.keepStats(st.planKey(B), { m: 5000, up: 900, down: 50, s: 7200 }); await wait();
+  st.keepShape(st.planKey(B), [[[46.7, 11.1], [46.7, 11.1]]]); // one spot: no shape (RouteShape.MIN_EXTENT_DEG) – the kind's sign
   await s.save(C, 'Algund Lana'); await wait(); // never routed in this browser: no numbers
   const id = await s.saveTrack([[[46.67, 11.15, 300], [46.68, 11.16, 400]]], [], 'HIKE', 2, 'Straße am Berg');
   st.keepStats(st.trackKey(id), { m: 8000, up: 100, down: 100, s: 10000 });
@@ -69,6 +71,16 @@ check(c[0].label === 'Sorted: Newest first' && c[2].label === 'Sort: Length', 't
 check(await P.isVisible('#planSearch') && (await P.evaluate(() => { const s = document.querySelector('.plansearch').getBoundingClientRect(), r = document.getElementById('planSort').getBoundingClientRect(); return r.top >= s.bottom - 1; })),
   'the chips sit under the search');
 check(same(await names(P), NEWEST), 'newest first: ' + (await names(P)).join(', '));
+// the row's preview line is the engine's RouteShape.of (2026-11-27: no TypeScript copy): a line for Waalweg, the sign for one spot
+{
+  const tiles = await P.$$eval('#planList li[data-id]', (els) => Object.fromEntries(els.map((li) => [li.querySelector('.name')?.textContent,
+    { paths: li.querySelectorAll('.tileface svg.routeshape path').length, d: li.querySelector('.tileface svg.routeshape path')?.getAttribute('d') ?? '',
+      dots: li.querySelectorAll('.tileface svg.routeshape circle').length, sign: !!li.querySelector('.tileface .kindic') }])));
+  const w = tiles['Waalweg Köln'], l = tiles['Leiteralm'];
+  check(w?.paths === 1 && /^M[\d.]+ [\d.]+L[\d.]+ [\d.]+L[\d.]+ [\d.]+$/.test(w.d) && w.dots === 4 && !w.sign,
+    'the preview line from the engine (RouteShape.of): ' + JSON.stringify(w));
+  check(l?.paths === 0 && l.sign, 'one spot: no line, the kind\'s sign – ' + JSON.stringify(l));
+}
 // the row facts as the app's card (RouteRowActions.facts): km · ↑ climb · the model time (Format.duration), no ↓
 {
   const facts = await P.$$eval('#planList li[data-id]', (els) => els.map((li) => li.querySelector('.stats')?.textContent.replace(/ /g, ' ') ?? null));

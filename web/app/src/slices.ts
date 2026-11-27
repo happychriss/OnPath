@@ -51,6 +51,11 @@ interface Slices {
   pinMenuRows(main: string, pin: boolean, keep: boolean, fromMe: boolean): string;
   /** The app's PlaceAddMenu.Menu.emphasised: the tinted row's name or null. */
   addMenuEmphasised(main: string): string;
+  /** The app's Format.duration of [s] seconds (My routes' row facts): a JSON string, "4 h 05 min" / "25 min". */
+  formatDuration(s: number): string;
+  /** The app's RouteShape.of – the row's preview line in [w] × [h] with [pad]: `{ lines, sx, sy, ex, ey }` or null.
+   * [segs] = "lat,lon;lat,lon|lat,lon;…" (one "|" between two segments). */
+  routeShape(segs: string, w: number, h: number, pad: number): string;
 }
 
 /** The slices are there (loaded) or will never be (failed): resolves true / false. */

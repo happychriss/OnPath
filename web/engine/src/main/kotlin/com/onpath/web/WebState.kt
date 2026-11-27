@@ -319,6 +319,28 @@ object WebRules {
         return (0 until count).joinToString(",", "{\"to\":$to,\"shift\":[", "]}") { com.onpath.app.routing.PlanPoints.shift(it, from, to).toString() }
     }
 
+    // ---- My routes' rows (plans.ts, planstats.ts): the app's Format.duration and RouteShape, never copied (2026-11-27) ----
+
+    /** [com.onpath.app.data.Format.duration] of [s] seconds as a JSON string: "4 h 05 min", under an hour "25 min". */
+    fun duration(s: Double): String = Engine.str(com.onpath.app.data.Format.duration(s))
+
+    /**
+     * [com.onpath.app.domain.RouteShape.of] – the row's preview line fitted into [w] × [h] with [pad] on every side:
+     * `{"lines":[[x,y,…],…],"sx":…,"sy":…,"ex":…,"ey":…}` (pixels, one decimal) or `null` = no shape (fewer than two
+     * points, one spot). [segs] = the segments as "lat,lon;lat,lon|lat,lon;…" (one "|" between two segments).
+     */
+    fun routeShape(segs: String, w: Double, h: Double, pad: Double): String {
+        val segments = segs.split('|').map { Engine.parsePoints(it) }
+        val s = com.onpath.app.domain.RouteShape.of(segments, w.toFloat(), h.toFloat(), pad.toFloat()) ?: return "null"
+        fun n(v: Float) = Engine.num(v.toDouble(), 1)
+        return buildString {
+            append("{\"lines\":")
+            append(s.lines.joinToString(",", "[", "]") { l -> l.joinToString(",", "[", "]") { n(it) } })
+            append(",\"sx\":").append(n(s.startX)).append(",\"sy\":").append(n(s.startY))
+            append(",\"ex\":").append(n(s.endX)).append(",\"ey\":").append(n(s.endY)).append('}')
+        }
+    }
+
     // ---- the found place's menu (search.ts, main.ts): the app's PinMenuPlace / PinMenuItems / PlaceAddMenu.Menu ----
 
     /** [PinMenuPlace.GAP_DP] and [PinMenuPlace.TIP_ROOM_DP] (the page's px = the app's dp): `{"gap":22,"tipRoom":24}`. */
@@ -399,4 +421,6 @@ object WebStateApi {
     @JvmStatic @JSExport fun pinMenuRows(main: String, pin: Boolean, keep: Boolean, fromMe: Boolean): String =
         WebRules.pinMenuRows(main, pin, keep, fromMe)
     @JvmStatic @JSExport fun addMenuEmphasised(main: String): String = WebRules.addMenuEmphasised(main)
+    @JvmStatic @JSExport fun formatDuration(s: Double): String = WebRules.duration(s)
+    @JvmStatic @JSExport fun routeShape(segs: String, w: Double, h: Double, pad: Double): String = WebRules.routeShape(segs, w, h, pad)
 }

@@ -4,6 +4,7 @@
 // track. A plan is known by its code (the same route = the same numbers, also a copy or the phone's version of it), a
 // track by its id. Never routes anything for the list: a route this browser has not routed yet shows no numbers.
 import { distance } from './i18n';
+import { slice } from './slices';
 
 /** [s] = the model time in seconds (Meine Touren's sort by Dauer), [lv] = the rating's level (the app stores it at saving,
  * 362459fc – for a later sort by difficulty); both missing in numbers kept before 2026-11-13. */
@@ -49,10 +50,13 @@ export function keepStats(key: string, s: PlanStats) {
   try { localStorage.setItem(KEY, JSON.stringify(all)); } catch { /* expected: storage blocked – numbers not kept */ }
 }
 
-/** The app's Format.duration: "4 h 05 min", under an hour "25 min" (units as the app writes them, not translated). */
-export function durationText(s: number): string {
-  const total = Math.trunc(s / 60), h = Math.trunc(total / 60), m = total % 60;
-  return h > 0 ? `${h} h ${String(m).padStart(2, '0')} min` : `${m} min`;
+/**
+ * The app's Format.duration ("4 h 05 min", under an hour "25 min"), run in the engine (slices.ts – never copied here,
+ * 2026-11-27). Null = the engine's slices are not there (reported): the row leaves the time out rather than guessing.
+ */
+export function durationText(s: number): string | null {
+  const t = slice<string>('formatDuration', s);
+  return typeof t === 'string' ? t : null;
 }
 
 /**
@@ -63,6 +67,7 @@ export function durationText(s: number): string {
  */
 export function statsText(s: PlanStats): string {
   const parts = [distance(s.m), `↑ ${Math.trunc(s.up)} m`]; // Format.distance / Format.meters
-  if (Number.isFinite(s.s) && s.s! > 0) parts.push(durationText(s.s!));
+  const time = Number.isFinite(s.s) && s.s! > 0 ? durationText(s.s!) : null;
+  if (time) parts.push(time);
   return parts.map((p) => p.replace(/ /g, ' ')).join(' · ');
 }

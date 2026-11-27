@@ -476,6 +476,14 @@ compiled from `app/` as it is.
    `RouteTimeLimit` vs browser speed). The run's summary page carries the report.
 4. **Watch list:** app files with plan behaviour the web neither compiles nor mirrors (PlanPanel, MapScreen, Notices …):
    a change is a warning, so the laptop can propose the web side.
+4b. **No hidden copies (refs, 2026-11-27):** the planner's search lost „Berlin“ because `search.ts` built the Photon
+   requests itself – a copy of the app's `PhotonProvider` that no list knew of, so the app's second request never reached
+   the web. Now `check.mjs` reads every „the app's X“ in `web/app/src` (X = a Kotlin class / object / function / file in
+   app, core or state) and **fails** unless X is a mirror of that TS file or has a line in `refs` saying how the page uses
+   it (`"engine: …"` = it asks the engine, holds no copy; `"look: …"` = only named). A new copy therefore has to be
+   declared – as a mirror, which CI then tracks. Logic that is in `:core` is asked from the engine rather than copied
+   (My routes' time and preview line, the leg store's bounds – `WebRules.duration` / `routeShape`, `legLimits`). The
+   `refs` rows marked „baseline 2026-11-27“ were there before the check and are not reviewed one by one.
 
 5. **Deliberate differences (owner's word – a mirror check must not bring them back):** the plan row has no
    „✕ Neu planen“ (owner 2026-11-06: „+ Neu“ in the plan bar is the one way; the app's PlanActions keeps ✕).

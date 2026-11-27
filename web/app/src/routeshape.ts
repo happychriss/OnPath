@@ -1,18 +1,20 @@
 // The route's shape in Meine Touren (owner 2026-11-07, the app's RoutePreview / RouteShape): a small preview tile on every
 // row (the planner has no large overview, owner 2026-11-13). The sync record holds only the plan code (points) – no line – so, like the
 // numbers (planstats.ts), the page keeps a route's line in this browser whenever it has it anyway: a plan routed here, an
-// imported or opened track. Kept small: at most [MAX_POINTS] points, each as 12 + 12 bits inside the line's box. Never
+// imported or opened track. Kept small: at most [STORE_POINTS] points, each as 12 + 12 bits inside the line's box. Never
 // routes anything for the list: a route this browser has not routed yet shows the kind's sign instead (the app's
 // placeholder while a line loads).
+import { slice } from './slices';
 
 export type Seg = [number, number][];
 /** Fitted into a box: x/y pairs per segment, the start and the goal (pixels). */
 export interface Shape { lines: number[][]; sx: number; sy: number; ex: number; ey: number }
 
-/** The app's RouteShape.MAX_POINTS. */
-export const MAX_POINTS = 200;
-/** The app's RouteShape.MIN_EXTENT_DEG: smaller is one spot (no shape). */
-const MIN_EXTENT_DEG = 0.00001;
+/**
+ * Points kept per route in this browser's storage (the page's own storage format, not a drawing rule: the drawing – how
+ * many points, the fit, when it is one spot – is the app's RouteShape.of, run in the engine, [fitShape]).
+ */
+const STORE_POINTS = 200;
 const KEY = 'onpath.planShapes';
 /** One per tour of a phone's 250 and the newest drafts; older ones go. */
 const MAX = 300;
@@ -27,17 +29,17 @@ function load(): Record<string, Stored> {
   } catch { return {}; } // expected: storage blocked or an unreadable old value – the rows show the kind's sign
 }
 
-/** [segs] thinned to at most [MAX_POINTS] points in all (every n-th, the ends kept – the app's stride). */
+/** [segs] thinned to at most [STORE_POINTS] points in all for storage (every n-th, the ends kept). */
 function thin(segs: Seg[]): Seg[] {
   const all = segs.reduce((n, s) => n + s.length, 0);
-  const stride = Math.max(1, Math.ceil(all / MAX_POINTS));
+  const stride = Math.max(1, Math.ceil(all / STORE_POINTS));
   return segs.map((s) => s.filter((_, i) => i % stride === 0 || i === s.length - 1)).filter((s) => s.length >= 2);
 }
 
 function boxOf(segs: Seg[]): [number, number, number, number] | null {
   let s = 90, n = -90, w = 180, e = -180;
   for (const seg of segs) for (const [la, lo] of seg) { s = Math.min(s, la); n = Math.max(n, la); w = Math.min(w, lo); e = Math.max(e, lo); }
-  if (s > n || (n - s < MIN_EXTENT_DEG && e - w < MIN_EXTENT_DEG)) return null;
+  if (s > n) return null; // no points; one spot is kept as it is – the engine's RouteShape.of draws no shape for it
   return [s, w, n, e];
 }
 
@@ -77,25 +79,16 @@ export function shapeOf(key: string): Seg[] | null {
 }
 
 /**
- * The app's RouteShape.of: [segs] fitted into [w] × [h] with [pad] on every side, the aspect kept (lon scaled by
- * cos(latitude)), centred.
+ * The app's RouteShape.of, run in the engine (slices.ts – never copied here, 2026-11-27): [segs] fitted into [w] × [h] with
+ * [pad] on every side, the aspect kept, centred. Null = no shape (one spot, too few points) or no engine (reported) – the
+ * row shows the kind's sign then.
  */
 export function fitShape(segs: Seg[], w: number, h: number, pad: number): Shape | null {
-  const kept = thin(segs);
-  const b = boxOf(kept);
-  if (!b) return null;
-  const fit = (l: number, tp: number, r: number, bt: number): Shape => {
-    const [s, west, n, e] = b, k = Math.cos(((s + n) / 2) * Math.PI / 180);
-    const ex = (e - west) * k, ey = n - s;
-    const rw = Math.max(1, r - l), rh = Math.max(1, bt - tp);
-    const scale = Math.min(ex > 0 ? rw / ex : Infinity, ey > 0 ? rh / ey : Infinity);
-    const ox = l + (rw - ex * scale) / 2, oy = tp + (rh - ey * scale) / 2;
-    const x = (lo: number) => ox + (lo - west) * k * scale, y = (la: number) => oy + (n - la) * scale;
-    const lines = kept.map((seg) => seg.flatMap(([la, lo]) => [x(lo), y(la)]));
-    const first = kept[0][0], last = kept[kept.length - 1][kept[kept.length - 1].length - 1];
-    return { lines, sx: x(first[1]), sy: y(first[0]), ex: x(last[1]), ey: y(last[0]) };
-  };
-  return fit(pad, pad, w - pad, h - pad);
+  const text = segs.map((seg) => seg.filter(([la, lo]) => Number.isFinite(la) && Number.isFinite(lo))
+    .map(([la, lo]) => `${la.toFixed(6)},${lo.toFixed(6)}`).join(';')).filter(Boolean).join('|');
+  if (!text) return null;
+  const s = slice<Shape>('routeShape', text, w, h, pad);
+  return s && Array.isArray(s.lines) ? s : null;
 }
 
 const f = (v: number) => v.toFixed(1);
