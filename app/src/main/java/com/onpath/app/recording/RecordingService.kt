@@ -1436,7 +1436,7 @@ class RecordingService : Service() {
             navigator?.state?.offM, navigator?.prompt != null, follow?.first, track.snapshot(),
             navigator?.state, tripTime(), saveFailed, hadGpsFix = lastGoodFixElapsed > 0, gpsQuiet = gpsQuiet(),
             gpsStill = gpsLost() && noGpsLine() == NoGpsShow.Line.NONE,
-            arrived = arrived, pausedSinceMs = pausedSinceMs,
+            arrived = arrived, pausedSinceMs = pausedSinceMs, sensorStill = motion.still(SystemClock.elapsedRealtime()) == true,
         )
         // Battery: the clock runs by itself in the notification (chronometer); re-post only when what it says
         // changes (status, shown distance), at most every 5 s, and once a minute to keep the clock in step.
