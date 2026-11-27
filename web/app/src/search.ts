@@ -86,13 +86,6 @@ const phone = () => matchMedia('(max-width: 700px)').matches;
 
 const DEBOUNCE_MS = 350; // the app's SearchState.DEBOUNCE_MS (shared; the keystroke timer needs it at once, so the page keeps the number)
 
-/** Photon request exactly as the app's PhotonProvider.url (rough position, 2 decimals ≈ 1 km). */
-export function photonUrl(q: string, lat: number, lon: number, limit = 20): string {
-  const f = (v: number) => (Math.round(v * 100) / 100).toFixed(2);
-  return `https://photon.komoot.io/api/?q=${encodeURIComponent(q.trim())}&lat=${f(lat)}&lon=${f(lon)}` +
-    `&zoom=12&location_bias_scale=0.3&limit=${limit}&lang=de`;
-}
-
 /**
  * [box] holds the search pill and its results; [card] is the bottom card the found place's menu becomes where it fits
  * neither above nor under its pin (the app's PinMenuPlace B – on a phone in place of the plan sheet). The menu closes
@@ -220,11 +213,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     timer = setTimeout(async () => {
       let mixed: Hit[] | null = null;
       try {
-        const r = await fetch(photonUrl(text, c.lat, c.lng));
+        // the shared code's requests (PhotonProvider.requests: normal + places only – owner 2026-11-27 „Berlin“ from Hilden)
+        const answer = await host.engine.searchOnlineFetch(text, c.lat, c.lng, category);
         // a newer search (a chip clicked, a key typed) came meanwhile: this answer must not reach the engine's list
         // (owner's bug 2026-11-19 – the app cancels it, SearchSession.run)
         if (my !== gen) return;
-        if (r.ok) mixed = await host.engine.searchOnline(text, await r.text(), category);
+        mixed = answer;
       } catch { /* expected: offline or Photon unreachable – the offline rows stay (the app is silent too) */ }
       if (my !== gen) return;
       const list = mixed ?? offline;

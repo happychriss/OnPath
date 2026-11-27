@@ -460,7 +460,7 @@ class ScreenshotTest {
      */
     /** Planning during a tour (owner 2026-11-27, A with sign 3): „◉ Aufnahme läuft“ at the top. */
     fun planTourRecordingPill() = paparazzi.snapshot {
-        Frame(editing = true, top = { RecordingPill() }) {
+        Frame(editing = true, top = { RecordingPill(onEnd = {}) }) {
             PlanPanel(planUi(size = PlanSize.COMPACT, tourRunning = true).copy(tour = TourState(1_700.0, 878, paused = false)), PlanCallbacks())
         }
     }

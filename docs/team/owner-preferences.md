@@ -99,8 +99,9 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
 ## The owner's phone (Pixel 8, adb)
 - Install builds with `adb install -r` (**no wipe** – tours and maps stay) unless the owner asks for a fresh install.
   Never `pm clear` / uninstall by accident (that also deletes the map data in `Android/data/…/files/onpath/`).
-- Check first that no tour is recording (`adb shell dumpsys activity services com.onpath.app` → RecordingService);
-  if one runs, don't install.
+- Check first whether a tour is recording (`adb shell dumpsys activity services com.onpath.app` → RecordingService).
+  **On USB at donald any session may save and end a running tour to install a test build** (owner 2026-11-26, again
+  2026-11-27 „ja, angleichen“) – saved, never deleted; check in the log that it was saved. Not on USB: don't install.
 - Don't drive the phone (`adb input`) while the owner uses it, e.g. on a hike.
 - Map files pushed with `adb push` belong to the shell user – fix permissions so the app can write them.
 - Debug builds must include the world overview: `-Ponpath.overviewAssets=<dir with overview/*.pmtiles>`; with the

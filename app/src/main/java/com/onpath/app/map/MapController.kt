@@ -216,10 +216,7 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         style.addSource(GeoJsonSource(SRC_WPT))
         // A stop pinned on a POI shows the POI's own symbol in a route-blue ring with a small numbered badge (owner
         // 2026-11-10, variant A – [poiMarker]); every other point is the plain numbered dot.
-        addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(
-            PF.iconImage(Expression.get("icon")),
-            PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
-        ))
+        addBelowPosition(SymbolLayer(LAYER_WPT, SRC_WPT).withProperties(*PointMarkSize.layerProps())) // size by zoom (owner 2026-11-27)
         addNavOverlays()
         addTurnLayer()
         addUTurnLayer()

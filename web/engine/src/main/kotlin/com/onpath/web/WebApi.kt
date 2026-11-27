@@ -1273,6 +1273,9 @@ external fun planProgress(text: String)
 @JSExport fun legsTaken(): String = Engine.legStore.taken().joinToString(",", "[", "]") { Engine.str(it) }
 @JSExport fun legText(name: String): String = Engine.legStore.text(name)
 @JSExport fun legsLast(): String = Engine.lastLegs
+/** The browser store's bounds = the phone's leg store ([com.onpath.app.data.LegFiles]): `{"files":3000,"bytes":41943040}` (legstore.ts). */
+@JSExport fun legLimits(): String =
+    "{\"files\":${com.onpath.app.data.LegFiles.MAX_FILES},\"bytes\":${com.onpath.app.data.LegFiles.MAX_BYTES}}"
 
 /** The routing fingerprint + loaded rd5 dates, the app's Diagnostics line (the page's window.__diag). */
 @JSExport fun routingInfo(): String = Engine.routingInfo()
@@ -1319,7 +1322,11 @@ external fun planProgress(text: String)
 @JSExport fun search(text: String, lat: Double, lon: Double, route: String, category: String): String =
     WebSearch.search(text, lat, lon, route, category)
 
-@JSExport fun searchOnline(text: String, photonJson: String, category: String): String = WebSearch.online(text, photonJson, category)
+/** The online search's requests in order (the app's PhotonProvider.requests): the normal one, the places-only one. */
+@JSExport fun photonUrls(text: String, lat: Double, lon: Double): String =
+    com.onpath.app.search.PhotonProvider.requests(text, lat, lon).joinToString(",", "[", "]") { "\"" + it.replace("\\", "\\\\").replace("\"", "\\\"") + "\"" }
+
+@JSExport fun searchOnline(text: String, photonJson: String, category: String, placesJson: String): String = WebSearch.online(text, photonJson, category, placesJson)
 
 /** The six search chips (the app's SearchKinds.Category): [[name, label], …]. */
 @JSExport fun searchCategories(): String = WebSearch.categories()

@@ -3,6 +3,7 @@
 OnPath exists so that people on a hike or bike ride can change their plan along the way, even without reception, without the recording stopping.
 It serves people who plan their own tours, on foot or by bike, from an after-work loop to a multi-day alpine tour, on Android.
 From a destination, OnPath makes a checked route, guides you there and keeps the tour.
+In function it holds its own against established apps and goes beyond them where it matters on the way: re-planning offline, a recording that never breaks, multi-day tours.
 It owns exactly one thing: your own plan for today's outing, from the destination to the saved tour.
 
 ## Never lose a tour
@@ -32,15 +33,15 @@ Only a short information line without a button may go by itself after a few seco
 What Plan shows is exactly what Navigate follows.
 A UI text the owner chose stays; a change to it is proposed as a question.
 
-## Simple and calm
+## Powerful, clear and calm
 
 The flow is: choose a destination, check the route, go.
-Komoot is the bar for ease of use and the look of the map.
-Options for experienced planners are welcome only when they stay invisible in that flow and do not make it longer.
+Komoot is the bar for ease of use and the look of the map; in function OnPath aims to match established apps and to go beyond them in single areas.
+Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
-OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts.
+OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.
 Texts state facts, not guesses.
-The app looks polished, simple and friendly, never technical, and not in the style of navigation or hiking apps.
+The app looks modern, clear and friendly, never technical, also where the function behind it is complex, and not in the style of navigation or hiking apps.
 Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes only from colour and type, never from controls of its own.
 There are exactly six activities.
 After the tour you save and put the phone away, with no prompts for photos, sharing or ratings.
@@ -65,5 +66,5 @@ Weather, sunset warnings, an emergency screen and a battery check at the start a
 Android comes first; the iPhone comes only after the public launch, and until then only the core stays free of Android.
 Marketing, private tour data and internal planning live only in the private repository.
 
-A change aligns when it makes the outing more reliable or the plan easier to change on the way, works offline in loaded areas, and keeps the three steps as short as they are.
-A change should be resisted when it could lose a point, surprises the user, needs an account or a server for the running tour, adds social or catalogue features, or makes the way in longer.
+A change aligns when it makes the outing more reliable, the plan easier to change on the way or OnPath stronger than established apps in something hikers use, works offline in loaded areas, and keeps the three steps as short and the screen as clear as they are.
+A change should be resisted when it could lose a point, surprises the user, needs an account or a server for the running tour, adds social or catalogue features, is technology for its own sake, or makes the way in longer.

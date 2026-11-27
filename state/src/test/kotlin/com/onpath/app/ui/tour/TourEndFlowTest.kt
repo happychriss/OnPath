@@ -524,7 +524,7 @@ class TourEndFlowTest {
         assertNull("the decision (end(false)) was set before STOP: the sheet is gone", s.endAsk)
         assertFalse("…the arrival box too", s.arrival)
         assertFalse("the route-back question of this tour is closed before STOP", s.routeBack)
-        assertEquals("the one-row sheet steps to the usual one before STOP", PlanSize.COMPACT, s.size)
+        assertEquals("the sheet is at its summary step before STOP (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
     }
 
     @Test fun endTourAndDeleteClosesTheSheetsThenStopsTheService() {
@@ -536,7 +536,7 @@ class TourEndFlowTest {
         assertEquals("STOP", s.action)
         assertNull(s.endAsk); assertFalse(s.arrival)
         assertFalse(s.routeBack)
-        assertEquals("another size stays as it is", PlanSize.FULL, s.size)
+        assertEquals("any size: the summary step (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
         // …and what the service then reports is a DELETE (taken once): proven by aDeletedTourGoesToTheBin…
         client.finish(hike); stepIo()
         assertNotNull(tour(hike).deletedMs)
@@ -549,7 +549,7 @@ class TourEndFlowTest {
         val s = atSend.single()
         assertEquals("STOP", s.action)
         assertFalse(s.routeBack)
-        assertEquals(PlanSize.COMPACT, s.size)
+        assertEquals("the summary step, no profile (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
         assertEquals(1, client.sent.size)
     }
 

@@ -129,7 +129,7 @@ class TestKitTest {
             "val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS",
             "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
             "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
-            "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)",
+            "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged, still = ", // the fake never stands still (46884b2e8)
             "if (verdict == PointFilter.Verdict.JUMP) return",
             "tourRun.count(moved, newPiece = wasLost && prev != null && !bridged)",
             "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",

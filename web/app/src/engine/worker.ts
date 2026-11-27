@@ -33,7 +33,7 @@ interface WasmEngine {
   searchAddArea(key: string, dir: string): number;
   searchHasArea(key: string): boolean;
   search(text: string, lat: number, lon: number, route: string, category: string): string;
-  searchOnline(text: string, photonJson: string, category: string): string;
+  searchOnline(text: string, photonJson: string, category: string, placesJson: string): string;
   searchCategories(): string;
   searchReset(): void;
   keptState(home: string, favourites: string, code: string): string;
@@ -78,6 +78,8 @@ interface WasmEngine {
   planCodeTour(points: string, activity: string, sac: number, pinned: string, names: string, title: string, tour: string, anchors: string): string;
   legsWanted(points: string, activity: string, sac: number): string;
   legGive(name: string, text: string): void;
+  /** The phone's leg store bounds (LegFiles.MAX_FILES / MAX_BYTES): `{"files":…,"bytes":…}`. */
+  legLimits(): string;
   legsTaken(): string;
   legText(name: string): string;
   legsLast(): string;
@@ -90,6 +92,8 @@ interface WasmEngine {
 const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'historyRecord', 'historySnap', 'historyStep', 'historyState', 'historyImport', 'gesture', 'pointMenu', 'placeMenu', 'placeEdit', 'holdOnMap', 'placeBeside', 'locateLabel', 'fromMeBlocked', 'googleMaps', 'poiMenu', 'gpx', 'activities',
   // web UI rules (WebUi.kt): route name proposal (Save), POI kind filters (Map content)
   'routeName', 'poiKinds', 'poiFilter',
+  // the online search's requests (the app's PhotonProvider.requests – the page sends exactly these)
+  'photonUrls',
   // the app's map look per activity (map/ActivityLayers.kt): layer visibility + hiking band filter
   'activityLayers',
   // the app's pace setting (WebPace.kt): set the two levels, the drop-down's pace section, the last plan's time again
@@ -159,6 +163,8 @@ function getEngine(): Promise<WasmEngine> {
     const { exports } = await TeaVM.wasmGC.load(new URL('engine/onpath-web-engine.wasm?v=' + BUILD, base).href);
     exports.init('/onpath');
     exports.setLanguage(lang); // the page's language (i18n.ts) for the app's texts the engine writes
+    try { const l = JSON.parse(exports.legLimits()); legStore.setLimits(Number(l.files), Number(l.bytes)); }
+    catch (e) { note('routing', 'Leg store: no bounds from the engine – legs are not stored', e); }
     const list: string[] = await (await fetch(new URL('brouter/index.json?v=' + BUILD, base))).json();
     await Promise.all(list.map(async (f) => {
       const buf = await (await fetch(new URL('brouter/' + f + '?v=' + BUILD, base))).arrayBuffer();
@@ -455,7 +461,7 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     if (req.type === 'search') { reply({ id: req.id, ok: true, text: e.search(req.text, req.lat, req.lon, req.route, req.category ?? '') }); return; }
-    if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon, req.category ?? '') }); return; }
+    if (req.type === 'searchOnline') { reply({ id: req.id, ok: true, text: e.searchOnline(req.text, req.photon, req.category ?? '', req.places ?? '') }); return; }
     if (req.type === 'call') {
       if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];

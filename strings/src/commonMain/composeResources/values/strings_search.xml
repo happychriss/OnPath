@@ -17,8 +17,7 @@
 
     <string name="search_cat_places">Places</string>
     <string name="search_cat_food">Food</string>
-    <string name="search_cat_sleep">Lodging</string>
-    <string name="search_cat_sleep_short">Sleep</string>
+    <string name="search_cat_sleep">Sleep</string>
     <string name="search_cat_sights">Sights</string>
     <string name="search_cat_water">Water</string>
     <string name="search_cat_transit">Transit</string>

@@ -56,7 +56,7 @@ class WebSearchTest {
         assertEquals(listOf("Parkplatz Algund Süd"), titles(WebSearch.search("", 46.68, 11.12, "", "PARKING")))
         assertEquals(listOf("Algunder Alm"), titles(WebSearch.search("algund", 46.68, 11.12, "", "FOOD")))
         val chips = WebSearch.categories()
-        assertTrue(chips, chips.startsWith("[[\"PLACES\",\"Places\",[\"place\",\"street\",\"address\"]],[\"FOOD\",\"Food\",[") &&
+        assertTrue(chips, chips.startsWith("[[\"PLACES\",\"Places\",[\"place\",\"street\",\"address\"]],[\"SIGHTS\",\"Sights\",[") &&
             chips.contains("[\"PARKING\",\"Parking\",[\"parking\"]]"))
     }
 
@@ -81,6 +81,24 @@ class WebSearchTest {
         WebSearch.search("München", 48.14, 11.57, "", "PLACES") // the chip clicked after the list was there
         val after = kinds(WebSearch.online("München", muc, "PLACES"))
         assertTrue("„Orte“ after the full list: only places, streets, addresses ($after; before $all)", after.all { it in setOf("place", "street", "address") })
+    }
+
+    /**
+     * Owner 2026-11-27 („warum findet der Planer keine Städte wie Berlin mehr?“, at Hilden with „Orte“): Photon's biased
+     * answer near Hilden has only „Berliner Straße“s; the places-only request (the app's PhotonProvider.search) brings the
+     * city, and it goes on top. Real answers of 2026-11-27.
+     */
+    @Test fun berlinFromHildenComesFromThePlacesRequest() {
+        area()
+        val main = File("../app/test/fixtures/photon-berlin-hilden.json").readText()
+        val places = File("../app/test/fixtures/photon-berlin-hilden-places.json").readText()
+        WebSearch.search("berlin", 51.17, 6.94, "", "PLACES")
+        val without = titles(WebSearch.online("berlin", main, "PLACES"))
+        assertTrue("the biased answer alone has no city Berlin ($without)", "Berlin" !in without)
+        WebSearch.reset()
+        WebSearch.search("berlin", 51.17, 6.94, "", "PLACES")
+        val with = titles(WebSearch.online("berlin", main, "PLACES", places))
+        assertEquals("the city Berlin on top ($with)", "Berlin", with.firstOrNull())
     }
 
     @Test fun aLateOnlineAnswerWithoutTheChipDoesNotFillTheChipsList() {

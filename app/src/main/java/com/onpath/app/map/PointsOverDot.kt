@@ -2,7 +2,6 @@ package com.onpath.app.map
 
 import com.onpath.app.debug.Problems
 import org.maplibre.android.maps.Style
-import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory as PF
 import org.maplibre.android.style.layers.SymbolLayer
@@ -18,9 +17,8 @@ object PointsOverDot {
 
     fun add(style: Style, source: String) {
         runCatching {
-            style.addLayer(SymbolLayer(LAYER, source).withProperties( // LAYER_WPT_OVER_DOT: the one layer above the dot
-                PF.iconImage(Expression.get("icon")), PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
-            ))
+            // the same picture and size as LAYER_WPT
+            style.addLayer(SymbolLayer(LAYER, source).withProperties(*PointMarkSize.layerProps())) // LAYER_WPT_OVER_DOT: the one layer above the dot
         }.onFailure { Problems.warn("map", "Plan points over the position dot not added", it) }
     }
 

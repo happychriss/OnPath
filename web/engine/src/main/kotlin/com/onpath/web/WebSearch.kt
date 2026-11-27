@@ -6,6 +6,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.search.BaseMapPlaces
 import com.onpath.app.search.OfflineIndex
 import com.onpath.app.search.PhotonParser
+import com.onpath.app.search.PhotonProvider
 import com.onpath.app.search.Place
 import com.onpath.app.search.SearchHit
 import com.onpath.app.search.SearchKinds
@@ -140,14 +141,19 @@ object WebSearch {
      * Online answer for the last query: Photon's GeoJSON → places → the app's re-ranking ([SearchState.onlineAnswer]),
      * added below the rows on screen ([SearchState.onlineDone], keepShown). Returns the list.
      */
-    fun online(text: String, photonJson: String, category: String = ""): String {
+    fun online(text: String, photonJson: String, category: String = "", placesJson: String = ""): String {
         // a late answer for another text or chip (asked before a chip click, back after it – owner's bug 2026-11-19:
         // „München“ + „Orte“ still showed everything) changes nothing; the app cancels it (SearchSession.run)
         val run = State.last?.takeIf { it.query == text && it.q.category == categoryOf(category) && State.current(it) }
             ?: return json(State.ui.results)
         if (!State.onlineLoading(run)) return json(State.ui.results)
         val (lat, lon) = State.searchCentre(run, emptyList())
-        State.onlineDone(run, State.onlineAnswer(run, PhotonParser.parse(photonJson), lat, lon, null, emptyList()))
+        // the app's PhotonProvider.search: the places-only answer first where its name starts with the query (a far city like
+        // „Berlin“ is not lost behind nearby „Berliner Straße“ – owner 2026-11-27), then the normal one
+        val main = PhotonParser.parse(photonJson)
+        val places = if (placesJson.isBlank()) emptyList() else runCatching { PhotonParser.parse(placesJson) }.getOrElse { e ->
+            Problems.info("search", "Online search for places not read; shown without it", e); emptyList() }
+        State.onlineDone(run, State.onlineAnswer(run, PhotonProvider.mergePlaces(text, places, main), lat, lon, null, emptyList()))
         return json(State.ui.results)
     }
 
