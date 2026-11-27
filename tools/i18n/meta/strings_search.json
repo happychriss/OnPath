@@ -13,7 +13,7 @@
   "search_online": {"area": "Search", "context": "Part of a result's second line: the result came from the online search", "priority": 1, "confidence": "sicher", "max": 10},
   "search_cat_places": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): towns, villages, streets, addresses", "priority": 1, "confidence": "sicher", "max": 12},
   "search_cat_food": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): restaurants, inns, cafés, beer gardens, huts / Almen", "priority": 1, "confidence": "sicher", "max": 12},
-  "search_cat_sleep": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-11-26 „Übernachten“): huts, bivouacs, campsites, hotels, guest houses, hostels", "priority": 1, "confidence": "sicher", "max": 12},
+  "search_cat_sleep": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-11-27 „Schlafen“, last chip): huts, bivouacs, campsites, hotels, guest houses, hostels", "priority": 1, "confidence": "sicher", "max": 12},
   "search_cat_sights": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): worth a look – peaks, viewpoints, castles, ruins, chapels, caves, museums, waterfalls ('Sehenswert')", "priority": 1, "confidence": "sicher", "max": 12},
   "search_cat_water": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): drinking water, fountains, springs", "priority": 1, "confidence": "sicher", "max": 12},
   "search_cat_transit": {"area": "Search", "context": "Category chip, ONE short word (owner 2026-10-31): train stations, bus stops, cable cars / lifts ('Bahn')", "priority": 1, "confidence": "sicher", "max": 12},

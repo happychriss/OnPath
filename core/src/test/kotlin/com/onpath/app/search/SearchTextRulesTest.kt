@@ -61,7 +61,7 @@ class SearchTextRulesTest {
         setOf("peak", "saddle", "place", "trail", "address", "street", "store", "other")
 
     @Test fun theOwnersChips() {
-        // every kind in at most one chip – huts excepted (Essen + Übernachten, owner 2026-11-26); every chip names only
+        // every kind in at most one chip – huts excepted (Essen + Schlafen, owner 2026-11-26/27); every chip names only
         // kinds that exist
         for (k in searchable) {
             val chips = SearchKinds.Category.entries.filter { k in it.kinds }
@@ -69,8 +69,8 @@ class SearchTextRulesTest {
             assertEquals("Category.of($k)", chips.firstOrNull(), SearchKinds.Category.of(k))
         }
         for (c in SearchKinds.Category.entries) for (k in c.kinds) assertTrue("$c: unknown kind $k", k in searchable)
-        assertEquals(listOf("PLACES", "FOOD", "SLEEP", "SIGHTS", "WATER", "TRANSIT", "PARKING"), SearchKinds.Category.entries.map { it.name })
-        assertEquals(listOf("Places", "Food", "Lodging", "Sights", "Water", "Transit", "Parking"), SearchKinds.Category.entries.map { it.label })
+        assertEquals(listOf("PLACES", "SIGHTS", "FOOD", "WATER", "TRANSIT", "PARKING", "SLEEP"), SearchKinds.Category.entries.map { it.name })
+        assertEquals(listOf("Places", "Sights", "Food", "Water", "Transit", "Parking", "Sleep"), SearchKinds.Category.entries.map { it.label })
         assertTrue(SearchKinds.Category.entries.all { ' ' !in it.label })
         // what the owner listed per chip
         val table = listOf(
@@ -84,7 +84,7 @@ class SearchTextRulesTest {
             "bivouac" to SearchKinds.Category.SLEEP, "shelter" to null,
         )
         for ((kind, chip) in table) assertEquals("chip of $kind", chip, SearchKinds.Category.of(kind))
-        // „Übernachten“ is the one shared set (PoiKinds.LODGING): a hut is in it as well as in Essen
+        // „Schlafen“ is the one shared set (PoiKinds.LODGING): a hut is in it as well as in Essen
         assertEquals(PoiKinds.LODGING, SearchKinds.Category.SLEEP.kinds)
         assertTrue("hut" in SearchKinds.Category.SLEEP.kinds && "hut" in SearchKinds.Category.FOOD.kinds)
     }
