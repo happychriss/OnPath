@@ -10,10 +10,29 @@ import com.onpath.app.domain.WaitSteps
 import com.onpath.app.routing.PlanPointRow
 import com.onpath.strings.*
 
-/** The route's wait window: the ONE bar, the legs + „prüfen“ as steps (at most 3 shown), the time left. */
-data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsLeft: Int?, val late: Boolean = false) {
-    val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent, steps,
-        if (late) TimeLeft.LATE else secondsLeft?.let(TimeLeft::text))
+/**
+ * The route's wait window (owner 2026-11-27, „realistischer … transparenter“): the legs + „prüfen“ as steps (at most 3
+ * shown) and how long it runs – no percent: how long a route takes cannot be measured beforehand (2–5× apart on long
+ * ones), a number crept to 99 % and stood there. [elapsedS] counts from the start of the wait, across a second try with
+ * more time; [afterMap]: the map for the place was just loaded in its own window – „Karte geladen ✓“ is the first row, so
+ * it reads as one way on, not a new start.
+ */
+data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsLeft: Int?, val late: Boolean = false,
+                       val elapsedS: Int = 0, val afterMap: Boolean = false) {
+    val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent,
+        if (afterMap) WaitSteps.shown(listOf(WaitStep(Txt.s(Res.string.wait_step_map_loaded), com.onpath.app.domain.WaitStepState.DONE, null)) + steps) else steps,
+        Txt.s(Res.string.wait_running_since, "${elapsedS / 60}:${(elapsedS % 60).toString().padStart(2, '0')}"), bar = false)
+}
+
+/**
+ * The map wait and the route wait one after the other (search → „Hierhin“ → route): the map window's end, so the route's
+ * window can say „Karte geladen ✓“ instead of starting anew (owner 2026-11-27). Uptime ms; -1 = none.
+ */
+object WaitChain {
+    /** The route window follows the map's within this long. */
+    const val FOLLOWS_MS = 10_000L
+    @Volatile var mapDoneAt: Long = -1L
+    fun follows(routeStartMs: Long): Boolean = mapDoneAt >= 0 && routeStartMs - mapDoneAt in 0..FOLLOWS_MS
 }
 
 /**
@@ -29,6 +48,10 @@ class RouteWait(private val memory: ProgressMemory) {
     private var checkFromMs = -1L
     private var sawShare = false
     private var gen: Int? = null
+    /** When this wait began – kept across a new run that follows within [GOES_ON_MS] (a second try with more time). */
+    private var waitStartMs = -1L
+    private var lastEndMs = -1L
+    private var afterMap = false
 
     /**
      * [routing]: a run is on; [progress] = legs done / legs to route (null = not known yet); [share] = the legs' share
@@ -39,7 +62,11 @@ class RouteWait(private val memory: ProgressMemory) {
     fun update(routing: Boolean, progress: Pair<Int, Int>?, share: Float?, labels: List<String>?, now: Long, gen: Int): RouteWaitUi? {
         if (!routing) { finish(now); return null }
         if (this.gen != gen) { reset(); this.gen = gen }
-        if (startMs < 0) startMs = now
+        if (startMs < 0) {
+            startMs = now
+            // one wait goes on: a new run soon after the last (the time limit's „Weiter warten“, routing data arriving)
+            if (waitStartMs < 0 || lastEndMs < 0 || now - lastEndMs > GOES_ON_MS) { waitStartMs = now; afterMap = WaitChain.follows(now) }
+        }
         if (share != null) sawShare = true
         val total = (progress?.second ?: 0).coerceAtLeast(1)
         val done = (progress?.first ?: 0).coerceIn(0, total)
@@ -64,12 +91,14 @@ class RouteWait(private val memory: ProgressMemory) {
         // reports nothing of promises none – the bar creeps on, the time is not read off the creep (owner 2026-11-19,
         // „noch etwa 5 Sekunden“ and then minutes); the planner's WebWait has the same rule
         val left = if (checking || share != null) TimeLeft.seconds(bar.measured, gone, null) else null
-        return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late)
+        return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late,
+            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap)
     }
 
     /** The run ended: its legs' and check's times teach the check's share; the next run starts afresh. */
     private fun finish(now: Long) {
         if (startMs < 0) return
+        lastEndMs = now
         if (checkFromMs > startMs) try {
             memory.routeCheck = RouteShares.learn(memory.routeCheck, checkFromMs - startMs, now - checkFromMs)
         } catch (e: Exception) { Problems.warn("routing", "Route wait: the check's share not learned", e) }
@@ -79,6 +108,9 @@ class RouteWait(private val memory: ProgressMemory) {
     private fun reset() { bar = OneBar(); startMs = -1L; checkFromMs = -1L; sawShare = false }
 
     companion object {
+        /** A new run this soon after the last continues the same wait (its time goes on). */
+        const val GOES_ON_MS = 60_000L
+
         /**
          * The legs' names "Algund → Leiter Alm" from the Points list [rows] when the router works on every leg of the
          * [points] (none from the cache: [total] = points − 1); else null (they are counted: "Abschnitt 2").
