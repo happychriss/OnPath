@@ -66,9 +66,6 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -469,16 +466,9 @@ fun RoutesScreen(
                 }) else null,
                 menu = { RoutesMenu(onExportAll, onRecycleBin, canExport = tours.isNotEmpty() && busy == null) },
             )
-            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) {
-                RoutesTab.entries.forEachIndexed { i, t ->
-                    SegmentedButton(
-                        selected = tab == t,
-                        onClick = { tab = t; onTab(t) },
-                        shape = SegmentedButtonDefaults.itemShape(i, RoutesTab.entries.size),
-                        modifier = Modifier.heightIn(min = 48.dp),
-                    ) { Text(str(if (t == RoutesTab.PLANNED) Res.string.routes_tab_planned else Res.string.routes_tab_done)) }
-                }
-            }
+            // „Geplant 12 · Gemacht 8“: the sliding switch (owner 2026-11-27, variant 1); drafts count as no route
+            com.onpath.app.ui.routes.RoutesTabSwitch(tab, RoutesTab.entries.associateWith { t -> RoutesTab.filter(tours, t).count { !it.draft } },
+                { t -> tab = t; onTab(t) }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
             if (tours.isNotEmpty()) {
                 RoutesSearchField(query, { query = it; onQuery(it) }, Modifier.padding(start = 16.dp, end = 16.dp, bottom = 8.dp))
                 // the sort chips (owner 2026-11-12, variant C): a new order starts at the top of the list

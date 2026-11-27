@@ -32,7 +32,9 @@ class MessagePlacementTest {
         assertTrue(routes.contains("TopBarRow("))
         assertTrue(src("TopBar.kt").contains("Row(Modifier.fillMaxWidth().padding(horizontal = 4.dp, vertical = 4.dp)"))
         assertTrue(routes.contains("IconButton(onClick = onBack, Modifier.size(56.dp))"))
-        assertTrue(routes.contains("modifier = Modifier.heightIn(min = 48.dp),"))
+        // the Geplant / Gemacht switch (owner 2026-11-27): 48 dp tall
+        assertTrue(routes.contains("com.onpath.app.ui.routes.RoutesTabSwitch("))
+        assertTrue(src("routes/RoutesTabSwitch.kt").contains("modifier.fillMaxWidth().heightIn(min = 48.dp).background(OnPathColors.PaperDeep, track)"))
         assertEquals(4 + 56 + 4 + 48, MessagePlacement.ROUTES_HEADER_DP)
         val settings = src("SettingsScreen.kt")
         assertTrue(settings.contains("Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {\n" +
