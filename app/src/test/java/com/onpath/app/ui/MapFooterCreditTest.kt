@@ -65,8 +65,11 @@ class MapFooterCreditTest {
     @Test fun planLogo() = shot(demo = false, logo = true)
     @Test fun planLogoLargestFontWithDemo() { paparazzi.unsafeUpdateConfig(deviceConfig = narrow(2.0f)); shot(demo = true, logo = true) }
 
-    @Test fun theLogoIsPlanOnlyAndOpensAbout() {
+    /** Owner 2026-11-27, layout 2: no logo on the map; in Plan the credit and scale sit top right, the bottom stays free. */
+    @Test fun planHasTheCreditTopRightAndNoLogo() {
         val screen = File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
-        assertTrue(screen.contains("onLogo = if (mode == AppMode.PLAN) ({ vm.settingsSlice.openSettings(SettingsPage.ABOUT) }) else null"))
+        assertTrue(!screen.contains("onLogo ="))
+        assertTrue(screen.contains("credits = mode == AppMode.NAVIGATE"))
+        assertTrue(screen.contains("MapCreditTop(cam, demoOn,"))
     }
 }

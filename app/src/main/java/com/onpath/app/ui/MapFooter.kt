@@ -70,11 +70,13 @@ import com.onpath.app.recording.GpsStatus
 fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolean = false,
               /** The OnPath logo left of the scale (owner 2026-11-27, variant C – Plan only): a tap opens About OnPath; null = none. */
               onLogo: (() -> Unit)? = null,
+              /** false: no scale / credit here (Plan draws them top right, [MapCreditTop]); only the buttons. */
+              credits: Boolean = true,
               /** Navigate: the map buttons sit this much higher than the scale, closer to the thumb (owner 2026-11-27). */
               fabsLift: Dp = 0.dp,
               fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
-        Column(Modifier.weight(1f).padding(end = 12.dp)) {
+        if (!credits) Spacer(Modifier.weight(1f)) else Column(Modifier.weight(1f).padding(end = 12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (onLogo != null) {
                     val label = str(Res.string.settings_page_about)
@@ -417,5 +419,29 @@ private fun LocateControl(status: GpsStatus, following: Boolean, onClick: () -> 
             Modifier.align(Alignment.TopEnd).offset(x = (-6).dp, y = 6.dp).size(12.dp)
                 .border(2.dp, OnPathColors.CardWhite, CircleShape).padding(2.dp).background(gpsColor(status), CircleShape),
         )
+    }
+}
+
+/**
+ * Plan's map credit and scale, top right (owner 2026-11-27, layout 2 – the bottom stays free for the plan card): the
+ * credit on top (the longer line), the scale right-aligned under it; DEMO beside the scale. A tap on the credit opens
+ * Legal & credits. Reads the camera's scale itself, so a zoom recomposes only this block.
+ */
+@Composable
+internal fun MapCreditTop(cam: MapCameraState, demo: Boolean, onCredits: () -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier, horizontalAlignment = Alignment.End) {
+        val d = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(d.density, minOf(d.fontScale, CREDIT_MAX_FONT))) {
+            Text(MAP_CREDIT, style = MaterialTheme.typography.labelSmall, color = Color(0xFF333333), maxLines = 2,
+                modifier = Modifier.clip(OnPathShapes.Small)
+                    .clickable(onClickLabel = str(Res.string.plan_map_credits), onClick = onCredits)
+                    .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
+        }
+        Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (demo) Text("DEMO", style = MaterialTheme.typography.labelSmall, color = Color.White, maxLines = 1,
+                modifier = Modifier.padding(end = 6.dp).clip(OnPathShapes.Small).background(OnPathColors.Warn)
+                    .padding(horizontal = 5.dp, vertical = 3.dp))
+            cam.scale?.let { (label, width) -> ScaleBar(label, width) }
+        }
     }
 }

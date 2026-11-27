@@ -125,8 +125,12 @@ class ScreenshotTest {
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
                     PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
                     SheetWithFooter(planTopBarDp().dp, footer = {
-                        Column(Modifier.fillMaxWidth()) { aboveFooter(); MapFooter("500 m" to 64.dp, onLogo = {}) {} } // as PlanMode: the logo (owner 2026-11-27)
+                        Column(Modifier.fillMaxWidth()) { aboveFooter(); MapFooter("500 m" to 64.dp, credits = false) {} } // as PlanMode
                     }, sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) { bottom() } })
+                    // as MapScreen in Plan: credit over the scale, top right (owner 2026-11-27, layout 2)
+                    val cam = androidx.compose.runtime.remember { MapCameraState().apply { scale = "500 m" to 64.dp } }
+                    MapCreditTop(cam, demo = false, onCredits = {}, Modifier.align(Alignment.TopEnd)
+                        .padding(top = MessagePlacement.GAP_DP.dp, end = 12.dp))
                     Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }

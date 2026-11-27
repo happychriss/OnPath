@@ -165,10 +165,10 @@ fun MapScreen(
                 onUndo = if (MapControlsEnabled.undo(ctl)) vm.planEdit::undoStep else null,
                 onRedo = if (MapControlsEnabled.redo(ctl)) vm.planEdit::redoStep else null)
     }
-    // Navigate: scale, © and the controls above the slider as before. Plan (owner 2026-11-06, onpath.private#43): scale
-    // and © stay on the sheet's edge, the controls stand at one fixed place (PlanControlsLayer in PlanMode)
+    // Navigate: scale, © and the controls above the bottom card. Plan: scale + credit top right ([MapCreditTop], owner
+    // 2026-11-27, layout 2), the controls at one fixed place (PlanControlsLayer)
     val footer = @Composable { mode: AppMode ->
-        MapFooter(cam.scale, fabsLift = if (mode == AppMode.NAVIGATE) NAV_FABS_LIFT else 0.dp, onCredits = { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, demo = demoOn, onLogo = if (mode == AppMode.PLAN) ({ vm.settingsSlice.openSettings(SettingsPage.ABOUT) }) else null) {
+        MapFooter(cam.scale, fabsLift = if (mode == AppMode.NAVIGATE) NAV_FABS_LIFT else 0.dp, onCredits = { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, demo = demoOn, credits = mode == AppMode.NAVIGATE) {
             if (mode == AppMode.NAVIGATE) controls(mode)
         }
     }
@@ -206,8 +206,7 @@ fun MapScreen(
                 activityBottomPx = if (vm.routesFlow.shown == null) planActivity[1] else 0)
         }
         MapSync(vm, controller, rec, location, fitPadding)
-        // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
-        // rest view in NavigateMode)
+        // hike: keep-on + pocket logic; bike: "Screen while cycling", pocket after 5 s covered (ScreenPolicy, NavigateMode)
         val screen = ScreenPolicy.of(vm.settingsSlice.settings, rec?.nav?.session?.activity ?: vm.planRoute.activity)
         KeepScreenOn(screen.keepOn && rec != null && vm.tourFollow.followLine != null && vm.tourSession.mode == AppMode.NAVIGATE, pocketAfterMs = screen.pocketAfterMs)
         // Quiet update check (once a day, only when online; F-OFF-06).
@@ -224,11 +223,11 @@ fun MapScreen(
             },
             navigate = { LiveSignLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
         )
-        // "Where I face" arrow at the dot in heading-up following (MapController.Facing)
-        // (not over the rest view while cycling)
+        // "Where I face" arrow at the dot in heading-up following (MapController.Facing), not over the cycling rest view
         if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } }
-        // hints below the search bar go below the background-download strip while it shows
-        // (measured height: a message box is taller than the progress chip)
+        // Plan: the credit over the scale, top right (the top left holds the boxes, the recording pill, the download chip)
+        if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = MessagePlacement.GAP_DP.dp, end = 12.dp))
+        // hints go below the background-download strip while it shows (measured: a box is taller than the chip)
         val hintTop = if (vm.mapData.backgroundStripShown && vm.tourSession.mode == AppMode.PLAN)
             (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
