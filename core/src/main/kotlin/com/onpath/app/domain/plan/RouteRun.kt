@@ -104,8 +104,10 @@ data class RouteRun(
      * Would [points] be asked about before routing ([longRule]): a plan said yes to ([longOk]) is not asked again – unless it is
      * beyond the phone's capacity, which no answer changes.
      */
-    fun asks(points: List<GeoPoint>, activity: Activity): LongAsk? =
-        longRule.ask(points, activity)?.takeIf { it.beyond || points != longOk }
+    fun asks(points: List<GeoPoint>, activity: Activity, longPoints: List<GeoPoint>? = null, longLegs: List<Int>? = null): LongAsk? =
+        longRule.ask(longPoints ?: points, activity)
+            ?.let { a -> if (longLegs != null && a.leg >= 0) a.copy(leg = longLegs.getOrElse(a.leg) { a.leg }) else a }
+            ?.takeIf { it.beyond || points != longOk }
     val slowAsk: Int? get() = (phase as? Phase.AskSlow)?.rounds
     val notRouted: NotRouted? get() = (phase as? Phase.Unrouted)?.why
 
@@ -118,7 +120,14 @@ data class RouteRun(
          * [askLong] false: never the long-plan question (the planner's multi-day tour, owner 2026-11-18).
          */
         data class Recalc(val points: List<GeoPoint>, val activity: Activity, val planMode: Boolean, val newPlan: Boolean,
-                          val askLong: Boolean = true) : Event
+                          val askLong: Boolean = true,
+                          /**
+                           * The plan as it is routed – with its anchors / support points between the visible points (owner
+                           * 2026-11-27, „Lange Browser-Touren auf dem Handy“): the long-leg question weighs these legs, so a
+                           * long leg cut by support points is not asked about; null = [points]. [longLegs] = the visible leg of
+                           * each of these legs (the question names the visible one).
+                           */
+                          val longPoints: List<GeoPoint>? = null, val longLegs: List<Int>? = null) : Event
         /** The run [gen] has been calculating for a while. */
         data class Slow(val gen: Int) : Event
         /** The router came back for the run [gen]; [active]: its job was not stopped meanwhile. */
@@ -203,7 +212,7 @@ data class RouteRun(
         is Event.Recalc -> {
             val next = copy(gen = gen + 1, rounds = if (keepRounds) rounds else 1, keepRounds = false, viaData = false,
                 compareActivity = false, sheetRisen = sheetRisen && !e.newPlan)
-            val ask = if (e.askLong && e.points.size >= 2) asks(e.points, e.activity) else null
+            val ask = if (e.askLong && e.points.size >= 2) asks(e.points, e.activity, e.longPoints, e.longLegs) else null
             when {
                 // as before: a long-plan question still open stays open (its dialog is modal, so only a change from
                 // outside the screen gets here)

@@ -473,7 +473,9 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       const out = fn(...req.args);
       reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined,
         anchors: HISTORY.has(req.fn) ? e.anchorsNow() : undefined });
-      if (req.fn === 'historySnap' || req.fn === 'settleStep') legsOut(e); // the legs kept under the snapped points (the plan as saved), each settled leg
+      // the legs kept under the snapped points (the plan as saved), each settled leg; after a run's end the pieces its
+      // support points cut from a long leg (owner 2026-11-27 – a reload routes them from the browser's store)
+      if (req.fn === 'historySnap' || req.fn === 'settleStep' || req.fn === 'runEnd') legsOut(e);
       return;
     }
     if (req.type === 'prefetch') {

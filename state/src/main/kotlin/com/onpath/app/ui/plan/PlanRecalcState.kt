@@ -351,7 +351,12 @@ open class PlanRecalcState(
         // another country by mistake, owner) is asked about first – nothing is routed or loaded until the answer; else
         // it is routed. A new run (an edit, an activity change …) starts at one time-limit period and drops an open
         // "Weiter warten?"; in Plan the time limit asks (SlowPlan), a run for Navigate keeps the straight lines
-        val effects = routeEvent(RouteRun.Event.Recalc(pts, act, planMode = mode == AppMode.PLAN, newPlan = SheetRise.resets(pts.size), askLong = askLong))
+        // the legs as routed: support points / anchors cut a long visible leg into short ones (owner 2026-11-27)
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(pts, plan.anchorsFor(act, level), pins)
+        val longLegs = if (expanded.hasAnchors) (0 until expanded.points.size - 1).map { e ->
+            var k = e; while (k > 0 && expanded.visibleOf(k) < 0) k--; maxOf(0, expanded.visibleOf(k)) } else null
+        val effects = routeEvent(RouteRun.Event.Recalc(pts, act, planMode = mode == AppMode.PLAN, newPlan = SheetRise.resets(pts.size), askLong = askLong,
+            longPoints = if (expanded.hasAnchors) expanded.points else null, longLegs = longLegs))
         perform(effects)
         val start = effects.filterIsInstance<RouteRun.Effect.StartRouting>().firstOrNull() ?: return null
         val gen = start.gen; val rounds = start.rounds; val askAtLimit = start.askAtLimit
