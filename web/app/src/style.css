@@ -2,9 +2,8 @@
    the map below it; one top bar (search field + the map toolbar), the plan sheet – a bottom sheet on a phone, a side panel on
    a wide screen. Colours from the app's theme (ui/Theme OnPathColors); the header from onpath.earth (site colours). */
 :root {
-  /* the app's colour rule (owner 2026-11-06, onpath.private#36, ui/Theme OnPathColors / ActionButtons): walnut for every
-     button without a meaning of its own (the theme's primary – here still named --green*), plan actions blue, the
-     navigation green only for what goes to the navigation (the web has none: the logo's word only); paper is the ground
+  /* the app's colour rule (owner 2026-11-27 rule 1, ui/Theme OnPathColors / ActionButtons): one green (--green*, the
+     theme's primary) for every button without a meaning of its own, plan actions blue, red only deletes; paper is the ground
      of every surface, also of what floats over the map (--card: search pill, place / pin card, message boxes, map strip,
      notes – the shadow lifts them off the map); white only for fields one types into (app 2026-11-06 evening).
      Palette D „wie die Webseite“ (app 0.17.9, owner 2026-11-12): the website's paper #FAFAF6, its sage page #EEF0E8, the
@@ -14,7 +13,10 @@
   /* ink blue (the app's ActionEdit, owner 2026-11-06 23:00 variant C – no light blue surfaces), EditTonal / OnEditTonal */
   --go: #245F46; --lifted: #E4E8DD; /* the app's PaperDeep (a lifted row) */ --goal: #A32020; /* the app's PointGoal */
   --bg: var(--paper); --fg: #243C31; --muted: #5f645e; --line: #D2DACD; --surface2: #EEF0E8; /* the app's Line / PaperDim */
-  --green: var(--walnut); --green-fg: var(--walnut); --green-light: var(--walnut-light); --route: #1E3FAE;
+  /* one green for everything (owner 2026-11-27, colour rule 1 „ein Grün für alles“ – the app's Theme primary = OnPathColors.Green,
+     was walnut): buttons, switches, selections, bars; plan blue only where a button plans, red only deletes. --walnut stays
+     only for the few small text labels the app still sets in Walnut (MapFooter's scale) */
+  --green: #245F46; --green-fg: #245F46; --green-light: var(--walnut-light); --route: #1E3FAE;
   /* selected chips / segments and the activity chip: the app's GreenLight with Ink (Theme secondaryContainer, palette D) */
   --chip: #E1EAD5; --chip-fg: #243C31;
   --warn: #9A5B00; --warn-bg: #FFF0D2; --error: #C62828; --error-bg: #FDE0DC;
