@@ -639,25 +639,6 @@ object PlanFoot {
 }
 
 /**
- * The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). [busy]: the
- * run its button started goes – the button spins, no waiting sentence (owner 2026-11-27).
- */
-@Composable
-private fun NotRoutedBar(why: NotRouted, busy: Boolean = false, onPlanAnyway: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway, enabled = !busy) {
-            if (busy) {
-                androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = OnPathColors.PlanAccent)
-                Spacer(Modifier.width(8.dp))
-            }
-            Text(PlanStatus.notRoutedAction(why))
-        }
-    }
-}
-
-/**
  * ERROR line: the route does not do what was asked – a plan point it does not reach ("② erst ab T2 erreichbar") or a
  * leg the router could not do ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary (visible in the
  * small step), no OK and never self-dismissing – it goes when the plan changes. With [onShow] the whole line is the

@@ -1,13 +1,12 @@
 package com.onpath.app.domain
 
 import com.onpath.app.routing.GeoPoint
-import com.onpath.app.routing.PlanEdits
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class PointMarksTest {
     private fun kinds(points: List<GeoPoint>, passed: Set<Int> = emptySet()) =
-        points.indices.map { PointMarks.kind(it, points.size, passed = passed, loopStart = PlanEdits.loopStart(points)) }
+        PointMarks.kinds(points, passed = passed)
 
     private val a = GeoPoint(47.0, 8.0)
     private val b = GeoPoint(47.01, 8.0)

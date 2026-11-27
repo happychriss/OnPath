@@ -83,7 +83,6 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
-import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -956,17 +955,6 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
 }
 
 /**
- * Off the route, the way back still being computed (owner 2026-11-01: "erst piep, piep, anbieten, dann gemeinsam
- * suchen"): the question comes at once – "Abseits der Route", how far and where the route is; "Keep original" works
- * at once, "New route" shows a spinner until the way is found (then the normal question, [rerouteMessage]).
- */
-internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
-    // "Abseits der Route" only: "New route" spins, no waiting sentence (owner 2026-11-27)
-    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_off_route), NavText.toRoute(o.toRoute),
-        listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE) {}.apply { busy = true }),
-        icon = Icons.Outlined.AltRoute, navigate = true)
-
-/**
  * Android's back in Navigate (flow map N4, owner 2026-11-15 after a hike: „aus der Aufzeichnung verlassen wir die App
  * nicht“): while a tour records back never leaves the app – it is swallowed (before 2026-11-15 it asked "App
  * verlassen?", which an accidental back from the ◀ key under „Anhalten“ brought up on the way). Pure, unit-tested.
@@ -975,18 +963,6 @@ object BackStaysRule {
     /** While a tour records and nothing is open that back closes first (the unlocked bar, the activity / settings sheet). */
     fun swallows(recording: Boolean, barOpen: Boolean, sheetOpen: Boolean): Boolean = recording && !barOpen && !sheetOpen
 }
-
-/**
- * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]) – a question, not a warning
- * (owner 2026-11-27): „Abzweigungen auf dem Sperrbildschirm?“ / „Mit Benachrichtigungen siehst du sie, ohne das Handy zu
- * entsperren.“ · [Später] [Einschalten]. Einschalten → the phone setup step; Später → gone for this tour. Never goes by
- * itself (owner: no self-dismissing messages).
- */
-@Composable
-internal fun notificationsOffMessage(onSetUp: () -> Unit, onLater: () -> Unit): Message =
-    Message(MessageKind.FRAGE, str(Res.string.nav_notif_off), str(Res.string.nav_notif_off_line),
-        listOf(MessageButton(str(Res.string.nav_notif_later), onLater), MessageButton(str(Res.string.nav_notif_turn_on), onSetUp)),
-        icon = Icons.Outlined.Notifications, navigate = true)
 
 /**
  * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,

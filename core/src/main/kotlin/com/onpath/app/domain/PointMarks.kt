@@ -1,5 +1,8 @@
 package com.onpath.app.domain
 
+import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.PlanEdits
+
 /**
  * Which marker a planned point gets on the map (map/MapController `setWaypoints`). Pure.
  * - "g" unreached (grey hollow), "p" passed in a running tour (grey), "s" start (①), "v" stop, "e" goal (the flag).
@@ -16,4 +19,10 @@ object PointMarks {
             i == size - 1 && size > 1 -> "e"
             else -> "v"
         }
+
+    /** The kind of every point of [points] (the round trip read from them, [PlanEdits.loopStart]). */
+    fun kinds(points: List<GeoPoint>, unreached: Set<Int> = emptySet(), passed: Set<Int> = emptySet()): List<String> {
+        val loopStart = PlanEdits.loopStart(points)
+        return points.indices.map { kind(it, points.size, unreached, passed, loopStart) }
+    }
 }
