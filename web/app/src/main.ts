@@ -533,7 +533,7 @@ void loadWaitEngine(base, lang);
 // a shared link: its routing data is not known before the engine read the link – a share of the bar until then
 if (/[#&?]p=/.test(location.href)) overlay.job('link', 0, LINK_UNITS, 'routing');
 if (areas) {
-  areas.onWait = (list) => overlay.areas(list);
+  areas.onWait = (list, here) => overlay.areas(list, here);
   areas.onBackground = (b) => beside.set(b);
 }
 map.on('movestart', (e) => { if ((e as { originalEvent?: unknown }).originalEvent) lastMapTouch = performance.now(); }); // a pan / zoom by the user

@@ -236,12 +236,14 @@ export class MapAreas {
       return `${id}\t${x.s}\t${x.s === 'building' ? x.progress : x.s === 'ready' ? 1 : 0}\t${(x.s === 'queued' || x.s === 'building') && x.eta != null ? x.eta : -1}`;
     });
     const wait = busy && !!job && (job.own != null || (this.centreAbsent && job.why !== 'here')) && !this.handedOver;
-    this.onWait?.(wait ? lines.map((l) => { const [id, state, progress, eta] = l.split('\t'); return { id, state, progress: Number(progress), eta: Number(eta) >= 0 ? Number(eta) : undefined }; }) : []);
+    this.onWait?.(wait ? lines.map((l) => { const [id, state, progress, eta] = l.split('\t'); const x = this.states.get(id);
+      return { id, state, progress: Number(progress), eta: Number(eta) >= 0 ? Number(eta) : undefined, message: x?.s === 'offline' ? x.message : undefined }; }) : [],
+      job?.why !== 'searched' && job?.why !== 'planned');
     this.onBackground?.(busy && !wait ? { lines: lines.join('\n'), rows: [n!.title, ...(n!.lines ?? [])], cancel: () => { this.hidden = true; this.show(); } } : null);
   }
 
   /** The wait window (form A) takes the areas the user waits for; [] = none. */
-  onWait: ((areas: { id: string; state: string; progress: number; eta?: number }[]) => void) | null = null;
+  onWait: ((areas: { id: string; state: string; progress: number; eta?: number; message?: string }[], here: boolean) => void) | null = null;
   /** The sign beside the map (form B) takes the areas loading in the background; null = none. */
   onBackground: ((b: { lines: string; rows: string[]; cancel: () => void } | null) => void) | null = null;
   /** The window's Cancel: the job's areas load on beside the map (form B) until they are there. */

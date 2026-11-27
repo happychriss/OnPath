@@ -261,7 +261,7 @@
       "web": [
         "web/app/src/areas.ts"
       ],
-      "blob": "34129537eb1137954a16ca8756837bbccb29ed06"
+      "blob": "65da99ef9b986336441bd896c68bccb77505bcee"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/cells/CellTriggers.kt",
@@ -378,7 +378,7 @@
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "8aec61b436c9960c0038446ba229aa1a2aa25d9c"
+      "blob": "3c1072c63a351ddd1b7e5d2c05fa40a8fe4a3f29"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt",
@@ -388,7 +388,7 @@
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "8f7fd6dad9c7597c0714c8c2fd9587b8f1a9816f"
+      "blob": "2fb7c92f089c6cdcf97348ab5594a4f49ed17344"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/WaitWindow.kt",
@@ -3404,7 +3404,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt": {
-      "blob": "8f7fd6dad9c7597c0714c8c2fd9587b8f1a9816f",
+      "blob": "2fb7c92f089c6cdcf97348ab5594a4f49ed17344",
       "perf": [
         "const val ESTIMATED_REGION_BYTES = 9L * 1_048_576",
         "/** Total size: known sizes, [ESTIMATED_REGION_BYTES] for the rest. */",
@@ -3424,7 +3424,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/CellCards.kt": {
-      "blob": "34129537eb1137954a16ca8756837bbccb29ed06",
+      "blob": "65da99ef9b986336441bd896c68bccb77505bcee",
       "perf": [
         "const val MAX_ROWS = 3",
         "val rows = ordered.take(MAX_ROWS).mapIndexed { i, c -> CellRow(name(c, job, i), rowState(s[c]!!), c == job.own) }",
