@@ -21,6 +21,8 @@ questions, tells the owner what is new. It writes no product code and decides no
   The captain answers in a few lines: **who** (thread), **branch**, **files it will touch**, **conflict** (double task,
   hot file held by X, waits for Y) and **go / wait**. Then it adds the row. No answer needed for a pure question to the
   owner.
+- **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
+  „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
   coordinator.
 - **Spot checks:** whenever woken, compare the board with the branches and threads; a role that works without a claim
