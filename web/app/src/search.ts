@@ -93,6 +93,11 @@ export function photonUrl(q: string, lat: number, lon: number, limit = 20): stri
     `&zoom=12&location_bias_scale=0.3&limit=${limit}&lang=de`;
 }
 
+/** The places-only request, as the app's PhotonProvider.placesUrl (PLACE_LAYERS, PLACES_LIMIT 5). */
+export function photonPlacesUrl(q: string, lat: number, lon: number): string {
+  return photonUrl(q, lat, lon, 5) + ['city', 'locality', 'district', 'county', 'state', 'country'].map((l) => `&layer=${l}`).join('');
+}
+
 /**
  * [box] holds the search pill and its results; [card] is the bottom card the found place's menu becomes where it fits
  * neither above nor under its pin (the app's PinMenuPlace B – on a phone in place of the plan sheet). The menu closes
@@ -220,11 +225,15 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     timer = setTimeout(async () => {
       let mixed: Hit[] | null = null;
       try {
+        // the app's PhotonProvider.search: the normal request and one for places only (a far city is not lost behind
+        // nearby streets – owner 2026-11-27 „Berlin“ from Hilden); the places one failing never costs the normal rows
+        const placesAsk = fetch(photonPlacesUrl(text, c.lat, c.lng)).then((p) => (p.ok ? p.text() : ''), () => '');
         const r = await fetch(photonUrl(text, c.lat, c.lng));
+        const places = await placesAsk;
         // a newer search (a chip clicked, a key typed) came meanwhile: this answer must not reach the engine's list
         // (owner's bug 2026-11-19 – the app cancels it, SearchSession.run)
         if (my !== gen) return;
-        if (r.ok) mixed = await host.engine.searchOnline(text, await r.text(), category);
+        if (r.ok) mixed = await host.engine.searchOnline(text, await r.text(), category, places);
       } catch { /* expected: offline or Photon unreachable – the offline rows stay (the app is silent too) */ }
       if (my !== gen) return;
       const list = mixed ?? offline;

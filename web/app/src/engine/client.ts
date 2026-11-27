@@ -224,8 +224,8 @@ export class EngineClient {
   }
 
   /** Offline + online hits for the last query, given Photon's answer (the app's merge). */
-  async searchOnline(text: string, photon: string, category = ''): Promise<Hit[] | null> {
-    const r = await this.ask({ type: 'searchOnline', text, photon, category });
+  async searchOnline(text: string, photon: string, category = '', places = ''): Promise<Hit[] | null> {
+    const r = await this.ask({ type: 'searchOnline', text, photon, category, places });
     return r.ok && r.text ? JSON.parse(r.text) : null;
   }
 
