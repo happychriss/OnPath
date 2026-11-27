@@ -144,7 +144,9 @@ class MultiDaySlice(
                 if (!on || r == null || r.points.size < 2) { if (!on) flow.show(null); return@collectLatest }
                 val plan = wholePlan() ?: return@collectLatest
                 val f = planRoute.planFactors()
-                val v = withContext(default) { flow.compute(plan, r.points, f, r) } ?: return@collectLatest
+                val profile = planRoute.dayProfile()
+                val seen = flow.profileSeen
+                val v = withContext(default) { flow.compute(plan, r.points, f, r, profile, seen) } ?: return@collectLatest
                 flow.show(v)
                 askMapsOnce(v)
             }

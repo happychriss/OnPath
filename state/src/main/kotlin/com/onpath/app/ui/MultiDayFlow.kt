@@ -58,7 +58,11 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     }
 
     /** The days worked out for the plan's route ([compute]); [key] = what they were worked out for. */
-    data class DaysView(val days: TourDays, val pointAt: IntArray, val line: List<GeoPoint>, val key: Any)
+    data class DaysView(val days: TourDays, val pointAt: IntArray, val line: List<GeoPoint>, val key: Any,
+                        /** What the route's times were made with (activity, T level, pace, marked trails); null = not known. */
+                        val profile: String? = null,
+                        /** The number of days followed the limits after a profile change ([PlanDays.followLimits]); null = unchanged. */
+                        val followed: Int? = null)
 
     var tour by mutableStateOf<TourRef?>(null)
         private set
@@ -187,17 +191,36 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
 
     /**
      * The days of [plan] along its routed [line] (blocking: call off the main thread) – kept in [view] for the sheet and
-     * the map. [factors] = the pace setting.
+     * the map. [factors] = the pace setting; [profile] / [seen] = the profile now / of the shown days ([profileSeen], read on
+     * the main thread).
      */
-    fun compute(plan: SharedPlan, line: List<GeoPoint>, factors: com.onpath.app.time.Factors, key: Any): DaysView? = try {
+    fun compute(plan: SharedPlan, line: List<GeoPoint>, factors: com.onpath.app.time.Factors, key: Any, profile: String? = null,
+                seen: String? = null): DaysView? = try {
         val dl = DayLine.of(line, plan.activity, factors)
         val at = WaypointInsertion.routeIndices(plan.points, line)
-        DaysView(PlanDays.of(dl, at, plan.days ?: 1, plan.limits, plan.nights), at, line, key)
+        // the activity, T level, pace or marked trails changed (owner 2026-11-27: Hilden → München on foot 40 days, on the
+        // bike still 40): with day limits N follows them, the decided nights stay ([PlanDays.followLimits])
+        val p = if (profile != null && seen != null && profile != seen) PlanDays.followLimits(plan, dl, at) else plan
+        DaysView(PlanDays.of(dl, at, p.days ?: 1, p.limits, p.nights), at, line, key, profile,
+            followed = p.days?.takeIf { it != plan.days })
     } catch (e: Exception) {
         Problems.warn("plan", "Days of the multi-day tour not worked out – the route shows without its days", e); null
     }
 
-    fun show(v: DaysView?) { view = v; selected = selected?.takeIf { s -> v != null && s.last <= v.days.days.size } }
+    fun show(v: DaysView?) {
+        view = v; selected = selected?.takeIf { s -> v != null && s.last <= v.days.days.size }
+        profileSeen = v?.profile
+        val n = v?.followed ?: return
+        tour?.let { t ->
+            tour = t.copy(days = t.days.copy(days = n))
+            Problems.trace("plan", "Multi-day tour: the days follow the limits after a change of activity / T level / pace / marked trails – now $n")
+            save()
+        }
+    }
+
+    /** The profile the shown days were worked out for; null = none yet (the first view never changes N). Main thread. */
+    var profileSeen: String? = null
+        private set
 
     /** A day row tapped: that day alone; tapped again: none. */
     fun tapDay(n: Int) { selected = if (selected == n..n) null else n..n }

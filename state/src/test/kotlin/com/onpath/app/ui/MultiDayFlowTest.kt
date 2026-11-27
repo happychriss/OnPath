@@ -56,6 +56,32 @@ class MultiDayFlowTest {
         return f
     }
 
+    /** Owner 2026-11-27 (Hilden → München on foot 40 days, on the bike still 40): with day limits N follows a profile change. */
+    @Test fun anotherProfileTheDaysFollowTheLimits() {
+        val f = flow()
+        f.opened(tour.copy(days = MultiDay(3, limits = com.onpath.app.routing.DayLimits(maxTimeMin = 60))), pts)
+        fun plan() = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!
+        f.show(f.compute(plan(), line, Factors.ONE, "r", "hike|2", f.profileSeen))
+        assertEquals("the first view never changes N", 3, f.tour!!.days.days)
+        f.show(f.compute(plan(), line, Factors.ONE, "r", "hike|2", f.profileSeen))
+        assertEquals("the same profile: N stays", 3, f.tour!!.days.days)
+        val v = f.compute(plan(), line, Factors.ONE, "r2", "bike|2", f.profileSeen)!!
+        f.show(v)
+        val want = com.onpath.app.routing.PlanDays.followLimits(plan().copy(days = 3), com.onpath.app.routing.DayLine.of(line, Activity.BIKE_TOURING, Factors.ONE),
+            com.onpath.app.routing.WaypointInsertion.routeIndices(pts, line)).days!!
+        assertTrue("the limits ask for another N here: $want", want != 3)
+        assertEquals("N follows the limits", want, f.tour!!.days.days)
+        assertEquals(want, v.days.days.size)
+        assertEquals("Save stores the new N", want, f.daysFor(pts)!!.days)
+    }
+
+    @Test fun anotherProfileWithoutLimitsKeepsTheUsersDays() {
+        val f = opened(flow())
+        f.show(f.compute(f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!, line, Factors.ONE, "r", "hike|2", f.profileSeen))
+        f.show(f.compute(f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!, line, Factors.ONE, "r", "bike|2", f.profileSeen))
+        assertEquals(3, f.tour!!.days.days)
+    }
+
     @Test fun aMultiDayTourOpensToItsOverview() {
         val f = opened(flow())
         assertTrue(f.overview)

@@ -230,6 +230,9 @@ class PlanRouteSlice(
     fun planFactors(a: Activity = activity): com.onpath.app.time.Factors =
         com.onpath.app.time.TimeEstimate.planFactors(a, host.settings)
 
+    /** What makes the route's times – activity, T level, pace, marked trails: a change lets a multi-day tour's days follow its limits. */
+    fun dayProfile(): String = "$activity|$sac|${planFactors()}|${host.settings.markedTrails}"
+
     /** Route sheet ⋯ → Time details (debug view of the estimate); null = closed. */
     var timeDetails by mutableStateOf<TimeDetailsUi?>(null)
 
