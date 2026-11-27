@@ -139,9 +139,13 @@ class RoutesSlice(
             val times = store.tourTimes()
             val list = routes.load { t -> host.withMaps(planRoute.withModelTime(t)).let { m ->
                 // a recorded tour's followed plan: a round trip for certain when its points end at its start (RoundTrip)
-                if (m.kind == TourKind.RECORDED && m.hasPlan) m.copy(roundTrip = runCatching { store.planPoints(m.id) }
+                if (m.kind == TourKind.RECORDED && m.hasPlan) runCatching { store.planPoints(m.id) }
                     .onFailure { e -> Problems.warn("routes", "The followed plan's points of tour ${m.id} not read – its row guesses from the track", e) }
-                    .getOrNull()?.let { w -> com.onpath.app.routing.PlanEdits.isRoundTrip(w.map { GeoPoint(it.lat, it.lon) }) })
+                    .getOrNull()?.map { GeoPoint(it.lat, it.lon) }.let { w ->
+                        // a day of a multi-day route: its ends as ridden (DayPick.matches – the ✓ only while the route's day still has them)
+                        m.copy(roundTrip = w?.let { com.onpath.app.routing.PlanEdits.isRoundTrip(it) },
+                            planEnds = w?.takeIf { m.planDay != null && it.size >= 2 }?.let { it.first() to it.last() })
+                    }
                 else m
             }.let { m ->
                 // rides taken out: the overview recomputes the times from the kept points – the row does not know them
@@ -151,11 +155,27 @@ class RoutesSlice(
                 else m
             } }.let { l ->
                 // Gemacht's "Tag 3 von …" (owner 2026-11-27): the multi-day route's name – its own while in My routes, else the plan copy's
-                DayPick.named(l) { id -> runCatching { store.getTourPlan(id)?.name }
-                    .onFailure { e -> Problems.warn("routes", "The followed plan's name of tour $id not read – its day line without the route", e) }.getOrNull() }
+                DayPick.named(l, { id -> runCatching { store.getTourPlan(id)?.name }
+                    .onFailure { e -> Problems.warn("routes", "The followed plan's name of tour $id not read – its day line without the route", e) }.getOrNull() },
+                    ::dayEndsOf)
             }
             withContext(main) { routes.show(list, load); host.kickThumbs() }
         }
+    }
+
+    /** The day ends of the multi-day routes, worked out along their stored lines – kept while the route is unchanged (the list is read every 15 s). */
+    private val dayEnds = java.util.concurrent.ConcurrentHashMap<String, Map<Int, Pair<GeoPoint, GeoPoint>>>()
+
+    /** Blocking (IO): the start and end of each day of [route] as the day sheet shows it ([DayPick.dayEnds]); null = not worked out (reported). */
+    private fun dayEndsOf(route: Tour): Map<Int, Pair<GeoPoint, GeoPoint>>? {
+        val key = "${route.uuid}|${route.distanceM}|${route.waypoints.hashCode()}|${route.days}|${route.activity}"
+        dayEnds[key]?.let { return it }
+        return runCatching {
+            val line = store.loadSegments(route.id).flatten().map { it.toGeo() }
+            val act = planRoute.activityOrNull(route.activity) ?: planRoute.activity
+            DayPick.days(route, line, act, planRoute.planFactors(act))?.let { (d, _) -> DayPick.dayEnds(line, DayPick.rows(route, d, emptyList())) }
+        }.onFailure { Problems.warn("routes", "Days of the multi-day route ${route.id} not worked out – its ridden days are not shown", it) }
+            .getOrNull()?.also { dayEnds[key] = it }
     }
 
     /**

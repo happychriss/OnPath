@@ -87,6 +87,8 @@ data class Tour(
      * loaded from the day sheet / "Tag n fahren" and then recorded (owner 2026-11-27). Read from the plan copy beside the
      * row ([TourPlan.day], `tour_plan.day`, schema 11); null = no day of a multi-day route (every tour before schema 11).
      * A day counts as ridden while a recorded tour not in the bin references it (`DayPick.ridden` in :state).
+     * Only an unedited day is remembered (any edit after loading it drops it – `MultiDaySlice.followedDay`). A copy of the
+     * route ("Speichern als Kopie", a re-import) gets a new [uuid] and so carries none of the ridden days – on purpose.
      */
     val planUuid: String? = null,
     val planDay: Int? = null,
@@ -97,4 +99,10 @@ data class Tour(
     val planName: String? = null,
     /** Recorded with [planUuid]: the multi-day route is in My routes (its day sheet can open). Not stored. */
     val planOpens: Boolean = false,
+    /**
+     * Recorded with [planDay]: the start and end of the day as it was ridden – the first and last point of its plan copy
+     * ([TourPlan.waypoints]); set when My routes reads the list, null = not known. The ✓ counts only while the route's day
+     * still starts and ends there (owner 2026-11-27, `DayPick.matches` in :state). Not stored.
+     */
+    val planEnds: Pair<com.onpath.app.routing.GeoPoint, com.onpath.app.routing.GeoPoint>? = null,
 )

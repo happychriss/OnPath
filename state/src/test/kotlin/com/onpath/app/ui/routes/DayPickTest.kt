@@ -34,9 +34,13 @@ class DayPickTest {
         day(4, 215.0, 10.0, null),
     ), emptyList(), null)
 
-    private fun rode(id: Long, day: Int, ms: Long, deleted: Long? = null, uuid: String = "uuid-hilden", state: String = "done") =
+    /** The day ends as the synthetic [days] put them (line indices 0, 10, 20, 30, end) on a line of 41 points. */
+    private val synthLine = (0..40).map { i -> GeoPoint(51.0 - i * 0.05, 7.0 + i * 0.05) }
+    private val synthEnds = DayPick.dayEnds(synthLine, DayPick.rows(route, days, emptyList()))
+    private fun rode(id: Long, day: Int, ms: Long, deleted: Long? = null, uuid: String = "uuid-hilden", state: String = "done",
+                     ends: Pair<GeoPoint, GeoPoint>? = synthEnds[day]) =
         Tour(id, TourKind.RECORDED, "Tour $id", ms, "BIKE_TOURING", 3, 1.0, 0.0, 0.0, 0.0, state, emptyList(), uuid = "r$id",
-            deletedMs = deleted, planUuid = uuid, planDay = day)
+            deletedMs = deleted, planUuid = uuid, planDay = day, planEnds = ends)
 
     @Test fun eachDayCarriesTheNamesAsThePlanHasThemElseNone() {
         val rows = DayPick.rows(route, days, emptyList())
@@ -63,12 +67,14 @@ class DayPickTest {
     @Test fun ridenDaysAreThoseOfRecordedToursNotInTheBin() {
         val tours = listOf(route, rode(10, 1, 1_000L), rode(11, 2, 2_000L, deleted = 5_000L), rode(12, 1, 3_000L),
             rode(13, 3, 4_000L, uuid = "other"), rode(14, 4, 6_000L, state = "active"))
-        val r = DayPick.ridden("uuid-hilden", tours)
+        val r = DayPick.ridden("uuid-hilden", tours, synthEnds)
         assertEquals("day 1: the newest tour's date; day 2's tour is in the bin; the other route's and a running tour do not count",
             mapOf(1 to 3_000L), r)
-        assertTrue(DayPick.ridden("", tours).isEmpty())
-        assertEquals(3_000L, DayPick.rows(route, days, tours)[0].riddenMs)
-        assertNull(DayPick.rows(route, days, tours)[1].riddenMs)
+        assertTrue(DayPick.ridden("", tours, synthEnds).isEmpty())
+        assertEquals(3_000L, DayPick.rows(route, days, tours, synthLine)[0].riddenMs)
+        assertNull(DayPick.rows(route, days, tours, synthLine)[1].riddenMs)
+        assertTrue("without the day's ends now nothing can be claimed", DayPick.ridden("uuid-hilden", tours, emptyMap()).isEmpty())
+        assertTrue("a ride without its own ends neither", DayPick.ridden("uuid-hilden", listOf(rode(10, 1, 1L, ends = null)), synthEnds).isEmpty())
     }
 
     @Test fun theNextDayIsTheOneAfterTheLastRiddenElseTheFirstOpen() {
@@ -90,7 +96,8 @@ class DayPickTest {
     }
 
     @Test fun gemachtNamesTheRouteAndOpensItOnlyWhileItIsInMyRoutes() {
-        val named = DayPick.named(listOf(route, rode(10, 3, 0L), rode(11, 2, 0L, uuid = "gone"), rode(12, 0, 0L))) { id -> if (id == 11L) "Alte Tour" else null }
+        val named = DayPick.named(listOf(route, rode(10, 3, 0L), rode(11, 2, 0L, uuid = "gone"), rode(12, 0, 0L)),
+            { id -> if (id == 11L) "Alte Tour" else null }, { synthEnds })
         assertEquals("Von Hilden nach München" to true, named[1].planName to named[1].planOpens)
         assertEquals("the route is gone: the plan copy's name, no tap", "Alte Tour" to false, named[2].planName to named[2].planOpens)
         assertNull("no day: nothing", named[3].planName)
@@ -106,5 +113,55 @@ class DayPickTest {
         assertEquals(total, d.days.sumOf { it.distanceM }, total * 0.01)
         assertTrue(d.days.all { it.timeS > 0 })
         assertNull("no line: no days", DayPick.days(t, emptyList(), Activity.BIKE_TOURING, com.onpath.app.time.Factors.ONE))
+    }
+
+    // ---------------------------------------------------------------- owner 2026-11-27: the ✓ only while the day's ends match
+
+    private val longLine = (0..400).map { i -> GeoPoint(51.0 - i * 0.01, 7.0 + i * 0.005, 100.0) }
+    private val three = route.copy(waypoints = listOf(GpxWaypoint(longLine.first().lat, longLine.first().lon, "A"),
+        GpxWaypoint(longLine.last().lat, longLine.last().lon, "B")), days = MultiDay(3))
+    private fun endsOf(t: Tour): Map<Int, Pair<GeoPoint, GeoPoint>> {
+        val (d, _) = DayPick.days(t, longLine, Activity.BIKE_TOURING, com.onpath.app.time.Factors.ONE)!!
+        return DayPick.dayEnds(longLine, DayPick.rows(t, d, emptyList()))
+    }
+    /** A point [m] metres north of [p]. */
+    private fun north(p: GeoPoint, m: Double) = GeoPoint(p.lat + m / 111_195.0, p.lon)
+
+    @Test fun anUnchangedRouteKeepsTheTickAndTheGemachtLine() {
+        val ends = endsOf(three)
+        val ride = rode(20, 3, 7_000L, ends = ends[3])
+        assertEquals(mapOf(3 to 7_000L), DayPick.ridden("uuid-hilden", listOf(three, ride), ends))
+        val named = DayPick.named(listOf(three, ride), { null }, ::endsOf)
+        assertEquals("Von Hilden nach München" to true, named[1].planName to named[1].planOpens)
+    }
+
+    @Test fun aSmallDriftBelowTheToleranceKeepsTheTick() {
+        val ends = endsOf(three)
+        val ride = rode(20, 3, 7_000L, ends = north(ends[3]!!.first, 150.0) to north(ends[3]!!.second, 120.0))
+        assertEquals(mapOf(3 to 7_000L), DayPick.ridden("uuid-hilden", listOf(three, ride), ends))
+    }
+
+    @Test fun aDayEndMovedFiveKmTakesTheTickAndTheGemachtLineAway() {
+        val ends = endsOf(three)
+        val ride = rode(20, 3, 7_000L, ends = ends[3])
+        val moved = ends + (3 to (ends[3]!!.first to north(ends[3]!!.second, 5_000.0)))
+        assertTrue(DayPick.ridden("uuid-hilden", listOf(three, ride), moved).isEmpty())
+        val named = DayPick.named(listOf(three, ride), { "Plan copy" }, { moved })
+        assertNull("the ride claims no day any more – no line", named[1].planName)
+        assertFalse(named[1].planOpens)
+        assertEquals("the ride itself stays under Gemacht", 2, named.size)
+        // also: the edge – one metre beyond the tolerance
+        val edge = ends + (3 to (ends[3]!!.first to north(ends[3]!!.second, DayPick.SAME_END_M + 1)))
+        assertTrue(DayPick.ridden("uuid-hilden", listOf(three, ride), edge).isEmpty())
+    }
+
+    @Test fun aDayAddedBeforeRenumbersTheDaysAndTheOldRideNoLongerMatches() {
+        val before = endsOf(three)
+        val ride = rode(20, 3, 7_000L, ends = before[3])
+        val four = three.copy(days = MultiDay(4))
+        val after = endsOf(four)
+        assertTrue("day 3 of four days is another stretch", DayPick.ridden("uuid-hilden", listOf(four, ride), after).isEmpty())
+        assertNull(DayPick.named(listOf(four, ride), { null }, ::endsOf)[1].planName)
+        assertEquals(1, DayPick.next(4, emptySet()))
     }
 }
