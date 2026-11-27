@@ -29,7 +29,7 @@ export const TICK_MS = 500;
 const ENGINE_WAIT_MS = 15_000;
 
 /** One map area the server prepares for this wait (areas.ts states). */
-export interface AreaIn { id: string; state: string; progress: number; eta?: number }
+export interface AreaIn { id: string; state: string; progress: number; eta?: number; /** an 'offline' area: why, in plain words (no network / the server busy / not reachable) */ message?: string }
 /** The route run of this wait: [total] 0 = its legs not known yet; [join] = the routing data written (0..1), null = none / done. */
 export interface PlanIn {
   done: number; total: number; checking: boolean; join: number | null; names: string; points: number;
@@ -51,6 +51,9 @@ const ICON = {
 export class LoadOverlay {
   private jobs = new Map<string, Job>();
   private areaList: AreaIn[] = [];
+  /** The map waited for is the user's own area (first map, own position); false = a searched / set place – „Karte für
+   *  diesen Ort“, not „deine Gegend“ (owner 2026-11-27, the app's MapLoadUi.here). */
+  private here = true;
   private planIn: PlanIn | null = null;
   private onCancelPlan: (() => void) | null = null;
   /** A wait runs (the engine's WebWait ticks from its first moment, also before the window shows). */
@@ -117,7 +120,8 @@ export class LoadOverlay {
   isOpen(id: string) { const j = this.jobs.get(id); return !!j && j.done < j.total; }
 
   /** The map areas the server prepares that this wait waits for (the user's own point / search; [] = none). */
-  areas(list: AreaIn[]) {
+  areas(list: AreaIn[], here = true) {
+    this.here = here;
     const open = (l: AreaIn[]) => l.some((a) => a.state !== 'ready' && a.state !== 'failed');
     // a map area to prepare joins a wait that had none (the page's first map, tiles): a wait of its own – its
     // „vorbereiten“ step would otherwise stand before steps already done (the app's MapWait is one per place)
@@ -219,6 +223,12 @@ export class LoadOverlay {
       p?.done ?? 0, p ? p.total : -1, !!p?.checking, p?.names ?? '', p?.points ?? 0,
       (typeof navigator !== 'undefined' && navigator.onLine === false) || this.areaList.some((a) => a.state === 'offline'));
     this.ui = ui ?? this.fallback(jobs, p);
+    // paused while the browser is online: the map server answered busy / failed – said as such, never „Keine
+    // Internetverbindung“ (owner 2026-11-27, the app's MapLoadUi.Kind.SERVER); the area's own words
+    const said = typeof navigator !== 'undefined' && navigator.onLine === false ? null
+      : this.areaList.find((a) => a.state === 'offline' && a.message && a.message !== t('maps_err_no_connection'))?.message;
+    if (this.ui.paused && said) this.ui = { ...this.ui, line: said };
+    if (!this.here && this.ui.title === t('wait_title_map')) this.ui = { ...this.ui, title: t('wait_title_map_place') };
     // the engine came while the plain bar showed: never back from what was drawn
     if (this.ui.percent < this.drawn) this.ui = { ...this.ui, percent: this.drawn };
     if (this.visible) this.draw();

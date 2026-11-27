@@ -687,7 +687,7 @@ export function phoneDialog(sync: PlanSync, page: string) {
     <div class="row wrap" id="phoneRow"><button id="pairPhone" class="primary" hidden>${esc(t('web_pair_phone'))}</button><button id="pairAgain" class="primary" hidden>${esc(t('web_pair_again'))}</button><button id="syncNow" hidden>${esc(t('web_plans_sync_now'))}</button></div>
     <button id="howToggle" class="textbtn quiet howtoggle" aria-expanded="false" aria-controls="howBox">${esc(t('web_phone_how_link'))}</button>
     <div id="howBox" class="howbox" hidden>
-      <ul class="how"><li>${esc(t('web_phone_why'))}</li><li>${esc(t('web_phone_how_2'))}</li><li>${esc(t('web_phone_how_3'))}</li></ul>
+      <ul class="how"><li>${esc(t('web_phone_why'))}</li></ul>
       <p class="muted small privacy">${esc(t('web_phone_privacy'))} <a href="${esc(t('web_url_privacy'))}" target="_blank" rel="noopener">${esc(t('web_phone_more'))}</a></p>
     </div>
     <div id="phoneWinMore" class="phonemore"><button id="pairOther" class="textbtn quiet" hidden>${esc(t('web_pair_other'))}</button></div>

@@ -11,7 +11,8 @@
     <string name="web_live_loading">Lädt …</string>
     <string name="web_live_late">Etwas später als geplant · Ankunft ca. %1$s</string>
     <string name="web_live_late_plain">Etwas später als geplant</string>
-    <string name="web_live_moving">Alles okay, unterwegs</string>
+    <string name="web_live_moving">Unterwegs, auf der Route</string>
+    <string name="web_live_moving_free">Unterwegs</string>
     <string name="web_live_pause">Macht gerade Pause</string>
     <string name="web_live_off_route">Gerade etwas abseits der Route</string>
     <string name="web_live_low_battery">Akku %1$d %</string>
@@ -22,6 +23,8 @@
     <string name="web_live_broken">Dieser Link funktioniert nicht.</string>
     <string name="web_live_no_data">Noch keine Daten – das Handy hat sich noch nicht gemeldet.</string>
     <string name="web_live_server">Server nicht erreichbar – gleich nochmal.</string>
+    <string name="web_live_busy">Server ausgelastet – gleich nochmal.</string>
+    <string name="web_live_offline">Keine Internetverbindung – geht weiter, sobald du online bist.</string>
     <string name="web_live_minutes">%1$d Min.</string>
     <string name="web_live_hours">%1$d h %2$s min</string>
     <string name="web_live_row_arrival">Ankunft</string>

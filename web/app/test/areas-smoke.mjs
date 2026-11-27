@@ -278,6 +278,21 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   await ctx.close(); server.close();
 }
 
+// ---- C3: the map server busy (429, no quota): said as busy – never „No internet connection“ (owner 2026-11-27, the app's fix) ----
+{
+  const { page, ctx, server } = await open({ geolocation: { latitude: 48.2082, longitude: 16.3738, accuracy: 20 }, permissions: ['geolocation'] }, '11.16,46.67,12',
+    { maps: () => Response.json({ error: 'busy' }, { status: 429, headers: { 'retry-after': '60' } }) });
+  await page.click('#locate');
+  const said = await page.waitForFunction(() => {
+    const w = document.getElementById('waitwin');
+    const t = (w?.querySelector('.wwline')?.textContent ?? '') + ' ' + document.getElementById('mapnotes').innerText;
+    return /busy/.test(t) ? t : null;
+  }, null, { timeout: 20_000 }).then((h) => h.jsonValue(), () => null);
+  const all = await page.evaluate(() => (document.getElementById('waitwin')?.innerText ?? '') + ' ' + document.getElementById('mapnotes').innerText);
+  check(!!said && /The map server is busy/.test(said) && !/No internet|online/.test(all), `429: the true words, no "no internet" ("${(said ?? all).trim().slice(0, 120)}")`);
+  await ctx.close(); server.close();
+}
+
 // ---- D: the sheet's waits while planning (zoom 8: no prefetch, so the plan downloads its routing data) ----
 {
   const { page, ctx, server } = await open({}, '11.25,46.6,8', {});
@@ -299,12 +314,12 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   const beside = await page.evaluate(() => window.__beside);
   check(beside.length === 0, `no map note while the wait window shows – it comes back after if still true (${JSON.stringify(beside)})`);
   // the routing data from this test server comes in a moment: the window may first show at its route step already
-  check(seen.some((t) => /^\[busy\] (Map for your area|Calculating the route) · \d+ %$/.test(t)), `the plan's wait: the window with a percent ("${seen.find((t) => t.includes('%')) ?? 'not seen'}")`);
+  check(seen.some((t) => /^\[busy\] (Map for your area|Map for this place|Calculating the route) · \d+ %$/.test(t)), `the plan's wait: the window with a percent ("${seen.find((t) => t.includes('%')) ?? 'not seen'}")`);
   console.log(`(the window's rows: ${(await page.evaluate(() => window.__winLog)).slice(0, 6).join(' ; ')})`);
   const lastWin = seen.slice(seen.lastIndexOf('[gone]', seen.length - 2) + 1);
   const pcts = lastWin.map((x) => /· (\d+) %$/.exec(x)?.[1]).filter(Boolean).map(Number);
   check(pcts.every((v, i) => !i || v >= pcts[i - 1]), `the window's percent never goes back (${pcts.join(' ')})`);
-  check(seen.filter((t) => / %$/.test(t)).every((t) => /^\[busy\] (Map for your area|Calculating the route) · \d+ %$/.test(t)),
+  check(seen.filter((t) => / %$/.test(t)).every((t) => /^\[busy\] (Map for your area|Map for this place|Calculating the route) · \d+ %$/.test(t)),
     `one window: the map's title, then the route's – a percent all the way (${JSON.stringify([...new Set(seen.filter((t) => t.includes('%')).map((t) => t.replace(/ · \d+ %/, '')))])})`);
   await page.waitForFunction(() => !document.getElementById('waitwin'), null, { timeout: 10_000 }).catch(() => {});
   check(!(await page.evaluate(() => document.getElementById('status').classList.contains('busy') || !!document.getElementById('waitwin'))), 'after the plan: no spinner, no window left');

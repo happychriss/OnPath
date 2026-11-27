@@ -101,6 +101,7 @@ check(changed === null, `after the user's own Hike → Bike: no "New route for �
 await page.click('#roundTrip');
 await planned(bike);
 check((await page.textContent('#points')).includes('↺'), 'round trip: start shown with ↺ (PlanPoints rows)');
+check(await page.$eval('#points li:first-child .num', (n) => !!n.querySelector('svg') && !/\d/.test(n.textContent)), 'round trip: its start shows the goal flag, not „1“ (owner 2026-11-27)');
 check(await page.evaluate(() => document.querySelectorAll('.pin').length) === 3, 'round trip: 3 markers (closing point not drawn twice)');
 check(!(await page.isDisabled('#roundTrip')) && await page.evaluate(() => document.getElementById('roundTrip').classList.contains('on'))
   && await page.getAttribute('#roundTrip', 'aria-pressed') === 'true',
@@ -111,7 +112,8 @@ const loopBefore = await page.textContent('#points');
 await page.locator('.pin').nth(1).click();
 await page.waitForSelector('.pointmenu');
 const items = await page.$$eval('.pointmenu button .txt > span:first-child', (b) => b.map((x) => x.textContent));
-check(items.join('|') === 'Set as start|Delete', 'point menu of a loop point: Set as start (same round trip) · Delete');
+check(items.join('|') === 'Set as start of the round trip|Delete', `point menu of a loop point: one row „Set as start of the round trip“ · Delete (owner 2026-11-27) (${items.join('|')})`);
+check(await page.$$eval('.pointmenu button', (b) => !b[0].querySelector('.sub, .muted, small')), 'the loop start row has no line under it');
 await page.click('.pointmenu button:first-of-type');
 await page.waitForFunction((b) => document.getElementById('points').textContent !== b, loopBefore, { timeout: 10_000 }).catch(() => {});
 check((await page.textContent('#points')) !== loopBefore, 'Start & finish here rotated the loop');

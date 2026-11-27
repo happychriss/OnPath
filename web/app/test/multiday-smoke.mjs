@@ -54,7 +54,9 @@ async function run(lang, viewport, shotPrefix) {
   await page.evaluate(() => {
     const w = window; w.__planBar = { shown: 0, faded: null };
     const bar = document.getElementById('runbar');
-    new MutationObserver(() => { if (!bar.hidden) { w.__planBar.shown++; w.__planBar.faded = w.__map?.getPaintProperty('planned-route', 'line-opacity') ?? null; } })
+    new MutationObserver(() => { if (!bar.hidden) { w.__planBar.shown++; w.__planBar.faded = w.__map?.getPaintProperty('planned-route', 'line-opacity') ?? null;
+      // one statement per run (owner 2026-11-27): the sheet's „Calculating the route…“ line steps back while the bar shows
+      const line = document.querySelector('#summary .subline.waitline'); w.__planBar.lineToo = (w.__planBar.lineToo ?? 0) + (line && getComputedStyle(line).display !== 'none' && line.getClientRects().length ? 1 : 0); } })
       .observe(bar, { attributes: true, attributeFilter: ['hidden'] });
   });
   await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
@@ -244,6 +246,7 @@ async function run(lang, viewport, shotPrefix) {
   await settled();
   const pbar = await page.evaluate(() => ({ ...window.__planBar, hidden: document.getElementById('runbar').hidden,
     now: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(!pbar.lineToo, `while the bar shows, the sheet's wait line does not (one statement) (${pbar.lineToo ?? 0}×)`);
   check(pbar.shown > 0 && pbar.faded === 0.45 && pbar.hidden && (pbar.now ?? 1) === 1,
     `while the planner computes: the thin bar under the tool row and the route faded, then both gone (${JSON.stringify(pbar)})`);
   // 9 · a day row highlights that day
@@ -261,6 +264,17 @@ async function run(lang, viewport, shotPrefix) {
     shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
+  // Space held = the eye: the path under the route shows, the day's mark leaves the map but stays in the profile
+  await page.keyboard.down(' ');
+  await page.waitForTimeout(200);
+  const peek = await page.evaluate(() => ({ range: window.__map.getLayoutProperty('profile-range', 'visibility'),
+    route: window.__map.getLayoutProperty('planned-route', 'visibility'),
+    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden) }));
+  await page.keyboard.up(' ');
+  await page.waitForTimeout(200);
+  const peekBack = await page.evaluate(() => window.__map.getLayoutProperty("profile-range", "visibility"));
+  check(peek.range === 'none' && peek.route === 'none' && peek.shade && peekBack === "visible",
+    `space held: route and the day's mark hidden on the map, the profile keeps the day (${JSON.stringify(peek)}, after: ${peekBack})`);
   await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
   check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
 

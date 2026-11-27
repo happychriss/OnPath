@@ -170,7 +170,8 @@ export class MapAreas {
     }
     if (r.status === 429 || r.status >= 500) {
       const after = Number(r.headers.get('retry-after')) || 0;
-      return this.offline(ids, this.s('maps_err_unreachable'), after);
+      // 429 = the server is busy, not unreachable (the app's CellApi: maps_err_busy; owner 2026-11-27 – one true statement)
+      return this.offline(ids, this.s(r.status === 429 ? 'maps_err_busy' : 'maps_err_unreachable'), after);
     }
     if (!r.ok) { // 400: a bug on our side – said once, not retried
       console.error(`map areas: ${kind} refused (HTTP ${r.status}): ${(await r.text()).slice(0, 200)}`);
@@ -235,12 +236,14 @@ export class MapAreas {
       return `${id}\t${x.s}\t${x.s === 'building' ? x.progress : x.s === 'ready' ? 1 : 0}\t${(x.s === 'queued' || x.s === 'building') && x.eta != null ? x.eta : -1}`;
     });
     const wait = busy && !!job && (job.own != null || (this.centreAbsent && job.why !== 'here')) && !this.handedOver;
-    this.onWait?.(wait ? lines.map((l) => { const [id, state, progress, eta] = l.split('\t'); return { id, state, progress: Number(progress), eta: Number(eta) >= 0 ? Number(eta) : undefined }; }) : []);
+    this.onWait?.(wait ? lines.map((l) => { const [id, state, progress, eta] = l.split('\t'); const x = this.states.get(id);
+      return { id, state, progress: Number(progress), eta: Number(eta) >= 0 ? Number(eta) : undefined, message: x?.s === 'offline' ? x.message : undefined }; }) : [],
+      job?.why !== 'searched' && job?.why !== 'planned');
     this.onBackground?.(busy && !wait ? { lines: lines.join('\n'), rows: [n!.title, ...(n!.lines ?? [])], cancel: () => { this.hidden = true; this.show(); } } : null);
   }
 
   /** The wait window (form A) takes the areas the user waits for; [] = none. */
-  onWait: ((areas: { id: string; state: string; progress: number; eta?: number }[]) => void) | null = null;
+  onWait: ((areas: { id: string; state: string; progress: number; eta?: number; message?: string }[], here: boolean) => void) | null = null;
   /** The sign beside the map (form B) takes the areas loading in the background; null = none. */
   onBackground: ((b: { lines: string; rows: string[]; cancel: () => void } | null) => void) | null = null;
   /** The window's Cancel: the job's areas load on beside the map (form B) until they are there. */

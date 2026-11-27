@@ -132,6 +132,22 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   l = await lineOf(V);
   check(l.state === 'no_data' && /Noch keine Daten/.test(l.text) && !l.facts, `before the first upload: "${l.text}"`);
   check(!(await V.evaluate(() => location.href)).includes('t='), 'the key is taken out of the address bar');
+  // ---- 2b. a busy server is said as busy, not as "not reachable" (owner 2026-11-27: one true statement) ----
+  {
+    let busyAnswers = 0;
+    await V.route('**/live/v1/**', (r) => { busyAnswers++; return r.fulfill({ status: 429, headers: { 'retry-after': '30' }, body: 'busy' }); });
+    await ask(V);
+    const busyNote = (await lineOf(V)).note;
+    check(busyAnswers > 0 && busyNote === 'Server ausgelastet – gleich nochmal.', `429: "${busyNote}"`);
+    await V.unroute('**/live/v1/**');
+    await V.route('**/live/v1/**', (r) => r.abort('connectionrefused'));
+    await ask(V);
+    const downNote = (await lineOf(V)).note;
+    check(downNote === 'Server nicht erreichbar – gleich nochmal.', `no answer: "${downNote}"`);
+    await V.unroute('**/live/v1/**');
+    V.errors.splice(0); // the refused requests above are the test's own
+  }
+
   check(l.foot === 'Kein Notruf-Dienst – im Notfall 112.', 'the fixed line: no emergency service');
   const viewOf = async (P) => { await P.waitForFunction(() => window.__map, null, { timeout: 30_000 }); return P.evaluate(() => { const m = window.__map, b = m.getBounds();
     return { view: document.getElementById('mapbox').dataset.view ?? null, hiddenMap: getComputedStyle(document.getElementById('map')).visibility === 'hidden',
@@ -172,7 +188,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   clock.t = T0 + 2 * MIN + 5_000;
   await ask(V);
   l = await lineOf(V);
-  check(l.state === 'moving' && l.text === 'Alles okay, unterwegs' && l.tone === 'good', `moving: "${l.text}"`);
+  check(l.state === 'moving' && l.text === 'Unterwegs, auf der Route' && l.tone === 'good', `moving with a route (owner 2026-11-27): "${l.text}"`);
   check(l.title === 'Christian' && await V.evaluate(() => document.getElementById('initial').textContent) === 'C', `the name from the sealed data: "${l.title}", its initial`);
   check(/^ca\. \d\d:\d\d · noch 6,2 km$/.test(l.togo ?? ''), `arrival and to go: "${l.togo}"`);
   check(l.battery === '43 %', `battery: "${l.battery}"`);

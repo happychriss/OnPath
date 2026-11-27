@@ -151,9 +151,9 @@ export class MultiDay {
     if (!this.guideOpen) { g.innerHTML = ''; return; }
     const pts = this.h.points(), has = pts.length >= 2, plan = this.h.routedPlan();
     const way = (id: string, ic: 'fileOpen' | 'folder', label: string, line: string) =>
-      `<button class="tgway" id="${id}">${icon(ic, 20)}<span class="txt"><b>${esc(label)}</b><span class="muted small">${esc(line)}</span></span></button>`;
+      `<button class="tgway" id="${id}">${icon(ic, 20)}<span class="txt"><b>${esc(label)}</b>${line ? `<span class="muted small">${esc(line)}</span>` : ''}</span></button>`;
     const ways = way(has ? 'tgGpxMore' : 'tgGpx', 'fileOpen', t('days_load_gpx'), t('days_load_gpx_line')) +
-      way(has ? 'tgSavedMore' : 'tgSaved', 'folder', t('days_open_saved'), t('days_open_saved_line'));
+      way(has ? 'tgSavedMore' : 'tgSaved', 'folder', t('days_open_saved'), ''); // „Aus Meine Touren.“ gone (owner 2026-11-27, hint list 15)
     g.innerHTML = `<div class="tghead"><b>${esc(t('days_plan_tour'))}</b>
         <button class="iconbtn" id="tgClose" aria-label="${esc(t('common_close'))}" title="${esc(t('common_close'))}">${icon('close', 20)}</button></div>
       <div class="tgstep"><span class="tgnum ${has ? 'done' : ''}">${has ? icon('check', 16) : '1'}</span><b>${esc(t('days_step_route'))}</b></div>

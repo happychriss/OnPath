@@ -90,7 +90,7 @@ function words(l: StatusLine): string {
     case 'off_route': return t('web_live_off_route');
     case 'pause': return t('web_live_pause');
     case 'late': return l.atMs != null ? t('web_live_late', clock(l.atMs)) : t('web_live_late_plain');
-    case 'moving': return t('web_live_moving');
+    case 'moving': return state?.route.length ? t('web_live_moving') : t('web_live_moving_free'); // owner 2026-11-27, hint list 20
   }
 }
 
@@ -149,7 +149,7 @@ function render() {
   const initial = !dead && h?.name ? [...h.name.trim()][0]?.toUpperCase() : undefined;
   if (initial) $('initial').textContent = initial; else $('initial').innerHTML = ICON.person;
   const note = $('note');
-  note.hidden = !s.unreachable || dead; note.textContent = t('web_live_server');
+  note.hidden = !s.unreachable || dead; note.textContent = t(s.why === 'busy' ? 'web_live_busy' : s.why === 'offline' ? 'web_live_offline' : 'web_live_server');
   $('facts').hidden = dead || !h;
   $('acts').hidden = dead || !h?.fix;
   updateCount();

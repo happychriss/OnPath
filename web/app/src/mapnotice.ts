@@ -48,6 +48,9 @@ export class MapNotices {
     for (const slot of ORDER) {
       const n = this.shown.get(slot);
       if (!n || load) continue;
+      // one statement per state (owner 2026-11-27): the cells' line and the areas' note both speak about the detailed map
+      // (offline, server busy) – the cells' line says it, the areas' note steps back unless it is a wait with progress
+      if (slot === 'areas' && n.kind !== 'busy' && this.shown.has('cells')) continue;
       count++;
       const el = document.createElement('div');
       el.className = `mapnote ${n.kind}`;

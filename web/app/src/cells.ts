@@ -32,7 +32,7 @@ interface Cell { z: number; x: number; y: number; version: string; dir: string; 
  * not there or not readable (404, 416, wrong bytes) → current.json is read again once (the cell may have a new version),
  * else the file is left out until the page is reloaded.
  */
-interface Trouble { kind: 'busy' | 'gone'; tries: number; until: number; broken: boolean }
+interface Trouble { kind: 'busy' | 'gone'; tries: number; until: number; broken: boolean; /** the server said 429 (busy, not unreachable) */ overloaded?: boolean }
 /** Seconds before the next try after the n-th failure (a 429 waits at least a minute: the host's Retry-After). */
 const BACKOFF_S = [5, 15, 30, 60, 120, 300];
 const MAX_TRIES = BACKOFF_S.length;
@@ -47,7 +47,7 @@ export class Cells {
   /** Failed file reads per "<cell key>/<layer>" (see Trouble). */
   private trouble = new Map<string, Trouble>();
   /** current.json reads that failed without a 404 (server busy / offline), per cell key: not read again before [until]. */
-  private lookupFails = new Map<string, { tries: number; until: number }>();
+  private lookupFails = new Map<string, { tries: number; until: number; overloaded?: boolean }>();
   /** current.json read again after a file of the cell was gone, per "<cell key>@<version>" (once): true = switched. */
   private rechecks = new Map<string, Promise<boolean>>();
   /** Versions replaced by a newer one ("<cell key>@<version>"): late failures of their reads are ignored. */
@@ -101,7 +101,7 @@ export class Cells {
           this.cells.delete(key);
           const tries = (failed?.tries ?? 0) + 1;
           const wait = Math.max(BACKOFF_S[Math.min(tries, MAX_TRIES) - 1], r?.status === 429 ? 60 : 0);
-          this.lookupFails.set(key, { tries, until: Date.now() + wait * 1000 });
+          this.lookupFails.set(key, { tries, until: Date.now() + wait * 1000, overloaded: r?.status === 429 });
           problem('cells', `map cell ${key}: current.json not read (${r ? 'HTTP ' + r.status : 'no connection'}) – trying again`, err);
           this.scheduleRetry(z === CELL_Z ? LAYERS : PACKAGE_LAYERS, wait);
           this.onChange();
@@ -201,8 +201,9 @@ export class Cells {
     } else if (tries > MAX_TRIES) {
       this.leftOut(c, layer, `not loaded after ${MAX_TRIES} tries`, e);
     } else {
-      const wait = Math.max(BACKOFF_S[tries - 1], /\b429\b/.test(String((e as Error)?.message)) ? 60 : 0);
-      this.trouble.set(k, { kind, tries, until: now + wait * 1000, broken: false });
+      const overloaded = /\b429\b/.test(String((e as Error)?.message));
+      const wait = Math.max(BACKOFF_S[tries - 1], overloaded ? 60 : 0);
+      this.trouble.set(k, { kind, tries, until: now + wait * 1000, broken: false, overloaded });
       problem('cells', `map cell ${key}: ${layer}.pmtiles read failed – trying again`, e);
       this.scheduleRetry([layer], wait);
     }
@@ -237,17 +238,21 @@ export class Cells {
   }
 
   /**
-   * The detailed map's state in view (the map strip): 'broken' when a cell's base map is left out for good, 'busy' while
-   * one is being tried again (or its current.json could not be read), else null.
+   * The detailed map's state in view (the map strip): 'broken' when a cell's base map is left out for good, 'overloaded'
+   * while one waits because the server said it is busy (429 – said as busy, not as unreachable: one true statement,
+   * owner 2026-11-27), 'busy' while one is being tried again for another reason (or its current.json could not be read),
+   * else null.
    */
-  baseTrouble(map: maplibregl.Map): 'busy' | 'broken' | null {
+  baseTrouble(map: maplibregl.Map): 'busy' | 'overloaded' | 'broken' | null {
     if (map.getZoom() < CELL_Z - 0.5) return null;
-    let out: 'busy' | 'broken' | null = null;
+    let out: 'busy' | 'overloaded' | 'broken' | null = null;
     for (const [x, y] of this.inView(map).slice(0, 16)) {
       const key = cellKey(CELL_Z, x, y);
       const t = this.trouble.get(`${key}/base`);
       if (t?.broken) return 'broken';
-      if (t || this.lookupFails.has(key)) out = 'busy';
+      const lf = this.lookupFails.get(key);
+      if (t?.overloaded || lf?.overloaded) out = 'overloaded';
+      else if ((t || lf) && out !== 'overloaded') out = 'busy';
     }
     return out;
   }
