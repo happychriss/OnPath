@@ -90,6 +90,23 @@ class LegSplitTest {
         assertEquals(0, LegSplit.seedBeforeRun(cache, expanded, act, sac)) // nothing left to cut
     }
 
+    /**
+     * Step 1c (owner 2026-11-27, Hilden – Venedig): the app's long-leg rule asks about a point set ON a long known leg as
+     * two new long legs – until the leg is cut before it is weighed; then nothing is asked (the maps' question for new
+     * points and the run weigh the same, PlanRecalcState.longAsk).
+     */
+    @Test fun aPointOnALongKnownLegIsNotAskedOnceCut() {
+        val cache = LegCache()
+        val far = GeoPoint(49.12, 11.10) // ~280 km: under the phone's 300 km, each half ~140 km asks on its own
+        cache.put(a, far, act, sac, Engine().route(listOf(a, far), act, sac))
+        val spot = cache.inMemory(a, far, act, sac)!!.points[20]
+        val rule = PhoneLongRule({ RouteCost.DEFAULT_FACTOR }, { x, y, _ -> cache.inMemory(x, y, act, sac) != null }, lowEnd = true)
+        val pts = listOf(a, spot, far)
+        assertNotNull("not cut: the halves look new and long", rule.ask(pts, act))
+        assertEquals(1, LegSplit.seedBeforeRun(cache, PlanAnchors.expand(pts, emptyMap(), emptySet()), act, sac))
+        assertNull("cut: nothing to ask", rule.ask(pts, act))
+    }
+
     @Test fun beforeTheRunAnEmptyMemoryCutsNothing() {
         val cache = LegCache()
         val leg = Engine().route(listOf(a, c), act, sac)
