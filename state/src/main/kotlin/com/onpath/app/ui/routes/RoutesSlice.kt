@@ -149,7 +149,11 @@ class RoutesSlice(
                 if (m.kind == TourKind.RECORDED && asRecorded)
                     m.copy(avgKmh = com.onpath.app.time.TourReview.averageFromTimes(times[m.id], m.distanceM))
                 else m
-            } }
+            } }.let { l ->
+                // Gemacht's "Tag 3 von …" (owner 2026-11-27): the multi-day route's name – its own while in My routes, else the plan copy's
+                DayPick.named(l) { id -> runCatching { store.getTourPlan(id)?.name }
+                    .onFailure { e -> Problems.warn("routes", "The followed plan's name of tour $id not read – its day line without the route", e) }.getOrNull() }
+            }
             withContext(main) { routes.show(list, load); host.kickThumbs() }
         }
     }

@@ -253,7 +253,7 @@ internal fun RouteOverview(
  * instead of it when there is none), start dot and goal flag, the followed plan thin under a done tour, the „3 von 27“ pill.
  */
 @Composable
-private fun OverviewMapPicture(t: Tour, segments: List<List<GeoPoint>>?, snapshot: OverviewSnapshot?, planLine: List<GeoPoint>?,
+internal fun OverviewMapPicture(t: Tour, segments: List<List<GeoPoint>>?, snapshot: OverviewSnapshot?, planLine: List<GeoPoint>?,
                                position: String?, modifier: Modifier) {
     val tint = RouteShape.tint(t.kind)
     BoxWithConstraints(modifier.background(OnPathColors.PaperDim), contentAlignment = Alignment.Center) {

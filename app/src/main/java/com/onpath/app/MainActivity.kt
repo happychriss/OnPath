@@ -37,6 +37,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.core.content.ContextCompat
 import androidx.core.content.IntentCompat
 import com.onpath.app.ui.AppViewModel
+import com.onpath.app.ui.diagnosticsState
 import com.onpath.app.ui.MapScreen
 import com.onpath.app.ui.MissingDataScreen
 import com.onpath.app.domain.AppMode
@@ -180,6 +181,7 @@ class MainActivity : ComponentActivity() {
                         if (vm.routes.open) BackHandler { vm.routes.open = false }
                         PageFade(vm.routes.open) {
                             val recNow = vm.recState.collectAsState().value
+                            val snap = com.onpath.app.ui.routes.rememberOverviewSnapshot(vm)
                             RoutesScreen(
                                 tours = vm.routes.tours,
                                 recordingId = recNow?.tourId ?: -1L,
@@ -223,20 +225,7 @@ class MainActivity : ComponentActivity() {
                                 onLiveOpen = { vm.backToLivePlan() },
                                 onLiveSave = { vm.saveLivePlan() },
                                 loadLine = { vm.tourLine(it) },
-                                snapshot = run {
-                                    val pad = with(androidx.compose.ui.platform.LocalDensity.current) {
-                                        com.onpath.app.ui.FitPaddingRule.SIDE_DP.dp.roundToPx()
-                                    }
-                                    // the stored picture when it fits, else drawn and stored (owner 2026-11-15, swiping)
-                                    val snap: com.onpath.app.ui.OverviewSnapshot = { t, segs, tint, w, h, under ->
-                                        vm.overviewShot(t, segs, tint, w, h, pad, under)?.let {
-                                            com.onpath.app.ui.OverviewPicture(it.bitmap.asImageBitmap(),
-                                                androidx.compose.ui.geometry.Offset(it.startX, it.startY),
-                                                androidx.compose.ui.geometry.Offset(it.goalX, it.goalY))
-                                        }
-                                    }
-                                    snap
-                                },
+                                snapshot = snap,
                                 touring = recNow != null,
                                 // pull to refresh on Planned (owner 2026-11-13): only when paired
                                 onPull = if (vm.sync.state.collectAsState().value.paired) ({ vm.syncDriver.pull() }) else null,
@@ -249,7 +238,9 @@ class MainActivity : ComponentActivity() {
                                 onFavouritesOnly = { vm.routesFavouritesOnly = it },
                                 // the activity filter: the planning activity each time My routes opens (owner 2026-11-13)
                                 initialActivity = vm.planRoute.activity,
+                                onDays = { vm.dayPick.open(it) },
                             )
+                            com.onpath.app.ui.routes.DayPickLayer(vm, snap) // a multi-day route's day sheet (owner 2026-11-27)
                         }
                         vm.tourEnd.editRides?.let { (t, s) ->
                             com.onpath.app.ui.RideSummaryDialog(s, onSave = { vm.tourEnd.applyEditRides(t, it) }, onDelete = null,
