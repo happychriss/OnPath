@@ -389,6 +389,14 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getBoolean("suggestTest", true)
         set(v) = sp.edit().putBoolean("suggestTest", v).apply()
 
+    /**
+     * Developer tools → „Day table: all columns in one row“ (night answers 27./28.11.): the multi-day day table with km · Σ km ·
+     * ↑ m · time in one row as in the planner; off (default) = Σ km grey under the day's km (ui/DayTableLayout).
+     */
+    var dayTableOneRow: Boolean
+        get() = sp.getBoolean("dayTableOneRow", false)
+        set(v) = sp.edit().putBoolean("dayTableOneRow", v).apply()
+
     /** Last visit to Settings → Diagnostics (ms): newer serious problems colour its list line red (owner). */
     var diagnosticsSeenMs: Long
         get() = sp.getLong("diagnosticsSeenMs", 0L)

@@ -124,6 +124,7 @@ internal fun DeveloperTools(
     language: LanguageUi = LanguageUi(),
     demo: DemoUi? = null,
     suggestTest: SuggestTestUi? = null,
+    dayTableOneRow: SuggestTestUi? = null,
 ) {
     var open by remember { mutableStateOf(initiallyOpen) }
     Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
@@ -149,6 +150,9 @@ internal fun DeveloperTools(
                 demo?.let { DemoRow(it) }
                 // the round-trip suggestions (docs/design/tour-suggestions.md §7 stage 4): on by default since 2026-11-18, an off-switch as the planner's ?debug one
                 suggestTest?.let { t -> SwitchRow(str(Res.string.suggest_ui_test), null, t.on, onChange = t.onChange) }
+                // the multi-day day table: Σ km under km (the default at 360 dp) or all columns in one row as in the planner
+                dayTableOneRow?.let { t -> SwitchRow("Day table: all columns in one row",
+                    "Multi-day days: km · Σ km · ↑ m · time side by side (planner layout); off = Σ km under km", t.on, onChange = t.onChange) }
                 LanguageRow(language)
                 HorizontalDivider(Modifier.padding(vertical = 4.dp))
                 Text("Map data", fontWeight = FontWeight.SemiBold, style = MaterialTheme.typography.bodyMedium)
