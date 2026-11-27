@@ -84,7 +84,7 @@ class PlaceAddAdaptersTest {
         val menu = body("    fun placeMenu(")
         assertTrue(menu, menu.contains("PlaceAddMenu.planningPlaceMenu(placeAdd.lineDpOf(p, poiMenuRows?.lineSnapM ?: 30.0), d)"))
         assertTrue(menu, menu.contains("return PlaceAddMenu.menu(waypoints.size, touring, placeAdd.zoneFor(p))"))
-        assertTrue(body("    fun poiAddLabel(").contains("val ins = placeAdd.insertionFor(GeoPoint(poi.lat, poi.lon), lineSnapM)"))
+        assertTrue(body("    fun poiAdd(").contains("val ins = placeAdd.insertionFor(GeoPoint(poi.lat, poi.lon), lineSnapM)"))
         assertTrue(body("    fun placeCardUi(").contains("val ins = placeAdd.insertionFor(GeoPoint(place.lat, place.lon), 30.0)"))
         assertTrue(body("    fun makeStartFromMenu(").contains("placeAdd.startAtPoint(index)"))
         val close = body("    fun closeMapOverlays(")

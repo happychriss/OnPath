@@ -166,7 +166,7 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
     val style = MaterialTheme.typography.titleMedium
     val density = LocalDensity.current
     val blue = ButtonDefaults.buttonColors(containerColor = OnPathColors.ActionEdit, contentColor = OnPathColors.CardWhite)
-    // Anhalten is blue (owner 2026-11-26: "das Einzige, was in der Navigation blau ist, ist Anhalten und Planen")
+    // Anhalten is green (NavPauseStrong), Planen blue (ActionEdit) – owner 2026-11-26
     val pauseColors = ButtonDefaults.buttonColors(containerColor = OnPathColors.NavPauseStrong, contentColor = OnPathColors.CardWhite)
     val go = @Composable { word: String, icon: ImageVector?, m: Modifier, hold: Boolean, act: () -> Unit ->
         if (hold) HoldButton(word, OnPathColors.NavPauseStrong, OnPathColors.NavPauseTonal, OnPathColors.OnNavPauseTonal, act, hintOr,

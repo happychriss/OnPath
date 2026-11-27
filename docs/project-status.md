@@ -6,9 +6,8 @@ release's notes) and the git history – this file keeps only the current state 
 
 ## Where things are
 <!-- Kept by the captain every round (docs/team/roles/captain.md). -->
-- **GitHub release:** v0.18.10 (2026-11-25 10:54 UTC, de9bb71a4, donald, owner's word in donald's chat): „Standort teilen“
-  for everyone, detours explained, restore the old plan, standing-still GPS, GPS jump / clock / storage / plan-sync fixes.
-  Full E2E 114/114 + Rundgang 18/18 on the same app code; release run 45597989609 green.
+- **GitHub release:** v0.18.11 (2026-11-27 00:05 UTC, bc388b880, owner's word 2026-11-26 23:04): the Daumen-Karte (search,
+  ☰ and activity in the plan card, no top band), menus likeliest row first, T1–T5 as rows, „Als Übernachtung“.
 - **Planner (plan.onpath.earth):** deployed by the 0.18.10 release run (planner job green, 2026-11-25), with the detour line
   and the modal wait window.
 - **Pixel:** the owner gets updates from GitHub this weekend (not on USB); whether 0.18.7 is installed is not known.
@@ -20,6 +19,7 @@ release's notes) and the git history – this file keeps only the current state 
   offline corridor 10 km on foot, 20 km for bike activities (donald). Smaller open items: `docs/team/backlog.md`; open questions: backlog "Waiting for the owner"; the owner's own questions: the Fragenregister.
 
 ## Last session
+- **donald, 2026-11-27 – 0.18.11 released** (Daumen-Karte); cleanup branch `chore/aufraeumen-0.18.11` waits for the owner.
 - **donald, 2026-11-25 – 0.18.10 released + planner deployed** (night list: restore box, detour reason, share-name blocker fixed test-first, E2E hold test steady under new brouter.de data) – `docs/team/handoffs/handoff-donald-2026-11-24.md` top.
 - **donald, 2026-11-24 late – standing-still GPS by the motion sensor, on main (42ddd8bcc), test APK on his Pixel 23:03:** owner's word after his Pixel lying indoors woke 9 times in 48 min: poor fixes no longer wake while the sensor says still, a sensor minute rests, the sensor moving wakes at once, GPS OFF after 1 h still (owner) – back on at the first move or when the sensor loses its word (`recording/RestGps`, `RestWatch.onTick`). Gate full green; NOT checked: E2E, a real tour.
 - **laptop, 2026-11-24 – long plan link online, wait window modal + pairing-link fix on main (READ `docs/team/handoffs/handoff-laptop-2026-11-17.md`, top):** the owner starts planner deploys in Actions; the next one carries the modal window and the pairing fix. LordTriangel's PRs: planner notes in the laptop chat.

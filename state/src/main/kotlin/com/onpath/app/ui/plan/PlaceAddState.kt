@@ -86,7 +86,7 @@ enum class AddRole { SMART, START, DESTINATION }
 
 /**
  * Adding points to the plan (rebuild phase 2 piece 11, core feature C2: the hold on the map every tour starts with): where a
- * new point goes ([insertionFor]), the add entries of a place / a held spot ("Einfügen", "Neues Ziel", "Start here", "Go here"
+ * new point goes ([insertionFor]), the add entries of a place / a held spot ("Als Stopp", "Als Ziel", "Start here", "Go here"
  * from my location), the hold on the map with its two-row menu and the measuring of a hold beside the plan on the router's
  * real paths, the places added from the menu / the card, and the first-point menu. Every add is ONE [PlanEditSlice.change]
  * and writes [PlanEditSlice.pinTaken] after it. The decisions are rules in :core (WaypointInsertion, PlaceAddMenu,
@@ -111,7 +111,7 @@ open class PlaceAddState(
     /** A hold on the empty map in a doubtful spot (owner 2026-11-15): the spot, its two rows and the hold's snap distance. */
     class HoldAdd(val p: GeoPoint, val menu: PlaceAddMenu.Menu, val lineSnapM: Double)
 
-    /** The open „Einfügen“ / „Neues Ziel“ menu of a hold on the empty map; null = none ([holdOnMap]). The map's overlay closes it too. */
+    /** The open „Als Stopp“ / „Als Ziel“ menu of a hold on the empty map; null = none ([holdOnMap]). The map's overlay closes it too. */
     var holdAddMenu by mutableStateOf<HoldAdd?>(null)
 
     /** First hold on an empty plan: the held spot, its menu "Start here · Go here (from my location)" is open. */
@@ -186,24 +186,24 @@ open class PlaceAddState(
         return PlaceAddMenu.zone(ahead, p, loop = PlanEdits.isRoundTrip(waypoints))
     }
 
-    /** Place menu → „Einfügen“: where it fits best on the route ahead, never behind the goal (the goal stays). */
+    /** Place menu → „Als Stopp“: where it fits best on the route ahead, never behind the goal (the goal stays). */
     fun addPoiAsStop(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0) =
         addPoiWith(poi, "as a stop") { p -> insertAsStop(p, lineSnapM) }
 
     /**
-     * Place menu → „Neues Ziel“ (owner 2026-11-14): while planning (no tour) the route goes on to the place and the old
+     * Place menu → „Als Ziel“ (owner 2026-11-14): while planning (no tour) the route goes on to the place and the old
      * goal stays as the last stop – planning forward; during a tour the place replaces the old goal (no detour back to a
      * goal one changed one's mind about – flow map N3, owner 2026-11-07). [PlaceAddMenu.keepsOldGoal]; Undo either way.
      */
     fun poiAsNewDestination(poi: com.onpath.app.poi.Poi) = addPoiWith(poi, "as the new destination") { p -> asNewDestination(p) }
 
-    /** „Einfügen“ of a place or a held spot: the stop-only insertion on the route ahead (the goal stays). */
+    /** „Als Stopp“ of a place or a held spot: the stop-only insertion on the route ahead (the goal stays). */
     private fun insertAsStop(p: GeoPoint, lineSnapM: Double) {
         val ins = insertionFor(p, lineSnapM, stopOnly = true)
         planEdit.change { add(ins.index.coerceIn(0, size), p) }
     }
 
-    /** „Neues Ziel“ of a place or a held spot: appended while planning, replaces the goal on a tour. */
+    /** „Als Ziel“ of a place or a held spot: appended while planning, replaces the goal on a tour. */
     private fun asNewDestination(p: GeoPoint) {
         val keep = PlaceAddMenu.keepsOldGoal(touring = host.touring())
         planEdit.change { if (isEmpty() || keep) add(p) else set(lastIndex, p) }
@@ -213,7 +213,7 @@ open class PlaceAddState(
      * A hold on the empty map in Plan ([MapGestures.Action.AddPoint], core feature C1), owner 2026-11-15 / 11-17. While
      * planning [PlaceAddMenu.planningHold] decides (owner 2026-11-17 21:40: „die kürzere gewinnt; nur fast gleich →
      * fragen“): on the line → the smart insertion, else the shorter of appending / inserting at once, within 20 % of each
-     * other → the small menu „Einfügen“ / „Neues Ziel“, the cheaper first;
+     * other → the small menu „Als Stopp“ / „Als Ziel“, the cheaper first;
      * on a tour or a round trip the zone does ([PlaceAddMenu.asksOnHold]). Back / a tap elsewhere adds nothing.
      * Not on the line, the detours are measured on the real paths first ([measureHold], owner 2026-11-17).
      */
@@ -329,7 +329,7 @@ open class PlaceAddState(
         }
     }
 
-    /** The hold menu's „Einfügen“. */
+    /** The hold menu's „Als Stopp“. */
     fun holdAsStop() {
         val a = holdAddMenu ?: return
         holdAddMenu = null
@@ -337,7 +337,7 @@ open class PlaceAddState(
         insertAsStop(a.p, a.lineSnapM)
     }
 
-    /** The hold menu's „Neues Ziel“. */
+    /** The hold menu's „Als Ziel“. */
     fun holdAsNewDestination() {
         val a = holdAddMenu ?: return
         holdAddMenu = null

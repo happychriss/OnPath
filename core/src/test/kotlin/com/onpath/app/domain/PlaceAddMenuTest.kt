@@ -35,7 +35,7 @@ class PlaceAddMenuTest {
 
     /**
      * The field case (11:25): position in Hilden centre, goal 1 km to the WEST, the church 800 m to the NORTH-EAST. As a
-     * stop it adds ~1.5 km to a 1 km rest (more than doubles it) – „Neues Ziel“ first, „Einfügen“ under it.
+     * stop it adds ~1.5 km to a 1 km rest (more than doubles it) – „Als Ziel“ first, „Als Stopp“ under it.
      */
     @Test fun churchNorthEastWithTheGoalWestIsOnlyTheGoal() {
         val goal = at(here, -1000.0, 0.0)
@@ -182,7 +182,7 @@ class PlaceAddMenuTest {
         assertEquals(listOf(Item.SET_DESTINATION), PlaceAddMenu.menu(1, true, null).main)
     }
 
-    // ---- „Einfügen“ keeps the goal ----
+    // ---- „Als Stopp“ keeps the goal ----
 
     @Test fun aStopNeverReplacesOrPassesTheGoal() {
         val goal = at(here, 2000.0, 0.0)
@@ -204,7 +204,7 @@ class PlaceAddMenuTest {
 
     /**
      * The owner's case: two points 2 km apart, a hold 800 m beside the middle – as a stop it adds about a quarter, it could
-     * as well be where the route goes on: doubtful. Before it was set silently; now it asks („Einfügen“ first).
+     * as well be where the route goes on: doubtful. Before it was set silently; now it asks („Als Stopp“ first).
      */
     @Test fun aHoldInADoubtfulSpotAsks() {
         val goal = at(here, 2000.0, 0.0)
@@ -212,7 +212,7 @@ class PlaceAddMenuTest {
         assertEquals(Zone.STOP_FIRST, zone)
         assertTrue("a doubtful hold asks", PlaceAddMenu.asksOnHold(zone))
         assertEquals(Item.ADD_STOP, PlaceAddMenu.menu(2, false, zone).emphasised)
-        // farther aside: still doubtful, „Neues Ziel“ first
+        // farther aside: still doubtful, „Als Ziel“ first
         val far = PlaceAddMenu.zone(listOf(here, goal), at(here, 1000.0, 1200.0))
         assertEquals(Zone.GOAL_FIRST, far)
         assertTrue(PlaceAddMenu.asksOnHold(far))
@@ -344,7 +344,7 @@ class PlaceAddMenuTest {
             PlaceAddMenu.planningPlaceMenu(100.0, PlaceAddMenu.Detours(100.0, 95.0)).main.toSet())
     }
 
-    /** A round trip is never dropped by one hold: a spot far off its loop asks („Neues Ziel“ first, never silently). */
+    /** A round trip is never dropped by one hold: a spot far off its loop asks („Als Ziel“ first, never silently). */
     @Test fun aHoldFarOffARoundTripAsks() {
         val loop = listOf(here, at(here, 2000.0, 0.0), at(here, 2000.0, 2000.0), here)
         assertTrue(PlaceAddMenu.asksOnHold(PlaceAddMenu.zone(loop, at(here, -3000.0, -3000.0), loop = true)))

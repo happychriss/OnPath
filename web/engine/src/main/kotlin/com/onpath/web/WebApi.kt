@@ -982,14 +982,10 @@ object Engine {
         }
 
     /**
-     * The point menu's entries ([MapGestures.pointMenu]) as JSON names in their groups (owner 2026-11-26): MAKE_START,
-     * LOOP_START · KEEP (Merken – [keep]: the page can keep this place), GOOGLE · DELETE.
-     */
-    /**
      * A held place's add entries – the app's PlaceAddMenu (owner 2026-11-07 / 2026-11-15 / 2026-11-17): `{"main":[…],"more":[],
      * "stop":i,"why":…}`, items START_HERE / GO_HERE / SET_DESTINATION / ADD_STOP / NEW_DESTINATION; [stop] = where
-     * „Einfügen“ puts it (WaypointInsertion stopOnly: the best place on the route, never behind the goal); [keepOld] =
-     * whether „Neues Ziel“ keeps the old goal as the last stop ([PlaceAddMenu.keepsOldGoal], owner 2026-11-14 „beim Planen
+     * „Als Stopp“ puts it (WaypointInsertion stopOnly: the best place on the route, never behind the goal); [keepOld] =
+     * whether „Als Ziel“ keeps the old goal as the last stop ([PlaceAddMenu.keepsOldGoal], owner 2026-11-14 „beim Planen
      * anhängen, unterwegs ersetzen“). The planner has no tour: the route ahead is the whole plan, the new goal appends.
      * While planning (2+ points, no round trip) the rows are decided as a hold on the empty map – the app's openPoiMenu /
      * PlaceMenuMeasure (owner 2026-11-17: „wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt zu
@@ -1006,7 +1002,7 @@ object Engine {
         val poi = WebPlaceAdd.poi(lat, lon, "", "")
         val why = q.traced { q.menus.openPoiMenu(poi, lineSnapM) }
         val m = q.menus.placeMenu(poi)
-        // where „Einfügen“ puts it: the app's addPoiAsStop (its default 30 m on the line)
+        // where „Als Stopp“ puts it: the app's addPoiAsStop (its default 30 m on the line)
         val stop = if (w.size < 2) w.size else q.add.insertionFor(p, 30.0, stopOnly = true).index
         fun list(items: List<com.onpath.app.domain.PlaceAddMenu.Item>) = items.joinToString(",", "[", "]") { str(it.name) }
         val keepOld = com.onpath.app.domain.PlaceAddMenu.keepsOldGoal(touring = false)
@@ -1016,7 +1012,7 @@ object Engine {
 
     /**
      * An add from a menu or the place card, decided by the app's PlaceAddState on the plan [points] shown now: [op] =
-     * "holdStop" / "holdGoal" (the hold menu's „Einfügen“ / „Neues Ziel“ – holdAsStop / holdAsNewDestination), "poiStop" /
+     * "holdStop" / "holdGoal" (the hold menu's „Als Stopp“ / „Als Ziel“ – holdAsStop / holdAsNewDestination), "poiStop" /
      * "poiGoal" (a held place's rows – addPoiAsStop / poiAsNewDestination), "SMART" / "START" / "DESTINATION" (the place
      * card – addPlace). `{"points":"…"}` = the plan to commit (one Undo step), `{"pointMenu":i}` = the place is point i
      * already (its menu opens instead), `{"points":null}` = nothing changed.
@@ -1139,8 +1135,8 @@ object Engine {
     /**
      * A click (the app's hold) on the empty map in Plan – the app's AppViewModel.holdOnMap / measureHold (F-PLAN-15, owner
      * 2026-11-15 / 2026-11-17). `{"action":"ADD","index":i}` = the point goes in at [i] at once;
-     * `{"action":"ASK","main":[…],"stop":i}` = the small menu „Einfügen“ / „Neues Ziel“ ([main] in the app's order, the
-     * cheaper first; [stop] = where „Einfügen“ puts it, never behind the goal). Fewer than 2 points: the smart insertion; a
+     * `{"action":"ASK","main":[…],"stop":i}` = the small menu „Als Stopp“ / „Als Ziel“ ([main] in the app's order, the
+     * cheaper first; [stop] = where „Als Stopp“ puts it, never behind the goal). Fewer than 2 points: the smart insertion; a
      * round trip: the zone decides ([PlaceAddMenu.asksOnHold]); planning: [PlaceAddMenu.planningHold] – on the line
      * ([lineSnapM] = 24 dp on screen in metres) the smart insertion; else appending and inserting on the real paths for
      * [activity] / [sac] ([measurePaths], at most ~1.5 s, straight lines on any failure; owner „Always real paths“): the
@@ -1179,6 +1175,10 @@ object Engine {
         com.onpath.app.domain.LocateDistance.label(plan = true, located = located, me = if (located) GeoPoint(lat, lon) else null,
             view = com.onpath.app.domain.LocateDistance.View(south, west, north, east)) ?: ""
 
+    /**
+     * The point menu's entries ([MapGestures.pointMenu]) as JSON names in their groups (owner 2026-11-26): MAKE_START,
+     * LOOP_START · KEEP (Merken – [keep]: the page can keep this place), GOOGLE · DELETE.
+     */
     fun pointMenu(index: Int, count: Int, isPlace: Boolean, roundTrip: Boolean, points: String = "", keep: Boolean = false): String {
         // the loop's first point ([PlanEdits.loopStart]): with stops on the way before a round trip, ① of the loop reads
         // "Start here" (drops the stops) and the later loop points "Start & finish here" – the app's MapOverlays call

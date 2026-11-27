@@ -88,7 +88,7 @@ open class PlaceMenusState(
 
     /**
      * The add entries of a held place's menu ([PlaceAddMenu], owner 2026-11-07 / 2026-11-15 / 2026-11-17): on a tour or a
-     * round trip with 2+ points „Einfügen“ and „Neues Ziel“, the likelier first by how clear the case is – measured on the
+     * round trip with 2+ points „Als Stopp“ and „Als Ziel“, the likelier first by how clear the case is – measured on the
      * route still to go (during a tour from my position). While planning (owner 2026-11-17: „wenn ich da nicht einfügen
      * muss, dann braucht das auch im Menü nicht angezeigt zu werden“) only the matching row in a clear case, both in
      * between – the rows [openPoiMenu] decided on the paths ([PlaceMenuMeasure]); for a plan changed since (or a menu not
@@ -203,17 +203,19 @@ open class PlaceMenusState(
             (distDp?.let { ", $it dp from the finger" } ?: ""))
     }
 
-    /** POI menu → "Add to route": a pinned, named route point; when it already is a stop, its point menu opens. */
-    /** The POI menu's add item, saying what it does ("Set as destination", "Add as stop 2", …) – same rule as [PlaceAddSlice.addPoint]. */
     /**
-     * What the POI menu's add action says – the SAME decision [PlaceAddSlice.addPoint] then takes ([PlaceAddSlice.insertionFor]:
-     * during a tour only the points ahead count, from the position), so the label never promises something else (field
-     * 2026-11-07: the label was decided on the whole plan and read "Als Start setzen" while the tour ran).
+     * What the POI menu's add action says and whether it adds a stop – the SAME decision [PlaceAddSlice.addPoint] then
+     * takes ([PlaceAddSlice.insertionFor]: during a tour only the points ahead count, from the position), so the label never
+     * promises something else (field 2026-11-07: the label was decided on the whole plan and read "Als Start setzen" while
+     * the tour ran).
      */
-    fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String {
+    fun poiAdd(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): com.onpath.app.search.AddPreview.Add {
         val ins = placeAdd.insertionFor(GeoPoint(poi.lat, poi.lon), lineSnapM)
-        return com.onpath.app.search.AddPreview.label(WaypointInsertion.Decision(ins.index, ins.decision.kind), waypoints.size)
+        return com.onpath.app.search.AddPreview.add(WaypointInsertion.Decision(ins.index, ins.decision.kind), waypoints.size)
     }
+
+    /** [poiAdd]'s words ("Als Ziel", "Als Stopp", …). */
+    fun poiAddLabel(poi: com.onpath.app.poi.Poi, lineSnapM: Double = 30.0): String = poiAdd(poi, lineSnapM).label
 
     /** Point menu → "Start here" (drops earlier points) / round trip "Start & finish here" (rotates the loop). */
     fun makeStartFromMenu() {

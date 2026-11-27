@@ -325,7 +325,7 @@ abstract class E2EBase {
         // a hold beside a plan is measured on the paths first (owner 2026-11-17, HoldPaths – at most its time limit): wait
         // for its decision
         if (launched) waitHoldMeasured()
-        // a hold on the empty map in doubt asks „Einfügen“ / „Neues Ziel“ (owner 2026-11-15): the tests that set points by
+        // a hold on the empty map in doubt asks „Als Stopp“ / „Als Ziel“ (owner 2026-11-15): the tests that set points by
         // a hold take the likelier row, as a user following the suggestion does
         if (takeAddMenu && launched) scenario.onActivity { a ->
             val v = vm(a)

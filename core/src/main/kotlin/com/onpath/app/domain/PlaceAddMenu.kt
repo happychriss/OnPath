@@ -27,7 +27,7 @@ object PlaceAddMenu {
     enum class Item { START_HERE, GO_HERE, SET_DESTINATION, ADD_STOP, NEW_DESTINATION }
 
     /**
-     * "Als neues Ziel" (owner 2026-11-14: „Beim Planen anhängen, unterwegs ersetzen“): while planning the old goal stays as
+     * "Als Ziel" (owner 2026-11-14: „Beim Planen anhängen, unterwegs ersetzen“): while planning the old goal stays as
      * the last stop (one plans forward, step by step); during a tour the new place replaces it (no detour back).
      */
     fun keepsOldGoal(touring: Boolean): Boolean = !touring
@@ -61,7 +61,7 @@ object PlaceAddMenu {
     /** … or at most this many metres (a short rest: a place a few steps aside is still a stop). */
     const val CLEAR_STOP_M = 100.0
 
-    /** Doubtful, but "Als neues Ziel" first: d more than this share of the route ahead. */
+    /** Doubtful, but "Als Ziel" first: d more than this share of the route ahead. */
     const val GOAL_FIRST_SHARE = 0.5
 
     /** A clear goal: d more than this share of the route ahead (the detour more than doubles the rest) … */

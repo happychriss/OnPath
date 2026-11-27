@@ -18,7 +18,7 @@ import java.util.concurrent.Executors
  * nicht angezeigt zu werden“, F-PLAN-15): its add rows come from the same measure as a hold on the empty map – on the
  * paths when the router answers ([HoldPaths]), else the straight lines – and the menu opens only with them. The place is
  * the Feldstraße spot ([PlaceAddMenuTest.Feldstrasse]): straight lines about equal (both rows), on the paths appending is
- * half of inserting (only „Neues Ziel“).
+ * half of inserting (only „Als Ziel“).
  */
 class PlaceMenuMeasureTest {
 
@@ -46,7 +46,7 @@ class PlaceMenuMeasureTest {
         until { rows != null }
         val r = rows!!
         assertEquals(r.how, PlaceAddMenu.HoldAction.NEW_GOAL, r.action)
-        assertEquals("only „Neues Ziel“ (straight lines would have shown both)", listOf(Item.NEW_DESTINATION), r.menu.main)
+        assertEquals("only „Als Ziel“ (straight lines would have shown both)", listOf(Item.NEW_DESTINATION), r.menu.main)
         assertTrue(r.how, r.how.contains("paths: insert +120 m"))
     }
 
@@ -58,7 +58,7 @@ class PlaceMenuMeasureTest {
         until { rows != null }
         val r = rows!!
         assertEquals(r.how, PlaceAddMenu.HoldAction.ASK, r.action)
-        // straight: inserting +68 m, appending 63 m – about equal: both, „Neues Ziel“ (the cheaper) first and tinted
+        // straight: inserting +68 m, appending 63 m – about equal: both, „Als Ziel“ (the cheaper) first and tinted
         assertEquals(listOf(Item.NEW_DESTINATION, Item.ADD_STOP), r.menu.main)
         assertEquals(Item.NEW_DESTINATION, r.menu.emphasised)
         assertTrue(r.how, r.how.contains("paths failed: no_data"))
