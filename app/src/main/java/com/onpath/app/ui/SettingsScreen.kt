@@ -183,6 +183,8 @@ fun SettingsScreen(
     demo: DemoUi? = null,
     /** Developer tools → „Tourvorschläge“ (round trips, on by default – the off-switch); null = hidden. */
     suggestTest: SuggestTestUi? = null,
+    /** Developer tools → the multi-day day table in one row (DayTableLayout); null = hidden. */
+    dayTableOneRow: SuggestTestUi? = null,
     /** About → Licences: the list (fixed in screenshots); null = read from the APK's assets when opened. */
     licences: List<com.onpath.app.data.Licences.Entry>? = null,
     /** About → Licences open from the start (screenshots). */
@@ -334,7 +336,7 @@ fun SettingsScreen(
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo, problemsOpen) }
                             if (devTools) item {
                                 DeveloperTools(devToolsOpen, mapServer, mapCells, dataBusy, onDownloadRouting, onImportData, checks, mapPackage, dataDir,
-                                    onTimeFormulas, testStyle, language, demo, suggestTest)
+                                    onTimeFormulas, testStyle, language, demo, suggestTest, dayTableOneRow)
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
