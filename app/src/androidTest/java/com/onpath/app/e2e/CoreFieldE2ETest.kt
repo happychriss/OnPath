@@ -1189,7 +1189,7 @@ class CoreFieldE2ETest : E2EBase() {
             val gear = findFresh(By.desc(Txt.s(Res.string.nav_settings_cd)), 10_000)
             assertNotNull("⚙ in Navigate's map controls", gear)
             gear!!.click()
-            assertNotNull("the Navigation page's first group", findFresh(By.text(Txt.s(Res.string.settings_group_offroute).uppercase()), 10_000))
+            assertNotNull("the Navigation page's first group", findFresh(By.text(Txt.s(Res.string.settings_group_offroute)), 10_000))
             var onTheWay = false
             scenario.onActivity { onTheWay = vm(it).settingsSlice.showSettings && vm(it).settingsSlice.settingsOnTheWay }
             assertTrue("settings on the way", onTheWay)

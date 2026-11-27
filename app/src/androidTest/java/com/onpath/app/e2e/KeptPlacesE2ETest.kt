@@ -41,7 +41,7 @@ class KeptPlacesE2ETest : E2EBase() {
         scenario.onActivity { vm(it).let { vm -> vm.placeMenus.poiMenu?.let(vm.keptPlaces::toggleHomePlace) } }
 
         scenario.onActivity { vm(it).searchFlow.openSearch() }
-        assertNotNull("the favourites' head", findFresh(By.text(Txt.s(Res.string.search_favourites).uppercase()), 10_000))
+        assertNotNull("the favourites' head", findFresh(By.text(Txt.s(Res.string.search_favourites)), 10_000))
         assertTrue("no ⌂ Home row while Zuhause is off", goneFresh(By.text(Txt.s(Res.string.search_home)), 2_000))
         assertEquals("the place once under the favourites", listOf("kept-1"), read { vm -> vm.search.ui.favourites.map { it.place.id } })
         assertEquals("the stored home stays", "kept-1", read { vm -> vm.search.ui.home?.place?.id })

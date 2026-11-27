@@ -21,37 +21,31 @@ import org.junit.runner.RunWith
 @RunWith(AndroidJUnit4::class)
 class PhoneSetupE2ETest : E2EBase() {
 
+    /**
+     * Before a tour (owner 2026-11-27, shorter setup): the vibration and the voice are never asked; every recommended step
+     * that is left (notifications, battery, brand, saver – what this phone lacks) offers Later, and Later goes on to the tour.
+     */
     @Test fun recommendedStepBeforeATourAndLaterGoesOn() {
         launch { Prefs(InstrumentationRegistry.getInstrumentation().targetContext).vibrationFelt = Felt.UNKNOWN }
         var started = false
-        var hasVibrator = true
-        scenario.onActivity { a ->
-            val vm = vm(a)
-            hasVibrator = vm.setup.phone.hasVibrator
-            vm.setup.openSetup(Purpose.BEFORE_TOUR) { started = true }
-        }
-        if (!hasVibrator) { assertTrue("no vibrator: nothing to ask, the tour starts", started); return }
-        var current: CheckId? = null
-        scenario.onActivity { current = vm(it).setup.setupGuide?.current }
-        assertEquals(CheckId.VIBRATION, current)
-        // every recommended step offers Later: the vibration, then (voice on, its test sentence not heard yet) the voice
+        scenario.onActivity { a -> vm(a).setup.openSetup(Purpose.BEFORE_TOUR) { started = true } }
         val seen = ArrayList<CheckId?>()
-        repeat(3) {
+        repeat(6) {
             var step: CheckId? = null
             scenario.onActivity { step = vm(it).setup.setupGuide?.current }
             if (step == null) return@repeat
             seen += step
-            // "Continue" where nothing can be done (no speech engine on the phone)
+            // "Continue" where nothing can be done
             val later = device.wait(Until.findObject(By.text(java.util.regex.Pattern.compile("Later|Continue"))), 5_000)
             assertNotNull("the step $step offers Later", later)
             later.click()
             device.waitForIdle()
         }
-        assertTrue("$seen", seen.all { it == CheckId.VIBRATION || it == CheckId.VOICE })
+        assertTrue("never the vibration or the voice before a tour: $seen", seen.none { it == CheckId.VIBRATION || it == CheckId.VOICE })
         var open = true
         scenario.onActivity { open = vm(it).setup.setupGuide != null }
-        assertTrue("the tour starts after Later", started && !open)
-        // a week of quiet for that step: the next start goes straight on
+        assertTrue("the tour starts after Later ($seen)", started && !open)
+        // a week of quiet for those steps: the next start goes straight on
         var again = false
         scenario.onActivity { vm(it).setup.openSetup(Purpose.BEFORE_TOUR) { again = true } }
         assertTrue(again)

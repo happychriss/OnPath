@@ -3,6 +3,7 @@ package com.onpath.app.e2e
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.uiautomator.By
 import androidx.test.uiautomator.Until
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -100,25 +101,20 @@ class CorePlanE2ETest : E2EBase() {
         scenario.onActivity { mark = vm(it).searchFlow.searchMark }
         assertTrue("the pin stays after a style reload", mark == near)
 
-        // a place far beyond a day on foot (~130 km north): adding it asks first; Cancel takes the add back
-        val far = com.onpath.app.search.Place("e2e:far", "Far place", "place", MERAN_LAT + 1.2, MERAN_LON, sub = "town")
+        // a place ~165 km north on foot (asked even at the range's low end): adding it asks first (owner 2026-11-27: „Abbrechen“ / „Berechnen“); Cancel keeps the
+        // point in the plan without a route – the not-routed line's „Calculate“ asks again
+        val far = com.onpath.app.search.Place("e2e:far", "Far place", "place", MERAN_LAT + 1.5, MERAN_LON, sub = "town")
         scenario.onActivity { vm(it).searchFlow.searchMark = far; vm(it).placeAdd.addPoiPoint(far.toPoi()) }
-        waitUntil("the very-long-plan question") { var a: Double? = null; scenario.onActivity { a = vm(it).planRun.longRouteAsk }; a != null }
+        waitUntil("the long-leg question") { var a: Double? = null; scenario.onActivity { a = vm(it).planRun.longRouteAsk }; a != null }
         scenario.onActivity { mark = vm(it).searchFlow.searchMark }
         assertTrue("the pin went into the plan", mark == null)
         scenario.onActivity { vm(it).answerLongRoute(false) }
-        waitUntil("the add taken back") { waypointCount() == 2 }
-        scenario.onActivity { mark = vm(it).searchFlow.searchMark }
-        assertTrue("the far place is a pin again, not forgotten (mark $mark)", mark == far)
-        // owner 2026-11-13: the map goes back to the plan from before (two points: the whole plan), not to the far place
-        var plan: List<com.onpath.app.routing.GeoPoint> = emptyList()
-        scenario.onActivity { plan = vm(it).plan.points.toList() }
-        val mid = com.onpath.app.routing.GeoPoint((plan[0].lat + plan[1].lat) / 2, (plan[0].lon + plan[1].lon) / 2)
-        waitUntil("the camera back on the plan") {
-            var c: LatLng? = null
-            onMap { m -> c = m.cameraPosition.target }
-            c?.let { com.onpath.app.data.Geo.distance(com.onpath.app.routing.GeoPoint(it.latitude, it.longitude), mid) < 5_000 } == true
-        }
+        waitUntil("the question closed") { var a: Double? = 0.0; scenario.onActivity { a = vm(it).planRun.longRouteAsk }; a == null }
+        assertEquals("the far place stays in the plan", 3, waypointCount())
+        var why: com.onpath.app.domain.NotRouted? = null; var routing = true
+        scenario.onActivity { why = vm(it).planRun.notRouted; routing = vm(it).planRun.routing }
+        assertEquals(com.onpath.app.domain.NotRouted.LONG, why)
+        assertTrue("no routing request runs", !routing)
     }
 
     /**

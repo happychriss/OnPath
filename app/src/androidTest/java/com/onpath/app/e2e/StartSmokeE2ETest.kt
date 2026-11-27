@@ -41,7 +41,8 @@ class StartSmokeE2ETest : E2EBase() {
     @Test fun veryLongSavedPlanCancelIsNotStuckCalculating() {
         launch {
             val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-            Prefs(ctx).planWaypoints = listOf(GeoPoint(MERAN_LAT, MERAN_LON), GeoPoint(53.5511, 9.9937)) // Meran → Hamburg
+            // Meran → München (~165 km straight): asked (beyond 30 s even at the range's low end), not beyond the phone's 300 km
+            Prefs(ctx).planWaypoints = listOf(GeoPoint(MERAN_LAT, MERAN_LON), GeoPoint(48.1372, 11.5755))
         }
         waitUntil("long-route question", 15_000) { var a = false; scenario.onActivity { a = vm(it).planRun.longRouteAsk != null }; a }
         clickText("Cancel")
@@ -52,7 +53,8 @@ class StartSmokeE2ETest : E2EBase() {
         assertFalse("no routing request runs", routing)
         assertEquals(com.onpath.app.domain.NotRouted.LONG, why)
         assertTrue("not stuck on Calculating – ${state()}", device.findObject(By.textContains("Calculating")) == null)
-        assertTrue("Plan anyway offered", device.wait(Until.findObject(By.text("Plan anyway")), 5_000) != null)
+        // the not-routed line's „Calculate“ asks again (owner 2026-11-27: no „Plan anyway“, no „Add a stop“)
+        assertTrue("Calculate offered", device.wait(Until.findObject(By.text("Calculate")), 5_000) != null)
     }
 
     @Test fun opensEmpty() {

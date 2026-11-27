@@ -9,7 +9,6 @@ import com.onpath.app.data.TourKind
 import com.onpath.app.gpx.TrackPoint
 import com.onpath.app.recording.RecordingService
 import com.onpath.app.setup.CheckId
-import com.onpath.app.setup.Felt
 import com.onpath.app.domain.AppMode
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
@@ -50,8 +49,6 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
                 listOf(listOf(TrackPoint(MERAN_LAT, MERAN_LON, 300.0, System.currentTimeMillis() - 900_000),
                     TrackPoint(MERAN_LAT + 0.001, MERAN_LON + 0.001, 310.0, System.currentTimeMillis() - 800_000))),
                 state = "active")
-            // a phone setup step before a tour: the vibration test answered "not felt"
-            Prefs(ctx).vibrationFelt = Felt.NO
         })
         val title = Txt.s(Res.string.routes_unfinished_title)
         assertNotNull("the interrupted tour is asked about", findFresh(By.text(title), 15_000))
@@ -60,8 +57,15 @@ class UnfinishedTourSetupE2ETest : E2EBase() {
         // GitHub's emulator has one, PhoneSetupE2ETest 2026-11-07: "VIBRATION, VOICE"); the question must not stay in
         // front of it
         findFresh(By.text(Txt.s(Res.string.routes_unfinished_continue)), 5_000)!!.click()
-        waitUntil("the phone setup guide opens", 10_000) { guideStep() != null }
-        assertTrue("a setup step before the tour: ${guideStep()}", guideStep() == CheckId.VIBRATION || guideStep() == CheckId.VOICE)
+        // since the shorter setup (owner 2026-11-27) the vibration / voice are never asked before a tour: a step opens only
+        // when this phone lacks one (notifications, battery, brand, saver) – without one the tour goes on at once
+        val opened = runCatching { waitUntil("the phone setup guide opens", 10_000) { guideStep() != null } }.isSuccess
+        if (!opened) {
+            waitUntil("the recording continues in the interrupted tour", 20_000) { RecordingService.state.value?.tourId == tourId }
+            assertEquals("the same tour, no second recording", tourId, TourDb.get(ctx).findActiveRecording()?.id)
+            return
+        }
+        assertTrue("a setup step before the tour: ${guideStep()}", guideStep() != CheckId.VIBRATION && guideStep() != CheckId.VOICE)
         assertTrue("the question steps aside while the guide is open", goneFresh(By.text(title), 5_000))
         assertNotNull("the guide takes touches: its Later button is there", findFresh(By.text(Txt.s(Res.string.setup_later)), 5_000))
 
