@@ -25,9 +25,11 @@ out (morning report), the next one goes on.
 day choice, activity picker if the cloud check finds it) → multi-day sheet draft (no „Fahrrad ▾“). Deploy when green
 (standing rule). Last: tell the project lead „parity done“ with the commit. The release run deploys the planner too.
 
-## Map build (donald, Suchkategorie thread right after 1c)
-`systemctl --user stop onpath-germany-pause`, rebuild cell 10-538-357, low priority (`nice`/`ionice`). On the end:
-`failed.txt` + result to the project lead → HP uploads / deploys the maps when green.
+## Map build (donald, **Wartefenster thread owns it** – resumed 23:03, 570/725, 1 failed, ETA ~01:18)
+Low priority beside the Gradle runs; rebuild cell 10-538-357 after the run; the end + `failed.txt` to the project lead.
+Publish from donald with `tools/dev/publish_cells.sh <cells…>` (TEST R2 fast lane, the doorman adopts them,
+`docs/design/map-hosting.md` §7h). HP does nothing for the upload; the doorman deploy (`maps-deploy.yml`) only if the
+worker changed. Suchkategorie does not touch it.
 
 ## Release R (Wartefenster)
 `tools/ci/release_check.sh --go v0.18.12`, `gate.sh --full`, `tools/ci/e2e_github.sh` (core classes) → install on the
