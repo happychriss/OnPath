@@ -53,6 +53,12 @@ interface TourFollowHost {
     fun savedTourUuid(id: Long): String?
     /** The backup (and the sync) is told that tour [id] changed. */
     fun tourChanged(id: Long)
+    /**
+     * The plan is one day of a saved multi-day route (picked in its day sheet or with "Tag n fahren"): that route's uuid and
+     * the day (1-based) – the recorded tour remembers them ([com.onpath.app.data.TourPlan.day], owner 2026-11-27); null = a
+     * normal plan, several days in a row, or the plan left the day.
+     */
+    fun followedDay(): Pair<String, Int>? = null
 }
 
 /**
@@ -214,11 +220,13 @@ class TourFollow(
     fun copyFollowedPlan(act: Activity, level: Int) {
         val p = tourPlanNow(act, level) ?: return
         val id = savedId
+        // one day of a multi-day route: its uuid and day go with the copy (Geplant's day sheet ticks the day off)
+        val day = host.followedDay()?.takeIf { it.first.isNotEmpty() && it.second > 0 }
         planCopy {
             // the saved route it is (read here: a route saved at the tour start is not in My routes' list yet)
-            val source = if (id < 0) null else runCatching { host.savedTourUuid(id) }
+            val source = day?.first ?: if (id < 0) null else runCatching { host.savedTourUuid(id) }
                 .onFailure { Problems.warn("db", "The followed plan's saved route not read – the copy is kept without it", it) }.getOrNull()
-            followed(p.copy(sourceUuid = source))
+            followed(p.copy(sourceUuid = source, day = day?.second))
         }
     }
 

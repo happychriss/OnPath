@@ -8,9 +8,10 @@ object TourSchema {
      * 1, 2 = backup columns; 3 = `points.acc` (GPS accuracy); 4 = `tours.rides` (vehicle detection); 5 = `tours.draft`
      * (Zuletzt); 6 = the table `tour_plan` (the plan a recorded tour followed, [TourPlan]); 7 = `tours.difficulty`
      * ([Tour.difficulty]); 8 = `tours.favourite` ([Tour.favourite]); 9 = `tours.days` ([Tour.days], multi-day tours); 10 = `tours.anchors` and `tour_plan.anchors` (a plan's hidden
-     * via points, [Tour.anchors] / [TourPlan.anchors]; existing rows NULL = none).
+     * via points, [Tour.anchors] / [TourPlan.anchors]; existing rows NULL = none); 11 = `tour_plan.day` (the day of a
+     * multi-day route a recorded tour rode, [TourPlan.day] → [Tour.planDay]; existing rows NULL = none).
      */
-    const val VERSION = 10
+    const val VERSION = 11
 
     val CREATE = listOf(
         """CREATE TABLE tours(
@@ -63,11 +64,11 @@ object TourSchema {
             tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL, sac INTEGER NOT NULL,
             waypoints TEXT NOT NULL, pinned TEXT, line TEXT,
             distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0,
-            duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL, anchors TEXT)"""
+            duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL, anchors TEXT, day INTEGER)"""
 
     /** The newest version of a tour's plan replaces the one before. Arguments: [planArgs]. */
     const val PLAN_UPSERT = """INSERT OR REPLACE INTO tour_plan(tour_id, name, activity, sac, waypoints, pinned, line,
-            distance, ascent, descent, duration, source_uuid, updated, anchors) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
+            distance, ascent, descent, duration, source_uuid, updated, anchors, day) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"""
 
     /** A tour removed for good: its plan copy goes too. Argument: the tour id. */
     const val PLAN_DELETE = "DELETE FROM tour_plan WHERE tour_id=?"
@@ -75,10 +76,20 @@ object TourSchema {
     /** `has_plan` (1 / 0) beside a tour row: My routes shows Planen / Los geht's on a recorded tour with a plan copy. */
     const val HAS_PLAN = "EXISTS(SELECT 1 FROM tour_plan p WHERE p.tour_id = tours.id) AS has_plan"
 
+    /**
+     * `plan_uuid` / `plan_day` beside a tour row ([Tour.planUuid], [Tour.planDay]): the multi-day route and day the recorded
+     * tour rode, from its plan copy (schema 11) – both NULL unless the copy has a day.
+     */
+    const val PLAN_DAY = "(SELECT p.source_uuid FROM tour_plan p WHERE p.tour_id = tours.id AND p.day IS NOT NULL) AS plan_uuid, " +
+        "(SELECT p.day FROM tour_plan p WHERE p.tour_id = tours.id AND p.source_uuid IS NOT NULL) AS plan_day"
+
+    /** 10 → 11 (owner 2026-11-27): the day of a multi-day route the plan copy was ([TourPlan.day]); existing copies NULL. */
+    const val ADD_PLAN_DAY = "ALTER TABLE tour_plan ADD COLUMN day INTEGER"
+
     fun planArgs(tourId: Long, p: TourPlan): Array<Any?> = arrayOf(tourId, p.name, p.activity, p.sac,
         TourJson.waypointsToJson(p.waypoints), TourJson.pinnedToJson(p.pinned), TourPlan.lineToJson(p.line),
         p.distanceM, p.ascentM, p.descentM, p.durationS, p.sourceUuid, p.updatedMs,
-        AnchorsJson.writeRow(p.waypoints.map { GeoPoint(it.lat, it.lon) }, p.anchors, p.activity, p.sac))
+        AnchorsJson.writeRow(p.waypoints.map { GeoPoint(it.lat, it.lon) }, p.anchors, p.activity, p.sac), p.day?.takeIf { p.sourceUuid != null })
 
     /** Tables to add for an upgrade from [old] (each `IF NOT EXISTS`). */
     fun tablesFrom(old: Int): List<String> = buildList { if (old < 6) add(CREATE_PLAN) }
@@ -101,5 +112,6 @@ object TourSchema {
         // the caller creates missing tables first ([tablesFrom]) and skips a column already there: a version-5 database that kept
         // its `tour_plan` (a downgrade does) and one that just got it both end with the column
         if (old < 10) add(Step("tour_plan", "anchors", ADD_PLAN_ANCHORS))
+        if (old < 11) add(Step("tour_plan", "day", ADD_PLAN_DAY))
     }
 }

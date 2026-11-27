@@ -37,6 +37,13 @@ data class TourPlan(
     val updatedMs: Long = 0L,
     /** The plan's hidden via points by index of [waypoints] (docs/design/detour-stitch.md §3); empty = none. */
     val anchors: Map<Int, Anchors> = emptyMap(),
+    /**
+     * The day (1-based) of the multi-day route [sourceUuid] this plan was – a day picked in My routes' day sheet or with
+     * "Tag n fahren" (owner 2026-11-27: Geplant shows "✓ Tag 2 · gefahren am …", Gemacht "Tag 3 von …"); null = a whole
+     * route. Stored in `tour_plan.day` (schema 11), read beside the tour row as [Tour.planDay] / [Tour.planUuid], in the
+     * backup record's plan (key "day").
+     */
+    val day: Int? = null,
 ) {
     /** A plan worth keeping: two points at least. */
     val usable: Boolean get() = waypoints.size >= 2
@@ -51,6 +58,7 @@ data class TourPlan(
         sourceUuid?.let { put("source", it) }
         put("updated", updatedMs)
         AnchorsJson.write(waypoints.map { GeoPoint(it.lat, it.lon) }, anchors)?.let { put("anchors", JSONArray(it)) }
+        day?.let { put("day", it) }
     }
 
     companion object {
@@ -70,6 +78,7 @@ data class TourPlan(
                     sourceUuid = if (o.has("source")) o.getString("source") else null,
                     updatedMs = o.optLong("updated", 0L),
                     anchors = AnchorsJson.read(o.optJSONArray("anchors")?.toString(), waypoints.map { GeoPoint(it.lat, it.lon) }),
+                    day = o.optInt("day", 0).takeIf { it > 0 },
                 ).takeIf { it.usable }
             } catch (e: Exception) {
                 Problems.warn("db", "The followed plan of a tour is unreadable – the tour stays without it", e); null

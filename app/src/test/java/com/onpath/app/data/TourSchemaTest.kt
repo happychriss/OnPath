@@ -218,7 +218,46 @@ class TourSchemaTest {
             c.upgrade(5) // twice: nothing breaks
         }
         // the onOpen check (TourDb.addColumn over stepsFrom(9)) finds both columns of a version-10 database that lost one
-        assertEquals(listOf("tours.anchors", "tour_plan.anchors"), TourSchema.stepsFrom(9).map { "${it.table}.${it.column}" })
+        assertEquals(listOf("tours.anchors", "tour_plan.anchors", "tour_plan.day"), TourSchema.stepsFrom(9).map { "${it.table}.${it.column}" })
+    }
+
+    /**
+     * 10 → 11 (owner 2026-11-27): `tour_plan.day` – a version-10 database keeps every tour, point and plan copy as it was; the
+     * old copies read no day (the tour rode no day of a multi-day route), a new copy with a day shows as the tour's
+     * plan_uuid / plan_day; a copy without a day never does.
+     */
+    @Test fun upgradeFrom10AddsThePlanDayAndLosesNothing() {
+        db().use { c ->
+            c.oldSchema(acc = true, rides = true); c.exec(TourSchema.ADD_DRAFT)
+            c.exec(TourSchema.ADD_DIFFICULTY); c.exec(TourSchema.ADD_FAVOURITE); c.exec(TourSchema.ADD_DAYS); c.exec(TourSchema.ADD_ANCHORS)
+            c.exec("""CREATE TABLE tour_plan(tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL, sac INTEGER NOT NULL,
+                waypoints TEXT NOT NULL, pinned TEXT, line TEXT, distance REAL NOT NULL DEFAULT 0, ascent REAL NOT NULL DEFAULT 0,
+                descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0, source_uuid TEXT, updated INTEGER NOT NULL, anchors TEXT)""")
+            c.exec("INSERT INTO tours(kind, name, created, uuid, waypoints, days, anchors) VALUES ('PLANNED', 'Von Hilden nach München', 3, 'u2', '[]', 'D8', '[]')")
+            c.exec("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, line, distance, source_uuid, updated, anchors) " +
+                "VALUES (1, 'Waalweg', 'HIKE', 2, '[1]', '[2]', 12.5, 'u2', 9, '[3]')")
+            assertTrue("day" !in c.columns("tour_plan"))
+            c.upgrade(10)
+            assertTrue("day" in c.columns("tour_plan"))
+            // every row as it was, the new field null
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE id=1 AND name='Waalweg' AND distance=5230.5 AND uuid='u1'"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tours WHERE uuid='u2' AND days='D8' AND anchors='[]'"))
+            assertEquals(50, c.count("SELECT COUNT(*) FROM points WHERE tour_id=1"))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=1 AND name='Waalweg' AND waypoints='[1]' AND line='[2]' " +
+                "AND distance=12.5 AND source_uuid='u2' AND updated=9 AND anchors='[3]' AND day IS NULL"))
+            assertEquals(2, c.count("SELECT COUNT(*) FROM (SELECT ${TourSchema.PLAN_DAY} FROM tours) WHERE plan_uuid IS NULL AND plan_day IS NULL"))
+            // a copy with a day: the tour rode that day of route u2
+            c.setPlan(1, plan.copy(sourceUuid = "u2", day = 3))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM (SELECT id, ${TourSchema.PLAN_DAY} FROM tours) WHERE id=1 AND plan_uuid='u2' AND plan_day=3"))
+            // a copy of a whole route (a source, no day): no day
+            c.setPlan(1, plan.copy(sourceUuid = "u2", day = null))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM (SELECT id, ${TourSchema.PLAN_DAY} FROM tours) WHERE id=1 AND plan_uuid IS NULL AND plan_day IS NULL"))
+            // a day without a source is not written
+            c.setPlan(1, plan.copy(sourceUuid = null, day = 2))
+            assertEquals(1, c.count("SELECT COUNT(*) FROM tour_plan WHERE tour_id=1 AND day IS NULL"))
+            c.upgrade(10) // twice: nothing breaks
+            assertEquals(2, c.count("SELECT COUNT(*) FROM tours"))
+        }
     }
 
     /**
@@ -257,7 +296,8 @@ class TourSchemaTest {
             assertTrue("difficulty" in c.columns("tours"))
             assertTrue("favourite" in c.columns("tours"))
             assertTrue("days" in c.columns("tours"))
-            assertEquals(10, TourSchema.VERSION)
+            assertEquals(11, TourSchema.VERSION)
+            assertTrue("day" in c.columns("tour_plan"))
             assertTrue("anchors" in c.columns("tours"))
             assertTrue("anchors" in c.columns("tour_plan"))
             assertEquals(TourSchema.VERSION, TourDb.VERSION)

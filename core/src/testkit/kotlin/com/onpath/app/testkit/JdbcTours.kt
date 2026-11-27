@@ -142,7 +142,7 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                 waypoints = wps, anchors = AnchorsJson.readRow(r.getString("anchors"), wps.map { GeoPoint(it.lat, it.lon) }, r.getString("activity") ?: "HIKE", r.getInt("sac")), pinned = TourJson.jsonToPinned(r.getString("pinned")),
                 line = TourPlan.lineFromJson(r.getString("line")), distanceM = r.getDouble("distance"), ascentM = r.getDouble("ascent"),
                 descentM = r.getDouble("descent"), durationS = r.getDouble("duration"), sourceUuid = r.getString("source_uuid"),
-                updatedMs = r.getLong("updated")) }
+                updatedMs = r.getLong("updated"), day = r.getInt("day").takeIf { !r.wasNull() && it > 0 }) }
         }
     }
 
@@ -180,18 +180,19 @@ class JdbcTours(path: String = ":memory:") : AutoCloseable {
                     deletedMs = r.getLong("deleted_at").takeIf { !r.wasNull() },
                     draft = r.getInt("draft") == 1, hasPlan = r.getInt("has_plan") == 1,
                     difficulty = r.getString("difficulty"), favourite = r.getInt("favourite") == 1, days = MultiDay.fromJson(r.getString("days")),
+                    planUuid = r.getString("plan_uuid"), planDay = r.getInt("plan_day").takeIf { !r.wasNull() },
                 ))
             }
         }
     }
 
     /** [TourDb.listTours]: My routes – everything not in the recycle bin, newest first. */
-    fun listTours(): List<Tour> = query("SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NULL ORDER BY created DESC")
-    fun listDeleted(): List<Tour> = query("SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
-    fun getTour(id: Long): Tour? = query("SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE id=?", id).firstOrNull()
+    fun listTours(): List<Tour> = query("SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE deleted_at IS NULL ORDER BY created DESC")
+    fun listDeleted(): List<Tour> = query("SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE deleted_at IS NOT NULL ORDER BY deleted_at DESC")
+    fun getTour(id: Long): Tour? = query("SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE id=?", id).firstOrNull()
 
     /** [TourDb.findActiveRecording]: the tour still marked as recording (a restart mid-tour). */
-    fun findActiveRecording(): Tour? = query("SELECT *, ${TourSchema.HAS_PLAN} FROM tours WHERE kind=? AND state='active' AND deleted_at IS NULL " +
+    fun findActiveRecording(): Tour? = query("SELECT *, ${TourSchema.HAS_PLAN}, ${TourSchema.PLAN_DAY} FROM tours WHERE kind=? AND state='active' AND deleted_at IS NULL " +
         "ORDER BY created DESC LIMIT 1", TourKind.RECORDED.name).firstOrNull()
 
     /** [TourDb.recordingCursor]: the next point's number and the last piece of a tour being continued (0 to 0 = no points). */
