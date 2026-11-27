@@ -44,7 +44,7 @@ import { PlanGapsLayer } from './plangaps';
 import { MapNotices } from './mapnotice';
 import { LoadOverlay, watchTiles, ENGINE_UNITS, LINK_UNITS, type PlanIn } from './loadoverlay';
 import { BesideSign } from './besidesign';
-import { loadWaitEngine, waitEngineReady, loadMs as waitLoadMs } from './waitengine';
+import { loadWaitEngine, waitEngineReady, waitEstimate, loadMs as waitLoadMs } from './waitengine';
 import { MapAreas, type MapTexts } from './areas';
 import { t, tp, lang, languages, switchLanguage, number, distance, locale } from './i18n';
 import { appHint } from './apphint';
@@ -1808,6 +1808,7 @@ async function changed() {
     head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned, namesText()); // „Warten“: not asked again
     if (stale()) return;
   }
+  waitEstimate(head.what === 'ROUTE' ? head.estimateS ?? -1 : -1); // the wait's „läuft seit 0:42 · etwa 1–2 min“ (the app's RouteEstimate)
   await planRun(routeHead(head));
 }
 

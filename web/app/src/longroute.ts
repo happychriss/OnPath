@@ -22,7 +22,7 @@ const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixe
  * What the app's run head decided for a plan (WebApi.runHead = PlanRecalcState.begin): route the run [gen] with [rounds]
  * time-limit periods, ask first (the question's texts), or nothing to route (fewer than two points).
  */
-export type Head = { what: 'ROUTE'; gen: number; rounds: number } | { what: 'NONE' } | ({ what: 'ASK' } & Ask);
+export type Head = { what: 'ROUTE'; gen: number; rounds: number; /** the run's search estimate, s (the wait's „etwa …“) */ estimateS?: number } | { what: 'NONE' } | ({ what: 'ASK' } & Ask);
 
 /**
  * The run's head for [points]: a multi-day tour is never asked ([multiDay], owner 2026-11-18 – its day rows show a long day).

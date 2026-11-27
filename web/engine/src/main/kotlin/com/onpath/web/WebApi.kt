@@ -905,7 +905,10 @@ object Engine {
     fun runHead(points: String, activity: String, sac: Int, askLong: Boolean, pinned: String = "", names: String = ""): String {
         val act = Activity.valueOf(activity)
         return when (val h = chain.head(parsePoints(points), act, sac, askLong, parseIndices(pinned))) {
-            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds + "}"
+            is WebPlanChain.Head.Route -> "{\"what\":\"ROUTE\",\"gen\":" + (epoch * EPOCH + h.gen) + ",\"rounds\":" + h.rounds +
+                // the run's search estimate (the app's RouteEstimate from LongRule.runS): the wait window's „· etwa 1–2 min“
+                (chain.longRule?.runS(parsePoints(points), act)?.takeIf { it > 0 && !it.isInfinite() }
+                    ?.let { ",\"estimateS\":" + num(it, 1) } ?: "") + "}"
             is WebPlanChain.Head.Ask -> "{\"what\":\"ASK\"" + WebPlanRules.longLeg(h.ask, parseNames(names)) + "}"
             WebPlanChain.Head.None -> "{\"what\":\"NONE\"}"
         }
@@ -1543,6 +1546,8 @@ fun main() {}
 
 // ---- the wait window (form A) and the sign beside (form B): WebWait.kt, the page's second engine (waitengine.ts) ----
 @JSExport fun waitStart(shares: String, check: String, part: String) = WebWait.start(shares, check, part)
+/** The search estimate of the run the page starts (runHead's estimateS; < 0 = none): the route wait's line. */
+@JSExport fun waitEstimate(seconds: Double) = WebWait.estimate(seconds)
 @JSExport fun waitTick(now: Double, areas: String, dlDone: Double, dlTotal: Double, map: Boolean, routing: Boolean, join: Double,
                        routeDone: Int, routeTotal: Int, checking: Boolean, names: String, points: Int, paused: Boolean): String =
     WebWait.tick(now, areas, dlDone, dlTotal, map, routing, join, routeDone, routeTotal, checking, names, points, paused)

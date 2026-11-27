@@ -52,6 +52,20 @@ class WebRunHeadTest {
         assertEquals("200 km straight at factor 2 ≈ 21 s: at once", "ROUTE", what(Engine.runHead("46.67,11.16;48.47,11.16", "HIKE", 2, true)))
     }
 
+    /** The run's search estimate goes with the head (the app's RouteEstimate): the wait window's „· etwa 1–2 min“. */
+    @Test fun aRoutedHeadCarriesTheRunsEstimate() {
+        Engine.historyImport("")
+        Engine.costSet(0.5, Engine.BROWSER_MEMORY_MB) // a fast browser (factor 2): 200 km is routed at once
+        val est = { j: String -> Regex("\"estimateS\":([\\d.]+)").find(j)?.groupValues?.get(1)?.toDouble() }
+        val longish = Engine.runHead("46.67,11.16;48.47,11.16", "HIKE", 2, true) // 200 km: routed at once, about 20 s
+        assertEquals("ROUTE", what(longish))
+        assertTrue(longish, (est(longish) ?: 0.0) > 5.0)
+        Engine.historyImport("")
+        val short = Engine.runHead(day, "HIKE", 2, true) // a few km: under the 10 km the estimate counts – none
+        assertEquals("ROUTE", what(short))
+        assertTrue(short, (est(short) ?: 0.0) < 5.0)
+    }
+
     @Test fun waitIsKeptAcrossAFreshWorkerAMultiDayTourIsNeverAsked() {
         Engine.historyImport("")
         assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
