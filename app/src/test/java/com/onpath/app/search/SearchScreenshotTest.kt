@@ -14,7 +14,6 @@ import com.android.resources.Density
 import com.onpath.app.poi.Poi
 import com.onpath.app.ui.MapPlaceholder
 import com.onpath.app.ui.OnPathTheme
-import com.onpath.app.ui.PlanTopBar
 import com.onpath.app.ui.search.OnlineState
 import com.onpath.app.ui.search.PlaceCard
 import com.onpath.app.ui.search.PlaceCardUi
@@ -92,7 +91,6 @@ class SearchScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, com.onpath.app.ui.PlanMenu(), Modifier.fillMaxWidth())
                     Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
                         PlaceCard(PlaceCardUi(hut, null, 3, "fits best there · about +0.9 km, +15 min", "Add as a stop"),
                             com.onpath.app.ui.search.PlaceCardActions())

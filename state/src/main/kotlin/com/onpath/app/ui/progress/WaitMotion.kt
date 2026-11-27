@@ -6,9 +6,11 @@ import androidx.compose.runtime.setValue
 
 /**
  * „Nur eine Sache bewegt sich“ (owner 2026-11-27; VISION: a wait shows its steps): while a wait window is open (route, map,
- * round trips – the one WaitWindowDialog), it is the ONLY thing that moves. Every other busy sign – the plan sheet's
- * running bar, the ring at the point being routed, the small spinners, the map-load pill, the turning direction arrow at
- * the position – asks [othersMove] and stands still or hides meanwhile; when the window closes they move again.
+ * round trips – the one WaitWindowDialog), it is the only DECORATION that moves. Every other busy sign – the plan sheet's
+ * running bar, the ring at the point being routed, the small spinners, the map-load pill – asks [othersMove] and is hidden
+ * meanwhile (hidden, not frozen: a frozen spinner reads as a hang); when the window closes they come back. Live data is
+ * never asked: the position dot and the direction arrow at it keep moving (captain 2026-11-27: the hiker needs the
+ * direction while re-planning on the way).
  * Counted (two windows may overlap for a frame). Main thread; Compose state, so the signs follow at once.
  */
 object WaitMotion {

@@ -72,14 +72,14 @@ fun WaitWindowView(ui: WaitWindowUi, buttons: List<WaitButton>, modifier: Modifi
             }
             ui.note?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = OnPathColors.Ink, modifier = Modifier.padding(top = 8.dp, end = 8.dp)) }
             if (ui.bar && ui.shownPieces > 0) PieceBar(ui, Modifier.padding(top = 14.dp, end = 8.dp))
+            // the map's bar: no number beside it (VISION 2026-11-27: never a made-up percent – the share mixes the server's
+            // build estimate and learned step shares); TalkBack hears the range
             else if (ui.bar) Row(Modifier.padding(top = 14.dp, end = 8.dp).semantics(mergeDescendants = true) {
-                contentDescription = "${ui.percent} %"
+                progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(ui.percent / 100f, 0f..1f)
             }, verticalAlignment = Alignment.CenterVertically) {
                 LinearProgressIndicator(progress = { ui.percent / 100f },
                     color = if (ui.paused) OnPathColors.InkMuted else MaterialTheme.colorScheme.primary,
                     modifier = Modifier.weight(1f).clip(CircleShape))
-                Text("${ui.percent} %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                    color = OnPathColors.Ink, softWrap = false, modifier = Modifier.padding(start = 12.dp))
             }
             if (ui.steps.isNotEmpty()) Column(Modifier.padding(top = 12.dp, end = 8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 WaitSteps.shown(ui.steps).forEach { StepRow(it, large) }

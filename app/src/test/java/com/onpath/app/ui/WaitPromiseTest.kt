@@ -223,4 +223,18 @@ class WaitPromiseTest {
         val many = RouteWait(ProgressMemory.InMemory()).update(true, 30 to 40, null, null, 0L, gen = 2)!!.window
         assertEquals(20, many.shownPieces); assertEquals(15, many.doneShown)
     }
+
+    /** Review step 6, finding 1: the filled pieces never run behind the finished legs, and „prüfen“ shows them all full. */
+    @Test fun filledPiecesAreRealLegsAndAllFullWhileChecking() {
+        val mem = ProgressMemory.InMemory().apply { routeCheck = 0.3 }
+        val rw = RouteWait(mem)
+        for ((t, share) in listOf(1_000L to 0.05f, 2_000L to 0.4f, 3_000L to 0.62f, 4_000L to 0.9f)) {
+            val done = (share * 10).toInt()
+            val w = rw.update(true, done to 10, share, null, t, gen = 3)!!.window
+            assertTrue("t=$t: ${w.filledPieces} ≥ ${w.doneShown}", w.filledPieces >= w.doneShown)
+            assertTrue("t=$t: never past the router's own share", w.filledPieces <= share * 10 + 1e-3f)
+        }
+        val checking = rw.update(true, 10 to 10, null, null, 5_000L, gen = 3)!!.window
+        assertEquals("prüfen: every leg is routed – all pieces full", checking.shownPieces.toFloat(), checking.filledPieces, 0f)
+    }
 }

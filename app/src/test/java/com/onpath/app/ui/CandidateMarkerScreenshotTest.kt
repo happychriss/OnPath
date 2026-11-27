@@ -101,7 +101,6 @@ class CandidateMarkerScreenshotTest {
                             PinChip(hut.title(), onClick = {})
                         }
                         Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                            PlanTopBar({}, PlanMenu(), Modifier.fillMaxWidth())
                             Column(Modifier.align(Alignment.BottomCenter).fillMaxWidth().padding(bottom = 24.dp)) {
                                 PlaceCard(PlaceCardUi(hut, null, plan.size, preview.subtitle, preview.label), PlaceCardActions())
                             }

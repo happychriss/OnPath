@@ -123,85 +123,12 @@ class PlanMenu(
 }
 
 /**
- * Plan's top band (owner 2026-11-05, band b): a light blue band behind the search pill and ☰, so they do not float over
- * the map; at a large font the mode label gets its own line above the pill instead of covering its text. During a tour
- * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
- */
-object PlanTopBand {
-    /**
-     * The band's colour: the light sage over the map ([OnPathColors.MapGround], owner 2026-11-12; paper before, no light
-     * blue since 2026-11-06 variant C).
-     */
-    val Color = OnPathColors.MapGround
-    /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
-    fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
-
-    /** From this font scale on the mode label would cover the search text: it gets its own line. */
-    fun largeLabel(fontScale: Float): Boolean = fontScale >= 1.3f
-
-    /**
-     * Bottom of the top band below the status bar. Since the Daumen-Karte (owner 2026-11-26) Plan has no top band: the
-     * search and ☰ are in the card at the bottom, the boxes sit 12 dp under the status bar.
-     */
-    @Suppress("UNUSED_PARAMETER")
-    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp = CreditPlace.blockDp(fontScale).dp // the credit block (2026-11-27)
-
-    /** Where the mode label starts: over the search pill's left part. */
-    val LABEL_START = 28.dp
-}
-
-/** [PlanTopBand.bottom] in dp for the current font. */
-@Composable
-fun planTopBarDp(): Int = PlanTopBand.bottom(androidx.compose.ui.platform.LocalDensity.current.fontScale).value.toInt()
-
-/**
- * Plan mode top area on the light blue band: the search pill (only search) and one round ☰ app-menu button next to it:
- * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. The
- * activity is a button on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
+ * The credit block's height under the status bar (dp, follows the font – [CreditPlace.blockDp]): what Plan keeps free at the
+ * top for the map credit over the scale (owner 2026-11-27). Was `planTopBarDp()` of the old top band (gone since the
+ * Daumen-Karte, 2026-11-26).
  */
 @Composable
-fun PlanTopBar(
-    onSearch: () -> Unit,
-    menu: PlanMenu,
-    modifier: Modifier = Modifier,
-    menuInitiallyOpen: Boolean = false,
-    /** During a tour ("Plan ändern"): the mode label says so instead of "Planen". */
-    editing: Boolean = false,
-    /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
-    offline: OfflineReady.State? = null,
-    /** A tap on the label: explain the offline state (a line in the plan sheet). */
-    onOffline: () -> Unit = {},
-) {
-    // during a tour the way back to Navigate is the green "Navigation ›" at the bottom (owner 2026-11-06, C) – no "←" here
-    val row = @Composable {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            // also while the plan is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-            // "Plan ändern … Fertig" header)
-            SearchBarPill(onSearch, Modifier.weight(1f))
-            Spacer(Modifier.width(8.dp))
-            AppMenuButton(menu, menuInitiallyOpen)
-        }
-    }
-    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
-    // the mode label (owner 2026-11-06: no "Nicht gespeichert" sign beside it any more – Zuletzt keeps every plan)
-    val labels = @Composable { m: Modifier ->
-        Row(m, verticalAlignment = Alignment.Top) { PlanModeLabel(editing, Modifier, offline, onOffline) }
-    }
-    if (PlanTopBand.largeLabel(fontScale)) {
-        Column(modifier.height(PlanTopBand.bottom(fontScale))) {
-            labels(Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp))
-            row()
-        }
-        return
-    }
-    Box(modifier) {
-        row()
-        // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
-        // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
-        labels(Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START))
-    }
-}
+fun creditBlockDp(): Int = CreditPlace.blockDp(androidx.compose.ui.platform.LocalDensity.current.fontScale)
 
 /**
  * "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. With a
@@ -244,26 +171,6 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
 /** The recording tab's time (pure): „0:42“ = hours:minutes since the start. */
 object RecTab {
     fun time(elapsedS: Long): String { val m = (elapsedS.coerceAtLeast(0) / 60); return "${m / 60}:${(m % 60).toString().padStart(2, '0')}" }
-}
-
-@Composable
-private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
-    Surface(
-        onClick = onSearch,
-        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
-            .floatShadow(CircleShape),
-        shape = CircleShape,
-        // sage on the sage band (owner 2026-11-12): the warm shadow and a fine line keep it reading as a field
-        color = OnPathColors.MapGround,
-        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Line),
-    ) {
-        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
-            Spacer(Modifier.width(12.dp))
-            Text(str(Res.string.plan_search_hint), style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
-        }
-    }
 }
 
 @Composable

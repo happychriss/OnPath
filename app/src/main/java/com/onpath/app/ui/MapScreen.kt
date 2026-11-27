@@ -193,7 +193,7 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
-        val planTopBand = planTopBarDp()
+        val planTopBand = creditBlockDp()
         val fitPadding = {
             FitPaddingRule.of(vm.tourSession.mode, density.density, topInsetPx,
                 planTopDp = maxOf(if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
@@ -229,7 +229,7 @@ fun MapScreen(
         if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, vm.offlineReady?.state, vm::toggleOfflineInfo, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
         // hints go below the background-download strip while it shows (measured: a box is taller than the chip)
         val hintTop = if (vm.mapData.backgroundStripShown && vm.tourSession.mode == AppMode.PLAN)
-            (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
+            (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else creditBlockDp().dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.searchFlow.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -238,8 +238,7 @@ fun MapScreen(
             androidx.compose.material3.Surface(shape = OnPathShapes.Card, color = OnPathColors.Paper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) { // over the map: paper (owner 2026-11-06)
                 androidx.compose.foundation.layout.Row(Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
                     verticalAlignment = Alignment.CenterVertically) {
-                    androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp)
-                    androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp))
+                    if (com.onpath.app.ui.progress.WaitMotion.othersMove()) { androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp); androidx.compose.foundation.layout.Spacer(Modifier.width(10.dp)) } // a wait window: the one thing that moves
                     androidx.compose.material3.Text(str(Res.string.plan_finding_shared_place))
                 }
             }
@@ -265,7 +264,7 @@ fun MapScreen(
         val firstCard = rememberNoFlash(firstCardTarget?.takeIf { !vm.searchFlow.searchOpen && !sharedLookup },
             remember { NoFlash<FirstMapCard.Ui>(stepKey = { it::class }) })
         if (firstCard != null) {
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
             FirstMapCardView(firstCard, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                 top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
                 start = OverviewPillPlace.startDp(activityButtonShown = false).dp,
@@ -275,7 +274,7 @@ fun MapScreen(
         // On the activity button's row, beside it (OverviewPillPlace) – covers nothing (owner 2026-11-06).
         if (overviewOnly && firstCardTarget == null && firstCard == null && vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen && !sharedLookup &&
             vm.mapData.hereAsk == null && vm.mapData.loadAsk == null) {
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
             OverviewPill(onLoad = { OverviewHintRule.centre(cam.hintKey)?.let(vm.mapData::mapTapped) },
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
@@ -284,7 +283,7 @@ fun MapScreen(
         }
         // Plan's only GPS words: a short neutral note after the user's own tap (owner 2026-11-06 23:35, PlanGps)
         vm.map.planGpsNote?.takeIf { vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen }?.let { note ->
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
             QuietPill(when (note) {
                     PlanGps.Note.SEARCHING -> str(Res.string.plan_searching_gps)
                     PlanGps.Note.TURN_NEEDS_POSITION -> str(Res.string.msg_no_position_turn)
@@ -299,7 +298,7 @@ fun MapScreen(
         // pill at the GPS note's place (PlanGps.noteTopDp / noteStartDp), after the GPS note (a tap of the user's) – goes
         // by itself after MapNote.MS
         vm.notices.mapNote?.takeIf { vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen && vm.map.planGpsNote == null }?.let { note ->
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
             QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
@@ -356,7 +355,7 @@ private fun PlanMode(
     val helpContext = androidx.compose.ui.platform.LocalContext.current
     Box(Modifier.fillMaxSize()) {
         // no top band any more (Daumen-Karte, owner 2026-11-26): search, ☰ and the activity are in the card at the bottom
-        val topBar = planTopBarDp()
+        val topBar = creditBlockDp()
         val menu = PlanMenu(
                 state = vm.routesGo.menuState(recording = rec != null),
                 onManage = { vm.routesGo.openRoutes() },
@@ -525,7 +524,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val density = LocalDensity.current
     fun Modifier.measured(topDp: Int) = // the bottom below the status bar: top + measured height (hints under the search bar go below it)
         onSizeChanged { vm.mapData.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.mapData.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()

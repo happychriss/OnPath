@@ -55,7 +55,6 @@ abstract class BackgroundDownloadScreenshotTest {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
                     BackgroundDownloadChip(u, onClick = {},
                         modifier = Modifier.align(Alignment.TopEnd).padding(top = MessagePlacement.CHIP_TOP_DP.dp, end = 12.dp))
                 }

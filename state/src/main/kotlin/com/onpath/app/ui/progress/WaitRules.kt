@@ -26,11 +26,15 @@ data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsL
                        val pieces: Int = 1,
                        /** The pieces finished (legs routed; all of them while „prüfen“ runs). */
                        val piecesDone: Int = 0,
-                       /** The router reports its search share for the running piece: it fills by it; else it shows Android's calm indeterminate bar. */
-                       val measured: Boolean = false) {
+                       /**
+                        * The part of the whole bar that is really done (0..1): finished legs + the router's own share of the
+                        * running one; 1 while „prüfen“ runs; < 0 = the router reports nothing for the running leg (it then
+                        * shows Android's calm indeterminate bar). Never the time-driven [percent] (review step 6, finding 1).
+                        */
+                       val pieceFill: Float = -1f) {
     val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent,
         if (afterMap) WaitSteps.shown(listOf(WaitStep(Txt.s(Res.string.wait_step_map_loaded), com.onpath.app.domain.WaitStepState.DONE, null)) + steps) else steps,
-        line, pieces = pieces.coerceAtLeast(1), piecesDone = piecesDone, measured = measured)
+        line, pieces = pieces.coerceAtLeast(1), piecesDone = piecesDone, pieceFill = pieceFill)
 
     /** „läuft seit 0:42“, with an estimate „läuft seit 0:42 · etwa 1–2 min“. */
     val line: String get() {
@@ -121,7 +125,13 @@ class RouteWait(private val memory: ProgressMemory) {
         val left = if (checking || share != null) TimeLeft.seconds(bar.measured, gone, null) else null
         return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late,
             elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen), pieces = total,
-            piecesDone = if (checking) total else done, measured = checking || share != null)
+            piecesDone = if (checking) total else done,
+            // real progress only: every leg while „prüfen“ runs; else finished legs + the router's share of the running one
+            pieceFill = when {
+                checking -> 1f
+                share != null -> ((share * total).coerceIn(done.toFloat(), (done + 1).toFloat()) / total).coerceIn(0f, 1f)
+                else -> -1f
+            })
     }
 
     /** The run ended: its legs' and check's times teach the check's share; the next run starts afresh. */
@@ -177,20 +187,22 @@ data class WaitWindowUi(
     val note: String? = null,
     /**
      * > 0: the bar in pieces without a number (the route, owner 2026-11-27: „ein Stück pro fertigem Abschnitt, keine Prozent“)
-     * – one piece per leg routed, filled up to [percent] of the whole so the running piece fills slowly ([filledPieces]);
-     * 0: the bar with its number (map loads).
+     * – one piece per leg routed, filled by real progress only ([pieceFill], [filledPieces]); 0: one plain bar (map loads).
      */
     val pieces: Int = 0,
     /** With [pieces]: the pieces finished – real legs routed, never estimated. */
     val piecesDone: Int = 0,
     /**
-     * With [pieces]: the running piece fills by the router's own search share ([percent]); false = the router reports nothing
-     * for it – no creep, Android's calm indeterminate bar in that piece (owner / VISION 2026-11-27: never a made-up progress).
+     * With [pieces]: the part of the bar really done (0..1) – finished legs + the router's own share of the running one, 1
+     * while „prüfen“ runs; < 0 = the router reports nothing for the running leg: no creep, Android's calm indeterminate bar
+     * in that piece (owner / VISION 2026-11-27: never a made-up progress). Never the time-driven [percent].
      */
-    val measured: Boolean = true,
+    val pieceFill: Float = 1f,
 ) {
-    /** How many pieces are filled, the running one partly: [percent] of [shownPieces] while measured, else the finished ones. */
-    val filledPieces: Float get() = if (measured) shownPieces * percent / 100f else doneShown.toFloat()
+    /** The router reports real progress for the running piece. */
+    val measured: Boolean get() = pieceFill >= 0f
+    /** How many pieces are filled, the running one partly: [pieceFill] of [shownPieces] while measured, else the finished ones – never fewer than [doneShown]. */
+    val filledPieces: Float get() = if (measured) maxOf(doneShown.toFloat(), shownPieces * pieceFill) else doneShown.toFloat()
     /** The finished pieces as drawn (more legs than [MAX_PIECES] share a piece). */
     val doneShown: Int get() = if (pieces <= 0) 0 else (piecesDone.coerceIn(0, pieces) * shownPieces / pieces)
     /** The piece that shows the indeterminate bar; null = none (measured, or every piece done). */

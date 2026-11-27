@@ -123,15 +123,15 @@ class ScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                    PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
-                    SheetWithFooter(planTopBarDp().dp, footer = {
+                    PlanControlsLayer({ sheetHeight.intValue }, creditBlockDp().dp, controls = controls)
+                    SheetWithFooter(creditBlockDp().dp, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); MapFooter("500 m" to 64.dp, credits = false) {} } // as PlanMode
                     }, sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) { bottom() } })
                     // as MapScreen in Plan: credit over the scale, top right (owner 2026-11-27, layout 2)
                     val cam = androidx.compose.runtime.remember { MapCameraState().apply { scale = "500 m" to 64.dp } }
                     MapCreditTop(cam, demo = false, onCredits = {}, offline = offline ?: OfflineReady.State.READY, modifier = Modifier.align(Alignment.TopEnd)
                         .padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp()).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
@@ -1784,7 +1784,7 @@ class ScreenshotTest {
         Box {
             Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
             OnPathTheme {
-                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     OverviewPill({}, Modifier.padding(top = OverviewPillPlace.topDp(rowTop, null).dp,
                         start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
@@ -1815,7 +1815,7 @@ class ScreenshotTest {
             Box {
                 Frame { PlanPanel(planUi(), PlanCallbacks()) }
                 OnPathTheme {
-                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = creditBlockDp())
                     Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                         QuietPill(str(text), icon, Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
                             start = PlanGps.noteStartDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))

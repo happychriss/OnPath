@@ -53,7 +53,6 @@ abstract class PlanMenuGalleryTest {
             onNewPlan = if (state.save) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
         OnPathTheme {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color)) { PlanTopBar({}, menu, Modifier.fillMaxWidth()) }
                 Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.TopEnd) {
                     MenuCard(Modifier) { PlanMenuItems(menu) {} }
                 }

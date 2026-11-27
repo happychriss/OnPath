@@ -470,7 +470,7 @@ internal fun MapCreditTop(cam: MapCameraState, demo: Boolean, onCredits: () -> U
 /**
  * Plan's credit block, top right (owner 2026-11-27: „OpenStreetMap etwas höher, die Aufnahme darunter“): it stands
  * [TOP_DP] under the status bar and is Plan's top element – boxes, the recording pill, the notice pill and the download
- * chip start 12 dp under its bottom ([blockDp], via [PlanTopBand.bottom]). The height follows the font (the credit's
+ * chip start 12 dp under its bottom ([blockDp], via [creditBlockDp]). The height follows the font (the credit's
  * own cap [CREDIT_MAX_FONT], the scale's labelSmall 15 sp line), so nothing overlaps at any width or font size. Pure.
  */
 object CreditPlace {
