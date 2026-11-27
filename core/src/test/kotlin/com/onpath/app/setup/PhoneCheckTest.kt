@@ -60,9 +60,19 @@ class PhoneCheckTest {
     @Test fun voiceStepOnlyWithSpokenDirectionsOn_okOnceHeard() {
         // off: no step, no row
         assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good))
-        // on, not tested yet: not at the first start, before a tour – recommended (snoozable there)
-        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good, voiceOn = true))
-        assertEquals(listOf(CheckId.VOICE), PhoneCheck.steps(Purpose.BEFORE_TOUR, good, voiceOn = true))
+        // on (owner 2026-11-27): asked at the first start only when the offline voice is missing – never before a tour
+        assertEquals("voice not known yet / there: no step", emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good, voiceOn = true))
+        assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.FIRST_SETUP, good.copy(voice = VoiceStatus.READY), voiceOn = true))
+        for (v in listOf(VoiceStatus.MISSING, VoiceStatus.NO_LANGUAGE, VoiceStatus.ONLINE)) {
+            assertEquals("$v: load it at home", listOf(CheckId.VOICE), PhoneCheck.steps(Purpose.FIRST_SETUP, good.copy(voice = v), voiceOn = true))
+            assertEquals("$v: never at „Los geht's“", emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, good.copy(voice = v), voiceOn = true))
+        }
+        // the guide passes the step once an offline voice is there – the test sentence is not required
+        val g = SetupGuide.of(Purpose.FIRST_SETUP, good.copy(voice = VoiceStatus.MISSING), voiceOn = true)!!
+        assertTrue(g.refresh(good.copy(voice = VoiceStatus.READY), voiceOn = true).finished)
+        assertEquals(SetupGuide.End.ALL_SET, g.refresh(good.copy(voice = VoiceStatus.READY), voiceOn = true).end(good.copy(voice = VoiceStatus.READY)))
+        // Settings still asks for the test sentence
+        assertTrue(CheckId.VOICE in PhoneCheck.steps(Purpose.SETTINGS, good.copy(voice = VoiceStatus.READY), voiceOn = true))
         assertEquals(Need.RECOMMENDED, PhoneCheck.need(CheckId.VOICE))
         assertEquals(emptyList<CheckId>(), PhoneCheck.steps(Purpose.BEFORE_TOUR, good, snoozed = setOf(CheckId.VOICE), voiceOn = true))
         val heard = good.copy(voice = VoiceStatus.READY, voiceHeard = Felt.YES)

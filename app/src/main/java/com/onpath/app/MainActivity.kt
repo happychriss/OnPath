@@ -458,6 +458,7 @@ class MainActivity : ComponentActivity() {
         if (!vm.prefs.setupWelcomeSeen) {
             if (com.onpath.app.ui.setup.PhoneStateReader.location(this) != com.onpath.app.setup.LocationGrant.NONE) vm.prefs.setupWelcomeSeen = true
             else vm.setup.setupWelcome = true
+            if (vm.setup.setupWelcome && vm.setup.voiceUsed && vm.setup.phone.voice == com.onpath.app.setup.VoiceStatus.UNKNOWN) voiceSpeaker().start() // quiet voice check at the welcome (owner 2026-11-27)
         }
     }
 
@@ -864,8 +865,7 @@ class MainActivity : ComponentActivity() {
      * quietly – the step turns to "Test" by itself (principle 5, docs/design/onboarding-phone-check.md).
      */
     private fun recheckVoice() {
-        if (vm.setup.setupGuide?.current != com.onpath.app.setup.CheckId.VOICE) return
-        if (vm.setup.phone.voice == com.onpath.app.setup.VoiceStatus.READY) return
+        if (vm.setup.setupGuide?.current != com.onpath.app.setup.CheckId.VOICE || vm.setup.phone.voice == com.onpath.app.setup.VoiceStatus.READY) return
         val s = voiceSpeaker()
         if (s.state == com.onpath.app.recording.Speaker.State.READY && !s.online) return
         if (s.state == com.onpath.app.recording.Speaker.State.READY) s.stop() // an online voice: an offline one may be there now

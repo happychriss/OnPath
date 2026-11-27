@@ -42,7 +42,8 @@ data class SetupGuide(
         while (true) {
             val id = g.current ?: return g
             // fine now, or no longer relevant (precise without any location: the location step asks for both)
-            if (PhoneCheck.isOk(id, s) || !PhoneCheck.applies(id, s, vibrationOn, voiceOn)) g = g.next(done = id.takeIf { PhoneCheck.isOk(it, s) })
+            val ok = PhoneCheck.guideOk(purpose, id, s)
+            if (ok || !PhoneCheck.applies(id, s, vibrationOn, voiceOn)) g = g.next(done = id.takeIf { ok })
             else return g
         }
     }
@@ -51,7 +52,7 @@ data class SetupGuide(
 
     fun end(s: PhoneState): End = when {
         purpose == Purpose.BEFORE_TOUR && !PhoneCheck.tourReady(s) -> End.TOUR_NOT_READY
-        later.isNotEmpty() || steps.any { !PhoneCheck.isOk(it, s) } -> End.SOME_LATER
+        later.isNotEmpty() || steps.any { !PhoneCheck.guideOk(purpose, it, s) } -> End.SOME_LATER
         else -> End.ALL_SET
     }
 

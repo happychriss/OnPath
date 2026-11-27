@@ -174,16 +174,30 @@ object PhoneCheck {
             // needs to know where you are; notifications, battery, brand, saver and voice come at „Los geht's“ – before
             // the first recording, so no point is lost; the vibration is never asked (it simply works; the test stays in
             // Settings → Phone setup)
-            Purpose.FIRST_SETUP -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON)
+            // the voice (owner 2026-11-27, „ja“): at the first start – still at home, on Wi-Fi – and only when the offline
+            // voice is missing ([voiceMissing]); never at „Los geht's“ (a voice download at the trailhead); without a voice
+            // the tour vibrates instead (Speaker.canSpeak); the test sentence only in Settings → Phone setup
+            Purpose.FIRST_SETUP -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.VOICE)
             Purpose.BEFORE_TOUR -> listOf(CheckId.LOCATION, CheckId.PRECISE, CheckId.LOCATION_ON, CheckId.NOTIFICATIONS,
-                CheckId.VOICE, CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
+                CheckId.BATTERY, CheckId.BRAND, CheckId.BATTERY_SAVER)
             Purpose.SETTINGS -> CheckId.entries
         }
         return ids.filter { id ->
             val relevant = id == CheckId.PRECISE || applies(id, s, vibrationOn, voiceOn) // precise is asked together with location
-            relevant && !isOk(id, s) && !(purpose == Purpose.BEFORE_TOUR && need(id) != Need.REQUIRED && id in snoozed)
+            relevant && !guideOk(purpose, id, s) && !(purpose == Purpose.BEFORE_TOUR && need(id) != Need.REQUIRED && id in snoozed)
         }
     }
+
+    /** No offline voice in the app's language (missing, the language unknown to the engines, only an online voice). */
+    fun voiceMissing(s: PhoneState): Boolean =
+        s.voice == VoiceStatus.MISSING || s.voice == VoiceStatus.NO_LANGUAGE || s.voice == VoiceStatus.ONLINE
+
+    /**
+     * Whether a guide may pass [id]: as [isOk], except the voice outside Settings – there it is fine as soon as an
+     * offline voice is on the phone (or nothing is known yet); hearing the test sentence is asked only in Settings.
+     */
+    fun guideOk(purpose: Purpose, id: CheckId, s: PhoneState): Boolean =
+        if (id == CheckId.VOICE && purpose != Purpose.SETTINGS) !voiceMissing(s) else isOk(id, s)
 
     /**
      * Steps asked before a tour only until the user answered them once (owner 2026-11-08, father's feedback: the
