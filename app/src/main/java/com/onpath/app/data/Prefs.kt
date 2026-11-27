@@ -181,6 +181,7 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             hikePace = pace("hikePaceLevel", "hikePace"),
             bikePace = pace("bikePaceLevel", "bikePace"),
             mapsWifiOnly = sp.getBoolean("mapsWifiOnly", false),
+            markedTrails = AppSettings.markedTrailsOf(sp.getInt("markedTrails", AppSettings.MARKED_TRAILS_STANDARD)),
         )
         set(v) = sp.edit()
             .putStringSet("poiHidden", HashSet(v.hiddenPoiKinds))
@@ -203,6 +204,7 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             .putString("bikePaceLevel", v.bikePace.name)
             .remove("hikePace").remove("bikePace") // the old three-level keys, migrated by [pace]
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
+            .putInt("markedTrails", v.markedTrails)
             .apply()
 
     var planWaypoints: List<GeoPoint>
