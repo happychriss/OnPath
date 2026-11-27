@@ -54,7 +54,6 @@
     <string name="plan_spot_at_start">am Start</string>
     <string name="plan_spot_after">nach %1$s</string>
     <string name="plan_spots_title">Auf dieser Route</string>
-    <string name="plan_spots_tap">Tippe auf eine Stelle, um sie auf der Karte zu sehen.</string>
     <string name="plan_warn_show_spots">Stellen anzeigen</string>
     <string name="plan_calculating">Route wird berechnet…</string>
     <string name="plan_calculating_leg">Abschnitt %1$d von %2$d wird berechnet…</string>
@@ -65,26 +64,16 @@
     <string name="wait_leg">Abschnitt %1$d</string>
     <string name="plan_progress_km">%1$s von %2$s km · %3$s</string>
     <string name="plan_hint_first_point_question">Wohin soll’s gehen?</string>
-    <string name="plan_hint_first_point">Halte dein Ziel auf der Karte gedrückt – oder such es oben in der Suchleiste.</string>
-    <string name="plan_guide_find_title">Ziel finden</string>
-    <string name="plan_guide_find_line">Suchen oder auf der Karte gedrückt halten</string>
-    <string name="plan_guide_adjust_title">Route anpassen</string>
-    <string name="plan_guide_adjust_line">Punkte dazu, Rundtour, Höhenprofil</string>
-    <string name="plan_guide_go_title">Los geht’s</string>
-    <string name="plan_guide_go_line">Die Navigation führt dich – auch ohne Netz</string>
-    <string name="plan_guide_my_routes">Meine Touren öffnen</string>
     <string name="plan_hint_tap_hold">Gedrückt halten, um hier einen Punkt zu setzen.</string>
-    <string name="plan_offline_pill">Ohne Netz</string>
-    <string name="plan_offline_ready">Karte und Wege für diese Route sind auf dem Handy – es geht auch ohne Netz.</string>
+    <string name="plan_offline_pill">Offline verfügbar</string>
+    <string name="plan_offline_ready">Offline verfügbar: Karte, Navigation, Umplanen und neue Route beim Abweichen – rund um diese Route.</string>
     <string name="plan_offline_loading_mb">Karte und Wege werden geladen (%1$s).</string>
     <string name="plan_offline_loading">Karte und Wege werden geladen.</string>
     <string name="plan_offline_missing_map">Für %1$s dieser Route fehlt die Karte – mit Netz wird sie geladen.</string>
     <string name="plan_offline_missing_ways">Für diese Route fehlen noch Wege – mit Netz werden sie geladen.</string>
-    <string name="plan_offline_desc_ready">Ohne Netz: bereit</string>
-    <string name="plan_offline_desc_loading">Ohne Netz: lädt</string>
-    <string name="plan_offline_desc_missing">Ohne Netz: fehlt etwas</string>
+    <string name="plan_offline_pill_loading">Offline: lädt …</string>
+    <string name="plan_offline_pill_missing">Offline: unvollständig</string>
     <string name="map_tip_locate">Mein Standort</string>
-    <string name="plan_hint_destination">Halte die Karte gedrückt, um das Ziel zu setzen.</string>
     <string name="plan_not_routed_long">Route nicht berechnet – sehr langer Plan.</string>
     <string name="plan_not_routed_stopped">Route nicht berechnet – Berechnung abgebrochen.</string>
     <string name="plan_not_routed">Route nicht berechnet.</string>
@@ -201,7 +190,7 @@
     <string name="plan_start_here">Als Start</string>
     <string name="plan_go_here">Als Ziel</string>
     <string name="plan_from_my_position">Start: dein Standort</string>
-    <string name="plan_open_google_maps">In Google Maps öffnen</string>
+    <string name="plan_open_google_maps">Google Maps</string>
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Nadel entfernen</string>
     <string name="plan_pin_chip_desc">%1$s: Möglichkeiten zeigen</string>
@@ -214,7 +203,7 @@
         <item quantity="one">Löscht den Punkt davor</item>
         <item quantity="other">Löscht die %1$d Punkte davor</item>
     </plurals>
-    <string name="plan_start_finish_here">Als Start</string>
+    <string name="plan_start_finish_here">Als Start der Rundtour</string>
     <string name="plan_same_round_trip">Gleiche Rundtour, startet hier</string>
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>
@@ -286,8 +275,4 @@
     <string name="plan_save_ask_text">Dein Plan ist noch nicht gespeichert.</string>
     <string name="plan_menu_record_without_plan">Nur aufzeichnen</string>
     <string name="plan_menu_help">Hilfe</string>
-    <!-- the empty plan during a tour (owner 2026-11-12: „Tour läuft noch“, „neues Ziel festlegen“) -->
-    <string name="plan_tour_still_running">Tour läuft noch</string>
-    <string name="plan_tour_new_target">Neues Ziel festlegen</string>
-    <string name="plan_tour_new_target_line">Ziel suchen oder Karte gedrückt halten → Als Ziel</string>
 </resources>

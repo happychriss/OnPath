@@ -152,7 +152,7 @@ data class NavUi(
      * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
      */
     val approx: String? = null,
-    /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
+    /** OnPath's notifications are off during this tour: the question under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
     /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
@@ -271,7 +271,7 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
-    /** The "Notifications off" box: tap → phone setup step, OK → gone for this tour. */
+    /** The notifications question: Einschalten → phone setup step, Später → gone for this tour. */
     onNotifications: () -> Unit = {},
     onNotificationsOk: () -> Unit = {},
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
@@ -414,7 +414,8 @@ fun NavigateOverlay(
             mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
-            if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
+            // a question now (owner 2026-11-27), which would go before every note: it waits while an error shows
+            if (ui.notificationsOff && leadFailed == null && error == null) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
         ))
         MessageSlot(message, MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP),
             onBottomDp = { messageBottomDp = it })
@@ -626,9 +627,15 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             Column(Modifier.weight(1f)) {
                 // a multi-day tour's day (sketch round 2, step 12): "Tag 4 von 6", small above the numbers
                 ui.day?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
-                // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
-                if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2)
+                // a tour without a route (owner 2026-11-27, like Komoot / Strava): only time and distance, big – no label
+                freeTourNumbers(ui)?.let { (time, dist) ->
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(instrument(time, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1, softWrap = false)
+                        Text(instrument(dist, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1, softWrap = false)
+                    }
+                }
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
@@ -842,30 +849,27 @@ private fun PositionLine(text: String, copy: String?) {
 }
 
 /**
- * The recording line of the status card, only when it matters (owner): a free recording (it is the card's
- * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; off route (the card has nothing else then):
- * "Recording · 2.1 km". Stopped (owner 2026-11-07, "Anhalten" variant 5: the head says "Angehalten seit …"): a labelled
- * line without seconds, "So far 5.3 km · moving 1:12", without a moving time "So far 5.3 km · 1:23 h on the way".
- * Normal navigation → null (the orange dot on the activity icon says it). No GPS is the amber [noGpsLine] instead.
- * Without moving time: the elapsed clock.
+ * The recording line of the status card, only when stopped (owner 2026-11-07, "Anhalten" variant 5: the head says
+ * "Angehalten seit …"): a labelled line without seconds, "So far 5.3 km · moving 1:12", without a moving time "So far
+ * 5.3 km · 1:23 h on the way". Otherwise null: navigation shows what is left, a tour without a route its numbers big
+ * ([freeTourNumbers], owner 2026-11-27), off the route nothing (owner 2026-11-01). No GPS is the amber [noGpsLine] instead.
  */
-internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
-    val free = ui.toGo == null
-    // off the route no recording line either (owner 2026-11-01: "überflüssig – der rote Punkt am Rad zeigt es")
-    if (!free && !ui.paused) return null
-    if (ui.paused) {
-        val soFar = Txt.s(Res.string.nav_so_far, Format.distance(distanceM))
-        val time = ui.movingS?.let { Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(it)) }
-            ?: Txt.s(Res.string.nav_on_the_way_for, com.onpath.app.time.TimeEstimate.hm(ui.elapsedS.toDouble()))
-        return "$soFar · $time"
-    }
-    val status = Txt.s(Res.string.nav_status_recording)
-    val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
-    val parts = mutableListOf(status, Format.distance(distanceM))
-    parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
-    val b = ui.breakS ?: 0.0
-    if (b >= 60) parts += Txt.s(Res.string.nav_breaks, com.onpath.app.time.TimeEstimate.hm(b))
-    return parts.joinToString(" · ")
+internal fun recordingLine(ui: NavUi, distanceM: Double, @Suppress("UNUSED_PARAMETER") offRoute: Boolean = false): String? {
+    if (!ui.paused) return null
+    val soFar = Txt.s(Res.string.nav_so_far, Format.distance(distanceM))
+    val time = ui.movingS?.let { Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(it)) }
+        ?: Txt.s(Res.string.nav_on_the_way_for, com.onpath.app.time.TimeEstimate.hm(ui.elapsedS.toDouble()))
+    return "$soFar · $time"
+}
+
+/**
+ * A tour without a route, not stopped (owner 2026-11-27, like Komoot / Strava): only time and distance, big – the moving
+ * time ("28 min", the elapsed time while it is not known) and the distance so far. Null with a route or stopped.
+ */
+internal fun freeTourNumbers(ui: NavUi): Pair<String, String>? {
+    val d = ui.recordedM ?: return null
+    if (ui.toGo != null || ui.paused) return null
+    return Format.durationShort(ui.movingS ?: ui.elapsedS.toDouble()) to Format.distance(d)
 }
 
 /** "Moving 1:12 · breaks 0:11" for the opened card; null without moving time. */
@@ -951,16 +955,6 @@ internal fun rerouteMessage(q: NavPrompt.Question, onTake: () -> Unit, onKeep: (
 }
 
 /**
- * Off the route, the way back still being computed (owner 2026-11-01: "erst piep, piep, anbieten, dann gemeinsam
- * suchen"): the question comes at once – "Abseits der Route", how far and where the route is; "Keep original" works
- * at once, "New route" shows a spinner until the way is found (then the normal question, [rerouteMessage]).
- */
-internal fun searchingMessage(o: OffRouteUi, onKeep: () -> Unit): Message =
-    Message(MessageKind.FRAGE, Txt.s(Res.string.nav_title_searching), NavText.toRoute(o.toRoute),
-        listOf(MessageButton(NavText.KEEP, onKeep), MessageButton(NavText.TAKE) {}.apply { busy = true }),
-        icon = Icons.Outlined.AltRoute, navigate = true)
-
-/**
  * Android's back in Navigate (flow map N4, owner 2026-11-15 after a hike: „aus der Aufzeichnung verlassen wir die App
  * nicht“): while a tour records back never leaves the app – it is swallowed (before 2026-11-15 it asked "App
  * verlassen?", which an accidental back from the ◀ key under „Anhalten“ brought up on the way). Pure, unit-tested.
@@ -969,16 +963,6 @@ object BackStaysRule {
     /** While a tour records and nothing is open that back closes first (the unlocked bar, the activity / settings sheet). */
     fun swallows(recording: Boolean, barOpen: Boolean, sheetOpen: Boolean): Boolean = recording && !barOpen && !sheetOpen
 }
-
-/**
- * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
- * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
- * Never goes by itself (owner: no self-dismissing messages).
- */
-@Composable
-internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Message =
-    Message(MessageKind.HINWEIS_WARN, str(Res.string.nav_notif_off), str(Res.string.nav_notif_off_line),
-        listOf(MessageButton(str(Res.string.common_ok), onOk)), onTap = onSetUp, tapLabel = str(Res.string.nav_notif_off_click))
 
 /**
  * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,

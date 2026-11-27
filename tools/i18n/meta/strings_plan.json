@@ -204,12 +204,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_spots_tap": {
-    "area": "Route hints",
-    "context": "Line under the title of the route hint list",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "plan_warn_show_spots": {
     "area": "Route hints",
     "context": "Accessibility: what tapping the amber hint line does",
@@ -242,19 +236,6 @@
     "priority": 1,
     "confidence": "sicher",
     "decided": "Owner 2026-11-18 (München–Venedig): '210 von 564 km · 0:42' instead of only 'Abschnitt 2 von 2'"
-  },
-  "plan_hint_first_point": {
-    "area": "Plan sheet",
-    "context": "Plan sheet with no points yet (first use). \"☰ → Start recording\" names the menu path (keep it equal to plan_menu_start_recording) – since 2026-11-07 no longer shown in the empty sheet (the guide replaced it); still the no-route line text and the web planner mirror",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner answer 2026-10-26: kept exactly as the owner wrote it"
-  },
-  "plan_hint_destination": {
-    "area": "Plan sheet",
-    "context": "Plan sheet with one point",
-    "priority": 1,
-    "confidence": "sicher"
   },
   "plan_not_routed_long": {
     "area": "Plan sheet",
@@ -933,7 +914,7 @@
   },
   "plan_start_finish_here": {
     "area": "Map (Plan)",
-    "context": "Menu row on a round-trip point: the loop starts (and ends) here – the line under it says „Same round trip, starts here“. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
+    "context": "Menu row on a round-trip point: the loop starts (and ends) here; one row, no line under it in the app (owner 2026-11-27: „Als Start der Rundtour“).",
     "priority": 2,
     "confidence": "sicher"
   },
@@ -1359,55 +1340,6 @@
     "confidence": "sicher",
     "max": 28
   },
-  "plan_guide_find_title": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 1 title (tappable: opens the search)",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_find_line": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 1 line",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_adjust_title": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 2 title",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_adjust_line": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 2 line",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_go_title": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 3 title (plain text, not a button; same word as the start button)",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_go_line": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, step 3 line",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
-  "plan_guide_my_routes": {
-    "area": "Plan sheet",
-    "context": "Empty start sheet guide, small link under the steps: opens My tours",
-    "priority": 1,
-    "confidence": "sicher",
-    "decided": "Owner 2026-11-07: variant A of the empty-sheet guide"
-  },
   "plan_menu_help": {
     "area": "Plan menu",
     "context": "☰ menu, first item (owner 2026-11-08): opens the help on onpath.earth in the app language",
@@ -1445,5 +1377,19 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 28
+  },
+  "plan_offline_pill_loading": {
+    "area": "Plan",
+    "context": "Plan's mode pill after „PLANEN · “ while map / ways for the route still load (owner 2026-11-27)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 22
+  },
+  "plan_offline_pill_missing": {
+    "area": "Plan",
+    "context": "Plan's mode pill after „PLANEN · “ when something for the route is missing and nothing loads (owner 2026-11-27)",
+    "priority": 2,
+    "confidence": "sicher",
+    "max": 24
   }
 }

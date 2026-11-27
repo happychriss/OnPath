@@ -645,6 +645,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun endGuidanceIfPlanEmpty() = tourEdits.endGuidanceIfPlanEmpty()
             override fun clearFollow() = this@AppViewModel.tourFollow.clearFollow()
             override fun guidanceEndedByEmptyPlan() { this@AppViewModel.tourFollow.guidanceEndedByEmptyPlan = true }
+            override fun planEmptiedDuringTour() = this@AppViewModel.tourSession.backToNavigateWithEmptyPlan()
             override fun stopName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)
             override suspend fun pointNames(): com.onpath.app.ui.plan.PointNames {
                 val index = search.offlineIndex()
@@ -1362,8 +1363,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     // ---------------- map hold menus (MapGestures, ui/MapOverlays) ----------------
 
     fun isRoundTrip(): Boolean = PlanEdits.isRoundTrip(plan.points)
-    /** Index of the round trip's ① (stops on the way before it), null without a loop ([PlanEdits.loopStart]). */
-    fun loopStart(): Int? = PlanEdits.loopStart(plan.points)
+    fun loopStart(): Int? = PlanEdits.loopStart(plan.points) // the round trip's ①, null without a loop
 
     // ---------------- Points section of the full plan sheet (PointsSection, routing/PlanPoints) ----------------
 

@@ -602,6 +602,23 @@ class TourSessionFlowTest {
         assertEquals(AppMode.NAVIGATE, session.mode)
     }
 
+    /**
+     * Owner 2026-11-27: the plan emptied in Plan during a tour → back to Navigate without a route; only the mode changes,
+     * no START / STOP is sent (the recording goes on). Not while the plan has points, not without a tour, not from Navigate.
+     */
+    @Test fun anEmptiedPlanDuringATourGoesBackToNavigateAndTheRecordingGoesOn() {
+        runningTour()
+        ui { session.enter(AppMode.PLAN) }
+        ui { session.backToNavigateWithEmptyPlan() }
+        assertEquals("the plan still has points: Plan stays", AppMode.PLAN, session.mode)
+        ui { plan.replace(emptyList()) }
+        client.sent.clear()
+        ui { session.backToNavigateWithEmptyPlan() }
+        assertEquals(AppMode.NAVIGATE, session.mode)
+        assertEquals("only Navigate is told, no START / STOP", listOf("NAVIGATING"), actions())
+        assertTrue("the tour still records", client.state.value != null)
+    }
+
     /** Rule 2: an interrupted tour still checked / asked about holds the start – nothing sent, the plan and the files untouched. */
     @Test fun anInterruptedTourHoldsTheStartAndNothingIsTouched() {
         create(); routeNow = routeFor(plan.points.toList())

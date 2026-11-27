@@ -121,6 +121,11 @@ class GermanScreenshotTest {
     @Test fun planEmptyDuringTour() = shots.planEmptyDuringTour()
     @Test fun sharedPlaceMenu() = shots.sharedPlaceMenu()
     @Test fun sharedPlaceMenuEmptyPlan() = shots.sharedPlaceMenuEmptyPlan()
+    /** Owner's texts 2026-11-27: „Als Start der Rundtour“, „Google Maps ↗“; the search with its fixed Google row. */
+    @Test fun pointMenuRoundTrip() = shots.pointMenuRoundTrip()
+    @Test fun searchEmpty() = borrow(com.onpath.app.search.SearchScreenshotTest()).searchEmpty()
+    @Test fun searchResults() = borrow(com.onpath.app.search.SearchScreenshotTest()).searchResults()
+    @Test fun searchRecent() = borrow(com.onpath.app.search.SearchScreenshotTest()).searchRecent()
     @Test fun foundPlacePin() = shots.foundPlacePin()
     @Test fun tours() = shots.tours()
     @Test fun routesSortedByLength() = shots.routesSortedByLength()

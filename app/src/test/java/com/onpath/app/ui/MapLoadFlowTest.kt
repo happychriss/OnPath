@@ -101,7 +101,7 @@ class MapLoadFlowTest {
         p.update(listOf(ActionPercent.Item("a", mb, 0.1)), 2, 0, groups = groups("Bad Waldsee" to LoadPhase.LOADING, "Meran" to LoadPhase.PREPARING))
         val ui = p.update(listOf(ActionPercent.Item("a", mb, 0.5)), 1, 0, groups = groups("Meran" to LoadPhase.FINISHING))!!
         assertEquals(listOf("Around Bad Waldsee" to "done", "Around Meran" to "almost done"), ui.rows.map { it.name to it.state })
-        assertEquals("The maps you have stay.", ui.notes.last())
+        assertTrue("no \"The maps you have stay\" (owner 2026-11-27)", ui.notes.isEmpty())
         // a name change does not restart the 10 s wait nor hide the sign (the gate keys on nothing but presence)
         val gate = backgroundGate()
         gate.update(ui, 0)
@@ -142,7 +142,7 @@ class MapLoadFlowTest {
         val onlyNewer = BackgroundProgress(ActionPercent()).update(listOf(ActionPercent.Item("cell:${a.id}", 10 * mb, 0.0)), 1, 0,
             newer = 1, newerEtaMin = 6)!!
         assertEquals("Newer map ready in about 6 min.", onlyNewer.notes.first())
-        assertEquals(listOf("The maps you have stay."), BackgroundDownloadUi(3, 1, 0, 10).notes)
+        assertEquals(emptyList<String>(), BackgroundDownloadUi(3, 1, 0, 10).notes)
         // MapScreen no longer reads cell states (no "Loading the newer map…" veil): download ticks don't recompose it
         val src = java.io.File("src/main/java/com/onpath/app/ui/MapScreen.kt").readText()
         assertTrue("MapScreen must not collect cell states", "cells.states.collectAsState" !in src && "MapUpdateLayer" !in src)

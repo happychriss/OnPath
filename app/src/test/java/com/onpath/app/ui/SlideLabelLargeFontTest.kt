@@ -54,7 +54,7 @@ abstract class SlideLabelLargeFontTest {
     @Test fun routesItemMenuDoneWithPlan() = shots.routesItemMenuDoneWithPlan()
     /** The green "Navigation ›" at a large font: the numbers go, the word stays whole (owner 2026-11-06, C). */
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
-    /** The empty plan during a tour (owner 2026-11-12): "● Tour läuft noch" + "Neues Ziel festlegen ›" – nothing cut. */
+    /** The empty plan during a tour (Planen from a tour without a route; no „Tour läuft noch“ since owner 2026-11-27) – nothing cut. */
     @Test fun planEmptyDuringTour() = shots.planEmptyDuringTour()
     /** "Neuer Plan – deine Aufnahme läuft weiter" · Rückgängig (owner 2026-11-06) and the slim "Tour gespeichert" box at a large font. */
     @Test fun navigateNewPlan() = shots.navigateNewPlan()

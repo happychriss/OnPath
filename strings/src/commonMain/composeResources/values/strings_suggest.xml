@@ -102,7 +102,7 @@
     <string name="suggest_form_doubled">same way twice</string>
     <string name="suggest_form_crosses">crosses itself</string>
     <!-- the planner's round-trip panel (web/app/src/suggest.ts, docs/design/tour-suggestions.md §7 stage 3) -->
-    <string name="suggest_ui_from_here">Round trip from here</string>
+    <string name="suggest_ui_from_here">Suggest round trips</string>
     <string name="suggest_ui_activity">Activity</string>
     <string name="suggest_ui_time">Time</string>
     <string name="suggest_ui_ascent">Ascent</string>

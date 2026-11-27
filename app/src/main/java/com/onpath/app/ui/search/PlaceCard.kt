@@ -12,11 +12,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.outlined.Info
-import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -119,9 +119,10 @@ fun PlaceCard(ui: PlaceCardUi, actions: PlaceCardActions, modifier: Modifier = M
                     }
                     OutlinedButton(onClick = actions.onGoogle, contentPadding = small,
                         modifier = Modifier.weight(1.2f).heightIn(min = 48.dp)) {
-                        Icon(Icons.Outlined.Map, null, Modifier.size(18.dp))
+                        // „Google Maps ↗“ like every Google link (owner 2026-11-27)
+                        Text(str(Res.string.search_google_maps), maxLines = 1, style = MaterialTheme.typography.labelMedium)
                         Spacer(Modifier.width(4.dp))
-                        Text("Google", maxLines = 1, style = MaterialTheme.typography.labelMedium)
+                        Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, Modifier.size(16.dp))
                     }
                 }
             }

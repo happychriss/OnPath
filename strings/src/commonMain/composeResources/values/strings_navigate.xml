@@ -110,7 +110,6 @@
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route starts %1$s away</string>
     <string name="nav_far_detail">%1$s (direct) · on the way</string>
-    <string name="nav_far_long">The search can take a long time.</string>
     <string name="nav_far_searching">Finding a way to the start…</string>
     <string name="nav_far_lead">Guide me</string>
     <string name="nav_far_record">Go on without a route</string>
@@ -179,7 +178,6 @@
     <string name="nav_save_recording">Save tour</string>
     <string name="nav_action_pause">Stop</string>
     <string name="nav_route_back_title">No destination ahead any more.</string>
-    <string name="nav_route_back_text">The tour goes on. Undo brings the point back.</string>
     <string name="nav_route_back">Back to the start</string>
     <string name="nav_just_record">Go on without a route</string>
     <string name="nav_long_route_foot">%1$s on foot. Calculating and loading its maps takes long.</string>
@@ -213,7 +211,6 @@
         <item quantity="one">Part of this tour looks like a ride (bus, car or lift). What should count?</item>
         <item quantity="other">%1$d parts of this tour look like rides (bus, car or lift). What should count?</item>
     </plurals>
-    <string name="nav_rides_kept_note">All ridden points are kept – you can change this later in My tours (⋮ → Edit rides).</string>
     <string name="nav_ride_q_end">You rode at the end</string>
     <string name="nav_ride_q_along">You rode along the way</string>
     <string name="nav_ride_q_several">%1$d rides · %2$s</string>
@@ -254,9 +251,10 @@
     <string name="nav_time_moving">Moving time</string>
     <string name="nav_time_with_breaks">With breaks</string>
     <string name="nav_time_pace_level">Pace level</string>
-    <string name="nav_notif_off">Notifications off</string>
-    <string name="nav_notif_off_line">No turns and no “New route?” on the lock screen</string>
-    <string name="nav_notif_off_click">Set up notifications</string>
+    <string name="nav_notif_off">Turns on the lock screen?</string>
+    <string name="nav_notif_off_line">With notifications you see them without unlocking the phone.</string>
+    <string name="nav_notif_later">Later</string>
+    <string name="nav_notif_turn_on">Turn on</string>
 
     <!-- rest view while cycling (smart screen) -->
     <string name="nav_rest_destination">Destination</string>
@@ -266,7 +264,6 @@
     <string name="nav_turn_round">Turn round</string>
     <string name="nav_delete_tour_short">Delete</string>
     <string name="nav_delete_tour">Delete tour</string>
-    <string name="nav_free_tour">Free tour · recording only</string>
     <string name="nav_stop_arrive">at %1$s</string>
     <string name="nav_hold_hint">Press and hold</string>
     <string name="nav_stopped_since_head">Stopped since %1$s</string>

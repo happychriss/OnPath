@@ -253,7 +253,7 @@ class ScreenshotTest {
         Frame(route = false) { PlanPanel(planUi(n = 1, r = null), PlanCallbacks()) }
     }
 
-    /** Meran pictures D04: at the low (summary) step "Halte die Karte gedrückt, um das Ziel zu setzen." lay behind the foot. */
+    /** Meran pictures D04: the low (summary) step with one point (its hint line went, owner 2026-11-27). */
     fun planOnePointLow() = paparazzi.snapshot {
         Frame(route = false) { PlanPanel(planUi(n = 1, r = null, size = PlanSize.MINI), PlanCallbacks()) }
     }
@@ -276,19 +276,19 @@ class ScreenshotTest {
         Frame { PlanPanel(planUi(size = PlanSize.MINI).copy(tapHint = true), PlanCallbacks()) }
     }
 
-    /** Owner 2026-11-03: the route works without a network – "PLANEN · Ohne Netz ✓", the tap's line in the sheet. */
+    /** Owner 2026-11-03: the route works without a network – "PLANEN · Offline verfügbar ✓" (words 2026-11-27), the tap's line in the sheet. */
     fun planOfflineReady() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.READY, 0.0, false, 0)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
     }
 
-    /** Still loading: "PLANEN · Ohne Netz ⟳", "Karte und Wege werden geladen (12 MB)." */
+    /** Still loading: "PLANEN · Offline: lädt … ⟳", "Karte und Wege werden geladen (12 MB)." */
     fun planOfflineLoading() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.LOADING, 0.0, true, 12L * 1_048_576)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
     }
 
-    /** Something missing, nothing loading: "PLANEN · Ohne Netz ⚠", "Für 3,0 km dieser Route fehlt die Karte …". */
+    /** Something missing, nothing loading: "PLANEN · Offline: unvollständig ⚠", "Für 3,0 km dieser Route fehlt die Karte …". */
     fun planOfflineMissing() = paparazzi.snapshot {
         val r = OfflineReady.Result(OfflineReady.State.MISSING, 3_000.0, false, 0)
         Frame(offline = r.state) { PlanPanel(planUi(size = PlanSize.MINI).copy(offlineInfo = OfflineReady.explain(r)), PlanCallbacks()) }
@@ -541,7 +541,7 @@ class ScreenshotTest {
             approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80))))
     }
 
-    /** Notifications off during a tour: the small amber chip under the status card (tap → setup, OK → gone this tour). */
+    /** Notifications off during a tour: the question „Abzweigungen auf dem Sperrbildschirm?“ · Später / Einschalten (owner 2026-11-27). */
     fun navigateNotificationsOff() = paparazzi.snapshot {
         NavFrame(navUi.copy(arriveAt = "16:40", notificationsOff = true))
     }
@@ -707,12 +707,12 @@ class ScreenshotTest {
         NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true, pausedSinceMs = STOPPED_AT))
     }
 
-    /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
+    /** A tour without a route (owner 2026-11-27, like Komoot / Strava): only time and distance, big – no label. */
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
     /**
-     * The empty plan during a tour (owner 2026-11-12, "Tour läuft noch – neues Ziel festlegen"): the title "● Tour läuft
-     * noch", the row "Neues Ziel festlegen ›" (search or hold → Hierhin) and "Weiter geht's" back to the tour.
+     * The empty plan during a tour – only when Planen is tapped in a tour without a route: emptying the plan itself goes
+     * back to Navigate (owner 2026-11-27, no „Tour läuft noch“ sheet any more); "Weiter geht's" back to the tour.
      */
     @Test fun planEmptyDuringTour() = paparazzi.snapshot {
         Frame(editing = true, route = false) {
@@ -1132,6 +1132,15 @@ class ScreenshotTest {
         OnPathTheme {
             OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(340.dp, 470.dp)) {
                 PointMenu(1, 4, "Leiter Alm") {}
+            }
+        }
+    }
+
+    /** A round trip's point (owner 2026-11-27): one row „Als Start der Rundtour“, no line under it; „Google Maps ↗“. */
+    @Test fun pointMenuRoundTrip() = paparazzi.snapshot {
+        OnPathTheme {
+            OverlayFrame(OnPathColors.Route, androidx.compose.ui.unit.DpOffset(200.dp, 470.dp)) {
+                PointMenu(2, 4, "Leiter Alm", roundTrip = true) {}
             }
         }
     }

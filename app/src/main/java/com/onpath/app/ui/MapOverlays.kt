@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.AddLocationAlt
 import androidx.compose.material.icons.outlined.Delete
@@ -435,30 +436,30 @@ private const val HOLD_RING_DP = 12
 
 /**
  * First hold on an empty plan (owner 2026-11-26: no title – the menu belongs to nothing yet): „Als Start“ · „Als Ziel“
- * (this spot = destination, ↳ „Start: dein Standort“) · „Rundtour ab hier“. „Als Ziel“ is disabled with a short reason
- * ([fromMeBlocked], e.g. "Searching GPS…") in place of that line while there is no usable position.
+ * (this spot = destination, from my position) · „Rundtouren vorschlagen“. „Als Ziel“ is disabled with a short reason
+ * ([fromMeBlocked], e.g. "Searching GPS…") under it while there is no usable position.
  */
 @Composable
 fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: () -> Unit, modifier: Modifier = Modifier,
                    /** false during a tour ([MapGestures.offersStartHere]): only „Als Ziel“. */
                    startHere: Boolean = true,
-                   /** „Rundtour ab hier“ last in the route rows (tour suggestions on); null = not offered. */
+                   /** „Rundtouren vorschlagen“ last in the route rows (tour suggestions on); null = not offered. */
                    onRoundTrip: (() -> Unit)? = null) {
     MenuSurface(modifier) {
         Spacer(Modifier.height(4.dp))
         // the likeliest on top (owner 2026-11-26 night): „Als Ziel“ from my position when it can, else „Als Start“
         if (fromMeBlocked == null) { GoHereRow(null, onFromMe); if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere) }
         else { if (startHere) HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onStartHere); GoHereRow(fromMeBlocked, onFromMe) }
-        // „Rundtour ab hier“ under its own thin line (owner 2026-11-27, PinMenuItems' LOOP group)
+        // „Rundtouren vorschlagen“ under its own thin line (owner 2026-11-27, PinMenuItems' LOOP group)
         if (startHere && onRoundTrip != null) { GroupLine(); HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = onRoundTrip) }
     }
 }
 
-/** „Als Ziel“ from my position: ↳ „Start: dein Standort“, or why it is off ([fromMeBlocked]) – then disabled. */
+/** „Als Ziel“ from my position: no line under it (owner 2026-11-27), only why it is off ([fromMeBlocked]) – then disabled. */
 @Composable
 private fun GoHereRow(fromMeBlocked: String?, onFromMe: () -> Unit) =
     HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
-        supporting = fromMeBlocked ?: str(Res.string.plan_from_my_position), onClick = onFromMe)
+        supporting = fromMeBlocked, onClick = onFromMe)
 
 /** The thin line between two groups of a menu ([com.onpath.app.domain.MenuGroups]: Route → Ort → Entfernen). */
 @Composable
@@ -468,7 +469,7 @@ private fun GroupLine() =
 /**
  * Menu of a held POI that is not a route point: its name as the title, then the groups Route → Ort → Entfernen with a thin
  * line between them ([PinMenuItems], owner 2026-11-26). Route: on an empty plan like the first-point menu – „Als Start“ ·
- * „Als Ziel“ (↳ Start: dein Standort) · „Rundtour ab hier“; with one point [addLabel] („Als Ziel“); with 2+ the entries of
+ * „Als Ziel“ · „Rundtouren vorschlagen“; with one point [addLabel] („Als Ziel“); with 2+ the entries of
  * [menu] ([PlaceAddMenu]) in the fixed order „Als Stopp“ → „Als Ziel“, the likelier one tinted. Ort: Merken · In Google
  * Maps öffnen. Entfernen: „Nadel entfernen“ (the pin only).
  */
@@ -491,7 +492,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
              */
             favourite: Boolean? = null, home: Boolean = false,
             onFavourite: () -> Unit = {}, onHome: () -> Unit = {},
-            /** „Rundtour ab hier“ last in the route rows (tour suggestions on, [PinMenuItems]); null = not offered. */
+            /** „Rundtouren vorschlagen“ last in the route rows (tour suggestions on, [PinMenuItems]); null = not offered. */
             onRoundTrip: (() -> Unit)? = null) {
     val place = Place.fromPoi(poi)
     MenuSurface(modifier, card) {
@@ -525,7 +526,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             PinMenuItems.Row.FAVOURITE -> KeepRow(favourite == true, onFavourite)
             PinMenuItems.Row.HOME -> HoldMenuItem(Icons.Outlined.Home,
                 str(if (home) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
-            PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), onClick = onGoogle)
+            PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), leaves = true, onClick = onGoogle)
             PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })
             PinMenuItems.Row.OVERNIGHT -> {} // multi-day editing is the planner's (the app passes overnight = false)
             }
@@ -589,10 +590,10 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
             // Say what happens: the dropped points come back with Undo.
             PointAction.MAKE_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here),
                 supporting = plural(Res.plurals.plan_removes_points, index, index)) { onAction(a) }
-            PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_finish_here),
-                supporting = str(Res.string.plan_same_round_trip)) { onAction(a) }
+            // one row, no line under it (owner 2026-11-27: „Als Start der Rundtour“)
+            PointAction.LOOP_START -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_finish_here)) { onAction(a) }
             PointAction.KEEP -> KeepRow(favourite == true) { onAction(a) }
-            PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps)) { onAction(a) }
+            PointAction.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), leaves = true) { onAction(a) }
             PointAction.DELETE -> HoldMenuItem(Icons.Outlined.Delete, str(Res.string.common_delete), danger = true) { onAction(a) }
             }
         }
@@ -606,7 +607,9 @@ fun PointMenu(index: Int, count: Int, name: String?, modifier: Modifier = Modifi
 @Composable
 private fun HoldMenuItem(
     icon: ImageVector, label: String, danger: Boolean = false, enabled: Boolean = true, supporting: String? = null,
-    strong: Boolean = false, iconTint: Color? = null, onClick: () -> Unit,
+    strong: Boolean = false, iconTint: Color? = null,
+    /** It leaves the app (Google Maps, owner 2026-11-27): a ↗ after the label. */
+    leaves: Boolean = false, onClick: () -> Unit,
 ) {
     val base = when {
         danger -> MaterialTheme.colorScheme.error
@@ -623,12 +626,16 @@ private fun HoldMenuItem(
         Icon(icon, null, tint = iconTint ?: if (strong) OnPathColors.ActionEdit else color, modifier = Modifier.size(22.dp))
         Spacer(Modifier.width(14.dp))
         Column {
-            // two lines at most: a large font wraps "In Google Maps öffnen", never cuts it (2026-11-13)
+            // two lines at most: a large font wraps a long label, never cuts it (2026-11-13)
             Text(label, color = color, style = MaterialTheme.typography.bodyLarge,
                 fontWeight = if (strong) FontWeight.SemiBold else FontWeight.Medium, maxLines = 2, overflow = TextOverflow.Ellipsis)
             supporting?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1)
             }
+        }
+        if (leaves) {
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Outlined.OpenInNew, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
         }
     }
 }

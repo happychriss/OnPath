@@ -74,6 +74,11 @@ class SearchScreenshotTest {
         }
     }
 
+    /** Nothing kept yet (owner 2026-11-27): no explaining text, only the fixed „Google Maps ↗“ row at the bottom. */
+    @Test fun searchEmpty() = paparazzi.snapshot {
+        OnPathTheme { SearchScreen(SearchUi(), SearchActions(), autoFocus = false) }
+    }
+
     @Test fun searchRecent() = paparazzi.snapshot {
         OnPathTheme {
             SearchScreen(SearchUi(recent = listOf(hit(hut, 2400.0),

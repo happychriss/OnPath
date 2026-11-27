@@ -108,17 +108,12 @@ fun RideSummaryDialog(
                             verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(selected = choice == o.choice, onClick = null)
                             Spacer(Modifier.width(8.dp))
-                            Column {
-                                // read here, not when the summary was made: a live language switch reaches it (H03)
-                                Text(words(o.titleWords), fontWeight = FontWeight.Medium)
-                                Text(words(o.detailWords), style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
+                            // read here, not when the summary was made: a live language switch reaches it (H03); no
+                            // explaining line under it and no footnote (owner 2026-11-27: the small map shows it)
+                            Text(words(o.titleWords), fontWeight = FontWeight.Medium)
                         }
                     }
                 }
-                Text(str(Res.string.nav_rides_kept_note),
-                    style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         },
         confirmButton = { DeleteApartButtons(onDelete, str(Res.string.common_cancel), onDismiss,

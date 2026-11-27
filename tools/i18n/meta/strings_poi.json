@@ -34,6 +34,5 @@
   "poi_opening_hours": {"area": "POI sheet", "context": "Label of the opening hours row", "priority": 2, "confidence": "sicher"},
   "poi_phone": {"area": "POI sheet", "context": "Label of the phone row (tap = call)", "priority": 2, "confidence": "sicher"},
   "poi_website": {"area": "POI sheet", "context": "Label of the website row", "priority": 2, "confidence": "sicher"},
-  "poi_open_google": {"area": "POI sheet", "context": "Main button: open the place in Google Maps (link out only)", "priority": 2, "confidence": "sicher", "max": 28},
-  "poi_google_line": {"area": "POI sheet", "context": "Small line under the Google Maps button", "priority": 2, "confidence": "sicher"}
+  "poi_open_google": {"area": "POI sheet", "context": "Main button: open the place in Google Maps (link out only); the app draws ↗ after it (owner 2026-11-27: „Google Maps ↗“)", "priority": 2, "confidence": "sicher", "max": 28}
 }

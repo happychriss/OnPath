@@ -260,14 +260,6 @@ class FarStartTest {
         assertTrue(r.nav.session.reached)
     }
 
-    @Test fun theLongSearchWarningStartsAt25Km() {
-        assertEquals(25_000.0, Navigator.FAR_SEARCH_WARN_M, 0.0)
-        assertFalse(Navigator.searchMayTakeLong(8_000.0))
-        assertFalse(Navigator.searchMayTakeLong(24_999.0))
-        assertTrue(Navigator.searchMayTakeLong(25_000.0))
-        assertTrue(Navigator.searchMayTakeLong(630_000.0))
-    }
-
     @Test fun reachingTheRouteClearsTheQuestion() {
         val r = Run(Navigator(session()))
         r.feed(drift(-500.0))

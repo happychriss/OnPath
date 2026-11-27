@@ -27,7 +27,7 @@ class PlanStatusTest {
         assertTrue("the plan is asked about", LongRoute.needsAsk(plan, Activity.HIKE))
         // restored at start: no undo history
         assertEquals(PlanStatus.OnCancel.KEEP_POINTS, PlanStatus.onCancel(PlanStatus.Cause.Other, canUndo = false, canRedo = false))
-        val line = PlanStatus.noRouteLine(plan.size, routing = false, notRouted = NotRouted.LONG)
+        val line = PlanStatus.noRouteLine(plan.size, routing = false, notRouted = NotRouted.LONG)!!
         assertFalse("not calculating: $line", line.contains("Calculating"))
         assertEquals("Plan anyway", PlanStatus.notRoutedAction(NotRouted.LONG))
     }
@@ -90,8 +90,16 @@ class PlanStatusTest {
     /** Invariant: "Calculating the route…" only while a routing request runs. */
     @Test fun calculatingOnlyWhileRouting() {
         for (n in 0..5) for (why in listOf(null, NotRouted.LONG, NotRouted.STOPPED)) {
-            assertFalse("n=$n why=$why", PlanStatus.noRouteLine(n, routing = false, notRouted = why).contains("Calculating"))
+            assertFalse("n=$n why=$why", PlanStatus.noRouteLine(n, routing = false, notRouted = why).orEmpty().contains("Calculating"))
             if (n >= 2) assertEquals(PlanStatus.CALCULATING, PlanStatus.noRouteLine(n, routing = true, notRouted = why))
+        }
+    }
+
+    /** An empty plan and one point show no hint line (owner 2026-11-27: the hold / search hints went). */
+    @Test fun noHintWithoutTwoPoints() {
+        for (routing in listOf(false, true)) {
+            assertEquals(null, PlanStatus.noRouteLine(0, routing = routing, notRouted = null))
+            assertEquals(null, PlanStatus.noRouteLine(1, routing = routing, notRouted = null))
         }
     }
 

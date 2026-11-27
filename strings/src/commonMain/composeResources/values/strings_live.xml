@@ -9,7 +9,7 @@
     <string name="live_name_row">Name on the page</string>
     <string name="live_share_text">Follow my tour: %1$s</string>
     <string name="live_name_title">Your name for the page</string>
-    <string name="live_name_text">Whoever opens the link sees “Tour of …”. You can leave the field empty.</string>
+    <string name="live_name_text">Whoever opens the link sees “Tour of …”.</string>
     <string name="live_name_field">Name</string>
     <string name="live_name_ok">Share</string>
     <string name="live_ended_by_server">Sharing has ended. The link no longer works.</string>

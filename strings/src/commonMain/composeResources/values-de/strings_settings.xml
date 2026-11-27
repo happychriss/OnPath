@@ -121,7 +121,7 @@
     <string name="settings_privacy_geocoder_when">nur für einen geteilten Ort</string>
     <string name="settings_privacy_google">Von Google behält OnPath nur die Position sowie Name und Adresse eines Orts, den du teilst – sonst wird nichts gespeichert oder gezeigt.</string>
     <string name="settings_privacy_tap_what">Der Ort, den du angetippt hast</string>
-    <string name="settings_privacy_tap_when">nur wenn du auf „In Google Maps öffnen“ tippst</string>
+    <string name="settings_privacy_tap_when">nur wenn du auf „Google Maps ↗“ tippst</string>
     <string name="settings_privacy_web_what">Die Website oder Wikipedia-Seite eines Orts</string>
     <string name="settings_privacy_web_to">diese Website</string>
     <string name="settings_privacy_web_when">nur wenn du auf den Link tippst</string>

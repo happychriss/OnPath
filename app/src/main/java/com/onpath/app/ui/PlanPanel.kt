@@ -135,7 +135,7 @@ class PlanCallbacks(
     /** Tour controls at the top of the sheet (only while a tour records). */
     val onPause: (Boolean) -> Unit = {},
     val onEndTour: () -> Unit = {},
-    /** The empty sheet's guide, step 1 "Ziel finden ›": opens the search ([EmptyGuide]). */
+    /** Opens the search. */
     val onSearch: () -> Unit = {},
     /** The empty sheet's guide, "Meine Touren öffnen". */
     val onMyRoutes: () -> Unit = {},
@@ -317,20 +317,18 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // step is this row (over the foot's button)
     ThumbHead(ui, cb)
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
-    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb) }
+    // „Berechnen“ / „Trotzdem planen“ tapped (owner 2026-11-27): only that button spins while its run goes, no sentence
+    var calcAsked by remember { mutableStateOf<NotRouted?>(null) }
+    if (!ui.routing && calcAsked != null) androidx.compose.runtime.SideEffect { calcAsked = null }
+    Column(Modifier.fillMaxWidth().then(belowStep)) { SummaryLines(ui, cb, calcAsked) { calcAsked = it } }
     // no step guide any more (owner 2026-11-26: the search card says how to begin)
     val guide = false
-    // during a tour (owner 2026-11-12, TourStillRunning): "● Tour läuft noch" and only a new destination – the search, or
-    // hold the map → Hierhin; "Weiter geht's" below goes back to the tour
-    if (ui.pointCount == 0 && (ui.tour != null || ui.tourRunning)) Column(Modifier.fillMaxWidth().padding(top = 8.dp).then(belowStep)) {
-        TourStillRunningTitle(paused = ui.tour?.paused == true)
-        TourNewTargetRow(cb.onSearch)
-    }
+    // an empty plan during a tour shows no „Tour läuft noch“ sheet: emptying it goes back to Navigate (owner 2026-11-27)
     // a tap on the open map (hold-only): the same hand says how to set a point – in the step the sheet opens at
-    else if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
-    // without a route, what to do next ("Halte die Karte gedrückt, um das Ziel zu setzen.") belongs to the summary step
-    // too – below it, the low sheet hid it behind its foot (the navigation bar; Meran pictures D04)
-    if (route == null) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
+    if (ui.tapHint) Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { TapHoldHint() }
+    // without a route, the calculation's state belongs to the summary step too – below it, the low sheet hid it behind
+    // its foot (the navigation bar; Meran pictures D04)
+    if (route == null && !(ui.routing && calcAsked != null)) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
     // a multi-day tour: "München – Venedig · 6 Tage"; a followed day: "Tag 4 von 6" (stage 4)
     if (ui.days != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DaysTitle(ui.days) }
     if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead, cb.onAllDays, cb.onLoadDayMaps) }
@@ -381,11 +379,13 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
 
 /** The plan head ([PlanHead]: plan row · facts), then the route state lines under it (ERROR, WARNING, INFO). */
 @Composable
-private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
+private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks, calcAsked: NotRouted? = null, onCalcAsked: (NotRouted) -> Unit = {}) {
     val route = ui.route
     PlanHead(ui, cb)
     // a long calculation: the wait window over the map (form A, owner 2026-11-19 – progress/RouteWait.kt) with Cancel
-    if (!ui.routing && route == null && ui.pointCount >= 2 && ui.notRouted != null) NotRoutedBar(ui.notRouted, cb.onPlanAnyway)
+    val notRouted = if (ui.routing) calcAsked else ui.notRouted
+    if (route == null && ui.pointCount >= 2 && notRouted != null)
+        NotRoutedBar(notRouted, busy = ui.routing) { onCalcAsked(notRouted); cb.onPlanAnyway() }
     // route state, one line per kind: ERROR, WARNING, INFO
     val loadingNotice = RoutingDataNotice.isNotice(ui.error)
     val routeError = ui.error?.takeIf { !loadingNotice }
@@ -638,16 +638,6 @@ object PlanFoot {
     val HEIGHT = 56.dp
 }
 
-/** The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). */
-@Composable
-private fun NotRoutedBar(why: NotRouted, onPlanAnyway: () -> Unit) {
-    Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(PlanStatus.notRoutedText(why), style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f))
-        androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onPlanAnyway) { Text(PlanStatus.notRoutedAction(why)) }
-    }
-}
-
 /**
  * ERROR line: the route does not do what was asked – a plan point it does not reach ("② erst ab T2 erreichbar") or a
  * leg the router could not do ("Point 1 → 2: no path found"). Red ✕ + bold red text, in the summary (visible in the
@@ -728,10 +718,6 @@ private fun SavedLine(ui: PlanUi) {
 @Composable
 private fun Title(ui: PlanUi, route: PlannedRoute?, onTimeDetails: () -> Unit) {
     if (route == null) {
-        // an empty plan during a tour: "● Tour läuft noch" instead of "Neuer Plan" (owner 2026-11-12, TourStillRunning)
-        if (TourStillRunning.shows(ui.pointCount, ui.tour != null || ui.tourRunning)) {
-            TourStillRunningTitle(paused = ui.tour?.paused == true); return
-        }
         Text(str(EmptyPlanTitle.of(ui)), style = MaterialTheme.typography.titleLarge, maxLines = 1)
         return
     }
@@ -789,10 +775,9 @@ private fun OfflineInfoLine(text: String) {
 private fun SubLine(ui: PlanUi, route: PlannedRoute?) {
     if (route != null) return
     if (ui.notRouted != null && !ui.routing && ui.pointCount >= 2) return // the not-routed notice says it
-    if (ui.pointCount == 0) return // the hint sits in the summary step (FirstPointHint, PlanBody)
-    // "Calculating the route…" only while a request runs (not after Cancel)
-    Text(PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted),
-        style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    // "Calculating the route…" only while a request runs (not after Cancel); no line with 0 / 1 point (owner 2026-11-27)
+    val line = PlanStatus.noRouteLine(ui.pointCount, ui.routing, ui.notRouted) ?: return
+    Text(line, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 internal fun stopColor(i: Int, count: Int): Color = when {

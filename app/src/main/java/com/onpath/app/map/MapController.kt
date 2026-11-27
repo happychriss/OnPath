@@ -844,10 +844,10 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
                      passed: Set<Int> = emptySet(), poiKinds: Map<Int, String> = emptyMap()) = guarded("waypoints") {
         val src = source(SRC_WPT) ?: return
         ensureMarkerImages(points.size)
+        val kinds = com.onpath.app.domain.PointMarks.kinds(points, unreached, passed) // a round trip's start: the goal's flag
         val features = points.mapIndexed { i, p ->
-            val kind = when { i in unreached -> "g"; i in passed -> "p"; i == 0 -> "s"; i == points.lastIndex && points.size > 1 -> "e"; else -> "v" }
             // an unreached point stays the grey hollow dot (it says "not reached" first); no POI symbol → the plain dot
-            val icon = poiKinds[i]?.takeIf { kind != "g" }?.let { ensurePoiMarker(it, kind, i + 1) } ?: "wp-$kind-${i + 1}"
+            val icon = poiKinds[i]?.takeIf { kinds[i] != "g" }?.let { ensurePoiMarker(it, kinds[i], i + 1) } ?: "wp-${kinds[i]}-${i + 1}"
             Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
                 addStringProperty("icon", icon)
                 addNumberProperty("idx", i)

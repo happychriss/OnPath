@@ -48,6 +48,8 @@ class PlanEditAdaptersTest {
             "override fun endGuidanceIfPlanEmpty() = tourEdits.endGuidanceIfPlanEmpty()",
             "override fun clearFollow() = this@AppViewModel.tourFollow.clearFollow()",
             "override fun guidanceEndedByEmptyPlan() { this@AppViewModel.tourFollow.guidanceEndedByEmptyPlan = true }",
+            // owner 2026-11-27: the plan emptied during a tour → back to Navigate without a route
+            "override fun planEmptiedDuringTour() = this@AppViewModel.tourSession.backToNavigateWithEmptyPlan()",
             "override fun stopName(p: GeoPoint): String? = this@AppViewModel.searchFlow.stopName(p)",
             "val index = search.offlineIndex()",
             "com.onpath.app.search.RouteNamer.label(p, com.onpath.app.search.RouteNamer.placesNear(index, listOf(p)))",

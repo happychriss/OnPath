@@ -48,10 +48,9 @@ data class BackgroundDownloadUi(
     /** One line per load of the action with where it stands – the finished ones too ("fertig"). */
     val rows: List<BesideRow> = emptyList(),
 ) {
-    /** The details' notes: when a newer map is ready, "The maps you have stay". */
+    /** The details' notes: when a newer map is ready (owner 2026-11-27: no "The maps you have stay"). */
     val notes: List<String> get() = listOfNotNull(
-        newerEtaMin?.takeIf { newer > 0 }?.let { Txt.s(Res.string.maps_bg_newer_ready, it) },
-        Txt.s(Res.string.maps_bg_maps_stay))
+        newerEtaMin?.takeIf { newer > 0 }?.let { Txt.s(Res.string.maps_bg_newer_ready, it) })
 }
 
 /**
