@@ -68,6 +68,11 @@ abstract class DayTableScreenshotTest(fontScale: Float, widthPx: Int) {
         TripProfile(daysUi, 3, onHighlight = {})
     }
 
+    /** The plan sheet's drop-in (MultiDayOverview): Planung + chips, the table, day 3 picked → „Höhenprofil · Tag 3“ only. */
+    @Test fun overviewDayPicked() = shot {
+        MultiDayOverview(daysUi.copy(selected = 3..3), onTap = {}, onHold = {}, onHighlight = {})
+    }
+
     @Test fun headNotSaved() = shot {
         MultiDayHead(MultiDayPanel.head(null, null, false, null, 0.0, 0.0, 0.0), onSave = null)
     }

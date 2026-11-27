@@ -60,6 +60,8 @@ ui/TrackThen.kt
 ui/SyncNote.kt
 ui/TimeDetailsUi.kt
 ui/search/PlaceCardUi.kt
+# DayTableUi: the day table + multi-day panel texts (DayTables, MultiDayPanel), pure
+ui/DayTableUi.kt
 ui/MultiDayUi.kt
 ui/SettingsPage.kt
 
