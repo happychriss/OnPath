@@ -24,6 +24,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
@@ -58,7 +60,10 @@ internal fun activityRowStatus(s: ActivityRowState): String = when (s) {
 fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKeep: () -> Unit, modifier: Modifier = Modifier,
                         onHikeLevel: (Int) -> Unit = {}) {
     val free = ui.rows.any { it.state == ActivityRowState.Plain }
-    Surface(shape = RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp), color = MaterialTheme.colorScheme.surface, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp))) {
+    // the activity picker's look (owner 2026-11-27, variant C – „ein komplett anderes Menü“ during a tour): Rad | Wandern,
+    // the cards, T1–T5; each card here also says what the rest of the route would be for it (fits / not suited / time)
+    var hike by androidx.compose.runtime.saveable.rememberSaveable { androidx.compose.runtime.mutableStateOf(ui.current == Activity.HIKE) }
+    Surface(shape = RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp), color = OnPathColors.Paper, modifier = modifier.fillMaxWidth().warmShadow(OnPathShadow.HIGH, RoundedCornerShape(topStart = OnPathShapes.SHEET_DP.dp, topEnd = OnPathShapes.SHEET_DP.dp))) {
         Column(Modifier.navigationBarsPadding().verticalScroll(rememberScrollState())
             .padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)) {
             Text(str(if (free) Res.string.nav_check_recording_as else Res.string.nav_check_navigating_as), style = MaterialTheme.typography.bodyMedium,
@@ -68,18 +73,18 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
                 Spacer(Modifier.width(10.dp))
                 Text(NavText.activityName(ui.current, ui.sac), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
             }
-            // hiking: the T level can change on its own (K1) – the chips under the current activity
-            if (ui.current == Activity.HIKE) androidx.compose.foundation.layout.Box(Modifier.padding(top = 8.dp)) { SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel) }
             SwitchToHeader(if (free) null else str(Res.string.nav_check_rest_of_route))
             ui.note?.let {
                 Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 4.dp))
             }
-            ui.rows.forEachIndexed { i, row ->
-                if (i > 0) HorizontalDivider()
-                ActivityRowItem(row) { onChoose(row.activity) }
-                // Hike's T1–T5 under its row, as in the plan's activity dialog (owner 2026-11-06, K1)
-                if (row.activity == Activity.HIKE && ui.current != Activity.HIKE) SacChips(ActivityCheckRules.chipLevel(ui), onHikeLevel)
+            GroupSwitch(hike) { hike = it }
+            Spacer(Modifier.size(12.dp))
+            // both groups laid out, the hidden one invisible: no jump (as in the picker)
+            androidx.compose.foundation.layout.Box {
+                val bikes: @Composable () -> Unit = { Group(visible = !hike) { BIKES.forEach { a -> SwitchCard(ui, a, !hike, onChoose) } } }
+                val levels: @Composable () -> Unit = { Group(visible = hike) { SacScale.levels.forEach { l -> LevelSwitchCard(ui, l, hike, onHikeLevel) } } }
+                if (hike) { bikes(); levels() } else { levels(); bikes() }
             }
             Spacer(Modifier.size(12.dp))
             Button(colors = ActionButtons.go(), onClick = onKeep, modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp)) {
@@ -88,6 +93,46 @@ fun ActivitySwitchSheet(ui: ActivityCheckUi, onChoose: (Activity) -> Unit, onKee
             }
         }
     }
+}
+
+/** A bike activity's card: the current one green (not tappable), the others with what the rest of the route would be. */
+@Composable
+private fun SwitchCard(ui: ActivityCheckUi, a: Activity, shown: Boolean, onChoose: (Activity) -> Unit) {
+    val row = ui.rows.firstOrNull { it.activity == a }
+    val current = a == ui.current
+    ChoiceCard(current, enabled = shown && row?.choosable == true, onClick = { onChoose(a) },
+        lead = { Icon(a.icon, null, tint = OnPathColors.Green) }, name = a.label,
+        line = row?.let { activityRowStatus(it.state) }?.takeIf { it.isNotEmpty() } ?: a.line,
+        description = str(Res.string.nav_check_switch_to_cd, a.label), lineColor = row?.let { rowColor(it.state) },
+        trailing = row?.let { r -> { RowTrailing(r.state) } })
+}
+
+/** A T level's card: the Hike row's state shows on the level it stands for ([ActivityCheckRules.chipLevel]). */
+@Composable
+private fun LevelSwitchCard(ui: ActivityCheckUi, l: SacScale.Level, shown: Boolean, onHikeLevel: (Int) -> Unit) {
+    val current = ui.current == Activity.HIKE && ui.sac == l.level
+    val row = ui.rows.firstOrNull { it.activity == Activity.HIKE }?.takeIf { ActivityCheckRules.chipLevel(ui) == l.level && !current }
+    ChoiceCard(current, enabled = shown && !current, onClick = { onHikeLevel(l.level) }, lead = { LevelBadge(l.level, current) },
+        name = l.name, line = row?.let { activityRowStatus(it.state) }?.takeIf { it.isNotEmpty() } ?: l.short,
+        description = str(Res.string.routes_sac_button_desc, l.level, l.name), lineColor = row?.let { rowColor(it.state) },
+        trailing = row?.let { r -> { RowTrailing(r.state) } })
+}
+
+@Composable
+private fun rowColor(s: ActivityRowState) = when {
+    s is ActivityRowState.Ready && s.fit.fits -> OnPathColors.Good
+    // "not suited" is a warning about the way (amber); red only for "no route found"
+    s is ActivityRowState.Ready -> OnPathColors.Warn
+    s is ActivityRowState.Failed -> OnPathColors.Error
+    else -> null
+}
+
+@Composable
+private fun RowTrailing(s: ActivityRowState) = when (s) {
+    ActivityRowState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
+    is ActivityRowState.Ready -> Text(instrument(Format.duration(s.fit.timeS), MaterialTheme.typography.titleSmall),
+        style = MaterialTheme.typography.titleSmall)
+    else -> Unit
 }
 
 /**
@@ -115,36 +160,3 @@ private fun SwitchToHeader(note: String?) {
     }
 }
 
-@Composable
-private fun ActivityRowItem(row: ActivityRow, onClick: () -> Unit) {
-    val s = row.state
-    val status = activityRowStatus(s)
-    val name = NavText.activityName(row.activity, row.sac)
-    val switchLabel = str(Res.string.nav_check_switch_to_cd, name)
-    val dim = !row.choosable && s !is ActivityRowState.Checking
-    val content = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface
-    Row(Modifier.fillMaxWidth().heightIn(min = 60.dp)
-        .clickable(enabled = row.choosable, onClickLabel = switchLabel, onClick = onClick)
-        .semantics(mergeDescendants = true) { contentDescription = listOf(name, status).filter { it.isNotEmpty() }.joinToString(". ") }
-        .padding(vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(row.activity.icon, null, tint = if (dim) MaterialTheme.colorScheme.onSurfaceVariant else OnPathColors.Green,
-            modifier = Modifier.size(28.dp))
-        Column(Modifier.weight(1f)) {
-            Text(name, style = MaterialTheme.typography.titleSmall, color = content)
-            if (status.isNotEmpty()) Text(status, style = MaterialTheme.typography.bodyMedium, color = when {
-                s is ActivityRowState.Ready && s.fit.fits -> OnPathColors.Good
-                // "not suited" is a warning about the way (amber); red only for "no route found"
-                s is ActivityRowState.Ready -> OnPathColors.Warn
-                s is ActivityRowState.Failed -> OnPathColors.Error
-                else -> MaterialTheme.colorScheme.onSurfaceVariant
-            })
-        }
-        when (s) {
-            ActivityRowState.Checking -> CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.5.dp)
-            is ActivityRowState.Ready -> Text(instrument(Format.duration(s.fit.timeS), MaterialTheme.typography.titleSmall),
-                style = MaterialTheme.typography.titleSmall)
-            else -> Unit
-        }
-    }
-}

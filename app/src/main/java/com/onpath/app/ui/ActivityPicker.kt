@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
@@ -144,14 +145,14 @@ internal fun ActivityPickerContent(current: Activity, onSelect: (Activity) -> Un
 
 /** One group's cards; an invisible group keeps its height (no jump) but is neither drawn nor read out (its cards are off). */
 @Composable
-private fun Group(visible: Boolean, content: @Composable () -> Unit) {
+internal fun Group(visible: Boolean, content: @Composable () -> Unit) {
     Column(Modifier.fillMaxWidth()
         .then(if (visible) Modifier else Modifier.alpha(0f).clearAndSetSemantics {}), verticalArrangement = Arrangement.spacedBy(6.dp)) { content() }
 }
 
 /** Rad | Wandern: two halves, the shown one white and raised on the deeper sage (like iOS's segmented control). */
 @Composable
-private fun GroupSwitch(hike: Boolean, onHike: (Boolean) -> Unit) {
+internal fun GroupSwitch(hike: Boolean, onHike: (Boolean) -> Unit) {
     Row(Modifier.fillMaxWidth().background(OnPathColors.PaperDeep, RoundedCornerShape(14.dp)).padding(3.dp)) {
         Half(Activity.BIKE_TOURING.icon, str(Res.string.activity_group_bike), !hike, Modifier.weight(1f)) { onHike(false) }
         Half(Activity.HIKE.icon, Activity.HIKE.label, hike, Modifier.weight(1f)) { onHike(true) }
@@ -173,7 +174,8 @@ private fun Half(icon: ImageVector, label: String, on: Boolean, modifier: Modifi
 
 /** One choice: a card with its sign, the name and one line; the chosen one with a green edge on light green. */
 @Composable
-private fun ChoiceCard(chosen: Boolean, enabled: Boolean, onClick: () -> Unit, lead: @Composable () -> Unit, name: String, line: String, description: String? = null) {
+internal fun ChoiceCard(chosen: Boolean, enabled: Boolean, onClick: () -> Unit, lead: @Composable () -> Unit, name: String, line: String, description: String? = null,
+                        lineColor: Color? = null, trailing: (@Composable () -> Unit)? = null) {
     val shape = RoundedCornerShape(16.dp)
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clip(shape)
         .background(if (chosen) OnPathColors.GreenLight else OnPathColors.PaperDim, shape)
@@ -181,19 +183,21 @@ private fun ChoiceCard(chosen: Boolean, enabled: Boolean, onClick: () -> Unit, l
         .selectable(chosen, enabled = enabled, role = Role.Button, onClick = onClick)
         .then(if (description != null) Modifier.semantics(mergeDescendants = true) { contentDescription = description } else Modifier)
         .padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.size(32.dp), contentAlignment = Alignment.Center) { lead() }
+        Box(Modifier.sizeIn(minWidth = 32.dp, minHeight = 32.dp), contentAlignment = Alignment.Center) { lead() }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
             Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-            Text(line, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            if (line.isNotEmpty()) Text(line, style = MaterialTheme.typography.bodySmall, color = lineColor ?: MaterialTheme.colorScheme.onSurfaceVariant)
         }
+        trailing?.let { Spacer(Modifier.width(8.dp)); it() }
     }
 }
 
 /** „T2“ in a small rounded square – green with white when chosen. */
 @Composable
-private fun LevelBadge(level: Int, chosen: Boolean) =
-    Box(Modifier.size(32.dp).background(if (chosen) OnPathColors.Green else OnPathColors.PaperDeep, RoundedCornerShape(8.dp)),
+internal fun LevelBadge(level: Int, chosen: Boolean) =
+    // at least 32 dp, wider when a large font needs it (a fixed 32 dp cut „T3“ to „T“ at font 2.0)
+    Box(Modifier.sizeIn(minWidth = 32.dp, minHeight = 32.dp).background(if (chosen) OnPathColors.Green else OnPathColors.PaperDeep, RoundedCornerShape(8.dp)).padding(horizontal = 4.dp),
         contentAlignment = Alignment.Center) {
         Text(str(Res.string.routes_sac_badge, level), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
             color = if (chosen) Color.White else MaterialTheme.colorScheme.onSurface)
