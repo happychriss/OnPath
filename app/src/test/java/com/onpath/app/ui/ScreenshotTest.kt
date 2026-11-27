@@ -541,7 +541,7 @@ class ScreenshotTest {
             approx = approxLine(com.onpath.app.navigation.Provisional.Fix(com.onpath.app.navigation.Provisional.Source.WIFI, 80))))
     }
 
-    /** Notifications off during a tour: the small amber chip under the status card (tap → setup, OK → gone this tour). */
+    /** Notifications off during a tour: the question „Abzweigungen auf dem Sperrbildschirm?“ · Später / Einschalten (owner 2026-11-27). */
     fun navigateNotificationsOff() = paparazzi.snapshot {
         NavFrame(navUi.copy(arriveAt = "16:40", notificationsOff = true))
     }

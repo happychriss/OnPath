@@ -55,7 +55,7 @@ abstract class MessageCardScreenshotTest {
                 MessageCard(syncNoteMessage(SyncNote.PAIRED, onOk = {}))
                 mapNoticeMessage(CellCardUi.NotAvailable, CellCardCallbacks())?.let { MessageCard(it) }
                 mapNoticeMessage(CellCardUi.NeedPosition(permission = false), CellCardCallbacks())?.let { MessageCard(it) }
-                MessageCard(notificationsOffMessage(onSetUp = {}, onOk = {}))
+                MessageCard(notificationsOffMessage(onSetUp = {}, onLater = {}))
                 mapNoticeMessage(CellCardUi.Failed(Txt.s(Res.string.maps_err_area_failed), null, retryable = true), CellCardCallbacks())
                     ?.let { MessageCard(it) }
                 MessageCard(errorMessage(Txt.s(Res.string.msg_shared_place_not_found)) {})

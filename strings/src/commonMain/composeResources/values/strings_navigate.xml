@@ -254,9 +254,10 @@
     <string name="nav_time_moving">Moving time</string>
     <string name="nav_time_with_breaks">With breaks</string>
     <string name="nav_time_pace_level">Pace level</string>
-    <string name="nav_notif_off">Notifications off</string>
-    <string name="nav_notif_off_line">No turns and no “New route?” on the lock screen</string>
-    <string name="nav_notif_off_click">Set up notifications</string>
+    <string name="nav_notif_off">Turns on the lock screen?</string>
+    <string name="nav_notif_off_line">With notifications you see them without unlocking the phone.</string>
+    <string name="nav_notif_later">Later</string>
+    <string name="nav_notif_turn_on">Turn on</string>
 
     <!-- rest view while cycling (smart screen) -->
     <string name="nav_rest_destination">Destination</string>

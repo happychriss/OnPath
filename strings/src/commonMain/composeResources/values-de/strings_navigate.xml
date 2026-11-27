@@ -253,9 +253,10 @@
     <string name="nav_time_moving">Bewegungszeit</string>
     <string name="nav_time_with_breaks">Mit Pausen</string>
     <string name="nav_time_pace_level">Tempo</string>
-    <string name="nav_notif_off">Benachrichtigungen aus</string>
-    <string name="nav_notif_off_line">Sperrbildschirm ohne Abzweigungen und ohne „Neue Route?“</string>
-    <string name="nav_notif_off_click">Benachrichtigungen einrichten</string>
+    <string name="nav_notif_off">Abzweigungen auf dem Sperrbildschirm?</string>
+    <string name="nav_notif_off_line">Mit Benachrichtigungen siehst du sie, ohne das Handy zu entsperren.</string>
+    <string name="nav_notif_later">Später</string>
+    <string name="nav_notif_turn_on">Einschalten</string>
 
     <!-- Ruheansicht beim Radfahren (smarter Bildschirm) -->
     <string name="nav_rest_destination">Ziel</string>

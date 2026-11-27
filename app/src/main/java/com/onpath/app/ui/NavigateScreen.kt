@@ -83,6 +83,7 @@ import com.onpath.app.navigation.NavText
 import com.onpath.app.navigation.RouteHint
 import com.onpath.app.recording.RecState
 import androidx.compose.material.icons.outlined.AltRoute
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -152,7 +153,7 @@ data class NavUi(
      * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
      */
     val approx: String? = null,
-    /** OnPath's notifications are off during this tour: the amber box under the status card ([notificationsOffMessage]). */
+    /** OnPath's notifications are off during this tour: the question under the status card ([notificationsOffMessage]). */
     val notificationsOff: Boolean = false,
     /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
@@ -271,7 +272,7 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
-    /** The "Notifications off" box: tap → phone setup step, OK → gone for this tour. */
+    /** The notifications question: Einschalten → phone setup step, Später → gone for this tour. */
     onNotifications: () -> Unit = {},
     onNotificationsOk: () -> Unit = {},
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
@@ -414,7 +415,8 @@ fun NavigateOverlay(
             mid?.let { p -> midStartMessage(p, onLead = { onLeadThere(p.id) }, onJoin = { onJoinHere(p.id) }) },
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
-            if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
+            // a question now (owner 2026-11-27), which would go before every note: it waits while an error shows
+            if (ui.notificationsOff && leadFailed == null && error == null) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
         ))
         MessageSlot(message, MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP),
             onBottomDp = { messageBottomDp = it })
@@ -974,14 +976,16 @@ object BackStaysRule {
 }
 
 /**
- * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]): "⚠ Notifications off / No
- * turns … on the lock screen" + OK (HINWEIS_WARN). Tap on the text → the phone setup step; OK → gone for this tour.
- * Never goes by itself (owner: no self-dismissing messages).
+ * A tour runs with OnPath's notifications off ([com.onpath.app.navigation.NotificationsOff]) – a question, not a warning
+ * (owner 2026-11-27): „Abzweigungen auf dem Sperrbildschirm?“ / „Mit Benachrichtigungen siehst du sie, ohne das Handy zu
+ * entsperren.“ · [Später] [Einschalten]. Einschalten → the phone setup step; Später → gone for this tour. Never goes by
+ * itself (owner: no self-dismissing messages).
  */
 @Composable
-internal fun notificationsOffMessage(onSetUp: () -> Unit, onOk: () -> Unit): Message =
-    Message(MessageKind.HINWEIS_WARN, str(Res.string.nav_notif_off), str(Res.string.nav_notif_off_line),
-        listOf(MessageButton(str(Res.string.common_ok), onOk)), onTap = onSetUp, tapLabel = str(Res.string.nav_notif_off_click))
+internal fun notificationsOffMessage(onSetUp: () -> Unit, onLater: () -> Unit): Message =
+    Message(MessageKind.FRAGE, str(Res.string.nav_notif_off), str(Res.string.nav_notif_off_line),
+        listOf(MessageButton(str(Res.string.nav_notif_later), onLater), MessageButton(str(Res.string.nav_notif_turn_on), onSetUp)),
+        icon = Icons.Outlined.Notifications, navigate = true)
 
 /**
  * Stateful wrapper: remaining distance along the followed line and the arrival check. While the service navigates,
