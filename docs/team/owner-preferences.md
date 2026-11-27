@@ -101,7 +101,7 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   Rundgang per update**.
 - **Don't weaken CI gates** without the owner's explicit words. Releases are batched unless the owner asks.
 
-## The owner's phone (Pixel 8, adb)
+## The owner's phone (Pixel 7 since 2026-11-27, on USB at donald, adb)
 - Install builds with `adb install -r` (**no wipe** – tours and maps stay) unless the owner asks for a fresh install.
   Never `pm clear` / uninstall by accident (that also deletes the map data in `Android/data/…/files/onpath/`).
 - Check first whether a tour is recording (`adb shell dumpsys activity services com.onpath.app` → RecordingService).
