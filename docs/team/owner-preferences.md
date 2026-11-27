@@ -23,6 +23,7 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
   push messages name a question, commit or item by a short description ("die Frage zum Startknopf"), never by
   its number alone. Numbers stay in the backlog and commit messages for the sessions; the owner may answer
   with a word ("Startknopf: A").
+- **Planner: deploy when done, no asking** (owner 2026-11-27: „man kann den Planer deployen, wenn es fertig ist – wir haben noch nicht so viele Benutzer“; permission in hp's `.claude/settings.local.json`): a finished planner change with green tests goes online at once, without a question. Planner only – an app release still needs his word.
 - **Planner deploys in the test phase** (owner 2026-11-06): the planner goes online right after the affected local tests – GitHub's full run continues behind it; a red run is fixed and deployed again (`docs/team/roles/cloud-plan.md`).
 - **No Fragenregister any more** (owner 2026-11-17: „brauchen wir nicht mehr“): the page is not written any more; answer in the chat only.
 - **The owner does not relay between sessions** (owner 2026-11-17): a word for the captain goes into the backlog under "For the captain" (`← [role] …`) – the captain reads it whenever the owner next writes to it; never ask the owner to pass a message on.

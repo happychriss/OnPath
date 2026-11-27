@@ -101,6 +101,7 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.days === 3, 'the overview with 3 days');
   check(await page.locator('#tourOverview .today').count() === 3, 'the overview: one row per day');
   check(await page.locator('.dayend.proposal').count() === 2, 'two grey moons on the map');
+  check(await page.$eval('#roundTrip', (b) => b.hidden) && await page.$eval('#reverse', (b) => !b.hidden), 'a multi-day tour has no „Rundtour“ switch, „Umkehren“ stays (owner 2026-11-27)');
   // the night markers say their day (owner 2026-11-26, „Variante 1 · Tag N“): a white pill „☾ Tag 1“, „☾ Tag 2“
   const pillTexts = await page.$$eval('.dayend.proposal .daypill.open', (ps) => ps.map((p) => p.textContent.trim()).join('|'));
   check(pillTexts === (lang === 'de' ? 'Tag 1|Tag 2' : 'Day 1|Day 2'), `the undecided nights are white „Tag N“ pills (${pillTexts})`);
@@ -217,6 +218,18 @@ async function run(lang, viewport, shotPrefix) {
   const range = await page.evaluate(() => window.__profileRange ?? null);
   check(await page.locator('#tourOverview .today.sel').count() === 1, 'a day row is selected (its part marked on the map and in the profile)');
   void range;
+  const look = await page.evaluate(() => ({ range: window.__map.getPaintProperty('profile-range', 'line-color'),
+    rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(look.range === '#1E3FAE' && look.rest === 0.35, `the day in route blue, the other days faded – no yellow (owner 2026-11-27 variant 3) (${JSON.stringify(look)})`);
+  // the space bar after the click keeps the day (owner 2026-11-27): the row keeps no focus to be clicked again
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  const kept = await page.evaluate(() => ({ sel: document.querySelectorAll('#tourOverview .today.sel').length,
+    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
+    rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
+  await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
+  check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
 
   // 10 · Speichern as every plan: the saved code carries the days and the night
   await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});

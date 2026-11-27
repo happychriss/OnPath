@@ -765,6 +765,9 @@ async function drawPoints() {
   // "↻ Rundtour" is a switch (the app's PlanAction on=, owner 2026-11-06, onpath.private#40): filled with ✓ on a round
   // trip, a click takes the way back out; "⇅ Umkehren" grey when backwards is the same plan (A → B → A)
   const loop = $<HTMLButtonElement>('roundTrip');
+  // not on a multi-day tour (owner 2026-11-27: „Rundtour können wir rausnehmen, das kann viel durcheinanderbringen“ –
+  // München → Hilden turned into a way back of the same length); Umkehren stays
+  loop.hidden = !!multiDay?.isTour;
   loop.disabled = !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
   loop.classList.toggle('on', state.roundTrip);
   loop.setAttribute('aria-pressed', String(state.roundTrip));
@@ -2114,6 +2117,7 @@ function render() {
       `<span class="badge ${p.level ?? ''}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
     routeProfile.update(p, t('plan_no_elevation'));
+    multiDay?.remark(); // the new profile starts unmarked: a selected day marks its part again (owner 2026-11-27)
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
     // missing routing data is no error: the app's plain grey line (RoutingDataNotice) instead of the router's text
     const info = $('infoline');

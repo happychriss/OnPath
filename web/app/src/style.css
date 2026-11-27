@@ -729,9 +729,9 @@ kbd { display: inline-block; min-width: 1.4em; padding: 1px 6px; border: 1px sol
 .profbig[aria-pressed="true"] { background: var(--plan-light); }
 #profile .profplot.opens svg { cursor: zoom-in; }
 /* the marked range in the big profile (owner 2026-11-06) */
-.profrange { position: absolute; top: 0; bottom: 0; background: rgba(255, 213, 79, .45); border-left: 2px solid #E0A800; border-right: 2px solid #E0A800; pointer-events: none; }
+.profrange { position: absolute; top: 0; bottom: 0; background: rgba(30, 63, 174, .12); border-left: 2px solid #1E3FAE; border-right: 2px solid #1E3FAE; pointer-events: none; }
 .bpplot svg.marking { cursor: col-resize; }
-.bprange { font-weight: 700; font-size: 14px; color: var(--fg); background: #FFF3C4; border-radius: var(--r-small); padding: 2px 8px; white-space: nowrap; }
+.bprange { font-weight: 700; font-size: 14px; color: var(--fg); background: var(--plan-light); border-radius: var(--r-small); padding: 2px 8px; white-space: nowrap; }
 .bigprofile { position: absolute; z-index: 2; left: calc(var(--sheet-w) + 24px); right: 72px; bottom: 56px; box-sizing: border-box;
   background: var(--map-ground); border-radius: var(--r-card); box-shadow: var(--float-shadow); padding: 8px 16px 10px; --surface2: var(--paper-deep); }
 .bphead { display: flex; align-items: center; gap: 16px; margin-bottom: 4px; }

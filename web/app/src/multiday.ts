@@ -280,8 +280,16 @@ export class MultiDay {
     b('toPlus')!.onclick = async () => this.take(await this.rule('setDays', v.days + 1));
     this.box.querySelectorAll<HTMLButtonElement>('.today').forEach((row) => {
       row.onclick = () => { const n = Number(row.dataset.day); this.select(this.selected === n ? null : n, true); };
+      // a mouse click does not leave the focus on the row: the space bar (the map's keys) must not click it again and
+      // drop the day (owner 2026-11-27 – the day stays marked); the keyboard still reaches the rows with Tab
+      row.onmousedown = (e) => e.preventDefault();
     });
+    // the rows may have new distances: the selected day marks its part again
+    this.remark();
   }
+
+  /** A selected day marks its part again (a new profile starts unmarked – main.ts after routeProfile.update). */
+  remark() { if (this.selected != null) this.select(this.selected); }
 
   /** Day [n] highlighted on the map and in the profiles ([fit]: the map shows it), or none. */
   select(n: number | null, fit = false) {
