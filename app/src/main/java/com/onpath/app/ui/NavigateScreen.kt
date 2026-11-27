@@ -626,9 +626,15 @@ internal fun NavStatusCard(ui: NavUi, onResume: () -> Unit, profileOpen: Boolean
             Column(Modifier.weight(1f)) {
                 // a multi-day tour's day (sketch round 2, step 12): "Tag 4 von 6", small above the numbers
                 ui.day?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1) }
-                // a tour without a route (owner 2026-11-05): say so plainly instead of an empty route line
-                if (ui.toGo == null && ui.recordedM != null) Text(str(Res.string.nav_free_tour), style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold, maxLines = 2)
+                // a tour without a route (owner 2026-11-27, like Komoot / Strava): only time and distance, big – no label
+                freeTourNumbers(ui)?.let { (time, dist) ->
+                    androidx.compose.foundation.layout.FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(instrument(time, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1, softWrap = false)
+                        Text(instrument(dist, MaterialTheme.typography.titleLarge), style = MaterialTheme.typography.titleLarge,
+                            maxLines = 1, softWrap = false)
+                    }
+                }
                 ui.toGo?.let { g ->
                     if (g.state == com.onpath.app.time.EstimateState.NOT_ON_ROUTE) {
                         // never a stale time (owner rule 6): what is left counts again once back on the route. While the
@@ -842,30 +848,27 @@ private fun PositionLine(text: String, copy: String?) {
 }
 
 /**
- * The recording line of the status card, only when it matters (owner): a free recording (it is the card's
- * content): "Recording · 2.1 km · moving 0:28 · breaks 0:05"; off route (the card has nothing else then):
- * "Recording · 2.1 km". Stopped (owner 2026-11-07, "Anhalten" variant 5: the head says "Angehalten seit …"): a labelled
- * line without seconds, "So far 5.3 km · moving 1:12", without a moving time "So far 5.3 km · 1:23 h on the way".
- * Normal navigation → null (the orange dot on the activity icon says it). No GPS is the amber [noGpsLine] instead.
- * Without moving time: the elapsed clock.
+ * The recording line of the status card, only when stopped (owner 2026-11-07, "Anhalten" variant 5: the head says
+ * "Angehalten seit …"): a labelled line without seconds, "So far 5.3 km · moving 1:12", without a moving time "So far
+ * 5.3 km · 1:23 h on the way". Otherwise null: navigation shows what is left, a tour without a route its numbers big
+ * ([freeTourNumbers], owner 2026-11-27), off the route nothing (owner 2026-11-01). No GPS is the amber [noGpsLine] instead.
  */
-internal fun recordingLine(ui: NavUi, distanceM: Double, offRoute: Boolean = false): String? {
-    val free = ui.toGo == null
-    // off the route no recording line either (owner 2026-11-01: "überflüssig – der rote Punkt am Rad zeigt es")
-    if (!free && !ui.paused) return null
-    if (ui.paused) {
-        val soFar = Txt.s(Res.string.nav_so_far, Format.distance(distanceM))
-        val time = ui.movingS?.let { Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(it)) }
-            ?: Txt.s(Res.string.nav_on_the_way_for, com.onpath.app.time.TimeEstimate.hm(ui.elapsedS.toDouble()))
-        return "$soFar · $time"
-    }
-    val status = Txt.s(Res.string.nav_status_recording)
-    val moving = ui.movingS ?: return "$status · ${Format.distance(distanceM)} · ${Format.clock(ui.elapsedS)}"
-    val parts = mutableListOf(status, Format.distance(distanceM))
-    parts += Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(moving))
-    val b = ui.breakS ?: 0.0
-    if (b >= 60) parts += Txt.s(Res.string.nav_breaks, com.onpath.app.time.TimeEstimate.hm(b))
-    return parts.joinToString(" · ")
+internal fun recordingLine(ui: NavUi, distanceM: Double, @Suppress("UNUSED_PARAMETER") offRoute: Boolean = false): String? {
+    if (!ui.paused) return null
+    val soFar = Txt.s(Res.string.nav_so_far, Format.distance(distanceM))
+    val time = ui.movingS?.let { Txt.s(Res.string.nav_moving_lower, com.onpath.app.time.TimeEstimate.hm(it)) }
+        ?: Txt.s(Res.string.nav_on_the_way_for, com.onpath.app.time.TimeEstimate.hm(ui.elapsedS.toDouble()))
+    return "$soFar · $time"
+}
+
+/**
+ * A tour without a route, not stopped (owner 2026-11-27, like Komoot / Strava): only time and distance, big – the moving
+ * time ("28 min", the elapsed time while it is not known) and the distance so far. Null with a route or stopped.
+ */
+internal fun freeTourNumbers(ui: NavUi): Pair<String, String>? {
+    val d = ui.recordedM ?: return null
+    if (ui.toGo != null || ui.paused) return null
+    return Format.durationShort(ui.movingS ?: ui.elapsedS.toDouble()) to Format.distance(d)
 }
 
 /** "Moving 1:12 · breaks 0:11" for the opened card; null without moving time. */

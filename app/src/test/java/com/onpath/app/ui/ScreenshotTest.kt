@@ -707,7 +707,7 @@ class ScreenshotTest {
         NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = true, pausedSinceMs = STOPPED_AT))
     }
 
-    /** A tour without a route (owner 2026-11-05): "Freie Tour · nur Aufnahme" instead of an empty route line. */
+    /** A tour without a route (owner 2026-11-27, like Komoot / Strava): only time and distance, big – no label. */
     fun navigateFreeTour() = paparazzi.snapshot { NavFrame(NavUi(recordedM = 2_150.0, elapsedS = 1820, paused = false)) }
 
     /**

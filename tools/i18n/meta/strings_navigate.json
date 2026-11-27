@@ -1266,12 +1266,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "nav_free_tour": {
-    "area": "Navigate",
-    "context": "Navigate status card during a tour without a route",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "nav_stop_arrive": {
     "area": "Navigate",
     "context": "Arrival clock of a stop ahead under the profile (owner 2026-11-05), e.g. 'an 14:20'",

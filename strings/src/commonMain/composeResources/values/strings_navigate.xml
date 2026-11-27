@@ -266,7 +266,6 @@
     <string name="nav_turn_round">Turn round</string>
     <string name="nav_delete_tour_short">Delete</string>
     <string name="nav_delete_tour">Delete tour</string>
-    <string name="nav_free_tour">Free tour · recording only</string>
     <string name="nav_stop_arrive">at %1$s</string>
     <string name="nav_hold_hint">Press and hold</string>
     <string name="nav_stopped_since_head">Stopped since %1$s</string>
