@@ -264,6 +264,35 @@ object TimeLeft {
 }
 
 /**
+ * The time left as the window says it (owner 2026-11-27: „etwa 5 s, dann länger, dann wieder 5 s – lieber 10 s drauf und
+ * früher fertig als Hin und Her“): the first estimate plus [BUFFER_S], then it only counts down – a higher estimate later
+ * never raises it, a lower one lowers it. Paused (offline, Wi-Fi) it stands. Run out while the wait goes on: [expired] –
+ * the window says „dauert etwas länger…“. One per wait; pure (time passed in).
+ */
+class Countdown {
+    companion object { const val BUFFER_S = 10.0 }
+    private var shownS = -1.0
+    private var atMs = -1L
+    /** The countdown ran out and the wait goes on. */
+    var expired = false
+        private set
+
+    /** [estimateS]: the step's / wait's own time left now (null = none yet); returns the seconds to show, or null. */
+    fun next(estimateS: Int?, nowMs: Long, paused: Boolean = false): Int? {
+        if (shownS < 0) {
+            if (estimateS == null || paused) return null
+            shownS = estimateS + BUFFER_S; atMs = nowMs
+            return shownS.toInt()
+        }
+        if (!paused) shownS -= (nowMs - atMs).coerceAtLeast(0) / 1000.0
+        atMs = nowMs
+        if (estimateS != null && !paused) shownS = minOf(shownS, estimateS + BUFFER_S)
+        if (shownS <= 0) { shownS = 0.0; expired = true }
+        return shownS.toInt()
+    }
+}
+
+/**
  * Where one map area stands, 0..1 over its own steps ([StepShares]): preparing = the server's own progress inside the
  * prepare share, downloading = its bytes inside the download share, joining = [joined] (the pieces that are in, 0..1)
  * inside the join share. On the phone = 1. Pure.
