@@ -23,7 +23,7 @@ The maps for a plan load by themselves while you plan; nobody has to manage regi
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
 Everything you need on the tour works on the phone; the browser planner may add things for preparing and previewing, such as creating a multi-day tour or 3D.
-In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose.
+In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
 
 ## No surprises
 

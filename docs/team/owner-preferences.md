@@ -38,7 +38,8 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
 - **App and planner alike** (owner 2026-11-27, `VISION.md`): in the main controls both behave the same and look as alike as
   they can, unless decided otherwise. Every UI change on one side gets a parity line for the other side's role in the
   backlog (`→ [laptop]` / `→ [donald]`, what, which commit) – or says why the other side differs. The coordinator and the
-  captain check it when they hand out or close a task.
+  captain check it when they hand out or close a task. Exception (owner 2026-11-27): „Der Planer ist der Planer, er plant
+  Routen“ – ridden tours and ticked ridden days stay phone-only.
 
 ## How sessions work
 - **The owner must notice when a session waits** (owner 2026-11-02): on donald / the laptop the Claude push is on
