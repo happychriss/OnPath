@@ -3,24 +3,24 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683) · 2026-11-27 c3fb65034: My routes „8 Tage“ badge + day sheet (load a day) – next planner task (backlog parity line, captain 4fe615177); ridden ✓ / „Tag 3 von …“ app only (owner: done tours only on the phone)",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683) · 2026-11-27 c3fb65034: My routes „8 Tage“ badge + day sheet (load a day) – next planner task (backlog parity line, captain 4fe615177); ridden ✓ / „Tag 3 von …“ app only (owner: done tours only on the phone) · ce41e7ca1 checked: cleanup only (unused SacScale.line), nothing visible",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/plans.ts",
         "web/app/src/routefilter.ts",
         "web/app/src/style.css"
       ],
-      "blob": "1e8b0468077f0df2a1fd60e7dd902dde1274b59c"
+      "blob": "20cf38aa529d389627700dd26b15b6cfeef269f4"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd)",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd) · 2026-11-27 checked 9ec1ea622 / d483cda8b: comments + the POI menu add icon by the row's kind – the planner's same change waits on chore/web-aufraeumen (cddcf03b7, icon via placePreview kind)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "f5a24457463359a67dcb9287804ce614b0f960bd"
+      "blob": "4d3c0cac4693c5b20b0207ffcd0b4e55061e2911"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
