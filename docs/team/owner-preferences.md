@@ -32,6 +32,14 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
 ## Product rules
+- **Before variants go to the owner** (2026-11-27, frontend-design review): two checks – „would any other task look the
+  same?“ (fine for controls, which follow the platform; not for colour, type, pictures) and „which element can go?“.
+- **Text pass questions** (same source; texts still change only as a question to the owner): does an action keep its name
+  up to the confirmation („Anhalten“ → „Angehalten“)? does an error say what happened and what to do now, without an
+  apology? does every empty state invite the next step (like „Ziel suchen“)?
+- **Frontend-design skill on web surfaces** (planner, tracker, website): only its typography, structure-as-information,
+  motion and writing parts apply; its stance (own identity, aesthetic risk) does not – controls follow the platform and
+  the app, character only through colour and type (`VISION.md`).
 - **Vision first** (owner 2026-11-27): before asking the owner, check whether `VISION.md` answers it. If it does, decide,
   name the line in the commit or reply, and go on. Ask only real choices of taste or product (pictures, words, numbers).
   The captain checks this.
