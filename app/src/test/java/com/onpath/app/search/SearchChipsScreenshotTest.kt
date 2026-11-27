@@ -13,15 +13,18 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The six search chips (owner 2026-10-31: Orte · Essen · Sehenswert · Wasser · Bahn · Parken), "Food" chosen, in English
- * and German, normal and at the phone's largest font (2.0): the row scrolls sideways, no chip is ever cut.
+ * The seven search categories (owner 2026-11-27, variant A: round signs, Orte · Sehenswert · Essen · Wasser · Bahn · Parken ·
+ * Schlafen), "Food" chosen, German, normal, on a small phone and at the largest font (2.0): side by side when they fit,
+ * else the row scrolls sideways – no word is ever cut.
  */
 /** English frames dropped (test audit 2026-11-07: the German twin at the same font size is the check); the subclasses draw. */
 abstract class SearchChipsScreenshotTest {
     protected open val fontScale: Float get() = 1.0f
+    /** The screen's width in px at the Pixel 5's density (2.75): 1080 = 393 dp. */
+    protected open val widthPx: Int get() = 1080
 
     @get:Rule
-    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = fontScale, screenHeight = 1400), showSystemUi = false)
+    val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = fontScale, screenWidth = widthPx, screenHeight = 1400), showSystemUi = false)
 
     @Test fun chips() = paparazzi.snapshot {
         OnPathTheme {
@@ -42,6 +45,14 @@ class SearchChipsGermanScreenshotTest : SearchChipsScreenshotTest() {
 
 class SearchChipsLargeFontGermanTest : SearchChipsScreenshotTest() {
     override val fontScale: Float get() = 2.0f
+    private val before = Locale.getDefault()
+    @Before fun german() = Locale.setDefault(Locale.GERMANY)
+    @After fun back() = Locale.setDefault(before)
+}
+
+/** A small phone, 360 dp (owner 2026-11-27: „wie sieht es bei einem kleineren Handy aus?“): all seven signs still side by side. */
+class SearchChipsSmallPhoneGermanTest : SearchChipsScreenshotTest() {
+    override val widthPx: Int get() = 990
     private val before = Locale.getDefault()
     @Before fun german() = Locale.setDefault(Locale.GERMANY)
     @After fun back() = Locale.setDefault(before)

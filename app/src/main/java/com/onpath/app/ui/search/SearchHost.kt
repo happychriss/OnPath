@@ -5,7 +5,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.ui.Modifier
@@ -34,7 +33,6 @@ fun SearchHost(vm: AppViewModel) {
                 onClearRecent = s::clearRecent,
                 onAllFavourites = s::showAllFavourites,
             ),
-            modifier = Modifier.statusBarsPadding(),
         )
     }
 }

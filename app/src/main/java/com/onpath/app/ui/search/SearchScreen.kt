@@ -1,6 +1,23 @@
 package com.onpath.app.ui.search
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.requiredSize
+import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Cancel
+import androidx.compose.material.icons.filled.Hotel
+import androidx.compose.material.icons.filled.Landscape
+import androidx.compose.material.icons.filled.LocalParking
+import androidx.compose.material.icons.filled.Place
+import androidx.compose.material.icons.filled.Restaurant
+import androidx.compose.material.icons.filled.Train
+import androidx.compose.material.icons.filled.WaterDrop
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -98,9 +115,12 @@ data class SearchActions(
 )
 
 /**
- * Full-screen search (Plan mode only): text field, category chips, ONE mixed result list – offline places, POIs,
- * trails, addresses and online results, best match first; each row keeps its kind icon and says
- * "near your route" / "online" – and one fixed row under it that hands the query to Google Maps („Google Maps ↗“).
+ * Full-screen search (Plan mode only), Apple-style (owner 2026-11-27, variant A): a grey rounded field with 🔍 and
+ * „Abbrechen“; under it the categories as one row of round coloured signs ([CATEGORY_ROW], the map's POI colours) while
+ * nothing is typed or a category is on; favourites, recent searches and the hits in light rounded groups, every row
+ * with its kind's coloured sign; ONE mixed result list – offline places, POIs, trails, addresses and online results,
+ * best match first, each row saying "near your route" / "online"; and one fixed row above the keyboard that hands the
+ * query to Google Maps („Google Maps ↗“).
  */
 @Composable
 fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modifier, autoFocus: Boolean = true) {
@@ -109,54 +129,151 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
     // expected: requestFocus throws if the field is not attached yet (e.g. screen closing); keyboard just stays closed
     if (autoFocus) LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
-    Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surface) {
-        Column(Modifier.fillMaxSize().imePadding()) {
-            Row(Modifier.fillMaxWidth().padding(start = 4.dp, end = 8.dp, top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = actions.onBack, modifier = Modifier.size(48.dp)) {
-                    Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = str(Res.string.common_back))
-                }
-                TextField(
-                    value = ui.query, onValueChange = actions.onQuery,
-                    modifier = Modifier.weight(1f).focusRequester(focus),
-                    placeholder = { Text(str(Res.string.search_placeholder)) },
-                    singleLine = true,
-                    trailingIcon = {
-                        if (ui.query.isNotEmpty()) IconButton(onClick = actions.onClear) { Icon(Icons.Filled.Close, contentDescription = str(Res.string.search_clear_query)) }
-                    },
-                    keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                    keyboardActions = KeyboardActions(onSearch = { focusManager.clearFocus() }),
-                    colors = TextFieldDefaults.colors(
-                        focusedContainerColor = Color.Transparent, unfocusedContainerColor = Color.Transparent,
-                        focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
-                    ),
-                    textStyle = MaterialTheme.typography.bodyLarge,
-                )
+    // the page fills the status bar too – no map strip above the field
+    Surface(modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().imePadding()) {
+            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                SearchField(ui.query, actions, Modifier.weight(1f).focusRequester(focus)) { focusManager.clearFocus() }
+                TextButton(onClick = actions.onBack) { Text(str(Res.string.common_cancel), style = MaterialTheme.typography.bodyLarge) }
             }
-            LazyRow(contentPadding = PaddingValues(horizontal = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(SearchKinds.Category.entries) { c ->
-                    FilterChip(selected = ui.category == c, onClick = { actions.onCategory(c) },
-                        label = { Text(c.label) }, modifier = Modifier.heightIn(min = 40.dp))
-                }
-            }
-            Spacer(Modifier.size(4.dp))
-            HorizontalDivider()
-            LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
+            // the categories while nothing is typed – and while one is on, so the filter stays visible and can be undone
+            if (ui.query.isBlank() || ui.category != null) CategoryRow(ui.category, actions.onCategory)
+            LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
                 // only the very first time (no index yet); later a new index is built while the old one answers
                 if (ui.indexing) item { Preparing() }
                 if (!ui.active) recentSection(ui, actions) else resultSections(ui, actions)
             }
             // one fixed row above the keyboard, whatever the hits (owner 2026-11-27): „Google Maps ↗“ with the query
-            HorizontalDivider()
+            HorizontalDivider(color = OnPathColors.Line)
             GoogleMapsRow { actions.onGoogle(ui.query.trim()) }
         }
     }
 }
 
+/** The field: a grey rounded box (the theme's deeper sage), 🔍, the text, ⊗ to clear it – no underline, 48 dp high. */
+@Composable
+private fun SearchField(query: String, actions: SearchActions, modifier: Modifier, onSearch: () -> Unit) {
+    androidx.compose.foundation.text.BasicTextField(
+        value = query, onValueChange = actions.onQuery, singleLine = true,
+        textStyle = MaterialTheme.typography.bodyLarge.copy(color = MaterialTheme.colorScheme.onSurface),
+        cursorBrush = androidx.compose.ui.graphics.SolidColor(OnPathColors.Green),
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+        keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+        modifier = modifier,
+        decorationBox = { inner ->
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).background(OnPathColors.PaperDeep, RoundedCornerShape(12.dp))
+                .padding(start = 12.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Outlined.Search, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(22.dp))
+                Spacer(Modifier.width(8.dp))
+                Box(Modifier.weight(1f)) {
+                    if (query.isEmpty()) Text(str(Res.string.search_placeholder), style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    inner()
+                }
+                if (query.isNotEmpty()) IconButton(onClick = actions.onClear, modifier = Modifier.size(40.dp)) {
+                    Icon(Icons.Filled.Cancel, contentDescription = str(Res.string.search_clear_query),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+                }
+            }
+        },
+    )
+}
+
 /**
- * The empty search (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): „⌂ Zuhause“ (one row, only when set and
- * [HOME_ROW_SHOWN] – off since 2026-11-19),
- * „★ FAVORITEN“ (at most five, then „Alle Favoriten ›“), „ZULETZT GESUCHT“ – one-line rows of 48 dp, small upper-case
- * heads. A tap opens the place's menu like any search pick.
+ * The categories in the owner's order (2026-11-27: Orte, Sehenswert, Essen, Wasser, Bahn, Parken, Schlafen) – the app's
+ * row only; the chips' table and the planner's order stay [SearchKinds.Category].
+ */
+internal val CATEGORY_ROW = listOf(SearchKinds.Category.PLACES, SearchKinds.Category.SIGHTS, SearchKinds.Category.FOOD,
+    SearchKinds.Category.WATER, SearchKinds.Category.TRANSIT, SearchKinds.Category.PARKING, SearchKinds.Category.SLEEP)
+
+/** A category's sign and colour: the map's colour of a kind it shows. */
+private fun SearchKinds.Category.sign(): Pair<androidx.compose.ui.graphics.vector.ImageVector, Long> = when (this) {
+    SearchKinds.Category.PLACES -> Icons.Filled.Place to SearchKinds.argb("place")
+    SearchKinds.Category.SIGHTS -> Icons.Filled.Landscape to SearchKinds.argb("viewpoint")
+    SearchKinds.Category.FOOD -> Icons.Filled.Restaurant to SearchKinds.argb("restaurant")
+    SearchKinds.Category.WATER -> Icons.Filled.WaterDrop to SearchKinds.argb("water")
+    SearchKinds.Category.TRANSIT -> Icons.Filled.Train to SearchKinds.argb("train")
+    SearchKinds.Category.PARKING -> Icons.Filled.LocalParking to SearchKinds.argb("parking")
+    SearchKinds.Category.SLEEP -> Icons.Filled.Hotel to SearchKinds.argb("hotel")
+}
+
+/** The word under a category's sign: short, one word („Schlafen“ for the lodging chip – owner 2026-11-27). */
+@Composable
+private fun SearchKinds.Category.short(): String =
+    if (this == SearchKinds.Category.SLEEP) str(Res.string.search_cat_sleep_short) else label
+
+/**
+ * One row of round coloured signs with a word under each (Apple Maps' „In der Nähe“): all seven side by side when each
+ * gets ≥ 52 dp and the font is not enlarged, else a row to swipe – never a cut word. The chosen one: a green ring,
+ * the others paler.
+ */
+@Composable
+private fun CategoryRow(selected: SearchKinds.Category?, onPick: (SearchKinds.Category) -> Unit) {
+    val measurer = androidx.compose.ui.text.rememberTextMeasurer()
+    val style = CategoryWord.copy(fontWeight = FontWeight.Bold)
+    val words = CATEGORY_ROW.map { it.short() }
+    val density = androidx.compose.ui.platform.LocalDensity.current
+    androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(horizontal = 8.dp)) {
+        // side by side when every sign keeps its own width (≥ 40 dp, or its word's) with ≥ 2 dp between them – the long
+        // word („Sehenswert“) borrows room from the short ones (fits 360 dp phones); else a row to swipe, never a cut word
+        val widths = with(density) { words.map { maxOf(40.dp, measurer.measure(it, style).size.width.toDp() + 2.dp) } }
+        val fits = widths.fold(0.dp) { a, w -> a + w } + 2.dp * (CATEGORY_ROW.size - 1) <= maxWidth
+        if (fits) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            CATEGORY_ROW.forEachIndexed { i, c -> CategorySign(c, selected, onPick, Modifier.width(widths[i])) }
+        } else androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            items(CATEGORY_ROW) { c -> CategorySign(c, selected, onPick, Modifier.widthIn(min = 64.dp)) }
+        }
+    }
+}
+
+/** The word under a sign: the caption size, no extra letter spacing (the seven must fit a 360 dp phone). */
+private val CategoryWord @Composable get() = MaterialTheme.typography.labelSmall.copy(letterSpacing = 0.sp)
+
+@Composable
+private fun CategorySign(c: SearchKinds.Category, selected: SearchKinds.Category?, onPick: (SearchKinds.Category) -> Unit, modifier: Modifier) {
+    val (icon, argb) = c.sign()
+    val on = selected == c
+    val dim = selected != null && !on
+    Column(modifier.selectable(on, role = Role.Tab) { onPick(c) }.padding(vertical = 4.dp),
+        horizontalAlignment = Alignment.CenterHorizontally) {
+        // the ring may stand out of a narrow cell by 2 dp each side (requiredSize) – the gaps take it
+        Box(Modifier.requiredSize(44.dp).then(if (on) Modifier.border(2.dp, OnPathColors.Green, CircleShape) else Modifier),
+            contentAlignment = Alignment.Center) {
+            Box(Modifier.size(38.dp).background(Color(argb).copy(alpha = if (dim) 0.45f else 1f), CircleShape), contentAlignment = Alignment.Center) {
+                Icon(icon, null, tint = Color.White, modifier = Modifier.size(22.dp))
+            }
+        }
+        Text(c.short(), style = CategoryWord, maxLines = 1, softWrap = false,
+            fontWeight = if (on) FontWeight.Bold else FontWeight.Normal,
+            color = if (on) OnPathColors.Green else MaterialTheme.colorScheme.onSurface)
+    }
+}
+
+/**
+ * Where a row sits in its rounded group: its shape (the first rounds the top, the last the bottom) – the groups of the
+ * empty search and of the hits ([groupRow]).
+ */
+private fun groupShape(i: Int, n: Int): RoundedCornerShape {
+    val top = if (i == 0) 16.dp else 0.dp
+    val bottom = if (i == n - 1) 16.dp else 0.dp
+    return RoundedCornerShape(top, top, bottom, bottom)
+}
+
+/** A row's frame in a light rounded group: 12 dp from the screen's edge, a fine line above every row but the first. */
+@Composable
+private fun groupRow(i: Int, n: Int): Modifier {
+    val shape = groupShape(i, n)
+    return Modifier.padding(horizontal = 12.dp).clip(shape).background(OnPathColors.CardPaper, shape)
+}
+
+@Composable
+private fun GroupLine(i: Int) { if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 12.dp).padding(start = 58.dp), color = OnPathColors.Line) }
+
+/**
+ * The empty search (owner 2026-11-15 compact sketch; 2026-11-27 variant A): „⌂ Zuhause“ (only when set and
+ * [HOME_ROW_SHOWN] – off since 2026-11-19), „Favoriten“ (at most five, „Alle Favoriten“ in its head), „Zuletzt gesucht“
+ * with „Löschen“ – one-line rows of 48 dp in light groups, each with its kind's coloured sign. A tap opens the place's
+ * menu like any search pick.
  */
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
     val home = shownHome(ui)
@@ -164,53 +281,49 @@ private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
     if (ui.recent.isEmpty() && home == null && ui.favourites.isEmpty()) return
     home?.let { h ->
         item {
-            CompactRow(h, str(Res.string.search_home), compactLine(h, withTitle = true), actions.onPick) {
-                Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit)
+            Box(groupRow(0, 1).padding(top = 0.dp)) {
+                CompactRow(h, str(Res.string.search_home), compactLine(h, withTitle = true), actions.onPick) {
+                    Icon(Icons.Outlined.Home, null, tint = OnPathColors.ActionEdit)
+                }
             }
-            HorizontalDivider()
         }
     }
     if (ui.favourites.isNotEmpty()) {
         item {
-            SmallHead(str(Res.string.search_favourites), star = true)
+            GroupHead(str(Res.string.search_favourites),
+                if (ui.moreFavourites > 0) str(Res.string.search_all_favourites) to actions.onAllFavourites else null)
         }
-        items(ui.favourites) { h ->
-            CompactRow(h, h.place.title(), compactLine(h), actions.onPick) {
-                Icon(Icons.Filled.Star, null, tint = OnPathColors.Favourite)
-            }
-        }
-        if (ui.moreFavourites > 0) item {
-            TextButton(onClick = actions.onAllFavourites, modifier = Modifier.padding(start = 4.dp).heightIn(min = 48.dp)) {
-                Text(str(Res.string.search_all_favourites))
-            }
+        val n = ui.favourites.size
+        itemsIndexed(ui.favourites) { i, h ->
+            GroupLine(i)
+            Box(groupRow(i, n)) { CompactRow(h, h.place.title(), compactLine(h), actions.onPick) { KindIcon(h.place, size = 30) } }
         }
     }
     if (ui.recent.isNotEmpty()) {
-        item {
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 4.dp, top = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.weight(1f)) { SmallHead(str(Res.string.search_recent), padded = false) }
-                TextButton(onClick = actions.onClearRecent) { Text(str(Res.string.search_clear_recent)) }
-            }
-        }
-        items(ui.recent) { h ->
-            CompactRow(h, h.place.title(), compactLine(h), actions.onPick) {
-                // shared into OnPath (Google Maps → Share): the share sign instead of the clock (owner 2026-11-02)
-                if (h.place.shared) Icon(Icons.Outlined.Share, contentDescription = str(Res.string.search_recent_shared),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                else Icon(Icons.Outlined.History, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        item { GroupHead(str(Res.string.search_recent), str(Res.string.search_clear_recent) to actions.onClearRecent) }
+        val n = ui.recent.size
+        itemsIndexed(ui.recent) { i, h ->
+            GroupLine(i)
+            Box(groupRow(i, n)) {
+                CompactRow(h, h.place.title(), compactLine(h), actions.onPick) {
+                    // shared into OnPath (Google Maps → Share): the share sign instead of the kind (owner 2026-11-02)
+                    if (h.place.shared) Box(Modifier.size(30.dp).background(OnPathColors.PaperDeep, CircleShape), contentAlignment = Alignment.Center) {
+                        Icon(Icons.Outlined.Share, contentDescription = str(Res.string.search_recent_shared),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(18.dp))
+                    } else KindIcon(h.place, size = 30)
+                }
             }
         }
     }
 }
 
-/** A small upper-case head (12 sp, like My routes' ZULETZT), with the gold star for the favourites. */
+/** A group's head: the title (16, bold, sentence case – like Apple Maps) and an optional green word at the end. */
 @Composable
-private fun SmallHead(text: String, star: Boolean = false, padded: Boolean = true) {
-    Row((if (padded) Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 4.dp) else Modifier),
+private fun GroupHead(text: String, action: Pair<String, () -> Unit>?) {
+    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp).heightIn(min = 40.dp),
         verticalAlignment = Alignment.CenterVertically) {
-        if (star) { Icon(Icons.Filled.Star, null, tint = OnPathColors.Favourite, modifier = Modifier.size(14.dp)); Spacer(Modifier.width(6.dp)) }
-        Text(text.uppercase(), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() })
+        Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).semantics { heading() })
+        action?.let { (word, onClick) -> TextButton(onClick = onClick) { Text(word) } }
     }
 }
 
@@ -222,16 +335,16 @@ internal fun compactLine(h: SearchHit, withTitle: Boolean = false): String = bui
 }.joinToString(" · ")
 
 /**
- * One line, ≥ 48 dp: [name] (16, medium) and the grey [line] (14) beside it – the grey part is cut first, the name only
- * when it alone does not fit.
+ * One line, ≥ 48 dp: the sign, [name] (16, medium) and the grey [line] (14) beside it – the grey part is cut first, the
+ * name only when it alone does not fit.
  */
 @Composable
 private fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place) -> Unit, icon: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) { icon() }
+        Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { icon() }
         Spacer(Modifier.width(16.dp))
         // the name is measured first (unweighted), the grey part takes what is left
         Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
@@ -244,8 +357,12 @@ private fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place)
 
 private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
     val results = ui.results
+    item { Spacer(Modifier.height(4.dp)) }
     // no item keys: two sources may carry the same id, and a duplicate key would crash the list
-    items(results) { ResultRow(it, actions.onPick) }
+    itemsIndexed(results) { i, h ->
+        GroupLine(i)
+        Box(groupRow(i, results.size)) { ResultRow(h, actions.onPick) }
+    }
     if (results.isEmpty() && !ui.indexing) {
         item {
             Hint(if (ui.query.isBlank()) str(Res.string.search_nothing_of_kind) else str(Res.string.search_no_match))
@@ -254,32 +371,32 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
     if (ui.online.isNotEmpty()) {
         item {
             Text(str(Res.string.search_online_attribution), style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
         }
     } else if (ui.onlineState == OnlineState.LOADING) {
         item {
             Text(str(Res.string.search_searching_online), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
+                modifier = Modifier.padding(horizontal = 20.dp, vertical = 10.dp))
         }
     }
 }
 
 /**
- * „Google Maps ↗“ (owner 2026-11-27): one plain text row, as high as a list row, fixed under the list and above the
- * keyboard – hands the query to Google Maps; no button look, no way-back hint. The ↗ says it leaves the app.
+ * „Google Maps ↗“ (owner 2026-11-27): one row, fixed under the list and above the keyboard – hands the query to Google
+ * Maps; green words in the middle (variant A), no button look, no way-back hint. The ↗ says it leaves the app.
  */
 @Composable
 private fun GoogleMapsRow(onClick: () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).heightIn(min = 56.dp).padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).heightIn(min = 52.dp).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Outlined.Map, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        Spacer(Modifier.width(16.dp))
-        Text(str(Res.string.search_google_maps), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+        Icon(Icons.Outlined.Map, contentDescription = null, tint = OnPathColors.Green, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.size(20.dp))
+        Text(str(Res.string.search_google_maps), style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold,
+            color = OnPathColors.Green, maxLines = 1)
+        Spacer(Modifier.width(6.dp))
+        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = OnPathColors.Green, modifier = Modifier.size(18.dp))
     }
 }
 
@@ -328,7 +445,7 @@ fun resultSubtitle(h: SearchHit): String = buildString {
 @Composable
 private fun ResultRow(h: SearchHit, onPick: (Place) -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 60.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 60.dp).padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         KindIcon(h.place)

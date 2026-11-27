@@ -66,6 +66,6 @@ class SearchRulesTest {
         val block = flow.substringAfter("fun showSharedPlace(").substringBefore("\n    }\n")
         assertTrue(block, block.contains("search.remember(p.copy(shared = true))"))
         val screen = File("src/main/java/com/onpath/app/ui/search/SearchScreen.kt").readText()
-        assertTrue(screen.contains("if (h.place.shared) Icon(Icons.Outlined.Share"))
+        assertTrue(screen.contains("if (h.place.shared) Box(") && screen.contains("Icon(Icons.Outlined.Share, contentDescription = str(Res.string.search_recent_shared)"))
     }
 }
