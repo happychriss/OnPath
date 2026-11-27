@@ -215,7 +215,7 @@
         <item quantity="one">Removes the point before it</item>
         <item quantity="other">Removes the %1$d points before it</item>
     </plurals>
-    <string name="plan_start_finish_here">Set as start</string>
+    <string name="plan_start_finish_here">Set as start of the round trip</string>
     <string name="plan_same_round_trip">Same round trip, starts here</string>
     <string name="plan_finding_shared_place">Finding the shared place…</string>
     <string name="plan_resize_panel">Resize panel</string>

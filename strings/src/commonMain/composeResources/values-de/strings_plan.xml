@@ -214,7 +214,7 @@
         <item quantity="one">Löscht den Punkt davor</item>
         <item quantity="other">Löscht die %1$d Punkte davor</item>
     </plurals>
-    <string name="plan_start_finish_here">Als Start</string>
+    <string name="plan_start_finish_here">Als Start der Rundtour</string>
     <string name="plan_same_round_trip">Gleiche Rundtour, startet hier</string>
     <string name="plan_finding_shared_place">Geteilter Ort wird gesucht…</string>
     <string name="plan_resize_panel">Größe ändern</string>

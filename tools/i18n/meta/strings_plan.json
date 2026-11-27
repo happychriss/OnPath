@@ -933,7 +933,7 @@
   },
   "plan_start_finish_here": {
     "area": "Map (Plan)",
-    "context": "Menu row on a round-trip point: the loop starts (and ends) here – the line under it says „Same round trip, starts here“. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
+    "context": "Menu row on a round-trip point: the loop starts (and ends) here; one row, no line under it in the app (owner 2026-11-27: „Als Start der Rundtour“).",
     "priority": 2,
     "confidence": "sicher"
   },
