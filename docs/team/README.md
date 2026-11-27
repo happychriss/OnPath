@@ -6,6 +6,7 @@ hour, and not needed to contribute – what the app is and how it is built is in
 | File | What it holds |
 | --- | --- |
 | [backlog.md](backlog.md) | the to-do list: the owner's word to the roles, claims, next items, open questions |
+| [board.md](board.md) | the captain's task board: which thread works on what, branch, files, conflicts |
 | [items/](items/) | the full text of a backlog line that does not fit its line |
 | [handoffs/](handoffs/) | each role's newest hand-over to its next session |
 | [roles/](roles/README.md) | who works where, and each role's start page |

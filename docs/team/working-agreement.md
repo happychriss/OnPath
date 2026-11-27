@@ -14,7 +14,8 @@ Home of other rules (not repeated here): push / pull-request policy → `CLAUDE.
 1. **Start fresh:** `git pull --rebase origin main` before touching anything. Read "Where things are" and "Last
    session" in `docs/project-status.md` and `docs/team/backlog.md`.
 2. **Claim before you work:** one line under "In progress" in `docs/team/backlog.md` with your tag
-   (`- [donald] plan panel drag – since 2026-11-07`; tags `[donald]`, `[laptop]` / `[cloud-plan]`, `[captain]`,
+   (`- [donald] plan panel drag – thread „…“, branch feat/x, files PlanPanel.kt – since 2026-11-07`; thread, branch and
+   main files let the captain see double tasks and file conflicts, `docs/team/board.md`; tags `[donald]`, `[laptop]` / `[cloud-plan]`, `[captain]`,
    `[cloud-web]`), push it at once, remove it when done. Role / claim lines up to 400 bytes,
    every other item one short title line, detail in `docs/team/items/<date>-<slug>.md` (`tools/dev/backlog_slim.py`; the gate
    caps the file, target 20 KB). An area another session claimed is not edited – pick something else or write your
