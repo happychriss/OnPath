@@ -254,7 +254,7 @@ The format-1 code paths stay (cost nothing); no app uses f1 cells.
 Why: cells built before the overlays layer `streets` existed showed no small streets (the style draws them at z13+
 only from it), and a version named by the OSM date alone would give a rebuild on the same OSM date the same
 (immutable, cached) name. So:
-- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 9 – see below); the manifest has
+- **Builder:** version folder = `<osm_date>-s<schema>` (`tools/cells/cells.py CELL_SCHEMA`, currently 10 – see below); the manifest has
   `version` and `schema`. A build whose name is already published (a pipeline fix rebuilt on the same OSM date) gets a
   rebuild number: `<osm_date>.N-s<schema>`, first free N ≥ 2 (`job_build.py rebuild_number` → `build_cell.sh REBUILD`;
   2026-10-30, the Bremen / Berlin repair) – app and doorman compare names only, so the repaired cell reaches phones

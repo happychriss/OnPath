@@ -55,7 +55,7 @@ FORMAT = 1  # default; build_cell.sh passes --format (format 2: docs/design/map-
 # bike routes as before; s8 adds a layer no style reads). Keep builder
 # and doorman in step. CELL_SCHEMA stays a plain number on this line (tools/dev/publish_area.sh reads it) and is always
 # the highest value in LAYER_SCHEMA (selftest).
-CELL_SCHEMA = 9
+CELL_SCHEMA = 10
 # Per-layer content schema (docs/design/map-hosting.md §7h "Partial rebuild"): for each layer of a format-2 cell, the
 # cell schema in which its data last changed. A change bumps CELL_SCHEMA (version name, doorman and app see only that)
 # AND the layer(s) it touches; a change that needs two layers in step (e.g. trim_base hiding lines the overlays draw
@@ -63,7 +63,9 @@ CELL_SCHEMA = 9
 # schema is newer than the published version's and copies the others into the new version. 7 = all layers when the
 # table came in: older versions (< PARTIAL_FROM_SCHEMA) are always rebuilt whole. 8 = overlays only (routelines).
 # 9 = suggest only (suggest.bin, tools/build_suggest.py – the tour suggestions' data; apps without them ignore it).
-LAYER_SCHEMA = {"base": 7, "overlays": 8, "pois": 7, "addresses": 7, "terrain": 7, "contours": 7, "suggest": 9}
+# 10 = pois: lodging kinds hotel / guest_house / hostel (extract_pois.py, the „Übernachten“ chip – owner 2026-11-27);
+# suggest follows (LAYER_INPUTS).
+LAYER_SCHEMA = {"base": 7, "overlays": 8, "pois": 10, "addresses": 7, "terrain": 7, "contours": 7, "suggest": 9}
 PARTIAL_FROM_SCHEMA = 7
 # these need the OSM cut; terrain + contours only AWS tiles
 OSM_LAYERS = ("base", "overlays", "pois", "addresses", "suggest")
