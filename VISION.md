@@ -31,17 +31,19 @@ In planning you edit only by holding, with no quick-tap actions and no dragging 
 A new route comes only after asking.
 Nothing with a button disappears by itself and nothing flashes; a message stays until it is answered or the situation is gone.
 Only a short information line without a button may go by itself after a few seconds.
+A wait shows its steps and how long it has run, never a made-up percent; a computation of more than about half a minute asks first.
 What Plan shows is exactly what Navigate follows.
 A UI text the owner chose stays; a change to it is proposed as a question.
 
 ## Powerful, clear and calm
 
 The flow is: choose a destination, check the route, go.
-Komoot is the bar for ease of use and the look of the map; in function OnPath aims to match established apps and to go beyond them in single areas.
+Komoot is the bar for ease of use and the map; the controls look like Apple and Android, not like a navigation device; in function OnPath aims to match established apps and to go beyond them in single areas.
 Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
 OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.
 Texts state facts, not guesses.
+Every text exists in German and English, with the same meaning.
 The app looks modern, clear and friendly, never technical, also where the function behind it is complex, and not in the style of navigation or hiking apps.
 Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes only from colour and type, never from controls of its own.
 There are exactly six activities.
@@ -62,6 +64,7 @@ A paid extra may need an account, for example one that backs up your tours; pair
 
 OnPath is not a social network: no profile, no feed, no followers, no leaderboards.
 Sharing your location sends it one way to people you choose, with no groups and no shared map of each other.
+A diary stays private on the phone: no photo feed, no sharing of it.
 For browsing, OnPath shows only signposted trails from OpenStreetMap, never other users' tours, photos or ratings.
 Weather, sunset warnings, an emergency screen and a battery check at the start are deliberately left out; weather may return one day only as a paid extra.
 Android comes first; the iPhone comes only after the public launch, and until then only the core stays free of Android.
