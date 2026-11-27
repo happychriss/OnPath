@@ -555,14 +555,14 @@ private fun AddRow(item: PlaceAddMenu.Item, menu: PlaceAddMenu.Menu?, onClick: (
 
 /**
  * A hold on the empty map in a doubtful spot (owner 2026-11-15, [PlaceAddMenu.asksOnHold]): only the two rows of [menu]
- * in the fixed order „Als Stopp“ → „Als Ziel“ ([PlaceAddMenu.Menu.rows], owner 2026-11-26), the likelier one tinted – no
+ * ([PlaceAddMenu.Menu.main], owner 2026-11-26 night): likeliest first, tinted – no
  * title (the spot is just a spot; where it goes shows on the map once chosen). Back / a tap elsewhere adds nothing.
  */
 @Composable
 fun HoldAddMenu(menu: PlaceAddMenu.Menu, onAddStop: () -> Unit, onNewDestination: () -> Unit, modifier: Modifier = Modifier) {
     MenuSurface(modifier) {
         Spacer(Modifier.height(4.dp))
-        for (item in menu.rows) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
+        for (item in menu.main) AddRow(item, menu, if (item == PlaceAddMenu.Item.ADD_STOP) onAddStop else onNewDestination)
     }
 }
 

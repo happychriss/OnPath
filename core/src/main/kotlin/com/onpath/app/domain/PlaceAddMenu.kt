@@ -36,18 +36,12 @@ object PlaceAddMenu {
     enum class Zone { STOP, STOP_FIRST, GOAL_FIRST, GOAL }
 
     /**
-     * [main] = the add rows in the decision's order – with 2+ points both add rows, the likelier first ([emphasised]).
-     * What the menu shows is [rows].
+     * [main] = the add rows in the decision's order, as the menu shows them: the likeliest on top, tinted ([emphasised]),
+     * the rest below (owner 2026-11-26 night: „immer oben das Wahrscheinlichste … das ist so das Daumengefühl“).
      */
     data class Menu(val main: List<Item>) {
         /** The likelier row (shown tinted): the first of the two add rows; null with one point or none. */
         val emphasised: Item? get() = main.firstOrNull()?.takeIf { main.size == 2 && it in ADD_ITEMS }
-
-        /**
-         * The rows as the menu shows them: the likeliest on top, tinted, the rest below (owner 2026-11-26 night: „immer oben
-         * das Wahrscheinlichste … das ist so das Daumengefühl“ – the fixed Start → Stopp → Ziel of that afternoon is gone).
-         */
-        val rows: List<Item> get() = main
     }
 
     private val ADD_ITEMS = setOf(Item.ADD_STOP, Item.NEW_DESTINATION)
@@ -185,7 +179,7 @@ object PlaceAddMenu {
 
     /**
      * Both add rows while planning, the cheaper first in [Menu.main] and tinted (a hold that asks, a held place in doubt –
-     * [planningRows]), decided on the numbers the decision took (the paths when measured); shown in [Menu.rows]' fixed order.
+     * [planningRows]), decided on the numbers the decision took (the paths when measured); shown in that order (likeliest first, tinted).
      */
     fun planningMenu(d: Detours): Menu =
         Menu(if (d.insertM < d.appendM) listOf(Item.ADD_STOP, Item.NEW_DESTINATION) else listOf(Item.NEW_DESTINATION, Item.ADD_STOP))
