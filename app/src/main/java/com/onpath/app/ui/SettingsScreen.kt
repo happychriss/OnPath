@@ -290,7 +290,7 @@ fun SettingsScreen(
                                 PaceSection(settings, onChange, activity) // PaceSettings.kt
                             } }
                             item { SettingsCard {
-                                MarkedTrailsRow(settings, onChange) // PaceSettings.kt
+                                MarkedTrailsRow(settings, onChange, activity) // PaceSettings.kt
                                 SwitchRow(str(Res.string.settings_map_vibrate), null, settings.planVibrate) { onChange(settings.copy(planVibrate = it)) }
                             } }
                         }

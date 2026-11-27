@@ -126,12 +126,21 @@ async function run(lang, viewport, shotPrefix) {
   check(pillTexts === (lang === 'de' ? 'Tag 1|Tag 2' : 'Day 1|Day 2'), `the undecided nights are white „Tag N“ pills (${pillTexts})`);
   // the day rows (owner 2026-11-21, variant A): bold „Tag 1“, the day's km · ↑ m · time on its right, a grey „von – nach“
   // under it only when both places are known – never a km position, never „Start“ / „Ziel“, no third line
+  // the table of days (owner 2026-11-27): km · Σ km · ↑ m · time as cells with their units, right edges in one line, a total row
   const dayRows = () => page.$$eval('#tourOverview .today', (ls) => ls.map((l) => ({ day: l.querySelector('.dn')?.textContent ?? '',
-    vals: l.querySelector('.dv')?.textContent ?? '', places: l.querySelector('.dpl')?.textContent ?? null, lines: l.querySelectorAll('.txt > span').length })));
+    vals: [...l.querySelectorAll('.ck, .cs, .cu, .ct')].map((c) => c.textContent).join(' | '), places: l.querySelector('.dpl')?.textContent ?? null, lines: l.querySelectorAll('.txt > span').length })));
   const rowsNow = await dayRows();
   console.log('day rows:', JSON.stringify(rowsNow));
   check(rowsNow.map((r) => r.day).join('|') === (lang === 'de' ? 'Tag 1|Tag 2|Tag 3' : 'Day 1|Day 2|Day 3'), `the rows say „${lang === 'de' ? 'Tag' : 'Day'} n“ (${rowsNow.map((r) => r.day).join('|')})`);
-  check(rowsNow.every((r) => /^[\d.,]+ k?m · ↑ [\d.,]+ m · .+/.test(r.vals)), `each row: km · ↑ m · time (${rowsNow.map((r) => r.vals).join(' | ')})`);
+  check(rowsNow.every((r) => /^[\d.,]+ km \| Σ [\d.,]+ km \| ↑ [\d.,]+ m \| (\d+ h \d\d|\d+ min)$/.test(r.vals)), `each row: km | Σ km | ↑ m | time (${rowsNow.map((r) => r.vals).join(' / ')})`);
+  const edges = await page.$$eval('#tourOverview .today .ct, #tourOverview .todtotal .ct', (cs) => cs.map((c) => Math.round(c.getBoundingClientRect().right)));
+  const cut = await page.$$eval('#tourOverview .today, #tourOverview .todtotal', (rs) => rs.filter((r) => r.scrollWidth > r.clientWidth + 1).length);
+  check(edges.length === 4 && new Set(edges).size === 1 && cut === 0, `the time column lines up, the total row too, nothing cut (${edges.join(',')}; ${cut} rows too wide)`);
+  const total = await page.$eval('#tourOverview .todtotal', (r) => [...r.children].map((c) => c.textContent.trim()).filter(Boolean).join(' ')).catch(() => '');
+  check(new RegExp(`^${lang === 'de' ? 'Gesamt' : 'Total'} [\\d.,]+ km ↑ [\\d.,]+ m`).test(total), `a total row (${total})`);
+  check(await page.$eval('#pointsSection', (s) => getComputedStyle(s).display === 'none'), 'the table shows no points (the Points list steps back)');
+  const overRows = await page.$$eval('#tourOverview .today.over', (rs) => rs.map((r) => r.querySelectorAll('.cu.over, .ct.over').length));
+  check(overRows.every((n) => n >= 1), `a day over its limits: only the exceeded values marked (${JSON.stringify(overRows)})`);
   check(rowsNow.every((r) => r.lines <= 2 && (r.places == null || (/ – /.test(r.places) && !/\bkm \d|^(Start|Ziel|Destination) –|– (Start|Ziel|Destination)$/.test(r.places)))),
     'at most the grey places line under it, never a km position or Start / Ziel');
   // each day end says which day of how many ends there (owner 2026-11-20): „Ende Tag 1 von 3“, „Ende Tag 2 von 3“
@@ -163,6 +172,9 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.ends.some((e) => e.kind === 'OVERNIGHT'), 'a blue moon');
   await settled();
   let v = await view();
+  // map → day (owner 2026-11-27): the click on the route opened the day of that stretch; „‹ Alle Tage“ goes back
+  check(await page.locator('#tourOverview .dayview').count() === 1, 'a click on the route opens the day of that stretch');
+  await page.evaluate(() => document.getElementById('toAll')?.click()); // (a phone: the small sheet hides the overview)
   check(v.days === 3 && v.ends.filter((k) => k === 'PROPOSAL').length === 1, `Übernachtung hier: N stays 3, one grey left (${v.ends})`);
   check(await page.locator('.pin.night .daypill.blue').count() === 1, 'the night point is drawn as a blue pill');
   await page.waitForFunction(() => /\d/.test(document.querySelector('.pin.night')?.getAttribute('aria-label') ?? ''), null, { timeout: 10_000 }).catch(() => {});
@@ -249,18 +261,29 @@ async function run(lang, viewport, shotPrefix) {
   check(!pbar.lineToo, `while the bar shows, the sheet's wait line does not (one statement) (${pbar.lineToo ?? 0}×)`);
   check(pbar.shown > 0 && pbar.faded === 0.45 && pbar.hidden && (pbar.now ?? 1) === 1,
     `while the planner computes: the thin bar under the tool row and the route faded, then both gone (${JSON.stringify(pbar)})`);
-  // 9 · a day row highlights that day
+  // 9 · a day row opens that day (owner 2026-11-27, the day view): marked on the map and in the profile
   await page.click('#tourOverview .today[data-day="2"]');
   const range = await page.evaluate(() => window.__profileRange ?? null);
-  check(await page.locator('#tourOverview .today.sel').count() === 1, 'a day row is selected (its part marked on the map and in the profile)');
+  check(await page.locator('#tourOverview .dayview[data-day="2"]').count() === 1, 'a day row opens that day (its part marked on the map and in the profile)');
   void range;
+  const dv = await page.evaluate(() => ({ all: document.getElementById('toAll')?.getBoundingClientRect().height ?? 0,
+    pos: document.querySelector('#tourOverview .dvpos')?.textContent ?? '', add: document.getElementById('toAdd')?.textContent ?? '',
+    pts: document.querySelectorAll('#points > li').length, shown: [...document.querySelectorAll('#points > li')].filter((li) => getComputedStyle(li).display !== 'none').length,
+    list: getComputedStyle(document.getElementById('pointsSection')).display !== 'none' }));
+  check(dv.all >= 40 && dv.pos.replace(/\s/g, '') === '2/3' && new RegExp(lang === 'de' ? 'Ort zu Tag 2 hinzufügen' : 'day 2').test(dv.add),
+    `the day view: a large „‹ ${lang === 'de' ? 'Alle Tage' : 'All days'}“, ‹ 2/3 ›, „add a place to day 2“ (${JSON.stringify(dv)})`);
+  check(dv.list && dv.shown >= 1 && dv.shown <= dv.pts, `the day's own points in the list (${dv.shown} of ${dv.pts})`);
+  await page.click('#toNext'); await page.waitForTimeout(200);
+  check(await page.locator('#tourOverview .dayview[data-day="3"]').count() === 1, '› goes to day 3');
+  await page.click('#toPrev'); await page.waitForTimeout(200);
+  check(await page.locator('#tourOverview .dayview[data-day="2"]').count() === 1, '‹ back to day 2');
   const look = await page.evaluate(() => ({ range: window.__map.getPaintProperty('profile-range', 'line-color'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(look.range === '#1E3FAE' && look.rest === 0.35, `the day in route blue, the other days faded – no yellow (owner 2026-11-27 variant 3) (${JSON.stringify(look)})`);
   // the space bar after the click keeps the day (owner 2026-11-27): the row keeps no focus to be clicked again
   await page.keyboard.press('Space');
   await page.waitForTimeout(300);
-  const kept = await page.evaluate(() => ({ sel: document.querySelectorAll('#tourOverview .today.sel').length,
+  const kept = await page.evaluate(() => ({ sel: document.querySelectorAll('#tourOverview .dayview').length,
     shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
@@ -275,8 +298,17 @@ async function run(lang, viewport, shotPrefix) {
   const peekBack = await page.evaluate(() => window.__map.getLayoutProperty("profile-range", "visibility"));
   check(peek.range === 'none' && peek.route === 'none' && peek.shade && peekBack === "visible",
     `space held: route and the day's mark hidden on the map, the profile keeps the day (${JSON.stringify(peek)}, after: ${peekBack})`);
-  await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
-  check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
+  await page.click('#toAll'); // „‹ Alle Tage“: the table again
+  check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1 &&
+    await page.locator('#tourOverview .today').count() === 3, '„Alle Tage“: the table again, the whole route full');
+  // map → day (owner 2026-11-27): a click on day 3's stretch of the route opens day 3
+  const d3 = await page.evaluate(() => { const v = window.__days.lastView, r = v.rows[2], ends = v.ends;
+    return { from: r.fromM, to: r.toM, last: ends[ends.length - 1] }; });
+  void d3;
+  await page.evaluate(() => { const p = window.__map.getSource('planned-route').serialize().data.features.flatMap((f) => f.geometry.coordinates);
+    const [lo, la] = p[Math.floor(p.length * 0.92)]; window.__days.openDayAt(la, lo); });
+  check(await page.locator('#tourOverview .dayview[data-day="3"]').count() === 1, 'a click on the last day\'s stretch opens that day');
+  await page.click('#toAll');
 
   // 10 · Speichern as every plan: the saved code carries the days and the night
   await page.waitForFunction(() => document.getElementById('menuSavePlan')?.dataset.state === 'dark', null, { timeout: 30_000 }).catch(() => {});

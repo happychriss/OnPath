@@ -56,4 +56,8 @@
         <item quantity="one">%1$d day</item>
         <item quantity="other">%1$d days</item>
     </plurals>
+    <string name="days_total">Total</string>
+    <string name="days_and">%1$s and %2$s</string>
+    <string name="days_over_day">%1$s over your day</string>
+    <string name="days_add_to_day">Add a place to day %1$s</string>
 </resources>

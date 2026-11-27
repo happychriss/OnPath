@@ -71,6 +71,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
+- [laptop] **planner, 2026-11-27 evening** (thread „Kontextmenüs im Planer“): (1) „Wanderrouten/Radrouten folgen“ per activity + parity – strings_settings, activity.ts, PaceSettings.kt; (2) multi-day day table + day view, then route-type segment row (item 2026-11-27-planner-route-type-and-day-table) – multiday.ts/css, activity.ts, main.ts; (3) next: round category signs in the planner search – search.ts. Straight to main per planner rule.
 - [anzeigen] **free – done** 2026-11-27 ~11:45: map loading notices on main 3ce35dad5 (busy server ≠ offline, one notice while the wait window shows, no false „neu berechnet“, „Karte für diesen Ort“). Not on the Pixel: it has the Daumen-Karte build – that session merges main. Open (owner's word on texts): „sobald du online bist“ also when online (routing NOT_YET, update failed, shared place).
 - [laptop] free – 2026-11-27 ~02:00: planner to main + deploy (night go): context menus web, Tag-N pills, hotel as Als Übernachtung, live viewer A + late status, leg cache fix, menu above profile, planner follows 0.18.11 look (SAC rows, green profile, tool order). Open: cell schema 10 + rebuild for hotels (owner, morning).
 - [umbau] **free – done** 2026-11-26 ~22:30: detour writers + planner part on main 642904377; on main: full E2E 114/0, Web planner green (2 stale tests fixed d377e4846), SameRouteTest verify 112/112 + full 108/108. Nits for the laptop in the umbau handoff.
@@ -81,6 +82,8 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[laptop] Planner: route type as a segment row (variant A) + multi-day day table and day view (owner 2026-11-27)…** → [detail](items/2026-11-27-planner-route-type-and-day-table.md)
+- **[donald] App: multi-day day table like the planner (owner 2026-11-27)…** → [detail](items/2026-11-27-app-day-table.md)
 - **[donald] Shorter phone setup: first start asks only location; notifications + battery at the first tour; brand / saver hints only where affected (owner 2026-11-26)…** → [detail](items/2026-11-26-shorter-phone-setup.md)
 - **[donald + laptop] Context menus: one scheme for order and wording – Start · Stopp · Ziel, „Als …“, three groups (owner 2026-11-26)…** → [detail](items/2026-11-26-context-menus-wording.md)
 - **[donald + laptop] LordTriangel's PRs 20–22 – parked by the owner 2026-11-24 (to-do, other work first)…** → [detail](items/2026-11-24-lordtriangel-prs-20-22.md)

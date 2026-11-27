@@ -9,6 +9,7 @@ import com.onpath.app.routing.DayEnd
 import com.onpath.app.routing.DayLimits
 import com.onpath.app.routing.DayLine
 import com.onpath.app.routing.DayRowText
+import com.onpath.app.routing.DayTable
 import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.Hotel
 import com.onpath.app.routing.NightMark
@@ -177,6 +178,14 @@ object WebDays {
         val rowPlaces = rowPlaces(p, td.days.map { it.end }, l.points.first(), l.points.last(), ::placeName)
         val total = l.distM.last(); val up = l.upM.last(); val time = l.timeS.last()
         val days = td.days.size.coerceAtLeast(1)
+        // the day table (owner 2026-11-27, the shared DayTable): aligned cells with units, running total, total row
+        val cells = DayTable.rows(td.days)
+        val sum = DayTable.total(td.days)
+        fun cellsJson(c: DayTable.Cells) = "{\"km\":" + Engine.str(c.km) + ",\"sum\":" + (c.sum?.let { Engine.str(it) } ?: "null") +
+            ",\"up\":" + Engine.str(c.up) + ",\"time\":" + Engine.str(c.time) + ",\"overTime\":" + c.overTime +
+            ",\"overAscent\":" + c.overAscent + "}"
+        // the plan points of each day (the open day's list): those along the line within the day, its ends included
+        val pointAlong = at.map { i -> l.distM[i.coerceIn(0, l.distM.lastIndex)] }
         return buildString {
             append("{\"routed\":true,\"days\":").append(td.days.size)
             append(",\"canRemove\":").append(PlanDays.canRemoveDay(p))
@@ -199,9 +208,17 @@ object WebDays {
                 append(",\"plan\":").append(d.end?.planIndex ?: "null")
                 // R8: above a limit per day – the values orange (the symbol and the colour say it, no text line)
                 append(",\"over\":").append(d.over.isNotEmpty())
+                append(",\"cells\":").append(cellsJson(cells[k]))
+                append(",\"overLine\":").append(DayTable.overLine(d, p.limits)?.let { Engine.str(it) } ?: "null")
+                append(",\"km\":").append(Engine.str(Format.distance(d.distanceM)))
+                append(",\"up\":").append(Engine.str("↑ " + Format.meters(d.ascentM)))
+                append(",\"down\":").append(Engine.str("↓ " + Format.meters(d.descentM)))
+                append(",\"time\":").append(Engine.str(Format.duration(TimeEstimate.round(d.timeS))))
+                append(",\"points\":[").append(pointAlong.indices.filter { i -> pointAlong[i] >= d.fromM - 1 && pointAlong[i] <= d.toM + 1 }.joinToString(",")).append(']')
                 append('}')
             }
-            append("],\"ends\":[")
+            append("],\"total\":").append(cellsJson(sum)).append(",\"totalLabel\":").append(Engine.str(DayTable.totalLabel()))
+            append(",\"ends\":[")
             ends.forEachIndexed { k, e ->
                 if (k > 0) append(',')
                 append("{\"night\":").append(k + 1).append(",\"kind\":").append(Engine.str(e.kind.name))
