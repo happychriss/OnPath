@@ -17,10 +17,13 @@ questions, tells the owner what is new. It writes no product code and decides no
 - **Sources:** GitHub branches and commits (`git fetch`, `git diff --name-only main...<branch>`), the claim lines under
   "In progress" in `backlog.md` (the roles' task log: every role writes there what it works on, with thread, branch and
   main files), "Last session" in `docs/project-status.md`, and the project's thread list (`list_threads` / `read_thread`).
-- **A new task:** the coordinator messages the captain's thread before handing it out („Neue Aufgabe: …, Bereich …“).
-  The captain answers in a few lines: **who** (thread), **branch**, **files it will touch**, **conflict** (double task,
-  hot file held by X, waits for Y) and **go / wait**. Then it adds the row. No answer needed for a pure question to the
-  owner.
+- **A new task (owner 2026-11-27: the captain splits and hands out):** the coordinator sends the task raw. The captain
+  answers with the plan: which part goes to which thread, what runs in parallel and what waits (files, branch base,
+  merge queue place, parity part for the other side), and **one ready order text per thread** – the coordinator passes
+  them on word for word, because the captain cannot reach the role threads (tested 2026-11-27). Then the rows go on the
+  board. No answer needed for a pure question to the owner.
+- **Free threads:** whenever woken, check the board against the threads; a thread that is free → propose to the
+  coordinator a backlog item it can take, with the order text.
 - **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
   „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
