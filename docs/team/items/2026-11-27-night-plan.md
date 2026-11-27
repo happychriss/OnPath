@@ -5,6 +5,8 @@ planner and a phone that match; resume the map build so the maps are done tomorr
 tomorrow – **first on his Pixel, then the release**. Night-job rules + „Nachtregel gilt“ in `owner-preferences.md`
 apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` (`Q … → A … (role, time)`).
 
+**State 00:19: steps 1c–9 all on main** (4 web tidy b5fe760d8, 7 day table e90b39462…cc5055f84 + parity be5b5d3d8, 8 drift fix 659bbfba0…65d357660, E2E 115/0). Open: HP's „parity done“, map build end, release 0.18.12 in the morning with the Pixel.
+
 ## Merge queue to `main` (each step: rebase on main, gate, push, report the commit)
 | Step | What | Who | Starts when |
 | --- | --- | --- | --- |
