@@ -55,7 +55,6 @@
     <string name="plan_spot_at_start">at the start</string>
     <string name="plan_spot_after">after %1$s</string>
     <string name="plan_spots_title">On this route</string>
-    <string name="plan_spots_tap">Tap a spot to see it on the map.</string>
     <string name="plan_warn_show_spots">Show the spots</string>
     <string name="plan_calculating">Calculating the route…</string>
     <string name="plan_calculating_leg">Calculating section %1$d of %2$d…</string>

@@ -204,12 +204,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_spots_tap": {
-    "area": "Route hints",
-    "context": "Line under the title of the route hint list",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "plan_warn_show_spots": {
     "area": "Route hints",
     "context": "Accessibility: what tapping the amber hint line does",
