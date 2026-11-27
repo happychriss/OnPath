@@ -58,6 +58,11 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--route); out
 .iconbtn { border: none; background: none; width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; padding: 0; color: var(--muted); }
 .iconbtn:hover { background: var(--surface2); }
 .textbtn { border: none; background: none; color: var(--green-fg); font-weight: 600; display: inline-flex; gap: 6px; align-items: center; padding: 8px 6px; border-radius: var(--r-small); }
+/* „Berechnen“ on a not-routed plan (owner 2026-11-27: „muss dicker – gar nicht erkennbar als Button“): Plan's go button –
+   filled plan ink blue with white words (ui-style.md, the app's ActionButtons.planGo), on the line's end like the app */
+#planAnyway { background: var(--plan); color: #fff; font-weight: 700; min-height: 40px; padding: 0 18px; border-radius: 20px;
+  margin: 6px 0 0 8px; vertical-align: middle; }
+#planAnyway:hover { background: var(--plan-dark); }
 .textbtn:hover:not(:disabled) { background: var(--green-light); }
 .row { display: flex; gap: 8px; } .row.end { justify-content: flex-end; }
 button.primary { background: var(--green); color: #fff; border: none; border-radius: 26px; font-weight: 600; }
@@ -305,6 +310,25 @@ dialog.share #exportGpx { margin-top: 8px; }
 .sacrow .sacpick:hover { background: rgba(0, 0, 0, .05); }
 .sacrow .sacpick.on { background: var(--green-light); } .sacrow .sacpick.on b { font-weight: 700; }
 .sacrow .sacpick b { font-weight: 500; }
+/* variant C (the app's ActivityPicker, owner 2026-11-27): „Aktivität“, a switch Rad | Wandern (the shown half white and
+   raised on the deeper sage, like iOS's segmented control), only that group's cards; the chosen card: green edge on light green */
+.actmenu .acthead { padding: 6px 8px 4px; } .actmenu .acthead b { font-size: 18px; }
+.actmenu .actswitch { display: flex; background: var(--paper-deep); border-radius: 14px; padding: 3px; margin: 4px 2px 8px; }
+.actmenu .actswitch button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 44px; border: none;
+  border-radius: 11px; background: none; color: var(--muted); font-weight: 600; font-size: 15px; }
+.actmenu .actswitch button.on { background: #fff; color: var(--green); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); }
+.actmenu .actswitch .ic, .actmenu .actswitch svg { fill: currentColor; }
+.actmenu .actcards { display: flex; flex-direction: column; gap: 6px; padding: 0 2px; }
+.actmenu .actcard { display: flex; align-items: center; gap: 14px; min-height: 56px; padding: 8px 14px; border-radius: 16px;
+  border: 2px solid transparent; background: var(--paper-dim); text-align: left; color: var(--fg); }
+.actmenu .actcard:hover { background: var(--paper-deep); }
+.actmenu .actcard .ic, .actmenu .actcard > svg { fill: var(--green); flex: none; }
+.actmenu .actcard .txt { display: flex; flex-direction: column; gap: 1px; }
+.actmenu .actcard b { font-weight: 600; font-size: 15px; }
+.actmenu .actcard.on { background: var(--green-light); border-color: var(--green); }
+.actmenu .tbadge { width: 32px; height: 32px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 8px;
+  background: var(--paper-deep); font-weight: 700; font-size: 14px; }
+.actmenu .actcard.on .tbadge { background: var(--green); color: #fff; }
 /* the pace section (the app's Settings → Pace) under the activities: a setting, the list stays open */
 .pacerow { border-top: 1px solid var(--line); margin-top: 4px; padding: 8px 10px 6px; display: flex; flex-direction: column; gap: 4px; }
 .pacerow .pacehead b { font-weight: 600; font-size: 14px; }

@@ -285,6 +285,14 @@
     <!-- a multi-day tour's day end on the map (grey / blue moon, green bed): which day of how many ends there (owner 2026-11-20) -->
     <string name="web_days_end_of_day">End of day %1$d of %2$d</string>
     <string name="web_days_chip_hours">%1$s h / day</string>
+    <string name="web_activity_group_bike">Bike</string>
     <string name="web_days_chip_ascent">%1$s m ↑ / day</string>
     <string name="web_days_chip_add_limit">+ Day limit</string>
+    <!-- the multi-day panel per the owner's sketch 2026-11-27 -->
+    <string name="web_days_planning">Planning</string>
+    <string name="web_days_not_saved">Not saved</string>
+    <string name="web_days_changed">Changed · not saved</string>
+    <string name="web_days_whole_trip">Whole trip</string>
+    <string name="web_profile_whole_trip">Elevation profile · whole trip</string>
+    <string name="web_profile_day">Elevation profile · %1$s</string>
 </resources>

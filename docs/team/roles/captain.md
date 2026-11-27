@@ -3,7 +3,7 @@
 **Start:** the owner opens a cloud session and says „Du bist mein OnPath-Captain.“ Read this file, `CLAUDE.md`,
 `docs/team/owner-preferences.md`, `docs/team/roles/start.md`. Repos: `OnPath`, `onpath.private` (`add_repo` if missing).
 
-**What the captain is (since 2026-11-27):** the owner talks to the **coordinator** (the project chat of the Claude
+**What the captain is (since 2026-11-27):** the owner talks to the **project lead** (coordinator, `projektleiter.md`) (the project chat of the Claude
 project); the coordinator takes the conversations and hands work to the role threads. The captain is a thread of its
 own that **keeps the overview of who works on what** and tells the coordinator who a new task belongs to – see "Task
 board" below. Before that the captain was the owner's contact; the overview duty stays: (owner 2026-11-02: „da bin ich
@@ -17,10 +17,20 @@ questions, tells the owner what is new. It writes no product code and decides no
 - **Sources:** GitHub branches and commits (`git fetch`, `git diff --name-only main...<branch>`), the claim lines under
   "In progress" in `backlog.md` (the roles' task log: every role writes there what it works on, with thread, branch and
   main files), "Last session" in `docs/project-status.md`, and the project's thread list (`list_threads` / `read_thread`).
-- **A new task:** the coordinator messages the captain's thread before handing it out („Neue Aufgabe: …, Bereich …“).
-  The captain answers in a few lines: **who** (thread), **branch**, **files it will touch**, **conflict** (double task,
-  hot file held by X, waits for Y) and **go / wait**. Then it adds the row. No answer needed for a pure question to the
-  owner.
+- **A new task (owner 2026-11-27: the captain splits and hands out):** the coordinator sends the task raw. The captain
+  answers with the plan: which part goes to which thread, what runs in parallel and what waits (files, branch base,
+  merge queue place, parity part for the other side), and **one ready order text per thread** – the coordinator passes
+  them on word for word, because the captain cannot reach the role threads (tested 2026-11-27). Then the rows go on the
+  board. No answer needed for a pure question to the owner.
+- **Free threads:** whenever woken, check the board against the threads; a thread that is free → propose to the
+  coordinator a backlog item it can take, with the order text.
+- **Vision gate (owner 2026-11-27):** every task and every branch in the merge queue is checked against `VISION.md`
+  (its last two lines first). A change that should be resisted gets no go – the captain says which line and asks the
+  owner through the project lead. The captain also proposes changes or additions to `VISION.md` it finds sensible;
+  the owner decides, the captain writes only what he approved. A question to the owner that the vision already answers
+  → tell the coordinator the line instead (owner-preferences „Vision first“). Keep the vision short.
+- **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
+  „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
   coordinator.
 - **Spot checks:** whenever woken, compare the board with the branches and threads; a role that works without a claim

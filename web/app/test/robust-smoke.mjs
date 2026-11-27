@@ -78,7 +78,7 @@ await again.waitForFunction(() => document.querySelector('#summary .big') && doc
 // bug) it would go between the start and p1. Chosen below, once the camera stands, from the drawn line.
 let p1, p2;
 // the engine busy first (another activity → the plan again), then both clicks: both wait behind that plan
-await again.click('#activityChip'); await again.click('[data-act=BIKE_TOURING]');
+await again.click('#activityChip'); await again.click('#activityMenu [data-group=bike]'); await again.click('[data-act=BIKE_TOURING]');
 // the menu closed – then the camera stands; both clicks queue behind the new plan
 await again.waitForFunction(() => ![...document.querySelectorAll('[data-act]')].some((e) => e.offsetParent !== null), null, { timeout: 10_000 }).catch(() => {});
 // the user takes the map first (a short drag), as a person does before clicking: it cancels the reopened route's
@@ -254,7 +254,7 @@ check(errors.length === 0, `no page error (${errors.join(' | ')})`);
     e.plan = (pts, ...a) => { window.__planSizes.push(pts.length); return plan(pts, ...a); };
     e.call = (fn, ...a) => fn === 'historyState' ? new Promise((ok, no) => setTimeout(() => call(fn, ...a).then(ok, no), 1500)) : call(fn, ...a);
   });
-  await p.click('#activityChip'); await p.click('[data-act=BIKE_TOURING]');
+  await p.click('#activityChip'); await p.click('#activityMenu [data-group=bike]'); await p.click('[data-act=BIKE_TOURING]');
   await p.evaluate(() => document.getElementById('newPlan').click());
   await p.waitForFunction(() => window.__state.points.length === 0, null, { timeout: 10_000 }).catch(() => {});
   await p.waitForTimeout(4000); // both runs past their late history answer

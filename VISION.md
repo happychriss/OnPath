@@ -23,24 +23,25 @@ The maps for a plan load by themselves while you plan; nobody has to manage regi
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
 Everything you need on the tour works on the phone; the browser planner may add things for preparing and previewing, such as creating a multi-day tour or 3D.
+In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
 
 ## No surprises
 
 In planning you edit only by holding, with no quick-tap actions and no dragging of points.
 A new route comes only after asking.
-Nothing with a button disappears by itself and nothing flashes; a message stays until it is answered or the situation is gone.
-Only a short information line without a button may go by itself after a few seconds.
+Nothing flashes, and a message with a button stays until it is answered or the situation is gone; only a short line without a button may go by itself.
 What Plan shows is exactly what Navigate follows.
 A UI text the owner chose stays; a change to it is proposed as a question.
 
 ## Powerful, clear and calm
 
 The flow is: choose a destination, check the route, go.
-Komoot is the bar for ease of use and the look of the map; in function OnPath aims to match established apps and to go beyond them in single areas.
+Komoot is the bar for ease of use and the map; the controls look like Apple and Android, not like a navigation device; in function OnPath aims to match established apps and to go beyond them in single areas.
 Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
 OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.
 Texts state facts, not guesses.
+Every text exists in German and English, with the same meaning.
 The app looks modern, clear and friendly, never technical, also where the function behind it is complex, and not in the style of navigation or hiking apps.
 Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes only from colour and type, never from controls of its own.
 There are exactly six activities.

@@ -32,9 +32,17 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
 ## Product rules
+- **Vision first** (owner 2026-11-27): before asking the owner, check whether `VISION.md` answers it. If it does, decide,
+  name the line in the commit or reply, and go on. Ask only real choices of taste or product (pictures, words, numbers).
+  The captain checks this.
 One place: `docs/project-status.md` "Decisions" (no disappearing messages, the owner's chosen words stay, hold-only
 gestures, re-routing only after asking, core-feature bugs test first, public text tone, private material in
 `happychriss/onpath.private`).
+- **App and planner alike** (owner 2026-11-27, `VISION.md`): in the main controls both behave the same and look as alike as
+  they can, unless decided otherwise. Every UI change on one side gets a parity line for the other side's role in the
+  backlog (`→ [laptop]` / `→ [donald]`, what, which commit) – or says why the other side differs. The coordinator and the
+  captain check it when they hand out or close a task. Exception (owner 2026-11-27): „Der Planer ist der Planer, er plant
+  Routen“ – ridden tours and ticked ridden days stay phone-only.
 
 ## How sessions work
 - **The owner must notice when a session waits** (owner 2026-11-02): on donald / the laptop the Claude push is on
@@ -96,7 +104,7 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   Rundgang per update**.
 - **Don't weaken CI gates** without the owner's explicit words. Releases are batched unless the owner asks.
 
-## The owner's phone (Pixel 8, adb)
+## The owner's phone (Pixel 7 since 2026-11-27, on USB at donald, adb)
 - Install builds with `adb install -r` (**no wipe** – tours and maps stay) unless the owner asks for a fresh install.
   Never `pm clear` / uninstall by accident (that also deletes the map data in `Android/data/…/files/onpath/`).
 - Check first whether a tour is recording (`adb shell dumpsys activity services com.onpath.app` → RecordingService).
