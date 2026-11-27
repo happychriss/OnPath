@@ -499,7 +499,7 @@ private fun PoiSection(settings: AppSettings, onChange: (AppSettings) -> Unit, i
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun MapSection(settings: AppSettings, onChange: (AppSettings) -> Unit, themes: List<String>) {
-    Section(SettingsPage.MAP.title) {
+    SettingsCard {
         // value rows (owner 2026-11-06 23:05): the choice opens as a sheet ([ChoiceRow])
         if (themes.size > 1) ChoiceRow(str(Res.string.settings_map_style), null,
             themes.map { Choice(it, com.onpath.app.map.StyleLoader.label(it)) }, settings.mapTheme,
@@ -705,7 +705,10 @@ internal val LocalSectionTitle = compositionLocalOf { true }
 
 @Composable
 internal fun Section(title: String, content: @Composable () -> Unit) {
-    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
+    // on a settings page (no section titles there) flat like the tiles of [SettingsCard] – variant B has no shadows
+    val settingsPage = !LocalSectionTitle.current
+    Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper,
+        modifier = if (settingsPage) Modifier else Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
         Column(Modifier.fillMaxWidth().padding(vertical = 8.dp)) {
             if (LocalSectionTitle.current) Text(title, style = MaterialTheme.typography.titleSmall, color = OnPathColors.Green,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp))
