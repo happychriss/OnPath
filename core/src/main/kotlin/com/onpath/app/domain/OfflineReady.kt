@@ -76,8 +76,15 @@ object OfflineReady {
         return m
     }
 
-    /** The pill's text after "PLANEN · ": "Ohne Netz" – the sign comes as an icon beside it. */
-    val pillWord: String get() = Txt.s(Res.string.plan_offline_pill)
+    /**
+     * The pill's text after "PLANEN · " by [state] (owner 2026-11-27, was "Ohne Netz"): „Offline verfügbar“, „Offline:
+     * lädt …“, „Offline: unvollständig“ – the sign comes as an icon beside it.
+     */
+    fun pillWord(state: State): String = Txt.s(when (state) {
+        State.READY -> Res.string.plan_offline_pill
+        State.LOADING -> Res.string.plan_offline_pill_loading
+        State.MISSING -> Res.string.plan_offline_pill_missing
+    })
 
     /** The line a tap on the pill shows (plain words, what the code can tell: km of missing map, MB loading). */
     fun explain(r: Result): String = when (r.state) {

@@ -69,11 +69,28 @@ class OfflineReadyTest {
     }
 
     @Test fun theTapExplainsInPlainWords() {
-        assertTrue(OfflineReady.explain(OfflineReady.Result(OfflineReady.State.READY, 0.0, false, 0)).contains("without a network"))
+        assertEquals("Available offline: map, navigation, re-planning and a new route when you stray – around this route.",
+            OfflineReady.explain(OfflineReady.Result(OfflineReady.State.READY, 0.0, false, 0)))
         assertTrue(OfflineReady.explain(OfflineReady.Result(OfflineReady.State.LOADING, 0.0, true, 12L * 1_048_576)).contains("12 MB"))
         val missing = OfflineReady.explain(OfflineReady.Result(OfflineReady.State.MISSING, 3_000.0, false, 0))
         assertTrue(missing, missing.contains("3") && missing.contains("map"))
         assertTrue(OfflineReady.explain(OfflineReady.Result(OfflineReady.State.MISSING, 0.0, true, 0)).contains("Ways"))
+    }
+
+    /** The pill's words by state (owner 2026-11-27, was "Ohne Netz"), EN + DE. */
+    @Test fun thePillSaysOfflineByState() {
+        assertEquals("Available offline", OfflineReady.pillWord(OfflineReady.State.READY))
+        assertEquals("Offline: loading …", OfflineReady.pillWord(OfflineReady.State.LOADING))
+        assertEquals("Offline: incomplete", OfflineReady.pillWord(OfflineReady.State.MISSING))
+        val before = java.util.Locale.getDefault()
+        java.util.Locale.setDefault(java.util.Locale.GERMANY)
+        try {
+            assertEquals("Offline verfügbar", OfflineReady.pillWord(OfflineReady.State.READY))
+            assertEquals("Offline: lädt …", OfflineReady.pillWord(OfflineReady.State.LOADING))
+            assertEquals("Offline: unvollständig", OfflineReady.pillWord(OfflineReady.State.MISSING))
+        } finally {
+            java.util.Locale.setDefault(before)
+        }
     }
 
 }

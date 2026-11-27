@@ -205,8 +205,8 @@ fun PlanTopBar(
 
 /**
  * "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. With a
- * route it also says whether it works without a network (owner 2026-11-03, comparison card 3): "PLANEN · Ohne Netz ✓"
- * (green), "⟳" (loading), "⚠" (amber: something missing, nothing loading) – a tap explains it ([OfflineReady.explain]).
+ * route it also says whether it works without a network (owner 2026-11-03, comparison card 3; words 2026-11-27): "PLANEN · Offline verfügbar ✓"
+ * (green), "Offline: lädt … ⟳", "Offline: unvollständig ⚠" (amber: something missing, nothing loading) – a tap explains it ([OfflineReady.explain]).
  */
 @Composable
 internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offline: OfflineReady.State? = null,
@@ -220,16 +220,12 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
                 .padding(horizontal = 8.dp, vertical = 2.dp))
         return
     }
-    val desc = str(when (offline) {
-        OfflineReady.State.READY -> Res.string.plan_offline_desc_ready
-        OfflineReady.State.LOADING -> Res.string.plan_offline_desc_loading
-        OfflineReady.State.MISSING -> Res.string.plan_offline_desc_missing
-    })
+    val desc = OfflineReady.pillWord(offline)
     Row(modifier.clip(CircleShape).background(OnPathColors.PlanAccent, CircleShape)
         .clickable(role = Role.Button, onClick = onOffline)
         .clearAndSetSemantics { contentDescription = "$mode · $desc"; role = Role.Button }
         .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text("$mode · ${OfflineReady.pillWord}", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
+        Text("$mode · $desc", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite,
             maxLines = 1)
         Spacer(Modifier.width(3.dp))
         val (icon, tint) = when (offline) {
