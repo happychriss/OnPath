@@ -227,13 +227,14 @@ private fun MessageButtonRow(buttons: List<MessageButton>, navigate: Boolean, la
 }
 
 /**
- * Primary = filled in the box's [tone] (green: on to the navigation, blue: plan, walnut: neither), white text; the others
- * = text buttons, green in a Navigate question (every answer there goes on with the tour), else walnut. Label 16 sp.
+ * Primary = filled in the box's [tone] (green: on to the navigation or neither, blue: plan), white text; the others
+ * = text buttons, blue in a plan box, else green. Label 16 sp.
  */
 @Composable
 private fun MessageButtonView(b: MessageButton, main: Boolean, heightDp: Int, tone: ButtonTone, modifier: Modifier = Modifier) {
-    val fill = when (tone) { ButtonTone.GO -> OnPathColors.ActionGo; ButtonTone.EDIT -> OnPathColors.ActionEdit; ButtonTone.NEUTRAL -> OnPathColors.Walnut }
-    val ink = if (tone == ButtonTone.GO) OnPathColors.ActionGo else OnPathColors.Walnut
+    // colour rule 1 (owner 2026-11-27): neutral is the app's green too; a plan box keeps its blue
+    val fill = when (tone) { ButtonTone.GO -> OnPathColors.ActionGo; ButtonTone.EDIT -> OnPathColors.ActionEdit; ButtonTone.NEUTRAL -> OnPathColors.Green }
+    val ink = if (tone == ButtonTone.EDIT) OnPathColors.ActionEdit else OnPathColors.Green
     val size = modifier.heightIn(min = heightDp.dp).widthIn(min = 64.dp)
     val shape = OnPathShapes.Card
     val content: @Composable () -> Unit = {

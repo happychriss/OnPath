@@ -92,7 +92,7 @@ private fun HoldBar(modifier: Modifier, bar: @Composable (onEarly: (Float) -> Un
         if (hintAt != 0L || LocalHoldHintShown.current) {
             val left = HoldRule.hintLeft(tappedX - barLeft, hintWidth, barWidth)
             Box(Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                Surface(shape = OnPathShapes.Pill, color = OnPathColors.Walnut,
+                Surface(shape = OnPathShapes.Pill, color = OnPathColors.Green,
                     modifier = Modifier.onSizeChanged { hintWidth = it.width.toFloat() }
                         .offset { androidx.compose.ui.unit.IntOffset(left.toInt(), 0) }
                         .warmShadow(OnPathShadow.HIGH, OnPathShapes.Pill)

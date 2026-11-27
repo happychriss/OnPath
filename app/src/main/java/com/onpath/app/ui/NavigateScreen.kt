@@ -552,7 +552,7 @@ internal fun NorthNeedle(modifier: Modifier, north: Color = OnPathColors.Compass
         val cx = w / 2; val top = h * 0.36f; val bottom = h * 0.98f; val mid = (top + bottom) / 2; val half = w * 0.16f
         drawPath(Path().apply { moveTo(cx, top); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, north)
         drawPath(Path().apply { moveTo(cx, bottom); lineTo(cx + half, mid); lineTo(cx - half, mid); close() }, OnPathColors.CompassSouth)
-        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnPathColors.Walnut))
+        val label = measurer.measure("N", TextStyle(fontSize = 12.sp, fontWeight = FontWeight.Bold, color = OnPathColors.Green))
         drawText(label, topLeft = Offset(cx - label.size.width / 2f, top - label.size.height + 1f))
     }
 }
@@ -1257,16 +1257,16 @@ private fun StoppedHead(sinceMs: Long?) {
             val oneLine = tm.measure(head, headStyle, maxLines = 1, softWrap = false).size.width + iconPx <= constraints.maxWidth
             Column {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Filled.Pause, null, tint = OnPathColors.Walnut, modifier = Modifier.size(22.dp))
+                    Icon(Icons.Filled.Pause, null, tint = OnPathColors.Green, modifier = Modifier.size(22.dp))
                     Spacer(Modifier.width(6.dp))
-                    Text(if (oneLine) head else word, style = headStyle, color = OnPathColors.Walnut, maxLines = 1)
+                    Text(if (oneLine) head else word, style = headStyle, color = OnPathColors.Green, maxLines = 1)
                 }
-                if (!oneLine && since != null) Text(since, style = headStyle, color = OnPathColors.Walnut, maxLines = 1,
+                if (!oneLine && since != null) Text(since, style = headStyle, color = OnPathColors.Green, maxLines = 1,
                     modifier = Modifier.padding(start = 28.dp))
             }
         }
         androidx.compose.material3.HorizontalDivider(Modifier.padding(top = 8.dp), thickness = 1.dp,
-            color = OnPathColors.Walnut.copy(alpha = 0.15f))
+            color = OnPathColors.Green.copy(alpha = 0.15f))
     }
 }
 
