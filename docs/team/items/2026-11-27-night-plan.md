@@ -39,6 +39,11 @@ Pixel (`adb install -r`, save a running tour, check the log) → version 0.18.12
 **Owner unplugged the Pixel at 23:06:** the night goes up to a release-ready `main` (checks green, notes written on a
 branch, not pushed). The version push waits until the owner plugs the Pixel in tomorrow and the build is on it.
 
+## Field bug (owner 23:32): position wanders while the phone lies still
+Suchkategorie (donald): ask where he sees it, read the code path (RestGps / RestWatch, live upload) and the live data if
+reachable, a reproducing JVM test, a fix on a branch. Recording / live = core: per `VISION.md` it ships only after a real
+tour – not in 0.18.12 unless it is only a display filter; field log from the Pixel tomorrow.
+
 ## Cloud
 Tracker thread: planner picker check, then browser layout + logo – pick by `VISION.md`, push to main; ships with the
 release run. Captain: morning report ~06:30 in `2026-11-28-morning-report.md`, German.
