@@ -17,7 +17,7 @@ apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` 
 | 6 | `feat/wait-step-bar` + MapScreen:242 + PlanTopBar redo (`creditBlockDp`) | Wartefenster | 5 pushed |
 | N | release notes 0.18.12 draft (DE/EN, `docs/release-notes/v0.18.12.md` on branch `release/0.18.12-notes`, not pushed to main) + second-model read of `feat/wait-step-bar` | Suchkategorie | ✓ notes `release/0.18.12-notes` @ 83f3846f0; review `2026-11-27-step6-review.md` (must-fix: wrong piece fill) – findings 1–4 into step 6 before its push (Wartefenster), 5 to HP |
 | 7 | app multi-day day table (core `DayTable.kt`, item 2026-11-27-app-day-table) + HP's multi-day sheet parity | Mehrtagestouren → **HP integrates** | `feat/app-day-table-main` @ 5e8c6b839 (gate green); donald's push was refused (touches web/ = HP's area: days_* rename, multiday.ts) → HP checks the web part against his work, merges, web smokes + gate, pushes by 05:30. Header with Speichern + „Gesamte Reise“ (needs MapScreen) stays open → morning report |
-| 8 | `fix/position-drift` (owner: into 0.18.12) | Suchkategorie | second read + 30 s, then push by 05:30 |
+| 8 | `fix/position-drift-main` (owner: into 0.18.12; second read clean, GapSplit should fixed, 30 s) | Suchkategorie | push after green E2E, may go before 7 (no overlap) |
 | 9 | one screen still opens the old activity menu on the bike tap (owner 23:52, Pixel) – route it to the new picker | Mehrtagestouren | branch from main, test, gate; push by 05:30 if no file overlap with 7/8, else after them |
 | R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ + build on the Pixel (tomorrow, Pixel unplugged) |
 
