@@ -186,8 +186,8 @@
     <!-- Settings in six topics (owner 2026-11-27) -->
     <string name="settings_page_plan">Planen</string>
     <string name="settings_page_backup_sync">Sicherung &amp; Browser</string>
-    <string name="settings_sum_plan">Tempo %1$s · markierte Wege %2$s</string>
-    <string name="settings_trails_title">Markierten Wegen folgen</string>
+    <string name="settings_sum_plan">Tempo %1$s · Wander-/Radrouten %2$s</string>
+    <string name="settings_trails_title">Wander- und Radrouten folgen</string>
     <string name="settings_trails_less">Weniger</string>
     <string name="settings_trails_standard">Standard</string>
     <string name="settings_trails_more">Mehr</string>

@@ -250,8 +250,8 @@ class SettingsPagesTest {
     }
 
     @Test fun planSummaryAndMarkedTrails() {
-        assertEquals(Summary("Pace Average · marked trails Standard"), SettingsSummary.plan(AppSettings(), Activity.HIKE))
-        assertEquals(Summary("Pace Fit · marked trails More"),
+        assertEquals(Summary("Pace Average · routes Standard"), SettingsSummary.plan(AppSettings(), Activity.HIKE))
+        assertEquals(Summary("Pace Fit · routes More"),
             SettingsSummary.plan(AppSettings(bikePace = Pace.FIT, markedTrails = AppSettings.MARKED_TRAILS_MORE), Activity.MTB))
         assertEquals("Less", SettingsSummary.markedTrailsLabel(AppSettings.MARKED_TRAILS_LESS))
         assertEquals("a broken stored value reads as Standard", AppSettings.MARKED_TRAILS_STANDARD, AppSettings.markedTrailsOf(7))
