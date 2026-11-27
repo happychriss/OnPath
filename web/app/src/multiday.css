@@ -73,18 +73,47 @@ dialog.daysbox .row.end button.primary { background: var(--plan); color: #fff; }
 .touroverview .tochip.add { background: none; border-style: dashed; color: var(--muted); }
 .touroverview .tohint { color: var(--muted); }
 .touroverview .todays { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.touroverview .today { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 10px; border-radius: var(--r-small);
-  border: 1px solid transparent; background: var(--paper); font: inherit; color: inherit; cursor: pointer; min-height: 48px; }
-/* a day row (owner 2026-11-21, variant A): bold „Tag 1“ left, km · ↑ m · time right (never cut), the grey „von – nach“
-   under it only when both places are known, one line cut with „…“ */
-.touroverview .today .txt { display: flex; flex-direction: column; flex: 1; min-width: 0; }
-.touroverview .today .dl1 { display: flex; align-items: baseline; gap: 8px; }
-.touroverview .today .dn { font-weight: 700; flex: none; white-space: nowrap; }
-.touroverview .today .dv { margin-left: auto; flex: none; white-space: nowrap; font-size: 13px; font-weight: 600; color: var(--muted); }
+/* the table of days (owner 2026-11-27, mehrtage-tabelle.png): „Tag N“ + grey „von – nach“, then km · Σ km · ↑ m · time in
+   aligned columns (units behind the numbers, tabular figures, right-aligned), the night's symbol, ›; a total row */
+.touroverview .today, .touroverview .todtotal { width: 100%; display: grid; align-items: center; column-gap: 4px; text-align: left; box-sizing: border-box;
+  grid-template-columns: minmax(56px, 1fr) 50px 56px 58px 46px 22px 14px; font-variant-numeric: tabular-nums; }
+.touroverview .today { padding: 6px 4px 6px 10px; border-radius: var(--r-small); border: 1px solid transparent; background: var(--paper);
+  font: inherit; color: inherit; cursor: pointer; min-height: 48px; }
+.touroverview .today .txt { display: flex; flex-direction: column; min-width: 0; }
+.touroverview .dn { font-weight: 700; white-space: nowrap; }
 .touroverview .today .dpl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.touroverview .today.sel { border-color: var(--plan); background: var(--plan-light); }
+.touroverview .ck, .touroverview .cs, .touroverview .cu, .touroverview .ct { text-align: right; white-space: nowrap; font-size: 12px; }
+.touroverview .ck { font-weight: 600; }
+.touroverview .cs, .touroverview .cu, .touroverview .ct { color: var(--muted); }
+.touroverview .today .chev { display: flex; color: var(--muted); } .touroverview .today .chev svg { fill: currentColor; }
 .touroverview .today.over { background: var(--warn-bg); }
-.touroverview .today.over .dv { color: var(--warn); }
+.touroverview .today.over .over { color: var(--warn); font-weight: 700; }
+.touroverview .todtotal { padding: 10px 4px 2px 10px; margin-top: 4px; border: 1px solid transparent; border-top-color: var(--line); }
+.touroverview .todtotal .ck, .touroverview .todtotal .cu, .touroverview .todtotal .ct { color: inherit; font-weight: 700; }
+/* a phone: the running total steps back so the other columns never cut */
+@media (max-width: 700px) {
+  .touroverview .today, .touroverview .todtotal { grid-template-columns: minmax(52px, 1fr) 54px 58px 48px 22px 14px; column-gap: 6px; }
+  .touroverview .cs { display: none; }
+}
+/* the Points list: none under the table, only the open day's rows in the day view */
+body.tourtable #sheet > #pointsSection { display: none; }
+#sheet #points > li.offday { display: none; }
+/* one day open (owner 2026-11-27, mehrtage-tag-geoeffnet.png) */
+.touroverview .dvhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
+.touroverview .dvall { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 16px 0 10px; border-radius: 20px;
+  border: none; background: var(--plan-light); color: var(--plan-ink); font: inherit; font-weight: 600; cursor: pointer; }
+.touroverview .dvall svg, .touroverview .dvnav svg { fill: currentColor; }
+.touroverview .dvnav { display: inline-flex; align-items: center; gap: 4px; }
+.touroverview .dvpos { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); }
+.touroverview .dayview { display: flex; flex-direction: column; gap: 4px; }
+.touroverview .dvtitle { font-size: 22px; }
+.touroverview .dvstats { display: flex; align-items: baseline; gap: 12px; }
+.touroverview .dvstats b { font-size: 18px; }
+.touroverview .dvover { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-small); background: var(--warn-bg); color: var(--warn); font-size: 13px; }
+.touroverview .dvover svg { fill: currentColor; flex: none; }
+.touroverview .dvadd { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; margin-top: 4px; border-radius: 20px;
+  border: none; background: var(--paper-deep); color: var(--muted); font: inherit; text-align: left; cursor: pointer; }
+.touroverview .dvadd svg { fill: currentColor; }
 
 /* day borders in the profiles */
 .profplot .dayborder { position: absolute; top: 0; bottom: 0; width: 0; border-left: 1.5px dashed #9AA096; pointer-events: none; }

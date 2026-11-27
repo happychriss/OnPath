@@ -24,11 +24,18 @@ export interface DayPlan {
 }
 
 type EndKind = 'PROPOSAL' | 'OVERNIGHT' | 'HOTEL';
+/** WebDays' DayTable.Cells: km · Σ km · ↑ m · time with units; the exceeded values of a day over its limits. */
+interface Cells { km: string; sum: string | null; up: string; time: string; overTime: boolean; overAscent: boolean }
 /** WebDays.view. */
 interface DaysView {
   routed: boolean; days: number; canRemove: boolean; suggested: number | null; suggestedText: string | null; countText: string;
   totals: string; perDay: string; limits: string | null; totalM: number;
-  rows: { n: number; day: string; places: string | null; stats: string; fromM: number; toM: number; kind: EndKind | null; plan: number | null; over: boolean }[];
+  rows: { n: number; day: string; places: string | null; stats: string; fromM: number; toM: number; kind: EndKind | null; plan: number | null; over: boolean;
+    /** The day table's cells (the shared DayTable, owner 2026-11-27). */
+    cells: Cells; overLine: string | null; km: string; up: string; down: string; time: string;
+    /** The plan points of this day (the open day's list). */
+    points: number[] }[];
+  total: Cells; totalLabel: string;
   ends: { night: number; kind: EndKind; lat: number; lon: number; plan: number | null; alongM: number; name: string }[];
 }
 
@@ -108,6 +115,9 @@ export class MultiDay {
     const watch = (el: Element | null) => { if (el) new MutationObserver(() => this.borders()).observe(el, { childList: true }); };
     watch(document.getElementById('profile'));
     watch(document.querySelector('#bigProfile .bpplot'));
+    // the Points list is drawn anew on every plan change: an open day keeps only its rows
+    const pts = document.getElementById('points');
+    if (pts) new MutationObserver(() => this.pointsForDay()).observe(pts, { childList: true });
     (window as unknown as { __days: unknown }).__days = this; // for the browser tests
   }
 
@@ -274,7 +284,7 @@ export class MultiDay {
   private overview() {
     const v = this.view, tour = this.h.tour();
     this.box.hidden = !v || !tour;
-    if (!v || !tour) return;
+    if (!v || !tour) { if (!tour && this.selected != null) this.select(null); this.pointsForDay(); return; }
     if (this.selected != null && this.selected > v.rows.length) this.select(null);
     // the tour's settings as chips under its name (owner 2026-11-27, variant 2 – replacing the − N Tage + stepper and the
     // grey limits line): each chip opens the days box at its field; no limit set → a dashed „+ Tageslimit“
@@ -286,11 +296,7 @@ export class MultiDay {
         lim.timeMin ? chip('toHours', esc(t('web_days_chip_hours', num(lim.timeMin / 60)))) : ''}${
         lim.ascentM ? chip('toAscent', esc(t('web_days_chip_ascent', num(lim.ascentM)))) : ''}${
         !lim.timeMin && !lim.ascentM ? chip('toLimit', esc(t('web_days_chip_add_limit')), ' add') : ''}</div>
-      <div class="tototals muted">${esc(v.totals)}</div>
-      <ol class="todays">${v.rows.map((r) => `<li><button class="today${r.over ? ' over' : ''}${this.selected === r.n ? ' sel' : ''}" data-day="${r.n}" aria-pressed="${this.selected === r.n}">
-          <span class="txt"><span class="dl1"><b class="dn">${esc(r.day)}</b><span class="dv">${esc(r.stats)}</span></span>
-          ${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}</span>
-          ${r.kind ? endSymbol(r.kind, 22) : `<span class="daysym goal">${icon('flag', 14)}</span>`}</button></li>`).join('')}</ol>`;
+      ${this.selected != null && v.rows[this.selected - 1] ? this.dayHtml(v, v.rows[this.selected - 1]) : this.tableHtml(v)}`;
     const b = (id: string) => this.box.querySelector<HTMLButtonElement>('#' + id);
     b('toName')!.onclick = () => { void this.daysBox(); };
     b('toDays')!.onclick = () => { void this.daysBox('days'); };
@@ -298,13 +304,98 @@ export class MultiDay {
       const c = b(id); if (c) c.onclick = () => { void this.daysBox(f); };
     }
     this.box.querySelectorAll<HTMLButtonElement>('.today').forEach((row) => {
-      row.onclick = () => { const n = Number(row.dataset.day); this.select(this.selected === n ? null : n, true); };
+      // a day row opens that day (owner 2026-11-27, the day view): its part marked on the map and in the profile
+      row.onclick = () => { this.openDay(Number(row.dataset.day), true); };
       // a mouse click does not leave the focus on the row: the space bar (the map's keys) must not click it again and
       // drop the day (owner 2026-11-27 – the day stays marked); the keyboard still reaches the rows with Tab
       row.onmousedown = (e) => e.preventDefault();
     });
+    const all = b('toAll'); if (all) { all.onclick = () => this.openDay(null); all.onmousedown = (e) => e.preventDefault(); }
+    const step = (id: string, d: number) => {
+      const x = b(id); if (!x) return;
+      x.onclick = () => { if (this.selected != null) this.openDay(this.selected + d, true); };
+      x.onmousedown = (e) => e.preventDefault();
+    };
+    step('toPrev', -1); step('toNext', 1);
+    const add = b('toAdd');
+    if (add) add.onclick = () => {
+      // the page's search, worded for this day: a place found there goes where it fits on the route (into this day
+      // when it lies along it)
+      const q = document.getElementById('q') as HTMLInputElement | null;
+      if (!q) return;
+      q.placeholder = t('days_add_to_day', this.selected ?? 1);
+      q.focus();
+    };
     // the rows may have new distances: the selected day marks its part again
     this.remark();
+    this.pointsForDay();
+  }
+
+  /**
+   * The table of days (owner 2026-11-27, `docs/design/img/profilauswahl/mehrtage-tabelle.png`): per day „Tag N“ with the
+   * grey „von → nach“ under it, then km · Σ km · ↑ m · time in aligned columns (units behind the numbers), the night's
+   * symbol and ›; a day over its limits in warn yellow with only the exceeded values bold; a total row. No points here.
+   */
+  private tableHtml(v: DaysView): string {
+    const cells = (c: Cells) => `<span class="ck">${esc(c.km)}</span><span class="cs">${esc(c.sum ?? '')}</span>` +
+      `<span class="cu${c.overAscent ? ' over' : ''}">${esc(c.up)}</span><span class="ct${c.overTime ? ' over' : ''}">${esc(c.time)}</span>`;
+    return `<ol class="todays">${v.rows.map((r) => `<li><button class="today${r.over ? ' over' : ''}" data-day="${r.n}" aria-label="${esc(r.day)}${r.places ? ' · ' + esc(r.places) : ''}">
+          <span class="txt"><b class="dn">${esc(r.day)}</b>${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}</span>
+          ${cells(r.cells)}
+          ${r.kind ? endSymbol(r.kind, 22) : `<span class="daysym goal">${icon('flag', 14)}</span>`}<span class="chev">${icon('chevronRight', 14)}</span></button></li>`).join('')}</ol>
+      <div class="todtotal"><b class="dn">${esc(v.totalLabel)}</b>${cells(v.total)}<span></span><span></span></div>`;
+  }
+
+  /**
+   * One day open (owner 2026-11-27, `mehrtage-tag-geoeffnet.png`): a large „‹ Alle Tage“, ‹ 2/3 ›, the day's numbers, the
+   * fact line when it is over its limits, „Ort zu Tag N hinzufügen“; the day's points show in the Points list below.
+   */
+  private dayHtml(v: DaysView, r: DaysView['rows'][number]): string {
+    const n = v.rows.length;
+    return `<div class="dvhead"><button class="dvall" id="toAll">${icon('chevronLeft', 20)}<span>${esc(t('multiday_all_days'))}</span></button>
+        <span class="dvnav"><button class="iconbtn" id="toPrev" ${r.n <= 1 ? 'disabled' : ''} aria-label="${esc(t('multiday_day_n', Math.max(1, r.n - 1)))}">${icon('chevronLeft', 20)}</button>
+        <span class="dvpos">${r.n} / ${n}</span>
+        <button class="iconbtn" id="toNext" ${r.n >= n ? 'disabled' : ''} aria-label="${esc(t('multiday_day_n', Math.min(n, r.n + 1)))}">${icon('chevronRight', 20)}</button></span></div>
+      <div class="dayview" data-day="${r.n}"><b class="dvtitle">${esc(r.day)}</b>${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}
+        <div class="dvstats"><b>${esc(r.km)}</b><span>${esc(r.up)} ${esc(r.down)}</span></div>
+        ${r.overLine ? `<div class="dvover" id="toOver">${icon('clock', 16)}<span>${esc(r.time)} · ${esc(r.overLine)}</span></div>` : ''}
+        <button class="dvadd" id="toAdd">${icon('search', 18)}<span>${esc(t('days_add_to_day', r.n))}</span></button></div>`;
+  }
+
+  /** Day [n] open (null = the table again): its part marked, the box shows the day, the Points list only its points. */
+  openDay(n: number | null, fit = false) {
+    const max = this.view?.rows.length ?? 0;
+    const k = n == null || max === 0 ? null : Math.max(1, Math.min(max, n));
+    this.select(k, fit);
+    if (k == null) { const q = document.getElementById('q') as HTMLInputElement | null; if (q) q.placeholder = ''; }
+    this.overview();
+  }
+
+  /**
+   * The Points list with the tour (owner 2026-11-27): the table shows no points; an open day shows only its own –
+   * body.tourtable hides the list, `.offday` the other days' rows (again after every redraw of the list).
+   */
+  private pointsForDay() {
+    const v = this.view, tour = this.h.tour();
+    const day = v && tour && this.selected != null ? v.rows[this.selected - 1] : null;
+    document.body.classList.toggle('tourtable', !!(v && tour) && !day);
+    const keep = new Set(day?.points ?? []);
+    document.querySelectorAll<HTMLElement>('#points > li').forEach((li) => li.classList.toggle('offday', !!day && !keep.has(Number(li.dataset.i))));
+  }
+
+  /** A click on the route of a multi-day tour (map → day, owner 2026-11-27): that day opens. */
+  openDayAt(lat: number, lon: number) {
+    const plan = this.h.routedPlan(), v = this.view;
+    if (!plan || !v) return;
+    let along = 0, best = Infinity, at = 0, prev: [number, number] | null = null;
+    for (const leg of plan.legs) for (const [la, lo] of leg.points) {
+      if (prev) along += metres(prev, [la, lo]);
+      prev = [la, lo];
+      const d = metres([la, lo], [lat, lon]);
+      if (d < best) { best = d; at = along; }
+    }
+    const r = v.rows.find((x) => at >= x.fromM - 1 && at <= x.toM + 1);
+    if (r && r.n !== this.selected) this.openDay(r.n);
   }
 
   /** A selected day marks its part again (a new profile starts unmarked – main.ts after routeProfile.update). */

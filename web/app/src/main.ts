@@ -1006,7 +1006,8 @@ async function press(at: maplibregl.LngLat, marker: number, pt?: maplibregl.Poin
   else if (action === 'PoiMenu' && poi) await poiMenu(poi);
   else if (action === 'FirstPointMenu') await firstPointMenu(at);
   // a multi-day tour: a click on its route asks „Als Übernachtung“ or „Als Stopp“ (multi-day tours §3.6, owner 2026-11-26)
-  else if (action === 'AddPoint' && multiDay?.isTour && pt && onRouteLine(pt)) multiDay.routeMenu(at);
+  // – and opens the day of that stretch (map → day, owner 2026-11-27): a point added there belongs to that day
+  else if (action === 'AddPoint' && multiDay?.isTour && pt && onRouteLine(pt)) { multiDay.openDayAt(at.lat, at.lng); multiDay.routeMenu(at); }
   else if (action === 'AddPoint') { void addPoint(at); await editChain; }
   else if (action === 'CloseMenu') closeMenu();
 }

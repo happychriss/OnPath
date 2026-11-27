@@ -54,4 +54,8 @@
         <item quantity="one">%1$d Tag</item>
         <item quantity="other">%1$d Tage</item>
     </plurals>
+    <string name="days_total">Gesamt</string>
+    <string name="days_and">%1$s und %2$s</string>
+    <string name="days_over_day">%1$s über deinem Tag</string>
+    <string name="days_add_to_day">Ort zu Tag %1$s hinzufügen</string>
 </resources>
