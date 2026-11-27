@@ -129,9 +129,11 @@ class TestKitTest {
             "val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS",
             "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
             "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
-            "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged, still = ", // the fake never stands still (46884b2e8)
+            "val split = gapSplit.split(wasLost, bridged, prev != null)",
+            "PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !split, still = ", // the fake never stands still (46884b2e8)
+            "gapSplit.judged(split, verdict == PointFilter.Verdict.ACCEPT)",
             "if (verdict == PointFilter.Verdict.JUMP) return",
-            "tourRun.count(moved, newPiece = wasLost && prev != null && !bridged)",
+            "tourRun.count(moved, newPiece = split)",
             "pointQueue.add(PointQueue.Pending(tourId, seq++, seg, p, loc.accuracy))",
             "if (now - lastStats >= ${FakeRecording.STATS_MS / 1000}_000) {",
             "if (gpsLost()) navigator?.onGpsLost()",

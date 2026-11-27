@@ -173,6 +173,8 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
      * A GPS fix (`RecordingService.onFix`): judged, stored at once and counted – or dropped; nothing while paused.
      * [timeMs] = the fix's own time (`loc.time`), by default the [wall] clock.
      */
+    private val gapSplit = com.onpath.app.recording.GapSplit()
+
     fun fix(p: GeoPoint, accuracyM: Float = 5f, timeMs: Long = wall()) {
         if (!running || run.paused) return
         if (!PointFilter.accuracyOk(true, accuracyM)) { run.gapWatch.onDropped(true, accuracyM); return }
@@ -184,7 +186,9 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         val tp = TrackPoint(p.lat, p.lon, p.ele, timeMs)
         val prev = run.last
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, tp)
-        val (verdict, moved) = PointFilter.judge(prev, tp, accuracyM.toDouble(), continuous = !wasLost || bridged)
+        val split = gapSplit.split(wasLost, bridged, prev != null)
+        val (verdict, moved) = PointFilter.judge(prev, tp, accuracyM.toDouble(), continuous = !split)
+        gapSplit.judged(split, verdict == PointFilter.Verdict.ACCEPT)
         if (verdict == PointFilter.Verdict.JUMP) return // a jump is no position: not for the track, the navigation, the arrival
         // standing still or arrived: no off-route check, the detector waits as without GPS (GuidanceGate.offRouteCheck);
         // then the arrival, on the navigator's state after this fix – both after the jump rule, as in the service
@@ -195,7 +199,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         }
         if (verdict != PointFilter.Verdict.ACCEPT) return // standing still
         run.moveWatch.moved(now)
-        run.count(moved, newPiece = wasLost && prev != null && !bridged)
+        run.count(moved, newPiece = split)
         queue.add(PointQueue.Pending(tourId, run.seq++, run.seg, tp, accuracyM))
         writePoints(withNewPoint = true)
         run.show(tp)
