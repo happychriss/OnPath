@@ -38,6 +38,8 @@ import com.onpath.app.ui.progress.WaitWindowView
  */
 class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS: Int = DEFAULT_BUILD_S) {
     private val bar = OneBar()
+    /** The time left as said: only down, +10 s at first (owner 2026-11-27). */
+    private val countdown = com.onpath.app.domain.Countdown()
     private val clock = StepClock()
     private val prep = PrepareProgress(defaultBuildS)
     /** Routing data of this wait: its size and whether it was seen loading (gone = there). */
@@ -157,7 +159,8 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
         }
         val pct = bar.next(raw, stepEnd, stepLeftS?.let { it * 1000L }, now, paused = !running,
             stepStart = steps.takeWhile { it != step }.sumOf { share(it) })
-        val left = if (running) TimeLeft.seconds(bar.share, clock.elapsed, stepLeftS) else null
+        val left = countdown.next(if (running) TimeLeft.seconds(bar.share, clock.elapsed, stepLeftS) else null, now, paused = !running)
+            ?.takeIf { running }
         val failed = openStates.filterIsInstance<CellState.Failed>()
         return MapLoadUi(kind, pct, left,
             reason = if (kind == MapLoadUi.Kind.SERVER) openStates.firstNotNullOfOrNull { (it as? CellState.Offline)?.message }
@@ -165,7 +168,7 @@ class MapWait(private val shares: StepShares = StepShares.DEFAULT, defaultBuildS
                 else if (failed.any { it.retryable }) Txt.s(Res.string.maps_load_failed_retry) else failed.firstOrNull()?.message,
             retryable = kind == MapLoadUi.Kind.FAILED && (!map || failed.any { it.retryable }),
             regions = focus.size, bytes = mapBytes + rTotal, routing = routingSeen, regionsDone = focus.size - open.size,
-            at = step.takeIf { !running }, late = running && bar.late,
+            at = step.takeIf { !running }, late = running && countdown.expired,
             building = openStates.any { it is CellState.Queued || it is CellState.Building }).also { last = it }
     }
 
