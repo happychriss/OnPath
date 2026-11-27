@@ -10,7 +10,7 @@
         "web/app/src/routefilter.ts",
         "web/app/src/style.css"
       ],
-      "blob": "a62b8bd559a44b22eb80ceb6fd4e41ef05fb1743"
+      "blob": "12b2241fe23db98bb61cb2e1ccdca29dd5c9cccf"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
