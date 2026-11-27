@@ -68,6 +68,41 @@ class WebLegSplitTest {
         assertEquals(num(before, "timeS"), num(json, "timeS"), 0.5)
     }
 
+    /**
+     * Owner 2026-11-27 (Hilden – Venedig, a point set ON the route near Mannheim): the run head must not treat the two
+     * halves of a known leg as legs still to route – no long-leg question, no estimate in the wait window; the plan then
+     * takes both halves from the cut (nothing routed). Both ways a point gets on the line: a plain stop and a night.
+     * The browser made slow (factor 30) so the leg of ~50 km straight counts as long here.
+     */
+    private fun onLineHead(spotAt: (List<GeoPoint>) -> GeoPoint, viaNight: Boolean) {
+        assumeTrue("no E10_N45.rd5 in $segments", File(segments, "E10_N45.rd5").isFile)
+        Engine.init(root.path)
+        File(root, "segments").mkdirs()
+        Files.createSymbolicLink(File(root, "segments/E10_N45.rd5").toPath(), File(segments, "E10_N45.rd5").toPath())
+        repo.resolve("app/src/main/assets/brouter").copyRecursively(File(root, "assets/brouter"))
+        Engine.historyImport("")
+        Engine.costSet(30.0, Engine.BROWSER_MEMORY_MB)
+        try {
+            val ac = Engine.parsePoints("46.671000,11.159000;46.716000,11.657000") // Meran → Brixen, ~38 km straight
+            Engine.plan(enc(ac), "HIKE", 2)
+            val line = Engine.lastPlanPoints(ac, com.onpath.app.routing.Activity.HIKE, 2)!!
+            val spot = spotAt(line)
+            val after = if (viaNight) pointsOf(WebDays.rule("addNight", enc(ac), "HIKE", 2, "", "", "d\t2", 0, spot.lat, spot.lon, ""))
+                else listOf(ac[0], spot, ac[1])
+            assertEquals(3, after.size)
+            val head = Engine.runHead(enc(after), "HIKE", 2, true)
+            assertTrue("a point on the known line: routed at once, no question ($head)", head.contains("\"what\":\"ROUTE\""))
+            val est = Regex("\"estimateS\":([\\d.]+)").find(head)?.groupValues?.get(1)?.toDouble() ?: 0.0
+            assertTrue("no search estimate for the cut halves ($head)", est < 1.0)
+            Engine.plan(enc(after), "HIKE", 2)
+            assertEquals(Engine.lastLegs, 0, legs("routed"))
+        } finally { Engine.costSet(Engine.BROWSER_FACTOR, Engine.BROWSER_MEMORY_MB) }
+    }
+
+    @Test fun aStopOnTheLineOfALongLegIsNotAskedNorRouted() = onLineHead({ it[it.size / 10] }, viaNight = false)
+
+    @Test fun aNightOnTheLineOfALongLegIsNotAskedNorRouted() = onLineHead({ it[it.size / 10] }, viaNight = true)
+
     @Test fun aPointBesideTheLineIsRoutedAsBefore() {
         val (pts, plan) = setUp()
         val act = plan.activity.name; val sac = plan.sac
