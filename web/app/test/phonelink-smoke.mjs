@@ -138,10 +138,10 @@ const overlayGone = (page) => page.waitForFunction(() => !document.getElementByI
   const card = await page.evaluate(() => {
     const c = document.getElementById('waitwin'); if (!c) return null;
     const r = c.getBoundingClientRect(), sheet = document.getElementById('sheet').getBoundingClientRect(), bar = document.getElementById('topbar').getBoundingClientRect();
-    return { pct: c.querySelector('.wwpct')?.textContent, bar: !!c.querySelector('.wwbar[role="progressbar"] > i'), top: r.top, bottom: r.bottom, sheetTop: sheet.top, barBottom: bar.bottom,
+    return { pct: /\d+\s?%/.test(c.textContent) ? 'a percent' : '', bar: !!c.querySelector('.wwbar[role="progressbar"] > i, .wwbar .pc'), top: r.top, bottom: r.bottom, sheetTop: sheet.top, barBottom: bar.bottom,
       left: r.left, right: r.right };
   });
-  check(!!card && card.bar && /\d+\s?%/.test(card.pct ?? ''), `phone, link loading: a bar and a percent ("${card?.pct}")`);
+  check(!!card && card.bar && card.pct === '', `phone, link loading: a bar, no number (VISION 2026-11-27) ("${card?.pct}")`);
   // the wait window (form A) over the free map – whole on screen, under the top bar, clear of the peeking sheet
   check(!!card && card.bottom < card.sheetTop && card.top >= card.barBottom && card.left >= 0 && card.right <= 412,
     `phone, link loading: the window sits on the free map, clear of the sheet and the top bar (${JSON.stringify(card)})`);
@@ -221,9 +221,9 @@ for (const height of [760, 640]) {
   const card = await page.evaluate(() => {
     const c = document.getElementById('waitwin'); if (!c) return null;
     const r = c.getBoundingClientRect(), sheet = document.getElementById('sheet').getBoundingClientRect();
-    return { pct: c.querySelector('.wwpct')?.textContent, cancel: c.querySelector('.wwcancel')?.textContent, left: r.left, sheetRight: sheet.right };
+    return { pct: /\d+\s?%/.test(c.textContent) ? 'a percent' : '', cancel: c.querySelector('.wwcancel')?.textContent, left: r.left, sheetRight: sheet.right };
   });
-  check(!!card && /\d+\s?%/.test(card.pct ?? '') && card.cancel === 'Cancel', `wide, link loading: percent and Cancel in the card (${JSON.stringify(card)})`);
+  check(!!card && card.pct === '' && card.cancel === 'Cancel', `wide, link loading: no number, Cancel in the card (${JSON.stringify(card)})`);
   check(!!card && card.left > card.sheetRight, 'wide, link loading: the card is on the map beside the side panel');
   if (shots) await page.screenshot({ path: path.join(shots, 'desktop-link-loading.png') });
   release();
