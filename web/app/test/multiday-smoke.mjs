@@ -264,6 +264,17 @@ async function run(lang, viewport, shotPrefix) {
     shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
+  // Space held = the eye: the path under the route shows, the day's mark leaves the map but stays in the profile
+  await page.keyboard.down(' ');
+  await page.waitForTimeout(200);
+  const peek = await page.evaluate(() => ({ range: window.__map.getLayoutProperty('profile-range', 'visibility'),
+    route: window.__map.getLayoutProperty('planned-route', 'visibility'),
+    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden) }));
+  await page.keyboard.up(' ');
+  await page.waitForTimeout(200);
+  const peekBack = await page.evaluate(() => window.__map.getLayoutProperty("profile-range", "visibility"));
+  check(peek.range === 'none' && peek.route === 'none' && peek.shade && peekBack === "visible",
+    `space held: route and the day's mark hidden on the map, the profile keeps the day (${JSON.stringify(peek)}, after: ${peekBack})`);
   await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
   check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
 

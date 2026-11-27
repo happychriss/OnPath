@@ -2483,7 +2483,8 @@ $('fitRoute').onclick = fitRoute;
 function peek(on: boolean) {
   if (hidden === on) return;
   hidden = on;
-  for (const id of ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows', ...SUGGEST_LAYERS]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
+  // a marked day / range too: the path under it shows, the profile keeps the day marked (owner 2026-11-27)
+  for (const id of ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows', 'profile-range-glow', 'profile-range', ...SUGGEST_LAYERS]) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', on ? 'none' : 'visible');
   markers.forEach((m) => { m.getElement().style.visibility = on ? 'hidden' : ''; });
   $('eye').innerHTML = icon(on ? 'eyeOff' : 'eye');
   $('eye').classList.toggle('on', on);
