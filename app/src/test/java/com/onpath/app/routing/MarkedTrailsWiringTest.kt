@@ -16,7 +16,7 @@ class MarkedTrailsWiringTest {
 
     @Test fun planningAndReroutingTakeTheSameEngineWithTheSetting() {
         val provider = src("src/main/java/com/onpath/app/routing/EngineProvider.kt")
-        assertTrue(provider.contains("BRouterEngine(context.applicationContext, segmentsDir, markedTrails(context))"))
+        assertTrue(provider.contains("BRouterEngine(context.applicationContext, segmentsDir, markedTrails(context), searchCost(context))"))
         assertTrue(provider.contains("return { prefs.markedTrails }"))
         val vm = src("src/main/java/com/onpath/app/ui/AppViewModel.kt")
         val service = src("src/main/java/com/onpath/app/recording/RecordingService.kt")

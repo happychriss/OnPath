@@ -403,17 +403,6 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
     )
 }
 
-/** The open long-leg question's leg ([com.onpath.app.routing.LongAsk]) with the names of its ends (null = unnamed). */
-data class LongLegNames(val ask: com.onpath.app.routing.LongAsk, val from: String?, val to: String?)
-
-/**
- * The leg of the long-leg question now open – set by AppViewModel when it is asked (main thread), read by
- * [LongRouteDialog] (MapScreen passes only the seconds). Null = none.
- */
-object LongLegShown {
-    var leg by androidx.compose.runtime.mutableStateOf<LongLegNames?>(null)
-}
-
 /**
  * Before a long run (owner 2026-11-27, [com.onpath.app.routing.RouteCost]): the longest leg's search on this phone,
  * honest as a range – „Lange Strecke: etwa 3–6 Minuten“, „Hilden → München, 475 km am Stück. Mit einem Zwischenziel
