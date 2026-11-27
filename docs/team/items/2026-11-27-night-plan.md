@@ -17,6 +17,7 @@ apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` 
 | 6 | `feat/wait-step-bar` + MapScreen:242 + PlanTopBar redo (`creditBlockDp`) | Wartefenster | 5 pushed |
 | N | release notes 0.18.12 draft (DE/EN, `docs/release-notes/v0.18.12.md` on branch `release/0.18.12-notes`, not pushed to main) + second-model read of `feat/wait-step-bar` | Suchkategorie | ✓ notes `release/0.18.12-notes` @ 83f3846f0; review `2026-11-27-step6-review.md` (must-fix: wrong piece fill) – findings 1–4 into step 6 before its push (Wartefenster), 5 to HP |
 | 7 | app multi-day day table (core `DayTable.kt`, item 2026-11-27-app-day-table) + HP's multi-day sheet parity | Mehrtagestouren | go (6 is on main 9b0a247ce): call line, gate, push |
+| 8 | `fix/position-drift` (owner: into 0.18.12) | Suchkategorie | second read + 30 s, then push by 05:30 |
 | R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ + build on the Pixel (tomorrow, Pixel unplugged) |
 
 Push order is the order of the table; a thread that is ready early waits for the commit before it. A red step stays
@@ -47,6 +48,9 @@ tour – not in 0.18.12 unless it is only a display filter; field log from the P
 `fix/position-drift` @ 26b9799cb, gate green. It changes the **track** (PointFilter) → captain: no merge before the
 0.18.12 release; second-model read tonight; after the release a test build on the Pixel for the owner's next real tour,
 then main → 0.18.13. REST_AFTER_MS 30 s goes on the same branch.
+**Owner 23:39: „Dieser Fix kann jetzt schon ins Release.“** – his explicit exception to the real-tour line of `VISION.md`.
+Now step 8: second-model read (tunnel case: no real way lost after a gap) + 30 s with test → gate --full → main by
+05:30. A must-fix from the read that is not fixed by then → stays out, morning report.
 
 ## Cloud
 Tracker thread: planner picker check, then browser layout + logo – pick by `VISION.md`, push to main; ships with the
