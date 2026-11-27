@@ -72,6 +72,9 @@ try {
     const { ctx, page, errors } = await open('de', true);
     const rows = await firstMenu(page);
     check(rows[0] === 'Als Start' && rows[1] === 'Als Ziel' && rows[2] === 'Rundtour ab hier', `the row last in the route group, after „Als Ziel“ (${rows.join(' · ')})`);
+    const apart = await page.evaluate(() => { const r = [...document.querySelectorAll('.pointmenu button')].find((b) => b.textContent.includes('Rundtour ab hier'));
+      return r?.previousElementSibling?.classList.contains('menudivider') ?? false; });
+    check(apart, '„Rundtour ab hier“ set apart by a thin line (owner 2026-11-27)');
     await page.click('.pointmenu button:nth-of-type(3)');
     await page.waitForSelector('#suggestPanel #sgOk');
     const wish = await page.evaluate(() => ({

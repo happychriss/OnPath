@@ -768,13 +768,15 @@ async function drawPoints() {
   const loop = $<HTMLButtonElement>('roundTrip');
   // not on a multi-day tour (owner 2026-11-27: „Rundtour können wir rausnehmen, das kann viel durcheinanderbringen“ –
   // München → Hilden turned into a way back of the same length); Umkehren stays
-  loop.hidden = !!multiDay?.isTour;
-  loop.disabled = !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
+  // what cannot be used is not shown (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“ – was grey with
+  // one point, Umkehren grey on A → B → A)
+  loop.hidden = !!multiDay?.isTour || !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
   loop.classList.toggle('on', state.roundTrip);
   loop.setAttribute('aria-pressed', String(state.roundTrip));
   loop.title = state.roundTrip ? t('plan_round_trip_on_desc') : '';
   loop.innerHTML = `${icon(state.roundTrip ? 'check' : 'loop', 18)}${escapeHtml(t('plan_round_trip'))}`;
-  $<HTMLButtonElement>('reverse').disabled = n < 2 || !(r.canReverse ?? true);
+  $<HTMLButtonElement>('reverse').hidden = n < 2 || !(r.canReverse ?? true);
+  $('planActions').classList.toggle('none', loop.hidden === true && $('reverse').hidden === true); // no empty row
   $('pointsSection').hidden = n === 0;
   sheetSteps.refresh(); // the phone's chevron says „3 Punkte“
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close

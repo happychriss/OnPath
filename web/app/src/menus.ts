@@ -56,7 +56,7 @@ export function holdMenu(headHtml: string, items: MenuItem[], close: () => void)
   else box.classList.add('nohead');
   const groups = items.map((it) => it.group);
   items.forEach((it, i) => {
-    if (it.divider || lineBefore(groups, i)) {
+    if ((it.divider && i > 0) || lineBefore(groups, i)) {
       const hr = document.createElement('div'); hr.className = 'menudivider'; hr.setAttribute('role', 'separator'); box.append(hr);
     }
     const b = document.createElement('button');

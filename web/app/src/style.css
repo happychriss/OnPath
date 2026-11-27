@@ -230,6 +230,7 @@ body.undo-crowded .undopill { display: none; }
 .pointshead { display: flex; align-items: center; gap: 4px; } .pointshead b { flex: 1; font-size: 15px; }
 /* the app's PlanActions: ✕ Close · ⇅ Reverse · ↻ Round trip under the summary, icon + word, spread evenly, wrapping */
 .planactions { display: flex; flex-wrap: wrap; justify-content: space-evenly; gap: 0 4px; margin: -2px 0 2px; }
+.planactions.none { display: none; }
 .planactions .textbtn { white-space: nowrap; min-height: 40px; color: var(--fg); font-weight: 500; } /* the app: onSurface, not green */
 /* a switch that is on (the app's PlanAction on=: "↻ Rundtour" on a round trip, #40): filled plan blue, the sign is ✓ */
 .planactions .textbtn.on { background: var(--plan); color: #fff; border-radius: 20px; padding: 8px 12px; }
