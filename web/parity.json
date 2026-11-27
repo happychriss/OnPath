@@ -503,12 +503,12 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ActivityPicker.kt",
-      "what": "ActivityPicker / GroupSwitch – activity choice variant C (owner 2026-11-27): Rad | Wandern switch, the group's cards (bikes: icon, name, line; hiking: T badge, name, short line), one tap picks – activity.ts · 2026-11-27 checked 685aa078f / bec36c639: navigation-bar insets are phone only; both groups laid out so the switch does not jump – the planner's drop-down lists one group at a time in a fixed-width menu (no jump seen)",
+      "what": "ActivityPicker / GroupSwitch – activity choice variant C (owner 2026-11-27): Rad | Wandern switch, the group's cards (bikes: icon, name, line; hiking: T badge, name, short line), one tap picks – activity.ts · 2026-11-27 checked 685aa078f / bec36c639: navigation-bar insets are phone only; both groups laid out so the switch does not jump – the planner's drop-down lists one group at a time in a fixed-width menu (no jump seen) · 74e4f931a checked: Group/GroupSwitch/ChoiceCard shared with the tour's switch sheet (app only – the planner has no tours); the T badge grows with a large font (web: the badge is sized by its text already)",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/style.css"
       ],
-      "blob": "1a72656e6559e9bf7c0257169b28b0c140ce9167"
+      "blob": "076a5d0022a5aa6ffe7878cb9c8017e5c60bdfed"
     }
   ],
   "watch": [
@@ -564,8 +564,8 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt",
-      "why": "activity picker",
-      "blob": "45f6db2e7272bb7a20b2bfcbc254dc1b29ef1254"
+      "why": "activity picker during a tour (Plan + Navigate) – app only, the planner has no tours (owner 2026-11-27)",
+      "blob": "560cd72e89e70adb40658094d0d9683cda55af65"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PointsDeleteGuard.kt",
