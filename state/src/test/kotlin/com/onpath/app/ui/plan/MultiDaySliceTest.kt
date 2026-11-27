@@ -1222,8 +1222,8 @@ class MultiDaySliceTest {
                 com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true)), shown.rows.map { it.places })
         app.names[A] = "Start"; app.names[C] = "Bad Tölz"
         val named = app.multiDay.daysUi()!!.rows
-        assertEquals("Start – Bad Tölz", named[0].places)
-        assertEquals("a stop with a name of its own ends day 2 and starts day 3", "Bad Tölz – Gasthof Post", named[1].places)
+        assertEquals("Start → Bad Tölz", named[0].places)
+        assertEquals("a stop with a name of its own ends day 2 and starts day 3", "Bad Tölz → Gasthof Post", named[1].places)
         assertEquals("the finish has no name: day 3 starts at the hotel",
             com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true), named[2].places)
         assertEquals("the night of day 1 is a night out, day 2's a hotel", listOf(com.onpath.app.routing.DayEndKind.OVERNIGHT, com.onpath.app.routing.DayEndKind.HOTEL, null),
@@ -1236,8 +1236,8 @@ class MultiDaySliceTest {
         val app = App(); app.openOverview()
         app.names.remove(D); app.names[C] = "Bad Tölz"; app.names[E] = "Ziel"
         val rows = app.multiDay.daysUi()!!.rows
-        assertEquals("Bad Tölz – Gasthof Post", rows[1].places)
-        assertEquals("Gasthof Post – Ziel", rows[2].places)
+        assertEquals("Bad Tölz → Gasthof Post", rows[1].places)
+        assertEquals("Gasthof Post → Ziel", rows[2].places)
     }
 
     @Test fun aPlainStopAtTheOnlyKnownEndStaysWithoutASecondLine() {
@@ -1257,8 +1257,8 @@ class MultiDaySliceTest {
         app.endNames[C] = "Bad Tölz"; app.endNames[A] = "Start"
         app.settle()
         val after = app.multiDay.daysUi()!!
-        assertEquals("the day's start and end are named", "Start – Bad Tölz", after.rows[0].places)
-        assertEquals("and the next day starts there", "Bad Tölz – Gasthof Post", after.rows[1].places)
+        assertEquals("the day's start and end are named", "Start → Bad Tölz", after.rows[0].places)
+        assertEquals("and the next day starts there", "Bad Tölz → Gasthof Post", after.rows[1].places)
         assertEquals("an end the index does not know: no „von – nach“, only the hotel the day starts at",
             com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true), after.rows[2].places)
         app.settle()

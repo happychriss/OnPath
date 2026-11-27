@@ -129,3 +129,18 @@ fun TripProfile(days: DaysUi, day: Int?, onHighlight: (GeoPoint?) -> Unit, modif
         }
     }
 }
+
+/**
+ * The plan sheet's multi-day body like the planner's panel (owner's sketch 2026-11-27): „Planung“ + chips, the day table
+ * ([DayTableView]: tap = this day, hold = the days up to this one) and „Höhenprofil · gesamte Reise“ with the day borders –
+ * „Höhenprofil · Tag N“ with only that day while one day is picked. The drop-in for [DaysOverview] (same arguments).
+ */
+@Composable
+fun MultiDayOverview(days: DaysUi, onTap: (Int) -> Unit, onHold: (Int) -> Unit, onHighlight: (GeoPoint?) -> Unit) {
+    val table = days.table ?: return DaysOverview(days, onTap, onHold, onHighlight)
+    Column(Modifier.fillMaxWidth()) {
+        PlanningChips(MultiDayPanel.planning(days.count, days.limits))
+        DayTableView(table, Modifier.padding(top = 6.dp), picked = { n -> days.selected?.let { n in it } == true }, onTap = onTap, onHold = onHold)
+        TripProfile(days, days.selected?.takeIf { it.first == it.last }?.first, onHighlight)
+    }
+}
