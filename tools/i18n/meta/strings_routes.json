@@ -474,12 +474,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "routes_sac_line": {
-    "area": "Activity picker",
-    "context": "Under the T1–T5 chips (owner 2026-11-08): the chosen level's name and description; %1$d = level, %2$s = SAC name, %3$s = SAC description",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "routes_review_distance": {
     "area": "My routes – look back at a done tour",
     "context": "Label under the big distance value at the top of a done tour's overview (owner 2026-11-15, round 3 of the tour analysis).",

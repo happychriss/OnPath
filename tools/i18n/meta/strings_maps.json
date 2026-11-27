@@ -441,12 +441,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "maps_areas_count": {
-    "area": "Background downloads",
-    "context": "Part of a line: \"3 areas\" (joined with MB and % by \" · \")",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "maps_bg_chip_cd": {
     "area": "Background downloads",
     "context": "Accessibility text of the blue loading chip: %1$s = \"Meran +1 · 34 %\"",

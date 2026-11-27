@@ -106,10 +106,6 @@
     <string name="plan_bar_go">Let’s go</string>
     <string name="plan_bar_carry_on">Carry on</string>
     <string name="plan_carry_on_for">Carry on · %1$s</string>
-    <string name="plan_bar_save">Save</string>
-    <string name="plan_sheet_expand">Show route summary</string>
-    <string name="plan_discard_title">Discard changes?</string>
-    <string name="plan_discard">Discard</string>
     <string name="plan_activity_chip_desc">Activity: %1$s. Tap to change</string>
     <string name="plan_points">Points</string>
     <string name="plan_reverse">Reverse</string>
@@ -188,7 +184,6 @@
     <string name="plan_no_location_permission">No location permission</string>
     <string name="plan_location_off">Location off</string>
     <string name="plan_searching_gps">Searching GPS…</string>
-    <string name="plan_new_route">New plan</string>
     <string name="plan_start_here">Set as start</string>
     <string name="plan_go_here">Set as destination</string>
     <string name="plan_from_my_position">Start: your position</string>
@@ -199,8 +194,6 @@
     <string name="plan_pin_add">Add</string>
     <string name="plan_add_as_stop">Set as stop</string>
     <string name="plan_make_destination">Set as destination</string>
-    <string name="plan_pin_more">More</string>
-    <string name="plan_pin_action_desc">%2$s: %1$s</string>
     <plurals name="plan_removes_points">
         <item quantity="one">Removes the point before it</item>
         <item quantity="other">Removes the %1$d points before it</item>
@@ -280,9 +273,6 @@
     <string name="plan_slow_title">This route is long and takes a while.</string>
     <string name="plan_slow_text">Keep waiting?</string>
     <string name="plan_slow_wait">Keep waiting</string>
-    <string name="plan_save_ask_title">Save plan?</string>
-    <string name="plan_save_ask_text_named">“%1$s” has changes that are not saved yet.</string>
-    <string name="plan_save_ask_text">Your plan is not saved yet.</string>
     <string name="plan_menu_record_without_plan">Just record</string>
     <string name="plan_menu_help">Help</string>
 </resources>

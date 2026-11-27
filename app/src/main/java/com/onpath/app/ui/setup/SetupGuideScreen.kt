@@ -154,7 +154,7 @@ fun checkDo(id: CheckId, phone: PhoneState, denied: Boolean): String = when (id)
         else -> str0(Res.string.setup_voice_do)
     }
     CheckId.BATTERY -> str0(Res.string.setup_bat_do)
-    // the brand's steps (setup_brand_samsung …) moved to the website's help: „Mehr Infos ›“ on the page
+    // the brand's steps moved to the website's help: „Mehr Infos ›“ on the page
     CheckId.BRAND -> ""
     CheckId.BATTERY_SAVER -> str0(Res.string.setup_saver_do)
     CheckId.UNUSED_RESET -> str0(Res.string.setup_unused_do)

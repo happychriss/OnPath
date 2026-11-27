@@ -268,49 +268,9 @@
     "priority": 1,
     "confidence": "bitte prüfen"
   },
-  "setup_brand_why": {
-    "area": "Phone setup",
-    "context": "Step B2: why; %1$s = brand – short text, owner-approved 2026-11-08",
-    "priority": 1,
-    "confidence": "bitte prüfen"
-  },
-  "setup_brand_samsung": {
-    "area": "Phone setup",
-    "context": "Step B2 Samsung: numbered steps (labels approximate, One UI)",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Menu names of the phone in German not checked on such a phone"
-  },
-  "setup_brand_xiaomi": {
-    "area": "Phone setup",
-    "context": "Step B2 Xiaomi / Redmi / POCO",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Menu names of the phone in German not checked on such a phone"
-  },
-  "setup_brand_huawei": {
-    "area": "Phone setup",
-    "context": "Step B2 Huawei / Honor",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Menu names of the phone in German not checked on such a phone"
-  },
-  "setup_brand_oneplus": {
-    "area": "Phone setup",
-    "context": "Step B2 OnePlus / Oppo / realme",
-    "priority": 1,
-    "confidence": "bitte prüfen",
-    "doubt": "Menu names of the phone in German not checked on such a phone"
-  },
   "setup_open_app_settings": {
     "area": "Phone setup",
     "context": "Step B1/B2: open Android's app info of OnPath",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "setup_more_help": {
-    "area": "Phone setup",
-    "context": "Step B2: link to dontkillmyapp.com for this brand",
     "priority": 1,
     "confidence": "sicher"
   },

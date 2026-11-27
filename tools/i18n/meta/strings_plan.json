@@ -410,25 +410,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "plan_bar_save": {
-    "area": "Plan sheet",
-    "context": "Left half of the blue outlined group 'Save | New plan' at the plan sheet's bottom: save the plan as a route (opens the name dialog). One line, short",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 12
-  },
-  "plan_discard_title": {
-    "area": "Plan sheet",
-    "context": "Title of the question after ✕ Close plan while the plan has unsaved changes",
-    "priority": 2,
-    "confidence": "sicher"
-  },
-  "plan_discard": {
-    "area": "Plan sheet",
-    "context": "Button of that question: closes the plan, the unsaved changes are lost (Cancel beside it)",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "plan_activity_chip_desc": {
     "area": "Plan sheet",
     "context": "Accessibility of the activity chip. %1$s = chip text (\"Hike · T2\")",
@@ -885,12 +866,6 @@
     "confidence": "sicher",
     "max": 30
   },
-  "plan_new_route": {
-    "area": "Map (Plan)",
-    "context": "Title of the menu after the first hold on the map",
-    "priority": 1,
-    "confidence": "sicher"
-  },
   "plan_start_here": {
     "area": "Map (Plan)",
     "context": "Menu row (new place on an empty plan, a stop in the plan): the place / point becomes the start. Owner's words 2026-11-26 (docs/team/items/2026-11-26-context-menus-wording.md): Start · Stopp · Ziel, every route action „Als …“.",
@@ -1279,24 +1254,6 @@
   "plan_hint_tour_goes_on": {
     "area": "Plan",
     "context": "The empty plan sheet during a tour: set new points, or tap the green \"Navigation\" button at the bottom",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_save_ask_title": {
-    "area": "Plan",
-    "context": "Title when ✕ Neu planen is tapped with unsaved changes",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_save_ask_text_named": {
-    "area": "Plan",
-    "context": "Text of \"Save plan?\" for a saved route that was changed",
-    "priority": 1,
-    "confidence": "sicher"
-  },
-  "plan_save_ask_text": {
-    "area": "Plan",
-    "context": "Text of \"Save plan?\" for a new plan",
     "priority": 1,
     "confidence": "sicher"
   },
