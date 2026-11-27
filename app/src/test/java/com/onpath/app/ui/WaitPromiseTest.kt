@@ -209,4 +209,18 @@ class WaitPromiseTest {
         assertFalse(later.afterMap)
         com.onpath.app.ui.progress.WaitChain.mapDoneAt = -1L
     }
+
+    /** Captain / VISION 2026-11-27: finished pieces are real legs; the running one fills by the router's share, else no creep. */
+    @Test fun stepBarNeverMakesUpProgress() {
+        val rw = RouteWait(ProgressMemory.InMemory())
+        val quiet = rw.update(true, 3 to 13, null, null, 10_000L, gen = 1)!!.window
+        assertEquals(13, quiet.shownPieces)
+        assertEquals("only the finished legs are filled", 3f, quiet.filledPieces, 0f)
+        assertEquals("the running piece: Android's indeterminate bar", 3, quiet.runningPiece)
+        val told = rw.update(true, 3 to 13, 0.3f, null, 11_000L, gen = 1)!!.window
+        assertEquals(null, told.runningPiece)
+        assertTrue("the router's share fills the running piece", told.filledPieces > 3f)
+        val many = RouteWait(ProgressMemory.InMemory()).update(true, 30 to 40, null, null, 0L, gen = 2)!!.window
+        assertEquals(20, many.shownPieces); assertEquals(15, many.doneShown)
+    }
 }

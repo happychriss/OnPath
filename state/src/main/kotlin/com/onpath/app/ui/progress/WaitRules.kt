@@ -23,10 +23,14 @@ data class RouteWaitUi(val percent: Int, val steps: List<WaitStep>, val secondsL
                        /** The run's search estimate on this phone ([RouteEstimate], app only); shown above 5 s: „· etwa 1–2 min“. */
                        val estimateS: Double? = null,
                        /** The bar's pieces: the plan's legs as the router reports them (visible legs; support points inside one leg make it fill evenly, not more pieces). */
-                       val pieces: Int = 1) {
+                       val pieces: Int = 1,
+                       /** The pieces finished (legs routed; all of them while „prüfen“ runs). */
+                       val piecesDone: Int = 0,
+                       /** The router reports its search share for the running piece: it fills by it; else it shows Android's calm indeterminate bar. */
+                       val measured: Boolean = false) {
     val window: WaitWindowUi get() = WaitWindowUi(WaitSign.ROUTE, Txt.s(Res.string.wait_title_route), percent,
         if (afterMap) WaitSteps.shown(listOf(WaitStep(Txt.s(Res.string.wait_step_map_loaded), com.onpath.app.domain.WaitStepState.DONE, null)) + steps) else steps,
-        line, pieces = pieces.coerceAtLeast(1))
+        line, pieces = pieces.coerceAtLeast(1), piecesDone = piecesDone, measured = measured)
 
     /** „läuft seit 0:42“, with an estimate „läuft seit 0:42 · etwa 1–2 min“. */
     val line: String get() {
@@ -116,7 +120,8 @@ class RouteWait(private val memory: ProgressMemory) {
         // „noch etwa 5 Sekunden“ and then minutes); the planner's WebWait has the same rule
         val left = if (checking || share != null) TimeLeft.seconds(bar.measured, gone, null) else null
         return RouteWaitUi(pct, WaitSteps.of(rows, if (checking) total else done), left, bar.late,
-            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen), pieces = total)
+            elapsedS = ((now - waitStartMs) / 1000).toInt(), afterMap = afterMap, estimateS = RouteEstimate.of(gen), pieces = total,
+            piecesDone = if (checking) total else done, measured = checking || share != null)
     }
 
     /** The run ended: its legs' and check's times teach the check's share; the next run starts afresh. */
@@ -176,9 +181,20 @@ data class WaitWindowUi(
      * 0: the bar with its number (map loads).
      */
     val pieces: Int = 0,
+    /** With [pieces]: the pieces finished – real legs routed, never estimated. */
+    val piecesDone: Int = 0,
+    /**
+     * With [pieces]: the running piece fills by the router's own search share ([percent]); false = the router reports nothing
+     * for it – no creep, Android's calm indeterminate bar in that piece (owner / VISION 2026-11-27: never a made-up progress).
+     */
+    val measured: Boolean = true,
 ) {
-    /** How many pieces are filled, the running one partly: [percent] of [shownPieces]. */
-    val filledPieces: Float get() = shownPieces * percent / 100f
+    /** How many pieces are filled, the running one partly: [percent] of [shownPieces] while measured, else the finished ones. */
+    val filledPieces: Float get() = if (measured) shownPieces * percent / 100f else doneShown.toFloat()
+    /** The finished pieces as drawn (more legs than [MAX_PIECES] share a piece). */
+    val doneShown: Int get() = if (pieces <= 0) 0 else (piecesDone.coerceIn(0, pieces) * shownPieces / pieces)
+    /** The piece that shows the indeterminate bar; null = none (measured, or every piece done). */
+    val runningPiece: Int? get() = doneShown.takeIf { !measured && pieces > 0 && it < shownPieces }
     /** The pieces drawn: at most [MAX_PIECES] (more legs than that share a piece – never a hairline). */
     val shownPieces: Int get() = pieces.coerceIn(0, MAX_PIECES)
 

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -109,9 +110,9 @@ fun WaitWindowView(ui: WaitWindowUi, buttons: List<WaitButton>, modifier: Modifi
 }
 
 /**
- * The route's bar in pieces (owner 2026-11-27 evening): one piece per leg routed, 3 dp apart, rounded; the filled ones
- * green, the running one filled to its part; ONE piece (a short route) = one bar that creeps. No number – TalkBack hears
- * the progress as a range.
+ * The route's bar in pieces (owner 2026-11-27 evening): one piece per leg routed, 3 dp apart, rounded; the finished ones
+ * green; the running one filled by the router's search share, or – when the router reports none – Android's calm
+ * indeterminate bar (captain / VISION: never a made-up progress, no creep). No number – TalkBack hears the range.
  */
 @Composable
 private fun PieceBar(ui: WaitWindowUi, modifier: Modifier) {
@@ -119,12 +120,15 @@ private fun PieceBar(ui: WaitWindowUi, modifier: Modifier) {
     val filled = ui.filledPieces
     val on = if (ui.paused) OnPathColors.InkMuted else OnPathColors.Green
     Row(modifier.fillMaxWidth().height(8.dp).semantics(mergeDescendants = true) {
-        progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(ui.percent / 100f, 0f..1f)
+        progressBarRangeInfo = androidx.compose.ui.semantics.ProgressBarRangeInfo(if (n > 0) filled / n else 0f, 0f..1f)
     }, horizontalArrangement = Arrangement.spacedBy(if (n > 1) 3.dp else 0.dp)) {
         for (k in 0 until n) {
             val part = (filled - k).coerceIn(0f, 1f)
             Box(Modifier.weight(1f).fillMaxHeight().clip(CircleShape).background(OnPathColors.PaperDeep)) {
-                if (part > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(part).clip(CircleShape).background(on))
+                // the router says nothing for the running piece: Android's own calm indeterminate bar in it, no creep
+                if (k == ui.runningPiece) LinearProgressIndicator(color = on, trackColor = OnPathColors.PaperDeep,
+                    modifier = Modifier.fillMaxSize().clip(CircleShape))
+                else if (part > 0f) Box(Modifier.fillMaxHeight().fillMaxWidth(part).clip(CircleShape).background(on))
             }
         }
     }
