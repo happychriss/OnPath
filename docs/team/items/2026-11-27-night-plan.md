@@ -43,6 +43,10 @@ branch, not pushed). The version push waits until the owner plugs the Pixel in t
 Suchkategorie (donald): ask where he sees it, read the code path (RestGps / RestWatch, live upload) and the live data if
 reachable, a reproducing JVM test, a fix on a branch. Recording / live = core: per `VISION.md` it ships only after a real
 tour – not in 0.18.12 unless it is only a display filter; field log from the Pixel tomorrow.
+**State 23:39:** cause found (dot takes every fix; PointFilter.judge takes the first fix after a gap unchecked), fix on
+`fix/position-drift` @ 26b9799cb, gate green. It changes the **track** (PointFilter) → captain: no merge before the
+0.18.12 release; second-model read tonight; after the release a test build on the Pixel for the owner's next real tour,
+then main → 0.18.13. REST_AFTER_MS 30 s goes on the same branch.
 
 ## Cloud
 Tracker thread: planner picker check, then browser layout + logo – pick by `VISION.md`, push to main; ships with the
