@@ -122,10 +122,6 @@
     <string name="maps_here_ask_detail">Takes a few minutes to prepare.</string>
 
     <!-- Background downloads: chip and details -->
-    <plurals name="maps_areas_count">
-        <item quantity="one">%1$d area</item>
-        <item quantity="other">%1$d areas</item>
-    </plurals>
     <string name="maps_bg_chip_cd">Loading map: %1$s</string>
     <string name="maps_bg_chip_click">Show background downloads</string>
     <string name="maps_bg_dialog_title">Loading in the background</string>

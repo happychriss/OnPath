@@ -120,10 +120,6 @@
     <string name="maps_here_ask_detail">Die Vorbereitung dauert ein paar Minuten.</string>
 
     <!-- Laden im Hintergrund -->
-    <plurals name="maps_areas_count">
-        <item quantity="one">%1$d Gebiet</item>
-        <item quantity="other">%1$d Gebiete</item>
-    </plurals>
     <string name="maps_bg_chip_cd">Karte wird geladen: %1$s</string>
     <string name="maps_bg_chip_click">Downloads im Hintergrund anzeigen</string>
     <string name="maps_bg_dialog_title">Laden im Hintergrund</string>

@@ -115,7 +115,6 @@
     <string name="routes_sac_4_short">Partly pathless, hands needed, alpine experience</string>
     <string name="routes_sac_5_short">Often pathless, easy climbing, alpine experience</string>
     <string name="routes_sac_row">%1$s (T%2$d)</string>
-    <string name="routes_sac_line">T%1$d · %2$s: %3$s</string>
     <!-- My routes: the sort chips (owner 2026-11-12, variant C) -->
     <string name="routes_sort_newest">Newest first</string>
     <string name="routes_sort_oldest">Oldest first</string>

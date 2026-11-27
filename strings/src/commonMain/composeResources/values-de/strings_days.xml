@@ -34,17 +34,14 @@
     <string name="days_change_hotel">Hotel ändern</string>
     <string name="days_remove_hotel">Hotel entfernen</string>
     <string name="days_remove_overnight">Übernachtung entfernen</string>
-    <string name="days_hotel_for_tour">Hotel für diese Tour</string>
     <string name="days_open_night">Nacht noch offen</string>
     <string name="days_overnight">Übernachtung</string>
     <string name="days_hotel">Hotel</string>
     <string name="days_over_limit">Über der Grenze: %1$s</string>
     <string name="days_night_n">Nacht %1$d</string>
-    <string name="days_night_nearest">Nacht %1$d (am nächsten)</string>
     <string name="days_hotel_title">Hotel · Nacht %1$d</string>
     <string name="days_hotel_hint">Hotel suchen oder Google-Maps-, Booking-Link oder Adresse einfügen</string>
     <string name="days_hotel_none">Nichts gefunden – versuch den Namen oder die Adresse</string>
-    <string name="days_which_night">Welche Nacht?</string>
     <string name="days_remove_hotel_ask">Übernachtung mit Hotel entfernen?</string>
     <string name="days_from_to">%1$s – %2$s</string>
     <string name="days_from_hotel">ab %1$s</string>
