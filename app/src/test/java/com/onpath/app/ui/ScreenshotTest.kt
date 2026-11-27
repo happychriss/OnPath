@@ -397,11 +397,21 @@ class ScreenshotTest {
         Frame(route = false) { PlanPanel(planWithPoints(PlanSize.FULL, pointRows(line = null), routing = true), PlanCallbacks()) }
     }
 
-    /** A plan much longer than a day is asked about before it is routed. */
+    /** A leg that takes long on the phone is asked about before it is routed (owner 2026-11-27): the estimate as a range. */
     @Test fun longRouteQuestion() = paparazzi.snapshot {
+        val ask = com.onpath.app.routing.LongAsk(240.0, 0, 210.0)
         OnPathTheme {
             Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
-            LongRouteDialog(29 * 24 * 3600.0, com.onpath.app.routing.Activity.HIKE, {}, {})
+            LongRouteDialog(ask.estimateS, com.onpath.app.routing.Activity.HIKE, {}, {}, leg = LongLegNames(ask, "Hilden", "Frankfurt"))
+        }
+    }
+
+    /** A leg beyond the phone's memory: no waiting offered, only a stop on the way. */
+    @Test fun longRouteTooLongForThePhone() = paparazzi.snapshot {
+        val ask = com.onpath.app.routing.LongAsk(Double.POSITIVE_INFINITY, 0, 475.0)
+        OnPathTheme {
+            Frame { PlanPanel(planUi(size = PlanSize.COMPACT), PlanCallbacks()) }
+            LongRouteDialog(ask.estimateS, com.onpath.app.routing.Activity.HIKE, {}, {}, leg = LongLegNames(ask, "Hilden", "München"))
         }
     }
 

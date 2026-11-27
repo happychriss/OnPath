@@ -19,10 +19,18 @@ interface ProgressMemory {
     var suggestShares: StepShares
         get() = SUGGEST_DEFAULT
         set(@Suppress("UNUSED_PARAMETER") v) {}
+    /**
+     * How many times slower than the desktop this phone's router searches ([com.onpath.app.routing.RouteCost], learned
+     * after every leg of ≥ 10 straight km); start [com.onpath.app.routing.RouteCost.DEFAULT_FACTOR].
+     */
+    var phoneFactor: Double
+        get() = com.onpath.app.routing.RouteCost.DEFAULT_FACTOR
+        set(@Suppress("UNUSED_PARAMETER") v) {}
 
     /** For tests and when nothing can be stored: in memory only. */
     class InMemory(override var shares: StepShares = StepShares.DEFAULT, override var routeCheck: Double = RouteShares.DEFAULT_CHECK,
-                   override var suggestShares: StepShares = SUGGEST_DEFAULT) : ProgressMemory
+                   override var suggestShares: StepShares = SUGGEST_DEFAULT,
+                   override var phoneFactor: Double = com.onpath.app.routing.RouteCost.DEFAULT_FACTOR) : ProgressMemory
 
     companion object {
         /**

@@ -230,6 +230,12 @@
     <string name="plan_routing_load_failed">Something went wrong while loading it. Please try again.</string>
     <string name="plan_about_days">about %1$d days</string>
     <string name="plan_about_hours">about %1$d hours</string>
+    <string name="plan_est_seconds">about %1$d–%2$d seconds</string>
+    <string name="plan_est_minutes">about %1$d–%2$d minutes</string>
+    <string name="plan_est_hours">about %1$d–%2$d hours</string>
+    <string name="plan_est_short_s">about %1$d–%2$d s</string>
+    <string name="plan_est_short_min">about %1$d–%2$d min</string>
+    <string name="plan_est_short_h">about %1$d–%2$d h</string>
     <string name="plan_err_memory">Not enough memory for this route. Add stops or choose closer points.</string>
     <string name="plan_err_complex">Route too complex for on-phone routing. Add stops or choose closer points.</string>
     <string name="plan_err_engine">The route planner could not be loaded.</string>

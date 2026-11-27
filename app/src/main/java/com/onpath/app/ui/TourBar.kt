@@ -395,12 +395,34 @@ fun RouteBackDialog(onYes: () -> Unit, onNo: () -> Unit) {
 }
 
 /**
- * A plan far longer than a day (e.g. a point in another country by mistake). Asked before anything is routed or
- * loaded. Cancel takes back the change that made it so long (AppViewModel.cancelRun). Stays until a button is tapped:
- * an outside tap or Back must not undo anything.
+ * Before a long run (owner 2026-11-27, [com.onpath.app.routing.RouteCost]): the longest leg's search on this phone,
+ * honest as a range – „Lange Strecke: etwa 3–6 Minuten“, „Hilden → München, 475 km am Stück. Mit einem Zwischenziel
+ * geht es schneller.“, buttons „Zwischenziel setzen“ ([onCancel]: the points stay without a route) · „Warten“ ([onPlan]).
+ * A leg beyond the phone's capacity ([seconds] infinite): „Zu lang für das Handy“ with „Zwischenziel setzen“ only.
+ * Without a [leg] (a plan beyond a day, the old rule): the day question as before. Stays until a button is tapped: an
+ * outside tap or Back must not undo anything.
  */
 @Composable
-fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit) {
+fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, onPlan: () -> Unit, onCancel: () -> Unit,
+                    leg: LongLegNames? = LongLegShown.leg) {
+    val shown = leg?.takeIf { it.ask.estimateS == seconds }
+    if (shown != null) {
+        AlertDialog(
+            onDismissRequest = {},
+            icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
+            title = { Text(com.onpath.app.routing.RouteCost.askTitle(shown.ask)) },
+            text = { DialogText(com.onpath.app.routing.RouteCost.askText(shown.ask, shown.from, shown.to)) },
+            confirmButton = {
+                if (shown.ask.beyond) TextButton(colors = ActionButtons.editText(), onClick = onCancel) { Text(str(Res.string.nav_add_stop)) }
+                else TextButton(onClick = onPlan) { Text(str(Res.string.nav_wait)) }
+            },
+            dismissButton = if (shown.ask.beyond) null else ({
+                TextButton(colors = ActionButtons.editText(), onClick = onCancel) { Text(str(Res.string.nav_add_stop)) }
+            }),
+            properties = LongRouteDialogRules.properties,
+        )
+        return
+    }
     AlertDialog(
         onDismissRequest = {},
         icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },

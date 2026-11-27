@@ -375,4 +375,48 @@ class RouteRunTest {
             }
         }
     }
+
+    // ---------------- the injected rules (owner 2026-11-27: the app's phone rule; the planner keeps the day rule) ----------------
+
+    @Test fun theDefaultIsTodaysDayRuleAndAsksAtTheLimit() {
+        val run = RouteRun()
+        assertEquals(com.onpath.app.routing.LongRule.DAY, run.longRule)
+        assertTrue(run.askSlow)
+        val ask = run.on(recalc(far)).state.phase as Phase.AskLong
+        assertEquals(Phase.AskLong(LongRoute.estimateS(far, Activity.HIKE)), ask)
+    }
+
+    @Test fun anInjectedRuleDecidesTheQuestionAndItsLeg() {
+        val rule = com.onpath.app.routing.LongRule { pts, _ -> if (pts.size > 2) com.onpath.app.routing.LongAsk(45.0, 1, 120.0) else null }
+        val run = RouteRun(longRule = rule)
+        assertTrue("far, but the rule does not ask", run.on(recalc(far)).state.routing)
+        val step = run.on(recalc(listOf(a, b, c)))
+        assertEquals(Phase.AskLong(45.0, 1, 120.0), step.state.phase)
+        assertEquals(com.onpath.app.routing.LongAsk(45.0, 1, 120.0), step.state.longAskLeg)
+        // said yes: not asked again for these points
+        val yes = step.state.on(Event.LongAnswer(true, listOf(a, b, c))).state
+        assertTrue(yes.on(recalc(listOf(a, b, c))).state.routing)
+    }
+
+    @Test fun beyondCapacityIsAskedEvenAfterYes() {
+        val rule = com.onpath.app.routing.LongRule { _, _ -> com.onpath.app.routing.LongAsk(Double.POSITIVE_INFINITY, 0, 480.0) }
+        val yes = RouteRun(longRule = rule, longOk = near)
+        assertTrue(yes.on(recalc(near)).state.longAskLeg!!.beyond)
+    }
+
+    @Test fun withoutSlowAskARunInPlanKeepsTheStraightLegsAtTheLimit() {
+        val start = RouteRun(askSlow = false).on(recalc(near)).effects.single() as Effect.StartRouting
+        assertFalse(start.askAtLimit)
+    }
+
+    /** The app's not-routed notice after „Zwischenziel setzen“: „Berechnen“ asks again with the estimate – never a blind yes. */
+    @Test fun withoutSlowAskCalculateAgainAsksInsteadOfPlanningAnyway() {
+        val rule = com.onpath.app.routing.LongRule { pts, _ -> if (pts == far) com.onpath.app.routing.LongAsk(240.0, 0, 120.0) else null }
+        val asked = RouteRun(longRule = rule, askSlow = false).on(recalc(far)).state
+        val left = asked.on(Event.LongAnswer(planAnyway = false, points = far)).state.on(Event.Unrouted(NotRouted.LONG)).state
+        val again = left.on(Event.PlanAnyway(far))
+        assertEquals(listOf(Effect.Rerun(sameCause = false)), again.effects)
+        assertNull("no yes taken", again.state.longOk)
+        assertTrue("the question comes again", again.state.on(recalc(far)).state.phase is Phase.AskLong)
+    }
 }

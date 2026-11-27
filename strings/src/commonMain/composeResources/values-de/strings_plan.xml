@@ -229,6 +229,12 @@
     <string name="plan_routing_load_failed">Beim Laden ist etwas schiefgegangen. Bitte versuche es erneut.</string>
     <string name="plan_about_days">etwa %1$d Tage</string>
     <string name="plan_about_hours">etwa %1$d Stunden</string>
+    <string name="plan_est_seconds">etwa %1$d–%2$d Sekunden</string>
+    <string name="plan_est_minutes">etwa %1$d–%2$d Minuten</string>
+    <string name="plan_est_hours">etwa %1$d–%2$d Stunden</string>
+    <string name="plan_est_short_s">etwa %1$d–%2$d s</string>
+    <string name="plan_est_short_min">etwa %1$d–%2$d min</string>
+    <string name="plan_est_short_h">etwa %1$d–%2$d h</string>
     <string name="plan_err_memory">Nicht genug Speicher für diese Route. Setze Stopps oder wähle näher liegende Punkte.</string>
     <string name="plan_err_complex">Route zu komplex für die Berechnung auf dem Handy. Setze Stopps oder wähle näher liegende Punkte.</string>
     <string name="plan_err_engine">Die Routenberechnung konnte nicht geladen werden.</string>

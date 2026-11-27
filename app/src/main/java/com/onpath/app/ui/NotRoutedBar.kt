@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.onpath.app.domain.NotRouted
 import com.onpath.app.domain.PlanStatus
+import com.onpath.strings.*
 
 /**
  * The plan has no route on purpose: says why, and calculates it on request (stays until then – no timeout). [busy]: the
@@ -29,7 +30,8 @@ internal fun NotRoutedBar(why: NotRouted, busy: Boolean = false, onPlanAnyway: (
                 androidx.compose.material3.CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = OnPathColors.PlanAccent)
                 Spacer(Modifier.width(8.dp))
             }
-            Text(PlanStatus.notRoutedAction(why))
+            // a long leg: „Berechnen“ asks again with its estimate (Warten / Zwischenziel) – no „Trotzdem planen“ (owner 2026-11-27)
+            Text(if (why == NotRouted.LONG) str(Res.string.plan_calculate) else PlanStatus.notRoutedAction(why))
         }
     }
 }

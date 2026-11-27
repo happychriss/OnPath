@@ -25,6 +25,8 @@ interface PlanRunHost {
     fun recalc()
     /** Cancel of the question / of a running calculation: the change that started the run is taken back. */
     fun cancelRun(why: NotRouted)
+    /** The long-plan question was put for [ask] (its leg, for the app's dialog); default: nothing. */
+    fun longAsked(ask: com.onpath.app.routing.LongAsk) = Unit
 }
 
 /** Routing that runs beside the plan's route and gives way to what needs the router now (the app's detour check). */
@@ -46,9 +48,14 @@ class PlanRunSlice(
     /** What started the routing run: Cancel takes back only that ([PlanRouteSlice.runCauses]). */
     private val runCauses: RunCause,
     private val host: PlanRunHost,
+    /**
+     * The run's start state: its rules ([RouteRun.longRule], [RouteRun.askSlow]) stay with every later state. Default =
+     * today's (the web planner); the app passes its phone rule (owner 2026-11-27).
+     */
+    initial: RouteRun = RouteRun(),
 ) {
     /** The plan's route run: calculating, its two questions, "not routed" and the orders for the next result. */
-    var routeRun by mutableStateOf(RouteRun())
+    var routeRun by mutableStateOf(initial)
         private set
     val routing: Boolean get() = routeRun.routing
     /** The plan run reached its time limit: the periods of the run that asked; null = none. */
@@ -99,8 +106,11 @@ class PlanRunSlice(
         for (fx in effects) when (fx) {
             RouteRun.Effect.ClearRoute -> host.clearRoute()
             RouteRun.Effect.NoCorridor -> host.noCorridor() // nothing loads for a plan that is not routed
-            is RouteRun.Effect.LongAsked ->
-                Problems.trace("routing", "Very long plan (${com.onpath.app.routing.LongRoute.describe(fx.estimateS)}) – asking first")
+            is RouteRun.Effect.LongAsked -> Problems.trace("routing", when {
+                fx.estimateS.isInfinite() -> "A leg beyond the phone's capacity – asking first"
+                routeRun.longRule == com.onpath.app.routing.LongRule.DAY -> "Very long plan (${com.onpath.app.routing.LongRoute.describe(fx.estimateS)}) – asking first"
+                else -> "Long leg (about ${fx.estimateS.toInt()} s on this phone) – asking first"
+            }).also { routeRun.longAskLeg?.let(host::longAsked) }
             RouteRun.Effect.StopRun -> {
                 routeCancel?.cancel(); routeCancel = null
                 routeJob?.cancel(); routeJob = null

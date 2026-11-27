@@ -49,6 +49,20 @@ class WaitPromiseTest {
         assertEquals(false, uis[200].window.bar)
     }
 
+    /** Owner 2026-11-27: the run's estimate on this phone beside the time it runs – only for its own run and above 5 s. */
+    @Test fun routeWindow_showsTheRunsEstimate() {
+        val est = com.onpath.app.ui.progress.RouteEstimate
+        try {
+            est.set(7, 70.0)
+            val rw = RouteWait(ProgressMemory.InMemory())
+            rw.update(true, 0 to 1, null, null, 0L, gen = 7)
+            assertEquals("running for 0:42 · about 1–2 min", rw.update(true, 0 to 1, null, null, 42_000L, gen = 7)!!.window.line)
+            assertEquals("another run: no estimate", "running for 0:00", RouteWait(ProgressMemory.InMemory()).update(true, 0 to 1, null, null, 0L, gen = 8)!!.window.line)
+            est.set(9, 4.0)
+            assertEquals("5 s or less: none", "running for 0:00", RouteWait(ProgressMemory.InMemory()).update(true, 0 to 1, null, null, 0L, gen = 9)!!.window.line)
+        } finally { est.set(-1, null) }
+    }
+
     /**
      * Owner 2026-11-19 (in the planner, München → Hilden): „noch etwa 5 Sekunden“, then minutes. The same rule on the
      * phone: a leg the router reports nothing of promises no time – the bar creeps, the time left is not read off the creep.

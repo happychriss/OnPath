@@ -158,6 +158,7 @@
     <string name="wait_left_minutes">noch etwa %1$d Minuten</string>
     <string name="wait_late">dauert etwas länger…</string>
     <string name="wait_running_since">läuft seit %1$s</string>
+    <string name="wait_running_since_est">läuft seit %1$s · %2$s</string>
     <string name="wait_step_map_loaded">Karte geladen</string>
     <string name="wait_loading_pct">lädt %1$d %</string>
     <string name="maps_phase_done">fertig</string>

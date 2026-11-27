@@ -146,7 +146,7 @@
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "6771d245dafc9879b94f606494f08b953d5eabde"
+      "blob": "ddcc99a8d709948029ac4ac35624ec87ae936923"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "586261682649324ac759d4717fcbb9de49d49fd5"
+      "blob": "898a37f205ee19003c88a90b91a16cafc32fb899"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -407,7 +407,7 @@
         "web/app/src/loadoverlay.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "3650dcc72107063f4189023b7412f99cc4a9c73a"
+      "blob": "038e343c634921a4025022d86f75ec8391bcd2cc"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/BesideSign.kt",
@@ -425,7 +425,7 @@
       "web": [
         "web/app/src/progressmemory.ts"
       ],
-      "blob": "ead6f018f243905f53d8e7a5c4ba1cba55e8fc09"
+      "blob": "f8af6693544f7bd5c0bc688873b3dc59bdef1b0e"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/search/SearchState.kt",
@@ -3472,11 +3472,17 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/progress/WaitRules.kt": {
-      "blob": "3650dcc72107063f4189023b7412f99cc4a9c73a",
+      "blob": "038e343c634921a4025022d86f75ec8391bcd2cc",
       "perf": [
+        "const val FOLLOWS_MS = 10_000L",
+        "fun follows(routeStartMs: Long): Boolean = mapDoneAt >= 0 && routeStartMs - mapDoneAt in 0..FOLLOWS_MS",
         "class RouteWait(private val memory: ProgressMemory) {",
+        "/** When this wait began – kept across a new run that follows within [GOES_ON_MS] (a second try with more time). */",
+        "// one wait goes on: a new run soon after the last (the time limit's „Weiter warten“, routing data arriving)",
+        "if (waitStartMs < 0 || lastEndMs < 0 || now - lastEndMs > GOES_ON_MS) { waitStartMs = now; afterMap = WaitChain.follows(now) }",
         "val check = memory.routeCheck",
         "memory.routeCheck = RouteShares.learn(memory.routeCheck, checkFromMs - startMs, now - checkFromMs)",
+        "const val GOES_ON_MS = 60_000L",
         "* [points] (none from the cache: [total] = points − 1); else null (they are counted: \"Abschnitt 2\")."
       ]
     },
@@ -3489,7 +3495,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/data/ProgressMemory.kt": {
-      "blob": "ead6f018f243905f53d8e7a5c4ba1cba55e8fc09",
+      "blob": "f8af6693544f7bd5c0bc688873b3dc59bdef1b0e",
       "perf": [
         "* session goes on with what it learned in memory. Thread-safe.",
         "* places of a [StepShares]; start [SUGGEST_DEFAULT]. Default accessors: a memory that keeps none uses the start values.",
@@ -3715,6 +3721,39 @@
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "414bdba82ed6e4a409488caa3c5c222a402ca906",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/RouteCost.kt": {
+      "blob": "6d0c75dc9110b7f097e9bb97a09b3eba229c4099",
+      "perf": [
+        "* - Desktop JVM time by the leg's straight km: [A_MS] · km^1.5 up to [KNEE_KM], continuing with exponent 1.8 above it",
+        "*   leg routed with ≥ [LEARN_FROM_KM] straight km ([learn], EWMA, clamped [MIN_FACTOR]..[MAX_FACTOR]). Pure search time",
+        "* - A leg above [CAPACITY_KM] is beyond a phone's memory (487 km reached 215 MB of a 256 MB heap): no waiting offered.",
+        "const val A_MS = 3.5",
+        "const val MAX_FACTOR = 30.0",
+        "const val ASK_ABOVE_MS = 30_000L",
+        "const val ASK_ABOVE_S = ASK_ABOVE_MS / 1000.0",
+        "/** The time limit allows this many times a leg's estimate ([limitMs]). */",
+        "/** A phone's routing heap (MB) and the straight km it holds: 487 km reached 215 MB of a 256 MB heap. */",
+        "const val PHONE_MEMORY_MB = 256",
+        "/** A leg longer than this (straight km) is beyond a phone's memory. */",
+        "private val KNEE_MS = A_MS * KNEE_KM.pow(EXP_NEAR)",
+        "return if (k <= KNEE_KM) A_MS * k.pow(EXP_NEAR) else KNEE_MS * (k / KNEE_KM).pow(EXP_FAR)",
+        "/** The straight km a device with [memoryCapMb] MB routing heap holds in one leg: [PHONE_CAP_KM] scaled linearly. */",
+        "fun capKm(memoryCapMb: Int): Double = PHONE_CAP_KM * memoryCapMb.coerceAtLeast(1) / PHONE_MEMORY_MB",
+        "/** The leg [legIndex] is beyond the device's memory: only a stop on the way helps, no waiting offered. */",
+        "* else the slowest leg above [ASK_ABOVE_MS] → [Decision.Ask] with its range ([RANGE_LOW] … [RANGE_HIGH]); else [Decision.Now].",
+        "fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB): Decision {",
+        "return if (ms > ASK_ABOVE_MS) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now",
+        "* ≥ [LEARN_FROM_KM] only (else [oldFactor] as it is, bounded); EWMA with [LEARN_WEIGHT], clamped [MIN_FACTOR]..[MAX_FACTOR].",
+        "fun bounded(factor: Double): Double = if (factor.isNaN()) DEFAULT_FACTOR else factor.coerceIn(MIN_FACTOR, MAX_FACTOR)",
+        "/** A leg of [km] straight kilometres is beyond a phone's memory. */",
+        "/** The app's time limit for a request of [km] straight km: today's [todayMs], at least twice the phone's estimate. */",
+        "* known, else \"Point 1 → 2\"); beyond capacity: \"475 km in one go. Add a stop or plan in the browser.\"",
+        "* longest leg's search, [Double.POSITIVE_INFINITY] = beyond the phone's capacity), [leg] its index (-1 = the whole plan),",
+        "* on this phone ([factor]) or is beyond its capacity. [routed] (from, to, quick): the leg is routed already (the leg",
+        "* cache; quick = memory only, no file read) – asked only for the legs that would make it ask, and quick for [runS].",
+        "* The phone's search cost for the engine (BRouterEngine): the time limit of a request ([limitMs]) and what a finished"
+      ]
     }
   },
   "refs": {
