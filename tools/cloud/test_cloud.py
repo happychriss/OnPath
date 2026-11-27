@@ -766,15 +766,21 @@ class PartialRebuild(unittest.TestCase):
                 "nothing published": (None, "2026-10-19", 10, 543, 361),
             }.items():
                 self.assertIsNone(plan(*args), why)
-        # the real table: an s7 cell gets the overlays of schema 8 (routelines) and the suggest file computed from them
+        # the real table: an s7 cell gets the overlays of schema 8 (routelines), the pois of schema 10 (lodging) and the
+        # suggest file computed from them
         s7 = self.published(files=[f for f in self.published()["files"] if f["name"] != "suggest.bin"])
-        self.assertEqual(plan(s7, "2026-10-19", 10, 543, 361), ["overlays", "suggest"])
-        # schema 9 (suggest file) on an s8 cell, which has no suggest.bin yet: only that file is built
+        self.assertEqual(plan(s7, "2026-10-19", 10, 543, 361), ["overlays", "pois", "suggest"])
+        # schema 10 (lodging POIs) on an s9 cell: the pois and the suggest file computed from them
+        s9 = dict(s7, version="2026-10-19-s9", layers={"overlays": {"schema": 8, "version": "2026-10-19-s8"},
+                                                       "suggest": {"schema": 9, "version": "2026-10-19-s9"}})
+        self.assertEqual(plan(s9, "2026-10-19", 10, 543, 361), ["pois", "suggest"])
+        # schema 9 (suggest file) on an s8 cell, which has no suggest.bin yet (pois as of schema 9): only that file
         s8 = dict(s7, version="2026-10-19-s8", layers={"overlays": {"schema": 8, "version": "2026-10-19-s8"}})
-        self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest"])
-        # a layer the suggest file is computed from changes: both are built
-        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, terrain=10):
-            self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest", "terrain"])
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, pois=7):
+            self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest"])
+            # a layer the suggest file is computed from changes: both are built
+            with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, terrain=10):
+                self.assertEqual(plan(s8, "2026-10-19", 10, 543, 361), ["suggest", "terrain"])
         # nothing stale (a plain rebuild) and everything stale: whole cell, as before
         cur = f"2026-10-19-s{job_build.cell_tools.CELL_SCHEMA}"
         self.assertIsNone(plan(self.published(cur), "2026-10-19", 10, 543, 361))
@@ -782,7 +788,7 @@ class PartialRebuild(unittest.TestCase):
             self.assertIsNone(plan(self.published(), "2026-10-19", 10, 543, 361))
         # optional layers may be missing: contours of a cell at sea level are not built again for it
         no_contours = self.published(files=[f for f in self.published()["files"] if f["name"] != "contours.pmtiles"])
-        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8, suggest=7):
+        with mock.patch.dict(job_build.cell_tools.LAYER_SCHEMA, overlays=8, pois=7, suggest=7):
             self.assertEqual(plan(no_contours, "2026-10-19", 10, 543, 361), ["overlays", "suggest"])
 
     def test_merge_refuses_mixing_cells_or_dates(self):
