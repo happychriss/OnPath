@@ -221,6 +221,13 @@ async function run(lang, viewport, shotPrefix) {
   const look = await page.evaluate(() => ({ range: window.__map.getPaintProperty('profile-range', 'line-color'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(look.range === '#1E3FAE' && look.rest === 0.35, `the day in route blue, the other days faded – no yellow (owner 2026-11-27 variant 3) (${JSON.stringify(look)})`);
+  // the space bar after the click keeps the day (owner 2026-11-27): the row keeps no focus to be clicked again
+  await page.keyboard.press('Space');
+  await page.waitForTimeout(300);
+  const kept = await page.evaluate(() => ({ sel: document.querySelectorAll('#tourOverview .today.sel').length,
+    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
+    rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
+  check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
   await page.click('#tourOverview .today[data-day="2"]'); // a second click deselects
   check(await page.evaluate(() => window.__map.getPaintProperty('planned-route', 'line-opacity')) === 1, 'no day selected: the whole route full again');
 

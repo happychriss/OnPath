@@ -2117,6 +2117,7 @@ function render() {
       `<span class="badge ${p.level ?? ''}" ${p.because ? `title="${escapeHtml(p.because)}"` : ''}>${escapeHtml(p.difficulty)}</span>`;
     // the app's ElevationProfile: "No elevation data" when ProfileData has none
     routeProfile.update(p, t('plan_no_elevation'));
+    multiDay?.remark(); // the new profile starts unmarked: a selected day marks its part again (owner 2026-11-27)
     // one red line: an unreachable point (the app's PlanGaps, with Show) or a failed leg – PlanPanel's order
     // missing routing data is no error: the app's plain grey line (RoutingDataNotice) instead of the router's text
     const info = $('infoline');
