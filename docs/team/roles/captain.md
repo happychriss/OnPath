@@ -3,7 +3,7 @@
 **Start:** the owner opens a cloud session and says „Du bist mein OnPath-Captain.“ Read this file, `CLAUDE.md`,
 `docs/team/owner-preferences.md`, `docs/team/roles/start.md`. Repos: `OnPath`, `onpath.private` (`add_repo` if missing).
 
-**What the captain is (since 2026-11-27):** the owner talks to the **coordinator** (the project chat of the Claude
+**What the captain is (since 2026-11-27):** the owner talks to the **project lead** (coordinator, `projektleiter.md`) (the project chat of the Claude
 project); the coordinator takes the conversations and hands work to the role threads. The captain is a thread of its
 own that **keeps the overview of who works on what** and tells the coordinator who a new task belongs to – see "Task
 board" below. Before that the captain was the owner's contact; the overview duty stays: (owner 2026-11-02: „da bin ich
