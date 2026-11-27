@@ -70,6 +70,8 @@ import com.onpath.app.recording.GpsStatus
 fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolean = false,
               /** The OnPath logo left of the scale (owner 2026-11-27, variant C – Plan only): a tap opens About OnPath; null = none. */
               onLogo: (() -> Unit)? = null,
+              /** Navigate: the map buttons sit this much higher than the scale, closer to the thumb (owner 2026-11-27). */
+              fabsLift: Dp = 0.dp,
               fabs: @Composable ColumnScope.() -> Unit) {
     Row(Modifier.fillMaxWidth().padding(start = 12.dp, end = 16.dp, bottom = 12.dp), verticalAlignment = Alignment.Bottom) {
         Column(Modifier.weight(1f).padding(end = 12.dp)) {
@@ -98,7 +100,7 @@ fun MapFooter(scale: Pair<String, Dp>?, onCredits: () -> Unit = {}, demo: Boolea
                         .background(Color(0xB3FFFFFF)).padding(horizontal = 5.dp, vertical = 3.dp))
             }
         }
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
+        Column(Modifier.padding(bottom = fabsLift), verticalArrangement = Arrangement.spacedBy(12.dp), horizontalAlignment = Alignment.End, content = fabs)
     }
 }
 

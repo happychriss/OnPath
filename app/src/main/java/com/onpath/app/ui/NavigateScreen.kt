@@ -379,7 +379,7 @@ fun NavigateOverlay(
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
-            ControlsRoom(topColumnDp, sliderDp) { footer() } // map controls: the column gives way to a short screen
+            ControlsRoom(topColumnDp, sliderDp + NAV_FABS_LIFT.value.toInt()) { footer() } // map controls: the column gives way to a short screen
             NavThumbCard(Modifier.onSizeChanged { sliderDp = with(density) { it.height.toDp().value.toInt() } }) { bottom ->
                 // a tour: Anhalten | Planen (paused: ▶ Weiter · Beenden · ✎); no tour: one big blue Planen – held while
                 // locked, plain inside the unlock window
@@ -430,6 +430,9 @@ fun NavigateOverlay(
 
 /** How long [NewPlanLine] stays (ms): long enough to read it and reach "Rückgängig" with gloves. */
 internal const val NEW_PLAN_LINE_MS = 8_000L
+
+/** Navigate's map buttons a little higher than the bottom card (owner 2026-11-27: „ein kleines Stück höher“). */
+internal val NAV_FABS_LIFT = 56.dp
 
 /** [NewPlanLine]'s right edge: clear of the map controls' column (16 dp margin + one [MAP_FAB] + 8 dp air). */
 internal val NEW_PLAN_LINE_END = 16.dp + MAP_FAB + 8.dp

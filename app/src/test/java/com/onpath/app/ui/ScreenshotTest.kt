@@ -84,7 +84,7 @@ class ScreenshotTest {
                        /** whole route: with a line (= the eye) unless a test says otherwise – the greying rule (MapControlsEnabled) */
                        fit: Boolean = eye,
                        plan: Boolean = false) =
-        MapFooter("500 m" to 64.dp) {
+        MapFooter("500 m" to 64.dp, fabsLift = NAV_FABS_LIFT) {
             MapControls(compass, showEye = eye, onPeek = {}, gps = gps, following = following, onLocate = {}, peeking = peeking,
                 onFitRoute = if (fit) ({}) else null, onSettings = if (large) ({}) else null, plan = plan)
         }
