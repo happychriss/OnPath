@@ -155,9 +155,10 @@ object RouteCost {
      */
     fun askText(ask: LongAsk, from: String?, to: String?): String {
         val km = ask.km.roundToInt().toString()
-        if (ask.beyond) return Txt.s(Res.string.nav_too_long_text, km)
         val leg = if (!from.isNullOrBlank() && !to.isNullOrBlank()) "$from → $to"
             else Txt.s(Res.string.nav_long_leg_points, ask.leg + 1, ask.leg + 2)
+        // owner 2026-11-27: too far – a closer destination; the browser only as a sentence (no button: on the phone it helps not)
+        if (ask.beyond) return Txt.s(Res.string.nav_too_long_text, leg, km)
         return Txt.s(Res.string.nav_long_leg_text, leg, km)
     }
 }

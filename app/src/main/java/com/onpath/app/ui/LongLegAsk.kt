@@ -53,12 +53,15 @@ internal object LongLegs {
      * taken back instead, so the tour keeps its line. True = the camera goes to the plan ([LongRouteCancelCamera]).
      */
     fun answer(yes: Boolean, planRun: PlanRunSlice, planEdit: PlanEditSlice, points: List<GeoPoint>, touring: Boolean): Boolean {
+        // „Zu weit für das Handy“ → OK (owner 2026-11-27): the far point is not set – the change is taken back, the map
+        // goes back to the plan / the position; no points left without a route over hundreds of km
+        val beyond = planRun.routeRun.longAskLeg?.beyond == true
         LongLegShown.leg = null
         val effects = planRun.routeEvent(RouteRun.Event.LongAnswer(yes, points))
         if (yes) { planRun.perform(effects); return false }
         // points kept unrouted: their maps load with the next edit that can be routed, or "Plan anyway"
         if (planRun.longRouteDeferred != null) Problems.trace("cells", "Long plan not routed: nothing was loaded for it yet")
-        if (touring) planRun.perform(effects) // [PlanEditState.cancelRun]
+        if (touring || beyond) planRun.perform(effects) // [PlanEditState.cancelRun]
         else planEdit.keepUnrouted(NotRouted.LONG)
         return true
     }
