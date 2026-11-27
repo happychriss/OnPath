@@ -284,8 +284,14 @@ class MultiDaySlice(
         return flow.following
     }
 
-    /** The plan is one day of a saved multi-day route: its uuid and the day (several days in a row: null) – the recorded tour keeps them. */
-    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.part.single }?.let { it.tour.uuid to it.part.first }
+    /**
+     * The plan is one day of a saved multi-day route, unedited since it was picked: its uuid and the day – the recorded tour keeps
+     * them. Null for several days in a row and after any edit of the day (review 2026-11-27 finding 3: the plan is no longer
+     * that day; an Undo back to exactly the day gives it back; the router's snap is no edit). A copy of the route ("Speichern
+     * als Kopie", a re-import) gets a new uuid: its days start unridden – on purpose.
+     */
+    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.part.single && it.unedited(waypoints.toList()) }
+        ?.let { it.tour.uuid to it.part.first }
 
     /** "‹ Alle Tage" (not during a tour): the whole tour – with the day's changes – is the plan again. */
     fun allDays() {
