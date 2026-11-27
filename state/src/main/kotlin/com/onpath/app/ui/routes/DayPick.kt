@@ -17,7 +17,9 @@ import com.onpath.app.routing.WaypointInsertion
  * ridden), and the day's stretch of the stored line ([fromLine]..[toLine]) for the day's own overview.
  */
 data class DayPickRow(val n: Int, val from: String?, val to: String?, val distanceM: Double, val ascentM: Double, val timeS: Double,
-                      val end: DayEndKind?, val riddenMs: Long?, val fromLine: Int, val toLine: Int)
+                      val end: DayEndKind?, val riddenMs: Long?, val fromLine: Int, val toLine: Int,
+                      /** The limits per day this day is above (the table's warn-yellow row, bold values). */
+                      val over: Set<com.onpath.app.routing.DayLimitKind> = emptySet())
 
 /**
  * The day sheet of a saved multi-day route: the route, its stored line (display only), the rows and the next day not yet ridden
@@ -78,7 +80,7 @@ object DayPick {
         val rows = days.days.mapIndexed { k, d ->
             val endLine = d.end?.lineIndex ?: Int.MAX_VALUE
             DayPickRow(d.number, nameAt(ends[k]), nameAt(ends[k + 1]), d.distanceM, d.ascentM, d.timeS, d.end?.kind, null,
-                startLine, endLine).also { startLine = d.end?.lineIndex ?: startLine }
+                startLine, endLine, d.over).also { startLine = d.end?.lineIndex ?: startLine }
         }
         val rode = ridden(t.uuid, tours, dayEnds(line, rows))
         return rows.map { it.copy(riddenMs = rode[it.n]) }
@@ -105,6 +107,14 @@ object DayPick {
         if (after != null && after <= count && after !in ridden) return after
         return (1..count).firstOrNull { it !in ridden }
     }
+
+    /**
+     * The rows as the planner's day table ([com.onpath.app.ui.DayTables], owner 2026-11-27): „Tag N“ + „von → nach“ (the
+     * shared [com.onpath.app.routing.DayRowText]), km · Σ km · ↑ m · time, the total row.
+     */
+    fun table(rows: List<DayPickRow>): com.onpath.app.ui.DayTableUi =
+        com.onpath.app.ui.DayTables.of(rows.map { com.onpath.app.ui.DayTables.day(it.n, it.distanceM, it.ascentM, it.timeS, it.end, it.over) },
+            rows.map { com.onpath.app.routing.DayRowText.places(it.from, it.to) })
 
     /** The saved multi-day route with [uuid] in My routes' list (planned, not in the bin); null = none. */
     fun route(uuid: String, tours: List<Tour>): Tour? =

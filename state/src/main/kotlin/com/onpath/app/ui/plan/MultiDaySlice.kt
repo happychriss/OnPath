@@ -407,7 +407,7 @@ class MultiDaySlice(
         }
         lookUpEndNames(ends.filterNotNull())
         return DaysUi(t.name, v.days.days.size, v.line, v.days.days.mapNotNull { d -> d.end?.let { (it.alongM / total).toFloat() to it.kind } },
-            rows, flow.selected)
+            rows, flow.selected, com.onpath.app.ui.DayTables.of(v.days.days, rows.map { it.places }), t.days.limits)
     }
 
     /** The followed day's head line ("Tag 4 von 6"); null when no day is followed. */
