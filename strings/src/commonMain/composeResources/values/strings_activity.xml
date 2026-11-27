@@ -27,4 +27,5 @@
     <string name="activity_mtb_button">MTB</string>
     <string name="activity_emtb_button">E-MTB</string>
     <string name="activity_hike_button">Hike</string>
+    <string name="activity_group_bike">Bike</string>
 </resources>

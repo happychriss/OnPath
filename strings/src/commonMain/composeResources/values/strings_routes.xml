@@ -154,4 +154,5 @@
     <string name="routes_restore_recent">“%1$s” is kept safe.</string>
     <string name="routes_restore_saved">“%1$s” is saved.</string>
     <string name="routes_restore_keep">Keep</string>
+    <string name="routes_sac_badge">T%1$d</string>
 </resources>

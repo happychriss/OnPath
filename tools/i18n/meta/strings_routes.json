@@ -684,5 +684,6 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 14
-  }
+  },
+  "routes_sac_badge": {"area": "Activity picker", "context": "The hiking level's badge in front of its card: SAC scale T1 … T5 (owner 2026-11-27 variant C)", "priority": 2, "max": 3, "confidence": "sicher"}
 }

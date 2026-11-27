@@ -4,6 +4,8 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
 import com.onpath.app.routing.Activity
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.fillMaxSize
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -32,11 +34,19 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
         val before = Locale.getDefault()
         Locale.setDefault(locale)
         try {
-            paparazzi.snapshot { OnPathTheme { ActivityDialog(current, onSelect = {}, onDismiss = {}, sac = 2) } }
+            // the sheet drawn in place at the bottom over a dimmed map (Paparazzi draws no dialog window)
+            paparazzi.snapshot { OnPathTheme {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF8A9187)),
+                    contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
+                    ActivityPickerContent(current, onSelect = {}, onDismiss = {}, sac = 2, onSac = {})
+                }
+            } }
         } finally { Locale.setDefault(before) }
     }
 
     @Test fun hikeT2German() = shot(Locale.GERMANY, Activity.HIKE)
+    /** Variant C (owner 2026-11-27): the bike group's cards. */
+    @Test fun bikeGerman() = shot(Locale.GERMANY, Activity.BIKE_TOURING)
 }
 
 /** Galaxy S10: 1080 × 2280 px at 420 dpi ≈ 411 dp wide. */
@@ -62,13 +72,17 @@ class SacLineRuleTest {
         assertNull("no level chosen (another activity): no line", SacScale.lineLevel(0))
     }
 
-    /** Owner 2026-11-26 night: every level is a row with its name and one short line, readable before the tap. */
-    @Test fun theLevelRowsShowTheirWordsAndATapKeepsThePickerOpen() {
+    /**
+     * Owner 2026-11-26 night: every level is a row with its name and one short line, readable before the tap (Navigate's
+     * activity sheet keeps [SacChips]); 2026-11-27 variant C: the picker's level cards show name + line too, and one tap
+     * chooses Hike with that level and closes – the words were read before it.
+     */
+    @Test fun theLevelRowsShowTheirWordsBeforeTheTap() {
         val src = File("src/main/java/com/onpath/app/ui/Screens.kt").readText()
         val chips = src.substringAfter("internal fun SacChips(").substringBefore("\n}\n")
         assertTrue(chips, chips.contains("Res.string.routes_sac_row") && chips.contains("Text(l.short"))
-        val dialog = src.substringAfter("fun ActivityDialog(").substringBefore("\n}\n")
-        val chipTap = dialog.substringAfter("SacChips(").substringBefore("\n")
-        assertTrue(chipTap, !chipTap.contains("onDismiss()"))
+        val picker = File("src/main/java/com/onpath/app/ui/ActivityPicker.kt").readText()
+        assertTrue(picker.contains("name = l.name, line = l.short"))
+        assertTrue(picker.contains("onSac = { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }"))
     }
 }

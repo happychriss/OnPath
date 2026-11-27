@@ -193,5 +193,13 @@
     "max": 16,
     "confidence": "sicher",
     "decided": "Owner 2026-10-26"
+  },
+  "activity_group_bike": {
+    "area": "Activity picker",
+    "context": "Left half of the switch at the top of the activity picker: all bike activities (the right half is the Hike name) – owner 2026-11-27 variant C",
+    "priority": 1,
+    "max": 10,
+    "confidence": "sicher",
+    "decided": "Owner 2026-11-27"
   }
 }
