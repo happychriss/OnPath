@@ -220,7 +220,7 @@ class SettingsPagesTest {
         // tester review 2026-11-07: Settings hides them unless told otherwise (a caller that forgets the flag shows nothing)
         val screen = File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
         assertTrue(screen.contains("    devTools: Boolean = false,\n"))
-        assertTrue(screen.contains("private fun AboutSection(version: String, devTools: Boolean = false,"))
+        assertTrue(File("src/main/java/com/onpath/app/ui/SettingsAboutPages.kt").readText().contains("internal fun AboutSection(version: String, devTools: Boolean = false,"))
         assertTrue(File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.settingsSlice.devToolsShown,"))
     }
 

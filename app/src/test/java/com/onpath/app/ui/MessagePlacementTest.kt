@@ -36,7 +36,7 @@ class MessagePlacementTest {
         assertEquals(4 + 56 + 4 + 48, MessagePlacement.ROUTES_HEADER_DP)
         val settings = src("SettingsScreen.kt")
         assertTrue(settings.contains("Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {\n" +
-            "                IconButton(onClick = { if (page != null) onPage(null) else onBack() }, Modifier.size(56.dp))"))
+            "                IconButton(onClick = { if (page != null) onPage(page.up) else onBack() }, Modifier.size(56.dp))"))
         assertEquals(4 + 56 + 4, MessagePlacement.SETTINGS_HEADER_DP)
     }
 

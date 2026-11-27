@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -63,5 +64,28 @@ internal fun TourTimesText(t: com.onpath.app.time.TourTimes) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(t.summaryLine ?: t.movingLine, style = MaterialTheme.typography.bodyMedium)
         t.planLine?.let { Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+    }
+}
+
+/**
+ * Plan → "Marked trails" (owner 2026-11-27): Weniger · Standard · Mehr as one segmented row under a line that says what
+ * it does; stored in [AppSettings.markedTrails] (routing follows it in a later step).
+ */
+@Composable
+internal fun MarkedTrailsCard(settings: AppSettings, onChange: (AppSettings) -> Unit) = SettingsCard {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(str(Res.string.settings_trails_sub), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val levels = listOf(AppSettings.MARKED_TRAILS_LESS, AppSettings.MARKED_TRAILS_STANDARD, AppSettings.MARKED_TRAILS_MORE)
+        val chosen = AppSettings.markedTrailsOf(settings.markedTrails)
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            levels.forEachIndexed { i, l ->
+                SegmentedButton(
+                    selected = l == chosen, onClick = { if (l != chosen) onChange(settings.copy(markedTrails = l)) },
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, levels.size),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(SettingsSummary.markedTrailsLabel(l), style = MaterialTheme.typography.bodyMedium, maxLines = 1) }
+            }
+        }
     }
 }
