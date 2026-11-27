@@ -52,6 +52,7 @@ for (const t of tiers) check(t.minzoom === 10 && t.at10 >= 1.8, `${t.id}: from z
 check(!v['greenway-touring'] && !v['bike-oneway-streets'] && !v['surface-loose-path'] && !v['routes-bike'], 'Hike T2: no bike layers');
 
 await page.click('#activityChip');
+await page.click('#activityMenu [data-group=bike]'); // variant C: the switch shows the bikes
 await page.click('#activityMenu [data-act=BIKE_TOURING]');
 await looked('BIKE_TOURING', 2);
 v = await vis(IDS);
@@ -64,8 +65,8 @@ const bikeview = await page.evaluate(() => window.__map.getStyle().layers.filter
 check(bikeview, 'Bike: every "-bikeview" layer visible');
 
 await page.click('#activityChip');
-await page.click('#activityMenu [data-sac="4"]');
-await page.click('#actDone'); // a T chip keeps the list open (app 2a54f2e4) – „Fertig“ closes it
+await page.click('#activityMenu [data-group=hike]');
+await page.click('#activityMenu [data-sac="4"]'); // one tap chooses and closes (the app's variant C)
 await looked('HIKE', 4);
 v = await vis(IDS);
 check(v['greenway-foot'] && v['routes-hike'] && !v['greenway-touring'] && !v['bike-oneway-streets'], 'Hike T4: the hiking look again');
@@ -75,6 +76,7 @@ check(f[1].includes('[">",["coalesce",["get","sac"],0],4]'), `Hike T4: routes-hi
 
 // remembered Bike: the look comes with the first load
 await page.click('#activityChip');
+await page.click('#activityMenu [data-group=bike]');
 await page.click('#activityMenu [data-act=MTB]');
 await looked('MTB', 4);
 await page.reload();

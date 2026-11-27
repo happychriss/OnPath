@@ -273,6 +273,7 @@ async function run(lang, viewport, shotPrefix) {
   check(dv.all >= 40 && dv.pos.replace(/\s/g, '') === '2/3' && new RegExp(lang === 'de' ? 'Ort zu Tag 2 hinzufügen' : 'day 2').test(dv.add),
     `the day view: a large „‹ ${lang === 'de' ? 'Alle Tage' : 'All days'}“, ‹ 2/3 ›, „add a place to day 2“ (${JSON.stringify(dv)})`);
   check(dv.list && dv.shown >= 1 && dv.shown <= dv.pts, `the day's own points in the list (${dv.shown} of ${dv.pts})`);
+  await shot('3e-day-view');
   await page.click('#toNext'); await page.waitForTimeout(200);
   check(await page.locator('#tourOverview .dayview[data-day="3"]').count() === 1, '› goes to day 3');
   await page.click('#toPrev'); await page.waitForTimeout(200);
@@ -458,11 +459,11 @@ async function run(lang, viewport, shotPrefix) {
   await page.waitForTimeout(1500);
   await waitView(() => (window.__days.lastView?.days ?? 0) > 2, 'days for 15 min a day');
   const footDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
-  await page.click('#activityChip'); await page.click('#activityMenu [data-act=BIKE_TOURING]');
-  await page.waitForFunction((n) => (window.__days.lastView?.days ?? n) < n, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for fewer days on the bike'));
+  await page.click('#activityChip'); await page.click('#activityMenu [data-group=bike]'); await shot('3f-activity-c'); await page.click('#activityMenu [data-act=BIKE_TOURING]');
+  await page.waitForFunction((n) => { const d = window.__days.lastView?.days ?? n; return d > 0 && d < n; }, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for fewer days on the bike'));
   const bikeDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
   check(bikeDays < footDays, `another activity: the days follow the limits (on foot ${footDays}, by bike ${bikeDays})`);
-  await page.click('#activityChip'); await page.click('#activityMenu [data-act=HIKE]');
+  await page.click('#activityChip'); await page.click('#activityMenu [data-group=hike]'); await page.click('#activityMenu [data-sac="2"]');
   await page.waitForFunction((n) => (window.__days.lastView?.days ?? 0) === n, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for the foot days again'));
   check(await page.evaluate(() => window.__days.lastView?.days) === footDays, `back on foot: ${footDays} days again`);
   await page.click('#toHours');

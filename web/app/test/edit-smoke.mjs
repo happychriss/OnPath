@@ -104,6 +104,7 @@ await planned(null).catch(() => {}); // a re-plan with Standard again (the same 
 
 // activity switch re-plans
 await page.click('#activityChip');
+await page.click('#activityMenu [data-group=bike]'); // variant C: the switch shows the bikes
 await page.click('[data-act=BIKE_TOURING]');
 check(await page.isHidden('#activityMenu'), 'picking an activity closes the drop-down (no Done)');
 await planned(hike);

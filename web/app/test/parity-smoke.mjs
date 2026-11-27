@@ -177,18 +177,28 @@ await page.waitForSelector('#activityMenu #paceRow');
 await page.waitForTimeout(100);
 const am = await page.locator('#activityMenu').boundingBox(), chip = await page.locator('#activityChip').boundingBox();
 check(await page.isVisible('#activityMenu') && Math.abs(am.y - (chip.y + chip.height)) < 12 && Math.abs(am.x - chip.x) < 12, 'activity list opens under the chip (no dialog)');
+// variant C (the app's ActivityPicker, owner 2026-11-27): „Aktivität“, a switch Rad | Wandern, only that group's cards
+const pick = await page.evaluate(() => ({ sw: [...document.querySelectorAll('#activityMenu .actswitch button')].map((b) => b.dataset.group + (b.classList.contains('on') ? '*' : '')).join('|'),
+  cards: [...document.querySelectorAll('#activityMenu .actcard')].map((c) => c.dataset.sac ?? c.dataset.act).join('|') }));
+check(pick.sw === 'bike|hike*' && pick.cards === '1|2|3|4|5', `on foot: the switch on Wandern, the five T levels as cards (${JSON.stringify(pick)})`);
+await page.click('#activityMenu [data-group=bike]');
+const bikes = await page.$$eval('#activityMenu .actcard', (cs) => cs.map((c) => c.dataset.act).join('|'));
+check(bikes.split('|').length === 5 && !bikes.includes('HIKE') && await page.isVisible('#activityMenu'), `the switch shows the five bikes, nothing picked yet (${bikes})`);
 await page.click('#activityMenu [data-act=BIKE_TOURING]');
 check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).includes('Bike'), 'picking Bike closes the list at once');
 await planned();
 await page.click('#activityChip');
+// the list opens on the bikes now (Bike chosen); the switch shows the T levels
+check(await page.$eval('#activityMenu .actswitch [data-group=bike]', (b) => b.classList.contains('on')), 'Bike chosen: the list opens on the bikes');
+await page.click('#activityMenu [data-group=hike]');
 await page.click('#activityMenu [data-sac="4"]');
-// app 2a54f2e4 (owner 2026-11-08, father's feedback): a T chip picks Hike T4 at once, the list stays open with the
-// T4 row marked (since app 2026-11-26 night five rows „Bergwandern (T4)“ + a short line) and the way out says „Done“
-check(await page.isVisible('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4')
-  && /\(T4\)/.test(await page.textContent('#activityMenu [data-sac="4"].on b')) && (await page.textContent('#actDone')).trim() === 'Done',
-  'a T level picks Hike T4 at once, the list stays open with its row marked and "Done"');
-await page.click('#actDone');
-check(await page.isHidden('#activityMenu'), '"Done" closes the list');
+// variant C (the app's ActivityPicker, owner 2026-11-27): ONE tap on a T card picks Hike T4 and closes
+check(await page.isHidden('#activityMenu') && (await page.textContent('#activityChip')).replace(/\s+/g, ' ').includes('Hike · T4'),
+  'a T level card picks Hike T4 and closes the list');
+await page.click('#activityChip');
+check(await page.$eval('#activityMenu [data-sac="4"]', (c) => c.classList.contains('on') && c.querySelector('.tbadge')?.textContent === 'T4'),
+  'Hike T4: its card is marked (T badge, green edge)');
+await page.keyboard.press('Escape');
 
 // 6c. pace (the app's Settings → Pace) in the same list: a setting – the list stays open, the sheet's time follows
 // the sheet shows the engine's time for these points + Hike T4 (the plans of the two picks above may still arrive)
@@ -308,6 +318,7 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
     const stored = () => page.evaluate(async () => (await window.__sync.list()).find((p) => p.title === 'Test loop').plan);
     const plan0 = await stored();
     await page.click('#activityChip');
+    await page.click('#activityMenu [data-group=bike]');
     await page.click(`#activityMenu [data-act=${was.act === 'MTB' ? 'BIKE_TOURING' : 'MTB'}]`);
     await page.waitForTimeout(800); // renderSaved runs after the change (an engine round trip)
     const head = await saveHead(), line = await page.textContent('#savedLine');
@@ -322,8 +333,8 @@ if (await page.isEnabled('#undo')) { // a change → Save dark; Save overwrites;
     check((await stored()) !== plan0 && (await saveHead()).state === 'done' && JSON.stringify(await savedTitles()) === '["Test loop"]',
       'a click on Save still saves the route with its new activity (overwrites "Test loop", as the app)');
     await page.click('#activityChip');
+    await page.click(`#activityMenu [data-group=${was.act === 'HIKE' ? 'hike' : 'bike'}]`);
     await page.click(was.act === 'HIKE' ? `#activityMenu [data-sac="${was.sac}"]` : `#activityMenu [data-act=${was.act}]`);
-    if (await page.isVisible('#activityMenu')) await page.click('#actDone');
     await page.waitForTimeout(500);
     await page.click('#menuSavePlan'); await answerSave(null);
     for (let i = 0; i < 40 && (await stored()) !== plan0; i++) await page.waitForTimeout(250);

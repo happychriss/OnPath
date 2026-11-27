@@ -44,8 +44,8 @@ export class ActivityPicker {
   private box: HTMLDivElement;
   private act: Activity = 'HIKE';
   private sac = 2;
-  /** A T chip was tapped since the list opened: it stays open and offers „Fertig“. */
-  private levelPicked = false;
+  /** The group the switch shows: Wandern (true) or Rad (false) – opens on the current activity's group. */
+  private hike = true;
   private anchor: HTMLElement | null = null;
 
   private pace: PaceChoices | null = null;
@@ -78,10 +78,21 @@ export class ActivityPicker {
         this.trailsHost.pick(l).catch((err) => console.warn('marked trails not set', err));
         return;
       }
+      const g = t.closest<HTMLElement>('[data-group]')?.dataset.group;
+      if (g) {
+        // the switch only shows the other group (the app's GroupSwitch) – nothing is picked yet
+        this.hike = g === 'hike';
+        const pace = this.pace;
+        this.draw();
+        if (pace) { this.pace = pace; this.drawPace(); }
+        this.place();
+        this.box.querySelector<HTMLElement>(`[data-group="${g}"]`)?.focus();
+        return;
+      }
       const s = t.closest<HTMLElement>('[data-sac]')?.dataset.sac;
       const a = t.closest<HTMLElement>('[data-act]')?.dataset.act as Activity | undefined;
-      if (t.closest('#actDone')) { this.close(); this.anchor?.focus(); return; }
-      if (s) this.pickLevel(Number(s));
+      // ONE tap on a card chooses and closes (the app's variant C, owner 2026-11-05 / 2026-11-27): a T level = Hike with it
+      if (s) this.pick('HIKE', Number(s));
       else if (a) this.pick(a, this.sac);
     });
     this.box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { this.close(); this.anchor?.focus(); } });
@@ -100,7 +111,7 @@ export class ActivityPicker {
   toggle(anchor: HTMLElement, a: Activity, sac: number) {
     if (this.isOpen) { this.close(); return; }
     this.anchor = anchor;
-    this.act = a; this.sac = sac; this.levelPicked = false;
+    this.act = a; this.sac = sac; this.hike = a === 'HIKE';
     this.draw();
     this.loadPace(a);
     document.body.append(this.box);
@@ -135,21 +146,6 @@ export class ActivityPicker {
   }
 
   private pick(a: Activity, sac: number) { this.close(); this.onPick(a, sac); }
-
-  /**
-   * A T chip (app 2a54f2e4, owner 2026-11-08, father's feedback): Hike with that level at once (the plan routes again),
-   * but the list stays open so the level's line „T2 · Bergwandern: …“ can be read; the way out says „Fertig“.
-   */
-  private pickLevel(level: number) {
-    const was = this.act;
-    this.act = 'HIKE'; this.sac = level; this.levelPicked = true;
-    this.onPick('HIKE', level);
-    const pace = this.pace;
-    this.draw();
-    if (was === 'HIKE' && pace) { this.pace = pace; this.drawPace(); } else this.loadPace('HIKE');
-    this.place(); // the line and „Fertig“ make the list taller
-    this.box.querySelector<HTMLElement>(`[data-sac="${level}"]`)?.focus();
-  }
 
   /** The pace section of the current activity's group (Hiking, or Cycling · <bike>), from the engine. */
   private loadPace(a: Activity) {
@@ -186,20 +182,34 @@ export class ActivityPicker {
       <div class="muted small" id="paceMeaning">${esc(on.label)} · ${esc(on.meaning)}</div>`; // no intro (the app's PaceSection, owner 2026-11-27)
   }
 
+  /**
+   * The app's activity picker, variant C (owner 2026-11-27, ui/ActivityPicker.kt on feat/next-round-2): „Aktivität“, a
+   * switch Rad | Wandern, under it only that group's cards – the five bikes (icon, name, one line) or the five hiking
+   * levels (T badge, name, one short line, read before the click); the chosen card has a green edge on light green.
+   * Pace and „Wanderrouten / Radrouten folgen“ stay below (the planner keeps them in the same list).
+   */
   private draw() {
     this.pace = null;
-    this.box.innerHTML = this.rows.map((r) => {
-      const on = r.key === this.act;
-      const row = `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="${on ? 'on' : ''}">
+    const hikeRow = this.row('HIKE');
+    const half = (g: 'bike' | 'hike', label: string) => {
+      const on = (g === 'hike') === this.hike;
+      return `<button data-group="${g}" role="tab" aria-selected="${on}" class="${on ? 'on' : ''}">${activityIcon(g === 'hike' ? 'HIKE' : 'BIKE_TOURING')}<span>${esc(label)}</span></button>`;
+    };
+    const cards = this.hike
+      ? [1, 2, 3, 4, 5].map((n) => {
+        const [name, text, short] = SAC[n - 1];
+        const sel = this.act === 'HIKE' && n === this.sac;
+        return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="actcard${sel ? ' on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}" aria-label="${esc(t('routes_sac_button_desc', n, name))}">
+          <span class="tbadge">T${n}</span><span class="txt"><b>${esc(name)}</b><span class="muted small">${esc(short)}</span></span></button>`;
+      }).join('')
+      : this.rows.filter((r) => r.key !== 'HIKE').map((r) => {
+        const on = r.key === this.act;
+        return `<button data-act="${r.key}" role="menuitemradio" aria-checked="${on}" class="actcard${on ? ' on' : ''}">
           ${activityIcon(r.key)}<span class="txt"><b>${esc(r.label)}</b><span class="muted small">${esc(r.line)}</span></span></button>`;
-      if (r.key !== 'HIKE') return row;
-      // five rows „Bergwandern (T2)“ over one short line, read BEFORE the click (the app's SacChips, owner 2026-11-26 night)
-      return row + `<div id="sacRow" class="sacrow" role="group" aria-label="${esc(t('routes_sac_title'))}">${[1, 2, 3, 4, 5].map((n) => {
-            const [name, text, short] = SAC[n - 1];
-            const sel = this.act === 'HIKE' && n === this.sac;
-            return `<button data-sac="${n}" role="menuitemradio" aria-checked="${sel}" class="sacpick${sel ? ' on' : ''}" title="T${n} · ${esc(name)} – ${esc(text)}"><b>${esc(t('routes_sac_row', name, n))}</b><span class="muted small">${esc(short)}</span></button>`;
-          }).join('')}</div>`;
-    }).join('') + (this.levelPicked ? `<div class="actdone"><button id="actDone" class="textbtn">${esc(t('common_done'))}</button></div>` : '');
+      }).join('');
+    this.box.innerHTML = `<div class="acthead"><b>${esc(t('routes_activity_title'))}</b></div>
+      <div class="actswitch" role="tablist">${half('bike', t('web_activity_group_bike'))}${half('hike', hikeRow?.label ?? 'Hike')}</div>
+      <div class="actcards">${cards}</div>`;
     this.drawTrails();
   }
 }

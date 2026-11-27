@@ -265,6 +265,8 @@
     <string name="web_phone_menu">Handy-Verbindung …</string>
     <string name="web_days_end_of_day">Ende Tag %1$d von %2$d</string>
     <string name="web_days_chip_hours">%1$s h / Tag</string>
+    <!-- the activity list's switch Rad | Wandern (the app's activity_group_bike, variant C; until that key is on main) -->
+    <string name="web_activity_group_bike">Rad</string>
     <string name="web_days_chip_ascent">%1$s m ↑ / Tag</string>
     <string name="web_days_chip_add_limit">+ Tageslimit</string>
 </resources>

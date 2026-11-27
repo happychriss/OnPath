@@ -49,8 +49,8 @@ check(await page.isHidden('#undoPill') && await page.isDisabled('#undo'), 'snapp
 await settled();
 
 // planned again (another T level and back): the moved points stay where they are
-await page.click('#activityChip'); await page.click('#activityMenu [data-sac="4"]'); await page.click('#actDone'); await settled();
-await page.click('#activityChip'); await page.click('#activityMenu [data-sac="3"]'); await page.click('#actDone');
+await page.click('#activityChip'); await page.click('#activityMenu [data-sac="4"]'); await settled(); // one tap chooses and closes (variant C)
+await page.click('#activityChip'); await page.click('#activityMenu [data-sac="3"]');
 const h2 = await settled();
 const p2 = await planOf();
 const again = Math.max(...p2.points.map((q, i) => metres(q, p1.points[i])));
