@@ -187,8 +187,7 @@
     <string name="settings_page_plan">Planen</string>
     <string name="settings_page_backup_sync">Sicherung &amp; Browser</string>
     <string name="settings_sum_plan">Tempo %1$s · markierte Wege %2$s</string>
-    <string name="settings_trails_title">Markierte Wege</string>
-    <string name="settings_trails_sub">Wie stark Routen markierten Wander- und Radwegen folgen</string>
+    <string name="settings_trails_title">Markierten Wegen folgen</string>
     <string name="settings_trails_less">Weniger</string>
     <string name="settings_trails_standard">Standard</string>
     <string name="settings_trails_more">Mehr</string>
@@ -198,4 +197,6 @@
     <string name="settings_sum_browser_on">Browser an</string>
     <string name="settings_sum_browser_off">Browser aus</string>
     <string name="settings_sum_backed_up">Gesichert %1$s</string>
+    <string name="settings_page_legal">Rechtliches &amp; Quellen</string>
+    <string name="settings_sum_legal">Website, Impressum, Quellen, Lizenzen</string>
 </resources>

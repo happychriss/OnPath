@@ -20,6 +20,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
+import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -148,6 +149,26 @@ internal fun <T> ChoiceRow(title: String, sub: String?, options: List<Choice<T>>
     }
     }
     if (open) ChoiceSheet(title, options, selected, onPick = { open = false; if (it != selected) onPick(it) }, onDismiss = { open = false })
+}
+
+/**
+ * A short choice in place (owner 2026-11-27, Material 3 segmented buttons): [title] (optional) over one row of 2–3
+ * options; one tap chooses, no sheet. For choices whose words fit side by side (Aus · Vibration · Stimme).
+ */
+@Composable
+internal fun <T> SegmentedChoiceRow(title: String?, options: List<Choice<T>>, selected: T, onPick: (T) -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp)) {
+        if (title != null) Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(bottom = 8.dp))
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            options.forEachIndexed { i, o ->
+                SegmentedButton(
+                    selected = o.value == selected, onClick = { if (o.value != selected) onPick(o.value) },
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, options.size),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(o.label, style = MaterialTheme.typography.bodyMedium, maxLines = 1) }
+            }
+        }
+    }
 }
 
 /**

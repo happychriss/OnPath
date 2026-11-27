@@ -9,7 +9,7 @@ import org.jetbrains.compose.resources.StringResource
  *
  * The older topics keep their names so every caller that opens one directly keeps working:
  * - a **sub page** has a [parent] and opens as its own page; back returns to the parent (Map → Points of interest,
- *   Map → Offline maps, Navigation → Phone setup, About → Diagnostics);
+ *   Map → Offline maps, Navigation → Phone setup, About → Diagnostics, About → Legal & credits);
  * - an **alias** shows its [landing] page, which holds it as a section (Pace → Plan, Backup / Browser sync → Backup &
  *   browser, Updates → About); back from it returns to the list.
  */
@@ -31,7 +31,9 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     /** "Über OnPath": version (7 taps → developer tools), update check, Diagnostics row, links, credits, licences. */
     ABOUT(Res.string.settings_page_about, app = true),
     UPDATES(Res.string.settings_page_updates, app = true),
-    DIAGNOSTICS(Res.string.settings_page_diagnostics, app = true);
+    DIAGNOSTICS(Res.string.settings_page_diagnostics, app = true),
+    /** "Rechtliches & Quellen": website, contact, privacy notice, legal notice, source, credits, licences. */
+    LEGAL(Res.string.settings_page_legal, app = true);
 
     /** Topic name in the app's language (strings_settings.xml). */
     val title: String get() = Txt.s(titleRes)
@@ -48,7 +50,7 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     val parent: SettingsPage? get() = when (this) {
         POI, OFFLINE_MAPS -> MAP
         PHONE -> NAVIGATION
-        DIAGNOSTICS -> ABOUT
+        DIAGNOSTICS, LEGAL -> ABOUT
         else -> null
     }
 

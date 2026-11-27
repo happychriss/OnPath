@@ -188,8 +188,7 @@
     <string name="settings_page_plan">Plan</string>
     <string name="settings_page_backup_sync">Backup &amp; browser</string>
     <string name="settings_sum_plan">Pace %1$s · marked trails %2$s</string>
-    <string name="settings_trails_title">Marked trails</string>
-    <string name="settings_trails_sub">How closely routes follow marked hiking and cycling trails</string>
+    <string name="settings_trails_title">Follow marked trails</string>
     <string name="settings_trails_less">Less</string>
     <string name="settings_trails_standard">Standard</string>
     <string name="settings_trails_more">More</string>
@@ -199,4 +198,6 @@
     <string name="settings_sum_browser_on">browser on</string>
     <string name="settings_sum_browser_off">browser off</string>
     <string name="settings_sum_backed_up">Backed up %1$s</string>
+    <string name="settings_page_legal">Legal &amp; credits</string>
+    <string name="settings_sum_legal">Website, legal notice, credits, licenses</string>
 </resources>

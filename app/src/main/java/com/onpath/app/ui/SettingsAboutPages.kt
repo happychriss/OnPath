@@ -97,7 +97,8 @@ val PRIVACY_FLOWS: List<PrivacyFlow> get() = listOfNotNull(
  * "© OpenStreetMap" opens this page) and the licences.
  */
 @Composable
-internal fun AboutSection(version: String, devTools: Boolean = false, onUnlockDevTools: () -> Unit = {}) {
+internal fun AboutSection(version: String, devTools: Boolean = false, onUnlockDevTools: () -> Unit = {},
+                          update: @Composable () -> Unit = {}) {
     var taps by remember { mutableStateOf(0) }
     Section(SettingsPage.ABOUT.title) {
         Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -119,9 +120,8 @@ internal fun AboutSection(version: String, devTools: Boolean = false, onUnlockDe
                     })
             if (devTools && taps > 0) Text(str(Res.string.settings_about_devtools_on), style = MaterialTheme.typography.bodySmall,
                 color = OnPathColors.Green)
-            Text(str(Res.string.settings_about_licence), style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(bottom = 4.dp))
         }
+        update() // the update state and its one button, in the same card (owner 2026-11-27)
     }
 }
 

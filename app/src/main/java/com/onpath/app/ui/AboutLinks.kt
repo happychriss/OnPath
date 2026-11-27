@@ -86,19 +86,25 @@ object OnPathLinks {
     }
 }
 
-/** About → the links card under version and licence: help, website, contact, privacy notice, legal notice, source. */
+/** About OnPath → "Hilfe & erste Schritte ↗", the first row under the version card. */
 @Composable
-internal fun AboutLinksSection() {
+internal fun HelpLinkRow() {
     val context = LocalContext.current
     val help = OnPathLinks.help()
+    LinkRow(Icons.AutoMirrored.Outlined.HelpOutline, str(Res.string.settings_link_help), OnPathLinks.shown(help)) {
+        OnPathLinks.open(context, help)
+    }
+}
+
+/** About OnPath → Legal & credits: website, contact, privacy notice, legal notice, source, the licence line. */
+@Composable
+internal fun LegalLinksSection() {
+    val context = LocalContext.current
     val site = OnPathLinks.website()
     val privacy = OnPathLinks.privacy()
     val legal = OnPathLinks.legal()
     var copied by remember { mutableStateOf(false) }
     Section(str(Res.string.settings_links)) {
-        LinkRow(Icons.AutoMirrored.Outlined.HelpOutline, str(Res.string.settings_link_help), OnPathLinks.shown(help)) {
-            OnPathLinks.open(context, help)
-        }
         LinkRow(Icons.Outlined.Language, str(Res.string.settings_link_website), OnPathLinks.shown(site)) {
             OnPathLinks.open(context, site)
         }
@@ -116,6 +122,8 @@ internal fun AboutLinksSection() {
         LinkRow(Icons.Outlined.Code, str(Res.string.settings_link_source), OnPathLinks.shown(OnPathLinks.SOURCE)) {
             OnPathLinks.open(context, OnPathLinks.SOURCE)
         }
+        Text(str(Res.string.settings_about_licence), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp))
     }
 }
 

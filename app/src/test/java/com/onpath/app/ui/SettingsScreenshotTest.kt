@@ -154,19 +154,25 @@ class SettingsScreenshotTest {
                 lengthM = 12_600.0, ended = false), "planned route"))
         }
     }
-    /** About, whole page: logo, version, licence, the website links (owner 2026-11-08), credits, Licences closed. */
-    @Test fun about() = aboutTall(3400)
+    /** About OnPath (owner 2026-11-27, slimmed): logo, version + update in one card; Help, Diagnostics, Legal & credits. */
+    @Test fun about() = aboutTall(2400)
     /** [fontScale]: the large-font twin sets it again (a new config would drop it). */
     fun aboutTall(height: Int, fontScale: Float = 1f) {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = height, xdpi = 428, ydpi = 428, density = Density.create(420), fontScale = fontScale))
         paparazzi.snapshot { Screen(SettingsPage.ABOUT) }
     }
-    /** About → Licences open (A-020): the ODbL line, MapLibre, BRouter (onpath1), glyphs, icons, the libraries. */
+    /** About → Legal & credits (owner 2026-11-27): website, contact, privacy notice, legal notice, source, credits, licences. */
+    fun legal() {
+        paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
+            screenWidth = 1024, screenHeight = 3000, xdpi = 428, ydpi = 428, density = Density.create(420)))
+        paparazzi.snapshot { Screen(SettingsPage.LEGAL) }
+    }
+    /** About → Legal & credits → Licences open (A-020): the ODbL line, MapLibre, BRouter (onpath1), glyphs, icons, the libraries. */
     fun aboutLicences() {
         paparazzi.unsafeUpdateConfig(deviceConfig = DeviceConfig.PIXEL_5.copy(
             screenWidth = 1024, screenHeight = 5200, xdpi = 428, ydpi = 428, density = Density.create(420)))
-        paparazzi.snapshot { Screen(SettingsPage.ABOUT, licencesOpen = true) }
+        paparazzi.snapshot { Screen(SettingsPage.LEGAL, licencesOpen = true) }
     }
     /** Privacy (A-020) in full, down to the website link: device backup, IP line, update check, search, Google short link, address service. */
     fun privacyFull() {

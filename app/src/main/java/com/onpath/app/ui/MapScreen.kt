@@ -168,7 +168,7 @@ fun MapScreen(
     // Navigate: scale, © and the controls above the slider as before. Plan (owner 2026-11-06, onpath.private#43): scale
     // and © stay on the sheet's edge, the controls stand at one fixed place (PlanControlsLayer in PlanMode)
     val footer = @Composable { mode: AppMode ->
-        MapFooter(cam.scale, onCredits = { vm.settingsSlice.openSettings(SettingsPage.ABOUT) }, demo = demoOn) {
+        MapFooter(cam.scale, onCredits = { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, demo = demoOn) {
             if (mode == AppMode.NAVIGATE) controls(mode)
         }
     }

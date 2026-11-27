@@ -58,11 +58,15 @@ fun UpdateDownloadingCard(state: UpdateState, modifier: Modifier = Modifier) {
     }
 }
 
-/** "Updates" section of the Settings page. */
+/**
+ * The update check: installed version, state, the one button, where updates come from. [compact] (About OnPath's card,
+ * owner 2026-11-27): the version is already above it – only the state and the button.
+ */
 @Composable
-fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: () -> Unit, onInstall: () -> Unit) {
+fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: () -> Unit, onInstall: () -> Unit,
+                         compact: Boolean = false) {
     Column(Modifier.padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(str(Res.string.settings_upd_installed, currentVersion), style = MaterialTheme.typography.bodyMedium)
+        if (!compact) Text(str(Res.string.settings_upd_installed, currentVersion), style = MaterialTheme.typography.bodyMedium)
         when (state) {
             UpdateState.Idle -> {}
             UpdateState.Checking -> Text(str(Res.string.settings_upd_checking), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -90,7 +94,7 @@ fun UpdateSectionContent(state: UpdateState, currentVersion: String, onCheck: ()
                 Text(str(Res.string.settings_upd_check))
             }
         }
-        Text(str(Res.string.settings_upd_source),
+        if (!compact) Text(str(Res.string.settings_upd_source),
             style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }

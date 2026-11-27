@@ -172,4 +172,5 @@ class GermanScreenshotTest {
     @Test fun settingsPrivacyFull() = borrow(SettingsScreenshotTest()).privacyFull()
     @Test fun settingsAbout() = borrow(SettingsScreenshotTest()).about()
     @Test fun settingsAboutLicences() = borrow(SettingsScreenshotTest()).aboutLicences()
+    @Test fun settingsLegal() = borrow(SettingsScreenshotTest()).legal()
 }

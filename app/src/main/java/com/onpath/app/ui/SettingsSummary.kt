@@ -187,6 +187,9 @@ object SettingsSummary {
 
     val about: Summary get() = Summary(Txt.s(Res.string.settings_sum_about))
 
+    /** Legal & credits: "Website, Impressum, Quellen, Lizenzen". */
+    val legal: Summary get() = Summary(Txt.s(Res.string.settings_sum_legal))
+
     /** "today 18:40", "yesterday 09:12", "21 Oct 18:40". */
     fun whenText(ms: Long, now: Long, zone: TimeZone = TimeZone.getDefault()): String {
         val c = Calendar.getInstance(zone).apply { timeInMillis = ms }
