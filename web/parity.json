@@ -20,7 +20,7 @@
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "8d102c2013fe6f8ee77cda3be07f6747707e42dc"
+      "blob": "a523a2630577faede49ce313b64daae7f8277c8a"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -54,7 +54,7 @@
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "64152626766d02f4dd6d72e5595d0f6b84659d3e"
+      "blob": "09e556a285c7df683fa32fcd1d385ba234c8a8a1"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "6a1cf70ff39039304497800d652acbed0931e41d"
+      "blob": "31fdfc32eef72e36b14bc0b48a5e2ece78f5522d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -229,7 +229,7 @@
         "web/app/src/activity.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebPace.kt"
       ],
-      "blob": "0fa1d00e6f33335f432d89dde7db65bc4ed91ed3"
+      "blob": "2ffdc12269ed5caa4459673edfeac00e0475499d"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
@@ -237,7 +237,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "1ab1e4321547ee14c4a2cc120e8c2f4f7ae61e70"
+      "blob": "cb7c7caa90f96f116fa0c3e886d4b2efdca6655e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -445,7 +445,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "8537fab45cf95d40e52b119133da376dd416dd2f"
+      "blob": "9668fe2a970ef4aca5bfa17a019e47829110d9d6"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt",
@@ -460,7 +460,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "a9b06ff9cfdd919a9bcb592567d9d6781bb7de94"
+      "blob": "bfb48cd6ce84ca077ef30e6e07b54184d86977aa"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanGuidance.kt",
@@ -510,7 +510,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/routing/EngineProvider.kt",
       "why": "engine choice / fallback, memory settings",
-      "blob": "addb169353c3d6a7b8d0952b87d6f1fc7d3b4029"
+      "blob": "70764c962076fc3009ccc549b4bf2b2013d777c6"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/RoutingDataLoader.kt",
@@ -715,7 +715,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/data/AppSettings.kt": {
-      "blob": "a825d21d7b897c244a5e7ae549354371f9db88e9",
+      "blob": "af7fe08967c9fc51ca386b1f729f27e941e035bf",
       "perf": [
         "* turn and on a tap; [PHONE] = no keep-screen-on, the phone's own timeout.",
         "val navHoldMs: Int = HoldSetting.DEFAULT_MS,"
@@ -927,7 +927,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/MenuGroups.kt": {
-      "blob": "cd23886b44706d7a35e99c888361fdbdfcc583ce",
+      "blob": "20b3cd6995b82573782e9b96e13158af48d66823",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/OfflineReady.kt": {
@@ -935,7 +935,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": {
-      "blob": "e4433614f2356aea81cb3b50619e9a61d41f0f9e",
+      "blob": "f4296aca6f321b37f2a3a859bbd63be9526a14d2",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": {
@@ -2047,6 +2047,12 @@
       "blob": "34084104a7bf35caac8aa4fa2ceb5d6dfbbee16d",
       "perf": []
     },
+    "core/src/main/kotlin/com/onpath/app/routing/MarkedTrails.kt": {
+      "blob": "008b0e866d11cef33477e28732631ddd824f56f3",
+      "perf": [
+        "* parameters ([keyValues]), next to the SAC limit, in every engine that routes (planning, the tour's re-routing, the"
+      ]
+    },
     "core/src/main/kotlin/com/onpath/app/routing/OfflineCorridor.kt": {
       "blob": "3c1fbeadd00e7223fd88bbc464937716ea5211e3",
       "perf": [
@@ -2297,7 +2303,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/RoutingFingerprint.kt": {
-      "blob": "0b2b0c7d5cbe1f9d8f4321489e6fc670826991e0",
+      "blob": "3744ffccc6799d249d957595b5ad8c07f898cb64",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/SlowPlan.kt": {
@@ -2587,7 +2593,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/suggest/RouterProfile.kt": {
-      "blob": "bf7769a24e7ede0416a1836f607f8117fdfdb064",
+      "blob": "540e9e61bfcdc8d775bd8c6ad1119545da02d46c",
       "perf": [
         "* the same parameters (SAC limit, e-bike power …), so the network's \"allowed\" is the router's verdict (a suggestion must",
         "private const val MAX_SNAP_M = 1000.0",
@@ -2655,7 +2661,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/suggest/app/SuggestService.kt": {
-      "blob": "36b2f69c8615d66983a10c6bb4ab5a700312b517",
+      "blob": "ae23482aeb30635ffa2541e1a0119883b8aae0be",
       "perf": [
         "* Memory: everything a run reads (network, place, parsed suggest files ~45 MB for a 3 h bike wish) is local to [suggest]"
       ]
@@ -2885,17 +2891,18 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/BRouterEngine.kt": {
-      "blob": "a6a515b11f3888244225008f240235d2acb6ada5",
+      "blob": "db8506bd335a66e3c164c869181920c3304c4010",
       "perf": [
         "* request (same points, activity and SAC limit) returns instantly.",
         "* Via points are hints: BRouter snaps each to the nearest usable way (within [MAX_SNAP_M]) and,",
+        "* result cache's key. The app passes the setting (EngineProvider – the same for planning and a tour's re-routing);",
         "var nearest = Double.MAX_VALUE",
         "private val cache = object : LinkedHashMap<CacheKey, RouteResult>(CACHE_SIZE + 1, 0.75f, true) {",
         "override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE",
         "/** With a time limit (incl. waiting for a running request) and a cancel signal (BRouter `terminate()`). */",
         "cache[key] ?: run {",
         "val budget = limits?.let { (it.timeoutMs - (System.currentTimeMillis() - start)).coerceAtLeast(MIN_BUDGET_MS) }",
-        "routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1)",
+        "routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1, trails)",
         "}.also { cache[key] = it }",
         "Problems.error(\"routing\", \"BRouter ran out of memory\", e)",
         "val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)",
@@ -3314,7 +3321,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/SettingsPage.kt": {
-      "blob": "427e1c6ca78865eb06874579fe92795c18851f5e",
+      "blob": "6d2330a7e82cebfdef8af8883b1e39643d122e08",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/Ports.kt": {
@@ -3500,7 +3507,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "89b9492d935bce83c168a57adca4424d445b7a7a",
+      "blob": "79c715f72e0474893dcc85e77889180cb164c700",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -3572,7 +3579,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "1de7aeaed1057a56c46e7dd7f8754ad5e66aad6a",
+      "blob": "92e2f76f23f83791a99c650ecd382b06c0aa0f5b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {

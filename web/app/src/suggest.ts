@@ -382,7 +382,7 @@ export function setupSuggest(host: SuggestHost) {
 
   /** „Rundtour ab hier“ – one row, the last of the route group wherever „Als Start“ is offered (owner 2026-11-26). */
   function menuRow(at: LatLon, name?: string): MenuItem {
-    return { icon: 'loop', label: t('suggest_ui_from_here'), key: 'ROUND_TRIP_HERE', group: 'ROUTE', divider: true /* set apart by a thin line (owner 2026-11-27) */, act: () => openWish([Number(at[0].toFixed(6)), Number(at[1].toFixed(6))], name) };
+    return { icon: 'loop', label: t('suggest_ui_from_here'), key: 'ROUND_TRIP_HERE', group: 'LOOP' /* its own thin line (owner 2026-11-27, MenuGroups.Group.LOOP) */, act: () => openWish([Number(at[0].toFixed(6)), Number(at[1].toFixed(6))], name) };
   }
 
   /** [items] with the row put right after row [afterIndex] (the last route row – owner 2026-11-26); unchanged when that row is not there. */

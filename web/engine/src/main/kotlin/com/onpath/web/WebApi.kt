@@ -144,6 +144,7 @@ object Engine {
         fingerprint = null // of the profiles handed over to this root
         chain.stopSettle()
         legCache.clear() // other profiles / routing data: every leg is routed again
+        markedTrails = com.onpath.app.routing.MarkedTrails.STANDARD // the page sets its own after the config (markedTrailsSet)
     }
 
     fun putFile(relPath: String, bytes: ByteArray) {
@@ -154,7 +155,7 @@ object Engine {
 
     internal fun engine(): BRouterEngine {
         if (dirty.isNotEmpty()) writeParts()
-        return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments")).also { engine = it }
+        return engine ?: BRouterEngine(WebContext(File(root, "files")), File(root, "segments")) { markedTrails }.also { engine = it }
     }
 
     internal fun parsePoints(points: String): List<GeoPoint> = points.split(';').filter { it.isNotBlank() }.map { p ->
@@ -232,6 +233,26 @@ object Engine {
 
     private val dirty = HashSet<String>()
 
+    /**
+     * „Markierten Wegen folgen“ ([com.onpath.app.routing.MarkedTrails], the app's Settings → Plan, owner 2026-11-27): the
+     * level every route of this engine uses – plan, re-route, detour, suggestions – and part of the fingerprint, so legs
+     * of another level route again. The page sets it (planner settings) before it plans; default Standard = the app's.
+     */
+    internal var markedTrails: Int = com.onpath.app.routing.MarkedTrails.STANDARD
+        private set
+
+    /** Sets the level ([markedTrails]); a change drops the legs of the old level (memory; the browser's store by fingerprint). */
+    fun setMarkedTrails(level: Int): Int {
+        val l = com.onpath.app.routing.MarkedTrails.of(level)
+        if (l != markedTrails) {
+            markedTrails = l
+            fingerprint = null
+            chain.stopSettle()
+            legCache.clear()
+        }
+        return markedTrails
+    }
+
     // ---- routing fingerprint + routing data dates (routing/RoutingFingerprint, sync fields 7 / 8, web-sync.md §5.2) ----
     private var fingerprint: String? = null
 
@@ -241,7 +262,8 @@ object Engine {
      * "" = not readable (then nothing is compared, never a guess).
      */
     fun routingFingerprint(): String = fingerprint ?: try {
-        com.onpath.app.routing.RoutingFingerprint.of({ n -> File(root, "assets/brouter/$n").readBytes() }).also { fingerprint = it }
+        com.onpath.app.routing.RoutingFingerprint.of({ n -> File(root, "assets/brouter/$n").readBytes() }, trails = markedTrails)
+            .also { fingerprint = it }
     } catch (e: Exception) {
         Problems.warn("routing", "Routing fingerprint not computed (profiles not readable)", e); ""
     }
@@ -1446,6 +1468,8 @@ external fun planProgress(text: String)
 @JSExport fun poiKinds(): String = WebUi.poiKinds()
 // pace setting (WebPace.kt – the app's Settings → Pace)
 @JSExport fun paceSet(hike: String, bike: String): String = WebPace.set(hike, bike)
+/** „Markierten Wegen folgen“ for every route of the engine (Engine.setMarkedTrails): 0 Weniger · 1 Standard · 2 Mehr. */
+@JSExport fun markedTrailsSet(level: Int): Int = Engine.setMarkedTrails(level)
 @JSExport fun paceChoices(activity: String): String = WebPace.choices(activity)
 @JSExport fun planTime(points: String, activity: String, sac: Int): String = WebPace.planTime(points, activity, sac)
 /** The big profile's marked range: length, time and climb of the last plan between two distances (WebPace.rangeStats). */

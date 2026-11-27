@@ -118,7 +118,7 @@ object WebSuggest {
         val t0 = System.currentTimeMillis()
         val reader = NetReader(File(root(), "segments"))
         val profiles = File(root(), "assets/brouter")
-        val source = ReaderNetSource(reader) { _ -> RouterProfile.of(profiles, inp.activity, inp.sac) }
+        val source = ReaderNetSource(reader) { _ -> RouterProfile.of(profiles, inp.activity, inp.sac, Engine.markedTrails) }
         val r = try { TourSuggester.suggest(inp.wish, source, cellFiles, S) } catch (e: NetReader.ReadException) {
             Problems.warn("suggest", "no network around the start: ${e.message}", e)
             return buildString {

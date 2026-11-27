@@ -5,8 +5,8 @@
 // from the shared code), PLACE (Merken · In Google Maps öffnen), REMOVE (always last). Shown in a maplibre popup at the point.
 import { icon, type IconName } from './icons';
 
-/** The app's MenuGroups.Group. */
-export type MenuGroup = 'ROUTE' | 'PLACE' | 'REMOVE';
+/** The app's MenuGroups.Group – LOOP: „Rundtour ab hier“, its own thin line at the end of Route (owner 2026-11-27). */
+export type MenuGroup = 'ROUTE' | 'LOOP' | 'PLACE' | 'REMOVE';
 
 /** The app's MenuGroups.lineBefore: row [i] starts a new group (it and the row before have a group, and they differ). */
 export function lineBefore(groups: (MenuGroup | undefined)[], i: number): boolean {
@@ -16,7 +16,8 @@ export function lineBefore(groups: (MenuGroup | undefined)[], i: number): boolea
 /** The group of a place menu's row by its key – the app's PinMenuItems.group (OVERNIGHT is a route row). */
 export function placeRowGroup(key: string | undefined): MenuGroup | undefined {
   switch (key) {
-    case 'START_HERE': case 'ROUND_TRIP_HERE': case 'GO_HERE': case 'ADD': case 'SET_DESTINATION': case 'ADD_STOP':
+    case 'ROUND_TRIP_HERE': return 'LOOP';
+    case 'START_HERE': case 'GO_HERE': case 'ADD': case 'SET_DESTINATION': case 'ADD_STOP':
     case 'NEW_DESTINATION': case 'OVERNIGHT': return 'ROUTE';
     case 'FAVOURITE': case 'HOME': case 'GOOGLE': return 'PLACE';
     case 'REMOVE_PIN': return 'REMOVE';

@@ -50,6 +50,19 @@ class WebSyncRoutingTest {
         assertEquals(mapOf("E10_N45" to DAY), SyncRoutingData.parse(item.routingData))
     }
 
+    @Test fun markedTrailsLevelIsTheAppsAndChangesTheFingerprint() {
+        val standard = engineWithProfiles()
+        val read = { n: String -> File(app, "app/src/main/assets/brouter/$n").readBytes() }
+        assertEquals(2, Engine.setMarkedTrails(2))
+        val more = Engine.routingFingerprint()
+        assertEquals("Mehr: the app's fingerprint with the same level", RoutingFingerprint.of(read, trails = 2), more)
+        assertFalse("another level, another fingerprint (legs of the old level route again)", more == standard)
+        assertEquals("a broken level reads as Standard (MarkedTrails.of)", 1, Engine.setMarkedTrails(7))
+        assertEquals(standard, Engine.routingFingerprint())
+        Engine.setMarkedTrails(2); Engine.init(Files.createTempDirectory("onpath-web-fp2").toFile().path)
+        assertEquals("a fresh engine starts at Standard until the page sets its level", 1, Engine.markedTrails)
+    }
+
     @Test fun aMoveIntoAnotherFolderKeepsTheFields() {
         engineWithProfiles()
         val out = SyncLedger.read(WebSync.save(SyncLedger.empty().write(), ID, plan, "Vom Handy", 1.0, phone, "r1-0123456789ab", "E10_N45:20700"))

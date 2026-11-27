@@ -82,8 +82,10 @@ class WebDetourTest {
         val idx = Regex("\\d+").findAll(Engine.detourStart()).map { it.value.toInt() }.toList()
         assertTrue("several candidates: $idx", idx.size >= 2)
         val steps = idx.associateWith { point(it) }
-        // one router request per step: every candidate routes the way to and from it one level up, so it takes 2+ steps
-        assertTrue("$steps", steps.values.all { it.second >= 2 })
+        // one router request per step: a candidate routes the way to and from it one level up – a way another candidate
+        // already routed comes from the memo (② and ③ share their neighbour b here; since the Standard „Markierten Wegen
+        // folgen“ of 2026-11-27 one candidate needs a single step), so at least one step and at least one with 2+
+        assertTrue("$steps", steps.values.all { it.second >= 1 } && steps.values.any { it.second >= 2 })
         val stepwise = steps.filterValues { it.first }.keys.sorted()
         assertEquals("whole ${whole.map { it.index to it.extraM }}", whole.map { it.index }, stepwise)
         val json = Engine.detourGaps("")
