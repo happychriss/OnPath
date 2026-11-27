@@ -14,13 +14,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd) · 2026-11-27 checked 9ec1ea622 / d483cda8b: comments + the POI menu add icon by the row's kind – the planner's same change waits on chore/web-aufraeumen (cddcf03b7, icon via placePreview kind)",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd) · 2026-11-27 checked 9ec1ea622 / d483cda8b: comments + the POI menu add icon by the row's kind – the planner's same change waits on chore/web-aufraeumen (cddcf03b7, icon via placePreview kind) · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "4d3c0cac4693c5b20b0207ffcd0b4e55061e2911"
+      "blob": "b5fb709e917d84ce1348f47e2584ca61a5c8f536"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -49,12 +49,12 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
-      "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible) · 2026-11-27 checked: the recording on the „PLANEN · 0:42 ■“ tab and „✓ Offline verfügbar“ top right are app only (no recording, no offline in the browser); credit top right / no logo on the map is the phone layout – the planner keeps its header logo and the credit at the map foot (big screen)",
+      "what": "gpsColor; scale + short credit; UndoPill (undo / redo own pill, only while possible) · 2026-11-27 checked: the recording on the „PLANEN · 0:42 ■“ tab and „✓ Offline verfügbar“ top right are app only (no recording, no offline in the browser); credit top right / no logo on the map is the phone layout – the planner keeps its header logo and the credit at the map foot (big screen) · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still); the old top bar gone is app only",
       "web": [
         "web/app/src/position.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "f50f6be668a705c96f9e98640482cbe8823aa0fb"
+      "blob": "988207d0a921e481eb2fcabcb69c4edc1e34043c"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/recording/GpsStatus.kt",
@@ -182,11 +182,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
-      "what": "TrackPanel (shown / imported track)",
+      "what": "TrackPanel (shown / imported track) · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
       "web": [
         "web/app/src/gpximport.ts"
       ],
-      "blob": "f51b2d3cd4d58daa1451352f26b5ccd9ede26bea"
+      "blob": "c03dd85476de19019079e0f2bcccf88a62eda660"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/PointsSection.kt",
@@ -392,32 +392,32 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/WaitWindow.kt",
-      "what": "form A's look: sign + title, the ONE bar with its number beside it, at most 3 step rows (✓ done, ● now, ○ later), the time left / why it waits, Cancel; paused = grey bar – loadoverlay.ts draw(), style.css .waitwin · 2026-11-27: the note under the title → loadoverlay .wwnote; the app's step bar without percent is the next planner task (VISION 2026-11-27 honest waiting)",
+      "what": "form A's look: sign + title, the ONE bar with its number beside it, at most 3 step rows (✓ done, ● now, ○ later), the time left / why it waits, Cancel; paused = grey bar – loadoverlay.ts draw(), style.css .waitwin · 2026-11-27: the note under the title → loadoverlay .wwnote; the app's step bar without percent is the next planner task (VISION 2026-11-27 honest waiting) · 2026-11-27 a68b24f24 / db73fbd64 / 9b0a247ce: the step bar (pieces per leg, no number, calm indeterminate piece) – the planner's wait window still shows a percent: NEXT planner task „wait window without percent, step bar like the app“ (VISION 2026-11-27 honest waiting)",
       "web": [
         "web/app/src/loadoverlay.ts",
         "web/app/src/style.css"
       ],
-      "blob": "0f062e978d372983f74791ed60d73356f57b1863"
+      "blob": "9088f77c79eb01c8196a4b0c33c4e540e80d082c"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/progress/WaitRules.kt",
-      "what": "(moved to :state, web-ready: RouteWait, RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow) the route's wait (form A): the legs the router works on + „prüfen“ as steps, their shares (RouteShares), the check's time learned at the end, the legs' names „A → B“ (legLabels), the window after a slow second – WebWait.kt (route part), loadoverlay.ts plan(), main.ts planRun · 2026-11-27: WaitWindowUi.note → WebWait Ui.note; the step bar without percent: next planner task",
+      "what": "(moved to :state, web-ready: RouteWait, RouteWaitUi, WaitSign, WaitWindowUi, WaitButton, BesideRow) the route's wait (form A): the legs the router works on + „prüfen“ as steps, their shares (RouteShares), the check's time learned at the end, the legs' names „A → B“ (legLabels), the window after a slow second – WebWait.kt (route part), loadoverlay.ts plan(), main.ts planRun · 2026-11-27: WaitWindowUi.note → WebWait Ui.note; the step bar without percent: next planner task · 2026-11-27 a68b24f24 / db73fbd64 / 9b0a247ce: the step bar (pieces per leg, no number, calm indeterminate piece) – the planner's wait window still shows a percent: NEXT planner task „wait window without percent, step bar like the app“ (VISION 2026-11-27 honest waiting)",
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/loadoverlay.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "4ab9095c0b339e287fa5d0d0a910a9492579049e"
+      "blob": "360e5f95a7d8ed65a5a0ec7ec6928d96a523a1b3"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/BesideSign.kt",
-      "what": "form B: the small sign (a ring + ONE percent over the whole action, ActionPercent), tap → the details (title, the bar, one line per load, Cancel all red · Close) – besidesign.ts, WebWait.kt WebSign, style.css .besidesign",
+      "what": "form B: the small sign (a ring + ONE percent over the whole action, ActionPercent), tap → the details (title, the bar, one line per load, Cancel all red · Close) – besidesign.ts, WebWait.kt WebSign, style.css .besidesign · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
       "web": [
         "web/app/src/besidesign.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/style.css"
       ],
-      "blob": "b5df7392655c8fa02e0745eb2d17144859dfa81d"
+      "blob": "f4958c254604857408eb8a98504780b8ca0e1a3f"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/data/ProgressMemory.kt",
@@ -437,11 +437,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MessageCard.kt",
-      "what": "the one message box: Messages.pick (a question first, then the oldest), MessagePlacement (12 px under the top element), ButtonTone (the primary button's colour by what it does) – msgcard.ts (found 2026-11-27, was untracked) · 2026-11-27 checked: colour rule 1 (one green, blue in a plan box) – the planner follows since cef54cb6c",
+      "what": "the one message box: Messages.pick (a question first, then the oldest), MessagePlacement (12 px under the top element), ButtonTone (the primary button's colour by what it does) – msgcard.ts (found 2026-11-27, was untracked) · 2026-11-27 checked: colour rule 1 (one green, blue in a plan box) – the planner follows since cef54cb6c · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
       "web": [
         "web/app/src/msgcard.ts"
       ],
-      "blob": "edc8949c5383047cb7f0b561834bb635b78dd360"
+      "blob": "c8a9a07ab9f7a7d3ddf83d2f17eb8b810c14b5bc"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/RouteReveal.kt",
@@ -3537,7 +3537,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/progress/WaitRules.kt": {
-      "blob": "4ab9095c0b339e287fa5d0d0a910a9492579049e",
+      "blob": "360e5f95a7d8ed65a5a0ec7ec6928d96a523a1b3",
       "perf": [
         "const val FOLLOWS_MS = 10_000L",
         "fun follows(routeStartMs: Long): Boolean = mapDoneAt >= 0 && routeStartMs - mapDoneAt in 0..FOLLOWS_MS",
@@ -3548,7 +3548,11 @@
         "val check = memory.routeCheck",
         "memory.routeCheck = RouteShares.learn(memory.routeCheck, checkFromMs - startMs, now - checkFromMs)",
         "const val GOES_ON_MS = 60_000L",
-        "* [points] (none from the cache: [total] = points − 1); else null (they are counted: \"Abschnitt 2\")."
+        "* [points] (none from the cache: [total] = points − 1); else null (they are counted: \"Abschnitt 2\").",
+        "/** The finished pieces as drawn (more legs than [MAX_PIECES] share a piece). */",
+        "/** The pieces drawn: at most [MAX_PIECES] (more legs than that share a piece – never a hairline). */",
+        "val shownPieces: Int get() = pieces.coerceIn(0, MAX_PIECES)",
+        "const val MAX_PIECES = 20"
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt": {
