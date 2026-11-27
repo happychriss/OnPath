@@ -237,15 +237,12 @@
     <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
     <string name="web_too_long_title">Too long in one go</string>
     <string name="web_too_long_text">%1$s km in one go. Add a stop on the way.</string>
-    <string name="web_far_title">Far from your route</string>
-    <string name="web_far_point">Your point %1$s is %2$s from here.</string>
-    <string name="web_far_point_unnamed">Your point is %1$s from here.</string>
-    <string name="web_far_route">Your route near %1$s is %2$s from here.</string>
-    <string name="web_far_route_unnamed">Your route is %1$s from here.</string>
-    <string name="web_far_bike">%1$s by bike</string>
-    <string name="web_far_foot">%1$s on foot</string>
-    <string name="web_far_new">Start a new plan here</string>
-    <string name="web_far_add">Add to the plan</string>
+    <string name="web_far_title_named">%1$s is about %2$s km away</string>
+    <string name="web_far_title_unnamed">Your point is about %1$s km away</string>
+    <string name="web_far_calc">Calculating takes %1$s.</string>
+    <string name="web_far_too_far">Too far to calculate in one go.</string>
+    <string name="web_far_start">Start from here</string>
+    <string name="web_far_calculate">Calculate route</string>
     <string name="web_route_off_map">Your route is outside the map</string>
     <string name="web_one_point">1 point · %1$s</string>
     <string name="web_no_webgl_title">Your browser cannot draw the map</string>

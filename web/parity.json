@@ -142,7 +142,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“)",
+      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“); a far new point (owner 2026-11-27 variant C): one web question „… ist ca. N km weit weg“ · Berechnung etwa … · [Von hier starten] [Route berechnen] in its place (longroute.ts farQuestion)",
       "web": [
         "web/app/src/longroute.ts"
       ],

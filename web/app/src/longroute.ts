@@ -14,7 +14,7 @@ import { problem } from './diag';
 type LatLon = [number, number];
 interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string;
   /** The browser's long-leg question (RouteCost): the leg, its straight km, beyond the browser's memory (only „Zwischenziel“). */
-  leg?: number; km?: number; beyond?: boolean }
+  leg?: number; km?: number; beyond?: boolean; /** RouteCost.words of the leg's estimate: „etwa 3–6 Minuten“ */ words?: string }
 
 const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixed(6)}`).join(';');
 
@@ -75,11 +75,12 @@ export type LongAnswer = 'plan' | 'cancel' | { fresh: LatLon };
  * again; Cancel = the page's cancel ([why] LONG); a fresh start is a new plan.
  */
 export async function longRouteOk(engine: EngineClient, a: Ask, points: LatLon[], activity: Activity,
-  before?: Before | null, stale: () => boolean = () => false): Promise<LongAnswer> {
+  before?: Before | null, stale: () => boolean = () => false, names: (string | undefined)[] = []): Promise<LongAnswer> {
   notRoutedTexts = { line: a.notRouted ?? notRoutedTexts.line, button: a.again ?? notRoutedTexts.button };
   notRoutedLong = true;
-  const far = before ? await farPoint(engine, points, activity, before) : null;
-  const answer: LongAnswer = far ? await farQuestion(a, far) : (await question(a)) ? 'plan' : 'cancel';
+  void activity;
+  const far = before ? farPoint(a, points, before, names) : null;
+  const answer: LongAnswer = far ? await farQuestion(far) : (await question(a)) ? 'plan' : 'cancel';
   if (answer !== 'cancel' && answer !== 'plan') return answer;
   if (answer === 'plan') allowed.add(keyOf(points));
   // a newer question was raised meanwhile (another run of the page): this answer must not close that one in the run
@@ -89,33 +90,29 @@ export async function longRouteOk(engine: EngineClient, a: Ask, points: LatLon[]
   return answer;
 }
 
-interface Far { point: LatLon; text: string }
+interface Far { point: LatLon; title: string; text: string; beyond: boolean }
 
 /**
- * The one new point of a point edit when it alone makes the plan long: the plan without it is not long, and even its
- * straight line to the nearest earlier point is (the app's LongRoute rule on those two points). Null otherwise – the
- * plan is long for other reasons (many points spread out) and keeps the app's question.
+ * The one new point of a point edit when the browser's long-leg question (RouteCost, [a]) is about a leg that ends or
+ * starts at it: one question „München ist ca. 600 km weit weg“ / „Berechnung etwa 3–6 Minuten.“ with [Von hier starten]
+ * [Route berechnen] in place of the long-leg question (owner 2026-11-27 variant C – never two questions in a row). The km
+ * = straight to the nearest point the plan had. Null otherwise (an edit of existing points, a plan long for other reasons):
+ * the long-leg question as it is.
  */
-async function farPoint(engine: EngineClient, points: LatLon[], activity: Activity, before: Before): Promise<Far | null> {
+function farPoint(a: Ask, points: LatLon[], before: Before, names: (string | undefined)[]): Far | null {
+  if (a.leg == null) return null;
   const old = new Set(before.points.map((p) => keyOf([p])));
-  const fresh = points.filter((p) => !old.has(keyOf([p])));
+  const fresh = points.map((p, i) => [p, i] as const).filter(([p]) => !old.has(keyOf([p])));
   if (!before.points.length || fresh.length !== 1 || points.length !== before.points.length + 1) return null;
-  if (before.points.length >= 2 && (JSON.parse(await engine.call('longRoute', keyOf(before.points), activity, false)) as Ask).ask) return null;
-  const p = fresh[0];
+  const [p, idx] = fresh[0];
+  if (a.leg !== idx && a.leg !== idx - 1) return null;
   const nearest = before.points.reduce((b, q) => (metres(p, q) < metres(p, b) ? q : b));
-  const leg = JSON.parse(await engine.call('longRoute', keyOf([nearest, p]), activity, false)) as Ask & { seconds?: number };
-  if (!leg.ask || leg.seconds == null) return null;
-  // LongRoute.describe ("about 35 hours" / "about 3 days") + how: the app's words, the web's sentence
-  const h = leg.seconds / 3600;
-  const time = h >= 48 ? t('plan_about_days', Math.round(h / 24)) : t('plan_about_hours', Math.round(h));
-  const how = t(activity === 'HIKE' ? 'web_far_foot' : 'web_far_bike', time);
-  let text: string;
-  if (before.points.length === 1) text = before.names[0] ? t('web_far_point', before.names[0], how) : t('web_far_point_unnamed', how);
-  else {
-    const name = before.names.find((n) => n);
-    text = name ? t('web_far_route', name, how) : t('web_far_route_unnamed', how);
-  }
-  return { point: p, text };
+  const km = metres(p, nearest) / 1000;
+  const n = String(km >= 100 ? Math.round(km / 10) * 10 : Math.max(1, Math.round(km)));
+  const name = names[idx]?.trim();
+  const title = name ? t('web_far_title_named', name, n) : t('web_far_title_unnamed', n);
+  const text = a.beyond ? t('web_far_too_far') : t('web_far_calc', a.words ?? '');
+  return { point: p, title, text, beyond: !!a.beyond };
 }
 
 /** Straight distance in metres (only to find the nearest point). */
@@ -125,22 +122,22 @@ function metres([a1, o1]: LatLon, [a2, o2]: LatLon): number {
 }
 
 /**
- * "Far from your route": start a new route here (the old one comes back with ↶, so nothing more is said), add to the
- * route anyway (= Plan anyway), or Cancel (as the app's Cancel). Stays until a button is clicked.
+ * „München ist ca. 600 km weit weg“ (owner 2026-11-27 variant C): [Von hier starten] = a new plan from this point (the old one
+ * comes back with ↶) · [Route berechnen] = route and wait (the wait window's „läuft seit … · etwa …“, no second question);
+ * too far for the browser's memory: only [Von hier starten]. A FRAGE with two verb buttons, the likelier (the user added the point)
+ * primary; it stays until a button is clicked (Escape / outside change nothing).
  */
-function farQuestion(a: Ask, far: Far): Promise<LongAnswer> {
+function farQuestion(far: Far): Promise<LongAnswer> {
   return new Promise((resolve) => {
     const d = document.createElement('dialog');
     d.className = 'share longroute far';
-    d.innerHTML = `<h2>⚠ ${esc(t('web_far_title'))}</h2><p>${esc(far.text)}</p>
-      <div class="col"><button class="primary" id="lrFresh">${esc(t('web_far_new'))}</button>
-        <button id="lrPlan">${esc(t('web_far_add'))}</button>
-        <button class="plain" id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button></div>`;
+    const plan = far.beyond ? '' : `<button class="primary" id="lrPlan">${esc(t('web_far_calculate'))}</button>`;
+    d.innerHTML = `<h2>${esc(far.title)}</h2><p>${esc(far.text)}</p>
+      <div class="row"><button id="lrFresh"${far.beyond ? ' class="primary"' : ''}>${esc(t('web_far_start'))}</button>${plan}</div>`;
     document.body.append(d);
     const done = (v: LongAnswer) => { d.close(); d.remove(); resolve(v); };
     d.querySelector<HTMLButtonElement>('#lrFresh')!.onclick = () => done({ fresh: far.point });
-    d.querySelector<HTMLButtonElement>('#lrPlan')!.onclick = () => done('plan');
-    d.querySelector<HTMLButtonElement>('#lrCancel')!.onclick = () => done('cancel');
+    d.querySelector<HTMLButtonElement>('#lrPlan')?.addEventListener('click', () => done('plan'));
     d.addEventListener('cancel', (e) => e.preventDefault());
     d.showModal();
   });
