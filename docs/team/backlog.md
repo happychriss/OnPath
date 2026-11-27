@@ -88,6 +88,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[donald] Parity: „Berechnen“ on a not-routed plan is now a filled plan-blue button in the planner (owner 2026-11-27 „muss dicker“) – the app shows it as a blue text link after „Route nicht berechnet …“; make it the same filled PlanGo button.**
 - **[laptop] Planner: route type as a segment row (variant A) + multi-day day table and day view (owner 2026-11-27)…** → [detail](items/2026-11-27-planner-route-type-and-day-table.md)
 - **[donald] App: multi-day day table like the planner (owner 2026-11-27)…** → [detail](items/2026-11-27-app-day-table.md)
 - **[donald] Shorter phone setup: first start asks only location; notifications + battery at the first tour; brand / saver hints only where affected (owner 2026-11-26)…** → [detail](items/2026-11-26-shorter-phone-setup.md)
