@@ -25,6 +25,8 @@ Push order is the order of the table; a thread that is ready early waits for the
 out (morning report), the next one goes on.
 
 ## Planner (HP) – parity by the morning
+**23:54: planner online (version.json 2931061af): 1b, parity 4 rounds green, tracker 01afd2dc, multi-day sheet, cancel fix,
+map wait line 4061a3038; CI + gate --full green.** Now step 7; „parity done“ after it.
 4 → cancel fix with „Berechnen“ → parity lines from today (step bar, plan sheet spacing c18236a84, multi-day badge +
 day choice, activity picker if the cloud check finds it) → multi-day sheet draft (no „Fahrrad ▾“). Deploy when green
 (standing rule). Last: tell the project lead „parity done“ with the commit. The release run deploys the planner too.
