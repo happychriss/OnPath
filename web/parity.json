@@ -1,5 +1,5 @@
 {
-  "about": "Web ⇄ app parity manifest (docs/design/web-planner.md §14). mirrors = app logic the web re-implements in TS: CI fails when the app file changed since the mirror was last checked. shared = every file the engine compiles as it is (the :core folder minus the stand-ins in web/engine/src/main/kotlin and web/engine/core-excludes.txt, the app files in app/web-shared-files.txt, its tests, strings, BRouter jars and profiles): changes reach the web by merging main; listed as warnings, perf- / memory-relevant lines called out. watch = app files with plan behaviour the web neither compiles nor mirrors: changes are listed. After checking a change: node web/parity/check.mjs --update (or --update <app path> …).",
+  "about": "Web ⇄ app parity manifest (docs/design/web-planner.md §14). mirrors = app logic the web re-implements in TS: CI fails when the app file changed since the mirror was last checked. shared = every file the engine compiles as it is (the :core folder minus the stand-ins in web/engine/src/main/kotlin and web/engine/core-excludes.txt, the app files in app/web-shared-files.txt, its tests, strings, BRouter jars and profiles): changes reach the web by merging main; listed as warnings, perf- / memory-relevant lines called out. watch = app files with plan behaviour the web neither compiles nor mirrors: changes are listed. After checking a change: node web/parity/check.mjs --update (or --update <app path> …). refs = every app class / object / function web/app/src names (\"the app's X\") that is no mirror: how the page uses it (\"engine: …\" asks the engine, \"look: …\" named only); a new mention that is neither fails CI (a hidden copy – the Photon request that lost „Berlin“, 2026-11-27). The \"baseline 2026-11-27\" rows were there before the check and are not reviewed one by one.",
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
@@ -434,6 +434,72 @@
         "web/app/src/search.ts"
       ],
       "blob": "bd9f5c746cff4986b5c285a705706aeddf63056a"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/MessageCard.kt",
+      "what": "the one message box: Messages.pick (a question first, then the oldest), MessagePlacement (12 px under the top element), ButtonTone (the primary button's colour by what it does) – msgcard.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/msgcard.ts"
+      ],
+      "blob": "e87b8d5057848ddc4b2019365f3989cc72c09f72"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/RouteReveal.kt",
+      "what": "the route draws itself: DURATION_MS, MAX_POINTS, ease, Line.cut – routereveal.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/routereveal.ts",
+        "web/app/src/main.ts"
+      ],
+      "blob": "8331ebcff726375978ef05e928e0313013abdb7b"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/RouteRowActions.kt",
+      "what": "My routes' row: facts („12,5 km · ↑ 842 m · 4 h 00 min“, no-break spaces inside a value – planstats.ts statsText; the time itself is the engine's Format.duration) and each action in one place (plans.ts) (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/planstats.ts",
+        "web/app/src/plans.ts"
+      ],
+      "blob": "dbb5e4b4fd6bcfb01e23f71fb16df01d817cbff1"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/PointMarkSize.kt",
+      "what": "plan points grow with the zoom (owner 2026-11-27, variant 2): ~20 % over the map's POI symbols, at least 20 dp – main.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/main.ts"
+      ],
+      "blob": "1273efb99e604685d0f70e2498240e5f793b044d"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/ProfileScrub.kt",
+      "what": "the profile's scrub line: ascentTo (only the ups) and „1,2 km · noch 3,4 km · ↑ 200 m · 8 %“ – profile.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/profile.ts"
+      ],
+      "blob": "3299945746962fbd2402141cf1395e74222e9158"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/map/CandidateMarker.kt",
+      "what": "the found place's pin: its look and PIN_HEIGHT_DP – search.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/search.ts"
+      ],
+      "blob": "8ea8e5a338f27ee3d394d95b24d8f324778be029"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/progress/RouteWait.kt",
+      "what": "the wait window's tick (TICK_MS 500, the bar creeps between two reports) – loadoverlay.ts (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/loadoverlay.ts"
+      ],
+      "blob": "475bf3f7e87c353ac6446270a426c39bec65c52b"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/RoutePreview.kt",
+      "what": "the preview tile's look (line width, start dot on a paper ring, goal dark red; a draft paler) – routeshape.ts shapeSvg; the fit itself is the engine's RouteShape.of (found 2026-11-27, was untracked)",
+      "web": [
+        "web/app/src/routeshape.ts"
+      ],
+      "blob": "71878be0c76a237de43e1e185763a2d3e226ac3c"
     }
   ],
   "watch": [
@@ -3649,6 +3715,198 @@
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "414bdba82ed6e4a409488caa3c5c222a402ca906",
       "perf": []
+    }
+  },
+  "refs": {
+    "web/app/src/activity.ts": {
+      "core/src/main/kotlin/com/onpath/app/routing/RoutingContract.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/areas.ts": {
+      "core/src/main/kotlin/com/onpath/app/cells/CellApi.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/besidesign.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/WaitProgress.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/cells.ts": {
+      "app/src/main/java/com/onpath/app/map/Overview.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/engine/client.ts": {
+      "core/src/main/kotlin/com/onpath/app/debug/Problems.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/gpx/GpxParser.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanCode.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/Planner.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/TrackToPlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/WaypointInsertion.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt": "engine: PhotonProvider.requests via photonUrls, the merge via searchOnline – no copy since 670bedf74 (2026-11-27)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDetourCheck.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanSettle.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/TrackToPlanState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/engine/types.ts": {
+      "app/src/main/java/com/onpath/app/search/SearchStore.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/PlanPanel.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/data/Format.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/data/RoutingDataNotice.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/BreakdownRules.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanCode.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/AddPreview.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/OfflineIndex.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/Place.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/engine/worker.ts": {
+      "app/src/main/java/com/onpath/app/ui/progress/RouteWait.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/gpx/GpxParser.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/TrackToPlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt": "engine: PhotonProvider.requests via photonUrls, the merge via searchOnline – no copy since 670bedf74 (2026-11-27)",
+      "core/src/main/kotlin/com/onpath/app/search/SavedPlaces.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDetourCheck.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanSettle.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/TrackToPlanState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/gpximport.ts": {
+      "app/src/main/java/com/onpath/app/ui/RouteDialogs.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/domain/tour/TourEndRules.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/gpx/GpxParser.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/gpx/PlanGpx.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesSlice.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/TrackToPlanState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/keptplaces.ts": {
+      "app/src/main/java/com/onpath/app/search/SearchStore.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)"
+    },
+    "web/app/src/longroute.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/plan/RouteRun.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/LongRoute.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/main.ts": {
+      "app/src/main/java/com/onpath/app/debug/Diagnostics.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/map/ActivityLayers.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "app/src/main/java/com/onpath/app/map/Overview.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "app/src/main/java/com/onpath/app/poi/PoiTap.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/ElevationProfile.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/PlanPanel.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/RouteBreakdown.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/Theme.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/data/Format.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/LocateDistance.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/MapGestures.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlanState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/RouteRules.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/RouteWarnings.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/TakenPin.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/plan/RoutingSpot.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/gpx/GpxParser.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/gpx/GpxWriter.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/gpx/PlanGpx.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanNames.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/Place.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/LongRouteCancelCamera.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/MapControlsEnabled.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/PlanGps.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/PlanSize.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/WholeRoute.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddSlice.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDetourCheck.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDocument.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanEditState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcSlice.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RestoreAsk.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesOpenState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/TrackToPlanState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/menus.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/MapGestures.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/MenuGroups.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/msgcard.ts": {
+      "state/src/main/kotlin/com/onpath/app/ui/MessagePlacement.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/pinplace.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/plangaps.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanReach.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/plans.ts": {
+      "app/src/main/java/com/onpath/app/ui/RouteDialogs.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/domain/RoutesTab.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/plan/LivePlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/routes/ListTop.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanNames.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/RouteNamer.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/SaveDialog.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/planstats.ts": {
+      "core/src/main/kotlin/com/onpath/app/data/Format.kt": "engine: Format.duration via slices.ts formatDuration (WebRules.duration) – no copy since 2026-11-27"
+    },
+    "web/app/src/profile.ts": {
+      "core/src/main/kotlin/com/onpath/app/data/Geo.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/recent.ts": {
+      "app/src/main/java/com/onpath/app/backup/BackupRestore.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/domain/plan/LivePlan.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/routeshape.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/RouteShape.kt": "engine: RouteShape.of via slices.ts routeShape (WebRules.routeShape) – no copy since 2026-11-27"
+    },
+    "web/app/src/routesort.ts": {
+      "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/search.ts": {
+      "app/src/main/java/com/onpath/app/map/MapController.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/SearchFlow.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "app/src/main/java/com/onpath/app/ui/search/SearchSession.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/SharedPlaceMenu.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/TakenPin.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/Place.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/search/SavedPlaces.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/slices.ts": {
+      "core/src/main/kotlin/com/onpath/app/data/Format.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/RouteShape.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/RoutesTab.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/LongRouteCancelCamera.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/WholeRoute.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RestoreAsk.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/sortable.ts": {
+      "core/src/main/kotlin/com/onpath/app/routing/PlanPoints.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/suggest.ts": {
+      "core/src/main/kotlin/com/onpath/app/routing/RoutingContract.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
+    },
+    "web/app/src/sync.ts": {
+      "app/src/main/java/com/onpath/app/backup/BackupRestore.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
+      "core/src/main/kotlin/com/onpath/app/domain/routes/RoundTrip.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "core/src/main/kotlin/com/onpath/app/sync/SyncRound.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one",
+      "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
     }
   }
 }

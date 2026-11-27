@@ -6,6 +6,11 @@
 //   that matter for performance / memory (caches, limits, timeouts, buffers – the phone's memory work) are shown
 //   added / removed, so the web side (Wasm heap, worker, prefetch) can be checked too.
 // - watch: app files with plan behaviour the web neither compiles nor mirrors: changes are listed.
+// - refs (2026-11-27, after the planner's search lost „Berlin“: search.ts built the Photon request itself, a copy of the
+//   app's PhotonProvider no list knew of): every place in web/app/src that names app code ("the app's PhotonProvider…")
+//   must be accounted for – either a mirror (the TS file in that app file's mirror) or a line in refs that says how the
+//   page uses it ("engine: …" = it asks the engine, holds no copy; "look: …" = named for context only). A new mention
+//   that is neither FAILS: decide whether it is a copy (→ mirror, then CI tracks it) or not (→ refs, with the reason).
 // Works on a shallow checkout (only hashes of the working tree, no history).
 // Usage: node web/parity/check.mjs [--update [appPath …]] [--report out.md]
 import fs from 'node:fs';
@@ -126,6 +131,62 @@ for (const f of shared) {
 }
 for (const f of Object.keys(known)) if (!shared.includes(f)) notes.push(`no longer shared: ${f} (run --update)`);
 
+// ---- refs: the app code web/app/src names must be a mirror or a ref (see the head) ----
+/** Every Kotlin type / object / top-level or @Composable function name (and file name) below app, core and state → its files. */
+function kotlinNames() {
+  const names = new Map();
+  const add = (n, f) => { if (!names.has(n)) names.set(n, new Set()); names.get(n).add(f); };
+  for (const root of ['app/src/main/java', 'core/src/main/kotlin', 'state/src/main/kotlin']) {
+    for (const f of walk(root)) {
+      add(path.basename(f, '.kt'), f);
+      const text = fs.readFileSync(path.join(repo, f), 'utf8');
+      for (const x of text.matchAll(/^[ \t]*(?:(?:private|internal|public|data|enum|sealed|abstract|open|value|inline|annotation)\s+)*(?:object|class|interface)\s+([A-Z]\w*)/gm)) add(x[1], f);
+      for (const x of text.matchAll(/^(?:@Composable\s+)?(?:(?:private|internal)\s+)?fun\s+([A-Z]\w*)\s*\(/gm)) add(x[1], f);
+    }
+  }
+  return names;
+}
+/** Every .ts below web/app/src (repo-relative, sorted). */
+function tsFiles(rel) {
+  const out = [];
+  for (const e of fs.readdirSync(path.join(repo, rel), { withFileTypes: true })) {
+    const r = `${rel}/${e.name}`;
+    if (e.isDirectory()) { if (e.name !== 'gen') out.push(...tsFiles(r)); } else if (/\.ts$/.test(e.name) && !e.name.endsWith('.d.ts')) out.push(r);
+  }
+  return out.sort();
+}
+/** "the app's X", "as the app's ui/X.kt", "like the app's map/X" … → the named app code per TS file: { ts: Map(name → files) }. */
+function appMentions(names = kotlinNames()) {
+  const out = new Map();
+  for (const ts of tsFiles('web/app/src')) {
+    const text = fs.readFileSync(path.join(repo, ts), 'utf8');
+    for (const x of text.matchAll(/\bapp's\s+(?:[a-z]+\/)*([A-Z]\w*)/g)) {
+      const files = names.get(x[1]);
+      if (!files) continue; // not app code (Settings, TalkBack, a dialog's title …)
+      if (!out.has(ts)) out.set(ts, new Map());
+      out.get(ts).set(x[1], [...files].sort());
+    }
+  }
+  return out;
+}
+const refs = m.refs ?? {};
+const mirrored = new Set(m.mirrors.flatMap((e) => e.web.map((w) => `${w} ${e.app}`)));
+const mentions = appMentions();
+for (const [ts, named] of mentions) {
+  for (const [name, files] of named) {
+    if (files.some((f) => mirrored.has(`${ts} ${f}`) || refs[ts]?.[f])) continue;
+    errors.push(`${ts} names the app's ${name} (${files.join(' / ')}), but web/parity.json has no mirror and no ref for it – ` +
+      `a copy of the app's logic: add a mirror (then CI tracks the app file); the page asks the engine or only names it: add ` +
+      `"refs": { "${ts}": { "${files[0]}": "engine: …" | "look: …" } }`);
+  }
+}
+for (const [ts, row] of Object.entries(refs)) {
+  for (const f of Object.keys(row)) {
+    const still = [...(mentions.get(ts)?.values() ?? [])].some((files) => files.includes(f));
+    if (!still) notes.push(`ref no longer named in the page: ${ts} → ${f} (remove it from web/parity.json refs)`);
+  }
+}
+
 const gh = !!process.env.GITHUB_ACTIONS;
 for (const e of errors) console.log(gh ? `::error title=web parity::${e}` : `ERROR ${e}`);
 for (const w of warnings) console.log(gh ? `::warning title=web parity::${w.replace(/\n/g, '%0A')}` : `WARN  ${w}`);
@@ -136,5 +197,5 @@ if (reportAt) {
     ...warnings.map((w) => `- ${w}`), '', '## Shared code changed (reaches the web by the merge)', ...notes.map((n) => `- ${n}`), ''].join('\n');
   fs.writeFileSync(reportAt, md);
 }
-console.log(errors.length ? `parity: ${errors.length} mirror(s) need a look (see above)` : `parity: ok (${warnings.length} warning(s), ${notes.length} note(s))`);
+console.log(errors.length ? `parity: ${errors.length} mirror(s) or ref(s) need a look (see above)` : `parity: ok (${warnings.length} warning(s), ${notes.length} note(s))`);
 process.exit(errors.length ? 1 : 0);
