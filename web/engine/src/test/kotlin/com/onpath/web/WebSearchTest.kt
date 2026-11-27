@@ -38,7 +38,10 @@ class WebSearchTest {
         val offline = ids(WebSearch.search("algund", 46.68, 11.12, "", ""))
         assertTrue("offline rows found: $offline", offline.size >= 2)
         val mixed = ids(WebSearch.online("algund", photon, ""))
-        assertEquals("the rows on screen keep their places", offline, mixed.take(offline.size))
+        // the village „Algund“ online is named exactly like the query: it goes above the fuzzy rows on screen (owner
+        // 2026-11-27, „Paris“ from Hilden); the rows on screen keep their order among themselves
+        assertEquals("the exact village first", "o:R47284", mixed.first())
+        assertEquals("the rows on screen keep their order", offline, mixed.drop(1).take(offline.size))
         assertTrue("online rows below them: $mixed", mixed.size > offline.size)
         assertEquals("the same text again: nothing moves", mixed, ids(WebSearch.search("algund", 46.68, 11.12, "", "")))
     }
@@ -99,6 +102,20 @@ class WebSearchTest {
         WebSearch.search("berlin", 51.17, 6.94, "", "PLACES")
         val with = titles(WebSearch.online("berlin", main, "PLACES", places))
         assertEquals("the city Berlin on top ($with)", "Berlin", with.firstOrNull())
+    }
+
+    /** Owner 2026-11-27: „Paris“ near Hilden – the city goes above the fuzzy rows (the hairdresser „Paris“ may stay first). */
+    @Test fun parisFromHildenPutsTheCityAboveFuzzyRows() {
+        area()
+        val main = File("../app/test/fixtures/photon-paris-hilden.json").readText()
+        val places = File("../app/test/fixtures/photon-paris-hilden-places.json").readText()
+        WebSearch.search("paris", 51.17, 6.94, "", "")
+        val json = WebSearch.online("paris", main, "", places)
+        val rows = Regex("\\{\"id\":\"[^\"]*\",\"title\":\"([^\"]*)\"[^}]*?\"kind\":\"([^\"]*)\"").findAll(json)
+            .map { it.groupValues[1] to it.groupValues[2] }.toList()
+        val city = rows.indexOfFirst { it == ("Paris" to "place") }
+        val firstFuzzy = rows.indexOfFirst { it.first != "Paris" }
+        assertTrue("the city is there and above every fuzzy row: $rows", city >= 0 && (firstFuzzy < 0 || city < firstFuzzy))
     }
 
     @Test fun aLateOnlineAnswerWithoutTheChipDoesNotFillTheChipsList() {

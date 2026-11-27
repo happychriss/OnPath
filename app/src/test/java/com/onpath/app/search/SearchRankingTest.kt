@@ -126,6 +126,28 @@ class SearchRankingTest {
         assertEquals(kept, ui.results)
     }
 
+    /**
+     * Owner 2026-11-27 („Paris“ from Hilden: the city at row 23, under fuzzy offline rows): an online town named exactly
+     * like the query goes up when it arrives – after shown rows whose name IS the query, before the fuzzy ones; any other
+     * online row still goes below (the rule above).
+     */
+    @Test fun anExactOnlineCityGoesAboveFuzzyRowsOnScreen() {
+        fun hit(p: Place) = SearchHit(p, 0.0, 0, 0.0, false)
+        val exactShop = hit(Place("n:1", "Paris", "hairdresser", 51.22, 6.78))
+        val bakery = hit(Place("n:2", "Bäckerei de paris", "shop", 51.17, 6.94))
+        val pars = hit(Place("n:3", "PARS", "restaurant", 51.16, 6.93))
+        val city = hit(Place("o:R71525", "Paris", "place", 48.86, 2.35, sub = "city", source = Place.Source.ONLINE))
+        val street = hit(Place("o:W1", "Pariser Straße", "street", 51.2, 6.9, source = Place.Source.ONLINE))
+        val shown = listOf(exactShop, bakery, pars)
+        val next = shown + listOf(street, city)
+        assertEquals(listOf("n:1", "o:R71525", "n:2", "n:3", "o:W1"), SearchRanking.keepShown(shown, next, "paris").map { it.place.id })
+        // without the query (an offline answer for the same text) nothing moves
+        assertEquals(listOf("n:1", "n:2", "n:3", "o:W1", "o:R71525"), SearchRanking.keepShown(shown, next).map { it.place.id })
+        // a shop online named exactly like the query does not jump
+        val shopOnline = hit(Place("o:N9", "Paris", "cafe", 51.2, 6.8, source = Place.Source.ONLINE))
+        assertEquals(listOf("n:1", "n:2", "n:3", "o:N9"), SearchRanking.keepShown(shown, shown + shopOnline, "Paris").map { it.place.id })
+    }
+
     @Test fun onlineRowsStillMatchingTheLongerText() {
         val olive = Place("o:1", "Restaurant Olive", "restaurant", 51.1655, 6.9395, address = "Mittelstraße 1, 40721 Hilden",
             source = Place.Source.ONLINE, town = "Hilden")
