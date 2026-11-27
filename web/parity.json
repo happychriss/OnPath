@@ -521,12 +521,12 @@
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/PlanSize.kt",
       "why": "plan sheet steps",
-      "blob": "24edfb104baf5def2420104fcd395dd2c695e4d9"
+      "blob": "1b7a9041b39fc22fc7ea7433a93f8e4b45c0312f"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "8adf1ae7229ad3bd13aac8785087ff1bd8e85638"
+      "blob": "fb26d75c8b57f22b491efd9fdbc0d1cd5573bd65"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanGuidance.kt",
@@ -576,7 +576,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/routing/EngineProvider.kt",
       "why": "engine choice / fallback, memory settings",
-      "blob": "70764c962076fc3009ccc549b4bf2b2013d777c6"
+      "blob": "81a68c63166d3bf26e1ddba7c6e95f0e4ece6cd2"
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/RoutingDataLoader.kt",
@@ -982,7 +982,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/MapGestures.kt": {
-      "blob": "934c5791873ec884aef4313f0fe757ce6c77d501",
+      "blob": "f4cd20d80098fbdda74cd2d1efa52c9e2e99a1f4",
       "perf": [
         "* symbol or anything after the vibration\"). The ring is full and buzzes after 300 ms (MapHost's HOLD_MS) by our own",
         "* clock, but MapLibre reports the press only later: as a long click at the phone's long-press timeout (400 ms and"
@@ -1117,7 +1117,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/WaitProgress.kt": {
-      "blob": "999551bb9dc298b45c39a24a5a892acd16ef4e08",
+      "blob": "47f183fbbca7ff7427351913c73aedda160a5d87",
       "perf": [
         "if (ran.size < 2 || sum < MIN_LEARN_MS) return this",
         "const val MIN_LEARN_MS = 2_000L",
@@ -1175,11 +1175,17 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/plan/RouteRun.kt": {
-      "blob": "b8c57a2d8c9ed7e5cd43f45ad466d7b85f5fa965",
+      "blob": "81a9056dfa3c12695d9721515f4d8777c4d8dfa8",
       "perf": [
+        "*   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan the [longRule] asks about (the planner: beyond a day; the app: a leg too slow or too long for the phone), not said yes to ([longOk]; beyond capacity always) and that may be asked about ([Event.Recalc.askLong]) →",
         "*   [Phase.AskLong], nothing routed or loaded. Else → [Phase.Routing] + [Effect.StartRouting]. Always: the time-limit",
         "/** Time-limit periods of the next run: 1, or more after \"Weiter warten\". */",
+        "* its phone rule (`PhoneLongRule`, owner 2026-11-27 – the longest leg's search time, beyond the phone's capacity).",
+        "* A Plan run asks \"Weiter warten?\" at its time limit ([SlowPlan], the web planner); false (the app since 2026-11-27):",
+        "* the limit already allows twice the leg's estimate – at it the legs left become straight lines with the usual line.",
+        "* \"This route is very long\" is open ([estimateS] seconds; [Double.POSITIVE_INFINITY] = beyond the phone's capacity):",
         "/** The run reached its time limit after [rounds] period(s): \"Weiter warten?\" is open. */",
+        "* beyond the phone's capacity, which no answer changes.",
         "/** … at its time limit after [rounds] period(s), asking. */",
         "/** Route the plan as run [gen] with [rounds] time-limit periods; [askAtLimit]: ask at the limit instead of straight legs. */"
       ]
@@ -1899,7 +1905,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/recording/PointFilter.kt": {
-      "blob": "e926bb2f483134cb1f9671d5b8af498c99e941b0",
+      "blob": "364a83387811619a270573281cccf7e94ac78911",
       "perf": [
         "* - Fixes worse than [MAX_ACCURACY_M] are dropped. 50 m keeps the track whole in gorges and under forest, where",
         "* - An impossible speed since the previous point ([MAX_SPEED_MS]) is a GPS jump: dropped.",
@@ -2043,6 +2049,13 @@
     "core/src/main/kotlin/com/onpath/app/routing/DayRowText.kt": {
       "blob": "283fa5394744e7f3706f55f7f6f77bbfed7e9557",
       "perf": []
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/DayTable.kt": {
+      "blob": "67a1a8eefb12771e3573f98f55eadc13290291ba",
+      "perf": [
+        "* row („Gesamt“), and a day above a limit per day with only the exceeded values marked ([Cells.overTime],",
+        "* The open day's fact line when it is above a limit (owner: facts only): „1 h 10 und 120 m über deinem Tag“, only the"
+      ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/Junctions.kt": {
       "blob": "ece866248097738df720edda477146aa79130770",
@@ -2192,7 +2205,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDays.kt": {
-      "blob": "f5e338fecf3f0f0cda73843cf029d1e3a26f66d6",
+      "blob": "657589c63f4357ab47f998e7dcb1376f15484a28",
       "perf": [
         "/** A limit per day a day is above (R8: its row turns orange with that value). */",
         "* a limit where that is possible, otherwise about equal by time (owner 2026-11-17). A day above a limit is flagged",
@@ -2204,7 +2217,8 @@
         "return DayEdit(plan.copy(days = days.coerceAtMost(PlanCode.MAX_DAYS), nights = plan.nights + (index to mark)),",
         "var best = -1; var bestD = Double.MAX_VALUE",
         "* (\"Erst eine Übernachtung entfernen\"), below 1 or above [PlanCode.MAX_DAYS].",
-        "if (days < nights.size + 1 || days < 1 || days > PlanCode.MAX_DAYS) return null"
+        "if (days < nights.size + 1 || days < 1 || days > PlanCode.MAX_DAYS) return null",
+        "val days = minOf(maxOf(want, nights.size + 1), PlanCode.MAX_DAYS)"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt": {
@@ -2325,6 +2339,41 @@
         "var pos = INDEX_BYTES.toLong()",
         "if (!file.isFile || file.length() < INDEX_BYTES) return null",
         "val b = ByteArray(INDEX_BYTES)"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/routing/RouteCost.kt": {
+      "blob": "e64edd9d31680983142e221074c6308c114d8fc9",
+      "perf": [
+        "* - Desktop JVM time by the leg's straight km: [A_MS] · km^1.5 up to [KNEE_KM], continuing with exponent 1.8 above it",
+        "*   leg routed with ≥ [LEARN_FROM_KM] straight km ([learn], EWMA, clamped [MIN_FACTOR]..[MAX_FACTOR]). Pure search time",
+        "* - A leg above [CAPACITY_KM] is beyond a phone's memory (487 km reached 215 MB of a 256 MB heap): no waiting offered.",
+        "const val A_MS = 3.5",
+        "const val MAX_FACTOR = 30.0",
+        "const val ASK_ABOVE_MS = 30_000L",
+        "const val ASK_ABOVE_S = ASK_ABOVE_MS / 1000.0",
+        "/** The time limit allows this many times a leg's estimate ([limitMs]). */",
+        "/** A phone's routing heap (MB) and the straight km it holds: 487 km reached 215 MB of a 256 MB heap. */",
+        "const val PHONE_MEMORY_MB = 256",
+        "/** A leg longer than this (straight km) is beyond a phone's memory. */",
+        "private val KNEE_MS = A_MS * KNEE_KM.pow(EXP_NEAR)",
+        "return if (k <= KNEE_KM) A_MS * k.pow(EXP_NEAR) else KNEE_MS * (k / KNEE_KM).pow(EXP_FAR)",
+        "/** The straight km a device with [memoryCapMb] MB routing heap holds in one leg: [PHONE_CAP_KM] scaled linearly. */",
+        "fun capKm(memoryCapMb: Int): Double = PHONE_CAP_KM * memoryCapMb.coerceAtLeast(1) / PHONE_MEMORY_MB",
+        "/** The leg [legIndex] is beyond the device's memory: only a stop on the way helps, no waiting offered. */",
+        "* else the slowest leg above [ASK_ABOVE_MS] → [Decision.Ask] with its range ([RANGE_LOW] … [RANGE_HIGH]); else [Decision.Now].",
+        "fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB): Decision {",
+        "return if (ms > ASK_ABOVE_MS) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now",
+        "* ≥ [LEARN_FROM_KM] only (else [oldFactor] as it is, bounded); EWMA with [LEARN_WEIGHT], clamped [MIN_FACTOR]..[MAX_FACTOR].",
+        "fun bounded(factor: Double): Double = if (factor.isNaN()) DEFAULT_FACTOR else factor.coerceIn(MIN_FACTOR, MAX_FACTOR)",
+        "/** A leg of [km] straight kilometres is beyond a phone's memory. */",
+        "/** The app's time limit for a request of [km] straight km: today's [todayMs], at least twice the phone's estimate. */",
+        "* known, else \"Point 1 → 2\"); beyond capacity: \"475 km in one go. Add a stop or plan in the browser.\"",
+        "* longest leg's search, [Double.POSITIVE_INFINITY] = beyond the phone's capacity), [leg] its index (-1 = the whole plan),",
+        "* on this phone ([factor]) or is beyond its capacity. [routed] (from, to, quick): the leg is routed already (the leg",
+        "* cache; quick = memory only, no file read) – asked only for the legs that would make it ask, and quick for [runS].",
+        "* The device's routing memory in the phone's MB ([RouteCost.capKm]): the phone's [RouteCost.PHONE_MEMORY_MB] unless set –",
+        "var memoryCapMb: () -> Int = { RouteCost.PHONE_MEMORY_MB }",
+        "* The phone's search cost for the engine (BRouterEngine): the time limit of a request ([limitMs]) and what a finished"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/RouteProgress.kt": {
@@ -2460,7 +2509,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/search/OfflineIndex.kt": {
-      "blob": "0df57e108f200416e2f1538aeaae11462aa88211",
+      "blob": "638106dc4289d5491c537b5734a947bb5519730d",
       "perf": [
         "val limit: Int = 60,",
         "* In-memory offline search index over one map folder: POIs (pois.geojson), peaks/passes and place names",
@@ -2476,21 +2525,25 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/search/OnlineSearch.kt": {
-      "blob": "a9c013254c62e07a000f45d63062dc07769e8a31",
+      "blob": "ecce17f7e654397a12b3c6250ef07cdd64b14ad9",
       "perf": [
         "fun search(query: String, lat: Double, lon: Double, limit: Int = 10): List<Place>",
-        "fun url(query: String, lat: Double, lon: Double, limit: Int): String {",
-        "return \"$baseUrl?q=$q&lat=${f(lat)}&lon=${f(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de\"",
-        "fun placesUrl(query: String, lat: Double, lon: Double, limit: Int): String =",
-        "url(query, lat, lon, limit) + PLACE_LAYERS.joinToString(\"\") { \"&layer=$it\" }",
+        "fun url(query: String, lat: Double, lon: Double, limit: Int): String = urlOf(baseUrl, query, lat, lon, limit)",
+        "fun placesUrl(query: String, lat: Double, lon: Double, limit: Int): String = placesUrlOf(baseUrl, query, lat, lon, limit)",
         "override fun search(query: String, lat: Double, lon: Double, limit: Int): List<Place> {",
-        "val main = get(url(query, lat, lon, limit))",
-        "val places = try { get(placesUrl(query, lat, lon, PLACES_LIMIT)) } catch (e: Exception) {",
+        "val (mainUrl, placesUrl) = requests(query, lat, lon, limit, baseUrl)",
+        "const val LIMIT = 10",
+        "fun requests(query: String, lat: Double, lon: Double, limit: Int = LIMIT, base: String = BASE_URL): List<String> =",
+        "listOf(urlOf(base, query, lat, lon, limit), placesUrlOf(base, query, lat, lon, PLACES_LIMIT))",
+        "fun urlOf(base: String, query: String, lat: Double, lon: Double, limit: Int): String {",
+        "return \"$base?q=$q&lat=${coarse(lat)}&lon=${coarse(lon)}&zoom=12&location_bias_scale=0.3&limit=$limit&lang=de\"",
+        "fun placesUrlOf(base: String, query: String, lat: Double, lon: Double, limit: Int): String =",
+        "urlOf(base, query, lat, lon, limit) + PLACE_LAYERS.joinToString(\"\") { \"&layer=$it\" }",
         "const val PLACES_LIMIT = 5"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/search/Place.kt": {
-      "blob": "7b90ef0ee26c4b700dd8a366cddb3359a4dc5436",
+      "blob": "c5323721141d31d2b06f1af619a5d6faf6b136bc",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/search/PlaceGeocoder.kt": {
@@ -2961,11 +3014,13 @@
       "perf": []
     },
     "app/src/main/java/com/onpath/app/routing/BRouterEngine.kt": {
-      "blob": "db8506bd335a66e3c164c869181920c3304c4010",
+      "blob": "03d24d913338b68f6969e7d04fda0e1bd63e71f5",
       "perf": [
         "* request (same points, activity and SAC limit) returns instantly.",
         "* Via points are hints: BRouter snaps each to the nearest usable way (within [MAX_SNAP_M]) and,",
         "* result cache's key. The app passes the setting (EngineProvider – the same for planning and a tour's re-routing);",
+        "* The app's search cost (owner 2026-11-27, [RouteCost]): the time limit becomes at least twice the leg's phone",
+        "* estimate, and each searched leg teaches the phone's factor. Null (the web planner, the JVM tests) = today's limit.",
         "var nearest = Double.MAX_VALUE",
         "private val cache = object : LinkedHashMap<CacheKey, RouteResult>(CACHE_SIZE + 1, 0.75f, true) {",
         "override fun removeEldestEntry(eldest: MutableMap.MutableEntry<CacheKey, RouteResult>?) = size > CACHE_SIZE",
@@ -2975,7 +3030,7 @@
         "routeLocked(waypoints, activity, sacLimit, budget, limits?.cancel, limits?.rounds ?: 1, trails)",
         "}.also { cache[key] = it }",
         "Problems.error(\"routing\", \"BRouter ran out of memory\", e)",
-        "val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds)",
+        "val limit = RouteTimeLimit.forRoute(waypoints, activity, rounds).let { today -> searchCost?.limitMs(waypoints, today) ?: today }",
         "val timeoutMs = budgetMs?.coerceAtMost(limit) ?: limit",
         "try { engine.doRun(left.coerceAtLeast(MIN_BUDGET_MS)) } finally { cancel?.onCancel(null); running = null }",
         "if (way == null || skipWays.size >= MAX_ISLAND_SKIPS || timeoutMs - (System.currentTimeMillis() - t0) < MIN_BUDGET_MS) {",
@@ -3041,7 +3096,7 @@
       ]
     },
     "core/src/test/kotlin/com/onpath/app/routing/PlanDaysTest.kt": {
-      "blob": "dbb94cad1be58a92068a7f7ee0fee3456a712cc0",
+      "blob": "1c7433080096d2966d3c0feaf95c0a5840d90075",
       "perf": [
         "assertNull(PlanDays.setDays(blue, PlanCode.MAX_DAYS + 1))",
         "// and otherwise as equal by time as the limit lets them be: day 1 climbs 1000 m, the rest share 350 km",
@@ -3060,7 +3115,7 @@
       ]
     },
     "core/src/test/kotlin/com/onpath/app/domain/MapGesturesTest.kt": {
-      "blob": "5946efcb1dbf130c833f7958adaf7ce5e5f74935",
+      "blob": "40001e8b2da40f36069858f51b71f3ea51e8cf28",
       "perf": [
         "* Field bug: the ring buzzed at 300 ms, the finger slid past the touch slop before the long-press timeout (400 ms)",
         "assertTrue(h.mapEvent()) // the long click at the timeout"
@@ -3301,9 +3356,10 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt": {
-      "blob": "9a499b4879f5a129c06997a2e5acc252b465a206",
+      "blob": "a4982a9888339cc2507827d4aa33c5e645e6282f",
       "perf": [
-        "/** The plan run reached its time limit: the periods of the run that asked; null = none. */"
+        "/** The plan run reached its time limit: the periods of the run that asked; null = none. */",
+        "fx.estimateS.isInfinite() -> \"A leg beyond the phone's capacity – asking first\""
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": {
@@ -3341,7 +3397,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanEditState.kt": {
-      "blob": "3e494f4db16526534f420d9a94e866bacafb8e26",
+      "blob": "61eebe2cb0eeb660185df08995c55f94ccb23392",
       "perf": [
         "// meanwhile (followFromPlan lives in memory only; Pixel 2026-11-01: a blue line without points stayed). A shown"
       ]
@@ -3432,7 +3488,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/PlanSize.kt": {
-      "blob": "24edfb104baf5def2420104fcd395dd2c695e4d9",
+      "blob": "1b7a9041b39fc22fc7ea7433a93f8e4b45c0312f",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/ExpandGesture.kt": {
@@ -3503,7 +3559,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RouteListRules.kt": {
-      "blob": "cc42fbbe47e2c8fdfa6de2b386d65ab65122a6fe",
+      "blob": "7d769f74028f9356cf87adee6fa0d4c2d51cd31b",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/CellCards.kt": {
@@ -3543,7 +3599,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_days.xml": {
-      "blob": "002880d8c87853e8e44590da7c2270ec1de15132",
+      "blob": "6fcacb96bf243d3a2e3f59fd053badc1fbd438bf",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_live.xml": {
@@ -3551,7 +3607,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "76574d29160262bf24478f821332be83b1fe63ba",
+      "blob": "b3bf3bfdfb902f4fda497468fe1f44bff4a230f7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
@@ -3563,11 +3619,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "869bc7eb95fb85623e60daeb6ba80b73634a9c11",
+      "blob": "24571d68cf921a59220cb0433fc3911a7cc59bcc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "a09e346822ed457c58bd96eb01cc802eeab9f0b7",
+      "blob": "b44b870f93f3ce1076e923d267c2cfd11b6535ff",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -3575,15 +3631,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "28f6242a9e66502e05b84abb1717a2c1a0c5cc0c",
+      "blob": "09b71a6ad7ed34cc255c7f9378f34a31dc58bbd7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
-      "blob": "9ab5bbf14b02856a91ebf0eb1b7b93d1dc13bc43",
+      "blob": "b1b90f11bca44e01c88522aa6a142554ab76b984",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "127b471cf077b8f38cf9f7d23e71e6a316559659",
+      "blob": "d188099cb85191d2d6356bee509c553eba2803fa",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -3615,7 +3671,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_days.xml": {
-      "blob": "8c4824b27ed40025793d3d1c279174a6c774310b",
+      "blob": "ef7ec2920e4dff92a73c56bb4c6cd05299eaf5b8",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_live.xml": {
@@ -3623,7 +3679,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "b9f97ca61753a6878df54adf6ceb16e7b19c783b",
+      "blob": "f3a378cd054f0b13ef1eac1da756b9f3333ec2d7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
@@ -3635,11 +3691,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "5af12c1f07b8f32722f4d13557e1a5822d7efa20",
+      "blob": "0c102e73d6cc7b61a608c436e331ada30f2562ee",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "c9c6c86ef1d2bfe5cfb11ba56a0b81bb2a38bf96",
+      "blob": "7cd211db1614df27f800064e0fca1afb9e802d46",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -3647,15 +3703,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "8d4d9dbe43520022aa3d7ec6a32ceb5ad8a5e671",
+      "blob": "724cd411daa78ada7c9b2f6b7e316beb3fd3aec3",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
-      "blob": "4d5bf0c47c523c9cfb3c1d8dd7be91e41d3b2437",
+      "blob": "6c1b62d5f4bc0ad51990d95e49ad5f6eddc64da0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "a1af95ceacd7281d886e3f640bce1eb67b079dd0",
+      "blob": "ad215816515f37073e65ee7a750b5b8b4e16f0d0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -3721,39 +3777,6 @@
     "app/src/main/assets/style/f2/onpath.json": {
       "blob": "414bdba82ed6e4a409488caa3c5c222a402ca906",
       "perf": []
-    },
-    "core/src/main/kotlin/com/onpath/app/routing/RouteCost.kt": {
-      "blob": "6d0c75dc9110b7f097e9bb97a09b3eba229c4099",
-      "perf": [
-        "* - Desktop JVM time by the leg's straight km: [A_MS] · km^1.5 up to [KNEE_KM], continuing with exponent 1.8 above it",
-        "*   leg routed with ≥ [LEARN_FROM_KM] straight km ([learn], EWMA, clamped [MIN_FACTOR]..[MAX_FACTOR]). Pure search time",
-        "* - A leg above [CAPACITY_KM] is beyond a phone's memory (487 km reached 215 MB of a 256 MB heap): no waiting offered.",
-        "const val A_MS = 3.5",
-        "const val MAX_FACTOR = 30.0",
-        "const val ASK_ABOVE_MS = 30_000L",
-        "const val ASK_ABOVE_S = ASK_ABOVE_MS / 1000.0",
-        "/** The time limit allows this many times a leg's estimate ([limitMs]). */",
-        "/** A phone's routing heap (MB) and the straight km it holds: 487 km reached 215 MB of a 256 MB heap. */",
-        "const val PHONE_MEMORY_MB = 256",
-        "/** A leg longer than this (straight km) is beyond a phone's memory. */",
-        "private val KNEE_MS = A_MS * KNEE_KM.pow(EXP_NEAR)",
-        "return if (k <= KNEE_KM) A_MS * k.pow(EXP_NEAR) else KNEE_MS * (k / KNEE_KM).pow(EXP_FAR)",
-        "/** The straight km a device with [memoryCapMb] MB routing heap holds in one leg: [PHONE_CAP_KM] scaled linearly. */",
-        "fun capKm(memoryCapMb: Int): Double = PHONE_CAP_KM * memoryCapMb.coerceAtLeast(1) / PHONE_MEMORY_MB",
-        "/** The leg [legIndex] is beyond the device's memory: only a stop on the way helps, no waiting offered. */",
-        "* else the slowest leg above [ASK_ABOVE_MS] → [Decision.Ask] with its range ([RANGE_LOW] … [RANGE_HIGH]); else [Decision.Now].",
-        "fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB): Decision {",
-        "return if (ms > ASK_ABOVE_MS) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now",
-        "* ≥ [LEARN_FROM_KM] only (else [oldFactor] as it is, bounded); EWMA with [LEARN_WEIGHT], clamped [MIN_FACTOR]..[MAX_FACTOR].",
-        "fun bounded(factor: Double): Double = if (factor.isNaN()) DEFAULT_FACTOR else factor.coerceIn(MIN_FACTOR, MAX_FACTOR)",
-        "/** A leg of [km] straight kilometres is beyond a phone's memory. */",
-        "/** The app's time limit for a request of [km] straight km: today's [todayMs], at least twice the phone's estimate. */",
-        "* known, else \"Point 1 → 2\"); beyond capacity: \"475 km in one go. Add a stop or plan in the browser.\"",
-        "* longest leg's search, [Double.POSITIVE_INFINITY] = beyond the phone's capacity), [leg] its index (-1 = the whole plan),",
-        "* on this phone ([factor]) or is beyond its capacity. [routed] (from, to, quick): the leg is routed already (the leg",
-        "* cache; quick = memory only, no file read) – asked only for the legs that would make it ask, and quick for [runS].",
-        "* The phone's search cost for the engine (BRouterEngine): the time limit of a request ([limitMs]) and what a finished"
-      ]
     }
   },
   "refs": {
