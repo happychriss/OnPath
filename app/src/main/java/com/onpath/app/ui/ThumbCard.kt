@@ -2,6 +2,7 @@ package com.onpath.app.ui
 
 import com.onpath.strings.*
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.heightIn
@@ -48,8 +49,7 @@ internal fun NavThumbCard(modifier: Modifier = Modifier, content: @Composable (M
 
 /** The search field of the empty card: the owner's question "Wohin soll’s gehen?" in it, a tap opens the search. */
 @Composable
-internal fun ThumbSearchField(onSearch: () -> Unit, modifier: Modifier) {
-    val ask = str(Res.string.plan_hint_first_point_question)
+internal fun ThumbSearchField(onSearch: () -> Unit, modifier: Modifier, ask: String = str(Res.string.plan_hint_first_point_question)) {
     Surface(onClick = onSearch, shape = ThumbInner, color = OnPathColors.ThumbField,
         modifier = modifier.heightIn(min = 48.dp).semantics { contentDescription = ask; role = Role.Button }) {
         Row(Modifier.padding(horizontal = 14.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -110,3 +110,18 @@ internal fun ThumbActivityChip(activity: Activity, sac: Int, onClick: () -> Unit
     }
 }
 
+
+/**
+ * Only the start is set (owner 2026-11-27: the card looked empty): the activity, the field „Ziel suchen“ filling the row
+ * (like the empty plan's „Wohin soll’s gehen?“), ☰ ([menu]).
+ */
+@Composable
+internal fun ThumbGoalRow(activity: Activity, sac: Int, onActivity: () -> Unit, onSearch: () -> Unit, menu: @Composable () -> Unit) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        ThumbActivityChip(activity, sac, onActivity, words = false)
+        Spacer(Modifier.width(8.dp))
+        ThumbSearchField(onSearch, Modifier.weight(1f), str(Res.string.plan_search_goal))
+        Spacer(Modifier.width(8.dp))
+        menu()
+    }
+}

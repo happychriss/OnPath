@@ -167,6 +167,7 @@
     <string name="plan_navigate_anyway">Navigate anyway</string>
     <string name="plan_fix_route">Fix the route</string>
     <string name="plan_search_hint">Search places or addresses</string>
+    <string name="plan_search_goal">Find a destination</string>
     <string name="plan_menu">Menu</string>
     <string name="plan_menu_my_routes">My tours</string>
     <string name="plan_menu_check_updates">Check for updates</string>
