@@ -130,6 +130,18 @@ class PlanSession(
      * routed by it: a moved point is a new one, so its anchors, and the facing sides of its neighbours, go ([PlanAnchors.edited],
      * docs/design/detour-stitch.md §2). A run of their own profile keeps them with the moved point.
      */
+    /**
+     * Support points on the long legs of the route just taken ([PlanStitch.withSupports], owner 2026-11-27): no Undo step
+     * – they lie on the line the plan already has, nothing about the route changes. True when some were added.
+     */
+    fun addSupports(lines: com.onpath.app.routing.VisibleLines): Boolean {
+        if (lines.points != points) return false
+        val next = PlanStitch.withSupports(anchorSet, lines)
+        if (next == anchorSet) return false
+        anchorSet = next
+        return true
+    }
+
     fun snapDropsAnchors(routed: List<GeoPoint>, snapped: List<GeoPoint>, runProfile: AnchorProfile) {
         if (anchorSet.anchors.isEmpty() || routed == snapped || anchorSet.profile == runProfile) return
         anchorSet = anchorSet.copy(anchors = PlanAnchors.edited(routed, snapped, anchorSet.anchors))

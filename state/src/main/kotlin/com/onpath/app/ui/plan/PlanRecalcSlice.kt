@@ -239,6 +239,9 @@ class PlanRecalcSlice(
         detourCheck.start(res, recalcHost.planReach) { planRoute.routingEngine() }
     }
 
+    // the support points' run: after the result is taken (posted), from the pieces just cut – nothing routed
+    override fun supportsAdded() { scope.launchSafe("app", "supports", main) { recalc() } }
+
     fun recalc() {
         val run = begin() ?: return
         val gen = run.gen

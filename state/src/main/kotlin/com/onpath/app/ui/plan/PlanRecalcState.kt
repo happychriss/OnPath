@@ -504,7 +504,25 @@ open class PlanRecalcState(
         val expanded = com.onpath.app.routing.PlanAnchors.expand(run.pts, run.anchors, run.pins)
         val got = if (ours) com.onpath.app.routing.PlanStitch.linesOf(res.route, expanded, com.onpath.app.routing.AnchorProfile.of(run.act, run.level)) else null
         stitched = got?.let { com.onpath.app.routing.VisibleLines(now, it.profile, it.lines) }
+        stitched?.let { if (!recordingTour && !navigating) supports(run, it) }
     }
+
+    /**
+     * Support points on every long leg of the route just taken (owner 2026-11-27, „Lange Browser-Touren auf dem Handy“):
+     * saved and synced with the plan, so a device that did not route it (the browser after a reload, another phone) routes
+     * short pieces. Here nothing is routed: the pieces are cut out of the legs just routed ([com.onpath.app.routing.LegSplit.seed])
+     * and the plan runs once more from them ([supportsAdded]). Not during a tour (its followed plan stays as it is).
+     */
+    private fun supports(run: Run, lines: com.onpath.app.routing.VisibleLines) {
+        if (!plan.addSupports(lines)) return
+        val expanded = com.onpath.app.routing.PlanAnchors.expand(lines.points, plan.anchorSet.forProfile(run.act, run.level), plan.pinnedIndices())
+        val cut = com.onpath.app.routing.LegSplit.seed(legCache, expanded, run.act, run.level)
+        Problems.trace("routing", "Route #${run.gen}: support points on long legs, ${expanded.points.size - lines.points.size} – $cut piece(s) cut from the line, nothing routed")
+        supportsAdded()
+    }
+
+    /** The plan has support points now: run it again (from the cut pieces). The app's slice does; the default does nothing. */
+    protected open fun supportsAdded() {}
 
     /** Indices of the named stops of [pts] (they keep their coordinates when the route is snapped). */
     private fun namedStops(pts: List<GeoPoint>): Set<Int> = pts.indices.filter { stopName(pts[it]) != null }.toSet()

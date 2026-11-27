@@ -29,6 +29,36 @@ object PlanStitch {
     private const val MAX_SIDE = 8
 
     /**
+     * [set] with support points on every leg of [lines] longer than [PlanAnchors.SUPPORT_LEG_M] that has no anchors yet
+     * (owner 2026-11-27): [PlanAnchors.supportsFor], the first half behind the leg's start point (its `after`), the rest
+     * in front of its end point (its `before`) – at most [MAX_SIDE] per side and [PlanCode.MAX_ANCHORS] in all. Called
+     * by whoever saves or sends a plan (app and planner alike) with the lines of the route the plan has now; nothing is
+     * routed for it on that device (the supports lie on the cached legs: [LegSplit.seed] cuts them). [set] unchanged
+     * when [lines] are of another profile than the set's own, or nothing is long.
+     */
+    fun withSupports(set: AnchorSet, lines: VisibleLines): AnchorSet {
+        if (set.anchors.isNotEmpty() && set.profile != lines.profile) return set
+        val pts = lines.points
+        if (lines.lines.size != pts.size - 1) return set
+        val out = HashMap(set.anchors)
+        var total = out.values.sumOf { it.size }
+        var added = false
+        for ((v, line) in lines.lines.withIndex()) {
+            if (line == null) continue
+            if (out[v]?.after.orEmpty().isNotEmpty() || out[v + 1]?.before.orEmpty().isNotEmpty()) continue // a stitch is there
+            val s = PlanAnchors.supportsFor(line, pts[v], pts[v + 1])
+            if (s.isEmpty() || total + s.size > PlanCode.MAX_ANCHORS) continue
+            val head = minOf((s.size + 1) / 2, MAX_SIDE)
+            val tail = s.size - head
+            if (tail > MAX_SIDE) continue
+            out[v] = Anchors(out[v]?.before.orEmpty(), s.subList(0, head))
+            if (tail > 0) out[v + 1] = Anchors(s.subList(head, s.size), out[v + 1]?.after.orEmpty())
+            total += s.size; added = true
+        }
+        return if (added) AnchorSet(out, lines.profile) else set
+    }
+
+    /**
      * The anchor set after the edit [before] → [after]. Without usable [lines] this is [PlanAnchors.edited] and nothing
      * else. The lines are usable when they are the lines of exactly [before] and of the set's own profile (an empty set
      * has none, so any profile will do): else the line the decision would use is not the line the anchors must lie on.
