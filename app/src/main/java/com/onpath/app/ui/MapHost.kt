@@ -267,7 +267,7 @@ fun MapHost(
                     is MapGestures.Action.PointMenu -> { vm.placeMenus.openPointMenu(a.index, dpOf(a.index)); true }
                     MapGestures.Action.PoiMenu -> { poi?.let { vm.placeMenus.openPoiMenu(it, snap) }; true }
                     MapGestures.Action.FirstPointMenu -> { vm.placeAdd.openFirstPointMenu(p); true }
-                    // set at once in a clear case, the small „Einfügen“ / „Neues Ziel“ menu in doubt (owner 2026-11-15)
+                    // set at once in a clear case, the small „Als Stopp“ / „Als Ziel“ menu in doubt (owner 2026-11-15)
                     MapGestures.Action.AddPoint -> { vm.placeAdd.holdOnMap(p, snap); true }
                     MapGestures.Action.CloseMenu -> { vm.placeMenus.closeMapOverlays(if (press == MapGestures.Press.TAP) "tap outside" else "hold outside"); true }
                     MapGestures.Action.PoiDetails -> {

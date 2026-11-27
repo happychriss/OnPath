@@ -696,7 +696,7 @@ class CoreFieldE2ETest : E2EBase() {
         var menu: com.onpath.app.domain.PlaceAddMenu.Menu? = null
         scenario.onActivity { label = vm(it).placeMenus.poiAddLabel(poi); menu = vm(it).placeMenus.placeMenu(poi) }
         assertFalse("never a new start during a tour: \"$label\"", label == Txt.s(Res.string.search_card_set_start))
-        // beside the middle: a clear stop – the menu offers „Einfügen“ first (owner 2026-11-07 / 2026-11-15), no start
+        // beside the middle: a clear stop – the menu offers „Als Stopp“ first (owner 2026-11-07 / 2026-11-15), no start
         assertEquals("the menu: $menu", com.onpath.app.domain.PlaceAddMenu.Item.ADD_STOP, menu?.emphasised)
         scenario.onActivity { vm(it).placeAdd.addPoiAsStop(poi) }
         waitUntil("3 points, the place between start and goal", 10_000) {
@@ -713,7 +713,7 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-14: while planning (no tour), "Als neues Ziel" goes on forward – the place is the new goal and the old
+     * Owner 2026-11-14: while planning (no tour), "Als Ziel" goes on forward – the place is the new goal and the old
      * goal stays as the last stop („beim Planen anhängen, unterwegs ersetzen“); one Undo brings the plan before back.
      */
     @Test fun aPlaceMadeTheDestinationWhilePlanningKeepsTheOldGoalAsAStop() {
@@ -784,7 +784,7 @@ class CoreFieldE2ETest : E2EBase() {
     }
 
     /**
-     * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als neues Ziel" first; tapped, the plan
+     * Owner 2026-11-07 11:20: during a tour, a place past the goal → its menu says "Als Ziel" first; tapped, the plan
      * ends there (the old goal is dropped), one Undo brings the old goal back. The recording goes on throughout.
      */
     @Test fun aPlaceMadeTheDestinationDuringATourEndsThePlanThereUndoBringsTheGoalBack() {
@@ -803,7 +803,7 @@ class CoreFieldE2ETest : E2EBase() {
         var menu: com.onpath.app.domain.PlaceAddMenu.Menu? = null
         scenario.onActivity { menu = vm(it).placeMenus.placeMenu(poi) }
         assertEquals("the menu: $menu", com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION, menu?.main?.firstOrNull())
-        assertTrue("„Einfügen“ is shown too: $menu", com.onpath.app.domain.PlaceAddMenu.Item.ADD_STOP in menu!!.main)
+        assertTrue("„Als Stopp“ is shown too: $menu", com.onpath.app.domain.PlaceAddMenu.Item.ADD_STOP in menu!!.main)
         scenario.onActivity { vm(it).placeAdd.poiAsNewDestination(poi) }
         waitUntil("the plan ends at the place, the old goal dropped", 10_000) {
             val w = waypointList()
@@ -828,9 +828,9 @@ class CoreFieldE2ETest : E2EBase() {
      * A tour following a plan changed on the way (owner 2026-11-06: "Los geht's" saved the two-point plan – a third point
      * set during the tour makes it unsaved again – it goes under Zuletzt when it leaves the map). Returns the planned route saved at the start.
      *
-     * The third point is a stop: on a tour a hold in doubt asks „Einfügen“ / „Neues Ziel“ (owner 2026-11-15, F-PLAN-15 –
-     * the zone; here GOAL_FIRST), and „Neues Ziel“ replaces the goal on a tour (owner 2026-11-14, `keepsOldGoal`) – the
-     * plan would stay at two points. This fixture needs a third point, so it takes „Einfügen“ itself, not the likelier row.
+     * The third point is a stop: on a tour a hold in doubt asks „Als Stopp“ / „Als Ziel“ (owner 2026-11-15, F-PLAN-15 –
+     * the zone; here GOAL_FIRST), and „Als Ziel“ replaces the goal on a tour (owner 2026-11-14, `keepsOldGoal`) – the
+     * plan would stay at two points. This fixture needs a third point, so it takes „Als Stopp“ itself, not the likelier row.
      */
     private fun tourWithAnUnsavedPlan(): Long {
         val planId = startOnANewPlan()

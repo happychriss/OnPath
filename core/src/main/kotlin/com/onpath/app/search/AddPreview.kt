@@ -45,6 +45,13 @@ object AddPreview {
         return Preview(d, label, text, extra)
     }
 
+    /** An add row: its words ([label]) and whether it adds a stop – the row's icon follows [stop], never the words. */
+    data class Add(val label: String, val stop: Boolean)
+
+    /** [label] and its kind for a plan of [n] points: a stop is a via (on the line or where it fits best). */
+    fun add(d: WaypointInsertion.Decision, n: Int): Add =
+        Add(label(d, n), d.kind == WaypointInsertion.Kind.VIA_ON_LINE || d.kind == WaypointInsertion.Kind.VIA_BEST_FIT)
+
     /** The button text for adding a point to a plan of [n] points ([d] from [WaypointInsertion.decide]). */
     fun label(d: WaypointInsertion.Decision, n: Int): String = when (d.kind) {
         WaypointInsertion.Kind.START -> Txt.s(Res.string.search_card_set_start)

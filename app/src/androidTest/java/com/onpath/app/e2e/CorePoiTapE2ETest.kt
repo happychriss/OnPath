@@ -211,7 +211,7 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
     /**
      * b2) while PLANNING (owner 2026-11-17: „wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt
      * zu werden“): a plan coming from the south ends 300 m short of the POI – a hold on the symbol measures on the paths
-     * (ring on the POI), then the menu opens with only „Neues Ziel“ (appending clearly shorter, on the paths and on straight
+     * (ring on the POI), then the menu opens with only „Als Ziel“ (appending clearly shorter, on the paths and on straight
      * lines alike); taken, the plan goes on to the POI.
      */
     @Test fun holdOnADrawnPoiSymbolWhilePlanningShowsOnlyTheMatchingRow() {
@@ -239,11 +239,11 @@ class CorePoiTapE2ETest(private val format: Int) : E2EBase() {
             val again = holdAndRead(); rows = again.first; trace = again.second; line = again.third
         }
         android.util.Log.i("OnPathE2E", "POI hold while planning: rows $rows, realRouting $realRouting: $line")
-        assertEquals("only „Neues Ziel“ – $line", listOf(com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION), rows)
+        assertEquals("only „Als Ziel“ – $line", listOf(com.onpath.app.domain.PlaceAddMenu.Item.NEW_DESTINATION), rows)
         assertTrue("the decision says how it measured – $trace", line != null && (line.contains("paths: ") || line.contains("paths failed")))
         if (realRouting) assertTrue("measured on the paths with real routing data: $line", line!!.contains("paths: insert"))
-        assertNotNull("„Neues Ziel“ shown", findFresh(By.text(Txt.s(Res.string.plan_make_destination)), 5_000))
-        assertNull("no „Einfügen“", device.findObject(By.text(Txt.s(Res.string.plan_add_as_stop))))
+        assertNotNull("„Als Ziel“ shown", findFresh(By.text(Txt.s(Res.string.plan_make_destination)), 5_000))
+        assertNull("no „Als Stopp“", device.findObject(By.text(Txt.s(Res.string.plan_add_as_stop))))
         shot("planning-menu")
         clickText(Txt.s(Res.string.plan_make_destination))
         waitUntil("the plan goes on to the POI") { waypointCount() == 3 }

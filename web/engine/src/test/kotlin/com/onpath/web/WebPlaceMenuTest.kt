@@ -18,7 +18,7 @@ class WebPlaceMenuTest {
         assertTrue(Engine.placeMenu("46.67,11.16", 46.68, 11.20, false).startsWith("{\"main\":[\"SET_DESTINATION\"]"))
 
     // owner 2026-11-17 („wenn ich da nicht einfügen muss, dann braucht das auch im Menü nicht angezeigt zu werden“): a
-    // place on the line offers only „Einfügen“ (PlaceAddMenu.planningPlaceMenu) – nothing under „⋯ Mehr“
+    // place on the line offers only „Als Stopp“ (PlaceAddMenu.planningPlaceMenu) – nothing under „⋯ Mehr“
     @Test fun aPlaceOnTheWayIsAStopFirstAndGoesBetween() {
         val m = Engine.placeMenu(ab, 46.6702, 11.2100, false)
         assertTrue(m, m.startsWith("{\"main\":[\"ADD_STOP\"]"))
@@ -26,7 +26,7 @@ class WebPlaceMenuTest {
         assertEquals(m, 1, Regex("\"stop\":(\\d+)").find(m)!!.groupValues[1].toInt())
     }
 
-    // straight on far past the goal: appending (~26 km) is clearly shorter than inserting (~52 km) → only „Neues Ziel“
+    // straight on far past the goal: appending (~26 km) is clearly shorter than inserting (~52 km) → only „Als Ziel“
     @Test fun aPlaceFarPastTheGoalIsTheNewGoal() {
         val m = Engine.placeMenu(ab, 46.6700, 11.6000, false)
         assertTrue(m, m.startsWith("{\"main\":[\"NEW_DESTINATION\"]"))
@@ -38,7 +38,7 @@ class WebPlaceMenuTest {
         assertTrue(m, Regex("\"main\":\\[\"(ADD_STOP|NEW_DESTINATION)\",\"(ADD_STOP|NEW_DESTINATION)\"]").containsMatchIn(m))
     }
 
-    // „Als neues Ziel“ in the planner (no tour) keeps the old goal as the last stop – PlaceAddMenu.keepsOldGoal (owner 2026-11-14)
+    // „Als Ziel“ in the planner (no tour) keeps the old goal as the last stop – PlaceAddMenu.keepsOldGoal (owner 2026-11-14)
     @Test fun theNewGoalKeepsTheOldOneInThePlanner() {
         val m = Engine.placeMenu(ab, 46.6700, 11.6000, false)
         assertTrue(m, m.contains("\"keepOld\":true"))
@@ -77,7 +77,7 @@ class WebPlaceMenuTest {
         assertTrue(j, j.contains("appending clearly shorter"))
     }
 
-    // near equal (inserting ~1.20 km, appending ~1.14 km: within 1.2×) → the menu, the cheaper („Neues Ziel“) first
+    // near equal (inserting ~1.20 km, appending ~1.14 km: within 1.2×) → the menu, the cheaper („Als Ziel“) first
     @Test fun nearEqualDetoursAskTheCheaperFirst() {
         val j = Engine.holdOnMap(ns, 46.7000, 11.2150, false, 24.0)
         assertEquals(j, "ASK", action(j))
@@ -151,7 +151,7 @@ class WebPlaceMenuTest {
     private fun pts(j: String) = Regex("\"points\":\"([^\"]*)\"").find(j)?.groupValues?.get(1)
 
     @Test fun theHoldMenusRowsAddWhereTheAppDoes() {
-        // „Einfügen“ beside the middle → between A and B; „Neues Ziel“ → appended, the old goal stays (planning)
+        // „Als Stopp“ beside the middle → between A and B; „Als Ziel“ → appended, the old goal stays (planning)
         assertEquals("46.600000,11.200000;46.650000,11.210000;46.700000,11.200000",
             pts(Engine.placeEdit("holdStop", ns, 46.65, 11.21, 24.0, "", "")))
         assertEquals("46.600000,11.200000;46.700000,11.200000;46.650000,11.210000",

@@ -30,9 +30,10 @@ object OnPathColors {
     val Green = Color(0xFF245F46)
     /**
      * Navigate's one green (owner 2026-11-26 evening: "ist das Grün etwas zu dunkel?") – every go button ([ActionGo]),
-     * Anhalten, the map-button icons and the question edge in Navigate; the brand [Green] stays.
+     * Anhalten, the map-button icons and the question edge in Navigate. Today the brand [Green]; to tune Navigate's green
+     * alone, give it its own value here.
      */
-    val NavGreen = Color(0xFF245F46)
+    val NavGreen = Green
 
     /**
      * Light olive container: the selection – selected chips / segments / picker rows, the activity chip (the theme's

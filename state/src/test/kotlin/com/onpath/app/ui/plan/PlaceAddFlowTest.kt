@@ -576,7 +576,7 @@ class PlaceAddFlowTest {
         assertEquals(1, planning.reads["wayThereFrom"])
         assertEquals(1, planning.reads["routeLine"])
         assertNull(planning.reads["followLine"])
-        // "Einfügen" on a tour is the stop-only insertion among the points ahead: the goal stays last
+        // "Als Stopp" on a tour is the stop-only insertion among the points ahead: the goal stays last
         val stop = App(listOf(a, b, c))
         stop.touring = true; stop.passed = setOf(0, 1); stop.position = at(b, 0.0, 700.0)
         stop.slice.holdAddMenu = PlaceAddState.HoldAdd(nearA, PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.ADD_STOP)), 30.0)
@@ -737,7 +737,7 @@ class PlaceAddFlowTest {
     }
 
     @Test fun aPlaceMenuAddsTheHutNamedKindedPinnedAndTheOwnersMenuRows() {
-        // „Einfügen“: where it fits best on the route ahead, never behind the goal
+        // „Als Stopp“: where it fits best on the route ahead, never behind the goal
         val stop = App(listOf(a, b, c))
         stop.slice.addPoiAsStop(hut)
         assertEquals(listOf(a, b, hutAt, c), stop.store.points)
@@ -745,7 +745,7 @@ class PlaceAddFlowTest {
         assertEquals(listOf(hutAt to "Hütte"), stop.names)
         assertEquals(listOf(hutAt to "hut"), stop.kinds)
         assertEquals("Place menu: \"Hütte\" as a stop (plan 3 → 4 points)", stop.trace().last())
-        // „Neues Ziel“ while planning: the old goal stays as the last stop – appended; on a tour it replaces the goal
+        // „Als Ziel“ while planning: the old goal stays as the last stop – appended; on a tour it replaces the goal
         val goal = App(listOf(a, b, c))
         goal.pinOnMap = Place("photon:9", "Hütte", "hut", hut.lat, hut.lon)
         goal.slice.poiAsNewDestination(hut)

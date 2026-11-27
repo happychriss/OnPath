@@ -153,6 +153,7 @@ fun MapOverlayHost(
     vm.placeMenus.poiMenu?.let { poi ->
         val pin = vm.searchFlow.isCandidate(poi)
         val gone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.placeMenus.poiMenu = null }
+        val add = vm.placeMenus.poiAdd(poi)
         @Composable fun menu(card: Boolean) =
             PoiMenu(poi, card = card, address = if (card) vm.searchFlow.searchMark?.let { it.address ?: it.town } else null,
                 modifier = if (card) Modifier.fillMaxWidth() else Modifier,
@@ -161,7 +162,7 @@ fun MapOverlayHost(
                 fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
                 onFromMe = { vm.placeAdd.poiFromMyLocation(poi) },
                 onAdd = { vm.placeAdd.addPoiPoint(poi) },
-                addLabel = vm.placeMenus.poiAddLabel(poi),
+                addLabel = add.label, addIsStop = add.stop,
                 menu = vm.placeMenus.placeMenu(poi),
                 onAddStop = { vm.placeAdd.addPoiAsStop(poi) },
                 onNewDestination = { vm.placeAdd.poiAsNewDestination(poi) },
@@ -477,6 +478,8 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             /** false during a tour ([MapGestures.offersStartHere]): an empty plan offers only "Hierhin". */
             startHere: Boolean = true,
             addLabel: String = str(Res.string.search_card_set_destination),
+            /** [addLabel] adds a stop ([com.onpath.app.search.AddPreview.Add.stop]): the stop's icon, else the flag. */
+            addIsStop: Boolean = false,
             /** The found place's pin: its menu ends with "Nadel entfernen" (owner 2026-11-02); null = a map POI. */
             onRemovePin: (() -> Unit)? = null,
             menu: PlaceAddMenu.Menu? = null, onAddStop: () -> Unit = {}, onNewDestination: () -> Unit = {},
@@ -517,7 +520,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             PinMenuItems.Row.START_HERE -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
             PinMenuItems.Row.ROUND_TRIP -> HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = { onRoundTrip?.invoke() })
             PinMenuItems.Row.GO_HERE -> GoHereRow(fromMeBlocked, onFromMe)
-            PinMenuItems.Row.ADD -> HoldMenuItem(if (addLabel == str(Res.string.plan_add_as_stop)) Icons.Outlined.AddLocationAlt else Icons.Outlined.Flag,
+            PinMenuItems.Row.ADD -> HoldMenuItem(if (addIsStop) Icons.Outlined.AddLocationAlt else Icons.Outlined.Flag,
                 addLabel, onClick = onAdd)
             PinMenuItems.Row.ADD_STOP -> AddRow(PlaceAddMenu.Item.ADD_STOP, menu, onAddStop)
             PinMenuItems.Row.NEW_DESTINATION -> AddRow(PlaceAddMenu.Item.NEW_DESTINATION, menu, onNewDestination)
