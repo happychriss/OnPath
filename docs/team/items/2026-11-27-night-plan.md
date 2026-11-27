@@ -15,6 +15,7 @@ apply. Taste questions → `VISION.md`, a line in `2026-11-27-night-answers.md` 
 | 4 | `chore/web-aufraeumen` | HP | now (web only, independent) |
 | 5 | `chore/aufraeumen-0.18.11-on-main` | Wartefenster (donald) | 3 pushed |
 | 6 | `feat/wait-step-bar` + MapScreen:242 + PlanTopBar redo (`creditBlockDp`) | Wartefenster | 5 pushed |
+| 7 | app multi-day day table (core `DayTable.kt`, item 2026-11-27-app-day-table) + HP's multi-day sheet parity | Mehrtagestouren | build now in own files; push after 6 |
 | R | release **0.18.12** | Wartefenster | 6 pushed + HP's „parity done“ + build on the Pixel (tomorrow, Pixel unplugged) |
 
 Push order is the order of the table; a thread that is ready early waits for the commit before it. A red step stays
