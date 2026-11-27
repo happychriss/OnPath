@@ -49,15 +49,15 @@ class FileSizeRuleTest {
 
         /** Today's larger files (2026-11-19, after rebuild phase 2 piece 21) with their line counts as caps. */
         val TODAYS_LARGER_FILES = mapOf(
-            "com/onpath/app/ui/AppViewModel.kt" to 1_931,
+            "com/onpath/app/ui/AppViewModel.kt" to 1_902,
             "com/onpath/app/recording/RecordingService.kt" to 1_774,
             "com/onpath/app/ui/NavigateScreen.kt" to 1_302,
             "com/onpath/app/cells/MapCells.kt" to 1_296,
             "com/onpath/app/map/MapController.kt" to 1_223,
-            "com/onpath/app/ui/Screens.kt" to 997,
+            "com/onpath/app/ui/Screens.kt" to 988,
             "com/onpath/app/ui/MapDataFlow.kt" to 991,
             "com/onpath/app/ui/MapScreen.kt" to 902,
-            "com/onpath/app/MainActivity.kt" to 923,
+            "com/onpath/app/MainActivity.kt" to 914,
             "com/onpath/app/ui/PlanPanel.kt" to 814,
             "com/onpath/app/cells/CellStore.kt" to 806,
         )

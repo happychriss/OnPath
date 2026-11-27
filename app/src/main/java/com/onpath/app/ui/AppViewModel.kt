@@ -909,6 +909,9 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
      */
     val routesGo: com.onpath.app.ui.routes.RoutesGoSlice = com.onpath.app.ui.routes.RoutesGoSlice(plan, routes, tour, planRoute, save, toursStore, links, routesFlow, mapCamera,
         routesHost, viewModelScope, Dispatchers.IO)
+    /** My routes' day sheet of a saved multi-day route (owner 2026-11-27, [com.onpath.app.ui.routes.DayPickSlice] in `:state`). */
+    val dayPick = com.onpath.app.ui.routes.DayPickSlice(routes, toursStore, routesFlow, multiDay, planRoute, { recState.value != null },
+        { routesGo.requestOpen(it, "multi-day route without its days") }, viewModelScope, Dispatchers.IO, Dispatchers.Default)
 
     // --- position / camera: the slice is `map` ([MapViewSlice]); screens read it as `vm.<slice>` (piece 21) ---
 
@@ -1035,6 +1038,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun invalidateSplits() = tourEdits.splitRequests.invalidate()
             override fun routeEvent(e: RouteRun.Event) { this@AppViewModel.planRun.routeEvent(e) }
             override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
+            override fun followedDay() = multiDay.followedDay() // a day of a multi-day route: the recorded tour remembers it
         },
         scope = viewModelScope, planCopyDispatcher = planCopyDispatcher,
     )
@@ -1190,39 +1194,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
 
     fun initialCamera(): Triple<Double, Double, Double> = prefs.camera ?: Triple(46.67, 11.16, 12.0)
     fun saveCamera(lat: Double, lon: Double, zoom: Double) { prefs.camera = Triple(lat, lon, zoom) }
-
-    /** App state for the diagnostics export (Settings → Diagnostics); never throws. */
-    fun diagnosticsState(): org.json.JSONObject = try {
-        val rec = recState.value
-        val loc = tracker.location.value
-        org.json.JSONObject()
-            .put("mode", tourSession.mode.name).put("activity", planRoute.activity.name).put("sac", planRoute.sac)
-            .put("waypoints", plan.points.size).put("routeMeters", route?.distanceM)
-            .put("routeLegsStraight", route?.legs?.count { it.straight })
-            .put("routeError", routeError)
-            .put("followName", tourFollow.followName).put("followPoints", tourFollow.followLine?.size)
-            .put("recording", rec?.let { org.json.JSONObject().put("tourId", it.tourId).put("paused", it.paused)
-                .put("distanceM", it.distanceM).put("elapsedS", it.elapsedS).put("gpsLost", it.gpsLost)
-                .put("offRouteM", it.offRouteM).put("saveFailed", it.saveFailed)
-                .put("toGoS", it.time?.toGoS).put("arrivalMs", it.time?.arrivalMs) } ?: org.json.JSONObject.NULL)
-            .put("gps", tracker.status().name)
-            .put("phone", com.onpath.app.setup.PhoneCheck.describe(setup.phone))
-            .put("voice", prefs.voiceDetail)
-            .put("demo", com.onpath.app.recording.DemoLocation.state.value?.let { d -> org.json.JSONObject().put("kind", d.kind.name)
-                .put("label", d.label).put("factor", d.factor).put("paused", d.paused).put("alongM", d.alongM.toInt())
-                .put("lengthM", d.lengthM.toInt()).put("ended", d.ended) } ?: org.json.JSONObject.NULL)
-            .put("location", loc?.let { org.json.JSONObject().put("lat", "%.5f".format(java.util.Locale.ROOT, it.latitude))
-                .put("lon", "%.5f".format(java.util.Locale.ROOT, it.longitude)).put("accuracy", it.accuracy)
-                .put("provider", it.provider).put("ageS", com.onpath.app.recording.LocationTracker.ageSeconds(it)) } ?: org.json.JSONObject.NULL)
-            .put("styleVersion", styleVersion).put("missingData", missing.map { it.name })
-            .put("mapDir", dataFiles.mapDir().path)
-            .put("mapCells", org.json.JSONObject().put("generation", cells.generation.value)
-                .put("installed", org.json.JSONArray(cells.installed.value.map { "${it.id} ${it.version} ${it.totalBytes}" }))
-                .put("states", org.json.JSONObject(cells.states.value.entries.associate { (c, s) -> c.id to s.toString() } as Map<*, *>)))
-    } catch (e: Throwable) {
-        Problems.warn("ui", "Diagnostics app state could not be collected", e)
-        org.json.JSONObject().put("error", e.toString())
-    }
 
     fun recheckData() {
         missing = dataFiles.missing()
