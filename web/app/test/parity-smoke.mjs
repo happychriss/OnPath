@@ -1,6 +1,6 @@
 // The phone's Plan screen features in the browser (docs/design/web-planner.md §11): first-point menu (Start here ·
 // Go here from my position), undo / redo (buttons and keys – the app's PlanHistory), the eye (hold hides route and
-// markers), the compass (turned map → north up), the point menu's "Open in Google Maps" (a new tab with the app's
+// markers), the compass (turned map → north up), the point menu's "Google Maps" (a new tab with the app's
 // link), Export GPX, Points delete, route warnings, and the bottom sheet at phone width. Web layout (§13): toolbar on
 // top, direction arrows, activity drop-down, Points drag, Map content, Save / Save as new. Needs only the rd5 (CI).
 // Usage: node test/parity-smoke.mjs [segmentsDir]
@@ -51,7 +51,7 @@ await page.waitForFunction(() => document.body.dataset.engine === 'ready', null,
 // 1. first click on an empty plan: "New route" – Start here · Go here (MapGestures.FirstPointMenu)
 await clickAt(11.1600, 46.6700);
 await page.waitForSelector('.pointmenu');
-check(await page.locator('.pointmenu .menuhead').count() === 0 && (await menuItems()).join('|') === 'Set as start|Set as destination|Round trip from here', 'first click: no title – Set as start · Set as destination · Round trip from here (owner 2026-11-26) (round trips on for everyone, 72a66e39)');
+check(await page.locator('.pointmenu .menuhead').count() === 0 && (await menuItems()).join('|') === 'Set as start|Set as destination|Suggest round trips', 'first click: no title – Set as start · Set as destination · Suggest round trips (owner 2026-11-26) (round trips on for everyone, 72a66e39)');
 check(await page.isHidden('#undoPill') && await page.isHidden('#undo'), 'no undo before the first change (the undo pill is hidden – the app\'s UndoPill)');
 check(await page.$('#toolbar #undo, #toolbar #redo') === null, 'undo / redo are not in the tool row (owner 2026-11-08: ↶ ↷ there read as „turn the map“)');
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
@@ -395,8 +395,8 @@ await page.waitForSelector('.msgcard.frage[data-id="restore"]', { timeout: 10_00
 await keepIfAsked();
 await page.locator('.pin').nth(1).click(); // Vellau, the named destination
 await page.waitForSelector('.pointmenu');
-check((await menuItems()).includes('Open in Google Maps'), 'named point: Open in Google Maps in the menu');
-const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click('.pointmenu button:has-text("Open in Google Maps")')]);
+check((await menuItems()).includes('Google Maps'), 'named point: Google Maps in the menu');
+const [tab] = await Promise.all([ctx.waitForEvent('page'), page.click('.pointmenu button:has-text("Google Maps")')]);
 await tab.waitForURL(/google\.com/, { timeout: 15_000 }).catch(() => {}); // the tab opens blank in the click, then gets the link
 console.log('google tab:', tab.url());
 check(/^https:\/\/www\.google\.com\/maps\/search\/Vellau\/@46\.\d+,11\.\d+,16z$/.test(tab.url()), 'Google Maps opens in a new tab with the place name near its point');

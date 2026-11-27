@@ -113,7 +113,6 @@
     <string name="web_share_scan">Scan with the OnPath app</string>
     <string name="web_share_qr">QR code of the plan link</string>
     <string name="web_share_text">For your companions: the link opens the plan in the browser or in the OnPath app.</string>
-    <string name="web_loop_start">Set as start of the round trip</string>
     <string name="web_share_link">Plan link</string>
     <string name="web_copy_link">Copy link</string>
     <string name="web_share_system">Share…</string>

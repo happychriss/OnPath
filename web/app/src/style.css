@@ -263,6 +263,9 @@ dialog.share #exportGpx { margin-top: 8px; }
 .menudivider { height: 1px; background: var(--line); margin: 2px 16px; flex: none; }
 .menuhead { display: flex; gap: 10px; align-items: center; padding: 12px 16px 10px; border-bottom: 1px solid var(--line); font-size: 14px; }
 .pointmenu button { display: flex; gap: 16px; align-items: center; border: none; background: none; padding: 10px 16px; min-height: 48px; text-align: left; font-size: 15px; }
+/* a row that leaves the planner (Google Maps): the open-in-new sign after the label, as in the app (owner 2026-11-27) */
+.pointmenu .leaves { display: flex; margin-left: auto; color: var(--muted); }
+.pointmenu .leaves .ic { fill: currentColor; }
 .pointmenu button:hover:not(:disabled) { background: var(--surface2); }
 .pointmenu button.danger { color: var(--error); }
 /* the likelier add row („Als Stopp“ / „Als Ziel“, owner 2026-11-15 / 2026-11-26) – the app's HoldMenuItem strong: EditTonal behind,

@@ -52,7 +52,7 @@ const smallSheet = async (page, vp) => {
 async function menus(vp, tag) {
   const { ctx, page } = await newPage(vp, '?at=11.16,46.67,13&waitMs=0');
   await idle(page);
-  // 1 · the empty map: no title, Als Start · Als Ziel (Start: dein Standort) · Rundtour ab hier
+  // 1 · the empty map: no title, Als Start · Als Ziel (Start: dein Standort) · Rundtouren vorschlagen
   await clickLngLat(page, 11.16, 46.67);
   await page.waitForSelector('.holdpopup .pointmenu');
   await shot(page, menusDir, `${tag}-1-empty-map`);

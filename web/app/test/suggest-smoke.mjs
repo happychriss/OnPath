@@ -63,7 +63,7 @@ try {
   {
     const { ctx, page } = await open('de', false);
     const rows = await firstMenu(page);
-    check(!rows.includes('Rundtour ab hier') && rows[0] === 'Als Start', `switch off: no „Rundtour ab hier“ (${rows.join(' · ')})`);
+    check(!rows.includes('Rundtouren vorschlagen') && rows[0] === 'Als Start', `switch off: no „Rundtouren vorschlagen“ (${rows.join(' · ')})`);
     check(await page.evaluate(() => !document.body.dataset.suggest), 'switch off: nothing set up');
     await ctx.close();
   }
@@ -71,10 +71,10 @@ try {
   {
     const { ctx, page, errors } = await open('de', true);
     const rows = await firstMenu(page);
-    check(rows[0] === 'Als Start' && rows[1] === 'Als Ziel' && rows[2] === 'Rundtour ab hier', `the row last in the route group, after „Als Ziel“ (${rows.join(' · ')})`);
-    const apart = await page.evaluate(() => { const r = [...document.querySelectorAll('.pointmenu button')].find((b) => b.textContent.includes('Rundtour ab hier'));
+    check(rows[0] === 'Als Start' && rows[1] === 'Als Ziel' && rows[2] === 'Rundtouren vorschlagen', `the row last in the route group, after „Als Ziel“ (${rows.join(' · ')})`);
+    const apart = await page.evaluate(() => { const r = [...document.querySelectorAll('.pointmenu button')].find((b) => b.textContent.includes('Rundtouren vorschlagen'));
       return r?.previousElementSibling?.classList.contains('menudivider') ?? false; });
-    check(apart, '„Rundtour ab hier“ set apart by a thin line (owner 2026-11-27)');
+    check(apart, '„Rundtouren vorschlagen“ set apart by a thin line (owner 2026-11-27)');
     await page.click('.pointmenu button:nth-of-type(3)');
     await page.waitForSelector('#suggestPanel #sgOk');
     const wish = await page.evaluate(() => ({
@@ -86,7 +86,7 @@ try {
       buttons: [...document.querySelectorAll('#suggestPanel .sgfoot button')].map((x) => x.textContent),
       icons: document.querySelectorAll('#suggestPanel .sgrow svg').length,
     }));
-    check(wish.head === 'Rundtour ab hier', `wish: title (${wish.head})`);
+    check(wish.head === 'Rundtouren vorschlagen', `wish: title (${wish.head})`);
     check(JSON.stringify(wish.labels) === JSON.stringify(['Aktivität', 'Zeit', 'Höhenmeter', 'Ziel']), `wish: rows ${wish.labels.join(' · ')}`);
     check(wish.ranges === 4, 'wish: time and ascent as two-handle range sliders');
     check(JSON.stringify(wish.chips) === JSON.stringify(['Gipfel', 'Wasser', 'Aussicht', 'Einkehr', 'Kultur']), `wish: Ziel chips ${wish.chips.join(' · ')}`);
@@ -162,8 +162,8 @@ try {
       await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(p[0], p[1]);
       await page.waitForTimeout(1500);
       const rows = await page.$$eval('.pointmenu button[role=menuitem] .txt > span:first-child', (b) => b.map((x) => x.textContent));
-      check(!rows.includes('Rundtour ab hier') && !(await page.evaluate(() => document.body.textContent.includes('Rundtour ab hier'))),
-        `plan with points: no „Rundtour ab hier“ (menu: ${rows.join(' · ') || 'none'})`);
+      check(!rows.includes('Rundtouren vorschlagen') && !(await page.evaluate(() => document.body.textContent.includes('Rundtouren vorschlagen'))),
+        `plan with points: no „Rundtouren vorschlagen“ (menu: ${rows.join(' · ') || 'none'})`);
       await page.keyboard.press('Escape');
     }
     const bad = errors.filter((e) => !/Failed to load resource|favicon|\[Problems\] (TRACE|INFO)/.test(e));
@@ -211,7 +211,7 @@ try {
   {
     const { ctx, page } = await open('en', true);
     const rows = await firstMenu(page);
-    check(rows[2] === 'Round trip from here', `English: ${rows.join(' · ')}`);
+    check(rows[2] === 'Suggest round trips', `English: ${rows.join(' · ')}`);
     await page.click('.pointmenu button:nth-of-type(3)');
     await page.waitForSelector('#suggestPanel #sgOk');
     const chips = await page.$$eval('#suggestPanel .sgz', (b) => b.map((x) => x.textContent));

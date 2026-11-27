@@ -92,7 +92,7 @@ const emptySearch = async (page) => {
 
   const vellau = await pickFirst(page, 'Vellau');
   let rows = await menuRows(page);
-  check(rows.join('|') === 'Set as start|Set as destination|Round trip from here|Add to favourites|Open in Google Maps|Remove pin',
+  check(rows.join('|') === 'Set as start|Set as destination|Suggest round trips|Add to favourites|Google Maps|Remove pin',
     `found place's menu: the kept-place row after the route rows, before Google (${rows.join(' · ')})`);
   check(!rows.includes('Set as home') && !rows.includes('Remove home'), 'Zuhause off: no „Set as home“ in the found place\'s menu');
   check(await page.evaluate((sel) => [...document.querySelectorAll(sel)].some((d) =>
@@ -183,7 +183,7 @@ const emptySearch = async (page) => {
     await page.waitForFunction(() => !document.querySelector('.waitveil') && window.__map?.areTilesLoaded() !== false, null, { timeout: 60_000 }).catch(() => {}); await page.mouse.click(mb.x + poi.x, mb.y + poi.y);
     await page.waitForSelector('.holdpopup:not(.pinmenu) .pointmenu', { timeout: 15_000 }).catch(() => {});
     const pr = await page.$$eval('.holdpopup:not(.pinmenu) .pointmenu button', (b) => b.map((x) => x.querySelector('.txt > span')?.textContent?.trim()));
-    check(pr.slice(-2).join('|') === 'Add to favourites|Open in Google Maps' && !pr.includes('Set as home'), `a map POI (${poi.name}): the same rows, no „Set as home“ (${pr.join(' · ')})`);
+    check(pr.slice(-2).join('|') === 'Add to favourites|Google Maps' && !pr.includes('Set as home'), `a map POI (${poi.name}): the same rows, no „Set as home“ (${pr.join(' · ')})`);
   } else console.log('note: no named POI in view – the map POI check skipped');
   await ctx.close();
 }

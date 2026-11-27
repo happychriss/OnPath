@@ -291,7 +291,7 @@ for (const [name, vp, phone] of [['desktop', { width: 1440, height: 900 }, false
   await page.click('.pinchip');
   await page.waitForSelector(MENU, { timeout: 20_000 }).catch(() => {});
   const rows = await rowsNow();
-  check(rows.includes('Open in Google Maps') && rows.includes('Remove pin'), `${P} the chip opens the pin's menu again (${rows.join(' · ')})`);
+  check(rows.includes('Google Maps') && rows.includes('Remove pin'), `${P} the chip opens the pin's menu again (${rows.join(' · ')})`);
   await page.locator(`:is(${MENU}) button`).filter({ hasText: 'Remove pin' }).click();
   check(await page.locator(MENU).count() === 0 && await page.locator('.candidate').count() === 0 && await page.locator('.pinchip').count() === 0, `${P} "Remove pin": menu, pin and chip gone`);
   // the menu's first row adds the place where it fits (the app's PlaceAddMenu), menu, pin and preview line go; the step

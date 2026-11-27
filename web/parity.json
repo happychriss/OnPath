@@ -20,7 +20,7 @@
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "a523a2630577faede49ce313b64daae7f8277c8a"
+      "blob": "f5a24457463359a67dcb9287804ce614b0f960bd"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -28,7 +28,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "9b22768c8abbd0ffa2633d9341f14bb0d8cfe120"
+      "blob": "c87093d56661386f67223fceb44ec9d379591f1e"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/search/SearchState.kt",
@@ -45,7 +45,7 @@
         "web/app/src/search.ts",
         "web/app/src/main.ts"
       ],
-      "blob": "9dc4f31acc570f7ee817a1fb2d5699e75b97e038"
+      "blob": "9225e0994eecee373018d0f1f32f5696d1da60f0"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapFooter.kt",
@@ -80,7 +80,7 @@
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "a0351e59727be8e51fec5d82aecc5e4b311e14f2"
+      "blob": "4bd18fdd37360780b6f57df690e6bb488aa45e1f"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/poi/PinnedPoiKinds.kt",
@@ -146,7 +146,7 @@
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "be20db3dfba37c7ab293e802afb50afca93d7e97"
+      "blob": "6771d245dafc9879b94f606494f08b953d5eabde"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "31fdfc32eef72e36b14bc0b48a5e2ece78f5522d"
+      "blob": "586261682649324ac759d4717fcbb9de49d49fd5"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -368,7 +368,7 @@
         "web/app/src/style.css",
         "web/engine/src/main/kotlin/com/onpath/web/WebKept.kt"
       ],
-      "blob": "fa19103191507e689efad5716cf734e29446ce0b"
+      "blob": "9d6157c9e72352004cac22e3fe286609c7ddc4ea"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
@@ -445,7 +445,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "9668fe2a970ef4aca5bfa17a019e47829110d9d6"
+      "blob": "27de77646b7112c4a6ad4458104142ab9107b937"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt",
@@ -460,7 +460,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "bfb48cd6ce84ca077ef30e6e07b54184d86977aa"
+      "blob": "8adf1ae7229ad3bd13aac8785087ff1bd8e85638"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanGuidance.kt",
@@ -480,7 +480,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteSpotsList.kt",
       "why": "On this route list",
-      "blob": "d38cb1c58a0c5e3756fdf32c81127ed7c158ac48"
+      "blob": "2e5d92a2ced7b53a0cc9afd6415cbdb60976f5ed"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/RouteBreakdown.kt",
@@ -530,7 +530,7 @@
     {
       "app": "core/src/main/kotlin/com/onpath/app/cells/CellApi.kt",
       "why": "doorman request / status shapes the web proxy and areas.ts use (web/host/src/maps.js)",
-      "blob": "a484b612d6ab3b9315d78eca1dc088208a0e76d1"
+      "blob": "2651c9934c6e4ca902075320ac2d8ba99adb9e25"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapViewSlice.kt",
@@ -566,7 +566,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/cells/CellApi.kt": {
-      "blob": "a484b612d6ab3b9315d78eca1dc088208a0e76d1",
+      "blob": "2651c9934c6e4ca902075320ac2d8ba99adb9e25",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/cells/CellManifest.kt": {
@@ -604,7 +604,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/cells/MapCells.kt": {
-      "blob": "4476382d291f94ba28de6f2e84d4feea9740c125",
+      "blob": "f4e0904a16fad194054d91b923ca9dcd64e8147f",
       "perf": [
         "private val backgroundPollMs: Long = BACKGROUND_POLL_MS,",
         "private val batchMs: Long = BATCH_MS,",
@@ -931,7 +931,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/OfflineReady.kt": {
-      "blob": "ca293f20c69784a706aba3d47d638b239852ba7b",
+      "blob": "aef0ed797e2be5f3b34fe834fd083cbab61dd33e",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": {
@@ -979,10 +979,14 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt": {
-      "blob": "9b22768c8abbd0ffa2633d9341f14bb0d8cfe120",
+      "blob": "c87093d56661386f67223fceb44ec9d379591f1e",
       "perf": [
         "* Keeps the highest value it gave – a new search inside the same leg (a retry) or a leg from the cache never moves it"
       ]
+    },
+    "core/src/main/kotlin/com/onpath/app/domain/PointMarks.kt": {
+      "blob": "ad389f74b8395de45bc28e3696021348472fc6b4",
+      "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PointsDeleteGuard.kt": {
       "blob": "2e4ab495820704eb57fe8b33a93fb3732dcaedad",
@@ -1437,7 +1441,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/navigation/Navigator.kt": {
-      "blob": "acc2494de354af148b4ad16846b2c30899a80915",
+      "blob": "8f293a2628980f9aec98cfa6b49857977fe91398",
       "perf": [
         "/** No way back (no data, nothing found, timeout): arrow + distance to the route. */",
         "session.sac, perRequestMs = LEAD_REQUEST_MS, totalMs = LEAD_TOTAL_MS, toStart = true))",
@@ -3001,7 +3005,7 @@
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/domain/PlaceAddMenuTest.kt": {
-      "blob": "21f7d0f87b93901cce269e38d185d58d6f0ca14f",
+      "blob": "0242806e36973965eed615855e73bd8660bafb12",
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/domain/LocateDistanceTest.kt": {
@@ -3178,7 +3182,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RoutesState.kt": {
-      "blob": "3a1eaa067745b339f544abdc7738597d712eb354",
+      "blob": "d739938f2904bb41f361257cafce9a6e8ca9a76f",
       "perf": [
         "* recycle bin), Zuletzt ↔ saved, the recycle bin, the draft limit and a tour's line."
       ]
@@ -3192,7 +3196,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
-      "blob": "884aaa52de07fa23950e1a23f0659a8cfc94f559",
+      "blob": "c61ff836d5d56dbbaffd1b7a4be498f72f2ba55f",
       "perf": [
         "private val nameWaitMs: Long = NAME_WAIT_MS,",
         "const val NAME_WAIT_MS = 5_000L"
@@ -3237,7 +3241,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": {
-      "blob": "d44542528c05086a0947ee330d1334927560b699",
+      "blob": "76ef9ee693834e70c6e9e8c79a8f69ad760a74ec",
       "perf": [
         "*  2. [route] / [findReach] (the routing thread; pure: engine, leg cache and cancel signal are passed in).",
         "// it is routed. A new run (an edit, an activity change …) starts at one time-limit period and drops an open",
@@ -3271,7 +3275,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanEditState.kt": {
-      "blob": "c39bb4a3619f81e7b8050b9e984742ca2078aa23",
+      "blob": "3e494f4db16526534f420d9a94e866bacafb8e26",
       "perf": [
         "// meanwhile (followFromPlan lives in memory only; Pixel 2026-11-01: a blue line without points stayed). A shown"
       ]
@@ -3471,11 +3475,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_live.xml": {
-      "blob": "12f0a5f7cb419843ebc992a66618c5b81886dfd9",
+      "blob": "37b1425dbc049b38f72f9b1a9e39aaab416cef8b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "536b9850da44fc0db36c46113501e4729df599c4",
+      "blob": "76574d29160262bf24478f821332be83b1fe63ba",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
@@ -3487,15 +3491,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "2543918f59bc3d63e767953076bb10849f75b2fc",
+      "blob": "869bc7eb95fb85623e60daeb6ba80b73634a9c11",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "887a998aa8a50d9bc0a268779682a8717565c807",
+      "blob": "a09e346822ed457c58bd96eb01cc802eeab9f0b7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
-      "blob": "66bcd7e92c8388ce8e3785689b39d419cbbb52ff",
+      "blob": "53d616fae7f0032d5882757f0152423235ce6cd4",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
@@ -3503,11 +3507,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
-      "blob": "1a23049710671d64db84d59c502575d36c2d55eb",
+      "blob": "9ab5bbf14b02856a91ebf0eb1b7b93d1dc13bc43",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_settings.xml": {
-      "blob": "79c715f72e0474893dcc85e77889180cb164c700",
+      "blob": "127b471cf077b8f38cf9f7d23e71e6a316559659",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
@@ -3515,7 +3519,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_suggest.xml": {
-      "blob": "a2a17a025bb9eeadb92a7fe9267de00bbd458bac",
+      "blob": "5dd331b48922b8f0f4fe8de70fbe9bc19672bf22",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_sync.xml": {
@@ -3543,11 +3547,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_live.xml": {
-      "blob": "298fa84daa2027b5f0f1ab256ddff4a9217f59d0",
+      "blob": "e8387f7311588056fddf792c0aea0c4faae09acc",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "6241d9c62e900b32af0e992702ad4761313f84eb",
+      "blob": "b9f97ca61753a6878df54adf6ceb16e7b19c783b",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
@@ -3559,15 +3563,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "8cee0c6bef566fc2fb7bea7284cb54fb4cbaa809",
+      "blob": "5af12c1f07b8f32722f4d13557e1a5822d7efa20",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "99da80229e6e8fc86dccd39c6f381a6a1e29ac12",
+      "blob": "c9c6c86ef1d2bfe5cfb11ba56a0b81bb2a38bf96",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
-      "blob": "e966850b9b73e2fa31242de7d43e3b11064fdc49",
+      "blob": "ddd59262da8f6bdffbe5957a3e3131a79ff8ebcb",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
@@ -3575,11 +3579,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
-      "blob": "2abf7c2da83df4f99d88dcf15a5c4174098715e7",
+      "blob": "4d5bf0c47c523c9cfb3c1d8dd7be91e41d3b2437",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_settings.xml": {
-      "blob": "92e2f76f23f83791a99c650ecd382b06c0aa0f5b",
+      "blob": "a1af95ceacd7281d886e3f640bce1eb67b079dd0",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
@@ -3587,7 +3591,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_suggest.xml": {
-      "blob": "4885b1686c0d23d69dc676aca180875cf97b3bfd",
+      "blob": "f1234aee7fed0ef920912c1b9b97240e293e5964",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_sync.xml": {

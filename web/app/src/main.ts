@@ -1324,9 +1324,9 @@ async function pointMenu(i: number) {
     const group = pointRowGroup(a);
     if (a === 'MAKE_START') return [{ icon: 'tripOrigin', label: t('plan_start_here'), sub: tp('plan_removes_points', i, i), group, act: () => applyEdit('startHere', i) }];
     // one row, no line under it (owner 2026-11-27, hint list 0b)
-    if (a === 'LOOP_START') return [{ icon: 'tripOrigin', label: t('web_loop_start'), group, act: () => applyEdit('startHere', i) }];
+    if (a === 'LOOP_START') return [{ icon: 'tripOrigin', label: t('plan_start_finish_here'), group, act: () => applyEdit('startHere', i) }];
     if (a === 'KEEP') return keep ? [{ ...keep, divider: false, group }] : [];
-    if (a === 'GOOGLE') return [{ icon: 'map', label: t('plan_open_google_maps'), group, act: () => google(name ?? '', lat, lon, '') }];
+    if (a === 'GOOGLE') return [{ icon: 'map', label: t('plan_open_google_maps'), leaves: true, group, act: () => google(name ?? '', lat, lon, '') }];
     return [{ icon: 'delete', label: t('common_delete'), danger: true, group, act: () => deletePoint(i) }];
   });
   // a multi-day tour: „Als Übernachtung“ first in the route group (owner 2026-11-18 / 2026-11-26) – this point becomes a
@@ -1385,7 +1385,7 @@ async function placeRows(hit: Hit, info: { title: string; sub: string; color: st
     return { icon: label === t('plan_add_as_stop') ? 'addLocation' : 'flag', label, act: () => { fromPin(); void addPlace(hit, 'SMART', pin); } };
   };
   const head = `<span class="txt"><b>${escapeHtml(info.title)}</b><span class="small" style="color:${info.color}">${escapeHtml(info.sub)}</span></span>`;
-  const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'),
+  const googleRow: MenuItem = { icon: 'map', label: t('plan_open_google_maps'), leaves: true,
     act: () => { if (info.google) window.open(info.google, '_blank', 'noopener'); else google(hit.name ?? '', lat, lon, hit.name ? '' : hit.title); } };
   const main = await Promise.all(pm.main.map(row));
   // a multi-day tour: „Als Übernachtung“ (owner 2026-11-26 22:56, replacing „Hotel für diese Tour“ and its „Welche

@@ -2,7 +2,7 @@
 // to something (a place, a route point, a night) – then one row per action (icon + label, an optional line under it); a
 // danger row in red. The rows come in three groups, always in this order with a thin line between them (owner 2026-11-26,
 // docs/team/items/2026-11-26-context-menus-wording.md – the app's MenuGroups): ROUTE (what the point becomes – the order
-// from the shared code), PLACE (Merken · In Google Maps öffnen), REMOVE (always last). Shown in a maplibre popup at the point.
+// from the shared code), PLACE (Merken · Google Maps ↗), REMOVE (always last). Shown in a maplibre popup at the point.
 import { icon, type IconName } from './icons';
 
 /** The app's MenuGroups.Group – LOOP: „Rundtour ab hier“, its own thin line at the end of Route (owner 2026-11-27). */
@@ -37,6 +37,8 @@ export interface MenuItem { icon: IconName; label: string; sub?: string; danger?
   act: (row: HTMLButtonElement) => void;
   /** The menu stays open after the click (the app's kept-place rows, owner 2026-11-15: the menu shows the new state). */
   stay?: boolean;
+  /** It leaves the planner (Google Maps – the app's HoldMenuItem leaves, owner 2026-11-27): a ↗ after the label. */
+  leaves?: boolean;
   /** A thin line above the row in any case (a list without groups). */
   divider?: boolean;
   /** The row's group (owner 2026-11-26): a thin line where it changes ([lineBefore]). */
@@ -72,8 +74,8 @@ export function holdMenu(headHtml: string, items: MenuItem[], close: () => void)
 }
 
 /** A row's icon and texts – again after a [MenuItem.stay] row changed its state. */
-export function setRow(b: HTMLButtonElement, it: Pick<MenuItem, 'icon' | 'label' | 'sub' | 'iconColor'>) {
-  b.innerHTML = `${icon(it.icon)}<span class="txt"><span>${it.label}</span>${it.sub ? `<span class="muted small">${it.sub}</span>` : ''}</span>`;
+export function setRow(b: HTMLButtonElement, it: Pick<MenuItem, 'icon' | 'label' | 'sub' | 'iconColor' | 'leaves'>) {
+  b.innerHTML = `${icon(it.icon)}<span class="txt"><span>${it.label}</span>${it.sub ? `<span class="muted small">${it.sub}</span>` : ''}</span>${it.leaves ? `<span class="leaves">${icon('openInNew', 18)}</span>` : ''}`;
   const ic = b.querySelector<SVGElement>('.ic');
   if (ic && it.iconColor) ic.style.fill = it.iconColor;
 }
