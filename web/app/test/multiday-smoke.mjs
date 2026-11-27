@@ -101,6 +101,7 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => window.__days.lastView?.days === 3, 'the overview with 3 days');
   check(await page.locator('#tourOverview .today').count() === 3, 'the overview: one row per day');
   check(await page.locator('.dayend.proposal').count() === 2, 'two grey moons on the map');
+  check(await page.$eval('#roundTrip', (b) => b.hidden) && await page.$eval('#reverse', (b) => !b.hidden), 'a multi-day tour has no „Rundtour“ switch, „Umkehren“ stays (owner 2026-11-27)');
   // the night markers say their day (owner 2026-11-26, „Variante 1 · Tag N“): a white pill „☾ Tag 1“, „☾ Tag 2“
   const pillTexts = await page.$$eval('.dayend.proposal .daypill.open', (ps) => ps.map((p) => p.textContent.trim()).join('|'));
   check(pillTexts === (lang === 'de' ? 'Tag 1|Tag 2' : 'Day 1|Day 2'), `the undecided nights are white „Tag N“ pills (${pillTexts})`);

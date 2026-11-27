@@ -765,6 +765,9 @@ async function drawPoints() {
   // "↻ Rundtour" is a switch (the app's PlanAction on=, owner 2026-11-06, onpath.private#40): filled with ✓ on a round
   // trip, a click takes the way back out; "⇅ Umkehren" grey when backwards is the same plan (A → B → A)
   const loop = $<HTMLButtonElement>('roundTrip');
+  // not on a multi-day tour (owner 2026-11-27: „Rundtour können wir rausnehmen, das kann viel durcheinanderbringen“ –
+  // München → Hilden turned into a way back of the same length); Umkehren stays
+  loop.hidden = !!multiDay?.isTour;
   loop.disabled = !(state.roundTrip || (n >= 2 && (r.canRoundTrip ?? true)));
   loop.classList.toggle('on', state.roundTrip);
   loop.setAttribute('aria-pressed', String(state.roundTrip));
