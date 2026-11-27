@@ -261,12 +261,6 @@ internal object SacScale {
         Level(5, Res.string.routes_sac_5_name, Res.string.routes_sac_5_text, Res.string.routes_sac_5_short),
     )
     fun of(level: Int): Level = levels[level.coerceIn(1, 5) - 1]
-
-    /** The level whose description stands under the chips: the selected one; none while no level is chosen (0). */
-    fun lineLevel(selected: Int): Int? = selected.takeIf { it in 1..5 }
-
-    /** "T2 · Bergwandern: Durchgehender Weg, …" – the level's number, name and SAC description. */
-    fun line(level: Int): String = of(level).let { Txt.s(Res.string.routes_sac_line, it.level, it.name, it.text) }
 }
 
 // ------------------------------------------------------------------ manage routes

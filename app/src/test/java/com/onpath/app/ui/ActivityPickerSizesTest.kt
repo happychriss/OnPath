@@ -9,8 +9,6 @@ import com.android.resources.Density
 import com.onpath.app.routing.Activity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -68,18 +66,8 @@ class ActivityPicker360Test : ActivityPickerSizes(widthDp411 = false, font = 1.0
 }
 class ActivityPicker360LargeFontTest : ActivityPickerSizes(widthDp411 = false, font = 1.3f)
 
-/** The rules behind the pictures: a chosen level always has its line under the chips; a T tap does not close. */
+/** The rules behind the pictures: every level a row with its short line; a T tap does not close. */
 class SacLineRuleTest {
-    @Test fun aChosenLevelAlwaysHasItsLine() {
-        for (l in 1..5) {
-            assertEquals(l, SacScale.lineLevel(l))
-            val line = SacScale.line(l)
-            assertTrue(line, line.startsWith("T$l · ${SacScale.of(l).name}: "))
-            assertTrue(line, line.endsWith(SacScale.of(l).text))
-        }
-        assertNull("no level chosen (another activity): no line", SacScale.lineLevel(0))
-    }
-
     /**
      * Owner 2026-11-26 night: every level is a row with its name and one short line, readable before the tap (Navigate's
      * activity sheet keeps [SacChips]); 2026-11-27 variant C: the picker's level cards show name + line too, and one tap
