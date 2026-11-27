@@ -227,7 +227,10 @@ class TourFollowFlowTest {
             log += "routeEvent $e original=${if (follow.followOriginal == trackLine) "session's" else "old"}"
         }
         override fun tourChanged(id: Long) { log += "tourChanged($id) ${threadOf()}" }
+        override fun followedDay(): Pair<String, Int>? = dayNow
     }
+    /** The plan is this day of a multi-day route (MultiDaySlice.followedDay); null = a normal plan. */
+    private var dayNow: Pair<String, Int>? = null
 
     private lateinit var follow: TourFollow
     private fun newFollow() = TourFollow(plan, planRoute, client, files, prefs, rows, host, scope, planCopyDispatcher)
@@ -948,5 +951,58 @@ class TourFollowFlowTest {
         ui { plan.points.addAll(listOf(a, b)) }
         follow.followIsTrack = true
         assertFalse("a track is not the plan", follow.planGuides)
+    }
+
+    // ======================================================================================================================
+    // a day of a multi-day route (owner 2026-11-27): the recorded tour remembers the route's uuid and the day
+    // ======================================================================================================================
+
+    @Test fun aDayOfAMultiDayRouteFollowedInATourIsRememberedWithTheRecordedTour() {
+        create()
+        ui { follow.start() }
+        ui { plan.setSaved("Von Hilden nach München", savedRoute, listOf(a, b, c)) }
+        dayNow = "uuid-hilden" to 3
+        touring(tour7, session(version = 4), version = 4)
+        stepPc()
+        ui { follow.followPlanned() }
+        stepPc()
+        val t = db.getTour(tour7)!!
+        assertEquals("uuid-hilden", t.planUuid)
+        assertEquals(3, t.planDay)
+        assertEquals(3, db.getTourPlan(tour7)!!.day)
+        assertEquals("the copy's source is the multi-day route", "uuid-hilden", db.getTourPlan(tour7)!!.sourceUuid)
+        assertNull("the other tour rode nothing", db.getTour(tour8)!!.planDay)
+    }
+
+    @Test fun aNormalPlanFollowedInATourRemembersNoDay() {
+        create()
+        ui { follow.start() }
+        ui { plan.setSaved("Rosellen", savedRoute, listOf(a, b, c)) }
+        touring(tour7, session(version = 4), version = 4)
+        stepPc()
+        ui { follow.followPlanned() }
+        stepPc()
+        val t = db.getTour(tour7)!!
+        assertNull(t.planUuid)
+        assertNull(t.planDay)
+        assertEquals("the saved route is still the copy's source", "uuid-rosellen", db.getTourPlan(tour7)!!.sourceUuid)
+        assertNull(db.getTourPlan(tour7)!!.day)
+    }
+
+    @Test fun thePlanLeavingTheDayDuringTheTourTakesTheDayAway() {
+        create()
+        ui { follow.start() }
+        ui { plan.setSaved("Von Hilden nach München", savedRoute, listOf(a, b, c)) }
+        dayNow = "uuid-hilden" to 2
+        touring(tour7, session(version = 4), version = 4)
+        stepPc()
+        ui { follow.followPlanned() }
+        stepPc()
+        assertEquals(2, db.getTour(tour7)!!.planDay)
+        dayNow = null
+        ui { plan.points.add(d) }
+        ui { follow.followPlanned() }
+        stepPc()
+        assertNull("the newest followed plan counts: no day of the route any more", db.getTour(tour7)!!.planDay)
     }
 }

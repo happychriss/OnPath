@@ -38,17 +38,17 @@ class TourDbMigrationTest {
             db.execSQL("""CREATE TABLE tours(id INTEGER PRIMARY KEY AUTOINCREMENT, kind TEXT NOT NULL, name TEXT NOT NULL,
                 created INTEGER NOT NULL, activity TEXT, sac INTEGER NOT NULL DEFAULT 3, distance REAL NOT NULL DEFAULT 0,
                 ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 7) ", difficulty TEXT" else ""}${if (version >= 8) ", favourite INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 9) ", days TEXT" else ""})""")
+                state TEXT NOT NULL DEFAULT 'done', waypoints TEXT, uuid TEXT, pinned TEXT, deleted_at INTEGER${if (version >= 4) ", rides TEXT" else ""}${if (version >= 5) ", draft INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 7) ", difficulty TEXT" else ""}${if (version >= 8) ", favourite INTEGER NOT NULL DEFAULT 0" else ""}${if (version >= 9) ", days TEXT" else ""}${if (version >= 10) ", anchors TEXT" else ""})""")
             db.execSQL("""CREATE TABLE points(tour_id INTEGER NOT NULL, seq INTEGER NOT NULL, seg INTEGER NOT NULL,
                 lat REAL NOT NULL, lon REAL NOT NULL, ele REAL, time INTEGER${if (version >= 3) ", acc REAL" else ""})""")
             db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (1, 'RECORDED', 'Old', 0, 'active', 'u1')")
             db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid) VALUES (2, 'PLANNED', 'Saved route', 1, 'done', 'u2')")
             db.execSQL("INSERT INTO points(tour_id, seq, seg, lat, lon, ele, time) VALUES (1, 0, 0, 46.70, 11.22, 1500, 1000)")
-            // the followed plans' table as it was before version 10: without `anchors`
+            // the followed plans' table as it was before version 10: without `anchors` (version 10: with it, without `day`)
             if (version >= 6) db.execSQL("""CREATE TABLE tour_plan(tour_id INTEGER PRIMARY KEY, name TEXT, activity TEXT NOT NULL,
                 sac INTEGER NOT NULL, waypoints TEXT NOT NULL, pinned TEXT, line TEXT, distance REAL NOT NULL DEFAULT 0,
                 ascent REAL NOT NULL DEFAULT 0, descent REAL NOT NULL DEFAULT 0, duration REAL NOT NULL DEFAULT 0,
-                source_uuid TEXT, updated INTEGER NOT NULL)""")
+                source_uuid TEXT, updated INTEGER NOT NULL${if (version >= 10) ", anchors TEXT" else ""})""")
             db.version = version
         }
     }
@@ -64,7 +64,7 @@ class TourDbMigrationTest {
             assertEquals(12.5, acc[1]!!, 0.01)
             assertNull(acc[2])
             assertEquals(TourSchema.VERSION, tdb.readableDatabase.version)
-            assertEquals(10, TourSchema.VERSION) // a new schema version gets its own case here
+            assertEquals(11, TourSchema.VERSION) // a new schema version gets its own case here
             val t = tdb.getTour(1)!!
             assertEquals("u1", t.uuid)
             assertNull(t.rides)
@@ -138,6 +138,13 @@ class TourDbMigrationTest {
             assertEquals(1, tdb.setTourPlanActivity(1, "MTB", 3))
             assertEquals("MTB", tdb.getTourPlan(1)!!.activity)
             assertTrue("another profile: the copy's anchors go", tdb.getTourPlan(1)!!.anchors.isEmpty())
+            // 11: tour_plan.day – no old copy has a day; a copy with one shows as the tour's planUuid / planDay
+            assertNull(tdb.getTour(1)!!.planDay); assertNull(tdb.getTour(1)!!.planUuid)
+            tdb.setTourPlan(1, plan.copy(sac = 4, day = 3))
+            assertEquals(3, tdb.getTourPlan(1)!!.day)
+            assertEquals("u2" to 3, tdb.listTours().single { it.id == 1L }.let { it.planUuid to it.planDay })
+            tdb.setTourPlan(1, plan.copy(sac = 4))
+            assertNull(tdb.getTour(1)!!.planDay)
             tdb.deleteTour(2)
             assertEquals("Hütte", tdb.getTourPlan(1)!!.waypoints[0].name)
             tdb.deleteTour(1)
@@ -230,6 +237,25 @@ class TourDbMigrationTest {
             tdb.readableDatabase.rawQuery("SELECT days FROM tours WHERE id=3", null).use { c ->
                 assertTrue(c.moveToFirst()); assertEquals("the stored days are untouched", days, c.getString(0))
             }
+        } finally { tdb.close() }
+    }
+
+    @Test fun version10DatabaseGetsThePlanDayAndKeepsToursAndThePlanCopy() {
+        writeOld(10)
+        val wps = """[{"lat":46.7,"lon":11.22,"name":"Hütte"},{"lat":46.71,"lon":11.23}]"""
+        SQLiteDatabase.openDatabase(ctx.getDatabasePath(name).path, null, SQLiteDatabase.OPEN_READWRITE).use { db ->
+            db.execSQL("INSERT INTO tours(id, kind, name, created, state, uuid, favourite) VALUES (3, 'RECORDED', 'Rode a day', 2, 'done', 'u3', 1)")
+            db.execSQL("INSERT INTO tour_plan(tour_id, name, activity, sac, waypoints, source_uuid, updated) VALUES (3, 'Plan', 'HIKE', 2, ?, 'u2', 5)", arrayOf(wps))
+            db.version = 10
+        }
+        checkUpgraded()
+        val tdb = TourDb(ctx, name)
+        try {
+            val t = tdb.getTour(3)!!
+            assertEquals("Rode a day", t.name); assertEquals("u3", t.uuid); assertTrue(t.favourite); assertTrue(t.hasPlan)
+            assertNull("an old copy rode no day", t.planDay); assertNull(t.planUuid)
+            val plan = tdb.getTourPlan(3)!!
+            assertEquals("Plan", plan.name); assertEquals("u2", plan.sourceUuid); assertEquals(2, plan.waypoints.size); assertNull(plan.day)
         } finally { tdb.close() }
     }
 }

@@ -82,4 +82,19 @@ data class Tour(
      * [AnchorsJson]. Backed up and synced (tag 7 of the plan code).
      */
     val anchors: Map<Int, Anchors> = emptyMap(),
+    /**
+     * Recorded: the multi-day route (its stable [uuid]) and day (1-based, [planDay]) this tour rode – set when the day was
+     * loaded from the day sheet / "Tag n fahren" and then recorded (owner 2026-11-27). Read from the plan copy beside the
+     * row ([TourPlan.day], `tour_plan.day`, schema 11); null = no day of a multi-day route (every tour before schema 11).
+     * A day counts as ridden while a recorded tour not in the bin references it (`DayPick.ridden` in :state).
+     */
+    val planUuid: String? = null,
+    val planDay: Int? = null,
+    /**
+     * Recorded with [planUuid]: the multi-day route's name for Gemacht's "Tag 3 von …" – set when My routes reads the list
+     * (the route's own name while it is in My routes, else the plan copy's); null = not known there. Not stored.
+     */
+    val planName: String? = null,
+    /** Recorded with [planUuid]: the multi-day route is in My routes (its day sheet can open). Not stored. */
+    val planOpens: Boolean = false,
 )
