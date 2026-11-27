@@ -79,7 +79,9 @@ object MapGestures {
      * @param poi a POI is under the finger
      */
     fun decide(editable: Boolean, press: Press, menuOpen: Boolean, marker: Int, poi: Boolean, planEmpty: Boolean): Action {
-        if (!editable) return if (poi && press == Press.TAP) Action.PoiDetails else Action.None
+        // read-only (Navigate, a shown track): a POI opens its details on a tap AND a hold – a hold did nothing there while
+        // it opens the POI menu in Plan (owner's Pixel 2026-11-27 on a paused tour: "tippen, nichts passiert")
+        if (!editable) return if (poi) Action.PoiDetails else Action.None
         // a quick tap on a POI / hut shows its details in Plan too (UX review 5) – read-only, the plan never changes. Owner
         // 2026-11-15 (hike): a tap on a POI works everywhere – with a menu open (the details take its place, no second
         // tap) and on a POI that is the start, a stop or the goal (its marker sits on it; holding it still opens the

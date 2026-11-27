@@ -150,7 +150,9 @@ class MapGesturesTest {
             assertEquals(Action.None, MapGestures.decide(false, p, false, -1, false, true))
         }
         assertEquals(Action.PoiDetails, MapGestures.decide(false, Press.TAP, false, -1, true, false))
-        assertEquals(Action.None, MapGestures.decide(false, Press.HOLD, false, -1, true, false))
+        // field bug 2026-11-27 (owner's Pixel, Navigate, paused tour): five holds on a bus stop, each found it, none did
+        // anything – a hold on a POI opens its details there like a tap; points still cannot be set
+        assertEquals(Action.PoiDetails, MapGestures.decide(false, Press.HOLD, false, -1, true, false))
     }
 
     // --- nearest marker ---
