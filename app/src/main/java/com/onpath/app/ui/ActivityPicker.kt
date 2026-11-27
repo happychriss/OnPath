@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.navigationBars
@@ -34,6 +35,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.runtime.remember
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -57,21 +60,39 @@ import com.onpath.strings.*
  */
 @Composable
 internal fun ActivityPickerSheet(current: Activity, onSelect: (Activity) -> Unit, onDismiss: () -> Unit, sac: Int, onSac: (Int) -> Unit) {
-    // the navigation bar's height read in the app's own window: a dialog window may get no insets at all (owner's Pixel 7
-    // 2026-11-27: T5 lay under the bar although the sheet asked for navigationBarsPadding) – the larger of both is kept free
-    val navBottom = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    // where the screen ends for the sheet: the display's height minus the navigation bar, read in the app's own window –
+    // the dialog window is laid out taller than it is shown and gets no insets (owner's Pixel 7 2026-11-27, 3-button bar:
+    // laid out 2401 px from y 136 – T5 lay under the bar however much padding the sheet asked for)
+    val appView = androidx.compose.ui.platform.LocalView.current
+    val visibleBottomPx = remember(appView) { screenBottomAboveNavBar(appView) }
     androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss,
-        // decorFitsSystemWindows = false: the sheet gets the navigation bar's inset (navigationBarsPadding) – else its last
-        // card (T5) lay under the bar (owner's Pixel 2026-11-27)
-        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false)) {
-        Box(Modifier.fillMaxSize().clickable(interactionSource = null, indication = null, onClick = onDismiss), contentAlignment = Alignment.BottomCenter) {
+        properties = androidx.compose.ui.window.DialogProperties(usePlatformDefaultWidth = false)) {
+        val root = androidx.compose.ui.platform.LocalView.current.rootView
+        var windowTopPx by remember { mutableStateOf(-1) }
+        val density = androidx.compose.ui.platform.LocalDensity.current
+        // the sheet's area ends at the visible bottom (in this window's coordinates); unknown yet → the whole window
+        val area = if (windowTopPx >= 0 && visibleBottomPx > 0)
+            Modifier.fillMaxWidth().height(with(density) { (visibleBottomPx - windowTopPx).coerceAtLeast(0).toDp() })
+            else Modifier.fillMaxSize()
+        Box(area.onGloballyPositioned { val l = IntArray(2); root.getLocationOnScreen(l); if (l[1] != windowTopPx) windowTopPx = l[1] }
+            .clickable(interactionSource = null, indication = null, onClick = onDismiss), contentAlignment = Alignment.BottomCenter) {
             // the sheet itself swallows taps (a tap beside a card must not close it)
             Box(Modifier.fillMaxWidth().clickable(interactionSource = null, indication = null) {}) {
                 ActivityPickerContent(current, onSelect = { onSelect(it); onDismiss() }, onDismiss = onDismiss, sac = sac,
-                    onSac = { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }, navBottom = navBottom)
+                    onSac = { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() })
             }
         }
     }
+}
+
+/** The screen's bottom above the navigation bar, in px on screen; 0 = unknown (then the sheet fills the window). */
+private fun screenBottomAboveNavBar(view: android.view.View): Int = try {
+    val nav = androidx.core.view.ViewCompat.getRootWindowInsets(view)
+        ?.getInsetsIgnoringVisibility(androidx.core.view.WindowInsetsCompat.Type.navigationBars())?.bottom ?: 0
+    val l = IntArray(2); view.rootView.getLocationOnScreen(l)
+    l[1] + view.rootView.height - nav
+} catch (e: Exception) {
+    com.onpath.app.debug.Problems.warn("ui", "Screen bottom for the activity sheet not read; it fills the dialog window", e); 0
 }
 
 /** The bike group of the switch: every activity but Hike, in the enum's order. */
@@ -79,12 +100,11 @@ internal val BIKES: List<Activity> get() = Activity.entries.filter { it != Activ
 
 /** The sheet's content (drawn in place for the screenshot tests): head, switch, the group's cards. */
 @Composable
-internal fun ActivityPickerContent(current: Activity, onSelect: (Activity) -> Unit, onDismiss: () -> Unit, sac: Int, onSac: (Int) -> Unit,
-                                   navBottom: androidx.compose.ui.unit.Dp = 0.dp) {
+internal fun ActivityPickerContent(current: Activity, onSelect: (Activity) -> Unit, onDismiss: () -> Unit, sac: Int, onSac: (Int) -> Unit) {
     val inDialog = androidx.compose.foundation.layout.WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
     var hike by rememberSaveable { mutableStateOf(current == Activity.HIKE) }
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)).background(OnPathColors.Paper)
-        .padding(bottom = maxOf(navBottom, inDialog)).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 16.dp)) {
+        .padding(bottom = inDialog).padding(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 32.dp)) {
         Box(Modifier.align(Alignment.CenterHorizontally).size(width = 36.dp, height = 4.dp).background(OnPathColors.Line, CircleShape))
         Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(str(Res.string.routes_activity_title), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold,
@@ -178,3 +198,4 @@ private fun LevelBadge(level: Int, chosen: Boolean) =
         Text(str(Res.string.routes_sac_badge, level), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold,
             color = if (chosen) Color.White else MaterialTheme.colorScheme.onSurface)
     }
+
