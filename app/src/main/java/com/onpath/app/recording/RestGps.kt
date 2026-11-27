@@ -36,7 +36,7 @@ internal class RestGps(private val tracker: LocationTracker, private val still: 
             else -> { tracker.setInterval(watch.intervalMs); tracker.start() } // start: GPS back on after OFF, no-op while running
         }
         Problems.trace("gps", when (change) {
-            RestWatch.Change.REST -> "Standing still for ${RestWatch.REST_AFTER_MS / 1000} s ($by): GPS every ${RestWatch.REST_MS / 1000} s"
+            RestWatch.Change.REST -> "Standing still for ${(if (by == "motion sensor") RestWatch.SENSOR_REST_AFTER_MS else RestWatch.REST_AFTER_MS) / 1000} s ($by): GPS every ${RestWatch.REST_MS / 1000} s"
             RestWatch.Change.MOVING -> "Moving again ($by): GPS every second"
             RestWatch.Change.OFF -> "Lying still for ${RestWatch.OFF_AFTER_MS / 60_000} min (motion sensor): GPS off until the phone moves"
         })
