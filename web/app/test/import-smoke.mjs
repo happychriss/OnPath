@@ -1,7 +1,8 @@
 // The app's long-route question and GPX import in the browser (docs/design/web-planner.md §15):
-// 1. a plan ~600 km long is asked about first ("This route is very long", the app's words) – no routing data is
-//    fetched until it is answered; Cancel of a link's plan keeps the points unrouted ("Plan anyway"), Cancel of a
-//    clicked point takes that point back (PlanStatus.onCancel);
+// 1. a leg ~600 km long is asked about first with the browser's estimate („Long route: about 3–6 minutes“, the app's
+//    words, RouteCost – owner 2026-11-27) – no routing data is fetched until it is answered; „Add a stop“ on a link's
+//    plan keeps the points unrouted („Calculate“ asks again, „Wait“ routes), on a clicked point it takes that point
+//    back (PlanStatus.onCancel);
 //    "Far from your route" (web): an empty plan + a far search result as start is never asked; a single point left in
 //    Algund + Hilden "As start" → the question names the point, "Start a new route here" (undo brings it back) /
 //    "Add to the route" (= Plan anyway); "1 point · Algund" in the small step; "Your route is outside the map · Show";
@@ -56,17 +57,21 @@ await page.goto(url + 'index.html#p=' + far);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
 rd5Requests = 0; // only requests started while the question is open count (not the start view's prefetch)
 const q = await page.textContent('dialog.longroute');
-check(/This route is very long/.test(q) && /days on foot\. Calculating and loading its maps takes long\./.test(q), `long plan asked first: "${q.replace(/\s+/g, ' ').trim()}"`);
+check((/Long route: about \d+–\d+ (minutes|seconds)/.test(q) && /598 km in one go/.test(q) && /Wait/.test(q) || /Too long in one go/.test(q))
+  && /Add a stop/.test(q) && !/Keep waiting|Plan anyway/.test(q), `long leg asked first with its estimate: "${q.replace(/\s+/g, ' ').trim()}"`);
 await page.waitForTimeout(1500);
 check(rd5Requests === 0, `no routing data fetched while the question is open (${rd5Requests} requests)`);
 await page.click('#lrCancel');
 await page.waitForSelector('#planAnyway');
-check((await page.textContent('#summary .subline')).includes('Route not calculated – very long plan.'), 'Cancel (a loaded plan): points kept, "Route not calculated – very long plan." + Plan anyway');
+check((await page.textContent('#summary .subline')).includes('Route not calculated – very long plan.') && (await page.textContent('#planAnyway')).includes('Calculate'),
+  '„Add a stop“ (a loaded plan): points kept, "Route not calculated – very long plan." + Calculate');
 check(await pins() === 2, 'both points still there');
-// 1b. Plan anyway: no second question, the planner runs (no routing data up north here: its plain error)
+// 1b. Calculate: asked again (never a blind yes), „Wait“ – the planner runs (no routing data up north here: its plain error)
 await page.click('#planAnyway');
+check(await page.waitForSelector('dialog.longroute #lrPlan', { timeout: 30_000 }).then(() => true, () => false), '„Calculate“ asks again with „Wait“');
+await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|could not|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
-check(!(await page.$('dialog.longroute')), 'Plan anyway: routed without asking again');
+check(!(await page.$('dialog.longroute')), '„Wait“: routed without asking again');
 // 1b'. Clear route while that long plan may still run in the engine's one worker: the page answers at once (as the app
 // cancels its plan) and the plan's late end brings no route back
 const clearAt = Date.now();

@@ -46,35 +46,41 @@ check(undone.what === 'UNDO' && undone.points === '46.670000,11.160000;46.690000
   JSON.parse(e.planCancel('activity', '46.67,11.16;46.69,11.15', 'HIKE', 3, 'STOPPED')).what === 'RESTORE_ACTIVITY',
   'Cancel takes back the change (the app\'s PlanEditState.cancelRun in the Wasm)');
 
-// the run's head (the app's PlanRecalcState.begin + RouteRun in the Wasm): asked, „Plan anyway“ kept – also across a fresh worker
-const longPlan = '46.67,11.16;52.05,11.16', dayHike = '46.67,11.16;46.69,11.15';
-const ask = JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, ''));
-check(ask.what === 'ASK' && ask.title === 'This route is very long' && ask.seconds > 86400, `the run head asks a very long plan first (${ask.what})`);
-check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, false, '')).what === 'ROUTE', 'a multi-day tour is routed without the question');
-const day = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, ''));
+// the run's head (the app's PlanRecalcState.begin + RouteRun in the Wasm, the browser's long-leg rule RouteCost – owner
+// 2026-11-27): asked with the leg's estimate, „Warten“ kept – also across a fresh worker; beyond the browser's memory only a stop
+const longPlan = '46.67,11.16;48.92,11.16', dayHike = '46.67,11.16;46.69,11.15', farPlan = '46.67,11.16;52.05,11.16';
+e.costSet(3, 290); // the start factor, a 4 GB browser (340 km)
+const beyond = JSON.parse(e.runHead(farPlan, 'HIKE', 2, true, '', ''));
+check(beyond.what === 'ASK' && beyond.beyond === true && beyond.plan === undefined && beyond.cancel === 'Add a stop',
+  `598 km in one leg is beyond a 4 GB browser: only „Add a stop“ (${JSON.stringify(beyond).slice(0, 120)})`);
+const ask = JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, '', ''));
+check(ask.what === 'ASK' && /^Long route: about \d+–\d+ seconds$/.test(ask.title) && ask.plan === 'Wait' && ask.seconds > 30,
+  `the run head asks a 250 km leg first with its estimate (${ask.title})`);
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, false, '', '')).what === 'ROUTE', 'a multi-day tour is routed without the question');
+const day = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, '', ''));
 check(day.what === 'ROUTE' && day.rounds === 1 && day.gen > 0, `a day hike is routed at once (${JSON.stringify(day)})`);
-e.runHead(longPlan, 'HIKE', 2, true, '');
+e.runHead(longPlan, 'HIKE', 2, true, '', '');
 e.runLongAnswer(true, longPlan);
-check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, '')).what === 'ROUTE', '„Plan anyway“: the same points are not asked again');
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, '', '')).what === 'ROUTE', '„Wait“: the same points are not asked again');
 e.historyImport(e.historyExport()); // a fresh worker gets the history and the run's memory (client.ts restart)
-check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, '')).what === 'ROUTE', '„Plan anyway“ survives a fresh worker');
+check(JSON.parse(e.runHead(longPlan, 'HIKE', 2, true, '', '')).what === 'ROUTE', '„Wait“ survives a fresh worker');
 // „Weiter warten?“: the time limit, then wait on → the next run has one period more
-const slow = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, ''));
+const slow = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, '', ''));
 e.runEnd(slow.gen, 'slow', 1, '');
 e.historyImport(e.historyExport()); // the open question survives a fresh worker too
 e.runSlowAnswer(true);
-const again = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, ''));
+const again = JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, '', ''));
 check(again.what === 'ROUTE' && again.rounds === 2, `„Weiter warten“: the run again with 2 periods (${JSON.stringify(again)})`);
 e.runEnd(again.gen, 'ok', 2, '');
-check(JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, '')).rounds === 1, 'the next run starts at one period again');
-// Cancel of the question with nothing to take back (a plan opened): left as too long – „Plan anyway“ then plans it unasked
+check(JSON.parse(e.runHead(dayHike, 'HIKE', 2, true, '', '')).rounds === 1, 'the next run starts at one period again');
+// „Add a stop“ with nothing to take back (a plan opened): left unrouted – „Calculate“ of the not-routed line asks again
 e.historyImport('#');
-const other = '46.67,11.16;50.05,11.16';
-check(JSON.parse(e.runHead(other, 'HIKE', 2, true, '')).what === 'ASK', 'a fresh plan is asked');
+const other = '46.67,11.16;48.95,11.16';
+check(JSON.parse(e.runHead(other, 'HIKE', 2, true, '', '')).what === 'ASK', 'a fresh plan is asked');
 e.runLongAnswer(false, other);
 check(JSON.parse(e.planCancel('other', other, '', 0, 'LONG')).what === 'KEEP_POINTS', 'Cancel of the question: the points stay');
 e.runPlanAnyway(other);
-check(JSON.parse(e.runHead(other, 'HIKE', 2, true, '')).what === 'ROUTE', '„Plan anyway“ of the not-routed line: routed without asking');
+check(JSON.parse(e.runHead(other, 'HIKE', 2, true, '', '')).what === 'ASK', '„Calculate“ of the not-routed line: asked again, never a blind yes');
 
 // the track panel's „Als Plan übernehmen“ = the app's TrackToPlanState (WebTrackToPlan): an exported plan GPX comes back with
 // its own points, names and pins (no routing); the plan it replaces goes under Zuletzt only when it has a route's worth of points

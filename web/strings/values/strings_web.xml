@@ -235,6 +235,8 @@
     <string name="web_kind_route">Route</string>
     <string name="web_phone_how_link">How does it work?</string>
     <!-- a new point far from the plan (docs/design/web-planner.md §15): "Far from your route" -->
+    <string name="web_too_long_title">Too long in one go</string>
+    <string name="web_too_long_text">%1$s km in one go. Add a stop on the way.</string>
     <string name="web_far_title">Far from your route</string>
     <string name="web_far_point">Your point %1$s is %2$s from here.</string>
     <string name="web_far_point_unnamed">Your point is %1$s from here.</string>

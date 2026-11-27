@@ -196,20 +196,27 @@ class PhoneLongRule(
     private val factor: () -> Double,
     private val routed: (GeoPoint, GeoPoint, Boolean) -> Boolean = { _, _, _ -> false },
 ) : LongRule {
+    /**
+     * The device's routing memory in the phone's MB ([RouteCost.capKm]): the phone's [RouteCost.PHONE_MEMORY_MB] unless set –
+     * the web planner sets the browser's (it holds far longer legs).
+     */
+    var memoryCapMb: () -> Int = { RouteCost.PHONE_MEMORY_MB }
+
     override fun ask(points: List<GeoPoint>, activity: Activity): LongAsk? {
         if (points.size < 2) return null
         val f = factor()
+        val mb = memoryCapMb()
         val km = MutableList(points.size - 1) { RouteCost.legKm(points, it) }
         val ms = MutableList(km.size) { RouteCost.estimateMs(km[it], activity, f) }
         // the leg the decision is about, unless it is routed already (only those legs are looked up): then without it
         while (true) {
-            val i = when (val d = RouteCost.decide(ms, km)) {
+            val i = when (val d = RouteCost.decide(ms, km, mb)) {
                 RouteCost.Decision.Now -> return null
                 is RouteCost.Decision.Ask -> d.legIndex
                 is RouteCost.Decision.SplitOnly -> d.legIndex
             }
             if (!routed(points[i], points[i + 1], false))
-                return LongAsk(if (RouteCost.beyond(km[i])) Double.POSITIVE_INFINITY else ms[i] / 1000.0, i, km[i])
+                return LongAsk(if (km[i] > RouteCost.capKm(mb)) Double.POSITIVE_INFINITY else ms[i] / 1000.0, i, km[i])
             km[i] = 0.0; ms[i] = 0L
         }
     }

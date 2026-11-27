@@ -19,6 +19,16 @@ class RouteCostTest {
         PhoneLongRule({ factor }, routed)
 
     // ---------------- field cases first ----------------
+    /** The web planner's browser holds far longer legs (owner 2026-11-27): its memory makes Hilden → München a question, not „too long“. */
+    @Test fun aBrowsersMemoryAsksInsteadOfBeyond() {
+        val browser = rule(3.0).also { it.memoryCapMb = { 600 } } // RouteCost.capKm(600) ≈ 703 km
+        val ask = browser.ask(listOf(hilden, muenchen), Activity.HIKE)
+        assertNotNull(ask); ask!!
+        assertFalse("waiting offered", ask.beyond)
+        assertTrue("its estimate: ${ask.estimateS} s", ask.estimateS > RouteCost.ASK_ABOVE_S)
+        assertTrue("the phone keeps its 300 km", rule().ask(listOf(hilden, muenchen), Activity.HIKE)!!.beyond)
+    }
+
 
     /** Field 2026-11-27: Hilden → München on foot was a 24-hour question with „Trotzdem planen“; 475 km is beyond the phone. */
     @Test fun hildenToMuenchenOnFootIsBeyondThePhoneWithoutWaiting() {

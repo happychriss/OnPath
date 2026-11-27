@@ -1,30 +1,66 @@
 package com.onpath.web
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Before
 import org.junit.Test
 
 /**
- * The planner's run head is the app's (PlanRecalcState.begin + RouteRun in WebPlanChain): a very long plan is asked about first,
- * a multi-day tour never; „Plan anyway“ and an open „Weiter warten?“ survive a fresh worker (historyExport → historyImport).
+ * The planner's run head is the app's (PlanRecalcState.begin + RouteRun in WebPlanChain) with the browser's long-leg rule
+ * (RouteCost, owner 2026-11-27): a leg the browser searches longer than 30 s is asked about first („Warten“ /
+ * „Zwischenziel setzen“), a leg beyond its memory only offers „Zwischenziel setzen“, a multi-day tour is never asked; a yes
+ * survives a fresh worker (historyExport → historyImport).
  */
 class WebRunHeadTest {
+    /** 598 km straight: beyond a 4 GB browser (340 km), asked on an 8 GB one (700 km). */
     private val long = "46.67,11.16;52.05,11.16"
+    /** 250 km straight: about 47 s at the browser's start factor – asked, never beyond. */
+    private val mid = "46.67,11.16;48.92,11.16"
     private val day = "46.67,11.16;46.69,11.15"
     private fun what(j: String) = Regex("\"what\":\"(\\w+)\"").find(j)!!.groupValues[1]
     private fun rounds(j: String) = Regex("\"rounds\":(\\d+)").find(j)!!.groupValues[1].toInt()
 
-    @Test fun aVeryLongPlanIsAskedFirstAndAYesIsKeptAcrossAFreshWorker() {
+    @Before fun startValues() { Engine.costSet(Engine.BROWSER_FACTOR, Engine.BROWSER_MEMORY_MB) }
+
+    @Test fun aShortPlanRoutesAtOnceALongLegIsAskedWithItsEstimate() {
         Engine.historyImport("")
-        val ask = Engine.runHead(long, "HIKE", 2, true)
+        assertEquals("ROUTE", what(Engine.runHead(day, "HIKE", 2, true)))
+        val ask = Engine.runHead(mid, "HIKE", 2, true, "", "0\tHilden\n1\tFrankfurt")
         assertEquals("ASK", what(ask))
-        assertTrue(ask, ask.contains("\"title\":\"This route is very long\""))
-        assertEquals("a multi-day tour: never asked", "ROUTE", what(Engine.runHead(long, "HIKE", 2, false)))
-        Engine.runHead(long, "HIKE", 2, true)
-        Engine.runLongAnswer(true, long)
-        assertEquals("ROUTE", what(Engine.runHead(long, "HIKE", 2, true)))
+        assertTrue(ask, ask.contains("\"title\":\"Long route: about"))
+        assertTrue(ask, ask.contains("Hilden → Frankfurt, 250 km"))
+        assertTrue(ask, ask.contains("\"plan\":\"Wait\"") && ask.contains("\"cancel\":\"Add a stop\"") && ask.contains("\"again\":\"Calculate\""))
+        assertFalse(ask, ask.contains("Weiter warten") || ask.contains("Keep waiting"))
+    }
+
+    @Test fun aLegBeyondTheBrowsersMemoryOnlyOffersAStop() {
+        Engine.historyImport("")
+        val beyond = Engine.runHead(long, "HIKE", 2, true)
+        assertEquals("ASK", what(beyond))
+        assertTrue(beyond, beyond.contains("\"beyond\":true") && !beyond.contains("\"plan\""))
+        Engine.costSet(Engine.BROWSER_FACTOR, 600) // an 8 GB browser: 700 km
+        val asked = Engine.runHead(long, "HIKE", 2, true)
+        assertTrue(asked, asked.contains("\"beyond\":false") && asked.contains("\"plan\":\"Wait\""))
+    }
+
+    @Test fun aFasterBrowserIsNotAsked() {
+        Engine.historyImport("")
+        Engine.costSet(0.5, Engine.BROWSER_MEMORY_MB) // bounded to RouteCost.MIN_FACTOR 2: 250 km ≈ 32 s – still asked
+        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+        Engine.historyImport("")
+        assertEquals("200 km straight at factor 2 ≈ 21 s: at once", "ROUTE", what(Engine.runHead("46.67,11.16;48.47,11.16", "HIKE", 2, true)))
+    }
+
+    @Test fun waitIsKeptAcrossAFreshWorkerAMultiDayTourIsNeverAsked() {
+        Engine.historyImport("")
+        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+        assertEquals("a multi-day tour: never asked", "ROUTE", what(Engine.runHead(mid, "HIKE", 2, false)))
+        Engine.runHead(mid, "HIKE", 2, true)
+        Engine.runLongAnswer(true, mid)
+        assertEquals("ROUTE", what(Engine.runHead(mid, "HIKE", 2, true)))
         Engine.historyImport(Engine.historyExport())
-        assertEquals("„Plan anyway“ after a fresh worker", "ROUTE", what(Engine.runHead(long, "HIKE", 2, true)))
+        assertEquals("„Warten“ after a fresh worker", "ROUTE", what(Engine.runHead(mid, "HIKE", 2, true)))
     }
 
     @Test fun weiterWartenRoutesWithOnePeriodMoreAlsoAfterAFreshWorker() {
@@ -49,19 +85,20 @@ class WebRunHeadTest {
 
     @Test fun aYesOfThisPageHoldsOnAFreshChain() {
         Engine.historyImport("#")
-        assertEquals("ASK", what(Engine.runHead(long, "HIKE", 2, true)))
+        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
         Engine.historyImport("#")
-        Engine.runRoutedBefore(long) // the page's own memory (longroute.ts allowed)
-        assertEquals("ROUTE", what(Engine.runHead(long, "HIKE", 2, true)))
+        Engine.runRoutedBefore(mid) // the page's own memory (longroute.ts allowed)
+        assertEquals("ROUTE", what(Engine.runHead(mid, "HIKE", 2, true)))
     }
 
-    @Test fun cancelOfTheQuestionLeavesItLongAndPlanAnywayRoutesUnasked() {
+    /** The app's (owner 2026-11-27): after „Zwischenziel setzen“ the not-routed line's „Berechnen“ asks again – never a blind yes. */
+    @Test fun addAStopLeavesItUnroutedAndCalculateAsksAgain() {
         Engine.historyImport("")
-        assertEquals("ASK", what(Engine.runHead(long, "HIKE", 2, true)))
-        Engine.runLongAnswer(false, long)
-        assertTrue(Engine.planCancel("other", long, "", 0, "LONG").contains("KEEP_POINTS"))
+        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+        Engine.runLongAnswer(false, mid)
+        assertTrue(Engine.planCancel("other", mid, "", 0, "LONG").contains("KEEP_POINTS"))
         Engine.historyImport(Engine.historyExport()) // why it is not routed travels too
-        Engine.runPlanAnyway(long)
-        assertEquals("ROUTE", what(Engine.runHead(long, "HIKE", 2, true)))
+        Engine.runPlanAnyway(mid)
+        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
     }
 }

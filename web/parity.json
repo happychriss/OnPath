@@ -142,11 +142,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "LongRouteDialog (Cancel / Plan anyway, no outside dismiss); the text is the shared LongRoute.text",
+      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss)",
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "ddcc99a8d709948029ac4ac35624ec87ae936923"
+      "blob": "9de427bc9ba296f0018f0063d9595adc3e25af9a"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "898a37f205ee19003c88a90b91a16cafc32fb899"
+      "blob": "3edbd835f7b88e3891d54827204f1daf9e1b91f9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",

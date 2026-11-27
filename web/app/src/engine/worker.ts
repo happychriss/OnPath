@@ -102,6 +102,8 @@ const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'histo
   'longRoute', 'planCancel',
   // the route run's head (the app's PlanRecalcState.begin + RouteRun in WebPlanChain): asked before each run
   'runHead', 'runLongAnswer', 'runEnd', 'runSlowAnswer', 'runPlanAnyway', 'runRoutedBefore',
+  // the browser's routing speed + memory for the long-leg question (RouteCost, owner 2026-11-27)
+  'costSet', 'costFactor',
   // the plan menu's "Ganz neu berechnen" (PlanEditState.recalcRow)
   'recalcRow', 'recalcScratch',
   // the idle settling of a plan with detour points (WebApi.settleStep – the app's PlanSettle, one leg a call)
@@ -465,6 +467,8 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     if (req.type === 'call') {
       if (!CALLS.has(req.fn)) throw new Error(`unknown engine call ${req.fn}`);
       const fn = (e as unknown as Record<string, (...a: unknown[]) => unknown>)[req.fn];
+      // the long-leg question counts a leg kept in the browser as routed: the stored legs are read first (as before a plan)
+      if (req.fn === 'runHead') await legsIn(e, String(req.args[0]), String(req.args[1]), Number(req.args[2]));
       if (req.fn === 'detourAt' && slowDetourMs) { const end = performance.now() + slowDetourMs; while (performance.now() < end) { /* expected: a test's slow check */ } }
       const out = fn(...req.args);
       reply({ id: req.id, ok: true, text: out == null ? '' : String(out), history: HISTORY.has(req.fn) ? e.historyExport() : undefined,

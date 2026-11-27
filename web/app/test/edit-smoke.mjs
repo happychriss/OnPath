@@ -207,41 +207,15 @@ await page.click('#reverse');
 await page.waitForFunction((b) => location.hash !== b, beforeRev, { timeout: 10_000 }).catch(() => {});
 check(await page.evaluate(() => location.hash) !== beforeRev, 'Reverse changed the plan');
 
-// the time limit (owner 2026-11-03, onpath.private#21 B, routing/SlowPlan): the engine's {slow: rounds} → the app's FRAGE
-// box "This route is long and takes a while. Keep waiting?" – Keep waiting = the run again with one more period,
-// Cancel = like Cancel of the wait. The engine's reply is faked once (a real time limit takes 15 s+).
+// the long-leg rule (RouteCost, owner 2026-11-27 – the app's): a short plan is routed at once, never asked; no „Keep
+// waiting?“ any more – the time limit allows twice the leg's estimate, so a plan run never ends in that question
 await page.waitForFunction(() => document.body.dataset.planning !== '1', null, { timeout: 120_000 });
-await page.evaluate(() => {
-  const e = window.__engine, plan = e.plan.bind(e);
-  window.__rounds = [];
-  window.__slowOnce = true;
-  e.plan = (pts, a, sac, pinned, prog, names, rounds) => {
-    window.__rounds.push(rounds);
-    if (window.__slowOnce) { window.__slowOnce = false; return Promise.resolve({ id: 0, ok: true, plan: { slow: rounds, legs: [] } }); }
-    return plan(pts, a, sac, pinned, prog, names, rounds);
-  };
-});
-const slowBox = () => page.evaluate(() => { const c = document.querySelector('.msgcard.frage'); return c ? c.textContent : ''; });
-const beforeSlow = await page.evaluate(() => location.hash);
+await page.evaluate(() => { const e = window.__engine, plan = e.plan.bind(e); window.__slowSeen = false;
+  e.plan = async (...a) => { const r = await plan(...a); if (r?.plan?.slow) window.__slowSeen = true; return r; }; });
 await page.click('#reverse');
-await page.waitForFunction(() => /Keep waiting/.test(document.querySelector('.msgcard.frage')?.textContent ?? ''), null, { timeout: 30_000 }).catch(() => {});
-const box1 = await slowBox();
-check(/long and takes a while/.test(box1) && /Keep waiting\?/.test(box1), `time limit → the FRAGE box "Keep waiting?" ("${box1}")`);
-await page.click('.msgcard.frage .msgbuttons button:last-child');
-await page.waitForFunction(() => window.__rounds.length >= 2 && document.body.dataset.planning !== '1' && document.querySelector('#summary .big'),
-  null, { timeout: 120_000 }).catch(() => {});
-const r1 = await page.evaluate(() => window.__rounds);
-check(r1[0] === 1 && r1[1] === 2 && !(await slowBox()), `Keep waiting → the run again with 2 periods, box gone (rounds ${JSON.stringify(r1)})`);
-await page.evaluate(() => { window.__slowOnce = true; });
-const afterWait = await page.evaluate(() => location.hash);
-await page.click('#reverse');
-await page.waitForFunction(() => !!document.querySelector('.msgcard.frage'), null, { timeout: 30_000 }).catch(() => {});
-await page.click('.msgcard.frage .msgbuttons button:first-child');
-await page.waitForTimeout(800);
-const cancelled = await page.evaluate(() => ({ hash: location.hash, planning: document.body.dataset.planning, notRouted: window.__state.notRouted }));
-check(!(await slowBox()) && cancelled.planning !== '1' && (cancelled.hash === afterWait || cancelled.notRouted),
-  `Cancel → the box goes, the reverse is taken back or "not calculated" (${JSON.stringify({ ...cancelled, back: cancelled.hash === afterWait })})`);
-check(beforeSlow !== afterWait, 'the reverse under the question was kept after Keep waiting');
+await page.waitForFunction(() => document.body.dataset.planning !== '1' && !!document.querySelector('#summary .big'), null, { timeout: 120_000 }).catch(() => {});
+check(!(await page.$('dialog.longroute')) && !(await page.evaluate(() => window.__slowSeen)) && !/Keep waiting/.test(await page.evaluate(() => document.body.innerText)),
+  'a short plan: routed at once – no long-leg question, no „Keep waiting?“');
 
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));

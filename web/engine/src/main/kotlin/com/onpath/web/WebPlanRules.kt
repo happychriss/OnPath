@@ -39,6 +39,27 @@ object WebPlanRules {
     }
 
     /**
+     * The browser's long-leg question (the app's LongRouteDialog with a leg, owner 2026-11-27 – RouteCost): title + text of
+     * the slowest leg still to route ("Lange Strecke: etwa 3–6 Minuten", "Hilden → München, 475 km am Stück. …"), buttons
+     * „Warten“ ([plan]) · „Zwischenziel setzen“ ([cancel]); a leg beyond the browser's memory ([beyond]): no „Warten“, the page
+     * says it in its own words (no "plan in the browser" – it is the browser). The not-routed line after „Zwischenziel
+     * setzen“ offers „Berechnen“, which asks again (never a blind yes). [names]: plan index → name.
+     */
+    fun longLeg(ask: com.onpath.app.routing.LongAsk, names: Map<Int, String>): String {
+        fun name(i: Int) = names[i]?.takeIf { it.isNotBlank() }
+        val km = Engine.num(ask.km, 0)
+        val head = ",\"leg\":" + ask.leg + ",\"km\":" + km + ",\"beyond\":" + ask.beyond +
+            ",\"cancel\":" + Engine.str(Txt.s(Res.string.nav_add_stop)) +
+            ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.domain.NotRouted.LONG)) +
+            ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate))
+        if (ask.beyond) return head
+        return head + ",\"seconds\":" + Engine.num(ask.estimateS, 0) +
+            ",\"title\":" + Engine.str(com.onpath.app.routing.RouteCost.askTitle(ask)) +
+            ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1))) +
+            ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_wait))
+    }
+
+    /**
      * Plan points the route does not reach (the app's [com.onpath.app.domain.PlanGaps], worked out in [PlanResult.gaps]: a
      * summit above the T level, a point off any path – the router stops at the nearest allowed way – or a stop it skips
      * although it lies on a way, Bug 01): the sheet's red line, combined with a failed leg like PlanPanel does (one line,
