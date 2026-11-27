@@ -397,6 +397,21 @@ object PlanDays {
         return plan.copy(days = days, nights = nights)
     }
 
+    /**
+     * The activity, T level, pace or marked trails changed (owner 2026-11-27: Hilden → München on foot gave 40 days, on the
+     * bike they stayed 40): with day limits N follows what the limits now ask for ([suggestDays]), never fewer than the
+     * night marks + 1; the marks stay, the grey proposals spread again ([of]). Without limits N is the user's own choice and
+     * stays. [line] / [pointAt] = the NEW route. Unchanged when nothing follows.
+     */
+    fun followLimits(plan: SharedPlan, line: DayLine, pointAt: IntArray): SharedPlan {
+        val limits = plan.limits
+        if (plan.days == null || limits.isNone) return plan
+        val nights = clean(plan.points, plan.nights)
+        val want = suggestDays(line, pointAt, limits, nights) ?: return plan
+        val days = minOf(maxOf(want, nights.size + 1), PlanCode.MAX_DAYS)
+        return if (days == plan.days) plan else plan.copy(days = days, nights = nights)
+    }
+
     /** "−" at the number of days is possible: a grey proposal is left (R5). */
     fun canRemoveDay(plan: SharedPlan): Boolean = proposalCount(plan) > 0
 

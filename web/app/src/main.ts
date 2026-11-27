@@ -3189,6 +3189,7 @@ multiDay = new MultiDay({
   tour: () => state.tour,
   routedPlan: () => (state.points.length >= 2 && state.plan && !state.planning && planFor === enc(state.points) ? state.plan : null),
   apply: applyDayPlan,
+  profile: () => `${state.activity}|${state.sac}|${pace.hike}|${pace.bike}|${trails}`,
   status,
   pickGpx: () => gpxImport.pick(),
   openSaved: () => { void myPlansDialog(sync, plansHost); },

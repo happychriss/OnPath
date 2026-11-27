@@ -4,6 +4,7 @@ import com.onpath.app.time.Factors
 import com.onpath.app.time.RouteTimes
 import com.onpath.app.time.TimeEstimate
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -217,6 +218,21 @@ class PlanDaysTest {
         assertEquals(7, PlanDays.suggestDays(ride, at, five, mapOf(1 to NightMark.OVERNIGHT))) // 7.5 h + 22.5 h
         assertNull(PlanDays.suggestDays(ride, at, DayLimits.NONE))
         assertEquals(6, days(tour.copy(limits = five)).suggestedDays)
+    }
+
+    /** Owner 2026-11-27 (Hilden → München on foot 40 days, on the bike still 40): another profile, N follows the limits. */
+    @Test fun anotherProfileTheDaysFollowTheLimits() {
+        val five = DayLimits(maxTimeMin = 300)
+        val onFoot = tour.copy(limits = five, days = 6)
+        val faster = line(600, stepS = 90.0) // the same way, half the time (the bike)
+        val pa = WaypointInsertion.routeIndices(onFoot.points, faster.points)
+        assertEquals(3, PlanDays.followLimits(onFoot, faster, pa).days) // 15 h at 5 h a day
+        val marked = onFoot.copy(nights = mapOf(1 to NightMark.OVERNIGHT, 2 to NightMark.OVERNIGHT, 3 to NightMark.OVERNIGHT))
+        assertEquals(4, PlanDays.followLimits(marked, faster, pa).days) // never fewer than the night marks + 1
+        assertEquals(marked.nights, PlanDays.followLimits(marked, faster, pa).nights)
+        val own = onFoot.copy(limits = DayLimits.NONE, days = 9)
+        assertSame(own, PlanDays.followLimits(own, faster, pa)) // without limits N is the user's own
+        assertSame(onFoot, PlanDays.followLimits(onFoot, ride, at)) // the same times: unchanged
     }
 
     @Test fun greysKeepTheDaysWithinTheLimitsWherePossible() {

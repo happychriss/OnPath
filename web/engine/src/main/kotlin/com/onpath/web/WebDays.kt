@@ -230,6 +230,8 @@ object WebDays {
         when (op) {
             "start" -> planOut(PlanDays.start(p, n))
             "setDays" -> PlanDays.setDays(p, n)?.let { planOut(it) } ?: "null"
+            // the activity / T level / pace / marked trails changed: N follows the limits (owner 2026-11-27, 40 days stayed)
+            "followLimits" -> line(p)?.let { l -> PlanDays.followLimits(p, l, pointAt(p, l)).takeIf { it != p }?.let { planOut(it) } } ?: "null"
             "removeNight" -> if (p.nights.containsKey(n)) planOut(PlanDays.removeNight(p, n)) else "null"
             "afterEdit" -> planOut(PlanDays.afterEdit(p, Engine.parsePoints(text)))
             "addNight" -> line(p)?.let { l -> addNight(p, l, nearestLine(l, lat, lon)) } ?: "null"
