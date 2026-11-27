@@ -17,8 +17,8 @@ object PointsOverDot {
 
     fun add(style: Style, source: String) {
         runCatching {
-            // LAYER_WPT_OVER_DOT: the one layer above the dot – the same picture and size as LAYER_WPT
-            style.addLayer(SymbolLayer(LAYER, source).withProperties(*PointMarkSize.layerProps()))
+            // the same picture and size as LAYER_WPT
+            style.addLayer(SymbolLayer(LAYER, source).withProperties(*PointMarkSize.layerProps())) // LAYER_WPT_OVER_DOT: the one layer above the dot
         }.onFailure { Problems.warn("map", "Plan points over the position dot not added", it) }
     }
 
