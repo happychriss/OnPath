@@ -60,6 +60,7 @@ object LiveEdge {
             state = { RecordingService.state.value },
             batteryPct = { battery(app) },
             now = System::currentTimeMillis,
+            plannedStore = LiveFiles(File(app.filesDir, DIR), LiveFiles.PLANNED),
         )
         val uploader = LiveUploader(HttpLiveBoxes(PlanSync.SERVER), track, LiveFiles(File(app.filesDir, DIR)),
             random = { n -> ByteArray(n).also(random::nextBytes) })

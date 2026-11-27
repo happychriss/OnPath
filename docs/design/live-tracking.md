@@ -96,7 +96,7 @@ Tatsache ist“; a dead zone in the mountains is normal and must not frighten):
 | phone battery below 15 % | „Akku 12 %“ (amber) |
 | away from the planned route (the app's own off-route alarm) | „Gerade etwas abseits der Route“ (amber) |
 | paused / standing ≥ 10 min | „Macht gerade Pause“ (calm blue) |
-| the arrival now later than the planned one by > 30 % of the planned time still to go and ≥ 15 min | „Etwas später als geplant · Ankunft ca. 17:10“ (amber) – only with the phone's planned arrival (head field 18 `plannedArrivalMs`, fixed at the start); an older app sends none → never |
+| the arrival now later than the planned one by > 30 % of the planned time still to go and ≥ 15 min | „Etwas später als geplant · Ankunft ca. 17:10“ (amber) – only with the phone's planned arrival (head field 18 `plannedArrivalMs`, fixed at the start of each followed line, kept per tour across app restarts in `files/live/planned.txt`); an older app sends none → never |
 | moving, fresh | „Alles okay, unterwegs“ (green) |
 | sharing stopped / expired | „Diese Tour wird nicht mehr geteilt.“ (nothing else, no map) |
 | link broken / key wrong | „Dieser Link funktioniert nicht.“ |
