@@ -787,9 +787,5 @@ class Navigator(session: NavSession, offRouteM: Double = 40.0) {
          */
         const val LEAD_REQUEST_MS = 20_000L
         const val LEAD_TOTAL_MS = 30_000L
-
-        /** From this straight-line distance to the start the far-start box warns that the search can take long. */
-        const val FAR_SEARCH_WARN_M = 25_000.0
-        fun searchMayTakeLong(distanceM: Double) = distanceM >= FAR_SEARCH_WARN_M
     }
 }

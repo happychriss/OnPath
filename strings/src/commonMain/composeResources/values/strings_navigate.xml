@@ -110,7 +110,6 @@
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route starts %1$s away</string>
     <string name="nav_far_detail">%1$s (direct) · on the way</string>
-    <string name="nav_far_long">The search can take a long time.</string>
     <string name="nav_far_searching">Finding a way to the start…</string>
     <string name="nav_far_lead">Guide me</string>
     <string name="nav_far_record">Go on without a route</string>

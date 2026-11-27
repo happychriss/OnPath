@@ -1299,13 +1299,6 @@
     "confidence": "sicher",
     "max": 14
   },
-  "nav_far_long": {
-    "area": "Navigate (far start)",
-    "context": "Second detail line of the far-start box 'Route starts 630 km away' when the start is 25 km or more away and the search is not running: the way-finding to the start may take a long time. Not in the notification.",
-    "priority": 1,
-    "confidence": "sicher",
-    "max": 40
-  },
   "nav_so_far": {
     "area": "Navigate (stopped)",
     "context": "Last line of the stopped status card: the distance recorded so far, %1$s = '5.3 km'. Followed by ' · moving 1:12'.",

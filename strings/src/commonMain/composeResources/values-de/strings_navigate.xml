@@ -109,7 +109,6 @@
     <!-- never on the route yet (owner 2026-10-31): "Route starts 31 km away" · Guide me / Just record -->
     <string name="nav_far_title">Route beginnt %1$s entfernt</string>
     <string name="nav_far_detail">%1$s (Luftlinie) · unterwegs</string>
-    <string name="nav_far_long">Die Suche kann lange dauern.</string>
     <string name="nav_far_searching">Weg zum Start wird gesucht…</string>
     <string name="nav_far_lead">Hinführen</string>
     <string name="nav_far_record">Ohne Route weiter</string>
