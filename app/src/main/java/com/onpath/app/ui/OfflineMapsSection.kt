@@ -182,7 +182,7 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
                 Text(if (ui.wifiOnly) str(Res.string.maps_wifi_only_on)
                     else str(Res.string.maps_wifi_only_off), style = small, color = variant)
             }
-            Switch(checked = ui.wifiOnly, onCheckedChange = null)
+            SettingsSwitch(ui.wifiOnly)
         }
         if (ui.available && ui.areas.isNotEmpty()) Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp)) {
             OutlinedButton(onClick = cb.onUpdateNow, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.maps_update_now)) }

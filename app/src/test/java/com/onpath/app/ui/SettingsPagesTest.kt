@@ -117,6 +117,13 @@ class SettingsPagesTest {
         assertEquals("short title, short value (\"Warnen nach · 40 m\") -> side by side", false, stacked(40f, 70f))
     }
 
+    @Test fun `a settings group is one tile per row with a small gap between them (variant B)`() {
+        assertEquals("three rows: each its own tile, 2 px apart", listOf(0 to 56, 58 to 114, 116 to 172),
+            SettingRows.tileSpans(listOf(56, 56, 56), gap = 2))
+        assertEquals("one row: one tile, no gap", listOf(0 to 48), SettingRows.tileSpans(listOf(48), gap = 2))
+        assertEquals("no rows: no tiles", emptyList<Pair<Int, Int>>(), SettingRows.tileSpans(emptyList(), gap = 2))
+    }
+
     /**
      * Navigate → ⚙ "on the way" (owner 2026-11-07): the Navigation page first, then only the topics that make sense while
      * riding, in a fixed order; a topic this phone does not show (e.g. Offline maps without the cell store) is left out;

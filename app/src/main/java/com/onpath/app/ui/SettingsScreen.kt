@@ -42,6 +42,7 @@ import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
@@ -209,7 +210,7 @@ fun SettingsScreen(
     }
     // the page drawn: an alias shows the page that holds it ([SettingsPage.landing])
     val shown = page?.landing
-    Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+    Surface(Modifier.fillMaxSize(), color = SettingsGround) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { if (page != null) onPage(page.up) else onBack() }, Modifier.size(56.dp)) {
@@ -247,13 +248,13 @@ fun SettingsScreen(
                     SettingsSummary.groups(available, phoneChecks).forEachIndexed { gi, (kind, group) ->
                         val app = kind == TopicGroup.APP
                         if (kind != TopicGroup.URGENT) item {
-                            Text(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours), style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(start = 16.dp, top = if (gi > 0) 20.dp else 4.dp, bottom = 6.dp))
+                            Column { SettingsGroupHeader(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours),
+                                top = if (gi > 0) 20.dp else 4.dp)
+                                Spacer(Modifier.height(8.dp)) }
                         } else item { Spacer(Modifier.height(4.dp)) }
                         item {
-                            Surface(shape = OnPathShapes.Card, color = OnPathColors.CardPaper, modifier = Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card)) {
-                                Column {
+                            SettingsCard {
+                                run {
                                     group.forEachIndexed { i, t ->
                                         if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
                                         val s = when (t) {
@@ -575,10 +576,14 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
 /** The one test button of the junction cue ("Vibration testen" / "Stimme testen"), Walnuss like every neutral action. */
 @Composable
 private fun TestButton(text: String, onClick: () -> Unit) =
-    TextButton(onClick = onClick, modifier = Modifier.padding(start = 6.dp).heightIn(min = 48.dp)) {
-        Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.Walnut, modifier = Modifier.size(18.dp))
-        Spacer(Modifier.width(6.dp))
-        Text(text, color = OnPathColors.Walnut)
+    // variant B (2026-11-27): an outlined button on its own tile – it looked like half a row before
+    Box(Modifier.padding(start = 16.dp, top = 8.dp, bottom = 8.dp)) {
+        androidx.compose.material3.OutlinedButton(onClick = onClick, modifier = Modifier.heightIn(min = 40.dp),
+            contentPadding = PaddingValues(start = 14.dp, end = 18.dp)) {
+            Icon(Icons.Filled.PlayArrow, null, tint = OnPathColors.Green, modifier = Modifier.size(18.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(text, color = OnPathColors.Green)
+        }
     }
 
 /**
@@ -603,6 +608,7 @@ private fun HoldTimeRow(settings: AppSettings, onChange: (AppSettings) -> Unit) 
             value = settings.navHoldMs.toFloat(),
             onValueChange = { v -> val ms = hs.snap(v); if (ms != settings.navHoldMs) onChange(settings.copy(navHoldMs = ms)) },
             valueRange = 0f..hs.MAX_MS.toFloat(), steps = hs.SLIDER_STEPS,
+            colors = settingsSliderColors(),
             modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
                 .holdSliderSemantics(title, value))
     }
@@ -623,8 +629,9 @@ private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit
         Choice(com.onpath.app.data.BikeScreen.ALWAYS, str(Res.string.settings_nav_bike_screen_always), str(Res.string.settings_nav_bike_screen_always_sub)),
         Choice(com.onpath.app.data.BikeScreen.SMART, str(Res.string.settings_nav_bike_screen_smart), str(Res.string.settings_nav_bike_screen_smart_sub)),
         Choice(com.onpath.app.data.BikeScreen.PHONE, str(Res.string.settings_nav_bike_screen_phone), str(Res.string.settings_nav_bike_screen_phone_sub)))
+    // the menu only the words: the chosen one's line already stands under the title (variant B, 2026-11-27)
     ChoiceRow(str(Res.string.settings_nav_bike_screen), options.first { it.value == settings.bikeScreen }.line, options,
-        settings.bikeScreen, onPick = { onChange(settings.copy(bikeScreen = it)) })
+        settings.bikeScreen, onPick = { onChange(settings.copy(bikeScreen = it)) }, menuLines = false)
 }
 
 /** Diagnostics: the problem report button (no switch), then the problem list. */
@@ -721,6 +728,23 @@ internal fun SwitchRow(title: String, subtitle: String?, checked: Boolean, enabl
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
         }
         Spacer(Modifier.width(12.dp))
-        Switch(checked = checked, onCheckedChange = null, enabled = enabled)
+        SettingsSwitch(checked, enabled)
     }
 }
+
+/**
+ * The settings' switch (variant B, 2026-11-27): the accent green with a ✓ in the thumb, Android's standard – the dark
+ * Walnuss tracks were the heaviest things on the page.
+ */
+@Composable
+internal fun SettingsSwitch(checked: Boolean, enabled: Boolean = true) =
+    Switch(checked = checked, onCheckedChange = null, enabled = enabled,
+        thumbContent = if (checked) { { Icon(Icons.Filled.Check, null, Modifier.size(androidx.compose.material3.SwitchDefaults.IconSize)) } } else null,
+        colors = androidx.compose.material3.SwitchDefaults.colors(checkedTrackColor = OnPathColors.Green,
+            checkedThumbColor = androidx.compose.ui.graphics.Color.White, checkedIconColor = OnPathColors.Green))
+
+/** The settings' slider: the same green as the switches, a light sage for the rest of the track. */
+@Composable
+internal fun settingsSliderColors() = androidx.compose.material3.SliderDefaults.colors(thumbColor = OnPathColors.Green,
+    activeTrackColor = OnPathColors.Green, activeTickColor = androidx.compose.ui.graphics.Color.White,
+    inactiveTrackColor = SettingsGround, inactiveTickColor = OnPathColors.Green)
