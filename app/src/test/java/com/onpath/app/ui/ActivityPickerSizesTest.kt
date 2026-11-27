@@ -1,5 +1,8 @@
 package com.onpath.app.ui
 
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
@@ -30,7 +33,7 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
         showSystemUi = false,
     )
 
-    protected fun shot(locale: Locale, current: Activity) {
+    protected fun shot(locale: Locale, current: Activity, sac: Int = 2, navBar: Int = 0) {
         val before = Locale.getDefault()
         Locale.setDefault(locale)
         try {
@@ -38,7 +41,10 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
             paparazzi.snapshot { OnPathTheme {
                 androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF8A9187)),
                     contentAlignment = androidx.compose.ui.Alignment.BottomCenter) {
-                    ActivityPickerContent(current, onSelect = {}, onDismiss = {}, sac = 2, onSac = {})
+                    ActivityPickerContent(current, onSelect = {}, onDismiss = {}, sac = sac, onSac = {}, navBottom = navBar.dp)
+                    // the navigation bar the sheet must keep free (3-button bar, 48 dp)
+                    if (navBar > 0) androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxWidth().height(navBar.dp)
+                        .background(androidx.compose.ui.graphics.Color(0xCC000000)))
                 }
             } }
         } finally { Locale.setDefault(before) }
@@ -47,6 +53,12 @@ abstract class ActivityPickerSizes(widthDp411: Boolean, font: Float) {
     @Test fun hikeT2German() = shot(Locale.GERMANY, Activity.HIKE)
     /** Variant C (owner 2026-11-27): the bike group's cards. */
     @Test fun bikeGerman() = shot(Locale.GERMANY, Activity.BIKE_TOURING)
+    /**
+     * Owner's Pixel 7 2026-11-27: T5 lay under the navigation bar and the sheet jumped between Rad / Wandern. T1–T5 all
+     * above a 48 dp bar, T5 chosen; the bike group drawn as tall (no jump – [bikeGerman] with the bar must match in height).
+     */
+    @Test fun hikeT5AboveTheNavBarGerman() = shot(Locale.GERMANY, Activity.HIKE, sac = 5, navBar = 48)
+    @Test fun bikeAboveTheNavBarGerman() = shot(Locale.GERMANY, Activity.BIKE_TOURING, navBar = 48)
 }
 
 /** Galaxy S10: 1080 × 2280 px at 420 dpi ≈ 411 dp wide. */
