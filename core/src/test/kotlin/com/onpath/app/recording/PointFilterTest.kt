@@ -78,4 +78,23 @@ class PointFilterTest {
         w.onDropped(false, 0f)
         assertEquals("1 fix dropped for accuracy, best unknown", w.why())
     }
+
+    /**
+     * Owner's Pixel 2026-11-27 (tour indoors at Hilden, 16:19–16:46): the motion sensor said "standing still", GPS came
+     * every 10 s at 30–80 m, and every fix 25–60 m off the last point was kept – an orange scribble on the map and in
+     * the live share. Still by the sensor: a fix within twice its accuracy of the last point is drift.
+     */
+    @Test fun aScribbleWhileTheSensorSaysStillIsDrift() {
+        // 40 m off (≈ 0.00052° of longitude at 46.67°), 10 s later, accuracy 35 m: kept today, drift when still
+        val drift = p(0.00052, 10_000)
+        assertEquals(Verdict.ACCEPT, PointFilter.judge(p(0.0, 0), drift, 35.0, continuous = true).first)
+        assertEquals(Verdict.STANDING_STILL, PointFilter.judge(p(0.0, 0), drift, 35.0, continuous = true, still = true).first)
+        // long after the last point too (the 30 s window does not end it)
+        assertEquals(Verdict.STANDING_STILL, PointFilter.judge(p(0.0, 0), p(0.00052, 300_000), 35.0, continuous = true, still = true).first)
+        // never lose a real move: beyond twice the accuracy it counts, sensor or not (a smooth train, a wrong sensor)
+        val (v, d) = PointFilter.judge(p(0.0, 0), p(0.002, 10_000), 35.0, continuous = true, still = true)
+        assertEquals(Verdict.ACCEPT, v); assertTrue(d > 140)
+        // a new track piece always starts
+        assertEquals(Verdict.ACCEPT, PointFilter.judge(p(0.0, 0), drift, 35.0, continuous = false, still = true).first)
+    }
 }
