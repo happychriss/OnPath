@@ -77,6 +77,7 @@ async function pan(page, n = 4) {
 const diag = (page) => page.evaluate(() => window.__diag());
 const MSG_FAILED = 'could not be loaded';
 const MSG_BUSY = 'Map server not reachable';
+const MSG_429 = 'The map server is busy'; // a 429 is said as busy, not as not reachable (owner 2026-11-27)
 
 // ---- A: healthy ----
 {
@@ -136,7 +137,15 @@ const MSG_BUSY = 'Map server not reachable';
   fault = (key, req, res) => { if (key.endsWith('test-s1/base.pmtiles')) { res.writeHead(429, { 'retry-after': '60' }).end('too many'); return true; } return false; };
   const since = Date.now();
   const page = await open();
-  check(await waitStrip(page, MSG_BUSY), 'D 429: grey line "Map server not reachable – trying again."');
+  check(await waitStrip(page, MSG_429), 'D 429: grey line "The map server is busy – trying again later." (not "not reachable")');
+  check(!(await strip(page)).includes(MSG_BUSY), 'D 429: one statement – no "not reachable" beside it');
+  // the map areas' note about the same detailed map (e.g. „No detailed map – loads when online“) steps back while the
+  // cells' line says it – one statement per state (owner 2026-11-27); a wait with progress would still show
+  await waitStrip(page, MSG_429);
+  await page.evaluate(() => window.__notices.set('areas', { kind: 'info', title: 'AREAS NOTE' }));
+  const lines = await page.evaluate(() => [...document.querySelectorAll('#mapnotes .mapnote')].map((n) => n.dataset.slot ?? n.className));
+  check(lines.join(',') === 'cells', `D 429: one line in the strip, not the areas' note beside it (${lines.join(',')})`);
+  await page.evaluate(() => window.__notices.set('areas', null));
   await pan(page, 6);
   await page.waitForTimeout(Math.max(0, 30_000 - (Date.now() - since)));
   const n = count(/test-s1\/base\.pmtiles$/, since);

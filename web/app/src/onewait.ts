@@ -5,9 +5,13 @@
 // arbiter picks the one that does show, by priority, and writes it to body[data-wait] – style.css hides the others in
 // the same task (no frame with two). The load card first: when its 400 ms delay runs and two other waits want to show
 // at once, the card comes now (it carries them – the area's rows are its lines, the calculation its last phase).
-export type Wait = 'load' | 'box' | 'strip' | 'sheet' | 'status';
-/** Highest first: the card (it carries the others), the box (the user's route, with Cancel), the strip, the sheet, the status line. */
-export const WAIT_ORDER: readonly Wait[] = ['load', 'box', 'strip', 'sheet', 'status'];
+export type Wait = 'load' | 'box' | 'strip' | 'bar' | 'sheet' | 'status';
+/**
+ * Highest first: the card (it carries the others), the box (the user's route, with Cancel), the strip, the run bar (a plan
+ * run after 300 ms – owner 2026-11-27; it replaces the sheet's „Calculating the route…“ line, one statement), the sheet,
+ * the status line.
+ */
+export const WAIT_ORDER: readonly Wait[] = ['load', 'box', 'strip', 'bar', 'sheet', 'status'];
 
 export class OneWait {
   private want = new Set<Wait>();

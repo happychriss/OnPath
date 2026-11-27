@@ -488,7 +488,9 @@ const areas = useCells ? new MapAreas(map, cells, params.get('mapsApi') ?? base 
 function showCellTrouble() {
   const s = useCells ? cells.baseTrouble(map) : null;
   const now = notices.get('cells');
-  const want = s === 'broken' ? t('web_maps_cell_failed') : s === 'busy' ? t('maps_err_unreachable') : null;
+  // one true statement (owner 2026-11-27): the server's 429 is „busy“, no network is „offline“, the rest „not reachable“
+  const want = s === 'broken' ? t('web_maps_cell_failed') : s === 'overloaded' ? t('maps_err_busy')
+    : s === 'busy' ? (navigator.onLine === false ? t('maps_offline_text') : t('maps_err_unreachable')) : null;
   // the map cannot be loaded: the wait for it ends (the window goes – never „loading map“ beside the red line)
   if (s === 'broken') { firstMap = false; overlay.fail('tiles'); }
   if ((now?.title ?? null) === want) return;
@@ -496,6 +498,7 @@ function showCellTrouble() {
 }
 if (useCells) { cells.onChange = showCellTrouble; map.on('moveend', showCellTrouble); }
 (window as unknown as { __areas: MapAreas | null }).__areas = areas; // for the browser tests
+(window as unknown as { __notices: MapNotices }).__notices = notices; // for the browser tests
 // The wait window (form A, loadoverlay.ts – owner 2026-11-13 / 2026-11-19 „ich muss warten“): while the map of a new
 // place loads – its tiles, a map area the server prepares for the user's point, a link's or a plan's routing data – and
 // while a route is calculated: ONE window over the map, one bar over all steps, at most 3 rows, Cancel. It is then the
@@ -1657,7 +1660,9 @@ const PLAN_BAR_MS = Number(params.get('barMs') ?? 300); // ?barMs=0: the browser
 let planBarTimer = 0;
 function planBar(on: boolean) {
   clearTimeout(planBarTimer); planBarTimer = 0;
-  const show = (yes: boolean) => { $('runbar').hidden = !yes; routeProfile.setBusy(yes); };
+  // the bar is one of the page's waits (onewait.ts): it steps back for the load card, the box and the strip, and the
+  // sheet's wait line steps back for it – one statement per run (owner 2026-11-27)
+  const show = (yes: boolean) => { $('runbar').hidden = !yes; waits.set('bar', yes); routeProfile.setBusy(yes); };
   if (!on) { show(false); return; }
   planBarTimer = window.setTimeout(() => { planBarTimer = 0; if (state.planning) show(true); }, PLAN_BAR_MS);
 }

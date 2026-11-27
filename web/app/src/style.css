@@ -76,7 +76,7 @@ button.wide.twoline { justify-content: flex-start; text-align: left; }
   animation: runbar 1.2s ease-in-out infinite; }
 @keyframes runbar { from { left: -40%; } to { left: 100%; } }
 @media (prefers-reduced-motion: reduce) { .runbar > i { animation: none; left: 0; width: 100%; opacity: .6; } }
-body[data-wait="box"] .runbar { display: none; } /* the long run's wait box shows alone */
+body:not([data-wait="bar"]) .runbar { display: none; } /* one wait at a time (onewait.ts): the load card, the box, the strip win */
 .topbar .tool:hover:not(:disabled), .undopill .tool:hover:not(:disabled) { background: var(--paper-deep); }
 #searchbox { flex: 1; min-width: 220px; position: relative; align-self: stretch; }
 .barsep { flex: none; width: 1px; height: 28px; background: var(--line); }

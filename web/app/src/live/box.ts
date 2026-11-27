@@ -21,6 +21,9 @@ export interface BoxState {
   lastWriteMs: number | null;
   /** The last question failed (offline, 429, 5xx): the page says so quietly. */
   unreachable: boolean;
+  /** Why, so the page says the true thing (owner 2026-11-27): 'busy' = the server answered 429 / 503 (it is there, but
+   *  busy), 'offline' = this device has no network, 'server' = no answer / another error. */
+  why: 'busy' | 'offline' | 'server' | null;
 }
 
 const ASK_FLOOR_MS = 5_000; // a tab flipped back and forth does not ask each time (LivePolicy.VIEWER_FLOOR_MS)
@@ -35,6 +38,7 @@ export class LiveBox {
   private ended: number | null = null;
   private dead: 'gone' | 'broken' | null = null;
   private unreachable = false;
+  private why: BoxState['why'] = null;
   /** server now − lastWrite at the last answer, and when (this page's steady clock) that answer came */
   private age: { ms: number; at: number } | null = null;
   private lastWrite: number | null = null;
@@ -59,7 +63,7 @@ export class LiveBox {
     const max = this.head?.chunks;
     const chunks = [...this.chunks.values()].filter((c) => max == null || c.n < max).sort((a, b) => a.n - b.n);
     return { dead: this.dead, head: this.head, headBlob: this.headBlob, route: this.route, chunks, ended: this.ended,
-      sinceLastWrite: () => (this.age ? this.age.ms + (performance.now() - this.age.at) : null), lastWriteMs: this.lastWrite, unreachable: this.unreachable };
+      sinceLastWrite: () => (this.age ? this.age.ms + (performance.now() - this.age.at) : null), lastWriteMs: this.lastWrite, unreachable: this.unreachable, why: this.unreachable ? this.why : null };
   }
 
   private get over() { return this.dead != null || this.ended != null || this.head?.state === 'ended'; }
@@ -104,7 +108,7 @@ export class LiveBox {
         if (r.status === 410) { this.dead = 'gone'; this.forget(); break; }
         if (r.status === 404) { this.unreachable = false; break; } // not there yet (or long gone): "no data yet"
         if (r.status === 401 || r.status === 403) { this.dead = 'broken'; break; }
-        if (!r.ok) { this.unreachable = true; this.retryAfter = Math.max(0, Number(r.headers.get('retry-after') ?? 0) * 1000 || 0); break; }
+        if (!r.ok) { this.unreachable = true; this.why = r.status === 429 || r.status === 503 ? 'busy' : 'server'; this.retryAfter = Math.max(0, Number(r.headers.get('retry-after') ?? 0) * 1000 || 0); break; }
         const j = await r.json() as { rev: number; now: number; lastWrite: number; ended: number | null; more?: boolean;
           items: { name: string; rev: number; blob: string }[] };
         this.unreachable = false;
@@ -117,7 +121,7 @@ export class LiveBox {
         more = !!j.more && this.dead == null;
       }
     } catch { // expected: offline or the server not reachable – said quietly, asked again later
-      this.unreachable = true; this.retryAfter = 0;
+      this.unreachable = true; this.retryAfter = 0; this.why = navigator.onLine === false ? 'offline' : 'server';
     }
     this.emptyAsks = fresh ? 0 : this.emptyAsks + 1;
     this.asking = false;

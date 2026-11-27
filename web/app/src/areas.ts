@@ -170,7 +170,8 @@ export class MapAreas {
     }
     if (r.status === 429 || r.status >= 500) {
       const after = Number(r.headers.get('retry-after')) || 0;
-      return this.offline(ids, this.s('maps_err_unreachable'), after);
+      // 429 = the server is busy, not unreachable (the app's CellApi: maps_err_busy; owner 2026-11-27 – one true statement)
+      return this.offline(ids, this.s(r.status === 429 ? 'maps_err_busy' : 'maps_err_unreachable'), after);
     }
     if (!r.ok) { // 400: a bug on our side – said once, not retried
       console.error(`map areas: ${kind} refused (HTTP ${r.status}): ${(await r.text()).slice(0, 200)}`);

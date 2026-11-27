@@ -19,7 +19,7 @@ object WebMaps {
         Res.string.maps_row_area_north_west, Res.string.maps_row_area_west, Res.string.maps_row_area_south_west,
         Res.string.maps_row_area_south, Res.string.maps_row_area_south_east, Res.string.maps_overview_only, Res.string.maps_overview_load,
         Res.string.maps_state_waiting, Res.string.maps_state_waiting_min, Res.string.maps_state_building,
-        Res.string.maps_state_building_min, Res.string.maps_err_unreachable, Res.string.maps_err_area_failed,
+        Res.string.maps_state_building_min, Res.string.maps_err_unreachable, Res.string.maps_err_busy, Res.string.maps_err_area_failed,
         Res.string.maps_err_no_connection, Res.string.maps_load_loading, Res.string.maps_load_preparing, Res.string.maps_about_mb,
         Res.string.maps_time_lt_minute, Res.string.maps_time_one_minute, Res.string.maps_time_minutes,
         Res.string.plan_calculating, Res.string.plan_searching_gps, Res.string.plan_no_location_permission,
