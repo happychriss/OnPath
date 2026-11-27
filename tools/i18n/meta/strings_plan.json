@@ -1391,5 +1391,41 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 24
+  },
+  "plan_est_seconds": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_est_minutes": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_est_hours": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_est_short_s": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_est_short_min": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "plan_est_short_h": {
+    "area": "Plan (estimates)",
+    "context": "Estimated search time range; numbers low/high.",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

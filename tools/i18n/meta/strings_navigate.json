@@ -1313,5 +1313,47 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 16
+  },
+  "nav_long_leg_title": {
+    "area": "Plan (long route question)",
+    "context": "Title of the question before a long leg is routed; %1$s = plan_est_* range ('about 3–6 minutes').",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_long_leg_text": {
+    "area": "Plan (long route question)",
+    "context": "Text of that question; %1$s = 'Hilden → Munich' or nav_long_leg_points, %2$s = straight km.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_long_leg_points": {
+    "area": "Plan (long route question)",
+    "context": "The leg's ends when they have no names ('Point 1 → 2').",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_too_long_title": {
+    "area": "Plan (long route question)",
+    "context": "Title when a leg is beyond the phone's memory (> 300 km straight).",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_too_long_text": {
+    "area": "Plan (long route question)",
+    "context": "Text of that note; %1$s = straight km.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_add_stop": {
+    "area": "Plan (long route question)",
+    "context": "Button: close the question, points stay unrouted, the user adds a stop on the way.",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_wait": {
+    "area": "Plan (long route question)",
+    "context": "Button: route the long leg and wait.",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

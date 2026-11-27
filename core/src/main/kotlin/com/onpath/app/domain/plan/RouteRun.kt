@@ -3,7 +3,8 @@ package com.onpath.app.domain.plan
 import com.onpath.app.domain.NotRouted
 import com.onpath.app.routing.Activity
 import com.onpath.app.routing.GeoPoint
-import com.onpath.app.routing.LongRoute
+import com.onpath.app.routing.LongAsk
+import com.onpath.app.routing.LongRule
 import com.onpath.app.routing.SlowPlan
 
 /**
@@ -20,7 +21,7 @@ import com.onpath.app.routing.SlowPlan
  * Transitions (each one a test):
  * - [Event.Recalc] (every plan edit, activity change, Undo, load, newer routing data, "Plan anyway", "Weiter warten"):
  *   a new generation – a run still going is superseded, its result ignored. Fewer than two points → [Phase.Idle], no
- *   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan beyond a day that was not said yes to ([longOk]) and may be asked about ([Event.Recalc.askLong]) →
+ *   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan the [longRule] asks about (the planner: beyond a day; the app: a leg too slow or too long for the phone), not said yes to ([longOk]; beyond capacity always) and that may be asked about ([Event.Recalc.askLong]) →
  *   [Phase.AskLong], nothing routed or loaded. Else → [Phase.Routing] + [Effect.StartRouting]. Always: the time-limit
  *   periods start at 1 again unless "Weiter warten" asked for this run, an open [Phase.AskSlow] / [Phase.Unrouted]
  *   goes, [viaData] and [compareActivity] are taken by this run, a plan without points may raise the sheet again.
@@ -66,12 +67,25 @@ data class RouteRun(
     val viaData: Boolean = false,
     /** The next run is for an activity / T level change: its result is compared with the route before. */
     val compareActivity: Boolean = false,
+    /**
+     * Which plan is asked about before it is routed: today's day rule ([LongRule.DAY], the web planner); the app injects
+     * its phone rule (`PhoneLongRule`, owner 2026-11-27 – the longest leg's search time, beyond the phone's capacity).
+     */
+    val longRule: LongRule = LongRule.DAY,
+    /**
+     * A Plan run asks "Weiter warten?" at its time limit ([SlowPlan], the web planner); false (the app since 2026-11-27):
+     * the limit already allows twice the leg's estimate – at it the legs left become straight lines with the usual line.
+     */
+    val askSlow: Boolean = true,
 ) {
     sealed interface Phase {
         /** No run and no question (with or without a route). */
         data object Idle : Phase
-        /** "This route is very long" is open ([estimateS] seconds): nothing is routed or loaded until the answer. */
-        data class AskLong(val estimateS: Double) : Phase
+        /**
+         * "This route is very long" is open ([estimateS] seconds; [Double.POSITIVE_INFINITY] = beyond the phone's capacity):
+         * nothing is routed or loaded until the answer. [leg] / [km]: the leg it is about (-1 = the whole plan, [LongRule.DAY]).
+         */
+        data class AskLong(val estimateS: Double, val leg: Int = -1, val km: Double = 0.0) : Phase
         /** The newest run is calculated; [slow]: for a while already (Cancel shows); [viaData]: for newer routing data. */
         data class Routing(val slow: Boolean = false, val viaData: Boolean = false) : Phase
         /** The run reached its time limit after [rounds] period(s): "Weiter warten?" is open. */
@@ -83,6 +97,15 @@ data class RouteRun(
     val routing: Boolean get() = phase is Phase.Routing
     val routingSlow: Boolean get() = (phase as? Phase.Routing)?.slow == true
     val longAsk: Double? get() = (phase as? Phase.AskLong)?.estimateS
+    /** The open long-plan question as a whole (its leg and km); null = none. */
+    val longAskLeg: LongAsk? get() = (phase as? Phase.AskLong)?.let { LongAsk(it.estimateS, it.leg, it.km) }
+
+    /**
+     * Would [points] be asked about before routing ([longRule]): a plan said yes to ([longOk]) is not asked again – unless it is
+     * beyond the phone's capacity, which no answer changes.
+     */
+    fun asks(points: List<GeoPoint>, activity: Activity): LongAsk? =
+        longRule.ask(points, activity)?.takeIf { it.beyond || points != longOk }
     val slowAsk: Int? get() = (phase as? Phase.AskSlow)?.rounds
     val notRouted: NotRouted? get() = (phase as? Phase.Unrouted)?.why
 
@@ -180,17 +203,16 @@ data class RouteRun(
         is Event.Recalc -> {
             val next = copy(gen = gen + 1, rounds = if (keepRounds) rounds else 1, keepRounds = false, viaData = false,
                 compareActivity = false, sheetRisen = sheetRisen && !e.newPlan)
+            val ask = if (e.askLong && e.points.size >= 2) asks(e.points, e.activity) else null
             when {
                 // as before: a long-plan question still open stays open (its dialog is modal, so only a change from
                 // outside the screen gets here)
                 e.points.size < 2 -> to(next.copy(phase = phase as? Phase.AskLong ?: Phase.Idle, followNext = false, fitNext = false),
                     Effect.ClearRoute, Effect.NoCorridor)
-                e.askLong && e.points != longOk && LongRoute.needsAsk(e.points, e.activity) -> {
-                    val s = LongRoute.estimateS(e.points, e.activity)
-                    to(next.copy(phase = Phase.AskLong(s)), Effect.ClearRoute, Effect.LongAsked(s), Effect.NoCorridor)
-                }
+                ask != null ->
+                    to(next.copy(phase = Phase.AskLong(ask.estimateS, ask.leg, ask.km)), Effect.ClearRoute, Effect.LongAsked(ask.estimateS), Effect.NoCorridor)
                 else -> to(next.copy(phase = Phase.Routing(viaData = viaData)),
-                    Effect.StartRouting(next.gen, next.rounds, askAtLimit = e.planMode, viaData = viaData, compareActivity = compareActivity))
+                    Effect.StartRouting(next.gen, next.rounds, askAtLimit = e.planMode && askSlow, viaData = viaData, compareActivity = compareActivity))
             }
         }
         is Event.Slow -> runs(e.gen)?.let { to(copy(phase = it.copy(slow = true))) } ?: stay()
