@@ -237,7 +237,7 @@
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "cb7c7caa90f96f116fa0c3e886d4b2efdca6655e"
+      "blob": "ffcbedd1758696c8e68f69843c4f2d607c5484a9"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -520,7 +520,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/PlanPanel.kt",
       "why": "plan sheet layout and actions",
-      "blob": "27de77646b7112c4a6ad4458104142ab9107b937"
+      "blob": "7416d964eb1714d55ae9507511b4fb0135868b73"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/SheetRise.kt",
@@ -535,7 +535,7 @@
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapScreen.kt",
       "why": "plan screen wiring, dialogs",
-      "blob": "fb26d75c8b57f22b491efd9fdbc0d1cd5573bd65"
+      "blob": "94d9a558427f78c463ed20fd1d52ad3fbc7ec2f9"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanGuidance.kt",
@@ -887,7 +887,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/Tour.kt": {
-      "blob": "f069446fdb646faf0d6bc816de8b5eb742ddf2e2",
+      "blob": "c4989f0da3652b2c4e939896b3b4bf26d503d867",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/TourJson.kt": {
@@ -895,11 +895,11 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/TourPlan.kt": {
-      "blob": "4a83e564837b7aae0549defa7f6cd3fa28de552b",
+      "blob": "60212f8424ebfa1971e648b16784c808c645aba4",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/data/TourSchema.kt": {
-      "blob": "e3c509293279ab8e44f4bbc7d075e363a6588829",
+      "blob": "894bab24d65dbd2e9f603e54fce629bb4902da05",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/debug/EventLog.kt": {
@@ -1002,7 +1002,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/MenuGroups.kt": {
-      "blob": "20b3cd6995b82573782e9b96e13158af48d66823",
+      "blob": "796559badb5d25df253b62ae410f1dd1bd492102",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/OfflineReady.kt": {
@@ -1010,11 +1010,11 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PinMenuPlace.kt": {
-      "blob": "f4296aca6f321b37f2a3a859bbd63be9526a14d2",
+      "blob": "ab141479034c1d6c453aff72d7de9a947ef43ab0",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/PlaceAddMenu.kt": {
-      "blob": "f690ecead304cd01dbad2a1e481b2f6ac72f767e",
+      "blob": "e240a9e227a08fe8fbce56f3e186e7d44026a1f6",
       "perf": [
         "var insert = Double.MAX_VALUE",
         "var detour = Double.MAX_VALUE"
@@ -1176,7 +1176,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/plan/PlanSession.kt": {
-      "blob": "280f8a24b55b0cc24eeb5e80c3c8ff75ddd930bb",
+      "blob": "163dd7d0adc4df3ec272e68aa4356fafe214f5e0",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/plan/RouteBack.kt": {
@@ -1184,7 +1184,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/domain/plan/RouteRun.kt": {
-      "blob": "81a9056dfa3c12695d9721515f4d8777c4d8dfa8",
+      "blob": "3920e0e4d5b1805788e112cebddb0cafa1ea6fc1",
       "perf": [
         "*   route, the orders to follow / fit dropped (a long-plan question still open stays – kept as it was). A plan the [longRule] asks about (the planner: beyond a day; the app: a leg too slow or too long for the phone), not said yes to ([longOk]; beyond capacity always) and that may be asked about ([Event.Recalc.askLong]) →",
         "*   [Phase.AskLong], nothing routed or loaded. Else → [Phase.Routing] + [Effect.StartRouting]. Always: the time-limit",
@@ -2060,7 +2060,7 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/DayTable.kt": {
-      "blob": "67a1a8eefb12771e3573f98f55eadc13290291ba",
+      "blob": "eb78b3d7fadb0d3de3b30af6267cbbd3fb1b4ac8",
       "perf": [
         "* row („Gesamt“), and a day above a limit per day with only the exceeded values marked ([Cells.overTime],",
         "* The open day's fact line when it is above a limit (owner: facts only): „1 h 10 und 120 m über deinem Tag“, only the"
@@ -2105,14 +2105,17 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/LegSplit.kt": {
-      "blob": "602cf45565335c05bd5d3f5ef739825cb99ef58e",
+      "blob": "0d37379336d785cc703a135a8a981986c00880bd",
       "perf": [
-        "* put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut.",
-        "fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int): Int {",
-        "if (cache.get(a, p, activity, sac) != null || cache.get(p, c, activity, sac) != null) continue",
-        "val whole = cache.get(a, c, activity, sac) ?: continue",
+        "* put in on it) – that leg cut at the point ([split]) into the [cache]. Returns the number of legs cut. [memoryOnly]: the",
+        "* legs read from memory only (no store read – the main thread's [seedBeforeRun]).",
+        "fun seed(cache: LegCache, wps: List<GeoPoint>, activity: Activity, sac: Int, memoryOnly: Boolean = false): Int {",
+        "val leg = { a: GeoPoint, b: GeoPoint -> if (memoryOnly) cache.inMemory(a, b, activity, sac) else cache.get(a, b, activity, sac) }",
         "cache.put(a, p, activity, sac, x)",
         "cache.put(p, c, activity, sac, y)",
+        "* cuts again with the store ([seed]) – nothing lost when memory had it not. Returns the number of legs stored.",
+        "fun seedBeforeRun(cache: LegCache, plan: ExpandedPlan, activity: Activity, sac: Int): Int =",
+        "if (plan.hasAnchors) seed(cache, plan, activity, sac) else seed(cache, plan.points, activity, sac, memoryOnly = true)",
         "const val MAX_SPAN = 40",
         "* stitch, from the cut leg `b1 → next`). Parents are the legs (i, j) of the expanded list with 2..[MAX_SPAN] legs",
         "fun seed(cache: LegCache, plan: ExpandedPlan, activity: Activity, sac: Int): Int {",
@@ -2154,12 +2157,15 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanAnchors.kt": {
-      "blob": "e9ab32a7510ef0cc42d8ad974a0b70fdb5641781",
+      "blob": "c00d5309797048c1ba9a751b123392e7cc5c88f3",
       "perf": [
         "const val MAX_OFF_M = 2_000.0",
         "* longer than [MIN_LEG_M], [p] is more than [MAX_OFF_M] off it, or both sides are short. Else `before` = the line",
         "var best = Double.MAX_VALUE",
         "if (best > MAX_OFF_M) return null",
+        "/** Support points about this far apart along the line – wider on a leg so long that 2 × the side limit would not do. */",
+        "* points (plain [GeoPoint]s, like every anchor) about every [SUPPORT_EVERY_M] – at most 2 × [MAX_SIDE] of them, then",
+        "val n = minOf(kotlin.math.ceil(total / SUPPORT_EVERY_M).toInt() - 1, 2 * MAX_SIDE)",
         "* - N off the line (up to [MAX_OFF_M]): N gets its own stitch ([forInsert]: anchors `an` before and `bn` after it) and the",
         "* The outer sides of both points stay; everything else as [follow]. Any doubt (shape, range, N farther than [MAX_OFF_M],",
         "* point, more than [MAX_SIDE] on a side) = [follow]: a side dropped, never a wrong anchor.",
@@ -2275,10 +2281,14 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/routing/PlanStitch.kt": {
-      "blob": "68723d71d0f0c24d969630cd6212ee4f914d48b5",
+      "blob": "be5d95cd155a6a105eff35c866d310d52009a386",
       "perf": [
         "/** At most this many anchors per side (the code's limit, as in [PlanAnchors]). */",
         "private const val MAX_SIDE = 8",
+        "* in front of its end point (its `before`) – at most [MAX_SIDE] per side and [PlanCode.MAX_ANCHORS] in all. Called",
+        "if (s.isEmpty() || total + s.size > PlanCode.MAX_ANCHORS) continue",
+        "val head = minOf((s.size + 1) / 2, MAX_SIDE)",
+        "if (tail > MAX_SIDE) continue",
         "if (own == null || own.isEmpty || own.before.size > MAX_SIDE || own.after.size > MAX_SIDE) return plain"
       ]
     },
@@ -2351,7 +2361,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/routing/RouteCost.kt": {
-      "blob": "e64edd9d31680983142e221074c6308c114d8fc9",
+      "blob": "0c23b111944502ab450b7e38680b1805154bb330",
       "perf": [
         "* - Desktop JVM time by the leg's straight km: [A_MS] · km^1.5 up to [KNEE_KM], continuing with exponent 1.8 above it",
         "*   leg routed with ≥ [LEARN_FROM_KM] straight km ([learn], EWMA, clamped [MIN_FACTOR]..[MAX_FACTOR]). Pure search time",
@@ -2370,8 +2380,9 @@
         "fun capKm(memoryCapMb: Int): Double = PHONE_CAP_KM * memoryCapMb.coerceAtLeast(1) / PHONE_MEMORY_MB",
         "/** The leg [legIndex] is beyond the device's memory: only a stop on the way helps, no waiting offered. */",
         "* else the slowest leg above [ASK_ABOVE_MS] → [Decision.Ask] with its range ([RANGE_LOW] … [RANGE_HIGH]); else [Decision.Now].",
-        "fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB): Decision {",
-        "return if (ms > ASK_ABOVE_MS) Decision.Ask((ms * RANGE_LOW).toLong(), (ms * RANGE_HIGH).toLong(), slow) else Decision.Now",
+        "fun decide(legEstimatesMs: List<Long>, legKm: List<Double>, memoryCapMb: Int = PHONE_MEMORY_MB, lowEnd: Boolean = false): Decision {",
+        "// [lowEnd] (the app, owner 2026-11-27): asked only when even the range's low end is above the limit – „20–60",
+        "val over = if (lowEnd) ms * RANGE_LOW > ASK_ABOVE_MS else ms > ASK_ABOVE_MS",
         "* ≥ [LEARN_FROM_KM] only (else [oldFactor] as it is, bounded); EWMA with [LEARN_WEIGHT], clamped [MIN_FACTOR]..[MAX_FACTOR].",
         "fun bounded(factor: Double): Double = if (factor.isNaN()) DEFAULT_FACTOR else factor.coerceIn(MIN_FACTOR, MAX_FACTOR)",
         "/** A leg of [km] straight kilometres is beyond a phone's memory. */",
@@ -2380,6 +2391,7 @@
         "* longest leg's search, [Double.POSITIVE_INFINITY] = beyond the phone's capacity), [leg] its index (-1 = the whole plan),",
         "* on this phone ([factor]) or is beyond its capacity. [routed] (from, to, quick): the leg is routed already (the leg",
         "* cache; quick = memory only, no file read) – asked only for the legs that would make it ask, and quick for [runS].",
+        "/** Asks only when the range's low end is above the limit ([RouteCost.decide]); the app's, not the planner's. */",
         "* The device's routing memory in the phone's MB ([RouteCost.capKm]): the phone's [RouteCost.PHONE_MEMORY_MB] unless set –",
         "var memoryCapMb: () -> Int = { RouteCost.PHONE_MEMORY_MB }",
         "* The phone's search cost for the engine (BRouterEngine): the time limit of a request ([limitMs]) and what a finished"
@@ -2493,7 +2505,7 @@
       ]
     },
     "core/src/main/kotlin/com/onpath/app/search/AddPreview.kt": {
-      "blob": "52985c65da9b1f5a417ab9238d00236715bf2af4",
+      "blob": "4b8d3a82003561ec2109339c0a07357c3725c4ae",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/search/AddressQuery.kt": {
@@ -2612,13 +2624,13 @@
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/setup/PhoneCheck.kt": {
-      "blob": "5058104e4c89c8c504bb937c5b365b7538eba00d",
+      "blob": "5894ccbfc27a0221a2bf63bcbd19e5e9df8780aa",
       "perf": [
         "const val SNOOZE_MS = 7L * 24 * 3600 * 1000"
       ]
     },
     "core/src/main/kotlin/com/onpath/app/setup/SetupGuide.kt": {
-      "blob": "473dfd8cfed2e880edcb7b143338710452c514a5",
+      "blob": "ab217e1a2ba98c371d78d15302be4e4597bc6bca",
       "perf": []
     },
     "core/src/main/kotlin/com/onpath/app/setup/VoiceSetup.kt": {
@@ -3135,7 +3147,7 @@
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/domain/PlaceAddMenuTest.kt": {
-      "blob": "0242806e36973965eed615855e73bd8660bafb12",
+      "blob": "2d7bdfacf0671419680665a3219eef44a838db7e",
       "perf": []
     },
     "core/src/test/kotlin/com/onpath/app/domain/LocateDistanceTest.kt": {
@@ -3353,7 +3365,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanDocument.kt": {
-      "blob": "8a1b1a293ecced40f9cf4780fe7bd87178855175",
+      "blob": "4735515be3393e9cb842c6a457f9a5626aa9021e",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/NoticeBoard.kt": {
@@ -3361,7 +3373,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/MultiDayFlow.kt": {
-      "blob": "a5858247d22e23d4eb1dbf30a8b73353354a8634",
+      "blob": "00e572703de4b2cede6c4ce36d5070cf1cd1d1e2",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRunSlice.kt": {
@@ -3372,9 +3384,10 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanRecalcState.kt": {
-      "blob": "76ef9ee693834e70c6e9e8c79a8f69ad760a74ec",
+      "blob": "a1647b752b1fc69bee3278441eaba56dc7baf897",
       "perf": [
         "*  2. [route] / [findReach] (the routing thread; pure: engine, leg cache and cancel signal are passed in).",
+        "// a point put in ON the known line (a stop, a night – owner 2026-11-27): its leg cut first, from memory, so the long-leg",
         "// it is routed. A new run (an edit, an activity change …) starts at one time-limit period and drops an open",
         "// \"Weiter warten?\"; in Plan the time limit asks (SlowPlan), a run for Navigate keeps the straight lines",
         "if (take.fit) fitFirstRoute(it.points, pts, if (take.rises) SheetRise.FIT_WAIT_MS else 0L)",
@@ -3406,13 +3419,13 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlanEditState.kt": {
-      "blob": "61eebe2cb0eeb660185df08995c55f94ccb23392",
+      "blob": "f4853022f43d22ae742a5506dbd3b419dd529c86",
       "perf": [
         "// meanwhile (followFromPlan lives in memory only; Pixel 2026-11-01: a blue line without points stayed). A shown"
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceAddState.kt": {
-      "blob": "6dc71f697e1849a3e7fd5859f267aba8f8657082",
+      "blob": "046f7d343004df05dfc5f58ca6185d4551139170",
       "perf": [
         "* The router [PlaceAddSlice] measures a hold beside the plan on (the engine, its leg cache and the Planner stay in :app).",
         "* The routed length [a] → [b] for [act] / [level] in metres: from the leg cache, else one leg by the planner (then in the",
@@ -3422,7 +3435,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/plan/PlaceMenusState.kt": {
-      "blob": "040060d5fb4f02a5bcdce728bcbc8994447c4fc1",
+      "blob": "b187d5f48587b245d44f9c8cbf281a1ac92364d5",
       "perf": [
         "* place ([PlaceAddSlice.holdMeasuring], same time limit, fallback and cancel as the hold's measure) – the menu opens with"
       ]
@@ -3451,8 +3464,15 @@
       "blob": "da69b83be53830ae38418b552eb5823589013f6a",
       "perf": []
     },
+    "state/src/main/kotlin/com/onpath/app/ui/DayTableUi.kt": {
+      "blob": "0819d5c1db40fc5632c4468dc231ebdedb9f6ee4",
+      "perf": [
+        "* their units, exceeded values marked), its end ([end]: moon / bed; null = the finish, the goal flag) and [over] (a limit per",
+        "/** „Planung“ and the tour's chips: „8 Tage ✎“, „4,5 h / Tag“, „500 m ↑ / Tag“ (a chip only for a limit that is set). */"
+      ]
+    },
     "state/src/main/kotlin/com/onpath/app/ui/MultiDayUi.kt": {
-      "blob": "16aaf81e190ff6723c2d35c89c782b2c7703ba84",
+      "blob": "3563611dd8317c51314a996909a134926d2b2303",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/SettingsPage.kt": {
@@ -3600,11 +3620,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_activity.xml": {
-      "blob": "146f17d3fc9c25f6047c8234adb3e575e6f8211d",
+      "blob": "50984ec0dae84cdc763c53c0c41b1e1a89a7a784",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_backup.xml": {
-      "blob": "7eb5ca15cabf880a9f025f18dd88bd0bb9fcad64",
+      "blob": "c60ada085566138be8c05ccc563a91086a00dd0e",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_common.xml": {
@@ -3612,7 +3632,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_days.xml": {
-      "blob": "6fcacb96bf243d3a2e3f59fd053badc1fbd438bf",
+      "blob": "b4471b31e12e4222825c3f2f1d4e762656b021d7",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_live.xml": {
@@ -3620,7 +3640,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_maps.xml": {
-      "blob": "b3bf3bfdfb902f4fda497468fe1f44bff4a230f7",
+      "blob": "78cd5b2db13aeb4a4177797c9c45b0a8f27fbc73",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_messages.xml": {
@@ -3628,15 +3648,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_multiday.xml": {
-      "blob": "8e2c3f8f7c199385f096c3203d1f2ea42d900e24",
+      "blob": "47a6dc700e1f0cfceebdfcf74515fe6930b9f640",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_navigate.xml": {
-      "blob": "24571d68cf921a59220cb0433fc3911a7cc59bcc",
+      "blob": "2e4ff04825099d007284317bd8b32a06d28a65a4",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_plan.xml": {
-      "blob": "b44b870f93f3ce1076e923d267c2cfd11b6535ff",
+      "blob": "6f50b3b583acd49322f4f4563be7114a0721b8d1",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_poi.xml": {
@@ -3644,7 +3664,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_routes.xml": {
-      "blob": "09b71a6ad7ed34cc255c7f9378f34a31dc58bbd7",
+      "blob": "7b356050ff9ba417dc20e5d1843ebc272a29768e",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_search.xml": {
@@ -3656,7 +3676,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_setup.xml": {
-      "blob": "f037d6dca9ee7c1ba1fa036269e8195017199a17",
+      "blob": "2401ff7d06d37d546d74f078c628973860b6c83d",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values/strings_suggest.xml": {
@@ -3672,11 +3692,11 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_activity.xml": {
-      "blob": "c2339bc56636d8b6a0ad252f6e6143b59a66f052",
+      "blob": "bf42c5b8d4ba0447d04fbb0696ab094b57137d47",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_backup.xml": {
-      "blob": "8d4c4014a9be2d6d2f793260e231f2478d026918",
+      "blob": "0d9bf457a85b41872be723490a093fd6032c3464",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_common.xml": {
@@ -3684,7 +3704,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_days.xml": {
-      "blob": "ef7ec2920e4dff92a73c56bb4c6cd05299eaf5b8",
+      "blob": "840b218d21a19254868497181a3cc12c5b05e6a4",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_live.xml": {
@@ -3692,7 +3712,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_maps.xml": {
-      "blob": "f3a378cd054f0b13ef1eac1da756b9f3333ec2d7",
+      "blob": "4713762c3691fe61f8eb8320a1e9aae3d775f706",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_messages.xml": {
@@ -3700,15 +3720,15 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_multiday.xml": {
-      "blob": "797158310d0c9bba640884b2cb4a737d87a4c325",
+      "blob": "6a8f6525842174e2567badc86d4754c1abba4eb5",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_navigate.xml": {
-      "blob": "0c102e73d6cc7b61a608c436e331ada30f2562ee",
+      "blob": "85c19610b3de687c3dc25e0c46a9930f29e2117e",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_plan.xml": {
-      "blob": "7cd211db1614df27f800064e0fca1afb9e802d46",
+      "blob": "46e977cd83ff108d55ef72be90f421ebbe489f11",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_poi.xml": {
@@ -3716,7 +3736,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_routes.xml": {
-      "blob": "724cd411daa78ada7c9b2f6b7e316beb3fd3aec3",
+      "blob": "44f72e0a2fc96134383da375146c525660ac58de",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_search.xml": {
@@ -3728,7 +3748,7 @@
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_setup.xml": {
-      "blob": "2956e9c6c6e7d4bf2ef810bc955c7108317086ee",
+      "blob": "1ce353f18fdd85128c2b37dacb015935d35ac6c4",
       "perf": []
     },
     "strings/src/commonMain/composeResources/values-de/strings_suggest.xml": {
