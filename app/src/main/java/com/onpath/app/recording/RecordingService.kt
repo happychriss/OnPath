@@ -621,18 +621,17 @@ class RecordingService : Service() {
         val nowEl = SystemClock.elapsedRealtime()
         gpsWatchdog.disarm()
         val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
-        val lostSinceElapsed = lastGoodFixElapsed
-        lastGoodFixElapsed = nowEl
-        val gapWhy = gapWatch.why()
-        gapWatch.reset()
+        val lostSinceElapsed = lastGoodFixElapsed; lastGoodFixElapsed = nowEl
+        val gapWhy = gapWatch.why(); gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
-
         val prev = last
-        // a short GPS gap (forest, gorge) is bridged: one connected line, the distance counts; a long / fast one splits
+        // a short GPS gap is bridged (one line, distance counts); a long / fast one splits at the first kept fix (GapSplit)
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
+        val split = gapSplit.split(wasLost, bridged, prev != null)
         if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s ($gapWhy); " +
-            "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " + if (bridged) "line kept connected" else "new track piece")
-        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged, still = motion.still(nowEl) == true)
+            "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " + if (bridged) "line kept connected" else "new track piece (unless drift)")
+        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !split, still = motion.still(nowEl) == true)
+        gapSplit.judged(split, verdict == PointFilter.Verdict.ACCEPT)
         // a GPS jump is no position: not for the track, nor the navigation / arrival / trip pace (JumpFixFlowTest)
         if (verdict == PointFilter.Verdict.JUMP) return
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).
@@ -670,7 +669,7 @@ class RecordingService : Service() {
 
         if (verdict != PointFilter.Verdict.ACCEPT) return             // standing still (a jump never got here)
         moveWatch.moved(nowEl)
-        tourRun.count(moved, newPiece = wasLost && prev != null && !bridged) // a long GPS gap: new segment
+        tourRun.count(moved, newPiece = split) // a long GPS gap: new segment
         // ascent from the terrain under the point (the point keeps its GPS altitude); never costs the track
         try {
             val ground = terrain?.heightAt(p.lat, p.lon)
@@ -686,6 +685,7 @@ class RecordingService : Service() {
     }
 
     private val gpsWatchdog = GpsWatchdog()
+    private val gapSplit = GapSplit()
 
     /** Battery saver that stops GPS with the screen off, said once per tour (review M5; [saverWarned]). */
     private var saverRegistered = false
