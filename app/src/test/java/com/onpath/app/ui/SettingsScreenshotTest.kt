@@ -102,6 +102,10 @@ class SettingsScreenshotTest {
     /** All set up: at its place, grey "Everything set up". */
     @Test fun listPhoneOk() = paparazzi.snapshot { Screen(null, phone = phoneOk) }
     fun pace() = paparazzi.snapshot { Screen(SettingsPage.PACE) }
+    /** Plan (owner 2026-11-27): your pace, then "Marked trails" Weniger · Standard · Mehr. */
+    fun plan() = paparazzi.snapshot { Screen(SettingsPage.PLAN) }
+    /** Backup & browser: the backup and the browser sync on one page. */
+    fun backupSync() = paparazzi.snapshot { Screen(SettingsPage.BACKUP_SYNC) }
     @Test fun poi() = paparazzi.snapshot { Screen(SettingsPage.POI) }
     fun map() = paparazzi.snapshot { Screen(SettingsPage.MAP) }
     fun navigation() = paparazzi.snapshot { Screen(SettingsPage.NAVIGATION) }

@@ -224,12 +224,70 @@ class SettingsPagesTest {
         assertTrue(File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.settingsSlice.devToolsShown,"))
     }
 
-    /** "Your settings" first, then the smaller "App" group. */
-    @Test fun twoGroups() {
-        assertEquals(listOf(SettingsPage.PACE, SettingsPage.POI, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.OFFLINE_MAPS,
-            SettingsPage.BACKUP, SettingsPage.SYNC), SettingsPage.entries.filter { !it.app })
-        assertEquals(listOf(SettingsPage.PHONE, SettingsPage.UPDATES, SettingsPage.PRIVACY, SettingsPage.DIAGNOSTICS, SettingsPage.ABOUT),
-            SettingsPage.entries.filter { it.app })
+    /**
+     * Six topics on the start list (owner 2026-11-27): "Your settings" Plan · Map · Navigation · Backup & browser, then
+     * "App" Privacy · About OnPath; every older topic is a sub page (back to its page) or an alias (drawn as the page
+     * that holds it) – callers that open one directly keep working.
+     */
+    @Test fun sixTopicsInTwoGroups() {
+        val top = SettingsPage.entries.filter { it.top }
+        assertEquals(listOf(SettingsPage.PLAN, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.BACKUP_SYNC), top.filter { !it.app })
+        assertEquals(listOf(SettingsPage.PRIVACY, SettingsPage.ABOUT), top.filter { it.app })
+        assertEquals(SettingsPage.MAP, SettingsPage.POI.parent)
+        assertEquals(SettingsPage.MAP, SettingsPage.OFFLINE_MAPS.parent)
+        assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.parent)
+        assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.parent)
+        assertEquals(SettingsPage.PLAN, SettingsPage.PACE.landing)
+        assertEquals(SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP.landing)
+        assertEquals(SettingsPage.BACKUP_SYNC, SettingsPage.SYNC.landing)
+        assertEquals(SettingsPage.ABOUT, SettingsPage.UPDATES.landing)
+        // back: a sub page to its page, a start-list page and an alias to the list
+        assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.up)
+        assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.up)
+        listOf(SettingsPage.PLAN, SettingsPage.PACE, SettingsPage.SYNC, SettingsPage.UPDATES, SettingsPage.ABOUT).forEach { assertNull("$it", it.up) }
+        // every page is one of the six or reached from one of them
+        SettingsPage.entries.forEach { assertTrue("$it", (it.parent ?: it.landing) in top) }
+    }
+
+    @Test fun planSummaryAndMarkedTrails() {
+        assertEquals(Summary("Pace Average · marked trails Standard"), SettingsSummary.plan(AppSettings(), Activity.HIKE))
+        assertEquals(Summary("Pace Fit · marked trails More"),
+            SettingsSummary.plan(AppSettings(bikePace = Pace.FIT, markedTrails = AppSettings.MARKED_TRAILS_MORE), Activity.MTB))
+        assertEquals("Less", SettingsSummary.markedTrailsLabel(AppSettings.MARKED_TRAILS_LESS))
+        assertEquals("a broken stored value reads as Standard", AppSettings.MARKED_TRAILS_STANDARD, AppSettings.markedTrailsOf(7))
+        assertEquals(1, AppSettings().markedTrails)
+    }
+
+    @Test fun mapNavigationBackupAboutSummaries() {
+        val areas = List(3) { OfflineArea("10-$it-361", "A$it", 38_000_000, "19 Oct 2026") }
+        assertEquals("Contour lines on · Hill shading on · 3 areas", SettingsSummary.mapPage(AppSettings(), OfflineMapsUi(true, areas, false)).text)
+        assertEquals("Contour lines off · Hill shading on", SettingsSummary.mapPage(AppSettings(contours = false), OfflineMapsUi(true, emptyList(), false)).text)
+        assertEquals("Contour lines on · Hill shading on", SettingsSummary.mapPage(AppSettings(), null).text)
+
+        // Navigation shows Phone setup's red / amber line while a step is open
+        val good = PhoneState(sdk = 35, location = LocationGrant.PRECISE, vibrationFelt = Felt.YES, unusedReset = ResetStatus.ON)
+        assertEquals(SettingsSummary.navigation(AppSettings()), SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good)))
+        assertEquals(SettingsSummary.navigation(AppSettings()), SettingsSummary.navigationPage(AppSettings(), null))
+        assertEquals(Summary("1 item needed for tours", Summary.Attention.PROBLEM),
+            SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good.copy(locationOn = false))))
+        assertEquals(Summary("1 step open", Summary.Attention.WARNING),
+            SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good.copy(notificationsOn = false))))
+
+        fun b(last: Long, err: String? = null) = BackupUi("Documents/OnPath", last, 3, err, false)
+        assertEquals(Summary("Backed up today 15:40 · browser on"),
+            SettingsSummary.backupSync(b(now - 40 * 60_000), SyncUi(paired = true, peer = "Chrome"), now, utc))
+        assertEquals(Summary("No backup yet · browser off"), SettingsSummary.backupSync(b(0), SyncUi(), now, utc))
+        assertEquals(Summary("Last backup failed", Summary.Attention.PROBLEM), SettingsSummary.backupSync(b(now, "full"), SyncUi(), now, utc))
+        assertEquals(Summary("No backup yet"), SettingsSummary.backupSync(b(0), null, now, utc))
+
+        fun e(last: Long) = Problems.Entry(Problems.Level.ERROR, "a", "m", null, 0, last, 1)
+        assertEquals(Summary("0.10.0 – up to date · Credits, license"),
+            SettingsSummary.aboutPage("0.10.0 (build 1000)", AppViewModel.UpdateState.UpToDate, listOf(e(100)), seenMs = 200))
+        assertEquals(Summary("0.10.0 · Credits, license"), SettingsSummary.aboutPage("0.10.0 (build 1000)", null, null))
+        assertEquals(Summary.Attention.PROBLEM, SettingsSummary.aboutPage("0.10.0", AppViewModel.UpdateState.UpToDate, listOf(e(300)), seenMs = 200).attention)
+        val rel = AppUpdater.Release("0.10.1", "", "", 0, "")
+        assertEquals(Summary("Update available: 0.10.1", Summary.Attention.ACCENT),
+            SettingsSummary.aboutPage("0.10.0", AppViewModel.UpdateState.Available(rel), emptyList()))
     }
 
     /**
@@ -258,31 +316,28 @@ class SettingsPagesTest {
      */
     @Test fun phoneSetupPlaceInList() {
         val all = SettingsPage.entries.toList()
+        val top = all.filter { it.top }
         val good = PhoneState(sdk = 35, location = LocationGrant.PRECISE,
             vibrationFelt = Felt.YES)
         fun groups(s: PhoneState?) = SettingsSummary.groups(all, s?.let { PhoneCheck.all(it) })
-        val normal = listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app })
+        val normal = listOf(TopicGroup.YOURS to top.filter { !it.app }, TopicGroup.APP to top.filter { it.app })
 
-        // all fine / no phone checks at all: the usual two groups, Phone setup first in "App"
+        // all fine / no phone checks at all: the usual two groups of the six
         assertEquals(normal, groups(good))
         assertEquals(normal, groups(null))
         assertEquals(false, SettingsSummary.phoneNeeded(PhoneCheck.all(good.copy(notificationsOn = false))))
-        // recommended steps open: on top too (amber), not in "App"
-        val onTop = listOf(TopicGroup.URGENT to listOf(SettingsPage.PHONE), TopicGroup.YOURS to all.filter { !it.app },
-            TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE })
+        // a step open: Navigation (it holds Phone setup) on top, not in "Your settings"
+        val onTop = listOf(TopicGroup.URGENT to listOf(SettingsPage.NAVIGATION),
+            TopicGroup.YOURS to top.filter { !it.app && it != SettingsPage.NAVIGATION }, TopicGroup.APP to top.filter { it.app })
         assertEquals(onTop, groups(good.copy(notificationsOn = false, backgroundRestricted = true)))
         // a Samsung after „Später“ on the brand page: the one open step keeps it on top – the reminder lives here
         assertEquals(onTop, groups(good.copy(manufacturer = "samsung")))
         assertEquals(normal, groups(good.copy(manufacturer = "samsung", brandDone = true)))
 
-        // a tour need (no location access): Phone setup alone on top, not in "App" any more
+        // a tour need (no location access): Navigation alone on top
         val noLoc = good.copy(location = LocationGrant.NONE)
         assertEquals(true, SettingsSummary.phoneNeeded(PhoneCheck.all(noLoc)))
-        assertEquals(listOf(TopicGroup.URGENT to listOf(SettingsPage.PHONE), TopicGroup.YOURS to all.filter { !it.app },
-            TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE }), groups(noLoc))
-        // the topic hidden (older screens): nothing on top
-        assertEquals(listOf(TopicGroup.YOURS to all.filter { !it.app }, TopicGroup.APP to all.filter { it.app && it != SettingsPage.PHONE }),
-            SettingsSummary.groups(all - SettingsPage.PHONE, PhoneCheck.all(noLoc)))
+        assertEquals(onTop, groups(noLoc))
     }
 
     /** The open steps (owner 2026-11-08): required + recommended not done; optional ones never count. */

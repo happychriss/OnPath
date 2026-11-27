@@ -32,6 +32,7 @@ import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.PhoneAndroid
+import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Map
 import androidx.compose.material.icons.outlined.Navigation
 import androidx.compose.material.icons.outlined.Place
@@ -192,24 +193,28 @@ fun SettingsScreen(
     onTheWay: Boolean = false,
     onAllSettings: () -> Unit = {},
 ) {
-    val topics = SettingsPage.entries.filter {
+    // every page this phone shows (sub pages and aliases too – the on-the-way list and the rows inside pages use them)
+    val available = SettingsPage.entries.filter {
         when (it) {
             SettingsPage.OFFLINE_MAPS -> offlineMaps != null
             SettingsPage.BACKUP -> backup != null
             SettingsPage.SYNC -> sync != null
+            SettingsPage.BACKUP_SYNC -> backup != null || sync != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
             SettingsPage.PHONE -> phoneChecks != null
             else -> true
         }
     }
+    // the page drawn: an alias shows the page that holds it ([SettingsPage.landing])
+    val shown = page?.landing
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { if (page != null) onPage(null) else onBack() }, Modifier.size(56.dp)) {
+                IconButton(onClick = { if (page != null) onPage(page.up) else onBack() }, Modifier.size(56.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back))
                 }
-                Text(page?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
+                Text(shown?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
@@ -221,7 +226,7 @@ fun SettingsScreen(
                             onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
                             phoneChecks = phoneChecks, phone = phone)
                     }
-                    val more = SettingsSummary.onTheWay(topics)
+                    val more = SettingsSummary.onTheWay(available)
                     item { SettingsGroupHeader(str(Res.string.settings_group_on_the_way)) }
                     item {
                         SettingsCard {
@@ -236,9 +241,9 @@ fun SettingsScreen(
                 }
             } else if (page == null) {
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp)) {
-                    // two groups (owner): what the user sets, then the smaller "App" group; Phone setup on top (no
-                    // heading) while a tour needs something from the phone (owner 2026-10-30)
-                    SettingsSummary.groups(topics, phoneChecks).forEachIndexed { gi, (kind, group) ->
+                    // six topics in two groups (owner 2026-11-27): what the user sets, then the smaller "App" group;
+                    // Navigation on top (no heading) while Phone setup – a row on it – has a step open (owner 2026-10-30)
+                    SettingsSummary.groups(available, phoneChecks).forEachIndexed { gi, (kind, group) ->
                         val app = kind == TopicGroup.APP
                         if (kind != TopicGroup.URGENT) item {
                             Text(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours), style = MaterialTheme.typography.bodyMedium,
@@ -251,18 +256,12 @@ fun SettingsScreen(
                                     group.forEachIndexed { i, t ->
                                         if (i > 0) HorizontalDivider(Modifier.padding(start = 64.dp))
                                         val s = when (t) {
-                                            SettingsPage.PACE -> SettingsSummary.pace(settings, activity)
-                                            SettingsPage.POI -> SettingsSummary.poi(settings.hiddenPoiKinds)
-                                            SettingsPage.MAP -> SettingsSummary.map(settings)
-                                            SettingsPage.NAVIGATION -> SettingsSummary.navigation(settings)
-                                            SettingsPage.OFFLINE_MAPS -> SettingsSummary.offlineMaps(offlineMaps!!)
-                                            SettingsPage.BACKUP -> SettingsSummary.backup(backup!!, now)
-                                            SettingsPage.SYNC -> SettingsSummary.sync(sync!!)
-                                            SettingsPage.UPDATES -> SettingsSummary.updates(update!!, version)
-                                            SettingsPage.DIAGNOSTICS -> SettingsSummary.diagnostics(problems, diagnosticsSeenMs)
+                                            SettingsPage.PLAN -> SettingsSummary.plan(settings, activity)
+                                            SettingsPage.MAP -> SettingsSummary.mapPage(settings, offlineMaps)
+                                            SettingsPage.NAVIGATION -> SettingsSummary.navigationPage(settings, phoneChecks)
+                                            SettingsPage.BACKUP_SYNC -> SettingsSummary.backupSync(backup, sync, now)
                                             SettingsPage.PRIVACY -> SettingsSummary.privacy
-                                            SettingsPage.PHONE -> SettingsSummary.phone(phoneChecks!!)
-                                            SettingsPage.ABOUT -> SettingsSummary.about
+                                            else -> SettingsSummary.aboutPage(version, update, problems.takeIf { diagnostics }, diagnosticsSeenMs)
                                         }
                                         TopicRow(t, s, small = app) { onPage(t) }
                                     }
@@ -272,12 +271,43 @@ fun SettingsScreen(
                     }
                 }
             } else CompositionLocalProvider(LocalSectionTitle provides false) {
-                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
+                // an alias opens its page at its own section (Browser sync, Updates): the item to scroll to
+                val scrollTo = when (page) {
+                    SettingsPage.SYNC -> if (backup != null && sync != null) 1 else 0
+                    SettingsPage.UPDATES -> if (update != null) 1 else 0
+                    else -> 0
+                }
+                androidx.compose.runtime.LaunchedEffect(page) { if (scrollTo > 0) listState.scrollToItem(scrollTo) }
+                LazyColumn(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    when (page) {
-                        SettingsPage.PACE -> item { PaceSection(settings, onChange, activity) } // PaceSettings.kt
+                    when (shown!!) {
+                        // Plan (owner 2026-11-27): your pace, then how strongly routes follow marked trails
+                        SettingsPage.PLAN, SettingsPage.PACE -> {
+                            item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsGroupHeader(SettingsPage.PACE.title)
+                                PaceSection(settings, onChange, activity) // PaceSettings.kt
+                            } }
+                            item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsGroupHeader(str(Res.string.settings_trails_title))
+                                MarkedTrailsCard(settings, onChange)
+                            } }
+                        }
+                        // Map: its switches, then Points of interest and Offline maps as rows to their own pages
+                        SettingsPage.MAP -> {
+                            item { MapSection(settings, onChange, themes) }
+                            item {
+                                SettingsCard {
+                                    TopicRow(SettingsPage.POI, SettingsSummary.poi(settings.hiddenPoiKinds)) { onPage(SettingsPage.POI) }
+                                    if (offlineMaps != null) {
+                                        HorizontalDivider(Modifier.padding(start = 64.dp))
+                                        TopicRow(SettingsPage.OFFLINE_MAPS, SettingsSummary.offlineMaps(offlineMaps)) { onPage(SettingsPage.OFFLINE_MAPS) }
+                                    }
+                                }
+                            }
+                        }
                         SettingsPage.POI -> item { PoiSection(settings, onChange, initiallyExpanded) }
-                        SettingsPage.MAP -> item { MapSection(settings, onChange, themes) }
+                        SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
                         SettingsPage.NAVIGATION -> item {
                             NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
                                 onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
@@ -288,11 +318,16 @@ fun SettingsScreen(
                             com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
                                 onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
                         }
-                        SettingsPage.OFFLINE_MAPS -> if (offlineMaps != null) item { OfflineMapsSection(offlineMaps, offlineMapsCb) }
-                        SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
-                        SettingsPage.SYNC -> if (sync != null) item { SyncSection(sync, syncCb, now) }
-                        SettingsPage.UPDATES -> if (update != null) item {
-                            Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
+                        // Backup & browser: the two short sections on one page, each under its heading
+                        SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP, SettingsPage.SYNC -> {
+                            if (backup != null) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsGroupHeader(SettingsPage.BACKUP.title)
+                                BackupSection(backup, backupCb)
+                            } }
+                            if (sync != null) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                SettingsGroupHeader(SettingsPage.SYNC.title)
+                                SyncSection(sync, syncCb, now)
+                            } }
                         }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo, problemsOpen) }
@@ -302,14 +337,49 @@ fun SettingsScreen(
                             }
                         }
                         SettingsPage.PRIVACY -> item { PrivacySection() }
-                        SettingsPage.ABOUT -> {
+                        // About OnPath: logo + version (7 taps → developer tools), the update check, Diagnostics, links,
+                        // credits, licences
+                        SettingsPage.ABOUT, SettingsPage.UPDATES -> {
                             item { AboutSection(version, devTools, onUnlockDevTools) }
+                            if (update != null) item {
+                                Section(SettingsPage.UPDATES.title) { UpdateSectionContent(update, version, onCheckUpdate, onInstallUpdate) }
+                            }
+                            if (diagnostics) item {
+                                SettingsCard {
+                                    TopicRow(SettingsPage.DIAGNOSTICS, SettingsSummary.diagnostics(problems, diagnosticsSeenMs), small = true) {
+                                        onPage(SettingsPage.DIAGNOSTICS)
+                                    }
+                                }
+                            }
                             item { AboutLinksSection() }
                             item { CreditsSection() }
                             item { LicencesSection(licences, licencesOpen) }
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/**
+ * Plan → "Marked trails" (owner 2026-11-27): Weniger · Standard · Mehr as one segmented row under a line that says what
+ * it does; stored in [AppSettings.markedTrails] (routing follows it in a later step).
+ */
+@Composable
+private fun MarkedTrailsCard(settings: AppSettings, onChange: (AppSettings) -> Unit) = SettingsCard {
+    Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(str(Res.string.settings_trails_sub), style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        val levels = listOf(AppSettings.MARKED_TRAILS_LESS, AppSettings.MARKED_TRAILS_STANDARD, AppSettings.MARKED_TRAILS_MORE)
+        val chosen = AppSettings.markedTrailsOf(settings.markedTrails)
+        androidx.compose.material3.SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+            levels.forEachIndexed { i, l ->
+                SegmentedButton(
+                    selected = l == chosen, onClick = { if (l != chosen) onChange(settings.copy(markedTrails = l)) },
+                    shape = androidx.compose.material3.SegmentedButtonDefaults.itemShape(i, levels.size),
+                    modifier = Modifier.heightIn(min = 48.dp),
+                ) { Text(SettingsSummary.markedTrailsLabel(l), style = MaterialTheme.typography.bodyMedium, maxLines = 1) }
             }
         }
     }
@@ -339,6 +409,8 @@ private fun AllSettingsRow(onClick: () -> Unit) {
 
 private val SettingsPage.icon: ImageVector
     get() = when (this) {
+        SettingsPage.PLAN -> Icons.Outlined.Route
+        SettingsPage.BACKUP_SYNC -> Icons.Outlined.SaveAlt
         SettingsPage.PACE -> Icons.Outlined.Timer
         SettingsPage.POI -> Icons.Outlined.Place
         SettingsPage.MAP -> Icons.Outlined.Map
@@ -361,10 +433,11 @@ private val SettingsPage.icon: ImageVector
 private fun TopicRow(t: SettingsPage, s: Summary, small: Boolean = false, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = if (small) 56.dp else 64.dp).clickable(role = Role.Button, onClick = onClick)
         .padding(horizontal = 16.dp, vertical = if (small) 6.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        // a topic that blocks tours (Phone setup): the red ✗-mark of the phone checks instead of its icon
-        val blocking = s.attention == Summary.Attention.PROBLEM && t == SettingsPage.PHONE
-        // steps open (owner 2026-11-08): a small amber dot on the phone icon, the row on top with "N steps open"
-        val open = s.attention == Summary.Attention.WARNING && t == SettingsPage.PHONE
+        // a topic that blocks tours (Phone setup, a row of Navigation): the red ✗-mark of the phone checks instead of its icon
+        val phoneRow = t == SettingsPage.PHONE || t == SettingsPage.NAVIGATION
+        val blocking = s.attention == Summary.Attention.PROBLEM && phoneRow
+        // steps open (owner 2026-11-08): a small amber dot on the icon, the row on top with "N steps open"
+        val open = s.attention == Summary.Attention.WARNING && phoneRow
         Box {
             Icon(if (blocking) Icons.Outlined.ErrorOutline else t.icon, null,
                 tint = when { blocking -> OnPathColors.Error; open -> OnPathColors.Green; small -> MaterialTheme.colorScheme.onSurfaceVariant; else -> OnPathColors.Green },

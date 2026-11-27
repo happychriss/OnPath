@@ -115,12 +115,14 @@ object SettingsSummary {
         checks.orEmpty().any { !it.ok && it.need == com.onpath.app.setup.Need.REQUIRED }
 
     /**
-     * The Settings list in groups, in order: [TopicGroup.URGENT] (only Phone setup, only while steps are open,
-     * [phoneOnTop] – owner: "at the top"), then "Your settings", then "App". Empty groups are left out.
+     * The Settings list in groups, in order: [TopicGroup.URGENT] (only Navigation – it holds Phone setup – and only while
+     * a setup step is open, [phoneOnTop]; owner: "at the top"), then "Your settings", then "App". Only the start-list
+     * pages ([SettingsPage.top]) of [topics] are listed; empty groups are left out.
      */
     fun groups(topics: List<SettingsPage>, phoneChecks: List<com.onpath.app.setup.Check>?): List<Pair<TopicGroup, List<SettingsPage>>> {
-        val urgent = if (phoneOnTop(phoneChecks) && SettingsPage.PHONE in topics) listOf(SettingsPage.PHONE) else emptyList()
-        val rest = topics - urgent.toSet()
+        val list = topics.filter { it.top }
+        val urgent = if (phoneOnTop(phoneChecks) && SettingsPage.NAVIGATION in list) listOf(SettingsPage.NAVIGATION) else emptyList()
+        val rest = list - urgent.toSet()
         return listOf(TopicGroup.URGENT to urgent, TopicGroup.YOURS to rest.filter { !it.app }, TopicGroup.APP to rest.filter { it.app })
             .filter { it.second.isNotEmpty() }
     }
@@ -132,6 +134,54 @@ object SettingsSummary {
     val ON_THE_WAY = listOf(SettingsPage.MAP, SettingsPage.POI, SettingsPage.PACE, SettingsPage.OFFLINE_MAPS)
 
     fun onTheWay(available: List<SettingsPage>): List<SettingsPage> = ON_THE_WAY.filter { it in available }
+
+    // ---- the six start-list pages (owner 2026-11-27) ----
+
+    /** Plan: "Tempo Mittel · markierte Wege Standard". */
+    fun plan(s: AppSettings, activity: Activity): Summary =
+        Summary(Txt.s(Res.string.settings_sum_plan, (if (TimeEstimate.isBike(activity)) s.bikePace else s.hikePace).label, markedTrailsLabel(s.markedTrails)))
+
+    /** The word of a "Marked trails" level: Weniger · Standard · Mehr. */
+    fun markedTrailsLabel(level: Int): String = Txt.s(when (AppSettings.markedTrailsOf(level)) {
+        AppSettings.MARKED_TRAILS_LESS -> Res.string.settings_trails_less
+        AppSettings.MARKED_TRAILS_MORE -> Res.string.settings_trails_more
+        else -> Res.string.settings_trails_standard
+    })
+
+    /** Map: "Höhenlinien an · Relief an · 3 Gebiete" (the offline areas only when some are downloaded). */
+    fun mapPage(s: AppSettings, offline: OfflineMapsUi?): Summary = Summary(listOfNotNull(
+        Txt.s(Res.string.settings_sum_contours, onOff(s.contours)),
+        Txt.s(Res.string.settings_sum_relief, onOff(s.hillshade)),
+        offline?.areas?.size?.takeIf { it > 0 }?.let { Txt.p(Res.plurals.settings_sum_offline_areas, it, it) },
+    ).joinToString(" · "))
+
+    /** Navigation: Phone setup's red / amber line while a step is open ([phone]), else the navigation values. */
+    fun navigationPage(s: AppSettings, phoneChecks: List<com.onpath.app.setup.Check>?): Summary =
+        phoneChecks?.let { phone(it) }?.takeIf { it.attention != Summary.Attention.NONE } ?: navigation(s)
+
+    /** Backup & browser: a backup or sync problem first (red / its colour), else "Gesichert heute 13:20 · Browser an". */
+    fun backupSync(b: BackupUi?, sync: SyncUi?, now: Long, zone: TimeZone = TimeZone.getDefault()): Summary {
+        val backup = b?.let { backup(it, now, zone) }
+        val synced = sync?.let { sync(it) }
+        listOfNotNull(backup, synced).firstOrNull { it.attention != Summary.Attention.NONE }?.let { return it }
+        // short, so the line fits once: "Gesichert heute 13:20 · Browser an"
+        val backed = b?.let { if (it.lastMs > 0) Txt.s(Res.string.settings_sum_backed_up, whenText(it.lastMs, now, zone)) else backup?.text }
+        return Summary(listOfNotNull(backed,
+            sync?.let { Txt.s(if (it.paired) Res.string.settings_sum_browser_on else Res.string.settings_sum_browser_off) })
+            .joinToString(" · "))
+    }
+
+    /**
+     * About OnPath: a serious problem not looked at yet (red, [diagnostics]) or update news ([updates]) first, else
+     * "0.10.0 – aktuell · Quellen, Lizenz".
+     */
+    fun aboutPage(version: String, u: AppViewModel.UpdateState?, problems: List<com.onpath.app.debug.Problems.Entry>?,
+                  seenMs: Long = 0L): Summary {
+        problems?.let { diagnostics(it, seenMs) }?.takeIf { it.attention == Summary.Attention.PROBLEM }?.let { return it }
+        val upd = u?.let { updates(it, version) }
+        if (upd != null && upd.attention != Summary.Attention.NONE) return upd
+        return Summary((upd?.text ?: v(version)) + " · " + about.text)
+    }
 
     val privacy: Summary get() = Summary(Txt.s(Res.string.settings_sum_privacy))
 

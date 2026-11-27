@@ -109,6 +109,19 @@ class SettingsFlowTest {
         assertFalse("the list closes Settings", app.slice.showSettings)
     }
 
+    /** Six topics (owner 2026-11-27): a sub page opened directly (☰ Handy-Einrichtung) goes back to its page, then the list. */
+    @Test fun aSubPageGoesBackToItsPageThenToTheList() {
+        val app = App()
+        app.slice.openSettings(SettingsPage.PHONE)
+        app.slice.settingsBack()
+        assertEquals(SettingsPage.NAVIGATION, app.slice.settingsPage)
+        app.slice.settingsBack()
+        assertNull(app.slice.settingsPage); assertTrue(app.slice.showSettings)
+        app.slice.openSettings(SettingsPage.SYNC) // an alias: drawn as Backup & browser, back to the list
+        app.slice.settingsBack()
+        assertNull(app.slice.settingsPage)
+    }
+
     @Test fun theLineAtTheTopLastsUntilThePageChangesOrSettingsIsLeft() {
         val app = App()
         app.slice.openSettings(SettingsPage.BACKUP)
@@ -147,6 +160,10 @@ class SettingsFlowTest {
         assertEquals(1, app.log.count { it == "sync ended seen" })
         app.slice.settingsPage = SettingsPage.MAP
         assertEquals("only entering the page counts", 1, app.log.count { it == "sync ended seen" })
+        app.slice.settingsPage = SettingsPage.BACKUP_SYNC // the page that holds the sync, opened from the list
+        assertEquals(2, app.log.count { it == "sync ended seen" })
+        app.slice.settingsPage = SettingsPage.SYNC
+        assertEquals("the same page by its other name: not again", 2, app.log.count { it == "sync ended seen" })
     }
 
     @Test fun navigatesSettingsOnTheWayAndBackToNavigate() {

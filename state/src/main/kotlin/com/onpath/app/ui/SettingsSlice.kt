@@ -87,7 +87,8 @@ class SettingsSlice(
             if (v != SettingsPage.OFFLINE_MAPS) host.clearOfflineResult() // the result line lasts until the page is left
             if (v != page) notices.settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
-            if (v == SettingsPage.SYNC) host.syncEndedSeen() // "ended in the browser" seen: the ☰ item is no longer amber
+            // "ended in the browser" seen: the ☰ item is no longer amber (the sync is a section of Backup & browser)
+            if (v?.landing == SettingsPage.BACKUP_SYNC && page?.landing != SettingsPage.BACKUP_SYNC) host.syncEndedSeen()
             if (v == SettingsPage.DIAGNOSTICS && v != page) loadRoutingInfo()
             page = v
         }
@@ -146,8 +147,8 @@ class SettingsSlice(
     /** On-the-way list → "Alle Einstellungen": the whole topic list (back from it closes Settings). */
     fun showAllSettings() { settingsOnTheWay = false; settingsPage = null }
 
-    /** Back in Settings: a topic page returns to the list, the list closes Settings. */
-    fun settingsBack() { if (settingsPage != null) settingsPage = null else showSettings = false }
+    /** Back in Settings: a sub page returns to its page ([SettingsPage.up]), a topic page to the list, the list closes Settings. */
+    fun settingsBack() { val p = settingsPage; if (p != null) settingsPage = p.up else showSettings = false }
 
     /** Relief switched off by the app once / set by hand ([com.onpath.app.map.ReliefAuto]). */
     private var reliefAuto = store.reliefAuto

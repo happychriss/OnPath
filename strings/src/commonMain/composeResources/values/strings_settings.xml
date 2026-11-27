@@ -184,4 +184,19 @@
     <string name="settings_group_screen">Screen and map</string>
     <string name="settings_group_lock">Lock during a tour</string>
     <string name="settings_phone_missing">Missing: %1$s</string>
+    <!-- Settings in six topics (owner 2026-11-27) -->
+    <string name="settings_page_plan">Plan</string>
+    <string name="settings_page_backup_sync">Backup &amp; browser</string>
+    <string name="settings_sum_plan">Pace %1$s · marked trails %2$s</string>
+    <string name="settings_trails_title">Marked trails</string>
+    <string name="settings_trails_sub">How closely routes follow marked hiking and cycling trails</string>
+    <string name="settings_trails_less">Less</string>
+    <string name="settings_trails_standard">Standard</string>
+    <string name="settings_trails_more">More</string>
+    <string name="settings_sum_contours">Contour lines %1$s</string>
+    <string name="settings_sum_relief">Hill shading %1$s</string>
+    <plurals name="settings_sum_offline_areas"><item quantity="one">%1$d area</item><item quantity="other">%1$d areas</item></plurals>
+    <string name="settings_sum_browser_on">browser on</string>
+    <string name="settings_sum_browser_off">browser off</string>
+    <string name="settings_sum_backed_up">Backed up %1$s</string>
 </resources>

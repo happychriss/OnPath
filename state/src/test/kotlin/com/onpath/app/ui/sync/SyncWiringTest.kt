@@ -82,7 +82,7 @@ class SyncWiringTest {
         assertTrue(driverHost.contains("override fun placesChanged() { keptPlaces.savedPlaces = null }"))
         assertTrue(driverHost.contains("override fun toursChanged(toRoute: List<Long>) { routesFlow.refreshTours(); syncedRouting.followSyncedSavedPlan(); syncedRouting.routeSyncedPlans(toRoute) }"))
         assertTrue(driverHost.contains("override fun newerData(tiles: List<String>) { refreshRoutingTiles(tiles, \"a plan from the browser was routed with newer data\") }"))
-        assertTrue(driverHost.contains("SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage == SettingsPage.SYNC)"))
+        assertTrue(driverHost.contains("SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage?.landing == SettingsPage.BACKUP_SYNC)"))
         assertTrue(driverHost.contains("SyncPoll.shown(map.appOnScreen, routes.open, routes.tab == RoutesTab.PLANNED, settingsSlice.showSettings,"))
         assertTrue("the driver starts once, in its own init", vm.contains("init { syncDriver.start() }"))
     }
