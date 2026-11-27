@@ -612,6 +612,39 @@ class MultiDaySliceTest {
         assertEquals(mapOf(2 to NightMark.OVERNIGHT, 3 to hotel), app.multiDay.flow.day!!.whole.nights)
     }
 
+    /**
+     * Review 2026-11-27 finding 3: a day loaded and then edited is no longer that day – the recorded tour must not remember it
+     * (followedDay is what TourFollow stamps on the tour's plan copy; TourFollowFlowTest: null there = no planDay / planUuid).
+     */
+    @Test fun aDayRemembersItselfForTheRecordingOnlyWhileUnedited() {
+        val app = App(); app.rideDay2()
+        assertEquals("the day as picked", "u1" to 2, app.multiDay.followedDay())
+        // the router's snap moves a point onto its way: no edit
+        val moved = GeoPoint(C.lat + 0.00001, C.lon)
+        // as PlanRecalcState.snapToRoute does: the points moved, then the history and the multi-day state told
+        ui { app.plan.moveSnapped(listOf(C, D), listOf(moved, D), null); app.plan.snappedHistory(mapOf(C to moved)) }; app.settle()
+        assertEquals("CD".length, app.plan.points.size)
+        assertEquals("a snap keeps the day", "u1" to 2, app.multiDay.followedDay())
+        // a point inserted: the plan is no longer the day – the recording remembers nothing
+        ui { app.planEdit.change { add(1, X) } }; app.settle()
+        assertNull("an edit drops the day", app.multiDay.followedDay())
+        assertTrue("the day is still followed (its edits go into the whole tour)", app.multiDay.flow.following)
+        // kept so across a restart
+        assertNull(App().multiDay.followedDay())
+    }
+
+    @Test fun aMovedOrRemovedPointDropsTheDayTooAndSeveralDaysNeverCount() {
+        val app = App(); app.rideDay2()
+        ui { app.planEdit.change { set(1, X) } }; app.settle()
+        assertNull("a moved point", app.multiDay.followedDay())
+        val two = App(); two.openOverview()
+        ui { two.multiDay.tapDay(2) }; ui { two.multiDay.holdDay(3) }; ui { two.multiDay.rideDays() }; two.settle()
+        assertTrue(two.multiDay.flow.following)
+        assertNull("days 2–3 in a row are no one day", two.multiDay.followedDay())
+        val none = App(); none.openOverview()
+        assertNull("the whole tour is no day", none.multiDay.followedDay())
+    }
+
     @Test fun theWriteBackWatchesOnlyAFollowedDayAndNeverFailsLoudly() {
         val app = App(); app.openOverview()
         // the overview: an edit of the whole tour is no day's edit

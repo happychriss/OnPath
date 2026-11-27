@@ -52,7 +52,15 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                            * [whole]'s activity / T level: a day picked under another profile still holds the tour's points for their own, and
                            * they count again when the plan is back on it. Null = none.
                            */
-                          val anchorProfile: AnchorProfile? = null) {
+                          val anchorProfile: AnchorProfile? = null,
+                          /**
+                           * The day's points as it was picked (the router's snaps follow them): while the plan is exactly these, a
+                           * recorded tour remembers the day (review 2026-11-27 finding 3: any edit drops it – [unedited]); null = not known
+                           * (a state kept before it existed) = edited.
+                           */
+                          val picked: List<GeoPoint>? = null) {
+        /** The plan [points] are still the day as picked – no edit since (an Undo back to it counts as unedited). */
+        fun unedited(points: List<GeoPoint>): Boolean = picked != null && picked == points
         /** [anchors] (the tour's, or the day's) with that profile. */
         fun anchorSet(anchors: Map<Int, Anchors> = whole.anchors): AnchorSet = anchorProfile?.takeIf { anchors.isNotEmpty() }?.let { AnchorSet(anchors, it) } ?: AnchorSet.NONE
     }
@@ -128,7 +136,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         if (moves.isEmpty() || (marks.isEmpty() && day == null)) return
         marks = marks.entries.associate { (p, m) -> (moves[p] ?: p) to m }
         day = day?.let { c -> c.copy(whole = snappedDay(c, moves, runProfile), part = c.part.copy(startAdded = c.part.startAdded?.let { moves[it] ?: it },
-            endAdded = c.part.endAdded?.let { moves[it] ?: it })) }
+            endAdded = c.part.endAdded?.let { moves[it] ?: it }), picked = c.picked?.map { moves[it] ?: it }) }
         save()
     }
 
@@ -243,7 +251,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
         return try {
             val part = DayFollow.part(plan, v.days, v.pointAt, v.line, s.first, s.last) ?: return null
             day = DayContext(t, plan, part, savedPoints, v.line[part.startLine], v.line[part.endLine],
-                anchorProfile ?: plan.anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(plan.activity, plan.sac) })
+                anchorProfile ?: plan.anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(plan.activity, plan.sac) }, picked = part.points)
             Problems.trace("plan", "Multi-day tour: day ${s.first}–${s.last} of ${v.days.days.size} as the plan (${part.points.size} points)")
             save()
             part
@@ -294,6 +302,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                 .put("points", ptsJson(p.points)).put("startAdded", p.startAdded?.let { ptJson(it) }).put("endAdded", p.endAdded?.let { ptJson(it) })
                 .put("opened", c.wholeOpened?.let { ptsJson(it) }).put("startAt", ptJson(c.startAt)).put("endAt", ptJson(c.endAt))
                 .put("anchorActivity", c.anchorProfile?.activity?.name).put("anchorSac", c.anchorProfile?.sac)
+                .put("picked", c.picked?.let { ptsJson(it) })
                 .toString()
         }
     } catch (e: Exception) {
@@ -318,7 +327,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                     o.getInt("from"), o.getInt("to"), o.optJSONObject("startAdded")?.let(::pt), o.optJSONObject("endAdded")?.let(::pt),
                     o.getInt("startLine"), o.getInt("endLine"))
                 day = DayContext(ref(o.getJSONObject("tour")), whole, part, o.optJSONArray("opened")?.let(::pts),
-                    pt(o.getJSONObject("startAt")), pt(o.getJSONObject("endAt")), anchorProfileOf(o, whole))
+                    pt(o.getJSONObject("startAt")), pt(o.getJSONObject("endAt")), anchorProfileOf(o, whole), o.optJSONArray("picked")?.let(::pts))
             }
         } catch (e: Exception) {
             Problems.error("plan", "Multi-day tour state unreadable after the restart – the plan shows without its days (the saved tour keeps them)", e)

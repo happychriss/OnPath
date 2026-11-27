@@ -41,29 +41,58 @@ object DayPick {
         return PlanDays.of(DayLine.of(line, activity, factors), at, d.days, d.limits, PlanDays.clean(pts, d.nights)) to at
     }
 
-    /** The rows of [t]'s [days]; [tours] = My routes' list (the recorded tours that rode a day). */
-    fun rows(t: Tour, days: TourDays, tours: List<Tour>): List<DayPickRow> {
+    /**
+     * How far a day's start or end may lie from where the ridden tour's day started / ended and still be that day (owner
+     * 2026-11-27): 200 m – a stop the router moved onto its way, a night mark nudged in the planner stay the day; a day end
+     * moved to the next village, a day added before it (the days renumber) or the route turned round do not.
+     */
+    const val SAME_END_M = 200.0
+
+    /** The start and end of each day along [line] (the day's stretch, [DayPickRow.fromLine]..[DayPickRow.toLine]). */
+    fun dayEnds(line: List<GeoPoint>, rows: List<DayPickRow>): Map<Int, Pair<GeoPoint, GeoPoint>> {
+        if (line.isEmpty()) return emptyMap()
+        return rows.associate { r ->
+            val a = r.fromLine.coerceIn(0, line.lastIndex); val b = r.toLine.coerceIn(a, line.lastIndex)
+            r.n to (line[a] to line[b])
+        }
+    }
+
+    /**
+     * Recorded tour [t] rode the day whose ends are [ends] now: both its ridden ends ([Tour.planEnds]) lie within [SAME_END_M]
+     * of them. Unknown ends on either side never match (no ✓ claimed that cannot be checked).
+     */
+    fun matches(t: Tour, ends: Pair<GeoPoint, GeoPoint>?): Boolean {
+        val r = t.planEnds ?: return false
+        val e = ends ?: return false
+        return com.onpath.app.data.Geo.distance(r.first, e.first) <= SAME_END_M && com.onpath.app.data.Geo.distance(r.second, e.second) <= SAME_END_M
+    }
+
+    /** The rows of [t]'s [days] along its stored [line]; [tours] = My routes' list (the recorded tours that rode a day). */
+    fun rows(t: Tour, days: TourDays, tours: List<Tour>, line: List<GeoPoint> = emptyList()): List<DayPickRow> {
         val nights = t.days?.nights.orEmpty()
         fun known(s: String?) = s?.trim()?.takeIf { it.isNotEmpty() }
         // a plan point's name, else its night's hotel name – "as the plan has them", no place lookup
         fun nameAt(i: Int?): String? = i?.let { known(t.waypoints.getOrNull(it)?.name) ?: nights[it]?.hotel?.let { h -> known(h.name) } }
         val ends: List<Int?> = listOf<Int?>(0) + days.days.map { d -> d.end?.planIndex ?: if (d.end == null) t.waypoints.lastIndex else null }
-        val rode = ridden(t.uuid, tours)
         var startLine = 0
-        return days.days.mapIndexed { k, d ->
+        val rows = days.days.mapIndexed { k, d ->
             val endLine = d.end?.lineIndex ?: Int.MAX_VALUE
-            DayPickRow(d.number, nameAt(ends[k]), nameAt(ends[k + 1]), d.distanceM, d.ascentM, d.timeS, d.end?.kind, rode[d.number],
+            DayPickRow(d.number, nameAt(ends[k]), nameAt(ends[k + 1]), d.distanceM, d.ascentM, d.timeS, d.end?.kind, null,
                 startLine, endLine).also { startLine = d.end?.lineIndex ?: startLine }
         }
+        val rode = ridden(t.uuid, tours, dayEnds(line, rows))
+        return rows.map { it.copy(riddenMs = rode[it.n]) }
     }
 
     /**
      * The days of route [uuid] ridden: day → when the newest recorded tour that rode it was recorded. A tour in the recycle bin or
-     * still recording does not count (deleting it takes the ✓ away).
+     * still recording does not count (deleting it takes the ✓ away), nor one whose day no longer starts and ends where it rode
+     * it ([matches] with the day's [ends] now – the route was changed since, owner 2026-11-27).
      */
-    fun ridden(uuid: String, tours: List<Tour>): Map<Int, Long> {
+    fun ridden(uuid: String, tours: List<Tour>, ends: Map<Int, Pair<GeoPoint, GeoPoint>>): Map<Int, Long> {
         if (uuid.isEmpty()) return emptyMap()
         return tours.filter { it.kind == TourKind.RECORDED && it.deletedMs == null && it.state != "active" && it.planUuid == uuid && (it.planDay ?: 0) > 0 }
+            .filter { matches(it, ends[it.planDay]) }
             .groupBy { it.planDay!! }.mapValues { (_, l) -> l.maxOf { it.createdMs } }
     }
 
@@ -84,13 +113,21 @@ object DayPick {
     /** A card of My routes opens the day sheet (a saved multi-day route), not the normal overview. */
     fun opens(t: Tour): Boolean = t.kind == TourKind.PLANNED && t.days != null && !t.draft && t.deletedMs == null && t.uuid.isNotEmpty()
 
-    /** Gemacht's line: the recorded tours' route names ([Tour.planName]) and whether that route's day sheet can open. */
-    fun named(list: List<Tour>, planName: (Long) -> String?): List<Tour> {
+    /**
+     * Gemacht's line: the recorded tours' route names ([Tour.planName]) and whether that route's day sheet can open. A route in
+     * My routes whose day no longer [matches] the ride ([endsOf]: its day ends now, null = not known) claims nothing – no line.
+     * A route that is gone: the plan copy's name ([planName]), no tap.
+     */
+    fun named(list: List<Tour>, planName: (Long) -> String?, endsOf: (Tour) -> Map<Int, Pair<GeoPoint, GeoPoint>>?): List<Tour> {
         val routes = list.filter { it.kind == TourKind.PLANNED && it.deletedMs == null && !it.draft && it.days != null }.associateBy { it.uuid }
         return list.map { t ->
             val uuid = t.planUuid?.takeIf { t.kind == TourKind.RECORDED && (t.planDay ?: 0) > 0 } ?: return@map t
             val r = routes[uuid]
-            if (r != null) t.copy(planName = r.name, planOpens = true) else t.copy(planName = planName(t.id), planOpens = false)
+            when {
+                r == null -> t.copy(planName = planName(t.id), planOpens = false)
+                matches(t, endsOf(r)?.get(t.planDay)) -> t.copy(planName = r.name, planOpens = true)
+                else -> t.copy(planName = null, planOpens = false)
+            }
         }
     }
 }

@@ -40,11 +40,13 @@ class DayPickSlice(
     /** The day whose own overview shows over the sheet (›); null = none. */
     var detail by mutableStateOf<Int?>(null)
     private var segs: List<List<TrackPoint>> = emptyList()
+    /** The days' ends of the open sheet ([DayPick.dayEnds]): a ride counts only where they still match. */
+    private var ends: Map<Int, Pair<GeoPoint, GeoPoint>> = emptyMap()
     private var job: Job? = null
 
     /** The sheet with the days ridden and the next open day as My routes' list holds them now (a tour put in the bin loses its ✓). */
     val ui: DayPickUi? get() = sheet?.let { s ->
-        val rode = DayPick.ridden(s.tour.uuid, routes.tours)
+        val rode = DayPick.ridden(s.tour.uuid, routes.tours, ends)
         s.copy(rows = s.rows.map { it.copy(riddenMs = rode[it.n]) }, next = DayPick.next(s.rows.size, rode.keys))
     }
 
@@ -67,7 +69,9 @@ class DayPickSlice(
             if (days == null) { openWhole(t); return@launchSafe }
             segs = s
             detail = null
-            sheet = DayPickUi(t, line, DayPick.rows(t, days.first, emptyList()), null)
+            val rows = DayPick.rows(t, days.first, emptyList())
+            ends = DayPick.dayEnds(line, rows)
+            sheet = DayPickUi(t, line, rows, null)
         }
     }
 
