@@ -64,9 +64,10 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
      * engine's leg cache is routed already.
      */
     val longRule: PhoneLongRule? = browserCost?.let { cost ->
-        PhoneLongRule({ cost().first }) { a, b, quick ->
+        // the routed-leg lookup by name: a trailing lambda would land on lowEnd (the app's, the planner keeps false)
+        PhoneLongRule({ cost().first }, routed = { a, b, quick ->
             if (quick) legCache.inMemory(a, b, act, level) != null else legCache.has(a, b, act, level)
-        }.also { r -> r.memoryCapMb = { cost().second } }
+        }).also { r -> r.memoryCapMb = { cost().second } }
     }
 
     val planRun = PlanRunSlice(runCauses, object : PlanRunHost {

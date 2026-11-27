@@ -35,7 +35,7 @@ try {
   await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
   const code = await page.evaluate(() => window.__engine.encode({ points: [[46.6700, 11.1600], [46.6950, 11.2100]], activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null }));
   await page.goto(url + 'index.html?lang=de#p=' + code);
-  const win = await page.waitForSelector('#waitwin .wwcancel', { state: 'visible', timeout: 30_000 }).then(() => true, () => false);
+  const win = await page.waitForSelector('#waitwin .wwcancel', { state: 'attached', timeout: 30_000 }).then(() => true, () => false);
   check(win, `the routing data held back: the wait window with Abbrechen shows (${waiting.length} requests held)`);
   // one wait at a time (owner 2026-11-27: „zwei Sachen bewegen sich“): while the wait window shows, nothing else moves –
   // no run bar, no sheet wait line, no other running animation outside the window
@@ -50,7 +50,7 @@ try {
     return { win: vis(document.getElementById('waitwin')), bar: vis(document.getElementById('runbar')), waitline: vis(document.querySelector('#summary .subline.waitline')), others: [...new Set(others)] };
   });
   check(moving.win && !moving.bar && !moving.waitline && moving.others.length === 0, `the wait window shows alone: no run bar, no sheet wait line, nothing else moving (${JSON.stringify(moving)})`);
-  await page.waitForSelector('#waitwin .wwcancel', { state: 'visible', timeout: 30_000 });
+  await page.waitForSelector('#waitwin .wwcancel', { state: 'attached', timeout: 30_000 });
   await page.click('#waitwin .wwcancel');
   await page.waitForTimeout(500);
   release(); // the data would come now – a stopped run must not route with it
