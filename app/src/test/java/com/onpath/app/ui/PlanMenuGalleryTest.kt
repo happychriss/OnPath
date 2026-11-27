@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,7 +10,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.onpath.app.domain.RouteMenuState
 import com.onpath.app.domain.RouteRules
-import com.onpath.app.plansync.PlanSync
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -53,7 +51,6 @@ abstract class PlanMenuGalleryTest {
             onNewPlan = if (state.save) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
         OnPathTheme {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color)) { PlanTopBar({}, menu, Modifier.fillMaxWidth()) }
                 Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.TopEnd) {
                     MenuCard(Modifier) { PlanMenuItems(menu) {} }
                 }

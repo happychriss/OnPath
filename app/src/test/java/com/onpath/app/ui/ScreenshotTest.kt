@@ -123,11 +123,11 @@ class ScreenshotTest {
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     // as PlanMode: the controls under the sheet and the boxes, the sheet's height read while placing
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                    PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp, controls = controls)
-                    SheetWithFooter(planTopBarDp().dp, footer = {
+                    PlanControlsLayer({ sheetHeight.intValue }, 0.dp, controls = controls)
+                    SheetWithFooter(0.dp, footer = {
                         Column(Modifier.fillMaxWidth()) { aboveFooter(); MapFooter("500 m" to 64.dp) {} }
                     }, sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) { bottom() } })
-                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp()).dp,
+                    Box(Modifier.fillMaxWidth().padding(top = MessagePlacement.topDp(MessageScreen.PLAN).dp,
                         start = MessagePlacement.GAP_DP.dp, end = MessagePlacement.GAP_DP.dp)) { top() }
                 }
             }
@@ -1754,10 +1754,10 @@ class ScreenshotTest {
         Box {
             Frame(route = false, gps = GpsStatus.SEARCHING) { PlanPanel(planUi(n = 0, r = null), PlanCallbacks()) }
             OnPathTheme {
-                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     OverviewPill({}, Modifier.padding(top = OverviewPillPlace.topDp(rowTop, null).dp,
-                        start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                        start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
                 }
             }
         }
@@ -1779,16 +1779,16 @@ class ScreenshotTest {
     @Test fun planGpsNoteLong() =
         planNote(Res.string.msg_route_back_no_position, androidx.compose.material.icons.Icons.Outlined.LocationSearching)
 
-    /** A quiet note on the Plan map where MapScreen puts it (PlanGps.noteTopDp / noteStartDp), over a Hike T2 plan. */
+    /** A quiet note on the Plan map where MapScreen puts it (PlanGps.noteTopDp, at OverviewPillPlace.EDGE_DP), over a Hike T2 plan. */
     private fun planNote(text: org.jetbrains.compose.resources.StringResource, icon: androidx.compose.ui.graphics.vector.ImageVector) =
         paparazzi.snapshot {
             Box {
                 Frame { PlanPanel(planUi(), PlanCallbacks()) }
                 OnPathTheme {
-                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
                     Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                         QuietPill(str(text), icon, Modifier.padding(top = PlanGps.noteTopDp(rowTop, null).dp,
-                            start = PlanGps.noteStartDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                            start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
                     }
                 }
             }

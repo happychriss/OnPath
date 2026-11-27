@@ -56,11 +56,10 @@ class OverviewHintRuleTest {
         assertEquals(null, OverviewHintRule.centre(listOf(51.0, 6.0)))
     }
 
-    // the pill covers nothing: right of the 48 dp activity button (at 12 dp), on its row, below the download strip
-    @Test fun pillSitsBesideTheActivityButton() {
-        assertTrue(OverviewPillPlace.startDp(activityButtonShown = true) >= 12 + 48 + 8)
-        assertEquals(OverviewPillPlace.EDGE_DP, OverviewPillPlace.startDp(activityButtonShown = false))
-        assertEquals(OverviewPillPlace.HEIGHT_DP, 48) // as high as the activity button: one row
+    // the pill covers nothing: top left at the edge (no activity button on the map since the Daumen-Karte), below the download strip
+    @Test fun pillSitsAtTheEdge() {
+        assertEquals(12, OverviewPillPlace.EDGE_DP)
+        assertEquals(OverviewPillPlace.HEIGHT_DP, 48)
     }
 
     @Test fun pillGoesBelowTheDownloadStrip() {

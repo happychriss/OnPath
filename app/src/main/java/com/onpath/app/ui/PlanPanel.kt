@@ -7,7 +7,6 @@ import com.onpath.app.domain.PlanStatus
 import com.onpath.app.domain.RouteRules
 import com.onpath.strings.*
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.outlined.SwapVert
 import androidx.compose.material.icons.outlined.Loop
 import androidx.compose.material.icons.outlined.RadioButtonUnchecked
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -38,18 +36,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CloudDone
 import androidx.compose.material.icons.filled.TouchApp
-import androidx.compose.ui.text.withStyle
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Navigation
 import androidx.compose.material.icons.filled.FiberManualRecord
 import androidx.compose.material.icons.filled.PlayArrow
-import androidx.compose.material.icons.outlined.BookmarkAdd
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material.icons.outlined.Warning
 import androidx.compose.material.icons.outlined.Cancel
@@ -61,10 +52,8 @@ import com.onpath.app.data.RoutingDataNotice
 import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -90,9 +79,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.PlannedRoute
 import com.onpath.app.routing.PlanPointRow
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.platform.LocalConfiguration
 
 /** Everything the plan panel can ask for; defaults keep previews and tests short. */
@@ -405,7 +392,7 @@ private fun SummaryLines(ui: PlanUi, cb: PlanCallbacks) {
  * The plan head (owner 2026-11-05, R5): the plan row [✕ Neu planen] [⇅ Umkehren] [↻ Rundtour] as light blue pills with
  * words (signs only when the words do not fit; from one point on), a hairline, then the route's facts: time (big, tap =
  * Time details) · km · ↑ ↓ – the difficulty on the profile's top right while the facts keep one line, else at the end of
- * their second line, never on the curve. The activity is a button on the map ([ActivityMapButton]); Save is in ☰.
+ * their second line, never on the curve. The activity is in the plan card's head (ThumbHead, Daumen-Karte); Save is in ☰.
  */
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
@@ -543,31 +530,6 @@ object CollapsedFacts {
     /** "↑842 ↓310" – metres without the unit, the short form the owner chose for the rolled-up row (2026-11-05). */
     fun elevation(ascentM: Double, descentM: Double): String =
         "↑${Math.round(ascentM)}\u00A0↓${Math.round(descentM)}"
-}
-
-/**
- * The activity as a round button on the map (owner 2026-11-05, R5), top left under the search pill: the plan's light blue
- * like the map buttons, a green activity sign, for Hike a bold "T2" badge under it; tap = the activity picker. TalkBack:
- * "Aktivität: Wandern · T2. Tippen zum Ändern".
- */
-@Composable
-fun ActivityMapButton(activity: Activity, sac: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
-    val name = com.onpath.app.data.LastActivity.chipText(activity, sac)
-    Column(modifier.semantics(mergeDescendants = true) { contentDescription = Txt.s(Res.string.plan_activity_chip_desc, name) },
-        horizontalAlignment = Alignment.CenterHorizontally) {
-        Surface(onClick = onClick, shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.size(48.dp).floatShadow(CircleShape)) {
-            Box(contentAlignment = Alignment.Center) {
-                Icon(activity.icon, null, tint = OnPathColors.Green, modifier = Modifier.size(26.dp))
-            }
-        }
-        if (activity == Activity.HIKE) Surface(shape = CircleShape, color = OnPathColors.PlanTint,
-            modifier = Modifier.padding(top = 3.dp).floatShadow(CircleShape)) {
-            // the T level reads at a glance (owner 2026-11-07: ≈ 1.5×, bold) – it decides which ways the route may take
-            Text("T$sac", style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = PillBlueInk,
-                modifier = Modifier.padding(horizontal = 9.dp, vertical = 2.dp))
-        }
-    }
 }
 
 /** The plan row's sign-only buttons (a large font): a light blue circle (40 dp) in a 48 dp touch target, TalkBack names it. */

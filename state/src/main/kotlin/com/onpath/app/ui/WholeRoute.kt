@@ -76,14 +76,11 @@ data class FitPadding(val left: Int, val top: Int, val right: Int, val bottom: I
  * One padding rule for every fit (opening a route, "Show whole route"): nothing of the route hides under the top
  * elements or the bottom ones, and no more margin than that (field A-019 add-on, 01b: with the sheet pulled up the
  * destination lay under the map buttons; with the small sheet the route had a wide margin).
- * - Plan: below the search pill / ☰ ([TOP_BAR_BOTTOM]) or the strip / box under it ([planTopDp], dp below the status
- *   bar); above the plan sheet at its CURRENT height ([sheetPx]). The map buttons stand in a column on the right above
+ * - Plan: below the status bar or the strip / box under it ([planTopDp], dp below the status bar; Plan has no top
+ *   band since the Daumen-Karte); above the plan sheet at its CURRENT height ([sheetPx]). The map buttons stand in a column on the right above
  *   the sheet ([fabWidthPx] × [fabHeightPx], measured): the route fits either beside them (right edge = the column) or
  *   above them over the whole width (bottom edge = the column's top) – [FitPadding.above], the bigger route wins
- *   ([pick]). The activity button in the top left (measured: its right / bottom edge, `activityRightPx` /
- *   `activityBottomPx`) gives each room two forms – beside it (left edge right of the button) or below it (top edge
- *   under it): a point is never drawn under it (owner's Pixel 2026-11-07, ② under the button). Every edge keeps
- *   [AIR_DP] for a route point marker's radius.
+ *   ([pick]). Every edge keeps [AIR_DP] for a route point marker's radius.
  * - Navigate: below the turn / status column or the message box under it ([navTopDp]); above the slider
  *   ([navBottomDp]); clear of the big map buttons on the right.
  */
@@ -102,12 +99,12 @@ object FitPaddingRule {
     const val FOOTER_DP = 48
 
     fun of(mode: AppMode, density: Float, statusBarPx: Int, planTopDp: Int, sheetPx: Int, navTopDp: Int, navBottomDp: Int,
-           fabWidthPx: Int = 0, fabHeightPx: Int = 0, activityRightPx: Int = 0, activityBottomPx: Int = 0): FitPadding {
+           fabWidthPx: Int = 0, fabHeightPx: Int = 0): FitPadding {
         fun px(dp: Int) = (dp * density).toInt()
         return when (mode) {
             AppMode.PLAN -> {
                 // a marker's radius under the search pill (a 12 dp gap cut the top of a point there – Pixel 2026-11-07)
-                val top = statusBarPx + px(maxOf(planTopDp, TOP_BAR_DP) + AIR_DP)
+                val top = statusBarPx + px(maxOf(planTopDp, 0) + AIR_DP)
                 val fabW = if (fabWidthPx > 0) fabWidthPx else (MAP_FAB_DP * density).toInt()
                 // over the whole width, above the button column (only once its height is known)
                 val above = if (fabHeightPx <= 0) null
@@ -115,12 +112,7 @@ object FitPaddingRule {
                 // beside the button column, down to the scale bar / © above the sheet
                 val beside = FitPadding(px(PLAN_SIDE_DP), top, fabW + px(FAB_END_DP + AIR_DP), sheetPx + px(FOOTER_DP))
                 val rooms = listOfNotNull(beside, above)
-                // the activity button (top left, measured; 0 = not shown): each room beside it or below it
-                val clearLeft = activityRightPx + px(AIR_DP)
-                val clearTop = activityBottomPx + px(AIR_DP)
-                val all = if (activityRightPx <= 0 || clearTop <= top) rooms
-                    else rooms.flatMap { r -> listOf(r.copy(left = maxOf(r.left, clearLeft)), r.copy(top = maxOf(r.top, clearTop))) }
-                all.foldRight(null as FitPadding?) { r, next -> r.copy(above = next) }!!
+                rooms.foldRight(null as FitPadding?) { r, next -> r.copy(above = next) }!!
             }
             AppMode.NAVIGATE -> FitPadding(px(SIDE_DP), statusBarPx + px(navTopDp + GAP_DP), px(NAV_RIGHT_DP),
                 px(navBottomDp + 2 * GAP_DP))
@@ -146,7 +138,4 @@ object FitPaddingRule {
         }
         return best
     }
-
-    /** [TOP_BAR_BOTTOM] in dp (search pill + ☰ below the status bar). */
-    private val TOP_BAR_DP = TOP_BAR_BOTTOM_DP
 }

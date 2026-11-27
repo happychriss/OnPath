@@ -8,7 +8,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import java.io.File
 
 /** "Show whole route" map button (owner 2026-10-31): when it shows, what it fits, the room it leaves free. */
 class WholeRouteTest {
@@ -110,45 +109,6 @@ class WholeRouteTest {
     }
 
     /** The room that shows the route bigger wins; a tie or an unknown zoom keeps the room beside the buttons. */
-    /**
-     * Owner's Pixel 2026-11-07 ("Meran → Mutkopf"): after "Show whole route" / a tap on the reach line ② lay under the
-     * activity button in the top left. Every room the fit may take keeps its top-left corner – where a route point can
-     * land – clear of the button by a marker's radius: beside it (left edge right of it) or below it (top under it).
-     */
-    @Test fun noRoomPutsAPointUnderTheActivityButton() {
-        val d = 2.625f
-        val status = 63
-        val px = { dp: Int -> (dp * d).toInt() }
-        val fabW = px(56)
-        // the button as MapScreen places it: 12 dp from the left, under the search pill; 48 dp circle + the T badge
-        val btnLeft = px(12)
-        val btnTop = status + px(88)
-        val btnRight = btnLeft + px(48)
-        val btnBottom = btnTop + px(48 + 3 + 26)
-        for (fabH in listOf(0, px(5 * 48))) {
-            val p = FitPaddingRule.of(plan, d, status, planTopDp = 0, sheetPx = 900, navTopDp = 0, navBottomDp = 0,
-                fabWidthPx = fabW, fabHeightPx = fabH, activityRightPx = btnRight, activityBottomPx = btnBottom)
-            val rooms = generateSequence(p) { it.above }.toList()
-            assertTrue("a room beside and one below the button", rooms.size >= 2)
-            for (r in rooms) {
-                // the point at the room's top-left corner, drawn with a marker's radius, stays off the button
-                val x = r.left; val y = r.top; val air = px(FitPaddingRule.AIR_DP)
-                val overlaps = x - air < btnRight && x + air > btnLeft && y - air < btnBottom && y + air > btnTop
-                assertTrue("room $r: its top-left point lies under the activity button", !overlaps)
-                // and the room is still below the search pill, above the sheet, beside the right-hand buttons
-                assertTrue(r.top >= p.top)
-                assertTrue(r.bottom >= 900)
-            }
-            // beside: the full height under the search pill; below: the full width from the left edge
-            assertTrue(rooms.any { it.top == p.top && it.left >= btnRight + px(FitPaddingRule.AIR_DP) })
-            assertTrue(rooms.any { it.left == px(FitPaddingRule.PLAN_SIDE_DP) && it.top >= btnBottom + px(FitPaddingRule.AIR_DP) })
-        }
-        // the button not shown / not measured (Navigate has none): the rooms as before
-        assertEquals(FitPaddingRule.of(plan, d, status, 0, 900, 0, 0, fabW, 0),
-            FitPaddingRule.of(plan, d, status, 0, 900, 0, 0, fabW, 0, activityRightPx = 0, activityBottomPx = 0))
-        assertNull(FitPaddingRule.of(nav, d, status, 0, 310, 200, 90, fabW, 0, btnRight, btnBottom).above)
-    }
-
     /** More than one other room: the one that shows the route biggest; a tie keeps the earlier one. */
     @Test fun pickWalksEveryRoom() {
         val c = FitPadding(5, 5, 5, 5)
@@ -177,9 +137,7 @@ class WholeRouteTest {
         val screen = sourceFile("ui/MapScreen.kt").readText()
         // since onpath.private#43 (2026-11-06) the column stands at a fixed place above the middle, not on the sheet: the
         // fit keeps beside it; the "above the column, full width" room no longer exists in the app (pick() still serves it)
-        assertTrue(screen.contains("fabWidthPx = planFab[0],") && screen.contains("fabHeightPx = 0,"))
-        // no activity button on the map since the Daumen-Karte (owner 2026-11-26): it is a chip in the plan card
-        assertTrue(!screen.contains("ActivityMapButton("))
+        assertTrue(screen.contains("fabWidthPx = planFab[0],") && screen.contains("fabHeightPx = 0)"))
         assertTrue(screen.contains("sheetPx = panelHeightPx"))
     }
 

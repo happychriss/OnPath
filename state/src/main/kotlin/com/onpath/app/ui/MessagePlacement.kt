@@ -18,12 +18,10 @@ object MessagePlacement {
     /** Settings: the title row (4 + 56 + 4 dp). */
     const val SETTINGS_HEADER_DP = 64
 
-    /** Plan: the bottom of the top row (0 since the Daumen-Karte – the status bar is the top element). */
-    val planTopRowDp: Int get() = TOP_BAR_BOTTOM_DP
-
     /** The box's top below the status bar. [navigateColumnDp]: Navigate's measured top column (turn + status cards). */
-    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0, planTopDp: Int = planTopRowDp): Int = GAP_DP + when (screen) {
-        MessageScreen.PLAN -> planTopDp
+    fun topDp(screen: MessageScreen, navigateColumnDp: Int = 0): Int = GAP_DP + when (screen) {
+        // Plan has no top row since the Daumen-Karte: the status bar is the top element
+        MessageScreen.PLAN -> 0
         MessageScreen.NAVIGATE -> navigateColumnDp.coerceAtLeast(0)
         MessageScreen.ROUTES -> ROUTES_HEADER_DP
         MessageScreen.SETTINGS -> SETTINGS_HEADER_DP

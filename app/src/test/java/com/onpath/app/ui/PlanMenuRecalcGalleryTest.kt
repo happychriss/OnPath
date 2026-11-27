@@ -1,6 +1,5 @@
 package com.onpath.app.ui
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,7 +35,6 @@ abstract class PlanMenuRecalcGalleryTest(fontScale: Float, private val locale: L
             onRecalcFromScratch = if (row) ({}) else null)
         OnPathTheme {
             Column(Modifier.fillMaxWidth()) {
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color)) { PlanTopBar({}, menu, Modifier.fillMaxWidth()) }
                 Box(Modifier.fillMaxWidth().padding(8.dp), contentAlignment = Alignment.TopEnd) {
                     MenuCard(Modifier) { PlanMenuItems(menu) {} }
                 }

@@ -8,20 +8,14 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.layout.asPaddingValues
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.Warning
@@ -33,7 +27,6 @@ import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.RadioButtonChecked
 import androidx.compose.material.icons.outlined.Route
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
 import androidx.compose.material.icons.outlined.SystemUpdate
@@ -51,8 +44,8 @@ import androidx.compose.material3.Text
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -65,7 +58,6 @@ import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.layout.layout
 
 /**
  * App-level actions in the ☰ menu next to the search bar (owner: the search bar only searches; everything about
@@ -123,87 +115,6 @@ class PlanMenu(
 }
 
 /**
- * Plan's top band (owner 2026-11-05, band b): a light blue band behind the search pill and ☰, so they do not float over
- * the map; at a large font the mode label gets its own line above the pill instead of covering its text. During a tour
- * the way back to Navigate is the green "Navigation ›" at the bottom of the plan (owner 2026-11-06, C).
- */
-object PlanTopBand {
-    /**
-     * The band's colour: the light sage over the map ([OnPathColors.MapGround], owner 2026-11-12; paper before, no light
-     * blue since 2026-11-06 variant C).
-     */
-    val Color = OnPathColors.MapGround
-    /** The mode label's own line at a large font: its text line (labelSmall, 16 sp line) + 8 dp. */
-    fun labelRow(fontScale: Float): androidx.compose.ui.unit.Dp = (16f * fontScale + 8f).dp
-
-    /** From this font scale on the mode label would cover the search text: it gets its own line. */
-    fun largeLabel(fontScale: Float): Boolean = fontScale >= 1.3f
-
-    /**
-     * Bottom of the top band below the status bar. Since the Daumen-Karte (owner 2026-11-26) Plan has no top band: the
-     * search and ☰ are in the card at the bottom, the boxes sit 12 dp under the status bar.
-     */
-    @Suppress("UNUSED_PARAMETER")
-    fun bottom(fontScale: Float): androidx.compose.ui.unit.Dp = TOP_BAR_BOTTOM
-
-    /** Where the mode label starts: over the search pill's left part. */
-    val LABEL_START = 28.dp
-}
-
-/** [PlanTopBand.bottom] in dp for the current font. */
-@Composable
-fun planTopBarDp(): Int = PlanTopBand.bottom(androidx.compose.ui.platform.LocalDensity.current.fontScale).value.toInt()
-
-/**
- * Plan mode top area on the light blue band: the search pill (only search) and one round ☰ app-menu button next to it:
- * Save route (with a plan) · My routes · Pair with browser · Settings; Phone setup first while a tour needs it. The
- * activity is a button on the map, the route actions (✕ Neu planen · Umkehren · Rundtour) live in the plan sheet (PlanPanel).
- */
-@Composable
-fun PlanTopBar(
-    onSearch: () -> Unit,
-    menu: PlanMenu,
-    modifier: Modifier = Modifier,
-    menuInitiallyOpen: Boolean = false,
-    /** During a tour ("Plan ändern"): the mode label says so instead of "Planen". */
-    editing: Boolean = false,
-    /** The route's offline state ("Ohne Netz ✓ / ⟳ / ⚠" in the label, owner 2026-11-03); null = no route. */
-    offline: OfflineReady.State? = null,
-    /** A tap on the label: explain the offline state (a line in the plan sheet). */
-    onOffline: () -> Unit = {},
-) {
-    // during a tour the way back to Navigate is the green "Navigation ›" at the bottom (owner 2026-11-06, C) – no "←" here
-    val row = @Composable {
-        Row(Modifier.padding(horizontal = 12.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-            // also while the plan is changed during a tour: search + ☰ as at home (owner 2026-11-01 turned down a green
-            // "Plan ändern … Fertig" header)
-            SearchBarPill(onSearch, Modifier.weight(1f))
-            Spacer(Modifier.width(8.dp))
-            AppMenuButton(menu, menuInitiallyOpen)
-        }
-    }
-    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
-    // large font: the label in its own line above the pill (on the pill's edge it covered "Orte oder …")
-    // the mode label (owner 2026-11-06: no "Nicht gespeichert" sign beside it any more – Zuletzt keeps every plan)
-    val labels = @Composable { m: Modifier ->
-        Row(m, verticalAlignment = Alignment.Top) { PlanModeLabel(editing, Modifier, offline, onOffline) }
-    }
-    if (PlanTopBand.largeLabel(fontScale)) {
-        Column(modifier.height(PlanTopBand.bottom(fontScale))) {
-            labels(Modifier.padding(start = PlanTopBand.LABEL_START, top = 6.dp))
-            row()
-        }
-        return
-    }
-    Box(modifier) {
-        row()
-        // Plan is blue (owner 2026-11-03, design §3 version 3): a small blue label on the pill's top edge – "PLANEN",
-        // during a tour "PLAN ÄNDERN"; the word helps in the sun and with colour blindness
-        labels(Modifier.align(Alignment.TopStart).padding(start = PlanTopBand.LABEL_START))
-    }
-}
-
-/**
  * "PLANEN" / "ROUTE ÄNDERN" in white on [OnPathColors.PlanAccent] (white 5.7:1), over the search pill's top edge. With a
  * route it also says whether it works without a network (owner 2026-11-03, comparison card 3): "PLANEN · Ohne Netz ✓"
  * (green), "⟳" (loading), "⚠" (amber: something missing, nothing loading) – a tap explains it ([OfflineReady.explain]).
@@ -238,26 +149,6 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
             OfflineReady.State.MISSING -> Icons.Filled.Warning to OnPathColors.OnPlanWarn
         }
         Icon(icon, null, tint = tint, modifier = Modifier.size(12.dp))
-    }
-}
-
-@Composable
-private fun SearchBarPill(onSearch: () -> Unit, modifier: Modifier) {
-    Surface(
-        onClick = onSearch,
-        modifier = modifier.height(56.dp).semantics { contentDescription = Txt.s(Res.string.plan_search_hint); role = Role.Button }
-            .floatShadow(CircleShape),
-        shape = CircleShape,
-        // sage on the sage band (owner 2026-11-12): the warm shadow and a fine line keep it reading as a field
-        color = OnPathColors.MapGround,
-        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Line),
-    ) {
-        Row(Modifier.padding(start = 16.dp, end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Icon(Icons.Outlined.Search, contentDescription = null, tint = OnPathColors.PlanAccent)
-            Spacer(Modifier.width(12.dp))
-            Text(str(Res.string.plan_search_hint), style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, modifier = Modifier.weight(1f))
-        }
     }
 }
 

@@ -250,7 +250,7 @@ Boxes (FRAGE, HINWEIS) always sit **12 dp under the top element** (`MessagePlace
 
 | Screen | Top element | Box top (below the status bar) |
 | --- | --- | --- |
-| Plan | the status bar – no top band since the Daumen-Karte (owner 2026-11-26; `TOP_BAR_BOTTOM` 0 dp) | 12 dp; the plan card is drawn over it, so it never covers the primary button |
+| Plan | the status bar – no top band since the Daumen-Karte (owner 2026-11-26) | 12 dp; the plan card is drawn over it, so it never covers the primary button |
 | Navigate | turn card / status card column (measured) | column height + 12 dp – the re-route and activity-switch questions too (moved from the bottom) |
 | My routes | title row + Planned / Done tabs (112 dp) | 124 dp, over the list |
 | Settings | title row (64 dp) | 76 dp, over the page |

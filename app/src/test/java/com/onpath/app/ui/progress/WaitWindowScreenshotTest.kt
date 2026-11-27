@@ -19,7 +19,6 @@ import com.android.resources.Density
 import com.onpath.app.domain.WaitSteps
 import com.onpath.app.recording.GpsStatus
 import com.onpath.app.routing.Activity
-import com.onpath.app.ui.ActivityMapButton
 import com.onpath.app.ui.CompassSpec
 import com.onpath.app.ui.FirstMapCard
 import com.onpath.app.ui.FirstMapCardView
@@ -35,14 +34,10 @@ import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.OverviewPillPlace
 import com.onpath.app.ui.PlanCallbacks
 import com.onpath.app.ui.PlanControlsLayer
-import com.onpath.app.ui.PlanMenu
 import com.onpath.app.ui.PlanPanel
 import com.onpath.app.ui.PlanSize
-import com.onpath.app.ui.PlanTopBand
-import com.onpath.app.ui.PlanTopBar
 import com.onpath.app.ui.PlanUi
 import com.onpath.app.ui.SheetWithFooter
-import com.onpath.app.ui.planTopBarDp
 import com.onpath.strings.*
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -100,9 +95,9 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
 
     /** The first map cannot load without network: the small card on the map (nothing to wait for). */
     @Test fun firstMapOffline() = shot(points = 0, dim = false) {
-        val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+        val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
         FirstMapCardView(FirstMapCard.Ui.Offline, Modifier.padding(top = (32 + OverviewPillPlace.topDp(rowTop, null)).dp,
-            start = OverviewPillPlace.startDp(activityButtonShown = true).dp, end = OverviewPillPlace.EDGE_DP.dp))
+            start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
     }
 
     private val routeUi: RouteWaitUi get() {
@@ -131,17 +126,13 @@ abstract class WaitWindowShots(private val locale: Locale, fontScale: Float) {
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
-                Box(Modifier.fillMaxWidth().background(PlanTopBand.Color).padding(top = 32.dp).height(planTopBarDp().dp))
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
-                    PlanTopBar({}, PlanMenu(onUpdates = {}), Modifier.fillMaxWidth())
-                    val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
-                    ActivityMapButton(Activity.HIKE, 2, {}, Modifier.padding(top = rowTop.dp, start = 12.dp))
                     val sheetHeight = androidx.compose.runtime.remember { androidx.compose.runtime.mutableIntStateOf(0) }
-                    PlanControlsLayer({ sheetHeight.intValue }, planTopBarDp().dp) {
+                    PlanControlsLayer({ sheetHeight.intValue }, 0.dp) {
                         MapControls(CompassSpec(null, 0f) {}, showEye = false, onPeek = {}, gps = GpsStatus.GOOD, following = true,
                             onLocate = {}, onFitRoute = null, plan = true)
                     }
-                    SheetWithFooter(planTopBarDp().dp, footer = { Column(Modifier.fillMaxWidth()) { MapFooter("500 m" to 64.dp) {} } },
+                    SheetWithFooter(0.dp, footer = { Column(Modifier.fillMaxWidth()) { MapFooter("500 m" to 64.dp) {} } },
                         sheet = { Column(Modifier.fillMaxWidth().onSizeChanged { sheetHeight.intValue = it.height }) {
                             PlanPanel(PlanUi(points, null, points >= 2, null, canUndo = points > 0, canRedo = false,
                                 activity = Activity.HIKE, size = PlanSize.COMPACT), PlanCallbacks())

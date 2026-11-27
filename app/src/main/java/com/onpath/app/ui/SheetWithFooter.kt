@@ -57,5 +57,3 @@ fun SheetWithFooter(
     }
 }
 
-/** Bottom of the Plan top bar (search pill + ☰: 8 + 56 + 8 dp) below the status bar, plus a small gap. */
-internal val TOP_BAR_BOTTOM = TOP_BAR_BOTTOM_DP.dp

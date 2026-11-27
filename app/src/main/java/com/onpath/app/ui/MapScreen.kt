@@ -42,8 +42,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.onSizeChanged
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
@@ -81,8 +79,6 @@ fun MapScreen(
     val navCover = remember { intArrayOf(0, 0) }
     /** Plan: size of the map button column (px, width + height) – a route fit keeps beside or above it (FitPaddingRule). */
     val planFab = remember { intArrayOf(0, 0) }
-    /** Plan: the activity button's right and bottom edge (px in the window; 0 = not laid out) – a fit keeps clear of it. */
-    val planActivity = remember { intArrayOf(0, 0) }
     /** The camera's per-frame values ([MapCameraState]): read only where they are drawn, never in this screen's body. */
     val cam = remember { MapCameraState() }
     var showActivity by remember { mutableStateOf(false) }
@@ -193,17 +189,13 @@ fun MapScreen(
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
-        val planTopBand = planTopBarDp()
         val fitPadding = {
             FitPaddingRule.of(vm.tourSession.mode, density.density, topInsetPx,
-                planTopDp = maxOf(if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else 0, planTopBand), sheetPx = panelHeightPx,
+                planTopDp = if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else 0, sheetPx = panelHeightPx,
                 navTopDp = navCover[0], navBottomDp = navCover[1], fabWidthPx = planFab[0],
                 // the column stands at a fixed place above the middle (onpath.private#43), not on the sheet: the fit keeps
                 // beside it; the old "above the column" room (fabHeightPx) no longer exists
-                fabHeightPx = 0,
-                // the activity button top left (hidden over a shown track): beside or below it, never a point under it
-                activityRightPx = if (vm.routesFlow.shown == null) planActivity[0] else 0,
-                activityBottomPx = if (vm.routesFlow.shown == null) planActivity[1] else 0)
+                fabHeightPx = 0)
         }
         MapSync(vm, controller, rec, location, fitPadding)
         // hike: keep-on + pocket logic; bike: Settings → "Screen while cycling", pocket after 5 s covered (ScreenPolicy,
@@ -219,8 +211,7 @@ fun MapScreen(
                 PlanMode(vm, rec, { footer(AppMode.PLAN) }, { controls(AppMode.PLAN) }, onStartNavigation, onRequestLocation, pairCamera,
                     // during a tour the same check-and-switch sheet as Navigate: Take new route / Keep
                     onActivity = { if (rec != null) vm.activityCheckSlice.openActivityCheck() else showActivity = true }, onEndTour = { vm.tourEnd.askEndTour() },
-                    onPanelHeight = { panelHeightPx = it },
-                    onActivityBox = { r, b -> planActivity[0] = r; planActivity[1] = b })
+                    onPanelHeight = { panelHeightPx = it })
             },
             navigate = { LiveSignLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
         )
@@ -230,7 +221,7 @@ fun MapScreen(
         // hints below the search bar go below the background-download strip while it shows
         // (measured height: a message box is taller than the progress chip)
         val hintTop = if (vm.mapData.backgroundStripShown && vm.tourSession.mode == AppMode.PLAN)
-            (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else planTopBarDp().dp
+            (vm.mapData.backgroundStripBottomDp + MessagePlacement.GAP_DP).coerceAtLeast(124).dp else 0.dp
         // A shared place is being looked up (link + address search take a moment): say so at once.
         val sharedLookup = rememberNoFlash(if (vm.searchFlow.sharedLookup) Unit else null, remember { NoFlash<Unit>() }) != null
         androidx.compose.animation.AnimatedVisibility(sharedLookup,
@@ -266,26 +257,26 @@ fun MapScreen(
         val firstCard = rememberNoFlash(firstCardTarget?.takeIf { !vm.searchFlow.searchOpen && !sharedLookup },
             remember { NoFlash<FirstMapCard.Ui>(stepKey = { it::class }) })
         if (firstCard != null) {
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
             FirstMapCardView(firstCard, Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                 top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                start = OverviewPillPlace.startDp(activityButtonShown = false).dp,
+                start = OverviewPillPlace.EDGE_DP.dp,
                 end = OverviewPillPlace.EDGE_DP.dp))
         }
         // not while the strip asks "Detailed map for here?" or the load question is open – they say the same.
         // On the activity button's row, beside it (OverviewPillPlace) – covers nothing (owner 2026-11-06).
         if (overviewOnly && firstCardTarget == null && firstCard == null && vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen && !sharedLookup &&
             vm.mapData.hereAsk == null && vm.mapData.loadAsk == null) {
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
             OverviewPill(onLoad = { OverviewHintRule.centre(cam.hintKey)?.let(vm.mapData::mapTapped) },
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = OverviewPillPlace.topDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = OverviewPillPlace.startDp(activityButtonShown = false).dp,
+                    start = OverviewPillPlace.EDGE_DP.dp,
                     end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan's only GPS words: a short neutral note after the user's own tap (owner 2026-11-06 23:35, PlanGps)
         vm.map.planGpsNote?.takeIf { vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen }?.let { note ->
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
             QuietPill(when (note) {
                     PlanGps.Note.SEARCHING -> str(Res.string.plan_searching_gps)
                     PlanGps.Note.TURN_NEEDS_POSITION -> str(Res.string.msg_no_position_turn)
@@ -294,17 +285,17 @@ fun MapScreen(
                 }, androidx.compose.material.icons.Icons.Outlined.LocationSearching,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = PlanGps.noteStartDp(activityButtonShown = false).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // A short INFO for the map (vm.say → NoticeSurface.MAP_LINE, e.g. "Relief off – the map runs smoother"): the quiet
-        // pill at the GPS note's place (PlanGps.noteTopDp / noteStartDp), after the GPS note (a tap of the user's) – goes
+        // pill at the GPS note's place (PlanGps.noteTopDp, at OverviewPillPlace.EDGE_DP), after the GPS note (a tap of the user's) – goes
         // by itself after MapNote.MS
         vm.notices.mapNote?.takeIf { vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen && vm.map.planGpsNote == null }?.let { note ->
-            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+            val rowTop = MessagePlacement.topDp(MessageScreen.PLAN)
             QuietPill(note.text, androidx.compose.material.icons.Icons.Outlined.Info,
                 Modifier.align(Alignment.TopStart).statusBarsPadding().padding(
                     top = PlanGps.noteTopDp(rowTop, if (vm.mapData.backgroundStripShown) vm.mapData.backgroundStripBottomDp else null).dp,
-                    start = PlanGps.noteStartDp(activityButtonShown = false).dp, end = OverviewPillPlace.EDGE_DP.dp))
+                    start = OverviewPillPlace.EDGE_DP.dp, end = OverviewPillPlace.EDGE_DP.dp))
         }
         // Plan: menu of a held POI / route point, following the map.
         MapOverlayHost(vm, controller, { cam.tick },
@@ -352,12 +343,11 @@ fun MapScreen(
 private fun PlanMode(
     vm: AppViewModel, rec: RecState?, footer: @Composable () -> Unit, controls: @Composable () -> Unit, onStartNavigation: () -> Unit,
     onRequestLocation: () -> Unit, pairCamera: (String) -> Unit, onActivity: () -> Unit, onEndTour: () -> Unit,
-    onPanelHeight: (Int) -> Unit, onActivityBox: (right: Int, bottom: Int) -> Unit = { _, _ -> },
+    onPanelHeight: (Int) -> Unit,
 ) {
     val helpContext = androidx.compose.ui.platform.LocalContext.current
     Box(Modifier.fillMaxSize()) {
         // no top band any more (Daumen-Karte, owner 2026-11-26): search, ☰ and the activity are in the card at the bottom
-        val topBar = planTopBarDp()
         val menu = PlanMenu(
                 state = vm.routesGo.menuState(recording = rec != null),
                 onManage = { vm.routesGo.openRoutes() },
@@ -400,7 +390,7 @@ private fun PlanMode(
         // read by MapScreen would recompose the whole screen per frame and the sheet stutters).
         val sheetHeight = remember { mutableIntStateOf(0) }
         val density = LocalDensity.current
-        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() } + topBar.dp
+        val topLimit = with(density) { WindowInsets.statusBars.getTop(density).toDp() }
         // the map controls at their fixed place (owner 2026-11-06, onpath.private#43) – under the boxes and the sheet;
         // the sheet's height is read while placing only (no recomposition while it moves)
         PlanControlsLayer({ sheetHeight.intValue }, topLimit, Modifier.modeEdge(ModeEdge.BOTTOM), controls)
@@ -526,7 +516,7 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     // the bottom below the status bar: top + measured height (hints under the search bar go below it)
     fun Modifier.measured(topDp: Int) =
         onSizeChanged { vm.mapData.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
-    val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
+    val top = MessagePlacement.topDp(MessageScreen.PLAN)
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.mapData.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()

@@ -15,7 +15,7 @@ class MessagePlacementTest {
 
     @Test fun twelveDpUnderTheTopElement() {
         assertEquals(12, MessagePlacement.GAP_DP)
-        assertEquals(TOP_BAR_BOTTOM.value.toInt() + 12, MessagePlacement.topDp(MessageScreen.PLAN))
+        assertEquals(12, MessagePlacement.topDp(MessageScreen.PLAN))
         assertEquals(MessagePlacement.ROUTES_HEADER_DP + 12, MessagePlacement.topDp(MessageScreen.ROUTES))
         assertEquals(MessagePlacement.SETTINGS_HEADER_DP + 12, MessagePlacement.topDp(MessageScreen.SETTINGS))
         for (h in listOf(0, 8, 120, 260, 600)) assertEquals(h + 12, MessagePlacement.topDp(MessageScreen.NAVIGATE, h))
