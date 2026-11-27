@@ -84,6 +84,7 @@ body { font-family: Manrope, system-ui, sans-serif; color: var(--fg); background
 .btn svg { flex: none; width: 18px; height: 18px; }
 .btn span { overflow: hidden; text-overflow: ellipsis; }
 .btn:active { background: var(--sage); }
+.btn .out { display: flex; flex: none; opacity: .7; } .btn .out[hidden] { display: none; } .btn .out svg { width: 15px; height: 15px; }
 
 #foot { margin-top: 12px; text-align: center; font-size: 12px; color: var(--muted); }
 
@@ -107,6 +108,7 @@ body[data-dead="1"] #title { font-size: 14px; color: var(--muted); margin-bottom
     color: var(--fg); text-decoration: none; font-size: 20px; font-weight: 700; letter-spacing: -.03em; }
   .brand svg { flex: none; width: 30px; height: 30px; }
   #title { font-size: 22px; }
+  .acts { flex-direction: column; } .acts .btn { flex: none; } /* one under the other: „In Karten öffnen ↗“ in full */
   #foot { margin-top: auto; padding-top: 16px; }
   /* stopped / broken link: the sentence in the middle of the whole window, the logo stays */
   body[data-dead="1"] #sheet { flex: 1 1 auto; justify-content: center; }

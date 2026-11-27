@@ -28,6 +28,8 @@ const ICON = {
 };
 /** The OnPath mark (onpath.earth's assets/brand.svg, the app icon on its green square): only in the browser layout, top right. */
 const BRAND = '<svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="24" fill="#1F6E43"/><path fill="#fff" d="M28 74 46 44 56 58 64 48 80 74Z"/><path fill="none" stroke="#FFC94D" stroke-width="4" stroke-linecap="round" d="M34 80C46 72 52 82 62 74S76 70 78 66"/></svg>';
+/** Material open_in_new, as the planner's rows that leave the page (icons.ts openInNew). */
+const OUT = '<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M19 19H5V5h7V3H5c-1.11 0-2 .9-2 2v14c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2v-7h-2v7zM14 3v2h3.59l-9.83 9.83 1.41 1.41L19 6.41V10h2V3h-7z"/></svg>';
 const root = document.getElementById('live')!;
 root.innerHTML = `
   <div id="mapbox"><div id="map"></div><div id="mapWait" class="mapwait"></div><button id="toPos" class="topos" hidden></button>
@@ -44,7 +46,7 @@ root.innerHTML = `
       <div id="place" class="li" hidden><span class="ic pin">${ICON.pin}</span><span id="placeLabel" class="lbl"></span>
         <span class="val"><span id="placeText"></span><span id="coords" class="sub"></span></span></div>
     </div>
-    <div id="acts" class="acts" hidden><button id="copy" class="btn">${ICON.copy}<span id="copyText"></span></button><a id="geo" class="btn">${ICON.map}<span id="geoText"></span></a></div>
+    <div id="acts" class="acts" hidden><button id="copy" class="btn">${ICON.copy}<span id="copyText"></span></button><a id="geo" class="btn">${ICON.map}<span id="geoText"></span><i id="geoOut" class="out" hidden>${OUT}</i></a></div>
     <footer id="foot"></footer>
   </section>`;
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -186,10 +188,24 @@ function render() {
     const coords = `${h.fix.lat.toFixed(5)}, ${h.fix.lon.toFixed(5)}`;
     $('coords').textContent = oldFix(s) ? t('web_live_place_from', clock(h.fix.time), coords) : coords;
     place.dataset.coords = coords;
-    ($('geo') as HTMLAnchorElement).href = `geo:${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}?q=${h.fix.lat.toFixed(5)},${h.fix.lon.toFixed(5)}`;
+    setMapsLink(h.fix.lat.toFixed(5), h.fix.lon.toFixed(5));
   } else { $('coords').textContent = ''; delete place.dataset.coords; }
   map?.show(s.route, s.chunks, h.fix, line.key === 'ended' ? 'ended' : line.key === 'no_contact' ? 'quiet' : 'live');
 }
+
+/**
+ * „In Karten öffnen“: on a phone the geo: link (the phone's own map app); at a computer (no touch, the browser layout –
+ * a desktop browser has no geo: handler and the button did nothing) OpenStreetMap at the place in a new tab, with the
+ * planner's „leaves the page“ sign (captain 2026-11-27: no Google).
+ */
+const desktop = matchMedia('(pointer: fine) and (min-width: 900px)');
+function setMapsLink(lat: string, lon: string) {
+  const a = $<HTMLAnchorElement>('geo'), web = desktop.matches;
+  a.href = web ? `https://www.openstreetmap.org/?mlat=${lat}&mlon=${lon}#map=15/${lat}/${lon}` : `geo:${lat},${lon}?q=${lat},${lon}`;
+  if (web) { a.target = '_blank'; a.rel = 'noopener'; } else { a.removeAttribute('target'); a.removeAttribute('rel'); }
+  $('geoOut').hidden = !web;
+}
+desktop.addEventListener('change', () => render());
 
 $('copy').addEventListener('click', async () => {
   const c = $('place').dataset.coords ?? '';
