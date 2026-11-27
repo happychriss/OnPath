@@ -521,22 +521,22 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
     val firstCard by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
     val pill = notice?.takeIf { message == null && !vm.searchFlow.searchOpen && mapNoticeKind(it) == null && firstCard == null && !vm.mapData.loadWindowShown }
     val chipOn = bg != null && !vm.searchFlow.searchOpen && message == null && notice == null && firstCard == null
-    LaunchedEffect(chipOn, message != null, pill != null) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null }
+    val recOn = RecordingPillRule.shows(rec != null, message != null, pill != null, vm.searchFlow.searchOpen, firstCard != null, vm.mapData.loadWindowShown)
+    LaunchedEffect(chipOn, message != null, pill != null, recOn) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null || recOn }
     val density = LocalDensity.current
-    // the bottom below the status bar: top + measured height (hints under the search bar go below it)
-    fun Modifier.measured(topDp: Int) =
+    fun Modifier.measured(topDp: Int) = // the bottom below the status bar: top + measured height (hints under the search bar go below it)
         onSizeChanged { vm.mapData.backgroundStripBottomDp = topDp + with(density) { it.height.toDp().value.toInt() } }
     val top = MessagePlacement.topDp(MessageScreen.PLAN, planTopDp = planTopBarDp())
     MessageSlot(message, top, Modifier.modeEdge(ModeEdge.TOP), onBottomDp = { vm.mapData.backgroundStripBottomDp = it })
     if (pill != null) {
         MapNoticePill(pill, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding()
             .padding(top = top.dp, start = 16.dp, end = 16.dp).measured(top))
-    } else if (chipOn) {
-        // top left, 12 dp under the status bar (Daumen-Karte, owner 2026-11-26: the place under ☰ is gone)
+    } else if (chipOn) { // top left, 12 dp under the status bar (Daumen-Karte, owner 2026-11-26: the place under ☰ is gone)
         BackgroundDownloadChip(bg!!, onClick = { vm.mapData.downloadDetailsOpen = true },
             modifier = Modifier.align(Alignment.TopStart).modeEdge(ModeEdge.TOP).statusBarsPadding()
                 .padding(top = MessagePlacement.CHIP_TOP_DP.dp, start = 12.dp).measured(MessagePlacement.CHIP_TOP_DP))
     }
+    if (recOn) RecordingPill(rec!!.paused, Modifier.align(Alignment.TopCenter).modeEdge(ModeEdge.TOP).statusBarsPadding().padding(top = top.dp, start = 64.dp, end = 64.dp).measured(top))
     BackgroundDownloadDetails(vm, bg)
 }
 
