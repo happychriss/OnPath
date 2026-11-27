@@ -549,7 +549,7 @@ class TourEndFlowTest {
         val s = atSend.single()
         assertEquals("STOP", s.action)
         assertFalse(s.routeBack)
-        assertEquals(PlanSize.COMPACT, s.size)
+        assertEquals("the summary step, no profile (owner 2026-11-27)", PlanSize.ON_ARRIVAL, s.size)
         assertEquals(1, client.sent.size)
     }
 
