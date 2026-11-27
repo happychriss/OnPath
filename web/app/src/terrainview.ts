@@ -113,8 +113,34 @@ export class RouteProfile {
     }
     // a labelled button in the row above the drawing, beside the heights – never on top of the graph (owner review
     // 2026-11-05); the ⤢ alone was not seen (owner 2026-11-06): „⤢ Großes Profil“, and a click on the small profile opens it too
+    this.mountSmall();
+    if (this.open) this.drawBig();
+    else if (this.pinnedOn && !this.hiddenByUser) this.setOpen(true, true);
+  }
+
+  /**
+   * The sheet's small profile: the whole route, or only the open day [dayR] (a multi-day tour, owner's sketch 2026-11-27 –
+   * „Höhenprofil · Tag 1“ 0 … 90 km): the day's part cut out, its distances from 0; the cursor and the map dot keep the
+   * route's metres. The big profile stays the whole route (the day marked there).
+   */
+  private mountSmall() {
+    const p = this.profile;
+    if (!p || p.dist.length < 2) return;
     const big = `<button class="profbig" id="profileBig" title="${escapeHtml(t('web_profile_big'))}" aria-pressed="${this.open}"><svg class="ic" width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11V3h-8l3.29 3.29-10 10L3 13v8h8l-3.29-3.29 10-10z"/></svg><span></span></button>`;
-    this.small = mountProfile(this.sheetHost, p, (m) => this.cursor(m, 'small'), undefined, big);
+    const r = this.dayR;
+    let shown: Profile = p, from = 0;
+    if (r) {
+      const idx: number[] = [];
+      for (let i = 0; i < p.dist.length; i++) if (p.dist[i] >= r[0] - 1 && p.dist[i] <= r[1] + 1) idx.push(i);
+      if (idx.length >= 2) {
+        from = p.dist[idx[0]];
+        shown = { dist: idx.map((i) => p.dist[i] - from), ele: idx.map((i) => p.ele[i]), steep: idx.map((i) => p.steep[i] ?? 0) };
+      }
+    }
+    if (shown === p) this.sheetHost.removeAttribute('data-day'); else this.sheetHost.dataset.day = '1';
+    const view = mountProfile(this.sheetHost, shown, (m) => this.cursor(m == null ? null : m + from, 'small'), undefined, big);
+    // a day's own profile: the route's metres in, its own out; no shade (the whole profile is the day)
+    this.small = shown === p ? view : { show: (m) => view.show(m == null ? null : m - from), range: () => {} };
     this.sheetHost.querySelector<HTMLButtonElement>('#profileBig')!.onclick = () => {
       if (!this.open) this.setHidden(false);
       this.setOpen(!this.open, false, true);
@@ -123,9 +149,17 @@ export class RouteProfile {
     plot.classList.add('opens'); plot.title = t('web_profile_big_title');
     plot.addEventListener('click', () => { if (!this.open) { this.setHidden(false); this.setOpen(true); } });
     this.bigButton();
-    if (this.open) this.drawBig();
-    else if (this.pinnedOn && !this.hiddenByUser) this.setOpen(true, true);
   }
+
+  /** Only the range [r] metres in the sheet's small profile (an open day), or the whole route again (null). */
+  dayProfile(r: [number, number] | null) {
+    const same = (this.dayR == null && r == null) || (!!this.dayR && !!r && this.dayR[0] === r[0] && this.dayR[1] === r[1]);
+    this.dayR = r;
+    if (same && this.small) return;
+    this.mountSmall();
+    if (!r && this.marked) this.small?.range(this.marked);
+  }
+  private dayR: [number, number] | null = null;
 
   /** Pinned (wide) or not (phone): pinned opens the big profile whenever a plan has heights. */
   set pinned(on: boolean) {

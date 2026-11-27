@@ -67,6 +67,14 @@ export interface DaysHost {
   openMenu(at: maplibregl.LngLat, items: MenuItem[], head: string): void;
   /** „Als Stopp“ at a spot on the route – the page's normal add. */
   addPoint(at: maplibregl.LngLat): void;
+  /** The plan's save state for the panel's head: never saved / saved / changed since; Save possible. */
+  saveState(): { everSaved: boolean; unsaved: boolean; canSave: boolean };
+  /** The header's Save (the same path, its name dialog the first time). */
+  save(): void;
+  /** „672,4 km · 35 h 05 · ↑ 1.808 m · ↓ 1.321 m“ of the whole plan, or null without a route. */
+  wholeTrip(): string | null;
+  /** The sheet's small profile: only the range [r] metres (an open day), or the whole route (null). */
+  dayProfile(r: [number, number] | null): void;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -103,11 +111,21 @@ export class MultiDay {
   private selected: number | null = null;
   private box: HTMLElement;
   private guide: HTMLElement;
+  /** The panel's head with a tour (owner's sketch 2026-11-27): title + Speichern, the save state, „Gesamte Reise“. */
+  private head0: HTMLElement;
+  /** „Höhenprofil · gesamte Reise“ / „Höhenprofil · Tag N“ over the sheet's profile. */
+  private profTitle: HTMLElement;
 
   constructor(private h: DaysHost, private sheet: HTMLElement) {
     this.box = document.createElement('div');
     this.box.id = 'tourOverview'; this.box.className = 'touroverview'; this.box.hidden = true;
     (sheet.querySelector('#savedLine') ?? sheet.firstElementChild)!.after(this.box);
+    this.head0 = document.createElement('div');
+    this.head0.id = 'tourHead'; this.head0.className = 'tourhead'; this.head0.hidden = true;
+    (sheet.querySelector('.sheethead') ?? this.box).before(this.head0);
+    this.profTitle = document.createElement('div');
+    this.profTitle.id = 'profTitle'; this.profTitle.className = 'proftitle'; this.profTitle.hidden = true;
+    sheet.querySelector('#profile')?.before(this.profTitle);
     this.guide = document.createElement('div');
     this.guide.id = 'tourGuide'; this.guide.className = 'tourguide'; this.guide.hidden = true;
     (sheet.querySelector('#handle') ?? sheet.firstElementChild)?.after(this.guide); // under the grab handle
@@ -284,21 +302,22 @@ export class MultiDay {
   private overview() {
     const v = this.view, tour = this.h.tour();
     this.box.hidden = !v || !tour;
+    this.layout(!!(v && tour));
     if (!v || !tour) { if (!tour && this.selected != null) this.select(null); this.pointsForDay(); return; }
+    this.renderHead();
+    this.profileHead(this.selected != null ? v.rows[this.selected - 1] ?? null : null);
     if (this.selected != null && this.selected > v.rows.length) this.select(null);
     // the tour's settings as chips under its name (owner 2026-11-27, variant 2 – replacing the − N Tage + stepper and the
     // grey limits line): each chip opens the days box at its field; no limit set → a dashed „+ Tageslimit“
     const lim = tour.limits ?? { timeMin: null, ascentM: null };
     const num = (x: number) => x.toLocaleString(locale, { maximumFractionDigits: 1 });
     const chip = (id: string, text: string, cls = '') => `<button class="tochip${cls}" id="${id}">${text}</button>`;
-    this.box.innerHTML = `<div class="tohead"><button class="toname" id="toName" title="${esc(t('days_box_title'))}">${esc(this.h.title() || t('days_multi_day_tour'))}</button></div>
-      <div class="tochips">${chip('toDays', `${esc(v.countText)} ${icon('edit', 14)}`)}${
+    this.box.innerHTML = `<div class="tochips"><span class="tolabel">${esc(t('web_days_planning'))}</span>${chip('toDays', `${esc(v.countText)} ${icon('edit', 14)}`)}${
         lim.timeMin ? chip('toHours', esc(t('web_days_chip_hours', num(lim.timeMin / 60)))) : ''}${
         lim.ascentM ? chip('toAscent', esc(t('web_days_chip_ascent', num(lim.ascentM)))) : ''}${
         !lim.timeMin && !lim.ascentM ? chip('toLimit', esc(t('web_days_chip_add_limit')), ' add') : ''}</div>
       ${this.selected != null && v.rows[this.selected - 1] ? this.dayHtml(v, v.rows[this.selected - 1]) : this.tableHtml(v)}`;
     const b = (id: string) => this.box.querySelector<HTMLButtonElement>('#' + id);
-    b('toName')!.onclick = () => { void this.daysBox(); };
     b('toDays')!.onclick = () => { void this.daysBox('days'); };
     for (const [id, f] of [['toHours', 'hours'], ['toAscent', 'ascent'], ['toLimit', 'hours']] as const) {
       const c = b(id); if (c) c.onclick = () => { void this.daysBox(f); };
@@ -332,6 +351,53 @@ export class MultiDay {
   }
 
   /**
+   * The panel with a tour (owner's sketch 2026-11-27, „Alle Tage“ / „Einzeltag“): the head (title + Speichern, save
+   * state, „Gesamte Reise“) on top, then activity · Teilen · Umkehren in one row, „Planung“ + chips, the table or the
+   * open day with its points right under it, then the warnings, „Höhenprofil · …“ and the way types. Without a tour the
+   * sheet is as before (its summary, the Umkehren / Rundtour row, the saved line).
+   */
+  private layout(on: boolean) {
+    if (document.body.classList.contains('tourpanel') === on) return;
+    document.body.classList.toggle('tourpanel', on);
+    this.head0.hidden = !on;
+    const rev = document.getElementById('reverse'), share = document.getElementById('share');
+    const actions = document.getElementById('planActions'), pts = document.getElementById('pointsSection');
+    const prof = document.getElementById('profile');
+    if (on) {
+      if (rev && share) share.after(rev);
+      if (pts) this.box.after(pts);
+    } else {
+      if (rev && actions) actions.prepend(rev);
+      if (pts && prof) this.profTitle.before(pts);
+      this.profTitle.hidden = true;
+      this.h.dayProfile(null);
+    }
+  }
+
+  /** „Höhenprofil · gesamte Reise“ / „Höhenprofil · Tag N“ and the sheet's profile: the whole trip or the open day only. */
+  private profileHead(r: DaysView['rows'][number] | null) {
+    const tourOn = document.body.classList.contains('tourpanel');
+    this.profTitle.hidden = !tourOn;
+    if (!tourOn) return;
+    this.profTitle.textContent = r ? t('web_profile_day', r.day) : t('web_profile_whole_trip');
+    this.h.dayProfile(r ? [r.fromM, r.toM] : null);
+  }
+
+  /** The head's save state and numbers again (main.ts after every Save / change: renderSaved). */
+  renderHead() {
+    if (this.head0.hidden) return;
+    const st = this.h.saveState();
+    const state = !st.everSaved ? t('web_days_not_saved') : st.unsaved ? t('web_days_changed') : t('web_saved_short');
+    const whole = this.h.wholeTrip();
+    this.head0.innerHTML = `<div class="thtop"><button class="toname" id="toName" title="${esc(t('days_box_title'))}">${esc(this.h.title() || t('days_multi_day_tour'))}</button>
+        <button class="tosave" id="toSave" ${st.canSave ? '' : 'disabled'}>${icon('save', 18)}<span>${esc(t('common_save'))}</span></button></div>
+      <div class="thstate muted small" id="toState">${esc(state)}</div>
+      ${whole ? `<div class="thwhole"><b>${esc(t('web_days_whole_trip'))}</b><span>${esc(whole)}</span></div>` : ''}`;
+    this.head0.querySelector<HTMLButtonElement>('#toName')!.onclick = () => { void this.daysBox(); };
+    this.head0.querySelector<HTMLButtonElement>('#toSave')!.onclick = () => this.h.save();
+  }
+
+  /**
    * The table of days (owner 2026-11-27, `docs/design/img/profilauswahl/mehrtage-tabelle.png`): per day „Tag N“ with the
    * grey „von → nach“ under it, then km · Σ km · ↑ m · time in aligned columns (units behind the numbers), the night's
    * symbol and ›; a day over its limits in warn yellow with only the exceeded values bold; a total row. No points here.
@@ -357,7 +423,7 @@ export class MultiDay {
         <span class="dvpos">${r.n} / ${n}</span>
         <button class="iconbtn" id="toNext" ${r.n >= n ? 'disabled' : ''} aria-label="${esc(t('multiday_day_n', Math.min(n, r.n + 1)))}">${icon('chevronRight', 20)}</button></span></div>
       <div class="dayview" data-day="${r.n}"><b class="dvtitle">${esc(r.day)}</b>${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}
-        <div class="dvstats"><b>${esc(r.km)}</b><span>${esc(r.up)} ${esc(r.down)}</span></div>
+        <div class="dvstats"><b>${esc(r.km)} · ${esc(r.time)}</b><span class="dvsep"></span><span>${esc(r.up)} · ${esc(r.down)}</span></div>
         ${r.overLine ? `<div class="dvover" id="toOver">${icon('clock', 16)}<span>${esc(r.time)} · ${esc(r.overLine)}</span></div>` : ''}
         <button class="dvadd" id="toAdd">${icon('search', 18)}<span>${esc(t('days_add_to_day', r.n))}</span></button></div>`;
   }
@@ -406,6 +472,9 @@ export class MultiDay {
     this.selected = n;
     const r = n != null ? this.view?.rows[n - 1] : null;
     this.h.markRange(r ? [r.fromM, r.toM] : null);
+    // the sheet's profile: the whole trip with the day borders, an open day only its own part (owner's sketch 2026-11-27)
+    const tourOn = document.body.classList.contains('tourpanel');
+    this.profileHead(r ?? null);
     this.box.querySelectorAll<HTMLButtonElement>('.today').forEach((row) => {
       const on = Number(row.dataset.day) === n; row.classList.toggle('sel', on); row.setAttribute('aria-pressed', String(on));
     });
@@ -490,7 +559,9 @@ export class MultiDay {
     const v = this.view, prof = this.h.routedPlan()?.profile;
     const total = prof && prof.dist.length ? prof.dist[prof.dist.length - 1] : 0;
     for (const plot of document.querySelectorAll<HTMLElement>('#profile .profplot, #bigProfile .profplot')) {
-      const want = v && this.h.tour() && total > 0 ? v.ends.map((e) => `${((e.alongM / total) * 100).toFixed(2)}`).join(',') : '';
+      // a day's own profile (0 … its km) has no other days' borders
+      const dayOnly = !!plot.closest('#profile[data-day]');
+      const want = !dayOnly && v && this.h.tour() && total > 0 ? v.ends.map((e) => `${((e.alongM / total) * 100).toFixed(2)}`).join(',') : '';
       if ((plot.dataset.days ?? '') === want) continue;
       plot.dataset.days = want;
       plot.querySelectorAll('.dayborder').forEach((x) => x.remove());

@@ -129,3 +129,28 @@ dialog.hoteldlg .hotelres button:hover { background: var(--paper-deep); }
 /* the small step (sheetstep.ts) shows the facts only – the overview comes with the full sheet, like the Points list */
 #sheet[data-step="small"] > #tourOverview { display: none; }
 .tourguide .tgway .small { white-space: normal; }
+
+/* the panel with a tour (owner's sketch 2026-11-27, „Alle Tage“ / „Einzeltag“): the head on top (title + Speichern, the save
+   state, „Gesamte Reise“), activity · Teilen · Umkehren in one row, „Planung“ before the chips; the plain plan's summary,
+   Umkehren / Rundtour row and saved line step back */
+body.tourpanel #sheet > #summary, body.tourpanel #sheet > #savedLine, body.tourpanel #sheet > #planActions { display: none; }
+.tourhead { display: flex; flex-direction: column; gap: 2px; padding: 2px 0 6px; }
+.tourhead .thtop { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.tourhead .toname { font: inherit; font-size: 20px; font-weight: 700; background: none; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer;
+  min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tourhead .tosave { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 36px; padding: 0 10px; border: none; border-radius: 18px;
+  background: none; color: var(--plan); font: inherit; font-weight: 600; cursor: pointer; }
+.tourhead .tosave svg { fill: currentColor; }
+.tourhead .tosave:hover:not(:disabled) { background: var(--plan-light); }
+.tourhead .tosave:disabled { color: var(--muted); cursor: default; }
+.tourhead .thwhole { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 16px; margin-top: 6px; font-variant-numeric: tabular-nums; }
+body.tourpanel #sheet .sheethead { grid-template-columns: auto 1fr auto auto auto; }
+body.tourpanel #sheet .sheethead > #share { grid-column: 3; }
+body.tourpanel #sheet .sheethead > #reverse { grid-column: 4; margin-left: 4px; }
+body.tourpanel #sheet .sheethead > #sheetStep { grid-column: 5; }
+/* the phone's small step: the facts only (as the plain plan's summary) – no title row, no save state */
+#sheet[data-step="small"] > #tourHead .thtop, #sheet[data-step="small"] > #tourHead .thstate, #sheet[data-step="small"] > #profTitle { display: none; }
+.touroverview .tochips { align-items: center; }
+.touroverview .tolabel { font-weight: 700; margin-right: 4px; }
+.touroverview .dvstats .dvsep { align-self: stretch; width: 1px; background: var(--line); }
+.proftitle { font-weight: 700; margin: 10px 0 2px; }

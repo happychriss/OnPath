@@ -139,6 +139,26 @@ async function run(lang, viewport, shotPrefix) {
   const total = await page.$eval('#tourOverview .todtotal', (r) => [...r.children].map((c) => c.textContent.trim()).filter(Boolean).join(' ')).catch(() => '');
   check(new RegExp(`^${lang === 'de' ? 'Gesamt' : 'Total'} [\\d.,]+ km ↑ [\\d.,]+ m`).test(total), `a total row (${total})`);
   check(await page.$eval('#pointsSection', (s) => getComputedStyle(s).display === 'none'), 'the table shows no points (the Points list steps back)');
+  // the panel with a tour (owner's sketch 2026-11-27): head with title + Speichern + save state, „Gesamte Reise“, Umkehren in
+  // the activity row, „Planung“ before the chips, „Höhenprofil · gesamte Reise“ with the day borders
+  const panel = await page.evaluate(() => {
+    const vis = (el) => !!el && getComputedStyle(el).display !== 'none' && !el.hidden;
+    return { head: vis(document.getElementById('tourHead')), save: document.getElementById('toSave')?.textContent.trim() ?? '',
+      state: document.getElementById('toState')?.textContent.trim() ?? '', whole: document.querySelector('#tourHead .thwhole')?.textContent.trim() ?? '',
+      summary: vis(document.getElementById('summary')), revInHead: !!document.querySelector('.sheethead #reverse'),
+      loop: vis(document.getElementById('roundTrip')), label: document.querySelector('.tochips .tolabel')?.textContent ?? '',
+      prof: document.getElementById('profTitle')?.textContent ?? '', profShown: vis(document.getElementById('profTitle')),
+      borders: document.querySelectorAll('#profile .dayborder').length,
+      order: [...document.getElementById('sheet').children].filter(vis).map((e) => e.id || e.className).join(' > ') };
+  });
+  console.log('panel:', JSON.stringify(panel));
+  const de = lang === 'de';
+  check(panel.head && panel.save === (de ? 'Speichern' : 'Save') && /^(Nicht gespeichert|Gespeichert|Geändert · nicht gespeichert|Not saved|Saved|Changed · not saved)$/.test(panel.state)
+    && new RegExp(`^${de ? 'Gesamte Reise' : 'Whole trip'}[\\d.,]+ k?m · .+ · ↑ [\\d.,]+ m · ↓ [\\d.,]+ m$`).test(panel.whole) && !panel.summary,
+    `the panel's head: title + Speichern, the save state, „Gesamte Reise“ (${panel.state} / ${panel.whole})`);
+  check(panel.revInHead && !panel.loop && panel.label === (de ? 'Planung' : 'Planning'), 'Umkehren in the activity row, no Rundtour, „Planung“ before the chips');
+  check(panel.profShown && panel.prof === (de ? 'Höhenprofil · gesamte Reise' : 'Elevation profile · whole trip') && panel.borders >= 1,
+    `„Höhenprofil · gesamte Reise“ with the day borders (${panel.prof}, ${panel.borders})`);
   const overRows = await page.$$eval('#tourOverview .today.over', (rs) => rs.map((r) => r.querySelectorAll('.cu.over, .ct.over').length));
   check(overRows.every((n) => n >= 1), `a day over its limits: only the exceeded values marked (${JSON.stringify(overRows)})`);
   check(rowsNow.every((r) => r.lines <= 2 && (r.places == null || (/ – /.test(r.places) && !/\bkm \d|^(Start|Ziel|Destination) –|– (Start|Ziel|Destination)$/.test(r.places)))),
@@ -273,6 +293,13 @@ async function run(lang, viewport, shotPrefix) {
   check(dv.all >= 40 && dv.pos.replace(/\s/g, '') === '2/3' && new RegExp(lang === 'de' ? 'Ort zu Tag 2 hinzufügen' : 'day 2').test(dv.add),
     `the day view: a large „‹ ${lang === 'de' ? 'Alle Tage' : 'All days'}“, ‹ 2/3 ›, „add a place to day 2“ (${JSON.stringify(dv)})`);
   check(dv.list && dv.shown >= 1 && dv.shown <= dv.pts, `the day's own points in the list (${dv.shown} of ${dv.pts})`);
+  const dprof = await page.evaluate(() => ({ title: document.getElementById('profTitle')?.textContent ?? '', day: !!document.querySelector('#profile[data-day]'),
+    axis: document.querySelector('#profile .axis span:last-child')?.textContent ?? '', borders: document.querySelectorAll('#profile .dayborder').length,
+    km: document.querySelector('#tourOverview .dvstats b')?.textContent ?? '' }));
+  const kmOf = (x) => { const m = x.match(/([\d.,]+)\s*(k?m)/); return m ? parseFloat(m[1].replace(',', '.')) / (m[2] === 'm' ? 1000 : 1) : NaN; };
+  const dayKm = kmOf(dprof.km), axisKm = kmOf(dprof.axis);
+  check(dprof.title === (lang === 'de' ? 'Höhenprofil · Tag 2' : 'Elevation profile · Day 2') && dprof.day && dprof.borders === 0 && Math.abs(dayKm - axisKm) <= 0.15,
+    `„Höhenprofil · Tag 2“: only that day's profile, 0 … its km (${JSON.stringify(dprof)})`);
   await shot('3e-day-view');
   await page.click('#toNext'); await page.waitForTimeout(200);
   check(await page.locator('#tourOverview .dayview[data-day="3"]').count() === 1, '› goes to day 3');
@@ -285,7 +312,8 @@ async function run(lang, viewport, shotPrefix) {
   await page.keyboard.press('Space');
   await page.waitForTimeout(300);
   const kept = await page.evaluate(() => ({ sel: document.querySelectorAll('#tourOverview .dayview').length,
-    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
+    // the day in the profile: the sheet's profile is the day's own (owner's sketch 2026-11-27) or the big one shades it
+    shade: !!document.querySelector('#profile[data-day]') || [...document.querySelectorAll('.profrange')].some((d) => !d.hidden && d.style.width && d.style.width !== '0.00%'),
     rest: window.__map.getPaintProperty('planned-route', 'line-opacity') }));
   check(kept.sel === 1 && kept.shade && kept.rest === 0.35, `after the space bar the day stays marked on the map and in the profile (${JSON.stringify(kept)})`);
   // Space held = the eye: the path under the route shows, the day's mark leaves the map but stays in the profile
@@ -293,7 +321,7 @@ async function run(lang, viewport, shotPrefix) {
   await page.waitForTimeout(200);
   const peek = await page.evaluate(() => ({ range: window.__map.getLayoutProperty('profile-range', 'visibility'),
     route: window.__map.getLayoutProperty('planned-route', 'visibility'),
-    shade: [...document.querySelectorAll('.profrange')].some((d) => !d.hidden) }));
+    shade: !!document.querySelector('#profile[data-day]') || [...document.querySelectorAll('.profrange')].some((d) => !d.hidden) }));
   await page.keyboard.up(' ');
   await page.waitForTimeout(200);
   const peekBack = await page.evaluate(() => window.__map.getLayoutProperty("profile-range", "visibility"));

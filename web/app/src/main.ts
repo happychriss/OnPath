@@ -2331,6 +2331,7 @@ const km = (m: number, _total: number) => (m >= 1000 ? `${number(m / 1000, 1)} k
  */
 function saveEntry(st: 'empty' | 'save' | 'saved') {
   saveState = st;
+  queueMicrotask(() => multiDay?.renderHead()); // the tour panel's „Geändert · nicht gespeichert“ / „Gespeichert“
   const b = $<HTMLButtonElement>('menuSavePlan');
   const s = syncRef?.status;
   const paired = !!s?.paired, waiting = paired && s!.pending > 0;
@@ -3201,6 +3202,17 @@ multiDay = new MultiDay({
   fitPadding,
   openMenu,
   addPoint: (at) => { void addPoint(at); },
+  saveState: () => ({ everSaved: !!state.savedId, unsaved: planUnsaved || !state.savedId,
+    canSave: !$<HTMLButtonElement>('menuSavePlan').disabled && saveState !== 'saved' }),
+  save: () => { headerSave(); },
+  wholeTrip: () => {
+    const p = state.points.length >= 2 ? state.plan : null;
+    if (!p) return null;
+    // „672,4 km · 35 h 05 · ↑ 1.808 m · ↓ 1.321 m“: the app's Format texts of the whole plan (the sketch's row)
+    const updown = p.texts.climb.split('·')[0].trim().replace(/\s+(↓)/, ' · $1');
+    return `${p.texts.distance} · ${p.texts.time} · ${updown}`;
+  },
+  dayProfile: (r) => routeProfile.dayProfile(r),
 }, $('sheet'));
 render();
 (window as unknown as { __planStats: unknown }).__planStats = { keepStats, planKey, trackKey, keepShape, statsText }; // for the browser tests (sort-smoke, routes-smoke)
