@@ -4,8 +4,6 @@ import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
 import com.onpath.app.routing.Activity
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -50,18 +48,8 @@ class ActivityPicker360Test : ActivityPickerSizes(widthDp411 = false, font = 1.0
 }
 class ActivityPicker360LargeFontTest : ActivityPickerSizes(widthDp411 = false, font = 1.3f)
 
-/** The rules behind the pictures: a chosen level always has its line under the chips; a T tap does not close. */
+/** The rules behind the pictures: every level a row with its short line; a T tap does not close. */
 class SacLineRuleTest {
-    @Test fun aChosenLevelAlwaysHasItsLine() {
-        for (l in 1..5) {
-            assertEquals(l, SacScale.lineLevel(l))
-            val line = SacScale.line(l)
-            assertTrue(line, line.startsWith("T$l · ${SacScale.of(l).name}: "))
-            assertTrue(line, line.endsWith(SacScale.of(l).text))
-        }
-        assertNull("no level chosen (another activity): no line", SacScale.lineLevel(0))
-    }
-
     /** Owner 2026-11-26 night: every level is a row with its name and one short line, readable before the tap. */
     @Test fun theLevelRowsShowTheirWordsAndATapKeepsThePickerOpen() {
         val src = File("src/main/java/com/onpath/app/ui/Screens.kt").readText()

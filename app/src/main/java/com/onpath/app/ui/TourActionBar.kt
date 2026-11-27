@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.PlayArrow
@@ -198,7 +197,7 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             if (row) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.weight(1f)); plan(Modifier.weight(1f)) }
             else Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) { pause(Modifier.fillMaxWidth()); plan(Modifier.fillMaxWidth()) }
         } else {
-            // stopped (owner 2026-11-07, "Anhalten" variant 5): ▶ Weiter · ■ Tour beenden · ✎ Planen, icons and words together,
+            // stopped (owner 2026-11-07, "Anhalten" variant 5; since 2026-11-26 only ▶ Weiter · ■ Tour beenden), icons and words together,
             // a compact label (20 dp icon, 6 dp gap, 10 dp sides) so more fits in one row; today's 56 dp
             // pale = hold, strong = tap (owner 2026-11-08): held – the light ground, the band fills in the strong colour;
             // a tap – the strong colour with white words
@@ -217,8 +216,6 @@ private fun TourBottomBarRow(paused: Boolean, onPause: (Boolean) -> Unit, onEnd:
             // ■ the square "stop" of every recorder – the flag is the route's destination everywhere in OnPath
             val end = @Composable { m: Modifier -> one(endWord, Icons.Filled.Stop, TourActions.EndStrong, TourActions.GoTonal,
                 TourActions.OnGoTonal, held(UnlockWindow.BarButton.END), onEnd, m) }
-            val plan = @Composable { m: Modifier -> one(planWord, Icons.Filled.Edit, OnPathColors.ActionEdit, TourActions.EditTonal,
-                TourActions.OnEditTonal, held(UnlockWindow.BarButton.PLAN), onPlan, m) }
             // owner 2026-11-26: the pause shows only ▶ Weiter (the wider) and ■ Tour beenden – Planen was the button before
             // the pause and comes back with Weiter; a large font stacks them
             if (density.fontScale >= 1.5f) Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -241,22 +238,6 @@ object TourBottomBarRules {
     /** Without icons the two still fit side by side, else they stack. */
     fun runningInOneRow(pauseW: Float, planW: Float, width: Float): Boolean =
         maxOf(pauseW, planW) + 2 * PAD <= (width - GAP) / 2
-    /** A stopped button's width: the word + the compact icon (20 dp + 6 dp gap) + 10 dp each side + 4 dp air. */
-    fun stoppedNeed(wordW: Float): Float = wordW + 26f + 2 * 10f + 4f
-    /** "Tour beenden" and "Planen" are equally wide (at least 96 dp, so short words still make a balanced group). */
-    fun stoppedSide(endW: Float, planW: Float): Float = maxOf(stoppedNeed(maxOf(endW, planW)), 96f)
-
-    enum class Stopped { ONE_ROW, TWO_ROWS, STACK }
-    /**
-     * Stopped: one row when "▶ Weiter" ([resumeNeed]) gets what is left beside the two [side] buttons and is still the
-     * widest; else Weiter full width over the two side by side; a large font (≥ 1.5×, owner) or a too narrow screen
-     * stacks all three full width.
-     */
-    fun stopped(resumeNeed: Float, side: Float, width: Float, fontScale: Float = 1f): Stopped = when {
-        width - 2 * side - 2 * GAP >= maxOf(side, resumeNeed) -> Stopped.ONE_ROW
-        fontScale < 1.5f && side <= (width - GAP) / 2 && resumeNeed <= width -> Stopped.TWO_ROWS
-        else -> Stopped.STACK
-    }
 }
 
 /** The tour bar's tonal colours (the unlock window's rule: [com.onpath.app.domain.tour.UnlockWindow]). */
