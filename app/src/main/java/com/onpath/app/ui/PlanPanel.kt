@@ -312,9 +312,9 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     val full = ui.shownSize == PlanSize.FULL
     // What the rolled-up step hides is not for TalkBack / tests (it lies under the sheet's bottom edge)
     val belowStep = if (ui.collapsed) Modifier.clearAndSetSemantics { } else Modifier
-    // the card's top row (Daumen-Karte, owner 2026-11-26): empty – "Wohin soll's gehen?" + ☰, the activity and Meine
-    // Touren as chips; with a plan – activity · time · km · ↑↓ + 🔍 + ☰ in the same row, at the same place. The rolled-up
-    // step is this row (over the foot's button)
+    // the card's top row (Daumen-Karte, owner 2026-11-26, [ThumbHead]): empty – search field + ☰ + chips; with a plan –
+    // activity · time · km · ↑↓ + 🔍 + ☰ in the same row. The rolled-up step is this row (over the foot's button)
+    Spacer(Modifier.height(PlanSpacing.UNDER_TAB)) // room under the PLANEN tab (owner 2026-11-27, PlanSpacing)
     ThumbHead(ui, cb)
     Spacer(with(sheet) { Modifier.stepEnd(PlanSize.COLLAPSED.step) })
     // „Berechnen“ / „Trotzdem planen“ tapped (owner 2026-11-27): only that button spins while its run goes, no sentence
@@ -420,7 +420,7 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val style = MaterialTheme.typography.labelMedium
     // a pill that cannot act is not there (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“)
     val pills = PlanRow.pills(ui.pointCount, ui.canReverse, ui.roundTrip, ui.canRoundTrip, multiDay = ui.days != null || ui.dayHead != null)
-    if (pills.isNotEmpty()) androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth()) {
+    if (pills.isNotEmpty()) androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = PlanSpacing.ABOVE_PILLS)) {
         fun word(p: PlanRow.Pill) = when (p) { PlanRow.Pill.CLEAR -> clear; PlanRow.Pill.REVERSE -> rev; PlanRow.Pill.LOOP -> loop }
         val wordW = with(density) { pills.sumOf { tm.measure(word(it), style).size.width }.toDp() }
         // the pills (12 + 20 + 6 + word + 12 each) + room between
