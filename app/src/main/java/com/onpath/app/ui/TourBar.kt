@@ -413,7 +413,7 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
             title = { Text(com.onpath.app.routing.RouteCost.askTitle(shown.ask)) },
             text = { DialogText(com.onpath.app.routing.RouteCost.askText(shown.ask, shown.from, shown.to)) },
             confirmButton = {
-                if (shown.ask.beyond) TextButton(colors = ActionButtons.editText(), onClick = onCancel) { Text(str(Res.string.nav_add_stop)) }
+                if (shown.ask.beyond) TextButton(onClick = onCancel) { Text(str(Res.string.common_ok)) }
                 else TextButton(onClick = onPlan) { Text(str(Res.string.nav_wait)) }
             },
             dismissButton = if (shown.ask.beyond) null else ({

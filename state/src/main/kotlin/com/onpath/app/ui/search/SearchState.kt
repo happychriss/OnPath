@@ -153,9 +153,9 @@ abstract class SearchState(
     protected fun keyOf(u: SearchUi) = SearchText.normalize(u.query) + "|" + (u.category?.name ?: "")
 
     /** [next] as the list on screen: for the text already shown, rows on screen stay and new ones go below. */
-    protected fun shownList(cur: SearchUi, key: String, next: List<SearchHit>): List<SearchHit> {
+    protected fun shownList(cur: SearchUi, key: String, next: List<SearchHit>, query: String? = null): List<SearchHit> {
         val shown = cur.shown
-        return if (shown != null && cur.shownFor == key) SearchRanking.keepShown(shown, next) else next
+        return if (shown != null && cur.shownFor == key) SearchRanking.keepShown(shown, next, query) else next
     }
 
     // ---------------- a run, as stages ----------------
@@ -242,6 +242,6 @@ abstract class SearchState(
         // scored like the offline hits, so both rank in one list
         val all = cur.online + SearchRanking.onlineHits(extras, s.q, answer.towns, answer.lat, answer.lon)
         ui = cur.copy(online = all, onlineState = OnlineState.DONE,
-            shown = shownList(cur, s.key, SearchRanking.mix(offline, all)), shownFor = s.key)
+            shown = shownList(cur, s.key, SearchRanking.mix(offline, all), s.text), shownFor = s.key)
     }
 }

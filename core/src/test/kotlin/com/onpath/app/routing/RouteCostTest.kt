@@ -37,8 +37,10 @@ class RouteCostTest {
         assertTrue("no waiting offered", ask.beyond)
         assertEquals(0, ask.leg)
         assertTrue(ask.km in 460.0..490.0)
-        assertEquals("Too long for the phone", RouteCost.askTitle(ask))
-        assertEquals("${Math.round(ask.km)} km in one go. Add a stop on the way or plan in the browser.", RouteCost.askText(ask, "Hilden", "München"))
+        // owner 2026-11-27: too far – a closer destination, the browser only as a sentence; OK takes the far point back
+        assertEquals("Too far for the phone", RouteCost.askTitle(ask))
+        assertEquals("Hilden → München, ${Math.round(ask.km)} km in one go. Choose a closer destination – plan longer tours in the browser on a computer.",
+            RouteCost.askText(ask, "Hilden", "München"))
         // the run asks with it, and no "yes" changes it
         val run = RouteRun(longRule = rule(), askSlow = false)
         val step = run.on(RouteRun.Event.Recalc(listOf(hilden, muenchen), Activity.HIKE, planMode = true, newPlan = true))

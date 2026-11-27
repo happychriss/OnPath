@@ -390,11 +390,26 @@ object SearchRanking {
      * [next] has it again), rows of [next] not shown yet go below, in [next]'s order. Nothing moves or vanishes under
      * the finger (owner; field bug 0.13.2: the restaurant shown, then the list jumped). A new text is ranked afresh.
      */
-    fun keepShown(shown: List<SearchHit>, next: List<SearchHit>): List<SearchHit> {
+    fun keepShown(shown: List<SearchHit>, next: List<SearchHit>, query: String? = null): List<SearchHit> {
         val kept = shown.map { s -> next.firstOrNull { it.place.id == s.place.id } ?: s }
         val added = next.filter { n -> shown.none { it.place.id == n.place.id || SearchMerge.samePlace(it.place, n.place) } }
-        return kept + added
+        // one exception (owner 2026-11-27, „Paris“ from Hilden: the city was row 23, under „Bäckerei de paris“, „PARS“ …):
+        // an online town / city / village named exactly like the query goes up – after the rows on screen whose name IS the
+        // query, before the fuzzy ones. Everything else keeps the rule above.
+        val q = SearchText.normalize(query)
+        if (q.isEmpty()) return kept + added
+        val exact = added.filter { isExactPlace(it.place, q) }
+        if (exact.isEmpty()) return kept + added
+        val lead = kept.takeWhile { it.place.name != null && SearchText.normalize(it.place.name) == q }
+        return lead + exact + kept.drop(lead.size) + added.filter { it !in exact }
     }
+
+    /** The settlements [keepShown] lifts: an online place of these kinds whose name is the (normalized) query [q]. */
+    val EXACT_PLACE_SUBS = setOf("city", "town", "village")
+
+    private fun isExactPlace(p: Place, q: String): Boolean =
+        p.source == Place.Source.ONLINE && p.kind == "place" && p.sub in EXACT_PLACE_SUBS && p.name != null &&
+            SearchText.normalize(p.name) == q
 
     /**
      * Offline and online hits as one list in [ORDER]. [keepShown]: the offline rows were already on screen when the
