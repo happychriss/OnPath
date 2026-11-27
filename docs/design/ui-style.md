@@ -50,9 +50,11 @@ One colour = one kind of action, so the hand finds it the second time by colour:
 - **blue = edit** – change the route, you are editing (`ActionEdit`);
 - **red = stop** – end the process you are in (end the recording, clear the plan to start anew) (`ActionStop`).
 
-Owner 2026-11-06: "alles blau, und was zur Navigation geht, grün"; onpath.private#36: "Wir nehmen erstmal Walnuss" – the theme's primary
-(every button without a meaning of its own) is walnut, Navigate green, Plan blue (`flow-map.md` "Colour rule audit"). No test pins it
-since 2026-11-20 (owner: the pictures show it – `MessageCardGermanScreenshotTest_kinds.png` walnut, `GermanScreenshotTest_plan.png` blue,
+**Owner 2026-11-27, colour rule 1 („ein Grün für alles“):** the theme's primary is `Green` – every button without a
+meaning of its own, switches, sliders, radio buttons, checkboxes, spinners, menu ticks. Blue only for plan, red only for
+delete / errors. Values in settings rows are bold `Ink`. Walnut is left only for a few text accents (compass "N", the hold
+hint pill, the wordmark). Before (2026-11-06, onpath.private#36 "Wir nehmen erstmal Walnuss"): the primary was walnut, Navigate green, Plan blue (`flow-map.md` "Colour rule audit"). No test pins it
+since 2026-11-20 (owner: the pictures show it – `MessageCardGermanScreenshotTest_kinds.png` green (walnut until 2026-11-27), `GermanScreenshotTest_plan.png` blue,
 `GermanScreenshotTest_navigateLockOff.png` green).
 
 Today (owner 2026-11-07, "Anhalten" variant 5): Navigate's one bottom bar green "⏸ Anhalten" | blue "✎ Planen"; stopped green

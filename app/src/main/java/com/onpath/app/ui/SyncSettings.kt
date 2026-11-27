@@ -421,7 +421,7 @@ private fun SyncInfoRow(title: String, value: String) {
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(title, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.weight(1f).padding(vertical = 6.dp))
         Spacer(Modifier.width(12.dp))
-        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = OnPathColors.Walnut)
+        Text(value, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, color = OnPathColors.Ink)
     }
 }
 
@@ -429,8 +429,8 @@ private fun SyncInfoRow(title: String, value: String) {
 @Composable
 private fun UnpairButton(onClick: () -> Unit) =
     OutlinedButton(onClick = onClick, Modifier.heightIn(min = 48.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Walnut),
-        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Walnut)) {
+        border = androidx.compose.foundation.BorderStroke(1.dp, OnPathColors.Green),
+        colors = androidx.compose.material3.ButtonDefaults.outlinedButtonColors(contentColor = OnPathColors.Green)) {
         Text(str(Res.string.sync_unpair))
     }
 

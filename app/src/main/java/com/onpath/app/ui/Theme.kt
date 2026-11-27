@@ -243,8 +243,10 @@ object ActionButtons {
 }
 
 private val scheme = lightColorScheme(
-    // neutral walnut (#36) – navigation green and plan blue are set where a button means one of them ([ActionButtons])
-    primary = OnPathColors.Walnut,
+    // one green for everything (owner 2026-11-27, colour rule 1: „ein Grün für alles“) – buttons, switches, sliders,
+    // selections, spinners; plan blue is set where a button means plan ([ActionButtons]), red only deletes / errors.
+    // Before: neutral walnut (#36, 2026-11-06)
+    primary = OnPathColors.Green,
     onPrimary = Color.White,
     // the selection (a selected row, a pressed map button, the setup's icon circle): the website's light green, Ink words
     // (owner 2026-11-12, palette D "wie die Webseite"; was light walnut)
@@ -272,12 +274,12 @@ private val scheme = lightColorScheme(
     error = OnPathColors.Error,
     errorContainer = OnPathColors.ErrorContainer,
     onErrorContainer = OnPathColors.OnErrorContainer,
-    inversePrimary = Color(0xFFD9C8BA),
+    inversePrimary = Color(0xFFA9CDB8),
     outline = Color(0xFF737970),
     outlineVariant = OnPathColors.Line,
     // Neutral (slightly green) containers instead of Material's default purple tint:
     // menus, sheets, cards and chips all take these.
-    surfaceTint = OnPathColors.Walnut,
+    surfaceTint = OnPathColors.Green,
     surfaceBright = OnPathColors.Paper,
     surfaceDim = Color(0xFFDADDD7),
     surfaceContainerLowest = Color.White,

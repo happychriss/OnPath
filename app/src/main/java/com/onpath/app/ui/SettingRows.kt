@@ -50,7 +50,7 @@ import com.onpath.strings.*
 /**
  * Settings in "value rows" (owner 2026-11-06 23:05, variant C of the Settings → Navigation round: "Ich mag Wertezeilen
  * am meisten, das sollten wir auch bei allen anderen Einstellungen so machen"): a choice is one row – title, the current
- * value in Walnuss, a chevron – and a tap opens a small menu anchored at the row (owner 2026-11-27, one control standard:
+ * value in bold ink, a chevron – and a tap opens a small menu anchored at the row (owner 2026-11-27, one control standard:
  * Material 3 DropdownMenu, no sheet, no sub page, no segmented buttons); the tap on one applies it and closes the menu.
  * Not a dialog: docs/design/ui-style.md keeps dialogs for decisions that can lose something, and picking a setting loses
  * nothing (the old value is one tap away). Switches stay switches. NOT for the hiking T1–T5 choice (owner: those stay
@@ -196,11 +196,11 @@ internal fun <T> ChoiceRow(title: String, sub: String?, options: List<Choice<T>>
             if (sub != null) Text(sub, style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
             // too long beside the title (large font, long words): the value under it, never a word broken in two
-            if (stacked) Text(value, style = valueStyle, color = OnPathColors.Walnut.copy(alpha = a))
+            if (stacked) Text(value, style = valueStyle, color = OnPathColors.Ink.copy(alpha = a))
         }
         if (!stacked) {
             Spacer(Modifier.width(12.dp))
-            Text(value, style = valueStyle, color = OnPathColors.Walnut.copy(alpha = a), maxLines = 1)
+            Text(value, style = valueStyle, color = OnPathColors.Ink.copy(alpha = a), maxLines = 1)
         }
         Icon(Icons.AutoMirrored.Filled.KeyboardArrowRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = a))
     }
@@ -233,7 +233,7 @@ internal fun <T> ChoiceMenuItems(options: List<Choice<T>>, selected: T, lines: B
                 }
             },
             leadingIcon = {
-                if (chosen) Icon(Icons.Filled.Check, null, tint = OnPathColors.Walnut, modifier = Modifier.size(20.dp))
+                if (chosen) Icon(Icons.Filled.Check, null, tint = OnPathColors.Green, modifier = Modifier.size(20.dp))
                 else Spacer(Modifier.size(20.dp))
             },
             onClick = { onPick(o.value) },
