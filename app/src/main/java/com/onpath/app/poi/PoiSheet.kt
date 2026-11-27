@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material.icons.outlined.Map
@@ -130,17 +131,14 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier,
             shape = com.onpath.app.ui.OnPathShapes.Pill,
             colors = ButtonDefaults.buttonColors(),
         ) {
+            // „Google Maps ↗“ (owner 2026-11-27): the one Google link, no line under it
             Icon(Icons.Outlined.Map, contentDescription = null)
             Spacer(Modifier.width(10.dp))
             Text(str(Res.string.poi_open_google), style = MaterialTheme.typography.bodyLarge,
                 fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(20.dp))
         }
-        Text(
-            str(Res.string.poi_google_line),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
-        )
         Text(
             "© OpenStreetMap",
             style = MaterialTheme.typography.labelSmall,

@@ -24,6 +24,7 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.OpenInNew
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.outlined.History
@@ -51,6 +52,7 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
@@ -98,7 +100,7 @@ data class SearchActions(
 /**
  * Full-screen search (Plan mode only): text field, category chips, ONE mixed result list – offline places, POIs,
  * trails, addresses and online results, best match first; each row keeps its kind icon and says
- * "near your route" / "online" – and a last row that hands the query to Google Maps.
+ * "near your route" / "online" – and one fixed row under it that hands the query to Google Maps („Google Maps ↗“).
  */
 @Composable
 fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modifier, autoFocus: Boolean = true) {
@@ -138,11 +140,14 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
             }
             Spacer(Modifier.size(4.dp))
             HorizontalDivider()
-            LazyColumn(Modifier.fillMaxSize(), contentPadding = PaddingValues(bottom = 24.dp)) {
+            LazyColumn(Modifier.fillMaxWidth().weight(1f), contentPadding = PaddingValues(bottom = 24.dp)) {
                 // only the very first time (no index yet); later a new index is built while the old one answers
                 if (ui.indexing) item { Preparing() }
                 if (!ui.active) recentSection(ui, actions) else resultSections(ui, actions)
             }
+            // one fixed row above the keyboard, whatever the hits (owner 2026-11-27): „Google Maps ↗“ with the query
+            HorizontalDivider()
+            GoogleMapsRow { actions.onGoogle(ui.query.trim()) }
         }
     }
 }
@@ -155,12 +160,8 @@ fun SearchScreen(ui: SearchUi, actions: SearchActions, modifier: Modifier = Modi
  */
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
     val home = shownHome(ui)
-    if (ui.recent.isEmpty() && home == null && ui.favourites.isEmpty()) {
-        item {
-            Hint(str(Res.string.search_intro))
-        }
-        return
-    }
+    // nothing kept yet: an empty list – no explaining text (owner 2026-11-27)
+    if (ui.recent.isEmpty() && home == null && ui.favourites.isEmpty()) return
     home?.let { h ->
         item {
             CompactRow(h, str(Res.string.search_home), compactLine(h, withTitle = true), actions.onPick) {
@@ -261,23 +262,24 @@ private fun LazyListScope.resultSections(ui: SearchUi, actions: SearchActions) {
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp))
         }
     }
-    val q = ui.query.trim()
-    if (q.isNotEmpty()) {
-        item {
-            HorizontalDivider(Modifier.padding(top = 8.dp))
-            Row(
-                Modifier.fillMaxWidth().clickable { actions.onGoogle(q) }.heightIn(min = 56.dp).padding(horizontal = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Icon(Icons.Outlined.Map, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                Spacer(Modifier.width(16.dp))
-                Column(Modifier.weight(1f)) {
-                    Text(str(Res.string.search_in_google, q), style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(str(Res.string.search_google_line), style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-            }
-        }
+}
+
+/**
+ * „Google Maps ↗“ (owner 2026-11-27): one plain text row, as high as a list row, fixed under the list and above the
+ * keyboard – hands the query to Google Maps; no button look, no way-back hint. The ↗ says it leaves the app.
+ */
+@Composable
+private fun GoogleMapsRow(onClick: () -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = onClick).heightIn(min = 56.dp).padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Icon(Icons.Outlined.Map, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
+        Spacer(Modifier.width(16.dp))
+        Text(str(Res.string.search_google_maps), style = MaterialTheme.typography.bodyLarge, maxLines = 1)
+        Spacer(Modifier.width(8.dp))
+        Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(20.dp))
     }
 }
 

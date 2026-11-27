@@ -36,6 +36,5 @@
     <string name="poi_opening_hours">Öffnungszeiten</string>
     <string name="poi_phone">Telefon</string>
     <string name="poi_website">Website</string>
-    <string name="poi_open_google">In Google Maps öffnen</string>
-    <string name="poi_google_line">Online · Bewertungen, Fotos und aktuelle Infos bei Google</string>
+    <string name="poi_open_google">Google Maps</string>
 </resources>

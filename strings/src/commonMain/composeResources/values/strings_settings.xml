@@ -122,7 +122,7 @@
     <string name="settings_privacy_geocoder_when">only for a shared place</string>
     <string name="settings_privacy_google">From Google, OnPath keeps only the position and the name and address of a place you share – nothing else is stored or drawn.</string>
     <string name="settings_privacy_tap_what">The place you tapped</string>
-    <string name="settings_privacy_tap_when">only when you tap “Open in Google Maps”</string>
+    <string name="settings_privacy_tap_when">only when you tap “Google Maps ↗”</string>
     <string name="settings_privacy_web_what">A place's website or Wikipedia page</string>
     <string name="settings_privacy_web_to">that website</string>
     <string name="settings_privacy_web_when">only when you tap the link</string>

@@ -193,7 +193,7 @@
     <string name="plan_start_here">Set as start</string>
     <string name="plan_go_here">Set as destination</string>
     <string name="plan_from_my_position">Start: your position</string>
-    <string name="plan_open_google_maps">Open in Google Maps</string>
+    <string name="plan_open_google_maps">Google Maps</string>
     <!-- the found place's pin (owner 2026-11-02): its menu's last line, the name chip for TalkBack -->
     <string name="plan_remove_pin">Remove pin</string>
     <string name="plan_pin_chip_desc">%1$s: show options</string>
