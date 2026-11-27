@@ -1,6 +1,7 @@
 /* The live tour's viewer page (docs/design/live-tracking.md §3) – made for a phone screen, fine on a wide one.
    Owner 2026-11-26, design „A“: the map fills the screen, a small pill on top, a soft rounded sheet below (like the
-   location apps people know) – friendly, not technical. Colours: the app's palette (the planner's style.css names). */
+   location apps people know) – friendly, not technical. From 900 px (owner 2026-11-27, variant A) the browser layout:
+   the map on the left, the same sheet as a panel on the right, the OnPath logo on top of it (as Google Maps / Komoot on the web). Colours: the app's palette (the planner's style.css names). */
 :root {
   --paper: #FAFAF6; --sage: #EEF0E8; --fg: #243C31; --muted: #5f645e; --line: #E3E7DE; --go: #245F46; --go-soft: #2E8A5F;
   --warn: #9A5B00; --warn-dot: #D98A00; --warn-bg: #FFF0D2; --calm: #4F7F9E; --grey: #8A8E89; --shadow: rgba(36,60,49,.16);
@@ -93,3 +94,21 @@ body[data-dead="1"] .grab, body[data-dead="1"] .avatar, body[data-dead="1"] #foo
 body[data-dead="1"] .who { justify-content: center; }
 body[data-dead="1"] .status { font-size: 19px; color: var(--fg); }
 body[data-dead="1"] #title { font-size: 14px; color: var(--muted); margin-bottom: 8px; }
+
+/* the browser layout (owner 2026-11-27, variant A): map left, the sheet as a panel on the right, the logo on top of it */
+.brand { display: none; }
+@media (min-width: 900px) {
+  #live { flex-direction: row; max-width: none; }
+  #mapbox { min-height: 0; }
+  #sheet { flex: 0 0 380px; display: flex; flex-direction: column; margin: 0; border-radius: 0; overflow: auto; box-sizing: border-box;
+    padding: 18px 24px 16px; box-shadow: -2px 0 16px var(--shadow); }
+  .grab { display: none; }
+  .brand { display: inline-flex; align-self: flex-end; align-items: center; gap: 8px; margin-bottom: 22px;
+    color: var(--fg); text-decoration: none; font-size: 20px; font-weight: 700; letter-spacing: -.03em; }
+  .brand svg { flex: none; width: 30px; height: 30px; }
+  #title { font-size: 22px; }
+  #foot { margin-top: auto; padding-top: 16px; }
+  /* stopped / broken link: the sentence in the middle of the whole window, the logo stays */
+  body[data-dead="1"] #sheet { flex: 1 1 auto; justify-content: center; }
+  body[data-dead="1"] .brand { position: absolute; top: 18px; right: 24px; margin: 0; }
+}

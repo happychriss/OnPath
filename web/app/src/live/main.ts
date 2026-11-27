@@ -2,7 +2,8 @@
 // of the address bar and kept in memory only – a reload needs the link again. Everything shown is decided by the app's
 // shared code in the engine (which status line wins, when to ask the server again, the numbers' format); this file only
 // turns it into words and a map. Look (owner 2026-11-26, design „A“): the map fills the screen, a small pill on top, a
-// soft sheet below with the name, the one sentence that matters and three facts – friendly, not technical.
+// soft sheet below with the name, the one sentence that matters and three facts – friendly, not technical. From 900 px
+// (owner 2026-11-27, variant A): the map on the left, the same sheet as a panel on the right with the OnPath logo on top.
 import 'maplibre-gl/dist/maplibre-gl.css';
 import '../fonts/manrope.css';
 import './live.css';
@@ -25,11 +26,14 @@ const ICON = {
   map: svg('<path d="M9 4 3 6.5v13.5l6-2.5 6 2.5 6-2.5V4l-6 2.5z"/><path d="M9 4v13.5M15 6.5V20"/>'),
   person: svg('<circle cx="12" cy="8" r="4"/><path d="M4 21c1.5-4 4.5-6 8-6s6.5 2 8 6"/>'),
 };
+/** The OnPath mark (onpath.earth's assets/brand.svg, the app icon on its green square): only in the browser layout, top right. */
+const BRAND = '<svg viewBox="0 0 108 108" aria-hidden="true"><rect width="108" height="108" rx="24" fill="#1F6E43"/><path fill="#fff" d="M28 74 46 44 56 58 64 48 80 74Z"/><path fill="none" stroke="#FFC94D" stroke-width="4" stroke-linecap="round" d="M34 80C46 72 52 82 62 74S76 70 78 66"/></svg>';
 const root = document.getElementById('live')!;
 root.innerHTML = `
   <div id="mapbox"><div id="map"></div><div id="mapWait" class="mapwait"></div><button id="toPos" class="topos" hidden></button>
     <div id="count" hidden><span class="pdot"></span><span id="countText"></span></div></div>
   <section id="sheet">
+    <a id="brand" class="brand" href="https://onpath.earth/" target="_blank" rel="noopener" aria-label="OnPath">${BRAND}<span>OnPath</span></a>
     <div class="grab"></div>
     <div id="who" class="who"><div id="avatar" class="avatar"><span id="initial"></span><i class="badge"></i></div>
       <div class="whotext"><div id="title"></div><div id="status" class="status" role="status"><span id="line"></span></div></div></div>
