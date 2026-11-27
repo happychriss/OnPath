@@ -150,11 +150,13 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
      * writes the plan over it (name and date stay; false = gone), a draft that waits in the bin comes back out first; a
      * changed SAVED route is never overwritten, its change is a draft. [update] null = the caller cannot update (it
      * keeps a new draft). [insert] writes the new draft (the view model knows name, route and times); the one draft
-     * before it goes to the recycle bin ([takePlace]). Returns the id written (new or updated), null = nothing written
-     * (blocking).
+     * before it goes to the recycle bin ([takePlace]). [days] = the plan's multi-day tour (null = a normal plan): a tour
+     * with the same points but other days, limits or nights is another plan – it never takes the place of this one (a
+     * 4-day plan on a saved 3-day route's points is kept, field bug 2026-11-27 in the planner). Returns the id written
+     * (new or updated), null = nothing written (blocking).
      */
     fun keepDraft(key: List<Pair<Double, Double>>, unsaved: Boolean, savedId: Long = -1L, update: ((Long) -> Boolean)? = null,
-                  insert: () -> Long): Long? {
+                  days: com.onpath.app.data.MultiDay? = null, insert: () -> Long): Long? {
         keptAs = -1L
         if (key.size < 2) return null
         if (!unsaved) {
@@ -172,7 +174,7 @@ class RoutesState(private val store: RoutesStore, private val clock: () -> Long 
             if (own != null && !stale) { keptAs = own.id; takePlace(own.id); return null }
             if (own == null) Problems.trace("routes", "Zuletzt: the plan's tour $savedId is gone for good – kept as a new plan")
         }
-        val same = store.listTours().firstOrNull { it.kind == TourKind.PLANNED && keyOf(it) == key }
+        val same = store.listTours().firstOrNull { it.kind == TourKind.PLANNED && keyOf(it) == key && it.days == days }
         if (same != null) { keptAs = same.id; takePlace(same.id); return null }
         if (!Drafts.keeps(key.size, unsaved = true)) return null
         if (savedId >= 0 && update != null) {
