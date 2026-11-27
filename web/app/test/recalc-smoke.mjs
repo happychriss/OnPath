@@ -30,7 +30,9 @@ await idle();
 await page.waitForTimeout(500);
 check(await page.isHidden('#menuRecalc'),
   'a plain plan: no "Ganz neu berechnen" row');
-check(await page.evaluate(() => window.__engine.anchors) === '', 'a plain plan has no detour points');
+// a leg routed over 150 km gets support points (PlanAnchors.SUPPORT_LEG_M, owner 2026-11-27) – those are no detour points
+const plainKm = await page.evaluate(() => window.__state.plan.distanceM / 1000);
+check(plainKm > 150 || await page.evaluate(() => window.__engine.anchors) === '', `a plain plan has no detour points (${Math.round(plainKm)} km)`);
 
 // a point put in on the routed line of the long leg: stitched from the taken run's line
 const lp = await page.evaluate(() => window.__state.plan.legs[0].points);
