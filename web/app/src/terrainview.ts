@@ -17,7 +17,7 @@ import { problem } from './diag';
 
 const STEEP = 'profile-steep', RANGE = 'profile-range';
 /** The plan's own route layers (main.ts) faded while a range is marked, and how much of them stays. */
-const FADED = ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows'], FADE = 0.35;
+const FADED = ['planned-route-casing', 'planned-route', 'planned-straight', 'planned-route-arrows'], FADE = 0.35, BUSY_FADE = 0.45;
 const MIN_ZOOM_3D = 11;
 
 export class RouteProfile {
@@ -199,7 +199,7 @@ export class RouteProfile {
     if (!fromProfile) this.big?.range(r);
     (this.map.getSource(RANGE) as GeoJSONSource | undefined)?.setData(r ? { type: 'Feature', properties: {},
       geometry: { type: 'LineString', coordinates: lineBetween(this.line, r[0], r[1]) } } : empty());
-    this.fadeRoute(r != null);
+    this.fadeRoute();
     const lbl = this.panel.querySelector<HTMLElement>('.bprange');
     const ask = ++this.rangeAsk;
     if (!lbl) return;
@@ -211,11 +211,19 @@ export class RouteProfile {
     (window as unknown as { __profileRange: unknown }).__profileRange = r; // for the browser tests
   }
 
-  /** The route outside a marked range: 35 % (owner 2026-11-27 variant 3), whole again without a range. */
-  private fadeRoute(on: boolean) {
+  /** A plan run is going on (main.ts planBar, owner 2026-11-27): the route faded until it ends. */
+  setBusy(on: boolean) { if (this.busy !== on) { this.busy = on; this.fadeRoute(); } }
+  private busy = false;
+
+  /**
+   * The route outside a marked range: 35 % (owner 2026-11-27 variant 3); while a plan runs [BUSY_FADE]; both: the fainter
+   * one; neither: whole.
+   */
+  private fadeRoute() {
+    const o = Math.min(this.marked ? FADE : 1, this.busy ? BUSY_FADE : 1);
     for (const id of FADED) {
       if (!this.map.getLayer(id)) continue;
-      try { this.map.setPaintProperty(id, id.endsWith('arrows') ? 'icon-opacity' : 'line-opacity', on ? FADE : 1); }
+      try { this.map.setPaintProperty(id, id.endsWith('arrows') ? 'icon-opacity' : 'line-opacity', o); }
       catch (e) { problem('map', `route layer ${id} not faded`, e); }
     }
   }

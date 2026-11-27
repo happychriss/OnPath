@@ -269,4 +269,7 @@
     <string name="web_to_phone_pair">Handy verbinden, dann kommt der Plan darauf</string>
     <string name="web_phone_menu">Handy-Verbindung …</string>
     <string name="web_days_end_of_day">Ende Tag %1$d von %2$d</string>
+    <string name="web_days_chip_hours">%1$s h / Tag</string>
+    <string name="web_days_chip_ascent">%1$s m ↑ / Tag</string>
+    <string name="web_days_chip_add_limit">+ Tageslimit</string>
 </resources>

@@ -64,7 +64,13 @@ dialog.daysbox .row.end button.primary { background: var(--plan); color: #fff; }
 .touroverview { display: flex; flex-direction: column; gap: 4px; padding: 8px 0; border-top: 1px solid var(--line); }
 .touroverview .tohead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .touroverview .toname { font: inherit; font-size: 16px; font-weight: 700; background: none; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer; }
-.touroverview .tolimits { background: none; border: none; padding: 0; text-align: left; cursor: pointer; font: inherit; font-size: 12px; color: var(--muted); }
+/* the tour's settings as tonal chips (owner 2026-11-27 variant 2): a tap opens the days box at that field */
+.touroverview .tochips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }
+.touroverview .tochip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 8px;
+  border: 1px solid var(--plan-edge); background: var(--plan-light); color: var(--plan-ink); font: inherit; font-size: 14px; cursor: pointer; }
+.touroverview .tochip:hover { background: var(--plan-edge); }
+.touroverview .tochip .ic, .touroverview .tochip svg { fill: currentColor; }
+.touroverview .tochip.add { background: none; border-style: dashed; color: var(--muted); }
 .touroverview .tohint { color: var(--muted); }
 .touroverview .todays { list-style: none; margin: 4px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .touroverview .today { width: 100%; display: flex; align-items: center; gap: 10px; text-align: left; padding: 6px 10px; border-radius: var(--r-small);
