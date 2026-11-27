@@ -632,7 +632,7 @@ class RecordingService : Service() {
         val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)
         if (wasLost && prev != null) Problems.trace("gps", "No usable GPS fix for ${(nowEl - lostSinceElapsed) / 1000} s ($gapWhy); " +
             "${Geo.distance(prev.lat, prev.lon, p.lat, p.lon).toInt()} m since the last point – " + if (bridged) "line kept connected" else "new track piece")
-        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged)
+        val (verdict, moved) = PointFilter.judge(prev, p, loc.accuracy.toDouble(), continuous = !wasLost || bridged, still = motion.still(nowEl) == true)
         // a GPS jump is no position: not for the track, nor the navigation / arrival / trip pace (JumpFixFlowTest)
         if (verdict == PointFilter.Verdict.JUMP) return
         // navigation must never cost the track: a failure here is reported, the point below is still stored (R-07).

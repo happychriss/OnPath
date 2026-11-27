@@ -245,7 +245,8 @@ dialog.share #exportGpx { margin-top: 8px; }
 .num { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; color: #fff; font-weight: 700; font-size: 12px; flex: none; }
 .leg { font-size: 13px; white-space: nowrap; }
 .status { font-size: 12px; min-height: 1.4em; } .status.error { color: var(--error); }
-.pin { width: 26px; height: 26px; border-radius: 50%; color: #fff; font: 700 12px/26px system-ui, sans-serif; text-align: center; cursor: pointer;
+/* the size follows the zoom like the app's PointMarkSize (owner 2026-11-27, variant 2): --pin-px from main.ts pinSize */
+.pin { width: var(--pin-px, 26px); height: var(--pin-px, 26px); border-radius: 50%; color: #fff; font: 700 calc(var(--pin-px, 26px) * .46)/var(--pin-px, 26px) system-ui, sans-serif; text-align: center; cursor: pointer;
   /* no white ring (app MapController.marker, owner 2026-11-01) – the colour sets the point apart from the blue route */
   box-shadow: 0 1px 4px rgba(0,0,0,.35); background: var(--route); }
 

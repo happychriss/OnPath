@@ -356,7 +356,25 @@ addDiagSection(() => {
 });
 map.on('error', (e) => { problem('map', 'map error', e.error); console.error(e.error); }); // maplibre's own; logged as before
 if (useCells) followPackages(map, cells.packages); // region packages (z7–9): the overview's labels left out there
+/**
+ * The plan points grow with the zoom like the app's map/PointMarkSize (owner 2026-11-27, variant 2): about 20 % over the
+ * map's POI symbols (their icon-size curve by zoom, a 21 px disc at size 1), never under 20 px – out in the region view a
+ * point no longer covers its neighbours. Only the picture; a click / drag keeps the marker's own box.
+ */
+const POI_SIZE: [number, number][] = [[12, 0.45], [12.9, 0.5], [13, 0.78], [15, 0.92], [17, 1.05]];
+function pinPx(zoom: number): number {
+  let s = POI_SIZE[0][1];
+  for (let i = 0; i < POI_SIZE.length; i++) {
+    const [z, v] = POI_SIZE[i];
+    if (zoom >= z) s = v;
+    else { if (i > 0) { const [z0, v0] = POI_SIZE[i - 1]; s = v0 + (v - v0) * (zoom - z0) / (z - z0); } break; }
+  }
+  return Math.round(Math.max(20, 1.2 * 21 * s));
+}
+const pinSize = () => map.getContainer().style.setProperty('--pin-px', `${pinPx(map.getZoom())}px`);
+map.on('zoom', pinSize);
 map.on('load', () => {
+  pinSize();
   if (useCells) cells.loadPois(map);
   map.addSource('planned-route', { type: 'geojson', data: empty() });
   const routed = ['==', ['get', 'straight'], false] as maplibregl.FilterSpecification;

@@ -74,13 +74,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/MapController.kt",
-      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge) – deliberately NOT mirrored: the planner draws such a stop as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“, a planner-only look on a big screen)",
+      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge) – deliberately NOT mirrored: the planner draws such a stop as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“, a planner-only look on a big screen); the points' size by zoom (PointMarkSize, owner 2026-11-27 variant 2) → main.ts pinPx",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "4bd18fdd37360780b6f57df690e6bb488aa45e1f"
+      "blob": "20697ef73249c1806319713e0362834a8c55a1d6"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/poi/PinnedPoiKinds.kt",
