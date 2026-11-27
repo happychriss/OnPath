@@ -41,14 +41,22 @@ data class MapLoadUi(
     val at: LoadStep? = null,
     /** The running step is past its own estimate ([OneBar.late]): "dauert etwas länger…" instead of a frozen number. */
     val late: Boolean = false,
+    /** The wait is for the user's own area (first map, own position); false = a searched / set / tapped place (owner 2026-11-27: Madrid is not „deine Gegend“). */
+    val here: Boolean = true,
 ) {
-    /** FINISHING: everything is downloaded and is joined into the map / written into the routing file. */
-    enum class Kind { PREPARING, LOADING, FINISHING, OFFLINE, WIFI, FAILED }
+    /**
+     * FINISHING: everything is downloaded and is joined into the map / written into the routing file. SERVER: online, the
+     * map server is busy or failed – retried by itself, [reason] says it („Der Kartenserver ist ausgelastet …“).
+     */
+    enum class Kind { PREPARING, LOADING, FINISHING, OFFLINE, SERVER, WIFI, FAILED }
 
-    val title: String get() = if (kind == Kind.FAILED) Txt.s(Res.string.maps_load_failed) else Txt.s(Res.string.wait_title_map)
+    val title: String get() = when {
+        kind == Kind.FAILED -> Txt.s(if (here) Res.string.maps_load_failed else Res.string.maps_load_failed_place)
+        else -> Txt.s(if (here) Res.string.wait_title_map else Res.string.wait_title_map_place)
+    }
 
     /** Offline / waiting for Wi-Fi: the bar stands grey and the line says why. */
-    val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI
+    val paused: Boolean get() = kind == Kind.OFFLINE || kind == Kind.WIFI || kind == Kind.SERVER
 
     /** The running step (the step rows' ● and where the bar's part ends). */
     val step: LoadStep get() = at ?: when (kind) {
@@ -60,6 +68,7 @@ data class MapLoadUi(
     /** The line under the bar: time left, or why it waits / what failed. */
     val line: String? get() = when (kind) {
         Kind.OFFLINE -> OFFLINE_TEXT
+        Kind.SERVER -> reason
         Kind.WIFI -> WIFI_TEXT
         Kind.FAILED -> reason
         else -> if (late) TimeLeft.LATE else secondsLeft?.let(TimeLeft::text)

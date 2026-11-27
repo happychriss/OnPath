@@ -249,17 +249,23 @@ fun MapScreen(
         // detailed map – OverviewHintRule); persistent while true, no flash while panning (NoFlash)
         val generation by vm.cells.generation.collectAsState()
         // the view key is followed here, not read by the screen: a pan changes it many times a second (smooth map, 2026-11-08)
+        // the view's areas without detailed map: no "Detailkarte laden" while they all load already (OverviewHintRule.coming)
+        var viewMissing by remember { mutableStateOf(emptySet<com.onpath.app.cells.CellId>()) }
         val overviewView by produceState(false, generation) {
             snapshotFlow { cam.hintKey }.collectLatest { k ->
                 val without = k != null && kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
-                    vm.mapData.overviewOnly(k[0], k[1], k[2], k[3])
+                    vm.mapData.overviewOnly(k[0], k[1], k[2], k[3]).also { w ->
+                        val m = if (w) vm.mapData.cellsWithoutDetail(k[0], k[1], k[2], k[3]) else emptySet()
+                        withContext(Dispatchers.Main) { viewMissing = m }
+                    }
                 }
                 // a route computed while the view has no detailed map is waited for (modal)
                 vm.mapData.viewWithoutDetail = without
                 value = without && k!![4] > 0
             }
         }
-        val overviewOnly = rememberNoFlash(if (overviewView) Unit else null, remember { NoFlash<Unit>() }) != null
+        val viewComing by rememberDerived(vm.cells.states, vm.cells.installed) { s, _ -> OverviewHintRule.coming(viewMissing, s) }
+        val overviewOnly = rememberNoFlash(if (overviewView && !viewComing && !vm.mapData.loadWindowShown) Unit else null, remember { NoFlash<Unit>() }) != null
         // the first-map card (owner 2026-11-08): the map for here still loading / offline after the setup – at the
         // overview pill's place, which it replaces (they would say the same); no flash for a map that comes at once
         val firstCardTarget by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
@@ -514,12 +520,14 @@ private fun androidx.compose.foundation.layout.BoxScope.PlanMessageHost(vm: AppV
         vm.searchFlow.sharedUnsure?.let { sharedUnsureMessage(it, onSearch = vm.searchFlow::searchSharedUnsure) },
         // a pairing was just made or ended (owner 2026-10-30): "Paired. …" / "Unpaired. …" with OK, until OK
         syncNote?.let { syncNoteMessage(it, onOk = vm.pairing::syncNoteOk) },
-        mapBox?.takeIf { it.kind != MessageKind.FRAGE },
+        // a failure box only when the wait window does not say it already (one notice, owner 2026-11-27)
+        mapBox?.takeIf { it.kind != MessageKind.FRAGE && !vm.mapData.loadWindowShown },
     ))
     // states (no box) only while no box shows: the quiet pill, else plain progress as a small chip under ☰ – neither
     // while the first-map card says it on the map (owner 2026-11-08)
     val firstCard by rememberDerived(vm.cells.states, vm.cells.installed) { s, i -> vm.firstMapCard(s, i) }
-    val pill = notice?.takeIf { message == null && !vm.searchFlow.searchOpen && mapNoticeKind(it) == null && firstCard == null }
+    // the quiet pill (offline, server busy …) not while the wait window says it (Madrid 2026-11-27: both at once)
+    val pill = notice?.takeIf { message == null && !vm.searchFlow.searchOpen && mapNoticeKind(it) == null && firstCard == null && !vm.mapData.loadWindowShown }
     val chipOn = bg != null && !vm.searchFlow.searchOpen && message == null && notice == null && firstCard == null
     LaunchedEffect(chipOn, message != null, pill != null) { vm.mapData.backgroundStripShown = chipOn || message != null || pill != null }
     val density = LocalDensity.current
@@ -586,7 +594,9 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
     }
     val lastRows = remember { arrayOfNulls<List<com.onpath.app.routing.PlanPointRow>>(1) }
     val rows = lastRows[0]?.takeIf { !legsReady } ?: vm.planPointRows().also { lastRows[0] = it }
-    MapLoadModal(MapLoadWait.shown(loadUi, vm.setup.setupOpen), MapLoadCallbacks(onCancel = vm.mapData::cancelLoadModal, onRetry = vm.mapData::cellCardRetry, onClose = vm.mapData::hideLoadModal,
+    val waitShown = MapLoadWait.shown(loadUi, vm.setup.setupOpen)
+    LaunchedEffect(waitShown != null) { vm.mapData.loadWindowShown = waitShown != null }
+    MapLoadModal(waitShown, MapLoadCallbacks(onCancel = vm.mapData::cancelLoadModal, onRetry = vm.mapData::cellCardRetry, onClose = vm.mapData::hideLoadModal,
         onLoadOnMobile = vm.mapData::loadModalOnMobile))
     vm.mapData.loadAsk?.let { LoadAskDialog(it.regions, it.bytes, onLoad = { vm.mapData.answerLoadAsk(true) }, onNotNow = { vm.mapData.answerLoadAsk(false) }) }
     // a route that takes a while: the wait window (form A, owner 2026-11-19) – the legs as steps, Cancel; not over a question

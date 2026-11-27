@@ -46,6 +46,27 @@ class MapWaitTest {
         assertTrue(off.paused)
     }
 
+    /** Field bug 2026-11-27: Madrid on Wi-Fi while the map server rebuilt (429) – the window said „Keine Internetverbindung“. */
+    @Test fun aBusyServerIsSaidAsSuchNeverAsNoInternet() {
+        val w = MapWait()
+        w.update(listOf(a), mapOf(a to CellState.Queued(1, 60)), emptyMap(), null, null, 0)
+        val busy = "The map server is busy – trying again later."
+        val s = w.update(listOf(a), mapOf(a to CellState.Offline(busy, serverSide = true)), emptyMap(), null, null, 10_000)!!
+        assertEquals(MapLoadUi.Kind.SERVER, s.kind)
+        assertEquals("the server's own words", busy, s.line)
+        assertTrue("it waits like offline: the bar stands", s.paused)
+        // a real offline cell beside it: then the phone is offline – that is the fact to say
+        val both = MapWait().update(listOf(a, b), mapOf(a to CellState.Offline(busy, serverSide = true), b to CellState.Offline("No connection")),
+            emptyMap(), null, null, 0)!!
+        assertEquals(MapLoadUi.Kind.OFFLINE, both.kind)
+    }
+
+    @Test fun aSearchedPlaceIsNotYourArea() {
+        assertEquals("Map for your area", MapLoadUi(MapLoadUi.Kind.LOADING, 10, null).title)
+        assertEquals("Map for this place", MapLoadUi(MapLoadUi.Kind.LOADING, 10, null, here = false).title)
+        assertEquals("The map for this place could not be loaded", MapLoadUi(MapLoadUi.Kind.FAILED, 10, null, here = false).title)
+    }
+
     @Test fun failureIsPlainAndOnlyWhenNothingElseGoesOn() {
         val f = MapWait().update(listOf(a), mapOf(a to CellState.Failed("This area could not be prepared (tippecanoe exit 1).", true)),
             emptyMap(), null, null, 0)!!

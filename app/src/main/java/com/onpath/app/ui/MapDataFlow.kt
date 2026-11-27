@@ -362,7 +362,8 @@ class MapDataFlow(
             loadModalFor.isNotEmpty() || routingModal || r != null -> "modal"
             else -> null
         }
-        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }
+        val here = first || job?.why == com.onpath.app.cells.CellWhy.HERE
+        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }?.let { if (it.here == here) it else it.copy(here = here) }
         if (ui == null && key == "modal") loadModalFor = emptySet() // everything there
         return ui
     }
@@ -719,6 +720,17 @@ class MapDataFlow(
 
     /** Boxes of the installed region packages (z7–9, map-cells.md §20): the style's region view there. */
     fun packageAreas(): List<DoubleArray> = cells.packageAreas()
+
+    /** The areas of the visible box without detailed map (its sample points' cells) – [OverviewHintRule.coming] reads them. */
+    fun cellsWithoutDetail(south: Double, west: Double, north: Double, east: Double): Set<com.onpath.app.cells.CellId> = try {
+        OverviewHintRule.samples(south, west, north, east).filter { (lat, lon) -> !cells.hasDetailedMap(GeoPoint(lat, lon)) }
+            .mapNotNull { (lat, lon) -> com.onpath.app.cells.CellId.at(GeoPoint(lat, lon)) }.toSet()
+    } catch (e: Exception) {
+        Problems.warn("cells", "Areas without detailed map not worked out; the overview hint may show while they load", e); emptySet()
+    }
+
+    /** The wait window (form A) is on screen: the quiet map pill and the overview pill stay away – one notice (owner 2026-11-27). */
+    var loadWindowShown by mutableStateOf(false)
 
     /** True when a large part of the visible box has no detailed map ([OverviewHintRule], any zoom). */
     fun overviewOnly(south: Double, west: Double, north: Double, east: Double): Boolean = try {
