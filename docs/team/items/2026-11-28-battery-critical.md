@@ -42,3 +42,4 @@ goal with < 10 % (measured from ≥ 30 min and ≥ 3 % drop, once per tour); „
 yet): on foot 30 s, bike 10 s; back to 1 s within ~150 m of the next turn or when off the route (arriving first). Known
 cost, told to the owner: leaving the route on a straight stretch is noticed up to 30 s late; the track cuts corners. The
 saving is not measured – a Pixel measurement (with / without, ~1 h each) is proposed before a release.
+**Owner 10:56:** „Besser man merkt es nach 30 s, als man hat keinen Akku.“ → 30 s accepted, incl. the late off-route notice.
