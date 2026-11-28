@@ -27,19 +27,27 @@ map corridor, GPX in / out, search, the setup guide, pairing and plan sync with 
 | Requirements without a function: F-POS-05, F-MAP-07, F-MAP-08, F-PLAN-09, R-10; F-PLAN-04 „drag“ | mark „not planned“ in `requirements.md` (drag contradicts the hold-only decision) – a requirement nobody builds misleads the next role |
 | Dev switch „Day table: all columns in one row“ | goes with the multi-day rebuild |
 
-## Question – ranked by how clearly it misses the test and how much hangs on it
-| # | Function (size) | Verdict | Others | Recommendation |
-| --- | --- | --- | --- | --- |
-| 1 | **Rundtouren vorschlagen** – 7 functions, wish sheet ~525 lines | **Corrected after the owner's word (08:49): fits.** „Ich bin irgendwo mit meinem Handy und möchte loslaufen, weiß aber nicht, wo lang“ – that is the phone's own case; the captain's test (way / preparing) was too narrow, the split is where you are / planning ahead. Open scenarios: is it quick enough for a spontaneous start (four wish fields), and is the entry findable (today only in hold menus)? | Komoot: discover from the catalogue. Google Maps: none. | Stays on the phone. Check taps from „I stand here“ to a proposed loop; one question to the owner on the entry. |
-| 2 | **After the tour: „Mehr“ sheet (planned vs needed, clock bar, rates ~305), „Fahrten bearbeiten“ with map + timeline (~182), pace line „schneller / langsamer als geplant“** | The vision says: „After the tour you save and put the phone away.“ The one-screen Rückblick fits (F-NAV-07); the second layer is analysis for enthusiasts. | Komoot / Strava: analysis is their hook. | Keep Rückblick and the ride question (keeps the track honest). „Mehr“ and the ride editor out. |
-| 3 | **Meine Touren: five list tools** – tabs, search, sort (5 orders), favourites chip + stars, activity filter (~4,000 lines area) | Clear and calm: five tools for one list. Search and the tabs have no request on record. | Komoot: filter + sort. Google Maps lists: none. | Tabs + sort stay. Search, favourites and activity filter: keep one, not three. |
-| 4 | **Settings: 27 rows** – e.g. „Position auf der Route“ (no request found), „Warnung abseits“ + „Warnen nach“ + „Vibrieren abseits“ (3 rows for one thing), hold-time slider, „Vibration beim Planen“ | Each switch is a decision the app passed on to the hiker. | Komoot ~10 navigation settings; Google Maps fewer. | Fix a default and remove: snap switch, hold slider (one fixed time), merge the off-route rows into one. |
-| 5 | **Favoriten / „Merken“ ☆ for places** (max 5, „Alle Favoriten“, in backup and browser sync) | Helps choosing a destination (preparation); costs sync both ways. Borderline. | Google Maps: yes (core). Komoot: no. | Keep only if used – the owner's call; otherwise out together with Zuhause. |
-| 6 | **„Ganz neu berechnen“ in ☰** | A repair button for the app's own detour state. A hiker cannot know when to press it; „never technical“. | none has it | Out of the menu (developer tools), and fix what makes it necessary. |
-| 7 | **Zeitdetails screen** (how the time was calculated, ~172) | For the curious, not for the way; the formulas are in the developer tools already. | Komoot: none | Out of Plan. |
-| 8 | **Manual map handling:** Offline-Karten list with per-area delete, „Kartendaten (.zip) importieren“, screen „Offline-Kartendaten fehlen“ with import | The vision: „nobody has to manage regions.“ The import path is from before the automatic loading. | Komoot: region list with delete. | Keep one line „Speicher: x GB · alles löschen“; import into developer tools. |
-| 9 | **„Auge“ (hold to hide the route)** – a fourth map control | Own control, rarely needed. | none has it | Out, unless the owner uses it. |
-| 10 | **In-app updater** (daily check, box, download) | Needed while builds are sideloaded. | – | Stays until Play is the channel, then out. A date, not a question. |
+## Corrected verdict (2026-11-28 ~10:00, after three corrections by the owner)
+The first version below this line's history judged by „way vs preparation“, by counting controls and by comparing with
+other apps. The owner corrected all three: the split is **where you are / planning ahead** (Rundtouren stay), depth
+**behind a deliberate tap** does not complicate use („Mehr“ sheet, Zeitdetails, map list stay), and every element is
+judged by **the situation it serves** (the five tools in Meine Touren each have one – the activity filter most of all).
+Rules now in `docs/team/captains-guide.md` §4. Judged again with them:
+
+| What | Verdict |
+| --- | --- |
+| Rundtouren vorschlagen | Fits (spontaneous start from where you stand). Open: how many taps from „I stand here“ to a proposed loop; the entry is only in the hold menus. |
+| „Mehr“ sheet, „Fahrten bearbeiten“, Zeitdetails, Offline-Karten list | Fit – behind a deliberate tap, facts only. |
+| Meine Touren: tabs, search, sort, favourites, activity filter | Fit – each has its situation. Tabs and search get a requirement ID (no request was on record). |
+| „Auge“ | Fits – the route line covers the path on the map. |
+| Favourites for places | Fits (F-PLAN-14, the usual start or car park). |
+| Settings → „Position auf der Route“ (switch) | **Question:** no request on record and no situation found for switching it off. |
+| ☰ → „Ganz neu berechnen“ | **Question to the owner for the situation** (picture B of 2026-11-25) before any judgement. |
+| In-app updater | Stays until Play is the channel – a date, not a question. |
+| Off-route: three settings rows for one subject | Fits; one row with a sub-page would be calmer – a layout idea for the next settings pass, not a removal. |
+
+**Result:** apart from the dead code above, the app holds against the vision once the vision says what the owner
+means. The finding of this exercise is about the vision and the captain's method, not about the app.
 
 ## Honest about what the vision itself protects although it is big
 - **Hold-lock on the tour buttons and hold-only planning** are controls of the app's own – against „platform standard“.
@@ -50,6 +58,6 @@ map corridor, GPX in / out, search, the setup guide, pairing and plan sync with 
 - **Screen and battery behaviour** (rest view, pocket guard, three settings): serves arriving; the settings count is in #4.
 
 ## What follows
-If the owner follows the recommendations 1–9, about 35 functions and roughly 3,000–4,000 lines leave the phone, most of
-them preparation or analysis. Nothing of the core is touched. Order of work after his answers: dead code first (no
-question), then one block per thread, each with the three checks.
+1. Dead code out (table „Out“), orphan requirements marked – one small order, no question.
+2. Requirement IDs for the rows without an origin on record.
+3. Two questions to the owner (snap switch, „Ganz neu berechnen“), the tap count for Rundtouren.
