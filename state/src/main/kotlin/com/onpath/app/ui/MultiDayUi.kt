@@ -8,4 +8,6 @@ package com.onpath.app.ui
  * My routes ([canLeave]: no tour running), and [leavesTrip]: the day's start or goal moved – the line „Start und Ziel geändert –
  * wird als eigene Tour gespeichert“ before saving.
  */
-data class DayHeadUi(val label: String, val canLeave: Boolean, val leavesTrip: Boolean = false)
+data class DayHeadUi(val label: String, val canLeave: Boolean, val leavesTrip: Boolean = false,
+                     /** The line that says why it leaves the trip (MD-4 start / goal, MD-12 activity / T level); null = MD-4's. */
+                     val leaveNote: String? = null)

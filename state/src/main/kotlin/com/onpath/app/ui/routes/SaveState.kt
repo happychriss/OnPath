@@ -48,10 +48,12 @@ interface SavePorts : Say {
     /** A followed day whose start and goal stayed: Save writes the whole multi-day tour (true = taken care of; MD-3). */
     fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean
     /**
-     * A followed day whose start or goal moved (MD-4, owner 2026-11-28): Save makes a standalone route of it (a new one, never
-     * over the trip) and says „Start und Ziel geändert – wird als eigene Tour gespeichert“. False = no such day.
+     * A followed day whose start or goal moved (MD-4) or whose activity / T level is not the trip's (MD-12, owner 2026-11-28):
+     * Save makes a standalone route of it (a new one, never over the trip) and says so ([leavesTripNote]). False = no such day.
      */
     fun leavesTrip(): Boolean = false
+    /** What Save says then: „Start und Ziel geändert – …“ / „Aktivität geändert – …“ / „Schwierigkeit geändert – …“. */
+    fun leavesTripNote(): String = Txt.s(Res.string.multiday_own_tour)
     /** "Route 26 Oct, 10:12" in the app's language – the name when nothing else fits. */
     fun datedName(): String
     /** Keeps the model times of the saved route [id] for the route list (blocking; reports its own failures). */
@@ -283,10 +285,11 @@ open class SaveState(
      */
     private fun insertPlanned(what: String, end: () -> Unit, name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
         val title = name.trim().ifBlank { host.datedName() }
-        // MD-4: a day of a multi-day tour with its start or goal moved is saved as a tour of its own – said where the user acted
+        // MD-4 / MD-12: a day of a multi-day tour with its start or goal moved, or another activity / T level, is saved as a
+        // tour of its own – said where the user acted
         if (host.leavesTrip()) {
-            Problems.trace("plan", "Save: a day of a multi-day tour with its start or goal moved – saved as its own route \"$title\"")
-            host.say(Txt.s(Res.string.multiday_own_tour), NoticeKind.INFO, NoticePlace.MAP)
+            Problems.trace("plan", "Save: a day of a multi-day tour that leaves the trip (start / goal or profile changed) – saved as its own route \"$title\"")
+            host.say(host.leavesTripNote(), NoticeKind.INFO, NoticePlace.MAP)
         }
         // saved from a plan under "Zuletzt": the saved route takes its place there (no second entry)
         val fromDraft = linkedDraft

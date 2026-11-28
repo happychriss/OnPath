@@ -23,5 +23,7 @@
     <string name="daypick_touring">End the running tour first – then a day can be loaded.</string>
     <string name="daypick_days_failed">The days of this tour cannot be worked out – open it in the browser planner.</string>
     <string name="multiday_own_tour">Start and goal changed – will be saved as a separate tour</string>
+    <string name="multiday_own_tour_activity">Activity changed – will be saved as a separate tour</string>
+    <string name="multiday_own_tour_level">Difficulty changed – will be saved as a separate tour</string>
     <string name="multiday_maps_all">All maps of the multi-day tour are being loaded so you can set off offline at any time. This may take a moment.</string>
 </resources>

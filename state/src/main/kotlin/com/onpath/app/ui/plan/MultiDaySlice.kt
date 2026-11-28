@@ -28,6 +28,9 @@ import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.withContext
 import com.onpath.strings.msg_route_save_failed
+import com.onpath.strings.multiday_own_tour
+import com.onpath.strings.multiday_own_tour_activity
+import com.onpath.strings.multiday_own_tour_level
 
 /**
  * What [MultiDaySlice] asks of the rest of the app (main thread unless it says otherwise). The names differ from the view
@@ -248,14 +251,40 @@ class MultiDaySlice(
      * day – the recorded tour keeps them. A copy of the route ("Speichern als Kopie", a re-import, MD-4's own tour) gets a new
      * uuid: its days start unridden – on purpose.
      */
-    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.endsKept(waypoints.toList()) }
+    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && leaveReason() == null }
         ?.let { it.tour.uuid to it.part.first }
 
+    /** Why a followed day no longer belongs to its trip ([leaveReason]). */
+    enum class Leave { ENDS, ACTIVITY, LEVEL }
+
     /**
-     * A day is followed and its start or goal moved (MD-4): Save makes a standalone copy, the trip's day stays as it was – the
-     * plan sheet says so before ([dayHeadUi]) and SaveState when it saves.
+     * Why the followed day leaves its trip: its start or goal moved (MD-4, [Leave.ENDS] – said first when more changed), or the
+     * plan's activity ([Leave.ACTIVITY]) or, hiking, its T level ([Leave.LEVEL]) is not the trip's (MD-12, owner's decision card
+     * 2026-11-28 09:37: the phone never changes the whole trip's activity). Null = it still belongs to the trip (or no day).
      */
-    fun leavesTrip(): Boolean = flow.day?.takeIf { flow.following }?.let { !it.endsKept(waypoints.toList()) } ?: false
+    fun leaveReason(): Leave? {
+        val c = flow.day?.takeIf { flow.following } ?: return null
+        return when {
+            !c.endsKept(waypoints.toList()) -> Leave.ENDS
+            activity != c.whole.activity -> Leave.ACTIVITY
+            activity == com.onpath.app.routing.Activity.HIKE && sac != c.whole.sac -> Leave.LEVEL
+            else -> null
+        }
+    }
+
+    /**
+     * A day is followed and leaves its trip ([leaveReason]): Save makes a standalone copy, the trip stays as it was – points,
+     * activity, T level; the plan sheet says so before ([dayHeadUi]) and SaveState when it saves ([leavesTripNote]).
+     */
+    fun leavesTrip(): Boolean = leaveReason() != null
+
+    /** The line that says why ([leaveReason]); null when the day still belongs to its trip. */
+    fun leavesTripNote(): String? = when (leaveReason()) {
+        Leave.ENDS -> com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour)
+        Leave.ACTIVITY -> com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour_activity)
+        Leave.LEVEL -> com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour_level)
+        null -> null
+    }
 
     /** "‹ Alle Tage" (MD-2): My routes with the trip's day sheet – the day stays the plan until another day is picked. */
     fun allDays() {
@@ -280,7 +309,9 @@ class MultiDaySlice(
         val days = MultiDay.of(w) ?: return false
         if (savingWhole) return true
         savingWhole = true
-        val act = activity; val level = sac; val f = planRoute.planFactors(act)
+        // the trip's own profile (MD-12): Save over the trip only runs while the day's is the trip's ([leavesTrip]) – the phone
+        // never changes the whole trip's activity or T level, and the trip's detour points stay as they are
+        val act = w.activity; val level = w.sac; val f = planRoute.planFactors(act)
         val dayLine = route?.points?.takeIf { it.size >= 2 } ?: pts
         val stops = com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }
         scope.launchSafe("app", "saveWholeTour") {
@@ -289,7 +320,7 @@ class MultiDaySlice(
                     runCatching {
                         val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, dayLine, act, f)
                         tours.replacePlanned(c.tour.id, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line), stops, w.pinned, null, days,
-                            c.anchorSet().forProfile(act, level)))
+                            w.anchors))
                             .also { if (it && name != c.tour.name) tours.rename(c.tour.id, name) }
                     }.onFailure { Problems.error("db", "Saving the multi-day tour with the day's change failed", it) }
                 }
@@ -323,7 +354,7 @@ class MultiDaySlice(
      * The followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" (not during a tour) and, when its start or
      * goal moved, MD-4's line before saving; null when no day is followed.
      */
-    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, leavesTrip()) }
+    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, leavesTrip(), leavesTripNote()) }
 
     companion object {
         /**
