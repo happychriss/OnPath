@@ -153,7 +153,7 @@ data class NavUi(
      */
     val approx: String? = null,
     /** Questions under the status card: notifications off this tour ([notificationsOffMessage]); the battery ([batteryMessage], R-10). */
-    val notificationsOff: Boolean = false, val battery: BatteryAskUi? = null,
+    val notificationsOff: Boolean = false, val battery: BatteryAskUi? = null, val batterySaving: Boolean = false,
     /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
     /** A multi-day tour's day is followed: "Tag 4 von 6", small at the top of the status card (stage 4); null otherwise. */
@@ -272,7 +272,7 @@ fun NavigateOverlay(
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
     /** The notifications question: Einschalten → phone setup step, Später → gone for this tour; the battery's answer (Sparen = true). */
-    onNotifications: () -> Unit = {}, onNotificationsOk: () -> Unit = {}, onBattery: (Boolean) -> Unit = {},
+    onNotifications: () -> Unit = {}, onNotificationsOk: () -> Unit = {}, onBattery: (Boolean) -> Unit = {}, onBatterySaving: () -> Unit = {},
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
     error: String? = null,
     onErrorOk: () -> Unit = {},
@@ -374,7 +374,7 @@ fun NavigateOverlay(
                     actions = null)
             }
             LocalNavBelowCard.current?.invoke() // live sharing's "waiting for network" pill ([LiveSignLayer])
-            download?.let { BackgroundDownloadChip(it, onDownload, Modifier.align(Alignment.End)) }
+            NavBelowCardRow(ui.batterySaving, onBatterySaving, download, onDownload) // „Akku sparen an“ left, the download right
             sim?.let { Box(Modifier.align(Alignment.End)) { it() } }
         }
         Column(Modifier.align(Alignment.BottomCenter).modeEdge(ModeEdge.BOTTOM).fillMaxWidth()) {
@@ -1108,7 +1108,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
         approx = prov?.let { approxLine(it) },
         notificationsOff = com.onpath.app.navigation.NotificationsOff.shown(rec?.tourId,
-            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.setup.phone), vm.setup.notificationsOkTour), battery = batteryAsk(vm, rec?.tourId?.takeIf { nav != null }, toGoS),
+            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.setup.phone), vm.setup.notificationsOkTour), battery = batteryAsk(vm, rec?.tourId?.takeIf { nav != null }, toGoS), batterySaving = batterySaving(rec?.tourId),
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheckSlice.activityCheck != null) { vm.activityCheckSlice.closeActivityCheck() }
@@ -1144,7 +1144,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             onProfileScrub = vm.map::navScrub, onProfileRelease = vm.map::navScrubEnd,
             download = bg, onDownload = { vm.mapData.downloadDetailsOpen = true },
             onNotifications = { vm.setup.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
-            onNotificationsOk = { vm.setup.notificationsOkTour = rec?.tourId }, onBattery = { answerBattery(vm, rec?.tourId, it) },
+            onNotificationsOk = { vm.setup.notificationsOkTour = rec?.tourId }, onBattery = { answerBattery(vm, rec?.tourId, it) }, onBatterySaving = vm.settingsSlice::openSettingsOnTheWay,
             error = vm.notices.errorCard, onErrorOk = { vm.notices.errorCard = null }, onCover = onCover,
             sim = if (!vm.settingsSlice.devToolsShown) null else { {
                 val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()

@@ -1068,5 +1068,12 @@
     "context": "Switch line – Akku sparen, Chriss 2026-11-28",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "settings_battery_save_tour": {
+    "area": "Battery (R-10)",
+    "context": "Bold line under „Akku sparen“: the switch holds for the current tour only, off after its end (Chriss 2026-11-28 12:55)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 40
   }
 }

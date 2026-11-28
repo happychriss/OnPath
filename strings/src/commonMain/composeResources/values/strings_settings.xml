@@ -182,6 +182,7 @@
     <string name="settings_group_offroute">Off the route</string>
     <string name="settings_group_battery">Battery</string>
     <string name="settings_battery_save">Save battery</string>
+    <string name="settings_battery_save_tour">Only for the current tour</string>
     <string name="settings_battery_save_sub">GPS less often, live sharing slower – both stay on</string>
     <string name="settings_group_junctions">Junctions</string>
     <string name="settings_group_screen">Screen and map</string>

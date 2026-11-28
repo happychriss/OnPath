@@ -65,10 +65,6 @@ data class AppSettings(
      * default, independent of the system "Touch feedback" setting).
      */
     val planVibrate: Boolean = true,
-    /** „Akku sparen“ (Chriss 2026-11-28, R-10): GPS less often, live sharing slower – both stay on; stays set ([com.onpath.app.domain.tour.BatterySave]). */
-    val batterySave: Boolean = false,
-    /** [Sparen] from the battery question: for this tour only (its id; captain 2026-11-28) – the switch shows „an“ while it runs. */
-    val batterySaveTour: Long? = null,
     /** Keep the screen on while following a route – hiking (bike activities: [bikeScreen]). */
     val keepScreenOn: Boolean = true,
     /** Screen while cycling: always on / smart rest view (default) / like the phone. */

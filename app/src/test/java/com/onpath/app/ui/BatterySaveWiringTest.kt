@@ -9,22 +9,27 @@ class BatterySaveWiringTest {
     private fun src(p: String) = File("src/main/java/com/onpath/app/$p").readText()
     private fun core(p: String) = File("../core/src/main/kotlin/com/onpath/app/$p").readText()
 
-    @Test fun theSettingReachesTheRecordingAndStaysSet() {
-        assertTrue(src("data/Prefs.kt").contains(".putBoolean(\"batterySave\", v.batterySave)"))
-        assertTrue(src("data/Prefs.kt").contains("BatterySave.manual = v.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = v.batterySaveTour"))
-        assertTrue(src("data/Prefs.kt").contains(".putLong(\"batterySaveTour\", v.batterySaveTour ?: -1L)"))
-        assertTrue("at app start", src("OnPathApp.kt").contains("BatterySave.manual = it.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = it.batterySaveTour"))
+    /** Chriss 2026-11-28 12:55: one tour only – the mark is stored on its own (not in AppSettings), bound and ended by the watcher. */
+    @Test fun oneTourOnlyStoredAndFollowed() {
+        assertTrue(src("data/Prefs.kt").contains("var batterySaveMark: Long?"))
+        assertTrue(!core("data/AppSettings.kt").contains("batterySave"))
+        val w = src("recording/BatteryWatch.kt")
+        assertTrue("the running tour binds / ends it", w.contains("BatterySave.afterTourChange(m, prev, now)") && w.contains("prefs?.batterySaveMark = mark"))
+        assertTrue("read back at start (R-07)", w.contains("BatterySave.mark = prefs?.batterySaveMark"))
+        val q = src("ui/BatteryQuestion.kt")
+        assertTrue("[Sparen] opens ⚙, it does not switch", q.contains("if (save) vm.settingsSlice.openSettingsOnTheWay()"))
+        assertTrue("the bold line", q.contains("Res.string.settings_battery_save_tour") && q.contains("FontWeight.Bold"))
+        assertTrue("the switch writes through the watcher", q.contains("BatteryWatch.setSaving(it)"))
         assertTrue("the group „Akku“ first in Navigation (⚙ on the way)", src("ui/SettingsScreen.kt").substringAfter("fun NavigationSection(")
-            .substringBefore("settings_group_offroute").contains("BatterySaveSwitch(settings, onChange)"))
+            .substringBefore("settings_group_offroute").contains("BatterySaveSwitch()"))
     }
 
-    /** Captain 2026-11-28: [Sparen] from the question = this tour only; the switch shows „an“ meanwhile; by hand = lasting. */
-    @Test fun fromTheQuestionForThisTourOnly() {
-        val q = src("ui/BatteryQuestion.kt")
-        assertTrue(q.contains("settings.copy(batterySaveTour = tourId)") && !q.contains("settings.copy(batterySave = true)"))
-        assertTrue("the switch shows the effective state", q.contains("BatterySave.effective(settings.batterySave, settings.batterySaveTour, running?.tourId)"))
-        assertTrue("a tap by hand clears the tour mark", q.contains("onChange(settings.copy(batterySave = it, batterySaveTour = null))"))
-        assertTrue("the running tour is followed", src("recording/BatteryWatch.kt").contains("BatterySave.runningTour = it"))
+    /** The pill (Chriss 12:56): under the card, beside the download; a tap opens ⚙. */
+    @Test fun thePillInNavigate() {
+        val n = src("ui/NavigateScreen.kt")
+        assertTrue(n.contains("NavBelowCardRow(ui.batterySaving, onBatterySaving, download, onDownload)"))
+        assertTrue(n.contains("batterySaving = batterySaving(rec?.tourId)"))
+        assertTrue(n.contains("onBatterySaving = vm.settingsSlice::openSettingsOnTheWay"))
     }
 
     @Test fun gpsSlowerAndLiveSharingSlowerButOn() {

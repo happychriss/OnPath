@@ -521,7 +521,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         // „Akku sparen“ first (Chriss 2026-11-28, picture akku-varianten A, R-10): reachable during the tour via ⚙
         SettingsGroupHeader(str(Res.string.settings_group_battery))
         SettingsCard {
-            BatterySaveSwitch(settings, onChange)
+            BatterySaveSwitch()
         }
         SettingsGroupHeader(str(Res.string.settings_group_offroute))
         SettingsCard {

@@ -75,6 +75,27 @@ abstract class BackgroundDownloadScreenshotTest {
         }
     }
 
+    private fun navBelow(nav: NavUi) = paparazzi.snapshot {
+        OnPathTheme {
+            Box(Modifier.fillMaxSize()) {
+                MapPlaceholder(Modifier.fillMaxSize())
+                Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
+                    NavigateOverlay(nav, footer = {}, onSlideToPlan = {}, download = ui)
+                }
+            }
+        }
+    }
+    private val walking = NavUi(toGo = ToGo(7_420.0, 512.0, 2.9 * 3600, 12.0, descentM = 310.0), recordedM = 5_320.0,
+        elapsedS = 5025, activity = Activity.HIKE)
+
+    /** „Akku sparen an“ (Chriss 2026-11-28 12:56, picture akku-pille A): the quiet pill left under the card, the download right. */
+    @Test fun navigateBatterySaving() = navBelow(walking.copy(batterySaving = true))
+
+    /** All at once – off route, no GPS, the download, saving: the pill sits below them and pushes none of them away. */
+    @Test fun navigateBatterySavingWithAll() = navBelow(walking.copy(batterySaving = true, waitingGps = true, fixAgeS = 250,
+        toGo = walking.toGo!!.copy(state = com.onpath.app.time.EstimateState.PAUSED, pausedBecause = com.onpath.app.time.PauseReason.NO_GPS.text),
+        offRoute = OffRouteUi(com.onpath.app.navigation.NavPrompt.Searching, com.onpath.app.navigation.RouteHint(120.0, 45.0, com.onpath.app.routing.GeoPoint(46.68, 11.13)))))
+
     /** Tap on the sign: the ONE bar, one line per load (fertig · lädt · wird vorbereitet), Cancel all (red) · Close. */
     @Test fun details() = sheet(ui)
 

@@ -181,6 +181,7 @@
     <string name="settings_group_offroute">Abseits der Route</string>
     <string name="settings_group_battery">Akku</string>
     <string name="settings_battery_save">Akku sparen</string>
+    <string name="settings_battery_save_tour">Gilt nur für die aktuelle Tour</string>
     <string name="settings_battery_save_sub">GPS seltener, Live-Teilen langsamer – beides bleibt an</string>
     <string name="settings_group_junctions">Abzweigungen</string>
     <string name="settings_group_screen">Bildschirm und Karte</string>

@@ -1388,5 +1388,12 @@
     "priority": 1,
     "confidence": "sicher",
     "max": 14
+  },
+  "nav_battery_saving": {
+    "area": "Battery (R-10)",
+    "context": "Quiet pill under Navigate's status card while „Akku sparen“ holds for this tour; tap opens ⚙ (Chriss 2026-11-28 12:56)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 22
   }
 }

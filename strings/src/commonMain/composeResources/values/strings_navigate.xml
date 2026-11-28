@@ -267,6 +267,7 @@
     <string name="nav_battery_line">About %1$s to go – at the use so far the battery (%2$d %) lasts about %3$s. Saving: GPS less often, live sharing slower, it stays on.</string>
     <string name="nav_battery_no">No thanks</string>
     <string name="nav_battery_save">Save</string>
+    <string name="nav_battery_saving">Saving battery</string>
 
     <!-- rest view while cycling (smart screen) -->
     <string name="nav_rest_destination">Destination</string>

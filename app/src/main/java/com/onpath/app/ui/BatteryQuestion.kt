@@ -9,6 +9,12 @@ import androidx.compose.runtime.getValue
 import com.onpath.app.data.Format
 import com.onpath.app.domain.tour.BatteryEstimate
 import com.onpath.app.recording.BatteryWatch
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.unit.dp
 
 /** The numbers of the battery question: the time still to go, the level now, how long it lasts at the use so far. */
 data class BatteryAskUi(val toGo: String, val level: Int, val lasts: String)
@@ -22,17 +28,20 @@ data class BatteryAskUi(val toGo: String, val level: Int, val lasts: String)
 fun batteryAsk(vm: AppViewModel, tourId: Long?, toGoS: Double?): BatteryAskUi? {
     val now by BatteryWatch.now.collectAsState()
     if (tourId == null || now.tourId != tourId) return null
-    val saving = com.onpath.app.domain.tour.BatterySave.effective(vm.settingsSlice.settings.batterySave, vm.settingsSlice.settings.batterySaveTour, tourId)
+    val mark by BatteryWatch.saveMark.collectAsState()
+    val saving = com.onpath.app.domain.tour.BatterySave.effective(mark, tourId)
     if (!BatteryEstimate.asks(now.level, now.usePerHour, toGoS, saving, BatteryWatch.askedTour == tourId)) return null
     val lasts = BatteryEstimate.lastsS(now.level, now.usePerHour) ?: return null
     return BatteryAskUi(Format.durationShort(toGoS ?: return null), now.level ?: return null, Format.durationShort(lasts))
 }
 
-/** „Sparen“ turns „Akku sparen“ on for this tour; either answer ends the question for this tour. */
+/**
+ * Either answer ends the question for this tour; „Sparen“ opens ⚙ on the way with „Akku sparen“ on top – the user switches
+ * there and reads that it holds for this tour only (Chriss 2026-11-28 12:55).
+ */
 fun answerBattery(vm: AppViewModel, tourId: Long?, save: Boolean) {
     BatteryWatch.askedTour = tourId
-    // for this tour only (captain 2026-11-28): it ends with the tour; the switch in ⚙ shows „an“ meanwhile
-    if (save && tourId != null) vm.settingsSlice.put(vm.settingsSlice.settings.copy(batterySaveTour = tourId))
+    if (save) vm.settingsSlice.openSettingsOnTheWay()
     com.onpath.app.debug.Problems.trace("battery", "Battery question answered: ${if (save) "Sparen" else "Nein danke"}")
 }
 
@@ -47,14 +56,32 @@ internal fun batteryMessage(b: BatteryAskUi, onAnswer: (Boolean) -> Unit): Messa
         icon = Icons.Outlined.BatteryAlert, navigate = true)
 
 /**
- * The „Akku sparen“ switch in ⚙: „an“ when set by hand or from the question while that tour runs; a tap by hand is lasting
- * (on) or ends both (off) – captain 2026-11-28.
+ * The „Akku sparen“ switch in ⚙ (Navigation page and on the way): „an“ while it holds for the running tour or waits for the
+ * next one; under its name in bold „Gilt nur für die aktuelle Tour“ (Chriss 2026-11-28 12:55), then the line what it does.
  */
 @Composable
-internal fun BatterySaveSwitch(settings: com.onpath.app.data.AppSettings, onChange: (com.onpath.app.data.AppSettings) -> Unit) {
+internal fun BatterySaveSwitch() {
     val running by com.onpath.app.recording.RecordingService.state.collectAsState()
-    val on = com.onpath.app.domain.tour.BatterySave.effective(settings.batterySave, settings.batterySaveTour, running?.tourId)
-    SwitchRow(str(Res.string.settings_battery_save), str(Res.string.settings_battery_save_sub), on) {
-        onChange(settings.copy(batterySave = it, batterySaveTour = null))
+    val mark by BatteryWatch.saveMark.collectAsState()
+    val on = com.onpath.app.domain.tour.BatterySave.effective(mark, running?.tourId)
+    androidx.compose.foundation.layout.Row(androidx.compose.ui.Modifier.fillMaxWidth().heightIn(min = 56.dp)
+        .toggleable(value = on, role = androidx.compose.ui.semantics.Role.Switch, onValueChange = { BatteryWatch.setSaving(it) })
+        .padding(start = 16.dp, end = 16.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+        androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.weight(1f).padding(vertical = 6.dp)) {
+            androidx.compose.material3.Text(str(Res.string.settings_battery_save), style = androidx.compose.material3.MaterialTheme.typography.bodyLarge)
+            androidx.compose.material3.Text(str(Res.string.settings_battery_save_tour), style = androidx.compose.material3.MaterialTheme.typography.bodyMedium,
+                fontWeight = androidx.compose.ui.text.font.FontWeight.Bold)
+            androidx.compose.material3.Text(str(Res.string.settings_battery_save_sub), style = androidx.compose.material3.MaterialTheme.typography.bodySmall,
+                color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        androidx.compose.foundation.layout.Spacer(androidx.compose.ui.Modifier.width(12.dp))
+        SettingsSwitch(on)
     }
+}
+
+/** „Akku sparen an“ in Navigate: saving holds for the running tour (Chriss 2026-11-28 12:56). */
+@Composable
+fun batterySaving(tourId: Long?): Boolean {
+    val mark by BatteryWatch.saveMark.collectAsState()
+    return tourId != null && com.onpath.app.domain.tour.BatterySave.effective(mark, tourId)
 }

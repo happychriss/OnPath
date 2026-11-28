@@ -45,6 +45,16 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         }
         set(v) = sp.edit().putInt("holdsDone", v).apply()
 
+    /**
+     * „Akku sparen“ for one tour (Chriss 2026-11-28 12:55, R-10): null = off, [com.onpath.app.domain.tour.BatterySave.NEXT] =
+     * the next tour, else that tour's id – kept across a restart (R-07); `recording/BatteryWatch` writes it.
+     */
+    var batterySaveMark: Long?
+        get() = try { sp.getLong("batterySaveMark", Long.MIN_VALUE).takeIf { it != Long.MIN_VALUE } } catch (e: ClassCastException) {
+            Problems.warn("settings", "Setting batterySaveMark unreadable, off", e); null
+        }
+        set(v) = sp.edit().apply { if (v == null) remove("batterySaveMark") else putLong("batterySaveMark", v) }.apply()
+
     /** The newest crash already announced (Problems' time; the next one is said once). */
     var crashShownUntil: Long
         get() = sp.getLong("crashShownUntil", 0)
@@ -185,8 +195,6 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             junctionVibration = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
-            batterySave = sp.getBoolean("batterySave", false),
-            batterySaveTour = sp.getLong("batterySaveTour", -1L).takeIf { it >= 0 },
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             bikeScreen = BikeScreen.of(sp.getString("bikeScreen", null), sp.getBoolean("keepScreenOn", true)),
             junctionGuide = JunctionGuide.of(sp.getString("junctionGuide", null),
@@ -223,9 +231,7 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             .remove("hikePace").remove("bikePace") // the old three-level keys, migrated by [pace]
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
             .putInt("markedTrails", v.markedTrails)
-            .putBoolean("batterySave", v.batterySave)
-            .putLong("batterySaveTour", v.batterySaveTour ?: -1L)
-            .apply().also { com.onpath.app.domain.tour.BatterySave.manual = v.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = v.batterySaveTour } // the recording reads it (R-10)
+            .apply()
 
     var planWaypoints: List<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("plan", null)).map { GeoPoint(it.lat, it.lon) }

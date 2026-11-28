@@ -35,7 +35,7 @@ class SettingsOnTheWayV1Test {
         val nav = src("ui/SettingsScreen.kt").substringAfter("fun NavigationSection(").substringBefore("\n}\n")
         for (change in listOf("settings.copy(offRouteM = it)", "settings.copy(offRouteVibrate = it)", "settings.copy(positionOnRoute = it)",
                 "settings.copy(keepScreenOn = it)", "BikeScreenRow(settings, onChange)", "HoldTimeRow(settings, onChange)",
-                "settings_nav_voice_test", "JunctionGuideRow(settings, onChange)", "settings.copy(offRouteWarning = it)", "BatterySaveSwitch(settings, onChange)"))
+                "settings_nav_voice_test", "JunctionGuideRow(settings, onChange)", "settings.copy(offRouteWarning = it)", "BatterySaveSwitch()"))
             assertTrue("the Navigation page still has $change", nav.contains(change))
         // „Alle Einstellungen“ on the way opens the whole topic list: Navigation is in it, Dein Tempo opens from Plan,
         // Offline-Karten from Karte

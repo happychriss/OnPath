@@ -33,6 +33,21 @@ object BatteryWatch {
 
     @Volatile var askedTour: Long? = null
 
+    /** „Akku sparen“'s mark ([com.onpath.app.domain.tour.BatterySave.mark]) for the screens. */
+    private val _saveMark = MutableStateFlow<Long?>(null)
+    val saveMark: StateFlow<Long?> = _saveMark
+    private var prefs: com.onpath.app.data.Prefs? = null
+
+    /** The switch in ⚙ (by hand or after the question): for the running tour, or the next one (Chriss 2026-11-28 12:55). */
+    fun setSaving(on: Boolean) = store(com.onpath.app.domain.tour.BatterySave.switchTo(on, com.onpath.app.domain.tour.BatterySave.runningTour))
+
+    private fun store(mark: Long?) {
+        com.onpath.app.domain.tour.BatterySave.mark = mark
+        _saveMark.value = mark
+        try { prefs?.batterySaveMark = mark } catch (e: Exception) { Problems.warn("battery", "Akku sparen not stored", e) }
+        Problems.trace("battery", "Akku sparen: ${mark?.let { if (it == com.onpath.app.domain.tour.BatterySave.NEXT) "next tour" else "tour $it" } ?: "off"}")
+    }
+
     private var estimate = BatteryEstimate()
     private var receiver: BroadcastReceiver? = null
 
@@ -40,8 +55,18 @@ object BatteryWatch {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e ->
             Problems.warn("battery", "Battery estimate: the tour is not followed any more", e)
         })
-        // the running tour for „Sparen“ from the question (this tour only; a restart mid-tour finds the same id – R-07)
-        scope.launch { RecordingService.state.map { it?.tourId }.distinctUntilChanged().collect { com.onpath.app.domain.tour.BatterySave.runningTour = it } }
+        // „Akku sparen“ holds for one tour (Chriss 2026-11-28 12:55): stored mark; the running tour binds and ends it – the
+        // app's first, empty state is no end (a restart mid-tour finds the same id, R-07)
+        try { prefs = com.onpath.app.data.Prefs(app); com.onpath.app.domain.tour.BatterySave.mark = prefs?.batterySaveMark } catch (e: Exception) { Problems.warn("battery", "Akku sparen not read; off", e) }
+        _saveMark.value = com.onpath.app.domain.tour.BatterySave.mark
+        var prev: Long? = null
+        scope.launch { RecordingService.state.map { it?.tourId }.distinctUntilChanged().collect { now ->
+            com.onpath.app.domain.tour.BatterySave.runningTour = now
+            val m = com.onpath.app.domain.tour.BatterySave.mark
+            val next = com.onpath.app.domain.tour.BatterySave.afterTourChange(m, prev, now)
+            if (next != m) store(next)
+            prev = now
+        } }
         scope.launch {
             RecordingService.state.map { s -> s?.takeIf { it.nav != null }?.tourId }.distinctUntilChanged().collect { tour ->
                 stop(app)

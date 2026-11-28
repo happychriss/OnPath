@@ -266,6 +266,7 @@
     <string name="nav_battery_line">Noch etwa %1$s – der Akku (%2$d %) reicht nach bisherigem Verbrauch für etwa %3$s. Sparen: GPS seltener, Live-Teilen langsamer, es bleibt an.</string>
     <string name="nav_battery_no">Nein danke</string>
     <string name="nav_battery_save">Sparen</string>
+    <string name="nav_battery_saving">Akku sparen an</string>
 
     <!-- Ruheansicht beim Radfahren (smarter Bildschirm) -->
     <string name="nav_rest_destination">Ziel</string>
