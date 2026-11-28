@@ -126,7 +126,7 @@ class TestKitTest {
         val svc = sourceFile("recording/RecordingService.kt").readText()
         for (line in listOf(
             "const val GAP_MS = ${FakeRecording.GAP_MS / 1000}_000L",
-            "val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS",
+            "val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > maxOf(GAP_MS, RestWatch.normalMs() * 2 + 5_000L)",
             "val routeChecked = GuidanceGate.offRouteCheck(moveWatch.moving(nowEl), arrived)",
             "val bridged = wasLost && prev != null && PointFilter.bridgesGap(prev, p)",
             "val split = gapSplit.split(wasLost, bridged, prev != null)",

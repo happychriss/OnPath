@@ -65,7 +65,7 @@ class StillSenseTest {
     @Test fun wiredOnlyWithoutAFixAndHidesTheLine() {
         val svc = java.io.File("src/main/java/com/onpath/app/recording/RecordingService.kt").readText()
         assertTrue(svc.contains("motion.listen(tourId >= 0 && !paused)"))
-        assertTrue(svc.contains("if (tourId >= 0 && !paused) restGps.onTick(now)"))
+        assertTrue(svc.contains("if (tourId >= 0 && !paused) { com.onpath.app.domain.tour.BatterySave.bike = recorded.activity != Activity.HIKE; restGps.onTick(now) }"))
         assertTrue(svc.contains("RestGps(tracker) { motion.still(it) }"))
         assertTrue(svc.contains("private fun stillWithoutGps(): Boolean? = if (gpsLost()) motion.still(SystemClock.elapsedRealtime()) else null"))
         assertTrue(svc.contains("motion.listen(false)"))

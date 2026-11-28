@@ -21,6 +21,11 @@ class BatterySaveWiringTest {
         assertTrue(src("recording/RecordingService.kt").contains("tracker.setInterval(RestWatch.normalMs())"))
         assertTrue(!src("recording/RecordingService.kt").contains("tracker.setInterval(RestWatch.NORMAL_MS)"))
         assertTrue(core("live/LiveUploader.kt").contains("< LOW_BATTERY_PCT || com.onpath.app.domain.tour.BatterySave.on"))
+        val svc = src("recording/RecordingService.kt")
+        assertTrue("every second near a junction / off the route", svc.contains("BatterySave.fast = com.onpath.app.domain.tour.SaveRate.fast(st.shownAlongM, st.offM,"))
+        assertTrue("no route: slow throughout", svc.contains("navigator?.state ?: run { com.onpath.app.domain.tour.BatterySave.fast = false; return }"))
+        assertTrue("on foot or by bike", svc.contains("BatterySave.bike = recorded.activity != Activity.HIKE"))
+        assertTrue("the slow rate is no gap in the track", svc.contains("nowEl - lastGoodFixElapsed > maxOf(GAP_MS, RestWatch.normalMs() * 2 + 5_000L)"))
     }
 
     @Test fun theQuestionOnNavigate() {

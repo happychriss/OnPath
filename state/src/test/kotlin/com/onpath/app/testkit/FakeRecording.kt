@@ -180,7 +180,7 @@ class FakeRecording(val tours: JdbcTours, private val clock: () -> Long = System
         if (!PointFilter.accuracyOk(true, accuracyM)) { run.gapWatch.onDropped(true, accuracyM); return }
         val now = clock()
         watchdog.disarm()
-        val wasLost = run.lastGoodFixElapsed > 0 && now - run.lastGoodFixElapsed > GAP_MS
+        val wasLost = run.lastGoodFixElapsed > 0 && now - run.lastGoodFixElapsed > maxOf(GAP_MS, com.onpath.app.recording.RestWatch.normalMs() * 2 + 5_000L)
         run.lastGoodFixElapsed = now
         run.gapWatch.reset()
         val tp = TrackPoint(p.lat, p.lon, p.ele, timeMs)
