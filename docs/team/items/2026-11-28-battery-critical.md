@@ -21,3 +21,12 @@ Not found: no code drops either. In practice the phone decides – a GPS-stoppin
   the metric in `docs/design/battery-audit.md:267` is not built).
 - "arriving before recording": no choice is offered, so no order exists. `docs/requirements.md:257` allows a "critical battery" pop-up
   during navigation – none is built.
+
+## Owner's answer (2026-11-28 10:32, captain thread)
+„Eine zusätzliche 20 %-Warnung bringt nichts, kommt von Android. Es sollte auf jeden Fall eine Möglichkeit geben, auf ‚Sparen‘
+umzustellen (weniger GPS-Scans, langsameres Live-Teilen – das soll aber an bleiben, sonst machen sich die Angehörigen Sorgen,
+gerade bei wenig Batterie). Diese Abschätzung wäre schon nicht schlecht: nach 30 min Wanderung könnte klar sein, wie lange man
+noch braucht und wie viel Strom verbraucht wird.“
+→ No own %-threshold warning. A „Sparen“ switch the user can set any time (fewer GPS fixes; live sharing slower but **stays on**).
+After ~30 min of a navigated tour the app estimates whether the battery lasts to the goal; if not, it **asks** whether to switch
+to „Sparen“ (VISION: it asks, arriving first). Nothing else is dropped without asking (screen, recording: not part of it).
