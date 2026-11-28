@@ -983,6 +983,13 @@ dialog.plans .favchip .star.on { color: #B07D00; }
 dialog.plans .favchip.on { padding: 0 12px 0 8px; }
 dialog.plans .actchip { padding-right: 6px; }
 dialog.plans .actchip.on { padding: 0 6px 0 8px; }
+/* a set filter (the app's SetFilterChip, Chriss 2026-11-28): dark green, white words and sign, × at the end; the sort chips stay light */
+dialog.plans .setchip { flex: none; display: inline-flex; align-items: center; height: 32px; border-radius: 8px; background: var(--green); color: #fff; }
+dialog.plans .setchip .sortchip.setbody { height: 32px; border: none; background: none; color: #fff; padding: 0 2px 0 8px; gap: 8px; }
+dialog.plans .setchip .setbody .ic, dialog.plans .setchip .setbody svg { fill: #fff; }
+dialog.plans .setchip .favchip .star.on { color: #B07D00; } dialog.plans .setchip .favchip .star.on svg { fill: currentColor; }
+dialog.plans .setclear { display: inline-flex; align-items: center; justify-content: center; min-width: 32px; height: 32px; border: none; background: none; color: #fff; cursor: pointer; border-radius: 0 8px 8px 0; padding: 0; }
+dialog.plans .setclear svg { fill: currentColor; } dialog.plans .setclear:hover, dialog.plans .setchip .setbody:hover { background: rgba(255,255,255,.14); }
 .actfilter { position: fixed; top: 0; left: 0; right: auto; min-width: 230px; z-index: 6; }
 .actfilter[hidden] { display: none; }
 .actfilter .actpick { min-height: 48px; padding: 0 16px; gap: 16px; }

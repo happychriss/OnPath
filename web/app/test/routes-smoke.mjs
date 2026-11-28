@@ -106,9 +106,16 @@ await seed(P);
 await openList(P);
 // 1. the chips: ☆ Favorites, the activity (preset: the planning activity Hike), then the sort, Newest first
 let c = await chipRow(P);
-check(same(c.map((x) => x.cls.replace(/\bon\b/, '').trim()), ['favchip', 'actchip', '', '', '', '', '']) && c[0].text === 'Favorites' && !c[0].on && c[1].text === 'Hike' && c[1].on && c[2].on,
+check(same(c.map((x) => x.cls.replace(/\b(on|setbody)\b/g, '').trim()), ['favchip', 'actchip', '', '', '', '', '']) && c[0].text === 'Favorites' && !c[0].on && c[1].text === 'Hike' && c[1].on && c[2].on,
   'the chips: ☆ Favorites (off), the activity preset with the planning activity (Hike), Newest first – ' + c.map((x) => x.text).join(' · '));
 check(c[0].label === 'Favorites: show only favorites' && c[1].label === 'Activity: Hike. Tap to change', 'the app\'s spoken texts (' + c[0].label + ' / ' + c[1].label + ')');
+// a set filter is seen at once (the app's SetFilterChip, Chriss 2026-11-28): dark green with × („Remove filter Hike“);
+// the chosen sort stays light with the sort sign, not a ✓
+{ const look = await P.evaluate(() => { const set = document.querySelector('#planSort .setchip'); const sort = document.querySelector('#planSort .sortchip.on[data-key]');
+    return { bg: set ? getComputedStyle(set).backgroundColor : '', body: !!set?.querySelector('.actchip'), clear: set?.querySelector('.actclear')?.getAttribute('aria-label') ?? '',
+      sortBg: sort ? getComputedStyle(sort).backgroundColor : '', sortIcon: sort?.querySelector('path')?.getAttribute('d')?.slice(0, 12) ?? '' }; });
+  check(look.bg === 'rgb(36, 95, 70)' && look.body && look.clear === 'Remove filter Hike' && look.sortBg !== 'rgb(36, 95, 70)' && look.sortIcon === 'M3 18h6v-2H3',
+    `the set filter dark with ×, the sort light with its sort sign (${JSON.stringify(look)})`); }
 // 2. exactly the activity: the hikes and the hiking track, newest first
 check(same(await names(P), ['Runde ab Algund', 'Ifinger Steig', 'Waalweg']), 'Hike: only the hikes (the track too) – ' + (await names(P)).join(', '));
 let r = await rowOf(P, 'Waalweg');
@@ -136,11 +143,16 @@ check((await P.textContent('#planList .emptyline')).trim() === 'No E-bike tours 
   check(/^SAVED · ONLY E-BIKE$/.test(head.text.trim()) && head.more === '5 more', `the header says what is hidden: "${head.text}" · "${head.more}"`);
   await P.click('#planList li.sectionhead .showall');
   await P.waitForFunction(() => document.querySelectorAll('#planList li[data-id]').length === 5, null, { timeout: 5_000 }).catch(() => {});
-  check((await names(P)).length === 5 && (await chipRow(P))[1].text === 'All' && !(await P.$('#planList .showall')), `„5 more“: All at once, the header gone (${(await names(P)).length}, ${JSON.stringify(await chipRow(P))})`);
+  check((await names(P)).length === 5 && (await chipRow(P))[1].text === 'Activity' && !(await P.$('#planList .showall')), `„5 more“: All at once, the header gone (${(await names(P)).length}, ${JSON.stringify(await chipRow(P))})`);
   await pickAct(P, 'EBIKE'); }
+// the × on the set chip: the filter goes – All, the light „Activity ▾“ (the app's SetFilterChip onClear)
+await P.click('#planSort .actclear');
+c = await chipRow(P);
+check(c[1].text === 'Activity' && !c[1].on && !(await P.$('#planSort .setchip')) && (await names(P)).length === 5, `× on the set filter: All, the light „Activity ▾“ (${c[1].text})`);
+await pickAct(P, 'EBIKE');
 await pickAct(P, 'ALL');
 c = await chipRow(P);
-check(c[1].text === 'All' && !c[1].on && (await names(P)).length === 5, 'All: every tour, the chip outlined');
+check(c[1].text === 'Activity' && !c[1].on && (await names(P)).length === 5, 'All: every tour, the light „Activity ▾“');
 
 // 4. the star: one tap, stored as the sync's field 9 (an edit to send with Save); the pill shows only the starred ones
 await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
@@ -153,7 +165,10 @@ c = await chipRow(P);
 check(c[0].on && c[0].label === 'Only favorites shown. Tap to show all.' && same(await names(P), ['Waalweg']), 'Favorites on: only the starred one');
 await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Waalweg")) .favstar');
 check((await P.textContent('#planList')).trim() === 'No favorites yet. Tap ☆ on a route.', 'the star off with the pill on: the app\'s empty text');
-await clickDrawn(P, '#planSort .favchip');
+// the set „★ Favorites ×“: dark, its × turns the pill off (the app's SetFilterChip)
+check(await P.evaluate(() => getComputedStyle(document.querySelector('#planSort .setchip')).backgroundColor) === 'rgb(36, 95, 70)', 'Favorites on: a dark set chip');
+await clickDrawn(P, '#planSort .favclear');
+check(!(await chipRow(P))[0].on, 'Favorites ×: the pill off');
 await clickDrawn(P, '#planList li[data-id]:has(.name:text-is("Vigiljoch MTB-Runde")) .favstar');
 
 // 4b. ⋮ on the last row, below the fold (field: sync-smoke 2026-11-14 – the taller L1 rows): the list scrolls it into view

@@ -309,6 +309,9 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
   const closeActMenu = () => { actMenu.hidden = true; chips.querySelector('.actchip')?.setAttribute('aria-expanded', 'false'); };
   chips.addEventListener('click', (e) => {
     const el = e.target as HTMLElement;
+    // a set filter's ×: the filter goes (Favoriten off, the activity „Alle“)
+    if (el.closest('.favclear')) { favouritesPill.set(false); drawChips(); chips.querySelector<HTMLButtonElement>('.favchip')?.focus(); toTop(); return; }
+    if (el.closest('.actclear')) { closeActMenu(); openAct = null; drawChips(); chips.querySelector<HTMLButtonElement>('.actchip')?.focus(); toTop(); return; }
     if (el.closest('.favchip')) {
       favouritesPill.set(!favouritesPill.get());
       drawChips(); chips.querySelector<HTMLButtonElement>('.favchip')?.focus();

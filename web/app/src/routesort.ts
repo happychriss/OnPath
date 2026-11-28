@@ -67,7 +67,8 @@ export function sortChipsHtml(sort: SortText): string {
       : c.biggestFirst ? 'routes_sort_longest' : 'routes_sort_shortest') : null;
     const spoken = direction != null ? t('routes_sort_chip_flip', name, direction) : chosen ? t('routes_sort_chip_on', name) : t('routes_sort_chip', name);
     return `<button type="button" class="sortchip${chosen ? ' on' : ''}" data-key="${key}" aria-pressed="${chosen}" aria-label="${esc(spoken)}" title="${esc(spoken)}">` +
-      (chosen ? icon('check', 18) : '') + `<span>${esc(name)}</span>` +
+      // a sort, not a filter (Chriss 2026-11-28): the sort sign, never the filter's ✓ or its dark look
+      (chosen ? icon('sort', 18) : '') + `<span>${esc(name)}</span>` +
       (direction != null ? `<span class="dir" data-dir="${c.biggestFirst ? 'down' : 'up'}">${icon(c.biggestFirst ? 'arrowDownward' : 'arrowUpward', 18)}</span>` : '') + '</button>';
   }).join('');
 }

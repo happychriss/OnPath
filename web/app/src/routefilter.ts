@@ -32,22 +32,36 @@ export const favouritesPill = { get: () => favouritesOnly, set: (on: boolean) =>
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (ch) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[ch]!);
 
-/** FavouriteChip: on = light olive with a gold ★, off = the outline; it says what a tap does. */
+/**
+ * A filter that is set (the app's SetFilterChip, Chriss 2026-11-28 „filter-gesetzt“): dark green, white words, × at the
+ * end – the chip itself ([body]) and its × (the filter goes) are two buttons side by side.
+ */
+function setChipHtml(body: string, clearCls: string, label: string): string {
+  const clear = t('routes_filter_clear', label);
+  return `<span class="setchip">${body}<button type="button" class="setclear ${clearCls}" aria-label="${esc(clear)}" title="${esc(clear)}">${icon('close', 18)}</button></span>`;
+}
+
+/** FavouriteChip: on = a set filter (dark, gold ★, ×), off = the light outline; it says what a tap does. */
 export function favChipHtml(on: boolean): string {
   const spoken = t(on ? 'routes_fav_chip_on' : 'routes_fav_chip_off');
-  return `<button type="button" class="sortchip favchip${on ? ' on' : ''}" aria-pressed="${on}" aria-label="${esc(spoken)}" title="${esc(spoken)}">` +
+  const body = `<button type="button" class="sortchip favchip${on ? ' on setbody' : ''}" aria-pressed="${on}" aria-label="${esc(spoken)}" title="${esc(spoken)}">` +
     `<span class="star${on ? ' on' : ''}">${icon(on ? 'star' : 'starOutline', 18)}</span><span>${esc(t('routes_fav_chip'))}</span></button>`;
+  return on ? setChipHtml(body, 'favclear', t('routes_fav_chip')) : body;
 }
 
 const chipOf = (a: Activity, rows: ActivityRow[]) => rows.find((r) => r.key === a)?.chip ?? a;
 const labelOf = (a: Activity, rows: ActivityRow[]) => rows.find((r) => r.key === a)?.label ?? a;
 
-/** ActivityFilterChip: „🚶 Wandern ▾“ (selected, light olive) or „Alle ▾“ (the outline); a drop-down list to TalkBack. */
+/**
+ * ActivityFilterChip (Chriss 2026-11-28): set = dark „🚶 Wandern ×“ – the chip opens the list, × = „Alle“; none = the light
+ * „Aktivität ▾“ that opens the list.
+ */
 export function actChipHtml(chosen: Activity | null, rows: ActivityRow[]): string {
   const name = chosen ? chipOf(chosen, rows) : t('routes_act_all');
   const spoken = t('routes_act_chip_desc', name);
-  return `<button type="button" class="sortchip actchip${chosen ? ' on' : ''}" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(spoken)}" title="${esc(spoken)}">` +
-    (chosen ? activityIcon(chosen, 18) : '') + `<span>${esc(name)}</span>${icon('dropDown', 18)}</button>`;
+  const body = `<button type="button" class="sortchip actchip${chosen ? ' on setbody' : ''}" aria-haspopup="listbox" aria-expanded="false" aria-label="${esc(spoken)}" title="${esc(spoken)}">` +
+    (chosen ? activityIcon(chosen, 18) + `<span>${esc(name)}</span>` : `<span>${esc(t('routes_act_chip_free'))}</span>${icon('dropDown', 18)}`) + '</button>';
+  return chosen ? setChipHtml(body, 'actclear', name) : body;
 }
 
 /** ActivityFilterItems: the six (single choice, each with its sign and a radio), a line, „Alle“. */
