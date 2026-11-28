@@ -528,6 +528,13 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
     val warning = settings.offRouteWarning
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         if (place != SettingRows.PhoneRow.LAST) SettingsCard { PhoneSetupRow(place, missing, onPhoneSetup) }
+        // „Akku sparen“ first (Chriss 2026-11-28, picture akku-varianten A, R-10): reachable during the tour via ⚙
+        SettingsGroupHeader(str(Res.string.settings_group_battery))
+        SettingsCard {
+            SwitchRow(str(Res.string.settings_battery_save), str(Res.string.settings_battery_save_sub), settings.batterySave) {
+                onChange(settings.copy(batterySave = it))
+            }
+        }
         SettingsGroupHeader(str(Res.string.settings_group_offroute))
         SettingsCard {
             SwitchRow(str(Res.string.settings_nav_offroute), null, warning) {

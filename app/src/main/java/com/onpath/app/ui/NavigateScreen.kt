@@ -152,8 +152,8 @@ data class NavUi(
      * instead of "No GPS" while what is left counts from the Wi-Fi / fused fix ([com.onpath.app.navigation.Provisional]).
      */
     val approx: String? = null,
-    /** OnPath's notifications are off during this tour: the question under the status card ([notificationsOffMessage]). */
-    val notificationsOff: Boolean = false,
+    /** Questions under the status card: notifications off this tour ([notificationsOffMessage]); the battery ([batteryMessage], R-10). */
+    val notificationsOff: Boolean = false, val battery: BatteryAskUi? = null,
     /** Paused and calm ([PauseQuiet.calm]): the status card says only what its stopped head does not – no "not on the route". */
     val calm: Boolean = false,
     /** A multi-day tour's day is followed: "Tag 4 von 6", small at the top of the status card (stage 4); null otherwise. */
@@ -271,9 +271,8 @@ fun NavigateOverlay(
     /** A background download runs (after 10 s): small "⬇ Bozen · 40 %" chip under the status (name cut to fit); tap → details. */
     download: BackgroundDownloadUi? = null,
     onDownload: () -> Unit = {},
-    /** The notifications question: Einschalten → phone setup step, Später → gone for this tour. */
-    onNotifications: () -> Unit = {},
-    onNotificationsOk: () -> Unit = {},
+    /** The notifications question: Einschalten → phone setup step, Später → gone for this tour; the battery's answer (Sparen = true). */
+    onNotifications: () -> Unit = {}, onNotificationsOk: () -> Unit = {}, onBattery: (Boolean) -> Unit = {},
     /** An error without a screen of its own (AppViewModel.errorCard): the red box with OK. */
     error: String? = null,
     onErrorOk: () -> Unit = {},
@@ -415,7 +414,7 @@ fun NavigateOverlay(
             leadFailed?.let { e -> errorMessage(NavText.title(e)) { onLeadFailedOk(e.id) } },
             error?.let { errorMessage(it, onErrorOk) },
             // a question now (owner 2026-11-27), which would go before every note: it waits while an error shows
-            if (ui.notificationsOff && leadFailed == null && error == null) notificationsOffMessage(onNotifications, onNotificationsOk) else null,
+            if (leadFailed != null || error != null) null else if (ui.notificationsOff) notificationsOffMessage(onNotifications, onNotificationsOk) else ui.battery?.let { batteryMessage(it, onBattery) },
         ))
         MessageSlot(message, MessagePlacement.topDp(MessageScreen.NAVIGATE, topColumnDp), Modifier.modeEdge(ModeEdge.TOP),
             onBottomDp = { messageBottomDp = it })
@@ -1109,7 +1108,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
         fixAgeS = location?.let { com.onpath.app.recording.LocationTracker.ageSeconds(it) },
         approx = prov?.let { approxLine(it) },
         notificationsOff = com.onpath.app.navigation.NotificationsOff.shown(rec?.tourId,
-            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.setup.phone), vm.setup.notificationsOkTour),
+            com.onpath.app.setup.PhoneCheck.isOk(com.onpath.app.setup.CheckId.NOTIFICATIONS, vm.setup.phone), vm.setup.notificationsOkTour), battery = batteryAsk(vm, rec?.tourId?.takeIf { nav != null }, toGoS),
     )
     // Back on the open sheet = "Keep" (nothing changes)
     androidx.activity.compose.BackHandler(enabled = vm.activityCheckSlice.activityCheck != null) { vm.activityCheckSlice.closeActivityCheck() }
@@ -1145,7 +1144,7 @@ internal fun NavigateMode(vm: AppViewModel, rec: RecState?, location: Location?,
             onProfileScrub = vm.map::navScrub, onProfileRelease = vm.map::navScrubEnd,
             download = bg, onDownload = { vm.mapData.downloadDetailsOpen = true },
             onNotifications = { vm.setup.openSetupStep(com.onpath.app.setup.CheckId.NOTIFICATIONS) },
-            onNotificationsOk = { vm.setup.notificationsOkTour = rec?.tourId },
+            onNotificationsOk = { vm.setup.notificationsOkTour = rec?.tourId }, onBattery = { answerBattery(vm, rec?.tourId, it) },
             error = vm.notices.errorCard, onErrorOk = { vm.notices.errorCard = null }, onCover = onCover,
             sim = if (!vm.settingsSlice.devToolsShown) null else { {
                 val demo by com.onpath.app.recording.DemoLocation.state.collectAsState()

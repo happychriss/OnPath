@@ -556,6 +556,9 @@ class ScreenshotTest {
     }
 
     /** Notifications off during a tour: the question „Abzweigungen auf dem Sperrbildschirm?“ · Später / Einschalten (owner 2026-11-27). */
+    /** „Akku reicht wohl nicht bis zum Ziel“ (Chriss 2026-11-28, picture akku-varianten, R-10): [Nein danke] [Sparen]. */
+    fun navigateBatteryQuestion() = paparazzi.snapshot { NavFrame(navUi.copy(arriveAt = "16:40", battery = BatteryAskUi("2:54 h", 31, "1:50 h"))) }
+
     fun navigateNotificationsOff() = paparazzi.snapshot {
         NavFrame(navUi.copy(arriveAt = "16:40", notificationsOff = true))
     }

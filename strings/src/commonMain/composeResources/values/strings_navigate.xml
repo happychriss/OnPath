@@ -263,6 +263,10 @@
     <string name="nav_notif_off_line">With notifications you see them without unlocking the phone.</string>
     <string name="nav_notif_later">Later</string>
     <string name="nav_notif_turn_on">Turn on</string>
+    <string name="nav_battery_title">The battery may not last to the goal</string>
+    <string name="nav_battery_line">About %1$s to go – at the use so far the battery (%2$d %) lasts about %3$s. Saving: GPS less often, live sharing slower, it stays on.</string>
+    <string name="nav_battery_no">No thanks</string>
+    <string name="nav_battery_save">Save</string>
 
     <!-- rest view while cycling (smart screen) -->
     <string name="nav_rest_destination">Destination</string>
