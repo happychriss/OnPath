@@ -13,13 +13,15 @@ import com.onpath.app.routing.WaypointInsertion
 /**
  * One day of a saved multi-day route in My routes' day sheet (owner 2026-11-27): day [n], the names at its ends as the plan has
  * them ([from] / [to]; null = not known – the row says "Tag n" only), km, ↑ m, time, its end ([end]: night not decided /
- * Übernachtung / Hotel; null = the finish), [riddenMs] = when the newest recorded tour that rode it was recorded (null = not
- * ridden), and the day's stretch of the stored line ([fromLine]..[toLine]) for the day's own overview.
+ * Übernachtung / Hotel; null = the finish), [riddenMs] = when the newest recorded tour that rode it to its goal was recorded
+ * (✓; null = not done), and the day's stretch of the stored line ([fromLine]..[toLine]) for the day's own overview.
  */
 data class DayPickRow(val n: Int, val from: String?, val to: String?, val distanceM: Double, val ascentM: Double, val timeS: Double,
                       val end: DayEndKind?, val riddenMs: Long?, val fromLine: Int, val toLine: Int,
                       /** The limits per day this day is above (the table's warn-yellow row, bold values). */
-                      val over: Set<com.onpath.app.routing.DayLimitKind> = emptySet())
+                      val over: Set<com.onpath.app.routing.DayLimitKind> = emptySet(),
+                      /** Not done, but a recording of it stopped before the goal (MD-5, „angefangen am …“): when the newest was recorded. */
+                      val startedMs: Long? = null)
 
 /**
  * The day sheet of a saved multi-day route: the route, its stored line (display only), the rows and the next day not yet ridden
@@ -30,8 +32,8 @@ data class DayPickUi(val tour: Tour, val line: List<GeoPoint>, val rows: List<Da
 /**
  * The day sheet's rules (owner 2026-11-27, "ja"): the days of a stored multi-day route along its stored line (the same split the
  * plan sheet's overview makes – [PlanDays] over [DayLine] – so the day a row loads is the day it shows), the names at the day
- * ends as the plan has them, the days ridden (a recorded tour not in the bin that remembers the route's uuid and the day) and
- * the next open day. Pure – DayPickTest.
+ * ends as the plan has them, the days done (a recorded tour not in the bin that remembers the route's uuid and the day and
+ * reached its goal), the days begun (it stopped before) and the next open day. Pure – DayPickTest.
  */
 object DayPick {
     /** The days of [t] along its stored [line] with the pace [factors] and [activity]; null = no multi-day route / no line. */
@@ -82,20 +84,50 @@ object DayPick {
             DayPickRow(d.number, nameAt(ends[k]), nameAt(ends[k + 1]), d.distanceM, d.ascentM, d.timeS, d.end?.kind, null,
                 startLine, endLine, d.over).also { startLine = d.end?.lineIndex ?: startLine }
         }
-        val rode = ridden(t.uuid, tours, dayEnds(line, rows))
-        return rows.map { it.copy(riddenMs = rode[it.n]) }
+        val e = dayEnds(line, rows)
+        val rode = ridden(t.uuid, tours, e)
+        val began = started(t.uuid, tours, e)
+        return rows.map { it.copy(riddenMs = rode[it.n], startedMs = began[it.n]) }
+    }
+
+    /** The recorded tours (not in the bin, not recording) that rode a day of route [uuid] whose ends still [matches]. */
+    private fun rides(uuid: String, tours: List<Tour>, ends: Map<Int, Pair<GeoPoint, GeoPoint>>): List<Tour> {
+        if (uuid.isEmpty()) return emptyList()
+        return tours.filter { it.kind == TourKind.RECORDED && it.deletedMs == null && it.state != "active" && it.planUuid == uuid && (it.planDay ?: 0) > 0 }
+            .filter { matches(it, ends[it.planDay]) }
     }
 
     /**
-     * The days of route [uuid] ridden: day → when the newest recorded tour that rode it was recorded. A tour in the recycle bin or
-     * still recording does not count (deleting it takes the ✓ away), nor one whose day no longer starts and ends where it rode
-     * it ([matches] with the day's [ends] now – the route was changed since, owner 2026-11-27).
+     * The days of route [uuid] done (✓): day → when the newest recorded tour that rode it TO ITS GOAL ([Tour.planReached], MD-5,
+     * owner 2026-11-28) was recorded – ridden twice, the newest finished one counts. A tour in the recycle bin or still recording
+     * does not count (deleting it takes the ✓ away), nor one whose day no longer starts and ends where it rode it ([matches]
+     * with the day's [ends] now – the route was changed since, owner 2026-11-27).
      */
-    fun ridden(uuid: String, tours: List<Tour>, ends: Map<Int, Pair<GeoPoint, GeoPoint>>): Map<Int, Long> {
-        if (uuid.isEmpty()) return emptyMap()
-        return tours.filter { it.kind == TourKind.RECORDED && it.deletedMs == null && it.state != "active" && it.planUuid == uuid && (it.planDay ?: 0) > 0 }
-            .filter { matches(it, ends[it.planDay]) }
-            .groupBy { it.planDay!! }.mapValues { (_, l) -> l.maxOf { it.createdMs } }
+    fun ridden(uuid: String, tours: List<Tour>, ends: Map<Int, Pair<GeoPoint, GeoPoint>>): Map<Int, Long> =
+        rides(uuid, tours, ends).filter { it.planReached == true }.groupBy { it.planDay!! }.mapValues { (_, l) -> l.maxOf { it.createdMs } }
+
+    /**
+     * The days of route [uuid] begun but not done („angefangen am …“, MD-5): a recording tied to the day stopped before its goal
+     * ([Tour.planReached] false); day → the newest such recording. A day that is done is not in here.
+     */
+    fun started(uuid: String, tours: List<Tour>, ends: Map<Int, Pair<GeoPoint, GeoPoint>>): Map<Int, Long> {
+        val all = rides(uuid, tours, ends)
+        val done = all.filter { it.planReached == true }.map { it.planDay!! }.toSet()
+        return all.filter { it.planReached == false && it.planDay !in done }.groupBy { it.planDay!! }.mapValues { (_, l) -> l.maxOf { it.createdMs } }
+    }
+
+    /**
+     * The recorded [track] reached [goal] (MD-5: a day is done when navigated to its goal – the arrival is within [SAME_END_M]):
+     * a point within [SAME_END_M] of the goal after the track was farther away than that once – so a round day standing at its
+     * start does not count, one ridden away and back does. Pure.
+     */
+    fun reached(track: List<GeoPoint>, goal: GeoPoint): Boolean {
+        var away = false
+        for (p in track) {
+            val d = com.onpath.app.data.Geo.distance(p, goal)
+            if (d > SAME_END_M) away = true else if (away) return true
+        }
+        return false
     }
 
     /**

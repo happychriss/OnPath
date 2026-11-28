@@ -613,10 +613,11 @@ class MultiDaySliceTest {
     }
 
     /**
-     * Review 2026-11-27 finding 3: a day loaded and then edited is no longer that day – the recorded tour must not remember it
-     * (followedDay is what TourFollow stamps on the tour's plan copy; TourFollowFlowTest: null there = no planDay / planUuid).
+     * MD-5 (owner 2026-11-28): the recording stays tied to its day while its start and goal stay – a point added, moved or
+     * deleted in between keeps it (followedDay is what TourFollow stamps on the tour's plan copy; TourFollowFlowTest: null
+     * there = no planDay / planUuid). Replaces the review fix of 2026-11-27 that dropped the day on any edit.
      */
-    @Test fun aDayRemembersItselfForTheRecordingOnlyWhileUnedited() {
+    @Test fun aDayStaysTiedToTheRecordingThroughEditsBetweenItsStartAndGoal() {
         val app = App(); app.rideDay2()
         assertEquals("the day as picked", "u1" to 2, app.multiDay.followedDay())
         // the router's snap moves a point onto its way: no edit
@@ -625,24 +626,29 @@ class MultiDaySliceTest {
         ui { app.plan.moveSnapped(listOf(C, D), listOf(moved, D), null); app.plan.snappedHistory(mapOf(C to moved)) }; app.settle()
         assertEquals("CD".length, app.plan.points.size)
         assertEquals("a snap keeps the day", "u1" to 2, app.multiDay.followedDay())
-        // a point inserted: the plan is no longer the day – the recording remembers nothing
+        // a point inserted between start and goal: still that day
         ui { app.planEdit.change { add(1, X) } }; app.settle()
-        assertNull("an edit drops the day", app.multiDay.followedDay())
-        assertTrue("the day is still followed (its edits go into the whole tour)", app.multiDay.flow.following)
+        assertEquals("a point between keeps the day", "u1" to 2, app.multiDay.followedDay())
+        assertTrue(app.multiDay.flow.following)
         // kept so across a restart
-        assertNull(App().multiDay.followedDay())
+        assertEquals("u1" to 2, App().multiDay.followedDay())
+        // deleted again: still the day
+        ui { app.planEdit.change { removeAt(1) } }; app.settle()
+        assertEquals("u1" to 2, app.multiDay.followedDay())
     }
 
-    @Test fun aMovedOrRemovedPointDropsTheDayTooAndSeveralDaysNeverCount() {
+    @Test fun aMovedStartOrGoalDropsTheDayAStepWithin200mDoesNot() {
         val app = App(); app.rideDay2()
-        ui { app.planEdit.change { set(1, X) } }; app.settle()
-        assertNull("a moved point", app.multiDay.followedDay())
-        val two = App(); two.openOverview()
-        ui { two.multiDay.tapDay(2) }; ui { two.multiDay.holdDay(3) }; ui { two.multiDay.rideDays() }; two.settle()
-        assertTrue(two.multiDay.flow.following)
-        assertNull("days 2–3 in a row are no one day", two.multiDay.followedDay())
-        val none = App(); none.openOverview()
-        assertNull("the whole tour is no day", none.multiDay.followedDay())
+        // the goal nudged about 100 m: the same day (DayPick.SAME_END_M)
+        val near = GeoPoint(D.lat + 0.0009, D.lon)
+        ui { app.planEdit.change { set(lastIndex, near) } }; app.settle()
+        assertEquals("a goal within 200 m stays the day", "u1" to 2, app.multiDay.followedDay())
+        // the goal moved to X (km away): no longer the day
+        ui { app.planEdit.change { set(lastIndex, X) } }; app.settle()
+        assertNull("a moved goal drops the day", app.multiDay.followedDay())
+        val start = App(); start.rideDay2()
+        ui { start.planEdit.change { set(0, X) } }; start.settle()
+        assertNull("a moved start drops the day", start.multiDay.followedDay())
     }
 
     @Test fun theWriteBackWatchesOnlyAFollowedDayAndNeverFailsLoudly() {

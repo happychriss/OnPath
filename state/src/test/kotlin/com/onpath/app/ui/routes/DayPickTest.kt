@@ -38,9 +38,9 @@ class DayPickTest {
     private val synthLine = (0..40).map { i -> GeoPoint(51.0 - i * 0.05, 7.0 + i * 0.05) }
     private val synthEnds = DayPick.dayEnds(synthLine, DayPick.rows(route, days, emptyList()))
     private fun rode(id: Long, day: Int, ms: Long, deleted: Long? = null, uuid: String = "uuid-hilden", state: String = "done",
-                     ends: Pair<GeoPoint, GeoPoint>? = synthEnds[day]) =
+                     ends: Pair<GeoPoint, GeoPoint>? = synthEnds[day], reached: Boolean? = true) =
         Tour(id, TourKind.RECORDED, "Tour $id", ms, "BIKE_TOURING", 3, 1.0, 0.0, 0.0, 0.0, state, emptyList(), uuid = "r$id",
-            deletedMs = deleted, planUuid = uuid, planDay = day, planEnds = ends)
+            deletedMs = deleted, planUuid = uuid, planDay = day, planEnds = ends, planReached = reached)
 
     @Test fun eachDayCarriesTheNamesAsThePlanHasThemElseNone() {
         val rows = DayPick.rows(route, days, emptyList())
@@ -75,6 +75,36 @@ class DayPickTest {
         assertNull(DayPick.rows(route, days, tours, synthLine)[1].riddenMs)
         assertTrue("without the day's ends now nothing can be claimed", DayPick.ridden("uuid-hilden", tours, emptyMap()).isEmpty())
         assertTrue("a ride without its own ends neither", DayPick.ridden("uuid-hilden", listOf(rode(10, 1, 1L, ends = null)), synthEnds).isEmpty())
+    }
+
+    // ---------------------------------------------------------------- MD-5 (owner 2026-11-28): done only at the goal
+
+    @Test fun aRideThatStoppedBeforeTheGoalIsStartedNotDone() {
+        val tours = listOf(route, rode(10, 1, 1_000L, reached = false), rode(11, 2, 2_000L, reached = null))
+        assertTrue("no ✓ without reaching the goal (not known = not claimed)", DayPick.ridden("uuid-hilden", tours, synthEnds).isEmpty())
+        assertEquals("day 1 started; day 2 not known either way", mapOf(1 to 1_000L), DayPick.started("uuid-hilden", tours, synthEnds))
+        val rows = DayPick.rows(route, days, tours, synthLine)
+        assertNull(rows[0].riddenMs); assertEquals(1_000L, rows[0].startedMs)
+        assertNull(rows[1].startedMs)
+    }
+
+    @Test fun aDayRiddenTwiceKeepsItsTickWithTheNewestFinishedDateAndNoStartedLine() {
+        val tours = listOf(route, rode(10, 1, 1_000L), rode(11, 1, 3_000L), rode(12, 1, 5_000L, reached = false))
+        assertEquals("the newest finished ride counts", mapOf(1 to 3_000L), DayPick.ridden("uuid-hilden", tours, synthEnds))
+        assertTrue("a done day is not „angefangen“ too", DayPick.started("uuid-hilden", tours, synthEnds).isEmpty())
+        val r = DayPick.rows(route, days, tours, synthLine)[0]
+        assertEquals(3_000L to null, r.riddenMs to r.startedMs)
+    }
+
+    @Test fun theGoalIsReachedWhenTheTrackComesWithin200mAfterLeavingIt() {
+        val goal = GeoPoint(47.0, 11.0)
+        fun north(m: Double) = GeoPoint(goal.lat + m / 111_195.0, goal.lon)
+        assertTrue("ends at the goal", DayPick.reached(listOf(north(5_000.0), north(2_000.0), north(150.0)), goal))
+        assertTrue("passed the goal, stopped a bit further", DayPick.reached(listOf(north(5_000.0), north(100.0), north(-900.0)), goal))
+        assertFalse("stopped 1 km before", DayPick.reached(listOf(north(5_000.0), north(1_000.0)), goal))
+        assertFalse("a round day: standing at its start is not arriving", DayPick.reached(listOf(north(10.0), north(50.0)), goal))
+        assertTrue("a round day ridden: away and back", DayPick.reached(listOf(north(10.0), north(3_000.0), north(20.0)), goal))
+        assertFalse("no track", DayPick.reached(emptyList(), goal))
     }
 
     @Test fun theNextDayIsTheOneAfterTheLastRiddenElseTheFirstOpen() {

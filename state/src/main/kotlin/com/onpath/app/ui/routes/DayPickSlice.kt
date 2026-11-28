@@ -47,7 +47,8 @@ class DayPickSlice(
     /** The sheet with the days ridden and the next open day as My routes' list holds them now (a tour put in the bin loses its ✓). */
     val ui: DayPickUi? get() = sheet?.let { s ->
         val rode = DayPick.ridden(s.tour.uuid, routes.tours, ends)
-        s.copy(rows = s.rows.map { it.copy(riddenMs = rode[it.n]) }, next = DayPick.next(s.rows.size, rode.keys))
+        val began = DayPick.started(s.tour.uuid, routes.tours, ends)
+        s.copy(rows = s.rows.map { it.copy(riddenMs = rode[it.n], startedMs = began[it.n]) }, next = DayPick.next(s.rows.size, rode.keys))
     }
 
     /** A day can be loaded now (no tour records). */

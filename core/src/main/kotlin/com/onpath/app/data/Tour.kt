@@ -86,9 +86,11 @@ data class Tour(
      * Recorded: the multi-day route (its stable [uuid]) and day (1-based, [planDay]) this tour rode – set when the day was
      * loaded from the day sheet / "Tag n fahren" and then recorded (owner 2026-11-27). Read from the plan copy beside the
      * row ([TourPlan.day], `tour_plan.day`, schema 11); null = no day of a multi-day route (every tour before schema 11).
-     * A day counts as ridden while a recorded tour not in the bin references it (`DayPick.ridden` in :state).
-     * Only an unedited day is remembered (any edit after loading it drops it – `MultiDaySlice.followedDay`). A copy of the
-     * route ("Speichern als Kopie", a re-import) gets a new [uuid] and so carries none of the ridden days – on purpose.
+     * A day is done (✓) while a recorded tour not in the bin references it and reached the day's goal ([planReached]);
+     * one that stopped before stays tied to the day as „angefangen“ (`DayPick.ridden` / `DayPick.started` in :state, MD-5).
+     * The day stays remembered while the plan's start and goal stay (points between may change – `MultiDaySlice.followedDay`,
+     * owner 2026-11-28). A copy of the route ("Speichern als Kopie", a re-import, a day saved as its own tour) gets a new
+     * [uuid] and so carries none of the ridden days – on purpose.
      */
     val planUuid: String? = null,
     val planDay: Int? = null,
@@ -105,4 +107,10 @@ data class Tour(
      * still starts and ends there (owner 2026-11-27, `DayPick.matches` in :state). Not stored.
      */
     val planEnds: Pair<com.onpath.app.routing.GeoPoint, com.onpath.app.routing.GeoPoint>? = null,
+    /**
+     * Recorded with [planDay]: the recording reached the day's goal (the end of [planEnds]) – it came within 200 m of it after
+     * leaving it (MD-5, owner 2026-11-28: a day is done only when navigated to its goal); false = stopped before („angefangen“);
+     * null = not known. Set when My routes reads the list (`DayPick.reached` over the recorded track). Not stored.
+     */
+    val planReached: Boolean? = null,
 )

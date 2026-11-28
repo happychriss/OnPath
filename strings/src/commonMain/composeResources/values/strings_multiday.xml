@@ -27,6 +27,7 @@
     <string name="multiday_end_finish">Finish</string>
     <string name="daypick_question">Which day do you want to ride?</string>
     <string name="daypick_ridden">✓ Day %1$s · ridden on %2$s</string>
+    <string name="daypick_started">Day %1$s · started on %2$s</string>
     <string name="daypick_date">d MMM</string>
     <string name="daypick_day_of">Day %1$s of %2$s</string>
     <string name="daypick_details">Day %1$s in detail</string>
