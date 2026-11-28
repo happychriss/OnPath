@@ -45,7 +45,6 @@
   "sync_during_tour": {"area": "Plan · ☰ menu / Settings · Browser sync", "context": "Grey line while a tour records: the pairing is made (the browser sees the phone), the saved routes sync when the tour has ended", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_untitled_route": {"area": "My routes", "context": "Name of a route from the browser without a name", "priority": 3, "confidence": "sicher"},
   "sync_untitled_track": {"area": "My routes", "context": "Name of a track from the browser without a name", "priority": 3, "confidence": "sicher"},
-  "sync_sum_off": {"area": "Settings list", "context": "Line under the topic \"Browser sync\" when not paired", "priority": 2, "confidence": "sicher", "max": 50},
   "sync_menu_attention": {"area": "Plan · ☰ menu", "context": "Screen-reader text of the amber sync menu item: \"Browser pairing – <reason>\"", "priority": 3, "confidence": "sicher"},
   "sync_since_today": {"area": "Settings → Browser sync", "context": "Status: paired today at %1$s (a time)", "priority": 2, "confidence": "sicher", "max": 40},
   "sync_since_yesterday": {"area": "Settings → Browser sync", "context": "Status: paired yesterday at %1$s (a time)", "priority": 2, "confidence": "sicher", "max": 40},

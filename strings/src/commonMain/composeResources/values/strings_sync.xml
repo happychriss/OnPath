@@ -60,7 +60,6 @@
     <string name="sync_during_tour">Plans sync after the tour</string>
     <string name="sync_untitled_route">Plan</string>
     <string name="sync_untitled_track">Track</string>
-    <string name="sync_sum_off">Not connected · your plans in the web planner too</string>
     <string name="sync_routing_other">Planned in the browser with another OnPath version – the route may differ slightly</string>
     <string name="sync_menu_attention">Browser connection – %1$s</string>
     <string name="sync_since_today">Connected since today %1$s</string>

@@ -259,18 +259,6 @@ data class SyncMenuUi(
     }
 }
 
-/** The list line under "Browser sync". */
-fun SettingsSummary.sync(ui: SyncUi): Summary = when {
-    ui.askCheck != null -> Summary(Txt.s(Res.string.sync_ask_title), Summary.Attention.ACCENT)
-    !ui.paired -> Summary(Txt.s(Res.string.sync_sum_off))
-    ui.unpairedInBrowser && (ui.problem == null || ui.problem == SyncProblem.Offline) ->
-        Summary(Txt.s(Res.string.sync_menu_unpaired_browser))
-    ui.waiting && (ui.problem == null || ui.problem == SyncProblem.Offline) -> Summary(Txt.s(Res.string.sync_waiting_browser))
-    ui.problem != null && ui.problem != SyncProblem.Offline ->
-        Summary(peerLine(ui), Summary.Attention.PROBLEM)
-    else -> Summary(peerLine(ui))
-}
-
 private fun peerLine(ui: SyncUi) = ui.peer?.let { Txt.s(Res.string.sync_paired_with, it) } ?: Txt.s(Res.string.sync_paired_browser)
 
 /** The status line of the last pass: grey (offline), amber ⚠ (server refused, newer app, not saved), red (storage). */

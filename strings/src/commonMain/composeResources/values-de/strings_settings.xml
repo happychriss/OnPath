@@ -198,9 +198,6 @@
     <string name="settings_sum_contours">Höhenlinien %1$s</string>
     <string name="settings_sum_relief">Relief %1$s</string>
     <plurals name="settings_sum_offline_areas"><item quantity="one">%1$d Gebiet</item><item quantity="other">%1$d Gebiete</item></plurals>
-    <string name="settings_sum_browser_on">Browser an</string>
-    <string name="settings_sum_browser_off">Browser aus</string>
-    <string name="settings_sum_backed_up">Gesichert %1$s</string>
     <string name="settings_page_legal">Rechtliches &amp; Quellen</string>
     <string name="settings_sum_legal">Website, Impressum, Quellen, Lizenzen</string>
 </resources>

@@ -263,7 +263,6 @@ class SettingsPagesTest {
     // ---- from SyncSettingsTest.kt ----
     // Settings → Browser sync: the list line and the status line of the last pass follow the Messages rules.
     @Test fun listLine() {
-        assertEquals(Summary("Not connected · your plans in the web planner too"), SettingsSummary.sync(SyncUi()))
         // the browser card on the Settings list (owner 2026-11-28 11:14): one line – Not connected / Connected (amber with a problem)
         assertEquals(PairCardState.OFF, PairCardState.of(SyncUi()))
         assertEquals(PairCardState.OFF, PairCardState.of(SyncUi(paired = true, browser = com.onpath.app.plansync.BrowserLink.UNPAIRED)))
@@ -272,13 +271,6 @@ class SettingsPagesTest {
         assertEquals(PairCardState.TROUBLE, PairCardState.of(SyncUi(paired = true, problem = SyncProblem.NewerApp(1))))
         assertEquals("Not connected", Txt.s(Res.string.sync_card_off))
         assertEquals("Connected", Txt.s(Res.string.sync_card_on))
-        assertEquals(Summary("Connected to Chrome on Linux"), SettingsSummary.sync(SyncUi(paired = true, peer = "Chrome on Linux")))
-        assertEquals(Summary("Connected to a browser"), SettingsSummary.sync(SyncUi(paired = true)))
-        // offline is no problem worth red; a refused / unreadable / not saved pass is
-        assertEquals(Summary.Attention.NONE, SettingsSummary.sync(SyncUi(paired = true, problem = SyncProblem.Offline)).attention)
-        assertEquals(Summary.Attention.PROBLEM, SettingsSummary.sync(SyncUi(paired = true, problem = SyncProblem.NewerApp(1))).attention)
-        // a scanned code waits for an answer
-        assertEquals(Summary("Connect to this browser?", Summary.Attention.ACCENT), SettingsSummary.sync(SyncUi(askCheck = "395 514")))
     }
 
     /**
@@ -429,8 +421,6 @@ class SettingsPagesTest {
         // Settings list line + the page's state
         val ui = SyncUi.of(gone, askCheck = null)
         assertTrue(ui.unpairedInBrowser)
-        assertEquals(Summary("Disconnected in the browser"), SettingsSummary.sync(ui))
-        assertEquals(Summary("Disconnected in the browser"), SettingsSummary.sync(ui.copy(problem = SyncProblem.Offline)))
         assertEquals(false, SyncUi.of(ok.copy(browser = BrowserLink.WAITING), null).unpairedInBrowser)
         assertEquals(false, SyncUi.of(SyncState(browser = BrowserLink.UNPAIRED), null).unpairedInBrowser)
         // German
@@ -462,8 +452,6 @@ class SettingsPagesTest {
         // Settings: list line + the page's state
         val ui = SyncUi.of(waiting.copy(afterTour = true), askCheck = null)
         assertTrue(ui.waiting); assertTrue(ui.afterTour)
-        assertEquals(Summary("Waiting for the browser …"), SettingsSummary.sync(ui))
-        assertEquals(Summary("Waiting for the browser …"), SettingsSummary.sync(ui.copy(problem = SyncProblem.Offline)))
         assertEquals(false, SyncUi.of(ok, null).waiting)
         assertEquals(false, SyncUi.of(SyncState(afterTour = true), null).afterTour)
         val before = Locale.getDefault()

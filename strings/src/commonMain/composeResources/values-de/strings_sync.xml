@@ -59,7 +59,6 @@
     <string name="sync_during_tour">Pläne gleichen sich nach der Tour ab</string>
     <string name="sync_untitled_route">Plan</string>
     <string name="sync_untitled_track">Track</string>
-    <string name="sync_sum_off">Nicht verbunden · deine Pläne auch im Web-Planer</string>
     <string name="sync_routing_other">Im Browser mit einer anderen OnPath-Version geplant – Route kann leicht abweichen</string>
     <string name="sync_menu_attention">Browser-Verbindung – %1$s</string>
     <string name="sync_since_today">Verbunden seit heute %1$s</string>

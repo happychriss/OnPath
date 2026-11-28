@@ -199,9 +199,6 @@
     <string name="settings_sum_contours">Contour lines %1$s</string>
     <string name="settings_sum_relief">Hill shading %1$s</string>
     <plurals name="settings_sum_offline_areas"><item quantity="one">%1$d area</item><item quantity="other">%1$d areas</item></plurals>
-    <string name="settings_sum_browser_on">browser on</string>
-    <string name="settings_sum_browser_off">browser off</string>
-    <string name="settings_sum_backed_up">Backed up %1$s</string>
     <string name="settings_page_legal">Legal &amp; credits</string>
     <string name="settings_sum_legal">Website, legal notice, credits, licenses</string>
 </resources>
