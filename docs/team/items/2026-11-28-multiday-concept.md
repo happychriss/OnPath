@@ -6,6 +6,7 @@ thread copies the rows into `docs/requirements.md` §3.3 / §3.5 (next free IDs)
 
 | Row | Requirement |
 | --- | --- |
+| MD-0 | **Split (owner 08:05, „kristallklar“):** the browser planner stays as it is – it edits the whole trip, shows the days, jumps from the day overview into one day, re-plans it, jumps back to the multi-day view and the next day, plans the nights. The phone **guides through** the trip: open it in Meine Touren (it unfolds), one day goes into the phone's Plan sheet, changes only to that day, then go – **never the whole plan**. |
 | MD-1 | A multi-day tour is **planned in the browser planner**. The phone does not plan one (no whole-trip view in the app's Plan sheet, no day count that follows activity / pace / route choice). |
 | MD-2 | On the phone it lies in **Meine Touren as one whole tour** (badge „N Tage“). A tap shows its days; a tap on a day puts **that one day** into the app's Plan sheet to ride it. „‹ Alle Tage“ leads back to this day list. |
 | MD-3 | In the Plan sheet the day can be changed (add / delete a point …). **As long as its start and goal stay, it stays part of the multi-day tour** (saving writes into the trip). |
