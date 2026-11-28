@@ -36,13 +36,13 @@ map wait line 4061a3038; CI + gate --full green.** Now step 7; „parity done“
 day choice, activity picker if the cloud check finds it) → multi-day sheet draft (no „Fahrrad ▾“). Deploy when green
 (standing rule). Last: tell the project lead „parity done“ with the commit. The release run deploys the planner too.
 
-## Map build (donald, **Wartefenster thread owns it** – resumed 23:03, 570/725, 1 failed, ETA ~01:18)
+## Map build (donald, **Wartefenster thread owns it**) – **DONE 01:57: 724 cells, 0 left, no new failures, nothing to republish**
 Low priority beside the Gradle runs; cell 10-538-357 was already built today 18:52 (s10), no rebuild. The unit runs
 `tools/dev/publish_area.sh`, which builds **and publishes** each cell into TEST R2 itself (`map-hosting.md` §7h);
 `publish_cells.sh <cells…>` only for cells in `failed.txt`. The end + `failed.txt` to the project lead. HP does nothing for the upload; the doorman deploy (`maps-deploy.yml`) only if the
 worker changed. Suchkategorie does not touch it.
 
-## Release R (Wartefenster)
+## Release R (Wartefenster) – **prepared 28.11. night: E2E main 115/0 (run 46088774870), release_check GO (app 67852bf6c, planner a0e7358c), gate --full green, notes on `release/0.18.12-notes` @ 51eff6569; waits only for the Pixel; nothing published**
 `tools/ci/release_check.sh --go v0.18.12`, `gate.sh --full`, `tools/ci/e2e_github.sh` (core classes) → install on the
 Pixel (`adb install -r`, save a running tour, check the log) → version 0.18.12 + the notes from `release/0.18.12-notes` (Suchkategorie's draft; delete v0.18.11.md) → push main → release.yml. Not before HP's „parity done“; red → no release, morning report.
 **Owner unplugged the Pixel at 23:06:** the night goes up to a release-ready `main` (checks green, notes written on a
