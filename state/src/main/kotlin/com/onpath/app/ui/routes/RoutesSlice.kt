@@ -143,8 +143,9 @@ class RoutesSlice(
                     .onFailure { e -> Problems.warn("routes", "The followed plan's points of tour ${m.id} not read – its row guesses from the track", e) }
                     .getOrNull()?.map { GeoPoint(it.lat, it.lon) }.let { w ->
                         // a day of a multi-day route: its ends as ridden (DayPick.matches – the ✓ only while the route's day still has them)
+                        val ends = w?.takeIf { m.planDay != null && it.size >= 2 }?.let { it.first() to it.last() }
                         m.copy(roundTrip = w?.let { com.onpath.app.routing.PlanEdits.isRoundTrip(it) },
-                            planEnds = w?.takeIf { m.planDay != null && it.size >= 2 }?.let { it.first() to it.last() })
+                            planEnds = ends, planReached = ends?.let { reachedGoal(m, it.second) })
                     }
                 else m
             }.let { m ->
@@ -161,6 +162,19 @@ class RoutesSlice(
             }
             withContext(main) { routes.show(list, load); host.kickThumbs() }
         }
+    }
+
+    /** Recorded tours that rode a day: did the track reach the day's goal (MD-5) – by tour id and length, a done track does not change. */
+    private val reachedGoals = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
+    /** Blocking (IO): recorded tour [t] reached [goal] ([DayPick.reached] over its track); null = its track not read (reported). */
+    private fun reachedGoal(t: Tour, goal: GeoPoint): Boolean? {
+        if (t.state == "active") return null
+        val key = "${t.id}|${t.distanceM}|${goal.lat},${goal.lon}"
+        reachedGoals[key]?.let { return it }
+        return runCatching { DayPick.reached(store.loadSegments(t.id).flatten().map { it.toGeo() }, goal) }
+            .onFailure { Problems.warn("routes", "The track of tour ${t.id} not read – its day shows neither done nor begun", it) }
+            .getOrNull()?.also { reachedGoals[key] = it }
     }
 
     /** The day ends of the multi-day routes, worked out along their stored lines – kept while the route is unchanged (the list is read every 15 s). */

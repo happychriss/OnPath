@@ -61,7 +61,8 @@ import com.onpath.strings.*
  * and the planner's day table ([DayTableView], owner 2026-11-27): pill „Tag 3“, „Koblenz → Mainz“ when the plan names both
  * ends, aligned columns km · Σ km · ↑ m · time, the night sign (open night / Übernachtung / Hotel; the goal flag at the
  * finish), ›, and the total row. One tap on a row loads that day ([onRide]), ›
- * opens its own overview ([onDetail]). The next open day has the filled pill, a ridden day says „✓ Tag 2 · gefahren am 2. Dez.“.
+ * opens its own overview ([onDetail]). The next open day has the filled pill, a day ridden to its goal says „✓ Tag 2 · gefahren
+ * am 2. Dez.“, one whose recording stopped before the goal „Tag 2 · angefangen am 2. Dez.“ (MD-5 / MD-6, owner 2026-11-28).
  * During a tour ([canRide] false) rows load nothing and a line says why.
  */
 @Composable
@@ -116,11 +117,17 @@ private fun places(r: DayPickRow): String? = DayRowText.places(r.from, r.to)
 private fun riddenDate(ms: Long): String =
     java.text.SimpleDateFormat(Txt.s(Res.string.daypick_date), Format.locale()).format(java.util.Date(ms))
 
-/** The day's name in the table: „✓ Tag 2 · gefahren am 2. Dez.“ for a ridden day, else its pill (the next one filled). */
+/**
+ * The day's name in the table: „✓ Tag 2 · gefahren am 2. Dez.“ for a day done, „Tag 2 · angefangen am 2. Dez.“ for one begun,
+ * else its pill (the next one filled).
+ */
 @Composable
 private fun DayName(r: DayPickRow, next: Boolean, nextDesc: String) {
     if (r.riddenMs != null) Text(str(Res.string.daypick_ridden, r.n.toString(), riddenDate(r.riddenMs!!)), style = MaterialTheme.typography.bodySmall,
         fontWeight = FontWeight.SemiBold, color = OnPathColors.Green, maxLines = 2, overflow = TextOverflow.Ellipsis)
+    else if (r.startedMs != null) Text(str(Res.string.daypick_started, r.n.toString(), riddenDate(r.startedMs!!)), style = MaterialTheme.typography.bodySmall,
+        fontWeight = FontWeight.SemiBold, color = OnPathColors.PlanAccent, maxLines = 2, overflow = TextOverflow.Ellipsis,
+        modifier = if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier)
     else Box(if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier) { DayPill(r.n, next) }
 }
 

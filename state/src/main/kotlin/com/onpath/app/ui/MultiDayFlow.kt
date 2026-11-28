@@ -54,13 +54,23 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                            */
                           val anchorProfile: AnchorProfile? = null,
                           /**
-                           * The day's points as it was picked (the router's snaps follow them): while the plan is exactly these, a
-                           * recorded tour remembers the day (review 2026-11-27 finding 3: any edit drops it – [unedited]); null = not known
-                           * (a state kept before it existed) = edited.
+                           * The day's points as it was picked (the router's snaps follow them): its first and last are the day's start
+                           * and goal ([endsKept]); null = not known (a state kept before it existed: [startAt] / [endAt] stand in).
                            */
                           val picked: List<GeoPoint>? = null) {
-        /** The plan [points] are still the day as picked – no edit since (an Undo back to it counts as unedited). */
-        fun unedited(points: List<GeoPoint>): Boolean = picked != null && picked == points
+        /**
+         * The plan [points] still start and end where the day did (MD-3 / MD-5, owner 2026-11-28): each within
+         * [com.onpath.app.ui.routes.DayPick.SAME_END_M] of the day's start / goal as picked (the router's snaps follow them) –
+         * points added, moved or deleted in between keep the day. False when start or goal moved (MD-4: Save writes a copy, the
+         * recording no longer counts for the day).
+         */
+        fun endsKept(points: List<GeoPoint>): Boolean {
+            if (points.size < 2) return false
+            val a = picked?.firstOrNull() ?: startAt
+            val b = picked?.lastOrNull() ?: endAt
+            val m = com.onpath.app.ui.routes.DayPick.SAME_END_M
+            return com.onpath.app.data.Geo.distance(points.first(), a) <= m && com.onpath.app.data.Geo.distance(points.last(), b) <= m
+        }
         /** [anchors] (the tour's, or the day's) with that profile. */
         fun anchorSet(anchors: Map<Int, Anchors> = whole.anchors): AnchorSet = anchorProfile?.takeIf { anchors.isNotEmpty() }?.let { AnchorSet(anchors, it) } ?: AnchorSet.NONE
     }
