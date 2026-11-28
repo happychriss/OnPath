@@ -16,6 +16,7 @@ import com.onpath.strings.wait_step_suggest_read
 import com.onpath.strings.wait_title_suggest
 import com.onpath.strings.suggest_ui_from_here
 import com.onpath.strings.suggest_ui_less
+import com.onpath.strings.suggest_ui_more_mark
 import com.onpath.strings.suggest_ui_take
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -69,14 +70,16 @@ class RoundTripSuggestE2ETest : E2EBase() {
         // folds it back; a swipe to another card folds it too
         val less = Txt.s(Res.string.suggest_ui_less)
         assertTrue("folded at first", findFresh(By.text(less), 1_000) == null)
+        // owner 2026-11-28 15:36 (variant A): „⌄ mehr“ ends the cut text line; the whole text block takes the tap
+        assertNotNull("„⌄ mehr“ on the cut card", findFresh(By.text(Txt.s(Res.string.suggest_ui_more_mark)), 5_000))
         findFresh(By.text(LONG), 5_000)!!.click()
         assertNotNull("the card grew: „weniger“ under its text", findFresh(By.text(less), 5_000))
         shot("suggest-card-grown")
         assertEquals("the map keeps the chosen loop", 0, read { it.suggest.chosen })
         findFresh(By.text(less), 2_000)!!.click()
         waitUntil("„weniger“ folded it back", 5_000) { findFresh(By.text(less), 500) == null }
-        findFresh(By.text(LONG), 5_000)!!.click()
-        assertNotNull("grown again", findFresh(By.text(less), 5_000))
+        findFresh(By.text("Runde am Hang"), 5_000)!!.click()
+        assertNotNull("a tap on the title grows it too (variant A)", findFresh(By.text(less), 5_000))
 
         // the cards sit side by side in one row (sketch 8): a swipe to the left brings the second card to the front
         val first = findFresh(By.text("Runde am Hang"), 5_000)!!.visibleBounds

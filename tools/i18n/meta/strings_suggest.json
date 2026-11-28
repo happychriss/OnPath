@@ -103,5 +103,6 @@
   "wait_step_suggest_search": {"area": "Tour suggestions · wait window", "context": "Wait window step row 2 of the round-trip search: loops are built", "priority": 2, "confidence": "sicher"},
   "wait_step_suggest_judge": {"area": "Tour suggestions · wait window", "context": "Wait window step row 3 of the round-trip search: the loops are rated, the best chosen", "priority": 2, "confidence": "sicher"},
   "suggest_ui_more": {"area": "Tour suggestions · card row (phone)", "context": "TalkBack's name for a tap on a round-trip card's cut text: the card grows in place to show the whole text (owner 2026-11-19, V1)", "priority": 2, "confidence": "sicher"},
-  "suggest_ui_less": {"area": "Tour suggestions · card row (phone)", "context": "small text button „▴ weniger“ under a grown round-trip card's whole text: folds the card back to one line (owner 2026-11-19, V1)", "priority": 1, "confidence": "sicher"}
+  "suggest_ui_less": {"area": "Tour suggestions · card row (phone)", "context": "small text button „▴ weniger“ under a grown round-trip card's whole text: folds the card back to one line (owner 2026-11-19, V1)", "priority": 1, "confidence": "sicher"},
+  "suggest_ui_more_mark": {"area": "Tour suggestions · card row (phone)", "context": "small blue mark „⌄ mehr“ at the end of a folded round-trip card's text line when something on the card is cut; the counterpart of „⌃ weniger“ – a tap on the card's text opens it (owner 2026-11-28 15:36, variant A); EN is a proposal", "priority": 1, "confidence": "sicher"}
 }

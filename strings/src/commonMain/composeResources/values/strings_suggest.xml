@@ -128,6 +128,7 @@
     <string name="suggest_ui_taking">Making the plan …</string>
     <string name="suggest_ui_more">Show the whole text</string>
     <string name="suggest_ui_less">less</string>
+    <string name="suggest_ui_more_mark">more</string>
     <string name="suggest_ui_test_on">Tour suggestions: on</string>
     <string name="suggest_ui_test_off">Tour suggestions: off</string>
     <string name="suggest_ui_loading_routing">Loading route data …</string>
