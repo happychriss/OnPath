@@ -75,6 +75,23 @@ class WebKeptTest {
         assertTrue(WebKept.start("", six.joinToString("\n"), "", true, 51.0, 7.0).contains("\"more\":0"))
     }
 
+    /**
+     * The ★ on a favourite row (owner 2026-11-28 15:10, the app's SearchState.favouriteTapped): tapped off, the place is no
+     * favourite any more but its row stays – with an empty star, not under „Zuletzt gesucht“ – until the search opens again.
+     */
+    @Test fun aStarTappedOffKeepsItsRowUntilTheSearchOpensAgain() {
+        fun row(json: String, title: String) = Regex("\\{[^{}]*\"title\":\"$title\"[^{}]*\\}").find(json.substringAfter("\"favourites\"").substringBefore("\"more\""))?.value
+        val two = listOf(cafe, ruin).joinToString("\n")
+        assertTrue(row(WebKept.start("", two, "", false, 51.0, 7.0, fresh = true), "Burgruine")!!.contains("\"starred\":true"))
+        WebKept.starTapped(ruin, false)
+        val after = WebKept.start("", cafe, "", false, 51.0, 7.0, fresh = false) // the ruin let go in the kept places
+        assertTrue(after, row(after, "Burgruine")!!.contains("\"starred\":false") && !after.substringAfter("\"recent\":").contains("Burgruine"))
+        WebKept.starTapped(ruin, true)
+        assertTrue(row(WebKept.start("", two, "", false, 51.0, 7.0, fresh = false), "Burgruine")!!.contains("\"starred\":true"))
+        WebKept.starTapped(ruin, false)
+        assertTrue("opened again: the row is gone", row(WebKept.start("", cafe, "", false, 51.0, 7.0, fresh = true), "Burgruine") == null)
+    }
+
     @Test fun recentFirstNoRepeatsAtMostTwenty() {
         var r = ""
         for (i in 1..25) r = WebKept.addRecent(r, code("p$i", "Ort $i", 51.0 + i * 0.01))

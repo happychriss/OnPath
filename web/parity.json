@@ -4041,6 +4041,7 @@
       "core/src/main/kotlin/com/onpath/app/domain/routes/RouteSort.kt": "baseline 2026-11-27: compiled into the engine – presumably asked there, not reviewed one by one"
     },
     "web/app/src/search.ts": {
+      "app/src/main/java/com/onpath/app/ui/search/SearchHost.kt": "2026-11-28: the favourite row's star calls favouriteTapped then the kept places, as SearchHost does – the logic is the shared SearchState (engine keptStarTapped / keptStart)",
       "app/src/main/java/com/onpath/app/map/MapController.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
       "app/src/main/java/com/onpath/app/ui/SearchFlow.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",
       "app/src/main/java/com/onpath/app/ui/search/SearchSession.kt": "baseline 2026-11-27: app-only code named in the page – not reviewed one by one (a copy of its logic belongs in mirrors)",

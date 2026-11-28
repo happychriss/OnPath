@@ -83,6 +83,9 @@ object WebKept {
         override fun syncChanged() {} // expected: the page's store event → the next sync round (sync.ts keptPlaces)
     }
 
+    /** A favourite row's ★ tapped on the page ([on] = kept again) – the app's SearchState.favouriteTapped. */
+    fun starTapped(code: String, on: Boolean) { decode(code)?.let { WebSearch.favouriteTapped(it, on) } }
+
     /** The app's SearchLines.addRecent on the page's lines: [code] first, the same place not twice, at most 20. */
     fun addRecent(recent: String, code: String): String {
         val p = decode(code) ?: return recent
@@ -95,9 +98,10 @@ object WebKept {
      * search-row fields (WebSearch's hit), its [code] and the grey part of the one-line row (SearchScreen.compactLine:
      * kind · height · distance; Zuhause: the place's name · distance), distance from ([lat], [lon]).
      */
-    fun start(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double): String {
-        // the lists as the app's SearchState.startLists makes them (SavedPlaces.start, each row with its distance)
-        val u = WebSearch.startLists(saved(home, favourites), places(recent), all, lat, lon)
+    fun start(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double, fresh: Boolean = true): String {
+        // the lists as the app's SearchState.startLists makes them (SavedPlaces.start, each row with its distance); a
+        // favourite tapped off stays among them with an empty star until the search opens again ([fresh])
+        val u = WebSearch.startLists(saved(home, favourites), places(recent), all, lat, lon, fresh)
         fun row(h: SearchHit, withTitle: Boolean = false): String {
             val p = h.place
             val line = buildList {
@@ -108,7 +112,7 @@ object WebKept {
             return WebSearch.hitJson(p, line).dropLast(1) + ",\"shared\":" + p.shared + "}"
         }
         return "{\"home\":" + (u.home?.let { row(it, true) } ?: "null") +
-            ",\"favourites\":" + u.favourites.joinToString(",", "[", "]") { row(it) } +
+            ",\"favourites\":" + u.favourites.joinToString(",", "[", "]") { row(it).dropLast(1) + ",\"starred\":" + u.starred(it.place) + "}" } +
             ",\"more\":" + u.moreFavourites + ",\"recent\":" + u.recent.joinToString(",", "[", "]") { row(it) } + "}"
     }
 

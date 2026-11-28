@@ -1361,8 +1361,9 @@ external fun planProgress(text: String)
 @JSExport fun routePointCode(name: String, lat: Double, lon: Double): String =
     WebKept.encode(com.onpath.app.search.Place.ofRoutePoint(name, lat, lon))
 @JSExport fun keptApply(home: String, favourites: String, op: String, code: String): String = WebKept.apply(home, favourites, op, code)
-@JSExport fun keptStart(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double): String =
-    WebKept.start(home, favourites, recent, all, lat, lon)
+@JSExport fun keptStart(home: String, favourites: String, recent: String, all: Boolean, lat: Double, lon: Double, fresh: Boolean): String =
+    WebKept.start(home, favourites, recent, all, lat, lon, fresh)
+@JSExport fun keptStarTapped(code: String, on: Boolean): String { WebKept.starTapped(code, on); return "" }
 @JSExport fun recentAdd(recent: String, code: String): String = WebKept.addRecent(recent, code)
 
 @JSExport fun insertIndex(points: String, lat: Double, lon: Double, lineSnapM: Double): Int =

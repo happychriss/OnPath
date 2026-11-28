@@ -49,7 +49,7 @@ export function placeItems(rows: PinRows, remove: MenuItem | null, adds: (m: Men
 }
 
 /** The empty search's lists (the engine's keptStart – SavedPlaces.start): each row's subtitle is its grey part. */
-interface StartLists { home: Hit | null; favourites: Hit[]; more: number; recent: Hit[] }
+interface StartLists { home: Hit | null; favourites: (Hit & { starred?: boolean })[]; more: number; recent: Hit[] }
 
 export interface SearchHost {
   map: maplibregl.Map;
@@ -159,8 +159,8 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
 
   /** „Alle Favoriten ›“ was clicked: every favourite until the search is opened again (the app's showAllFavourites). */
   let allFavourites = false;
-  /** A star clicked on a favourite row: that change does not draw the lists again (the row stays until the search closes). */
-  let ownChange = false;
+  /** The search opened again: the favourites tapped off go from the lists (the app's driver clears SearchUi.unstarred). */
+  let opening = true;
   /** One compact row (the app's CompactRow): the sign, the name, the grey part beside it – cut first. */
   const compactRow = (k: string, sign: string, name: string, line: string) => `
       <button class="hit compact" data-k="${k}">${sign}<b>${esc(name)}</b><span class="muted">${esc(line)}</span></button>`;
@@ -169,8 +169,9 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     let s: StartLists = { home: null, favourites: [], more: 0, recent: [] };
     try {
       const k = host.kept.list(), c = host.map.getCenter();
+      const fresh = opening; opening = false;
       s = JSON.parse(await host.engine.call('keptStart', k.home ?? '', k.favourites.join('\n'), host.recent.list().join('\n'),
-        allFavourites, c.lat, c.lng)) as StartLists;
+        allFavourites, c.lat, c.lng, fresh)) as StartLists;
     } catch (e) { problem('search', 'Kept places: the empty search\'s lists not built – the hint only', e); }
     if (my !== gen) return;
     const rows: Hit[] = [];
@@ -181,9 +182,10 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     if (s.favourites.length) {
       html += `<div class="smallhead"><span class="sign fav">${icon('star', 14)}</span><span role="heading" aria-level="3">${esc(t('search_favourites'))}</span></div>`;
       // the star on the right (owner 2026-11-28 15:10, the app's search like My routes): a click lets the place go, the
-      // row stays with an empty star until the search closes, a second click keeps it again; the star never picks the row
+      // row stays with an empty star until the search opens again (the shared SearchState: starred / favouriteTapped),
+      // a second click keeps it again; the star never picks the row
       html += s.favourites.map((h) => `<div class="favrow">${compactRow(add(h), `<span class="sign fav">${icon('star')}</span>`, h.title, h.subtitle)}${
-        h.code ? starHtml(true, h.title).replace('class="favstar', `data-code="${esc(h.code)}" class="favstar`) : ''}</div>`).join('');
+        h.code ? starHtml(h.starred !== false, h.title).replace('class="favstar', `data-code="${esc(h.code)}" class="favstar`) : ''}</div>`).join('');
       if (s.more > 0) html += `<button class="textbtn allfavs">${esc(t('search_all_favourites'))}</button>`;
     }
     if (s.recent.length) {
@@ -202,15 +204,12 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
       b.onclick = async (e) => {
         e.stopPropagation();
         const code = b.dataset.code!, keep = b.getAttribute('aria-pressed') !== 'true';
-        const name = b.closest('.favrow')?.querySelector('b')?.textContent ?? '';
-        // the star shows the new state at once; its own change does not draw the lists again (the row stays in place)
-        b.classList.toggle('on', keep); b.setAttribute('aria-pressed', String(keep));
-        const spoken = t(keep ? 'routes_fav_on' : 'routes_fav_off', name);
-        b.setAttribute('aria-label', spoken); b.title = spoken; b.innerHTML = icon(keep ? 'star' : 'starOutline', 26);
-        ownChange = true;
-        try { await (keep ? host.kept.keep(code) : host.kept.unkeep(code)); }
-        catch (err) { problem('search', 'Kept places: the star\'s change was not stored', err); }
-        finally { ownChange = false; }
+        // as the app's SearchHost: the row's star first (SearchState.favouriteTapped), then the kept places – their change
+        // draws the lists again, where the row keeps its place with the new star
+        try {
+          await host.engine.call('keptStarTapped', code, keep);
+          await (keep ? host.kept.keep(code) : host.kept.unkeep(code));
+        } catch (err) { problem('search', 'Kept places: the star\'s change was not stored', err); }
       };
     });
     results.querySelector<HTMLButtonElement>('.clearrecent')?.addEventListener('click', (e) => { e.stopPropagation(); host.recent.clear(); again(); });
@@ -406,9 +405,9 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
 
   q.addEventListener('input', () => { run(); });
   // the chips and the kept places to start from; opened again (the list was closed): five favourites again
-  q.addEventListener('focus', () => { if (!q.value.trim() && !category) { if (results.hidden) allFavourites = false; run(); } });
+  q.addEventListener('focus', () => { if (!q.value.trim() && !category) { if (results.hidden) { allFavourites = false; opening = true; } run(); } });
   // a place kept or let go (also in another tab) while the empty search shows: its lists follow
-  host.kept.onChange(() => { if (!ownChange && !results.hidden && !q.value.trim() && !category) void renderStart(++gen); });
+  host.kept.onChange(() => { if (!results.hidden && !q.value.trim() && !category) void renderStart(++gen); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
   return { close, isOpen: () => popup != null || !card.hidden, removePin, planChanged: () => { void updateJoin(); },

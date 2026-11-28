@@ -56,7 +56,22 @@ object WebSearch {
         fun reset() { ui = SearchUi(); last = null }
 
         /** The empty search's lists ([SearchState.startLists]); [all] = „Alle Favoriten ›“. */
-        fun lists(all: Boolean): SearchUi { allFavourites = all; return startLists(SearchUi(), ctx) }
+        fun lists(all: Boolean, fresh: Boolean): SearchUi {
+            // the search opened again: the rows tapped off go (the app's driver clears SearchUi.unstarred on open)
+            if (fresh) start = SearchUi()
+            allFavourites = all
+            start = startLists(start, ctx)
+            return start
+        }
+
+        /** The empty search's lists as last shown – they keep a favourite tapped off in its place ([favouriteTapped]). */
+        private var start = SearchUi()
+
+        /** A favourite row's ★ (owner 2026-11-28, the app's SearchState.favouriteTapped on the empty search's lists). */
+        fun starTapped(p: Place, on: Boolean) { val keep = ui; ui = start; favouriteTapped(p, on); start = ui; ui = keep }
+
+        /** Is the row's star on ([SearchUi.starred]). */
+        fun starred(p: Place) = start.starred(p)
     }
 
     private object Ports : SearchPorts {
@@ -68,10 +83,15 @@ object WebSearch {
     }
 
     /** The empty search's lists ([WebKept.start]): what the app's SearchState shows for these kept places. */
-    internal fun startLists(saved: SavedPlaces, recent: List<Place>, all: Boolean, lat: Double, lon: Double): SearchUi {
+    internal fun startLists(saved: SavedPlaces, recent: List<Place>, all: Boolean, lat: Double, lon: Double, fresh: Boolean = true): SearchUi {
         kept = saved; recents = recent; ctx = SearchContext(lat, lon, null)
-        return State.lists(all)
+        return State.lists(all, fresh)
     }
+
+    /** A favourite row's ★ tapped ([on] = kept again): the row stays until the search opens again (SearchState). */
+    internal fun favouriteTapped(p: Place, on: Boolean) = State.starTapped(p, on)
+
+    internal fun starred(p: Place) = State.starred(p)
 
     private fun categoryOf(name: String): SearchKinds.Category? = SearchKinds.Category.entries.firstOrNull { it.name == name }
 

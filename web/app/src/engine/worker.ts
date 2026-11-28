@@ -39,7 +39,8 @@ interface WasmEngine {
   keptState(home: string, favourites: string, code: string): string;
   routePointCode(name: string, lat: number, lon: number): string;
   keptApply(home: string, favourites: string, op: string, code: string): string;
-  keptStart(home: string, favourites: string, recent: string, all: boolean, lat: number, lon: number): string;
+  keptStart(home: string, favourites: string, recent: string, all: boolean, lat: number, lon: number, fresh: boolean): string;
+  keptStarTapped(code: string, on: boolean): string;
   recentAdd(recent: string, code: string): string;
   insertIndex(points: string, lat: number, lon: number, lineSnapM: number): number;
   historyRecord(before: string, after: string): void;
@@ -122,7 +123,7 @@ const CALLS = new Set(['planArrive', 'anchorsCounting', 'historyReplace', 'histo
   // the app's search chips and a fresh search (WebSearch.kt: SearchKinds.Category, SearchSession's kept list)
   'searchCategories', 'searchReset',
   // kept places and „Zuletzt gesucht“ (WebKept.kt – the app's SavedPlaces / SearchStore.addRecent, owner 2026-11-15)
-  'keptState', 'routePointCode', 'keptApply', 'keptStart', 'recentAdd',
+  'keptState', 'routePointCode', 'keptApply', 'keptStart', 'keptStarTapped', 'recentAdd',
   // kept places ⇄ the sync (web-sync.md §5.4: the shared PlaceSync)
   'syncPlacesExport', 'syncPlacesImport', 'syncPlacesChanged', 'syncPlaceItems', 'syncPlacesForget',
   // the phone unpaired itself (its hello deleted – the app's guard)
