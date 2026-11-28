@@ -138,13 +138,15 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
                            /** A tour records (not stopped): its time so far – the tab reads „● PLANEN · 0:42 ■“. */
                            recElapsedS: Long? = null,
                            /** A tap on the recording tab: „Tour beenden?“ (the same question as Navigate's). */
-                           onEnd: () -> Unit = {}) {
+                           onEnd: () -> Unit = {},
+                           /** The tab's text as laid out (PlanModeTabTest: never cut at a large font). */
+                           laidOut: (androidx.compose.ui.text.TextLayoutResult) -> Unit = {}) {
     // always "PLANEN", also during a tour (owner 2026-11-06). The offline state lives top right since 2026-11-27
     // (MapCreditTop) – [offline] / [onOffline] are kept for the old frames only
     val mode = str(Res.string.plan_mode_label).uppercase()
     val style = MaterialTheme.typography.labelSmall
     if (recElapsedS == null) {
-        Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1,
+        Text(mode, style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1, onTextLayout = laidOut,
             modifier = modifier.clearAndSetSemantics { }.background(OnPathColors.PlanAccent, CircleShape)
                 .padding(horizontal = 8.dp, vertical = 2.dp))
         return
@@ -159,7 +161,7 @@ internal fun PlanModeLabel(editing: Boolean, modifier: Modifier = Modifier, offl
         .padding(horizontal = 8.dp, vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.size(7.dp).background(OnPathColors.RecDot, CircleShape))
         Spacer(Modifier.width(5.dp))
-        Text("$mode · $time", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1)
+        Text("$mode · $time", style = style, fontWeight = FontWeight.Bold, color = OnPathColors.CardWhite, maxLines = 1, onTextLayout = laidOut)
         Spacer(Modifier.width(7.dp))
         Box(Modifier.size(8.dp).background(OnPathColors.CardWhite))
     }
