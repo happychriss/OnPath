@@ -32,11 +32,11 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Teilen: eigenes Untermenü | donald | `feat/share-page`: captain go, owner's yes 15:37 → merging | free after it |
-| Planer-Link öffnet App statt Browser (was Blaues Dreieck; fixes 0c50fdd6d, b6851da27) | donald | owner 15:40: plan.onpath.earth without a plan opens the app with an error (manifest :92–100, path „/“; the fragment cannot be filtered) – step 1: no plan code → hand the link to the browser; step 2: proposal own path for plan links (with HP) | merge after the owner's yes; step 2 is the owner's decision |
+| Teilen: eigenes Untermenü (done, main f16db20a0) | donald | – | **free** |
+| Planer-Link öffnet App statt Browser | donald | owner's yes 15:44: plan / pairing links get the own path `/p/#p=…`; manifest catches only `/p/`, „/“ stays in the browser. **HP first** (planner serves and writes `/p/`), then the manifest + `PlanLinks`; table old / new app × old / new link before the merge | E2E plan link + pairing; cloud-web: texts that show links |
 | Rundtourkarten: Tippen sichtbar machen | donald | owner 15:36: variant A („⌄ mehr“, the text block unfolds the card) – building | merge on green gate; HP parity (planner cannot unfold) |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
-| Planer weiterentwickeln | HP | queue: 1 „Ganz neu berechnen“ out (owner's card 14:53) + time-test limit · 2 tracker page in OnPath's colours (owner 15:13; picture first) · 3 star on the favourite rows of the planner search (parity) | deploy on green; parity acks after each donald merge |
+| Planer weiterentwickeln | HP | queue: 1 `/p/` path for plan links (donald waits) · 2 „Ganz neu berechnen“ out · 3 tracker page colours + logo (picture first) · 4 star in the planner search · 5 round-trip cards unfold („⌄ mehr“) | deploy on green; parity acks after each donald merge |
 | Cloud (cloud-web) | – | website and help work: state in onpath.private `backlog.md` (not kept here) | – |
 
 **Release 0.18.12:** ~~on hold~~ released on the owner's word of 14:07 (see above). Before: needed the test build on the Pixel, one really ridden day of a trip (VISION), then the
