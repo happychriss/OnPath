@@ -25,6 +25,7 @@ aligned to it; where they still describe how it was built, they point to the reb
 | MD-9 | A day stopped before its goal is **not done**; the recording stays tied to the day as „angefangen“. |
 | MD-10 | A day ridden twice keeps its ✓; the newest finished recording counts, older ones stay in Meine Touren. |
 | MD-11 | Opening a day of a multi-day trip loads the maps of **all days of the trip automatically** („sonst übernachte ich auf einer Hütte im Nirvana und mir fehlt der nächste Tag“) – no separate question; the normal map loading window shows the line „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.“ |
+| MD-12 | In an opened day the **activity or difficulty may change** (hike, MTB, E-bike …): the day stays part of the trip. Only a changed start or goal makes it its own tour (MD-4). „Ich denke, das Einzige, was konstant bleiben muss bei einer geöffneten Tour, ist Start- und Zielpunkt. Ob ich dann mit dem Mountainbike, mit dem E-Bike fahre oder wandere, ändert der Start- und Zielpunkt nicht.“ (owner 2026-11-28 10:13) |
 
 Several days in a row („Tag 3–4“, scenario O) on the phone: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“ – the phone takes exactly one day out of the trip
 and rides it (owner 2026-11-28 08:17).

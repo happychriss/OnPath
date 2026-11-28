@@ -77,6 +77,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-PLAN-20 | MD-4 A day whose start or goal was changed no longer fits the chain: the notice „Start und Ziel geändert – wird als eigene Tour gespeichert“ and a copy saved as a standalone tour; the trip's day stays as it was. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 | F-PLAN-21 | MD-8 A day changed on the phone with the same start and goal (F-PLAN-19) goes back to the browser planner by sync like any saved route. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 | F-PLAN-22 | MD-11 Opening a day of a multi-day trip on the phone loads the maps of all days of the trip automatically (a night in a hut must not leave the next day without maps) – no separate question; the normal map loading window shows the line „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.“ (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
+| F-PLAN-23 | MD-12 In a day of a multi-day trip opened on the phone, activity and difficulty may change and the day stays part of the trip; only a changed start or goal saves it as its own tour (MD-4). (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 
 ### 3.4 Smart routing by activity
 
