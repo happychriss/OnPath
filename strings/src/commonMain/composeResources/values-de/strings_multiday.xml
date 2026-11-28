@@ -18,7 +18,6 @@
     <string name="daypick_started">angefangen %1$s</string>
     <string name="daypick_date">d.M.</string>
     <string name="daypick_day_of">Tag %1$s von %2$s</string>
-    <string name="daypick_details">Tag %1$s im Detail</string>
     <string name="daypick_next">nächster Tag</string>
     <string name="daypick_touring">Beende zuerst die laufende Tour – dann lässt sich ein Tag laden.</string>
     <string name="daypick_days_failed">Die Tage dieser Tour lassen sich nicht berechnen – öffne sie im Planer im Browser.</string>

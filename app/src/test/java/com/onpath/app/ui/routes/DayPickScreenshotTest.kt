@@ -72,7 +72,7 @@ abstract class DayPickScreenshotTest(fontScale: Float, private val locale: Local
 
     @Test fun daySheet() {
         paparazzi.snapshot {
-            OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onDetail = {}, onClose = {}, stateLaidOut = { states += it },
+            OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onClose = {}, stateLaidOut = { states += it },
                 placesLaidOut = { places += it }) {} }
         }
         assertStatesWhole()
@@ -100,7 +100,7 @@ abstract class DayPickScreenshotTest(fontScale: Float, private val locale: Local
     }
 
     @Test fun daySheetDuringATour() = paparazzi.snapshot {
-        OnPathTheme { DayPickSheet(ui, canRide = false, snapshot = null, onRide = {}, onDetail = {}, onClose = {}) {} }
+        OnPathTheme { DayPickSheet(ui, canRide = false, snapshot = null, onRide = {}, onClose = {}) {} }
     }
 }
 
