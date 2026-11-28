@@ -7,8 +7,8 @@ work goes into this guide at once, in general words; the case that taught it is 
 
 ## 0. For role threads – your part (owner 2026-11-28: „die Rollen bekommen nur ihren Teil“)
 
-A role thread reads **this section, the first paragraph of the project's vision (up to the order of priority) and its
-own role sheet** – not the rest of this guide and not the rest of the vision. The captain and the project lead read
+A role thread reads **this section, the first paragraph of the project's vision (up to the order of priority), its two
+closing lines (aligns / resisted) and its own role sheet** – not the rest of this guide and not the rest of the vision. The captain and the project lead read
 everything.
 
 1. **Claim, build, report.** A claim line before you start; new UI in its own file; a hot file only when no one else
@@ -85,6 +85,23 @@ The project's vision is **short, about this product only, and gives the directio
 ideas. It has a test sentence, an order of priority for when principles collide, and says what a change must do to fit
 and when it is resisted. Detail rules live in the project's decision list, never in the vision.
 
+**Writing or changing a vision** (the form and steps 1–3, 5 and 7 are taken from the open skill `kunchenguid/vision`,
+MIT; where it and our own experience differ, ours decides – comparison in the project's items, 2026-11-28):
+1. **Form:** an opener that says what the product is for, whom it serves and the one thing it owns; a test sentence; the
+   order of priority; three to six principles; what it is not, named concretely; the two closing lines „a change aligns
+   when … / is resisted when …“. One or two pages, plain present tense, no roadmap, no feature list, no marketing voice.
+2. **Every line has a source:** the owner's word (quote, date), a decision, or something that was really built or
+   refused. A virtue any project could claim („we value quality“) is cut. For an existing product, read first what was
+   built and what was refused – that shows the values better than what was said.
+3. **Stress test before it counts:** a handful of hard cases aimed at the seams – a tempting feature beside the goal,
+   two principles colliding, a small step down a slope, a wider scope. Only cases whose answer cannot be predicted; one
+   at a time, with both sides argued. The owner starts this session; it is not sprung on him.
+4. **Why, not how:** a principle may carry its reason in one clause; rules, sizes and words stay in the decision list.
+5. **Changes come as small separate pieces**, each one acceptable alone, each traced to the owner's answer in a change
+   list – never a second, competing text. The approved text carries a dated stamp.
+6. **One vision, no copies:** where another file repeats the vision, it gets a pointer instead.
+7. **Silence is not approval.** Nobody approves in the owner's name.
+
 **How it is used:**
 1. A function that fits the vision is built.
 2. Building it raises scenarios: where it lives, where it is opened from, what follows each answer.
@@ -126,6 +143,11 @@ situation it came from before it is judged away.
 6. **What a role decided alone is shown, not buried.** Every such decision appears in the done or morning report as
    „decided for you“ with its picture; an audit „built as decided?“ follows every wave.
 
+7. **A recommendation anchors.** The owner often takes the recommended option and sees the cost a minute later. So a
+   recommendation says in one clause what the captain does not know; where the answer depends on a situation only the
+   owner has lived, both sides are argued and nothing is recommended. *(Example: three recommendations were corrected
+   within minutes on one morning.)*
+
 **Vision text or handling?** When a case goes wrong, first try to fix the handling (this guide) – that helps every
 project. Change the vision text only when a sentence of it gave the wrong direction.
 
@@ -162,7 +184,7 @@ are requirements, and they get stable IDs in the project's requirements.
 ## 6. Start
 
 The captain and the project lead read, in this order: this guide → the project's `VISION.md` → their role sheet → the
-owner's preferences. **A role thread reads only §0 of this guide, the first paragraph of the vision and its own role
-sheet**; where a role sheet says „read the guide“, it means §0. The project's entry file (`CLAUDE.md`) and every start
+owner's preferences. **A role thread reads only §0 of this guide, the first paragraph and the two closing lines of the vision and its own
+role sheet**; where a role sheet says „read the guide“, it means §0. The project's entry file (`CLAUDE.md`) and every start
 sentence name **both** the guide and the project files, so neither is read alone. A fresh thread carries on from the
 repository, never from another thread's chat.

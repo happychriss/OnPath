@@ -68,3 +68,5 @@ Android comes first; the iPhone comes only after the public launch, and until th
 How a function and its scenarios are checked against this vision is described in `docs/team/captains-guide.md` §4 (reusable, not about this product).
 A change aligns when it makes the outing more reliable, the plan easier to change on the way or OnPath stronger than established apps in something hikers need on the way, works offline in loaded areas, and keeps the three steps as short and the screen as clear as they are.
 A change should be resisted when it could lose a point, surprises the user, needs an account or a server for the running tour, adds social or catalogue features, is technology for its own sake, or makes the way in longer.
+
+<!-- vision: owner-approved 2026-11-28 -->
