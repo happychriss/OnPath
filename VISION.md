@@ -26,7 +26,7 @@ Setting off in a new area needs the network once; a map that has to be built fir
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
 Everything you need to set off and on the tour works on the phone, simply and quickly; the browser planner adds what planning ahead needs, such as multi-day tours or 3D, so the phone stays simple.
-In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
+Where app and planner serve the same situation, their main controls behave the same and look as alike as they can; what serves only planning ahead stays in the planner, and what serves only the day stays on the phone, such as ridden tours and ridden days.
 
 ## No surprises
 
