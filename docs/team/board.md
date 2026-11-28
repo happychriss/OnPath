@@ -21,9 +21,9 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 | --- | --- | --- | --- |
 | Akku sparen unterwegs | donald | `feat/akku-sparen`: 30 s GPS in Sparen (owner 10:55/10:56), then owner's merge yes. Next: ⚙ during a route = V1 (owner 10:59, item settings-on-the-way) | captain go + owner's yes |
 | Browser verbinden: eigenes Fenster | donald | owner 10:54: A (own window) + own settings entry with status connected / not – build the window, picture for the entry; rebase after `feat/akku-sparen` (same settings file) | captain go + owner's yes |
-| Lange Strecken: Frage vereinheitlichen (was Flackern; fix on main 0252c2187) | donald | app: „Trotzdem planen“ out (item long-route-question 640d48016) | captain go + owner's yes |
+| Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
-| Cloud | – | battery check done; owner answered 10:32 | free |
+| Cloud (cloud-web) | – | website block „Sicherheit“ (sharing + battery) drafted in onpath.private; owner picks the text | live only with the release that has „Akku sparen“; the help needs an „Akku sparen“ section then |
 
 **Release 0.18.12:** on hold. Needs the test build on the Pixel, one really ridden day of a trip (VISION), then the
 owner's word. Notes on `release/0.18.12-notes`.
