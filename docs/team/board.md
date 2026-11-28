@@ -19,8 +19,8 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Akku sparen unterwegs (was Halte-Hinweis) | donald | owner 10:38: A + the question → build; then tidy the settings during a route (picture first) | captain go before merge |
-| Browser verbinden: eigenes Fenster (was Mehrtagestour-Nacharbeit; cards merged a174c6515) | donald | picture: own pairing window vs browser part on top (owner 10:45) | owner picks → build |
+| Akku sparen unterwegs | donald | built `feat/akku-sparen` de2d27369, captain go; owner asked: merge + is 3 s GPS ok / measure the saving first. Then picture: settings during a route (lesson 10:54: not tidy too much) | owner's yes |
+| Browser verbinden: eigenes Fenster | donald | owner 10:54: A (own window) + own settings entry with status connected / not – build the window, picture for the entry; rebase after `feat/akku-sparen` (same settings file) | captain go + owner's yes |
 | Lange Strecken: Frage vereinheitlichen (was Flackern; fix on main 0252c2187) | donald | app: „Trotzdem planen“ out (item long-route-question 640d48016) | captain go + owner's yes |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
 | Cloud | – | battery check done; owner answered 10:32 | free |
