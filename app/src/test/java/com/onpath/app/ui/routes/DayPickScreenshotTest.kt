@@ -11,7 +11,11 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.ui.OnPathTheme
 import com.onpath.app.ui.RoutesScreen
 import com.onpath.app.domain.RoutesTab
+import androidx.compose.ui.text.TextLayoutResult
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -20,15 +24,16 @@ import kotlin.math.sin
 
 /**
  * Saved multi-day routes in My routes (owner 2026-11-27, "ja"): the card's „8 Tage“ badge on its picture, Gemacht's
- * „Tag 3 von …“ line, and the day sheet – day 1 ridden („✓ Tag 1 · gefahren am 2. Dez.“), day 2 begun and the next („Tag 2 ·
- * angefangen am 3. Dez.“, MD-9), the
- * rows' aligned columns km · ↑ m · time with the night signs and ›. German, at the normal and the largest font (2.0).
+ * „Tag 3 von …“ line, and the day sheet – day 1 ridden (pill „Tag 1“, under it „✓ gefahren 2.12.“), day 2 begun and the next
+ * (filled pill, „angefangen 3.12.“, MD-9), the rows' aligned columns km · ↑ m · time with the night signs and ›. German, at the
+ * normal and the largest font (2.0); the day sheet also in English. The ridden / begun line is never cut: no „…“, no line
+ * broken inside a word ([assertStatesWhole]).
  */
-abstract class DayPickScreenshotTest(fontScale: Float) {
+abstract class DayPickScreenshotTest(fontScale: Float, private val locale: Locale = Locale.GERMANY) {
     @get:Rule
     val paparazzi = Paparazzi(deviceConfig = DeviceConfig.PIXEL_5.copy(fontScale = fontScale, screenHeight = 3000), showSystemUi = false)
     private val before = Locale.getDefault()
-    @Before fun german() = Locale.setDefault(Locale.GERMANY)
+    @Before fun language() = Locale.setDefault(locale)
     @After fun back() = Locale.setDefault(before)
 
     private val line = (0..300).map { i -> GeoPoint(51.17 - i * 0.0101, 6.94 + i * 0.0155, 80.0 + 300 * sin(i / 30.0)) }
@@ -60,8 +65,28 @@ abstract class DayPickScreenshotTest(fontScale: Float) {
         OnPathTheme { RoutesScreen(listOf(route, rode), {}, {}, {}, {}, {}, initialTab = RoutesTab.DONE) }
     }
 
-    @Test fun daySheet() = paparazzi.snapshot {
-        OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onDetail = {}, onClose = {}) {} }
+    /** The day states as laid out in the last snapshot. */
+    private val states = ArrayList<TextLayoutResult>()
+
+    @Test fun daySheet() {
+        paparazzi.snapshot {
+            OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onDetail = {}, onClose = {}, stateLaidOut = { states += it }) {} }
+        }
+        assertStatesWhole()
+    }
+
+    /** Day 1's „✓ gefahren …“ and day 2's „angefangen …“ were laid out, neither cut short nor broken inside a word. */
+    private fun assertStatesWhole() {
+        val texts = states.map { it.layoutInput.text.text }.distinct()
+        assertEquals("both states drawn: $texts", 2, texts.size)
+        for (r in states) {
+            val t = r.layoutInput.text.text
+            assertFalse("cut: \"$t\"", r.hasVisualOverflow)
+            for (i in 0 until r.lineCount - 1) {
+                val end = r.getLineEnd(i)
+                assertTrue("\"$t\" broken inside a word after \"${t.substring(0, end)}\"", end in 1 until t.length && (t[end - 1].isWhitespace() || t[end].isWhitespace()))
+            }
+        }
     }
 
     @Test fun daySheetDuringATour() = paparazzi.snapshot {
@@ -71,3 +96,4 @@ abstract class DayPickScreenshotTest(fontScale: Float) {
 
 class DayPickGermanTest : DayPickScreenshotTest(1.0f)
 class DayPickLargeFontGermanTest : DayPickScreenshotTest(2.0f)
+class DayPickEnglishTest : DayPickScreenshotTest(1.0f, Locale.US)

@@ -82,7 +82,7 @@ object DayTableLayout {
  * the goal flag, and [trailing] (My routes' ›, [trailingWidth] wide – the total row keeps that room). A day above a limit per
  * day: the row in warn yellow, only the exceeded values bold. The total row („Gesamt“) at the bottom. [onTap] a day, [onHold]
  * (plan sheet: the days up to this one). From [LARGE_FONT] on the numbers go under the day's name (no room beside it) – a
- * value is never cut.
+ * value is never cut. [below]: a line under the whole row, the row's full width (My routes: „✓ gefahren 2.12.“).
  */
 @Composable
 fun DayTableView(
@@ -95,11 +95,12 @@ fun DayTableView(
     trailingWidth: Dp = 0.dp,
     title: @Composable (DayTableLine) -> Unit = { DayTableTitle(it) },
     trailing: (@Composable (DayTableLine) -> Unit)? = null,
+    below: (@Composable (DayTableLine) -> Unit)? = null,
 ) {
     val large = LocalDensity.current.fontScale >= LARGE_FONT
     val w = columnWidths(table)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing)
+        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below)
         HorizontalDivider(Modifier.padding(top = 4.dp), color = OnPathColors.Line)
         TotalRow(table, w, oneRow, large, trailingWidth)
     }
@@ -139,7 +140,8 @@ private fun columnWidths(t: DayTableUi): Widths {
 @Composable
 private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Boolean, picked: Boolean,
                         onTap: ((Int) -> Unit)?, onHold: ((Int) -> Unit)?,
-                        title: @Composable (DayTableLine) -> Unit, trailing: (@Composable (DayTableLine) -> Unit)?) {
+                        title: @Composable (DayTableLine) -> Unit, trailing: (@Composable (DayTableLine) -> Unit)?,
+                        below: (@Composable (DayTableLine) -> Unit)?) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val bg = when {
         l.over -> OnPathColors.WarnContainer
@@ -147,25 +149,28 @@ private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Bool
         else -> Color.Transparent
     }
     val desc = listOfNotNull(l.day, l.places).joinToString(" · ")
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(OnPathShapes.Small).background(bg)
+    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(OnPathShapes.Small).background(bg)
         .then(if (onTap != null) Modifier.combinedClickable(role = Role.Button, onClick = { onTap(l.n) },
             onLongClick = onHold?.let { h -> { h(l.n) } }) else Modifier)
         .semantics { selected = picked; contentDescription = desc }
         .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = if (trailing == null) 8.dp else 0.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            title(l)
-            l.places?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 2,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+        verticalArrangement = Arrangement.Center) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                title(l)
+                l.places?.let {
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 2,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+                }
+                if (large) Numbers(l.cells, w, oneRow = true, large = true, muted, Modifier.padding(top = 2.dp))
             }
-            if (large) Numbers(l.cells, w, oneRow = true, large = true, muted, Modifier.padding(top = 2.dp))
+            if (!large) Numbers(l.cells, w, oneRow, large = false, muted, Modifier.padding(start = 6.dp))
+            Box(Modifier.padding(start = 8.dp).size(22.dp), contentAlignment = Alignment.Center) {
+                if (l.end != null) DayEndSign(l.end, 20.dp) else GoalFlagSign(20.dp)
+            }
+            trailing?.invoke(l)
         }
-        if (!large) Numbers(l.cells, w, oneRow, large = false, muted, Modifier.padding(start = 6.dp))
-        Box(Modifier.padding(start = 8.dp).size(22.dp), contentAlignment = Alignment.Center) {
-            if (l.end != null) DayEndSign(l.end, 20.dp) else GoalFlagSign(20.dp)
-        }
-        trailing?.invoke(l)
+        below?.invoke(l)
     }
 }
 
