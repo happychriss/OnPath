@@ -168,6 +168,7 @@ Built in stage 4 (2026-11-17, mehrtage) – details decided while building. Mark
 - On the phone the night marks are kept **by value** like the pins (`ui/MultiDayFlow`); the days count only while the
   plan still belongs to the saved tour (a cleared plan is a normal plan, Undo brings the tour back).
 - The day sheet in Meine Touren (badge „N Tage“, one tap = that day is the plan, ✓ on ridden days) – holds (MD-2, MD-6).
+  Its day table shows per day km · ↑ m · time, **no running total „Σ … km“** – a deliberate exception to parity with the planner, which keeps Σ km because planning happens there: „auf dem Handy brauche ich nicht die Summe der gesamten Kilometer … das ist was für die Planung“ (Chriss 2026-11-28 09:52). The „Gesamt“ row stays; „von → nach“ wraps fully, never cut.
 - **[rebuild]** Today a tour can also open as a whole-trip overview in the Plan sheet (day table, profile, „Planung“
   chips, tap / hold rows incl. „Tage 3–4“, "Tag n fahren"), and "‹ Alle Tage" brings the whole tour back as the plan.
   After the rebuild: no whole-trip view in the Plan sheet (MD-1), "‹ Alle Tage" → the day list (MD-2); „Tag 3–4“: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“.

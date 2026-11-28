@@ -99,8 +99,15 @@ fun DayTableView(
     below: (@Composable (DayTableLine) -> Unit)? = null,
     /** Each row's „von → nach“ as laid out (the screenshot tests check it is never cut). */
     placesLaidOut: (TextLayoutResult) -> Unit = {},
+    /**
+     * The running total „Σ … km“ under each day's km. False: My routes' day sheet on the phone (owner 2026-11-28 09:52: „auf dem
+     * Handy brauche ich nicht die Summe der gesamten Kilometer … das ist was für die Planung“) – its room goes to „von → nach“.
+     */
+    showSum: Boolean = true,
 ) {
     val large = LocalDensity.current.fontScale >= LARGE_FONT
+    @Suppress("NAME_SHADOWING")
+    val table = if (showSum) table else remember(table) { table.copy(lines = table.lines.map { it.copy(cells = it.cells.copy(sum = null)) }) }
     val w = columnWidths(table)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
         for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below, placesLaidOut)
