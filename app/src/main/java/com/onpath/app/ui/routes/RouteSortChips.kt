@@ -11,7 +11,7 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
 import androidx.compose.material.icons.filled.ArrowUpward
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.automirrored.filled.Sort
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -60,7 +60,8 @@ fun RouteSortChips(choice: RouteSort.Choice, onChoice: (RouteSort.Choice) -> Uni
             }
             FilterChip(selected = chosen, onClick = { onChoice(RouteSort.tap(choice, k)) },
                 label = { Text(label, style = MaterialTheme.typography.labelMedium, maxLines = 1) },
-                leadingIcon = if (chosen) ({ Icon(Icons.Filled.Check, null, Modifier.size(FilterChipDefaults.IconSize)) }) else null,
+                // a sort, not a filter (Chriss 2026-11-28): the sort sign, never the filter's ✓ or its dark look
+                leadingIcon = if (chosen) ({ Icon(Icons.AutoMirrored.Filled.Sort, null, Modifier.size(FilterChipDefaults.IconSize)) }) else null,
                 trailingIcon = if (direction != null) ({
                     Icon(if (choice.biggestFirst) Icons.Filled.ArrowDownward else Icons.Filled.ArrowUpward, null,
                         Modifier.size(FilterChipDefaults.IconSize))

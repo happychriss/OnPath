@@ -146,6 +146,8 @@
     <!-- My routes: the activity filter (owner 2026-11-13) – preset with the planning activity, "Alle" under a line -->
     <string name="routes_act_all">All</string>
     <string name="routes_act_chip_desc">Activity: %1$s. Tap to change</string>
+    <string name="routes_act_chip_free">Activity</string>
+    <string name="routes_filter_clear">Remove filter %1$s</string>
     <string name="routes_act_none">No %1$s tours here.</string>
     <!-- Plan: "Restore your old plan?" after a new plan replaced the one on the map (owner 2026-11-24, approved from a picture) -->
     <string name="routes_restore_title">Restore your old plan?</string>
