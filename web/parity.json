@@ -233,11 +233,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
-      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>) · 2026-11-28 03a3b6a55 unused multi-day prefs (multiDayMapsAsked, multiDayWifiCells) dropped – the planner never had them; 2026-11-28 Zuhause out of the app (5e6d33829): gesehen, Planer bleibt – the planner keeps its Zuhause (sync unchanged); 2026-11-28 battery saving (a8f6b68c9: Sparen switch, estimate): app only – the planner records no tours; bf068e550 batterySaveTour app only too",
+      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>) · 2026-11-28 03a3b6a55 unused multi-day prefs (multiDayMapsAsked, multiDayWifiCells) dropped – the planner never had them; 2026-11-28 Zuhause out of the app (5e6d33829): gesehen, Planer bleibt – the planner keeps its Zuhause (sync unchanged); 2026-11-28 battery saving (a8f6b68c9: Sparen switch, estimate): app only – the planner records no tours; bf068e550 batterySaveTour app only too · 2026-11-28 f1a3729a3 Akku sparen per tour (batterySaveMark) – app only, the planner records no tours",
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "7a152b0d98de7928b4758d80767c6c12f9ec0ed2"
+      "blob": "ddbf7b55b5f771e21fa0cb8fe77046cd3ad8634e"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
