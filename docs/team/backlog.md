@@ -97,7 +97,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## Next
 - **[donald] App: a multi-day trip is guided one day at a time – start/end rule, ✓ on arrival, whole-trip planning out of the app (owner 2026-11-28 „kristallklar“, after 0.18.12)…** → [detail](items/2026-11-28-app-multiday-one-day.md)
 - ~~[donald] Parity: multi-day panel like the planner~~ – **dropped** (owner 2026-11-28: the phone does not plan the whole trip, no multi-day panel in the app's plan sheet; see items/2026-11-28-app-multiday-one-day.md).
-- **[donald] Parity: „Berechnen“ on a not-routed plan is now a filled plan-blue button in the planner (owner 2026-11-27 „muss dicker“) – the app shows it as a blue text link after „Route nicht berechnet …“; make it the same filled PlanGo button.**
+- ~~[donald] Parity: „Berechnen“~~ – **done** 066b46175. ~~„Berechnen“ on a not-routed plan is now a filled plan-blue button in the planner (owner 2026-11-27 „muss dicker“) – the app shows it as a blue text link after „Route nicht berechnet …“; make it the same filled PlanGo button.**
 - **[laptop] Planner: route type as a segment row (variant A) + multi-day day table and day view (owner 2026-11-27)…** → [detail](items/2026-11-27-planner-route-type-and-day-table.md)
 - **[donald] App: multi-day day table like the planner (owner 2026-11-27)…** → [detail](items/2026-11-27-app-day-table.md) – only for the day list in Meine Touren (MD-2); no whole-trip day table in the plan sheet (MD-1, owner 2026-11-28).
 - **[donald] Shorter phone setup: first start asks only location; notifications + battery at the first tour; brand / saver hints only where affected (owner 2026-11-26)…** → [detail](items/2026-11-26-shorter-phone-setup.md)
