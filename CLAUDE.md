@@ -6,9 +6,10 @@ the phone → simple. Requirements with stable IDs: `docs/requirements.md` (new 
 **North Star: `VISION.md`** (owner 2026-11-26) – check a change, and a question to the owner, against its last two lines.
 
 ## Working together
-- Several sessions work on this repo. Start: read your role file (donald → `docs/team/roles/start.md`, captain →
+- Several sessions work on this repo. Start: read `docs/team/captains-guide.md` (how we work), then `VISION.md`, then
+  your role sheet (project lead → `docs/team/roles/projektleiter.md`, donald → `docs/team/roles/start.md`, captain →
   `docs/team/roles/captain.md`, laptop → `docs/team/roles/start.md` + `cloud-plan.md`, cloud-web → `docs/team/roles/cloud-web.md`), then
-  `docs/team/owner-preferences.md`.
+  `docs/team/owner-preferences.md`. The OnPath project sheet: `docs/team/project.md`.
   Pull first, claim in `docs/team/backlog.md`, small green commits, a handoff at the end (`docs/team/working-agreement.md`).
 - Area rules load by themselves from `.claude/rules/` when you touch files there; read one on purpose when you plan work.
 - Other repos: website `happychriss/onpath.earth`; private notes + the owner's questions `happychriss/onpath.private`;
