@@ -19,7 +19,7 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Akku sparen unterwegs (was Halte-Hinweis) | donald | step 1: pictures where the „Sparen“ switch sits + the question (owner 10:32, item battery-critical 7dc106ce7) | owner picks at the picture → build |
+| Akku sparen unterwegs (was Halte-Hinweis) | donald | owner 10:38: A + the question → build; then tidy the settings during a route (picture first) | captain go before merge |
 | Mehrtagestour-Nacharbeit | donald | on main a450199e9; building: days as cards in the day sheet, link „‹ Alle Tage“ removed on the phone („Tag 4 von 6“ stays) | done report → third check → test build |
 | Routentests / toter Code | donald | all done: PR #27 merged (weekly SameRouteTest), „Ganz neu berechnen“ out of the app, snap switch stays (F-POS-06) | free |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |

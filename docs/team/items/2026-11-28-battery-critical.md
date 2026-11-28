@@ -30,3 +30,9 @@ noch braucht und wie viel Strom verbraucht wird.“
 → No own %-threshold warning. A „Sparen“ switch the user can set any time (fewer GPS fixes; live sharing slower but **stays on**).
 After ~30 min of a navigated tour the app estimates whether the battery lasts to the goal; if not, it **asks** whether to switch
 to „Sparen“ (VISION: it asks, arriving first). Nothing else is dropped without asking (screen, recording: not part of it).
+
+## Owner's pick (2026-11-28 10:38, picture akku-varianten.png)
+„A und die Frage.“ → switch in ⚙ (group „Akku“ on top, reachable during the tour) + the question once after ~30 min.
+Not B (no battery line in the tour card). Captain's reading until the owner says otherwise: ask when the estimate reaches the
+goal with < 10 % (measured from ≥ 30 min and ≥ 3 % drop, once per tour); „Akku sparen“ is a setting and stays set; no
+„Sparen an“ sign on the tour card (not asked for). Next task (owner, same message): tidy up the settings opened during a route.
