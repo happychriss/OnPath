@@ -20,8 +20,8 @@ To change (each with a test first):
    MultiDaySheet.kt, MultiDayPanelParts MultiDayOverview/TripProfile/PlanningChips), „Tag n fahren“; „‹ Alle Tage“ →
    the day list in Meine Touren (MultiDaySheet.kt 187, MapScreen.kt ~620); the day sheet loads the day directly
    (DayPickSlice.kt 67/89); Zuletzt / restart keep only the day (MultiDaySlice 163/359, MultiDayFlow 312); no re-split
-   of the days on activity / pace change (MultiDayFlow 211/221). Several days in a row („Tag 3–4“): **hold – open for
-   the owner** (below).
+   of the days on activity / pace change (MultiDayFlow 211/221). Several days in a row („Tag 3–4“): out – one day only
+   (owner 2026-11-28 08:17, below).
 5. **MD-11** – no maps question: opening a day loads the maps of all days automatically in the normal map loading
    window with the line „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst.
    Das kann einen Moment dauern.“ (replaces the „Ganze Tour / Nur Tag n / Später“ question, MultiDaySlice ~198).
@@ -103,6 +103,6 @@ Tests:
 
 ## Open for the owner (via captain)
 
-- (b) Does „Tag 3–4“ (two or more days in a row, scenario O) stay on the phone? Captain's recommendation: yes, as one
-  chosen section – MD-0 means „not the whole plan“. Code places marked „open (b)“ above wait for it.
+- (b) „Tag 3–4“ (two or more days in a row, scenario O) – answered 2026-11-28 08:17: one day only, no ranges –
+  „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“. The places marked „open (b)“ above are removed in step B (`feat/multiday-one-day`).
 - Answered 2026-11-28: (a) maps → MD-11 (all days, automatically, 08:11); (c) the three gaps → MD-8, MD-9, MD-10.
