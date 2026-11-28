@@ -11,3 +11,8 @@ ein neues Ziel eingeben“, „sonst ist der User wirklich aufgeschmissen“.
 2. **Does not fit** (memory): no waiting offered; a plain message with the hint: plan a shorter route first, then enter the
    new goal. No word „Zwischenziel“, no pointer to multi-day. The exact text goes to the owner before it ships.
 The planner-only far-away dialog („start a new route there“) stays.
+
+## The text for „does not fit“ (owner 2026-11-28 11:09, his own words)
+Title **„Zu lange Route für die Berechnung“**, line **„Wähle ein näheres Ziel. Danach planst du von dort weiter.“**, button [OK]
+(takes the point back). Planner and app („Zu weit für das Handy“ is replaced by it) alike. EN proposal, not yet approved:
+„Route too long to calculate“ / „Pick a closer destination. Then plan on from there.“
