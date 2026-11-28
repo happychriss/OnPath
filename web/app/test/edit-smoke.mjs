@@ -223,6 +223,46 @@ await page.waitForFunction(() => document.body.dataset.planning !== '1' && !!doc
 check(!(await page.$('dialog.longroute')) && !(await page.evaluate(() => window.__slowSeen)) && !/Keep waiting/.test(await page.evaluate(() => document.body.innerText)),
   'a short plan: routed at once – no long-leg question, no „Keep waiting?“');
 
+// Save waits for the settling (owner 2026-11-28 „saved = shown“, item saved-equals-followed §3): a point put in on the routed
+// line makes a stitched plan whose legs are then routed on their own (settleLine); a Save clicked at once stores the plan
+// only after that – the line it was made from is the line shown at the end. A fresh browser (no old plan to restore).
+{
+  const ctx2 = await browser.newContext({ viewport: { width: 1280, height: 800 }, locale: 'en-US' });
+  const p2 = await ctx2.newPage();
+  p2.on('pageerror', (e) => errors.push(String(e)));
+  await p2.goto(url + 'index.html');
+  await p2.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
+  const code = await p2.evaluate((pts) => window.__engine.encode({ points: pts, activity: 'HIKE', sac: 2, pinned: [], names: {}, title: null }),
+    [[46.6714, 11.1597], [46.4983, 11.3548]]); // Meran → Bozen
+  await p2.goto(url + 'index.html#p=' + code);
+  await p2.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
+  await p2.waitForTimeout(2500); // the map's fit after the first route
+  await p2.keyboard.press('Escape');
+  // a point of the line where the map is free (right of the panel, above the profile)
+  const xy = await p2.evaluate(() => {
+    const m = window.__map, r = m.getCanvas().getBoundingClientRect(), pts = window.__state.plan.legs[0].points;
+    for (let k = Math.floor(pts.length / 4); k < pts.length; k++) {
+      const q = m.project([pts[k][1], pts[k][0]]);
+      if (q.x > 440 && q.x < r.width - 80 && q.y > 160 && q.y < r.height - 330) return [r.left + q.x, r.top + q.y];
+    }
+    return null;
+  });
+  if (xy) await p2.mouse.click(xy[0], xy[1]);
+  await p2.waitForFunction(() => window.__state.points.length === 3, null, { timeout: 30_000 }).catch(() => {});
+  await p2.evaluate(() => { delete window.__savedFrom; });
+  await p2.click('#menuSavePlan'); // at once – the run and its settling may still be on
+  await p2.waitForSelector('dialog.savename[open] #saveOk', { timeout: 240_000 }).catch(() => {});
+  if (await p2.$('dialog.savename[open] #saveOk')) await p2.click('dialog.savename #saveOk');
+  await p2.waitForFunction(() => document.getElementById('menuSavePlan').dataset.state === 'done', null, { timeout: 240_000 }).catch(() => {});
+  await p2.waitForFunction(() => !/:running$/.test(document.body.dataset.settle ?? ''), null, { timeout: 240_000 }).catch(() => {});
+  const shown = await p2.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
+  const from = await p2.evaluate(() => window.__savedFrom ?? null);
+  const stitched = await p2.evaluate(() => window.__engine.anchors !== '');
+  check(!!xy && from && !/:running$/.test(from.settle) && from.line === shown,
+    `Save at once after a point on the line stores the line shown, never mid-run or mid-settling (saved from ${JSON.stringify(from)}, shown ${shown}, stitched ${stitched})`);
+  await ctx2.close();
+}
+
 await browser.close(); server.close();
 const real = errors.filter((e) => !/status of 404/.test(e) && !/^\[Problems\] (INFO|WARN|TRACE) /.test(e));
 if (real.length) { console.log('errors:', real); fails.push('page errors'); }

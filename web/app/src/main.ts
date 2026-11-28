@@ -1927,7 +1927,32 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   else status('');
   render();
   areas?.wantLine(r.plan.legs.flatMap((l) => l.points.map(([la, lo]) => [la, lo] as LatLon))); // T4: the map areas along the route
-  void checkDetours(id).then(() => settleLine(id)); // after the route is on the map: it never waits for this
+  // after the route is on the map: it never waits for this – but Save does (settledForSave)
+  settling = checkDetours(id).then(() => settleLine(id)).catch((e) => problem('routing', 'Settling the plan\'s line failed – saved as shown', e, 'warn'));
+}
+
+/** The settling of the plan shown (checkDetours → settleLine) – Save waits for it (owner 2026-11-28 „saved = shown“). */
+let settling: Promise<void> = Promise.resolve();
+
+/**
+ * Save / Save as / to the phone store the route shown only after its settling has ended (owner 2026-11-28, item
+ * saved-equals-followed §3: „die Route, die ich im Planer sehe, wenn ich auf Speichern drücke, ist die, die ich auf dem Handy
+ * bekomme“): while a stitched plan's legs are routed on their own the line can still change. The Save button shows its normal
+ * waiting state (disabled, busy) – no new text. A newer run's settling is waited for too; a failed one never blocks (it resolves).
+ */
+async function settledForSave() {
+  const b = $<HTMLButtonElement>('menuSavePlan');
+  const wasDisabled = b.disabled;
+  b.disabled = true; b.setAttribute('aria-busy', 'true');
+  try {
+    for (let p = settling; ; p = settling) {
+      await p;
+      if (p === settling && !state.planning) break; // nothing newer started meanwhile
+      if (state.planning) await new Promise((r) => setTimeout(r, 100)); // a run on its way ends with its own settling
+    }
+  } finally {
+    b.removeAttribute('aria-busy'); b.disabled = wasDisabled;
+  }
 }
 
 /**
@@ -2940,7 +2965,15 @@ const plansHost = {
     const o = await savedPoints(other).plan;
     return !!o && samePointsAs(saved, o.points);
   },
-  current: async () => (state.points.length >= 2 && (await ready) ? { code: await engine.encode(sharedPlan()), title: state.title } : null),
+  current: async () => {
+    if (state.points.length < 2 || !(await ready)) return null;
+    await settledForSave(); // saved = shown (owner 2026-11-28): never in the middle of the settling
+    if (state.points.length < 2) return null;
+    // the tests: what the saved code was made from (the settle state and the line at that moment)
+    (window as unknown as { __savedFrom?: unknown }).__savedFrom = { settle: document.body.dataset.settle ?? '',
+      line: state.plan ? state.plan.distanceM + '/' + state.plan.legs.map((l) => l.points.length).join(',') : '' };
+    return { code: await engine.encode(sharedPlan()), title: state.title };
+  },
   linkTitle: () => (linkTitle && linkTitle.at === enc(state.points) ? linkTitle.title : null),
   openId: () => state.savedId,
   openedCode: () => state.storedCode,
