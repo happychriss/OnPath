@@ -2,14 +2,12 @@ package com.onpath.app.domain
 
 import com.onpath.app.domain.MapGestures.Action
 import com.onpath.app.domain.MapGestures.Press
-import com.onpath.app.domain.PinMenuItems.Row
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
-/** Chriss 2026-11-28 09:41 (picture halten-lernen-abc): (a) the hold pill – F-PLAN-24; (c) „Als Ziel“ in the place info – F-PLAN-25. */
+/** Chriss 2026-11-28 09:41 (picture halten-lernen-abc (a)): the hold pill – F-PLAN-24. */
 class HoldHintTest {
     private fun pill(editable: Boolean = true, press: Press = Press.TAP, action: Action = Action.None, poi: Boolean = false,
                      marker: Int = -1, planEmpty: Boolean = true, loadAsked: Boolean = false, holds: Int = 0) =
@@ -45,20 +43,5 @@ class HoldHintTest {
         assertFalse(HoldHint.counts(Press.HOLD, Action.CloseMenu))
         assertFalse(HoldHint.counts(Press.HOLD, Action.None))
         assertFalse(HoldHint.counts(Press.TAP, Action.PoiDetails))
-    }
-
-    @Test fun theInfosGoalIsTheHoldMenusGoalRow() {
-        val empty = PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false, fromMe = true)
-        assertEquals(Row.GO_HERE, PinMenuItems.goal(empty, fromMe = true, addIsStop = false))
-        val noFix = PinMenuItems.of(emptyPlan = true, startHere = true, menu = null, pin = false, fromMe = false)
-        assertNull("no position: the menu's „Als Ziel“ is greyed – none in the info", PinMenuItems.goal(noFix, fromMe = false, addIsStop = false))
-        val one = PinMenuItems.of(emptyPlan = false, startHere = true, menu = null, pin = false)
-        assertEquals(Row.ADD, PinMenuItems.goal(one, fromMe = true, addIsStop = false))
-        assertNull("it would add a stop – not „Als Ziel“", PinMenuItems.goal(one, fromMe = true, addIsStop = true))
-        val two = PinMenuItems.of(emptyPlan = false, startHere = true,
-            menu = PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.ADD_STOP, PlaceAddMenu.Item.NEW_DESTINATION)), pin = false)
-        assertEquals(Row.NEW_DESTINATION, PinMenuItems.goal(two, fromMe = true, addIsStop = false))
-        val stopOnly = PinMenuItems.of(emptyPlan = false, startHere = true, menu = PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.ADD_STOP)), pin = false)
-        assertNull(PinMenuItems.goal(stopOnly, fromMe = true, addIsStop = false))
     }
 }

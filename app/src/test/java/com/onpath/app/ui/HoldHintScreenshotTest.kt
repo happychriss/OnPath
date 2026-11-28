@@ -9,9 +9,10 @@ import androidx.compose.ui.geometry.Offset
 import app.cash.paparazzi.DeviceConfig
 import app.cash.paparazzi.Paparazzi
 import com.android.resources.Density
+import com.onpath.app.domain.PlaceAddMenu
 import com.onpath.app.poi.Poi
 import com.onpath.app.poi.PoiDetails
-import com.onpath.app.poi.PoiGoal
+import com.onpath.app.poi.PoiSymbol
 import org.junit.After
 import org.junit.Before
 import org.junit.Rule
@@ -19,9 +20,10 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * Chriss 2026-11-28 09:41 (picture halten-lernen-abc): (a) the pill „Halten, um hier zu planen“ at a tap on the empty map
- * (F-PLAN-24), (c) the place info with „Als Ziel“ + „Google Maps ↗“ (F-PLAN-25). Pixel 8 (≈ 411 dp) and 360 dp, font 1.0 and
- * 1.3, German – at large font the two buttons stand one above the other, nothing cut.
+ * Chriss 2026-11-28: (a) the pill „Halten, um hier zu planen“ at a tap on the empty map (09:41, F-PLAN-24); the place info's
+ * list (10:02, picture ort-info-aktionen, F-PLAN-25) – the hold menu's rows under the details, the first one tinted, Google
+ * Maps last: empty plan with and without GPS, with a plan, read-only (Navigate). Pixel 8 (≈ 411 dp) and 360 dp, font 1.0
+ * and 1.3, German.
  */
 abstract class HoldHintShots(dpi: Int, font: Float) {
     @get:Rule
@@ -35,7 +37,7 @@ abstract class HoldHintShots(dpi: Int, font: Float) {
     @After fun back() = Locale.setDefault(before)
 
     /** The glyph, not the sprite (loaded late, flaky in pictures). */
-    private val glyph = com.onpath.app.poi.PoiSymbol(null, true)
+    private val glyph = PoiSymbol(null, true)
     private val curry = Poi("n1", "fast_food", "Curry 73", 51.16, 6.94, openingHours = "Mo-Sa 11:00-21:00")
 
     /** (a) a tap at 40 % of the width, 40 % down; and one at the right edge (the pill stays inside the map). */
@@ -45,12 +47,24 @@ abstract class HoldHintShots(dpi: Int, font: Float) {
         HoldPill(HoldPillState().apply { show(Offset(1070f, 1500f)) })
     } } }
 
-    /** (c) the place info in Plan: „Als Ziel“ + „Google Maps ↗“. */
-    @Test fun placeInfoGoal() = paparazzi.snapshot { OnPathTheme {
-        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { PoiDetails(curry, onClose = {}, symbol = glyph, goal = PoiGoal("Als Ziel") {}) }
+    private fun info(empty: Boolean, blocked: String? = null, menu: PlaceAddMenu.Menu? = null) = paparazzi.snapshot { OnPathTheme {
+        Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) {
+            PoiDetails(curry, onClose = {}, symbol = glyph, actions = {
+                PoiMenu(curry, onAdd = {}, onGoogle = {}, emptyPlan = empty, fromMeBlocked = blocked, menu = menu,
+                    favourite = false, onRoundTrip = if (empty) ({}) else null, rowsOnly = true, tintFirst = true)
+            })
+        }
     } }
 
-    /** Navigate / no usable „Als Ziel“: Google Maps alone, as before. */
+    /** Empty plan with a position: Als Ziel (tinted) · Als Start | Rundtouren vorschlagen | Merken · Google Maps ↗. */
+    @Test fun placeInfoEmptyPlan() = info(empty = true)
+    /** Without a fix: Als Start first (tinted), „Als Ziel“ greyed „GPS wird gesucht…“. */
+    @Test fun placeInfoNoGps() = info(empty = true, blocked = "GPS wird gesucht…")
+    /** With a plan: Als Stopp (tinted) · Als Ziel | Merken · Google Maps ↗. */
+    @Test fun placeInfoWithPlan() = info(empty = false,
+        menu = PlaceAddMenu.Menu(listOf(PlaceAddMenu.Item.ADD_STOP, PlaceAddMenu.Item.NEW_DESTINATION)))
+
+    /** Navigate / a shown track: Google Maps alone, as before. */
     @Test fun placeInfoReadOnly() = paparazzi.snapshot { OnPathTheme {
         Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface)) { PoiDetails(curry, onClose = {}, symbol = glyph) }
     } }

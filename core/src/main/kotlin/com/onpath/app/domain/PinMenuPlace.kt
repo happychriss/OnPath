@@ -102,21 +102,6 @@ object PinMenuItems {
     fun lineBefore(rows: List<Row>, i: Int): Boolean = MenuGroups.lineBefore(rows.map(::group), i)
 
     /**
-     * The place info's „Als Ziel“ (Chriss 2026-11-28 09:41, picture halten-lernen-abc (c)): exactly the hold menu's
-     * „Als Ziel“ row of the same place – [Row.GO_HERE] on an empty plan when the position can be used ([fromMe]),
-     * [Row.ADD] when it adds the goal (not a stop, [addIsStop]), else [Row.NEW_DESTINATION]; null = the menu has no usable
-     * „Als Ziel“ (the info then shows Google Maps alone, as before).
-     */
-    fun goal(rows: List<Row>, fromMe: Boolean, addIsStop: Boolean): Row? = rows.firstOrNull { r ->
-        when (r) {
-            Row.GO_HERE -> fromMe
-            Row.ADD -> !addIsStop
-            Row.NEW_DESTINATION -> true
-            else -> false
-        }
-    }
-
-    /**
      * @param emptyPlan no point yet; [startHere] false during a tour ([MapGestures.offersStartHere])
      * @param menu the add entries with 2+ points ([PlaceAddMenu]), shown in [PlaceAddMenu.Menu.main]'s order: likeliest
      *   first, tinted; „Rundtour ab hier“ last; null = one entry „Als Ziel“ / its [Row.ADD]

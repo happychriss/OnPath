@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -56,8 +57,11 @@ import com.onpath.strings.*
 fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier,
                /** The map's symbol of the POI's kind (the sprite badge, owner 2026-11-17); the glyph when it is missing. */
                symbol: PoiSymbol = rememberPoiSymbol(poi.kind),
-               /** Plan only: the hold menu's „Als Ziel“ for this place ([PoiButtons]); null = Google Maps alone. */
-               goal: PoiGoal? = null) {
+               /**
+                * Plan only (Chriss 2026-11-28 10:02, picture ort-info-aktionen): the hold menu's rows of this place in
+                * place of the Google button (Google Maps is their last, calm row); null = read-only, Google Maps alone.
+                */
+               actions: (@Composable () -> Unit)? = null) {
     val context = LocalContext.current
     val kind = poi.kindInfo
     val color = Color(kind.group.argb)
@@ -126,8 +130,26 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier,
             }
         }
 
-        Spacer(Modifier.size(16.dp))
-        PoiButtons(goal, onGoogle = { PoiIntents.openInGoogleMaps(context, poi) }, Modifier.fillMaxWidth())
+        Spacer(Modifier.size(if (actions != null) 8.dp else 16.dp))
+        // the rows reach out over the sheet's 20 dp edge so their signs line up with the details' (their own 16 dp inside)
+        if (actions != null) Box(Modifier.layout { m, c ->
+            val out = 32.dp.roundToPx()
+            val p = m.measure(c.copy(minWidth = c.maxWidth + out, maxWidth = c.maxWidth + out))
+            layout(c.maxWidth, p.height) { p.place(-out / 2, 0) }
+        }) { actions() } else Button(
+            onClick = { PoiIntents.openInGoogleMaps(context, poi) },
+            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
+            shape = com.onpath.app.ui.OnPathShapes.Pill,
+            colors = ButtonDefaults.buttonColors(),
+        ) {
+            // „Google Maps ↗“ (owner 2026-11-27): the one Google link, no line under it
+            Icon(Icons.Outlined.Map, contentDescription = null)
+            Spacer(Modifier.width(10.dp))
+            Text(str(Res.string.poi_open_google), style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold)
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(20.dp))
+        }
         Text(
             "© OpenStreetMap",
             style = MaterialTheme.typography.labelSmall,
