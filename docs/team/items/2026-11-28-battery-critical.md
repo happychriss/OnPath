@@ -1,0 +1,23 @@
+# Low battery during Navigate + recording – what the app does today (read-only, 2026-11-28)
+Against VISION.md:17 (5a9489605) "… a battery that will not last, the app does not decide alone, it asks; … arriving comes before
+recording." Code `8e67a1e`. No proposal.
+## 1. What happens at which level
+- **Battery level (%): the tour never reads it.** Only live sharing does (`live/LiveEdge.kt:83–85`): below 15 % it uploads every 600 s
+  instead of 120 s (`LiveUploader.kt:375, 522`, `LivePolicy.kt:10–12, 39–40`), the viewer sees "Akku 12 %" (`LiveStatusLine.kt:14–15`).
+- **Low-battery note, rest view, guidance or screen off by battery level: not found.** Rest view / keep-screen-on follow activity and
+  pocket (`ScreenPolicy`, `PocketScreen.kt:27`), not the battery.
+- **Battery saver on (user, or the phone itself at 15–20 %):** watched (`RecordingService.kt:484`); only if its location mode stops GPS
+  with the screen off: one notification + vibration per tour, "Energiesparmodus stoppt GPS … Schalte ihn für die Tour aus."
+  (`RecordingService.kt:696–714`, `PhoneCheck.kt:82`, `strings_navigate.xml:150–151`). Other saver modes: nothing.
+- Not battery-driven: slower GPS at rest, GPS off after 60 min lying still (`RestWatch.kt:43, 81`); paused = 10 s GPS, no wake lock
+  (`RecordingService.kt:549`). Battery empty: points are in the DB, next start asks continue / save (R-07, `TourSession.kt:216`).
+- R-10 "low battery mode below 15 %" is **not planned (2026-11-28)** (`docs/requirements.md:163`).
+## 2. Ask or decide alone?
+Neither – at a low level nothing happens, so nothing is asked. The saver case is a notice without a choice (it only opens the app).
+## 3. What goes first, guidance or recording?
+Not found: no code drops either. In practice the phone decides – a GPS-stopping saver hits both (same GPS), an empty battery ends both.
+## 4. Where it differs from the new sentence
+- "it asks": no question for "battery will not last"; the app never estimates whether the battery lasts to the goal (no level, no %/h –
+  the metric in `docs/design/battery-audit.md:267` is not built).
+- "arriving before recording": no choice is offered, so no order exists. `docs/requirements.md:257` allows a "critical battery" pop-up
+  during navigation – none is built.
