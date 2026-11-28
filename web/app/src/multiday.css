@@ -153,6 +153,10 @@ body.tourpanel #sheet .sheethead { grid-template-columns: auto 1fr auto auto aut
 body.tourpanel #sheet .sheethead > #share { grid-column: 3; }
 body.tourpanel #sheet .sheethead > #reverse { grid-column: 4; margin-left: 4px; }
 body.tourpanel #sheet .sheethead > #sheetStep { grid-column: 5; }
+/* „Wandern · T2“ stays in one line beside Teilen · Umkehren (owner 2026-11-28: it wrapped): tighter paddings in this row;
+   a large font may still wrap the row's buttons, the chip's words never break */
+body.tourpanel #sheet .sheethead > #activityChip { padding: 9px 6px 9px 8px; gap: 4px; }
+body.tourpanel #sheet .sheethead > .sharebtn { padding: 0 6px; gap: 4px; }
 /* the phone's small step: the facts only (as the plain plan's summary) – no title row, no save state */
 #sheet[data-step="small"] > #tourHead .thtop, #sheet[data-step="small"] > #tourHead .thstate, #sheet[data-step="small"] > #profTitle { display: none; }
 .touroverview .tochips { align-items: center; }

@@ -217,7 +217,7 @@ body.undo-crowded .undopill { display: none; }
 /* head: chip · Share · chevron in one line, then time + distance (never wrapped), then ↑/↓ + badge */
 /* the app's PlanSpacing (owner 2026-11-27 „Abstände ein bisschen größer“, planplatz2): +8 under the head, +10 before the plan row */
 .sheethead { margin-top: 8px; position: relative; display: grid; grid-template-columns: auto 1fr auto auto; gap: 2px 2px; align-items: center; }
-#activityChip { grid-row: 1; grid-column: 1; }
+#activityChip { grid-row: 1; grid-column: 1; white-space: nowrap; } /* „Wandern · T2“ never breaks (owner 2026-11-28) */
 #share, #sheetStep { grid-row: 1; height: 40px; } #sheetStep { width: 40px; }
 /* Share = icon + text next to the chevron (owner 2026-10-30), always there */
 .sharebtn { display: inline-flex; align-items: center; gap: 6px; border: none; background: none; border-radius: 20px; padding: 0 10px; color: var(--green-fg); font: inherit; font-weight: 600; }

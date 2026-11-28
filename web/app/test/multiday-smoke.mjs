@@ -495,6 +495,10 @@ async function run(lang, viewport, shotPrefix) {
   if (viewport.width > 700) check(new Set(row.now).size === 1 && new Set(row.long).size === 1,
     `„Planung“ + chips in one row at ${row.w} px, also with long values (${JSON.stringify(row)})`);
   await shot('3d-chips-limits');
+  // the activity chip „Wandern · T2“ in one line next to Teilen · Umkehren (owner's glitch 2026-11-28: it wrapped)
+  const chipLines = await page.evaluate(() => { const sp = document.querySelector('#activityChip span'); if (!sp) return -1;
+    const r = sp.getBoundingClientRect(), lh = parseFloat(getComputedStyle(sp).lineHeight) || 20; return Math.round(r.height / lh); });
+  check(chipLines === 1, `the activity chip in one line (${chipLines} lines)`);
   await page.click('#toAscent');
   await page.waitForSelector('dialog.daysbox[open]');
   check(await page.evaluate(() => document.activeElement?.id) === 'dbAscent', 'the ascent chip opens the days box at the ascent');
