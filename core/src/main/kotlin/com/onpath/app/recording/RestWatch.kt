@@ -43,13 +43,13 @@ class RestWatch {
         const val OFF_AFTER_MS = 60 * 60_000L
 
         /** No fix for this long = "GPS lost" (Searching GPS, no off-route alarms); the slow rate is allowed for. */
-        fun lostAfterMs(resting: Boolean): Long = if (resting) REST_MS * 2 + 5_000L else 8_000L
+        fun lostAfterMs(resting: Boolean): Long = if (resting) REST_MS * 2 + 5_000L else maxOf(8_000L, normalMs() * 2 + 5_000L)
 
-        /** The moving rate: every second, or every [com.onpath.app.domain.tour.BatterySave.GPS_MS] while „Akku sparen“ is on. */
-        fun normalMs(): Long = if (com.onpath.app.domain.tour.BatterySave.on) com.onpath.app.domain.tour.BatterySave.GPS_MS else NORMAL_MS
+        /** The moving rate: every second, or slower while „Akku sparen“ is on ([com.onpath.app.domain.tour.BatterySave.rateMs]). */
+        fun normalMs(): Long = com.onpath.app.domain.tour.BatterySave.rateMs()
     }
 
-    /** [RATE]: „Akku sparen“ was switched while moving – the moving rate changes ([normalMs]). */
+    /** [RATE]: the moving rate changed while moving – „Akku sparen“ switched, or near a junction / off the route ([normalMs]). */
     enum class Change { REST, MOVING, OFF, RATE }
 
     var resting = false
@@ -59,8 +59,8 @@ class RestWatch {
         private set
     val intervalMs: Long get() = if (resting) REST_MS else normalMs()
 
-    /** The „Akku sparen“ state the rate was last set for ([Change.RATE]). */
-    private var saving = com.onpath.app.domain.tour.BatterySave.on
+    /** The moving rate last set ([Change.RATE]). */
+    private var applied = normalMs()
 
     /** Since when the motion sensor says "still" without a break (elapsed-realtime ms), null = not now. */
     private var sensorStillSince: Long? = null
@@ -71,16 +71,16 @@ class RestWatch {
     private var lastMs = Long.MIN_VALUE
 
     /** Back to the normal rate, the minute starts anew (tour start, pause, resume). */
-    fun reset() { resting = false; off = false; anchorLat = Double.NaN; lastMs = Long.MIN_VALUE; sensorStillSince = null; saving = com.onpath.app.domain.tour.BatterySave.on }
+    fun reset() { resting = false; off = false; anchorLat = Double.NaN; lastMs = Long.MIN_VALUE; sensorStillSince = null; applied = normalMs() }
 
     /**
      * The service's tick (about every second) with the motion sensor's word [still] (true still, false moving, null none /
      * not sure). Returns the change to apply, or null.
      */
     fun onTick(nowMs: Long, still: Boolean?): Change? {
-        // „Akku sparen“ switched during the tour: the new moving rate at once (resting keeps its own slow rate)
-        val save = com.onpath.app.domain.tour.BatterySave.on
-        if (save != saving) { saving = save; if (!resting) return Change.RATE }
+        // the moving rate changed (Akku sparen, a junction near, off the route): at the next tick (resting keeps its own rate)
+        val want = normalMs()
+        if (want != applied && !resting) { applied = want; return Change.RATE }
         sensorStillSince = if (still == true) sensorStillSince ?: nowMs else null
         if (resting && (still == false || (off && still == null))) {
             resting = false; off = false; anchorLat = Double.NaN
