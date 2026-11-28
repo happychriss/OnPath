@@ -103,6 +103,28 @@ do not want to scroll through the bike tours“). A count („five tools are man
 argument. Only an element for which nobody can name a situation is a candidate – and then the owner is asked for the
 situation it came from before it is judged away.
 
+**When the vision does not settle it** (lessons 2026-11-28; each one came from a real case, named as an example):
+1. **Two principles pull apart → a question, always.** If two lines of the vision point in different directions and the
+   order of priority does not decide, nobody decides alone – not a role at night, not the captain. *(Example: „app and
+   planner alike“ against „show only what is needed now“ – a running total that helps at the desk was copied to the
+   phone.)*
+2. **Sameness is never a reason by itself.** A rule of parity or consistency says how a shared element looks; whether
+   the element belongs on this side is still judged by the situation on this side.
+3. **The order of priority names the winner; the loser gets a remedy.** When a higher principle costs a lower one, keep
+   both: ask at once „what makes up for it?“ and hand that out as a task. *(Example: holding protects the plan and
+   raises the way in → a hint that answers the wrong gesture.)*
+4. **Unknown origin → ask for the situation, with no recommendation.** The captain may recommend removing only what is
+   dead. For a living element without a recorded reason the question is open: „which situation is it for?“ – and the
+   answer is written into the requirements the same hour, so it is asked once. *(Example: a settings switch was nearly
+   removed; the owner's situation came ten minutes later.)*
+5. **A layout is decided on a picture, never in words.** Words give the direction; the decision counts only after a
+   picture at real size with the longest language and the large font. *(Example: three entries „in one row“ did not fit.)*
+6. **What a role decided alone is shown, not buried.** Every such decision appears in the done or morning report as
+   „decided for you“ with its picture; an audit „built as decided?“ follows every wave.
+
+**Vision text or handling?** When a case goes wrong, first try to fix the handling (this guide) – that helps every
+project. Change the vision text only when a sentence of it gave the wrong direction.
+
 **Keeping the vision true:** the captain checks existing functions against it (an honest inventory: what, where,
 who asked, how big), checks the vision itself for consistency (does every sentence follow from the goal? is anything
 said twice or without a limit?), and proposes changes. The owner decides; the captain writes only what he approved.
