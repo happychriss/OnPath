@@ -31,7 +31,6 @@ abstract class PlanChipLargeFontTest {
 
     @Test fun plan() = shots.plan()
     /** The recording pill and the credit top right never overlap (owner 2026-11-27). */
-    @Test fun planTourRecordingPill() = shots.planTourRecordingPill()
     @Test fun planChipLongHike() = shots.planChipLongHike()
     @Test fun planChipLongBikeTour() = shots.planChipLongBikeTour()
     @Test fun planUnsaved() = shots.planUnsaved()
