@@ -23,7 +23,7 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 | Mehrtagestour-Nacharbeit | donald | on main a450199e9; building: days as cards in the day sheet, link „‹ Alle Tage“ removed on the phone („Tag 4 von 6“ stays) | done report → third check → test build |
 | Routentests / toter Code | donald | all done: PR #27 merged (weekly SameRouteTest), „Ganz neu berechnen“ out of the app, snap switch stays (F-POS-06) | free |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
-| Cloud | – | reading: what the app does at low battery vs the new VISION line (`items/2026-11-28-battery-critical.md`) | result → question to the owner if it differs |
+| Cloud | – | done 69b360ee1: at low battery the app does nothing (no level read, no question, no order; R-10 "not planned") | question to the owner via the project lead (captain thread 28.11.) |
 
 **Release 0.18.12:** on hold. Needs the test build on the Pixel, one really ridden day of a trip (VISION), then the
 owner's word. Notes on `release/0.18.12-notes`.
