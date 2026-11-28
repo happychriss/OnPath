@@ -78,7 +78,10 @@ and when it is resisted. Detail rules live in the project's decision list, never
 **Judging an existing function** (lesson 2026-11-28: the captain read the vision too strictly twice): ask *where it
 sits*, not only what it is for. What sits on the main path – the main screens, their menus and controls – must earn
 its place. Depth behind a deliberate tap is welcome as long as its facts are right; it costs upkeep, not ease of use.
-And ask the owner for the situation a function came from before judging it away.
+**Name the situation:** for every element, say in one sentence who stands where and needs it („I look for a hike and
+do not want to scroll through the bike tours“). A count („five tools are many“) or „the others have fewer“ is not an
+argument. Only an element for which nobody can name a situation is a candidate – and then the owner is asked for the
+situation it came from before it is judged away.
 
 **Keeping the vision true:** the captain checks existing functions against it (an honest inventory: what, where,
 who asked, how big), checks the vision itself for consistency (does every sentence follow from the goal? is anything
