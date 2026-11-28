@@ -248,49 +248,21 @@ class NoStaleDownloadsTest {
     }
 
     /**
-     * Multi-day tours (docs/design/multi-day-tours.md §7): the areas the user said "load" to for a tour stay asked for
-     * when the plan's corridor changes (a single day planned, another route); asked on mobile data they wait for Wi-Fi –
-     * also without the "Wi-Fi only" setting – unless a point / the position asks for the same area; on Wi-Fi they load.
+     * Multi-day tours (docs/design/multi-day-tours.md §7, MD-11): the areas of the trip stay asked for when the plan's corridor
+     * changes (a single day planned, another route) and load like any others – no Wi-Fi wait of their own since 2026-11-28.
      */
-    @Test fun aMultiDayTourKeepsItsAreasAndWaitsForWifi() {
-        listOf(a, b, c).forEach { server.publish(it, "v1") }; server.buildPolls = 0
-        val net = Net(unmetered = false)
-        val mc = cells(net)
-        mc.tourCells = setOf(a, b); mc.tourWifiCells = setOf(a, b)
-        assertEquals(listOf(a, b), mc.request(listOf(a, b), CellReason.CORRIDOR, ownPoint = false))
-        waitFor("waiting for Wi-Fi") { mc.state(a) is CellState.WaitingForWifi && mc.state(b) is CellState.WaitingForWifi }
-        // c is not a tour area, so it is allowed on mobile data and would download within milliseconds – on a slow runner
-        // before keepCorridor below (flake 2026-11-19). The server holds it in the build, as long as the test needs it.
+    @Test fun aMultiDayTourKeepsItsAreas() {
+        listOf(a, b, c).forEach { server.publish(it, "v1") }
+        // held in the build until keepCorridor below ran (a fast runner would load them first – flake 2026-11-19)
         server.buildPolls = 1_000_000
-        mc.request(listOf(c), CellReason.CORRIDOR, ownPoint = false)
+        val mc = cells(Net(unmetered = false))
+        mc.tourCells = setOf(a, b)
+        mc.request(listOf(a, b, c), CellReason.CORRIDOR, ownPoint = false)
         // the plan is now one day that needs none of them: c (the old plan's corridor) goes, the tour's stay
         assertEquals(listOf(c), mc.keepCorridor(emptyList()))
         assertEquals(setOf(a.id, b.id), queued(mc))
         server.buildPolls = 0
-        // on the way: the position needs b – it loads on mobile data (the own-point rule)
-        mc.request(listOf(b), CellReason.NEAR, ownPoint = true)
-        waitFor("b loaded on mobile data") { mc.state(b) == CellState.Ready("v1") }
-        assertTrue(mc.state(a) is CellState.WaitingForWifi)
-        net.unmetered = true; mc.wifiOnly = false // any change wakes the worker
-        waitFor("a loaded on Wi-Fi") { mc.state(a) == CellState.Ready("v1") }
-        assertEquals(setOf(a, b), mc.notOnPhone(listOf(a, b, c)).let { setOf(a, b, c) - it.toSet() })
-    }
-
-    /**
-     * BUG (lost wake-up, found 2026-11-19 as the flake of [aMultiDayTourKeepsItsAreasAndWaitsForWifi]): [MapCells.request]
-     * for a cell already in the queue upgrades the entry (reason NEAR, ownPoint) but wakes the worker only when it ADDED a
-     * cell. A tour cell waiting for Wi-Fi that the position now needs stays waiting until the worker's next wake-up
-     * (IDLE_MS = 15 min, or any network / foreground change). Fix: wake() when an existing entry changed.
-     */
-    @Test fun positionNeedingAWaitingTourCellWakesTheWorker() {
-        server.publish(a, "v1"); server.buildPolls = 0
-        val mc = cells(Net(unmetered = false))
-        mc.tourCells = setOf(a); mc.tourWifiCells = setOf(a)
-        mc.request(listOf(a), CellReason.CORRIDOR, ownPoint = false)
-        waitFor("a waits for Wi-Fi") { mc.state(a) is CellState.WaitingForWifi }
-        Thread.sleep(500) // the worker is idle now: every earlier wake-up is consumed
-        assertTrue(mc.request(listOf(a), CellReason.NEAR, ownPoint = true).isEmpty()) // already queued: upgraded, not added
-        waitFor("a loads on mobile data after the position needs it", 5_000) { mc.state(a) == CellState.Ready("v1") }
+        waitFor("the tour's areas loaded on mobile data") { mc.state(a) == CellState.Ready("v1") && mc.state(b) == CellState.Ready("v1") }
     }
 
     /** Settings → Offline maps: what waits is visible; "Cancel all" drops the queue, installed maps stay. */
