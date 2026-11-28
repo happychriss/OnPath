@@ -38,6 +38,9 @@ class OnPathApp : Application() {
         com.onpath.app.debug.Health.start() // a health line every 10 min in the event log
         // live sharing (docs/design/live-tracking.md): its lane beside the recording; idle unless a tour is shared
         com.onpath.app.live.LiveEdge.attach(this)
+        // „Akku sparen“ for the recording, and the battery estimate of a navigated tour (R-10, Chriss 2026-11-28)
+        try { com.onpath.app.domain.tour.BatterySave.on = com.onpath.app.data.Prefs(this).settings.batterySave } catch (e: Exception) { com.onpath.app.debug.Problems.warn("battery", "Akku sparen not read; off", e) }
+        com.onpath.app.recording.BatteryWatch.attach(this)
     }
 
     /** Android may reset the default locale to the phone's on a configuration change: keep the chosen language. */

@@ -39,13 +39,14 @@ internal class RestGps(private val tracker: LocationTracker, private val still: 
             RestWatch.Change.REST -> "Standing still for ${(if (by == "motion sensor") RestWatch.SENSOR_REST_AFTER_MS else RestWatch.REST_AFTER_MS) / 1000} s ($by): GPS every ${RestWatch.REST_MS / 1000} s"
             RestWatch.Change.MOVING -> "Moving again ($by): GPS every second"
             RestWatch.Change.OFF -> "Lying still for ${RestWatch.OFF_AFTER_MS / 60_000} min (motion sensor): GPS off until the phone moves"
+            RestWatch.Change.RATE -> "Akku sparen ${if (com.onpath.app.domain.tour.BatterySave.on) "on" else "off"}: GPS every ${RestWatch.normalMs() / 1000} s"
         })
     }
 
     private fun failed(e: Exception) {
         Problems.warn("gps", "GPS rate for standing still not changed; back to every second", e)
         watch.reset()
-        try { tracker.setInterval(RestWatch.NORMAL_MS); tracker.start() } catch (e2: Exception) {
+        try { tracker.setInterval(RestWatch.normalMs()); tracker.start() } catch (e2: Exception) {
             Problems.error("gps", "GPS could not be started again after a rate failure", e2)
         }
     }

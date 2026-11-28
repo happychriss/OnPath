@@ -1048,5 +1048,25 @@
     "priority": 2,
     "confidence": "sicher",
     "max": 60
+  },
+  "settings_group_battery": {
+    "area": "Battery (R-10)",
+    "context": "Settings group – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 20
+  },
+  "settings_battery_save": {
+    "area": "Battery (R-10)",
+    "context": "Switch – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 24
+  },
+  "settings_battery_save_sub": {
+    "area": "Battery (R-10)",
+    "context": "Switch line – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

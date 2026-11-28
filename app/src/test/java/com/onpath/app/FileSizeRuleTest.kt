@@ -51,7 +51,7 @@ class FileSizeRuleTest {
         val TODAYS_LARGER_FILES = mapOf(
             "com/onpath/app/ui/AppViewModel.kt" to 1_900,
             "com/onpath/app/recording/RecordingService.kt" to 1_774,
-            "com/onpath/app/ui/NavigateScreen.kt" to 1_302,
+            "com/onpath/app/ui/NavigateScreen.kt" to 1_301,
             "com/onpath/app/cells/MapCells.kt" to 1_291,
             "com/onpath/app/map/MapController.kt" to 1_157,
             "com/onpath/app/ui/Screens.kt" to 958,

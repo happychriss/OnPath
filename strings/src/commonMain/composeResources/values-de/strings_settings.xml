@@ -179,6 +179,9 @@
     <string name="settings_nav_guide_vibration">Vibration</string>
     <string name="settings_nav_guide_voice">Stimme</string>
     <string name="settings_group_offroute">Abseits der Route</string>
+    <string name="settings_group_battery">Akku</string>
+    <string name="settings_battery_save">Akku sparen</string>
+    <string name="settings_battery_save_sub">GPS seltener, Live-Teilen langsamer – beides bleibt an</string>
     <string name="settings_group_junctions">Abzweigungen</string>
     <string name="settings_group_screen">Bildschirm und Karte</string>
     <string name="settings_group_lock">Sperre während der Tour</string>

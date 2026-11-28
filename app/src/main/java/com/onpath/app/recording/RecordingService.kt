@@ -477,7 +477,7 @@ class RecordingService : Service() {
             Problems.warn("cells", "Map loading during the tour not prepared; the map ahead loads when the app is open", e)
         }
         acquireWakeLock()
-        restGps.reset(); tracker.setInterval(RestWatch.NORMAL_MS) // never start a tour at the standing-still rate
+        restGps.reset(); tracker.setInterval(RestWatch.normalMs()) // never start a tour at the standing-still rate
         moveWatch.start(SystemClock.elapsedRealtime())
         if (!saverRegistered) try {
             ContextCompat.registerReceiver(this, saverReceiver,
@@ -1348,7 +1348,7 @@ class RecordingService : Service() {
             tracker.setInterval(PauseWatch.GPS_MS)
             try { wakeLock?.let { if (it.isHeld) it.release() } } catch (e: Exception) { Problems.warn("recording", "Wake lock not released on pause", e) }
         } else {
-            tracker.setInterval(RestWatch.NORMAL_MS)
+            tracker.setInterval(RestWatch.normalMs())
             acquireWakeLock()
         }
         tracker.start() // GPS was off after an hour lying still ([RestWatch.OFF]): a pause or resume runs it again (no-op while running)
@@ -1393,7 +1393,7 @@ class RecordingService : Service() {
         tourId = -1
         tracker.stop()
         restGps.reset()
-        tracker.setInterval(RestWatch.NORMAL_MS) // a tour ended while paused / resting must not start the next one slowly
+        tracker.setInterval(RestWatch.normalMs()) // a tour ended while paused / resting must not start the next one slowly
         cancelReroute()
         scope.cancel()
         nm().cancel(ALERT_ID)

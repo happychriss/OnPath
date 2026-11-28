@@ -262,6 +262,10 @@
     <string name="nav_notif_off_line">Mit Benachrichtigungen siehst du sie, ohne das Handy zu entsperren.</string>
     <string name="nav_notif_later">Später</string>
     <string name="nav_notif_turn_on">Einschalten</string>
+    <string name="nav_battery_title">Akku reicht wohl nicht bis zum Ziel</string>
+    <string name="nav_battery_line">Noch etwa %1$s – der Akku (%2$d %) reicht nach bisherigem Verbrauch für etwa %3$s. Sparen: GPS seltener, Live-Teilen langsamer, es bleibt an.</string>
+    <string name="nav_battery_no">Nein danke</string>
+    <string name="nav_battery_save">Sparen</string>
 
     <!-- Ruheansicht beim Radfahren (smarter Bildschirm) -->
     <string name="nav_rest_destination">Ziel</string>
