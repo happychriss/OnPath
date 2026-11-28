@@ -17,6 +17,11 @@ Night queue 1–9 all on `main`; planner parity done and online (a0e7358ca); map
 the Pixel: Wartefenster thread installs, checks, then pushes version + notes. Free after that: all donald threads and HP.
 Next candidates: multi-day header with „Speichern“ + „Gesamte Reise“ (app, `MapScreen.kt` hot), `SacChips` tidy,
 backlog triggers. The table below is the evening state of 27.11. (history).
+**Plan change (owner 08:07): release 0.18.12 ON HOLD – owner's yes to the multi-day rebuild; first everything on main, then a test build on the Pixel, the release only on the owner's word when all is in (incl. the tidy).**
+Order now: (1) parallel: Suchkategorie tidy (`SacChips` / `Screens.kt` + `feat/wait-step-bar`) and Mehrtagestouren step A (docs);
+(2) Mehrtagestouren step B (code; PlanPanel / MapScreen / AppViewModel; rebase after the SacChips commit if it needs
+`Screens.kt`); (3) Wartefenster: test build on the Pixel, notes on `release/0.18.12-notes` updated; old GO void – redo
+release_check / gate --full / E2E before the release.
 **Queue after the release:** (1) Suchkategorie (donald): `SacChips` out of `Screens.kt` + `feat/wait-step-bar` via
 `prune_branches.sh delete --by-hand` after checking its 3 rewritten commits are in 9b0a247ce (owner 06:23 „Aufräumen ist
 immer gut“). (2) ~~multi-day head in the app~~ – **not built** (owner 06:31: the day is chosen in Meine Touren, the plan stays
