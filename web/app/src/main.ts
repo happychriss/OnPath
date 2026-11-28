@@ -291,7 +291,7 @@ const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>
 // wide screens: the search on top of the panel, the panel slides out with its tab (sheetpanel.ts, owner 2026-11-28);
 // slid in or out, the map shows the whole tour in the room it has now
 const sheetPanel = setupSheetPanel($('sheet'), $('searchbox'), $('topbar'), document.querySelector<HTMLElement>('#topbar .barsep')!, $('stage'),
-  () => setTimeout(() => { console.info(`[map] side panel ${sheetPanel.hidden ? 'out' : 'in'}: the whole route in the room left`); if (state.points.length) fitRoute(); }, 300));
+  () => setTimeout(() => { console.info(`[map] side panel ${sheetPanel.hidden ? 'out' : 'in'}: the whole route in the room left`); if (state.points.length) fitRouteNow(); }, 300));
 void sheetPanel;
 
 // ---- map ----
@@ -2557,8 +2557,11 @@ function fitRoute() {
   // fitBounds adds the map's own padding to ours – a padding left by an older easeTo would shrink the room (§13 row 19)
   const p = map.getPadding();
   if (p.top || p.bottom || p.left || p.right) map.setPadding(NO_PADDING);
-  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16 });
+  map.fitBounds(b, { padding: fitPadding(), maxZoom: 16, ...(fitInstant ? { duration: 0 } : {}) });
 }
+/** The panel slid in or out (sheetpanel.ts): the whole route at once – no animation another camera move could cut short. */
+let fitInstant = false;
+function fitRouteNow() { fitInstant = true; try { fitRoute(); } finally { fitInstant = false; } }
 /**
  * After Cancel at the very-long-route question (the app's answerLongRoute(false), owner 2026-11-13): the map goes back
  * to the plan from before – the whole plan, or its one point at the one-place zoom; no point: it stays

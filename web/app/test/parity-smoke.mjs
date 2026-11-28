@@ -54,10 +54,17 @@ await page.waitForSelector('.pointmenu');
 check(await page.locator('.pointmenu .menuhead').count() === 0 && (await menuItems()).join('|') === 'Set as start|Set as destination|Suggest round trips', 'first click: no title – Set as start · Set as destination · Suggest round trips (owner 2026-11-26) (round trips on for everyone, 72a66e39)');
 check(await page.isHidden('#undoPill') && await page.isHidden('#undo'), 'no undo before the first change (the undo pill is hidden – the app\'s UndoPill)');
 check(await page.$('#toolbar #undo, #toolbar #redo') === null, 'undo / redo are not in the tool row (owner 2026-11-08: ↶ ↷ there read as „turn the map“)');
+// wide (owner 2026-11-28, panel v2): the search sits on top of the side panel, the bar keeps the tools; the panel slid
+// out, the search is back in the bar – left, the tools right of it, same height
 const tb = await page.locator('#toolbar').boundingBox(), sb = await page.locator('#searchbox').boundingBox();
-const bar = await page.locator('#topbar').boundingBox();
-check(tb.y < 100 && tb.x >= sb.x + sb.width && Math.abs(tb.y - sb.y) < 2 && Math.abs(tb.height - sb.height) < 2 &&
-  tb.x + tb.width <= bar.x + bar.width + 1 && sb.x >= bar.x, 'one top bar: search field left, the tools right in it, same height');
+const bar = await page.locator('#topbar').boundingBox(), psh = await page.locator('#sheet').boundingBox();
+check(tb.y < 100 && tb.x + tb.width <= bar.x + bar.width + 1 && sb.y > bar.y + bar.height && sb.x >= psh.x && sb.x + sb.width <= psh.x + psh.width + 1 && sb.y < psh.y + 80,
+  'wide: the tools in the top bar, the search on top of the side panel');
+await page.click('#sheetTab'); await page.waitForTimeout(400);
+{ const tb2 = await page.locator('#toolbar').boundingBox(), sb2 = await page.locator('#searchbox').boundingBox(), bar2 = await page.locator('#topbar').boundingBox();
+  check(tb2.x >= sb2.x + sb2.width && Math.abs(tb2.y - sb2.y) < 2 && Math.abs(tb2.height - sb2.height) < 2 && sb2.x >= bar2.x && tb2.x + tb2.width <= bar2.x + bar2.width + 1,
+    'the panel slid out: one top bar again – search field left, the tools right in it, same height'); }
+await page.click('#sheetTab'); await page.waitForTimeout(400);
 check(await page.evaluate(() => { const s = getComputedStyle(document.getElementById('topbar')); const t = getComputedStyle(document.getElementById('toolbar'));
   return s.boxShadow !== 'none' && t.boxShadow === 'none'; }), 'the bar has one shared background and shadow');
 check(await page.evaluate(() => document.fonts.check('600 14px Manrope') && [...document.fonts].some((f) => f.family.replace(/"/g, '') === 'Manrope' && f.status === 'loaded')),

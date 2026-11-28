@@ -195,11 +195,11 @@ if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '))
 const panelFails = [];
 const pstate = () => page.evaluate(() => {
   const s = document.getElementById('sheet'), tab = document.getElementById('sheetTab');
-  const m = window.__map, b = m.getBounds();
-  const pts = m.getSource('planned-route')?.serialize().data.features.flatMap((f) => f.geometry.coordinates) ?? [];
+  const m = window.__map, b = m?.getBounds();
+  const pts = m?.getSource('planned-route')?.serialize().data.features.flatMap((f) => f.geometry.coordinates) ?? [];
   return { sheet: getComputedStyle(s).display !== 'none', searchIn: document.getElementById('searchbox')?.parentElement?.id ?? '',
     tab: !!tab && !tab.hidden && getComputedStyle(tab).display !== 'none', tabLeft: Math.round(tab?.getBoundingClientRect().left ?? -1),
-    expanded: tab?.getAttribute('aria-expanded'), inView: pts.length > 0 && pts.every(([lo, la]) => b.contains([lo, la])), n: pts.length, out: pts.filter(([lo, la]) => !b.contains([lo, la])).length, z: Math.round(m.getZoom() * 10) / 10, bp: !document.getElementById("bigProfile").hidden,
+    expanded: tab?.getAttribute('aria-expanded'), inView: pts.length > 0 && pts.every(([lo, la]) => b.contains([lo, la])), n: pts.length, out: pts.filter(([lo, la]) => !b.contains([lo, la])).length, z: m ? Math.round(m.getZoom() * 10) / 10 : -1, bp: !document.getElementById("bigProfile").hidden,
     sheetRight: Math.round(s.getBoundingClientRect().right) };
 });
 const pp0 = await pstate();
@@ -210,7 +210,7 @@ const pp1 = await pstate();
 await page.click('#fitRoute'); await page.waitForTimeout(1500);
 const ppf = await pstate();
 if (!(!pp1.sheet && pp1.searchIn === 'topbar' && pp1.tab && pp1.tabLeft <= 2 && pp1.expanded === 'false' && pp1.n > 0 && Math.abs(pp1.z - ppf.z) < 0.1 && pp1.z < pp0.z)) panelFails.push(`collapsed: ${JSON.stringify(pp1)} (whole route: z ${ppf.z})`);
-await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => {}); await page.waitForTimeout(5000);
+await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => {}); await page.waitForFunction(() => !!window.__map && !!document.getElementById("sheetTab"), null, { timeout: 60_000 }).catch(() => {}); await page.waitForTimeout(2000);
 const pp2 = await pstate();
 if (!(!pp2.sheet && pp2.tab && pp2.tabLeft <= 2)) panelFails.push(`after reload still collapsed: ${JSON.stringify(pp2)}`);
 await page.click('#sheetTab'); await page.waitForTimeout(800);
