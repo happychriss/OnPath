@@ -58,5 +58,13 @@ class PocketLogic(private val armMs: Long, private val sleepMs: Long = POCKET_SL
     companion object {
         /** Bike: covered this long before the sensor counts (owner 2026-10-30: 5 s). */
         const val BIKE_ARM_MS = 5_000L
+
+        /**
+         * The pocket guard runs: keep-on wanted ([on]) and OnPath itself in front ([resumed]). Another activity in front (the
+         * share sheet, another app's dialog) holds no proximity lock – a finger near the sensor while sharing turned the
+         * screen black (owner's Pixel 2026-11-28). Already in the pocket ([inPocket]: the sensor has the screen off) it goes on
+         * whatever Android says about the activity then – the phone comes back on when taken out, as before.
+         */
+        fun guards(on: Boolean, resumed: Boolean, inPocket: Boolean = false): Boolean = on && (resumed || inPocket)
     }
 }

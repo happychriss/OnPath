@@ -10,6 +10,7 @@ import android.os.Looper
 import android.os.PowerManager
 import android.os.SystemClock
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -27,7 +28,8 @@ import com.onpath.app.domain.tour.PocketLogic
  * "Keep screen on while navigating", pocket-aware (docs/design/battery-audit.md, docs/design/navigation-cues.md):
  * the screen stays on while you look at it; the proximity sensor turns it off when covered (like during a call)
  * and on again when you take the phone out. Covered for [POCKET_SLEEP_MS]: keep-on is dropped and the phone sleeps
- * as usual (the map stops, GPS recording goes on in the service). Only while the screen is started; without a
+ * as usual (the map stops, GPS recording goes on in the service). Only while OnPath is in front (resumed – not under the
+ * share sheet, owner's Pixel 2026-11-28); without a
  * proximity sensor it is plain keep-screen-on. [pocketAfterMs] (ScreenPolicy): how long the sensor must be covered
  * before it counts – 0 on foot (at once), 5 s on the bike (a hand reaching for the handlebar phone is ignored,
  * [PocketLogic]); null = plain keep-screen-on, no proximity sensor. Never throws.
@@ -37,13 +39,15 @@ fun KeepScreenOn(on: Boolean, pocketAfterMs: Long? = 0L) {
     val view = LocalView.current
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current.lifecycle
-    var started by remember { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)) }
+    // only while OnPath itself is in front (PocketLogic.guards): the share sheet in front holds no proximity lock
+    var resumed by remember { mutableStateOf(lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) }
     DisposableEffect(lifecycle) {
-        val obs = LifecycleEventObserver { _, _ -> started = lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED) }
+        val obs = LifecycleEventObserver { _, _ -> resumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) }
         lifecycle.addObserver(obs)
         onDispose { lifecycle.removeObserver(obs) }
     }
-    val active = on && started
+    val inPocket by PocketState.inPocket.collectAsState()
+    val active = com.onpath.app.domain.tour.PocketLogic.guards(on, resumed, inPocket)
     DisposableEffect(active, pocketAfterMs) {
         if (!active) { view.keepScreenOn = false; return@DisposableEffect onDispose { } }
         if (pocketAfterMs == null) { view.keepScreenOn = true; return@DisposableEffect onDispose { view.keepScreenOn = false } }

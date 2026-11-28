@@ -1,7 +1,9 @@
 package com.onpath.app.ui
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import com.onpath.app.domain.tour.PocketLogic
 
@@ -92,5 +94,19 @@ class PocketLogicTest {
         p.sensor(true, 0)
         org.junit.Assert.assertFalse("a hand reaching for the handlebar phone", p.inPocket(2_000))
         org.junit.Assert.assertTrue("5 s covered: pocket / bag", p.inPocket(5_000))
+    }
+
+    /**
+     * Owner's Pixel 2026-11-28 (a tour running, the phone in the hand, „Link teilen“): the screen went black – the share sheet
+     * is another activity in front, OnPath stays started, and the proximity lock (on foot held at once) turned the screen off
+     * at a finger near the sensor. The pocket guard holds only while OnPath itself is in front (resumed); in the pocket with
+     * OnPath in front it guards as before.
+     */
+    @Test fun thePocketGuardHoldsOnlyWhileOnPathIsInFront() {
+        assertFalse("the share sheet / another app in front: no lock", com.onpath.app.domain.tour.PocketLogic.guards(on = true, resumed = false))
+        assertTrue("OnPath in front while navigating: the guard as before", com.onpath.app.domain.tour.PocketLogic.guards(on = true, resumed = true))
+        assertFalse("not navigating: none", com.onpath.app.domain.tour.PocketLogic.guards(on = false, resumed = true))
+        assertTrue("already in the pocket (screen off by the sensor): it stays, so taking the phone out turns it on",
+            com.onpath.app.domain.tour.PocketLogic.guards(on = true, resumed = false, inPocket = true))
     }
 }
