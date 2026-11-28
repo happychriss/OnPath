@@ -19,9 +19,9 @@ Next candidates: multi-day header with „Speichern“ + „Gesamte Reise“ (ap
 backlog triggers. The table below is the evening state of 27.11. (history).
 **Queue after the release:** (1) Suchkategorie (donald): `SacChips` out of `Screens.kt` + `feat/wait-step-bar` via
 `prune_branches.sh delete --by-hand` after checking its 3 rewritten commits are in 9b0a247ce (owner 06:23 „Aufräumen ist
-immer gut“). (2) Mehrtagestouren (donald): multi-day head in the app (`MultiDayPanelParts.kt`, 2 lines `PlanPanel.kt`,
-1 line `MapScreen.kt`) – picture mehrtage-ABC shown, **waits for the owner's yes**; dropping „Gesamte Reise“ on the phone
-is a deliberate difference from the planner = owner's call (fine if the day table already shows the total).
+immer gut“). (2) ~~multi-day head in the app~~ – **not built** (owner 06:31: the day is chosen in Meine Touren, the plan stays
+one single tour; today's app already fits). Open question to the owner: „< Alle Tage“ → the day list in Meine Touren?
+Backlog „Parity: multi-day panel like the planner“ rests. Mehrtagestouren thread free.
 
 ## Active – evening 27.11., all merged in the night (2026-11-27 ~21:45 CET; all four threads got the new rules from the coordinator)
 | Thread | Computer | Branch | Area / files | Now | Next |
