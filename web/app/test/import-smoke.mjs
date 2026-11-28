@@ -59,7 +59,7 @@ rd5Requests = 0; // only requests started while the question is open count (not 
 const q = await page.textContent('dialog.longroute');
 // like the app (owner 2026-11-28): Cancel · Calculate, no stop; beyond the browser's memory only OK with the hint
 check(((/Long route: about \d+–\d+ (minutes|seconds)/.test(q) && /598 km in one go/.test(q) && /Cancel/.test(q) && /Calculate/.test(q))
-  || (/Too far to calculate in one go/.test(q) && /shorter stretch first/.test(q) && /OK/.test(q)))
+  || (/Route too long to calculate/.test(q) && /Pick a closer destination/.test(q) && /OK/.test(q)))
   && !/Add a stop|stop on the way|Wait|Keep waiting|Plan anyway/.test(q), `long leg asked first with its estimate: "${q.replace(/\s+/g, ' ').trim()}"`);
 await page.waitForTimeout(1500);
 check(rd5Requests === 0, `no routing data fetched while the question is open (${rd5Requests} requests)`);
