@@ -193,8 +193,11 @@ if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '))
 // the side panel (owner 2026-11-28, proposal v2): search on top of the panel; the tab „‹“ slides it out, the map shows
 // the whole route in the freed room, the tab „›“ at the left edge brings it back; remembered over a reload; a phone has none
 const panelFails = [];
-const pstate = () => page.evaluate(() => {
+// the page may be between a reload and its first render: wait for the sheet before reading it (CI 2026-11-28 read null)
+const pstate = async () => { await page.waitForFunction(() => !!document.getElementById('sheet'), null, { timeout: 30_000 }).catch(() => {}); return pstateNow(); };
+const pstateNow = () => page.evaluate(() => {
   const s = document.getElementById('sheet'), tab = document.getElementById('sheetTab');
+  if (!s) return { sheet: false, searchIn: '', tab: false, tabLeft: -1, expanded: null, inView: false, n: 0, out: 0, z: 0, sheetRight: -1, missing: true };
   const m = window.__map, b = m?.getBounds();
   const pts = m?.getSource('planned-route')?.serialize().data.features.flatMap((f) => f.geometry.coordinates) ?? [];
   return { sheet: getComputedStyle(s).display !== 'none', searchIn: document.getElementById('searchbox')?.parentElement?.id ?? '',
