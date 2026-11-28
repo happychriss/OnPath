@@ -4,7 +4,7 @@ OnPath is for the moment you are somewhere, the weather is good, the land is bea
 It owns exactly one thing: today's tour – finding it, walking it, keeping it.
 Finding: plan a route on the phone in a moment, take a tour you saved or loaded, or let the phone propose a loop from where you stand.
 Walking: guided, re-planned on the way, also without reception, and the recording never breaks.
-Keeping: saved at the end, to look back on and to show.
+Keeping: saved at the end, to look back on and to show someone; passing it on means a link or a GPX file, nothing made for posting.
 It serves people who decide on the day, on foot or by bike, on Android; a tour planned long ahead or over several days is prepared in the browser planner and reaches the phone one day at a time.
 The test for everything: does it help someone who has only the phone to set off today, to change the plan on the way and to arrive?
 When principles collide, this order decides: never lose a tour, then offline on the way, then clear and calm, then powerful.
@@ -14,6 +14,7 @@ When principles collide, this order decides: never lose a tour, then offline on 
 A recorded track is never lost to a dead zone, GPS loss, a phone call, an empty battery or a crash.
 Every point is saved at once, and a recording ends only on purpose.
 Changing the plan never ends the recording.
+In a critical moment, such as a battery that will not last, the app does not decide alone, it asks; when a choice has to be made, arriving comes before recording.
 Missing maps, data or network never crash the app; the old map stays until the new one is complete.
 When robustness and a new feature get in each other's way, robustness wins.
 A change to recording, navigation or the map ships only after it has run on a real tour; other changes may ship with green tests.
@@ -38,6 +39,8 @@ What Plan shows is exactly what Navigate follows.
 
 The flow is: find today's tour, check it, go.
 Komoot is the bar for ease of use and the map.
+OnPath is a hiking app: what it does, it does well, and what another app does better stays with the other app, such as the weather or finding a restaurant.
+The exception is what you need on the way without reception: OnPath shows that itself, from what is on the phone.
 Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
 OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.

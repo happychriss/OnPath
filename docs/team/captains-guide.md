@@ -93,9 +93,15 @@ MIT; where it and our own experience differ, ours decides – comparison in the 
 2. **Every line has a source:** the owner's word (quote, date), a decision, or something that was really built or
    refused. A virtue any project could claim („we value quality“) is cut. For an existing product, read first what was
    built and what was refused – that shows the values better than what was said.
-3. **Stress test before it counts:** a handful of hard cases aimed at the seams – a tempting feature beside the goal,
-   two principles colliding, a small step down a slope, a wider scope. Only cases whose answer cannot be predicted; one
-   at a time, with both sides argued. The owner starts this session; it is not sprung on him.
+3. **Stress test – before it counts, and again whenever a subject keeps turning grey** (owner 2026-11-28: „vollständig
+   fair, dass du bei Unklarheiten genau diese Fragen stellst … auch mitten im Projekt“). About five hard cases aimed at
+   the seams: two principles that collide, a tempting feature beside the goal, a small step down a slope, an existing
+   function measured against a sentence the owner just said, a word of the vision that can be read two ways. Only cases
+   whose answer the captain cannot predict. One at a time, concrete (a place, a number, what the app does today), both
+   sides argued, the question behind it named, **no recommendation**. The owner answers in his own words. Each answer
+   becomes at most one line of change, or none; the next case may test the answer just given. At the end he sees the
+   pieces, each acceptable alone, and says which go in. *(First run: five cases in six minutes found one principle that
+   was plain to the owner and written nowhere, sharpened the order of priority and one word; two cases changed nothing.)*
 4. **Why, not how:** a principle may carry its reason in one clause; rules, sizes and words stay in the decision list.
 5. **Changes come as small separate pieces**, each one acceptable alone, each traced to the owner's answer in a change
    list – never a second, competing text. The approved text carries a dated stamp.
