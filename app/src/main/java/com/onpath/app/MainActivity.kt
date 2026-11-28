@@ -273,8 +273,7 @@ class MainActivity : ComponentActivity() {
                             onCancelAll = { vm.mapData.cancelAllDownloads(); loadsOpen = false }, onClose = { loadsOpen = false })
                         SettingsScreen(
                             page = vm.settingsSlice.settingsPage,
-                            onPage = { vm.settingsSlice.settingsPage = it },
-                            onUp = vm.settingsSlice::settingsBack,
+                            onPage = { vm.settingsSlice.settingsPage = it }, onUp = vm.settingsSlice::settingsBack,
                             onTheWay = vm.settingsSlice.settingsOnTheWay,
                             onAllSettings = vm.settingsSlice::showAllSettings,
                             settings = vm.settingsSlice.settings,
