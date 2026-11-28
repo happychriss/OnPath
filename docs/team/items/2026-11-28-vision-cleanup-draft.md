@@ -18,7 +18,11 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
    „Decisions“ (nothing is lost): hold-only editing · exactly six activities · field bug test first · public text tone ·
    dated comparisons · private material in the private repo · the owner's UI texts stay.
 3. **Browser line** rewritten: longer tours are best planned in the browser so the phone stays simple.
-4. Everything else stays word for word, incl. the whole „Scope“ section (minus the private-repo line, see 2). The two
+4. **Consistency (owner 08:29 „Nordstern, keine Sammlung“, 08:31 „es ist richtig“):** one test sentence and one order of
+   priority after the first paragraph; the unbounded „match established apps“ said three times is now said once, bounded
+   (first paragraph: „where it matters on the way“; cut from the Komoot line; „need on the way“ in the aligns line); the
+   browser line names the split phone = way, browser = preparing.
+5. Everything else stays word for word, incl. the whole „Scope“ section (minus the private-repo line, see 2). The two
    „aligns / resisted“ lines stay the last two lines of the file (`CLAUDE.md` points at them).
 
 ## The draft (full text)
@@ -31,6 +35,8 @@ It serves people who plan their own tours, on foot or by bike, from an after-wor
 From a destination, OnPath makes a checked route, guides you there and keeps the tour.
 In function it holds its own against established apps and goes beyond them where it matters on the way: re-planning offline, a recording that never breaks, multi-day tours.
 It owns exactly one thing: your own plan for today's outing, from the destination to the saved tour.
+The test for everything: does it help the person on the way to change their own plan and to arrive?
+When principles collide, this order decides: never lose a tour, then offline on the way, then clear and calm, then powerful.
 
 ## Never lose a tour
 
@@ -47,7 +53,7 @@ Planning, re-planning, search and navigation run on the phone in loaded areas, w
 The maps for a plan load by themselves while you plan; nobody has to manage regions.
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
-Everything you need on the tour works on the phone; longer tours are best planned in the browser planner, so the phone stays simple – the planner adds what preparing needs, such as multi-day tours or 3D.
+The phone is for the way, the browser planner for preparing: everything you need on the tour works on the phone; longer tours are best planned in the browser, so the phone stays simple – the planner adds what preparing needs, such as multi-day tours or 3D.
 In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
 
 ## No surprises
@@ -59,7 +65,7 @@ What Plan shows is exactly what Navigate follows.
 ## Powerful, clear and calm
 
 The flow is: choose a destination, check the route, go.
-Komoot is the bar for ease of use and the map; the controls look like Apple and Android, not like a navigation device; in function OnPath aims to match established apps and to go beyond them in single areas.
+Komoot is the bar for ease of use and the map; the controls look like Apple and Android, not like a navigation device.
 Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
 OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.
@@ -91,6 +97,6 @@ Android comes first; the iPhone comes only after the public launch, and until th
 A function that fits the vision is built.
 Building it raises scenarios: where it lives, where it is opened from, what follows each answer.
 Each scenario is checked against the vision as well: clearly covered → built without asking; not clearly covered → a question to the owner, recommendation first; nothing is built on an assumption.
-A change aligns when it makes the outing more reliable, the plan easier to change on the way or OnPath stronger than established apps in something hikers use, works offline in loaded areas, and keeps the three steps as short and the screen as clear as they are.
+A change aligns when it makes the outing more reliable, the plan easier to change on the way or OnPath stronger than established apps in something hikers need on the way, works offline in loaded areas, and keeps the three steps as short and the screen as clear as they are.
 A change should be resisted when it could lose a point, surprises the user, needs an account or a server for the running tour, adds social or catalogue features, is technology for its own sake, or makes the way in longer.
 ```
