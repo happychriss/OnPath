@@ -14,6 +14,17 @@ work goes into this guide at once, in general words; the case that taught it is 
 | **Captain** | Thinks. Keeps the overview (who works on what, in which files), splits a task into orders, runs the three checks, guards the vision. | Product code, releases, anything the owner decides. |
 | **Role threads** | Build. One area each, a claim line before they start, a done report with the tick list at the end. | Decide a scenario the vision does not clearly cover; build what nobody asked for. |
 
+**Two kinds of role threads** (the kinds are reusable; which machines exist is the project's):
+- **Machine-bound** – runs on one of the owner's computers through remote control. It has hardware: builds, devices
+  on a cable, local data, deploys. One role per checkout; the machine stays usable for the owner. A merge, a push to
+  someone else's branch or a delete needs the owner's own words **in that thread**. The captain cannot reach it
+  directly – everything goes through the project lead.
+- **Cloud** – runs without hardware: reading, documents, reviews, designs, lists, anything on the hosting platform.
+  Cheap to start, gone after the task. It cannot build or touch a device.
+The captain gives a task to the kind that fits: what needs hardware goes to the machine that has it; reading and
+writing goes to the cloud so the machines stay free for building. The project sheet says which machine carries which
+area.
+
 The captain is the expensive thinker: assessment, splitting, conflicts, the vision. Reading code, sweeping documents
 and listing things is role work; the captain checks the result.
 
