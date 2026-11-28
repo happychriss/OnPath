@@ -102,7 +102,7 @@ class SearchSession(
     fun onOpen() {
         val ctx = context()
         allFavourites = false
-        ui = startLists(ui.copy(query = "", category = null, hasRoute = ctx.route != null), ctx)
+        ui = startLists(ui.copy(query = "", category = null, hasRoute = ctx.route != null, unstarred = emptyList()), ctx)
         run() // clears the old results and stops a search still on its way
         // the address files opened now (one per map cell, each reads its towns), not on the first letter
         scope.launch(Dispatchers.IO) {
