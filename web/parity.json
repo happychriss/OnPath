@@ -169,7 +169,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task) · 318272deb/2c5c034fe checked: wiring of the phone's one-day multi-day flow (openDays → day sheet, leavesTrip) – app only (owner 2026-11-28: exactly one day on the phone; the planner plans the whole trip)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task) · 318272deb/2c5c034fe checked: wiring of the phone's one-day multi-day flow (openDays → day sheet, leavesTrip) – app only (owner 2026-11-28: exactly one day on the phone; the planner plans the whole trip) · 2026-11-28 a7b1688e6 a plan link with days lands as the whole tour in Meine Touren (MD-2) – app only: the planner opens such a link as the plan with its tour (it plans the whole trip, owner 2026-11-27)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "095a90f25087a7adcf23a7cc46cdddfaa0f1f955"
+      "blob": "e81bb27967828fd7aee0d3a113b2cc879082a4eb"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -233,11 +233,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
-      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>)",
+      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>) · 2026-11-28 03a3b6a55 unused multi-day prefs (multiDayMapsAsked, multiDayWifiCells) dropped – the planner never had them",
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "ffcbedd1758696c8e68f69843c4f2d607c5484a9"
+      "blob": "454083b49403edfd5b2a3ff6e0c77bce619e2ac7"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
