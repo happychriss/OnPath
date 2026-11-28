@@ -38,8 +38,8 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-MAP-04 | Highlight trails by type: hiking paths, mountain paths by difficulty (SAC T1–T5), cycleways, MTB trails, marked route networks. | Must |
 | F-MAP-05 | Scale bar and compass button (tap: north-up / heading-up). | Must |
 | F-MAP-06 | Map style follows activity: hiking emphasises footpaths, biking emphasises cycleways and surface. | Should |
-| F-MAP-07 | Dark / night style. | Could |
-| F-MAP-08 | Route network overlays, switchable from a layer button: three overlays from OSM route relations: hiking, cycling and MTB. Cycling overlay serves all three bike profiles. Initial release: cycling and hiking overlays (Must), MTB overlay next (Should). Routes are drawn as a soft green translucent band along the path like in Komoot, with route name or number on tap. Works offline (part of the region package); one overlay at a time, auto-selected by activity, can be turned off. | Must |
+| F-MAP-07 | Dark / night style. **Not planned (2026-11-28, function verdict)**. | Could |
+| F-MAP-08 | Route network overlays, three overlays from OSM route relations: hiking, cycling and MTB. Cycling overlay serves all three bike profiles. Initial release: cycling and hiking overlays (Must), MTB overlay next (Should). Routes are drawn as a soft green translucent band along the path like in Komoot, with route name or number on tap. Works offline (part of the region package); one overlay at a time, auto-selected by activity, can be turned off. The layer button / switching off: **Not planned (2026-11-28, function verdict)** – the band follows the activity. | Must |
 | F-MAP-09 | Outdoor POIs from OpenStreetMap, offline: viewpoints, restaurants/cafés, huts, drinking water and springs, shelters, picnic sites, toilets, parking, bus/train stops, waterfalls, castles. Tap a POI: name, type, opening hours, phone, website (from OSM), plus "Open in Google Maps" (online link-out for photos, reviews, tips). Google content is not stored in the app (licence). | Must |
 
 ### 3.2 Own position
@@ -50,7 +50,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-POS-02 | "Center on me" button; follow mode that turns off when the user pans the map. | Must |
 | F-POS-03 | Clear state when there is no fix: grey dot with "last known position, 4 min ago" or "Searching GPS". | Must |
 | F-POS-04 | Show current altitude (GPS corrected with barometer and elevation model when available). | Should |
-| F-POS-05 | Long-press anywhere shows coordinates and elevation of that point; copy or share them. | Should |
+| F-POS-05 | Long-press anywhere shows coordinates and elevation of that point; copy or share them. **Not planned (2026-11-28, function verdict)** (a hold opens the point menu). | Should |
 
 ### 3.3 Route planning
 
@@ -59,12 +59,12 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-PLAN-01 | Choose activity type first (see 3.4); it can be changed later and the route recalculates. | Must |
 | F-PLAN-02 | Set start point by tap, by "my position" or by place search. | Must |
 | F-PLAN-03 | Set end point the same way; option "round trip back to start". | Must |
-| F-PLAN-04 | Add, move (drag), reorder and delete via points; insert a via point by dragging the route line. | Must |
+| F-PLAN-04 | Add, move, reorder and delete via points. Dragging a point or the route line: **Not planned (2026-11-28, function verdict)** (hold-only gestures – owner decision). | Must |
 | F-PLAN-05 | Route is calculated on the phone, offline, in under 2 seconds for 50 km and under 10 seconds for 300 km on a mid-range phone. | Must |
 | F-PLAN-06 | Show summary: distance, ascent, descent, estimated time (moving time without breaks, same model as Navigate), highest point, surface mix (paved / unpaved / trail), difficulty. | Must |
 | F-PLAN-07 | Interactive elevation profile; touching the profile moves a marker on the map and vice versa. | Must |
 | F-PLAN-08 | Undo / redo for every planning step. | Must |
-| F-PLAN-09 | Per segment option "straight line" for off-trail sections (e.g. across a meadow). | Should |
+| F-PLAN-09 | Per segment option "straight line" for off-trail sections (e.g. across a meadow). **Not planned (2026-11-28, function verdict)**. | Should |
 | F-PLAN-10 | Save route with name; edit saved route later. | Must |
 | F-PLAN-11 | Warn about route problems: very steep sections, pushing the bike, ferry, terrain above the chosen T level, private or closed paths. | Should |
 | F-PLAN-12 | Smart place search with one search box, hybrid: (a) offline index in each region package, from OSM: towns, addresses, hotels and huts, bus stops, train stations, parking, peaks, passes, viewpoints; tolerant of typos and partial words, ranked by distance to the map view; (b) when online, also an online search provider (e.g. Google Places API, or an open option such as Photon / Pelias) for richer results like hotel names and addresses. Online results are cached on the phone; the search box always works offline, online only improves results. Provider sits behind one interface so it can be swapped (cost decision later). | Must |
@@ -157,7 +157,7 @@ Robustness is the main reason this app exists, so each failure case has a define
 | R-07 | App killed by the system, phone restarts, battery dies | Recording is written to the database every point (at least every 5 s); on next start the app offers "Continue tour" or "Save tour". Nothing recorded is lost. |
 | R-08 | App crash | Same as R-07. Planned routes auto-save after every change. Crash reports are stored locally and only sent if the user agrees. |
 | R-09 | Battery saver / aggressive OEM background limits (Samsung, Xiaomi, Huawei) | Recording runs as a foreground service; first-run guide helps the user exempt the app; app detects when it was throttled and tells the user. |
-| R-10 | Low battery (below 15%) | Offer a battery saver mode: lower GPS rate, darker map, screen off hints. Recording continues. |
+| R-10 | Low battery (below 15%) | Offer a battery saver mode: lower GPS rate, darker map, screen off hints. Recording continues. **Not planned (2026-11-28, function verdict)** (GPS already slows while standing still). |
 | R-11 | Storage full | Check free space before downloads and imports; recording reserves space and warns early; never corrupt existing data. |
 | R-12 | Route outside downloaded regions | Plan straight-line segments where no routing data exists, mark them clearly, offer download. |
 | R-13 | No route found (blocked access, island, gap in data) | Explain why in plain words and suggest: move the point, change activity, or use a straight segment. |
