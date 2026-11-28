@@ -25,6 +25,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 **Open:** test build to the Pixel 8 (not attached; only when no recording runs) · HP parity ack + deploy · donald: [Sparen] from the question for this tour only (af72dc940) · E2E on `main` + release notes for 0.18.12.
 **13:02:** E2E on main @ 43519bf4c 115/0 (run 46140796452), release_check GO, notes `release/0.18.12-notes` @ ba6a3d9aa; tour-only Sparen bf068e550 came after – E2E again before the release. Pill „Akku sparen an“: picture `akku-pille.png`, the owner decides. 13:48 planner online 2b1a3d64a (flaky multi-day test was a real bug, 3e336def6).
 **Rule (owner 28.11. 13:59):** the phone hangs on USB (adb sees it) → install over it, also while a recording runs; the captain's „not during a recording“ of this morning is void.
+**14:05:** Akku sparen = always one tour, [Sparen] opens ⚙, pill „Akku sparen an“ (variant A) – on main f1a3729a3. HP measures stitched vs fresh routes (owner 13:58) before „Ganz neu berechnen“ is decided.
 **For the owner when back:** „Ganz neu berechnen“ stays in the planner for now (HP 13:48: the only way to drop a stitched plan's detour points; the app has none since today) – keep there or out on both sides? · battery measurement (2 × 1 h, without / with Sparen) · website block „Sicherheit“ text A / B
 (onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · release 0.18.12 (needs one
 really ridden day + his word).
