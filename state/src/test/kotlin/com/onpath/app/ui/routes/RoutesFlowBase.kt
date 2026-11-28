@@ -247,7 +247,6 @@ abstract class RoutesFlowBase {
                 if (failTourPlan) throw IllegalStateException("db closed")
                 return copies[id]
             }
-            override fun insertDraftPlanned(name: String, row: PlannedRow): Long = error("not used")
         }
 
         val plan = PlanDocument(planStore)

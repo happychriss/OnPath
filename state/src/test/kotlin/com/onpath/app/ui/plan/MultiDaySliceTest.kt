@@ -318,11 +318,6 @@ class MultiDaySliceTest {
             override fun tourTimes(): Map<Long, TourTimes> = error("not used")
             override fun listTours(): List<Tour> = error("not used")
             override fun getTourPlan(id: Long): com.onpath.app.data.TourPlan? = error("not used")
-            override fun insertDraftPlanned(name: String, row: PlannedRow): Long {
-                gate("insertDraftPlanned")
-                return db.insertTour(TourKind.PLANNED, name, row.activity, row.sac, row.segments, row.stops, distance = row.distanceM, ascent = row.ascentM,
-                    descent = row.descentM, duration = row.durationS, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)
-            }
         }
 
         // ---- the host (what the view model answers)
@@ -938,10 +933,9 @@ class MultiDaySliceTest {
     // ---------------------------------------------------------------- 7. the kept map areas
 
     @Test fun theKeptAreasAreAskedForAgainAfterARestartAndABadEntryDoesNotStopTheStart() {
-        prefs.multiDayMapCells = setOf("10-543-361", "garbage", "10-543-362"); prefs.multiDayWifiCells = setOf("10-543-362")
+        prefs.multiDayMapCells = setOf("10-543-361", "garbage", "10-543-362")
         val app = App()
         assertEquals(setOf(CellId(543, 361), CellId(543, 362)), app.cells.tourCells)
-        assertEquals(setOf(CellId(543, 362)), app.cells.tourWifiCells)
         // the collectors still run after that
         app.rideDay2()
         ui { app.planEdit.change { add(1, X) } }; app.settle()

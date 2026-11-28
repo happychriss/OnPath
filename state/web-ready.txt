@@ -32,7 +32,7 @@ ui/plan/KeptPlacesSlice.kt
 ui/plan/PlanDocument.kt
 # NoticeBoard: no port to implement; it IS the Say port (1 member) and asks 3 lambdas (routesOpen, settingsOpen, mapShown: () -> Boolean)
 ui/NoticeBoard.kt
-# MultiDayFlow: port MultiDayPrefs (5 properties, see ports below) + a lambda linkedId: () -> Long; reads / writes JSON with org.json
+# MultiDayFlow: port MultiDayPrefs (3 properties, see ports below) + a lambda linkedId: () -> Long; reads / writes JSON with org.json
 ui/MultiDayFlow.kt
 # PlanRunSlice: ports PlanRunHost (6 members: points, clearRoute, noCorridor, loadDeferredMaps, recalc, cancelRun) and Cancellable
 #   (1: cancel; the run's handle `routeJob`, set by the host's own recalc), plus the RunCause object of core (pure)
@@ -68,7 +68,7 @@ ui/SettingsPage.kt
 # -- ports (interfaces the slices ask through; the planner implements the ones its slices need) -------------------------
 # Ports.kt: Say (1 member: say), Camera (3: fit, centerOn, panTo), Position (1: here), Clock (2: nowMs, elapsedMs)
 ui/Ports.kt
-# MultiDayPorts: MultiDayPrefs (5 properties: planMultiDay, planDayFollow, multiDayMapsAsked, multiDayMapCells, multiDayWifiCells), TourMapAreas
+# MultiDayPorts: MultiDayPrefs (3 properties: planMultiDay, planDayFollow, multiDayMapCells), TourMapAreas
 ui/MultiDayPorts.kt
 
 # -- rules (pure decisions, no state) ------------------------------------------------------------------------------------

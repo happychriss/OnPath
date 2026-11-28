@@ -18,6 +18,4 @@ interface ToursStore : SaveStore {
     fun listTours(): List<com.onpath.app.data.Tour>
     /** The last version of the plan a recorded tour followed; null = none. */
     fun getTourPlan(id: Long): com.onpath.app.data.TourPlan?
-    /** A planned route [name] kept under Zuletzt (`draft`, not saved by the user; the multi-day tour with a day's change); returns its id. One transaction. */
-    fun insertDraftPlanned(name: String, row: PlannedRow): Long
 }

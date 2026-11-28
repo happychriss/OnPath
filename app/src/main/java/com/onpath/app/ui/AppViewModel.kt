@@ -808,9 +808,6 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun planPoints(id: Long) = db.planPoints(id)
         override fun listTours() = db.listTours()
         override fun getTourPlan(id: Long) = db.getTourPlan(id)
-        override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name,
-            activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS,
-            segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)
         override fun tourTimes() =
             com.onpath.app.time.TourTimesStore(File(getApplication<Application>().filesDir, com.onpath.app.time.TourTimesStore.FILE)).all()
     }

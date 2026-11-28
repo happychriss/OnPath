@@ -2,15 +2,13 @@ package com.onpath.app.ui
 
 /**
  * What multi-day tours keep in the preferences (the app: `PrefsMultiDay` over `Prefs`, one property each, same keys): the open
- * trip's days and night marks and the followed day's state (JSON, [MultiDayFlow]), the tours whose map question was asked
- * (unused since 2026-11-28, MD-11 – kept so the stored key stays readable), and the kept multi-day map areas (cell ids; those that wait for Wi-Fi separately).
+ * trip's days and night marks and the followed day's state (JSON, [MultiDayFlow]) and the kept multi-day map areas (cell ids).
+ * The map question's `multiDayMapsAsked` and the Wi-Fi wait's `multiDayWifiCells` are gone (MD-11, 2026-11-28; their stored keys are ignored).
  */
 interface MultiDayPrefs {
     var planMultiDay: String?
     var planDayFollow: String?
-    var multiDayMapsAsked: Set<String>
     var multiDayMapCells: Set<String>
-    var multiDayWifiCells: Set<String>
 }
 
 /** What the corridor of a line needs in map areas ([all] along it, those [missing] on the phone, about how many [bytes]) – `MapDataFlow.TourMaps` for the slice. */

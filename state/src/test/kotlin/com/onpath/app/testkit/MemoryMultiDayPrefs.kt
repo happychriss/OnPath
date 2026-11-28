@@ -6,7 +6,5 @@ import com.onpath.app.ui.MultiDayPrefs
 class MemoryMultiDayPrefs : MultiDayPrefs {
     override var planMultiDay: String? = null
     override var planDayFollow: String? = null
-    override var multiDayMapsAsked: Set<String> = emptySet()
     override var multiDayMapCells: Set<String> = emptySet()
-    override var multiDayWifiCells: Set<String> = emptySet()
 }

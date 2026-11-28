@@ -47,19 +47,14 @@ class TourDbMirrorTest {
     }
 
     /**
-     * The multi-day slice keeps a followed day's whole tour under Zuletzt (piece 20, `MultiDaySliceTest` writes it through
-     * JdbcTours.insertTour with `draft = true`): TourDb's insertTour writes the draft flag as 1 / 0 in the column of that name,
-     * JdbcTours the same, and the view model's adapter hands the row's fields – and the flag – by name.
+     * A draft kept under Zuletzt (`draft = true`): TourDb's insertTour writes the draft flag as 1 / 0 in the column of that name,
+     * JdbcTours the same.
      */
     @Test fun theMultiDayDraftIsTheSameInsertWithTheDraftFlag() {
         val insert = body("    fun insertTour(", "    /** My routes: everything not in the recycle bin.")
         assertTrue(insert.contains("put(\"draft\", if (draft) 1 else 0)"))
         assertTrue(jdbc.contains("if (draft) 1 else 0"))
         assertTrue(jdbc.contains("draft: Boolean = false"))
-        val vm = sourceFile("ui/AppViewModel.kt").readText().replace(Regex("\\s+"), " ")
-        assertTrue(vm.contains("override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name, " +
-            "activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)"))
     }
 
     /** The activity switched during a recording (piece 16b's flows write it through JdbcTours): the same two columns, the same WHERE. */

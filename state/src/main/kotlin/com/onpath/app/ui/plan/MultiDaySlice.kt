@@ -108,7 +108,6 @@ class MultiDaySlice(
         // the kept multi-day map areas stay asked for after a restart (MapCells.tourCells)
         runCatching {
             host.cells.tourCells = prefs.multiDayMapCells.mapNotNull(CellId::parse).toSet()
-            host.cells.tourWifiCells = prefs.multiDayWifiCells.mapNotNull(CellId::parse).toSet()
         }.onFailure { Problems.warn("cells", "Kept multi-day map areas not restored – a plan change may drop their requests", it) }
         // every change of a followed day's plan goes back into the whole tour (any edit, Undo, the router's snap)
         scope.launchSafe("app", "multiDayWriteBack") {

@@ -257,20 +257,10 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getString("planDayFollow", null)
         set(v) = sp.edit().putString("planDayFollow", v).apply()
 
-    /** Multi-day tours whose map question was answered (uuids, §7: asked once). */
-    var multiDayMapsAsked: Set<String>
-        get() = sp.getStringSet("multiDayMapsAsked", null)?.toSet() ?: emptySet()
-        set(v) = sp.edit().putStringSet("multiDayMapsAsked", v).apply()
-
     /** Map areas of multi-day tours the user said "load" to (cell ids), kept beside every plan's corridor. */
     var multiDayMapCells: Set<String>
         get() = sp.getStringSet("multiDayMapCells", null)?.toSet() ?: emptySet()
         set(v) = sp.edit().putStringSet("multiDayMapCells", v).apply()
-
-    /** Of [multiDayMapCells]: those asked for on mobile data – they wait for Wi-Fi. */
-    var multiDayWifiCells: Set<String>
-        get() = sp.getStringSet("multiDayWifiCells", null)?.toSet() ?: emptySet()
-        set(v) = sp.edit().putStringSet("multiDayWifiCells", v).apply()
 
     /** The plan's points as the last plan link brought them (snapped by the router); null = none (core feature C15). */
     var planLinkPoints: List<GeoPoint>?
