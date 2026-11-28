@@ -1014,7 +1014,7 @@ body.tourpanel #sheet > .sheethead, body.tourpanel #sheet > #planActions { order
 body.tourpanel #sheet > #profTitle, body.tourpanel #sheet > #profile, body.tourpanel #sheet > #infoline, body.tourpanel #sheet > #changedLine,
 body.tourpanel #sheet > #breakdown, body.tourpanel #sheet > #status, body.tourpanel #sheet > #apphint { order: 2; }
 /* slid out: a tab „‹“ on the panel's right edge, collapsed a tab „›“ at the left edge; the map's room grows */
-.sheettab { position: absolute; z-index: 3; top: 50%; left: calc(12px + var(--sheet-w)); width: 24px; height: 56px; margin-top: -28px;
+.sheettab { position: absolute; z-index: 3; top: 92px; left: calc(12px + var(--sheet-w)); width: 24px; height: 56px; /* near the panel's head, not mid-map where route points lie */
   border: none; border-radius: 0 12px 12px 0; background: var(--map-ground); box-shadow: var(--float-shadow); color: var(--fg);
   display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
 .sheettab svg { fill: currentColor; }
