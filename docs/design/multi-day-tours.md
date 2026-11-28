@@ -15,7 +15,7 @@ aligned to it; where they still describe how it was built, they point to the reb
 | --- | --- |
 | MD-0 | **Split.** The browser planner edits the whole trip: the days, from the day overview into one day, re-plan it, back to the multi-day view and the next day, the nights. It stays as built. The phone **guides through** the trip: open it in Meine Touren (it unfolds), one day goes into the phone's Plan sheet, changes only to that day, then go – **never the whole plan**. |
 | MD-1 | A multi-day tour is **planned in the browser planner**. The phone does not plan one: no whole-trip view in the app's Plan sheet, no day count that follows activity / pace / route choice. |
-| MD-2 | On the phone it lies in **Meine Touren as one tour** (badge „N Tage“). A tap shows its days; a tap on a day puts **that day** into the Plan sheet to ride it. „‹ Alle Tage“ leads back to this day list. |
+| MD-2 | On the phone it lies in **Meine Touren as one tour** (badge „N Tage“). A tap shows its days; a tap on a day puts **that day** into the Plan sheet to ride it. The phone's Plan has **no „‹ Alle Tage“** – „Tag 4 von 6“ is plain information; another day comes from **Meine Touren → the trip → the day** (Chriss 2026-11-28 10:20: „der link kann weg, aber die tage als karten sieht gut aus“). A deliberate exception to parity: the browser planner keeps its big „‹ Alle Tage“ (there the trip is planned). The days in the day list are single cards like the tour cards in Meine Touren, columns aligned. |
 | MD-3 | In the Plan sheet the day can be changed (add / move / delete a point). **While its start and goal stay, it stays part of the trip** – saving writes the day into the trip. |
 | MD-4 | **Start or goal changed** → the notice „Start und Ziel geändert – wird als eigene Tour gespeichert“ and a **copy as a standalone tour**; the trip's day stays as it was. |
 | MD-5 | A day is **done** when it was navigated from its start **to its goal** (goal within 200 m, as the ticks today). The recording stays tied to its day, also when the plan got a new point on the way. |
@@ -171,7 +171,7 @@ Built in stage 4 (2026-11-17, mehrtage) – details decided while building. Mark
   Its day table shows per day km · ↑ m · time, **no running total „Σ … km“** – a deliberate exception to parity with the planner, which keeps Σ km because planning happens there: „auf dem Handy brauche ich nicht die Summe der gesamten Kilometer … das ist was für die Planung“ (Chriss 2026-11-28 09:52). The „Gesamt“ row stays; „von → nach“ wraps fully, never cut.
 - **[rebuild]** Today a tour can also open as a whole-trip overview in the Plan sheet (day table, profile, „Planung“
   chips, tap / hold rows incl. „Tage 3–4“, "Tag n fahren"), and "‹ Alle Tage" brings the whole tour back as the plan.
-  After the rebuild: no whole-trip view in the Plan sheet (MD-1), "‹ Alle Tage" → the day list (MD-2); „Tag 3–4“: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“.
+  After the rebuild: no whole-trip view in the Plan sheet (MD-1), "‹ Alle Tage" → the day list (MD-2; since 2026-11-28 10:20 no „‹ Alle Tage“ on the phone – another day via Meine Touren); „Tag 3–4“: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“.
 - **[rebuild]** Today the number of days follows a change of activity / pace / route choice on the phone (with limits).
   After the rebuild: the phone never changes it (MD-1).
 - Every change of the day's plan is written back into the whole tour (`domain/plan/DayFollow`); Save (also at the tour
