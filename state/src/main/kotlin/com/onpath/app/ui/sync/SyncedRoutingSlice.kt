@@ -96,8 +96,9 @@ class SyncedRoutingSlice(
     /**
      * Routes from the browser are saved with their points as the line; here they get the real route (the router, the
      * pace) like a route saved on the phone. No routing data there yet: the points stay – opening the route routes it.
+     * [routed] hears each route whose line was stored (a trip from a plan link: its open day sheet follows).
      */
-    fun routeSyncedPlans(ids: List<Long>) {
+    fun routeSyncedPlans(ids: List<Long>, routed: (Long) -> Unit = {}) {
         if (ids.isEmpty()) return
         scope.launchSafe("app", "routeSyncedPlans") {
             for (id in ids.distinct()) {
@@ -137,7 +138,7 @@ class SyncedRoutingSlice(
                             .also { if (it) { planRoute.plannedTimes.remove(id); planRoute.storePlanTimes(id, r, act) } }
                     } catch (e: Exception) { Problems.error("db", "A routed route from the browser could not be saved", e); false }
                 }
-                if (ok) host.tourChanged(id)
+                if (ok) { host.tourChanged(id); routed(id) }
             }
             host.refreshTours()
         }

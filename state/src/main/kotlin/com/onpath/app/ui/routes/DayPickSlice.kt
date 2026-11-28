@@ -93,6 +93,17 @@ class DayPickSlice(
         }
     }
 
+    /** Route [id] got its routed line (a plan link's trip was saved with its points as the line): its open sheet is worked out again. */
+    fun routed(id: Long) {
+        if (sheet?.tour?.id != id) return
+        scope.launchSafe("app", "dayPickRouted") {
+            val t = withContext(io) {
+                runCatching { store.getTour(id) }.onFailure { Problems.warn("routes", "Routed multi-day route $id not read – the sheet keeps its first line", it) }.getOrNull()
+            } ?: return@launchSafe
+            if (sheet?.tour?.id == id && t.days != null && t.deletedMs == null) open(t)
+        }
+    }
+
     private fun failed(t: Tour, why: String) {
         Problems.warn("routes", "Multi-day route \"${t.name}\": $why – no day loaded, never the whole trip as the plan")
         problem(Txt.s(Res.string.daypick_days_failed))

@@ -86,6 +86,8 @@ interface RoutesHost : Say {
     fun syncChanged(why: String)
 
     // ---- Routes II (piece 14) ----
+    /** Planned route [id] was saved with its points as the line (a plan link with days): routed in the background like a route from the browser. */
+    fun routeSavedPlan(id: Long)
     /** The plan's route (null = none yet); read when a "Los geht's" waits for its line and for the ⋮ menu. */
     val route: PlannedRoute?
     /** A route run is going on. */

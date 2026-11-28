@@ -235,9 +235,11 @@ class SyncedRoutingFlowTest {
     @Test fun aPlanFromTheBrowserIsRoutedOnTheBackgroundThreadAndStoredWithItsRealLine() {
         val t = fromBrowser()
         val app = rig()
-        app.slice.routeSyncedPlans(listOf(t.id))
+        val routed = ArrayList<Long>()
+        app.slice.routeSyncedPlans(listOf(t.id), routed = { routed += it })
         assertTrue("nothing runs before its thread is let go", app.log.isEmpty())
         app.settle()
+        assertEquals("the caller hears the stored line (a plan link's trip: its day sheet follows)", listOf(t.id), routed)
         // the order of effects and the thread of each: read on io, routed on bg (never main, never the user's routing thread),
         // read again and written on io, backup and list on main
         val stored = db.getTour(t.id)!!
