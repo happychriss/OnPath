@@ -166,7 +166,10 @@ class LiveLaneTest {
         val writer = thread {
             try { for (i in 20 until 520) rec.appendPoint(tour, i, if (i < 300) 0 else 1, point(i), 5f) } catch (e: Throwable) { failed.set(e) }
         }
-        writer.join(10_000)
+        // what proves it is that the writer finishes AT ALL while the lane still hangs (a lock held by the lane would stop
+        // it for good) – not how fast: under a full gate's load 500 SQLite commits took over 10 s once (2026-11-28), so
+        // the bound is generous; the lane is checked to hang still afterwards
+        writer.join(120_000)
         assertFalse("the recorder finished while the server hangs", writer.isAlive)
         assertNull("no write failed or waited for a lock", failed.get())
         assertFalse("and the lane still hangs", l.idle(100))
