@@ -13,6 +13,10 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
 - Many questions of 27.11. were answerable by the vision („Vision first“) – the process part should say that too.
 
 ## Changes
+000. **Final pass (captain, 09:30):** rule of thumb – nothing in the vision needs the words chip, box, button or row.
+   The message rule and the list of dropped ideas left (both in „Decisions“); the flow reads „find today's tour, check
+   it, go“; the network at the start is said honestly; „never controls of its own“ now says the truth (holding protects
+   the tour and the plan); the browser line is one sentence.
 00. **Owner 09:04 – the heart:** „Ich bin irgendwo. Das Wetter ist gut, die Landschaft ist toll. Was kann ich tun? Dann
    habe ich mein Handy und los geht's.“ The first paragraph is rewritten around **today's tour: finding, walking,
    keeping**; the unbounded „holds its own against established apps“ line left the first paragraph (Komoot stays the
@@ -59,28 +63,29 @@ A change to recording, navigation or the map ships only after it has run on a re
 
 Planning, re-planning, search and navigation run on the phone in loaded areas, without a server.
 The maps for a plan load by themselves while you plan; nobody has to manage regions.
+Setting off in a new area needs the network once; a map that has to be built first takes a few minutes, and the app says so.
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
-The phone is for where you are, the browser planner for planning ahead: everything you need to set off and on the tour works on the phone, simply and quickly; long tours are best planned ahead in the browser, so the phone stays simple – the planner adds what planning ahead needs, such as multi-day tours or 3D.
+Everything you need to set off and on the tour works on the phone, simply and quickly; the browser planner adds what planning ahead needs, such as multi-day tours or 3D, so the phone stays simple.
 In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
 
 ## No surprises
 
 A new route comes only after asking.
-Nothing flashes, and a message with a button stays until it is answered or the situation is gone; only a short line without a button may go by itself.
+Nothing flashes, and nothing that waits for your answer disappears by itself.
 What Plan shows is exactly what Navigate follows.
 
 ## Powerful, clear and calm
 
-The flow is: choose a destination, check the route, go.
-Komoot is the bar for ease of use and the map; the controls look like Apple and Android, not like a navigation device.
+The flow is: find today's tour, check it, go.
+Komoot is the bar for ease of use and the map.
 Complex functions are welcome; the work is to keep them intuitive and clear, so the basic flow stays short and the screen stays calm.
 The screen shows only what the hiker needs right now; extra information that brings nothing at the moment stays away.
 OnPath is made for normal and experienced hikers, not for gadget or app enthusiasts: no technical gimmicks for their own sake; a feature earns its place by what it does for planning or on the tour.
 Texts state facts, not guesses.
 Every text exists in German and English, with the same meaning.
 The app looks modern, clear and friendly, never technical, also where the function behind it is complex, and not in the style of navigation or hiking apps.
-Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes only from colour and type, never from controls of its own.
+Its base is the platform standard of today's Apple and Android apps, as users expect it, so the threshold to use it stays low; its own character comes from colour and type; a control of its own exists only where it protects the tour or the plan, such as holding instead of tapping.
 After the tour you save and put the phone away, with no prompts for photos, sharing or ratings.
 
 ## Open, free, no account
@@ -97,7 +102,6 @@ A paid extra may need an account, for example one that backs up your tours; pair
 OnPath is not a social network: no profile, no feed, no followers, no leaderboards.
 Sharing your location sends it one way to people you choose, with no groups and no shared map of each other.
 For browsing, OnPath shows only signposted trails from OpenStreetMap, never other users' tours, photos or ratings.
-Weather, sunset warnings, an emergency screen and a battery check at the start are deliberately left out; weather may return one day only as a paid extra.
 Android comes first; the iPhone comes only after the public launch, and until then only the core stays free of Android.
 
 ## How the vision is used
