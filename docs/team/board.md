@@ -21,7 +21,7 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 | --- | --- | --- | --- |
 | Akku sparen unterwegs (was Halte-Hinweis) | donald | owner 10:38: A + the question → build; then tidy the settings during a route (picture first) | captain go before merge |
 | Browser verbinden: eigenes Fenster (was Mehrtagestour-Nacharbeit; cards merged a174c6515) | donald | picture: own pairing window vs browser part on top (owner 10:45) | owner picks → build |
-| Flackerndes Vorschaubild bei „Zuletzt“ (was Routentests) | donald | read-only finding via adb (owner 10:40) | finding → captain |
+| Flackerndes Vorschaubild (was Routentests) | donald | fix on main 0252c2187 (owner: „ich werde selber testen“) | free; fix goes to the Pixel 8 with the test build after tour 261 |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
 | Cloud | – | battery check done; owner answered 10:32 | free |
 
