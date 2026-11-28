@@ -584,6 +584,14 @@ The owner decides when (2026-11-14: "wir warten noch, bis wir das auf den Planer
   horizontal swipe row (sketch 8 https://claude.ai/artifact/DkavTPQGNXErH4ADZVdZS6); „Rundtour von hier“ appears only
   when setting the very first point (empty plan) – first-tap menu and a place / map-symbol menu – never once the plan has
   a point (narrows the 2026-11-15 rule „wherever Hier starten appears“).
+- **The card's whole text (owner 2026-11-19 V1 „die Karte wächst“; 2026-11-28 15:36 variant A, F-PLAN-29):** a folded
+  card shows title, numbers and text one line each; where any is cut, a blue „⌄ mehr“ ends the text line (the look of
+  „⌃ weniger“, icon before the word). On the card in front the whole text block (title, numbers, text line, ≥ 48 dp)
+  takes the tap and the card grows in place (title, numbers and text in full, scrolling inside under 60 % of the
+  screen at a large font), „⌃ weniger“ under the text folds it; a swipe to another card folds it too. Nothing cut → no
+  „mehr“, the text is part of the card; the peeking card is chosen by a tap anywhere; „Übernehmen“ only by its button
+  (`SuggestSheet.kt` `CardTaps`, `OpenCard`; tests `CardTapsTest`, `SuggestScreenshotTest.cardClosed`). The planner
+  (`web/app/src/suggest.ts`, `suggest.css`) has no open state yet – to mirror.
 - **The real build:** this method written once in the shared Kotlin core and compiled for the browser like the router.
   Open: reading the network from BRouter's node cache in the browser, time and memory for bike wishes (200 000 nodes).
 - **The result list (owner 2026-11-15, sketch 3 https://claude.ai/artifact/46KFniQG4WU4zQeGBW6tS9, variant A):** one
