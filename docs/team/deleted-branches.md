@@ -213,3 +213,4 @@ Written by `tools/dev/prune_branches.sh` (owner said yes in the chat). Bring one
 | 2026-11-21 | `ci/umbau-routes-open` | `acb620e39f25a4f87dc1b325a3b7d4b5c4180875` | main |
 | 2026-11-21 | `ci/umbau-recalc-state` | `100b77d9d0ffd6e073555a292f7d9a761d165303` | main |
 | 2026-11-21 | `ci/umbau-search-state` | `56fb0b826ac67dd2606bb8266aa34f603a8a01fe` | main |
+| 2026-11-28 | `feat/wait-step-bar` | `d1b6e53c0ee648a4e7decaeaaeeff9d966432324` | checked by hand: Stufe 6 umgeschrieben als 9b0a247ce gelandet, Inhalt geprüft (Chriss' Ja 2026-11-28 09:12) |
