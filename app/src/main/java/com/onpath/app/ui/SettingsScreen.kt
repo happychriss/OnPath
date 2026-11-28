@@ -194,6 +194,8 @@ fun SettingsScreen(
      */
     onTheWay: Boolean = false,
     onAllSettings: () -> Unit = {},
+    /** ← on a page (the app: [SettingsSlice.settingsBack] – the pairing window opened from outside closes); null = [onPage] up. */
+    onUp: (() -> Unit)? = null,
 ) {
     // every page this phone shows (sub pages and aliases too – the on-the-way list and the rows inside pages use them)
     val available = SettingsPage.entries.filter {
@@ -213,10 +215,10 @@ fun SettingsScreen(
     Surface(Modifier.fillMaxSize(), color = SettingsGround) {
         Column(Modifier.systemBarsPadding()) {
             Row(Modifier.fillMaxWidth().padding(4.dp), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = { if (page != null) onPage(page.up) else onBack() }, Modifier.size(56.dp)) {
+                IconButton(onClick = { if (page != null) onUp?.invoke() ?: onPage(page.up) else onBack() }, Modifier.size(56.dp)) {
                     Icon(Icons.AutoMirrored.Filled.ArrowBack, str(Res.string.common_back))
                 }
-                Text(shown?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
+                Text(if (shown == SettingsPage.SYNC) pairWindowTitle(sync) else shown?.title ?: str(Res.string.common_settings), style = MaterialTheme.typography.titleLarge)
             }
             note?.let { NoticeLine(it, Modifier.padding(horizontal = 24.dp)) }
             if (page == null && onTheWay) CompositionLocalProvider(LocalSectionTitle provides false) {
@@ -273,14 +275,7 @@ fun SettingsScreen(
                     }
                 }
             } else CompositionLocalProvider(LocalSectionTitle provides false) {
-                val listState = androidx.compose.foundation.lazy.rememberLazyListState()
-                // an alias opens its page at its own section (Browser sync, Updates): the item to scroll to
-                val scrollTo = when (page) {
-                    SettingsPage.SYNC -> if (backup != null && sync != null) 1 else 0
-                    else -> 0
-                }
-                androidx.compose.runtime.LaunchedEffect(page) { if (scrollTo > 0) listState.scrollToItem(scrollTo) }
-                LazyColumn(state = listState, contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
+                LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     when (shown!!) {
                         // Plan (owner 2026-11-27): your pace, following marked trails, the vibration while planning
@@ -320,7 +315,9 @@ fun SettingsScreen(
                                 onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
                         }
                         // Backup & browser: the two short sections on one page, each under its heading
-                        SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP, SettingsPage.SYNC -> {
+                        // the pairing window „Mit Browser verbinden“ (owner 2026-11-28, A-018): only the browser part
+                        SettingsPage.SYNC -> if (sync != null) pairWindow(sync, syncCb, now)
+                        SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP -> {
                             if (backup != null) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 SettingsGroupHeader(SettingsPage.BACKUP.title)
                                 BackupSection(backup, backupCb)

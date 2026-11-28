@@ -246,14 +246,17 @@ class SettingsPagesTest {
         assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.parent)
         assertEquals(SettingsPage.PLAN, SettingsPage.PACE.landing)
         assertEquals(SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP.landing)
-        assertEquals(SettingsPage.BACKUP_SYNC, SettingsPage.SYNC.landing)
+        // the pairing window (owner 2026-11-28, A-018): its own page, not on the list (yet), not a section of Backup & browser
+        assertEquals(SettingsPage.SYNC, SettingsPage.SYNC.landing)
+        assertFalse(SettingsPage.SYNC.top)
+        assertTrue(SettingsPage.SYNC.showsSync && SettingsPage.BACKUP_SYNC.showsSync && !SettingsPage.BACKUP.showsSync)
         assertEquals(SettingsPage.ABOUT, SettingsPage.UPDATES.landing)
         // back: a sub page to its page, a start-list page and an alias to the list
         assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.up)
         assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.up)
         listOf(SettingsPage.PLAN, SettingsPage.PACE, SettingsPage.SYNC, SettingsPage.UPDATES, SettingsPage.ABOUT).forEach { assertNull("$it", it.up) }
         // every page is one of the six or reached from one of them
-        SettingsPage.entries.forEach { assertTrue("$it", (it.parent ?: it.landing) in top) }
+        SettingsPage.entries.filter { it != SettingsPage.SYNC }.forEach { assertTrue("$it", (it.parent ?: it.landing) in top) }
     }
 
     @Test fun planSummaryAndMarkedTrails() {

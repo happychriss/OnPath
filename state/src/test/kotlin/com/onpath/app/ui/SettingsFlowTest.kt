@@ -118,9 +118,31 @@ class SettingsFlowTest {
         assertEquals(SettingsPage.NAVIGATION, app.slice.settingsPage)
         app.slice.settingsBack()
         assertNull(app.slice.settingsPage); assertTrue(app.slice.showSettings)
-        app.slice.openSettings(SettingsPage.SYNC) // an alias: drawn as Backup & browser, back to the list
+        app.slice.openSettings(SettingsPage.BACKUP) // an alias: drawn as Backup & browser, back to the list
         app.slice.settingsBack()
-        assertNull(app.slice.settingsPage)
+        assertNull(app.slice.settingsPage); assertTrue(app.slice.showSettings)
+    }
+
+    /**
+     * The pairing window (owner 2026-11-28 10:54, A-018): opened from outside (☰, a link) it is a window of its own –
+     * back closes it, to where the user was; reached from the list, back returns to the list.
+     */
+    @Test fun thePairWindowOpenedFromOutsideClosesOnBack() {
+        val app = App()
+        app.slice.openSettings(SettingsPage.SYNC)
+        assertEquals(SettingsPage.SYNC, app.slice.settingsPage)
+        app.slice.settingsBack()
+        assertFalse("back closes the window, not the Settings list", app.slice.showSettings)
+        // reached from the list: back to the list
+        app.slice.openSettings()
+        app.slice.settingsPage = SettingsPage.SYNC
+        app.slice.settingsBack()
+        assertNull(app.slice.settingsPage); assertTrue(app.slice.showSettings)
+        // opened from outside again after the list: closes again
+        app.slice.showSettings = false
+        app.slice.openSettings(SettingsPage.SYNC)
+        app.slice.settingsBack()
+        assertFalse(app.slice.showSettings)
     }
 
     @Test fun theLineAtTheTopLastsUntilThePageChangesOrSettingsIsLeft() {
@@ -164,7 +186,7 @@ class SettingsFlowTest {
         app.slice.settingsPage = SettingsPage.BACKUP_SYNC // the page that holds the sync, opened from the list
         assertEquals(2, app.log.count { it == "sync ended seen" })
         app.slice.settingsPage = SettingsPage.SYNC
-        assertEquals("the same page by its other name: not again", 2, app.log.count { it == "sync ended seen" })
+        assertEquals("from one page with the sync to the other: not again", 2, app.log.count { it == "sync ended seen" })
     }
 
     @Test fun navigatesSettingsOnTheWayAndBackToNavigate() {

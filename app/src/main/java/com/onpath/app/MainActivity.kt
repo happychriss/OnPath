@@ -274,6 +274,7 @@ class MainActivity : ComponentActivity() {
                         SettingsScreen(
                             page = vm.settingsSlice.settingsPage,
                             onPage = { vm.settingsSlice.settingsPage = it },
+                            onUp = vm.settingsSlice::settingsBack,
                             onTheWay = vm.settingsSlice.settingsOnTheWay,
                             onAllSettings = vm.settingsSlice::showAllSettings,
                             settings = vm.settingsSlice.settings,
