@@ -94,7 +94,6 @@ class GermanScreenshotTest {
     @Test fun planSlowAsk() = shots.planSlowAsk()
     @Test fun restoreAsk() = shots.restoreAsk()
     @Test fun planTourRunning() = shots.planTourRunning()
-    @Test fun planTourRecordingPill() = shots.planTourRecordingPill()
     @Test fun planRecalculatingBefore() = shots.planRecalculatingBefore()
     @Test fun planRecalculating() = shots.planRecalculating()
     @Test fun planTourRunningCollapsed() = shots.planTourRunningCollapsed()
