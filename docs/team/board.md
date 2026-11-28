@@ -28,8 +28,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 **14:05:** Akku sparen = always one tour, [Sparen] opens ⚙, pill „Akku sparen an“ (variant A) – on main f1a3729a3. HP measures stitched vs fresh routes (owner 13:58) before „Ganz neu berechnen“ is decided.
 **Release 0.18.12: owner's word 28.11. 14:07 („baue ein Release, auch wenn noch nicht alles getestet ist“).** Thread „0.18.12 vorbereiten“ (donald): notes, E2E on the release commit, gate --full, release_check --go, then version + notes. **No other merge to main until the tag stands.** After it: cloud-web website PR #20, APK to the Pixel on USB.
 **14:53: release v0.18.12 is out** (tag on 5592a47c1, APK published, E2E 115/0); main is open again. Planner on 0.18.12 since 15:02 (5592a47c1; the red time test was runner noise 0.8–5.0 s, re-run green; HP hardens the limit). **Owner's card 14:53: „Ganz neu berechnen“ out of the planner too, no replacement** (HP measurement `report.md`: 9 of 10 equal, one +0.3 %) – HP after the planner is green.
-**For the owner when back:** battery measurement (2 × 1 h, without / with Sparen) · website block „Sicherheit“ text A / B
-(onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · Pixel: install 0.18.12 when on USB.
+**For the owner when back:** battery measurement (2 × 1 h, without / with Sparen) · cloud-web's open point: see the private backlog (onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · Pixel: install 0.18.12 when on USB.
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
@@ -37,7 +36,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 | Browser verbinden (done: 7af509bbb, tidy 52f682729) | donald | – | **free** |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
-| Cloud (cloud-web) | – | website block „Sicherheit“ (sharing + battery) drafted in onpath.private; owner picks the text | live only with the release that has „Akku sparen“; the help needs an „Akku sparen“ section then |
+| Cloud (cloud-web) | – | website and help work: state in onpath.private `backlog.md` (not kept here) | – |
 
 **Release 0.18.12:** ~~on hold~~ released on the owner's word of 14:07 (see above). Before: needed the test build on the Pixel, one really ridden day of a trip (VISION), then the
 owner's word. Notes on `release/0.18.12-notes`.
