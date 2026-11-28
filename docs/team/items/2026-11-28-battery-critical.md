@@ -36,3 +36,9 @@ to „Sparen“ (VISION: it asks, arriving first). Nothing else is dropped witho
 Not B (no battery line in the tour card). Captain's reading until the owner says otherwise: ask when the estimate reaches the
 goal with < 10 % (measured from ≥ 30 min and ≥ 3 % drop, once per tour); „Akku sparen“ is a setting and stays set; no
 „Sparen an“ sign on the tour card (not asked for). Next task (owner, same message): tidy up the settings opened during a route.
+
+## GPS interval in „Sparen“ (owner 2026-11-28 10:55)
+„3 s ist auch zu wenig zum Sparen, reichen da nicht alle 30 s?“ → captain's task to donald (branch `feat/akku-sparen`, no merge
+yet): on foot 30 s, bike 10 s; back to 1 s within ~150 m of the next turn or when off the route (arriving first). Known
+cost, told to the owner: leaving the route on a straight stretch is noticed up to 30 s late; the track cuts corners. The
+saving is not measured – a Pixel measurement (with / without, ~1 h each) is proposed before a release.
