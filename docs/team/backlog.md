@@ -74,6 +74,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ← [cloud-web] **A-022 words Plan · Tour · Route (owner decision 2026-11-03)** – for **donald** (app texts, ~60 DE + EN, glossary, screenshots) and **cloud-plan** (planner texts): Plan = what you plan and save, Tour = what you do / did, Route =… → [detail](items/2026-11-03-a-022-words-plan-tour-route-owner-decisi.md)
 
 ## In progress
+- [donald] **claimed** 2026-11-28 ~09:15 (thread „Mehrtagestour in der App gegen Konzept prüfen“): multi-day one day at a time, step B (owner's yes 08:07) on branch `feat/multiday-one-day` – files PlanPanel.kt, MapScreen.kt, AppViewModel.kt, MultiDaySlice/MultiDayFlow, DayPick*, SaveState; merge after the captain's go.
 - [donald] **review + Pixel-Check, kein Branch** 2026-11-27 ~22:10 (thread „Einstellungen übersichtlicher gestalten“): review of `feat/multiday-days` done → `items/2026-11-27-multiday-days-review.md`; next: main on the Pixel + core flow once next-round-2 and Mehrtagestouren are on main.
 - [donald] **done, waits for merge step 6** 2026-11-27 ~22:00 (thread „Einstellungen übersichtlicher gestalten“ / Aktivitätsauswahl): **step bar in the wait window** (owner's yes 2026-11-27: pieces per routed leg, the running one creeps, no percent) – branch `feat/wait-step-bar` from main; files `core/…/domain/WaitProgress.kt` (hot), `state/…/progress/WaitRules.kt`, `app/…/progress/WaitWindow.kt`, RouteWait.kt + their screenshots. Merge only as queue step 6 after the captain's go (after aufraeumen-0.18.11). Also: map build onpath-germany PAUSED by owner's word ~21:53 via `onpath-germany-pause` (gate lock) – resume `systemctl --user stop onpath-germany-pause`.
 - [donald] **parity, beside sign without percent** (captain 2026-11-28, VISION „facts, not guesses“): the map's small background sign is a ring without a number (fills by areas ready / all), its details say „x von y Kartenbereichen“ and no server % in the rows. Planner done (`besidesign.ts`, string `web_bg_counted`); app `ui/progress/BesideSign.kt` the same.
@@ -98,7 +99,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - ~~[donald] Parity: multi-day panel like the planner~~ – **dropped** (owner 2026-11-28: the phone does not plan the whole trip, no multi-day panel in the app's plan sheet; see items/2026-11-28-app-multiday-one-day.md).
 - **[donald] Parity: „Berechnen“ on a not-routed plan is now a filled plan-blue button in the planner (owner 2026-11-27 „muss dicker“) – the app shows it as a blue text link after „Route nicht berechnet …“; make it the same filled PlanGo button.**
 - **[laptop] Planner: route type as a segment row (variant A) + multi-day day table and day view (owner 2026-11-27)…** → [detail](items/2026-11-27-planner-route-type-and-day-table.md)
-- **[donald] App: multi-day day table like the planner (owner 2026-11-27)…** → [detail](items/2026-11-27-app-day-table.md)
+- **[donald] App: multi-day day table like the planner (owner 2026-11-27)…** → [detail](items/2026-11-27-app-day-table.md) – only for the day list in Meine Touren (MD-2); no whole-trip day table in the plan sheet (MD-1, owner 2026-11-28).
 - **[donald] Shorter phone setup: first start asks only location; notifications + battery at the first tour; brand / saver hints only where affected (owner 2026-11-26)…** → [detail](items/2026-11-26-shorter-phone-setup.md)
 - **[donald + laptop] Context menus: one scheme for order and wording – Start · Stopp · Ziel, „Als …“, three groups (owner 2026-11-26)…** → [detail](items/2026-11-26-context-menus-wording.md)
 - **[donald + laptop] LordTriangel's PRs 20–22 – parked by the owner 2026-11-24 (to-do, other work first)…** → [detail](items/2026-11-24-lordtriangel-prs-20-22.md)
@@ -177,7 +178,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 ## Later
 - **[donald + laptop] Send a finished recorded tour (its GPX track) to the browser via sync – today only planned/imported routes sync (core/…/plansync/RouteItems.kt:47); owner 2026-11-28: later, „weil wir vielleicht damit irgendwas anderes machen möchten“.**
 - **Plain words: „Routing-Daten“ → „Karte und Wege“, explain the SAC scale, tidy error texts (owner 2026-11-26: later; colours, dark mode, English diagnostics stay for now)…** → [detail](items/2026-11-26-plain-words-cleanup.md)
-- **Multi-day tours – concept complete, nothing built…** → [detail](items/2026-11-17-multi-day-tours-concept-complete-nothing.md)
+- **Multi-day tours – built in stages 1–4; current concept MD-0 … MD-11 in `docs/design/multi-day-tours.md` §0 (owner 2026-11-28)** → history: [detail](items/2026-11-17-multi-day-tours-concept-complete-nothing.md)
 - **Plan sheet "a third lower"** – reached only ~23 % (d2885035); more needs touch targets smaller than 48 dp, owner
   said no (2026-10-31).
 - **(optional) Gradle shared remote build cache** (e.g. a GCS bucket) for donald + CI + cloud sessions.

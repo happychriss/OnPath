@@ -200,6 +200,11 @@ Gasthaus Giggelberg (night 1: Hotel, green bed) → Hochganghaus → Leiteralm �
 moon) → Saltaus, 41,3 km. Planned in the browser as a rule; for the pictures the days went into the saved route as the
 sync stores them (`onpath.private` `liste.md`, Note M).
 
+**Changes with the multi-day rebuild (owner 2026-11-28, `docs/design/multi-day-tours.md` §0):** the phone no longer
+shows the whole trip in the plan sheet (MD-1) – M01 shows today's build and is replaced after the rebuild by the day list
+in Meine Touren (`DayPickGermanTest_daySheet`) and one day in the plan sheet; the site must not present the phone as the
+place to plan a multi-day tour. M02 and M03 (one day followed, its nights on the map) stay.
+
 | Step | File | What you see | Key · used on | Snapshot (Paparazzi) | Change here → new picture |
 | --- | --- | --- | --- | --- | --- |
 | M01 | `M01-handy-mehrtagestour-tagesuebersicht` | plan sheet fully up, day 2 picked: profile with the day borders, one row per day (bed / moon / goal), "Tag 2 starten" | mehrtage-tage · – (new) | `MultiDayGermanTest_overview` | `ui/MultiDaySheet.kt`, `ui/PlanPanel.kt`, `ui/ElevationProfile.kt` |

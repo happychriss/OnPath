@@ -4,7 +4,9 @@ Owner decisions (private plan "App + browser, version 2", 2026-10-26): pair once
 a QR code, the app scans it once); phone and browser share a secret key that **never goes to the server**; plans are
 encrypted on the device and pass through a small **mailbox** (Cloudflare Worker + D1) both ways; the server sees no
 content, no names, no e-mail; an offline phone syncs when it is back; **the newer version wins, the older stays as a
-copy**; unpair on both sides. Not in phase 2: login, payment, quotas, recorded tracks, multi-day plans.
+copy**; unpair on both sides. Not in phase 2: login, payment, quotas, recorded tracks, multi-day plans. (Multi-day plans came later: they sync as
+plans with their days; a day changed on the phone with the same start and goal goes back into the trip –
+`docs/design/multi-day-tours.md` §0, MD-3 / MD-8.)
 
 Status: **live** – the mailbox runs in the planner host (`plan.onpath.earth/sync/v1`), the phone side is in the app
 (`plansync/`, Settings → Browser sync, §11), the shared code in `app/.../sync/` (compiled by the web engine,

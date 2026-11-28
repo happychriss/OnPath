@@ -29,8 +29,9 @@ The [browser planner](https://plan.onpath.earth/) offers a larger map, elevation
 flyover. Transfer a plan by QR code, or pair your browser and phone to sync saved plans without an account.
 
 **Tours over several days.** In the browser planner, turn a long route into a multi-day tour: set the nights along
-the way and see distance, climbing and time for each day. The tour syncs to your paired phone, where you pick a day
-and follow it; the maps along the whole route download by themselves on Wi-Fi.
+the way and see distance, climbing and time for each day. The tour syncs to your paired phone: in My routes it unfolds
+into its days, you open one day, adjust it if you like and follow it; the phone ticks off the days you have ridden.
+The maps for the tour are loaded to the phone before you set off.
 
 **Round trips from where you are.** Hold the map and choose "Round trip from here". Say how long you want to be out
 and how much climbing you want, and if you like an aim – a summit, water, a view, a hut or café, a castle or chapel.
