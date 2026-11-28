@@ -343,9 +343,9 @@ class MultiDaySliceTest {
                 return if (line.size == this@MultiDaySliceTest.line.size) TourMapAreas(cellsAll, wholeMissing, wholeMissing.size * 10_000_000L)
                 else TourMapAreas(cellsDay, dayMissing, dayMissing.size * 10_000_000L)
             }
-            override fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean) {
-                loads += "${want.joinToString { it.id }} line=${line.size} wifiWait=$wifiWait"
-                log += "loadTourMaps@${lanes.at} wifiWait=$wifiWait"
+            override fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>) {
+                loads += "${want.joinToString { it.id }} line=${line.size}"
+                log += "loadTourMaps@${lanes.at}"
             }
         }
 
@@ -528,8 +528,8 @@ class MultiDaySliceTest {
     @Test fun openingADayLoadsTheMapsOfAllDaysWithoutAQuestion() {
         val app = App(); app.wholeMissing = cellsAll
         app.rideDay2()
-        assertEquals("the whole trip's line, worked out on default, loaded on main", listOf("${cellsAll.joinToString { it.id }} line=${line.size} wifiWait=false"), app.loads)
-        assertTrue(app.log.contains("tourMaps(${line.size})@default")); assertTrue(app.log.contains("loadTourMaps@main wifiWait=false"))
+        assertEquals("the whole trip's line, worked out on default, loaded on main", listOf("${cellsAll.joinToString { it.id }} line=${line.size}"), app.loads)
+        assertTrue(app.log.contains("tourMaps(${line.size})@default")); assertTrue(app.log.contains("loadTourMaps@main"))
         assertEquals(cellsAll.map { it.id }.toSet(), prefs.multiDayMapCells)
         // all there: nothing loads
         val there = App(); there.rideDay2()

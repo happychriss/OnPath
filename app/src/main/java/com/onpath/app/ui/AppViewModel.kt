@@ -911,8 +911,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
     val routesGo: com.onpath.app.ui.routes.RoutesGoSlice = com.onpath.app.ui.routes.RoutesGoSlice(plan, routes, tour, planRoute, save, toursStore, links, routesFlow, mapCamera,
         routesHost, viewModelScope, Dispatchers.IO)
     /** My routes' day sheet of a saved multi-day route (owner 2026-11-27, [com.onpath.app.ui.routes.DayPickSlice] in `:state`). */
-    val dayPick = com.onpath.app.ui.routes.DayPickSlice(routes, toursStore, routesFlow, multiDay, planRoute, { recState.value != null },
-        { notices.sayError(it, NoticePlace.ROUTES) }, viewModelScope, Dispatchers.IO, Dispatchers.Default)
+    val dayPick = com.onpath.app.ui.routes.DayPickSlice(routes, toursStore, routesFlow, multiDay, planRoute, { recState.value != null }, { notices.sayError(it, NoticePlace.ROUTES) }, viewModelScope, Dispatchers.IO, Dispatchers.Default)
 
     // --- position / camera: the slice is `map` ([MapViewSlice]); screens read it as `vm.<slice>` (piece 21) ---
 

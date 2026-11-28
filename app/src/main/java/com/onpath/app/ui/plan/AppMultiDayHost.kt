@@ -26,6 +26,6 @@ class AppMultiDayHost(private val vm: AppViewModel, private val mapData: () -> M
     override fun showSaveProblem(text: String) { vm.save.problem = text }
     override fun tourChanged(id: Long) = Backups.tourChanged(vm.getApplication(), id)
     override fun syncChanged(why: String) = vm.sync.changed(why)
-    override fun tourMaps(line: List<GeoPoint>): TourMapAreas? = mapData().tourMaps(line)?.let { TourMapAreas(it.all, it.missing, it.bytes) }
-    override fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean) { mapData().loadTourMaps(want, line, wifiWait) }
+    override fun tourMaps(line: List<GeoPoint>): TourMapAreas? = mapData().tourMaps(line)
+    override fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>) { mapData().loadTourMaps(want, line) }
 }

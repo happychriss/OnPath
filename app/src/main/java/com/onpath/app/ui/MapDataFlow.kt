@@ -372,9 +372,7 @@ class MapDataFlow(
 
     /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
     fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false; multiDayModal = false; mapWaits.drop() }
-
-    /** The modal waits for the maps of all days of a multi-day trip ([loadTourMaps], MD-11): its own line. */
-    private var multiDayModal by mutableStateOf(false)
+    private var multiDayModal by mutableStateOf(false) // the modal waits for the maps of all days of a trip ([loadTourMaps], MD-11)
 
     // ---------------- routing data (loaded by the app itself, also on a fresh install) ----------------
 
@@ -405,25 +403,21 @@ class MapDataFlow(
      * server's sizes where known – [com.onpath.app.cells.TourCorridor]). Blocking geometry: call it off the main thread.
      * Null when it cannot be worked out (reported).
      */
-    fun tourMaps(line: List<GeoPoint>): TourMaps? = try {
+    fun tourMaps(line: List<GeoPoint>): TourMapAreas? = try {
         val m = com.onpath.app.cells.TourCorridor.of(line, cells::cellsAlong, cells::notOnPhone, cells::knownSize)
-        TourMaps(m.all, m.missing, m.bytes)
+        TourMapAreas(m.all, m.missing, m.bytes)
     } catch (e: Exception) {
         Problems.warn("cells", "Map areas of a multi-day tour unknown – nothing asked, nothing loaded", e); null
     }
 
     /**
-     * Loads the map areas [want] of a multi-day tour along [line] (MD-11, owner 2026-11-28: a day was opened – the maps of all
-     * days load by themselves) with their routing data: kept beside every plan's corridor
-     * ([com.onpath.app.cells.MapCells.tourCells]), shown in the normal map loading window with its multi-day line and its usual
-     * Wi-Fi / mobile data handling; [wifiWait] = they wait for Wi-Fi whatever the setting says.
-     * Returns the areas asked for.
+     * The map areas [want] of a multi-day trip along [line] load with their routing data (MD-11: a day was opened), kept beside
+     * every plan's corridor ([com.onpath.app.cells.MapCells.tourCells]), in the normal map loading window. The areas asked for.
      */
-    fun loadTourMaps(want: List<com.onpath.app.cells.CellId>, line: List<GeoPoint>, wifiWait: Boolean): List<com.onpath.app.cells.CellId> {
+    fun loadTourMaps(want: List<com.onpath.app.cells.CellId>, line: List<GeoPoint>): List<com.onpath.app.cells.CellId> {
         var asked = emptyList<com.onpath.app.cells.CellId>()
         safeCells("multi-day") {
             cells.tourCells = cells.tourCells + want
-            if (wifiWait) cells.tourWifiCells = cells.tourWifiCells + want
             asked = cells.request(want, com.onpath.app.cells.CellReason.CORRIDOR, ownPoint = false)
             tagLoads(asked, LoadTag(LoadWhy.ROUTE, line.lastOrNull()))
             // MD-11: in the normal map loading window (its Wi-Fi / mobile data handling as always), with the multi-day line
@@ -432,19 +426,11 @@ class MapDataFlow(
                 loadModalFor = loadModalFor + asked
                 multiDayModal = true
             }
-            Problems.info("cells", "Multi-day tour: ${asked.size} of ${want.size} map area(s) asked for" + if (wifiWait) " (waiting for Wi-Fi)" else "")
+            Problems.info("cells", "Multi-day tour: ${asked.size} of ${want.size} map area(s) asked for")
         }
         safeRouting("multi-day") { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line, com.onpath.app.cells.TourCorridor.CORRIDOR_M)) }
         return asked
     }
-
-    /** The kept multi-day areas after a restart ([loadTourMaps]); [wifi] = those that wait for Wi-Fi. */
-    fun restoreTourMaps(all: Set<com.onpath.app.cells.CellId>, wifi: Set<com.onpath.app.cells.CellId>) = safeCells("multi-day") {
-        cells.tourCells = all; cells.tourWifiCells = wifi
-    }
-
-    /** What [tourMaps] found: the corridor's areas, those not on the phone and about how many bytes they are. */
-    class TourMaps(val all: List<com.onpath.app.cells.CellId>, val missing: List<com.onpath.app.cells.CellId>, val bytes: Long)
 
     /** Routing data in the corridor of a route (the map's own T4 trigger covers the regions). Never in the modal. */
     fun routingForLine(keys: List<String>) = safeRouting("route") {
