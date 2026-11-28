@@ -103,6 +103,8 @@ data class SearchActions(
     val onClearRecent: () -> Unit = {},
     /** „Alle Favoriten ›“. */
     val onAllFavourites: () -> Unit = {},
+    /** A favourite row's ★: true = keep it again, false = no longer a favourite (the row stays, [favouritesGroup]). */
+    val onFavourite: (Place, Boolean) -> Unit = { _, _ -> },
 )
 
 /**
@@ -244,13 +246,13 @@ private fun groupShape(i: Int, n: Int): RoundedCornerShape {
 
 /** A row's frame in a light rounded group: 12 dp from the screen's edge, a fine line above every row but the first. */
 @Composable
-private fun groupRow(i: Int, n: Int): Modifier {
+internal fun groupRow(i: Int, n: Int): Modifier {
     val shape = groupShape(i, n)
     return Modifier.padding(horizontal = 12.dp).clip(shape).background(OnPathColors.CardPaper, shape)
 }
 
 @Composable
-private fun GroupLine(i: Int) { if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 12.dp).padding(start = 58.dp), color = OnPathColors.Line) }
+internal fun GroupLine(i: Int) { if (i > 0) HorizontalDivider(Modifier.padding(horizontal = 12.dp).padding(start = 58.dp), color = OnPathColors.Line) }
 
 /**
  * The empty search (owner 2026-11-15 compact sketch; 2026-11-27 variant A): „Favoriten“ (at most five, „Alle Favoriten“ in its head), „Zuletzt gesucht“
@@ -260,17 +262,7 @@ private fun GroupLine(i: Int) { if (i > 0) HorizontalDivider(Modifier.padding(ho
 private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
     // nothing kept yet: an empty list – no explaining text (owner 2026-11-27)
     if (ui.recent.isEmpty() && ui.favourites.isEmpty()) return
-    if (ui.favourites.isNotEmpty()) {
-        item {
-            GroupHead(str(Res.string.search_favourites),
-                if (ui.moreFavourites > 0) str(Res.string.search_all_favourites) to actions.onAllFavourites else null)
-        }
-        val n = ui.favourites.size
-        itemsIndexed(ui.favourites) { i, h ->
-            GroupLine(i)
-            Box(groupRow(i, n)) { CompactRow(h, h.place.title(), compactLine(h), actions.onPick) { KindIcon(h.place, size = 30) } }
-        }
-    }
+    favouritesGroup(ui, actions)
     if (ui.recent.isNotEmpty()) {
         item { GroupHead(str(Res.string.search_recent), str(Res.string.search_clear_recent) to actions.onClearRecent) }
         val n = ui.recent.size
@@ -291,7 +283,7 @@ private fun LazyListScope.recentSection(ui: SearchUi, actions: SearchActions) {
 
 /** A group's head: the title (16, bold, sentence case – like Apple Maps) and an optional green word at the end. */
 @Composable
-private fun GroupHead(text: String, action: Pair<String, () -> Unit>?) {
+internal fun GroupHead(text: String, action: Pair<String, () -> Unit>?) {
     Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 12.dp).heightIn(min = 40.dp),
         verticalAlignment = Alignment.CenterVertically) {
         Text(text, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f).semantics { heading() })
@@ -308,22 +300,28 @@ internal fun compactLine(h: SearchHit, withTitle: Boolean = false): String = bui
 
 /**
  * One line, ≥ 48 dp: the sign, [name] (16, medium) and the grey [line] (14) beside it – the grey part is cut first, the
- * name only when it alone does not fit.
+ * name only when it alone does not fit. [trailing] (a favourite's ★, 48 dp) sits at the end, flush with the row.
  */
 @Composable
-private fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place) -> Unit, icon: @Composable () -> Unit) {
+internal fun CompactRow(h: SearchHit, name: String, line: String, onPick: (Place) -> Unit,
+                        trailing: (@Composable () -> Unit)? = null, icon: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 48.dp).padding(horizontal = 12.dp, vertical = 4.dp),
+        Modifier.fillMaxWidth().clickable { onPick(h.place) }.heightIn(min = 48.dp)
+            .padding(start = 12.dp, end = if (trailing != null) 0.dp else 12.dp, top = if (trailing != null) 0.dp else 4.dp,
+                bottom = if (trailing != null) 0.dp else 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Box(Modifier.size(30.dp), contentAlignment = Alignment.Center) { icon() }
         Spacer(Modifier.width(16.dp))
-        // the name is measured first (unweighted), the grey part takes what is left
-        Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
-            overflow = TextOverflow.Ellipsis)
-        Spacer(Modifier.width(8.dp))
-        Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        // the name is measured first (unweighted), the grey part takes what is left – both within the room left of [trailing]
+        Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            Text(name, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.Medium, maxLines = 1,
+                overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.width(8.dp))
+            Text(line, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+        }
+        trailing?.invoke()
     }
 }
 

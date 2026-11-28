@@ -32,6 +32,8 @@ fun SearchHost(vm: AppViewModel) {
                 onGoogle = { q -> openGoogle(ctx, GoogleSearchLink.url(q)) },
                 onClearRecent = s::clearRecent,
                 onAllFavourites = s::showAllFavourites,
+                // the ★ of a favourite row: stored at once (sync tombstone, backup), the row stays until the search is left
+                onFavourite = { p, on -> vm.keptPlaces.setFavourite(p, on); s.favouriteTapped(p, on) },
             ),
         )
     }
