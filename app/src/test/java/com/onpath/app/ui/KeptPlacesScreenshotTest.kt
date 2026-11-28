@@ -21,7 +21,7 @@ import java.util.Locale
 
 /**
  * „Orte merken“ (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): the empty search with ★ Favoriten (five, then
- * „Alle Favoriten ›“) and Zuletzt gesucht – one-line rows; the held place's menu with „☆ Merken“ and its set state. A
+ * „Alle Favoriten ›“; each row with My routes' gold ★, one tapped off – owner 2026-11-28) and Zuletzt gesucht – one-line rows; the held place's menu with „☆ Merken“ and its set state. A
  * home in the state is never drawn – the app has no Zuhause (2026-11-28).
  * English, German, German at a larger font.
  */
@@ -42,9 +42,11 @@ object KeptPlacesShots {
         Place("m3", "Zons", "place", 51.12, 6.85, sub = "town", source = Place.Source.MAP) to 16_000.0,
     ).map { (p, d) -> hit(p, d) }
 
-    fun search(paparazzi: Paparazzi) = paparazzi.snapshot {
+    /** [unstarred]: the second favourite's ★ tapped off – the row stays, its star empty (owner 2026-11-28). */
+    fun search(paparazzi: Paparazzi, unstarred: Boolean = false) = paparazzi.snapshot {
         OnPathTheme {
-            SearchScreen(SearchUi(home = hit(home, 4_200.0), favourites = favourites, moreFavourites = 3, recent = recent),
+            SearchScreen(SearchUi(home = hit(home, 4_200.0), favourites = favourites, moreFavourites = 3, recent = recent,
+                unstarred = if (unstarred) listOf(favourites[1].place) else emptyList()),
                 SearchActions(), autoFocus = false)
         }
     }
@@ -68,6 +70,7 @@ open class KeptPlacesScreenshotTest {
     )
 
     @Test fun searchKeptPlaces() = KeptPlacesShots.search(paparazzi)
+    @Test fun searchKeptPlacesOneUnstarred() = KeptPlacesShots.search(paparazzi, unstarred = true)
     @Test fun placeMenuKeep() = KeptPlacesShots.menu(paparazzi, set = false)
     @Test fun placeMenuKept() = KeptPlacesShots.menu(paparazzi, set = true)
 }
@@ -88,5 +91,6 @@ class KeptPlacesLargeFontGermanTest {
     @After fun back() = Locale.setDefault(before)
 
     @Test fun searchKeptPlaces() = KeptPlacesShots.search(paparazzi)
+    @Test fun searchKeptPlacesOneUnstarred() = KeptPlacesShots.search(paparazzi, unstarred = true)
     @Test fun placeMenuKeep() = KeptPlacesShots.menu(paparazzi, set = false)
 }
