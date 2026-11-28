@@ -35,6 +35,7 @@ await clickAt(11.1600, 46.6766);
 await page.waitForSelector('.pointmenu'); // first click: New route – Start here · Go here
 await page.click('.pointmenu button:first-of-type'); await page.waitForTimeout(300);
 await page.waitForFunction(() => document.querySelectorAll('.pin').length === 1);
+check(await page.$eval('#q', (q) => q.placeholder) === 'Find a destination', `only the start set: the search asks for the goal like the app's ThumbGoalRow (${await page.$eval('#q', (q) => q.placeholder)})`);
 // empty map (no POI symbol within reach) and a POI beside it
 const c2 = [11.1265, 46.6880], c3 = [11.1425, 46.7000]; // c3: near equal both on straight lines and on the paths (the hold asks)
 // the POI part needs the map cells' POIs (a cell store as 2nd argument / the server's data); CI's short run has only
@@ -162,6 +163,8 @@ await page.click('#q');
 await page.waitForSelector('#results .searchchips .chip', { timeout: 10_000 }).catch(() => {});
 const chips = await page.$$eval('#results .searchchips .chip', (b) => b.map((x) => x.textContent));
 check(chips.join('|') === 'Places|Sights|Food|Water|Transit|Parking|Sleep', `search chips as in the app: ${chips.join(' · ')}`);
+const discs = await page.$$eval('#results .searchchips .chip .disc', (d) => d.map((x) => getComputedStyle(x).backgroundColor));
+check(discs.length === 7 && new Set(discs).size >= 5, `the app's round coloured signs, one per category (${discs.join(' ')})`);
 await page.click('#results .chip[data-cat="PARKING"]');
 await page.waitForFunction(() => document.querySelector('#results .chip[data-cat="PARKING"]')?.getAttribute('aria-pressed') === 'true', null, { timeout: 10_000 }).catch(() => {});
 const on = await page.getAttribute('#results .chip[data-cat="PARKING"]', 'aria-pressed');

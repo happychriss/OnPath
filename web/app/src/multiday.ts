@@ -433,7 +433,7 @@ export class MultiDay {
     const max = this.view?.rows.length ?? 0;
     const k = n == null || max === 0 ? null : Math.max(1, Math.min(max, n));
     this.select(k, fit);
-    if (k == null) { const q = document.getElementById('q') as HTMLInputElement | null; if (q) q.placeholder = ''; }
+    if (k == null) { const q = document.getElementById('q') as HTMLInputElement | null; if (q) q.placeholder = t('search_placeholder'); }
     this.overview();
   }
 

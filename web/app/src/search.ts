@@ -10,7 +10,7 @@
 import * as maplibregl from 'maplibre-gl';
 import type { EngineClient } from './engine/client';
 import type { Hit } from './engine/types';
-import { icon } from './icons';
+import { icon, type IconName } from './icons';
 import { t } from './i18n';
 import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
 import { holdMenu, placeRowGroup, type MenuItem } from './menus';
@@ -84,6 +84,9 @@ export interface PlaceCard { close(): void; isOpen(): boolean; removePin(): void
 
 const phone = () => matchMedia('(max-width: 700px)').matches;
 
+/** A category's sign (the app's SearchScreen Category.sign). */
+const SIGN: Record<string, IconName> = { PLACES: 'place', SIGHTS: 'landscape', FOOD: 'restaurant', WATER: 'waterDrop', TRANSIT: 'train', PARKING: 'localParking', SLEEP: 'hotel' };
+
 const DEBOUNCE_MS = 350; // the app's SearchState.DEBOUNCE_MS (shared; the keystroke timer needs it at once, so the page keeps the number)
 
 /**
@@ -113,17 +116,20 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   /** The chip picked (the app's SearchKinds.Category name), '' = none; the six chips with their labels from the engine. */
   let category = '';
   /** [name, label, kinds] – the kinds are the app's SearchKinds.Category.kinds. */
-  let chips: [string, string, string[]][] | null = null;
-  const loadChips = async () => { chips ??= JSON.parse(await host.engine.call('searchCategories')) as [string, string, string[]][]; return chips; };
+  let chips: [string, string, string[], string][] | null = null;
+  const loadChips = async () => { chips ??= JSON.parse(await host.engine.call('searchCategories')) as [string, string, string[], string][]; return chips; };
   /** The app's chip row (Orte · Essen · Sehenswert · Wasser · Bahn · Parken): one scrolling row, a click picks / unpicks. */
-  const chipRow = () => `<div class="searchchips" role="toolbar">${(chips ?? []).map(([k, label]) =>
-    `<button class="chip${k === category ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === category}">${esc(label)}</button>`).join('')}</div>`;
+  // since 2026-11-27 the app's row of round coloured signs (SearchScreen CategorySign – the map's POI colours, a word under
+  // each; the chosen one with a green ring, the others paler): the same filter, the same order (SearchKinds.Category)
+  const chipRow = () => `<div class="searchchips signs${category ? ' picked' : ''}" role="toolbar">${(chips ?? []).map(([k, label, , color]) =>
+    `<button class="chip${k === category ? ' on' : ''}" data-cat="${k}" aria-pressed="${k === category}"><span class="disc" style="background:${color}">${icon(SIGN[k] ?? 'place', 22)}</span><span class="word">${esc(label)}</span></button>`).join('')}</div>`;
   /**
    * A chip tap shows at once, before the engine answers (owner's bug 2026-11-19 „München“ + „Orte“: a slow answer left
    * the chip looking dead): the chip lights up (the app's FilterChip selected = ui.category) and the rows on screen are
    * filtered by their kind; unpicked, they all show again. The engine's answer then replaces the list.
    */
   const showChip = () => {
+    results.querySelector('.searchchips')?.classList.toggle('picked', !!category);
     results.querySelectorAll<HTMLButtonElement>('.searchchips .chip').forEach((c) => {
       const on = c.dataset.cat === category;
       c.classList.toggle('on', on); c.setAttribute('aria-pressed', String(on));

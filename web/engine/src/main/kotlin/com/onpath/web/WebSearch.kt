@@ -80,7 +80,7 @@ object WebSearch {
      * – the kinds let the page filter the rows on screen at once on a chip tap, before the engine answers.
      */
     fun categories(): String = SearchKinds.Category.entries.joinToString(",", "[", "]") { c ->
-        "[" + s(c.name) + "," + s(c.label) + "," + c.kinds.joinToString(",", "[", "]") { s(it) } + "]"
+        "[" + s(c.name) + "," + s(c.label) + "," + c.kinds.joinToString(",", "[", "]") { s(it) } + "," + s(color(SIGN_KIND.getValue(c))) + "]"
     }
 
     /** The search closed (or the text and chip emptied): the next one starts afresh, as the app's inactive search. */
@@ -176,6 +176,11 @@ object WebSearch {
         if (h.nearRoute) append(" · near your route")
         if (h.place.source == Place.Source.ONLINE) append(" · online")
     }
+
+    /** A category's sign colour: the map's colour of a kind it shows (the app's SearchScreen Category.sign). */
+    private val SIGN_KIND = mapOf(SearchKinds.Category.PLACES to "place", SearchKinds.Category.SIGHTS to "viewpoint",
+        SearchKinds.Category.FOOD to "restaurant", SearchKinds.Category.WATER to "water", SearchKinds.Category.TRANSIT to "train",
+        SearchKinds.Category.PARKING to "parking", SearchKinds.Category.SLEEP to "hotel")
 
     private fun color(kind: String): String {
         val v = SearchKinds.argb(kind) and 0xFFFFFF

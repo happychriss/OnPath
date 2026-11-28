@@ -834,6 +834,8 @@ async function drawPoints() {
   $<HTMLButtonElement>('reverse').hidden = n < 2 || !(r.canReverse ?? true);
   $('planActions').classList.toggle('none', loop.hidden === true && $('reverse').hidden === true); // no empty row
   $('pointsSection').hidden = n === 0;
+  // the app's ThumbGoalRow (owner 2026-11-27 „ja passt“): with only the start set the search field asks for the goal
+  { const q = $<HTMLInputElement>('q'); if (!multiDay?.isTour) { const w = t(n === 1 ? 'plan_search_goal' : 'search_placeholder'); q.placeholder = w; q.setAttribute('aria-label', w); } }
   sheetSteps.refresh(); // the phone's chevron says „3 Punkte“
   $('planActions').hidden = n === 0; // the app's RouteRules.canClear: something to close
   $<HTMLButtonElement>('newPlan').disabled = n === 0; // New plan: the same rule as ✕ Neu planen
