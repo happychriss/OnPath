@@ -203,7 +203,7 @@ fun SettingsScreen(
             SettingsPage.OFFLINE_MAPS -> offlineMaps != null
             SettingsPage.BACKUP -> backup != null
             SettingsPage.SYNC -> sync != null
-            SettingsPage.BACKUP_SYNC -> backup != null || sync != null
+            SettingsPage.BACKUP_SYNC -> backup != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
             SettingsPage.PHONE -> phoneChecks != null
@@ -249,9 +249,12 @@ fun SettingsScreen(
                     // Navigation on top (no heading) while Phone setup – a row on it – has a step open (owner 2026-10-30)
                     SettingsSummary.groups(available, phoneChecks).forEachIndexed { gi, (kind, group) ->
                         val app = kind == TopicGroup.APP
+                        // the browser's own card above "Your settings" (owner 2026-11-28, P1): status + the pairing window
+                        val card = kind == TopicGroup.YOURS && sync != null
+                        if (card) sync?.let { sy -> item { PairTopicCard(sy, top = if (gi > 0) 20.dp else 4.dp) { onPage(SettingsPage.SYNC) } } }
                         if (kind != TopicGroup.URGENT) item {
                             Column { SettingsGroupHeader(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours),
-                                top = if (gi > 0) 20.dp else 4.dp)
+                                top = if (gi > 0 || card) 20.dp else 4.dp)
                                 Spacer(Modifier.height(8.dp)) }
                         } else item { Spacer(Modifier.height(4.dp)) }
                         item {
@@ -263,7 +266,7 @@ fun SettingsScreen(
                                             SettingsPage.PLAN -> SettingsSummary.plan(settings, activity)
                                             SettingsPage.MAP -> SettingsSummary.mapPage(settings, offlineMaps)
                                             SettingsPage.NAVIGATION -> SettingsSummary.navigationPage(settings, phoneChecks)
-                                            SettingsPage.BACKUP_SYNC -> SettingsSummary.backupSync(backup, sync, now)
+                                            SettingsPage.BACKUP -> backup?.let { SettingsSummary.backup(it, now) } ?: Summary("")
                                             SettingsPage.PRIVACY -> SettingsSummary.privacy
                                             else -> SettingsSummary.aboutPage(version, update, problems.takeIf { diagnostics }, diagnosticsSeenMs)
                                         }
@@ -314,19 +317,10 @@ fun SettingsScreen(
                             com.onpath.app.ui.setup.PhoneSetupSection(phoneChecks, phone, onPhoneFix,
                                 onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) })
                         }
-                        // Backup & browser: the two short sections on one page, each under its heading
                         // the pairing window „Mit Browser verbinden“ (owner 2026-11-28, A-018): only the browser part
                         SettingsPage.SYNC -> if (sync != null) pairWindow(sync, syncCb, now)
-                        SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP -> {
-                            if (backup != null) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SettingsGroupHeader(SettingsPage.BACKUP.title)
-                                BackupSection(backup, backupCb)
-                            } }
-                            if (sync != null) item { Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                SettingsGroupHeader(SettingsPage.SYNC.title)
-                                SyncSection(sync, syncCb, now)
-                            } }
-                        }
+                        // Backup (owner 2026-11-28: the browser has its own window; „Sicherung & Browser“ is an alias of it)
+                        SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
                             item { DiagnosticsSection(diagnosticsBusy, onExportDiagnostics, problems, onClearProblems, language.active, routingInfo, problemsOpen) }
                             if (devTools) item {

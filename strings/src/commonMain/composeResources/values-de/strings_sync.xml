@@ -11,8 +11,11 @@
     <string name="sync_menu_unpaired_browser">Im Browser getrennt</string>
     <string name="sync_waiting_browser">Wartet auf den Browser …</string>
     <string name="sync_menu_synced">abgeglichen %1$s</string>
-    <string name="sync_intro">Deine gespeicherten Pläne und importierten GPX-Tracks können auch im Web-Planer auf deinem Computer sein – in beide Richtungen, verschlüsselt, bevor sie das Gerät verlassen.</string>
-    <string name="sync_steps">Öffne auf dem Computer plan.onpath.earth und klicke oben auf „Handy verbinden“. Scanne den Code dort mit der Kamera deines Handys. OnPath öffnet sich (sonst im Browser auf „In OnPath öffnen“ tippen) und zeigt sechs Prüfziffern.</string>
+    <string name="sync_window_steps">Öffne am Computer plan.onpath.earth, klicke auf „Handy verbinden“ und scanne den Code.</string>
+    <string name="sync_window_fallback">Öffnet sich der Browser statt OnPath: dort auf „In OnPath öffnen“ tippen.</string>
+    <string name="sync_window_note">Deine Pläne und GPX-Tracks auch im Web-Planer – verschlüsselt.</string>
+    <string name="sync_card_off">Nicht verbunden</string>
+    <string name="sync_card_on">Verbunden</string>
     <string name="sync_open_camera">Kamera öffnen</string>
     <string name="sync_no_camera">Keine Kamera-App gefunden – öffne die Kamera selbst und scanne den Code.</string>
     <string name="sync_pair_hint">Öffne am PC plan.onpath.earth → ‚Handy verbinden‘ und scanne den Code</string>

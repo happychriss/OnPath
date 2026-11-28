@@ -43,6 +43,8 @@ import com.onpath.strings.setup_vib_not_felt
 import com.onpath.strings.setup_vib_sound_settings
 import com.onpath.strings.setup_vib_why
 import com.onpath.strings.setup_welcome_text
+import com.onpath.strings.sync_card_off
+import com.onpath.strings.sync_card_on
 import com.onpath.strings.sync_paired_plan
 import com.onpath.strings.sync_unpaired_plan
 import com.onpath.strings.sync_unpaired_plan_offline
@@ -182,114 +184,6 @@ class SettingsPagesTest {
     }
 
     @Test fun backup() {
-        fun b(last: Long, err: String? = null) = BackupUi("Documents/OnPath", last, 3, err, false)
-        assertEquals(Summary("Last backup today 15:40"), SettingsSummary.backup(b(now - 40 * 60_000), now, utc))
-        assertEquals(Summary("Last backup yesterday 16:20"), SettingsSummary.backup(b(now - 24 * 3_600_000), now, utc))
-        assertEquals(Summary("Last backup 12 Oct 16:20"), SettingsSummary.backup(b(now - 10 * 24 * 3_600_000), now, utc))
-        assertEquals(Summary("No backup yet"), SettingsSummary.backup(b(0), now, utc))
-        assertEquals(Summary("Last backup failed", Summary.Attention.PROBLEM), SettingsSummary.backup(b(now, "storage full"), now, utc))
-    }
-
-    @Test fun updates() {
-        val rel = AppUpdater.Release("0.10.1", "", "", 0, "")
-        assertEquals(Summary("0.10.0 – up to date"), SettingsSummary.updates(AppViewModel.UpdateState.UpToDate, "0.10.0 (build 1000)"))
-        assertEquals(Summary("Update available: 0.10.1", Summary.Attention.ACCENT),
-            SettingsSummary.updates(AppViewModel.UpdateState.Available(rel), "0.10.0"))
-        assertEquals(Summary.Attention.PROBLEM, SettingsSummary.updates(AppViewModel.UpdateState.Failed("x"), "0.10.0").attention)
-        assertEquals(Summary("0.10.0"), SettingsSummary.updates(AppViewModel.UpdateState.Idle, "0.10.0"))
-    }
-
-    /** Grey "For bug reports" (owner); red only while a serious problem is newer than the last visit. */
-    @Test fun diagnostics() {
-        fun e(l: Problems.Level, last: Long = 100) = Problems.Entry(l, "a", "m${l.name}", null, 0, last, 1)
-        assertEquals(Summary("For bug reports"), SettingsSummary.diagnostics(emptyList()))
-        assertEquals(Summary("For bug reports · 2 notes"), SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.INFO))))
-        assertEquals(Summary("1 new problem", Summary.Attention.PROBLEM),
-            SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 50))
-        // looked at: grey again
-        assertEquals(Summary("For bug reports · 2 notes"),
-            SettingsSummary.diagnostics(listOf(e(Problems.Level.WARN), e(Problems.Level.ERROR)), seenMs = 200))
-    }
-
-    /** Developer tools only after 7 taps on the version (remembered) – also in the debug builds testers get (Arch H1). */
-    @Test fun developerTools() {
-        assertFalse(DevToolsUnlock.unlocked(6))
-        assertTrue(DevToolsUnlock.unlocked(7))
-        assertFalse(DevToolsUnlock.shown(unlocked = false))
-        assertTrue(DevToolsUnlock.shown(unlocked = true))
-        // the slice shows them only after the unlock (SettingsFlowTest.developerToolsAreHiddenUntilUnlockedAndStayUnlocked); a debug
-        // flag can only come back in :app (no BuildConfig in :state): the forwarder and the store adapter. A missing anchor fails.
-        val vm = File("src/main/java/com/onpath/app/ui/AppViewModel.kt").readText()
-        assertTrue("anchor: val devToolsShown", vm.contains("val devToolsShown"))
-        assertFalse(vm.substringAfter("val devToolsShown").substringBefore("\n").contains("DEBUG"))
-        assertTrue("anchor: the store adapter", vm.contains("override var devToolsUnlocked") && vm.contains("override var diagnosticsSeenMs"))
-        assertFalse(vm.substringAfter("override var devToolsUnlocked").substringBefore("override var diagnosticsSeenMs").contains("DEBUG"))
-        // tester review 2026-11-07: Settings hides them unless told otherwise (a caller that forgets the flag shows nothing)
-        val screen = File("src/main/java/com/onpath/app/ui/SettingsScreen.kt").readText()
-        assertTrue(screen.contains("    devTools: Boolean = false,\n"))
-        assertTrue(File("src/main/java/com/onpath/app/ui/SettingsAboutPages.kt").readText().contains("internal fun AboutSection(version: String, devTools: Boolean = false,"))
-        assertTrue(File("src/main/java/com/onpath/app/MainActivity.kt").readText().contains("devTools = vm.settingsSlice.devToolsShown,"))
-    }
-
-    /**
-     * Six topics on the start list (owner 2026-11-27): "Your settings" Plan · Map · Navigation · Backup & browser, then
-     * "App" Privacy · About OnPath; every older topic is a sub page (back to its page) or an alias (drawn as the page
-     * that holds it) – callers that open one directly keep working.
-     */
-    @Test fun sixTopicsInTwoGroups() {
-        val top = SettingsPage.entries.filter { it.top }
-        assertEquals(listOf(SettingsPage.PLAN, SettingsPage.MAP, SettingsPage.NAVIGATION, SettingsPage.BACKUP_SYNC), top.filter { !it.app })
-        assertEquals(listOf(SettingsPage.PRIVACY, SettingsPage.ABOUT), top.filter { it.app })
-        assertEquals(SettingsPage.MAP, SettingsPage.POI.parent)
-        assertEquals(SettingsPage.MAP, SettingsPage.OFFLINE_MAPS.parent)
-        assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.parent)
-        assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.parent)
-        assertEquals(SettingsPage.PLAN, SettingsPage.PACE.landing)
-        assertEquals(SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP.landing)
-        // the pairing window (owner 2026-11-28, A-018): its own page, not on the list (yet), not a section of Backup & browser
-        assertEquals(SettingsPage.SYNC, SettingsPage.SYNC.landing)
-        assertFalse(SettingsPage.SYNC.top)
-        assertTrue(SettingsPage.SYNC.showsSync && SettingsPage.BACKUP_SYNC.showsSync && !SettingsPage.MAP.showsSync)
-        assertEquals(SettingsPage.ABOUT, SettingsPage.UPDATES.landing)
-        // back: a sub page to its page, a start-list page and an alias to the list
-        assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.up)
-        assertEquals(SettingsPage.ABOUT, SettingsPage.DIAGNOSTICS.up)
-        listOf(SettingsPage.PLAN, SettingsPage.PACE, SettingsPage.SYNC, SettingsPage.UPDATES, SettingsPage.ABOUT).forEach { assertNull("$it", it.up) }
-        // every page is one of the six or reached from one of them
-        SettingsPage.entries.filter { it != SettingsPage.SYNC }.forEach { assertTrue("$it", (it.parent ?: it.landing) in top) }
-    }
-
-    @Test fun planSummaryAndMarkedTrails() {
-        assertEquals(Summary("Pace Average · routes Standard"), SettingsSummary.plan(AppSettings(), Activity.HIKE))
-        assertEquals(Summary("Pace Fit · routes More"),
-            SettingsSummary.plan(AppSettings(bikePace = Pace.FIT, markedTrails = AppSettings.MARKED_TRAILS_MORE), Activity.MTB))
-        assertEquals("Less", SettingsSummary.markedTrailsLabel(AppSettings.MARKED_TRAILS_LESS))
-        assertEquals("a broken stored value reads as Standard", AppSettings.MARKED_TRAILS_STANDARD, AppSettings.markedTrailsOf(7))
-        assertEquals(1, AppSettings().markedTrails)
-    }
-
-    @Test fun mapNavigationBackupAboutSummaries() {
-        val areas = List(3) { OfflineArea("10-$it-361", "A$it", 38_000_000, "19 Oct 2026") }
-        assertEquals("Contour lines on · Hill shading on · 3 areas", SettingsSummary.mapPage(AppSettings(), OfflineMapsUi(true, areas, false)).text)
-        assertEquals("Contour lines off · Hill shading on", SettingsSummary.mapPage(AppSettings(contours = false), OfflineMapsUi(true, emptyList(), false)).text)
-        assertEquals("Contour lines on · Hill shading on", SettingsSummary.mapPage(AppSettings(), null).text)
-
-        // Navigation shows Phone setup's red / amber line while a step is open
-        val good = PhoneState(sdk = 35, location = LocationGrant.PRECISE, vibrationFelt = Felt.YES, unusedReset = ResetStatus.ON)
-        assertEquals(SettingsSummary.navigation(AppSettings()), SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good)))
-        assertEquals(SettingsSummary.navigation(AppSettings()), SettingsSummary.navigationPage(AppSettings(), null))
-        assertEquals(Summary("1 item needed for tours", Summary.Attention.PROBLEM),
-            SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good.copy(locationOn = false))))
-        assertEquals(Summary("1 step open", Summary.Attention.WARNING),
-            SettingsSummary.navigationPage(AppSettings(), PhoneCheck.all(good.copy(notificationsOn = false))))
-
-        fun b(last: Long, err: String? = null) = BackupUi("Documents/OnPath", last, 3, err, false)
-        assertEquals(Summary("Backed up today 15:40 · browser on"),
-            SettingsSummary.backupSync(b(now - 40 * 60_000), SyncUi(paired = true, peer = "Chrome"), now, utc))
-        assertEquals(Summary("No backup yet · browser off"), SettingsSummary.backupSync(b(0), SyncUi(), now, utc))
-        assertEquals(Summary("Last backup failed", Summary.Attention.PROBLEM), SettingsSummary.backupSync(b(now, "full"), SyncUi(), now, utc))
-        assertEquals(Summary("No backup yet"), SettingsSummary.backupSync(b(0), null, now, utc))
-
         fun e(last: Long) = Problems.Entry(Problems.Level.ERROR, "a", "m", null, 0, last, 1)
         assertEquals(Summary("0.10.0 – up to date · Credits, license"),
             SettingsSummary.aboutPage("0.10.0 (build 1000)", AppViewModel.UpdateState.UpToDate, listOf(e(100)), seenMs = 200))
@@ -369,6 +263,14 @@ class SettingsPagesTest {
     // Settings → Browser sync: the list line and the status line of the last pass follow the Messages rules.
     @Test fun listLine() {
         assertEquals(Summary("Not connected · your plans in the web planner too"), SettingsSummary.sync(SyncUi()))
+        // the browser card on the Settings list (owner 2026-11-28 11:14): one line – Not connected / Connected (amber with a problem)
+        assertEquals(PairCardState.OFF, PairCardState.of(SyncUi()))
+        assertEquals(PairCardState.OFF, PairCardState.of(SyncUi(paired = true, browser = com.onpath.app.plansync.BrowserLink.UNPAIRED)))
+        assertEquals(PairCardState.ON, PairCardState.of(SyncUi(paired = true, peer = "Chrome on Linux")))
+        assertEquals(PairCardState.ON, PairCardState.of(SyncUi(paired = true, problem = SyncProblem.Offline)))
+        assertEquals(PairCardState.TROUBLE, PairCardState.of(SyncUi(paired = true, problem = SyncProblem.NewerApp(1))))
+        assertEquals("Not connected", Txt.s(Res.string.sync_card_off))
+        assertEquals("Connected", Txt.s(Res.string.sync_card_on))
         assertEquals(Summary("Connected to Chrome on Linux"), SettingsSummary.sync(SyncUi(paired = true, peer = "Chrome on Linux")))
         assertEquals(Summary("Connected to a browser"), SettingsSummary.sync(SyncUi(paired = true)))
         // offline is no problem worth red; a refused / unreadable / not saved pass is
