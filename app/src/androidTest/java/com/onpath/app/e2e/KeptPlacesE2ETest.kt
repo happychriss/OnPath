@@ -35,7 +35,10 @@ class KeptPlacesE2ETest : E2EBase() {
         val cafe = Place("kept-1", "Café Kept", "cafe", MERAN_LAT, MERAN_LON)
         scenario.onActivity { vm(it).searchFlow.pickSearchResult(cafe) }
         waitUntil("the picked place's menu", 20_000) { read { it.placeMenus.poiMenu } != null }
-
+        // the found place's menu opens while the map moves it into view (ABOVE / BELOW): a tap on the row before it rests
+        // lands on the row that was there a moment ago (CI 2026-11-28: „Rundtouren vorschlagen“ instead of „Merken“)
+        assertNotNull(findFresh(By.text(Txt.s(Res.string.place_favourite_add)), 5_000))
+        pause(1_000, "the menu rests where the map put it")
         clickText(Txt.s(Res.string.place_favourite_add))
         assertNotNull("a tap keeps it: „Gemerkt“", findFresh(By.text(Txt.s(Res.string.place_favourite_on)), 5_000))
         assertTrue("no „Set as home“ in the app", goneFresh(By.text(Txt.s(Res.string.place_home_set)), 2_000))
