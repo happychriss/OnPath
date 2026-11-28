@@ -112,6 +112,7 @@ fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit) {
                 Text("‹ " + str(Res.string.multiday_all_days))
             }
         }
-        if (head.leavesTrip) InfoLine(str(Res.string.multiday_own_tour))
+        // why the day leaves its trip – whole, also at a large font (it was cut there with „…“)
+        if (head.leavesTrip) InfoLine(head.leaveNote ?: str(Res.string.multiday_own_tour), maxLines = Int.MAX_VALUE)
     }
 }

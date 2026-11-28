@@ -56,6 +56,8 @@ import com.onpath.strings.Txt
 import com.onpath.strings.msg_route_save_failed
 import com.onpath.strings.multiday_day_of
 import com.onpath.strings.multiday_own_tour
+import com.onpath.strings.multiday_own_tour_activity
+import com.onpath.strings.multiday_own_tour_level
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -389,6 +391,7 @@ class MultiDaySliceTest {
             override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
             override fun leavesTrip() = multiDay.leavesTrip()
+            override fun leavesTripNote() = multiDay.leavesTripNote() ?: super.leavesTripNote()
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 19 Nov"
             override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = Unit
@@ -921,26 +924,52 @@ class MultiDaySliceTest {
     }
 
     /**
-     * MD-12 (owner 2026-11-28 10:13): in an opened day the activity and the difficulty may change – the day stays in the trip
-     * (only a moved start / goal makes its own tour, MD-4). Save writes into the trip, no „Start und Ziel geändert“ line. What
-     * Save does with the trip's profile today: the day's activity and T level become the whole trip's (pinned here).
+     * MD-12 (owner's decision card 2026-11-28 09:37, via the captain – replaces the 10:13 reading „the day stays in the trip“): a
+     * day whose activity or T level is not the trip's is like a moved start / goal (MD-4) – the plan sheet and Save say so, Save
+     * makes it a standalone tour with the new profile, the trip stays identical (points, line, activity, T level, days); the
+     * recording no longer counts for the trip's day (as with MD-4).
      */
     @Test fun aDayWithAnotherActivityAndTLevelStaysInTheTrip() {
         val app = App(); app.rideDay2()
+        val before = db.getTour(tourId)!!; val lineBefore = app.storedLine()
         ui { app.planRoute.selectActivity(Activity.MTB) }; app.settle()
         ui { app.planRoute.selectActivity(Activity.HIKE) }; app.settle()
         ui { app.planRoute.selectSac(4) }; app.settle()
-        assertFalse("another profile is no other start or goal", app.multiDay.leavesTrip())
-        assertFalse(app.multiDay.dayHeadUi()!!.leavesTrip)
-        assertNotNull("the recording still counts for the day", app.multiDay.followedDay())
-        app.saveAs("Drei Tage")
-        assertEquals("written into the trip, no tour of its own", listOf(tourId), app.planned().map { it.id })
+        assertEquals(MultiDaySlice.Leave.ACTIVITY, app.multiDay.leaveReason())
+        assertTrue("another profile leaves the trip", app.multiDay.leavesTrip())
+        assertEquals("the plan sheet says why before saving", Txt.s(Res.string.multiday_own_tour_activity), app.multiDay.dayHeadUi()!!.leaveNote)
+        assertNull("the recording no longer counts for the trip's day (as MD-4)", app.multiDay.followedDay())
+        app.saveAs("Mein Tag")
+        assertEquals(Txt.s(Res.string.multiday_own_tour_activity), app.board.mapNote?.text)
+        // the trip identical before and after Save
+        val after = db.getTour(tourId)!!
+        assertEquals(before.waypoints, after.waypoints); assertEquals(before.activity, after.activity); assertEquals(before.sac, after.sac)
+        assertEquals(before.days, after.days); assertEquals(before.name, after.name); assertEquals(lineBefore, app.storedLine())
         assertEquals("ABCDE", app.stored())
-        assertNotNull("the trip keeps its days", db.getTour(tourId)!!.days)
-        assertTrue("no „Start und Ziel geändert“", app.board.mapNote?.text != Txt.s(Res.string.multiday_own_tour))
-        assertTrue("the day is still followed", app.multiDay.flow.following)
-        assertEquals("today: the day's profile becomes the trip's", Activity.HIKE.name, db.getTour(tourId)!!.activity)
-        assertEquals(4, db.getTour(tourId)!!.sac)
+        // the copy: the day with the new profile, no days
+        val own = app.planned().single { it.id != tourId }
+        assertEquals("Mein Tag", own.name); assertEquals("CD", ids(own.waypoints.map { GeoPoint(it.lat, it.lon) }))
+        assertEquals(Activity.HIKE.name, own.activity); assertEquals(4, own.sac); assertNull(own.days)
+        assertFalse("linked to its own tour now: no day of the trip", app.multiDay.flow.following)
+    }
+
+    /** MD-12 for the T level alone (a hiking trip): „Schwierigkeit geändert – …“; back on the trip's level it belongs again. */
+    @Test fun aHikingDayWithAnotherTLevelLeavesTheTripAndBackOnItsLevelItBelongsAgain() {
+        routePrefs.activity = Activity.HIKE
+        val id = insertTour(activity = Activity.HIKE)
+        val app = App(); app.rideDay(id, dayRoute = dayLine)
+        assertNull(app.multiDay.leaveReason())
+        ui { app.planRoute.selectSac(3) }; app.settle()
+        assertEquals(MultiDaySlice.Leave.LEVEL, app.multiDay.leaveReason())
+        assertEquals(Txt.s(Res.string.multiday_own_tour_level), app.multiDay.leavesTripNote())
+        ui { app.planRoute.selectSac(2) }; app.settle()
+        assertNull("the trip's T2 again", app.multiDay.leaveReason())
+        assertEquals("u1" to 2, app.multiDay.followedDay())
+        // a moved goal and another level: the start / goal line is said (one plain line)
+        ui { app.planRoute.selectSac(5) }; app.settle()
+        ui { app.planEdit.change { set(lastIndex, X) } }; app.settle()
+        assertEquals(MultiDaySlice.Leave.ENDS, app.multiDay.leaveReason())
+        assertEquals(Txt.s(Res.string.multiday_own_tour), app.multiDay.leavesTripNote())
     }
 
     /** MD-1: a followed day leaving the map unsaved goes under Zuletzt as the day – never the whole trip. */
@@ -1066,8 +1095,12 @@ class MultiDaySliceTest {
         assertEquals("and the undo of it", anchors, app.multiDay.flow.day!!.whole.anchors)
     }
 
-    /** The same under the other profile: saved as T3, the T2 points do not belong to it – none are written, never the wrong ones. */
-    @Test fun aDayFollowedAndSavedUnderAnotherProfileWritesNoDetourPoints() {
+    /**
+     * MD-12: a write over the whole trip always keeps the trip's own profile and its detour points – the phone never changes the
+     * whole trip's activity / T level (before: saved as T3, the T2 points were dropped). Save itself never gets here with another
+     * profile ([MultiDaySlice.leavesTrip] → a standalone copy).
+     */
+    @Test fun aWriteOverTheWholeTripKeepsItsProfileAndDetourPoints() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
         val anchors = mapOf(2 to com.onpath.app.routing.Anchors(after = listOf(on(35))))
         routePrefs.activity = Activity.HIKE
@@ -1076,8 +1109,9 @@ class MultiDaySliceTest {
         app.rideDay(id, dayRoute = dayLine)
         ui { app.planRoute.selectSac(3) }; app.settle()
         assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
-        assertEquals(3, db.getTour(id)!!.sac)
-        assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), db.getTour(id)!!.anchors)
+        assertEquals(2, db.getTour(id)!!.sac)
+        assertEquals(Activity.HIKE.name, db.getTour(id)!!.activity)
+        assertEquals(anchors, db.getTour(id)!!.anchors)
     }
 
     /**

@@ -831,7 +831,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun difficulty(route: PlannedRoute?, activity: Activity) = planRoute.difficultyOf(route, activity)
         override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
-        override fun leavesTrip() = multiDay.leavesTrip()
+        override fun leavesTrip() = multiDay.leavesTrip(); override fun leavesTripNote() = multiDay.leavesTripNote() ?: super.leavesTripNote()
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun datedName() = defaultName(Txt.s(Res.string.msg_name_route))
         override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = planRoute.storePlanTimes(id, route, activity)

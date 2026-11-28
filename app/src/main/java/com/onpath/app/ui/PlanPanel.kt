@@ -628,7 +628,7 @@ private fun ErrorLine(text: String, onShow: (() -> Unit)? = null) {
  * [onTap] is set (then a ›).
  */
 @Composable
-internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit)? = null) {
+internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit)? = null, maxLines: Int = 2) {
     val grey = MaterialTheme.colorScheme.onSurfaceVariant
     Row(Modifier.fillMaxWidth().padding(top = 4.dp).clip(MaterialTheme.shapes.small)
         .then(if (onTap != null) Modifier.clickable(role = Role.Button) { onTap() } else Modifier)
@@ -637,7 +637,7 @@ internal fun InfoLine(text: String, spinner: Boolean = false, onTap: (() -> Unit
         else Icon(Icons.Outlined.Info, null, tint = grey, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(6.dp))
         Text(text, style = MaterialTheme.typography.bodyLarge, color = grey,
-            maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+            maxLines = maxLines, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
         if (onTap != null) Icon(Icons.Filled.ChevronRight, null, tint = grey, modifier = Modifier.size(20.dp))
     }
 }

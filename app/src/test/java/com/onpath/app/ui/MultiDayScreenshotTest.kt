@@ -22,6 +22,7 @@ import org.junit.Test
 import java.util.Locale
 import kotlin.math.sin
 import com.onpath.strings.multiday_day_of
+import com.onpath.strings.multiday_own_tour_activity
 
 /**
  * Multi-day tours on the phone (docs/design/multi-day-tours.md §0, owner 2026-11-28; symbols round 3 variant A): a followed
@@ -59,6 +60,11 @@ abstract class MultiDayScreenshotTest(private val locale: Locale, fontScale: Flo
     /** The day's goal moved (MD-4): the line before saving. */
     @Test fun dayLeavesTheTrip() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.BIKE_TOURING,
         size = PlanSize.MINI, savedName = "München – Venedig", unsaved = true, dayHead = DayHeadUi(label, true, leavesTrip = true)))
+
+    /** The day's activity changed (MD-12, decision card 2026-11-28 09:37): the same line, saying why. */
+    @Test fun dayLeavesTheTripActivity() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.MTB,
+        size = PlanSize.MINI, savedName = "München – Venedig", unsaved = true,
+        dayHead = DayHeadUi(label, true, leavesTrip = true, leaveNote = com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour_activity))))
 
     /** MD-11: the normal map loading window while the maps of all days load, with its multi-day line. */
     @Test fun allMapsLoading() = paparazzi.snapshot {

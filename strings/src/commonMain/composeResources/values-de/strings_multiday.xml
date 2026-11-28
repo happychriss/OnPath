@@ -23,5 +23,7 @@
     <string name="daypick_touring">Beende zuerst die laufende Tour – dann lässt sich ein Tag laden.</string>
     <string name="daypick_days_failed">Die Tage dieser Tour lassen sich nicht berechnen – öffne sie im Planer im Browser.</string>
     <string name="multiday_own_tour">Start und Ziel geändert – wird als eigene Tour gespeichert</string>
+    <string name="multiday_own_tour_activity">Aktivität geändert – wird als eigene Tour gespeichert</string>
+    <string name="multiday_own_tour_level">Schwierigkeit geändert – wird als eigene Tour gespeichert</string>
     <string name="multiday_maps_all">Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.</string>
 </resources>
