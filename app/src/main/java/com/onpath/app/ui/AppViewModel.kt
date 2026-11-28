@@ -869,6 +869,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)
         override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)
         override fun openDays(t: Tour) { routesGo.openRoutes(); dayPick.open(t) } // MD-0 / MD-2: a trip opens as its day sheet
+        override fun routeSavedPlan(id: Long) = syncedRouting.routeSyncedPlans(listOf(id), routed = dayPick::routed)
         override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncedRouting.syncRoutingCheck(t, pts)
         override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: com.onpath.app.routing.StoredLine.Preview) {
             planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)

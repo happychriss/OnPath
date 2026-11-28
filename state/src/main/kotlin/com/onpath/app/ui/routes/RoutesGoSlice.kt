@@ -224,8 +224,38 @@ class RoutesGoSlice(
     /** My routes ⋮ → "Als Plan übernehmen" (a done tour / track, owner 2026-11-06 F1): opened, then made a plan of it. */
     fun planFromTour(t: Tour) = flow.unlessUnsaved("\"${t.name}\" as the plan") { flow.openTour(t, trackThen = TrackThen.PLAN) }
 
-    /** Puts a plan from a link into the plan: points, activity, T level, point names, pinned points – a new, unsaved plan. */
-    fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking") = open.openSharedPlan(plan, via)
+    /**
+     * Puts a plan from a link into the plan: points, activity, T level, point names, pinned points – a new, unsaved plan. A link
+     * that carries days (the browser planner's multi-day tour) never goes into the plan: [openSharedTrip] (MD-2).
+     */
+    fun openSharedPlan(plan: com.onpath.app.routing.SharedPlan, via: String = "after asking") =
+        if (plan.days != null) openSharedTrip(plan, via) else open.openSharedPlan(plan, via)
+
+    /**
+     * MD-2 (docs/design/multi-day-tours.md §0): a plan link with days lands as the whole tour in My routes – saved with its days
+     * (its points as the line, routed afterwards like a route from the browser: [RoutesHost.routeSavedPlan]), then its day sheet
+     * opens; the plan on the map stays as it is. Not saved: one error line in My routes, nothing else changes.
+     */
+    private fun openSharedTrip(p: com.onpath.app.routing.SharedPlan, via: String) {
+        val name = p.title?.trim()?.takeIf { it.isNotEmpty() } ?: Txt.s(Res.string.msg_name_route)
+        val stops = p.points.mapIndexed { i, pt -> com.onpath.app.gpx.GpxWaypoint(pt.lat, pt.lon, p.names[i]) } // as a route from the browser
+        val days = com.onpath.app.data.MultiDay.of(p)?.let { it.copy(nights = com.onpath.app.routing.PlanDays.clean(p.points, it.nights)) }
+        scope.launchSafe("app", "openSharedTrip") {
+            val t = withContext(io) {
+                runCatching {
+                    val id = store.insertPlanned(name, PlannedRow(p.activity.name, p.sac.coerceIn(1, 5), com.onpath.app.data.Geo.length(p.points), 0.0, 0.0, 0.0,
+                        listOf(p.points.map { TrackPoint(it.lat, it.lon, it.ele) }), stops, p.pinned, difficulty = null, days = days, anchors = p.anchors))
+                    store.getTour(id)
+                }.onFailure { Problems.error("db", "Plan link with days ($via): the tour could not be saved", it) }.getOrNull()
+            }
+            if (t == null) { sayError(Txt.s(Res.string.msg_route_save_failed), NoticePlace.ROUTES); return@launchSafe }
+            Problems.info("plan", "Plan link with days opened ($via): saved as \"${t.name}\" (${p.days} days, ${p.points.size} points) – its day sheet, not the plan")
+            host.tourChanged(t.id)
+            host.syncChanged("plan link with days saved")
+            host.routeSavedPlan(t.id)
+            host.openDays(t)
+        }
+    }
 
     private val open = RoutesOpenState(plan, routes, save, camera, object : RoutesOpenPorts {
         override val touring: Boolean get() = host.touring

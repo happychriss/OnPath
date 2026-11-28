@@ -336,6 +336,7 @@ abstract class RoutesFlowBase {
             override fun saved(name: String?, id: Long, points: List<GeoPoint>?) { log += "$where: saved $name $id"; plan.setSaved(name, id, points) }
             override fun opened(t: Tour, pts: List<GeoPoint>) { log += "$where: opened ${t.id}" }
             override fun openDays(t: Tour) { log += "$where: days of ${t.id}" }
+            override fun routeSavedPlan(id: Long) { log += "$where: route saved plan $id" }
             override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) { log += "$where: syncRoutingCheck ${t.id}" }
             override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: StoredLine.Preview) {
                 log += "$where: standIn ${pts.size} ${act.name} T$level stale=${preview.stale} fromLine=${preview.fromLine}"
