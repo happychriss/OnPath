@@ -74,13 +74,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/MapController.kt",
-      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge) – deliberately NOT mirrored: the planner draws such a stop as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“, a planner-only look on a big screen); the points' size by zoom (PointMarkSize, owner 2026-11-27 variant 2) → main.ts pinPx",
+      "what": "addDirectionArrows / arrowBitmap; app layer order; poiMarker (a stop pinned on a POI: its symbol, blue ring, badge) – deliberately NOT mirrored: the planner draws such a stop as the plain numbered point (owner 2026-11-20: „ein normaler Punkt reicht“, a planner-only look on a big screen); the points' size by zoom (PointMarkSize, owner 2026-11-27 variant 2) → main.ts pinPx · 318272deb/2c5c034fe checked: the phone's day-end symbols + day band on the map removed (the phone guides one day, owner 2026-11-28 MD-1) – app only; the planner keeps its whole-trip Tag-N pills and day highlight",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/gpximport.ts",
         "web/app/src/poipin.ts"
       ],
-      "blob": "20697ef73249c1806319713e0362834a8c55a1d6"
+      "blob": "a8b724ae5a53bf7fe6fb0015db86ce2fe7010a83"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/poi/PinnedPoiKinds.kt",
@@ -150,13 +150,13 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
-      "what": "Save's writes (C18): request / saveRoute / overwriteSaved (sync changed the stored route → a copy and a line; deleted meanwhile → a new route) / copyRoute / rename / setFavourite – plans.ts save, overwrite, copy (moved here from AppViewModel, rebuild phase 2 piece 3); the app-only parts (backup file, the tour start's save, Zuletzt) are not in the planner",
+      "what": "Save's writes (C18): request / saveRoute / overwriteSaved (sync changed the stored route → a copy and a line; deleted meanwhile → a new route) / copyRoute / rename / setFavourite – plans.ts save, overwrite, copy (moved here from AppViewModel, rebuild phase 2 piece 3); the app-only parts (backup file, the tour start's save, Zuletzt) are not in the planner · 318272deb checked: MD-4 (a followed day whose start/goal moved saves as its own route) and „Zuletzt keeps the day“ – app only: the planner has no followed day, it edits the whole trip",
       "web": [
         "web/app/src/plans.ts",
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802"
+      "blob": "f0757852f9e2255dac2ca04a2aed61a499feefea"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -169,7 +169,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task) · 318272deb/2c5c034fe checked: wiring of the phone's one-day multi-day flow (openDays → day sheet, leavesTrip) – app only (owner 2026-11-28: exactly one day on the phone; the planner plans the whole trip)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "9277fca8cdea20ffd04bca5d717c0240138b03fe"
+      "blob": "095a90f25087a7adcf23a7cc46cdddfaa0f1f955"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -382,13 +382,13 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt",
-      "what": "(moved from ui/MapLoad.kt, web-ready) MapLoadUi's steps and words, MapLoadWait.waits, MapLoadCancel, MapLoads sizes – WebWait.kt (map part), loadoverlay.ts, areas.ts · 2026-11-27: MapLoadUi.note / BUILD_TEXT → WebWait Ui.note (building areas in the prepare step)",
+      "what": "(moved from ui/MapLoad.kt, web-ready) MapLoadUi's steps and words, MapLoadWait.waits, MapLoadCancel, MapLoads sizes – WebWait.kt (map part), loadoverlay.ts, areas.ts · 2026-11-27: MapLoadUi.note / BUILD_TEXT → WebWait Ui.note (building areas in the prepare step) · 318272deb checked: MULTIDAY_TEXT „Es werden alle Karten der Mehrtagestour geladen …“ (MD-11) – app only: the phone loads all days' maps for offline; the planner loads map areas only for what it shows",
       "web": [
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/loadoverlay.ts",
         "web/app/src/areas.ts"
       ],
-      "blob": "fc4163c0541a5f4cbadaca18f7f4933e0c5a11e6"
+      "blob": "e9f6cb6f7fe38764d8bcc8b64ecba6e902382249"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/WaitWindow.kt",
@@ -3361,7 +3361,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "51fe6f425fa345536d76ac95b4b0393b7156f802",
+      "blob": "f0757852f9e2255dac2ca04a2aed61a499feefea",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
@@ -3603,7 +3603,7 @@
       ]
     },
     "state/src/main/kotlin/com/onpath/app/ui/MapWaitRules.kt": {
-      "blob": "fc4163c0541a5f4cbadaca18f7f4933e0c5a11e6",
+      "blob": "e9f6cb6f7fe38764d8bcc8b64ecba6e902382249",
       "perf": [
         "const val ESTIMATED_REGION_BYTES = 9L * 1_048_576",
         "/** Total size: known sizes, [ESTIMATED_REGION_BYTES] for the rest. */",
