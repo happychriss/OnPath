@@ -20,8 +20,8 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
 | Akku sparen unterwegs (was Halte-Hinweis) | donald | owner 10:38: A + the question → build; then tidy the settings during a route (picture first) | captain go before merge |
-| Mehrtagestour-Nacharbeit | donald | on main a450199e9; building: days as cards in the day sheet, link „‹ Alle Tage“ removed on the phone („Tag 4 von 6“ stays) | done report → third check → test build |
-| Routentests / toter Code | donald | all done: PR #27 merged (weekly SameRouteTest), „Ganz neu berechnen“ out of the app, snap switch stays (F-POS-06) | free |
+| Mehrtagestour-Nacharbeit | donald | `feat/multiday-cards` 423e15a85: captain go + owner's yes 10:41 → rebase, gate, merge | free after merge |
+| Flackerndes Vorschaubild bei „Zuletzt“ (was Routentests) | donald | read-only finding via adb (owner 10:40) | finding → captain |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
 | Cloud | – | battery check done; owner answered 10:32 | free |
 
