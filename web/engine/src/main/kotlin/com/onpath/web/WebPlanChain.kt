@@ -457,7 +457,8 @@ class WebPlanChain(points: List<GeoPoint> = emptyList(), history: PlanHistory = 
     }
 
     /**
-     * The plan menu's row "Ganz neu berechnen" (PlanEditState.recalcRow, owner 2026-11-25, picture B): shown only when the plan
+     * Was the plan menu's row "Ganz neu berechnen" – the row is gone without replacement (owner 2026-11-28 13:53); kept for
+     * the engine tests of the detour points (PlanEditState.recalcRow, owner 2026-11-25, picture B): shown only when the plan
      * [now] has detour or cut points on [activity] / [sac] and no tour runs. Reads only.
      */
     fun recalcRowShown(activity: Activity, sac: Int): Boolean = edit.recalcRow(activity, sac) != null

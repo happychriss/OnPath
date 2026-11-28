@@ -475,7 +475,9 @@ check(reachLine ? reachDrawn === 1 : reachDrawn === 0, `Show draws the reaching 
   const back = await page.waitForFunction(() => window.__state.points.length === 2 && !!window.__state.plan && document.body.dataset.planning !== '1'
     && window.__state.plan.points.length === 2, null, { timeout: 60_000 }).then(() => true, () => false);
   const ms = Date.now() - t0;
-  check(back && ms < 5000, `an edit during a long detour check: the new route in ${ms} ms (not after the check)`);
+  // each check step is held 8 s: anything clearly under that proves the edit did not wait for the check. 7 s, not 5 s – a
+  // shared runner's noise (typical 0.8–1.5 s, outliers 4.2 s and 5.0 s on the same commits, 2026-11-28)
+  check(back && ms < 7000, `an edit during a long detour check: the new route in ${ms} ms (not after the check)`);
 }
 
 await browser.close(); server.close();

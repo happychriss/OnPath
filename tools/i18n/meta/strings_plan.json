@@ -1264,13 +1264,6 @@
     "confidence": "sicher",
     "max": 30
   },
-  "plan_menu_recalc": {
-    "area": "Plan menu",
-    "context": "☰ menu item in the plan group after Neu planen (owner 2026-11-25, picture B; words owner: Ganz neu berechnen / Recalculate from scratch – never reword): drops the plan's detour and cut points and routes the visible points again, one undoable step; shown only while the plan holds such points on its profile and no tour runs",
-    "priority": 2,
-    "confidence": "sicher",
-    "max": 30
-  },
   "plan_sheet_bigger": {
     "area": "Plan sheet",
     "context": "Screen reader action of the sheet handle: a tap makes the sheet one step bigger",

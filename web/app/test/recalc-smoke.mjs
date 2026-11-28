@@ -1,6 +1,5 @@
-// "Ganz neu berechnen" / "Recalculate from scratch" (plan menu, picture B – owner 2026-11-25; the app's PlanEditState.recalcRow):
-// a plain plan has no row; a point put in on a routed long leg (stitched: detour points, detour-stitch.md) shows it; a tap clears
-// the detour points and routes the plan again (the row goes); Undo brings them back (the row too).
+// Stitched plans (detour points, detour-stitch.md): a point put in on a routed long leg keeps its detour points through
+// settling, reload and Save. „Ganz neu berechnen“ is gone from the plan menu without replacement (owner 2026-11-28 13:53).
 // The run's end feeds the app's PlanRecalcState.taken – without it there are no lines and no stitch (WebPlanChain.end).
 // Usage: node test/recalc-smoke.mjs [segmentsDir]  (needs the NRW routing tile E5_N50: Köln → Münster, 150 km by bike)
 import path from 'node:path';
@@ -19,7 +18,6 @@ const errors = [];
 page.on('pageerror', (e) => errors.push(String(e)));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 const idle = () => page.waitForFunction(() => document.querySelector('#summary .big') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
-const rowShown = (want) => page.waitForFunction((w) => !document.getElementById('menuRecalc').hidden === w, want, { timeout: 30_000 }).then(() => true, () => false);
 
 await page.goto(url + 'index.html');
 await page.waitForFunction(() => document.body.dataset.engine === 'ready', null, { timeout: 60_000 });
@@ -28,8 +26,10 @@ const code = await page.evaluate((pts) => window.__engine.encode({ points: pts, 
 await page.goto(url + 'index.html#p=' + code);
 await idle();
 await page.waitForTimeout(500);
-check(await page.isHidden('#menuRecalc'),
-  'a plain plan: no "Ganz neu berechnen" row');
+// „Ganz neu berechnen“ is gone without replacement (owner 2026-11-28 13:53, measurement: 1 of 10 edit sequences 0.3 % longer, unseen)
+const noRow = () => page.evaluate(() => !document.getElementById('menuRecalc')
+  && !/Ganz neu berechnen|Recalculate from scratch/.test(document.getElementById('mainMenu')?.textContent ?? ''));
+check(await noRow(), 'the plan menu has no "Ganz neu berechnen" row');
 // a leg routed over 150 km gets support points (PlanAnchors.SUPPORT_LEG_M, owner 2026-11-27) – those are no detour points
 const plainKm = await page.evaluate(() => window.__state.plan.distanceM / 1000);
 check(plainKm > 150 || await page.evaluate(() => window.__engine.anchors) === '', `a plain plan has no detour points (${Math.round(plainKm)} km)`);
@@ -43,12 +43,8 @@ await page.mouse.click(xy[0], xy[1]);
 await page.waitForFunction(() => window.__state.points.length === 3, null, { timeout: 30_000 });
 await idle();
 await page.waitForTimeout(500);
-check(await rowShown(true), 'a point put in on a routed leg: the stitched plan shows the row');
 check(await page.evaluate(() => window.__engine.anchors) !== '', 'the plan carries detour points');
-const label = await page.textContent('#menuRecalc');
-check(/Ganz neu berechnen|Recalculate from scratch/.test(label), `the row says "${label.trim()}" (the app's string)`);
-check(await page.evaluate(() => document.querySelector('#newPlan').nextElementSibling.id) === 'menuRecalc', 'the row sits right after Neu planen');
-let before = await page.evaluate(() => JSON.stringify(window.__state.points));
+check(await noRow(), 'a stitched plan: still no "Ganz neu berechnen" row');
 
 // the idle settling (WebApi.settleStep – the app's PlanSettle, one leg a step): the taken run's legs routed on their own, the line shown again quietly
 const settleDone = (id) => page.waitForFunction((i) => /:(shown|done)$/.test(document.body.dataset.settle ?? '') && document.body.dataset.settle.startsWith(i ? '' : ''), id, { timeout: 600_000 });
@@ -65,7 +61,6 @@ await idle();
 await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
 const line2 = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
 check(line2 === line1, 'reload: the same line (' + line2 + ')');
-before = await page.evaluate(() => JSON.stringify(window.__state.points));
 
 // the route saved (a folder of this browser): "Saved", the header's Save light
 const saveHead = () => page.evaluate(() => document.getElementById('menuSavePlan').dataset.state);
@@ -76,45 +71,6 @@ await page.click('#menuSavePlan');
 await page.waitForSelector('dialog.savename[open] #saveTitle', { timeout: 10_000 });
 await page.click('#saveOk');
 check(await settleSaveMark('done'), 'the route is saved: the header says Saved (' + await saveHead() + ')');
-
-// tap: the detour points go, the plan is routed again
-await page.click('#menuRecalc');
-await page.waitForFunction(() => window.__engine.anchors === '', null, { timeout: 30_000 }).catch(() => {});
-await idle();
-await page.waitForTimeout(500);
-check(await page.evaluate(() => window.__engine.anchors) === '', 'tap: the detour points are gone');
-check(await rowShown(false), 'tap: the row goes');
-check(await page.evaluate(() => JSON.stringify(window.__state.points)) === before, 'tap: the same visible points');
-check(await page.isEnabled('#undo') || await page.isVisible('#undoPill'), 'tap is one undo step');
-// the saved-anchors rule (the app's PlanDocument.unsaved): same points, other detour points = not saved
-check(await markedUnsaved(), 'a saved route recalculated from scratch is unsaved (' + await saveHead() + ': ' + await savedText() + ')');
-const cold = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
-console.log('cold line: ' + cold);
-
-// Undo: the stitched plan is back
-await page.waitForFunction(() => !document.querySelector('.waitveil') && document.body.dataset.planning !== '1', null, { timeout: 240_000 });
-await page.click('#undo');
-check(await rowShown(true), 'Undo: the row is back');
-check(await settleSaveMark('done'), 'Undo: the route is saved again (' + await saveHead() + ')');
-check(await page.evaluate(() => window.__engine.anchors) !== '', 'Undo: the detour points are back');
-await idle();
-await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
-await page.reload();
-await idle();
-check(await settleSaveMark('done') && !/changed, not saved/.test(await savedText()), 'reload: still saved');
-await page.waitForFunction(() => /:(shown|done)$/.test(document.body.dataset.settle ?? ''), null, { timeout: 600_000 }).catch(() => {});
-const back = await page.evaluate(() => window.__state.plan.distanceM + '/' + window.__state.plan.legs.map((l) => l.points.length).join(','));
-check(back === line1, 'Undo: the stitched, settled line is back (' + back + ')');
-
-// the same again after the reload (the plan from the address, the saved route's code from the folder): tap -> unsaved, reload -> still
-await page.waitForFunction(() => !document.getElementById('menuRecalc').hidden, null, { timeout: 60_000 });
-await page.click('#menuRecalc');
-await page.waitForFunction(() => window.__engine.anchors === '', null, { timeout: 30_000 }).catch(() => {});
-await idle();
-check(await markedUnsaved(), 'after a reload: a saved route recalculated from scratch is unsaved');
-await page.reload();
-await idle();
-check(await markedUnsaved(), 'reload: it is still unsaved (' + await saveHead() + ': ' + await savedText() + ' anchors=' + (await page.evaluate(() => window.__engine.anchors)).length + ' savedId=' + await page.evaluate(() => window.__state.savedId) + ')');
 
 // no reload between the edits (review 2026-11-26 #1): after a run that snapped the new point, the engine's chain holds the
 // points the page took (6 decimals) – the next point put in keeps the detour points there are (before the fix they were
@@ -140,7 +96,7 @@ const n0 = await page.evaluate(() => window.__state.points.length);
 await putOnLeg(await page.evaluate(() => window.__state.plan.legs.length - 1), n0 + 1);
 const a1 = await page.evaluate(() => window.__engine.anchors);
 console.log('points after the run: ' + await page.evaluate(() => JSON.stringify(window.__state.points)));
-check(entries(a1).length === 1, 'a point put in on the last leg: stitched (' + a1 + ')');
+check(!!a1 && JSON.parse(a1).entries.some((e) => e.i === n0 - 1), 'a point put in on the last leg: stitched (' + a1 + ')');
 await putOnLeg(0, n0 + 2);
 const a2 = await page.evaluate(() => window.__engine.anchors);
 // (the new point itself is not stitched on this data – the same before the review's fix; the engine test covers the stitch)

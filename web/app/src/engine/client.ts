@@ -111,7 +111,7 @@ export class EngineClient {
   /** A request that begins a new plan or an edit (the app's newRunStarts → detourCheck.stop()). */
   private static endsDetour(req: NoId<EngineRequest>): boolean {
     if (req.type === 'plan' || req.type === 'edit' || req.type === 'parse' || req.type === 'planFromTrack' || req.type === 'gpxRead') return true;
-    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch'].includes(req.fn);
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead'].includes(req.fn);
   }
 
   /**
@@ -121,7 +121,7 @@ export class EngineClient {
    */
   private static endsSettle(req: NoId<EngineRequest>): boolean {
     if (req.type === 'plan' || req.type === 'edit') return true;
-    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead', 'recalcScratch'].includes(req.fn);
+    return req.type === 'call' && ['historyRecord', 'historyImport', 'historyStep', 'planCancel', 'runHead'].includes(req.fn);
   }
 
   /** The steps [fns] still in the worker are stopped at once: one fresh worker ([restart]); their promises answer {cancelled}. */

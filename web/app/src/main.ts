@@ -166,7 +166,6 @@ document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
     <button id="phoneMini" class="iconbtn phonemini" aria-haspopup="dialog" hidden>${icon('phone', 22)}<i class="syncdot" aria-hidden="true"></i></button>
     <nav id="mainMenu" class="planbar" aria-label="${escapeHtml(t('web_plan_menu'))}">
       ${hb('newPlan', 'add', t('web_plan_new'), '', 'disabled')}
-      ${hb('menuRecalc', 'route', t('plan_menu_recalc'), '', 'hidden')}
       ${hb('menuPlans', 'folder', t('routes_title'))}
       ${hb('menuMultiDay', 'moon', t('days_plan_tour'), 'multidaybtn')}
       ${hb('menuPlanAsTour', 'moon', t('days_plan_as_tour'), 'ponly', 'disabled')}
@@ -1805,7 +1804,6 @@ async function changed() {
   if (few) render();
   const h = JSON.parse(await engine.call('historyState'));
   if (stale()) return;
-  void refreshRecalcRow();
   state.canUndo = h.canUndo; state.canRedo = h.canRedo;
   if (few) {
     // the run in the engine learns there is nothing to route (RouteRun leaves Routing) – never left „routing“ there
@@ -2461,7 +2459,7 @@ function setActivity(a: Activity, sac: number, plan: boolean) {
   localStorageSet('activity', a); localStorageSet('sac', String(sac));
   renderChip();
   applyActivityLook();
-  if (plan && !same) changed(); else if (!same) void refreshRecalcRow();
+  if (plan && !same) changed();
 }
 /**
  * The map look for the activity and T level – the app's map/ActivityLayers (MapController.setOverlay / setSacLimit):
@@ -2705,7 +2703,6 @@ $('saveMore').onclick = (e) => {
 /** What each entry of the plan bar / its menus does (one table: the wide bar, the phone drop-down, Speichern ▾). */
 const ACTS: Record<string, () => void> = {
   newPlan: () => { newPlan(); },
-  menuRecalc: () => { void recalcFromScratch(); },
   menuPlans: () => myPlansDialog(sync, plansHost),
   menuImportGpx: () => gpxImport.pick(),
   menuSavePlan: () => { headerSave(); },
@@ -2738,32 +2735,6 @@ $('reverse').onclick = () => applyEdit('reverse');
 $('addDest').onclick = () => { const q = document.getElementById('q') as HTMLInputElement | null; q?.focus(); q?.select(); };
 $('roundTrip').onclick = () => applyEdit('roundTrip');
 /** ✕ Neu planen in the plan row and the header's New plan (owner 2026-11-06): unsaved changes ask first, then empty. */
-/**
- * The plan menu's row "Ganz neu berechnen" (the app's PlanEditState.recalcRow, owner 2026-11-25, picture B): shown only when
- * the engine says the plan has detour or cut points on this profile - the page asks after every change of the plan or profile.
- */
-let recalcAsked = 0;
-async function refreshRecalcRow() {
-  const run = ++recalcAsked, row = $<HTMLButtonElement>('menuRecalc');
-  if (state.points.length < 2) { row.hidden = true; return; }
-  try {
-    const shown = await engine.call('recalcRow', enc(state.points), state.activity, state.sac) === 'true';
-    if (run === recalcAsked) row.hidden = !shown;
-  } catch (e) { problem('plan', 'the "Ganz neu berechnen" row not asked', e); if (run === recalcAsked) row.hidden = true; }
-}
-/** The row's tap: the engine drops the plan's detour and cut points (one undo step), then the plan is routed again as after an edit. */
-function recalcFromScratch() {
-  closeMenu();
-  return queueEdit(async () => {
-    if (await engine.call('recalcScratch', enc(state.points), state.activity, state.sac) !== 'true') { void refreshRecalcRow(); return null; }
-    runCause = 'edit'; state.otherRouting = false;
-    editBefore = { points: state.points, names: state.meta.map((m) => m.name) };
-    // an undo step of the engine's history: the tour beside it gets its step too (as commit does), so Undo of a multi-day
-    // tour brings back its own days and nights, not those of the step before
-    tourUndo.push(state.tour); if (tourUndo.length > 100) tourUndo.shift(); tourRedo.length = 0;
-    return { planned: changed() };
-  });
-}
 async function newPlan() { engine.dropPlans(); await keepAsRecent('new plan'); clearRoute(); placeCard.removePin(); } // a long plan must not hold Neu
 /**
  * The plan leaves the map (Neu, another plan / link / GPX opened): not saved as it is, it goes under Meine Touren →

@@ -167,7 +167,6 @@
     <string name="plan_search_goal">Find a destination</string>
     <string name="plan_menu">Menu</string>
     <string name="plan_menu_my_routes">My tours</string>
-    <string name="plan_menu_recalc">Recalculate from scratch</string>
     <string name="plan_map_credits">Show map credits</string>
     <string name="plan_undo">Undo</string>
     <string name="plan_new_during_tour">New plan – your recording goes on</string>

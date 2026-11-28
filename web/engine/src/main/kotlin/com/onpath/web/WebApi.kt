@@ -952,13 +952,6 @@ object Engine {
         }
     }
 
-    /** The plan menu's row "Ganz neu berechnen" (PlanEditState.recalcRow): is it shown for the page's plan [points]? Only for the open plan. */
-    fun recalcRow(points: String, activity: String, sac: Int): Boolean =
-        same6(chain.plan.points.toList(), parsePoints(points)) && chain.recalcRowShown(Activity.valueOf(activity), sac)
-
-    /** The row's tap: the detour and cut points of the plan [points] go (one undo step); true = the page routes the plan again now. */
-    fun recalcScratch(points: String, activity: String, sac: Int): Boolean =
-        chain.recalcFromScratch(parsePoints(points), Activity.valueOf(activity), sac)
 
     /** The plan [points] was said yes to earlier on this page (RouteRun.RoutedBefore): not asked again. */
     fun runRoutedBefore(points: String) = chain.routedBefore(parsePoints(points))
@@ -1419,9 +1412,7 @@ external fun planProgress(text: String)
 
 @JSExport fun settleStep(names: String): String = Engine.settleStep(names)
 
-@JSExport fun recalcRow(points: String, activity: String, sac: Int): Boolean = Engine.recalcRow(points, activity, sac)
 
-@JSExport fun recalcScratch(points: String, activity: String, sac: Int): Boolean = Engine.recalcScratch(points, activity, sac)
 @JSExport fun runPlanAnyway(points: String) = Engine.runPlanAnyway(points)
 @JSExport fun runRoutedBefore(points: String) = Engine.runRoutedBefore(points)
 /** Builds the app's plan-editing chain once (WebPlanChain.probe – TeaVM check of PlanEditState / PlaceAddState / HoldPaths). */
