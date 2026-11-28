@@ -185,6 +185,7 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             junctionVibration = JunctionVibration.of(sp.getString("junctionVibration", null), sp.getBoolean("junctionVibrate", true)),
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
+            batterySave = sp.getBoolean("batterySave", false),
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             bikeScreen = BikeScreen.of(sp.getString("bikeScreen", null), sp.getBoolean("keepScreenOn", true)),
             junctionGuide = JunctionGuide.of(sp.getString("junctionGuide", null),
@@ -221,7 +222,8 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             .remove("hikePace").remove("bikePace") // the old three-level keys, migrated by [pace]
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
             .putInt("markedTrails", v.markedTrails)
-            .apply()
+            .putBoolean("batterySave", v.batterySave)
+            .apply().also { com.onpath.app.domain.tour.BatterySave.on = v.batterySave } // the recording reads it (R-10)
 
     var planWaypoints: List<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("plan", null)).map { GeoPoint(it.lat, it.lon) }

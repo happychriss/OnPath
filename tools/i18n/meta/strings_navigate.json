@@ -1361,5 +1361,32 @@
     "context": "Button: route the long leg and wait.",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "nav_battery_title": {
+    "area": "Battery (R-10)",
+    "context": "Navigate question – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
+  },
+  "nav_battery_line": {
+    "area": "Battery (R-10)",
+    "context": "Navigate question body: %1$s time still to go, %2$d battery %, %3$s how long it lasts – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "nav_battery_no": {
+    "area": "Battery (R-10)",
+    "context": "Button – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
+  },
+  "nav_battery_save": {
+    "area": "Battery (R-10)",
+    "context": "Button – Akku sparen, Chriss 2026-11-28",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 14
   }
 }

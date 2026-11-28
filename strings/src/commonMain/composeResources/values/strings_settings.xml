@@ -180,6 +180,9 @@
     <string name="settings_nav_guide_vibration">Vibration</string>
     <string name="settings_nav_guide_voice">Voice</string>
     <string name="settings_group_offroute">Off the route</string>
+    <string name="settings_group_battery">Battery</string>
+    <string name="settings_battery_save">Save battery</string>
+    <string name="settings_battery_save_sub">GPS less often, live sharing slower – both stay on</string>
     <string name="settings_group_junctions">Junctions</string>
     <string name="settings_group_screen">Screen and map</string>
     <string name="settings_group_lock">Lock during a tour</string>

@@ -372,7 +372,8 @@ class LiveUploader(
             val state = if (s.ending) LiveState.ENDED else base.state
             moving = state == LiveState.RECORDING && base.stillS == null
             paused = state == LiveState.PAUSED
-            lowBattery = (base.batteryPct ?: 100) < LOW_BATTERY_PCT
+            // „Akku sparen“ (R-10): the slow rate like a low battery – the sharing stays on
+            lowBattery = (base.batteryPct ?: 100) < LOW_BATTERY_PCT || com.onpath.app.domain.tour.BatterySave.on
             headBytes = LiveItem.head(base.copy(
                 state = state, name = s.name, counter = s.counter + 1, chunks = chunk,
                 nextS = LivePolicy.intervalS(moving, paused, lowBattery),
