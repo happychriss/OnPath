@@ -27,8 +27,14 @@ permissions:
   contents: read
 
 concurrency:
-  group: same-route
-  cancel-in-progress: false
+  group: same-route-${{ github.ref }}
+  # a new push to the PR replaces its running check; the weekly run is never cancelled
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# bash -eo pipefail: a red test behind „| tee“ makes the step red
+defaults:
+  run:
+    shell: bash
 
 jobs:
   same-route:
@@ -52,7 +58,7 @@ jobs:
         run: |
           mkdir -p segments
           url=https://brouter.de/brouter/segments4/E10_N45.rd5
-          if ! curl -fsS --retry 4 --retry-delay 30 -o segments/E10_N45.rd5 "$url" || [ ! -s segments/E10_N45.rd5 ]; then
+          if ! curl -fsS --retry 4 --retry-delay 30 --max-time 900 -o segments/E10_N45.rd5 "$url" || [ ! -s segments/E10_N45.rd5 ]; then
             echo "::error title=Routing data missing::E10_N45.rd5 could not be downloaded from $url – no same-route check this week (red on purpose, not skipped)"
             exit 1
           fi
@@ -64,6 +70,7 @@ jobs:
         run: ./gradlew -p web/engine --no-daemon generateWasmGC copyWasmGCRuntime
 
       - name: JVM – SameRouteTest (fresh hashes on this tile)
+        timeout-minutes: 270
         env:
           KTTEST: tools/routing/jvm-test/SameRouteTest.kt
           EXTRA_KT: >-
@@ -77,7 +84,8 @@ jobs:
           SHA_DIR: ${{ runner.temp }}/same-route
           TOURS: ${{ inputs.tours }}
         run: |
-          [ -n "$TOURS" ] || unset TOURS
+          # a partial run (tours given) writes its green cases, so the Wasm step checks them; red cases still fail here
+          if [ -n "$TOURS" ]; then export SHA_SELFTEST="$SHA_DIR"; else unset TOURS; fi
           mkdir -p "$SHA_DIR"
           tools/routing/jvm-test/run.sh "$GITHUB_WORKSPACE/segments" "$RUNNER_TEMP/jvm-work" | tee "$RUNNER_TEMP/jvm.log"
           ls "$SHA_DIR"/*.sha >/dev/null 2>&1 || { echo "::error title=No hashes::the JVM run wrote no .sha files (only a full green run does) – see the log"; exit 1; }
