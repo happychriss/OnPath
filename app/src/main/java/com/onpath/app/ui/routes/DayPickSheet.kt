@@ -61,14 +61,14 @@ import com.onpath.strings.*
  * export, share, delete – as on the card), the facts line, the whole line (display only), „Welchen Tag möchtest du fahren?“
  * and the planner's day table ([DayTableView], owner 2026-11-27): pill „Tag 3“, „Koblenz → Mainz“ when the plan names both
  * ends, aligned columns km · ↑ m · time (no Σ km on the phone, owner 2026-11-28 09:52), the night sign (open night / Übernachtung / Hotel; the goal flag at the
- * finish), ›, and the total row. One tap on a row loads that day ([onRide]), ›
- * opens its own overview ([onDetail]). The next open day has the filled pill; under the day's row a day ridden to its goal says
+ * finish) and the total row. One tap on the row loads that day ([onRide]); no › and no day overview any more (owner
+ * 2026-11-28 09:58: „die Pfeile brauchen wir nicht“). The next open day has the filled pill; under the day's row a day ridden to its goal says
  * „✓ gefahren 2.12.“, one whose recording stopped before the goal „angefangen 2.12.“ (MD-5 / MD-6 / MD-9, owner 2026-11-28) –
  * on a line of its own across the row that wraps between words, never cut with „…“ ([stateLaidOut]: the screenshot tests check it).
  * During a tour ([canRide] false) rows load nothing and a line says why.
  */
 @Composable
-fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, onRide: (Int) -> Unit, onDetail: (Int) -> Unit,
+fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, onRide: (Int) -> Unit,
                  onClose: () -> Unit, stateLaidOut: (TextLayoutResult) -> Unit = {},
                  placesLaidOut: (TextLayoutResult) -> Unit = {}, menu: @Composable () -> Unit) {
     val t = ui.tour
@@ -93,13 +93,10 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                 val table = remember(ui.rows) { DayPick.table(ui.rows) }
                 val byN = remember(ui.rows) { ui.rows.associateBy { it.n } }
                 val nextDesc = str(Res.string.daypick_next)
-                DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null, trailingWidth = 44.dp,
+                DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null,
                     title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
                     below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } }, placesLaidOut = placesLaidOut,
-                    showSum = false, // the phone's day sheet: no Σ km (owner 2026-11-28 09:52) – the planner keeps it
-                    trailing = { l -> IconButton(onClick = { onDetail(l.n) }, modifier = Modifier.size(44.dp)) {
-                        Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, l.n.toString()), tint = muted)
-                    } })
+                    showSum = false) // the phone's day sheet: no Σ km (owner 2026-11-28 09:52) – the planner keeps it
             }
         }
     }
@@ -148,12 +145,4 @@ private fun DayPill(n: Int, filled: Boolean) {
         Text(DayRowText.day(n), style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold, maxLines = 1, softWrap = false,
             color = if (filled) OnPathColors.CardWhite else OnPathColors.PlanAccent, modifier = Modifier.padding(horizontal = 10.dp, vertical = 3.dp))
     }
-}
-
-/** The stand-in route of day [r] for its own overview (the route's overview of one day): name, numbers, its ends as points. */
-fun dayTour(ui: DayPickUi, r: DayPickRow, line: List<GeoPoint>): com.onpath.app.data.Tour {
-    val name = places(r)?.let { DayRowText.day(r.n) + " · " + it } ?: DayRowText.day(r.n)
-    val ends = listOfNotNull(line.firstOrNull(), line.lastOrNull()).map { com.onpath.app.gpx.GpxWaypoint(it.lat, it.lon, null) }
-    return ui.tour.copy(id = -1L, uuid = "", name = name, distanceM = r.distanceM, ascentM = r.ascentM, descentM = 0.0, durationS = r.timeS,
-        waypoints = ends, pinned = emptySet(), days = null, anchors = emptyMap(), favourite = false)
 }

@@ -41,8 +41,6 @@ class DayPickSlice(
 ) {
     /** The sheet as worked out at [open] (rows without the ridden marks – [ui] adds them from the list as it is now). */
     private var sheet by mutableStateOf<DayPickUi?>(null)
-    /** The day whose own overview shows over the sheet (›); null = none. */
-    var detail by mutableStateOf<Int?>(null)
     /** The days' ends of the open sheet ([DayPick.dayEnds]): a ride counts only where they still match. */
     private var ends: Map<Int, Pair<GeoPoint, GeoPoint>> = emptyMap()
     private var job: Job? = null
@@ -86,7 +84,6 @@ class DayPickSlice(
                 runCatching { DayPick.days(t, line, act, f) }.onFailure { Problems.warn("routes", "Days of \"${t.name}\" not worked out – said in My routes", it) }.getOrNull()
             }
             if (days == null) { failed(t, "days not worked out"); return@launchSafe }
-            detail = null
             val rows = DayPick.rows(t, days.first, emptyList())
             ends = DayPick.dayEnds(line, rows)
             sheet = DayPickUi(t, line, rows, null)
@@ -109,7 +106,7 @@ class DayPickSlice(
         problem(Txt.s(Res.string.daypick_days_failed))
     }
 
-    fun close() { job?.cancel(); sheet = null; detail = null }
+    fun close() { job?.cancel(); sheet = null }
 
     /** One tap on day [n]: exactly that day becomes the plan (ready for "Los geht's"), tied to its trip (MD-2). */
     fun ride(n: Int) {
@@ -122,13 +119,5 @@ class DayPickSlice(
             val day = multiDay.prepareDay(s.tour, line, n) ?: run { failed(s.tour, "day $n not worked out"); return@launchSafe }
             flow.openTour(day.standIn, lineOf = listOf(day.dayLine.map { TrackPoint(it.lat, it.lon, it.ele) }), planned = { multiDay.followDay(day) })
         }
-    }
-
-    /** The stretch of the stored line day [row] covers (its own overview). */
-    fun lineOf(row: DayPickRow): List<GeoPoint> {
-        val l = sheet?.line ?: return emptyList()
-        if (l.isEmpty()) return l
-        val a = row.fromLine.coerceIn(0, l.lastIndex); val b = row.toLine.coerceIn(a, l.lastIndex)
-        return l.subList(a, b + 1)
     }
 }
