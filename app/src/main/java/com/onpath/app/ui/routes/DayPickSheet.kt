@@ -60,7 +60,7 @@ import com.onpath.strings.*
  * 2026-11-27 later): drawn in place over the list like the overview. The route's name with its ⋮ ([menu]: rename, copy,
  * export, share, delete – as on the card), the facts line, the whole line (display only), „Welchen Tag möchtest du fahren?“
  * and the planner's day table ([DayTableView], owner 2026-11-27): pill „Tag 3“, „Koblenz → Mainz“ when the plan names both
- * ends, aligned columns km · Σ km · ↑ m · time, the night sign (open night / Übernachtung / Hotel; the goal flag at the
+ * ends, aligned columns km · ↑ m · time (no Σ km on the phone, owner 2026-11-28 09:52), the night sign (open night / Übernachtung / Hotel; the goal flag at the
  * finish), ›, and the total row. One tap on a row loads that day ([onRide]), ›
  * opens its own overview ([onDetail]). The next open day has the filled pill; under the day's row a day ridden to its goal says
  * „✓ gefahren 2.12.“, one whose recording stopped before the goal „angefangen 2.12.“ (MD-5 / MD-6 / MD-9, owner 2026-11-28) –
@@ -96,6 +96,7 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                 DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null, trailingWidth = 44.dp,
                     title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
                     below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } }, placesLaidOut = placesLaidOut,
+                    showSum = false, // the phone's day sheet: no Σ km (owner 2026-11-28 09:52) – the planner keeps it
                     trailing = { l -> IconButton(onClick = { onDetail(l.n) }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, l.n.toString()), tint = muted)
                     } })
