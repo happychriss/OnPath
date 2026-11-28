@@ -49,3 +49,11 @@ Found by cloud-web: tapping [Sparen] in the question set the setting for all lat
 without the user noticing (VISION: resist what surprises the user). Decided by the vision while the owner is away: [Sparen]
 in the question holds until this tour ends; the switch under ⚙ shows it as on meanwhile; a switch set by hand in ⚙ stays set.
 Not confirmed by the owner in words: this rule, the 10 % threshold, the 3 % minimum drop.
+
+## Always for the current tour only (owner 2026-11-28 12:55) – replaces the split of 12:40
+„Wir leiten einfach um auf diese Einstellungsseite, und bei der Einstellung steht dick und fest, dass sie immer nur für die
+aktuelle Route gilt. Dann hat sich das Problem komplett erledigt.“
+→ [Sparen] in the question opens ⚙ at „Akku sparen“ (the user sets the switch there). The switch **always** holds for the
+current tour only and is off again when the tour ends – also when set by hand. The row says so in bold. Captain's reading
+for the case no tour runs: the switch set before the start holds for the next tour, then off. Pill „Akku sparen an“: open
+(owner's „vielleicht“ of 11:40, picture akku-pille.png) – not built unless he picks it.
