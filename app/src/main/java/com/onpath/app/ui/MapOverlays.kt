@@ -154,27 +154,9 @@ fun MapOverlayHost(
     vm.placeMenus.poiMenu?.let { poi ->
         val pin = vm.searchFlow.isCandidate(poi)
         val gone = { com.onpath.app.debug.Problems.trace("plan", "POI menu closed: POI left the visible map (onGone)"); vm.placeMenus.poiMenu = null }
-        val add = vm.placeMenus.poiAdd(poi)
-        @Composable fun menu(card: Boolean) =
-            PoiMenu(poi, card = card, address = if (card) vm.searchFlow.searchMark?.let { it.address ?: it.town } else null,
-                modifier = if (card) Modifier.fillMaxWidth() else Modifier,
-                emptyPlan = vm.plan.points.isEmpty(),
-                startHere = startHere,
-                fromMeBlocked = MapGestures.fromMeBlocked(gps, vm.tracker.location.value != null),
-                onFromMe = { vm.placeAdd.poiFromMyLocation(poi) },
-                onAdd = { vm.placeAdd.addPoiPoint(poi) },
-                addLabel = add.label, addIsStop = add.stop,
-                menu = vm.placeMenus.placeMenu(poi),
-                onAddStop = { vm.placeAdd.addPoiAsStop(poi) },
-                onNewDestination = { vm.placeAdd.poiAsNewDestination(poi) },
-                favourite = vm.keptPlaces.isFavouritePlace(poi),
-                onFavourite = { vm.keptPlaces.toggleFavouritePlace(poi) },
-                onGoogle = {
-                    vm.placeMenus.closeMapOverlays()
-                    com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
-                },
-                onRemovePin = if (pin) { { vm.placeMenus.closeMapOverlays("pin removed"); vm.placeMenus.removePin("its menu: Remove pin") } } else null,
-                onRoundTrip = if (vm.suggest.on) { { vm.placeMenus.closeMapOverlays("round trip from a place"); vm.suggest.open(GeoPoint(poi.lat, poi.lon), vm.planRoute.activity, vm.planRoute.sac) } } else null)
+        // the same rows and actions as the place info's list (PlaceMenuFor, Chriss 2026-11-28)
+        @Composable fun menu(card: Boolean) = PlaceMenuFor(vm, poi, gps, startHere, card = card,
+            onRemovePin = if (pin) { { vm.placeMenus.closeMapOverlays("pin removed"); vm.placeMenus.removePin("its menu: Remove pin") } } else null)
         if (pin) {
             // the found place (owner 2026-11-13, "A mit Ausweich B"): above the pin, the map moved down when needed – else
             // the same rows as a card at the bottom
@@ -459,9 +441,9 @@ fun FirstPointMenu(fromMeBlocked: String?, onStartHere: () -> Unit, onFromMe: ()
 
 /** „Als Ziel“ from my position: no line under it (owner 2026-11-27), only why it is off ([fromMeBlocked]) – then disabled. */
 @Composable
-private fun GoHereRow(fromMeBlocked: String?, onFromMe: () -> Unit) =
+private fun GoHereRow(fromMeBlocked: String?, onFromMe: () -> Unit, strong: Boolean = false) =
     HoldMenuItem(Icons.Outlined.MyLocation, str(Res.string.plan_go_here), enabled = fromMeBlocked == null,
-        supporting = fromMeBlocked, onClick = onFromMe)
+        supporting = fromMeBlocked, strong = strong && fromMeBlocked == null, onClick = onFromMe)
 
 /** The thin line between two groups of a menu ([com.onpath.app.domain.MenuGroups]: Route → Ort → Entfernen). */
 @Composable
@@ -497,9 +479,14 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             favourite: Boolean? = null,
             onFavourite: () -> Unit = {},
             /** „Rundtouren vorschlagen“ last in the route rows (tour suggestions on, [PinMenuItems]); null = not offered. */
-            onRoundTrip: (() -> Unit)? = null) {
+            onRoundTrip: (() -> Unit)? = null,
+            /**
+             * The place info's list (Chriss 2026-11-28 10:02, picture ort-info-aktionen): the same rows without the menu's
+             * surface and head (the info has its own), the first row always tinted ([tintFirst]).
+             */
+            rowsOnly: Boolean = false, tintFirst: Boolean = false) {
     val place = Place.fromPoi(poi)
-    MenuSurface(modifier, card) {
+    @Composable fun body(rows: @Composable () -> Unit) = if (rowsOnly) Column(modifier) { rows() } else MenuSurface(modifier, card) {
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 8.dp)) {
             Text(place.title(), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold,
                 maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -511,6 +498,9 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             }
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        rows()
+    }
+    body {
         // the rows in their order (PinMenuItems): the same for a hold and for a picked search result (owner 2026-11-13)
         // no „⌂ Als Zuhause festlegen“ in the app (shownMenuRows)
         val rows = com.onpath.app.ui.search.shownMenuRows(
@@ -519,14 +509,15 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         rows.forEachIndexed { i, r ->
             // a thin line between the groups Route → Ort → Entfernen (owner 2026-11-26)
             if (PinMenuItems.lineBefore(rows, i)) GroupLine()
+            val first = tintFirst && i == 0
             when (r) {
-            PinMenuItems.Row.START_HERE -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), onClick = onAdd)
+            PinMenuItems.Row.START_HERE -> HoldMenuItem(Icons.Outlined.TripOrigin, str(Res.string.plan_start_here), strong = first, onClick = onAdd)
             PinMenuItems.Row.ROUND_TRIP -> HoldMenuItem(Icons.Outlined.Loop, str(Res.string.suggest_ui_from_here), onClick = { onRoundTrip?.invoke() })
-            PinMenuItems.Row.GO_HERE -> GoHereRow(fromMeBlocked, onFromMe)
+            PinMenuItems.Row.GO_HERE -> GoHereRow(fromMeBlocked, onFromMe, strong = first)
             PinMenuItems.Row.ADD -> HoldMenuItem(if (addIsStop) Icons.Outlined.AddLocationAlt else Icons.Outlined.Flag,
-                addLabel, onClick = onAdd)
-            PinMenuItems.Row.ADD_STOP -> AddRow(PlaceAddMenu.Item.ADD_STOP, menu, onAddStop)
-            PinMenuItems.Row.NEW_DESTINATION -> AddRow(PlaceAddMenu.Item.NEW_DESTINATION, menu, onNewDestination)
+                addLabel, strong = first, onClick = onAdd)
+            PinMenuItems.Row.ADD_STOP -> AddRow(PlaceAddMenu.Item.ADD_STOP, menu, onAddStop, strong = first || menu?.emphasised == PlaceAddMenu.Item.ADD_STOP)
+            PinMenuItems.Row.NEW_DESTINATION -> AddRow(PlaceAddMenu.Item.NEW_DESTINATION, menu, onNewDestination, strong = first || menu?.emphasised == PlaceAddMenu.Item.NEW_DESTINATION)
             PinMenuItems.Row.FAVOURITE -> KeepRow(favourite == true, onFavourite)
             PinMenuItems.Row.HOME -> {} // never shown in the app (shownMenuRows)
             PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), leaves = true, onClick = onGoogle)
@@ -548,10 +539,10 @@ private fun KeepRow(kept: Boolean, onClick: () -> Unit) =
  * likelier one ([PlaceAddMenu.Menu.emphasised]). The same row for a held place ([PoiMenu]) and a held spot ([HoldAddMenu]).
  */
 @Composable
-private fun AddRow(item: PlaceAddMenu.Item, menu: PlaceAddMenu.Menu?, onClick: () -> Unit) =
+private fun AddRow(item: PlaceAddMenu.Item, menu: PlaceAddMenu.Menu?, onClick: () -> Unit, strong: Boolean = menu?.emphasised == item) =
     if (item == PlaceAddMenu.Item.ADD_STOP)
-        HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_as_stop), strong = menu?.emphasised == item, onClick = onClick)
-    else HoldMenuItem(Icons.Outlined.Flag, str(Res.string.plan_make_destination), strong = menu?.emphasised == item, onClick = onClick)
+        HoldMenuItem(Icons.Outlined.AddLocationAlt, str(Res.string.plan_add_as_stop), strong = strong, onClick = onClick)
+    else HoldMenuItem(Icons.Outlined.Flag, str(Res.string.plan_make_destination), strong = strong, onClick = onClick)
 
 /**
  * A hold on the empty map in a doubtful spot (owner 2026-11-15, [PlaceAddMenu.asksOnHold]): only the two rows of [menu]

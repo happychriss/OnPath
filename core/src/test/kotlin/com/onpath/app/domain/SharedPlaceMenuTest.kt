@@ -78,9 +78,10 @@ class SharedPlaceMenuTest {
         val p = GeoPoint(place.lat, place.lon)
         // empty plan: PoiMenu(emptyPlan = true) → "Set as start" · "Set as destination" (GoHereRow) · "Open in Google Maps"
         val overlays = File("../app/src/main/java/com/onpath/app/ui/MapOverlays.kt").readText()
-        assertTrue(overlays.contains("emptyPlan = vm.plan.points.isEmpty()"))
+        // the one builder of the hold menu and the place info's list (PlaceMenuFor, Chriss 2026-11-28)
+        assertTrue(File("../app/src/main/java/com/onpath/app/ui/PlaceMenuFor.kt").readText().contains("emptyPlan = vm.plan.points.isEmpty()"))
         val menu = overlays.substringAfter("fun PoiMenu(").substringBefore("fun PointMenu(")
-        assertTrue(menu.contains("Res.string.plan_start_here") && menu.contains("GoHereRow(fromMeBlocked, onFromMe)") &&
+        assertTrue(menu.contains("Res.string.plan_start_here") && menu.contains("GoHereRow(fromMeBlocked, onFromMe, strong = first)") &&
             menu.contains("Res.string.plan_open_google_maps"))
         // a plan with only a start: the place becomes the destination
         val a = GeoPoint(46.60, 11.10)
