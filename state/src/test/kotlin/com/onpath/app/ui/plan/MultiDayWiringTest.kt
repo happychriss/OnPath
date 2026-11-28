@@ -36,11 +36,11 @@ class MultiDayWiringTest {
     private val construction get() = between("internal val multiDay = com.onpath.app.ui.plan.MultiDaySlice(", "    private val saveHost")
     private val store get() = between("private val toursStore = object : com.onpath.app.ui.routes.ToursStore {", "    /** Routes from the browser")
 
-    /** The slice gets the view model's own objects: the plan, the activity holder, the one store, the prefs, the camera, the scope and the two dispatchers it used by name. */
+    /** The slice gets the view model's own objects: the plan, the activity holder, the one store, the prefs, "saved as", the scope and the two dispatchers it used by name. */
     @Test fun theSliceGetsTheViewModelsOwnObjects() {
         assertTrue(construction, construction.replace(Regex("\\s+"), " ").contains(
-            "MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs), mapCamera, " +
-                "com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { b -> planEdit.change(b) }, { n, i, p -> tourFollow.setSaved(n, i, p) }, { p, n -> searchFlow.rememberPlaceName(p, n) }, { planEdit.nearbyNames }, " +
+            "MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs), " +
+                "com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { n, i, p -> tourFollow.setSaved(n, i, p) }, " +
                 "viewModelScope, Dispatchers.IO, Dispatchers.Default)"))
         assertEquals("one slice", 1, count(vm, "com.onpath.app.ui.plan.MultiDaySlice("))
         assertEquals("the screens and the E2E tests reach it as vm.multiDay", 1, count(vm, "internal val multiDay ="))
@@ -49,13 +49,13 @@ class MultiDayWiringTest {
     /** Declared after what it is built from (a property below it would be null at construction) and above the hosts that call it. */
     @Test fun theSliceIsDeclaredAfterWhatItIsBuiltFromAndBeforeTheHostsThatReachIt() {
         val at = vm.indexOf("internal val multiDay =")
-        for (need in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = com.onpath.app.ui.plan.PlanDocument(", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice", "private val toursStore = object", "private val mapCamera = object", "val prefs = Prefs(app)"))
+        for (need in listOf("val plan: com.onpath.app.ui.plan.PlanDocument = com.onpath.app.ui.plan.PlanDocument(", "val planRoute: com.onpath.app.ui.plan.PlanRouteSlice", "private val toursStore = object", "val prefs = Prefs(app)"))
             assertTrue("$need above multiDay", vm.indexOf(need).let { it in 0 until at })
         for (user in listOf("private val saveHost = object", "private val routesHost = object"))
             assertTrue("$user below multiDay", vm.indexOf(user) > at)
         // `multiDay` is only read inside the hosts' members, at call time
         assertTrue(vm.contains("override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)"))
-        assertTrue(vm.contains("override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)"))
+        assertTrue(vm.contains("override fun leavesTrip() = multiDay.leavesTrip()"))
         assertTrue(vm.contains("override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)"))
         assertTrue(vm.contains("override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)"))
         assertTrue(vm.contains("override fun withMaps(t: Tour) = multiDay.withMaps(t)"))
@@ -67,7 +67,7 @@ class MultiDayWiringTest {
     /** Started where it always was: after the map data's start, in the last `init`. */
     @Test fun theSliceStartsInTheLastInitRightAfterTheMapData() {
         assertEquals(1, count(vm, "multiDay.start()"))
-        assertTrue(vm.contains("mapData.start(); multiDay.start() // multi-day tours: kept map areas, a followed day's write-back, the overview's days"))
+        assertTrue(vm.contains("mapData.start(); multiDay.start() // multi-day tours: kept map areas, a followed day's write-back"))
         val lastInit = vm.lastIndexOf("    init {")
         assertTrue("in the last init block", vm.indexOf("multiDay.start()") > lastInit)
         // after the tracker's cell collectors and the storage-ready work, before the fused-position collector (what lay between the old and this place: nothing)
@@ -84,13 +84,11 @@ class MultiDayWiringTest {
             "override val touring: Boolean get() = vm.recState.value != null",
             "override val cells: MapCells get() = vm.cells",
             "override fun placeNameOf(p: GeoPoint): String? = vm.searchFlow.stopName(p)",
-            "override fun reopenTour(t: Tour) = vm.openTour(t)",
+            "override fun showDays(id: Long) { vm.routesGo.openRoutes(); vm.dayPick.show(id) }",
             "override fun reloadTourList() = vm.routesFlow.refreshTours()",
             "override fun showSaveProblem(text: String) { vm.save.problem = text }",
             "override fun tourChanged(id: Long) = Backups.tourChanged(vm.getApplication(), id)",
             "override fun syncChanged(why: String) = vm.sync.changed(why)",
-            "val index = vm.search.offlineIndex()",
-            "return EndNamer { p -> RouteNamer.label(p, RouteNamer.placesNear(index, listOf(p))) }",
             "mapData().tourMaps(line)?.let { TourMapAreas(it.all, it.missing, it.bytes) }",
             "mapData().loadTourMaps(want, line, wifiWait)",
         )) assertTrue("the host says: $line", h.contains(line))
@@ -119,7 +117,7 @@ class MultiDayWiringTest {
                 assertFalse("$name must not mention $bad", text.contains(bad))
         }
         // the slice's launches keep their old names (the problem log says where a failure happened)
-        for (what in listOf("multiDayWriteBack", "multiDayDays", "multiDayReload", "dayMaps", "saveWholeTour", "dayEndNames"))
+        for (what in listOf("multiDayWriteBack", "multiDayReload", "multiDayMaps", "saveWholeTour"))
             assertTrue(what, slice.contains("scope.launchSafe(\"app\", \"$what\")"))
     }
 }

@@ -1,11 +1,7 @@
 package com.onpath.app.ui.plan
 
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import com.onpath.app.cells.CellId
-import com.onpath.app.cells.TourCorridor
 import com.onpath.app.data.Geo
 import com.onpath.app.data.MultiDay
 import com.onpath.app.data.Tour
@@ -13,15 +9,14 @@ import com.onpath.app.data.TourKind
 import com.onpath.app.debug.Problems
 import com.onpath.app.debug.launchSafe
 import com.onpath.app.domain.plan.DayFollow
+import com.onpath.app.domain.plan.DayPart
+import com.onpath.app.gpx.GpxWaypoint
 import com.onpath.app.gpx.TrackPoint
-import com.onpath.app.routing.DayEndKind
+import com.onpath.app.routing.AnchorProfile
 import com.onpath.app.routing.GeoPoint
+import com.onpath.app.routing.SharedPlan
 import com.onpath.app.domain.AppMode
 import com.onpath.app.ui.DayHeadUi
-import com.onpath.app.ui.DayRowUi
-import com.onpath.app.ui.DaysUi
-import com.onpath.app.ui.Camera
-import com.onpath.app.ui.EndNamer
 import com.onpath.app.ui.MultiDayFlow
 import com.onpath.app.ui.MultiDayPrefs
 import com.onpath.app.ui.TourMapAreas
@@ -31,8 +26,6 @@ import com.onpath.app.ui.routes.ToursStore
 import com.onpath.app.ui.routes.PlannedRow
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.withContext
 import com.onpath.strings.msg_route_save_failed
 
@@ -41,9 +34,9 @@ import com.onpath.strings.msg_route_save_failed
  * model's functions on purpose (`ViewModelInitOrderTest` follows every name an `init` can reach).
  */
 interface MultiDayHost {
-    /** Plan or Navigate (the map shows the day ends only in Plan). */
+    /** Plan or Navigate. */
     val mode: AppMode
-    /** The plan's route (the run's result; null = none yet) – Compose state, read inside `snapshotFlow`. */
+    /** The plan's route (the run's result; null = none yet). */
     val route: PlannedRoute?
     /** A tour records (the service has a state). */
     val touring: Boolean
@@ -51,8 +44,8 @@ interface MultiDayHost {
     val cells: MapCells
     /** The name of a plan point (stop name: the point's own, the search's); null = none. */
     fun placeNameOf(p: GeoPoint): String?
-    /** The whole stored tour is opened as the plan again (My routes' open, as the user would). */
-    fun reopenTour(t: Tour)
+    /** My routes opens with the day sheet of the multi-day route [id] (MD-2: „‹ Alle Tage“ leads back to the day list). */
+    fun showDays(id: Long)
     /** My routes' list is read again. */
     fun reloadTourList()
     /** The dialog that reports a failed save (until OK). */
@@ -61,21 +54,24 @@ interface MultiDayHost {
     fun tourChanged(id: Long)
     /** The browser sync is told. */
     fun syncChanged(why: String)
-    /** The offline place index, ready to name day ends (suspends while the index is built; may throw). */
-    suspend fun endNamer(): EndNamer
     /** The map areas along [line] ([MapDataFlow.tourMaps], blocking geometry – off the main thread); null = not worked out (reported). */
     fun tourMaps(line: List<GeoPoint>): TourMapAreas?
-    /** Loads [want] along [line] ([MapDataFlow.loadTourMaps]); on mobile data they wait for Wi-Fi ([wifiWait]). */
+    /**
+     * Loads [want] along [line] ([MapDataFlow.loadTourMaps]) in the normal map loading window with its multi-day line (MD-11);
+     * [wifiWait] = they wait for Wi-Fi whatever the setting says (false: the window's usual Wi-Fi / mobile data handling).
+     */
     fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean)
 }
 
 /**
- * Multi-day tours on the phone (docs/design/multi-day-tours.md §3 "Phone", stage 4) – the view model's slice (after the
- * TourController / RecentPlans pattern; the view model keeps one line per hook): the overview of an opened tour (its days
- * worked out for each route), the map question at the first opening (§7), "Tag n fahren" (the picked day becomes the
- * plan), "‹ Alle Tage", every change of a followed day written back into the whole tour, and Save of the whole tour while
- * a day is the plan. The state itself is [flow] ([MultiDayFlow]: days, night marks by value, the followed day – kept in
- * the prefs).
+ * Multi-day tours on the phone (docs/design/multi-day-tours.md §0, MD-0 … MD-11, owner 2026-11-28 „kristallklar“): the browser
+ * plans the trip, the phone guides ONE day of it – never the whole plan. The view model's slice: a day picked in My routes' day
+ * sheet is worked out along the trip's stored line ([prepareDay]) and, once My routes opened it as the plan, followed
+ * ([followDay]) – its maps and those of every other day load at once (MD-11); every change of the day goes into the trip in
+ * memory, Save writes the day into the trip while its start and goal stay (MD-3, [overwriteWhole]) – else Save makes a
+ * standalone copy (MD-4, [leavesTrip] → SaveState); „‹ Alle Tage“ leads back to the day sheet ([allDays], MD-2); the recorded
+ * tour remembers the day while its start and goal stay ([followedDay], MD-5). The state itself is [flow] ([MultiDayFlow]: the
+ * trip, night marks by value, the followed day – kept in the prefs).
  *
  * Rebuild phase 2 piece 20: moved out of the app as it was; the view model's reads are [host] and the neighbour slices, the
  * tour database is [tours], the prefs are [prefs]. No work in the constructor but what [MultiDayFlow] has always done (it reads
@@ -87,14 +83,9 @@ class MultiDaySlice(
     private val planRoute: PlanRouteSlice,
     private val tours: ToursStore,
     private val prefs: MultiDayPrefs,
-    private val camera: Camera,
     private val host: MultiDayHost,
-    /** The view model's one undoable plan edit. */
-    private val change: (MutableList<GeoPoint>.() -> Unit) -> Unit,
     /** The view model's "saved as" (it also tells the running tour's plan copy). */
     private val setSaved: (String?, Long, List<GeoPoint>?) -> Unit,
-    private val rememberPlaceName: (GeoPoint, String) -> Unit,
-    private val nearbyNames: () -> Map<GeoPoint, String>,
     private val scope: CoroutineScope,
     private val io: CoroutineDispatcher,
     private val default: CoroutineDispatcher,
@@ -105,19 +96,7 @@ class MultiDaySlice(
     private val waypoints get() = plan.points
     private val route get() = host.route
     private fun stopName(p: GeoPoint) = host.placeNameOf(p)
-    private fun pinnedIndices() = plan.pinnedIndices()
 
-    /** The map question at the first opening of a multi-day tour (§7): sizes of the whole tour and of one day. */
-    data class TourMapsAsk(val tourUuid: String, val wholeBytes: Long, val day: Int, val dayBytes: Long, val onWifi: Boolean,
-                           val whole: List<CellId>, val dayCells: List<CellId>, val line: List<GeoPoint>, val dayLine: List<GeoPoint>)
-    enum class TourMapsAnswer { WHOLE, DAY, LATER }
-
-    var tourMapsAsk by mutableStateOf<TourMapsAsk?>(null)
-        private set
-    /** The picked day's maps are not all on the phone (§7: said before the start): about how many bytes; null = all there. */
-    var dayMapsMissing by mutableStateOf<Long?>(null)
-        private set
-    private var dayMapsCells: Pair<List<CellId>, List<GeoPoint>>? = null
     /** The whole tour's save runs: a second tap on Save makes no second write. */
     private var savingWhole = false
 
@@ -136,187 +115,163 @@ class MultiDaySlice(
             // the points and the detour points: "Ganz neu berechnen" (and its Undo) change only the latter
             snapshotFlow { waypoints.toList() to plan.anchorRev }.collect { (pts, _) -> flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName) }
         }
-        // a day of a tour whose followed-day state is gone: the whole stored tour again, never a day saved over it
+        // a day of a tour whose followed-day state is gone: never a day saved over the tour; a whole trip kept as the plan: its day sheet
         reloadIfDayLost()
-        // the overview's days, worked out off the main thread for each route of the tour
-        scope.launchSafe("app", "multiDayDays") {
-            snapshotFlow { Triple(route, flow.overview, flow.marks) }.collectLatest { (r, on, _) ->
-                if (!on || r == null || r.points.size < 2) { if (!on) flow.show(null); return@collectLatest }
-                val plan = wholePlan() ?: return@collectLatest
-                val f = planRoute.planFactors()
-                val profile = planRoute.dayProfile()
-                val seen = flow.profileSeen
-                val v = withContext(default) { flow.compute(plan, r.points, f, r, profile, seen) } ?: return@collectLatest
-                flow.show(v)
-                askMapsOnce(v)
-            }
-        }
+    }
+
+    /** A whole trip kept as the plan by an older version (its overview): the day sheet to pick one day (MD-0 / MD-2). */
+    private fun wholeTripAtStart() {
+        val t = flow.tour?.takeIf { flow.overview } ?: return
+        Problems.warn("plan", "Multi-day tour: the whole trip \"${t.name}\" is the plan (kept by an older version) – its day sheet opens")
+        host.showDays(t.id)
     }
 
     /**
      * Robust first: after a restart the plan belongs to a saved multi-day tour but no followed day is known – its state was
-     * unreadable ([MultiDayFlow.dayLost]) or is missing while the plan was opened as other points than the tour's
-     * (a day's). Then the stored tour is loaded as the plan again (the plan on the map goes under Zuletzt when it has
-     * changes, as for every route opened) – a Save never writes a day's points over the whole tour. Not during a
-     * recording (the followed plan stays; Save's "changed elsewhere" check writes a copy then).
+     * unreadable ([MultiDayFlow.dayLost]) or is missing while the plan was opened as other points than the tour's (a day's).
+     * A whole trip kept as the plan by an older version opens its day sheet ([wholeTripAtStart]).
+     * Otherwise the plan is unlinked from the tour (it stays on the map as an unsaved plan – a Save makes a route of its own, never
+     * a day saved over the whole tour) and the tour's day sheet opens to pick the day again (MD-2). Not during a recording
+     * (the followed plan stays; Save's "changed elsewhere" check writes a copy then).
      */
     private fun reloadIfDayLost() {
         val id = plan.linkId
         if (flow.following || id < 0 || plan.points.size < 2) return
-        val opened = plan.savedPoints?.map { it.lat to it.lon } ?: return
+        val opened = plan.savedPoints?.map { it.lat to it.lon } ?: run { wholeTripAtStart(); return }
         scope.launchSafe("app", "multiDayReload") {
             val t = withContext(io) {
                 runCatching { tours.getTour(id) }.onFailure { Problems.warn("db", "Saved route not read at the start – no multi-day check", it) }.getOrNull()
             } ?: return@launchSafe
-            if (t.deletedMs != null || !reloadsTour(flow.dayLost, flow.following, t.days != null, opened, t.waypoints.map { it.lat to it.lon })) return@launchSafe
+            if (t.deletedMs != null) return@launchSafe
+            if (!reloadsTour(flow.dayLost, flow.following, t.days != null, opened, t.waypoints.map { it.lat to it.lon })) { wholeTripAtStart(); return@launchSafe }
             if (host.touring) {
                 Problems.warn("plan", "Multi-day tour: the followed day is unknown after the restart, a tour records – plan kept, Save writes a copy"); return@launchSafe
             }
-            Problems.warn("plan", "Multi-day tour: the followed day is unknown after the restart – the whole tour \"${t.name}\" is loaded again (never a day saved over it)")
-            host.reopenTour(t)
+            if (plan.linkId != id) return@launchSafe // another plan meanwhile
+            Problems.warn("plan", "Multi-day tour: the followed day is unknown after the restart – the plan is unlinked from \"${t.name}\" (never a day saved over it), its day sheet opens")
+            setSaved(null, -1L, null)
+            host.showDays(t.id)
         }
     }
 
-    /** A saved route was opened (the view model's openTour): a multi-day tour shows its overview. */
+    /** A saved route was opened (the view model's openTour): the multi-day state follows it (a day's stand-in is no trip). */
     fun opened(t: Tour, pts: List<GeoPoint>) = flow.opened(t, pts)
 
-    /** The overview shows (a multi-day tour is the plan, no day picked): its corridor waits for the map question. */
+    /** A whole trip is the plan (kept by an older version; no day picked) – the plan run treats its corridor as a tour's. */
     val overview: Boolean get() = flow.overview
-
-    private fun names(pts: List<GeoPoint>) = pts.indices.mapNotNull { i -> stopName(pts[i])?.let { i to it } }.toMap()
-    /** The whole tour carries the plan's detour points of whatever profile ([plan]'s [com.onpath.app.ui.plan.PlanDocument.anchorSet]): a day picked under another profile must not lose them. */
-    private fun wholePlan() = waypoints.toList().let { pts -> flow.plan(pts, activity, sac, pinnedIndices(), names(pts), plan.anchorSet.anchors) }
 
     /** The plan's detour points when [pts] still are the plan's points (a collected change can be one step behind). */
     private fun anchorsOf(pts: List<GeoPoint>) = plan.anchorSet.takeIf { pts == waypoints.toList() }
 
-    /** What Save stores as the days of [points] (the overview); null for a normal plan or a followed day. */
+    /** What Save stores as the days of [points] (a whole trip kept as the plan, [overview]); null for a normal plan or a followed day. */
     fun daysFor(points: List<GeoPoint>): MultiDay? = flow.daysFor(points)
-
-    // ---- the maps (§7) --------------------------------------------------------------------------------------------
-
-    private suspend fun askMapsOnce(v: MultiDayFlow.DaysView) {
-        val t = flow.tour ?: return
-        if (t.uuid.isEmpty() || t.uuid in prefs.multiDayMapsAsked || tourMapsAsk?.tourUuid == t.uuid) return
-        val n = flow.selected?.first ?: 1
-        val d = v.days.days.getOrNull(n - 1) ?: return
-        val dayLine = TourCorridor.stretch(v.line, d.fromM, d.toM)
-        val (whole, day) = withContext(default) { host.tourMaps(v.line) to host.tourMaps(dayLine) }
-        if (whole == null || day == null) return
-        if (whole.missing.isEmpty()) { prefs.multiDayMapsAsked = prefs.multiDayMapsAsked + t.uuid; return }
-        Problems.trace("cells", "Multi-day tour opened the first time: ${whole.missing.size} map area(s) missing (≈ ${whole.bytes / 1_000_000} MB) – asking once")
-        tourMapsAsk = TourMapsAsk(t.uuid, whole.bytes, n, day.bytes, host.cells.unmetered(), whole.missing, day.missing, v.line, dayLine)
-    }
-
-    /** The map question answered: the whole tour, only its day, or later (picking a day checks again). */
-    fun answerTourMaps(what: TourMapsAnswer) {
-        val a = tourMapsAsk ?: return
-        tourMapsAsk = null
-        prefs.multiDayMapsAsked = prefs.multiDayMapsAsked + a.tourUuid
-        Problems.trace("cells", "Multi-day tour maps: ${what.name.lowercase()}" + if (!a.onWifi) " (mobile data: wait for Wi-Fi)" else "")
-        when (what) {
-            TourMapsAnswer.WHOLE -> loadMaps(a.whole, a.line, wifiWait = !a.onWifi)
-            TourMapsAnswer.DAY -> loadMaps(a.dayCells, a.dayLine, wifiWait = !a.onWifi)
-            TourMapsAnswer.LATER -> Unit
-        }
-    }
-
-    private fun loadMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean) {
-        if (want.isEmpty()) return
-        host.loadTourMaps(want, line, wifiWait)
-        prefs.multiDayMapCells = prefs.multiDayMapCells + want.map { it.id }
-        if (wifiWait) prefs.multiDayWifiCells = prefs.multiDayWifiCells + want.map { it.id }
-    }
-
-    /** The picked day's missing maps – "Laden" in the day's sheet: now, also on mobile data (the user asked). */
-    fun loadDayMaps() {
-        val (want, line) = dayMapsCells ?: return
-        loadMaps(want, line, wifiWait = false)
-        dayMapsMissing = null
-    }
 
     /** My routes (blocking, IO): "Karten fehlen" on a multi-day tour while map areas of its corridor are not on the phone. */
     fun withMaps(t: Tour): Tour = if (t.kind != TourKind.PLANNED || t.days == null || t.deletedMs != null) t
         else t.copy(mapsMissing = runCatching { host.tourMaps(tours.loadSegments(t.id).flatten().map { it.toGeo() })?.missing?.isNotEmpty() }
             .onFailure { Problems.warn("routes", "Maps of the multi-day tour ${t.id} not checked – no tag", it) }.getOrNull())
 
-    // ---- picking a day ---------------------------------------------------------------------------------------------
+    // ---- one day of the trip becomes the plan (MD-2) ------------------------------------------------------------------
 
-    fun tapDay(n: Int) = flow.tapDay(n)
-    fun holdDay(n: Int) = flow.holdDay(n)
-    fun dayLabel(): String? = flow.dayLabel()
+    /**
+     * Day [n] of trip [tour], worked out along its stored [line] ([DayPick] made the same split for the sheet): [standIn] is the
+     * day as a route My routes opens (its points with names, pins and detour points, linked to the trip; no days, no uuid – the
+     * plan is the day, not the trip), [followDay] then ties it to the trip.
+     */
+    class DayStart(val tour: Tour, val whole: SharedPlan, val view: MultiDayFlow.DaysView, val part: DayPart,
+                   val anchorProfile: AnchorProfile?) {
+        /** The day's stretch of the trip's line (the stand-in's line until the run routes it; the camera). */
+        val dayLine: List<GeoPoint> get() = view.line.subList(part.startLine.coerceIn(0, view.line.lastIndex),
+            part.endLine.coerceIn(part.startLine.coerceIn(0, view.line.lastIndex), view.line.lastIndex) + 1)
 
-    /** The overview: "Tag n fahren" – the picked day(s) become the plan (§3 Phone 3); "Los geht's" then follows them. */
-    fun rideDays() {
-        if (host.touring || !flow.overview) return
-        val whole = wholePlan() ?: return
-        val tourId = plan.linkId; val tourName = plan.linkName
-        val v = flow.view ?: return
-        val part = flow.pickDay(whole, plan.savedPoints, plan.anchorSet.profile) ?: return
-        plan.pin(part.pinned.map { part.points[it] })
-        part.names.forEach { (i, n) -> rememberPlaceName(part.points[i], n) }
-        plan.arriving(part.points, flow.day?.anchorSet(part.anchors) ?: com.onpath.app.routing.AnchorSet.NONE)
-        change { clear(); addAll(part.points) }
-        plan.forgetHistory()
-        setSaved(tourName, tourId, part.points)
-        val dayLine = v.line.subList(part.startLine.coerceIn(0, v.line.lastIndex), part.endLine.coerceIn(0, v.line.lastIndex) + 1)
-        camera.fit(dayLine)
-        // §7: picking a day always checks that day's maps before the start
-        dayMapsMissing = null; dayMapsCells = null
-        scope.launchSafe("app", "dayMaps") {
-            val m = withContext(default) { host.tourMaps(dayLine) } ?: return@launchSafe
-            if (m.missing.isNotEmpty() && flow.following) { dayMapsCells = m.missing to dayLine; dayMapsMissing = m.bytes }
+        val standIn: Tour get() = tour.copy(
+            waypoints = part.points.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, part.names[i]) },
+            pinned = part.pinned, anchors = part.anchors, days = null, uuid = "", mapsMissing = null)
+    }
+
+    /**
+     * My routes' day sheet: day [n] of [t] along its stored [line] – the trip as a plan (its points, pins, names, days, nights,
+     * detour points), its days as the sheet shows them, the day's part. Null when it cannot be worked out (reported) – the sheet
+     * says so in a line, never the whole trip as the plan (MD-0).
+     */
+    suspend fun prepareDay(t: Tour, line: List<GeoPoint>, n: Int): DayStart? {
+        val d = t.days ?: return null
+        if (line.size < 2 || t.waypoints.size < 2) return null
+        val act = planRoute.activityOrNull(t.activity) ?: planRoute.activity
+        val f = planRoute.planFactors(act)
+        return withContext(default) {
+            runCatching {
+                val pts = t.waypoints.map { GeoPoint(it.lat, it.lon) }
+                val names = t.waypoints.mapIndexedNotNull { i, w -> w.name?.takeIf { it.isNotBlank() }?.let { i to it } }.toMap()
+                val anchors = t.anchors.filterKeys { it in pts.indices }
+                val whole = d.into(SharedPlan(pts, act, t.sac, t.pinned.filter { it in pts.indices }.toSet(), names, t.name, anchors = anchors))
+                val v = flow.compute(whole, line, f, line) ?: return@runCatching null
+                if (n !in 1..v.days.days.size) return@runCatching null
+                val raw = DayFollow.part(whole, v.days, v.pointAt, v.line, n, n) ?: return@runCatching null
+                // the day's points as a route opens them (lat / lon only): the plan and the followed day are the same values
+                fun flat(p: GeoPoint) = GeoPoint(p.lat, p.lon)
+                val part = raw.copy(points = raw.points.map(::flat), startAdded = raw.startAdded?.let(::flat), endAdded = raw.endAdded?.let(::flat))
+                DayStart(t, whole, v, part, anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(act, t.sac) })
+            }.onFailure { Problems.warn("plan", "Day $n of the multi-day tour \"${t.name}\" not worked out", it) }.getOrNull()
         }
     }
 
     /**
-     * My routes' day sheet (owner 2026-11-27): the tour was just opened as the plan ([opened]) – its days are worked out along
-     * its stored [line] (the split the sheet showed, no wait for the router) and day [n] becomes the plan as "Tag n fahren"
-     * does. False when it could not be taken (reported by the steps).
+     * The day [s] was opened as the plan (My routes' openTour of [DayStart.standIn]): it is followed now – tied to the trip for
+     * Save (MD-3 / MD-4) and the recording (MD-5) – and the maps of ALL days of the trip load in the normal map loading window
+     * (MD-11, owner 2026-11-28: „sonst übernachte ich auf einer Hütte im Nirvana und mir fehlt der nächste Tag“).
      */
-    suspend fun rideDayAlong(line: List<GeoPoint>, n: Int): Boolean {
-        if (host.touring || !flow.overview || line.size < 2) return false
-        val whole = wholePlan() ?: return false
-        val f = planRoute.planFactors()
-        val v = withContext(default) { flow.compute(whole, line, f, line) } ?: return false
-        if (!flow.overview || n !in 1..v.days.days.size) return false
-        flow.show(v)
-        flow.selected = n..n
-        rideDays()
-        return flow.following
+    fun followDay(s: DayStart) {
+        val pts = waypoints.toList()
+        if (plan.linkId != s.tour.id || pts != s.part.points) {
+            Problems.warn("plan", "Day ${s.part.first} of \"${s.tour.name}\" opened, but the plan is another one now – not followed"); return
+        }
+        flow.follow(s.tour, s.whole, s.view, s.part, s.whole.points, s.anchorProfile)
+        loadAllMaps(s.view.line)
     }
+
+    /** MD-11: the map areas along the whole trip's [line] that are not on the phone load (kept after a restart). */
+    private fun loadAllMaps(line: List<GeoPoint>) {
+        scope.launchSafe("app", "multiDayMaps") {
+            val m = withContext(default) { host.tourMaps(line) } ?: return@launchSafe
+            if (m.missing.isEmpty()) return@launchSafe
+            Problems.info("cells", "Multi-day tour: a day opened – the maps of all days load (${m.missing.size} area(s), ≈ ${m.bytes / 1_000_000} MB)")
+            host.loadTourMaps(m.missing, line, wifiWait = false)
+            prefs.multiDayMapCells = prefs.multiDayMapCells + m.missing.map { it.id }
+        }
+    }
+
+    fun dayLabel(): String? = flow.dayLabel()
 
     /**
      * The plan is one day of a saved multi-day route whose start and goal stayed ([MultiDayFlow.DayContext.endsKept]; MD-5,
      * owner 2026-11-28: points added / moved / deleted in between keep it, a moved start or goal drops it): its uuid and the
-     * day – the recorded tour keeps them. Null for several days in a row. A copy of the route ("Speichern als Kopie", a
-     * re-import, MD-4's own tour) gets a new uuid: its days start unridden – on purpose.
+     * day – the recorded tour keeps them. A copy of the route ("Speichern als Kopie", a re-import, MD-4's own tour) gets a new
+     * uuid: its days start unridden – on purpose.
      */
-    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.part.single && it.endsKept(waypoints.toList()) }
+    fun followedDay(): Pair<String, Int>? = flow.day?.takeIf { flow.following && it.endsKept(waypoints.toList()) }
         ?.let { it.tour.uuid to it.part.first }
 
-    /** "‹ Alle Tage" (not during a tour): the whole tour – with the day's changes – is the plan again. */
+    /**
+     * A day is followed and its start or goal moved (MD-4): Save makes a standalone copy, the trip's day stays as it was – the
+     * plan sheet says so before ([dayHeadUi]) and SaveState when it saves.
+     */
+    fun leavesTrip(): Boolean = flow.day?.takeIf { flow.following }?.let { !it.endsKept(waypoints.toList()) } ?: false
+
+    /** "‹ Alle Tage" (MD-2): My routes with the trip's day sheet – the day stays the plan until another day is picked. */
     fun allDays() {
-        if (host.touring) return
-        val tourName = plan.linkName
-        val profile = flow.day?.anchorProfile
-        val (whole, opened) = flow.leaveDay() ?: return
-        plan.pin(whole.pinned.mapNotNull { whole.points.getOrNull(it) })
-        whole.names.forEach { (i, n) -> whole.points.getOrNull(i)?.let { rememberPlaceName(it, n) } }
-        dayMapsMissing = null; dayMapsCells = null
-        plan.arriving(whole.points, profile?.takeIf { whole.anchors.isNotEmpty() }?.let { com.onpath.app.routing.AnchorSet(whole.anchors, it) } ?: com.onpath.app.routing.AnchorSet.NONE)
-        change { clear(); addAll(whole.points) }
-        plan.forgetHistory()
-        setSaved(tourName, flow.tour?.id ?: plan.linkId, opened ?: whole.points)
-        Problems.trace("plan", "Multi-day tour: back to all days (${whole.points.size} points)")
+        val c = flow.day?.takeIf { flow.following } ?: return
+        Problems.trace("plan", "Multi-day tour: back to the day sheet of \"${c.tour.name}\"")
+        host.showDays(c.tour.id)
     }
 
     // ---- saving the whole tour while a day is the plan (#14) ------------------------------------------------------
 
     /**
-     * ☰ Speichern / the tour start's save while a day is followed: the whole tour with the day's change is written over
-     * the saved tour (its line = the stored line with the day's new line spliced in), with its days. False when no day is
-     * followed – the view model saves as always.
+     * ☰ Speichern / the tour start's save while a day is followed (MD-3: its start and goal stayed – SaveState asks
+     * [leavesTrip] first and saves a standalone copy otherwise, MD-4): the whole tour with the day's change is written over
+     * the saved tour (its line = the stored line with the day's new line spliced in), with its days, and synced like any
+     * saved route (MD-8). False when no day is followed – the view model saves as always.
      */
     fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean {
         val pts = waypoints.toList()
@@ -342,7 +297,7 @@ class MultiDaySlice(
                 if (ok.getOrNull() != true) {
                     host.showSaveProblem(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.msg_route_save_failed)); return@launchSafe
                 }
-                Problems.trace("plan", "Multi-day tour saved with the change of day ${c.part.first}–${c.part.last} (${w.points.size} points)")
+                Problems.trace("plan", "Multi-day tour saved with the change of day ${c.part.first} (${w.points.size} points)")
                 host.tourChanged(c.tour.id); host.syncChanged("multi-day tour saved")
                 flow.wholeSaved(w.points, dayLine, name)
                 setSaved(name, c.tour.id, pts)
@@ -350,28 +305,6 @@ class MultiDaySlice(
             } finally { savingWhole = false }
         }
         return true
-    }
-
-    /**
-     * The plan leaves the map while a followed day has unsaved changes: the whole tour with them goes under Zuletzt (with
-     * its days) instead of the day alone. False when no day is followed / nothing changed.
-     */
-    fun keepWhole(act: com.onpath.app.routing.Activity, level: Int, dayRoute: PlannedRoute? = route): Boolean {
-        if (!plan.unsaved) return false
-        val pts = waypoints.toList()
-        flow.pointsChanged(pts, plan.pinned.toSet(), anchorsOf(pts), ::stopName)
-        val c = flow.day?.takeIf { flow.following } ?: return false
-        val w = c.whole
-        val days = MultiDay.of(w) ?: return false
-        return runCatching {
-            val (line, n) = wholeLine(c.tour.id, w.points, c.startAt, c.endAt, dayRoute?.points ?: pts, act, planRoute.planFactors(act))
-            tours.insertDraftPlanned(c.tour.name, PlannedRow(act.name, level, n[0], n[1], n[2], n[3], listOf(line),
-                com.onpath.app.gpx.PlanGpx.stops(w.points) { w.names[it] }, w.pinned, null, days,
-                c.anchorSet().forProfile(act, level)))
-            Problems.trace("plan", "Multi-day tour with the day's change kept under Zuletzt")
-            host.reloadTourList()
-            true
-        }.onFailure { Problems.error("db", "The multi-day tour with the day's change could not be kept under Zuletzt", it) }.getOrDefault(false)
     }
 
     /** Blocking (IO): the tour's stored line with the day's [dayLine] in place, and distance, ascent, descent, time. */
@@ -387,65 +320,15 @@ class MultiDaySlice(
 
     // ---- what the screens show -------------------------------------------------------------------------------------
 
-    /** The plan sheet's overview (rows, profile, day borders); null for a normal plan. */
-    fun daysUi(): DaysUi? {
-        if (!flow.overview) return null
-        val t = flow.tour ?: return null
-        val v = flow.view ?: return null
-        val total = v.days.days.lastOrNull()?.toM?.takeIf { it > 0 } ?: return null
-        val pts = waypoints.toList()
-        // a place name or null; a night's hotel counts as its end's place before the nearby lookup
-        fun known(s: String?) = s?.trim()?.takeIf { it.isNotEmpty() }
-        fun nameAt(p: GeoPoint): String? = known(stopName(p)) ?: flow.marks[p]?.hotel?.let { h -> known(h.name) ?: known(h.address) }
-            ?: known(nearbyNames()[p]) ?: known(endNames[p.lat to p.lon])
-        // a hotel with a name of its own (not just a place found near it): shown even when the day's other end has none
-        fun isHotel(p: GeoPoint?): Boolean = p != null && flow.marks[p]?.hotel?.let { h -> known(stopName(p)) ?: known(h.name) ?: known(h.address) } != null
-        val ends = listOf(pts.firstOrNull()) + v.days.days.map { d -> d.end?.let { e -> e.planIndex?.let { pts.getOrNull(it) } ?: e.point } ?: pts.lastOrNull() }
-        val rows = v.days.days.mapIndexed { i, d ->
-            val places = com.onpath.app.routing.DayRowText.places(ends[i]?.let(::nameAt), ends[i + 1]?.let(::nameAt), isHotel(ends[i]), isHotel(ends[i + 1]))
-            DayRowUi(d.number, places, d.distanceM, d.ascentM, d.end?.kind, d.over.isNotEmpty())
-        }
-        lookUpEndNames(ends.filterNotNull())
-        return DaysUi(t.name, v.days.days.size, v.line, v.days.days.mapNotNull { d -> d.end?.let { (it.alongM / total).toFloat() to it.kind } },
-            rows, flow.selected, com.onpath.app.ui.DayTables.of(v.days.days, rows.map { it.places }), t.days.limits)
-    }
-
-    /** The followed day's head line ("Tag 4 von 6"); null when no day is followed. */
-    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, dayMapsMissing) }
-
-    /** The map in Plan: the overview's day ends on the line and the picked day(s) as a band; none otherwise. */
-    fun dayEndsOnMap(): Pair<List<Pair<GeoPoint, DayEndKind>>, List<GeoPoint>?> {
-        val v = flow.view
-        if (host.mode != AppMode.PLAN || !flow.overview || v == null) return emptyList<Pair<GeoPoint, DayEndKind>>() to null
-        val ends = v.days.days.mapNotNull { d -> d.end?.let { it.point to it.kind } }
-        val day = flow.selected?.let { s ->
-            val a = if (s.first == 1) 0 else v.days.days.getOrNull(s.first - 2)?.end?.lineIndex ?: return@let null
-            val b = v.days.days.getOrNull(s.last - 1)?.let { it.end?.lineIndex ?: v.line.lastIndex } ?: return@let null
-            v.line.subList(a.coerceIn(0, v.line.lastIndex), b.coerceIn(a, v.line.lastIndex) + 1)
-        }
-        return ends to day
-    }
-
-    /** Place names of the grey day ends (the offline index), by position. */
-    private var endNames by mutableStateOf<Map<Pair<Double, Double>, String>>(emptyMap())
-    private var endNamesJob: Job? = null
-    private fun lookUpEndNames(points: List<GeoPoint>) {
-        val todo = points.filter { (it.lat to it.lon) !in endNames && stopName(it) == null && it !in nearbyNames() }.distinct()
-        if (todo.isEmpty() || endNamesJob?.isActive == true) return
-        endNamesJob = scope.launchSafe("app", "dayEndNames") {
-            val namer = try { host.endNamer() }
-                catch (e: kotlinx.coroutines.CancellationException) { throw e }
-                catch (e: Exception) { Problems.info("plan", "No place index for the day ends; their rows without places", e); return@launchSafe }
-            val names = withContext(io) {
-                todo.associate { p -> (p.lat to p.lon) to (namer.label(p) ?: "") }
-            }
-            endNames = endNames + names
-        }
-    }
+    /**
+     * The followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" (not during a tour) and, when its start or
+     * goal moved, MD-4's line before saving; null when no day is followed.
+     */
+    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, leavesTrip()) }
 
     companion object {
         /**
-         * The plan must be the stored multi-day tour again ([reloadIfDayLost]): it belongs to a saved route with days
+         * The plan must not stay linked to the stored multi-day tour ([reloadIfDayLost]): it belongs to a saved route with days
          * ([storedHasDays]), no day is followed, and either the followed day's state was lost ([dayLost]) or the plan was
          * opened as other points ([opened]) than the tour's ([stored]) – a day's, whose state is missing. The tour's own
          * points moved onto their ways by the router ([SAME_POINT_M]) are still the tour's. Pure – MultiDayFlowTest.

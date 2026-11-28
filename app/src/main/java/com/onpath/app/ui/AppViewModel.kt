@@ -824,8 +824,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             override fun tourChanged(id: Long) = Backups.tourChanged(getApplication(), id)
         }, viewModelScope, Dispatchers.IO)
 
-    internal val multiDay = com.onpath.app.ui.plan.MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs), mapCamera,
-        com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { b -> planEdit.change(b) }, { n, i, p -> tourFollow.setSaved(n, i, p) }, { p, n -> searchFlow.rememberPlaceName(p, n) }, { planEdit.nearbyNames }, viewModelScope, Dispatchers.IO, Dispatchers.Default) // :state, piece 20; after toursStore
+    internal val multiDay = com.onpath.app.ui.plan.MultiDaySlice(plan, planRoute, toursStore, com.onpath.app.ui.plan.PrefsMultiDay(prefs),
+        com.onpath.app.ui.plan.AppMultiDayHost(this) { mapData }, { n, i, p -> tourFollow.setSaved(n, i, p) }, viewModelScope, Dispatchers.IO, Dispatchers.Default) // :state, piece 20; after toursStore
     private val saveHost = object : com.onpath.app.ui.routes.SaveHost {
         override val route: PlannedRoute? get() = this@AppViewModel.route
         override val activity: Activity get() = this@AppViewModel.planRoute.activity
@@ -833,8 +833,8 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun stops(points: List<GeoPoint>) = savedStops(points)
         override fun difficulty(route: PlannedRoute?, activity: Activity) = planRoute.difficultyOf(route, activity)
         override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
-        override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
+        override fun leavesTrip() = multiDay.leavesTrip()
         override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?) = this@AppViewModel.proposeName(points, route)
         override fun datedName() = defaultName(Txt.s(Res.string.msg_name_route))
         override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = planRoute.storePlanTimes(id, route, activity)
@@ -871,6 +871,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.searchFlow.rememberPlaceName(p, name)
         override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)
         override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)
+        override fun openDays(t: Tour) { routesGo.openRoutes(); dayPick.open(t) } // MD-0 / MD-2: a trip opens as its day sheet
         override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncedRouting.syncRoutingCheck(t, pts)
         override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: com.onpath.app.routing.StoredLine.Preview) {
             planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)
@@ -911,7 +912,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         routesHost, viewModelScope, Dispatchers.IO)
     /** My routes' day sheet of a saved multi-day route (owner 2026-11-27, [com.onpath.app.ui.routes.DayPickSlice] in `:state`). */
     val dayPick = com.onpath.app.ui.routes.DayPickSlice(routes, toursStore, routesFlow, multiDay, planRoute, { recState.value != null },
-        { routesGo.requestOpen(it, "multi-day route without its days") }, viewModelScope, Dispatchers.IO, Dispatchers.Default)
+        { notices.sayError(it, NoticePlace.ROUTES) }, viewModelScope, Dispatchers.IO, Dispatchers.Default)
 
     // --- position / camera: the slice is `map` ([MapViewSlice]); screens read it as `vm.<slice>` (piece 21) ---
 
@@ -1863,7 +1864,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             cells.generation.drop(1).collectLatest { delay(5_000); search.prepare() }
         }
         // map cells (map-cells.md §9): Wi-Fi setting, relevance, cells still loading from the last run, T3 on fixes
-        mapData.start(); multiDay.start() // multi-day tours: kept map areas, a followed day's write-back, the overview's days
+        mapData.start(); multiDay.start() // multi-day tours: kept map areas, a followed day's write-back
         // a tour started indoors (owner): the fused position until its first GPS fix – off with that fix, a pause, the end
         viewModelScope.launchSafe("app", "start-up work") {
             var asked = false

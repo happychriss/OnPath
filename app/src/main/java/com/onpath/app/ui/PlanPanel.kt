@@ -139,12 +139,8 @@ class PlanCallbacks(
     val onSearch: () -> Unit = {},
     /** The empty sheet's guide, "Meine Touren öffnen". */
     val onMyRoutes: () -> Unit = {},
-    /** Multi-day tour (stage 4): a day row tapped / held (several days in a row), "Tag n fahren", "‹ Alle Tage", the day's maps. */
-    val onDayTap: (Int) -> Unit = {},
-    val onDayHold: (Int) -> Unit = {},
-    val onRideDays: () -> Unit = {},
+    /** A followed day of a multi-day tour: "‹ Alle Tage" – back to its day sheet in My routes (MD-2). */
     val onAllDays: () -> Unit = {},
-    val onLoadDayMaps: () -> Unit = {},
     /** The ☰ app menu in the card's top row (Daumen-Karte, owner 2026-11-26: it moved down from the top band). */
     val menu: PlanMenu = PlanMenu(),
     /** A tap on the PLANEN tab with a route: the offline state explained in one line. */
@@ -201,8 +197,6 @@ data class PlanUi(
     val tapHint: Boolean = false,
     /** A tap on the plan's mode pill: the offline state explained in one line ([OfflineReady.explain]); null = none. */
     val offlineInfo: String? = null,
-    /** A multi-day tour's overview (its days, stage 4); null for a normal plan. */
-    val days: DaysUi? = null,
     /** A followed day of a multi-day tour ("Tag 4 von 6"); null otherwise. */
     val dayHead: DayHeadUi? = null,
     /** The route's offline state on the PLANEN tab ("Ohne Netz ✓ / ⟳ / ⚠"); null = no route. */
@@ -249,8 +243,7 @@ fun PlanPanel(ui: PlanUi, cb: PlanCallbacks, sheetState: StepSheetState? = null,
         // geht's" was small at the edge): "▶ Los geht's" from two points, during a tour "▲ Weiter geht's" (2026-11-06, C)
         foot = when (PlanFoot.of(ui)) {
             PlanFoot.Kind.BACK -> ({ BackToNavigationButton({ goClick(ui, cb) }) })
-            // a multi-day tour's overview: "Tag 4 fahren" (the picked day becomes the plan)
-            PlanFoot.Kind.GO -> if (ui.days != null) ({ RideDaysButton(ui.days.selected, cb.onRideDays) }) else ({ GoButton(ui, cb) })
+            PlanFoot.Kind.GO -> ({ GoButton(ui, cb) })
             PlanFoot.Kind.NONE -> null
         },
         bottomBar = { PlanBar() },
@@ -329,9 +322,8 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // without a route, the calculation's state belongs to the summary step too – below it, the low sheet hid it behind
     // its foot (the navigation bar; Meran pictures D04)
     if (route == null && !(ui.routing && calcAsked != null)) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
-    // a multi-day tour: "München – Venedig · 6 Tage"; a followed day: "Tag 4 von 6" (stage 4)
-    if (ui.days != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DaysTitle(ui.days) }
-    if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead, cb.onAllDays, cb.onLoadDayMaps) }
+    // a followed day of a multi-day tour: "Tag 4 von 6 · ‹ Alle Tage" (MD-2; the plan sheet shows no whole trip, MD-1)
+    if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead, cb.onAllDays) }
     if (ui.offlineInfo != null && ui.pointCount > 0)
         Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { OfflineInfoLine(ui.offlineInfo) }
     // the summary step ends under the summary lines
@@ -342,9 +334,7 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
         if (route != null) SavedLine(ui)
         // while a route is calculated the old profile stays where it is, faded and still (owner 2026-11-06: the sheet
         // went down and up on Reverse / Round trip – the profile, the badge and the lines vanished and came back)
-        // a multi-day tour: the profile with its day borders and one row per day (stage 4) in place of the plain profile
-        if (route != null && ui.days != null) MultiDayOverview(ui.days, cb.onDayTap, cb.onDayHold, cb.onHighlight)
-        else if (route != null) {
+        if (route != null) {
             Column(Modifier.fillMaxWidth().padding(top = 8.dp).calculating(ui.routing)
                 .semantics { contentDescription = Txt.s(Res.string.plan_elevation_profile) }) {
                 // stable callbacks: a new PlanCallbacks (every sheet recomposition) must not recompose the profile
@@ -419,7 +409,7 @@ private fun PlanHead(ui: PlanUi, cb: PlanCallbacks) {
     val density = androidx.compose.ui.platform.LocalDensity.current
     val style = MaterialTheme.typography.labelMedium
     // a pill that cannot act is not there (owner 2026-11-27: „Was man nicht braucht, ist auch nicht sichtbar“)
-    val pills = PlanRow.pills(ui.pointCount, ui.canReverse, ui.roundTrip, ui.canRoundTrip, multiDay = ui.days != null || ui.dayHead != null)
+    val pills = PlanRow.pills(ui.pointCount, ui.canReverse, ui.roundTrip, ui.canRoundTrip, multiDay = ui.dayHead != null)
     if (pills.isNotEmpty()) androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxWidth().padding(top = PlanSpacing.ABOVE_PILLS)) {
         fun word(p: PlanRow.Pill) = when (p) { PlanRow.Pill.CLEAR -> clear; PlanRow.Pill.REVERSE -> rev; PlanRow.Pill.LOOP -> loop }
         val wordW = with(density) { pills.sumOf { tm.measure(word(it), style).size.width }.toDp() }

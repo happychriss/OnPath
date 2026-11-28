@@ -277,7 +277,6 @@ abstract class RoutesFlowBase {
             override fun stops(points: List<GeoPoint>) = points.map { GpxWaypoint(it.lat, it.lon, null) }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>): MultiDay? = null
-            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = false
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = false
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 31 Oct, 10:12"
@@ -337,6 +336,7 @@ abstract class RoutesFlowBase {
             override fun rememberPlaceName(p: GeoPoint, name: String) { log += "$where: place name $name" }
             override fun saved(name: String?, id: Long, points: List<GeoPoint>?) { log += "$where: saved $name $id"; plan.setSaved(name, id, points) }
             override fun opened(t: Tour, pts: List<GeoPoint>) { log += "$where: opened ${t.id}" }
+            override fun openDays(t: Tour) { log += "$where: days of ${t.id}" }
             override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) { log += "$where: syncRoutingCheck ${t.id}" }
             override fun standIn(pts: List<GeoPoint>, act: Activity, level: Int, preview: StoredLine.Preview) {
                 log += "$where: standIn ${pts.size} ${act.name} T$level stale=${preview.stale} fromLine=${preview.fromLine}"

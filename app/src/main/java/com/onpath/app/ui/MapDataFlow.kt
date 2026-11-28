@@ -363,13 +363,18 @@ class MapDataFlow(
             else -> null
         }
         val here = first || job?.why == com.onpath.app.cells.CellWhy.HERE
-        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }?.let { if (it.here == here) it else it.copy(here = here) }
-        if (ui == null && key == "modal") loadModalFor = emptySet() // everything there
+        val many = key == "modal" && multiDayModal
+        val ui = mapWaits.tick(key, now) { w -> w.update(focus, states, sizes, r, cells.joining.value, now) }
+            ?.let { if (it.here == here && it.multiDay == many) it else it.copy(here = here, multiDay = many) }
+        if (ui == null && key == "modal") { loadModalFor = emptySet(); multiDayModal = false } // everything there
         return ui
     }
 
     /** Modal (failed) → Close: the modal goes; the card shows the failure with Retry. */
-    fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false; mapWaits.drop() }
+    fun hideLoadModal() { loadModalFor = emptySet(); routingModal = false; multiDayModal = false; mapWaits.drop() }
+
+    /** The modal waits for the maps of all days of a multi-day trip ([loadTourMaps], MD-11): its own line. */
+    private var multiDayModal by mutableStateOf(false)
 
     // ---------------- routing data (loaded by the app itself, also on a fresh install) ----------------
 
@@ -408,9 +413,10 @@ class MapDataFlow(
     }
 
     /**
-     * Loads the map areas [want] of a multi-day tour along [line] (the user said "load", §7) with their routing data: kept
-     * beside every plan's corridor ([com.onpath.app.cells.MapCells.tourCells]); asked on mobile data, they wait for
-     * Wi-Fi ([wifiWait], §7: "On mobile data the default is to wait for Wi-Fi").
+     * Loads the map areas [want] of a multi-day tour along [line] (MD-11, owner 2026-11-28: a day was opened – the maps of all
+     * days load by themselves) with their routing data: kept beside every plan's corridor
+     * ([com.onpath.app.cells.MapCells.tourCells]), shown in the normal map loading window with its multi-day line and its usual
+     * Wi-Fi / mobile data handling; [wifiWait] = they wait for Wi-Fi whatever the setting says.
      * Returns the areas asked for.
      */
     fun loadTourMaps(want: List<com.onpath.app.cells.CellId>, line: List<GeoPoint>, wifiWait: Boolean): List<com.onpath.app.cells.CellId> {
@@ -420,6 +426,12 @@ class MapDataFlow(
             if (wifiWait) cells.tourWifiCells = cells.tourWifiCells + want
             asked = cells.request(want, com.onpath.app.cells.CellReason.CORRIDOR, ownPoint = false)
             tagLoads(asked, LoadTag(LoadWhy.ROUTE, line.lastOrNull()))
+            // MD-11: in the normal map loading window (its Wi-Fi / mobile data handling as always), with the multi-day line
+            if (asked.isNotEmpty() && mode == AppMode.PLAN) {
+                if (loadModalFor.isEmpty()) { mapWaits.drop(); loadBySearch = false }
+                loadModalFor = loadModalFor + asked
+                multiDayModal = true
+            }
             Problems.info("cells", "Multi-day tour: ${asked.size} of ${want.size} map area(s) asked for" + if (wifiWait) " (waiting for Wi-Fi)" else "")
         }
         safeRouting("multi-day") { routingData.ensure(com.onpath.app.data.RoutingTiles.forLine(line, com.onpath.app.cells.TourCorridor.CORRIDOR_M)) }
@@ -520,7 +532,7 @@ class MapDataFlow(
         Problems.trace("cells", "Map loading cancelled: ${o.stop.size} region(s) stopped" +
             (job?.let { ", job ${it.why.name.lowercase()}" } ?: "") + (if (o.clearSearchMark) ", search ring removed" else ""))
         if (o.stop.isNotEmpty()) safeCells("cancel") { cells.cancel(o.stop) }
-        loadModalFor = emptySet(); loadBySearch = false
+        loadModalFor = emptySet(); loadBySearch = false; multiDayModal = false
         // routing data waited for in the same modal: one Cancel stops it too (the partial download stays for resuming)
         if (routingModal) { routingModal = false; safeRouting("cancel") { routingData.cancel() } }
         if (o.closeCard) { cellJob = null; mobileDeclined = false; jobWaited = false; firstStartHidden = true }
@@ -862,7 +874,7 @@ class MapDataFlow(
     fun cancelAllDownloads() {
         safeCells("cancel all") { cells.cancelAll() }
         safeRouting("cancel all") { routingData.cancel() }
-        loadModalFor = emptySet(); routingModal = false
+        loadModalFor = emptySet(); routingModal = false; multiDayModal = false
         cellJob = null
         downloadDetailsOpen = false
     }

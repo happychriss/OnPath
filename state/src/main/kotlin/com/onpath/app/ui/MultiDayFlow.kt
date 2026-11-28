@@ -26,14 +26,15 @@ import org.json.JSONObject
 import com.onpath.strings.*
 
 /**
- * The open multi-day tour on the phone (docs/design/multi-day-tours.md §3 "Phone", stage 4): showing it, picking a day
- * and following it. The plan itself stays the view model's (points, pins, names by value); this keeps beside it
- * - [tour]: which saved route the plan is and its days (N, limits, description) – they count only while the plan still
- *   belongs to that route ([overview]: a cleared or replaced plan is a normal plan; Undo back makes it the tour again);
- * - [marks]: the night marks **by value**, like the pins (a point keeps its mark through every edit, a deleted point's
+ * The multi-day trip on the phone (docs/design/multi-day-tours.md §0, owner 2026-11-28: the phone guides ONE day of the trip,
+ * never the whole plan): the day picked in My routes' day sheet and followed as the plan. The plan itself stays the view
+ * model's (points, pins, names by value); this keeps beside it
+ * - [tour]: which saved trip the day belongs to and its days (N, limits, description);
+ * - [marks]: the trip's night marks **by value**, like the pins (a point keeps its mark through every edit, a deleted point's
  *   mark goes – R2 – and comes back with Undo);
- * - [day]: the picked day(s) while they are the plan ([DayFollow]): every change of the plan is written back into the
- *   whole tour, Save stores the whole tour.
+ * - [day]: the picked day while it is the plan ([DayFollow]): every change of the plan is written back into the trip in
+ *   memory; Save stores the trip while the day's start and goal stay (MD-3), a copy otherwise (MD-4).
+ * A whole trip kept as the plan by an older version ([overview]) is only kept safe (Save keeps its days); it opens no view.
  * Kept in the prefs like the plan, so a restart keeps them. Never throws to the caller (reported).
  */
 class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () -> Long) {
@@ -41,7 +42,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     data class TourRef(val id: Long, val uuid: String, val name: String, val days: MultiDay)
 
     /**
-     * The day(s) being followed: [whole] = the tour as it is now (edits written back), [part] = the day as the plan,
+     * The day being followed: [whole] = the tour as it is now (edits written back), [part] = the day as the plan,
      * [wholeOpened] = the tour's points as last saved (Save's "changed elsewhere?" check), [startAt] / [endAt] = where the
      * day starts / ends on the tour's stored line ([DayFollow.spliceAt]).
      */
@@ -60,7 +61,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
                           val picked: List<GeoPoint>? = null) {
         /**
          * The plan [points] still start and end where the day did (MD-3 / MD-5, owner 2026-11-28): each within
-         * [com.onpath.app.ui.routes.DayPick.SAME_END_M] of the day's start / goal as picked (the router's snaps follow them) –
+         * [SAME_END_M] of the day's start / goal as picked (the router's snaps follow them) –
          * points added, moved or deleted in between keep the day. False when start or goal moved (MD-4: Save writes a copy, the
          * recording no longer counts for the day).
          */
@@ -68,29 +69,21 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
             if (points.size < 2) return false
             val a = picked?.firstOrNull() ?: startAt
             val b = picked?.lastOrNull() ?: endAt
-            val m = com.onpath.app.ui.routes.DayPick.SAME_END_M
+            val m = SAME_END_M
             return com.onpath.app.data.Geo.distance(points.first(), a) <= m && com.onpath.app.data.Geo.distance(points.last(), b) <= m
         }
         /** [anchors] (the tour's, or the day's) with that profile. */
         fun anchorSet(anchors: Map<Int, Anchors> = whole.anchors): AnchorSet = anchorProfile?.takeIf { anchors.isNotEmpty() }?.let { AnchorSet(anchors, it) } ?: AnchorSet.NONE
     }
 
-    /** The days worked out for the plan's route ([compute]); [key] = what they were worked out for. */
-    data class DaysView(val days: TourDays, val pointAt: IntArray, val line: List<GeoPoint>, val key: Any,
-                        /** What the route's times were made with (activity, T level, pace, marked trails); null = not known. */
-                        val profile: String? = null,
-                        /** The number of days followed the limits after a profile change ([PlanDays.followLimits]); null = unchanged. */
-                        val followed: Int? = null)
+    /** The days worked out along a trip's line ([compute]); [key] = what they were worked out for. */
+    data class DaysView(val days: TourDays, val pointAt: IntArray, val line: List<GeoPoint>, val key: Any)
 
     var tour by mutableStateOf<TourRef?>(null)
         private set
     var marks by mutableStateOf<Map<GeoPoint, NightMark>>(emptyMap())
         private set
     var day by mutableStateOf<DayContext?>(null)
-        private set
-    /** The day rows picked in the overview (1 …): one day, or several in a row. */
-    var selected by mutableStateOf<IntRange?>(null)
-    var view by mutableStateOf<DaysView?>(null)
         private set
 
     /**
@@ -100,20 +93,23 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     var dayLost = false
         private set
 
-    /** The overview shows: a multi-day tour is the plan and no day is picked. */
+    /** A whole trip is the plan and no day is picked (only a state kept by an older version: the phone opens days, not trips). */
     val overview: Boolean get() = tour.let { it != null && day == null && linkedId() == it.id }
 
-    /** A day is followed / planned as the plan (and the plan still belongs to its tour). */
+    /** A day is followed as the plan (and the plan still belongs to its tour). */
     val following: Boolean get() = day.let { it != null && linkedId() == it.tour.id }
 
     init { restore() }
 
     // ---- open / leave ---------------------------------------------------------------------------------------------
 
-    /** A saved route was opened with its points [pts] (as loaded): a multi-day tour shows its overview; else nothing here. */
+    /**
+     * A saved route was opened with its points [pts] (as loaded): a day's stand-in or a normal route leaves any trip (My routes
+     * opens a multi-day route's day sheet instead of the trip, so [t] with days is only an older state's way back).
+     */
     fun opened(t: Tour, pts: List<GeoPoint>) {
         val d = t.days
-        day = null; selected = null; view = null
+        day = null
         if (d == null) { tour = null; marks = emptyMap(); save(); return }
         tour = TourRef(t.id, t.uuid, t.name, d.copy(nights = emptyMap()))
         marks = d.nights.mapNotNull { (i, m) -> pts.getOrNull(i)?.let { it to m } }.toMap()
@@ -125,7 +121,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     fun linked(id: Long) {
         val t = day?.tour ?: tour ?: return
         if (t.id == id || id < 0 && tour != null && day == null) return // a plan cleared: Undo brings the tour back
-        tour = null; day = null; marks = emptyMap(); selected = null; view = null
+        tour = null; day = null; marks = emptyMap()
         save()
     }
 
@@ -190,16 +186,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
 
     // ---- the days -------------------------------------------------------------------------------------------------
 
-    /** The whole tour as a plan (overview): [points] with their pins and names, N, limits, marks; null without a tour. */
-    fun plan(points: List<GeoPoint>, activity: Activity, sac: Int, pinned: Set<Int>, names: Map<Int, String>,
-             anchors: Map<Int, Anchors> = emptyMap()): SharedPlan? {
-        val t = tour ?: return null
-        val nights = points.indices.mapNotNull { i -> marks[points[i]]?.let { i to it } }.toMap()
-        return SharedPlan(points, activity, sac, pinned, names, t.name, t.days.days, t.days.limits, PlanDays.clean(points, nights),
-            t.days.description, anchors)
-    }
-
-    /** What Save stores as the days of [points] while the overview shows ([Tour.days]); null for a normal plan. */
+    /** What Save stores as the days of [points] while a whole trip is the plan ([overview], [Tour.days]); null for a normal plan or a day. */
     fun daysFor(points: List<GeoPoint>): MultiDay? {
         if (!overview) return null
         val t = tour ?: return null
@@ -208,77 +195,35 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     }
 
     /**
-     * The days of [plan] along its routed [line] (blocking: call off the main thread) – kept in [view] for the sheet and
-     * the map. [factors] = the pace setting; [profile] / [seen] = the profile now / of the shown days ([profileSeen], read on
-     * the main thread).
+     * The days of [plan] along its [line] (blocking: call off the main thread) – the same split as My routes' day sheet
+     * (DayPick.days). [factors] = the pace setting. The number of days is the trip's own: the phone never changes it (MD-1).
      */
-    fun compute(plan: SharedPlan, line: List<GeoPoint>, factors: com.onpath.app.time.Factors, key: Any, profile: String? = null,
-                seen: String? = null): DaysView? = try {
+    fun compute(plan: SharedPlan, line: List<GeoPoint>, factors: com.onpath.app.time.Factors, key: Any): DaysView? = try {
         val dl = DayLine.of(line, plan.activity, factors)
         val at = WaypointInsertion.routeIndices(plan.points, line)
-        // the activity, T level, pace or marked trails changed (owner 2026-11-27: Hilden → München on foot 40 days, on the
-        // bike still 40): with day limits N follows them, the decided nights stay ([PlanDays.followLimits])
-        val p = if (profile != null && seen != null && profile != seen) PlanDays.followLimits(plan, dl, at) else plan
-        DaysView(PlanDays.of(dl, at, p.days ?: 1, p.limits, p.nights), at, line, key, profile,
-            followed = p.days?.takeIf { it != plan.days })
+        DaysView(PlanDays.of(dl, at, plan.days ?: 1, plan.limits, plan.nights), at, line, key)
     } catch (e: Exception) {
-        Problems.warn("plan", "Days of the multi-day tour not worked out – the route shows without its days", e); null
-    }
-
-    fun show(v: DaysView?) {
-        view = v; selected = selected?.takeIf { s -> v != null && s.last <= v.days.days.size }
-        profileSeen = v?.profile
-        val n = v?.followed ?: return
-        tour?.let { t ->
-            tour = t.copy(days = t.days.copy(days = n))
-            Problems.trace("plan", "Multi-day tour: the days follow the limits after a change of activity / T level / pace / marked trails – now $n")
-            save()
-        }
-    }
-
-    /** The profile the shown days were worked out for; null = none yet (the first view never changes N). Main thread. */
-    var profileSeen: String? = null
-        private set
-
-    /** A day row tapped: that day alone; tapped again: none. */
-    fun tapDay(n: Int) { selected = if (selected == n..n) null else n..n }
-
-    /** A day row held: the days from the picked one to this one in a row ("Tag 3–4"); nothing picked: this day. */
-    fun holdDay(n: Int) {
-        val s = selected
-        selected = if (s == null) n..n else minOf(s.first, n)..maxOf(s.last, n)
+        Problems.warn("plan", "Days of the multi-day tour not worked out", e); null
     }
 
     /**
-     * "Tag n fahren": the picked days of [plan] (the whole tour as the plan is now, [savedPoints] = as last saved) become
-     * the plan. Returns the day's part (its points, pins, names) for the view model to load; null when it cannot be taken
-     * (reported). [anchorProfile] = what the plan's detour points lie on (default: the plan's own, when it has any).
+     * Day [part] of trip [t] (as [plan], its days [v] along its stored line, [savedPoints] = its points as stored) is the plan
+     * now (My routes' day sheet opened it, MD-2): followed from here on. [anchorProfile] = what the trip's detour points lie on.
      */
-    fun pickDay(plan: SharedPlan, savedPoints: List<GeoPoint>?, anchorProfile: AnchorProfile? = null): DayPart? {
-        val t = tour ?: return null
-        val v = view ?: return null
-        val s = selected ?: return null
-        return try {
-            val part = DayFollow.part(plan, v.days, v.pointAt, v.line, s.first, s.last) ?: return null
-            day = DayContext(t, plan, part, savedPoints, v.line[part.startLine], v.line[part.endLine],
-                anchorProfile ?: plan.anchors.takeIf { it.isNotEmpty() }?.let { AnchorProfile.of(plan.activity, plan.sac) }, picked = part.points)
-            Problems.trace("plan", "Multi-day tour: day ${s.first}–${s.last} of ${v.days.days.size} as the plan (${part.points.size} points)")
+    fun follow(t: Tour, plan: SharedPlan, v: DaysView, part: DayPart, savedPoints: List<GeoPoint>?, anchorProfile: AnchorProfile?) {
+        val d = t.days ?: return
+        try {
+            val ref = TourRef(t.id, t.uuid, t.name, d.copy(nights = emptyMap()))
+            tour = ref
+            marks = plan.nights.mapNotNull { (i, m) -> plan.points.getOrNull(i)?.let { it to m } }.toMap()
+            day = DayContext(ref, plan, part, savedPoints, v.line[part.startLine.coerceIn(0, v.line.lastIndex)],
+                v.line[part.endLine.coerceIn(0, v.line.lastIndex)], anchorProfile, picked = part.points)
+            Problems.trace("plan", "Multi-day tour: day ${part.first} of ${v.days.days.size} as the plan (${part.points.size} points)")
             save()
-            part
         } catch (e: Exception) {
-            Problems.error("plan", "The picked day could not be taken out of the multi-day tour", e); null
+            Problems.error("plan", "The picked day could not be followed – it stays a plain plan", e)
+            tour = null; day = null; marks = emptyMap()
         }
-    }
-
-    /** "‹ Alle Tage": the whole tour (with the day's edits) is the plan again. Returns it and its saved points. */
-    fun leaveDay(): Pair<SharedPlan, List<GeoPoint>?>? {
-        val c = day ?: return null
-        day = null
-        marks = c.whole.nights.mapNotNull { (i, m) -> c.whole.points.getOrNull(i)?.let { it to m } }.toMap()
-        tour = c.tour
-        selected = c.part.first..c.part.last
-        save()
-        return c.whole to c.wholeOpened
     }
 
     /** Saved: the whole tour's points as stored now ([pts]), the day's stretch on the new line ([dayLine]). */
@@ -292,8 +237,7 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     /** "Tag 4 von 6" (Navigate's top card, the day's plan sheet); null when no day is followed. */
     fun dayLabel(): String? {
         val p = day?.part?.takeIf { following } ?: return null
-        return if (p.single) com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_day_of, p.first.toString(), p.total.toString())
-        else com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_days_of, p.first.toString(), p.last.toString(), p.total.toString())
+        return com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_day_of, p.first.toString(), p.total.toString())
     }
 
     // ---- kept in the prefs ----------------------------------------------------------------------------------------
@@ -364,6 +308,14 @@ class MultiDayFlow(private val prefs: MultiDayPrefs, private val linkedId: () ->
     private fun markJson(m: NightMark) = JSONObject(MultiDay(1, nights = mapOf(0 to m)).toJson()).getJSONArray("nights").getJSONObject(0)
     private fun mark(o: JSONObject): NightMark =
         MultiDay.fromJson(JSONObject().put("days", 1).put("nights", JSONArray().put(o.put("i", 0))).toString())?.nights?.get(0) ?: NightMark.OVERNIGHT
+
+    companion object {
+        /**
+         * How far the plan's start / goal may lie from the day's and still be that day (MD-3 / MD-5, owner 2026-11-27 / 11-28):
+         * 200 m – the same as the ticks of My routes' day sheet (`DayPick.SAME_END_M` is this value).
+         */
+        const val SAME_END_M = 200.0
+    }
 
     private fun planJson(p: SharedPlan) = JSONObject().put("points", ptsJson(p.points))
         .put("activity", p.activity.name).put("sac", p.sac).put("pinned", JSONArray(p.pinned.sorted()))

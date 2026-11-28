@@ -16,7 +16,6 @@ import com.onpath.app.ui.PlanSize
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.multiday_day_of
-import com.onpath.strings.multiday_ride_day
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -26,9 +25,10 @@ import org.junit.runner.RunWith
 
 /**
  * Multi-day tours, stage 4 (docs/design/multi-day-tours.md §8: "E2E: synced 3-day plan → pick day 2 → start → recording
- * saved"): a 3-day plan arrives as the browser sync stores it (DbTourStore.addPlan, with its days), it is opened, day 2 is
- * picked in the plan sheet's day rows and "Tag 2 starten" makes it the plan; the tour starts, Navigate says "Day 2 of 3",
- * the tour ends and is saved – its followed plan is day 2, the multi-day route keeps its days.
+ * saved", rebuilt to §0 2026-11-28): a 3-day plan arrives as the browser sync stores it (DbTourStore.addPlan, with its days),
+ * My routes shows it, its day sheet opens, a tap on „Tag 2“ makes exactly that day the plan (MD-2, never the whole trip); the
+ * tour starts, Navigate says "Tag 2 von 3", the tour ends and is saved – its followed plan is day 2 with the route's uuid and
+ * the day (MD-5), the multi-day route keeps its days.
  */
 @RunWith(AndroidJUnit4::class)
 class MultiDayTourE2ETest : E2EBase() {
@@ -56,7 +56,7 @@ class MultiDayTourE2ETest : E2EBase() {
         // 7 points, a night on point 2 (Übernachtung) – N = 3, day 2 ends at a grey proposal
         // down the Etsch valley from Meran (paths a hike reaches; a climb north left a point unreachable on the emulator)
         val pts = (0..6).map { GeoPoint(MERAN_LAT - it * 0.008, MERAN_LON + it * 0.004) }
-        var night = pts[2]
+        val night = pts[2]
         val plan = PlanContent(pts, Activity.HIKE, 2, emptySet(), emptyMap(), days = 3, nights = mapOf(2 to NightMark.OVERNIGHT))
         val t = DbTourStore(ctx, db) { com.onpath.app.time.Factors.ONE }.addPlan("E2E Drei Tage", plan)
         assertEquals(3, db.getTour(t.id)?.days?.days)
@@ -66,25 +66,20 @@ class MultiDayTourE2ETest : E2EBase() {
             assertNotNull("the multi-day route in My routes", findFresh(By.text("E2E Drei Tage"), 8_000))
             pause(1_500, "the rows are drawn")
             shot("0-my-routes")
-            scenario.onActivity { a -> vm(a).routes.open = false }
-            scenario.onActivity { a -> vm(a).openTour(db.getTour(t.id)!!) }
-            waitUntil("the tour is the plan", 15_000) { onVm { it.plan.points.size == pts.size } }
-            routeSettled(); night = onVm { it.plan.points.getOrNull(2) } ?: night // the router may move the points onto their ways
-            waitUntil("the overview shows its days", 20_000) { onVm { it.multiDay.daysUi()?.rows?.size == 3 } }
-            // the maps question (first opening, once): shown, then "later" – the test map package has no server behind it
-            try { waitUntil("the maps question", 10_000) { onVm { it.multiDay.tourMapsAsk != null } }; pause(800, "the question is drawn"); shot("1-maps-question") }
-            catch (_: AssertionError) {} // expected: every map area of the corridor already on the emulator – no question
-            scenario.onActivity { a -> vm(a).multiDay.answerTourMaps(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER); vm(a).planEdit.planSize = PlanSize.FULL }
-            pause(1_000, "the sheet grows to full")
-            shot("1-overview")
-            // pick day 2 in the rows (its "Tag 2" line), then "Tag 2 starten"
+            // a tap on the card opens its day sheet (MD-2) – here through the same call the card makes
+            val uuid = db.getTour(t.id)!!.uuid
+            scenario.onActivity { a -> vm(a).dayPick.open(uuid) }
+            waitUntil("the day sheet shows its days", 20_000) { onVm { it.dayPick.ui?.rows?.size == 3 } }
+            pause(1_000, "the sheet is drawn")
+            shot("1-day-sheet")
+            // one tap on „Tag 2“: that day alone becomes the plan
             val two = findFresh(By.text(com.onpath.app.routing.DayRowText.day(2)), 8_000)
             assertNotNull("day row 2 – ${state()}", two)
             two!!.click()
-            waitUntil("day 2 picked", 5_000) { onVm { it.multiDay.flow.selected == 2..2 } }
-            clickText(Txt.s(Res.string.multiday_ride_day, "2"))
-            waitUntil("day 2 is the plan", 15_000) { onVm { it.multiDay.flow.following } }
+            waitUntil("day 2 is the plan", 20_000) { onVm { it.multiDay.flow.following } }
+            assertTrue("never the whole trip as the plan", onVm { it.plan.points.size } < pts.size)
             routeSettled()
+            scenario.onActivity { a -> vm(a).planEdit.planSize = PlanSize.FULL }
             val dayPts = onVm { it.plan.points.toList() }
             assertTrue("day 2 starts at the night of day 1: ${dayPts.first()} vs $night", com.onpath.app.data.Geo.distance(dayPts.first(), night) < 50.0)
             shot("2-day-two")
@@ -101,6 +96,7 @@ class MultiDayTourE2ETest : E2EBase() {
             val followed = db.planPoints(tourId)
             assertNotNull("the followed plan is kept", followed)
             assertEquals("it is day 2", dayPts.size, followed!!.size)
+            assertEquals("the recording is tied to the day (MD-5)", 2, db.getTourPlan(tourId)?.day)
             assertEquals("the multi-day route keeps its days", 3, db.getTour(t.id)?.days?.days)
             db.deleteTour(tourId)
         } finally {

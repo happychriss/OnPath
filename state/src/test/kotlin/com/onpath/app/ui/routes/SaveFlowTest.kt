@@ -27,6 +27,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.asCoroutineDispatcher
 import org.junit.After
+import com.onpath.strings.multiday_own_tour
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -114,8 +115,9 @@ class SaveFlowTest {
         var proposal: String? = proposalName
         var proposalGate: CompletableDeferred<Unit>? = null
         var daysNow: MultiDay? = null
-        var wholeKept = false
         var wholeTakesTheSave = false
+        /** A followed day of a multi-day tour whose start or goal moved (MD-4). */
+        var leaving = false
         val stopNames = HashMap<GeoPoint, String>()
         var refreshes = 0
         var recentProblem: String? = null
@@ -146,11 +148,11 @@ class SaveFlowTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { stopNames[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = route?.let { "MODERATE" }
             override fun days(points: List<GeoPoint>): MultiDay? = daysNow
-            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?): Boolean { if (wholeKept) log += "whole kept"; return wholeKept }
             override fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean {
                 if (wholeTakesTheSave) log += "whole overwritten as \"$name\""
                 return wholeTakesTheSave
             }
+            override fun leavesTrip() = leaving
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? { proposalGate?.await(); return proposal }
             override fun datedName() = dated
             override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) { log += "times $id" }
@@ -533,6 +535,40 @@ class SaveFlowTest {
         assertEquals("this slice wrote nothing", listOf(a, b), planned().single().points())
     }
 
+    /**
+     * MD-4 (owner 2026-11-28): a day of a multi-day tour whose start or goal moved – Save asks for a NEW route's name (not the
+     * trip's), writes a standalone copy, says „Start und Ziel geändert – wird als eigene Tour gespeichert“ on the map, and the
+     * trip stays as it was (the multi-day slice is not asked to write it).
+     */
+    @Test fun aDayWithAMovedStartOrGoalIsSavedAsItsOwnTourAndSaysSo() {
+        val app = App()
+        app.draw(a, b); app.saveAs("Drei Tage") // stands in for the trip the day is linked to
+        val trip = planned().single()
+        app.plan.edit { set(1, c) }
+        app.leaving = true; app.wholeTakesTheSave = true
+        app.save.request()
+        assertEquals("a new route's dialog, not the trip's", SaveAsk.Kind.NEW, app.save.ask?.kind)
+        app.save.confirm("Mein Tag")
+        assertFalse("the trip is not written by the multi-day slice", app.log.any { it.startsWith("whole overwritten") })
+        assertEquals("the trip as it was", listOf(a, b), db.getTour(trip.id)!!.points())
+        val own = planned().single { it.id != trip.id }
+        assertEquals("Mein Tag", own.name); assertEquals(listOf(a, c), own.points())
+        assertEquals("the plan is linked to its own tour now", own.id, app.plan.savedId)
+        assertEquals(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour), app.board.mapNote?.text)
+    }
+
+    @Test fun losGehtsWithAMovedStartOrGoalSavesItsOwnTourNeverOverTheTrip() {
+        val app = App()
+        app.draw(a, b); app.saveAs("Drei Tage")
+        val trip = planned().single()
+        app.plan.edit { set(0, c) }
+        app.leaving = true; app.wholeTakesTheSave = true
+        app.save.atTourStart()
+        assertEquals(listOf(a, b), db.getTour(trip.id)!!.points())
+        assertEquals(2, planned().size)
+        assertEquals(listOf(c, b), planned().single { it.id != trip.id }.points())
+    }
+
     // ---------------------------------------------------------------- a route from My routes
 
     @Test fun aRouteLoadedFromMyRoutesIsOverwrittenInPlaceAndCopiedAsNameTwo() {
@@ -741,12 +777,14 @@ class SaveFlowTest {
         assertEquals(listOf(a, b, c), drafts().single().points())
     }
 
-    @Test fun aFollowedDayGoesAsTheWholeTourAndOnePointIsNoPlan() {
+    /** MD-1 (owner 2026-11-28): a followed day leaving the map unsaved goes under Zuletzt as the day, never as the whole trip. */
+    @Test fun aFollowedDayGoesUnderZuletztAsTheDayAndOnePointIsNoPlan() {
         val app = App()
-        app.draw(a, b); app.wholeKept = true
+        app.draw(a, b); app.wholeTakesTheSave = true
         app.save.keepAsDraft("cleared")
-        assertTrue(db.listTours().isEmpty())
-        assertTrue("whole kept" in app.log)
+        assertEquals("the day's points", listOf(a, b), drafts().single().points())
+        assertNull("no days: a day is no trip", drafts().single().days)
+        db.deleteTour(drafts().single().id)
         val one = App()
         one.draw(a)
         one.save.keepAsDraft("cleared")

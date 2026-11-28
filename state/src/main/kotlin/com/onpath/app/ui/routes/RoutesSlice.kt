@@ -59,6 +59,11 @@ interface RoutesHost : Say {
     fun saved(name: String?, id: Long, points: List<GeoPoint>?)
     /** A planned route was opened as the plan (its multi-day state follows). */
     fun opened(t: Tour, pts: List<GeoPoint>)
+    /**
+     * A multi-day route was to be opened as the plan (Zuletzt, „Wiederherstellen“, Gemacht's plan, …): its day sheet in My
+     * routes opens instead – the phone takes one day of a trip, never the whole plan (MD-0 / MD-2, owner 2026-11-28).
+     */
+    fun openDays(t: Tour)
     /** A synced plan opened: its routing fingerprint is checked against ours. */
     fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>)
     /** The stored line of the loaded route, shown at once by the next route run in place of the first routing. */
@@ -203,6 +208,10 @@ class RoutesSlice(
                  restoring: RestoreAsk? = null,
                  /** False: the replaced plan goes under Zuletzt without "Restore your old plan?" (a tour starts right after, Los geht's). */
                  asks: Boolean = true) {
+        if (t.kind == TourKind.PLANNED && t.days != null && t.waypoints.size >= 2) {
+            Problems.trace("routes", "Multi-day route ${t.id} to open – its day sheet instead of the whole trip as the plan")
+            host.openDays(t); return
+        }
         Problems.trace("routes", "Tour ${t.id} on the map (${if (duringTour) "during the tour, " else ""}then $trackThen)")
         host.syncMarkSeen(t)
         scope.launchSafe("app", "openTour") {

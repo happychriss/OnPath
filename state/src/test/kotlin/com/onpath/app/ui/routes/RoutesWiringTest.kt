@@ -47,6 +47,7 @@ class RoutesWiringTest {
             "override fun rememberPlaceName(p: GeoPoint, name: String) = this@AppViewModel.searchFlow.rememberPlaceName(p, name)",
             "override fun saved(name: String?, id: Long, points: List<GeoPoint>?) = tourFollow.setSaved(name, id, points)",
             "override fun opened(t: Tour, pts: List<GeoPoint>) = multiDay.opened(t, pts)",
+            "override fun openDays(t: Tour) { routesGo.openRoutes(); dayPick.open(t) }",
             "override fun syncRoutingCheck(t: Tour, pts: List<GeoPoint>) = this@AppViewModel.syncedRouting.syncRoutingCheck(t, pts)",
             "planRecalc.standIn = com.onpath.app.ui.plan.PlanRecalcSlice.StandIn(pts, act, level, preview)",
             "override fun withMaps(t: Tour) = multiDay.withMaps(t)",

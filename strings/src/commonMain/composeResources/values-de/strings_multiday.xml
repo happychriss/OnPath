@@ -7,20 +7,8 @@
     </plurals>
     <string name="multiday_day_n">Tag %1$s</string>
     <string name="multiday_day_of">Tag %1$s von %2$s</string>
-    <string name="multiday_days_of">Tage %1$s–%2$s von %3$s</string>
-    <string name="multiday_ride_day">Tag %1$s starten</string>
-    <string name="multiday_ride_days">Tage %1$s–%2$s starten</string>
-    <string name="multiday_pick">Tag wählen</string>
     <string name="multiday_all_days">Alle Tage</string>
     <string name="multiday_maps_missing">Karten fehlen</string>
-    <string name="multiday_maps_title">Karten für die Tour laden?</string>
-    <string name="multiday_maps_text">Ohne Karten geht die Tour unterwegs nicht offline.</string>
-    <string name="multiday_maps_wifi">Im Mobilfunk: wartet auf WLAN.</string>
-    <string name="multiday_maps_whole">Ganze Tour · %1$s</string>
-    <string name="multiday_maps_day">Nur Tag %1$s · %2$s</string>
-    <string name="multiday_maps_later">Später</string>
-    <string name="multiday_day_maps_missing">Karten für diesen Tag fehlen (≈ %1$s)</string>
-    <string name="multiday_load">Laden</string>
     <string name="multiday_end_open">Nacht noch offen</string>
     <string name="multiday_end_overnight">Übernachtung</string>
     <string name="multiday_end_hotel">Hotel</string>
@@ -33,4 +21,7 @@
     <string name="daypick_details">Tag %1$s im Detail</string>
     <string name="daypick_next">nächster Tag</string>
     <string name="daypick_touring">Beende zuerst die laufende Tour – dann lässt sich ein Tag laden.</string>
+    <string name="daypick_days_failed">Die Tage dieser Tour lassen sich nicht berechnen – öffne sie im Planer im Browser.</string>
+    <string name="multiday_own_tour">Start und Ziel geändert – wird als eigene Tour gespeichert</string>
+    <string name="multiday_maps_all">Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.</string>
 </resources>

@@ -45,10 +45,13 @@ interface SavePorts : Say {
     fun difficulty(route: PlannedRoute?, activity: Activity): String?
     /** What Save stores as the days of [points]; null for a normal plan or a followed day. Also called on the write's thread. */
     fun days(points: List<GeoPoint>): MultiDay?
-    /** A followed day: its whole multi-day tour goes under Zuletzt instead, as [act] / [sac] (the plan's profile as it was, true = taken care of). */
-    fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?): Boolean
-    /** A followed day: Save writes the whole multi-day tour (true = taken care of). */
+    /** A followed day whose start and goal stayed: Save writes the whole multi-day tour (true = taken care of; MD-3). */
     fun overwriteWhole(name: String, then: (() -> Unit)?): Boolean
+    /**
+     * A followed day whose start or goal moved (MD-4, owner 2026-11-28): Save makes a standalone route of it (a new one, never
+     * over the trip) and says „Start und Ziel geändert – wird als eigene Tour gespeichert“. False = no such day.
+     */
+    fun leavesTrip(): Boolean = false
     /** "Route 26 Oct, 10:12" in the app's language – the name when nothing else fits. */
     fun datedName(): String
     /** Keeps the model times of the saved route [id] for the route list (blocking; reports its own failures). */
@@ -184,9 +187,11 @@ open class SaveState(
         }
     }
 
-    // a plan from "Zuletzt" is no saved route: Save makes a new one (and the draft goes – [insertPlanned])
+    // a plan from "Zuletzt" is no saved route: Save makes a new one (and the draft goes – [insertPlanned]); a day of a multi-day
+    // tour whose start or goal moved neither (MD-4: a standalone copy, the trip stays)
     private fun currentSaveMode() =
-        RouteRules.saveMode(plan.savedId, plan.savedName, routes.tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.id })
+        RouteRules.saveMode(if (host.leavesTrip()) -1L else plan.savedId, plan.savedName,
+            routes.tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.id })
 
     private fun plannedNames() = routes.tours.filter { it.kind == TourKind.PLANNED && !it.draft }.map { it.name }
 
@@ -208,7 +213,7 @@ open class SaveState(
         // takes its place) – the switch re-routed the plan on the new profile, so [SaveHost.route] is not the plan's own any more
         val act = own?.activity ?: host.activity; val level = own?.sac ?: host.sac
         val r = if (own != null) own.route else host.route
-        if (pts.size < 2 || host.keepWhole(act, level, r)) return // a followed day: the whole multi-day tour goes under Zuletzt
+        if (pts.size < 2) return // a followed day of a multi-day tour goes under Zuletzt as the day (MD-1: never the whole trip)
         routes.keptAs = -1L
         val updated = recent.keep(LeavingPlan(pts, plan.unsaved, plan.savedId, r, act, level, host.stops(pts), plan.pinnedIndices(),
             host.datedName(), host.days(pts), plan.anchorsFor(act, level)) { host.difficulty(r, act) }, why)
@@ -278,6 +283,11 @@ open class SaveState(
      */
     private fun insertPlanned(what: String, end: () -> Unit, name: String, pts: List<GeoPoint>, r: PlannedRoute?, then: (() -> Unit)?) {
         val title = name.trim().ifBlank { host.datedName() }
+        // MD-4: a day of a multi-day tour with its start or goal moved is saved as a tour of its own – said where the user acted
+        if (host.leavesTrip()) {
+            Problems.trace("plan", "Save: a day of a multi-day tour with its start or goal moved – saved as its own route \"$title\"")
+            host.say(Txt.s(Res.string.multiday_own_tour), NoticeKind.INFO, NoticePlace.MAP)
+        }
         // saved from a plan under "Zuletzt": the saved route takes its place there (no second entry)
         val fromDraft = linkedDraft
         val act = host.activity; val level = host.sac
@@ -332,6 +342,7 @@ open class SaveState(
         val pts = plan.points.toList()
         val old = plan.savedName
         val id = plan.savedId
+        if (pts.size >= 2 && !saving && host.leavesTrip()) { saveRoute(name, then); return } // MD-4: never over the trip
         if (pts.size < 2 || host.overwriteWhole(name, then) || saving) return // a followed day: the whole multi-day tour
         if (old == null || id < 0) { saveRoute(name, then); return }
         saving = true

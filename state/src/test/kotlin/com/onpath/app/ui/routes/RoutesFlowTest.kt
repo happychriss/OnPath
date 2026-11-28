@@ -236,6 +236,16 @@ class RoutesFlowTest : RoutesFlowBase() {
         assertEquals("it still becomes the plan", 3, app.plan.points.size)
     }
 
+    /** MD-0 / MD-2 (owner 2026-11-28): a whole multi-day route never becomes the plan – any way it arrives, its day sheet opens. */
+    @Test fun aMultiDayRouteOpensItsDaySheetNeverTheWholeTripAsThePlan() {
+        val app = App()
+        val t = planned("Drei Tage").copy(days = com.onpath.app.data.MultiDay(3))
+        app.slice.openTour(t); app.settle()
+        assertTrue(app.log.toString(), app.log.any { it.endsWith(": days of ${t.id}") })
+        assertEquals("nothing of it is the plan", 0, app.plan.points.size)
+        assertFalse(app.log.any { it.contains(": opened ") || it.contains("store.loadSegments") })
+    }
+
     @Test fun aPlannedRouteWithOnlyOnePointIsShownAsATrackNotLoadedAsAPlan() {
         val app = App()
         app.slice.openTour(planned("One", via = arrayOf(a))); app.settle()
