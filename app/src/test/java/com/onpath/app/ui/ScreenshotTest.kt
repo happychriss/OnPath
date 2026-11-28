@@ -108,7 +108,7 @@ class ScreenshotTest {
                           // undo / redo in their own pill, only while there is something to undo (owner 2026-11-08)
                           if (route) UndoPill(onUndo = {}, onRedo = null)
                       },
-                      menu: PlanMenu = PlanMenu(onUpdates = {}),
+                      menu: PlanMenu = PlanMenu(),
                       /** "Plan ändern" during a tour: the mode label (the position is the normal blue dot, owner 2026-11-26). */
                       editing: Boolean = false,
                       /** "Ohne Netz ✓ / ⟳ / ⚠" in the mode pill (owner 2026-11-03). */
@@ -1641,7 +1641,7 @@ class ScreenshotTest {
     }
 
     /** The unsaved plan's ☰ menu: Save route on top (the sign's tap does the same). */
-    private val unsavedMenu get() = PlanMenu(onUpdates = {}, onSaveRoute = {})
+    private val unsavedMenu get() = PlanMenu(onSaveRoute = {})
 
     /** A saved route changed since: "Save" beside ⋯ again, "… changed, not saved" below. */
     fun planChangedNotSaved() = paparazzi.snapshot {
