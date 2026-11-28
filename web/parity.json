@@ -233,11 +233,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/data/Prefs.kt",
-      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>) · 2026-11-28 03a3b6a55 unused multi-day prefs (multiDayMapsAsked, multiDayWifiCells) dropped – the planner never had them; 2026-11-28 Zuhause out of the app (5e6d33829): gesehen, Planer bleibt – the planner keeps its Zuhause (sync unchanged)",
+      "what": "pace keys hikePaceLevel / bikePaceLevel, unknown → Pace.of (web: localStorage onpath.<key>) · 2026-11-28 03a3b6a55 unused multi-day prefs (multiDayMapsAsked, multiDayWifiCells) dropped – the planner never had them; 2026-11-28 Zuhause out of the app (5e6d33829): gesehen, Planer bleibt – the planner keeps its Zuhause (sync unchanged); 2026-11-28 battery saving (a8f6b68c9: Sparen switch, estimate): app only – the planner records no tours",
       "web": [
         "web/app/src/main.ts"
       ],
-      "blob": "d2f80740c4cfb2f905bd18e93d0b36926707062a"
+      "blob": "950baf5a6b07977780b09ee20edc8730f1be1cb1"
     },
     {
       "app": "app/src/main/java/com/onpath/app/map/Overview.kt",
@@ -3852,6 +3852,34 @@
       "perf": [
         "* itself after [SHOW_MS] (a short line without a button, `VISION.md`) and no longer comes once the user has held",
         "const val SHOW_MS = 4_000L"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/domain/tour/BatteryEstimate.kt": {
+      "blob": "ed2dacdb31f882b7405eba1b4e4ca5afdd69bcfa",
+      "perf": [
+        "* ran [MIN_MS] and the level fell [MIN_DROP] since the start. Charging, or a level that goes up, starts the count over.",
+        "/** Percent per hour, null until the tour ran [MIN_MS] and fell [MIN_DROP] since its start (two steps at least). */",
+        "if (startMs < 0 || nowMs - startMs < MIN_MS || startLevel - nowLevel < MIN_DROP) return null",
+        "const val MIN_MS = 30 * 60_000L"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/domain/tour/BatterySave.kt": {
+      "blob": "f32326f36ea72d439d9617c705a6109f61cad001",
+      "perf": [
+        "* „Sparen“ in the question ([BatteryEstimate.asks]); it stays set. While on, GPS runs slow – a fix every [HIKE_MS] on foot,",
+        "* [BIKE_MS] by bike – except where it matters (Chriss: „Ankommen zuerst“): near a junction of the followed route and off",
+        "const val HIKE_MS = 30_000L",
+        "const val BIKE_MS = 10_000L",
+        "const val FAST_MS = 1_000L",
+        "!on || fast -> FAST_MS",
+        "bike -> BIKE_MS",
+        "else -> HIKE_MS"
+      ]
+    },
+    "core/src/main/kotlin/com/onpath/app/domain/tour/SaveRate.kt": {
+      "blob": "3107cdaba4922b1c8aa94da18b53c712e9573d12",
+      "perf": [
+        "val slowS = (if (bike) BatterySave.BIKE_MS else BatterySave.HIKE_MS) / 1000.0"
       ]
     }
   },
