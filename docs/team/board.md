@@ -19,11 +19,11 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Halte-Hinweis und „Als Ziel“ | donald | done; parity lines 9c834bfcb (F-PLAN-24 none, F-PLAN-25 planner has it; tinted first row = open question) | **free** – kept for the low-battery task once the owner answers |
+| Akku sparen unterwegs (was Halte-Hinweis) | donald | step 1: pictures where the „Sparen“ switch sits + the question (owner 10:32, item battery-critical 7dc106ce7) | owner picks at the picture → build |
 | Mehrtagestour-Nacharbeit | donald | on main a450199e9; building: days as cards in the day sheet, link „‹ Alle Tage“ removed on the phone („Tag 4 von 6“ stays) | done report → third check → test build |
 | Routentests / toter Code | donald | all done: PR #27 merged (weekly SameRouteTest), „Ganz neu berechnen“ out of the app, snap switch stays (F-POS-06) | free |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
-| Cloud | – | done 69b360ee1: at low battery the app does nothing (no level read, no question, no order; R-10 "not planned") | question to the owner via the project lead (captain thread 28.11.) |
+| Cloud | – | battery check done; owner answered 10:32 | free |
 
 **Release 0.18.12:** on hold. Needs the test build on the Pixel, one really ridden day of a trip (VISION), then the
 owner's word. Notes on `release/0.18.12-notes`.
