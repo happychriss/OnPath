@@ -411,13 +411,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/progress/BesideSign.kt",
-      "what": "form B: the small sign (a ring + ONE percent over the whole action, ActionPercent), tap → the details (title, the bar, one line per load, Cancel all red · Close) – besidesign.ts, WebWait.kt WebSign, style.css .besidesign · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
+      "what": "form B: the small sign (a ring without a number since 2026-11-28, filled by the areas counted (ActionPercent.areas), details „x von y Kartenbereichen“), tap → the details (title, the bar, one line per load, Cancel all red · Close) – besidesign.ts, WebWait.kt WebSign, style.css .besidesign · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
       "web": [
         "web/app/src/besidesign.ts",
         "web/engine/src/main/kotlin/com/onpath/web/WebWait.kt",
         "web/app/src/style.css"
       ],
-      "blob": "f4958c254604857408eb8a98504780b8ca0e1a3f"
+      "blob": "42e3b3886d0e774b944354f5a2c51d2a9066a1d6"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/data/ProgressMemory.kt",
@@ -509,6 +509,23 @@
         "web/app/src/style.css"
       ],
       "blob": "076a5d0022a5aa6ffe7878cb9c8017e5c60bdfed"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/ThumbCard.kt",
+      "what": "ThumbGoalRow (owner 2026-11-27): with only the start set the card asks „Ziel suchen“ (plan_search_goal) – the planner's search field reads that word with one point (main.ts drawPoints)",
+      "web": [
+        "web/app/src/main.ts"
+      ],
+      "blob": "c8a0fbbea24c78f1bb6eac1bd19dc13607e183c4"
+    },
+    {
+      "app": "app/src/main/java/com/onpath/app/ui/routes/DayPickCard.kt",
+      "what": "DaysBadge (owner 2026-11-27): a plan-blue pill „📅 N Tage“ on a multi-day route's picture – plans.ts row tile, style.css .daysbadge; the app's day sheet = the planner's day table after opening (no ridden days in the planner)",
+      "web": [
+        "web/app/src/plans.ts",
+        "web/app/src/style.css"
+      ],
+      "blob": "8da0de6d3bbefcf092f95c1d61ecacd11b210147"
     }
   ],
   "watch": [
