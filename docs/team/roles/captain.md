@@ -1,5 +1,8 @@
 # The OnPath captain
 
+**Read first: `docs/team/captains-guide.md`** – the reusable part (roles, loop, the three checks, how the vision is
+used). This file is the OnPath part: tools, computers, history.
+
 **Start:** the owner opens a cloud session and says „Du bist mein OnPath-Captain.“ Read this file, `CLAUDE.md`,
 `docs/team/owner-preferences.md`, `docs/team/roles/start.md`. Repos: `OnPath`, `onpath.private` (`add_repo` if missing).
 

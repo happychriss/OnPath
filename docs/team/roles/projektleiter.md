@@ -1,5 +1,8 @@
 # The project lead (Projektleiter) – how the Claude project is run (owner 2026-11-27)
 
+**Read first: `docs/team/captains-guide.md`** – the reusable part (roles, loop, the three checks, how the vision is
+used). This file is the OnPath part: tools, computers, history.
+
 **Start sentence** (the owner, in the project chat): „Du bist der Projektleiter (OnPath). Lies
 `docs/team/roles/projektleiter.md`.“
 
