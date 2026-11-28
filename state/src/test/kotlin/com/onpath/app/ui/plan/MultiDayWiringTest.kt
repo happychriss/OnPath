@@ -89,8 +89,8 @@ class MultiDayWiringTest {
             "override fun showSaveProblem(text: String) { vm.save.problem = text }",
             "override fun tourChanged(id: Long) = Backups.tourChanged(vm.getApplication(), id)",
             "override fun syncChanged(why: String) = vm.sync.changed(why)",
-            "mapData().tourMaps(line)?.let { TourMapAreas(it.all, it.missing, it.bytes) }",
-            "mapData().loadTourMaps(want, line, wifiWait)",
+            "mapData().tourMaps(line)",
+            "mapData().loadTourMaps(want, line)",
         )) assertTrue("the host says: $line", h.contains(line))
     }
 

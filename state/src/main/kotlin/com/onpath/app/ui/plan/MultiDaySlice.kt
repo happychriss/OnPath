@@ -57,10 +57,10 @@ interface MultiDayHost {
     /** The map areas along [line] ([MapDataFlow.tourMaps], blocking geometry – off the main thread); null = not worked out (reported). */
     fun tourMaps(line: List<GeoPoint>): TourMapAreas?
     /**
-     * Loads [want] along [line] ([MapDataFlow.loadTourMaps]) in the normal map loading window with its multi-day line (MD-11);
-     * [wifiWait] = they wait for Wi-Fi whatever the setting says (false: the window's usual Wi-Fi / mobile data handling).
+     * Loads [want] along [line] ([MapDataFlow.loadTourMaps]) in the normal map loading window with its multi-day line (MD-11) and
+     * its usual Wi-Fi / mobile data handling.
      */
-    fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean)
+    fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>)
 }
 
 /**
@@ -236,7 +236,7 @@ class MultiDaySlice(
             val m = withContext(default) { host.tourMaps(line) } ?: return@launchSafe
             if (m.missing.isEmpty()) return@launchSafe
             Problems.info("cells", "Multi-day tour: a day opened – the maps of all days load (${m.missing.size} area(s), ≈ ${m.bytes / 1_000_000} MB)")
-            host.loadTourMaps(m.missing, line, wifiWait = false)
+            host.loadTourMaps(m.missing, line)
             prefs.multiDayMapCells = prefs.multiDayMapCells + m.missing.map { it.id }
         }
     }
