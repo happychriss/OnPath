@@ -21,8 +21,8 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 | --- | --- | --- | --- |
 | Akku sparen unterwegs (was Halte-Hinweis) | donald | owner 10:38: A + the question → build; then tidy the settings during a route (picture first) | captain go before merge |
 | Browser verbinden: eigenes Fenster (was Mehrtagestour-Nacharbeit; cards merged a174c6515) | donald | picture: own pairing window vs browser part on top (owner 10:45) | owner picks → build |
-| Flackerndes Vorschaubild (was Routentests) | donald | fix on main 0252c2187 (owner: „ich werde selber testen“) | free; fix goes to the Pixel 8 with the test build after tour 261 |
-| Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
+| Lange Strecken: Frage vereinheitlichen (was Flackern; fix on main 0252c2187) | donald | app: „Trotzdem planen“ out (item long-route-question 640d48016) | captain go + owner's yes |
+| Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
 | Cloud | – | battery check done; owner answered 10:32 | free |
 
 **Release 0.18.12:** on hold. Needs the test build on the Pixel, one really ridden day of a trip (VISION), then the
