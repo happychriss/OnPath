@@ -31,6 +31,8 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -455,26 +457,31 @@ private fun statsText(c: SuggestCard) = buildAnnotatedString {
  * (owner 2026-11-28 15:36, variant A); else a tap there is the card's own (it chooses the card).
  */
 @Composable
-private fun ShortText(c: SuggestCard, front: Boolean, onOpen: () -> Unit) {
-    var nameCut by remember(c) { mutableStateOf(false) }
-    var statsCut by remember(c) { mutableStateOf(false) }
-    var lineCut by remember(c) { mutableStateOf(false) }
-    val cut = nameCut || statsCut || lineCut
-    val showMore = CardTaps.showsMore(cut, open = false)
+private fun ShortText(c: SuggestCard, front: Boolean, onOpen: () -> Unit) = BoxWithConstraints(Modifier.fillMaxWidth()) {
+    // measured here, in the same pass (not from onTextLayout a frame later): „mehr“ and the tap never flicker in
+    val measurer = rememberTextMeasurer()
+    val name = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold)
+    val stats = statsText(c)
+    val statsStyle = MaterialTheme.typography.bodyMedium
+    val lineStyle = MaterialTheme.typography.bodySmall
+    val room = constraints.maxWidth - with(LocalDensity.current) { 4.dp.roundToPx() }
+    fun cut(t: androidx.compose.ui.text.AnnotatedString, st: androidx.compose.ui.text.TextStyle) = t.isNotEmpty() &&
+        measurer.measure(t, st, overflow = TextOverflow.Ellipsis, maxLines = 1,
+            constraints = androidx.compose.ui.unit.Constraints(maxWidth = room.coerceAtLeast(0))).hasVisualOverflow
+    val isCut = cut(androidx.compose.ui.text.AnnotatedString(c.name), name) || cut(stats, statsStyle) ||
+        cut(androidx.compose.ui.text.AnnotatedString(c.line), lineStyle)
+    val showMore = CardTaps.showsMore(isCut, open = false)
     val probe = LocalCardProbe.current
     SideEffect { probe?.more?.set(c.name, showMore) }
     val more = str(Res.string.suggest_ui_more)
-    val tap = if (CardTaps.of(CardPart.TEXT, front, cut) == CardTap.OPEN)
+    val tap = if (CardTaps.of(CardPart.TEXT, front, isCut) == CardTap.OPEN)
         Modifier.clickable(role = Role.Button, onClickLabel = more, onClick = onOpen) else Modifier
     Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).then(tap), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(end = 4.dp), onTextLayout = { nameCut = it.hasVisualOverflow })
-        Text(statsText(c), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(end = 4.dp), onTextLayout = { statsCut = it.hasVisualOverflow })
+        Text(c.name, style = name, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(end = 4.dp))
+        Text(stats, style = statsStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(end = 4.dp))
         if (c.line.isNotBlank() || showMore) Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-            Text(c.line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.weight(1f),
-                onTextLayout = { lineCut = it.hasVisualOverflow; probe?.lineWidth?.set(c.name, it.size.width) })
+            Text(c.line, style = lineStyle, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f),
+                onTextLayout = { probe?.lineWidth?.set(c.name, it.size.width) })
             if (showMore) MoreMark(c.name, probe)
         }
     }
