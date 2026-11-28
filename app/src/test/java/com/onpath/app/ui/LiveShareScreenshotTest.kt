@@ -15,11 +15,9 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * Live sharing as the first entry of the Settings opened from Navigate (owner 2026-11-20: "in der Navigation bei den
- * Einstellungen, als erster Eintrag mit Symbol"; docs/design/live-tracking.md §2) at a real phone's size – what the
- * owner decides on before it goes to main: the entry "Standort teilen", the state live and waiting with the two actions,
- * the name row, the name question. Guards the layout: the card looks like the page's own rows, nothing is cut off in
- * German or at the largest font, the dialog's two actions stay in one row.
+ * Live sharing in Settings (Chriss 2026-11-28 14:11, like „Mit Browser verbinden“): the one row „Standort teilen“ with its
+ * state first on the way, and its own page with exactly Name · Teilen · Teilen beenden (only while sharing) – at a real
+ * phone's size, German, English and the largest font; the name question's two actions stay in one row.
  */
 abstract class LiveShareShots(private val locale: Locale) {
     abstract val paparazzi: Paparazzi
@@ -32,18 +30,28 @@ abstract class LiveShareShots(private val locale: Locale) {
     }
     private val sharing = listOf(LiveAction.SHARE_AGAIN, LiveAction.STOP)
 
-    /** Not sharing, never shared before: the one row. */
-    @Test fun entry() = settings.onTheWayWith { LiveSettingsCard(LiveSign.NONE, listOf(LiveAction.SHARE), {}) }
-    /** Sharing, uploads get through; the name was given at the first share. */
-    @Test fun live() = settings.onTheWayWith { LiveSettingsCard(LiveSign.LIVE, sharing, {}, name = "Christian") }
+    private fun entry(sign: LiveSign, actions: List<LiveAction>, name: String = "Christian", ended: Boolean = false) =
+        LiveShareEntry(row = { o -> LiveShareRow(sign, o) }, page = { LiveSharePage(sign, actions, {}, name, {}, ended) })
+
+    // ⚙ on the way (Chriss 2026-11-28 14:11): ONE row „Standort teilen“ with its state, first in the list
+    /** Not sharing: „Nicht aktiv“. */
+    @Test fun entry() = settings.onTheWayWith { LiveShareRow(LiveSign.NONE) {} }
+    /** Sharing, uploads get through: „Aktiv“. */
+    @Test fun live() = settings.onTheWayWith { LiveShareRow(LiveSign.LIVE) {} }
     /** Sharing without network. */
-    @Test fun waiting() = settings.onTheWayWith { LiveSettingsCard(LiveSign.WAITING, sharing, {}, name = "Christian") }
-    /** Not sharing, shared before: the entry and the name row (left empty: no second line). */
-    @Test fun entryWithName() = settings.onTheWayWith { LiveSettingsCard(LiveSign.NONE, listOf(LiveAction.SHARE), {}, name = "") }
-    /** The server ended the sharing (expired, stopped elsewhere): a grey line first, then a new share is offered. */
-    @Test fun endedByServer() = settings.onTheWayWith { LiveSettingsCard(LiveSign.NONE, listOf(LiveAction.SHARE), {}, name = "Christian", ended = true) }
-    /** No tour records: the list is as before (no card, no gap). */
-    @Test fun noTour() = settings.onTheWayWith { LiveSettingsCard(LiveSign.NONE, emptyList(), {}) }
+    @Test fun waiting() = settings.onTheWayWith { LiveShareRow(LiveSign.WAITING) {} }
+
+    // the page behind it: exactly Name · Standort teilen / Link nochmal teilen · Teilen beenden (only while sharing)
+    /** Not sharing during a tour: Name · Standort teilen – no „Teilen beenden“. */
+    @Test fun pageOff() = settings.livePage(entry(LiveSign.NONE, listOf(LiveAction.SHARE)))
+    /** Sharing: Name · Link nochmal teilen · Teilen beenden. */
+    @Test fun pageLive() = settings.livePage(entry(LiveSign.LIVE, sharing))
+    /** Not sharing, no name yet: the name row without a second line. */
+    @Test fun entryWithName() = settings.livePage(entry(LiveSign.NONE, listOf(LiveAction.SHARE), name = ""))
+    /** The server ended the sharing: its grey line first, then a new share is offered. */
+    @Test fun endedByServer() = settings.livePage(entry(LiveSign.NONE, listOf(LiveAction.SHARE), ended = true))
+    /** No tour records: the name only, and the line that sharing goes during a tour. */
+    @Test fun noTour() = settings.livePage(entry(LiveSign.NONE, emptyList()))
     @Test fun nameDialog() = paparazzi.snapshot {
         OnPathTheme { Box(Modifier.fillMaxSize()) { MapPlaceholder(Modifier.fillMaxSize()); LiveNameDialog("", {}, {}) } }
     }

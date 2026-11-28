@@ -7,6 +7,10 @@
     <string name="live_sign">Standort</string>
     <string name="live_sign_waiting">Standort · wartet auf Netz</string>
     <string name="live_name_row">Name auf der Seite</string>
+    <string name="live_status_on">Aktiv</string>
+    <string name="live_status_waiting">Aktiv · wartet auf Netz</string>
+    <string name="live_status_off">Nicht aktiv</string>
+    <string name="live_only_on_tour">Teilen geht während einer Tour.</string>
     <string name="live_share_text">Verfolge meine Tour: %1$s</string>
     <string name="live_name_title">Dein Name für die Seite</string>
     <string name="live_name_text">Wer den Link öffnet, sieht „Tour von …“.</string>

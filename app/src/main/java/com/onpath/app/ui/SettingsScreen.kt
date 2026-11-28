@@ -40,6 +40,7 @@ import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material.icons.outlined.SaveAlt
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
+import androidx.compose.material.icons.outlined.Share
 import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.Timer
 import androidx.compose.material.icons.filled.Check
@@ -197,12 +198,15 @@ fun SettingsScreen(
     /** ← on a page (the app: [SettingsSlice.settingsBack] – the pairing window opened from outside closes); null = [onPage] up. */
     onUp: (() -> Unit)? = null,
 ) {
+    // live sharing's row and page ([LocalLiveShare]); null while sharing is not offered
+    val live = LocalLiveShare.current
     // every page this phone shows (sub pages and aliases too – the on-the-way list and the rows inside pages use them)
     val available = SettingsPage.entries.filter {
         when (it) {
             SettingsPage.OFFLINE_MAPS -> offlineMaps != null
             SettingsPage.BACKUP -> backup != null
             SettingsPage.SYNC -> sync != null
+            SettingsPage.LIVE -> live != null
             SettingsPage.BACKUP_SYNC -> backup != null
             SettingsPage.UPDATES -> update != null
             SettingsPage.DIAGNOSTICS -> diagnostics
@@ -251,6 +255,7 @@ fun SettingsScreen(
                         // the browser's own card above "Your settings" (owner 2026-11-28, P1): status + the pairing window
                         val card = kind == TopicGroup.YOURS && sync != null
                         if (card) sync?.let { sy -> item { PairTopicCard(sy, top = if (gi > 0) 20.dp else 4.dp) { onPage(SettingsPage.SYNC) } } }
+                        if (kind == TopicGroup.YOURS) live?.let { l -> item { Column { Spacer(Modifier.height(12.dp)); l.row { onPage(SettingsPage.LIVE) } } } }
                         if (kind != TopicGroup.URGENT) item {
                             Column { SettingsGroupHeader(str(if (app) Res.string.settings_group_app else Res.string.settings_group_yours),
                                 top = if (gi > 0 || card) 20.dp else 4.dp)
@@ -318,6 +323,7 @@ fun SettingsScreen(
                         }
                         // the pairing window „Mit Browser verbinden“ (owner 2026-11-28, A-018): only the browser part
                         SettingsPage.SYNC -> if (sync != null) pairWindow(sync, syncCb, now)
+                        SettingsPage.LIVE -> live?.let { l -> item { l.page() } }
                         // Backup (owner 2026-11-28: the browser has its own window; „Sicherung & Browser“ is an alias of it)
                         SettingsPage.BACKUP_SYNC, SettingsPage.BACKUP -> if (backup != null) item { BackupSection(backup, backupCb) }
                         SettingsPage.DIAGNOSTICS -> if (diagnostics) {
@@ -396,6 +402,7 @@ private val SettingsPage.icon: ImageVector
         SettingsPage.OFFLINE_MAPS -> Icons.Outlined.CloudDownload
         SettingsPage.BACKUP -> Icons.Outlined.SaveAlt
         SettingsPage.SYNC -> Icons.Outlined.Sync
+        SettingsPage.LIVE -> Icons.Outlined.Share
         SettingsPage.PRIVACY -> Icons.Outlined.Lock
         SettingsPage.PHONE -> Icons.Outlined.PhoneAndroid
         SettingsPage.UPDATES -> Icons.Outlined.SystemUpdate

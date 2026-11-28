@@ -65,6 +65,9 @@ class LiveLane(
     /** "Stop sharing". */
     fun stop() = run("stop sharing") { uploader.stop(); show(); step() }
 
+    /** A new name while sharing: the next upload carries it (soon – it counts as an event). */
+    fun rename(name: String) = run("rename the sharing") { uploader.rename(name); step(event = true) }
+
     /**
      * Something the viewer should see soon changed in the recording's state: pause, resume, alarm, arrived – or the
      * tour is not the running one any more (ended, interrupted, another tour).

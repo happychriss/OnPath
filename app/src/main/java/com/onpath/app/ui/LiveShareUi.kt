@@ -54,63 +54,9 @@ import com.onpath.app.ui.live.LiveAction
 import com.onpath.app.ui.live.LiveSign
 import com.onpath.strings.*
 
-/**
- * Live sharing in the Settings opened from Navigate (owner 2026-11-20: "in der Navigation bei den Einstellungen, als
- * erster Eintrag mit Symbol") – the first card of that list, rows like the page's own (symbol, 24 dp gap, the label):
- * not sharing the one row "Standort teilen" (a tap → the share sheet); sharing the state ("● Standort", grey "● Standort
- * · wartet auf Netz") and under it "Link nochmal teilen" and "Teilen beenden"; [name] non-null adds the row to change the
- * name. [ended]: the server ended the sharing – a grey line says so first (shown = [onEndedShown]). Nothing when
- * [actions] is empty and nothing ended (no tour records).
- */
-@Composable
-fun LiveSettingsCard(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAction) -> Unit,
-                     name: String? = null, onName: () -> Unit = {}, ended: Boolean = false, onEndedShown: () -> Unit = {}) {
-    if (actions.isEmpty() && !ended) return
-    if (ended) androidx.compose.runtime.LaunchedEffect(Unit) { onEndedShown() }
-    SettingsCard {
-        if (ended && sign == LiveSign.NONE) {
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 6.dp)
-                .semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(12.dp).border(2.dp, OnPathColors.Grey, CircleShape))
-                }
-                Spacer(Modifier.width(24.dp))
-                Text(str(Res.string.live_ended_by_server), style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        if (sign != LiveSign.NONE) {
-            val live = sign == LiveSign.LIVE
-            Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 6.dp)
-                .semantics(mergeDescendants = true) {}, verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(24.dp), contentAlignment = Alignment.Center) {
-                    Box(Modifier.size(12.dp).background(if (live) OnPathColors.Green else OnPathColors.Grey, CircleShape))
-                }
-                Spacer(Modifier.width(24.dp))
-                Text(str(if (live) Res.string.live_sign else Res.string.live_sign_waiting), style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = FontWeight.SemiBold, color = if (live) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-        actions.forEachIndexed { i, a ->
-            if (i > 0 || sign != LiveSign.NONE || ended) HorizontalDivider(Modifier.padding(start = 64.dp))
-            when (a) {
-                LiveAction.SHARE -> LiveRow(Icons.Outlined.Share, str(Res.string.live_share)) { onAction(a) }
-                LiveAction.SHARE_AGAIN -> LiveRow(Icons.Outlined.Share, str(Res.string.live_share_again)) { onAction(a) }
-                LiveAction.STOP -> LiveRow(Icons.Outlined.Close, str(Res.string.live_stop)) { onAction(a) }
-            }
-        }
-        if (name != null) {
-            HorizontalDivider(Modifier.padding(start = 64.dp))
-            LiveRow(Icons.Outlined.Person, str(Res.string.live_name_row), name.ifEmpty { null }, onName)
-        }
-    }
-    // the list's own gap to the next card (this card shares the Navigation section's list item)
-    Spacer(Modifier.height(12.dp))
-}
-
 /** One row as the on-the-way Settings draw theirs: the symbol, the label (+ a small second line), the whole row tappable. */
 @Composable
-private fun LiveRow(icon: ImageVector, label: String, sub: String? = null, onClick: () -> Unit) {
+internal fun LiveRow(icon: ImageVector, label: String, sub: String? = null, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick)
         .padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
         Icon(icon, null, tint = OnPathColors.Green, modifier = Modifier.size(24.dp))
@@ -155,13 +101,12 @@ object LiveShareLook {
  * "Teilen beenden". [size] = the map controls' slot (56 dp).
  */
 @Composable
-fun LiveShareButton(sign: LiveSign, actions: List<LiveAction>, size: Dp, onAction: (LiveAction) -> Unit) {
+fun LiveShareButton(sign: LiveSign, size: Dp, onOpen: () -> Unit) {
     val look = LiveShareLook.button(sign)
     val label = str(LiveShareLook.description(sign))
-    var open by remember { mutableStateOf(false) }
     Box {
         Box(Modifier.size(size).clip(CircleShape)
-            .clickable(role = Role.Button) { if (sign == LiveSign.NONE) onAction(LiveAction.SHARE) else open = true }
+            .clickable(role = Role.Button, onClick = onOpen)
             .semantics { contentDescription = label }, contentAlignment = Alignment.Center) {
             when (look) {
                 ShareLook.PLAIN -> Icon(Icons.Outlined.Share, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(28.dp))
@@ -171,7 +116,6 @@ fun LiveShareButton(sign: LiveSign, actions: List<LiveAction>, size: Dp, onActio
                 }
             }
         }
-        LiveSignMenu(open, actions, onAction) { open = false }
     }
 }
 
@@ -180,10 +124,9 @@ fun LiveShareButton(sign: LiveSign, actions: List<LiveAction>, size: Dp, onActio
  * Netz" (wraps, never "…"; at a large font it keeps clear of the map column). A tap opens the share button's menu.
  */
 @Composable
-fun LiveWaitingPill(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAction) -> Unit) {
+fun LiveWaitingPill(sign: LiveSign, onOpen: () -> Unit) {
     if (!LiveShareLook.pill(sign)) return
     val label = str(Res.string.live_sign_waiting)
-    var open by remember { mutableStateOf(false) }
     val lane = LocalControlsLane.current
     val d = androidx.compose.ui.platform.LocalDensity.current
     // the map column stands beside the pill's top: the pill keeps clear of it (wider when its tour bubble lies beside the map
@@ -199,7 +142,7 @@ fun LiveWaitingPill(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAc
     Box(clearSides.fillMaxWidth().onSizeChanged { lane.pillDp = with(d) { it.height.toDp().value.toInt() } },
         contentAlignment = Alignment.Center) {
         Box {
-            androidx.compose.material3.Surface(onClick = { open = true }, shape = shape, color = OnPathColors.MapGround,
+            androidx.compose.material3.Surface(onClick = onOpen, shape = shape, color = OnPathColors.MapGround,
                 modifier = Modifier.floatShadow(shape).semantics { contentDescription = label; role = Role.Button }) {
                 Row(Modifier.heightIn(min = 40.dp).padding(horizontal = 16.dp, vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Box(Modifier.size(12.dp).background(OnPathColors.Grey, CircleShape))
@@ -208,28 +151,7 @@ fun LiveWaitingPill(sign: LiveSign, actions: List<LiveAction>, onAction: (LiveAc
                         modifier = Modifier.weight(1f, fill = false))
                 }
             }
-            LiveSignMenu(open, actions, onAction) { open = false }
         }
-    }
-}
-
-/** The sign tapped: the sharing's actions as a drop-down (bare labels – owner: menus with minimal text). */
-@Composable
-private fun LiveSignMenu(open: Boolean, actions: List<LiveAction>, onAction: (LiveAction) -> Unit, close: () -> Unit) {
-    androidx.compose.material3.DropdownMenu(expanded = open && actions.isNotEmpty(), onDismissRequest = close) {
-        LiveMenuItems(actions) { close(); onAction(it) }
-    }
-}
-
-/** The actions' rows of the sign's drop-down. */
-@Composable
-private fun LiveMenuItems(actions: List<LiveAction>, onAction: (LiveAction) -> Unit) = Column {
-    actions.forEach { a ->
-        androidx.compose.material3.DropdownMenuItem(text = { Text(str(when (a) {
-            LiveAction.SHARE -> Res.string.live_share
-            LiveAction.SHARE_AGAIN -> Res.string.live_share_again
-            LiveAction.STOP -> Res.string.live_stop
-        })) }, onClick = { onAction(a) })
     }
 }
 

@@ -32,6 +32,8 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     BACKUP(Res.string.settings_page_backup),
     /** The pairing window „Mit Browser verbinden“ (A-018): only the browser part, opened by every pairing path. */
     SYNC(Res.string.settings_page_sync),
+    /** Live sharing's page „Standort teilen“ (Chriss 2026-11-28 14:11): Name · Teilen · Teilen beenden; opened by every way in. */
+    LIVE(Res.string.live_share),
     PRIVACY(Res.string.settings_page_privacy, app = true),
     /** "Über OnPath": version (7 taps → developer tools), update check, Diagnostics row, links, credits, licences. */
     ABOUT(Res.string.settings_page_about, app = true),
@@ -60,7 +62,7 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     }
 
     /** One of the six on the start list. */
-    val top: Boolean get() = parent == null && landing == this && this != SYNC
+    val top: Boolean get() = parent == null && landing == this && this != SYNC && this != LIVE
 
     /** This page shows the browser sync: the pairing window. */
     val showsSync: Boolean get() = landing == SYNC

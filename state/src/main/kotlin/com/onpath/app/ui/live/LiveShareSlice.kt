@@ -128,6 +128,7 @@ class LiveShareSlice(
         val n = name.trim().take(MAX_NAME)
         prefs.liveName = n; storedName = n
         if (!edit && recording && !sharingNow && !linkWanted) start(n)
+        if (edit && sharingNow) client.liveRename(n) // the shared page shows the new name (Chriss 2026-11-28 14:11)
     }
 
     /** The name question closed without an answer: nothing is shared, nothing stored – it is asked again next time. */

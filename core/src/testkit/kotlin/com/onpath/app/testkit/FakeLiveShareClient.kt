@@ -17,6 +17,7 @@ class FakeLiveShareClient : LiveShareClient {
     override fun liveStart(name: String) { calls += "start:$name" }
     override fun liveStop() { calls += "stop" }
     override fun liveSeen() { calls += "seen" }
+    override fun liveRename(name: String) { calls += "rename:$name" }
 
     /** The live lane's side: what the sharing shows now. */
     fun publish(s: LiveSnapshot) { _live.value = s }

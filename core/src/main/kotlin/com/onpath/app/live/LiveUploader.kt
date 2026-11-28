@@ -245,6 +245,14 @@ class LiveUploader(
         return LiveCode.link(s.secret)
     }
 
+    /** A new name on the sharing page (Chriss 2026-11-28 14:11): the next upload's head carries it; the link stays. */
+    fun rename(name: String) {
+        val s = current() ?: return
+        if (s.stopping || s.ending) return
+        event = true
+        put(s.copy(name = name.trim().take(LiveItem.MAX_NAME)))
+    }
+
     /** The tour ended: the next good steps send what is left and the last head with "ended"; then the share is forgotten. */
     fun end() {
         val s = current() ?: return
