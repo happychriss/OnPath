@@ -140,7 +140,6 @@ object WebTrackToPlan {
         override fun stops(points: List<GeoPoint>): List<GpxWaypoint> = emptyList()
         override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
         override fun days(points: List<GeoPoint>): MultiDay? = null
-        override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = false
         override fun overwriteWhole(name: String, then: (() -> Unit)?) = false
         override fun datedName() = ""
         override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = Unit
