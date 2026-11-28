@@ -509,12 +509,15 @@ async function run(lang, viewport, shotPrefix) {
   await waitView(() => (window.__days.lastView?.days ?? 0) > 2, 'days for 15 min a day');
   const footDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
   await page.click('#activityChip'); await page.click('#activityMenu [data-group=bike]'); await shot('3f-activity-c'); await page.click('#activityMenu [data-act=BIKE_TOURING]');
-  await page.waitForFunction((n) => { const d = window.__days.lastView?.days ?? n; return d > 0 && d < n; }, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for fewer days on the bike'));
-  const bikeDays = await page.evaluate(() => window.__days.lastView?.days ?? 0);
+  // the days as the view shows them once they are worked out for the bike route (read in the same wait: the follow-up
+  // run of followLimits clears the view for a moment – a later read could see none)
+  const bikeDays = await page.waitForFunction((n) => { const d = window.__days.lastView?.days ?? n; return d > 0 && d < n ? d : false; }, footDays, { timeout: 60_000 })
+    .then((h) => h.jsonValue(), () => { check(false, 'waited for fewer days on the bike'); return 0; });
   check(bikeDays < footDays, `another activity: the days follow the limits (on foot ${footDays}, by bike ${bikeDays})`);
   await page.click('#activityChip'); await page.click('#activityMenu [data-group=hike]'); await page.click('#activityMenu [data-sac="2"]');
-  await page.waitForFunction((n) => (window.__days.lastView?.days ?? 0) === n, footDays, { timeout: 60_000 }).catch(() => check(false, 'waited for the foot days again'));
-  check(await page.evaluate(() => window.__days.lastView?.days) === footDays, `back on foot: ${footDays} days again`);
+  const backDays = await page.waitForFunction((n) => ((window.__days.lastView?.days ?? 0) === n ? n : false), footDays, { timeout: 60_000 })
+    .then((h) => h.jsonValue(), () => { check(false, 'waited for the foot days again'); return 0; });
+  check(backDays === footDays, `back on foot: ${footDays} days again (${backDays})`);
   await page.click('#toHours');
   await page.waitForSelector('dialog.daysbox[open]');
   await page.fill('#dbHours', '6'); await page.waitForTimeout(800);

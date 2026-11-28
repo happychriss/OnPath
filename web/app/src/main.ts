@@ -469,6 +469,8 @@ const pace = { hike: localStorageGet('hikePaceLevel') ?? 'AVERAGE', bike: localS
 // „Markierten Wegen folgen“ (the app's Settings → Planen, core MarkedTrails, owner 2026-11-27: 0 Weniger · 1 Standard ·
 // 2 Mehr): kept in this browser (the app does not sync it), handed to the engine before the first plan
 let trails = Number(localStorageGet('markedTrails') ?? '1');
+/** The routing profile in one key: activity, T level, both pace levels, the marked-trails level. */
+function profileKey() { return `${state.activity}|${state.sac}|${pace.hike}|${pace.bike}|${trails}`; }
 const paceReady: Promise<void> = ready.then(async (ok) => {
   if (!ok) return;
   try {
@@ -1757,6 +1759,8 @@ async function cancelRouting() {
 }
 /** The points the shown plan was routed for (enc) – My routes keeps its numbers only for exactly these. */
 let planFor = '';
+/** The profile (activity, T level, pace, trails – profileKey) the shown plan was routed with. */
+let planProfile = '';
 /**
  * My routes' length and climb (planstats.ts, owner 2026-11-06): kept for [code] when the shown plan is routed for the
  * points shown now and is a real route (no straight pieces, no gaps, routing data there) – never a stale plan's numbers.
@@ -1893,6 +1897,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   // app's cancelRouting); a fast route shows nothing (no flash)
   let run: PlanIn = { done: 0, total: 0, checking: false, join: null, names: namesText(), points: state.points.length, known: false };
   overlay.plan(run, () => { cancelRouting(); });
+  const routedProfile = profileKey(); // the profile this run routes with (multiday.ts: a plan of the old profile is not the new route)
   const routed = state.points, routedNames = namesText(); // the run's named stops: the engine's chain keeps them in place as the plan does (runEnd)
   const r = await engine.plan(routed, state.activity, state.sac, sharedPlan().pinned, (pr) => {
     if (id !== state.latest) return;
@@ -1926,6 +1931,7 @@ async function planRun({ gen, rounds }: { gen: number; rounds: number }) {
   if (r.plan.notice === 'NOT_YET') setTimeout(retryMissingData, 20_000);
   if (r.plan.moved) await adoptSnapped(routed, r.plan.points);
   planFor = enc(state.points); // the points this plan belongs to (keepPlanStats)
+  planProfile = routedProfile;
   planGaps.set(r.plan.gaps); // points the route does not reach or skips (the app's PlanGaps, in PlanResult)
   if (fitNextRoute) {
     fitNextRoute = false;
@@ -3245,9 +3251,11 @@ multiDay = new MultiDay({
   title: () => state.title,
   setTitle: (title) => { state.title = title; rememberInAddress(); },
   tour: () => state.tour,
-  routedPlan: () => (state.points.length >= 2 && state.plan && !state.planning && planFor === enc(state.points) ? state.plan : null),
+  // the shown plan only when it is the route of these points AND this profile: right after an activity change the old
+  // route is still on screen – the days must not follow the limits on it (multiday-smoke „back on foot“, 2026-11-28)
+  routedPlan: () => (state.points.length >= 2 && state.plan && !state.planning && planFor === enc(state.points) && planProfile === profileKey() ? state.plan : null),
   apply: applyDayPlan,
-  profile: () => `${state.activity}|${state.sac}|${pace.hike}|${pace.bike}|${trails}`,
+  profile: () => profileKey(),
   status,
   pickGpx: () => gpxImport.pick(),
   openSaved: () => { void myPlansDialog(sync, plansHost); },
