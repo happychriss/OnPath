@@ -16,7 +16,7 @@ internal class RestGps(private val tracker: LocationTracker, private val still: 
     val resting: Boolean get() = watch.resting
 
     /** Back to the normal rate (tour start, pause, resume, end); the caller sets the tracker's rate. */
-    fun reset() = watch.reset()
+    fun reset() { com.onpath.app.domain.tour.BatterySave.fast = false; watch.reset() }
 
     fun onFix(loc: Location) {
         try {
@@ -39,7 +39,7 @@ internal class RestGps(private val tracker: LocationTracker, private val still: 
             RestWatch.Change.REST -> "Standing still for ${(if (by == "motion sensor") RestWatch.SENSOR_REST_AFTER_MS else RestWatch.REST_AFTER_MS) / 1000} s ($by): GPS every ${RestWatch.REST_MS / 1000} s"
             RestWatch.Change.MOVING -> "Moving again ($by): GPS every second"
             RestWatch.Change.OFF -> "Lying still for ${RestWatch.OFF_AFTER_MS / 60_000} min (motion sensor): GPS off until the phone moves"
-            RestWatch.Change.RATE -> "Akku sparen ${if (com.onpath.app.domain.tour.BatterySave.on) "on" else "off"}: GPS every ${RestWatch.normalMs() / 1000} s"
+            RestWatch.Change.RATE -> "Akku sparen ${if (com.onpath.app.domain.tour.BatterySave.on) "on" else "off"}${if (com.onpath.app.domain.tour.BatterySave.fast) ", junction near / off the route" else ""}: GPS every ${RestWatch.normalMs() / 1000} s"
         })
     }
 

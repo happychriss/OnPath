@@ -551,7 +551,7 @@ class RecordingService : Service() {
         // the motion sensor while recording (owner 2026-11-24: it decides the standing-still rate and GPS off – an accelerometer
         // costs far less than GPS); without a fix "still" = nothing about GPS (owner 2026-11-02)
         motion.listen(tourId >= 0 && !paused)
-        if (tourId >= 0 && !paused) restGps.onTick(now)
+        if (tourId >= 0 && !paused) { com.onpath.app.domain.tour.BatterySave.bike = recorded.activity != Activity.HIKE; restGps.onTick(now) }
         if (gpsLost()) navigator?.onGpsLost() // no alarms without GPS (R-04)
         if (gpsLost()) navigator?.state?.let { voiceStep(it, now) } // "No GPS signal" comes without fixes
         arrivalVoiceTick(now)
@@ -620,7 +620,7 @@ class RecordingService : Service() {
 
         val nowEl = SystemClock.elapsedRealtime()
         gpsWatchdog.disarm()
-        val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > GAP_MS
+        val wasLost = lastGoodFixElapsed > 0 && nowEl - lastGoodFixElapsed > maxOf(GAP_MS, RestWatch.normalMs() * 2 + 5_000L) // Akku sparen: its slow rate is no gap
         val lostSinceElapsed = lastGoodFixElapsed; lastGoodFixElapsed = nowEl
         val gapWhy = gapWatch.why(); gapWatch.reset()
         val p = TrackPoint(loc.latitude, loc.longitude, seaLevelHeight(loc, nowEl), loc.time)
@@ -1121,7 +1121,7 @@ class RecordingService : Service() {
      * where one could go wrong, timed by the speed of [loc] ([com.onpath.app.navigation.SpeedWindow]; bike and on foot).
      */
     private fun junctionCue(loc: Location, nowEl: Long) {
-        val st = navigator?.state ?: return
+        val st = navigator?.state ?: run { com.onpath.app.domain.tour.BatterySave.fast = false; return } // no route: the slow rate holds
         junctionSpeeds.note(if (loc.hasSpeed()) loc.speed.toDouble() else null, nowEl)
         junctions.bike = navigator?.session?.activity != Activity.HIKE
         // Plan is silent (owner 2026-11-03), also with the screen off: the voice follows without a word (stops passed,
@@ -1137,7 +1137,7 @@ class RecordingService : Service() {
                 (if (junctions.bike) "bike" else "hike") + " cue" +
                 (if (n == 0) " (GPX track or straight line: no junction cues)" else ""))
         }
-        val onRoute = st.prompt?.offRoute != true && st.shownAlongM != null // a switch question is no reason to be quiet
+        val onRoute = st.prompt?.offRoute != true && st.shownAlongM != null; com.onpath.app.domain.tour.BatterySave.fast = com.onpath.app.domain.tour.SaveRate.fast(st.shownAlongM, st.offM, com.onpath.app.domain.tour.SaveRate.junctionsAlong(st.line), junctionSpeeds.speedOrNull(nowEl), junctions.bike) // a switch question is no reason to be quiet; Akku sparen: every second near a junction / off it
         val cue = junctions.update(st.line, st.version, st.shownAlongM, onRoute, junctionSpeeds.speedOrNull(nowEl)) ?: return
         // either – or (owner 2026-11-01): the voice tells the turn, else the vibration (also while the voice is not set up)
         val guide = (settings ?: Prefs(this).settings).junctionGuide
