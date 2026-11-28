@@ -40,6 +40,8 @@ object BatteryWatch {
         val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main + CoroutineExceptionHandler { _, e ->
             Problems.warn("battery", "Battery estimate: the tour is not followed any more", e)
         })
+        // the running tour for „Sparen“ from the question (this tour only; a restart mid-tour finds the same id – R-07)
+        scope.launch { RecordingService.state.map { it?.tourId }.distinctUntilChanged().collect { com.onpath.app.domain.tour.BatterySave.runningTour = it } }
         scope.launch {
             RecordingService.state.map { s -> s?.takeIf { it.nav != null }?.tourId }.distinctUntilChanged().collect { tour ->
                 stop(app)

@@ -39,7 +39,7 @@ class OnPathApp : Application() {
         // live sharing (docs/design/live-tracking.md): its lane beside the recording; idle unless a tour is shared
         com.onpath.app.live.LiveEdge.attach(this)
         // „Akku sparen“ for the recording, and the battery estimate of a navigated tour (R-10, Chriss 2026-11-28)
-        try { com.onpath.app.domain.tour.BatterySave.on = com.onpath.app.data.Prefs(this).settings.batterySave } catch (e: Exception) { com.onpath.app.debug.Problems.warn("battery", "Akku sparen not read; off", e) }
+        try { com.onpath.app.data.Prefs(this).settings.let { com.onpath.app.domain.tour.BatterySave.manual = it.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = it.batterySaveTour } } catch (e: Exception) { com.onpath.app.debug.Problems.warn("battery", "Akku sparen not read; off", e) }
         com.onpath.app.recording.BatteryWatch.attach(this)
     }
 

@@ -11,10 +11,20 @@ class BatterySaveWiringTest {
 
     @Test fun theSettingReachesTheRecordingAndStaysSet() {
         assertTrue(src("data/Prefs.kt").contains(".putBoolean(\"batterySave\", v.batterySave)"))
-        assertTrue(src("data/Prefs.kt").contains("BatterySave.on = v.batterySave"))
-        assertTrue("at app start", src("OnPathApp.kt").contains("BatterySave.on = com.onpath.app.data.Prefs(this).settings.batterySave"))
+        assertTrue(src("data/Prefs.kt").contains("BatterySave.manual = v.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = v.batterySaveTour"))
+        assertTrue(src("data/Prefs.kt").contains(".putLong(\"batterySaveTour\", v.batterySaveTour ?: -1L)"))
+        assertTrue("at app start", src("OnPathApp.kt").contains("BatterySave.manual = it.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = it.batterySaveTour"))
         assertTrue("the group „Akku“ first in Navigation (⚙ on the way)", src("ui/SettingsScreen.kt").substringAfter("fun NavigationSection(")
-            .substringBefore("settings_group_offroute").contains("settings_battery_save"))
+            .substringBefore("settings_group_offroute").contains("BatterySaveSwitch(settings, onChange)"))
+    }
+
+    /** Captain 2026-11-28: [Sparen] from the question = this tour only; the switch shows „an“ meanwhile; by hand = lasting. */
+    @Test fun fromTheQuestionForThisTourOnly() {
+        val q = src("ui/BatteryQuestion.kt")
+        assertTrue(q.contains("settings.copy(batterySaveTour = tourId)") && !q.contains("settings.copy(batterySave = true)"))
+        assertTrue("the switch shows the effective state", q.contains("BatterySave.effective(settings.batterySave, settings.batterySaveTour, running?.tourId)"))
+        assertTrue("a tap by hand clears the tour mark", q.contains("onChange(settings.copy(batterySave = it, batterySaveTour = null))"))
+        assertTrue("the running tour is followed", src("recording/BatteryWatch.kt").contains("BatterySave.runningTour = it"))
     }
 
     @Test fun gpsSlowerAndLiveSharingSlowerButOn() {

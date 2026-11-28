@@ -22,15 +22,17 @@ data class BatteryAskUi(val toGo: String, val level: Int, val lasts: String)
 fun batteryAsk(vm: AppViewModel, tourId: Long?, toGoS: Double?): BatteryAskUi? {
     val now by BatteryWatch.now.collectAsState()
     if (tourId == null || now.tourId != tourId) return null
-    if (!BatteryEstimate.asks(now.level, now.usePerHour, toGoS, vm.settingsSlice.settings.batterySave, BatteryWatch.askedTour == tourId)) return null
+    val saving = com.onpath.app.domain.tour.BatterySave.effective(vm.settingsSlice.settings.batterySave, vm.settingsSlice.settings.batterySaveTour, tourId)
+    if (!BatteryEstimate.asks(now.level, now.usePerHour, toGoS, saving, BatteryWatch.askedTour == tourId)) return null
     val lasts = BatteryEstimate.lastsS(now.level, now.usePerHour) ?: return null
     return BatteryAskUi(Format.durationShort(toGoS ?: return null), now.level ?: return null, Format.durationShort(lasts))
 }
 
-/** „Sparen“ turns „Akku sparen“ on (it stays set); either answer ends the question for this tour. */
+/** „Sparen“ turns „Akku sparen“ on for this tour; either answer ends the question for this tour. */
 fun answerBattery(vm: AppViewModel, tourId: Long?, save: Boolean) {
     BatteryWatch.askedTour = tourId
-    if (save) vm.settingsSlice.put(vm.settingsSlice.settings.copy(batterySave = true))
+    // for this tour only (captain 2026-11-28): it ends with the tour; the switch in ⚙ shows „an“ meanwhile
+    if (save && tourId != null) vm.settingsSlice.put(vm.settingsSlice.settings.copy(batterySaveTour = tourId))
     com.onpath.app.debug.Problems.trace("battery", "Battery question answered: ${if (save) "Sparen" else "Nein danke"}")
 }
 
@@ -43,3 +45,16 @@ internal fun batteryMessage(b: BatteryAskUi, onAnswer: (Boolean) -> Unit): Messa
     Message(MessageKind.FRAGE, str(Res.string.nav_battery_title), str(Res.string.nav_battery_line, b.toGo, b.level, b.lasts),
         listOf(MessageButton(str(Res.string.nav_battery_no)) { onAnswer(false) }, MessageButton(str(Res.string.nav_battery_save)) { onAnswer(true) }),
         icon = Icons.Outlined.BatteryAlert, navigate = true)
+
+/**
+ * The „Akku sparen“ switch in ⚙: „an“ when set by hand or from the question while that tour runs; a tap by hand is lasting
+ * (on) or ends both (off) – captain 2026-11-28.
+ */
+@Composable
+internal fun BatterySaveSwitch(settings: com.onpath.app.data.AppSettings, onChange: (com.onpath.app.data.AppSettings) -> Unit) {
+    val running by com.onpath.app.recording.RecordingService.state.collectAsState()
+    val on = com.onpath.app.domain.tour.BatterySave.effective(settings.batterySave, settings.batterySaveTour, running?.tourId)
+    SwitchRow(str(Res.string.settings_battery_save), str(Res.string.settings_battery_save_sub), on) {
+        onChange(settings.copy(batterySave = it, batterySaveTour = null))
+    }
+}

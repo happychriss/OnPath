@@ -186,6 +186,7 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             offRouteM = sp.getInt("offRouteM", 40).takeIf { it in AppSettings.OFF_ROUTE_CHOICES } ?: 40,
             planVibrate = sp.getBoolean("planVibrate", true),
             batterySave = sp.getBoolean("batterySave", false),
+            batterySaveTour = sp.getLong("batterySaveTour", -1L).takeIf { it >= 0 },
             keepScreenOn = sp.getBoolean("keepScreenOn", true),
             bikeScreen = BikeScreen.of(sp.getString("bikeScreen", null), sp.getBoolean("keepScreenOn", true)),
             junctionGuide = JunctionGuide.of(sp.getString("junctionGuide", null),
@@ -223,7 +224,8 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
             .putBoolean("mapsWifiOnly", v.mapsWifiOnly)
             .putInt("markedTrails", v.markedTrails)
             .putBoolean("batterySave", v.batterySave)
-            .apply().also { com.onpath.app.domain.tour.BatterySave.on = v.batterySave } // the recording reads it (R-10)
+            .putLong("batterySaveTour", v.batterySaveTour ?: -1L)
+            .apply().also { com.onpath.app.domain.tour.BatterySave.manual = v.batterySave; com.onpath.app.domain.tour.BatterySave.forTour = v.batterySaveTour } // the recording reads it (R-10)
 
     var planWaypoints: List<GeoPoint>
         get() = TourDb.jsonToWaypoints(sp.getString("plan", null)).map { GeoPoint(it.lat, it.lon) }

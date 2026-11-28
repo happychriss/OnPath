@@ -37,9 +37,7 @@ internal fun OnTheWaySection(settings: AppSettings, onChange: (AppSettings) -> U
         if (place != SettingRows.PhoneRow.LAST) SettingsCard { PhoneSetupRow(place, missing, onPhoneSetup) }
         SettingsGroupHeader(str(Res.string.settings_group_battery))
         SettingsCard {
-            SwitchRow(str(Res.string.settings_battery_save), str(Res.string.settings_battery_save_sub), settings.batterySave) {
-                onChange(settings.copy(batterySave = it))
-            }
+            BatterySaveSwitch(settings, onChange)
         }
         SettingsGroupHeader(str(Res.string.settings_group_junctions))
         SettingsCard { JunctionGuideRow(settings, onChange) }

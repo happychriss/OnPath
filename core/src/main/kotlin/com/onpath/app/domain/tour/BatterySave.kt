@@ -16,7 +16,19 @@ object BatterySave {
     /** The rate where it matters, and without saving. */
     const val FAST_MS = 1_000L
 
-    @Volatile var on: Boolean = false
+    /** Set by hand in ⚙: lasting. */
+    @Volatile var manual: Boolean = false
+    /** [Sparen] in the battery question: for this tour only (its id; captain 2026-11-28). */
+    @Volatile var forTour: Long? = null
+    /** The tour recording now (null = none / not known yet after a start). */
+    @Volatile var runningTour: Long? = null
+
+    /** Saving now: by hand, or from the question while that tour runs. Writing it sets [manual] (tests, start-up). */
+    var on: Boolean
+        get() = effective(manual, forTour, runningTour)
+        set(v) { manual = v }
+
+    fun effective(manual: Boolean, forTour: Long?, runningTour: Long?): Boolean = manual || (forTour != null && forTour == runningTour)
     /** The tour is ridden (any bike activity), not walked. */
     @Volatile var bike: Boolean = false
     /** Near a junction or off the route ([SaveRate.fast]): every second even while saving. */
