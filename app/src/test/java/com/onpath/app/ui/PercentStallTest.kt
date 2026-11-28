@@ -173,7 +173,7 @@ class PercentStallTest {
         for (i in 1 until shown.size) assertTrue("never back: $shown", shown[i] >= shown[i - 1])
         assertTrue(shown.last() in 90..99)
         assertNull("all there: the sign goes", p.update(emptyList(), 0, 0))
-        assertEquals("loading 34 %", MapLoadService.text(34))
+        assertEquals("3 of 7 map areas", MapLoadService.text(3 to 7))
         assertEquals("Preparing", MapLoadService.text(null))
     }
 

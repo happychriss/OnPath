@@ -399,6 +399,17 @@ class ActionPercent {
         floor = percent.coerceIn(0, 99); floorRaw = lastRaw; held = floor
     }
 
+    /**
+     * The action's map areas counted – (done, all seen) – facts, no estimate (VISION 2026-11-27 „facts, not guesses“; the
+     * sign, its details and the notification show these, never the percent). Keys starting with [AREA_KEY] count; an area
+     * that left the action is done. (0, 0) = none.
+     */
+    @Synchronized
+    fun areas(): Pair<Int, Int> {
+        val a = items.filterKeys { it.startsWith(AREA_KEY) }.values
+        return a.count { it[1] >= 1.0 } to a.size
+    }
+
     /** The action's percent now; null when nothing loads (the action is over and forgotten). */
     @Synchronized
     fun update(active: List<Item>): Int? {
@@ -423,6 +434,8 @@ class ActionPercent {
     companion object {
         /** An item of unknown size (the server has not said it yet). */
         const val UNKNOWN_WEIGHT = 10L * 1_048_576
+        /** The key prefix of a map area's item ([areas]). */
+        const val AREA_KEY = "cell:"
     }
 }
 

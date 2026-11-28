@@ -1099,5 +1099,11 @@
     "context": "Wait window: the running step is past its own estimate (instead of a frozen time left)",
     "priority": 2,
     "confidence": "sicher"
+  },
+  "maps_bg_areas_count": {
+    "area": "Map loading",
+    "context": "Background loading: the map areas counted – under the bar in the details, in the notification, read by TalkBack on the sign (owner / VISION 2026-11-27: facts, no percent). %1$d done, %2$d all",
+    "priority": 1,
+    "confidence": "sicher"
   }
 }

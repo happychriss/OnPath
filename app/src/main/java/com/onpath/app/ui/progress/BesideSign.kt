@@ -39,14 +39,15 @@ import com.onpath.strings.*
 
 /**
  * Form B ("ich kann weitermachen", owner 2026-11-19 „einfach nur Prozent, muss aber passen für die gesamte Aktion“): one
- * small sign beside the map that covers nothing – a ring and ONE percent over the whole action (every load of it
- * together, [com.onpath.app.domain.ActionPercent]), no names, no words. The pill looks small; the tap target is ≥ 48 dp.
+ * small sign beside the map that covers nothing – a ring only, filled by the map areas of the whole action counted
+ * ([fraction], VISION 2026-11-27: facts, no percent; null = Android's calm ring), no names, no words; [count] („3 von 7
+ * Kartenbereichen“) is for TalkBack. The pill looks small; the tap target is ≥ 48 dp.
  * Tap → the details ([BesideDetails]).
  */
 @Composable
-fun BesideSign(percent: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun BesideSign(fraction: Float?, count: String?, onClick: () -> Unit, modifier: Modifier = Modifier) {
     if (!WaitMotion.othersMove()) return // a wait window is up: it is the one thing that moves
-    val cd = str(Res.string.maps_bg_chip_cd, "$percent %")
+    val cd = str(Res.string.maps_bg_chip_cd, count ?: "")
     Box(modifier.heightIn(min = 48.dp).clickable(role = Role.Button, onClickLabel = str(Res.string.maps_bg_chip_click), onClick = onClick)
         .semantics { contentDescription = cd }, contentAlignment = Alignment.Center) {
         Surface(shape = OnPathShapes.Pill, color = OnPathColors.TagContainer, contentColor = OnPathColors.TagInk,
@@ -54,10 +55,10 @@ fun BesideSign(percent: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
             Row(Modifier.padding(start = 6.dp, end = 12.dp, top = 5.dp, bottom = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                 // the ring a little taller than the text (grows with the phone's font size)
                 val ring = with(LocalDensity.current) { MaterialTheme.typography.labelMedium.fontSize.toDp() } + 6.dp
-                CircularProgressIndicator(progress = { percent / 100f }, modifier = Modifier.size(ring), color = OnPathColors.TagInk,
+                // counted areas fill the ring; nothing counted yet (only routing data, or not known): Android's calm ring
+                if (fraction != null) CircularProgressIndicator(progress = { fraction }, modifier = Modifier.size(ring), color = OnPathColors.TagInk,
                     trackColor = OnPathColors.TagInk.copy(alpha = 0.18f), strokeWidth = 2.dp, gapSize = 0.dp)
-                Spacer(Modifier.width(7.dp))
-                Text("$percent %", style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.SemiBold, maxLines = 1, softWrap = false)
+                else CircularProgressIndicator(Modifier.size(ring), color = OnPathColors.TagInk, strokeWidth = 2.dp)
             }
         }
     }
@@ -65,20 +66,20 @@ fun BesideSign(percent: Int, onClick: () -> Unit, modifier: Modifier = Modifier)
 
 /**
  * The details (a bottom sheet's content, docs/design/ui-style.md "the details of a state are a bottom sheet"): title, the
- * ONE bar with the sign's percent over the whole action, what loads – one line each, no number of its own –, [notes]
+ * ONE bar by the areas counted with „x von y Kartenbereichen“ under it, what loads – one line each, no number of its own –, [notes]
  * (newer versions, "your maps stay"), Cancel all (red) · Close.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun BesideDetails(title: String, percent: Int, rows: List<BesideRow>, notes: List<String>, onCancelAll: () -> Unit, onClose: () -> Unit) {
+fun BesideDetails(title: String, fraction: Float?, count: String?, rows: List<BesideRow>, notes: List<String>, onCancelAll: () -> Unit, onClose: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(start = 24.dp, end = 16.dp, bottom = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, color = OnPathColors.Ink, modifier = Modifier.padding(end = 8.dp))
-        Row(Modifier.padding(end = 8.dp).semantics(mergeDescendants = true) { contentDescription = "$percent %" },
-            verticalAlignment = Alignment.CenterVertically) {
-            LinearProgressIndicator(progress = { percent / 100f }, color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.weight(1f).clip(CircleShape))
-            Text("$percent %", style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold,
-                color = OnPathColors.Ink, softWrap = false, modifier = Modifier.padding(start = 12.dp))
+        // the bar by the areas counted, and the count as words – „3 von 7 Kartenbereichen“ (facts, no percent – VISION)
+        Column(Modifier.padding(end = 8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            if (fraction != null) LinearProgressIndicator(progress = { fraction }, color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.fillMaxWidth().clip(CircleShape))
+            else LinearProgressIndicator(color = MaterialTheme.colorScheme.primary, modifier = Modifier.fillMaxWidth().clip(CircleShape))
+            count?.let { Text(it, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold, color = OnPathColors.Ink) }
         }
         if (rows.isNotEmpty()) Column(Modifier.padding(end = 8.dp, top = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             rows.forEach { r ->
@@ -97,4 +98,13 @@ fun BesideDetails(title: String, percent: Int, rows: List<BesideRow>, notes: Lis
             TextButton(onClick = onClose, modifier = Modifier.heightIn(min = 48.dp)) { Text(str(Res.string.common_close), softWrap = false) }
         }
     }
+}
+
+/** The counted map areas of a loading action as the sign and its details show them (facts – VISION 2026-11-27). */
+object BesideCount {
+    /** done / all, or null when none is counted yet (the ring then turns, calm). */
+    fun fraction(done: Int, all: Int): Float? = if (all <= 0) null else (done.coerceIn(0, all).toFloat() / all)
+
+    /** „3 von 7 Kartenbereichen“; null when none is counted. */
+    fun line(done: Int, all: Int): String? = if (all <= 0) null else Txt.s(Res.string.maps_bg_areas_count, done.coerceIn(0, all), all)
 }

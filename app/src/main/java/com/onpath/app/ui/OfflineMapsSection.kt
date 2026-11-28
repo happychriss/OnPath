@@ -131,7 +131,11 @@ fun OfflineMapsSection(ui: OfflineMapsUi, cb: OfflineMapsCallbacks, initialConfi
             if (!ui.available) Text(str(Res.string.maps_not_available), style = small, color = variant)
             ui.result?.let { Text(it, style = body, fontWeight = FontWeight.Medium) }
             // what loads (form B, owner 2026-11-19): the same sign and number as beside the map, tap → its details
-            ui.action?.let { com.onpath.app.ui.progress.BesideSign(it, cb.onLoads, Modifier.align(Alignment.End)) }
+            ui.action?.let {
+                val (done, all) = BackgroundAction.shared.areas()
+                com.onpath.app.ui.progress.BesideSign(com.onpath.app.ui.progress.BesideCount.fraction(done, all),
+                    com.onpath.app.ui.progress.BesideCount.line(done, all), cb.onLoads, Modifier.align(Alignment.End))
+            }
             if (ui.areas.isEmpty()) Text(str(Res.string.maps_no_areas), style = body)
             ui.areas.forEach { a ->
                 HorizontalDivider(Modifier.padding(vertical = 2.dp))

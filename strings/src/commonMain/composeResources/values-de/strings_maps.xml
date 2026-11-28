@@ -121,6 +121,7 @@
 
     <!-- Laden im Hintergrund -->
     <string name="maps_bg_chip_cd">Karte wird geladen: %1$s</string>
+    <string name="maps_bg_areas_count">%1$d von %2$d Kartenbereichen</string>
     <string name="maps_bg_chip_click">Downloads im Hintergrund anzeigen</string>
     <string name="maps_bg_dialog_title">Laden im Hintergrund</string>
     <string name="maps_bg_newer_ready">Neuere Karte in etwa %1$d min bereit.</string>

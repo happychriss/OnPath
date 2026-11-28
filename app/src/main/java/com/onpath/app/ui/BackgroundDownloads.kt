@@ -22,6 +22,7 @@ import com.onpath.app.domain.StepShares
 import com.onpath.app.ui.progress.BesideDetails
 import com.onpath.app.ui.progress.BesideRow
 import com.onpath.app.ui.progress.BesideSign
+import com.onpath.app.ui.progress.BesideCount
 
 /**
  * What loads in the background right now (owner: downloads must be visible and stoppable) – form B, "ich kann
@@ -43,6 +44,9 @@ data class BackgroundDownloadUi(
     val newer: Int = 0,
     /** The server still builds some newer version: about this many minutes (null = unknown / none). */
     val newerEtaMin: Int? = null,
+    /** Map areas of the action counted: done (left it) and all seen – the sign's ring, the details' line (no percent, VISION). */
+    val areasDone: Int = 0,
+    val areasTotal: Int = 0,
     /** What loads, by name ("around Bad Waldsee", "along your route to …"), most important first. */
     val groups: List<LoadGroup> = emptyList(),
     /** One line per load of the action with where it stands – the finished ones too ("fertig"). */
@@ -68,7 +72,8 @@ class BackgroundProgress(private val action: ActionPercent = BackgroundAction.sh
         val now = groups.associateBy { it.name }
         for (k in seen.keys.toList()) if (k !in now) seen[k] = BesideRow(k, Txt.s(Res.string.maps_phase_done))
         for ((k, g) in now) seen[k] = BesideRow(k, g.phase.text)
-        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.weight }, pct, newer, newerEtaMin, groups, seen.values.toList())
+        val (done, all) = action.areas()
+        return BackgroundDownloadUi(regions, routingParts, active.sumOf { it.weight }, pct, newer, newerEtaMin, done, all, groups, seen.values.toList())
     }
 
     companion object {
@@ -93,7 +98,7 @@ class BackgroundProgress(private val action: ActionPercent = BackgroundAction.sh
             val on = states.filter { (c, s) -> c !in waitedFor && loading(s) && !(c in installed && s == CellState.Requested) }
             prepare?.keep(on.keys.map { "cell:${it.id}" }.toSet())
             return on.map { (c, s) ->
-                val key = "cell:${c.id}"
+                val key = "${ActionPercent.AREA_KEY}${c.id}"
                 val total = (s as? CellState.Downloading)?.totalBytes?.takeIf { it > 0 } ?: size(c) ?: 0L
                 ActionPercent.Item(key, total, CellProgress.fraction(s, shares, joining?.takeIf { c in it.cells }?.fraction ?: 0.0,
                     prepare?.fraction(key, s, now)))
@@ -117,12 +122,12 @@ object BackgroundAction {
 }
 
 /**
- * The sign beside the map (form B): a ring and the action's percent, nothing else (owner 2026-11-19). Plan: under the ☰
+ * The sign beside the map (form B): a ring only – filled by the map areas counted, no number (VISION 2026-11-27). Plan: under the ☰
  * button; Navigate: under the status card; Settings → Offline maps. Tap → the details ([BackgroundDownloadSheet]).
  */
 @Composable
 fun BackgroundDownloadChip(ui: BackgroundDownloadUi, onClick: () -> Unit, modifier: Modifier = Modifier) =
-    BesideSign(ui.percent, onClick, modifier)
+    BesideSign(BesideCount.fraction(ui.areasDone, ui.areasTotal), BesideCount.line(ui.areasDone, ui.areasTotal), onClick, modifier)
 
 /**
  * Tap on the sign: the ONE bar of the action, what loads (one line each, the finished ones "fertig"), and "Cancel all"
@@ -140,7 +145,8 @@ fun BackgroundDownloadSheet(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, o
 /** The sheet's content (also drawn by the screenshot tests). */
 @Composable
 fun BackgroundDownloadDetailsContent(ui: BackgroundDownloadUi, onCancelAll: () -> Unit, onClose: () -> Unit) =
-    BesideDetails(str(Res.string.maps_bg_dialog_title), ui.percent, ui.rows, ui.notes, onCancelAll, onClose)
+    BesideDetails(str(Res.string.maps_bg_dialog_title), BesideCount.fraction(ui.areasDone, ui.areasTotal),
+        BesideCount.line(ui.areasDone, ui.areasTotal), ui.rows, ui.notes, onCancelAll, onClose)
 
 /** The strip appears only after a background download has run this long (owner: 2 s is too hectic). */
 const val BACKGROUND_SHOW_DELAY_MS = 10_000L

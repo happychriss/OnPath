@@ -74,7 +74,7 @@ class MapLoadService : Service() {
                 if (RecordingService.state.value != null) break // the tour keeps the app alive now
                 if (!busy) { if (idleSince == 0L) idleSince = now; if (now - idleSince >= IDLE_STOP_MS) break } else idleSince = 0L
                 if (now > until) { Problems.info("cells", "Map loading in the background stopped after ${MAX_MS / 60_000} min"); break }
-                try { nm().notify(NOTE_ID, note(actionPercent(cells))) } catch (e: Exception) { Problems.warn("cells", "Map loading notification not updated", e) }
+                try { nm().notify(NOTE_ID, note(actionPercent(cells)?.let { BackgroundAction.shared.areas() })) } catch (e: Exception) { Problems.warn("cells", "Map loading notification not updated", e) }
                 delay(TICK_MS)
             }
             stopSelf()
@@ -120,7 +120,8 @@ class MapLoadService : Service() {
 
     private fun nm() = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
-    private fun note(percent: Int?): Notification {
+    /** [areas] = the action's map areas counted (done, all); null = nothing measurable yet. */
+    private fun note(areas: Pair<Int, Int>?): Notification {
         if (Build.VERSION.SDK_INT >= 26) nm().createNotificationChannel(
             NotificationChannel(CHANNEL, Txt.s(Res.string.maps_notif_channel), NotificationManager.IMPORTANCE_LOW).apply { setShowBadge(false) })
         val open = PendingIntent.getActivity(this, 0, Intent(this, MainActivity::class.java)
@@ -128,8 +129,8 @@ class MapLoadService : Service() {
         return NotificationCompat.Builder(this, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(Txt.s(Res.string.maps_load_loading))
-            .setContentText(text(percent))
-            .setProgress(100, percent ?: 0, percent == null)
+            .setContentText(text(areas))
+            .setProgress(areas?.second ?: 0, areas?.first ?: 0, areas == null || areas.second <= 0)
             .setOngoing(true).setSilent(true).setOnlyAlertOnce(true)
             .setContentIntent(open)
             .build()
@@ -147,9 +148,12 @@ class MapLoadService : Service() {
         fun loading(s: CellState) = s is CellState.Requested || s is CellState.Queued || s is CellState.Building ||
             s is CellState.Downloading || s is CellState.Installing
 
-        /** The notification's line: "lädt 34 %" (the sign's number), "Wird vorbereitet" before there is one (owner 2026-11-27: no "put the phone aside"). */
-        fun text(percent: Int?): String = percent?.let { Txt.s(Res.string.wait_loading_pct, it) }
-            ?: Txt.s(Res.string.maps_notif_preparing)
+        /**
+         * The notification's line: „3 von 7 Kartenbereichen“ (the areas counted – the sign's facts, VISION 2026-11-27: no
+         * percent), "Wird vorbereitet" before one is counted (owner 2026-11-27: no "put the phone aside").
+         */
+        fun text(areas: Pair<Int, Int>?): String = areas?.takeIf { it.second > 0 }
+            ?.let { (d, a) -> Txt.s(Res.string.maps_bg_areas_count, d.coerceIn(0, a), a) } ?: Txt.s(Res.string.maps_notif_preparing)
 
         /**
          * Start it when map areas start loading (called from the app while it is on screen – Android does not allow

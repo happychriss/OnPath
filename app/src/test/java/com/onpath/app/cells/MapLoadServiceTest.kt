@@ -16,9 +16,23 @@ class MapLoadServiceTest {
         assertFalse(MapLoadService.loading(CellState.Offline("no connection")))
     }
 
-    /** The notification says the sign's number (one action, [com.onpath.app.ui.BackgroundAction]) – "loading 34 %". */
-    @Test fun theNotificationSaysTheActionsNumber() {
-        assertEquals("loading 34 %", MapLoadService.text(34))
+    /**
+     * The notification says the sign's facts (one action, [com.onpath.app.ui.BackgroundAction]): the map areas counted –
+     * „3 of 7 map areas“, never a percent (VISION 2026-11-27); nothing counted yet: "Preparing".
+     */
+    @Test fun theNotificationSaysTheAreasCounted() {
+        assertEquals("3 of 7 map areas", MapLoadService.text(3 to 7))
+        assertEquals("Preparing", MapLoadService.text(0 to 0))
         assertEquals("Preparing", MapLoadService.text(null))
+    }
+
+    /** The action counts map areas only (routing data is no area); an area that left it is done. */
+    @Test fun theActionCountsAreasOnly() {
+        val a = com.onpath.app.domain.ActionPercent()
+        a.update(listOf(com.onpath.app.domain.ActionPercent.Item("cell:1", 10, 0.2), com.onpath.app.domain.ActionPercent.Item("cell:2", 10, 0.5),
+            com.onpath.app.domain.ActionPercent.Item("routing", 10, 0.1)))
+        assertEquals(0 to 2, a.areas())
+        a.update(listOf(com.onpath.app.domain.ActionPercent.Item("cell:2", 10, 0.9)))
+        assertEquals("cell:1 left: done", 1 to 2, a.areas())
     }
 }

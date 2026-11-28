@@ -123,6 +123,7 @@
 
     <!-- Background downloads: chip and details -->
     <string name="maps_bg_chip_cd">Loading map: %1$s</string>
+    <string name="maps_bg_areas_count">%1$d of %2$d map areas</string>
     <string name="maps_bg_chip_click">Show background downloads</string>
     <string name="maps_bg_dialog_title">Loading in the background</string>
     <string name="maps_bg_newer_ready">Newer map ready in about %1$d min.</string>

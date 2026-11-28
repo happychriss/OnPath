@@ -40,7 +40,7 @@ abstract class BackgroundDownloadScreenshotTest {
     private val ui: BackgroundDownloadUi get() {
         val p = BackgroundProgress(com.onpath.app.domain.ActionPercent())
         fun g(stages: List<Pair<String, LoadPhase>>) = LoadNames.groups(stages.map { (n, ph) -> LoadEntry(LoadWhy.ROUTE, n, bytes = 9 * mb, phase = ph) })
-        fun item(k: String, f: Double) = com.onpath.app.domain.ActionPercent.Item(k, 9 * mb, f)
+        fun item(k: String, f: Double) = com.onpath.app.domain.ActionPercent.Item("cell:$k", 9 * mb, f) // map areas: counted
         p.update(listOf(item("a", 0.0), item("b", 0.0), item("c", 0.0)), 3, 0, groups = g(listOf("Meran" to LoadPhase.LOADING,
             "Brixen" to LoadPhase.PREPARING, "Klausen" to LoadPhase.PREPARING)))
         return p.update(listOf(item("b", 0.02), item("c", 0.0)), 2, 0, groups = g(listOf("Brixen" to LoadPhase.LOADING,
@@ -123,7 +123,7 @@ abstract class BackgroundDownloadScreenshotTest {
             LoadEntry(LoadWhy.REFRESH, town = "Bozen", bytes = 7 * mb),
         ))
         return BackgroundProgress(com.onpath.app.domain.ActionPercent()).update(
-            listOf(com.onpath.app.domain.ActionPercent.Item("a", 22 * mb, 0.34)), 3, 0, newer = 3, newerEtaMin = 4, groups = groups)!!
+            listOf(com.onpath.app.domain.ActionPercent.Item("cell:a", 22 * mb, 0.34)), 3, 0, newer = 3, newerEtaMin = 4, groups = groups)!!
     }
 
     /** Its details: newer version, being prepared, about N min. */
