@@ -94,6 +94,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 <!-- - [donald|laptop|captain|cloud-web] short description – since YYYY-MM-DD -->
 
 ## Next
+- **[donald] App: a multi-day trip is guided one day at a time – start/end rule, ✓ on arrival, whole-trip planning out of the app (owner 2026-11-28 „kristallklar“, after 0.18.12)…** → [detail](items/2026-11-28-app-multiday-one-day.md)
 - **[donald] Parity: multi-day panel like the planner (owner's sketch 2026-11-27, planner d7d01bd7b)** – head with title + „Speichern“ + save state („Nicht gespeichert“ / „Geändert · nicht gespeichert“ / „Gespeichert“), a row „Gesamte Reise“ (km · time · ↑ · ↓), „Planung“ before the chips, „Höhenprofil · gesamte Reise“ with the day borders and „Höhenprofil · Tag N“ showing only that day. Activity stays variant C (owner). Words: web/strings `web_days_*`, `web_profile_*` – move them to shared strings when you build it.
 - **[donald] Parity: „Berechnen“ on a not-routed plan is now a filled plan-blue button in the planner (owner 2026-11-27 „muss dicker“) – the app shows it as a blue text link after „Route nicht berechnet …“; make it the same filled PlanGo button.**
 - **[laptop] Planner: route type as a segment row (variant A) + multi-day day table and day view (owner 2026-11-27)…** → [detail](items/2026-11-27-planner-route-type-and-day-table.md)

@@ -4,6 +4,26 @@ Status: **concept complete, nothing built** (2026-11-17: every open point decide
 überlegen". This page is the agreed state and the build order for the day the owner says go. Before any UI is built:
 a sketch of the exact picture and his yes (owner rule).
 
+## 0. The roles of browser and phone (owner 2026-11-28 08:05, „kristallklar“) – THIS WINS over everything below
+
+- **Browser planner = the whole trip.** See the days, open one day and replan it, back to the multi-day view, the next
+  day, overnight stops, number of days, limits. Stays as built.
+- **Phone = guide through the trip, at most ONE day changed, never the whole plan.** Meine Touren → tap the trip → it
+  unfolds into its days → tap ONE day → it goes into the phone's Plan as that day → change points if wanted → Los geht's.
+- **A day stays part of the trip** while its start and end stay: adding / moving / deleting points in between is fine,
+  saving writes the day back into the trip. **Start or end changed** → notice „Start und Ziel geändert – wird als
+  eigenständige Tour gespeichert“ → saved as its own route (a copy); the trip is not changed.
+- **A day is done** when it was navigated from its start to its end (arrival). On the phone the trip's planned days and
+  the ridden tours stay together: Meine Touren shows which days are done (✓, „gefahren am …“).
+- **Not on the phone:** the whole-trip overview in the plan sheet (day table, profile, „Tag n fahren“), several days in a
+  row, „‹ Alle Tage“ into that overview (it leads back to the day list in Meine Touren), the number of days re-split
+  when activity / pace / route choice change, the „Ganze Tour“ maps question.
+- Recorded tours (GPX) to the browser: not yet (backlog Later).
+
+Where today's app differs (2026-11-28 check): `docs/team/items/2026-11-28-app-multiday-one-day.md` – rebuilt after
+release 0.18.12. Older decisions below that let the phone plan or change the whole trip (rows 3, 8 for the phone, 14,
+§3 „Phone“ items 1 + 3, „Built in stage 4“) are replaced by this section.
+
 ## 1. What the owner decided
 
 | # | Decision | His words |
