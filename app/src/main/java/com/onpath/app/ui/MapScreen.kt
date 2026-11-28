@@ -190,6 +190,8 @@ fun MapScreen(
             },
             modifier = Modifier.fillMaxSize(),
         )
+        // "Where I face" arrow at the dot in heading-up following (MapController.Facing): part of the map – under every layer
+        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } } // (search, cards; Pixel 2026-11-28)
         // A newer version of an area the user has (checked after each route) is told by the background-download strip
         // only – one loading indicator is enough. No cell-state read here: download ticks must not recompose this screen.
         // one padding rule for every route fit (FitPaddingRule): clear of the top elements and the sheet / slider
@@ -223,8 +225,6 @@ fun MapScreen(
             },
             navigate = { LiveSignLayer(vm) { NavigateMode(vm, rec, location, { cam.bearing }, onCover = { t, b -> navCover[0] = t; navCover[1] = b }) { footer(AppMode.NAVIGATE) } } },
         )
-        // "Where I face" arrow at the dot in heading-up following (MapController.Facing), not over the cycling rest view
-        if (!vm.screenRest) controller?.let { ctl -> FacingArrow(ctl.facing) { cam.bearing } }
         // Plan: the credit over the scale, top right (the top left holds the boxes, the recording pill, the download chip)
         if (vm.tourSession.mode == AppMode.PLAN && !vm.searchFlow.searchOpen) MapCreditTop(cam, demoOn, { vm.settingsSlice.openSettings(SettingsPage.LEGAL) }, vm.offlineReady?.state, vm::toggleOfflineInfo, Modifier.align(Alignment.TopEnd).statusBarsPadding().padding(top = CreditPlace.TOP_DP.dp, end = 12.dp))
         // hints go below the background-download strip while it shows (measured: a box is taller than the chip)
