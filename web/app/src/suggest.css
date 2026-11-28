@@ -61,7 +61,16 @@ body.suggest-strip #footer { bottom: calc(var(--strip-h, 0px) + 30px); } /* the 
 .sgname { font-weight: 700; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgstats { font-variant-numeric: tabular-nums; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .sgstats .sgfrom { color: var(--muted); }
-.sgline { font-size: 12.5px; line-height: 1.4; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the text block (F-PLAN-29): one line each, cut with „⌄ mehr“; the chosen card's open block shows all and scrolls inside */
+.sgbody { display: flex; flex-direction: column; gap: 3px; min-height: 48px; min-width: 0; }
+.sgcard.on.cut .sgbody { cursor: pointer; }
+.sgline { font-size: 12.5px; line-height: 1.4; display: flex; align-items: baseline; gap: 6px; min-width: 0; }
+.sglt { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sgmore { flex: none; border: none; background: none; padding: 0; color: var(--plan); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; white-space: nowrap; }
+.sgmore[hidden] { display: none; }
+.sgcard.open .sgname, .sgcard.open .sgstats, .sgcard.open .sglt { white-space: normal; overflow: visible; text-overflow: clip; }
+.sgcard.open .sgline { align-items: flex-end; }
+.sgcard.open .sgbody { max-height: calc(60vh - 110px); overflow-y: auto; } /* the strip at most ~60 % high; the text scrolls inside */
 .sgpills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 2px; }
 .sgpill { font-size: 12px; font-weight: 600; border-radius: 999px; padding: 3px 9px; white-space: nowrap; }
 .sgpill.g1 { background: #DCEDD4; color: #1C3F1F; } .sgpill.g2 { background: #CDE6C3; color: #1C3F1F; } .sgpill.g3 { background: #A9D49A; color: #1C3F1F; }

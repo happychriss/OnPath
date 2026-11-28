@@ -187,6 +187,31 @@ try {
     });
     check(ph.left === 0 && ph.right === 0 && ph.bottom === 0 && ph.sheet === 'none' && ph.h < 844 * 0.45,
       `phone: a low strip at the bottom in the sheet's place (${Math.round(ph.h)} px high)`);
+    // the text block like the app's cards (F-PLAN-29): a cut line shows „⌄ mehr“; a click on the chosen card's text opens
+    // it whole with „⌃ weniger“, a second click closes it; „Übernehmen“ untouched
+    {
+      await page.waitForTimeout(300);
+      const st0 = await page.evaluate(() => {
+        const c = document.querySelector('#suggestStrip .sgcard.on'), m = c?.querySelector('.sgmore');
+        const cut = [...(c?.querySelectorAll('.sgname, .sgstats, .sglt') ?? [])].some((x) => x.scrollWidth > x.clientWidth + 1);
+        return { cut, shown: !!m && !m.hidden, text: m?.textContent ?? '', exp: m?.getAttribute('aria-expanded') };
+      });
+      check(st0.shown === st0.cut && (!st0.cut || (st0.text === '⌄ mehr' && st0.exp === 'false')),
+        `phone: a cut text shows „⌄ mehr“ (cut ${st0.cut}, „${st0.text}“)`);
+      if (st0.cut) {
+        await page.click('#suggestStrip .sgcard.on .sgline .sglt');
+        const st1 = await page.evaluate(() => {
+          const c = document.querySelector('#suggestStrip .sgcard.on'), m = c?.querySelector('.sgmore');
+          return { open: c?.classList.contains('open'), text: m?.textContent ?? '', exp: m?.getAttribute('aria-expanded'),
+            ws: getComputedStyle(c.querySelector('.sglt')).whiteSpace, onCount: document.querySelectorAll('#suggestStrip .sgcard.on').length };
+        });
+        check(st1.open && st1.text === '⌃ weniger' && st1.exp === 'true' && st1.ws === 'normal' && st1.onCount === 1,
+          `phone: a click on the chosen card's text shows it whole with „⌃ weniger“ (${JSON.stringify(st1)})`);
+        await page.click('#suggestStrip .sgcard.on .sgline .sglt');
+        check(await page.evaluate(() => !document.querySelector('#suggestStrip .sgcard.on').classList.contains('open')
+          && document.querySelector('#suggestStrip .sgcard.on .sgmore').textContent === '⌄ mehr'), 'phone: a second click closes it again');
+      }
+    }
     if (ph.n > 1) {
       check(ph.peek >= 10 && ph.peek <= 30 && ph.dots === ph.n, `phone: the next card looks in (${Math.round(ph.peek)} px), ${ph.dots} dots`);
       const lines = () => page.evaluate(async () => ((await window.__map.getSource('suggest-loop')?.getData())?.features ?? [])

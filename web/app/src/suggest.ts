@@ -15,6 +15,7 @@ import type { ActivityRow } from './activity';
 import type { MenuItem } from './menus';
 import { t, tp, number } from './i18n';
 import { problem } from './diag';
+import { expander } from './sgexpand';
 import './suggest.css';
 
 type LatLon = [number, number];
@@ -293,6 +294,7 @@ export function setupSuggest(host: SuggestHost) {
     const row = p.querySelector<HTMLDivElement>('.sgcards')!;
     const dots = [...p.querySelectorAll<HTMLElement>('.sgdots i')];
     const els: HTMLDivElement[] = [];
+    const more = expander(() => els, { more: t('suggest_ui_more_mark'), less: t('suggest_ui_less'), moreLabel: t('suggest_ui_more') });
     const mark = () => {
       els.forEach((el, k) => { el.classList.toggle('on', k === chosen); el.setAttribute('aria-current', String(k === chosen)); });
       dots.forEach((el, k) => el.classList.toggle('on', k === chosen));
@@ -313,6 +315,7 @@ export function setupSuggest(host: SuggestHost) {
       if (scroll) front(i);
       if (chosen === i) return;
       chosen = i;
+      if (more.open >= 0) more.set(-1); // another choice closes the open text
       mark();
       drawMap(true);
     };
@@ -323,12 +326,23 @@ export function setupSuggest(host: SuggestHost) {
       d.tabIndex = 0;
       d.innerHTML = `<div class="sgtop"><span class="sgbadge ${c.badge ? 'signed' : 'own'}">${esc(c.badge ? t('suggest_ui_badge_signed', c.badge) : t('suggest_ui_badge_own'))}</span>
           <button type="button" class="sgtake">${esc(t('suggest_ui_take'))}</button></div>
-        <div class="sgname">${esc(c.name)}</div>
+        <div class="sgbody"><div class="sgname">${esc(c.name)}</div>
         <div class="sgstats">${esc(`${number(c.km, 1)} km · ${hm(c.hours)} h · ↑ ${c.ascent} m`)}${c.loopKm != null
           ? ` <span class="sgfrom">· ${esc(t('suggest_ui_on_loop', number(c.loopKm, 1)))}</span>` : ''}</div>
-        ${c.line ? `<div class="sgline">${esc(c.line)}</div>` : ''}
+        <div class="sgline"><span class="sglt">${esc(c.line ?? '')}</span><button type="button" class="sgmore" hidden></button></div></div>
         ${c.pills.length ? `<div class="sgpills">${c.pills.map((x) => `<span class="sgpill ${x.c}">${esc(x.t)}</span>`).join('')}</div>` : ''}`;
       d.onclick = () => pick(i);
+      // the chosen card's text block with a cut line: open / close it (F-PLAN-29); otherwise the click chooses the card
+      d.querySelector<HTMLElement>('.sgbody')!.onclick = (e) => {
+        if (chosen !== i || !d.classList.contains('cut')) return;
+        e.stopPropagation();
+        more.toggle(i);
+      };
+      d.querySelector<HTMLButtonElement>('.sgmore')!.onclick = (e) => {
+        e.stopPropagation();
+        if (chosen !== i) pick(i);
+        more.toggle(i);
+      };
       d.querySelector<HTMLButtonElement>('.sgtake')!.onclick = (e) => { e.stopPropagation(); void take(c, e.currentTarget as HTMLButtonElement); };
       row.append(d);
       els.push(d);
@@ -355,6 +369,9 @@ export function setupSuggest(host: SuggestHost) {
     }, { passive: true });
     mark();
     front(chosen, false);
+    // which lines are cut is known after layout – and again when the cards change width
+    requestAnimationFrame(() => more.measure());
+    new ResizeObserver(() => more.measure()).observe(row);
   }
 
   /** „Übernehmen“: the loop as a normal plan – the planner's plan-from-track path (TrackToPlan), closed as a round trip. */
