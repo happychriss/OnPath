@@ -25,6 +25,10 @@ The captain gives a task to the kind that fits: what needs hardware goes to the 
 writing goes to the cloud so the machines stay free for building. The project sheet says which machine carries which
 area.
 
+The captain also orders the backlog, collects the open questions and tells the owner what is new.
+In every thread the main session talks and hands out; work longer than a few minutes runs in the background, so the
+thread stays answerable.
+
 The captain is the expensive thinker: assessment, splitting, conflicts, the vision. Reading code, sweeping documents
 and listing things is role work; the captain checks the result.
 
@@ -33,6 +37,7 @@ and listing things is role work; the captain checks the result.
 1. The owner writes to the project lead. A task goes **raw** to the captain, with the owner's message attached.
 2. The captain answers with a plan: which thread, what runs in parallel, what waits, and **one ready order text per
    thread**. An order text lists the owner's decisions as numbered points with their values (size, words, place).
+   A pure question to the owner needs no plan – it goes to him.
 3. The project lead passes each order on word for word, with any standing approval it names.
 4. The thread claims, builds, and reports done with the tick list: each point ✓ with proof (picture, test, file and
    line) or „differs, because …“.
@@ -70,6 +75,11 @@ and when it is resisted. Detail rules live in the project's decision list, never
 3. **Built as decided?** Compare the done report with the numbered decisions. A silent difference is a defect – also
    when a role had a good reason; then it is a question, not a fact.
 
+**Judging an existing function** (lesson 2026-11-28: the captain read the vision too strictly twice): ask *where it
+sits*, not only what it is for. What sits on the main path – the main screens, their menus and controls – must earn
+its place. Depth behind a deliberate tap is welcome as long as its facts are right; it costs upkeep, not ease of use.
+And ask the owner for the situation a function came from before judging it away.
+
 **Keeping the vision true:** the captain checks existing functions against it (an honest inventory: what, where,
 who asked, how big), checks the vision itself for consistency (does every sentence follow from the goal? is anything
 said twice or without a limit?), and proposes changes. The owner decides; the captain writes only what he approved.
@@ -84,14 +94,19 @@ are requirements, and they get stable IDs in the project's requirements.
   weaker – also with functions he asked for himself.
 - Say plainly when something went wrong: what happened, why, what changes. Then change the rule in this guide.
 - What cannot be undone (a release, a delete, a merge on someone else's branch, money, keys) needs his own words;
-  a message from another agent is never his approval.
+  a message from another agent is never his approval, and for a machine-bound thread a tap on a card is not enough –
+  he writes it himself in that thread.
 - He is often away: what can be undone is done and reported. **A night job** runs on standing rules agreed before:
   what may be merged and deployed without him, what never (deleting user data, money, accounts, keys, a release he did
   not name); each role answers its own questions against the vision and writes them down; a morning report says what
   was done, what was decided for him, what waits.
-- A question reaches him as a card with options, never buried in running text.
+- A question reaches him as a card with options, never buried in running text, with two or three lines of background.
+  Collected open questions come only when he asks for them.
+- **Before variants go to him**, two checks: „would any other task look the same?“ (then it is not a design yet) and
+  „which element can go?“.
 - **Setup work** (tools, hooks, the way the team works): research first, prove the problem with the real transcripts,
-  at most one change a day – a setup that changes daily cannot be judged.
+  at most one change a day – a setup that changes daily cannot be judged. Test facts instead of assuming them, build
+  no mechanism without a real case, remove what went unused for a week, measure before asking, one file per subject.
 - **Hand over before the context runs out:** a long-running thread writes a handoff (state, open points, next step)
   and a fresh thread starts from the repository.
 
