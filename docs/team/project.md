@@ -44,7 +44,7 @@ Everything on the computers lives under `/home/development/Projects/work/`.
 
 Rule: one session per computer folder; helpers use their own worktrees.
 Backlog tags = session names (`[donald]`, `[IR]`, `[mehrtage]`, `[umbau]`, `[umbau-hp]`, `[laptop]` / `[cloud-plan]`,
-`[cloud-web]`, `[captain]`; the old `[cloud-app]` = donald). Item tags: `[pixel]`, `[emu]` → donald · `[karten]`, `[ram]`
+`[cloud-web]`, `[captain]`; the old `[cloud-app]` = donald). Item tags: `[pixel]`, `[emu]`, `[karten]` → donald · `[ram]`
 → laptop (`roles/start.md`).
 
 ## Tools

@@ -15,7 +15,7 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
   „allgemein, wenn alles grün“): the role that built a pull request (or the captain) merges it once every check is green and a
   second model read it, then one line „For the captain“. Exceptions that still ask him in a box: secrets and signing keys,
   outside contributions (forks), anything red or unclear.
-- **Questions** (guide §5; owner 2026-11-01): each with 2–3 lines of background; the owner answers tersely. Ask in
+- **Questions** (guide §5; owner 2026-11-01): the owner answers tersely. Ask in
   your own chat (owner 2026-11-07: no more question issues – he always answered in the chat). Not answered when the session stops → one line
   under "Waiting for the owner" in `docs/team/backlog.md` (who, date, question, recommendation); whoever acts on the answer
   deletes it. "Nie warten": take the recommendation, note it, go on.
@@ -32,8 +32,8 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
 ## Product rules
-- **Before variants go to the owner** (2026-11-27, frontend-design review): two checks – „would any other task look the
-  same?“ (fine for controls, which follow the platform; not for colour, type, pictures) and „which element can go?“.
+- **Before variants go to the owner** (2026-11-27, frontend-design review; the two checks: guide §5): „would any other
+  task look the same?“ is fine for controls, which follow the platform; not for colour, type, pictures.
 - **Text pass questions** (same source; texts still change only as a question to the owner): does an action keep its name
   up to the confirmation („Anhalten“ → „Angehalten“)? does an error say what happened and what to do now, without an
   apology? does every empty state invite the next step (like „Ziel suchen“)?
@@ -58,12 +58,10 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
 - **The owner must notice when a session waits** (owner 2026-11-02): on donald / the laptop the Claude push is on
   (`/config`: "Push when actions required" + "Push when Claude decides" – `docs/team/roles/multi-agent-lernen.md` §2); an
   open question outlives the session only as a line under "Waiting for the owner" in `docs/team/backlog.md`.
-- **Main session talks and distributes; work runs in background agents** (builds, checks, merges, installs). The
-  main session keeps the overview of all agents (task → state → next step), stops stuck ones, and reports without
-  being asked. **The chat stays responsive** (owner 2026-11-01): a request that takes longer than ~2 minutes and stands
-  on its own goes to a background agent – preferably a fork, which keeps the whole conversation – and the session
-  answers at once "läuft: …"; talk, decisions, questions and small changes are done directly (a fresh agent would lose
-  the context, and for small things it is slower). A request that needs the same files, Gradle or the same device as a
+- **Main session and background agents** (guide §5; owner 2026-11-01): the main session keeps the overview of all
+  agents (task → state → next step), stops stuck ones, and reports without being asked. A request over ~2 minutes goes
+  to a background agent – preferably a fork, which keeps the whole conversation – and the session answers at once
+  "läuft: …"; talk, decisions, questions and small changes are done directly. A request that needs the same files, Gradle or the same device as a
   running agent waits: "wartet auf X". Not "everything in the background" – that costs context.
 - **Keep the owner's computer usable:** Gradle only through `tools/ci/gate.sh` or `tools/dev/gradle_slot.sh` (three
   builds per computer, one while the emulator runs; `gate.sh` uses `--max-workers=2`, nice + ionice); other heavy jobs
@@ -127,9 +125,8 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   `assets/overview/*.pmtiles`.
 
 ## Setup work (owner 2026-11-05, after the setup audit – lessons in `docs/team/roles/multi-agent-lernen.md` §4)
-The general rule is guide §5 „Setup work“. In addition: prove platform facts with a small test; never sell an
-assumption as a fact. No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit
-every session at once → test every combination before the push. Measure before asking the owner. One file per topic.
+The rule is guide §5 „Setup work“. In addition: never sell an assumption as a fact. Hooks / `gate.sh` / locks hit
+every session at once → test every combination before the push.
 
 ## Worktrees and agents
 - Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,

@@ -23,7 +23,7 @@ und `docs/team/roles/start.md`.“
   `docs/team/handoffs/handoff-<role>-<date>.md`, archive, start a new session with the same sentence – the repo is the memory.
 
 ## Who takes what (tags in `docs/team/backlog.md` "Next")
-`[pixel]`, `[emu]` → donald · `[karten]`, `[ram]` → laptop · no tag → any unit that is free. The owner does not route:
+`[pixel]`, `[emu]`, `[karten]` → donald · `[ram]` → laptop · no tag → any unit that is free. The owner does not route:
 an item said to the wrong session goes into the backlog for the right one.
 
 ## The round (every wake-up and whenever the owner writes – the start hook already shows 2–4)

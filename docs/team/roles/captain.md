@@ -8,8 +8,7 @@ part only. Computers, who sits where, tools: [`../project.md`](../project.md).
 `docs/team/roles/start.md`. Repos: `OnPath`, `onpath.private` (`add_repo` if missing).
 
 **Overview in OnPath** (owner 2026-11-02: „da bin ich manchmal schusselig“): which build is where (Pixel, GitHub
-release, plan.onpath.earth), whether app and planner still match, what CI says, which session waits for what. It orders the backlog, collects
-questions, tells the owner what is new.
+release, plan.onpath.earth), whether app and planner still match, what CI says, which session waits for what.
 
 ## Board and checks in OnPath
 - **Board:** `docs/team/board.md`; the captain alone edits it and pushes it to `main` without asking.
