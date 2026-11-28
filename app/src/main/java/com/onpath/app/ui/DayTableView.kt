@@ -104,15 +104,21 @@ fun DayTableView(
      * Handy brauche ich nicht die Summe der gesamten Kilometer … das ist was für die Planung“) – its room goes to „von → nach“.
      */
     showSum: Boolean = true,
+    /**
+     * Each day a card of its own (owner 2026-11-28 09:58 „mit einzelnen Blasen, so wie auf dem My Tours Menü“, 10:20 „die tage als karten sieht gut aus“): the
+     * same card as My routes' tour cards (OnPathShapes.Card, CardPaper, the low warm shadow, 10 dp apart); the columns stay
+     * aligned across all cards (one set of widths, the same inner padding).
+     */
+    cards: Boolean = false,
 ) {
     val large = LocalDensity.current.fontScale >= LARGE_FONT
     @Suppress("NAME_SHADOWING")
     val table = if (showSum) table else remember(table) { table.copy(lines = table.lines.map { it.copy(cells = it.cells.copy(sum = null)) }) }
     val w = columnWidths(table)
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below, placesLaidOut)
-        HorizontalDivider(Modifier.padding(top = 4.dp), color = OnPathColors.Line)
-        TotalRow(table, w, oneRow, large, trailingWidth)
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(if (cards) 10.dp else 2.dp)) {
+        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below, placesLaidOut, cards)
+        if (!cards) HorizontalDivider(Modifier.padding(top = 4.dp), color = OnPathColors.Line)
+        TotalRow(table, w, oneRow, large, trailingWidth, card = cards)
     }
 }
 
@@ -151,7 +157,7 @@ private fun columnWidths(t: DayTableUi): Widths {
 private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Boolean, picked: Boolean,
                         onTap: ((Int) -> Unit)?, onHold: ((Int) -> Unit)?,
                         title: @Composable (DayTableLine) -> Unit, trailing: (@Composable (DayTableLine) -> Unit)?,
-                        below: (@Composable (DayTableLine) -> Unit)?, placesLaidOut: (TextLayoutResult) -> Unit) {
+                        below: (@Composable (DayTableLine) -> Unit)?, placesLaidOut: (TextLayoutResult) -> Unit, card: Boolean = false) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val bg = when {
         l.over -> OnPathColors.WarnContainer
@@ -159,11 +165,15 @@ private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Bool
         else -> Color.Transparent
     }
     val desc = listOfNotNull(l.day, l.places).joinToString(" · ")
-    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(OnPathShapes.Small).background(bg)
+    // a card: My routes' tour card (shape, paper, low shadow); the picked / over-limit tint over its paper
+    val frame = if (card) Modifier.warmShadow(OnPathShadow.LOW, OnPathShapes.Card).clip(OnPathShapes.Card).background(OnPathColors.CardPaper)
+        else Modifier.clip(OnPathShapes.Small)
+    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).then(frame).background(bg)
         .then(if (onTap != null) Modifier.combinedClickable(role = Role.Button, onClick = { onTap(l.n) },
             onLongClick = onHold?.let { h -> { h(l.n) } }) else Modifier)
         .semantics { selected = picked; contentDescription = desc }
-        .padding(start = 8.dp, top = 6.dp, bottom = 6.dp, end = if (trailing == null) 8.dp else 0.dp),
+        .padding(start = if (card) 10.dp else 8.dp, top = if (card) 10.dp else 6.dp, bottom = if (card) 10.dp else 6.dp,
+            end = if (trailing != null) 0.dp else if (card) 10.dp else 8.dp),
         verticalArrangement = Arrangement.Center) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -219,9 +229,10 @@ private fun Numbers(c: DayTable.Cells, w: Widths, oneRow: Boolean, large: Boolea
 
 /** „Gesamt“ · km · ↑ m · time under the days, in the same columns (the sign's and the trailing room kept free). */
 @Composable
-private fun TotalRow(t: DayTableUi, w: Widths, oneRow: Boolean, large: Boolean, trailingWidth: Dp) {
+private fun TotalRow(t: DayTableUi, w: Widths, oneRow: Boolean, large: Boolean, trailingWidth: Dp, card: Boolean = false) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
-    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(start = 8.dp, end = if (trailingWidth > 0.dp) 0.dp else 8.dp),
+    val side = if (card) 10.dp else 8.dp // in the cards' columns
+    Row(Modifier.fillMaxWidth().heightIn(min = 40.dp).padding(start = side, end = if (trailingWidth > 0.dp) 0.dp else side),
         verticalAlignment = Alignment.CenterVertically) {
         Column(Modifier.weight(1f)) {
             Text(t.totalLabel, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1)
