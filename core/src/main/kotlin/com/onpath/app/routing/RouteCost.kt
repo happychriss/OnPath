@@ -148,20 +148,20 @@ object RouteCost {
         }
     }
 
-    /** The question's title: "Long route: about 3–6 minutes", or "Too long for the phone" ([LongAsk.beyond]). */
+    /** The question's title: "Long route: about 3–6 minutes", or "Route too long to calculate" ([LongAsk.beyond]). */
     fun askTitle(ask: LongAsk): String =
         if (ask.beyond) Txt.s(Res.string.nav_too_long_title) else Txt.s(Res.string.nav_long_leg_title, words(ask.estimateS))
 
     /**
      * The question's text: "Hilden → München, 475 km in one go. …" – [from] / [to] the names of the leg's ends (both
-     * known, else "Point 1 → 2"); beyond capacity: "475 km in one go. Add a stop or plan in the browser."
+     * known, else "Point 1 → 2"); beyond capacity: "Pick a closer destination. Then plan on from there."
      */
     fun askText(ask: LongAsk, from: String?, to: String?, stopHint: Boolean = true): String {
         val km = ask.km.roundToInt().toString()
         val leg = if (!from.isNullOrBlank() && !to.isNullOrBlank()) "$from → $to"
             else Txt.s(Res.string.nav_long_leg_points, ask.leg + 1, ask.leg + 2)
-        // owner 2026-11-27: too far – a closer destination; the browser only as a sentence (no button: on the phone it helps not)
-        if (ask.beyond) return Txt.s(Res.string.nav_too_long_text, leg, km)
+        // owner 2026-11-28 11:09 (his words, app and planner alike): „Wähle ein näheres Ziel. Danach planst du von dort weiter.“
+        if (ask.beyond) return Txt.s(Res.string.nav_too_long_text)
         // the app has no „Zwischenziel setzen“ (owner 2026-11-27: nobody knows where a stop belongs) – no sentence about it
         return Txt.s(if (stopHint) Res.string.nav_long_leg_text else Res.string.nav_long_leg_text_plain, leg, km)
     }

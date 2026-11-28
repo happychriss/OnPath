@@ -188,8 +188,8 @@
     <string name="nav_long_leg_text">%1$s, %2$s km in one go. With a stop on the way it is faster.</string>
     <string name="nav_long_leg_text_plain">%1$s, %2$s km in one go.</string>
     <string name="nav_long_leg_points">Point %1$d → %2$d</string>
-    <string name="nav_too_long_title">Too far for the phone</string>
-    <string name="nav_too_long_text">%1$s, %2$s km in one go. Choose a closer destination – plan longer tours in the browser on a computer.</string>
+    <string name="nav_too_long_title">Route too long to calculate</string>
+    <string name="nav_too_long_text">Pick a closer destination. Then plan on from there.</string>
     <string name="nav_add_stop">Add a stop</string>
     <string name="nav_wait">Wait</string>
 

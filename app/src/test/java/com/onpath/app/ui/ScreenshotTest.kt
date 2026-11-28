@@ -406,7 +406,7 @@ class ScreenshotTest {
         }
     }
 
-    /** A leg beyond the phone's memory: no waiting offered, only a stop on the way. */
+    /** A leg beyond the device's memory: no waiting offered – „Zu lange Route für die Berechnung“, OK (owner 2026-11-28). */
     @Test fun longRouteTooLongForThePhone() = paparazzi.snapshot {
         val ask = com.onpath.app.routing.LongAsk(Double.POSITIVE_INFINITY, 0, 475.0)
         OnPathTheme {

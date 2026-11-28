@@ -187,8 +187,8 @@
     <string name="nav_long_leg_text">%1$s, %2$s km am Stück. Mit einem Zwischenziel geht es schneller.</string>
     <string name="nav_long_leg_text_plain">%1$s, %2$s km am Stück.</string>
     <string name="nav_long_leg_points">Punkt %1$d → %2$d</string>
-    <string name="nav_too_long_title">Zu weit für das Handy</string>
-    <string name="nav_too_long_text">%1$s, %2$s km am Stück. Wähle ein näheres Ziel – längere Touren planst du am Rechner im Browser.</string>
+    <string name="nav_too_long_title">Zu lange Route für die Berechnung</string>
+    <string name="nav_too_long_text">Wähle ein näheres Ziel. Danach planst du von dort weiter.</string>
     <string name="nav_add_stop">Zwischenziel setzen</string>
     <string name="nav_wait">Warten</string>
 

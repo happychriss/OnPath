@@ -1340,13 +1340,13 @@
   },
   "nav_too_long_title": {
     "area": "Plan (long route question)",
-    "context": "Title when a leg is beyond the phone's memory (> 300 km straight).",
+    "context": "Title when a leg is beyond the device's memory (> 300 km straight) – the owner's words 2026-11-28 (DE), EN a proposal.",
     "priority": 1,
     "confidence": "sicher"
   },
   "nav_too_long_text": {
     "area": "Plan (long route question)",
-    "context": "Text of that note; %1$s = straight km.",
+    "context": "Text of that note, no placeholders: pick a closer destination, then plan on from there (owner 2026-11-28 11:09, DE his words; EN a proposal).",
     "priority": 1,
     "confidence": "sicher"
   },
