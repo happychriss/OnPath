@@ -17,6 +17,11 @@ Night queue 1–9 all on `main`; planner parity done and online (a0e7358ca); map
 the Pixel: Wartefenster thread installs, checks, then pushes version + notes. Free after that: all donald threads and HP.
 Next candidates: multi-day header with „Speichern“ + „Gesamte Reise“ (app, `MapScreen.kt` hot), `SacChips` tidy,
 backlog triggers. The table below is the evening state of 27.11. (history).
+**Queue after the release:** (1) Suchkategorie (donald): `SacChips` out of `Screens.kt` + `feat/wait-step-bar` via
+`prune_branches.sh delete --by-hand` after checking its 3 rewritten commits are in 9b0a247ce (owner 06:23 „Aufräumen ist
+immer gut“). (2) Mehrtagestouren (donald): multi-day head in the app (`MultiDayPanelParts.kt`, 2 lines `PlanPanel.kt`,
+1 line `MapScreen.kt`) – picture mehrtage-ABC shown, **waits for the owner's yes**; dropping „Gesamte Reise“ on the phone
+is a deliberate difference from the planner = owner's call (fine if the day table already shows the total).
 
 ## Active – evening 27.11., all merged in the night (2026-11-27 ~21:45 CET; all four threads got the new rules from the coordinator)
 | Thread | Computer | Branch | Area / files | Now | Next |
