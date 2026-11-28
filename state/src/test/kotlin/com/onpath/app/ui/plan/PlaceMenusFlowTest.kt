@@ -789,7 +789,6 @@ class PlaceMenusFlowTest {
     @Test fun aFavouriteIsKeptStoredBackedUpAndSentInThatOrderAndToggledOffAgain() {
         val app = App(listOf(a))
         assertFalse(app.kept.isFavouritePlace(hut))
-        assertFalse(app.kept.isHomePlace(hut))
         assertEquals(listOf("store.saved home=- favs=-"), app.log) // read once, then from the cache
         app.log.clear()
         app.kept.toggleFavouritePlace(hut)
@@ -805,6 +804,10 @@ class PlaceMenusFlowTest {
         assertEquals("Place menu: \"Hütte\" no longer a favourite", problems.traced("search").last())
     }
 
+    /**
+     * The newest favourite comes first; Zuhause stays the planner's (2026-11-28: the app's menu has no home row) – its
+     * setHome (the planner's WebKept) replaces or removes the home without touching the favourites.
+     */
     @Test fun theNewestFavouriteComesFirstAndHomeIsReplacedOrRemovedWithoutTouchingTheFavourites() {
         val app = App(listOf(a))
         val cafeFav = cafe
@@ -812,17 +815,16 @@ class PlaceMenusFlowTest {
         app.kept.toggleFavouritePlace(cafeFav)
         assertEquals(listOf("n2", "n1"), app.stored.favourites.map { it.id })
         app.log.clear()
-        app.kept.toggleHomePlace(hut)
+        app.kept.setHome(Place.fromPoi(hut))
         assertEquals("n1", app.stored.home?.id)
         assertEquals(listOf("n2", "n1"), app.stored.favourites.map { it.id })
         assertEquals("Place menu: \"Hütte\" set as home", problems.traced("search").last())
-        assertTrue(app.kept.isHomePlace(hut)); assertFalse(app.kept.isHomePlace(cafeFav))
-        app.kept.toggleHomePlace(cafeFav) // another place becomes home: the old home is replaced
+        app.kept.setHome(Place.fromPoi(cafeFav)) // another place becomes home: the old home is replaced
         assertEquals("n2", app.stored.home?.id)
         assertEquals(listOf("n2", "n1"), app.stored.favourites.map { it.id })
-        app.kept.toggleHomePlace(cafeFav) // the place that is home: removed
+        app.kept.setHome(null)
         assertNull(app.stored.home)
-        assertEquals("Place menu: \"Café Ost\" no longer home", problems.traced("search").last())
+        assertEquals("Place menu: home removed", problems.traced("search").last())
         assertEquals(3, app.log.count { it.startsWith("backup") })
         assertEquals(3, app.log.count { it.startsWith("sync") })
     }

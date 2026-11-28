@@ -40,7 +40,7 @@ object PlacesBackup {
             l.startsWith(HOME) -> home = SearchStore.decode(l.removePrefix(HOME)) ?: home
             l.startsWith(FAV) -> SearchStore.decode(l.removePrefix(FAV))?.let { favs += it }
         }
-        SavedPlaces(home, favs)
+        com.onpath.app.search.homeAsFavourite(SavedPlaces(home, favs)) // an old backup's Zuhause comes back as a favourite
     } catch (e: Exception) {
         Problems.warn("backup", "Places file ($FILE_NAME) unreadable – no places restored", e); null
     }

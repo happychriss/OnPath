@@ -22,9 +22,9 @@ import org.junit.rules.TemporaryFolder
 import kotlin.random.Random
 
 /**
- * CORE FEATURE C16 + F-PLAN-14 (owner 2026-11-15 „Ja, mit Abgleich“, docs/design/web-sync.md §5.4): the kept places –
- * „Zuhause“ and the favourites – sync between the phone and the paired browser: keep / unkeep / set and clear Zuhause
- * both ways, a new home replaces the old one, a pairing with places on both sides merges them (the same place once),
+ * CORE FEATURE C16 + F-PLAN-14 (owner 2026-11-15 „Ja, mit Abgleich“, docs/design/web-sync.md §5.4): the kept places
+ * sync between the phone and the paired browser: keep / unkeep both ways. „Zuhause“ is the planner's only (the app has
+ * none since 2026-11-28): its home item is read and left alone by the phone – never sent, cleared or taken in. A pairing with places on both sides merges them (the same place once),
  * a failed or skipped import is tried again and never turns into a delete, an older reader loses nothing. The browser
  * here is the shared ledger + round + [PlaceSync] (the planner runs the same Kotlin; its line codec is WebKept, the
  * same SearchStore line).
@@ -71,10 +71,10 @@ class CorePlaceSyncTest {
     private fun ids(ps: List<Place>) = ps.map { it.id }.toSet()
 
     @Test fun keptPlacesTravelBothWays() {
-        places.s = SavedPlaces(home, listOf(hut))
+        places.s = SavedPlaces(null, listOf(hut))
         assertFalse(phoneSync().placesChanged)
         browserSync()
-        assertEquals(home, webPlaces.home)
+        assertNull(webPlaces.home)
         assertEquals(listOf(hut), webPlaces.favourites)
         assertFalse("the server sees no place name", server.stored(keys).contains("Leiter"))
         // the browser keeps the peak → it arrives on the phone, first in the list
@@ -90,52 +90,56 @@ class CorePlaceSyncTest {
         assertFalse(again.placesChanged)
     }
 
-    @Test fun unkeepAndZuhauseEntfernenTravelBothWays() {
-        places.s = SavedPlaces(home, listOf(hut, peak))
+    @Test fun unkeepTravelsBothWays() {
+        places.s = SavedPlaces(null, listOf(hut, peak))
         phoneSync(); browserSync()
         places.s = places.s.toggleFavourite(hut) // „★ Gemerkt“ off on the phone
         phoneSync(); browserSync()
         assertEquals(listOf(peak), webPlaces.favourites)
-        webPlaces = webPlaces.withHome(null) // „Zuhause entfernen“ in the browser
+        webPlaces = webPlaces.toggleFavourite(peak) // off in the browser
         browserSync(); phoneSync()
-        assertNull(places.s.home)
-        assertEquals(listOf(peak), places.s.favourites)
+        assertTrue(places.s.favourites.isEmpty())
         assertTrue(files.links().pending.isEmpty())
     }
 
-    @Test fun aNewHomeReplacesTheOldOne() {
-        places.s = SavedPlaces(home)
+    /**
+     * Captain 2026-11-28 (Zuhause out of the app, the format unchanged): the planner's home item is read and left alone –
+     * set, replaced and cleared in the browser, it never reaches the phone, never crashes it, never costs another place,
+     * and the phone never sends or clears it.
+     */
+    @Test fun theBrowsersHomeIsReadAndLeftAlone() {
+        places.s = SavedPlaces(null, listOf(hut))
         phoneSync(); browserSync()
-        webPlaces = webPlaces.withHome(work) // „Als Zuhause festlegen“ in the browser
-        browserSync(); phoneSync()
-        assertEquals(work, places.s.home)
-        assertTrue(places.s.favourites.isEmpty()) // the old home is simply replaced (nothing in between)
+        webPlaces = webPlaces.withHome(home) // „Als Zuhause festlegen“ in the browser
+        browserSync()
+        val r = phoneSync()
+        assertFalse(r.placesChanged)
+        assertNull(places.s.home)
+        assertEquals(listOf(hut), places.s.favourites)
+        assertEquals(0, r.unreadable)
+        webPlaces = webPlaces.withHome(work) // replaced in the browser
+        browserSync(); phoneSync(); browserSync()
+        assertEquals(work, webPlaces.home) // the phone never cleared it
+        assertNull(places.s.home)
         assertEquals(1, browser.entries.values.count { it.item.id == SyncPlaces.HOME_ID })
-    }
-
-    @Test fun twoNewHomesAtOnceTheFirstInTheMailboxStaysTheOtherIsKeptAsAFavourite() {
+        // even a phone that still holds a home of its own (an older version's store) sends nothing for it
+        places.s = places.s.withHome(peak)
         phoneSync(); browserSync()
-        // both set a home without seeing the other's: the browser's reaches the mailbox first
-        webPlaces = webPlaces.withHome(work)
-        places.s = places.s.withHome(home)
-        browserSync()
-        phoneSync() // pull first: the mailbox's home wins, the phone's own stays as a favourite
-        browserSync()
-        assertEquals(work, places.s.home)
-        assertEquals(listOf(home), places.s.favourites)
         assertEquals(work, webPlaces.home)
-        assertEquals(listOf(home), webPlaces.favourites)
-        phoneSync(); browserSync()
-        assertEquals(1, places.s.favourites.size) // nothing doubles later
+        webPlaces = webPlaces.withHome(null) // cleared in the browser: the phone's own stays as it is
+        browserSync(); phoneSync()
+        assertEquals(peak, places.s.home)
+        assertEquals(listOf(hut), places.s.favourites)
+        assertTrue(files.links().pending.isEmpty())
     }
 
     @Test fun pairingWithPlacesOnBothSidesMergesThemWithoutCopies() {
         // the browser kept places before the pairing (browser-local), the phone too – the same home, the hut twice
         // (the phone's from the map, the browser's from the online search: another line, the same place)
-        places.s = SavedPlaces(home, listOf(hut, peak))
+        places.s = SavedPlaces(null, listOf(hut, peak))
         webPlaces = SavedPlaces(home, listOf(hutOnline, work))
         phoneSync(); browserSync(); phoneSync(); browserSync()
-        assertEquals(home, places.s.home)
+        assertNull(places.s.home)
         assertEquals(setOf(hut.id, peak.id, work.id), ids(places.s.favourites))
         assertEquals(3, places.s.favourites.size)
         assertEquals(home, webPlaces.home)
@@ -163,11 +167,11 @@ class CorePlaceSyncTest {
         assertFalse(r.placesChanged)
         assertEquals(listOf(hut), places.s.favourites)
         assertTrue(files.links().pending.isNotEmpty())
-        // the next pass brings them in first – the export never takes the missing peak / home for a delete
+        // the next pass brings them in first – the export never takes the missing peak for a delete (the home stays the browser's)
         val again = phoneSync()
         assertTrue(again.placesChanged)
         assertEquals(listOf(peak, hut), places.s.favourites)
-        assertEquals(home, places.s.home)
+        assertNull(places.s.home)
         browserSync()
         assertEquals(setOf(hut.id, peak.id), ids(webPlaces.favourites))
         assertEquals(home, webPlaces.home)
@@ -200,7 +204,8 @@ class CorePlaceSyncTest {
 
     @Test fun anOlderReaderLosesNothing() {
         // an older page (or app) in the same mailbox: it skips field 11 – it stores place items without their line
-        places.s = SavedPlaces(home, listOf(hut))
+        places.s = SavedPlaces(null, listOf(hut))
+        webPlaces = webPlaces.withHome(home)
         phoneSync(); browserSync()
         // some history (the peak kept and dropped in the browser), read by the phone
         webPlaces = webPlaces.toggleFavourite(peak); browserSync(); phoneSync()
@@ -215,17 +220,15 @@ class CorePlaceSyncTest {
         server.purge(keys)
         oldRound.run(old); old = stripped(old)
         val r = phoneSync()
-        assertEquals(home, places.s.home)
+        assertNull(places.s.home)
         assertEquals(listOf(hut), places.s.favourites)
         assertFalse(r.placesChanged)
         assertEquals(0, r.unreadable) // place items are no "newer app" items
-        // the phone sent its lines again: the browser keeps both, the mailbox has them with lines
+        // the phone sent its line again: the browser keeps its favourite (its home is the browser's own: its next export sends it)
         browserSync()
-        assertEquals(home, webPlaces.home)
         assertEquals(listOf(hut), webPlaces.favourites)
         val fresh = SyncLedger.empty()
         SyncRound(keys, server.box(keys), { ByteArray(12) { (n++).toByte() } }).run(fresh)
-        assertEquals(SearchStore.encode(home), fresh.home()!!.place)
         assertEquals(1, fresh.places().size)
     }
 

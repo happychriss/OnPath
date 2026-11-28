@@ -71,7 +71,7 @@ class PlanSyncPass(
     /** The phone's kept places (Zuhause + favourites, owner 2026-11-15 „Ja, mit Abgleich“); null = not synced. */
     private val places: PlaceStore? = null,
 ) {
-    private val placeSync: PlaceSync? = places?.let { PlaceSync(it::encode, it::decode) }
+    private val placeSync: PlaceSync? = places?.let { PlaceSync(it::encode, it::decode, withHome = false) } // the app has no Zuhause (2026-11-28)
     /** The kept places changed in this pass (reset by [run]). */
     private var placesChanged = false
 

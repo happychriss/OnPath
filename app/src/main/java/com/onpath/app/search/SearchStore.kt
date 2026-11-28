@@ -36,12 +36,13 @@ class SearchStore(context: Context) {
      * As [saved], but an unreadable file throws instead of reading as „nothing kept“ – the browser sync
      * (plansync/SearchPlaceStore) must never take an unreadable file for places the user removed.
      */
-    fun savedOrThrow(): SavedPlaces = SavedPlaces(home = places.getString("home", null)?.let { decode(it) },
+    fun savedOrThrow(): SavedPlaces = homeAsFavourite(SavedPlaces(home = places.getString("home", null)?.let { decode(it) },
         favourites = places.getString("favourites", null).orEmpty().lines().filter { it.isNotBlank() }.mapNotNull { l ->
             decode(l) ?: null.also { Problems.warn("search", "A favourite place could not be read – left out") }
-        })
+        }))
 
     fun save(s: SavedPlaces) {
+        @Suppress("NAME_SHADOWING") val s = homeAsFavourite(s)
         try { synchronized(LOCK) { write(s, durable = false) } } catch (e: Exception) {
             Problems.error("search", "Favourite places / Zuhause could not be saved", e)
         }
@@ -55,7 +56,7 @@ class SearchStore(context: Context) {
      */
     fun update(durable: Boolean = false, change: (SavedPlaces) -> SavedPlaces): SavedPlaces = synchronized(LOCK) {
         val cur = savedOrThrow()
-        val next = change(cur)
+        val next = homeAsFavourite(change(cur))
         if (next != cur) write(next, durable)
         next
     }
@@ -86,4 +87,14 @@ class SearchStore(context: Context) {
         fun encode(p: Place): String = SearchLines.encode(p)
         fun decode(l: String): Place? = SearchLines.decode(l)
     }
+}
+
+/**
+ * The app has no Zuhause any more (owner 2026-11-28, function verdict; hidden since 2026-11-19): a home kept before is
+ * never lost – it is the first favourite (unless that place is a favourite already), and the stored „home“ goes with the
+ * next write. The shared format ([SavedPlaces], the sync items) stays as it is; the planner keeps its own Zuhause.
+ */
+internal fun homeAsFavourite(s: SavedPlaces): SavedPlaces {
+    val h = s.home ?: return s
+    return SavedPlaces(home = null, favourites = if (s.isFavourite(h)) s.favourites else listOf(h) + s.favourites)
 }

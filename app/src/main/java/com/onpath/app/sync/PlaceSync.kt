@@ -14,7 +14,12 @@ import com.onpath.app.search.SavedPlaces
  * side, also when its two lines differ a little (two items in the mailbox, one place shown). A line this device cannot
  * read (a newer app's) is never touched: not shown, not deleted.
  */
-class PlaceSync(private val encode: (Place) -> String, private val decode: (String) -> Place?) {
+class PlaceSync(private val encode: (Place) -> String, private val decode: (String) -> Place?,
+                /**
+                 * This device keeps a Zuhause (the planner); false = it has none (the app since 2026-11-28): the home item is
+                 * read and left alone – never sent, never cleared, never taken in. The format stays the same.
+                 */
+                private val withHome: Boolean = true) {
 
     private fun placeOf(item: SyncItem?): Place? {
         val line = item?.place ?: return null
@@ -36,7 +41,7 @@ class PlaceSync(private val encode: (Place) -> String, private val decode: (Stri
      */
     fun export(ledger: SyncLedger, kept: SavedPlaces, now: Long, device: String, waiting: Set<String> = emptySet()): Int {
         var n = 0
-        if (SyncPlaces.HOME_ID !in waiting) {
+        if (withHome && SyncPlaces.HOME_ID !in waiting) {
             val h = ledger.home()
             val hp = placeOf(h)
             val mine = kept.home
@@ -75,6 +80,7 @@ class PlaceSync(private val encode: (Place) -> String, private val decode: (Stri
         for (item in items) {
             val p = placeOf(item)
             if (item.id == SyncPlaces.HOME_ID) {
+                if (!withHome) continue // no Zuhause on this device: the planner's home item is left alone
                 val home = s.home
                 val untouched = seen == null || (home == null && seen.home == null) ||
                     (home != null && seen.home?.let { SavedPlaces.same(home, it) } == true)

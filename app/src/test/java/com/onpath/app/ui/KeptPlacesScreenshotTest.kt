@@ -20,9 +20,9 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * „Orte merken“ (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): the empty search with ⌂ Zuhause, ★ Favoriten
- * (five, then „Alle Favoriten ›“) and Zuletzt gesucht – one-line rows; the held place's menu with „☆ Merken“ /
- * „⌂ Als Zuhause festlegen“ and its set state – both Zuhause rows hidden since 2026-11-19 (HOME_ROW_SHOWN = false).
+ * „Orte merken“ (owner 2026-11-15, compact sketch LqFT7h7KhEmKRdGJUVtrG9): the empty search with ★ Favoriten (five, then
+ * „Alle Favoriten ›“) and Zuletzt gesucht – one-line rows; the held place's menu with „☆ Merken“ and its set state. A
+ * home in the state is never drawn – the app has no Zuhause (2026-11-28).
  * English, German, German at a larger font.
  */
 object KeptPlacesShots {
@@ -54,7 +54,7 @@ object KeptPlacesShots {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 PoiMenu(com.onpath.app.poi.Poi("n1", "cafe", "Waldcafé Lindenhof", 51.2, 6.9), onAdd = {}, onGoogle = {},
-                    emptyPlan = true, favourite = set, home = set, modifier = Modifier.padding(start = 16.dp, top = 120.dp))
+                    emptyPlan = true, favourite = set, modifier = Modifier.padding(start = 16.dp, top = 120.dp))
             }
         }
     }

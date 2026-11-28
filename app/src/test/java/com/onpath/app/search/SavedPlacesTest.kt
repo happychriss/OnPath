@@ -85,10 +85,12 @@ class SavedPlacesTest {
         // other apps see the places as waypoints
         assertTrue(text.contains("<wpt lat=\"51.1700000\" lon=\"6.9300000\">"))
         val back = PlacesBackup.decode(text)!!
-        assertEquals(s.home!!.copy(alt = emptyList()), back.home)
-        assertEquals(listOf("n1", "n3", "x"), back.favourites.map { it.id })
-        assertEquals(1960, back.favourites[1].ele)
-        assertEquals("Tab and <&> \"q\"", back.favourites[2].name) // a tab in a name becomes a space (as on the phone)
+        // an (older) backup's Zuhause comes back as the first favourite – the app has no home (2026-11-28), nothing is lost
+        assertNull(back.home)
+        assertEquals(s.home!!.copy(alt = emptyList()), back.favourites[0])
+        assertEquals(listOf("a:1", "n1", "n3", "x"), back.favourites.map { it.id })
+        assertEquals(1960, back.favourites[2].ele)
+        assertEquals("Tab and <&> \"q\"", back.favourites[3].name) // a tab in a name becomes a space (as on the phone)
         // empty places: a valid file, nothing in it
         assertEquals(SavedPlaces(), PlacesBackup.decode(PlacesBackup.encode(SavedPlaces(), 0L)))
     }

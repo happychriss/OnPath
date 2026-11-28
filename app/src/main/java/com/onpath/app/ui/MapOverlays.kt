@@ -167,8 +167,8 @@ fun MapOverlayHost(
                 menu = vm.placeMenus.placeMenu(poi),
                 onAddStop = { vm.placeAdd.addPoiAsStop(poi) },
                 onNewDestination = { vm.placeAdd.poiAsNewDestination(poi) },
-                favourite = vm.keptPlaces.isFavouritePlace(poi), home = vm.keptPlaces.isHomePlace(poi),
-                onFavourite = { vm.keptPlaces.toggleFavouritePlace(poi) }, onHome = { vm.keptPlaces.toggleHomePlace(poi) },
+                favourite = vm.keptPlaces.isFavouritePlace(poi),
+                onFavourite = { vm.keptPlaces.toggleFavouritePlace(poi) },
                 onGoogle = {
                     vm.placeMenus.closeMapOverlays()
                     com.onpath.app.poi.PoiIntents.openInGoogleMaps(ctx, poi)
@@ -494,8 +494,8 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
              * Kept places (owner 2026-11-15, „Orte merken“): null = not offered; else whether the place is a favourite
              * („★ Gemerkt“) – „☆ Merken“ / „⌂ Als Zuhause festlegen“ ([home] = it is home: „⌂ Zuhause entfernen“).
              */
-            favourite: Boolean? = null, home: Boolean = false,
-            onFavourite: () -> Unit = {}, onHome: () -> Unit = {},
+            favourite: Boolean? = null,
+            onFavourite: () -> Unit = {},
             /** „Rundtouren vorschlagen“ last in the route rows (tour suggestions on, [PinMenuItems]); null = not offered. */
             onRoundTrip: (() -> Unit)? = null) {
     val place = Place.fromPoi(poi)
@@ -512,7 +512,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // the rows in their order (PinMenuItems): the same for a hold and for a picked search result (owner 2026-11-13)
-        // „⌂ Als Zuhause festlegen“ only while the Zuhause row shows in the search (off since 2026-11-19, HOME_ROW_SHOWN)
+        // no „⌂ Als Zuhause festlegen“ in the app (shownMenuRows)
         val rows = com.onpath.app.ui.search.shownMenuRows(
             PinMenuItems.of(emptyPlan, startHere, menu, pin = onRemovePin != null, keep = favourite != null, roundTrip = onRoundTrip != null,
                 fromMe = fromMeBlocked == null))
@@ -528,8 +528,7 @@ fun PoiMenu(poi: Poi, onAdd: () -> Unit, onGoogle: () -> Unit, modifier: Modifie
             PinMenuItems.Row.ADD_STOP -> AddRow(PlaceAddMenu.Item.ADD_STOP, menu, onAddStop)
             PinMenuItems.Row.NEW_DESTINATION -> AddRow(PlaceAddMenu.Item.NEW_DESTINATION, menu, onNewDestination)
             PinMenuItems.Row.FAVOURITE -> KeepRow(favourite == true, onFavourite)
-            PinMenuItems.Row.HOME -> HoldMenuItem(Icons.Outlined.Home,
-                str(if (home) Res.string.place_home_remove else Res.string.place_home_set), onClick = onHome)
+            PinMenuItems.Row.HOME -> {} // never shown in the app (shownMenuRows)
             PinMenuItems.Row.GOOGLE -> HoldMenuItem(Icons.Outlined.Map, str(Res.string.plan_open_google_maps), leaves = true, onClick = onGoogle)
             PinMenuItems.Row.REMOVE_PIN -> HoldMenuItem(Icons.Outlined.WrongLocation, str(Res.string.plan_remove_pin), onClick = { onRemovePin?.invoke() })
             PinMenuItems.Row.OVERNIGHT -> {} // multi-day editing is the planner's (the app passes overnight = false)

@@ -53,7 +53,6 @@ class KeptPlacesSlice(private val store: PlacesStore, private val host: KeptPlac
         host.searchMark()?.takeIf { host.isCandidate(poi) } ?: Place.fromPoi(poi)
 
     fun isFavouritePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isFavourite(placeOf(poi))
-    fun isHomePlace(poi: com.onpath.app.poi.Poi): Boolean = saved().isHome(placeOf(poi))
 
     /** Whether [p] is kept – a named route point's „Merken“ / „Gemerkt“ (owner 2026-11-26, [Place.ofRoutePoint]). */
     fun isFavourite(p: Place): Boolean = saved().isFavourite(p)
@@ -77,14 +76,6 @@ class KeptPlacesSlice(private val store: PlacesStore, private val host: KeptPlac
     fun setHome(p: Place?) {
         keepPlaces { s -> s.withHome(p) }
         Problems.trace("search", if (p != null) "Place menu: \"${p.title()}\" set as home" else "Place menu: home removed")
-    }
-
-    /** „⌂ Als Zuhause festlegen“ (replaces the old home) / „⌂ Zuhause entfernen“ on the place that is home. */
-    fun toggleHomePlace(poi: com.onpath.app.poi.Poi) {
-        val p = placeOf(poi)
-        val remove = saved().isHome(p)
-        keepPlaces { s -> s.withHome(if (remove) null else p) }
-        Problems.trace("search", "Place menu: \"${p.title()}\" ${if (remove) "no longer home" else "set as home"}")
     }
 
     /**

@@ -191,11 +191,24 @@ class SyncPlacesTest {
         assertEquals(peak, sync.import(l, listOf(SyncPlaces.HOME_ID), SavedPlaces(peak), seen).home)
     }
 
+    /** The app (2026-11-28, no Zuhause): the home item is read and left alone – not taken in, not sent, not cleared. */
+    @Test fun withoutHomeTheHomeItemIsLeftAlone() {
+        val app = PlaceSync(Lines::encode, Lines::decode, withHome = false)
+        val l = SyncLedger.empty()
+        l.applyItems(listOf(RemoteItem(SyncItem(SyncPlaces.HOME_ID, 5, web, kind = SyncItem.PLACE, place = Lines.encode(work)), 1)))
+        val kept = SavedPlaces(null, listOf(peak))
+        assertEquals("not taken in, the favourites untouched", kept, app.import(l, listOf(SyncPlaces.HOME_ID), kept, kept))
+        assertEquals("nothing for the home (the peak goes out as a favourite)", 1, app.export(l, kept, 10, phone))
+        assertEquals("the planner's home stays", Lines.encode(work), l.home()?.place)
+        assertEquals("a home of its own is never sent either", 0, app.export(l, SavedPlaces(home, listOf(peak)), 11, phone))
+        assertEquals(Lines.encode(work), l.home()?.place)
+    }
+
     @Test fun aLineThisDeviceCannotReadIsLeftAlone() {
         val l = SyncLedger.empty()
         val odd = "n:9\tNeu\tpeak\t\t46.1\t11.1\t\t\tPOI"
         l.applyItems(listOf(RemoteItem(SyncItem(SyncPlaces.itemId(odd), 5, web, kind = SyncItem.PLACE, place = odd), 1)))
-        val strict = PlaceSync(Lines::encode) { line -> if (line.startsWith("n:9")) null else Lines.decode(line) }
+        val strict = PlaceSync(Lines::encode, decode = { line -> if (line.startsWith("n:9")) null else Lines.decode(line) })
         assertEquals(SavedPlaces(), strict.import(l, l.entries.keys, SavedPlaces(), SavedPlaces()))
         assertEquals(0, strict.export(l, SavedPlaces(), 10, phone)) // not deleted because it is not shown here
         assertTrue(SyncPlaces.live(l.get(SyncPlaces.itemId(odd))))
