@@ -166,6 +166,7 @@ class GermanScreenshotTest {
     @Test fun settingsOfflineMaps() = borrow(SettingsScreenshotTest()).offlineMaps()
     @Test fun settingsNavigation() = borrow(SettingsScreenshotTest()).navigation()
     @Test fun settingsOnTheWay() = borrow(SettingsScreenshotTest()).onTheWay()
+    @Test fun settingsOnTheWayBike() = borrow(SettingsScreenshotTest()).onTheWayBike()
     @Test fun settingsOnTheWayPhoneMissing() = borrow(SettingsScreenshotTest()).onTheWayPhoneMissing()
     @Test fun settingsNavigationPhoneMissing() = borrow(SettingsScreenshotTest()).navigationPhoneMissing()
     @Test fun settingsNavigationChoiceMenu() = borrow(SettingsScreenshotTest()).navigationChoiceMenu()
