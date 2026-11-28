@@ -22,8 +22,7 @@ search: for venues distance decides c59ef2d50 · „Trotzdem planen“ out + tex
 aa972d25a / 51e012ac0 · Akku sparen a8f6b68c9 (switch off by default; 30 s / 10 s GPS, 1 s near a turn) · pairing window +
 settings card 7af509bbb · ⚙ during a route V1 8ef4915cc · flicker fix 0252c2187 · day cards a174c6515. Planner: long-route
 question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP owns `web/parity.json`).
-**Open:** test build to the Pixel 8 (not attached; only when no recording runs) · HP parity ack + deploy · donald: unused
-`SettingsSummary.sync()` out · E2E on `main` + release notes for 0.18.12.
+**Open:** test build to the Pixel 8 (not attached; only when no recording runs) · HP parity ack + deploy · donald: [Sparen] from the question for this tour only (af72dc940) · E2E on `main` + release notes for 0.18.12.
 **For the owner when back:** battery measurement (2 × 1 h, without / with Sparen) · website block „Sicherheit“ text A / B
 (onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · release 0.18.12 (needs one
 really ridden day + his word).
@@ -31,7 +30,7 @@ really ridden day + his word).
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
 | Akku sparen unterwegs | donald | `feat/akku-sparen`: 30 s GPS in Sparen (owner 10:55/10:56), then owner's merge yes. Next: ⚙ during a route = V1 (owner 10:59, item settings-on-the-way) | captain go + owner's yes |
-| Browser verbinden: eigenes Fenster | donald | owner 10:54: A (own window) + own settings entry with status connected / not – build the window, picture for the entry; rebase after `feat/akku-sparen` (same settings file) | captain go + owner's yes |
+| Browser verbinden (done: 7af509bbb, tidy 52f682729) | donald | – | **free** |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
 | Cloud (cloud-web) | – | website block „Sicherheit“ (sharing + battery) drafted in onpath.private; owner picks the text | live only with the release that has „Akku sparen“; the help needs an „Akku sparen“ section then |
