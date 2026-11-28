@@ -26,8 +26,8 @@ aligned to it; where they still describe how it was built, they point to the reb
 | MD-10 | A day ridden twice keeps its ✓; the newest finished recording counts, older ones stay in Meine Touren. |
 | MD-11 | Opening a day of a multi-day trip loads the maps of **all days of the trip automatically** („sonst übernachte ich auf einer Hütte im Nirvana und mir fehlt der nächste Tag“) – no separate question; the normal map loading window shows the line „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.“ |
 
-Still open for the owner (via the captain): whether several days in a row („Tag 3–4“, scenario O) stay on the phone as
-one chosen section. Until he answers, the docs neither promise nor drop it.
+Several days in a row („Tag 3–4“, scenario O) on the phone: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“ – the phone takes exactly one day out of the trip
+and rides it (owner 2026-11-28 08:17).
 
 Where today's app differs, and the code to align: `docs/team/items/2026-11-28-app-multiday-one-day.md` (rebuilt after
 release 0.18.12).
@@ -157,7 +157,7 @@ Built in stages 2 + 3 (2026-11-17, session „mehrtage“, planner `web/`) – d
 3. **Pick a day** in the day list → that day goes into the Plan sheet as a normal plan; a grey day end becomes its
    destination point. It can be changed there (MD-3 / MD-4); „‹ Alle Tage“ leads back to the day list. The recording
    stays tied to its day; the day is done (✓) only when it was navigated to its goal (MD-5, MD-9, MD-10). Several days
-   in a row („Tag 3–4“): open for the owner (§0).
+   in a row („Tag 3–4“): „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“.
 4. Later stage: share a hotel to OnPath → "Hotel in der Tour" → which night. Syncs back.
 
 Built in stage 4 (2026-11-17, mehrtage) – details decided while building. Marked **[rebuild]**: changed by §0, see
@@ -169,7 +169,7 @@ Built in stage 4 (2026-11-17, mehrtage) – details decided while building. Mark
 - The day sheet in Meine Touren (badge „N Tage“, one tap = that day is the plan, ✓ on ridden days) – holds (MD-2, MD-6).
 - **[rebuild]** Today a tour can also open as a whole-trip overview in the Plan sheet (day table, profile, „Planung“
   chips, tap / hold rows incl. „Tage 3–4“, "Tag n fahren"), and "‹ Alle Tage" brings the whole tour back as the plan.
-  After the rebuild: no whole-trip view in the Plan sheet (MD-1), "‹ Alle Tage" → the day list (MD-2); „Tag 3–4“ open.
+  After the rebuild: no whole-trip view in the Plan sheet (MD-1), "‹ Alle Tage" → the day list (MD-2); „Tag 3–4“: „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“.
 - **[rebuild]** Today the number of days follows a change of activity / pace / route choice on the phone (with limits).
   After the rebuild: the phone never changes it (MD-1).
 - Every change of the day's plan is written back into the whole tour (`domain/plan/DayFollow`); Save (also at the tour
@@ -206,7 +206,7 @@ Every row is solved with R1–R7; none needs another tool.
 | L | Another pass on day 4 | edit the route as always | grey ones even out; the user's beds stay (R6). |
 | M | A day ends at a grey proposal and I want it 10 km later | drag the grey moon | it becomes blue there (R7). |
 | N | A point of the route that is an Übernachtung is deleted | ✕ on that point | = Übernachtung entfernen; with a hotel it asks first. |
-| O | On the way: not reached the day's end, or rode on | phone: pick the day again (or the next) in Meine Touren | followed from where I am; the day stopped early is not done, its recording stays „angefangen“ (MD-9). Several days in a row („Tag 3–4“): open for the owner (§0). |
+| O | On the way: not reached the day's end, or rode on | phone: pick the day again (or the next) in Meine Touren | followed from where I am; the day stopped early is not done, its recording stays „angefangen“ (MD-9). Several days in a row („Tag 3–4“): „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“. |
 | O2 | On the way: change the route of today (another path, a detour) | phone: „Planen“ on the day as always | same start and goal → the change goes into the trip and to the browser (MD-3, MD-8); start or goal changed → notice + standalone copy, the trip unchanged (MD-4). Earlier: always back into the whole tour, replaced 2026-11-28. |
 | P | On the way: new hotel | later stage: share to OnPath | as E. |
 | Q | Older app / phone not updated | – | sees a normal long route; hotels are named points. |
@@ -306,8 +306,7 @@ Later, not designed here: several nights / rest days, day trips from one base. (
 
 ## 9. Open points for the owner
 
-Open (2026-11-28, via the captain): does „Tag 3–4“ (several days in a row, scenario O) stay on the phone as one chosen
-section? Captain's recommendation: yes – MD-0 means „not the whole plan“. Decided 2026-11-17: Hotel entfernen → the night stays blue (R4); a dragged grey moon becomes blue (R7); maps:
+Answered 2026-11-28 08:17 („Tag 3–4“, several days in a row, scenario O): „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“. Decided 2026-11-17: Hotel entfernen → the night stays blue (R4); a dragged grey moon becomes blue (R7); maps:
 ask at the first opening (§7, replaced 2026-11-28 by MD-11); rest days and base-camp tours out of version 1; symbol A (moon → bed). The words
 "bed" in §2–§4 mean the day-end symbol: moon for grey / blue, bed for the hotel.
 Next: the phone rebuild to §0 after release 0.18.12 (`docs/team/items/2026-11-28-app-multiday-one-day.md`).
