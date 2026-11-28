@@ -920,6 +920,29 @@ class MultiDaySliceTest {
         assertFalse("linked to its own tour now: no day of the trip", app.multiDay.flow.following)
     }
 
+    /**
+     * MD-12 (owner 2026-11-28 10:13): in an opened day the activity and the difficulty may change – the day stays in the trip
+     * (only a moved start / goal makes its own tour, MD-4). Save writes into the trip, no „Start und Ziel geändert“ line. What
+     * Save does with the trip's profile today: the day's activity and T level become the whole trip's (pinned here).
+     */
+    @Test fun aDayWithAnotherActivityAndTLevelStaysInTheTrip() {
+        val app = App(); app.rideDay2()
+        ui { app.planRoute.selectActivity(Activity.MTB) }; app.settle()
+        ui { app.planRoute.selectActivity(Activity.HIKE) }; app.settle()
+        ui { app.planRoute.selectSac(4) }; app.settle()
+        assertFalse("another profile is no other start or goal", app.multiDay.leavesTrip())
+        assertFalse(app.multiDay.dayHeadUi()!!.leavesTrip)
+        assertNotNull("the recording still counts for the day", app.multiDay.followedDay())
+        app.saveAs("Drei Tage")
+        assertEquals("written into the trip, no tour of its own", listOf(tourId), app.planned().map { it.id })
+        assertEquals("ABCDE", app.stored())
+        assertNotNull("the trip keeps its days", db.getTour(tourId)!!.days)
+        assertTrue("no „Start und Ziel geändert“", app.board.mapNote?.text != Txt.s(Res.string.multiday_own_tour))
+        assertTrue("the day is still followed", app.multiDay.flow.following)
+        assertEquals("today: the day's profile becomes the trip's", Activity.HIKE.name, db.getTour(tourId)!!.activity)
+        assertEquals(4, db.getTour(tourId)!!.sac)
+    }
+
     /** MD-1: a followed day leaving the map unsaved goes under Zuletzt as the day – never the whole trip. */
     @Test fun aFollowedDaysUnsavedChangeGoesUnderZuletztAsTheDay() {
         val app = App(); app.rideDay2()
