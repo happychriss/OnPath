@@ -69,7 +69,8 @@ import com.onpath.strings.*
  */
 @Composable
 fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, onRide: (Int) -> Unit, onDetail: (Int) -> Unit,
-                 onClose: () -> Unit, stateLaidOut: (TextLayoutResult) -> Unit = {}, menu: @Composable () -> Unit) {
+                 onClose: () -> Unit, stateLaidOut: (TextLayoutResult) -> Unit = {},
+                 placesLaidOut: (TextLayoutResult) -> Unit = {}, menu: @Composable () -> Unit) {
     val t = ui.tour
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -94,7 +95,7 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                 val nextDesc = str(Res.string.daypick_next)
                 DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null, trailingWidth = 44.dp,
                     title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
-                    below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } },
+                    below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } }, placesLaidOut = placesLaidOut,
                     trailing = { l -> IconButton(onClick = { onDetail(l.n) }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, l.n.toString()), tint = muted)
                     } })
