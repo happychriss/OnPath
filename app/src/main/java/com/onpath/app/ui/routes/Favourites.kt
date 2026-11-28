@@ -28,11 +28,13 @@ fun FavouriteStar(on: Boolean, name: String, onToggle: (Boolean) -> Unit) {
     }
 }
 
-/** "☆ Favoriten" at the start of the sort chips: on = light olive (as every selection) with a gold ★. */
+/** "☆ Favoriten" at the start of the sort chips: on = a set filter, dark with a gold ★ and × (Chriss 2026-11-28); off = light. */
 @Composable
 fun FavouriteChip(on: Boolean, onToggle: (Boolean) -> Unit) {
     val spoken = str(if (on) Res.string.routes_fav_chip_on else Res.string.routes_fav_chip_off)
-    FilterChip(selected = on, onClick = { onToggle(!on) },
+    if (on) return SetFilterChip(Icons.Filled.Star, str(Res.string.routes_fav_chip), onBody = { onToggle(false) },
+        onClear = { onToggle(false) }, spokenBody = spoken, iconTint = OnPathColors.Favourite)
+    FilterChip(selected = false, onClick = { onToggle(true) },
         label = { Text(str(Res.string.routes_fav_chip), style = MaterialTheme.typography.labelMedium, maxLines = 1) },
         leadingIcon = {
             Icon(if (on) Icons.Filled.Star else Icons.Outlined.StarOutline, null, Modifier.size(FilterChipDefaults.IconSize),

@@ -46,11 +46,11 @@ fun ActivityFilterChip(chosen: Activity?, onPick: (Activity?) -> Unit) {
     val name = chosen?.chip ?: str(Res.string.routes_act_all)
     val spoken = str(Res.string.routes_act_chip_desc, name)
     Box {
-        FilterChip(selected = chosen != null, onClick = { open = true },
-            label = { Text(name, style = MaterialTheme.typography.labelMedium, maxLines = 1) },
-            leadingIcon = chosen?.let { a -> { Icon(a.icon, null, Modifier.size(FilterChipDefaults.IconSize)) } },
+        // set (Chriss 2026-11-28): dark with × – × = „Alle“, the chip itself opens the list; none: light „Aktivität ▾“
+        if (chosen != null) SetFilterChip(chosen.icon, name, onBody = { open = true }, onClear = { onPick(null) }, spokenBody = spoken)
+        else FilterChip(selected = false, onClick = { open = true },
+            label = { Text(str(Res.string.routes_act_chip_free), style = MaterialTheme.typography.labelMedium, maxLines = 1) },
             trailingIcon = { Icon(Icons.Filled.ArrowDropDown, null, Modifier.size(FilterChipDefaults.IconSize)) },
-            colors = FilterChipDefaults.filterChipColors(selectedContainerColor = OnPathColors.GreenLight),
             modifier = Modifier.semantics { contentDescription = spoken; role = Role.DropdownList })
         DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             ActivityFilterItems(chosen) { open = false; onPick(it) }
