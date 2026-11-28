@@ -96,7 +96,8 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                 DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null,
                     title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
                     below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } }, placesLaidOut = placesLaidOut,
-                    showSum = false) // the phone's day sheet: no Σ km (owner 2026-11-28 09:52) – the planner keeps it
+                    showSum = false, // the phone's day sheet: no Σ km (owner 2026-11-28 09:52) – the planner keeps it
+                    cards = true) // each day a card like My routes' tour cards (owner 2026-11-28 09:58, built 10:20 „sieht gut aus“)
             }
         }
     }
