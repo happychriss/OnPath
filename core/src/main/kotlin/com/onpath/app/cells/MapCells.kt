@@ -187,10 +187,6 @@ class MapCells(
     @Volatile var tourCells: Set<CellId> = emptySet()
         set(v) { field = v; wake() }
 
-    /** Of [tourCells]: those asked for on mobile data – they wait for Wi-Fi (§7: "On mobile data … wait for Wi-Fi"). */
-    @Volatile var tourWifiCells: Set<CellId> = emptySet()
-        set(v) { field = v; wake() }
-
     /** Wi-Fi / Ethernet / unmetered now (a multi-day tour's map question says whether it waits for Wi-Fi). */
     fun unmetered(): Boolean = try { network.unmetered() } catch (e: Exception) {
         Problems.warn("cells", "Network kind unknown – taken as mobile data", e); false
@@ -1065,9 +1061,8 @@ class MapCells(
     }
 
     /** Mobile data rule: mobile data by default; "Maps only on Wi-Fi" waits unless the user said yes. */
-    // a multi-day tour's corridor asked for on mobile data waits for Wi-Fi – unless a point / the position asks for it too
-    private fun allowed(p: Pending): Boolean = network.unmetered() || p.approvedMobile ||
-        (!wifiOnly && (p.reason != CellReason.CORRIDOR || p.id !in tourWifiCells))
+    // a multi-day tour's maps load like any others since MD-11 (2026-11-28: no Wi-Fi wait of their own)
+    private fun allowed(p: Pending): Boolean = network.unmetered() || p.approvedMobile || !wifiOnly
 
     private fun failed(e: CellApi.ApiException, pending: List<Pending>): Long {
         val delays = longArrayOf(60_000, 120_000, 300_000, 600_000)
