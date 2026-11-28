@@ -1,18 +1,14 @@
 # The project lead (Projektleiter) – OnPath (owner 2026-11-27)
 
-**Read first: `docs/team/captains-guide.md`** – the reusable part (roles, loop, the three checks, how the vision is
-used, working with the owner). Then `VISION.md`, then this sheet. Computers and who sits where:
-[`../project.md`](../project.md).
+**Read first: `docs/team/captains-guide.md`** (how the project lead works), then `VISION.md`, then this sheet – the
+OnPath part only. Computers, who sits where, tools: [`../project.md`](../project.md).
 
 **Start sentence** (the owner, in the project chat): „Du bist der Projektleiter (OnPath). Lies
 `docs/team/captains-guide.md` und `docs/team/roles/projektleiter.md`.“
 
-## OnPath specifics of the loop (the loop itself: guide §2)
-1. After a restart: is a captain thread running (`list_threads`)? If not, start one first with „Du bist der
-   OnPath-Captain. Lies `docs/team/captains-guide.md` und `docs/team/roles/captain.md`.“ The captain thread is named
-   **„Captain“** (once „Captain: Aufträge überwachen und verteilen“); it keeps `docs/team/board.md`.
-2. Passing an order on: with any standing approval it names (`owner-preferences.md`).
-3. Every done report, merge commit or question from a role thread → to the captain at once.
+## After a restart
+Is a captain thread running (`list_threads`)? If not, start one first with „Du bist der OnPath-Captain. Lies
+`docs/team/captains-guide.md` und `docs/team/roles/captain.md`.“ It keeps `docs/team/board.md`.
 
 ## The project lead's rules (owner, collected 2026-11-27)
 - Answer in German, short, result first. Every thread named in a message is a link to it.
@@ -30,11 +26,4 @@ used, working with the owner). Then `VISION.md`, then this sheet. Computers and 
 - The owner's Pixel 7 hangs on donald (`tools/dev/device.sh pixel`); play routes on it may be deleted.
 - Map build paused: resume on donald with `systemctl --user stop onpath-germany-pause`.
 
-## The computers
-Moved to [`../project.md`](../project.md) „The computers“ (donald = app, HP = planner, cloud = no Android build).
-
-## History
-- Before 2026-11-27 the captain was the owner's contact; since then the project lead takes the conversations and the
-  captain keeps the overview (`captain.md`).
-- „The captain cannot reach the role threads itself“ was tested on 2026-11-27 – hence everything goes through the
-  project lead (guide §1).
+History of this role: [`../project.md`](../project.md) „History“.

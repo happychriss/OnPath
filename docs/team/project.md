@@ -33,7 +33,7 @@ Everything on the computers lives under `/home/development/Projects/work/`.
 | Session | Runs on | Folder / repos | Reads |
 | --- | --- | --- | --- |
 | **donald** | donald (Pixel, emulator), Remote Control host | `onpath-app` (`main`) | [start.md](roles/start.md) |
-| **laptop** (planner + map cells, `[cloud-plan]` lines) | laptop (32 GB, map data), Remote Control host | `onpath-plan` (`main`) | [start.md](roles/start.md) + [cloud-plan.md](roles/cloud-plan.md) |
+| **laptop** (planner, `[cloud-plan]` lines) | laptop (32 GB), Remote Control host | `onpath-plan` (`main`) | [start.md](roles/start.md) + [cloud-plan.md](roles/cloud-plan.md) |
 | **cloud-web** | cloud only | `onpath.earth`, `onpath.private` | [cloud-web.md](roles/cloud-web.md) |
 | **project lead** (coordinator) | the Claude project chat – talks with the owner, starts the captain, passes the captain's orders to the role threads | – | [projektleiter.md](roles/projektleiter.md) |
 | **captain** | cloud thread | all, mostly read-only; keeps [board.md](board.md) | [captain.md](roles/captain.md) |
@@ -76,11 +76,42 @@ side; ridden tours stay phone-only. The rule: `owner-preferences.md` „App and 
   workflow (`roles/cloud-plan.md`).
 
 ## Map build
-Map builds (cells) on donald, see the computer table; the laptop's part: `roles/cloud-plan.md`. A paused map build is
-resumed on donald with `systemctl --user stop onpath-germany-pause`.
+Map builds (cells) run on **donald** (captain 2026-11-28; the night 27./28.11. built them there). A paused map build is
+resumed on donald with `systemctl --user stop onpath-germany-pause`. Until then the laptop built them (History).
 
 ## Repos and the private rule
 - `happychriss/OnPath` – app and planner, **public**.
 - `happychriss/onpath.earth` – the finished website, **public**.
 - `happychriss/onpath.private` – private notes, marketing, ideas, Google Play texts, website planning. Nothing from it
   is copied into a public repo (`working-agreement.md` §5, `roles/cloud-web.md`).
+
+## History
+- **The captain's role:** before 2026-11-27 the captain was the owner's contact; the owner opened a cloud session with
+  „Du bist mein OnPath-Captain.“ Since 2026-11-27 the owner talks to the **project lead** (coordinator,
+  `roles/projektleiter.md`) in the project chat of the Claude project; the coordinator takes the conversations and hands
+  work to the role threads. The captain is a thread of its own (once named „Captain: Aufträge überwachen und
+  verteilen“) that keeps the overview of who works on what and tells the coordinator who a new task belongs to; the
+  overview duty stayed.
+- **The captain splits and hands out** (owner 2026-11-27). The captain cannot reach the role threads – tested
+  2026-11-27 – so the coordinator passes the order texts on word for word.
+- **Vision gate** (owner 2026-11-27): every task and every branch in the merge queue is checked against `VISION.md`;
+  the captain proposes changes or additions to the vision, the owner decides, the captain writes only what he approved;
+  keep the vision short.
+- **Second check „asked for?“** (owner 2026-11-28): a part nobody asked for goes to the owner as a question,
+  recommendation „weglassen“.
+- **Third check „built as decided?“** (owner 2026-11-28, case „‹ Alle Tage“ 40 px decided 27.11., a smaller pill built).
+- **What the captain could and could not do** (tested – `roles/multi-agent-lernen.md` §2):
+  - Before 2026-11-27 the captain session had the **trust card** (owner 2026-11-03): it may start sessions on donald /
+    the laptop, message them and read them – but **every such call needs the owner's tap** („Einmal erlauben“). Use it
+    only for something urgent the owner asked for now; normal work goes through the backlog. „Mach X jetzt“ could then
+    also go – with his tap – as `send_message` to the running unit session.
+  - With the card it **cannot wake itself**: it works when the owner writes. Confirmed again 2026-11-18: an hourly
+    scheduled task into the captain session failed every run (access denied) – don't try. The computers work when the
+    owner writes to them (their hourly wake-up is paused since 2026-11-07, owner: calm phase, saves tokens).
+  - A captain session **without** the card can wake itself but cannot reach the computers at all. A new captain
+    session is one or the other – ask the owner which.
+- **Channels before the project lead** (`working-agreement.md` §5 until 2026-11-28): „Sessions do not message each
+  other – the channels are the repo and the issues in `happychriss/onpath.private`“; „only the captain can, with the
+  owner's tap per call, for something urgent the owner asked for“.
+- **Map cells on the laptop** until the night 27./28.11.2026: the laptop unit owned the map cells and kept the big map
+  data; details in `roles/cloud-plan.md` „History“.

@@ -3,11 +3,10 @@
 **Read first: `docs/team/captains-guide.md`** (roles, loop, board). This file is the OnPath mechanics: claim, branches,
 hot spots, builds, E2E. Project sheet: [`project.md`](project.md).
 
-OnPath is built by several Claude Code sessions: **donald** (desktop, Pixel + emulator), **laptop** (planner and map
-cells, `[laptop]` / `[cloud-plan]`), the **captain** (cloud, overview) and **cloud-web** (website, marketing) – who
+OnPath is built by several Claude Code sessions: **donald** (desktop, Pixel + emulator), **laptop** (planner,
+`[laptop]` / `[cloud-plan]`; map builds run on donald), the **captain** (cloud, overview) and **cloud-web** (website, marketing) – who
 works where: `docs/team/project.md`. **GitHub `main` is the single source of truth**; anything that must last goes
-through the repository, never through another session's chat. Sessions do not message each other – the channels are
-the repo and the issues in `happychriss/onpath.private` (§5).
+through the repository, never through another session's chat. The channel is the repo (§5).
 
 Home of other rules (not repeated here): push / pull-request policy → `CLAUDE.md`; questions to the owner →
 `docs/team/owner-preferences.md`; release flow → `.claude/rules/release.md`; a session's round → `docs/team/roles/start.md`.
@@ -39,7 +38,7 @@ Home of other rules (not repeated here): push / pull-request policy → `CLAUDE.
 | Area | Default owner |
 | --- | --- |
 | App UI, on-device feel, map style fine-tuning (`tools/themes/*.json`, `tools/make_style.py`), Pixel / emulator work | **donald** |
-| Browser planner `web/`, data pipeline (`tools/build_*`, `tools/extract_*`), map cells and server (`tools/cells/`, `tools/cloud/`) | **laptop** (`docs/team/roles/cloud-plan.md`) |
+| Browser planner `web/`, data pipeline (`tools/build_*`, `tools/extract_*`), map cells and server (`tools/cells/`, `tools/cloud/`) | **laptop** (`docs/team/roles/cloud-plan.md`); map builds (cells) run on donald (`project.md` „Map build“) |
 | Releases (version, `docs/release-notes/`) | a unit after the owner's word and the captain's GO (`.claude/rules/release.md`) |
 | `.github/workflows/`, signing, secrets | the owner – a pull request only |
 | Website onpath.earth, marketing (`happychriss/onpath.earth`, `onpath.private`) | **cloud-web** |
@@ -80,9 +79,7 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
 ## 5. Roles and channels
 Who works where: `docs/team/project.md`. Channel: the repo (backlog, handoffs, code). Questions to the owner go in
 the session's own chat; open ones under "Waiting for the owner" in the backlog; the owner's word to all is a line under
-"For the roles" (owner 2026-11-07: no more issues for this). **Sessions do not
-message each other**; only the captain can, with the owner's tap per call, for something urgent the owner asked for
-(`docs/team/roles/captain.md`). A role's word to the captain goes under "For the captain" in the backlog, the captain's word
+"For the roles" (owner 2026-11-07: no more issues for this). A role's word to the captain goes under "For the captain" in the backlog, the captain's word
 to a role under "For the roles". Shared code between app and planner (`core/src/main/kotlin` as a whole + the few app files in `app/web-shared-files.txt`): a change is announced
 to the other side in the backlog, and a release / planner deploy that touches it needs `tools/ci/release_check.sh` GO.
 The tested platform facts behind this: `docs/team/roles/multi-agent-lernen.md` §2.

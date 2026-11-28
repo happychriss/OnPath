@@ -1,24 +1,20 @@
-# Role: cloud-plan – the browser planner and map cells
+# Role: cloud-plan – the browser planner
 
 **Read first: `docs/team/captains-guide.md`**, then `VISION.md`, then this sheet. Project sheet: [`../project.md`](../project.md).
 
-**Owns (the laptop unit, `docs/team/roles/start.md`):** `web/` on `main` (served at plan.onpath.earth), the data pipeline and map cells
-(`tools/cells/`, `tools/cloud/`, `tools/dev/`, `tools/build_*`, `tools/extract_*`).
+**Owns (the laptop unit, `docs/team/roles/start.md`):** `web/` on `main` (served at plan.onpath.earth), the data pipeline
+(`tools/cells/`, `tools/cloud/`, `tools/dev/`, `tools/build_*`, `tools/extract_*`); map builds run on donald.
 **Branch:** `main` for everything (one branch since 2026-11-06; `web-spike` is frozen). A red "Web planner" run on
 `main` (`.github/workflows/web.yml`, also after an app change to shared or mirrored code) is yours to fix first.
-**Computer:** the laptop (32 GB), folder `/home/development/Projects/work/onpath-plan` (own checkout, shared via Remote Control). Big map data
-(OSM extracts, rd5, built cells) lives on the laptop outside the checkout, e.g. `/home/development/Projects/work/onpath-data/` – never in git.
-Local test store (2026-11-06, NRW + Meran, published cells only): `onpath-data/store` (R2 layout) + `onpath-data/segments`; refresh /
-add an area with `python3 -I tools/dev/fetch_area.py --store … --bbox w,s,e,n|--centre lat,lon --radius-km R --packages --segments …`.
-Finished cells go out the usual way (`tools/dev/publish_cells.sh` → R2 TEST). Laptop off → work on code, put the
-build in the backlog as open; don't fall back to slow cloud builds without asking the owner.
+**Computer:** the laptop (32 GB), folder `/home/development/Projects/work/onpath-plan` (own checkout, shared via Remote Control). Map builds (cells) run on **donald** (captain 2026-11-28, `../project.md` „Map build“); the laptop's earlier
+map-cell part is under „History“ at the end.
 
 **Do**
 - At the start and after every pull: read "For the roles" in `docs/team/backlog.md`; lines `→ [cloud-plan]` are the captain's
   word for you (it may also message you directly). Do them or move them to "In progress", then delete the line.
 - Your word to the captain (answers, blockers) goes under "For the captain" in `docs/team/backlog.md`
   (`← [cloud-plan] …`) – you cannot message the captain.
-- Before a big build: claim it in the backlog (`[cloud-plan] build cells Meran/Bozen on the laptop`).
+- Before a big build: claim it in the backlog.
 - **Every round:** `node web/parity/check.mjs` on the pulled `main` – an app push that touched a mirrored file turns
   "Web planner" red until you mirror it (phone-only → just `--update`); do it before anything else.
 - The web follows the app (`docs/design/web-planner.md` §14): when an app change touches a mirrored file
@@ -33,3 +29,12 @@ build in the backlog as open; don't fall back to slow cloud builds without askin
 
 **Don't**
 - Edit app UI code on `main`, app releases, website or marketing texts.
+
+## History
+Until the night 27./28.11.2026 the laptop built the map cells: big map data
+(OSM extracts, rd5, built cells) lives on the laptop outside the checkout, e.g. `/home/development/Projects/work/onpath-data/` – never in git.
+Local test store (2026-11-06, NRW + Meran, published cells only): `onpath-data/store` (R2 layout) + `onpath-data/segments`; refresh /
+add an area with `python3 -I tools/dev/fetch_area.py --store … --bbox w,s,e,n|--centre lat,lon --radius-km R --packages --segments …`.
+Finished cells go out the usual way (`tools/dev/publish_cells.sh` → R2 TEST). Laptop off → work on code, put the
+build in the backlog as open; don't fall back to slow cloud builds without asking the owner.
+The claim example was „[cloud-plan] build cells Meran/Bozen on the laptop“.

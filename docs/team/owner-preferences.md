@@ -8,18 +8,15 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 **questions to the owner** – other files link here.
 
 ## Talking with the owner
-- **EVERY question to the owner goes in a question box (AskUserQuestion) – never in plain text** (owner 2026-11-24, emphatic:
-  „fragen immer über die fragen box, sonst sehe ich das nicht!!!“). A question in plain chat text is not seen. This
-  overrides older „ask in plain text“ words in handoffs / the backlog. A night without him: the night-job rule below still
-  decides whether to ask at all.
+- **Question box** (guide §5; owner 2026-11-24, emphatic: „fragen immer über die fragen box, sonst sehe ich das
+  nicht!!!“): in Claude Code the box is AskUserQuestion. This overrides older „ask in plain text“ words in handoffs /
+  the backlog.
 - **Pull requests: the sessions merge, not the owner** (owner 2026-11-24: „ich mag nicht selber mergen, das kannst du!“, then
   „allgemein, wenn alles grün“): the role that built a pull request (or the captain) merges it once every check is green and a
   second model read it, then one line „For the captain“. Exceptions that still ask him in a box: secrets and signing keys,
   outside contributions (forks), anything red or unclear.
-- **One question at a time**, with a short table of options and a recommendation first; the owner answers tersely.
-  Owner 2026-11-01, the general motto: open questions always as a **question box with answer options, one after the
-  other**, each with 2–3 lines of background – never a list of questions in prose. Ask in your own chat (owner
-  2026-11-07: no more question issues – he always answered in the chat). Not answered when the session stops → one line
+- **Questions** (guide §5; owner 2026-11-01): each with 2–3 lines of background; the owner answers tersely. Ask in
+  your own chat (owner 2026-11-07: no more question issues – he always answered in the chat). Not answered when the session stops → one line
   under "Waiting for the owner" in `docs/team/backlog.md` (who, date, question, recommendation); whoever acts on the answer
   deletes it. "Nie warten": take the recommendation, note it, go on.
 - **No numbers toward the owner** (owner 2026-11-02: "sowas wie #19 kann ich mir nicht merken"): in the chat and in
@@ -29,8 +26,8 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - **Planner: deploy when done, no asking** (owner 2026-11-27: „man kann den Planer deployen, wenn es fertig ist – wir haben noch nicht so viele Benutzer“; permission in hp's `.claude/settings.local.json`): a finished planner change with green tests goes online at once, without a question. Planner only – an app release still needs his word.
 - **Planner deploys in the test phase** (owner 2026-11-06): the planner goes online right after the affected local tests – GitHub's full run continues behind it; a red run is fixed and deployed again (`docs/team/roles/cloud-plan.md`).
 - **No Fragenregister any more** (owner 2026-11-17: „brauchen wir nicht mehr“): the page is not written any more; answer in the chat only.
-- **The owner does not relay between sessions** (owner 2026-11-17): a word for the captain goes into the backlog under "For the captain" (`← [role] …`) – the captain reads it whenever the owner next writes to it; never ask the owner to pass a message on.
-- Plain words, short updates, outcome first. No diffs or file dumps in the terminal; quiet tool calls, one-line results.
+- **The owner does not relay between sessions** (owner 2026-11-17, guide §1): a word for the captain goes into the backlog under "For the captain" (`← [role] …`).
+- No diffs or file dumps in the terminal; quiet tool calls, one-line results.
 - Never name internals toward the owner as product words ("cells", "routing data") – it's "map areas", "the map".
 - Komoot is the UX reference (the owner is a long-time Komoot user).
 
@@ -43,8 +40,8 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - **Frontend-design skill on web surfaces** (planner, tracker, website): only its typography, structure-as-information,
   motion and writing parts apply; its stance (own identity, aesthetic risk) does not – controls follow the platform and
   the app, character only through colour and type (`VISION.md`).
-- **Vision first** (owner 2026-11-27): the rule is guide §4/§5. Here: name the line in the commit or reply, and go on.
-  Ask only real choices of taste or product (pictures, words, numbers). The captain checks this.
+- **Vision first** (owner 2026-11-27, guide §5): name the line in the commit or reply. Ask only real choices of taste
+  or product (pictures, words, numbers).
 - **Build what was asked** (owner 2026-11-28, „mehr implementiert als angefordert … unnötig kompliziert“, case „Tag 3–4“):
   the rule is guide §4 (check 2 „asked for?“, scenarios not clearly covered are a question, design-doc rows). Here:
   „Vision first“ never adds features, it only answers how.
@@ -76,7 +73,7 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
 - **Code first for bugs:** when diagnostics exist, find the cause by reading the code and reproduce it in a JVM test.
   Use the phone only briefly to confirm, say how long, say when it is free again, and restore the owner's app state
   before handing it back (a long trial-and-error session on the phone was not OK).
-- **Night jobs – the standing rules** (owner 2026-11-20 ~00:05, „merken wir uns für weitere Nachtjobs“): when the owner
+- **Night jobs – the standing rules** (guide §5; owner 2026-11-20 ~00:05, „merken wir uns für weitere Nachtjobs“): when the owner
   goes to bed with work running, without him repeating it: (1) **no AskUserQuestion boxes** – a box blocks the session
   all night; every role answers its own questions with its recommendation and logs one line `Q … → A … (role, time)` in
   the night's `docs/team/items/<date>-night-answers.md`; (2) work through, never stop with „done“ while the backlog has
@@ -130,11 +127,9 @@ gestures, re-routing only after asking, core-feature bugs test first, public tex
   `assets/overview/*.pmtiles`.
 
 ## Setup work (owner 2026-11-05, after the setup audit – lessons in `docs/team/roles/multi-agent-lernen.md` §4)
-- **Research and check before building**: docs, existing solutions, the sessions' real transcripts; prove platform
-  facts with a small test. Never sell an assumption as a fact.
-- No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit every session at
-  once → test every combination before the push. Measure before asking the owner. One file per topic. At most one
-  setup change per day.
+The general rule is guide §5 „Setup work“. In addition: prove platform facts with a small test; never sell an
+assumption as a fact. No new mechanism without a real case; unused for a week → removed. Hooks / `gate.sh` / locks hit
+every session at once → test every combination before the push. Measure before asking the owner. One file per topic.
 
 ## Worktrees and agents
 - Sub-agents (owner 2026-11-01: split work over 3–4 when it costs little overhead): one worktree per editing agent,
