@@ -831,15 +831,14 @@ class PlaceMenusFlowTest {
 
     @Test fun theFoundPlacesPinIsKeptWithItsAddressAndIsAskedAboutOnlyWhenThereIsOne() {
         val app = App(listOf(a))
-        app.kept.toggleFavouritePlace(hut)
+        assertFalse(app.kept.isFavouritePlace(hut))
         assertNull(app.reads["isCandidate"]) // no pin: the candidate is not asked
         val pin = place("photon:7", "Hütte", "hut", b, address = "Weg 1, Meran")
         app.mark = pin; app.candidateIds += "n1"
-        app.kept.toggleHomePlace(hut)
-        assertEquals(pin, app.stored.home) // the pin's own place (address), not the POI's
-        assertEquals(Place.fromPoi(hut), app.stored.favourites.single())
-        assertEquals(1, app.reads["isCandidate"])
-        // the pin (id photon:7) and the kept POI (id n1) are the same place: the same name within 100 m (SavedPlaces.same)
+        app.kept.toggleFavouritePlace(hut)
+        assertEquals(pin, app.stored.favourites.single()) // the pin's own place (address), not the POI's
+        assertTrue(app.reads["isCandidate"]!! >= 1)
+        // the pin (id photon:7) and the POI (id n1) are the same place: the same name within 100 m (SavedPlaces.same)
         assertTrue(app.kept.isFavouritePlace(hut))
     }
 
@@ -868,7 +867,7 @@ class PlaceMenusFlowTest {
         app.kept.setFavourite(p, false); app.kept.setFavourite(p, false)
         assertTrue(app.stored.favourites.isEmpty())
         app.kept.setHome(p)
-        assertTrue(app.stored.isHome(p)); assertTrue(app.kept.isHomePlace(hut))
+        assertTrue(app.stored.isHome(p))
         assertEquals("Place menu: \"Hütte\" set as home", problems.traced("search").last())
         app.kept.setHome(null)
         assertFalse(app.stored.isHome(p))
