@@ -174,6 +174,7 @@ caps this file (cap in the script, target 20 KB): delete role lines every tag ha
 - **Map server access before the public launch** (owner 2026-11-25: decided with the launch plan, nothing built before) → [detail](items/2026-11-18-map-server-access-before-the-public-laun.md)
 
 ## Later
+- **[donald + laptop] Send a finished recorded tour (its GPX track) to the browser via sync – today only planned/imported routes sync (core/…/plansync/RouteItems.kt:47); owner 2026-11-28: later, „weil wir vielleicht damit irgendwas anderes machen möchten“.**
 - **Plain words: „Routing-Daten“ → „Karte und Wege“, explain the SAC scale, tidy error texts (owner 2026-11-26: later; colours, dark mode, English diagnostics stay for now)…** → [detail](items/2026-11-26-plain-words-cleanup.md)
 - **Multi-day tours – concept complete, nothing built…** → [detail](items/2026-11-17-multi-day-tours-concept-complete-nothing.md)
 - **Plan sheet "a third lower"** – reached only ~23 % (d2885035); more needs touch targets smaller than 48 dp, owner
