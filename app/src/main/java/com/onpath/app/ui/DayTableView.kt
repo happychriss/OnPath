@@ -38,6 +38,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
@@ -96,11 +97,13 @@ fun DayTableView(
     title: @Composable (DayTableLine) -> Unit = { DayTableTitle(it) },
     trailing: (@Composable (DayTableLine) -> Unit)? = null,
     below: (@Composable (DayTableLine) -> Unit)? = null,
+    /** Each row's „von → nach“ as laid out (the screenshot tests check it is never cut). */
+    placesLaidOut: (TextLayoutResult) -> Unit = {},
 ) {
     val large = LocalDensity.current.fontScale >= LARGE_FONT
     val w = columnWidths(table)
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below)
+        for (l in table.lines) DayTableRow(l, w, oneRow, large, picked(l.n), onTap, onHold, title, trailing, below, placesLaidOut)
         HorizontalDivider(Modifier.padding(top = 4.dp), color = OnPathColors.Line)
         TotalRow(table, w, oneRow, large, trailingWidth)
     }
@@ -141,7 +144,7 @@ private fun columnWidths(t: DayTableUi): Widths {
 private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Boolean, picked: Boolean,
                         onTap: ((Int) -> Unit)?, onHold: ((Int) -> Unit)?,
                         title: @Composable (DayTableLine) -> Unit, trailing: (@Composable (DayTableLine) -> Unit)?,
-                        below: (@Composable (DayTableLine) -> Unit)?) {
+                        below: (@Composable (DayTableLine) -> Unit)?, placesLaidOut: (TextLayoutResult) -> Unit) {
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     val bg = when {
         l.over -> OnPathColors.WarnContainer
@@ -159,8 +162,11 @@ private fun DayTableRow(l: DayTableLine, w: Widths, oneRow: Boolean, large: Bool
             Column(Modifier.weight(1f)) {
                 title(l)
                 l.places?.let {
-                    Text(it, style = MaterialTheme.typography.bodySmall, color = muted, maxLines = 2,
-                        overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 1.dp))
+                    // wraps as far as it needs, never cut („Augsburg → Münch…“ before, 2026-11-28); the developer's one-row
+                    // layout leaves the name column almost no width – two lines there, as before
+                    Text(it, style = MaterialTheme.typography.bodySmall, color = muted, onTextLayout = placesLaidOut,
+                        maxLines = if (oneRow && !large) 2 else Int.MAX_VALUE, overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 1.dp))
                 }
                 if (large) Numbers(l.cells, w, oneRow = true, large = true, muted, Modifier.padding(top = 2.dp))
             }

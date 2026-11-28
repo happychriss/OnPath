@@ -27,7 +27,7 @@ import kotlin.math.sin
  * „Tag 3 von …“ line, and the day sheet – day 1 ridden (pill „Tag 1“, under it „✓ gefahren 2.12.“), day 2 begun and the next
  * (filled pill, „angefangen 3.12.“, MD-9), the rows' aligned columns km · ↑ m · time with the night signs and ›. German, at the
  * normal and the largest font (2.0); the day sheet also in English. The ridden / begun line is never cut: no „…“, no line
- * broken inside a word ([assertStatesWhole]).
+ * broken inside a word ([assertStatesWhole]); nor is a row's „von → nach“ ([assertWhole], „Augsburg → Münch…“ before).
  */
 abstract class DayPickScreenshotTest(fontScale: Float, private val locale: Locale = Locale.GERMANY) {
     @get:Rule
@@ -67,19 +67,29 @@ abstract class DayPickScreenshotTest(fontScale: Float, private val locale: Local
 
     /** The day states as laid out in the last snapshot. */
     private val states = ArrayList<TextLayoutResult>()
+    /** The rows' „von → nach“ as laid out in the last snapshot. */
+    private val places = ArrayList<TextLayoutResult>()
 
     @Test fun daySheet() {
         paparazzi.snapshot {
-            OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onDetail = {}, onClose = {}, stateLaidOut = { states += it }) {} }
+            OnPathTheme { DayPickSheet(ui, canRide = true, snapshot = null, onRide = {}, onDetail = {}, onClose = {}, stateLaidOut = { states += it },
+                placesLaidOut = { places += it }) {} }
         }
         assertStatesWhole()
+        assertWhole(places)
+        assertTrue("the long „Augsburg → München“ is among them", places.any { "München" in it.layoutInput.text.text && "Augsburg" in it.layoutInput.text.text })
     }
 
     /** Day 1's „✓ gefahren …“ and day 2's „angefangen …“ were laid out, neither cut short nor broken inside a word. */
     private fun assertStatesWhole() {
         val texts = states.map { it.layoutInput.text.text }.distinct()
         assertEquals("both states drawn: $texts", 2, texts.size)
-        for (r in states) {
+        assertWhole(states)
+    }
+
+    /** Every text in [laid] shows whole: no overflow („…“ / clipped), no line broken inside a word. */
+    private fun assertWhole(laid: List<TextLayoutResult>) {
+        for (r in laid) {
             val t = r.layoutInput.text.text
             assertFalse("cut: \"$t\"", r.hasVisualOverflow)
             for (i in 0 until r.lineCount - 1) {
