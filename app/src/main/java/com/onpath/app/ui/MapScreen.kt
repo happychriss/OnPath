@@ -613,7 +613,6 @@ private fun PlanBottom(vm: AppViewModel, rec: RecState?, onStartNavigation: () -
             onPause = vm.tourEnd::pauseRecording, onEndTour = onEndTour,
             onMovePoint = vm.planEdit::movePointInList, onDeletePoint = vm.planEdit::deletePointFromList, onShowPoint = vm::showPointFromList,
             onSearch = vm.searchFlow::openSearch, onMyRoutes = vm.routesGo::openRoutes,
-            onAllDays = vm.multiDay::allDays,
             menu = menu, onOffline = vm::toggleOfflineInfo,
         ),
     )

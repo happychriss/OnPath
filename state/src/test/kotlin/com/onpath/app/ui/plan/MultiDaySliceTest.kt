@@ -500,7 +500,7 @@ class MultiDaySliceTest {
         assertEquals("the trip's night marks by value", hotel, app.multiDay.flow.nightOf(D))
         assertEquals("ABCDE", ids(app.multiDay.flow.day!!.whole.points))
         assertEquals(Txt.s(Res.string.multiday_day_of, "2", "3"), app.multiDay.dayLabel())
-        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), true, false), app.multiDay.dayHeadUi())
+        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), false), app.multiDay.dayHeadUi())
         assertEquals("u1" to 2, app.multiDay.followedDay())
         // kept: a restart follows it
         val again = App()
@@ -889,20 +889,23 @@ class MultiDaySliceTest {
         assertTrue(problems.said("db", Problems.Level.WARN).any { it.contains("Saved route not read at the start – no multi-day check") })
     }
 
-    // ---------------------------------------------------------------- 5. "‹ Alle Tage": back to the trip's day sheet (MD-2)
+    // ---------------------------------------------------------------- 5. another day: Meine Touren → the trip → the day (MD-2)
 
-    @Test fun allDaysAsksForTheTripsDaySheetAndKeepsTheDayAsThePlan() {
+    /**
+     * No „‹ Alle Tage“ on the phone (owner 2026-11-28 10:20): another day of the trip comes from Meine Touren's day sheet, which
+     * loads it as the plan the same way ([rideDay] = DayPickSlice.ride: prepareDay, the day opened as a route, followDay). The new
+     * day is followed, tied to the same trip, its head says „Tag 3 von 3“.
+     */
+    @Test fun anotherDayComesFromTheTripsDaySheetInMyRoutes() {
         val app = App(); app.rideDay2()
-        ui { app.planEdit.change { add(1, X) } }; app.settle()
-        app.log.clear()
-        ui { app.multiDay.allDays() }
-        assertEquals(listOf(tourId), app.shown)
-        assertEquals("the day stays the plan, never the whole trip", "CXD", app.planIds())
+        assertEquals(Txt.s(Res.string.multiday_day_of, "2", "3"), app.multiDay.dayHeadUi()!!.label)
+        app.rideDay(n = 3)
         assertTrue(app.multiDay.flow.following)
-        // without a followed day (the plan is another route now): nothing
-        ui { app.plan.setSaved("Other", 99L, listOf(C, D)) }
-        ui { app.multiDay.allDays() }
-        assertEquals(listOf(tourId), app.shown)
+        assertEquals(3, app.multiDay.flow.day!!.part.first)
+        assertEquals("day 3: from the night of day 2 to the goal", "DE", app.planIds())
+        assertEquals(Txt.s(Res.string.multiday_day_of, "3", "3"), app.multiDay.dayHeadUi()!!.label)
+        assertEquals("u1" to 3, app.multiDay.followedDay())
+        assertEquals("the trip as it was", "ABCDE", app.stored())
     }
 
     // ---------------------------------------------------------------- 6. MD-4: start or goal moved – Save makes the day its own tour
@@ -1037,11 +1040,11 @@ class MultiDaySliceTest {
 
     // ---------------------------------------------------------------- 9. what the screens show
 
-    @Test fun theDayHeadCanLeaveOnlyWhenNoTourRuns() {
+    @Test fun theDayHeadIsThereOnlyWhileADayIsFollowed() {
         val app = App(); app.rideDay2()
-        assertTrue(app.multiDay.dayHeadUi()!!.canLeave)
+        assertNotNull(app.multiDay.dayHeadUi())
         app.touringNow = true
-        assertFalse(app.multiDay.dayHeadUi()!!.canLeave)
+        assertNotNull("also during a tour (plain information)", app.multiDay.dayHeadUi())
         app.touringNow = false
         ui { app.plan.setSaved("Other", 99L, listOf(C, D)) }
         assertNull("no day, no head", app.multiDay.dayHeadUi())

@@ -59,7 +59,7 @@ class DayPickSlice(
     fun open(uuid: String) { DayPick.route(uuid, routes.tours)?.let(::open) }
 
     /**
-     * The day sheet of route [id] ("‹ Alle Tage" from its day in the plan, a multi-day route opened any other way): from My
+     * The day sheet of route [id] (a day whose state was lost, a multi-day route opened any other way): from My
      * routes' list, else read from the database.
      */
     fun show(id: Long) {

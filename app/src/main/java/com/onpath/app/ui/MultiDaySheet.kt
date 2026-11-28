@@ -100,18 +100,15 @@ fun DrawScope.drawDayEnd(kind: DayEndKind?) {
 }
 
 /**
- * A followed day: "Tag 4 von 6" · "‹ Alle Tage" (back to the trip's day sheet in My routes, MD-2) and, when its start or goal
- * moved, the line „Start und Ziel geändert – wird als eigene Tour gespeichert“ before saving (MD-4).
+ * A followed day: „Tag 4 von 6“ as plain information – no „‹ Alle Tage“ on the phone (owner 2026-11-28 10:20 „der link kann
+ * weg“; another day comes from Meine Touren → the trip → the day, MD-2; the browser planner keeps its „‹ Alle Tage“) – and,
+ * when it leaves its trip, the line saying why before saving (MD-4 / MD-12).
  */
 @Composable
-fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit) {
+fun DayHeadLine(head: DayHeadUi) {
     Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(head.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            if (head.canLeave) androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onAllDays) {
-                Text("‹ " + str(Res.string.multiday_all_days))
-            }
-        }
+        Text(head.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp))
         // why the day leaves its trip – whole, also at a large font (it was cut there with „…“)
         if (head.leavesTrip) InfoLine(head.leaveNote ?: str(Res.string.multiday_own_tour), maxLines = Int.MAX_VALUE)
     }

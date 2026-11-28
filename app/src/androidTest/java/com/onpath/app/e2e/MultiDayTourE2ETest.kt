@@ -15,9 +15,11 @@ import com.onpath.app.ui.AppViewModel
 import com.onpath.app.ui.PlanSize
 import com.onpath.strings.Res
 import com.onpath.strings.Txt
+import com.onpath.strings.multiday_all_days
 import com.onpath.strings.multiday_day_of
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -26,7 +28,8 @@ import org.junit.runner.RunWith
 /**
  * Multi-day tours, stage 4 (docs/design/multi-day-tours.md §8: "E2E: synced 3-day plan → pick day 2 → start → recording
  * saved", rebuilt to §0 2026-11-28): a 3-day plan arrives as the browser sync stores it (DbTourStore.addPlan, with its days),
- * My routes shows it, its day sheet opens, a tap on „Tag 2“ makes exactly that day the plan (MD-2, never the whole trip); the
+ * My routes shows it, its day sheet opens, a tap on „Tag 3“ makes exactly that day the plan (MD-2, never the whole trip; the
+ * Plan has no „‹ Alle Tage“, owner 2026-11-28 10:20), Meine Touren → the trip → „Tag 2“ switches to day 2; the
  * tour starts, Navigate says "Tag 2 von 3", the tour ends and is saved – its followed plan is day 2 with the route's uuid and
  * the day (MD-5), the multi-day route keeps its days.
  */
@@ -72,11 +75,24 @@ class MultiDayTourE2ETest : E2EBase() {
             waitUntil("the day sheet shows its days", 20_000) { onVm { it.dayPick.ui?.rows?.size == 3 } }
             pause(1_000, "the sheet is drawn")
             shot("1-day-sheet")
+            // first „Tag 3“: that day is the plan; the phone's Plan shows „Tag 3 von 3“ and no „‹ Alle Tage“ (owner 2026-11-28
+            // 10:20) – another day comes from Meine Touren → the trip → the day (MD-2)
+            val three = findFresh(By.text(com.onpath.app.routing.DayRowText.day(3)), 8_000)
+            assertNotNull("day row 3 – ${state()}", three)
+            three!!.click()
+            waitUntil("day 3 is the plan", 20_000) { onVm { it.multiDay.flow.following && it.multiDay.flow.day?.part?.first == 3 } }
+            routeSettled()
+            assertEquals(Txt.s(Res.string.multiday_day_of, "3", "3"), onVm { it.multiDay.dayLabel() })
+            assertNull("no „‹ Alle Tage“ in the phone's Plan", device.findObject(By.textContains(Txt.s(Res.string.multiday_all_days))))
+            shot("2a-day-three")
+            scenario.onActivity { a -> vm(a).routesGo.openRoutes(); vm(a).dayPick.open(uuid) }
+            waitUntil("the day sheet again", 20_000) { onVm { it.dayPick.ui?.rows?.size == 3 } }
+            pause(1_000, "the sheet is drawn")
             // one tap on „Tag 2“: that day alone becomes the plan
             val two = findFresh(By.text(com.onpath.app.routing.DayRowText.day(2)), 8_000)
             assertNotNull("day row 2 – ${state()}", two)
             two!!.click()
-            waitUntil("day 2 is the plan", 20_000) { onVm { it.multiDay.flow.following } }
+            waitUntil("day 2 is the plan", 20_000) { onVm { it.multiDay.flow.following && it.multiDay.flow.day?.part?.first == 2 } }
             assertTrue("never the whole trip as the plan", onVm { it.plan.points.size } < pts.size)
             routeSettled()
             scenario.onActivity { a -> vm(a).planEdit.planSize = PlanSize.FULL }
