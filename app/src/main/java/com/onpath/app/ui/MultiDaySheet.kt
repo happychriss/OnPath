@@ -108,8 +108,13 @@ fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(head.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            if (head.canLeave) androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onAllDays) {
-                Text("‹ " + str(Res.string.multiday_all_days))
+            // proposal 2026-11-28 (the planner's „‹ Alle Tage“): a tonal button in the same row – light plan-blue fill, plan-blue bold
+            // words; 40 dp tall like the text button before (the card keeps its height), 48 dp touch target (Material's minimum)
+            if (head.canLeave) androidx.compose.material3.FilledTonalButton(onClick = onAllDays,
+                colors = androidx.compose.material3.ButtonDefaults.filledTonalButtonColors(containerColor = OnPathColors.EditTonal,
+                    contentColor = OnPathColors.PlanAccent),
+                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 14.dp, vertical = 8.dp)) {
+                Text("‹ " + str(Res.string.multiday_all_days), fontWeight = FontWeight.Bold)
             }
         }
         // why the day leaves its trip – whole, also at a large font (it was cut there with „…“)
