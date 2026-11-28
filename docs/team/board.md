@@ -19,7 +19,7 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Halte-Hinweis und „Als Ziel“ | donald | merging `feat/routes-filter-chips`, then `feat/hold-hint-list` (owner's yes in the thread 10:21, captain's go given) | joint test build to the Pixel, no release |
+| Halte-Hinweis und „Als Ziel“ | donald | done: filter aac81b2fe (F-PLAN-27), pill + place-info list 44ea46159 (F-PLAN-24/25); test build on the Pixel ok, no release; branches stay until the owner's word | parity line for F-PLAN-24/25 missing → asked; then free |
 | Mehrtagestour-Nacharbeit | donald | on main a450199e9; building: days as cards in the day sheet, link „‹ Alle Tage“ removed on the phone („Tag 4 von 6“ stays) | done report → third check → test build |
 | Routentests / toter Code | donald | all done: PR #27 merged (weekly SameRouteTest), „Ganz neu berechnen“ out of the app, snap switch stays (F-POS-06) | free |
 | Planer weiterentwickeln | HP | filter chips like the app; remove „Ganz neu berechnen“ if no case differs; save waits for stitching; cancel stops downloads | done reports |
