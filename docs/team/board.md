@@ -23,6 +23,7 @@ aa972d25a / 51e012ac0 · Akku sparen a8f6b68c9 (switch off by default; 30 s / 10
 settings card 7af509bbb · ⚙ during a route V1 8ef4915cc · flicker fix 0252c2187 · day cards a174c6515. Planner: long-route
 question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP owns `web/parity.json`).
 **Open:** test build to the Pixel 8 (not attached; only when no recording runs) · HP parity ack + deploy · donald: [Sparen] from the question for this tour only (af72dc940) · E2E on `main` + release notes for 0.18.12.
+**13:02:** E2E on main @ 43519bf4c 115/0 (run 46140796452), release_check GO, notes `release/0.18.12-notes` @ ba6a3d9aa; tour-only Sparen bf068e550 came after – E2E again before the release. Pill „Akku sparen an“: picture `akku-pille.png`, the owner decides.
 **For the owner when back:** battery measurement (2 × 1 h, without / with Sparen) · website block „Sicherheit“ text A / B
 (onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · release 0.18.12 (needs one
 really ridden day + his word).
