@@ -46,6 +46,10 @@ writing goes to the cloud so the machines stay free for building. The project sh
 area.
 
 The captain also orders the backlog, collects the open questions and tells the owner what is new.
+**Whom the owner talks to** (owner asked 2026-11-28): the project lead for everything that should simply happen or be
+known – a new task, a bug, the state, a build, a release. The captain directly when he wants a second opinion: the
+vision, a design question, „is this right?“, a decision with consequences. Either way nothing is lost: the project
+lead passes tasks raw to the captain, and the captain tells the project lead every order he writes.
 In every thread the main session talks and hands out; work longer than a few minutes runs in the background, so the
 thread stays answerable.
 
