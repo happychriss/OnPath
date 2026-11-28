@@ -595,8 +595,8 @@ class MainActivity : ComponentActivity() {
         intent ?: return
         // Reopened from recents: that share was handled already.
         if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
-        // a plan link (plan.onpath.earth/#p=…: camera / QR code, a tapped link, shared text) – A-005
-        planLinkOf(intent)?.let { found ->
+        val link = planLinkOf(intent); if (PlannerInBrowser.takes(this, intent.action == Intent.ACTION_VIEW, intent.data, link)) return // A-005; the bare planner page → browser
+        link?.let { found ->
             vm.dataScreenDismissed = true
             vm.links.receive(found, if (intent.action == Intent.ACTION_VIEW) "opened" else "shared")
             return

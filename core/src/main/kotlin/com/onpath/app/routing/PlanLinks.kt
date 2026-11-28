@@ -64,6 +64,15 @@ object PlanLinks {
         else -> null
     }
 
+    /**
+     * A link of the planner's host opened in OnPath ([via] OPENED) that OnPath cannot use – no plan ([found] null or
+     * [Found.Broken]: the planner page itself), a pairing code it can't read – goes on to the browser (owner's Pixel
+     * 2026-11-28: the planner page opened OnPath with an error). A plan or pairing link it reads stays in the app.
+     */
+    fun toBrowser(via: Via?, data: String?, found: Found?): Boolean =
+        via == Via.OPENED && data != null && isPlannerLink(data) &&
+            (found == null || found == Found.Broken || found == Found.BrokenPairing)
+
     /** A link to the planner's host (http or https, any path). */
     fun isPlannerLink(u: String): Boolean =
         Regex("""^https?://${Regex.escape(HOST)}(?::\d+)?(?:[/?#]|$)""", RegexOption.IGNORE_CASE).containsMatchIn(u.trim())

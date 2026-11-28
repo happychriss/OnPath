@@ -136,4 +136,24 @@ class PlanLinksTest {
             assertTrue(part, part in filter)
         assertTrue(PlanLinks.BASE == "https://${PlanLinks.HOST}/")
     }
+
+    /**
+     * Owner's Pixel 2026-11-28 14:40: tapping the planner page itself (plan.onpath.earth, no plan) opened OnPath with an
+     * error. A link of the planner's host that OnPath cannot use – no plan, a plan or pairing code it can't read – goes on
+     * to the browser; a plan or pairing link it reads stays in the app. Shared text never goes to the browser.
+     */
+    @Test fun aPlannerLinkWithoutAUsablePlanGoesToTheBrowser() {
+        fun browser(u: String, via: PlanLinks.Via = PlanLinks.Via.OPENED) =
+            PlanLinks.toBrowser(via, u, PlanLinks.fromIntent(via, u, "text/plain", u, hasStream = false))
+        assertTrue("the planner page", browser("https://plan.onpath.earth/"))
+        assertTrue("the planner page without a slash", browser("https://plan.onpath.earth"))
+        assertTrue("a cut-off plan code", browser("https://plan.onpath.earth/#p=zz"))
+        assertTrue("a pairing code it can't read", browser("https://plan.onpath.earth/#pair=xx"))
+        val good = PlanLinks.link(SharedPlan(listOf(GeoPoint(46.67, 11.16), GeoPoint(46.68, 11.17)), Activity.HIKE, 2))
+        assertTrue("a plan it reads stays in the app", !browser(good))
+        val pair = com.onpath.app.sync.PairCode.link(PlanLinks.BASE, ByteArray(32) { (it * 7 + 1).toByte() })
+        assertTrue("a pairing QR code it reads (with its check digits) stays in the app", !browser(pair))
+        assertTrue("shared text is never sent on", !browser("https://plan.onpath.earth/", PlanLinks.Via.SHARED))
+        assertTrue("another host is no business of this rule", !browser("https://example.org/"))
+    }
 }
