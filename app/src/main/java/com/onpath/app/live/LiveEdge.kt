@@ -100,6 +100,7 @@ class EdgeLiveShareClient(context: Context) : LiveShareClient {
     private val app = context.applicationContext
     override val live: StateFlow<LiveSnapshot> get() = LiveEdge.snapshot
     override fun liveStart(name: String) { RecordingService.state.value?.tourId?.let { LiveEdge.attach(app)?.start(it, name) } }
+    override fun liveRename(name: String) { LiveEdge.attach(app)?.rename(name) }
     override fun liveStop() { LiveEdge.attach(app)?.stop() }
     override fun liveSeen() { LiveEdge.attach(app)?.acknowledge() }
 }

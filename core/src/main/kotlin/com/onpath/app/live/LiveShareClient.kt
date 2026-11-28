@@ -18,6 +18,8 @@ interface LiveShareClient {
     fun liveStop()
     /** The user was told that the server ended the sharing ([LiveSnapshot.endedByServer]). */
     fun liveSeen()
+    /** A new name while sharing (Chriss 2026-11-28 14:11): the shared page shows it with the next upload. */
+    fun liveRename(name: String) {}
 }
 
 /**

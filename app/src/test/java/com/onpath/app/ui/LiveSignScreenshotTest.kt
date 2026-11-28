@@ -41,14 +41,13 @@ abstract class LiveSignShots(private val locale: Locale) {
     /** [sign] null = sharing not offered (the tour bubble holds only ⚙). */
     @Composable
     protected fun Frame(ui: NavUi, sign: LiveSign?) {
-        val actions = if (sign == LiveSign.NONE) listOf(LiveAction.SHARE) else listOf(LiveAction.SHARE_AGAIN, LiveAction.STOP)
         OnPathTheme {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.fillMaxSize().padding(top = 32.dp)) {
                     CompositionLocalProvider(
-                        LocalNavBelowCard provides { if (sign != null) LiveWaitingPill(sign, actions) {} },
-                        LocalTourShare provides if (sign == null) null else { size -> LiveShareButton(sign, actions, size) {} },
+                        LocalNavBelowCard provides { if (sign != null) LiveWaitingPill(sign) {} },
+                        LocalTourShare provides if (sign == null) null else { size -> LiveShareButton(sign, size) {} },
                     ) {
                         NavigateOverlay(ui, footer = {
                             MapFooter("500 m" to 64.dp) {

@@ -66,6 +66,9 @@ class SettingsOnTheWayV1Test {
         try {
             paparazzi.snapshot { OnPathTheme {
                 Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp).onSizeChanged { h = it.height }) {
+                    // while a tour is shared: live sharing's one row first (Chriss 2026-11-28 14:11)
+                    LiveShareRow(com.onpath.app.ui.live.LiveSign.LIVE) {}
+                    androidx.compose.foundation.layout.Spacer(Modifier.padding(top = 12.dp))
                     OnTheWaySection(AppSettings(), {}, Activity.HIKE, onPhoneSetup = {})
                 }
             } }

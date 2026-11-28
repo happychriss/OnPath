@@ -92,6 +92,10 @@ class SettingsScreenshotTest {
     fun onTheWayWith(first: @androidx.compose.runtime.Composable () -> Unit) = paparazzi.snapshot {
         androidx.compose.runtime.CompositionLocalProvider(LocalSettingsFirst provides first) { Screen(null, phone = phoneOk, onTheWay = true) }
     }
+    /** Live sharing's own page (Chriss 2026-11-28 14:11) with [entry] as live sharing provides it. */
+    fun livePage(entry: LiveShareEntry) = paparazzi.snapshot {
+        androidx.compose.runtime.CompositionLocalProvider(LocalLiveShare provides entry) { Screen(SettingsPage.LIVE, phone = phoneOk) }
+    }
     /** The same with the location off: "Handy einrichten" at the top of the Navigation page (red, "Fehlt: …"). */
     fun onTheWayPhoneMissing() = paparazzi.snapshot { Screen(null, phone = phoneOk.copy(locationOn = false), onTheWay = true) }
 

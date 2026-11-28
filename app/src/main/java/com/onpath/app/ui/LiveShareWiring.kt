@@ -6,6 +6,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.Modifier
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.Spacer
 import androidx.lifecycle.viewModelScope
 import com.onpath.app.debug.launchSafe
 import com.onpath.app.live.EdgeLiveShareClient
@@ -42,11 +46,14 @@ val LocalTourShare = compositionLocalOf<(@Composable (androidx.compose.ui.unit.D
 fun LiveShareLayer(vm: AppViewModel, content: @Composable () -> Unit) {
     val slice = LiveShares.of(vm) ?: return content()
     DisposableEffect(slice) { onDispose { slice.settingsClosed() } }
-    CompositionLocalProvider(LocalSettingsFirst provides {
-        LiveSettingsCard(slice.sign, slice.actions, onAction = { slice.act(it) },
-            name = slice.name.takeIf { slice.nameKnown }, onName = slice::editName,
-            ended = slice.ended, onEndedShown = slice::endedShown)
-    }, content = content)
+    // one row „Standort teilen“ + state, first on the way and in the whole list; behind it its own page (Chriss 2026-11-28 14:11)
+    val open = { vm.settingsSlice.settingsPage = SettingsPage.LIVE }
+    CompositionLocalProvider(
+        LocalSettingsFirst provides { LiveShareRow(slice.sign, open); Spacer(Modifier.height(12.dp)) },
+        LocalLiveShare provides LiveShareEntry(row = { o -> LiveShareRow(slice.sign, o) }, page = {
+            LiveSharePage(slice.sign, slice.actions, onAction = { slice.act(it) }, name = slice.name, onName = slice::editName,
+                ended = slice.ended, onEndedShown = slice::endedShown)
+        }), content = content)
     if (slice.askName) LiveNameDialog(slice.name, onShare = slice::nameGiven, onCancel = slice::nameCancelled, edit = slice.editingName)
 }
 
@@ -62,8 +69,9 @@ fun LiveSignLayer(vm: AppViewModel, content: @Composable () -> Unit) {
     val slice = LiveShares.of(vm) ?: return content()
     DisposableEffect(slice) { onDispose { if (slice.askName && !slice.editingName) slice.nameCancelled() } }
     CompositionLocalProvider(
-        LocalTourShare provides if (slice.actions.isEmpty()) null else { size -> LiveShareButton(slice.sign, slice.actions, size) { slice.act(it) } },
-        LocalNavBelowCard provides { LiveWaitingPill(slice.sign, slice.actions) { slice.act(it) } },
+        // every way in opens live sharing's page in ⚙ (Chriss 2026-11-28 14:11); back from it returns to Navigate
+        LocalTourShare provides if (slice.actions.isEmpty()) null else { size -> LiveShareButton(slice.sign, size) { vm.settingsSlice.openSettings(SettingsPage.LIVE) } },
+        LocalNavBelowCard provides { LiveWaitingPill(slice.sign) { vm.settingsSlice.openSettings(SettingsPage.LIVE) } },
         content = content)
     if (slice.askName && !vm.settingsSlice.showSettings) LiveNameDialog(slice.name, onShare = slice::nameGiven, onCancel = slice::nameCancelled, edit = slice.editingName)
 }

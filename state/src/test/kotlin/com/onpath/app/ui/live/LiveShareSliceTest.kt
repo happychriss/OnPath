@@ -43,6 +43,20 @@ class LiveShareSliceTest {
     }
 
     /** Guards: the first share asks the name once – and never again, also when it was left empty. */
+    /** Chriss 2026-11-28 14:11: a new name on the sharing page reaches the shared page while sharing; not sharing, it is only kept. */
+    @Test
+    fun aNewNameWhileSharingGoesToTheSharedPage() {
+        val w = World(name = "Christian")
+        w.slice.share()
+        w.lane(LiveSnapshot(sharing = true, link = link))
+        w.slice.editName(); w.slice.nameGiven("Chriss")
+        assertEquals("rename:Chriss", w.client.calls.last())
+        val idle = World(name = "Christian", recording = false)
+        idle.slice.editName(); idle.slice.nameGiven("Chriss")
+        assertEquals("kept only", listOf<String>(), idle.client.calls)
+        assertEquals("Chriss", idle.prefs.liveName)
+    }
+
     @Test
     fun theFirstShareAsksTheNameOnce() {
         val w = World()

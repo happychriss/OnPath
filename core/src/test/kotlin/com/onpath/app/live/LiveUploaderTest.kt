@@ -192,6 +192,20 @@ class LiveUploaderTest {
     }
 
     /** Guards: the normal tour – claim, then one request per upload carrying way and status; the page sees the whole way and fresh numbers. */
+    /** A new name on live sharing's page (Chriss 2026-11-28 14:11) reaches the shared page with the next upload, same link. */
+    @Test
+    fun aNewNameReachesTheSharedPage() {
+        val w = World()
+        w.start()
+        w.run(3 * 60_000)
+        assertEquals("Christian", w.head()!!.name)
+        val link = w.link
+        w.uploader.rename("Chriss")
+        w.run(60_000)
+        assertEquals("Chriss", w.head()!!.name)
+        assertEquals("the same link", link, w.uploader.start(w.tour.id, "Chriss"))
+    }
+
     @Test
     fun aTourGoesUpWithOneRequestPerUpload() {
         val w = World()

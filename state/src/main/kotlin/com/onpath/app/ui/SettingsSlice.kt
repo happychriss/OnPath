@@ -161,7 +161,8 @@ class SettingsSlice(
      */
     fun settingsBack() {
         val p = settingsPage
-        if (p != null && !(p == SettingsPage.SYNC && openedAt == SettingsPage.SYNC)) settingsPage = p.up else showSettings = false
+        // a window of its own opened from outside (the pairing window, live sharing's page from Navigate) closes Settings
+        if (p != null && !((p == SettingsPage.SYNC || p == SettingsPage.LIVE) && openedAt == p)) settingsPage = p.up else showSettings = false
     }
 
     /** Relief switched off by the app once / set by hand ([com.onpath.app.map.ReliefAuto]). */

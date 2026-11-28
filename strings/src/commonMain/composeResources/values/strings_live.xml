@@ -7,6 +7,10 @@
     <string name="live_sign">Location</string>
     <string name="live_sign_waiting">Location · waiting for network</string>
     <string name="live_name_row">Name on the page</string>
+    <string name="live_status_on">On</string>
+    <string name="live_status_waiting">On · waiting for network</string>
+    <string name="live_status_off">Off</string>
+    <string name="live_only_on_tour">Sharing works during a tour.</string>
     <string name="live_share_text">Follow my tour: %1$s</string>
     <string name="live_name_title">Your name for the page</string>
     <string name="live_name_text">Whoever opens the link sees “Tour of …”.</string>
