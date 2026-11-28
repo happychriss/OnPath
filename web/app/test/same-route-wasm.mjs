@@ -7,6 +7,8 @@
 // Usage: node --max-old-space-size=4096 test/same-route-wasm.mjs <segmentsDir>   (Node 22 or newer; the V8 flags it needs are set below)
 // Env: TOURS=a,b  LIMIT=<cases per tour>  NEIGHBOURS=1 (also load the tiles around E10_N45 found in the folder)
 //      DUMP=<dir> (write each case's line text there)
+//      SHA_DIR=<dir> (the .sha files and their DATA.txt there instead of core/src/test/resources/same-route – the weekly CI
+//      run makes fresh ones with the JVM on the current brouter.de tile, .github/workflows/same-route.yml)
 // Exit: 0 all equal, 1 a case differs, 2 refused (no folder, or not the recorded data).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -22,7 +24,7 @@ if (Number(process.versions.node.split('.')[0]) < 24) v8.setFlagsFromString('--e
 const here = path.dirname(fileURLToPath(import.meta.url));
 if (!process.argv[2]) { console.log('REFUSED: give the segments folder as the argument'); process.exit(2); }
 const segments = path.resolve(process.argv[2]);
-const shaDir = path.join(here, '../../../core/src/test/resources/same-route');
+const shaDir = process.env.SHA_DIR ? path.resolve(process.env.SHA_DIR) : path.join(here, '../../../core/src/test/resources/same-route');
 const tile = 'E10_N45.rd5';
 const wanted = /^sha256:\s*([0-9a-f]{64})\s*$/m.exec(fs.readFileSync(path.join(shaDir, 'DATA.txt'), 'utf8'))?.[1];
 if (!wanted) { console.log('REFUSED: same-route/DATA.txt names no sha256'); process.exit(2); }
