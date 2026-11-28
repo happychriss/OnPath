@@ -57,3 +57,4 @@ aktuelle Route gilt. Dann hat sich das Problem komplett erledigt.“
 current tour only and is off again when the tour ends – also when set by hand. The row says so in bold. Captain's reading
 for the case no tour runs: the switch set before the start holds for the next tour, then off. Pill „Akku sparen an“: open
 (owner's „vielleicht“ of 11:40, picture akku-pille.png) – not built unless he picks it.
+**Owner 12:56:** „Die Pille brauchen wir trotzdem. Weil sich das dann ja anders verhält, sonst vergisst man das.“ → build variant A of `akku-pille.png` (calm pill „Akku sparen an“ with the sign, tap opens ⚙; no warning colour).
