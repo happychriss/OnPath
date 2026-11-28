@@ -106,3 +106,19 @@ Tests:
 - (b) „Tag 3–4“ (two or more days in a row, scenario O) – answered 2026-11-28 08:17: one day only, no ranges –
   „Genau ein Tag, mehrere Tage am Stück gibt es nicht (Chriss 2026-11-28)“. The places marked „open (b)“ above are removed in step B (`feat/multiday-one-day`).
 - Answered 2026-11-28: (a) maps → MD-11 (all days, automatically, 08:11); (c) the three gaps → MD-8, MD-9, MD-10.
+
+## Step B built (branch `feat/multiday-one-day`, 2026-11-28)
+
+- MD-2: the day sheet's tap works the day out along the stored line (`MultiDaySlice.prepareDay`), opens it as a route
+  (`DayStart.standIn`: the trip's id / name, the day's points; no days, no uuid) and follows it (`followDay`); days that
+  cannot be worked out → the error line `daypick_days_failed` in My routes. „‹ Alle Tage“ → `MultiDayHost.showDays` (My routes +
+  the trip's day sheet). Any other way a whole multi-day route arrives (`RoutesSlice.openTour`, Zuletzt, „Wiederherstellen“)
+  → `RoutesHost.openDays`. A lost day state at the start unlinks the plan and opens the day sheet; a whole trip kept by an
+  older version opens its day sheet (its days stay safe for Save).
+- MD-1: plan sheet overview, „Tag n fahren“, day ends on the map, the day-count re-split, Zuletzt of the whole trip – gone.
+- MD-3 / MD-4: `DayContext.endsKept` (200 m, `MultiDayFlow.SAME_END_M` = `DayPick.SAME_END_M`); `SavePorts.leavesTrip` →
+  Save / Los geht's make a new route and say `multiday_own_tour`; the plan sheet shows the line before.
+- MD-5 / MD-9 / MD-10: `followedDay` keeps the day through edits between start and goal; ✓ only with `Tour.planReached`
+  (`DayPick.reached` over the track), else „angefangen am …“ (`DayPick.started`).
+- MD-11: `loadAllMaps` → `MapDataFlow.loadTourMaps` puts the areas into the normal map loading window with `MapLoadUi.multiDay`
+  (line `multiday_maps_all`); the maps question is gone. Ranges („Tag 3–4“): gone.

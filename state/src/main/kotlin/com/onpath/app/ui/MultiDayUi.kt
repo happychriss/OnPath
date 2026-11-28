@@ -1,30 +1,11 @@
 package com.onpath.app.ui
 
-import com.onpath.app.routing.DayEndKind
-import com.onpath.app.routing.GeoPoint
-
-// The multi-day overview's screen models, moved unchanged from MultiDaySheet.kt (a Composable file) – rebuild phase 2 piece 20.
+// The multi-day screen model of the plan sheet (rebuild phase 2 piece 20). Since 2026-11-28 (MD-1) the plan sheet shows no
+// whole-trip overview any more – only the followed day's head.
 
 /**
- * One row of a multi-day tour's overview: day [n], km, hm, its end ([end] null = the finish); [places] = "von – nach" under
- * it, null unless the place is known at both ends (no second line then).
+ * A followed day's head line in the plan sheet (MD-2 / MD-4): "Tag 4 von 6", "‹ Alle Tage" back to the trip's day sheet in
+ * My routes ([canLeave]: no tour running), and [leavesTrip]: the day's start or goal moved – the line „Start und Ziel geändert –
+ * wird als eigene Tour gespeichert“ before saving.
  */
-data class DayRowUi(val n: Int, val places: String?, val distanceM: Double, val ascentM: Double,
-                    val end: DayEndKind?, val over: Boolean)
-
-/**
- * The plan sheet's overview of a multi-day tour (sketch round 2, phone step 11): [name] · N days, the height profile with
- * the day borders ([borders]: share of the route + kind), one row per day; [selected] = the picked day(s).
- */
-data class DaysUi(val name: String?, val count: Int, val profile: List<GeoPoint>, val borders: List<Pair<Float, DayEndKind>>,
-                  val rows: List<DayRowUi>, val selected: IntRange?,
-                  /** The rows as the planner's day table (owner 2026-11-27, [DayTables]); null = the plain rows. */
-                  val table: DayTableUi? = null,
-                  /** The tour's limits per day (the „Planung“ chips). */
-                  val limits: com.onpath.app.routing.DayLimits = com.onpath.app.routing.DayLimits())
-
-/**
- * A followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" when the whole tour can come back (no tour
- * running), and the day's missing maps ([mapsBytes], §7: said before the start; tap = load).
- */
-data class DayHeadUi(val label: String, val canLeave: Boolean, val mapsBytes: Long?)
+data class DayHeadUi(val label: String, val canLeave: Boolean, val leavesTrip: Boolean = false)

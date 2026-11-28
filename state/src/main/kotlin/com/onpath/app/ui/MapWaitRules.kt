@@ -45,6 +45,8 @@ data class MapLoadUi(
     val here: Boolean = true,
     /** The server builds the map for this place first (queued / building): the window says so (owner 2026-11-27, Hinweistext 12). */
     val building: Boolean = false,
+    /** The window loads the maps of all days of a multi-day trip (MD-11, owner 2026-11-28): its own line says so. */
+    val multiDay: Boolean = false,
 ) {
     /**
      * FINISHING: everything is downloaded and is joined into the map / written into the routing file. SERVER: online, the
@@ -102,13 +104,16 @@ data class MapLoadUi(
     val window: WaitWindowUi get() = WaitWindowUi(
         when (kind) { Kind.FAILED -> WaitSign.FAILED; Kind.OFFLINE -> WaitSign.OFFLINE; else -> WaitSign.MAP },
         title, percent, if (kind == Kind.FAILED) emptyList() else steps, line, paused = paused, bar = kind != Kind.FAILED,
-        note = if (building && kind == Kind.PREPARING) BUILD_TEXT else null)
+        note = listOfNotNull(if (multiDay && kind != Kind.FAILED) MULTIDAY_TEXT else null, if (building && kind == Kind.PREPARING) BUILD_TEXT else null)
+            .joinToString(" ").ifEmpty { null })
 
     companion object {
         val OFFLINE_TEXT: String get() = Txt.s(Res.string.maps_offline_text)
         val WIFI_TEXT: String get() = Txt.s(Res.string.maps_wifi_text)
         /** „Für diese Gegend gibt es noch keine OnPath-Karte. Das Erstellen dauert ein paar Minuten.“ */
         val BUILD_TEXT: String get() = Txt.s(Res.string.maps_here_ask_detail)
+        /** „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.“ (MD-11) */
+        val MULTIDAY_TEXT: String get() = Txt.s(Res.string.multiday_maps_all)
         /** One-time load over mobile data while "Maps only on Wi-Fi" waits (window and question box; setting unchanged). */
         val LOAD_ON_MOBILE: String get() = Txt.s(Res.string.maps_load_on_mobile)
     }

@@ -38,7 +38,7 @@ import com.onpath.app.testkit.MemoryMultiDayPrefs
 import com.onpath.app.testkit.ProblemsRule
 import com.onpath.app.testkit.held
 import com.onpath.app.time.TourTimes
-import com.onpath.app.ui.EndNamer
+import kotlinx.coroutines.launch
 import com.onpath.app.ui.NoticeBoard
 import com.onpath.app.ui.NoticeKind
 import com.onpath.app.ui.NoticePlace
@@ -55,6 +55,7 @@ import com.onpath.strings.Res
 import com.onpath.strings.Txt
 import com.onpath.strings.msg_route_save_failed
 import com.onpath.strings.multiday_day_of
+import com.onpath.strings.multiday_own_tour
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.SupervisorJob
@@ -71,12 +72,13 @@ import org.junit.rules.TemporaryFolder
 import kotlin.coroutines.CoroutineContext
 
 /**
- * CORE FEATURE "multi-day tours on the phone" (docs/design/multi-day-tours.md §3 Phone, [MultiDaySlice], phase 2 piece 20) as
- * flows of the REAL slice: a 3-day tour is stored in the real tables ([JdbcTours]) and opened as the plan; the plan is the real
+ * CORE FEATURE "multi-day tours on the phone" (docs/design/multi-day-tours.md §0, MD-0 … MD-11, [MultiDaySlice], phase 2 piece
+ * 20) as flows of the REAL slice: a 3-day tour is stored in the real tables ([JdbcTours]) and one day of it is opened as the plan
+ * as My routes' day sheet does it ([App.rideDay]); the plan is the real
  * [PlanDocument], its edits go through the real [PlanEditSlice], Save is the real [SaveSlice] ([RoutesState] / [RecentPlans]),
  * the activity and the pace are the real [PlanRouteSlice], the state is the real [MultiDayFlow] over memory prefs, the map
  * areas the real [MapCells] (only its network is a fake). Only the edges are fakes: the host (what the view model answers: mode,
- * route, a tour records, names, the maps, the backup / sync / list), the camera, the place index.
+ * route, a tour records, names, the maps, the backup / sync / list, the day sheet).
  *
  * Three held lanes tell the threads: main (inline, like `Main.immediate`, until a hop to another lane returns), io and default
  * ([Lanes]); every fake records WHICH lane it was called on AND the state it was called with, so an order of two writes is read
@@ -87,10 +89,9 @@ import kotlin.coroutines.CoroutineContext
  * and a write applied to the global snapshot is what wakes them (no `OwnComposeSnapshot` here, as in `RoutesGoWaitTest`).
  *
  * What these flows do NOT prove: the view model's own members behind the host ([MultiDayWiringTest] pins the adapters), the
- * sheets' Compose code. Not provable (named, not claimed): `plan.pin(part.pinned)` of "Tag n fahren" (the day's pins are a subset of
- * the plan's own, taken from it by `pinnedIndices()`: pinning them again changes nothing); the order of the two preference writes after a load (nothing reads between them); the order of the start's hook / cells /
- * collector lines (nothing runs between them); the order `dayMapsMissing = null` before `dayMapsCells = null` in the two day actions
- * (two assignments of the same moment).
+ * sheets' Compose code, My routes' real openTour (RoutesSlice; [App.open] does what it does to the plan). Not provable (named, not
+ * claimed): the order of the two preference writes after a load (nothing reads between them); the order of the start's hook /
+ * cells / collector lines (nothing runs between them).
  */
 class MultiDaySliceTest {
     @get:Rule val problems = ProblemsRule()
@@ -203,18 +204,14 @@ class MultiDaySliceTest {
         var modeNow = AppMode.PLAN
         var touringNow = false
         val names = HashMap<GeoPoint, String>()
-        val remembered = ArrayList<String>()
-        val reopened = ArrayList<Tour>()
+        /** The trips whose day sheet My routes was asked to show (MultiDayHost.showDays). */
+        val shown = ArrayList<Long>()
         var saveProblem: String? = null
         var wholeMissing = emptyList<CellId>()
         var dayMissing = emptyList<CellId>()
         var mapsFail = false
         var tourMapsCalls = 0
         var cellsFail = false
-        var indexFails = false
-        var namerCalls = 0
-        val endNames = HashMap<GeoPoint, String>()
-        val fitted = ArrayList<List<GeoPoint>>()
         val loads = ArrayList<String>()
         /** What the plan held when the edit asked for the route run (the real recalc reads the pins at once). */
         val atRecalc = ArrayList<String>()
@@ -329,27 +326,17 @@ class MultiDaySliceTest {
         }
 
         // ---- the host (what the view model answers)
-        val camera = object : com.onpath.app.ui.Camera {
-            override fun fit(points: List<GeoPoint>) { log += "fit ${points.size}"; fitted += points }
-            override fun centerOn(point: GeoPoint, zoom: Double) = Unit
-            override fun panTo(point: GeoPoint) = Unit
-        }
         val host = object : MultiDayHost {
             override val mode: AppMode get() = modeNow
             override val route: PlannedRoute? get() = routeNow
             override val touring: Boolean get() = touringNow
             override val cells: MapCells get() { if (cellsFail) throw IllegalStateException("cells not ready"); return this@App.cells }
             override fun placeNameOf(p: GeoPoint): String? = names[p]
-            override fun reopenTour(t: Tour) { log += "reopen ${t.id}@${lanes.at}"; reopened += t; ui { open(t) } }
+            override fun showDays(id: Long) { log += "days $id@${lanes.at}"; shown += id }
             override fun reloadTourList() { log += "refresh@${lanes.at}"; routes.show(routes.load()) }
             override fun showSaveProblem(text: String) { saveProblem = text; log += "problem@${lanes.at}" }
             override fun tourChanged(id: Long) { log += "backup $id@${lanes.at} stored=${ids(db.getTour(id)?.waypoints?.map { GeoPoint(it.lat, it.lon) })}" }
             override fun syncChanged(why: String) { log += "sync: $why" }
-            override suspend fun endNamer(): EndNamer {
-                log += "endNamer@${lanes.at}"; namerCalls++
-                if (indexFails) throw IllegalStateException("no index")
-                return EndNamer { p -> check(lanes.at == "io") { "the end's name is read on io, not ${lanes.at}" }; endNames[p] }
-            }
             override fun tourMaps(line: List<GeoPoint>): TourMapAreas? {
                 tourMapsCalls++; log += "tourMaps(${line.size})@${lanes.at}"
                 if (mapsFail) return null
@@ -358,7 +345,7 @@ class MultiDaySliceTest {
             }
             override fun loadTourMaps(want: List<CellId>, line: List<GeoPoint>, wifiWait: Boolean) {
                 loads += "${want.joinToString { it.id }} line=${line.size} wifiWait=$wifiWait"
-                log += "loadTourMaps wifiWait=$wifiWait [prefs cells=${prefs.multiDayMapCells.size} wifi=${prefs.multiDayWifiCells.size} ask=${multiDay.tourMapsAsk?.tourUuid} asked=${prefs.multiDayMapsAsked}]"
+                log += "loadTourMaps@${lanes.at} wifiWait=$wifiWait"
             }
         }
 
@@ -405,8 +392,8 @@ class MultiDaySliceTest {
             override fun stops(points: List<GeoPoint>) = PlanGpx.stops(points) { names[points[it]] }
             override fun difficulty(route: PlannedRoute?, activity: Activity): String? = null
             override fun days(points: List<GeoPoint>) = multiDay.daysFor(points)
-            override fun keepWhole(act: Activity, sac: Int, route: PlannedRoute?) = multiDay.keepWhole(act, sac, route)
             override fun overwriteWhole(name: String, then: (() -> Unit)?) = multiDay.overwriteWhole(name, then)
+            override fun leavesTrip() = multiDay.leavesTrip()
             override suspend fun proposeName(points: List<GeoPoint>, route: PlannedRoute?): String? = null
             override fun datedName() = "Route 19 Nov"
             override fun storeTimes(id: Long, route: PlannedRoute?, activity: Activity) = Unit
@@ -423,17 +410,11 @@ class MultiDaySliceTest {
 
         // ---- the slice under test
         val multiDay: MultiDaySlice = MultiDaySlice(
-            plan, planRoute, store, prefs, camera, host,
-            change = { block ->
-                log += "change [points=${ids(plan.points)} pinned=${ids(plan.pinned.toList())} remembered=${remembered.joinToString()}]"
-                planEdit.change(block)
-            },
+            plan, planRoute, store, prefs, host,
             setSaved = { name, id, points ->
-                log += "saved $name $id [points=${ids(plan.points)} undo=${plan.canUndo} pinned=${ids(plan.pinned.toList())}]"
+                log += "saved $name $id [points=${ids(plan.points)}]"
                 plan.setSaved(name, id, points)
             },
-            rememberPlaceName = { p, n -> remembered += "${letters[p]}=$n"; names[p] = n },
-            nearbyNames = { planEdit.nearbyNames },
             scope = scope, io = lanes.io, default = lanes.default,
         )
 
@@ -453,22 +434,34 @@ class MultiDaySliceTest {
             multiDay.opened(t, p)
         }
 
-        /** The tour is open and the route (the whole line) is calculated: the overview shows its days. */
+        /** The whole trip is the plan, as an older version kept it (no day picked): only its days are kept safe for Save. */
         fun openOverview(id: Long = tourId) {
             ui { open(db.getTour(id)!!) }
             ui { routeNow = route(line) }
             settle()
-            check(multiDay.flow.view != null) { "the overview's days were worked out" }
+        }
+
+        /** My routes' day sheet: day [n] of trip [id] worked out along its stored line (null = not). */
+        fun prepare(id: Long = tourId, n: Int = 2): MultiDaySlice.DayStart? {
+            var s: MultiDaySlice.DayStart? = null
+            val t = db.getTour(id)!!
+            val l = db.loadSegments(id).flatten().map { GeoPoint(it.lat, it.lon, it.ele) }
+            scope.launch { s = multiDay.prepareDay(t, l, n) }
+            settle()
+            return s
+        }
+
+        /** Day [n] of trip [id] is the plan, as My routes' day sheet loads it: the day opened as a route (openTour), then followed. */
+        fun rideDay(id: Long = tourId, n: Int = 2, dayRoute: List<GeoPoint>? = null) {
+            val s = prepare(id, n)!!
+            ui { open(s.standIn) }
+            ui { multiDay.followDay(s) }
+            dayRoute?.let { ui { routeNow = route(it) } }
+            settle()
         }
 
         /** The followed day 2 is the plan (the day's route is the stretch of the line from C to D). */
-        fun rideDay2() {
-            openOverview()
-            ui { multiDay.tapDay(2) }
-            ui { multiDay.rideDays() }
-            ui { routeNow = route(dayLine) }
-            settle()
-        }
+        fun rideDay2() = rideDay(dayRoute = dayLine)
 
         fun planIds() = ids(plan.points)
         fun stored(id: Long = tourId) = ids(db.getTour(id)?.waypoints?.map { GeoPoint(it.lat, it.lon) })
@@ -483,92 +476,64 @@ class MultiDaySliceTest {
 
     // ---------------------------------------------------------------- 1. a day becomes the plan
 
-    @Test fun aPickedDayBecomesThePlanInTheOrderOfTheOldBody() {
-        val app = App(); app.openOverview()
-        ui { app.multiDay.tapDay(2) }
-        assertTrue("the overview shows", app.multiDay.overview)
-        assertEquals("A..E", "ABCDE", app.planIds())
-        app.log.clear()
-        ui { app.multiDay.rideDays() }
-        assertEquals("the day is the plan", "CD", app.planIds())
-        assertEquals(listOf("D=Gasthof Post"), app.remembered)
-        // the order: the pin and the name first, then the plan's one edit, then the history forgotten, then the saved link, then the camera
-        assertEquals(listOf(
-            "change [points=ABCDE pinned=D remembered=D=Gasthof Post]",
-            "saved Drei Tage $tourId [points=CD undo=false pinned=D]",
-            "fit 31",
-        ), app.log.filter { !it.startsWith("tourMaps") })
-        assertEquals(line.subList(30, 61), app.fitted.single())
-        assertEquals("the saved link is the tour, its points the day's", listOf(C, D), app.plan.savedPoints)
-        assertEquals(tourId, app.plan.linkId); assertEquals("Drei Tage", app.plan.linkName)
-        assertFalse("the day as the plan is not unsaved", app.plan.unsaved)
-        assertFalse("no Undo across the two plans", app.plan.canUndo)
+    /**
+     * MD-2 (owner 2026-11-28): a tap on day 2 in My routes' day sheet puts exactly that day into the plan – never the whole trip
+     * first. The day's stand-in route is the trip's (its id and name: Save writes the trip, MD-3) with the day's points, names,
+     * pins; no days, no uuid (no trip of its own); followed once it is the plan, kept for a restart.
+     */
+    @Test fun aDayFromTheDaySheetIsThePlanDirectlyAndTiedToItsTrip() {
+        val app = App()
+        val s = app.prepare()!!
+        assertEquals("only the stored tour and its line were read, nothing written", emptyList<String>(), app.log.filter { it.startsWith("store.") })
+        assertEquals("the day's points", listOf(C, D), s.part.points)
+        val stand = s.standIn
+        assertEquals(tourId, stand.id); assertEquals("Drei Tage", stand.name)
+        assertEquals(listOf(null, "Gasthof Post"), stand.waypoints.map { it.name })
+        assertEquals("D is pinned", setOf(1), stand.pinned)
+        assertNull("a day is no trip", stand.days); assertEquals("", stand.uuid)
+        assertEquals("the day's stretch of the trip's line", line.subList(30, 61), s.dayLine)
+        assertEquals("nothing on the map yet", "", app.planIds())
+        ui { app.open(stand) }
+        assertFalse("opened, not yet followed", app.multiDay.flow.following)
+        ui { app.multiDay.followDay(s) }; app.settle()
+        assertEquals("CD", app.planIds())
+        assertEquals(tourId, app.plan.linkId); assertEquals(listOf(C, D), app.plan.savedPoints)
         assertTrue(app.multiDay.flow.following); assertFalse(app.multiDay.overview)
+        assertEquals("the trip's night marks by value", hotel, app.multiDay.flow.nightOf(D))
+        assertEquals("ABCDE", ids(app.multiDay.flow.day!!.whole.points))
         assertEquals(Txt.s(Res.string.multiday_day_of, "2", "3"), app.multiDay.dayLabel())
-        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), true, null), app.multiDay.dayHeadUi())
-        // the day's state is kept: a restart follows it
-        assertNotNull(prefs.planDayFollow)
-        app.settle()
+        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), true, false), app.multiDay.dayHeadUi())
+        assertEquals("u1" to 2, app.multiDay.followedDay())
+        // kept: a restart follows it
         val again = App()
         assertTrue(again.multiDay.flow.following); assertEquals("CD", again.planIds())
         assertEquals(2, again.multiDay.flow.day!!.part.first)
+        assertTrue("a followed day opens no day sheet at the start", again.shown.isEmpty())
     }
 
-    @Test fun theDaysMapsAreCheckedAtOnceOnTheDefaultLaneAndTheMissingOnesAreSaidBeforeTheStart() {
-        val app = App(); app.dayMissing = listOf(CellId(543, 362)); app.openOverview()
-        ui { app.multiDay.tapDay(2) }
-        app.log.clear()
-        ui { app.multiDay.rideDays() }
-        assertNull("nothing is known before the check ran", app.multiDay.dayMapsMissing)
-        assertEquals("the check waits on the default lane", 1, app.lanes.defEx.size)
-        app.settle()
-        assertTrue(app.log.toString(), app.log.contains("tourMaps(31)@default"))
-        assertEquals(10_000_000L, app.multiDay.dayMapsMissing)
-        assertEquals(10_000_000L, app.multiDay.dayHeadUi()!!.mapsBytes)
-        // "Laden": now, also on mobile data, the day's areas and its line; the question is gone
-        net.wifi = false
-        app.multiDay.loadDayMaps()
-        assertEquals(listOf("10-543-362 line=31 wifiWait=false"), app.loads)
-        assertNull(app.multiDay.dayMapsMissing)
-        assertEquals(setOf("10-543-362"), prefs.multiDayMapCells)
-        assertEquals("the user asked: no Wi-Fi wait kept", emptySet<String>(), prefs.multiDayWifiCells)
-    }
-
-    @Test fun aDayWhoseMapsAreAllThereSaysNothing() {
-        val app = App(); app.openOverview()
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }; app.settle()
-        assertNull(app.multiDay.dayMapsMissing)
-        app.multiDay.loadDayMaps()
-        assertTrue("nothing to load", app.loads.isEmpty())
-    }
-
-    @Test fun aDayCheckThatEndsAfterTheWayBackToAllDaysSaysNothing() {
-        val app = App(); app.dayMissing = listOf(CellId(543, 362)); app.openOverview()
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.multiDay.allDays() }
-        app.settle()
+    @Test fun aDayThatCannotBeWorkedOutGivesNothingAndAnotherPlanMeanwhileIsNotFollowed() {
+        val app = App()
+        assertNull("no such day", app.prepare(n = 4))
+        val plain = db.insertTour(TourKind.PLANNED, "Normal", "HIKE", 2, segments = listOf(line.map { TrackPoint(it.lat, it.lon, it.ele) }),
+            waypoints = listOf(GpxWaypoint(A.lat, A.lon, null), GpxWaypoint(E.lat, E.lon, null)))
+        assertNull("a route without days", app.prepare(plain))
+        val s = app.prepare()!!
+        ui { app.plan.replace(listOf(A, B)); app.plan.setSaved("Other", 99L, listOf(A, B)) }
+        ui { app.multiDay.followDay(s) }; app.settle()
         assertFalse(app.multiDay.flow.following)
-        assertNull("the day is not followed any more: no question about its maps", app.multiDay.dayMapsMissing)
+        assertTrue(problems.said("plan", Problems.Level.WARN).any { it.contains("the plan is another one now – not followed") })
     }
 
-    @Test fun rideDaysDoesNothingDuringATourWithoutAnOverviewOrWithoutAPickedDay() {
-        val app = App(); app.openOverview()
-        // nothing picked: no day
-        ui { app.multiDay.rideDays() }
-        assertEquals("ABCDE", app.planIds()); assertFalse(app.multiDay.flow.following)
-        // a tour records
-        ui { app.multiDay.tapDay(2) }; app.touringNow = true
-        ui { app.multiDay.rideDays() }
-        assertEquals("ABCDE", app.planIds()); assertFalse(app.multiDay.flow.following)
-        // the same picked day with no tour: it becomes the plan (the opposite of both)
-        app.touringNow = false
-        ui { app.multiDay.rideDays() }
-        assertEquals("CD", app.planIds()); assertTrue(app.multiDay.flow.following)
-        // a normal plan (no tour opened) has no overview
-        val normal = App()
-        ui { normal.plan.replace(listOf(A, B)); normal.plan.setSaved("x", 99, listOf(A, B)) }
-        ui { normal.multiDay.tapDay(2) }; ui { normal.multiDay.rideDays() }
-        assertEquals("AB", normal.planIds())
+    /** MD-11 (owner 2026-11-28): opening a day loads the maps of ALL days by itself – no question – and keeps them asked after a restart. */
+    @Test fun openingADayLoadsTheMapsOfAllDaysWithoutAQuestion() {
+        val app = App(); app.wholeMissing = cellsAll
+        app.rideDay2()
+        assertEquals("the whole trip's line, worked out on default, loaded on main", listOf("${cellsAll.joinToString { it.id }} line=${line.size} wifiWait=false"), app.loads)
+        assertTrue(app.log.contains("tourMaps(${line.size})@default")); assertTrue(app.log.contains("loadTourMaps@main wifiWait=false"))
+        assertEquals(cellsAll.map { it.id }.toSet(), prefs.multiDayMapCells)
+        // all there: nothing loads
+        val there = App(); there.rideDay2()
+        assertTrue(there.loads.isEmpty())
     }
 
     @Test fun aDayThatEndsBetweenPlanPointsIsItsTwoAddedEnds() {
@@ -576,9 +541,7 @@ class MultiDaySliceTest {
         val id = db.insertTour(TourKind.PLANNED, "Ohne Nacht", Activity.BIKE_TOURING.name, 2,
             segments = listOf(line.map { TrackPoint(it.lat, it.lon, it.ele) }), waypoints = listOf(GpxWaypoint(A.lat, A.lon, null), GpxWaypoint(E.lat, E.lon, null)),
             distance = 90_000.0, uuid = "u3", days = MultiDay(3))
-        val app = App(); app.openOverview(id)
-        ui { app.multiDay.tapDay(2) }
-        ui { app.multiDay.rideDays() }
+        val app = App(); app.rideDay(id)
         val part = app.multiDay.flow.day!!.part
         assertNotNull(part.startAdded); assertNotNull(part.endAdded)
         assertEquals("the day is its two added ends", listOf(part.startAdded!!, part.endAdded!!), app.plan.points.toList())
@@ -783,14 +746,13 @@ class MultiDaySliceTest {
     }
 
     @Test fun withoutAFollowedDaySaveIsTheOrdinaryOneAndWritesTheNormalPlan() {
-        val app = App(); app.rideDay2()
-        ui { app.multiDay.allDays() }; app.settle()
+        val app = App(); app.openOverview()
         assertFalse(app.multiDay.flow.following)
         app.replaced = 0; app.log.clear()
         ui { assertFalse("no day: the view model saves as always", app.multiDay.overwriteWhole("Drei Tage", null)) }
         assertEquals("nothing written by the multi-day slice", 0, app.replaced)
         assertTrue(app.log.none { it.startsWith("store.") })
-        // the ordinary save writes the whole tour's plan (the overview's days with it)
+        // the ordinary save writes the whole tour's plan (an older version's whole-trip state: its days with it)
         app.saveAs("Drei Tage")
         assertEquals("ABCDE", app.stored())
         assertEquals(days, db.getTour(tourId)!!.days)
@@ -798,10 +760,7 @@ class MultiDaySliceTest {
 
     @Test fun theNewestPointsAreWrittenBackBeforeSaveWritesEvenWhenNoCollectorSawThem() {
         val app = App(started = false)
-        ui { app.open(db.getTour(tourId)!!) }; ui { app.routeNow = route(line) }
-        app.multiDay.flow.show(app.multiDay.flow.compute(app.multiDay.flow.plan(pts, Activity.BIKE_TOURING, 2, setOf(3), mapOf(3 to "Gasthof Post"))!!, line,
-            app.planRoute.planFactors(), "r"))
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
+        app.rideDay()
         ui { app.planEdit.change { add(1, X) } }; app.settle()
         assertEquals("no collector runs: the flow has not seen the edit", "ABCDE", ids(app.multiDay.flow.day!!.whole.points))
         ui { app.multiDay.overwriteWhole("Drei Tage", null) }; app.settle()
@@ -831,7 +790,7 @@ class MultiDaySliceTest {
         assertFalse("the day's route points are not (there was none)", dayLine[3] in l)
     }
 
-    // ---------------------------------------------------------------- 4. a lost day state reloads the whole tour
+    // ---------------------------------------------------------------- 4. a lost day state: the plan is unlinked, the day sheet opens
 
     /** A restart after the day's state was damaged: the plan is the day's points, still linked to the tour. */
     private fun lostDayApp(): Pair<App, List<GeoPoint>> {
@@ -840,29 +799,28 @@ class MultiDaySliceTest {
         return App(started = false) to listOf(C, D)
     }
 
-    @Test fun aLostDayStateReloadsTheWholeTourNeverADayOverTheTour() {
+    @Test fun aLostDayStateUnlinksThePlanAndOpensTheDaySheetNeverADayOverTheTour() {
         val (first, day) = lostDayApp()
         assertEquals(day, first.plan.points.toList())
         assertEquals("the plan is the day's, linked to the tour", tourId, first.plan.linkId)
         first.multiDay.start(); first.settle()
         assertTrue("the loss is known", first.multiDay.flow.dayLost)
-        // the whole stored tour is the plan again – read on io, opened on main, once
-        assertEquals(listOf("store.getTour@io", "reopen $tourId@main"), first.log.filter { it.startsWith("store.") || it.startsWith("reopen") })
-        assertEquals("ABCDE", first.planIds())
-        assertTrue("the overview of the tour", first.multiDay.flow.overview)
-        assertTrue(problems.said("plan", Problems.Level.WARN).any { it.contains("the whole tour \"Drei Tage\" is loaded again") })
-        // a Save of what is on the map now writes the whole tour (five points), never a day (two) over it
-        first.settle(); ui { first.routeNow = route(line) }; first.settle()
-        first.saveAs("Drei Tage")
+        // read on io, then on main: the plan unlinked (its points stay), the trip's day sheet asked for – never the whole trip as the plan (MD-0)
+        assertEquals(listOf("store.getTour@io", "saved null -1 [points=CD]", "days $tourId@main"),
+            first.log.filter { it.startsWith("store.") || it.startsWith("days") || it.startsWith("saved") })
+        assertEquals("CD", first.planIds()); assertEquals(-1L, first.plan.linkId)
+        assertTrue(problems.said("plan", Problems.Level.WARN).any { it.contains("the plan is unlinked from \"Drei Tage\"") })
+        // a Save of what is on the map now makes a route of its own, never a day (two points) over the trip (five)
+        first.saveAs("Mein Tag")
         assertEquals("ABCDE", first.stored())
-        assertEquals("one route", listOf(tourId), first.planned().map { it.id })
+        assertEquals("the trip and the day's own route", 2, first.planned().size)
     }
 
     @Test fun aLostDayStateDuringATourKeepsThePlanAndSaveWritesACopyNotTheTour() {
         val (app, day) = lostDayApp()
         app.touringNow = true
         app.multiDay.start(); app.settle()
-        assertTrue("the tour was read, then nothing opened", app.log.contains("store.getTour@io") && app.reopened.isEmpty())
+        assertTrue("the tour was read, then nothing opened", app.log.contains("store.getTour@io") && app.shown.isEmpty())
         assertEquals(day, app.plan.points.toList())
         assertTrue(problems.said("plan", Problems.Level.WARN).any { it.contains("a tour records – plan kept, Save writes a copy") })
         app.touringNow = false
@@ -876,16 +834,18 @@ class MultiDaySliceTest {
         val first = App(); first.rideDay2()
         prefs.planDayFollow = null
         val missing = App(); missing.settle()
-        assertEquals("ABCDE", missing.planIds()); assertEquals(1, missing.reopened.size)
-        // the tour's own points (opened, no day): the overview, nothing reloaded
+        assertEquals("CD", missing.planIds()); assertEquals(listOf(tourId), missing.shown); assertEquals(-1L, missing.plan.linkId)
+        // the trip's own points kept as the plan by an older version: not unlinked (Save keeps its days), its day sheet opens
         val whole = App(); whole.openOverview(); whole.log.clear()
         val restartWhole = App(); restartWhole.settle()
-        assertTrue("the tour itself is no day", restartWhole.reopened.isEmpty())
+        assertEquals("the whole trip: its day sheet", listOf(tourId), restartWhole.shown)
+        assertEquals("still linked – the trip is no day", tourId, restartWhole.plan.linkId)
+        assertTrue(problems.said("plan", Problems.Level.WARN).any { it.contains("is the plan (kept by an older version) – its day sheet opens") })
         // a followed day (its state is there): nothing reloaded
         prefs.planMultiDay = null; prefs.planDayFollow = null
         val dayApp = App(); dayApp.rideDay2()
         val restartDay = App(); restartDay.settle()
-        assertTrue(restartDay.reopened.isEmpty()); assertTrue(restartDay.multiDay.flow.following)
+        assertTrue(restartDay.shown.isEmpty()); assertTrue(restartDay.multiDay.flow.following)
         assertTrue("a followed day is known: the tour is not even read", restartDay.log.none { it.startsWith("store.getTour") })
     }
 
@@ -914,255 +874,68 @@ class MultiDaySliceTest {
         ui { unlinked.plan.replace(listOf(C, D)); unlinked.plan.setSaved("Drei Tage", tourId, listOf(C, D)) }
         db.setDeleted(tourId, 5L)
         val e = App(); e.settle()
-        assertTrue("deleted: read, not opened", e.log.contains("store.getTour@io") && e.reopened.isEmpty())
+        assertTrue("deleted: read, not opened", e.log.contains("store.getTour@io") && e.shown.isEmpty())
         db.setDeleted(tourId, null)
         ui { unlinked.plan.replace(listOf(C, D)) }
         val plain = db.insertTour(TourKind.PLANNED, "Normal", "HIKE", 2, waypoints = listOf(GpxWaypoint(C.lat, C.lon, null), GpxWaypoint(D.lat, D.lon, null)))
         ui { unlinked.plan.setSaved("Normal", plain, listOf(C, D)) }
         val f = App(); f.settle()
-        assertTrue("no days: the plan stays", f.log.contains("store.getTour@io") && f.reopened.isEmpty())
+        assertTrue("no days: the plan stays", f.log.contains("store.getTour@io") && f.shown.isEmpty())
     }
 
     @Test fun aTourThatCannotBeReadAtTheStartIsReportedAndLeavesThePlan() {
         val (app, day) = lostDayApp()
         app.failOn += "getTour"
         app.multiDay.start(); app.settle()
-        assertEquals(day, app.plan.points.toList()); assertTrue(app.reopened.isEmpty())
+        assertEquals(day, app.plan.points.toList()); assertTrue(app.shown.isEmpty())
         assertTrue(problems.said("db", Problems.Level.WARN).any { it.contains("Saved route not read at the start – no multi-day check") })
     }
 
-    // ---------------------------------------------------------------- 5. "‹ Alle Tage": the whole tour is the plan again
+    // ---------------------------------------------------------------- 5. "‹ Alle Tage": back to the trip's day sheet (MD-2)
 
-    @Test fun allDaysPutsTheWholeTourWithTheDaysEditsBackInTheOrderOfTheOldBody() {
-        val app = App(); app.rideDay2()
-        ui { app.planEdit.change { add(1, X) } }; app.settle()
-        app.log.clear(); app.remembered.clear()
-        ui { app.multiDay.allDays() }
-        assertEquals("ABCXDE", app.planIds())
-        assertEquals(listOf(
-            "change [points=CXD pinned=D remembered=D=Gasthof Post]",
-            "saved Drei Tage $tourId [points=ABCXDE undo=false pinned=D]",
-        ), app.log.filter { it.startsWith("change") || it.startsWith("saved") })
-        assertEquals("the saved link is the tour as it was opened: the plan is unsaved (the day's edit)", listOf(A, B, C, D, E), app.plan.savedPoints)
-        assertTrue(app.plan.unsaved)
-        assertFalse("no Undo across the two plans", app.plan.canUndo)
-        assertFalse(app.multiDay.flow.following)
-        assertEquals("the day's rows stay picked", 2..2, app.multiDay.flow.selected)
-        assertEquals("the marks are by value on the new indices", NightMark.OVERNIGHT, app.multiDay.flow.nightOf(C))
-        assertEquals(hotel, app.multiDay.flow.nightOf(D))
-        assertTrue(problems.traced("plan").any { it.contains("back to all days (6 points)") })
-        assertEquals("pinned D", "D", ids(app.plan.pinned.toList()))
-    }
-
-    @Test fun allDaysTakesThePinsOfTheWholeTourBackThatTheDaysEditsForgot() {
-        val id = insertTour(uuid = "u4", name = "Mit Pins", pinned = setOf(1, 3))
-        val app = App(); app.openOverview(id)
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        app.settle()
-        ui { app.planEdit.change { add(1, X) } }; app.settle()
-        assertEquals("B is not in the day and nothing can bring it back: its pin is forgotten by the edit", setOf(D), app.plan.pinned)
-        app.atRecalc.clear()
-        ui { app.multiDay.allDays() }
-        assertEquals("the whole tour's pins are all back", setOf(B, D), app.plan.pinned)
-        assertEquals("the route run of the whole tour already sees both pins", listOf("points=ABCXDE pinned=BD"), app.atRecalc)
-    }
-
-    @Test fun allDaysForgetsTheQuestionAboutTheDaysMaps() {
-        val app = App(); app.dayMissing = cellsDay; app.openOverview()
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }; app.settle()
-        assertEquals("the day's maps are missing", 10_000_000L, app.multiDay.dayMapsMissing)
-        ui { app.multiDay.allDays() }
-        assertNull("the whole tour is the plan: no question about a day's maps", app.multiDay.dayMapsMissing)
-        app.multiDay.loadDayMaps()
-        assertTrue("and nothing left to load", app.loads.isEmpty())
-    }
-
-    @Test fun pickingADayAgainAfterTheTourWasOpenedAgainForgetsTheEarlierDaysMapQuestion() {
-        val app = App(); app.dayMissing = cellsDay; app.openOverview()
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }; app.settle()
-        assertEquals("day 2's maps are missing", 10_000_000L, app.multiDay.dayMapsMissing)
-        // the tour is opened again from My routes (not "Alle Tage"): the overview, the question still stands
-        app.openOverview()
-        assertFalse(app.multiDay.flow.following)
-        app.dayMissing = emptyList()
-        ui { app.multiDay.tapDay(1) }; ui { app.multiDay.rideDays() }
-        app.settle()
-        assertNull("day 1's maps are all there: no question", app.multiDay.dayMapsMissing)
-        app.multiDay.loadDayMaps()
-        assertTrue("nothing of day 2 is loaded for day 1", app.loads.isEmpty())
-    }
-
-    @Test fun allDaysDoesNothingDuringATourOrWithoutAFollowedDay() {
-        val none = App(); none.openOverview()
-        ui { none.multiDay.allDays() }
-        assertEquals("ABCDE", none.planIds())
-        val app = App(); app.rideDay2()
-        app.touringNow = true
-        ui { app.multiDay.allDays() }
-        assertEquals("a tour records: the day stays", "CD", app.planIds()); assertTrue(app.multiDay.flow.following)
-        app.touringNow = false
-        ui { app.multiDay.allDays() }
-        assertEquals("ABCDE", app.planIds())
-    }
-
-    // ---------------------------------------------------------------- 6. the plan leaves the map: the whole tour goes under Zuletzt
-
-    @Test fun aFollowedDaysUnsavedChangeKeepsTheWholeTourUnderZuletztNotTheDayAlone() {
+    @Test fun allDaysAsksForTheTripsDaySheetAndKeepsTheDayAsThePlan() {
         val app = App(); app.rideDay2()
         ui { app.planEdit.change { add(1, X) } }; app.settle()
         app.log.clear()
-        ui { app.planEdit.clearPlan() }; app.settle()
-        val draft = app.drafts().single()
-        assertEquals("the tour's name, the whole tour's points", "Drei Tage", draft.name)
-        assertEquals("ABCXDE", ids(draft.waypoints.map { GeoPoint(it.lat, it.lon) }))
-        assertEquals("with its days and pins", MultiDay(3, nights = mapOf(2 to NightMark.OVERNIGHT, 4 to hotel), description = "Drei Tage"), draft.days)
-        assertEquals(setOf(4), draft.pinned)
-        assertEquals("the activity and the level of the plan", Activity.BIKE_TOURING.name to 2, draft.activity to draft.sac)
-        assertEquals("the saved tour is as it was", "ABCDE", app.stored())
-        assertTrue("the list is read again after the write", app.log.indexOf("store.insertDraftPlanned@main") < app.log.indexOf("refresh@main"))
-        assertTrue(problems.traced("plan").any { it.contains("kept under Zuletzt") })
-        assertEquals("one draft only", 1, app.drafts().size)
+        ui { app.multiDay.allDays() }
+        assertEquals(listOf(tourId), app.shown)
+        assertEquals("the day stays the plan, never the whole trip", "CXD", app.planIds())
+        assertTrue(app.multiDay.flow.following)
+        // without a followed day (the plan is another route now): nothing
+        ui { app.plan.setSaved("Other", 99L, listOf(C, D)) }
+        ui { app.multiDay.allDays() }
+        assertEquals(listOf(tourId), app.shown)
     }
 
-    @Test fun theNewestPointsAreKeptUnderZuletztEvenWhenNoCollectorSawThem() {
-        val app = App(started = false)
-        ui { app.open(db.getTour(tourId)!!) }; ui { app.routeNow = route(line) }
-        app.multiDay.flow.show(app.multiDay.flow.compute(app.multiDay.flow.plan(pts, Activity.BIKE_TOURING, 2, setOf(3), mapOf(3 to "Gasthof Post"))!!, line,
-            app.planRoute.planFactors(), "r"))
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.planEdit.change { add(1, X) } }
-        assertEquals("no collector runs: the flow has not seen the edit", "ABCDE", ids(app.multiDay.flow.day!!.whole.points))
-        ui { app.planEdit.clearPlan() }; app.settle()
-        assertEquals("the draft has the edit", "ABCXDE", ids(app.drafts().single().waypoints.map { GeoPoint(it.lat, it.lon) }))
-    }
+    // ---------------------------------------------------------------- 6. MD-4: start or goal moved – Save makes the day its own tour
 
-    @Test fun aFollowedDayWithoutChangesLeavesNothingUnderZuletzt() {
+    @Test fun aDayWithItsGoalMovedIsSavedAsItsOwnTourTheTripStays() {
         val app = App(); app.rideDay2()
-        assertFalse(app.plan.unsaved)
-        ui { app.planEdit.clearPlan() }; app.settle()
-        assertTrue(app.drafts().isEmpty())
-        assertTrue(app.log.none { it.startsWith("store.insertDraftPlanned") })
+        assertFalse(app.multiDay.leavesTrip())
+        ui { app.planEdit.change { set(lastIndex, X) } }; app.settle()
+        assertTrue(app.multiDay.leavesTrip())
+        assertTrue("the plan sheet says so before saving", app.multiDay.dayHeadUi()!!.leavesTrip)
+        assertNull("the recording no longer counts for the day", app.multiDay.followedDay())
+        app.saveAs("Mein Tag")
+        assertEquals("the trip as it was", "ABCDE", app.stored())
+        val own = app.planned().single { it.id != tourId }
+        assertEquals("Mein Tag", own.name); assertEquals("CX", ids(own.waypoints.map { GeoPoint(it.lat, it.lon) }))
+        assertNull("a standalone tour, no days", own.days)
+        assertEquals(Txt.s(Res.string.multiday_own_tour), app.board.mapNote?.text)
+        assertFalse("linked to its own tour now: no day of the trip", app.multiDay.flow.following)
     }
 
-    @Test fun aFailedKeepIsReportedAndTheDayAloneIsKeptInsteadNothingIsLost() {
+    /** MD-1: a followed day leaving the map unsaved goes under Zuletzt as the day – never the whole trip. */
+    @Test fun aFollowedDaysUnsavedChangeGoesUnderZuletztAsTheDay() {
         val app = App(); app.rideDay2()
         ui { app.planEdit.change { add(1, X) } }; app.settle()
-        app.failOn += "insertDraftPlanned"
-        ui { app.planEdit.clearPlan() }; app.settle()
-        assertTrue(problems.said("db", Problems.Level.ERROR).any { it.contains("The multi-day tour with the day's change could not be kept under Zuletzt") })
-        assertEquals("the ordinary keep took the day: three points", 3, app.drafts().single().waypoints.size)
+        ui { app.save.keepAsDraft("replaced") }; app.settle()
+        assertEquals("CXD", ids(app.drafts().single().waypoints.map { GeoPoint(it.lat, it.lon) }))
+        assertNull(app.drafts().single().days)
+        assertEquals("the trip untouched", "ABCDE", app.stored())
     }
 
-    // ---------------------------------------------------------------- 7. the maps question (§7)
-
-    @Test fun theFirstOpeningAsksOnceWhenMapsAreMissingWithTheSizesOfTheWholeTourAndTheFirstDay() {
-        val app = App(); app.wholeMissing = cellsAll; app.dayMissing = cellsDay
-        app.openOverview()
-        val ask = app.multiDay.tourMapsAsk!!
-        assertEquals("u1", ask.tourUuid)
-        assertEquals(30_000_000L, ask.wholeBytes); assertEquals(10_000_000L, ask.dayBytes)
-        assertEquals(1, ask.day); assertTrue("on Wi-Fi", ask.onWifi)
-        assertEquals(cellsAll, ask.whole); assertEquals(cellsDay, ask.dayCells)
-        assertEquals(line, ask.line); assertEquals(31, ask.dayLine.size)
-        assertTrue(app.log.toString(), app.log.containsAll(listOf("tourMaps(91)@default", "tourMaps(31)@default")))
-        // not asked again while it is open, however often the days are worked out again
-        val calls = app.tourMapsCalls
-        ui { app.routeNow = route(line).copy(durationS = 7_200.0) }; app.settle()
-        assertEquals("the days were worked out again", 7_200.0, (app.multiDay.flow.view!!.key as PlannedRoute).durationS, 0.0)
-        assertEquals(calls, app.tourMapsCalls)
-        assertEquals(ask, app.multiDay.tourMapsAsk)
-        // the picked day is the one the question is about
-        assertTrue(problems.traced("cells").any { it.contains("asking once") })
-    }
-
-    @Test fun theQuestionKnowsMobileDataAndAPickedDay() {
-        net.wifi = false
-        val app = App(); app.wholeMissing = cellsAll; app.dayMissing = cellsDay
-        ui { app.open(db.getTour(tourId)!!) }; ui { app.multiDay.tapDay(2) }; ui { app.routeNow = route(line) }; app.settle()
-        val ask = app.multiDay.tourMapsAsk!!
-        assertFalse(ask.onWifi); assertEquals(2, ask.day)
-        assertEquals("day 2's line", 31, ask.dayLine.size)
-    }
-
-    @Test fun noMissingMapsMeansNoQuestionAndTheTourIsMarkedAsked() {
-        val app = App(); app.openOverview()
-        assertNull(app.multiDay.tourMapsAsk)
-        assertEquals(setOf("u1"), prefs.multiDayMapsAsked)
-        // asked once: no second look at the maps
-        val calls = app.tourMapsCalls
-        app.wholeMissing = cellsAll
-        ui { app.routeNow = route(line).copy(durationS = 7_200.0) }; app.settle()
-        assertEquals("the days were worked out again", 7_200.0, (app.multiDay.flow.view!!.key as PlannedRoute).durationS, 0.0)
-        assertEquals(calls, app.tourMapsCalls); assertNull(app.multiDay.tourMapsAsk)
-    }
-
-    @Test fun aTourWithoutAnIdentityOrWithMapsNotWorkedOutAsksNothing() {
-        val noUuid = App(); noUuid.wholeMissing = cellsAll
-        val id = insertTour(uuid = "", name = "Ohne")
-        noUuid.openOverview(id)
-        assertNull(noUuid.multiDay.tourMapsAsk); assertEquals(0, noUuid.tourMapsCalls)
-        val broken = App(); broken.wholeMissing = cellsAll; broken.mapsFail = true
-        broken.openOverview(insertTour(uuid = "u2", name = "Zwei"))
-        assertNull("not worked out (reported by the maps flow): no question, no mark", broken.multiDay.tourMapsAsk)
-        assertEquals(emptySet<String>(), prefs.multiDayMapsAsked)
-        assertTrue(broken.tourMapsCalls > 0)
-    }
-
-    private fun asked(): App { val app = App(); app.wholeMissing = cellsAll; app.dayMissing = cellsDay; app.openOverview(); return app }
-
-    @Test fun answeringTheWholeTourLoadsItsAreasThenKeepsThemAndNeverAsksAgain() {
-        val app = asked(); app.log.clear()
-        ui { app.multiDay.answerTourMaps(MultiDaySlice.TourMapsAnswer.WHOLE) }
-        assertNull("the question is gone", app.multiDay.tourMapsAsk)
-        assertEquals(setOf("u1"), prefs.multiDayMapsAsked)
-        assertEquals(listOf("10-543-361, 10-543-362, 10-544-362 line=91 wifiWait=false"), app.loads)
-        assertEquals("the question closed and counted first, the areas loaded, kept after", listOf("loadTourMaps wifiWait=false [prefs cells=0 wifi=0 ask=null asked=[u1]]"), app.log.filter { it.startsWith("loadTourMaps") })
-        assertEquals(setOf("10-543-361", "10-543-362", "10-544-362"), prefs.multiDayMapCells)
-        assertEquals(emptySet<String>(), prefs.multiDayWifiCells)
-        assertTrue(problems.traced("cells").any { it.contains("Multi-day tour maps: whole") })
-    }
-
-    @Test fun onMobileDataTheAreasWaitForWifiAndAreKeptSo() {
-        net.wifi = false
-        val app = asked()
-        assertFalse("asked on mobile data", app.multiDay.tourMapsAsk!!.onWifi)
-        net.wifi = true // the phone is on Wi-Fi when the answer comes: the question's own state counts
-        ui { app.multiDay.answerTourMaps(MultiDaySlice.TourMapsAnswer.WHOLE) }
-        assertEquals(listOf("10-543-361, 10-543-362, 10-544-362 line=91 wifiWait=true"), app.loads)
-        assertEquals(setOf("10-543-361", "10-543-362", "10-544-362"), prefs.multiDayMapCells)
-        assertEquals("those that wait for Wi-Fi are kept apart", setOf("10-543-361", "10-543-362", "10-544-362"), prefs.multiDayWifiCells)
-        assertTrue(problems.traced("cells").any { it.contains("(mobile data: wait for Wi-Fi)") })
-    }
-
-    @Test fun onlyTheDayLoadsTheDaysAreasAndItsLine() {
-        val app = asked()
-        ui { app.multiDay.answerTourMaps(MultiDaySlice.TourMapsAnswer.DAY) }
-        assertEquals(listOf("10-543-362 line=31 wifiWait=false"), app.loads)
-        assertEquals(setOf("10-543-362"), prefs.multiDayMapCells)
-    }
-
-    @Test fun laterLoadsNothingButCountsAsAnswered() {
-        val app = asked()
-        ui { app.multiDay.answerTourMaps(MultiDaySlice.TourMapsAnswer.LATER) }
-        assertTrue(app.loads.isEmpty()); assertEquals(emptySet<String>(), prefs.multiDayMapCells)
-        assertEquals("the question is not asked again", setOf("u1"), prefs.multiDayMapsAsked)
-        assertNull(app.multiDay.tourMapsAsk)
-        val calls = app.tourMapsCalls
-        ui { app.routeNow = route(line).copy(durationS = 7_200.0) }; app.settle()
-        assertEquals("the days were worked out again", 7_200.0, (app.multiDay.flow.view!!.key as PlannedRoute).durationS, 0.0)
-        assertNull("the days are worked out again, the maps are still missing: no second question", app.multiDay.tourMapsAsk)
-        assertEquals("and not even looked at", calls, app.tourMapsCalls)
-        // after a restart the same
-        val again = App(); again.wholeMissing = cellsAll; again.openOverview()
-        assertNull(again.multiDay.tourMapsAsk)
-    }
-
-    @Test fun anAnswerWithNoQuestionOpenDoesNothing() {
-        val app = App(); app.openOverview()
-        ui { app.multiDay.answerTourMaps(MultiDaySlice.TourMapsAnswer.WHOLE) }
-        assertTrue(app.loads.isEmpty()); assertEquals(setOf("u1"), prefs.multiDayMapsAsked)
-        assertEquals(emptySet<String>(), prefs.multiDayMapCells)
-    }
+    // ---------------------------------------------------------------- 7. the kept map areas
 
     @Test fun theKeptAreasAreAskedForAgainAfterARestartAndABadEntryDoesNotStopTheStart() {
         prefs.multiDayMapCells = setOf("10-543-361", "garbage", "10-543-362"); prefs.multiDayWifiCells = setOf("10-543-362")
@@ -1180,9 +953,10 @@ class MultiDaySliceTest {
         val first = App(started = false); first.cellsFail = true
         first.multiDay.start(); first.settle()
         assertTrue(problems.said("cells", Problems.Level.WARN).any { it.contains("Kept multi-day map areas not restored") })
-        // the write-back collector and the overview's days were started after it
-        ui { first.open(db.getTour(tourId)!!) }; ui { first.routeNow = route(line) }; first.settle()
-        assertNotNull(first.multiDay.flow.view)
+        // the write-back collector was started after it
+        first.rideDay2()
+        ui { first.planEdit.change { add(1, X) } }; first.settle()
+        assertEquals("ABCXDE", ids(first.multiDay.flow.day!!.whole.points))
     }
 
     // ---------------------------------------------------------------- 8. "Karten fehlen" in My routes
@@ -1217,101 +991,19 @@ class MultiDaySliceTest {
 
     // ---------------------------------------------------------------- 9. what the screens show
 
-    @Test fun theOverviewsRowsShowFromToOnlyWhereBothPlacesAreKnown() {
-        val app = App(); app.openOverview()
-        ui { app.multiDay.tapDay(2) }
-        val shown = app.multiDay.daysUi()!!
-        assertEquals("Drei Tage", shown.name); assertEquals(3, shown.count); assertEquals(2..2, shown.selected)
-        assertEquals(listOf(1, 2, 3), shown.rows.map { it.n })
-        assertEquals("no name at the start or the first end: no second line, no km; the hotel at the only known end shows",
-            listOf(null, com.onpath.app.routing.DayRowText.places(null, "Gasthof Post", toIsHotel = true),
-                com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true)), shown.rows.map { it.places })
-        app.names[A] = "Start"; app.names[C] = "Bad Tölz"
-        val named = app.multiDay.daysUi()!!.rows
-        assertEquals("Start → Bad Tölz", named[0].places)
-        assertEquals("a stop with a name of its own ends day 2 and starts day 3", "Bad Tölz → Gasthof Post", named[1].places)
-        assertEquals("the finish has no name: day 3 starts at the hotel",
-            com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true), named[2].places)
-        assertEquals("the night of day 1 is a night out, day 2's a hotel", listOf(com.onpath.app.routing.DayEndKind.OVERNIGHT, com.onpath.app.routing.DayEndKind.HOTEL, null),
-            shown.rows.map { it.end })
-        assertEquals(2, shown.borders.size)
-        assertEquals(line, shown.profile)
-    }
-
-    @Test fun aHotelsNameIsItsEndsPlaceEvenWhenTheStopHasNoName() {
-        val app = App(); app.openOverview()
-        app.names.remove(D); app.names[C] = "Bad Tölz"; app.names[E] = "Ziel"
-        val rows = app.multiDay.daysUi()!!.rows
-        assertEquals("Bad Tölz → Gasthof Post", rows[1].places)
-        assertEquals("Gasthof Post → Ziel", rows[2].places)
-    }
-
-    @Test fun aPlainStopAtTheOnlyKnownEndStaysWithoutASecondLine() {
-        val app = App(); app.openOverview()
-        app.names.remove(D); app.names[A] = "Start"
-        val rows = app.multiDay.daysUi()!!.rows
-        assertNull("day 1 knows only its start, and that is no hotel", rows[0].places)
-    }
-
-    @Test fun theDayEndsAreNamedFromTheOfflineIndexOnceAndNeverTwiceAtTheSameTime() {
-        val app = App(); app.openOverview()
-        app.multiDay.daysUi()
-        assertEquals("the index is opened at once, on main", listOf("endNamer@main"), app.log.filter { it.startsWith("endNamer") })
-        app.multiDay.daysUi()
-        assertEquals("a second look while it runs starts no second lookup", 1, app.namerCalls)
-        assertEquals("the names are read on io, held", 1, app.lanes.ioEx.size)
-        app.endNames[C] = "Bad Tölz"; app.endNames[A] = "Start"
-        app.settle()
-        val after = app.multiDay.daysUi()!!
-        assertEquals("the day's start and end are named", "Start → Bad Tölz", after.rows[0].places)
-        assertEquals("and the next day starts there", "Bad Tölz → Gasthof Post", after.rows[1].places)
-        assertEquals("an end the index does not know: no „von – nach“, only the hotel the day starts at",
-            com.onpath.app.routing.DayRowText.places("Gasthof Post", null, fromIsHotel = true), after.rows[2].places)
-        app.settle()
-        assertEquals("every end has an answer now (even an empty one): nothing is looked up again", 1, app.namerCalls)
-    }
-
-    @Test fun anIndexThatCannotBeOpenedIsReportedAndTheRowsHaveNoPlacesAndItIsTriedAgainLater() {
-        val app = App(); app.indexFails = true; app.openOverview()
-        app.multiDay.daysUi(); app.settle()
-        assertEquals(1, app.namerCalls)
-        assertTrue(problems.said("plan", Problems.Level.INFO).any { it.contains("No place index for the day ends; their rows without places") })
-        val rows = app.multiDay.daysUi()!!.rows
-        assertNull("no names, no second line", rows[0].places)
-        app.settle()
-        assertEquals("tried again by the next look", 2, app.namerCalls)
-    }
-
-    @Test fun theMapShowsDayEndsOnlyInPlanAndWhileTheOverviewShows() {
-        val app = App(); app.openOverview()
-        ui { app.multiDay.tapDay(2) }
-        val (ends, band) = app.multiDay.dayEndsOnMap()
-        assertEquals(2, ends.size); assertNotNull(band)
-        assertEquals("day 2's band runs from the first end to the second", line.subList(30, 61), band)
-        app.modeNow = AppMode.NAVIGATE
-        assertEquals(emptyList<Any>() to null, app.multiDay.dayEndsOnMap())
-        app.modeNow = AppMode.PLAN
-        ui { app.multiDay.tapDay(2) } // picked again: none picked
-        assertNull(app.multiDay.dayEndsOnMap().second)
-        assertEquals(2, app.multiDay.dayEndsOnMap().first.size)
-        // a followed day: no overview, no ends
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        assertEquals(emptyList<Any>() to null, app.multiDay.dayEndsOnMap())
-    }
-
     @Test fun theDayHeadCanLeaveOnlyWhenNoTourRuns() {
         val app = App(); app.rideDay2()
         assertTrue(app.multiDay.dayHeadUi()!!.canLeave)
         app.touringNow = true
         assertFalse(app.multiDay.dayHeadUi()!!.canLeave)
         app.touringNow = false
-        ui { app.multiDay.allDays() }
+        ui { app.plan.setSaved("Other", 99L, listOf(C, D)) }
         assertNull("no day, no head", app.multiDay.dayHeadUi())
     }
 
     @Test fun aNormalPlanShowsNothingOfMultiDay() {
         val app = App()
-        assertNull(app.multiDay.daysUi()); assertNull(app.multiDay.dayHeadUi()); assertNull(app.multiDay.daysFor(listOf(A, B)))
+        assertNull(app.multiDay.dayHeadUi()); assertNull(app.multiDay.daysFor(listOf(A, B))); assertFalse(app.multiDay.leavesTrip())
         assertFalse(app.multiDay.overview)
         assertEquals(days, App().also { it.openOverview() }.multiDay.daysFor(pts))
         assertNull("a tour that is not the plan any more has no days of its own", App().also { it.openOverview(); ui { it.plan.replace(listOf(GeoPoint(1.0, 1.0), GeoPoint(2.0, 2.0))) } }.multiDay.daysFor(listOf(A, B)))
@@ -1320,8 +1012,8 @@ class MultiDaySliceTest {
     // ---------------------------------------------------------------- detour points belong to a profile (review finding 2)
 
     /**
-     * A saved multi-day tour HIKE T2 with detour points: T3 in the overview, "Tag 2 fahren", back to T2, Save – the tour keeps
-     * its detour points (they lie on the T2 line; under T3 they only do not count).
+     * A saved multi-day tour HIKE T2 with detour points: day 2 picked, T3, back to T2, Save – the tour keeps its detour points
+     * (they lie on the T2 line; under T3 they only do not count).
      */
     @Test fun aDayPickedUnderAnotherProfileKeepsTheToursDetourPointsForItsOwn() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
@@ -1329,11 +1021,9 @@ class MultiDaySliceTest {
         routePrefs.activity = Activity.HIKE
         val id = insertTour(activity = Activity.HIKE, anchors = anchors)
         val app = App()
-        app.openOverview(id)
+        app.rideDay(id, dayRoute = dayLine)
         assertEquals(anchors, db.getTour(id)!!.anchors)
-        ui { app.planRoute.selectSac(3) }
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.routeNow = route(dayLine) }; app.settle()
+        ui { app.planRoute.selectSac(3) }; app.settle()
         ui { app.planRoute.selectSac(2) }; app.settle()
         assertEquals("the day's plan counts them again on T2", 2, app.plan.anchorsFor(Activity.HIKE, 2).size)
         assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
@@ -1343,7 +1033,7 @@ class MultiDaySliceTest {
 
     /**
      * "Ganz neu berechnen" on a followed day (review of W3): the day's plan keeps its points and loses its detour points – that must
-     * reach the whole tour (back to "Alle Tage", Speichern), and so must the Undo of it.
+     * reach the whole tour (Speichern writes it), and so must the Undo of it.
      */
     @Test fun aClearAndItsUndoOnAFollowedDayReachTheWholeTour() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
@@ -1351,17 +1041,12 @@ class MultiDaySliceTest {
         routePrefs.activity = Activity.HIKE
         val id = insertTour(activity = Activity.HIKE, anchors = anchors)
         val app = App()
-        app.openOverview(id)
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.routeNow = route(dayLine) }; app.settle()
+        app.rideDay(id, dayRoute = dayLine)
         assertTrue("the day carries its detour points", app.plan.hasDetours(Activity.HIKE, 2))
         ui { app.plan.clearDetours() }; app.settle()
         assertEquals("the whole tour heard the clear", emptyMap<Int, com.onpath.app.routing.Anchors>(), app.multiDay.flow.day!!.whole.anchors)
         ui { app.plan.replace(app.plan.undo()!!) }; app.settle()
         assertEquals("and the undo of it", anchors, app.multiDay.flow.day!!.whole.anchors)
-        ui { app.plan.clearDetours() }; app.settle()
-        ui { app.multiDay.allDays() }
-        assertEquals("all days: the tour without its detour points", emptyMap<Int, com.onpath.app.routing.Anchors>(), app.plan.anchorSet.anchors)
     }
 
     /** The same under the other profile: saved as T3, the T2 points do not belong to it – none are written, never the wrong ones. */
@@ -1371,18 +1056,17 @@ class MultiDaySliceTest {
         routePrefs.activity = Activity.HIKE
         val id = insertTour(activity = Activity.HIKE, anchors = anchors)
         val app = App()
-        app.openOverview(id)
-        ui { app.planRoute.selectSac(3) }
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.routeNow = route(dayLine) }; app.settle()
+        app.rideDay(id, dayRoute = dayLine)
+        ui { app.planRoute.selectSac(3) }; app.settle()
         assertTrue(ui { app.multiDay.overwriteWhole("Drei Tage", null) }); app.settle()
         assertEquals(3, db.getTour(id)!!.sac)
         assertEquals(emptyMap<Int, com.onpath.app.routing.Anchors>(), db.getTour(id)!!.anchors)
     }
 
     /**
-     * A followed day with unsaved edits leaves the map for a track or round trip of another profile (review problem 2): the whole tour goes
-     * under Zuletzt ONCE, with the plan's own activity / T level (handed over, the live ones were switched already) and its detour points.
+     * A followed day with unsaved edits leaves the map for a track or round trip of another profile (review problem 2): the day goes
+     * under Zuletzt ONCE (MD-1: the day, never the whole trip), with the plan's own activity / T level (handed over, the live ones
+     * were switched already).
      */
     @Test fun aFollowedDayLeavingUnderAnotherProfileGivesOneDraftWithItsOwnProfileAndAnchors() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
@@ -1391,9 +1075,7 @@ class MultiDaySliceTest {
         routePrefs.activity = Activity.HIKE
         val id = insertTour(activity = Activity.HIKE, anchors = anchors)
         val app = App()
-        app.openOverview(id)
-        ui { app.multiDay.tapDay(2) }; ui { app.multiDay.rideDays() }
-        ui { app.routeNow = route(dayLine) }; app.settle()
+        app.rideDay(id, dayRoute = dayLine)
         ui { app.planEdit.change { add(1, X) } }; app.settle()
         val own = com.onpath.app.ui.routes.OwnProfile(Activity.HIKE, 2, app.routeNow) // taken before the switch, with the day's route
         ui { app.planRoute.selectActivity(Activity.BIKE_TOURING) } // the track's activity, switched before the plan leaves
@@ -1401,7 +1083,6 @@ class MultiDaySliceTest {
         val draft = app.drafts().single()
         assertEquals("the tour's own activity, not the track's", "HIKE", draft.activity)
         assertEquals(2, draft.sac)
-        assertEquals("all of the tour's points", 6, draft.waypoints.size)
-        assertTrue("its detour points", draft.anchors.isNotEmpty())
+        assertEquals("the day's points", 3, draft.waypoints.size)
     }
 }

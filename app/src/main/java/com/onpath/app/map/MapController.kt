@@ -70,9 +70,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         /** Route warnings: the spot shown from the list (amber). */
         const val SRC_SPOT = "route-spot"
         /** Multi-day tour: the day-end signs and the picked day's band (stage 4). */
-        const val SRC_DAY_ENDS = "day-ends"
-        const val SRC_DAY = "day-band"
-        private const val IMG_DAY_END = "day-end"
         const val SPOT_COLOR = "#F2A000"
         const val LAYER_WPT = "waypoints-icons"
         /** Unreachable plan points: grey dashed missing piece from the route's end to the point. */
@@ -946,69 +943,6 @@ class MapController(private val context: Context, val map: MapLibreMap, val styl
         val src = source(SRC_SPOT) ?: return
         if (points == null || points.size < 2) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
         else src.setGeoJson(Feature.fromGeometry(LineString.fromLngLats(points.map { Point.fromLngLat(it.lon, it.lat) })))
-    }
-
-    /**
-     * Multi-day tour (stage 4, round 3 variant A): the day ends on the line – grey dashed moon (night open), blue moon
-     * (Übernachtung), green bed (Hotel) – over the route points, and the picked day(s) [day] as a wide light band under
-     * the line. Empty / null = none. Never throws.
-     */
-    fun setDayEnds(ends: List<Pair<GeoPoint, com.onpath.app.routing.DayEndKind>>, day: List<GeoPoint>?) = guarded("day ends") {
-        if (style.getSource(SRC_DAY_ENDS) == null) {
-            for (k in com.onpath.app.routing.DayEndKind.entries) style.addImage("$IMG_DAY_END-${k.name}", dayEndBitmap(k))
-            style.addSource(GeoJsonSource(SRC_DAY))
-            val band = LineLayer(SRC_DAY, SRC_DAY).withProperties(PF.lineColor(ROUTE_COLOR), PF.lineWidth(14f),
-                PF.lineOpacity(0.22f), PF.lineCap(Property.LINE_CAP_ROUND), PF.lineJoin(Property.LINE_JOIN_ROUND))
-            val casing = style.layers.firstOrNull { it.id == "planned-route-casing" }?.id
-            if (casing != null) style.addLayerBelow(band, casing) else addBelowPosition(band)
-            style.addSource(GeoJsonSource(SRC_DAY_ENDS))
-            addBelowPosition(SymbolLayer(SRC_DAY_ENDS, SRC_DAY_ENDS).withProperties(
-                PF.iconImage(Expression.get("icon")), PF.iconAllowOverlap(true), PF.iconIgnorePlacement(true),
-                PF.iconOffset(arrayOf(0f, -14f)),
-            ))
-        }
-        source(SRC_DAY_ENDS)?.setGeoJson(FeatureCollection.fromFeatures(ends.map { (p, k) ->
-            Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("icon", "$IMG_DAY_END-${k.name}") }
-        }))
-        val src = source(SRC_DAY) ?: return
-        if (day == null || day.size < 2) src.setGeoJson(FeatureCollection.fromFeatures(emptyList()))
-        else src.setGeoJson(Feature.fromGeometry(LineString.fromLngLats(day.map { Point.fromLngLat(it.lon, it.lat) })))
-    }
-
-    /** A day-end sign as drawn in the plan sheet ([com.onpath.app.ui.drawDayEnd]), 26 dp. */
-    private fun dayEndBitmap(k: com.onpath.app.routing.DayEndKind): Bitmap {
-        val px = (26 * density).toInt().coerceAtLeast(8)
-        val bmp = Bitmap.createBitmap(px, px, Bitmap.Config.ARGB_8888)
-        val c = android.graphics.Canvas(bmp)
-        val u = px / 22f
-        val p = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        val grey = k == com.onpath.app.routing.DayEndKind.PROPOSAL
-        val fill = when (k) {
-            com.onpath.app.routing.DayEndKind.PROPOSAL -> 0xFFEEF0EC.toInt()
-            com.onpath.app.routing.DayEndKind.OVERNIGHT -> 0xFF2E6A9E.toInt()
-            com.onpath.app.routing.DayEndKind.HOTEL -> 0xFF245F46.toInt()
-        }
-        val ink = if (grey) 0xFF9AA096.toInt() else android.graphics.Color.WHITE
-        p.style = android.graphics.Paint.Style.FILL; p.color = fill
-        c.drawCircle(11 * u, 11 * u, 10 * u, p)
-        p.style = android.graphics.Paint.Style.STROKE; p.strokeWidth = 1.5f * u
-        p.color = if (grey) 0xFFA9AFA6.toInt() else android.graphics.Color.WHITE
-        if (grey) p.pathEffect = android.graphics.DashPathEffect(floatArrayOf(2.5f * u, 2f * u), 0f)
-        c.drawCircle(11 * u, 11 * u, 10 * u, p)
-        p.pathEffect = null
-        if (k == com.onpath.app.routing.DayEndKind.HOTEL) {
-            p.color = ink; p.strokeWidth = 1.6f * u; p.strokeCap = android.graphics.Paint.Cap.ROUND
-            fun l(x1: Float, y1: Float, x2: Float, y2: Float) = c.drawLine(x1 * u, y1 * u, x2 * u, y2 * u, p)
-            l(5.5f, 14.5f, 5.5f, 8.5f); l(5.5f, 12f, 16.5f, 12f); l(16.5f, 12f, 16.5f, 14.5f)
-            l(10.5f, 12f, 10.5f, 8.8f); l(10.5f, 8.8f, 15.5f, 8.8f); l(15.5f, 8.8f, 16.5f, 10.2f)
-            p.style = android.graphics.Paint.Style.FILL
-            c.drawCircle(8 * u, 10 * u, 1.2f * u, p)
-        } else {
-            p.style = android.graphics.Paint.Style.FILL
-            p.color = ink; c.drawCircle(10.4f * u, 11.2f * u, 5.6f * u, p)
-            p.color = fill; c.drawCircle(13.0f * u, 9.2f * u, 4.6f * u, p)
-        }
-        return bmp
     }
 
     fun setHighlight(p: GeoPoint?) = guarded("highlight") {

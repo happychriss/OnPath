@@ -50,7 +50,7 @@ object DayPick {
      * 2026-11-27): 200 m – a stop the router moved onto its way, a night mark nudged in the planner stay the day; a day end
      * moved to the next village, a day added before it (the days renumber) or the route turned round do not.
      */
-    const val SAME_END_M = 200.0
+    const val SAME_END_M = com.onpath.app.ui.MultiDayFlow.SAME_END_M
 
     /** The start and end of each day along [line] (the day's stretch, [DayPickRow.fromLine]..[DayPickRow.toLine]). */
     fun dayEnds(line: List<GeoPoint>, rows: List<DayPickRow>): Map<Int, Pair<GeoPoint, GeoPoint>> {

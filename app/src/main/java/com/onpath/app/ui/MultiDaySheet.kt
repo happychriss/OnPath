@@ -45,7 +45,7 @@ import com.onpath.app.routing.DayRowText
 import com.onpath.app.routing.GeoPoint
 import com.onpath.strings.*
 
-// DayRowUi, DaysUi, DayHeadUi: :state, ui/MultiDayUi.kt (phase 2 piece 20)
+// DayHeadUi: :state, ui/MultiDayUi.kt (phase 2 piece 20). The day-end signs are drawn in My routes' day table and on the map.
 
 /** The day-end signs (round 3, variant A): grey dashed moon = night open, blue moon = Übernachtung, green bed = Hotel. */
 object DayEndLook {
@@ -99,92 +99,12 @@ fun DrawScope.drawDayEnd(kind: DayEndKind?) {
     }
 }
 
-/** The overview's title line: "München – Venedig · 6 Tage" (the summary step). */
-@Composable
-fun DaysTitle(days: DaysUi) {
-    val n = plural(Res.plurals.multiday_days_count, days.count, days.count)
-    Text(listOfNotNull(days.name, n).joinToString(" · "), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
-        maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.fillMaxWidth().padding(top = 6.dp))
-}
-
 /**
- * The overview below the summary (sketch round 2, step 11): the height profile with the day borders (grey dashed, blue,
- * green; the picked days shaded) and one row per day – tap = this day, hold = the days from the picked one to this one
- * (several in a row, scenario O).
+ * A followed day: "Tag 4 von 6" · "‹ Alle Tage" (back to the trip's day sheet in My routes, MD-2) and, when its start or goal
+ * moved, the line „Start und Ziel geändert – wird als eigene Tour gespeichert“ before saving (MD-4).
  */
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun DaysOverview(days: DaysUi, onTap: (Int) -> Unit, onHold: (Int) -> Unit, onHighlight: (GeoPoint?) -> Unit) {
-    Column(Modifier.fillMaxWidth()) {
-        Box(Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            ElevationProfile(days.profile, height = 96.dp, onHighlight = onHighlight, onRelease = { onHighlight(null) })
-            DayBorders(days)
-        }
-        // the planner's day table (owner 2026-11-27): aligned columns from the shared DayTable; the plain rows without one
-        val table = days.table
-        if (table != null) DayTableView(table, Modifier.padding(top = 6.dp), picked = { n -> days.selected?.let { n in it } == true },
-            onTap = onTap, onHold = onHold)
-        else Column(Modifier.fillMaxWidth().padding(top = 6.dp), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            for (r in days.rows) DayRow(r, days.selected?.let { r.n in it } == true, { onTap(r.n) }, { onHold(r.n) })
-        }
-    }
-}
-
-/** The day borders over the profile – the same plot area as [ElevationProfile] (40 dp axis left, 6 dp top, 16 dp bottom). */
-@Composable
-internal fun DayBorders(days: DaysUi) {
-    Canvas(Modifier.fillMaxWidth().height(96.dp)) {
-        val left = 40.dp.toPx(); val top = 6.dp.toPx(); val bottom = size.height - 16.dp.toPx()
-        if (size.width - left < 24.dp.toPx() || bottom <= top) return@Canvas
-        fun x(f: Float) = left + f.coerceIn(0f, 1f) * (size.width - left)
-        val cuts = listOf(0f) + days.borders.map { it.first } + 1f
-        days.selected?.let { s ->
-            val a = cuts.getOrNull(s.first - 1) ?: return@let
-            val b = cuts.getOrNull(s.last) ?: return@let
-            drawRect(OnPathColors.Route.copy(alpha = 0.10f), Offset(x(a), top), androidx.compose.ui.geometry.Size(x(b) - x(a), bottom - top))
-        }
-        for ((f, k) in days.borders) {
-            val grey = k == DayEndKind.PROPOSAL
-            drawLine(DayEndLook.line(k), Offset(x(f), top), Offset(x(f), bottom), (if (grey) 1f else 1.8f) * density,
-                pathEffect = if (grey) PathEffect.dashPathEffect(floatArrayOf(3f * density, 2f * density)) else null)
-        }
-    }
-}
-
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun DayRow(r: DayRowUi, picked: Boolean, onTap: () -> Unit, onHold: () -> Unit) {
-    val values = "${Format.distance(r.distanceM)} · ↑ ${Format.meters(r.ascentM)}"
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(8.dp))
-        .background(if (picked) OnPathColors.Route.copy(alpha = 0.10f) else Color.Transparent)
-        .combinedClickable(role = Role.Button, onClick = onTap, onLongClick = onHold)
-        .semantics { selected = picked }
-        .padding(horizontal = 8.dp, vertical = 4.dp),
-        verticalAlignment = Alignment.CenterVertically) {
-        Column(Modifier.weight(1f)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                // the weight: the values are measured first and never cut, at the largest font the day's word gives way
-                Text(DayRowText.day(r.n), style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold, maxLines = 1,
-                    overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                // R8: a day above a limit per day – its values orange
-                Text(instrument(values, MaterialTheme.typography.bodySmall), style = MaterialTheme.typography.bodySmall,
-                    color = if (r.over) OnPathColors.Warn else MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, softWrap = false,
-                    modifier = Modifier.padding(start = 8.dp))
-            }
-            // the grey line: only when the place is known at both ends of the day
-            r.places?.let {
-                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Spacer(Modifier.width(8.dp))
-        DayEndSign(r.end, 20.dp)
-    }
-}
-
-/** A followed day: "Tag 4 von 6" · "‹ Alle Tage", and the day's missing maps with "Laden". */
-@Composable
-fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit, onLoadMaps: () -> Unit) {
+fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit) {
     Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(head.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
@@ -192,45 +112,6 @@ fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit, onLoadMaps: () -> Unit) 
                 Text("‹ " + str(Res.string.multiday_all_days))
             }
         }
-        head.mapsBytes?.let { b ->
-            InfoLine(str(Res.string.multiday_day_maps_missing, tourMb(b)) + " · " + str(Res.string.multiday_load), onTap = onLoadMaps)
-        }
+        if (head.leavesTrip) InfoLine(str(Res.string.multiday_own_tour))
     }
 }
-
-/** "340 MB" – the sizes of the map question (rounded to 10 MB from 100 MB on). */
-fun tourMb(bytes: Long): String {
-    val m = (bytes / 1_000_000.0)
-    val r = if (m >= 100) (Math.round(m / 10) * 10) else Math.round(m).coerceAtLeast(1)
-    return if (r >= 1000) "${Format.number(r / 1000.0, 1)} GB" else "$r MB"
-}
-
-/** The foot's one button in the overview: "Tag 4 fahren" / "Tage 3–4 fahren", "Tag wählen" while none is picked. */
-@Composable
-fun RideDaysButton(selected: IntRange?, onRide: () -> Unit) {
-    val label = when {
-        selected == null -> str(Res.string.multiday_pick)
-        selected.first == selected.last -> str(Res.string.multiday_ride_day, selected.first.toString())
-        else -> str(Res.string.multiday_ride_days, selected.first.toString(), selected.last.toString())
-    }
-    Button(colors = ActionButtons.planGo(), onClick = onRide, enabled = selected != null,
-        modifier = Modifier.fillMaxWidth().heightIn(min = PlanFoot.HEIGHT)) {
-        Text(label, style = MaterialTheme.typography.titleMedium, maxLines = 1, softWrap = false)
-    }
-}
-
-/**
- * §7: the question at the first opening of a multi-day tour – Später · Nur Tag n · **Ganze Tour** (FRAGE, three buttons;
- * on mobile data it says that the maps wait for Wi-Fi).
- */
-@Composable
-internal fun tourMapsMessage(ask: com.onpath.app.ui.plan.MultiDaySlice.TourMapsAsk, onAnswer: (com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer) -> Unit): Message =
-    Message(MessageKind.FRAGE, str(Res.string.multiday_maps_title),
-        str(Res.string.multiday_maps_text) + if (!ask.onWifi) " " + str(Res.string.multiday_maps_wifi) else "",
-        buttons = listOfNotNull(
-            MessageButton(str(Res.string.multiday_maps_later)) { onAnswer(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.LATER) },
-            if (ask.dayCells.isNotEmpty()) MessageButton(str(Res.string.multiday_maps_day, ask.day.toString(), tourMb(ask.dayBytes))) {
-                onAnswer(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.DAY)
-            } else null,
-            MessageButton(str(Res.string.multiday_maps_whole, tourMb(ask.wholeBytes))) { onAnswer(com.onpath.app.ui.plan.MultiDaySlice.TourMapsAnswer.WHOLE) },
-        ))

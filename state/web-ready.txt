@@ -11,7 +11,7 @@
 ui/routes/RoutesState.kt
 # SaveDialog: no port (plain state of the open save dialog)
 ui/routes/SaveDialog.kt
-# SaveState: ports SavePorts (17 members + Say: route, activity, sac, stops, difficulty, days, keepWhole, overwriteWhole, datedName, storeTimes, forgetTimes, copyTimes, tourChanged, syncChanged, refreshTours, saved, shownRenamed), SaveStore (6: getTour, loadSegments, insertPlanned, replacePlanned, rename, setFavourite; blocking),
+# SaveState: ports SavePorts (17 members + Say: route, activity, sac, stops, difficulty, days, overwriteWhole, leavesTrip, datedName, storeTimes, forgetTimes, copyTimes, tourChanged, syncChanged, refreshTours, saved, shownRenamed), SaveStore (6: getTour, loadSegments, insertPlanned, replacePlanned, rename, setFavourite; blocking),
 #   Recent (2: keep, keepReplaced), Background (1: run) and NameProposal (1: ask); SaveSlice (app) adds the coroutines and `suspend proposeName`
 ui/routes/SaveState.kt
 # RecentPlansState: ports RecentPlansPorts (9 members: insertDraft, updateDraft, storeTimes, tourChanged, purged, syncChanged, refreshTours, problem, trimmed), Background (1: run) and NameProposal (1: ask); RoutesStore as above;
@@ -68,7 +68,7 @@ ui/SettingsPage.kt
 # -- ports (interfaces the slices ask through; the planner implements the ones its slices need) -------------------------
 # Ports.kt: Say (1 member: say), Camera (3: fit, centerOn, panTo), Position (1: here), Clock (2: nowMs, elapsedMs)
 ui/Ports.kt
-# MultiDayPorts: MultiDayPrefs (5 properties: planMultiDay, planDayFollow, multiDayMapsAsked, multiDayMapCells, multiDayWifiCells), EndNamer (1: label)
+# MultiDayPorts: MultiDayPrefs (5 properties: planMultiDay, planDayFollow, multiDayMapsAsked, multiDayMapCells, multiDayWifiCells), TourMapAreas
 ui/MultiDayPorts.kt
 
 # -- rules (pure decisions, no state) ------------------------------------------------------------------------------------

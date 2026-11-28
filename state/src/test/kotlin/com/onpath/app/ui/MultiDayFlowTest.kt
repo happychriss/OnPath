@@ -10,6 +10,7 @@ import com.onpath.app.routing.GeoPoint
 import com.onpath.app.routing.Hotel
 import com.onpath.app.routing.NightMark
 import com.onpath.app.time.Factors
+import com.onpath.strings.multiday_day_of
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -20,9 +21,9 @@ import org.junit.Test
 import java.nio.file.Files
 
 /**
- * The phone's multi-day tour (stage 4): a synced 3-day tour opened → its overview; day 2 picked → the plan to follow; an
- * edit of the day ("Planen" on the way) goes back into the whole tour with every night mark; a restart keeps the day;
- * another route leaves the tour; Save stores the days with the plan's points.
+ * The phone's multi-day trip (docs/design/multi-day-tours.md §0, owner 2026-11-28): day 2 of a synced 3-day trip picked in My
+ * routes → the plan to follow; an edit of the day ("Planen" on the way) goes back into the whole trip with every night mark; a
+ * restart keeps the day; another route leaves the trip; the phone never changes the number of days (MD-1).
  */
 class MultiDayFlowTest {
     private val dir = Files.createTempDirectory("multiday").toFile()
@@ -49,52 +50,42 @@ class MultiDayFlowTest {
     private val tour = Tour(7, TourKind.PLANNED, "Drei Tage", 1L, Activity.BIKE_TOURING.name, 2, 90_000.0, 0.0, 0.0, 0.0, "done",
         pts.mapIndexed { i, p -> GpxWaypoint(p.lat, p.lon, if (i == 3) "Gasthof Post" else null) }, uuid = "u7", days = days)
 
-    private fun opened(f: MultiDayFlow): MultiDayFlow {
-        f.opened(tour, pts)
-        val plan = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"))!!
-        f.show(f.compute(plan, line, Factors.ONE, "r"))
-        return f
+    private fun opened(f: MultiDayFlow): MultiDayFlow { f.opened(tour, pts); return f }
+
+    /** The trip as a plan, as MultiDaySlice.prepareDay builds it from the stored tour. */
+    private fun whole(anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(), d: MultiDay = days) =
+        d.into(com.onpath.app.routing.SharedPlan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), "Drei Tage", anchors = anchors))
+
+    /** Day [n] of the trip is the plan (My routes' day sheet): its part, followed by [f]. */
+    private fun pick(f: MultiDayFlow, n: Int = 2, anchors: Map<Int, com.onpath.app.routing.Anchors> = emptyMap(),
+                     profile: com.onpath.app.routing.AnchorProfile? = anchors.takeIf { it.isNotEmpty() }?.let { com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 2) }
+    ): com.onpath.app.domain.plan.DayPart {
+        val w = whole(anchors)
+        val v = f.compute(w, line, Factors.ONE, "r")!!
+        val part = com.onpath.app.domain.plan.DayFollow.part(w, v.days, v.pointAt, v.line, n, n)!!
+        f.follow(tour, w, v, part, pts, profile)
+        return part
     }
 
-    /** Owner 2026-11-27 (Hilden → München on foot 40 days, on the bike still 40): with day limits N follows a profile change. */
-    @Test fun anotherProfileTheDaysFollowTheLimits() {
+    /** MD-1 (owner 2026-11-28): the phone never changes the number of days – limits per day or not, whatever the pace. */
+    @Test fun theDaysKeepTheTripsNumber() {
         val f = flow()
-        f.opened(tour.copy(days = MultiDay(3, limits = com.onpath.app.routing.DayLimits(maxTimeMin = 60))), pts)
-        fun plan() = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!
-        f.show(f.compute(plan(), line, Factors.ONE, "r", "hike|2", f.profileSeen))
-        assertEquals("the first view never changes N", 3, f.tour!!.days.days)
-        f.show(f.compute(plan(), line, Factors.ONE, "r", "hike|2", f.profileSeen))
-        assertEquals("the same profile: N stays", 3, f.tour!!.days.days)
-        val v = f.compute(plan(), line, Factors.ONE, "r2", "bike|2", f.profileSeen)!!
-        f.show(v)
-        val want = com.onpath.app.routing.PlanDays.followLimits(plan().copy(days = 3), com.onpath.app.routing.DayLine.of(line, Activity.BIKE_TOURING, Factors.ONE),
-            com.onpath.app.routing.WaypointInsertion.routeIndices(pts, line)).days!!
-        assertTrue("the limits ask for another N here: $want", want != 3)
-        assertEquals("N follows the limits", want, f.tour!!.days.days)
-        assertEquals(want, v.days.days.size)
-        assertEquals("Save stores the new N", want, f.daysFor(pts)!!.days)
+        val limited = whole(d = MultiDay(3, limits = com.onpath.app.routing.DayLimits(maxTimeMin = 60)))
+        val v = f.compute(limited, line, Factors.ONE, "r")!!
+        assertEquals("three days, as the planner set them", 3, v.days.days.size)
+        assertEquals(listOf(30, 60), f.compute(whole(), line, Factors.ONE, "r")!!.days.days.mapNotNull { it.end?.lineIndex })
     }
 
-    @Test fun anotherProfileWithoutLimitsKeepsTheUsersDays() {
-        val f = opened(flow())
-        f.show(f.compute(f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!, line, Factors.ONE, "r", "hike|2", f.profileSeen))
-        f.show(f.compute(f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), emptyMap())!!, line, Factors.ONE, "r", "bike|2", f.profileSeen))
-        assertEquals(3, f.tour!!.days.days)
-    }
-
-    @Test fun aMultiDayTourOpensToItsOverview() {
+    /** A whole trip kept as the plan by an older version: nothing to show, but Save keeps its days (never a trip saved without them). */
+    @Test fun aWholeTripKeptByAnOlderVersionKeepsItsDaysForSave() {
         val f = opened(flow())
         assertTrue(f.overview)
-        assertEquals(3, f.view!!.days.days.size)
-        assertEquals(listOf(30, 60), f.view!!.days.days.mapNotNull { it.end?.lineIndex })
-        // Save stores the days with the plan's points (night marks by index, from the marks by value)
         assertEquals(days, f.daysFor(pts))
-        // the plan cleared (no longer linked): a normal plan, no days saved
         linked = -1
         assertFalse(f.overview)
         assertNull(f.daysFor(pts))
         linked = 7
-        assertTrue("Undo back to the tour: the overview again", f.overview)
+        assertTrue(f.overview)
     }
 
     /** Day 2's first point moves onto the way: a snap, no edit – the anchors on the legs at the day's border stay in the tour. */
@@ -102,10 +93,8 @@ class MultiDayFlowTest {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
         val anchors = mapOf(1 to com.onpath.app.routing.Anchors(after = listOf(on(25))),
             2 to com.onpath.app.routing.Anchors(listOf(on(27)), listOf(on(40))))
-        val f = opened(flow())
-        f.tapDay(2)
-        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
-        val part = f.pickDay(whole, pts)!!
+        val f = flow()
+        val part = pick(f, 2, anchors)
         val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
         val edited = listOf(moved, pts[3])
         // the run that snapped is of the tour's own profile (second review: with null the profile check was skipped)
@@ -121,10 +110,8 @@ class MultiDayFlowTest {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
         val anchors = mapOf(1 to com.onpath.app.routing.Anchors(after = listOf(on(25))),
             2 to com.onpath.app.routing.Anchors(listOf(on(27)), listOf(on(40))))
-        val f = opened(flow())
-        f.tapDay(2)
-        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"), anchors)!!
-        f.pickDay(whole, pts)!!
+        val f = flow()
+        pick(f, 2, anchors)
         val moved = GeoPoint(pts[2].lat + 0.0001, pts[2].lon)
         f.snapped(mapOf(pts[2] to moved), com.onpath.app.routing.AnchorProfile.of(Activity.HIKE, 3)) // the tour's anchors lie on BIKE_TOURING
         assertEquals(moved, f.day!!.whole.points[2])
@@ -140,12 +127,10 @@ class MultiDayFlowTest {
 
     /** Pick day 2 → its plan; "Planen" adds a point; the whole tour gets it; a restart keeps all of it. */
     @Test fun dayTwoIsFollowedAndAnEditGoesBackIntoTheTour() {
-        val f = opened(flow())
-        f.tapDay(2)
-        assertEquals(2..2, f.selected)
-        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"))!!
-        val part = f.pickDay(whole, pts)!!
+        val f = flow()
+        val part = pick(f, 2)
         assertEquals(listOf(pts[2], pts[3]), part.points)
+        assertEquals("the trip's night marks by value", hotel, f.nightOf(pts[3]))
         assertTrue(f.following)
         assertFalse(f.overview)
         assertEquals(null, f.daysFor(part.points)) // a day's plan is no multi-day plan of its own
@@ -162,24 +147,10 @@ class MultiDayFlowTest {
         assertEquals(c.whole.points, g.day!!.whole.points)
         assertEquals(c.whole.nights, g.day!!.whole.nights)
         assertEquals(2, g.day!!.part.first)
-        // back to all days: the whole tour with the edit, its marks by value
-        val (back, opened) = g.leaveDay()!!
-        assertEquals(c.whole.points, back.points)
-        assertEquals(pts, opened)
-        assertEquals(NightMark.OVERNIGHT, g.nightOf(pts[2]))
-        assertEquals(hotel, g.nightOf(pts[3]))
-    }
-
-    @Test fun severalDaysInARow() {
-        val f = opened(flow())
-        f.tapDay(2); f.holdDay(3)
-        assertEquals(2..3, f.selected)
-        f.tapDay(3)
-        assertEquals(3..3, f.selected)
-        f.tapDay(3)
-        assertNull(f.selected)
-        f.holdDay(1)
-        assertEquals(1..1, f.selected)
+        // MD-3: start and goal stayed – still the trip's day; MD-4: the goal moved – no longer
+        assertTrue(g.day!!.endsKept(listOf(pts[2], extra, pts[3])))
+        assertFalse(g.day!!.endsKept(listOf(pts[2], extra)))
+        assertEquals(com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_day_of, "2", "3"), g.dayLabel())
     }
 
     @Test fun anotherRouteLeavesTheTour() {
@@ -200,13 +171,12 @@ class MultiDayFlowTest {
     /**
      * Robust first (coordinator 2026-11-18): the followed day's state is unreadable after a restart (corrupt prefs) while
      * the plan on the map is that day – linked to the saved 3-day tour. It must never be saved over the whole tour: the
-     * start reloads the stored tour as the plan (MultiDaySlice.reloadsTour), and Save's "changed elsewhere" check saves a
+     * start unlinks the plan and opens the trip's day sheet (MultiDaySlice.reloadsTour), and Save's "changed elsewhere" check saves a
      * copy if it ever gets there (SaveRule.keepsOtherEdit: opened = the day's points, stored = the tour's).
      */
     @Test fun anUnreadableDayAfterARestartNeverOverwritesTheTour() {
-        val f = opened(flow())
-        f.tapDay(2)
-        val part = f.pickDay(f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"))!!, pts)!!
+        val f = flow()
+        val part = pick(f, 2)
         // the app dies; the day's state is damaged on the disk
         sp.planDayFollow = "{\"tour\": broken"
         val g = flow()
@@ -214,7 +184,7 @@ class MultiDayFlowTest {
         assertFalse(g.following)
         val stored = pts.map { it.lat to it.lon }
         val opened = part.points.map { it.lat to it.lon }
-        // the start reloads the whole stored tour …
+        // the start unlinks the plan (and opens the day sheet) …
         assertTrue(com.onpath.app.ui.plan.MultiDaySlice.reloadsTour(dayLost = true, following = false, storedHasDays = true, opened, stored))
         // … also when the day's state is simply missing (the plan's saved points are the day's, not the tour's)
         assertTrue(com.onpath.app.ui.plan.MultiDaySlice.reloadsTour(dayLost = false, following = false, storedHasDays = true, opened, stored))
@@ -239,10 +209,8 @@ class MultiDayFlowTest {
     /** Review of the writers (W1): a stitch made on a day of a tour that had no detour points yet reaches the whole tour, with its profile. */
     @Test fun aStitchOnADayOfATourWithoutAnchorsReachesTheTour() {
         fun on(km: Int) = GeoPoint(line[km].lat, line[km].lon)
-        val f = opened(flow())
-        f.tapDay(2)
-        val whole = f.plan(pts, Activity.BIKE_TOURING, 2, emptySet(), mapOf(3 to "Gasthof Post"))!!
-        f.pickDay(whole, pts, null)!!
+        val f = flow()
+        pick(f, 2, profile = null)
         val extra = GeoPoint(46.0 + 45 * 0.009, 11.01)
         val stitch = mapOf(1 to com.onpath.app.routing.Anchors(listOf(on(40)), listOf(on(50))))
         val profile = com.onpath.app.routing.AnchorProfile.of(Activity.BIKE_TOURING, 2)

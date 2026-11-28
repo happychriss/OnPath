@@ -20,7 +20,8 @@ import kotlin.math.sin
 
 /**
  * Saved multi-day routes in My routes (owner 2026-11-27, "ja"): the card's „8 Tage“ badge on its picture, Gemacht's
- * „Tag 3 von …“ line, and the day sheet – day 1 ridden („✓ Tag 1 · gefahren am 2. Dez.“), day 2 the next (filled pill), the
+ * „Tag 3 von …“ line, and the day sheet – day 1 ridden („✓ Tag 1 · gefahren am 2. Dez.“), day 2 begun and the next („Tag 2 ·
+ * angefangen am 3. Dez.“, MD-9), the
  * rows' aligned columns km · ↑ m · time with the night signs and ›. German, at the normal and the largest font (2.0).
  */
 abstract class DayPickScreenshotTest(fontScale: Float) {
@@ -40,11 +41,11 @@ abstract class DayPickScreenshotTest(fontScale: Float) {
     private val rode = Tour(3, TourKind.RECORDED, "Fahrt 2. Dez.", 1796212800000L, "BIKE_TOURING", 3, 81_400.0, 540.0, 520.0, 4.6 * 3600, "done",
         emptyList(), uuid = "uuid-rode", planUuid = "uuid-hilden", planDay = 3, planName = "Von Hilden nach München", planOpens = true)
 
-    private fun row(n: Int, from: String?, to: String?, km: Double, up: Double, h: Double, end: DayEndKind?, ridden: Long? = null) =
-        DayPickRow(n, from, to, km * 1000, up, h * 3600, end, ridden, (n - 1) * 37, n * 37)
+    private fun row(n: Int, from: String?, to: String?, km: Double, up: Double, h: Double, end: DayEndKind?, ridden: Long? = null, started: Long? = null) =
+        DayPickRow(n, from, to, km * 1000, up, h * 3600, end, ridden, (n - 1) * 37, n * 37, startedMs = started)
     private val ui = DayPickUi(route, line, listOf(
         row(1, "Hilden", "Köln", 48.0, 210.0, 2.75, DayEndKind.OVERNIGHT, ridden = 1796212800000L),
-        row(2, "Köln", "Koblenz", 104.0, 620.0, 5.9, DayEndKind.HOTEL),
+        row(2, "Köln", "Koblenz", 104.0, 620.0, 5.9, DayEndKind.HOTEL, started = 1796299200000L),
         row(3, "Koblenz", "Mainz", 81.0, 540.0, 4.5, DayEndKind.OVERNIGHT),
         row(4, "Mainz", null, 76.0, 380.0, 4.2, DayEndKind.PROPOSAL),
         row(5, null, null, 88.0, 690.0, 5.1, DayEndKind.PROPOSAL),
