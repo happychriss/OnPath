@@ -249,7 +249,7 @@ class SettingsPagesTest {
         // the pairing window (owner 2026-11-28, A-018): its own page, not on the list (yet), not a section of Backup & browser
         assertEquals(SettingsPage.SYNC, SettingsPage.SYNC.landing)
         assertFalse(SettingsPage.SYNC.top)
-        assertTrue(SettingsPage.SYNC.showsSync && SettingsPage.BACKUP_SYNC.showsSync && !SettingsPage.BACKUP.showsSync)
+        assertTrue(SettingsPage.SYNC.showsSync && SettingsPage.BACKUP_SYNC.showsSync && !SettingsPage.MAP.showsSync)
         assertEquals(SettingsPage.ABOUT, SettingsPage.UPDATES.landing)
         // back: a sub page to its page, a start-list page and an alias to the list
         assertEquals(SettingsPage.NAVIGATION, SettingsPage.PHONE.up)
