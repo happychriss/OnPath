@@ -39,7 +39,7 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
 
 OnPath is for the moment you are somewhere, the weather is good, the land is beautiful, and you want to go: you have your phone, and off you go.
 It owns exactly one thing: today's tour – finding it, walking it, keeping it.
-Finding: a route to a destination planned in a moment, a loop proposed from where you stand, or a tour from your own list.
+Finding: plan a route on the phone in a moment, take a tour you saved or loaded, or let the phone propose a loop from where you stand.
 Walking: guided, re-planned on the way, also without reception, and the recording never breaks.
 Keeping: saved at the end, to look back on and to show.
 It serves people who decide on the day, on foot or by bike, on Android; a tour planned long ahead or over several days is prepared in the browser planner and reaches the phone one day at a time.
