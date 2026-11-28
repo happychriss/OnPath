@@ -18,7 +18,7 @@ release, plan.onpath.earth), whether app and planner still match, what CI says, 
   without a go.
 - **Parity:** a UI task on one side gets the other side's parity task named with it (owner 2026-11-27,
   `owner-preferences.md` „App and planner alike“); a done report without a parity line → ask the coordinator.
-- **Thread done:** row out, its next item from the backlog's "Waiting for a trigger" named to the coordinator.
+- **Thread done:** row out, its next item from the backlog named to the coordinator – first check it against `git log` on `main` (the backlog lags; 28.11. two done items were proposed again).
 
 ## When the owner writes
 1. `git pull` in `OnPath` and `onpath.private`; backlog "For the roles" and "Waiting for the owner".
