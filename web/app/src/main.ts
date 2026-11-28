@@ -1744,6 +1744,7 @@ async function cancelRouting() {
   if (!state.planning) return;
   problem('routing', 'route calculation cancelled by the user');
   setNotRouted(t('plan_not_routed_stopped'), t('plan_calculate'));
+  engine.stopLoads(); // the loading stops too (owner 2026-11-27 „Laden stoppt auch“) – parts already stored stay
   await cancelLongRoute();
 }
 /** The points the shown plan was routed for (enc) – My routes keeps its numbers only for exactly these. */

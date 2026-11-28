@@ -195,6 +195,9 @@ function keep<T>(cache: Map<string, Promise<T>>, key: string, p: Promise<T>): Pr
 class Transient extends Error {}
 const pause = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** The page stopped this download on purpose (Abbrechen, a newer edit – owner 2026-11-27 „Laden stoppt auch“). */
+const isAbort = (e: unknown) => (e as { name?: string } | null)?.name === 'AbortError';
+
 /** fetch with one retry after 1.5 s when the network fails or the server is busy (429 / 5xx). */
 async function fetchRetry(url: string, init?: RequestInit): Promise<Response> {
   for (let attempt = 0; ; attempt++) {
@@ -204,7 +207,7 @@ async function fetchRetry(url: string, init?: RequestInit): Promise<Response> {
       if (r.status === 429 || r.status >= 500) throw new Transient(`${url}: HTTP ${r.status}`);
       return r;
     } catch (e) {
-      if (e instanceof Transient || attempt > 0) throw e;
+      if (e instanceof Transient || attempt > 0 || isAbort(e)) throw e; // an abort (Abbrechen) is never tried again
       await pause(1500); // expected: offline for a moment – once more
     }
   }
@@ -218,12 +221,12 @@ const whole = new Map<string, Promise<Uint8Array | null>>();
  * Bytes [from, to] of a file. Uses an HTTP range request; a server that ignores ranges (answers 200 with the whole
  * file, e.g. a simple static host for a small test area) still works – the file is kept once and sliced.
  */
-async function range(url: string, from: number, to: number, onBytes?: (n: number) => void): Promise<{ bytes: Uint8Array; total: number } | null> {
+async function range(url: string, from: number, to: number, onBytes?: (n: number) => void, signal?: AbortSignal): Promise<{ bytes: Uint8Array; total: number } | null> {
   if (packed && !whole.has(url)) keep(whole, url, fetchPacked(url));
   let all = await whole.get(url);
   if (whole.has(url) && !all) return null;
   if (!all) {
-    const r = await fetchRetry(url, { headers: { Range: `bytes=${from}-${to}` } });
+    const r = await fetchRetry(url, { headers: { Range: `bytes=${from}-${to}` }, signal });
     if (r.status === 404) return null;
     if (r.status === 206) {
       const total = Number((r.headers.get('Content-Range') ?? '').split('/')[1] ?? NaN);
@@ -271,15 +274,15 @@ const byteListeners = new Set<() => void>();
 const heard = () => { for (const f of byteListeners) f(); };
 
 /** The tile's part layout (its head and tail go to the engine once); null when there is no such file. */
-function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
+function layout(e: WasmEngine, tile: string, signal?: AbortSignal): Promise<number[] | null> {
   let p = layoutLoads.get(tile);
   if (!p) {
     p = (async () => {
       const url = new URL(tile, segments).href;
-      const head = await range(url, 0, 199);
+      const head = await range(url, 0, 199, undefined, signal);
       if (!head) return null; // no data there: BRouter answers "no routing data"
       const ends = partEnds(head.bytes);
-      const tail = await range(url, ends[24], head.total - 1);
+      const tail = await range(url, ends[24], head.total - 1, undefined, signal);
       e.putLayout(tile, new Int8Array(head.bytes.buffer), new Int8Array(tail?.bytes.buffer ?? new ArrayBuffer(0)));
       return ends;
     })();
@@ -293,7 +296,7 @@ function layout(e: WasmEngine, tile: string): Promise<number[] | null> {
  * ask at the same time). Returns bytes downloaded by this call.
  */
 async function ensureParts(e: WasmEngine, points: string, activity: string, onNeed?: (bytes: number, done: number) => void,
-  given?: [string, number][]): Promise<number> {
+  given?: [string, number][], signal?: AbortSignal): Promise<number> {
   // the phone's corridor for the activity (OfflineCorridor: 10 km on foot, 20 km by bike; '' = not known → the largest);
   // [given] = the parts a caller worked out itself (round-trip suggestions: all within reach of the start)
   const need: [string, number][] = given ?? JSON.parse(e.partsNeeded(points, activity));
@@ -302,7 +305,7 @@ async function ensureParts(e: WasmEngine, points: string, activity: string, onNe
     // what is still to download (the layouts are small and fetched first), so the page can say how far it is (the load
     // overlay's percent): the sizes come from the files' own index – an honest total, no guess. A part another request
     // is downloading (the prefetch) counts too: this plan waits for it as well.
-    const ends = await Promise.all(need.map(([tile]) => layout(e, tile).catch(() => null)));
+    const ends = await Promise.all(need.map(([tile]) => layout(e, tile, signal).catch(() => null)));
     const open = new Map<string, number>();
     need.forEach(([tile, i], k) => {
       const en = ends[k], key = tile + '#' + i;
@@ -327,11 +330,12 @@ async function ensureParts(e: WasmEngine, points: string, activity: string, onNe
       partGot.set(k, 0);
       p = (async () => {
         try {
-          const ends = await layout(e, tile);
+          // a layout another (now stopped) run was loading: fetched again for this run, not lost
+          const ends = await layout(e, tile, signal).catch((err) => (isAbort(err) && !signal?.aborted ? layout(e, tile, signal) : Promise.reject(err)));
           if (!ends) return 0;
           const start = i === 0 ? 200 : ends[i - 1];
           if (ends[i] <= start) return 0; // empty part (sea / no ways)
-          const part = await range(new URL(tile, segments).href, start, ends[i] - 1, (n) => { partGot.set(k, (partGot.get(k) ?? 0) + n); heard(); });
+          const part = await range(new URL(tile, segments).href, start, ends[i] - 1, (n) => { partGot.set(k, (partGot.get(k) ?? 0) + n); heard(); }, signal);
           if (!part) return 0;
           if (!e.putPart(tile, i, new Int8Array(part.bytes.buffer))) {
             partLoads.delete(k); // a later plan may try again
@@ -345,7 +349,8 @@ async function ensureParts(e: WasmEngine, points: string, activity: string, onNe
       p.catch(() => { partSettled.delete(k); });
       return p.catch((err) => noPart(tile, i, err));
     }
-    return p.then(() => 0, (err) => noPart(tile, i, err)); // someone else's download – counted there
+    // someone else's download – counted there; one a stopped run started (Abbrechen) is fetched again for this run
+    return p.then(() => 0, (err) => (isAbort(err) && !signal?.aborted ? ensureParts(e, '', '', undefined, [[tile, i]], signal) : noPart(tile, i, err)));
   })).finally(stop);
   return sizes.reduce((a, b) => a + b, 0);
 }
@@ -356,6 +361,7 @@ async function ensureParts(e: WasmEngine, points: string, activity: string, onNe
  * TypeError…". The next plan tries the part again (it is not kept as failed).
  */
 function noPart(tile: string, i: number, err: unknown): number {
+  if (isAbort(err)) return 0; // expected: the page stopped the run (Abbrechen) – a half part is not kept, the next run fetches it
   console.warn(`[Problems] WARN routing: ${tile} part ${i} not downloaded – planned without it`, err);
   return 0;
 }
@@ -416,6 +422,8 @@ function legsOut(e: WasmEngine) {
 
 /** Plans the page dropped (a newer edit, Neu, Abbrechen) while they still waited for routing data: never routed. */
 const dropped = new Set<number>();
+/** The routing-data downloads of each plan still waiting for them: a drop stops them (owner 2026-11-27 „Laden stoppt auch“). */
+const loads = new Map<number, AbortController>();
 /** The calls that change the undo / redo history: their reply carries it, for a fresh worker (client.ts restart). */
 // planCancel: its Undo / Redo is a step; the run* calls: the route run's memory travels with it („Plan anyway“, why not routed,
 // an open „Weiter warten?“ – WebPlanChain.runExport)
@@ -424,7 +432,8 @@ const HISTORY = new Set(['planArrive', 'historyReplace', 'historyRecord', 'histo
 
 self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
   const req = ev.data;
-  if (req.type === 'drop') { dropped.add(req.target); return; } // no answer: the page already stopped waiting
+  if (req.type === 'drop') { dropped.add(req.target); loads.get(req.target)?.abort(); return; } // no answer: the page already stopped waiting
+  if (req.type === 'stopLoads') { for (const c of loads.values()) c.abort(); return; }
   try {
     if (req.type === 'config') {
       base = req.base; segments = req.segments; packed = !!req.packed; lang = req.lang ?? 'en'; slowMs = req.slowMs ?? 0; slowDetourMs = req.slowDetourMs ?? 0;
@@ -480,7 +489,11 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
     }
     if (req.type === 'prefetch') {
       // the routing data around the map view, while the user looks at the map (the first plan then starts at once)
-      const bytes = await ensureParts(e, `${req.lat.toFixed(6)},${req.lon.toFixed(6)}`, ''); // no plan yet: the largest corridor
+      const ctl = new AbortController(); // Abbrechen stops it too (stopLoads)
+      loads.set(req.id, ctl);
+      let bytes = 0;
+      try { bytes = await ensureParts(e, `${req.lat.toFixed(6)},${req.lon.toFixed(6)}`, '', undefined, undefined, ctl.signal); } // no plan yet: the largest corridor
+      finally { loads.delete(req.id); }
       reply({ id: req.id, ok: true, stats: { bytesFetched: bytes } as RouteStats });
       return;
     }
@@ -501,7 +514,12 @@ self.onmessage = async (ev: MessageEvent<EngineRequest>) => {
       return;
     }
     const t0 = performance.now();
-    const fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes, done) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes, done } }));
+    const ctl = new AbortController();
+    loads.set(req.id, ctl);
+    let fetched = 0;
+    try {
+      fetched = await ensureParts(e, req.points, req.activity ?? '', (bytes, done) => reply({ id: req.id, ok: true, progress: { phase: 'download', bytes, done } }), undefined, ctl.signal);
+    } finally { loads.delete(req.id); }
     if (dropped.delete(req.id)) { reply({ id: req.id, ok: false, error: 'dropped', cancelled: true }); return; } // superseded while downloading
     if (req.type === 'plan') reply({ id: req.id, ok: true, progress: { phase: 'route' } });
     if (req.type === 'planFromTrack') {

@@ -3,14 +3,14 @@
   "mirrors": [
     {
       "app": "app/src/main/java/com/onpath/app/ui/Screens.kt",
-      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683) · 2026-11-27 c3fb65034: My routes „8 Tage“ badge + day sheet (load a day) – next planner task (backlog parity line, captain 4fe615177); ridden ✓ / „Tag 3 von …“ app only (owner: done tours only on the phone) · ce41e7ca1 checked: cleanup only (unused SacScale.line), nothing visible",
+      "what": "SacScale – T1–T5 rows (names and descriptions are the app's strings routes_sac_<n>_name / _text); My routes L1 (TourCard: 84 dp map tile, name, ActivityLine „Wandern · T2 · ↻ Rundtour“, facts, ⋮ over the star, no ›; the chips row Favoriten · activity · sort; the empty texts routes_fav_none / routes_act_none) · 2026-11-27 checked: the activity picker variant C moved to ActivityPicker.kt (own mirror → activity.ts, a883f5683) · 2026-11-27 c3fb65034: My routes „8 Tage“ badge + day sheet (load a day) – next planner task (backlog parity line, captain 4fe615177); ridden ✓ / „Tag 3 von …“ app only (owner: done tours only on the phone) · ce41e7ca1 checked: cleanup only (unused SacScale.line), nothing visible · cb4102b8f checked: cleanup only (SacChips + routes_sac_row gone, unused since variant C), nothing visible",
       "web": [
         "web/app/src/activity.ts",
         "web/app/src/plans.ts",
         "web/app/src/routefilter.ts",
         "web/app/src/style.css"
       ],
-      "blob": "20cf38aa529d389627700dd26b15b6cfeef269f4"
+      "blob": "a0e5630773c932174cb43d51f3c0b8ce7840fae5"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",

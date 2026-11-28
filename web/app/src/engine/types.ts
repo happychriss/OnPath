@@ -23,7 +23,9 @@ export type EngineRequest =
   // round-trip suggestions (suggest.ts): the wish as JSON (WebSuggest.kt), [cells] = the map store root (cells/f2/…)
   | { id: number; type: 'suggest'; wish: string; cells: string }
   /** The page dropped plan [target] (superseded): skip it if it has not started routing yet. No answer. */
-  | { id: number; type: 'drop'; target: number };
+  | { id: number; type: 'drop'; target: number }
+  /** Abbrechen (owner 2026-11-27 „Laden stoppt auch“): every routing-data download stops, the map view's prefetch too. */
+  | { id: number; type: 'stopLoads' };
 
 /** A plan as it travels in a QR code or link (the app's SharedPlan / PlanCode). */
 export interface SharedPlan {

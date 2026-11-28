@@ -13,12 +13,18 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const segments = path.resolve(process.argv[2] ?? '/home/user/build/routing-test/segments');
 if (!fs.existsSync(path.join(segments, 'E10_N45.rd5'))) { console.log('skip: needs E10_N45.rd5 in ' + segments); process.exit(0); }
 let hold = true;
+let segReqs = 0; // segment part requests (not the index) – none may start after Abbrechen
 const waiting = [];
+const held = []; // every held segment request and whether the page closed it (owner 2026-11-27: „Laden stoppt auch“)
 // a held segment request is answered once [hold] ends (by the normal file server: the request is passed on then)
 let pass = null;
 const { server, url } = await serve({ dist: path.resolve(here, '../dist'), segments, intercept: (req, res) => {
+  if (req.url.startsWith('/segments/') && !/^bytes=0-/.test(req.headers.range ?? '')) segReqs++;
   if (!hold || !req.url.startsWith('/segments/') || /^bytes=0-/.test(req.headers.range ?? '')) return false; // the index passes: the page knows what it waits for
-  waiting.push(() => pass(req, res));
+  const h = { url: req.url, closed: false };
+  held.push(h);
+  req.on('close', () => { if (!res.writableEnded) h.closed = true; });
+  waiting.push(() => { if (!h.closed) pass(req, res); });
   return true;
 } });
 pass = (req, res) => server.emit('request', req, res);
@@ -52,7 +58,10 @@ try {
   check(moving.win && !moving.bar && !moving.waitline && moving.others.length === 0, `the wait window shows alone: no run bar, no sheet wait line, nothing else moving (${JSON.stringify(moving)})`);
   await page.waitForSelector('#waitwin .wwcancel', { state: 'attached', timeout: 30_000 });
   await page.click('#waitwin .wwcancel');
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(1500);
+  const open = held.filter((h) => !h.closed).map((h) => h.url);
+  check(held.length > 0 && open.length === 0, `Abbrechen stops the routing-data downloads too (${held.length} held, still open: ${open.join(', ') || 'none'})`);
+  const segBefore = segReqs;
   release(); // the data would come now – a stopped run must not route with it
   await page.waitForTimeout(6000);
   const after = await page.evaluate(() => ({ planning: document.body.dataset.planning === '1', win: !!document.querySelector('#waitwin'),
@@ -60,6 +69,7 @@ try {
     btn: (() => { const b = document.getElementById('planAnyway'); if (!b) return null; const s = getComputedStyle(b); return { text: b.textContent, bg: s.backgroundColor, h: Math.round(b.getBoundingClientRect().height) }; })(),
     pins: document.querySelectorAll('.pin').length }));
   check(!after.planning && !after.win, `Abbrechen stops: no wait window, not planning (${JSON.stringify({ p: after.planning, w: after.win })})`);
+  check(segReqs === segBefore, `no new routing-data request after Abbrechen (${segReqs - segBefore} new)`);
   check(routes.length === 0, `no route comes in after Abbrechen (${routes.join(' | ') || 'none'})`);
   check(after.pins === 2, `the points stay (${after.pins})`);
   check(/Route nicht berechnet/.test(after.line), `the panel says „Route nicht berechnet …“ (${after.line})`);

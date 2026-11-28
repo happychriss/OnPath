@@ -131,6 +131,9 @@ export class EngineClient {
     if (ids.length) this.restart(ids);
   }
 
+  /** Abbrechen (owner 2026-11-27 „Laden stoppt auch“): the routing-data downloads stop – the plans' and the map view's. */
+  stopLoads() { this.worker.postMessage({ type: 'stopLoads', id: 0 } as EngineRequest); }
+
   /**
    * The page dropped every running plan (a newer edit, Neu, Abbrechen – the app's cancelRun). BRouter in the worker
    * cannot be stopped mid-way and the one worker answers in order, so a long dropped plan (Meran → Hilden: minutes)
