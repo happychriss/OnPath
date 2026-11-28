@@ -116,6 +116,12 @@ body[data-loadover="1"] .runbar { display: none; }
 /* the empty search's kept places (owner 2026-11-15, the app's SearchScreen compact sketch): ⌂ Zuhause, ★ FAVORITEN,
    ZULETZT GESUCHT – one-line rows ≥ 48 px: the sign 24, the name 16 medium, the grey part 14 beside it (cut first) */
 .hit.compact { min-height: 48px; padding: 4px 4px; gap: 0; }
+/* a favourite row: the row + its star on the right (owner 2026-11-28, the app's search like My routes' star) */
+.favrow { display: flex; align-items: center; }
+.favrow .hit.compact { flex: 1 1 0; min-width: 0; }
+.favrow .favstar { flex: none; width: 44px; height: 44px; color: var(--muted); }
+.favrow .favstar .ic { fill: currentColor; }
+.favrow .favstar.on { color: #B07D00; /* OnPathColors.Favourite */ }
 .hit.compact .sign { flex: none; width: 24px; height: 24px; display: grid; place-items: center; margin-right: 16px; color: var(--muted); }
 .hit.compact .sign .ic, .smallhead .sign .ic { fill: currentColor; }
 .hit.compact .sign.home { color: var(--plan); /* OnPathColors.ActionEdit */ }

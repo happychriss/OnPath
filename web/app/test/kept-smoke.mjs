@@ -69,10 +69,11 @@ const emptySearch = async (page) => {
     const out = { home: null, favs: [], more: false, recent: [], heads: [], hint: !!document.querySelector('#results .pad') };
     if (!box) return out;
     let part = '';
-    for (const el of box.children) {
+    for (let el of box.children) {
       if (el.classList.contains('smallhead')) { part = el.querySelector('[role=heading]').textContent; out.heads.push(getComputedStyle(el).textTransform === 'uppercase' ? part.toUpperCase() : part); continue; }
       if (el.classList.contains('allfavs')) { out.more = el.textContent; continue; }
-      if (!el.classList.contains('hit')) continue;
+      if (el.classList.contains('favrow')) el = el.querySelector('.hit'); // a favourite row: the row + its star
+      if (!el?.classList.contains('hit')) continue;
       const row = { name: el.querySelector('b').textContent, line: el.querySelector('.muted').textContent, h: el.getBoundingClientRect().height,
         oneLine: el.querySelector('b').getBoundingClientRect().height < 30 };
       if (el.querySelector('.sign.home')) out.home = row;
@@ -139,6 +140,20 @@ const emptySearch = async (page) => {
   await page.waitForTimeout(400);
   const all = await page.$$eval('#results .hit.compact .sign.fav', (e) => e.length);
   check(all === 1 + more.length && await page.locator('#results .allfavs').count() === 0, `„All favourites ›“: all ${all} shown`);
+
+  // the star on a favourite row (owner 2026-11-28 15:10, the app's search like My routes): a click lets the place go – the
+  // row stays (an empty star) until the search closes – a second click keeps it again; the star never picks the row
+  const kept = () => page.evaluate(() => JSON.parse(localStorage.getItem('onpath.keptPlaces')).favourites.length);
+  const before = await kept();
+  const star = page.locator('#results .favrow .favstar').first();
+  check(await star.count() === 1 && await star.getAttribute('aria-pressed') === 'true', 'a favourite row has a gold star on the right (pressed)');
+  await star.click();
+  await page.waitForTimeout(400);
+  check(await kept() === before - 1 && await star.getAttribute('aria-pressed') === 'false' && await page.locator(MENU).count() === 0
+    && await page.locator('#results .favrow').count() === all, `star clicked: no favourite any more, the row stays, nothing picked (${before} → ${await kept()})`);
+  await star.click();
+  await page.waitForTimeout(400);
+  check(await kept() === before && await star.getAttribute('aria-pressed') === 'true', 'a second click keeps it again');
 
   // a home stored before (or synced from the phone) stays – it is only not shown (the app's KeptPlacesE2ETest)
   const homeCode = await page.evaluate(() => {

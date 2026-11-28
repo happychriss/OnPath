@@ -15,6 +15,7 @@ import { t } from './i18n';
 import { NO_PADDING, offsetTo, pointTarget } from './cardanchor';
 import { holdMenu, placeRowGroup, type MenuItem } from './menus';
 import { problem } from './diag';
+import { starHtml } from './routefilter';
 import type { KeptStore, SearchRecent } from './keptplaces';
 import { HOME_ROW_SHOWN, shownMenuRows } from './pinmenu';
 import { cardPan, decidePinMenu, pinRows, pinSizes, type PinMenuDecision } from './pinplace';
@@ -158,6 +159,8 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
 
   /** „Alle Favoriten ›“ was clicked: every favourite until the search is opened again (the app's showAllFavourites). */
   let allFavourites = false;
+  /** A star clicked on a favourite row: that change does not draw the lists again (the row stays until the search closes). */
+  let ownChange = false;
   /** One compact row (the app's CompactRow): the sign, the name, the grey part beside it – cut first. */
   const compactRow = (k: string, sign: string, name: string, line: string) => `
       <button class="hit compact" data-k="${k}">${sign}<b>${esc(name)}</b><span class="muted">${esc(line)}</span></button>`;
@@ -177,7 +180,10 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     if (s.home && HOME_ROW_SHOWN) html += compactRow(add(s.home), `<span class="sign home">${icon('home')}</span>`, t('search_home'), s.home.subtitle) + '<div class="menudivider"></div>';
     if (s.favourites.length) {
       html += `<div class="smallhead"><span class="sign fav">${icon('star', 14)}</span><span role="heading" aria-level="3">${esc(t('search_favourites'))}</span></div>`;
-      html += s.favourites.map((h) => compactRow(add(h), `<span class="sign fav">${icon('star')}</span>`, h.title, h.subtitle)).join('');
+      // the star on the right (owner 2026-11-28 15:10, the app's search like My routes): a click lets the place go, the
+      // row stays with an empty star until the search closes, a second click keeps it again; the star never picks the row
+      html += s.favourites.map((h) => `<div class="favrow">${compactRow(add(h), `<span class="sign fav">${icon('star')}</span>`, h.title, h.subtitle)}${
+        h.code ? starHtml(true, h.title).replace('class="favstar', `data-code="${esc(h.code)}" class="favstar`) : ''}</div>`).join('');
       if (s.more > 0) html += `<button class="textbtn allfavs">${esc(t('search_all_favourites'))}</button>`;
     }
     if (s.recent.length) {
@@ -192,6 +198,21 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
     results.querySelectorAll<HTMLButtonElement>('.hit.compact').forEach((b) => { b.onclick = () => pickRow(rows[Number(b.dataset.k)]); });
     const again = () => { q.focus(); void renderStart(++gen); };
     results.querySelector<HTMLButtonElement>('.allfavs')?.addEventListener('click', (e) => { e.stopPropagation(); allFavourites = true; again(); });
+    results.querySelectorAll<HTMLButtonElement>('.favrow .favstar').forEach((b) => {
+      b.onclick = async (e) => {
+        e.stopPropagation();
+        const code = b.dataset.code!, keep = b.getAttribute('aria-pressed') !== 'true';
+        const name = b.closest('.favrow')?.querySelector('b')?.textContent ?? '';
+        // the star shows the new state at once; its own change does not draw the lists again (the row stays in place)
+        b.classList.toggle('on', keep); b.setAttribute('aria-pressed', String(keep));
+        const spoken = t(keep ? 'routes_fav_on' : 'routes_fav_off', name);
+        b.setAttribute('aria-label', spoken); b.title = spoken; b.innerHTML = icon(keep ? 'star' : 'starOutline', 26);
+        ownChange = true;
+        try { await (keep ? host.kept.keep(code) : host.kept.unkeep(code)); }
+        catch (err) { problem('search', 'Kept places: the star\'s change was not stored', err); }
+        finally { ownChange = false; }
+      };
+    });
     results.querySelector<HTMLButtonElement>('.clearrecent')?.addEventListener('click', (e) => { e.stopPropagation(); host.recent.clear(); again(); });
     wireChips();
   };
@@ -387,7 +408,7 @@ export function setupSearch(host: SearchHost, box: HTMLElement, card: HTMLElemen
   // the chips and the kept places to start from; opened again (the list was closed): five favourites again
   q.addEventListener('focus', () => { if (!q.value.trim() && !category) { if (results.hidden) allFavourites = false; run(); } });
   // a place kept or let go (also in another tab) while the empty search shows: its lists follow
-  host.kept.onChange(() => { if (!results.hidden && !q.value.trim() && !category) void renderStart(++gen); });
+  host.kept.onChange(() => { if (!ownChange && !results.hidden && !q.value.trim() && !category) void renderStart(++gen); });
   q.addEventListener('keydown', (e) => { if (e.key === 'Escape') { q.value = ''; run(); } });
   clear.onclick = () => { q.value = ''; run(); q.focus(); };
   return { close, isOpen: () => popup != null || !card.hidden, removePin, planChanged: () => { void updateJoin(); },
