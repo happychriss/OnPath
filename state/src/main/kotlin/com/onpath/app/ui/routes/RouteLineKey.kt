@@ -9,5 +9,9 @@ import com.onpath.app.map.ThumbRules
  * ([ThumbRules.rideTag]): the same points under another choice draw another line.
  */
 object RouteLineKey {
-    fun of(t: Tour): String = "${t.id}:${t.uuid}:${t.distanceM}:${t.waypoints.size}:${t.createdMs}" + ThumbRules.rideTag(t)
+    fun of(t: Tour): String =
+        // the live row (the plan on the map) is built anew with „now“ as its time on every recomposition: its time is no part
+        // of its line (owner's Pixel 8 2026-11-28: the Zuletzt tile flickered while a tour recorded) – its numbers are
+        if (t.id == com.onpath.app.domain.plan.LivePlanRows.LIVE_ID) "${t.id}:${t.distanceM}:${t.ascentM}:${t.durationS}"
+        else "${t.id}:${t.uuid}:${t.distanceM}:${t.waypoints.size}:${t.createdMs}" + ThumbRules.rideTag(t)
 }
