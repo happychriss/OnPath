@@ -53,7 +53,7 @@ Order now: (1) parallel: Suchkategorie tidy (`SacChips` / `Screens.kt` + `feat/w
 (2) Mehrtagestouren step B (code; PlanPanel / MapScreen / AppViewModel; rebase after the SacChips commit if it needs
 `Screens.kt`); (3) Wartefenster: test build on the Pixel, notes on `release/0.18.12-notes` updated; old GO void – redo
 release_check / gate --full / E2E before the release.
-**Queue after the release:** (1) Suchkategorie (donald): `SacChips` out of `Screens.kt` + `feat/wait-step-bar` via
+**Queue after the release:** (1) ~~Suchkategorie (donald)~~ done (SacChips out cb4102b8f, `feat/wait-step-bar` deleted 10:53): `SacChips` out of `Screens.kt` + `feat/wait-step-bar` via
 `prune_branches.sh delete --by-hand` after checking its 3 rewritten commits are in 9b0a247ce (owner 06:23 „Aufräumen ist
 immer gut“). (2) ~~multi-day head in the app~~ – **not built** (owner 06:31: the day is chosen in Meine Touren, the plan stays
 one single tour; today's app already fits). Open question to the owner: „< Alle Tage“ → the day list in Meine Touren?
