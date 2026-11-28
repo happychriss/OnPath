@@ -14,6 +14,9 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -244,6 +247,36 @@ class OpenCard(start: Int = -1) {
     fun settled(page: Int) { if (page != open) open = -1 }
 }
 
+/** Where a tap on a round-trip card lands: „Übernehmen“, the text block (title, numbers, text line), the rest. */
+enum class CardPart { TAKE, TEXT, REST }
+
+/** What that tap does: take the loop, open the card's whole text, or choose the card (its loop on the map). */
+enum class CardTap { TAKE, OPEN, CHOOSE }
+
+/**
+ * The card's taps (owner 2026-11-28 15:36, variant A): on the card in front the whole text block opens the card when
+ * something on it is cut – „⌄ mehr“ at the text line's end says so; nothing cut, or the peeking card: the text is part
+ * of the card and chooses it. „Übernehmen“ answers only its own button.
+ */
+object CardTaps {
+    fun showsMore(cut: Boolean, open: Boolean): Boolean = cut && !open
+
+    fun of(part: CardPart, front: Boolean, cut: Boolean): CardTap = when (part) {
+        CardPart.TAKE -> CardTap.TAKE
+        CardPart.TEXT -> if (front && cut) CardTap.OPEN else CardTap.CHOOSE
+        CardPart.REST -> CardTap.CHOOSE
+    }
+}
+
+/** For the screenshot tests: what a folded card showed (by its title) – „⌄ mehr“, whether it was cut, the line's room. */
+class CardProbe {
+    val more = mutableMapOf<String, Boolean>()
+    val moreCut = mutableMapOf<String, Boolean>()
+    val lineWidth = mutableMapOf<String, Int>()
+}
+
+internal val LocalCardProbe = staticCompositionLocalOf<CardProbe?> { null }
+
 /** How far the next card looks in at the right edge of the row (sketch 8). */
 private val PEEK = 16.dp
 private val ROW_PAD = 14.dp
@@ -349,7 +382,7 @@ private fun ColumnScope.CardRow(ui: SuggestPanelUi, cb: SuggestPanelCallbacks, s
     ) { i ->
         SuggestCardView(ui.cards[i], chosen = i == ui.chosen, taking = ui.taking && i == ui.chosen,
             onClick = { cb.onChoose(i) }, onTake = { cb.onTake(i) }, open = card.open == i,
-            onOpen = { card.tapText(i); if (i != ui.chosen) cb.onChoose(i) }, onLess = card::less)
+            onOpen = { card.tapText(i) }, onLess = card::less)
     }
     if (n > 1) Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.Center) {
         repeat(n) { i ->
@@ -372,8 +405,9 @@ fun cardStats(c: SuggestCard): String =
 
 /**
  * One compact card (sketch 8): badge and „Übernehmen“ on top (filled on the chosen card, outlined on the others), the
- * title, km · h · ↑ (and the part on the signed loop), the text in one line, the pills. Where something is cut, a tap on
- * the text grows the card in place ([open], owner 2026-11-19 V1): title, line and text in full, „▴ weniger“ under them.
+ * title, km · h · ↑ (and the part on the signed loop), the text in one line, the pills. Where something is cut, „⌄ mehr“
+ * ends the text line and a tap on the text block grows the card in place ([open], owner 2026-11-19 V1, 2026-11-28
+ * variant A): title, line and text in full, „⌃ weniger“ under them.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -399,7 +433,7 @@ fun SuggestCardView(
                 if (c.pills.isNotEmpty()) FlowRow(Modifier.padding(top = 4.dp, end = 4.dp), horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp)) { c.pills.forEach { Pill(it) } }
             }
-            if (open) GrownText(c, onLess, if (pillsInside) pills else null) else ShortText(c, onOpen)
+            if (open) GrownText(c, onLess, if (pillsInside) pills else null) else ShortText(c, front = chosen, onOpen)
             if (!pillsInside) pills()
         }
     }
@@ -415,21 +449,45 @@ private fun statsText(c: SuggestCard) = buildAnnotatedString {
     c.loopKm?.let { withStyle(SpanStyle(color = OnPathColors.InkMuted)) { append(" · " + str(Res.string.suggest_ui_on_loop, Format.number(it, 1))) } }
 }
 
-/** The card as it sits in the row: one line each; where any of them is cut, the text takes a tap that grows the card. */
+/**
+ * The card as it sits in the row: one line each. Where any of them is cut, „⌄ mehr“ ends the text line (the counterpart
+ * of „⌃ weniger“) and, on the card in front, the whole text block – at least 48 dp – takes the tap that grows the card
+ * (owner 2026-11-28 15:36, variant A); else a tap there is the card's own (it chooses the card).
+ */
 @Composable
-private fun ShortText(c: SuggestCard, onOpen: () -> Unit) {
+private fun ShortText(c: SuggestCard, front: Boolean, onOpen: () -> Unit) {
     var nameCut by remember(c) { mutableStateOf(false) }
     var statsCut by remember(c) { mutableStateOf(false) }
     var lineCut by remember(c) { mutableStateOf(false) }
+    val cut = nameCut || statsCut || lineCut
+    val showMore = CardTaps.showsMore(cut, open = false)
+    val probe = LocalCardProbe.current
+    SideEffect { probe?.more?.set(c.name, showMore) }
     val more = str(Res.string.suggest_ui_more)
-    Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(end = 4.dp), onTextLayout = { nameCut = it.hasVisualOverflow })
-    Text(statsText(c), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        modifier = Modifier.padding(end = 4.dp), onTextLayout = { statsCut = it.hasVisualOverflow })
-    if (c.line.isNotBlank()) Text(c.line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
-        onTextLayout = { lineCut = it.hasVisualOverflow },
-        modifier = Modifier.fillMaxWidth().padding(end = 4.dp)
-            .then(if (nameCut || statsCut || lineCut) Modifier.clickable(role = Role.Button, onClickLabel = more, onClick = onOpen) else Modifier))
+    val tap = if (CardTaps.of(CardPart.TEXT, front, cut) == CardTap.OPEN)
+        Modifier.clickable(role = Role.Button, onClickLabel = more, onClick = onOpen) else Modifier
+    Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).then(tap), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(c.name, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(end = 4.dp), onTextLayout = { nameCut = it.hasVisualOverflow })
+        Text(statsText(c), style = MaterialTheme.typography.bodyMedium, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(end = 4.dp), onTextLayout = { statsCut = it.hasVisualOverflow })
+        if (c.line.isNotBlank() || showMore) Row(Modifier.fillMaxWidth().padding(end = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text(c.line, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+                onTextLayout = { lineCut = it.hasVisualOverflow; probe?.lineWidth?.set(c.name, it.size.width) })
+            if (showMore) MoreMark(c.name, probe)
+        }
+    }
+}
+
+/** „⌄ mehr“: the look of „⌃ weniger“ (blue, the icon before the word), not a button of its own – the text block is. */
+@Composable
+private fun MoreMark(name: String, probe: CardProbe?) {
+    Row(Modifier.padding(start = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+        Icon(Icons.Filled.ExpandMore, contentDescription = null, tint = OnPathColors.ActionEdit, modifier = Modifier.size(20.dp))
+        Text(str(Res.string.suggest_ui_more_mark), style = MaterialTheme.typography.labelLarge, color = OnPathColors.ActionEdit,
+            maxLines = 1, softWrap = false, onTextLayout = { r -> probe?.moreCut?.set(name, r.hasVisualOverflow) })
+    }
 }
 
 /**

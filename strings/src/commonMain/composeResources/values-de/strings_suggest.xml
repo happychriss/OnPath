@@ -126,6 +126,7 @@
     <string name="suggest_ui_taking">Plan wird erstellt …</string>
     <string name="suggest_ui_more">Ganzen Text zeigen</string>
     <string name="suggest_ui_less">weniger</string>
+    <string name="suggest_ui_more_mark">mehr</string>
     <string name="suggest_ui_test_on">Tourvorschläge: an</string>
     <string name="suggest_ui_test_off">Tourvorschläge: aus</string>
     <string name="suggest_ui_loading_routing">Wegedaten werden geladen …</string>

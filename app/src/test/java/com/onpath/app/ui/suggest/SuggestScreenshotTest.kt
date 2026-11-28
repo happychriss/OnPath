@@ -50,8 +50,8 @@ object SuggestShots {
         }
     }
 
-    fun panel(paparazzi: Paparazzi, phase: SuggestPhase, notes: List<String> = emptyList(), chosen: Int = 0) = paparazzi.snapshot {
-        OnPathTheme {
+    fun panel(paparazzi: Paparazzi, phase: SuggestPhase, notes: List<String> = emptyList(), chosen: Int = 0, probe: CardProbe? = null) = paparazzi.snapshot {
+        ProbedTheme(probe) {
             Box(Modifier.fillMaxSize()) {
                 MapPlaceholder(Modifier.fillMaxSize())
                 Box(Modifier.align(Alignment.BottomCenter)) {
@@ -60,6 +60,35 @@ object SuggestShots {
                 }
             }
         }
+    }
+
+    /** The theme, with a [CardProbe] the cards report „⌄ mehr“ to. */
+    @androidx.compose.runtime.Composable
+    private fun ProbedTheme(probe: CardProbe?, content: @androidx.compose.runtime.Composable () -> Unit) =
+        com.onpath.app.ui.OnPathTheme { androidx.compose.runtime.CompositionLocalProvider(LocalCardProbe provides probe, content = content) }
+
+    /**
+     * The cards folded (owner 2026-11-28 15:36, variant A): „⌄ mehr“ at the end of the text line of a card with something
+     * cut, never cut itself, the line keeping room beside it; a card whose text fits shows none.
+     */
+    fun closed(paparazzi: Paparazzi) {
+        val probe = CardProbe()
+        val short = SuggestCard(4, "Am Bach", null, null, 4.1, 1.0, 20, "Kurz am Bach.", emptyList(), line)
+        paparazzi.snapshot {
+            ProbedTheme(probe) {
+                Box(Modifier.fillMaxSize()) {
+                    MapPlaceholder(Modifier.fillMaxSize())
+                    Box(Modifier.align(Alignment.BottomCenter)) {
+                        SuggestPanel(SuggestPanelUi(SuggestPhase.CARDS, "", listOf(longCard(), short), chosen = 0), SuggestPanelCallbacks())
+                    }
+                }
+            }
+        }
+        val long = longCard().name
+        org.junit.Assert.assertEquals("the long card shows „mehr“", true, probe.more[long])
+        org.junit.Assert.assertEquals("„mehr“ is never cut", false, probe.moreCut[long])
+        org.junit.Assert.assertTrue("the text line keeps room beside „mehr“", (probe.lineWidth[long] ?: 0) > 0)
+        org.junit.Assert.assertEquals("a text that fits: no „mehr“", false, probe.more[short.name])
     }
 
     /** A signed loop with a long text (five sentences), in the language of the shot. */
@@ -109,6 +138,8 @@ open class SuggestScreenshotTest {
     @Test fun failed() = SuggestShots.panel(paparazzi, SuggestPhase.FAILED)
     /** A tap on the card's text: it grows in place with the whole text, „▴ weniger“ (owner 2026-11-19, V1). */
     @Test fun cardGrown() = SuggestShots.grown(paparazzi)
+    /** Folded with „⌄ mehr“ at the text line's end; a short card beside without it (owner 2026-11-28, variant A). */
+    @Test fun cardClosed() = SuggestShots.closed(paparazzi)
 }
 
 class SuggestGermanScreenshotTest : SuggestScreenshotTest() {
@@ -130,4 +161,6 @@ class SuggestLargeFontGermanTest {
     @Test fun cards() = SuggestShots.panel(paparazzi, SuggestPhase.CARDS)
     /** The grown card at a large font: under 60 % of the screen, the text scrolls inside, „Übernehmen“ and „▴ weniger“ stay. */
     @Test fun cardGrown() = SuggestShots.grown(paparazzi)
+    /** Folded at a large font: „⌄ mehr“ whole at the line's end. */
+    @Test fun cardClosed() = SuggestShots.closed(paparazzi)
 }
