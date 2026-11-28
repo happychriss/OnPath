@@ -150,13 +150,13 @@
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",
-      "what": "Save's writes (C18): request / saveRoute / overwriteSaved (sync changed the stored route → a copy and a line; deleted meanwhile → a new route) / copyRoute / rename / setFavourite – plans.ts save, overwrite, copy (moved here from AppViewModel, rebuild phase 2 piece 3); the app-only parts (backup file, the tour start's save, Zuletzt) are not in the planner · 318272deb checked: MD-4 (a followed day whose start/goal moved saves as its own route) and „Zuletzt keeps the day“ – app only: the planner has no followed day, it edits the whole trip",
+      "what": "Save's writes (C18): request / saveRoute / overwriteSaved (sync changed the stored route → a copy and a line; deleted meanwhile → a new route) / copyRoute / rename / setFavourite – plans.ts save, overwrite, copy (moved here from AppViewModel, rebuild phase 2 piece 3); the app-only parts (backup file, the tour start's save, Zuletzt) are not in the planner · 318272deb checked: MD-4 (a followed day whose start/goal moved saves as its own route) and „Zuletzt keeps the day“ – app only: the planner has no followed day, it edits the whole trip; MD-12 (another activity / T level makes the day its own tour, leavesTripNote) app only too",
       "web": [
         "web/app/src/plans.ts",
         "web/app/src/main.ts",
         "web/app/src/recent.ts"
       ],
-      "blob": "f0757852f9e2255dac2ca04a2aed61a499feefea"
+      "blob": "3c2f487496404005e4e4020c65b8cfd1445c08ec"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/ImportExport.kt",
@@ -169,7 +169,7 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/AppViewModel.kt",
-      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task) · 318272deb/2c5c034fe checked: wiring of the phone's one-day multi-day flow (openDays → day sheet, leavesTrip) – app only (owner 2026-11-28: exactly one day on the phone; the planner plans the whole trip) · 2026-11-28 a7b1688e6 a plan link with days lands as the whole tour in Meine Touren (MD-2) – app only: the planner opens such a link as the plan with its tour (it plans the whole trip, owner 2026-11-27)",
+      "what": "recalc's long-route ask moved to PlanRecalcSlice (rebuild phase 2 piece 9b); answerLongRoute stays here; the done tours' Ø speed is not in the planner (no recorded tours) – pinnedPoiKinds / refreshPinnedKinds, placeMenu and keepPlaces / placesChanged moved to PlaceMenusSlice / KeptPlacesSlice (rebuild phase 2 piece 12) · 2026-11-27 checked: the long-leg question weighs the legs as routed (support points) – the planner does so since cdf78f4a0 (run head) · 2026-11-27 c3fb65034: loading one day of a multi-day route as the plan – with the planner's My routes day sheet (next task) · 318272deb/2c5c034fe checked: wiring of the phone's one-day multi-day flow (openDays → day sheet, leavesTrip) – app only (owner 2026-11-28: exactly one day on the phone; the planner plans the whole trip) · 2026-11-28 a7b1688e6 a plan link with days lands as the whole tour in Meine Touren (MD-2) – app only: the planner opens such a link as the plan with its tour (it plans the whole trip, owner 2026-11-27); MD-12 followedDay / leave reasons app only",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/longroute.ts",
@@ -178,7 +178,7 @@
         "web/engine/src/main/kotlin/com/onpath/web/WebApi.kt",
         "web/app/src/plans.ts"
       ],
-      "blob": "e81bb27967828fd7aee0d3a113b2cc879082a4eb"
+      "blob": "4929532e574e5a0f8c7793dee7f087bb7ae79b96"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/Panels.kt",
@@ -3361,7 +3361,7 @@
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt": {
-      "blob": "f0757852f9e2255dac2ca04a2aed61a499feefea",
+      "blob": "3c2f487496404005e4e4020c65b8cfd1445c08ec",
       "perf": []
     },
     "state/src/main/kotlin/com/onpath/app/ui/routes/RecentPlansState.kt": {
