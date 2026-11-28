@@ -61,3 +61,14 @@ means. The finding of this exercise is about the vision and the captain's method
 1. Dead code out (table „Out“), orphan requirements marked – one small order, no question.
 2. Requirement IDs for the rows without an origin on record.
 3. Two questions to the owner (snap switch, „Ganz neu berechnen“), the tap count for Rundtouren.
+
+## Owner's answers (2026-11-28, cards and messages in the captain's chat)
+- **„Ganz neu berechnen“:** removed from the menu (09:45). Plan sync keeps sending points only; phone and planner
+  compute the same line (tests); different map dates between browser and phone are accepted, no hint to the user.
+- **Settings → „Position auf der Route“:** stays (09:49). Situation: two stretches run close together (serpentines) and
+  the snap jumps to the wrong one; switched off, the map shows the raw position.
+- **„Zuhause“:** stays in the planner, gone in the app (09:50) – a deliberate exception from parity: at the desk the
+  browser often has no location and a tour starts at the front door; on the phone the start is „here“. The app shows a
+  synced home as the first favourite.
+- **„Runde von hier“ on the start card:** not built (09:34); the loop stays in the hold menus.
+- **Learning to hold:** a hint at the tapped spot on empty map and „Als Ziel“ in the place info (09:41).
