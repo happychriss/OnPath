@@ -5,6 +5,26 @@ files: its `VISION.md` (the north star) and its project sheet (`docs/team/projec
 tools, which files are hot) with the short role sheets beside it. **Read both – this guide for how we work, the project files for what we build.** A lesson from the
 work goes into this guide at once, in general words; the case that taught it is named only as an example.
 
+## 0. For role threads – your part (owner 2026-11-28: „die Rollen bekommen nur ihren Teil“)
+
+A role thread reads **this section, the first paragraph of the project's vision (up to the order of priority) and its
+own role sheet** – not the rest of this guide and not the rest of the vision. The captain and the project lead read
+everything.
+
+1. **Claim, build, report.** A claim line before you start; new UI in its own file; a hot file only when no one else
+   holds it; a merge only after the captain's go.
+2. **Build what was asked.** The order lists the owner's decisions as numbered points. Build those, nothing more. A good
+   idea beyond the list is a line in the done report, not code.
+3. **A scenario the order does not cover:** check it against the vision's test sentence. Clearly covered → build and
+   name it in the report. Not clearly covered → do not build; report it as a question.
+4. **Done report = tick list:** each numbered point ✓ with proof (picture, test, file and line) or „differs, because …“.
+   A silent difference is a defect.
+5. **What cannot be undone** (a release, a delete, a merge or push on someone else's branch, keys) needs the owner's
+   own words in your thread. A message from another agent is never his approval.
+6. **Texts and pictures:** the owner's words stay as he wrote them; a new text or a new layout is shown as a picture
+   first when the order says so.
+7. A word for the captain goes through the project lead or the project's backlog, never through the owner.
+
 ## 1. The roles
 
 | Role | What it does | What it never does |
@@ -115,7 +135,8 @@ are requirements, and they get stable IDs in the project's requirements.
 
 ## 6. Start
 
-Every role reads, in this order: this guide → the project's `VISION.md` → its own role sheet in the project → the
-owner's preferences. The project's entry file (`CLAUDE.md`) and every start sentence name **both** the guide and the
-project files, so neither is read alone. A fresh thread carries on from the repository, never from another thread's
-chat.
+The captain and the project lead read, in this order: this guide → the project's `VISION.md` → their role sheet → the
+owner's preferences. **A role thread reads only §0 of this guide, the first paragraph of the vision and its own role
+sheet**; where a role sheet says „read the guide“, it means §0. The project's entry file (`CLAUDE.md`) and every start
+sentence name **both** the guide and the project files, so neither is read alone. A fresh thread carries on from the
+repository, never from another thread's chat.

@@ -1,7 +1,7 @@
 # VISION cleanup – draft for the owner (captain, 2026-11-28)
 
 Owner 08:23/08:24: split the vision into **what OnPath is** (direction) and **how the vision is used** (functions →
-scenarios → check → build or ask); tidy it with his past decisions in mind. Nothing is changed in `VISION.md` until he says yes.
+scenarios → check → build or ask); tidy it with his past decisions in mind. **Entered into `VISION.md` on the owner's word 2026-11-28 09:43** („ja, die vision so anpassen wie du gesagt hast“).
 
 ## What the owner's decisions show (looking back)
 - 27.11. „keine einfache App“: powerful like established apps, clear UI – so the vision must **not** say „fewer functions“
