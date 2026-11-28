@@ -13,6 +13,10 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
 - Many questions of 27.11. were answerable by the vision („Vision first“) – the process part should say that too.
 
 ## Changes
+00. **Owner 09:04 – the heart:** „Ich bin irgendwo. Das Wetter ist gut, die Landschaft ist toll. Was kann ich tun? Dann
+   habe ich mein Handy und los geht's.“ The first paragraph is rewritten around **today's tour: finding, walking,
+   keeping**; the unbounded „holds its own against established apps“ line left the first paragraph (Komoot stays the
+   bar in „Powerful, clear and calm“).
 0. **Owner 08:49 (the freedom thought):** „Überall, wo ich bin, kann ich mit meinem Handy loslegen“ – the split is not
    way / preparing but **where you are / planning ahead**; simple planning and a spontaneous loop belong on the phone.
    The test sentence and the browser line say so; the process rules moved to the captain's guide (owner 08:41).
@@ -33,13 +37,13 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
 ```
 # Vision
 
-OnPath exists so that people on a hike or bike ride can change their plan along the way, even without reception, without the recording stopping.
-It serves people who plan their own tours, on foot or by bike, from an after-work loop to a multi-day alpine tour, on Android.
-From a destination, OnPath makes a checked route, guides you there and keeps the tour.
-In function it holds its own against established apps and goes beyond them where it matters on the way: re-planning offline, a recording that never breaks, multi-day tours.
-It owns exactly one thing: your own plan for today's outing, from the destination to the saved tour.
-Wherever you stand with your phone, you can set off: plan a simple outing in a moment, or let OnPath propose a loop from here.
-The test for everything: does it help someone who has only the phone to set off, to change the plan on the way and to arrive?
+OnPath is for the moment you are somewhere, the weather is good, the land is beautiful, and you want to go: you have your phone, and off you go.
+It owns exactly one thing: today's tour – finding it, walking it, keeping it.
+Finding: a route to a destination planned in a moment, a loop proposed from where you stand, or a tour from your own list.
+Walking: guided, re-planned on the way, also without reception, and the recording never breaks.
+Keeping: saved at the end, to look back on and to show.
+It serves people who decide on the day, on foot or by bike, on Android; a tour planned long ahead or over several days is prepared in the browser planner and reaches the phone one day at a time.
+The test for everything: does it help someone who has only the phone to set off today, to change the plan on the way and to arrive?
 When principles collide, this order decides: never lose a tour, then offline on the way, then clear and calm, then powerful.
 
 ## Never lose a tour
