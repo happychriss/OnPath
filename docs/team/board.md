@@ -33,7 +33,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
 | Teilen: eigenes Untermenü (was Akku sparen; all of it on main, f1a3729a3) | donald | owner 15:11: one settings row „Teilen“ → own page with name · share · stop (when active); every „Teilen“ entry lands there (pattern `PairWindow.kt`) | picture → owner's yes → merge |
-| Blaues Dreieck in der Suche | donald | fixes with the owner's yes 15:13: FacingArrow drawn before ModeSwitch (it lay over the search); pocket lock only while RESUMED (black screen while sharing) | merge on green gate; 0.18.13: owner decides |
+| Rundtourkarten: Tippen sichtbar machen (was Blaues Dreieck; fixes on main: pocket lock 0c50fdd6d, FacingArrow b6851da27) | donald | owner 15:16: the round-trip cards do not show where to tap for the whole map – finding + picture, 2–3 variants | owner picks; HP parity (`suggest.ts`) |
 | Stern in der Favoritenliste (was Browser verbinden) | donald | owner 15:10: a star on each favourite row of the search, tap removes / keeps again (like My routes) | merge on green gate; HP: same in the planner search |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | queue: 1 „Ganz neu berechnen“ out (owner's card 14:53) + time-test limit · 2 tracker page in OnPath's colours (owner 15:13; picture first) · 3 star on the favourite rows of the planner search (parity) | deploy on green; parity acks after each donald merge |
