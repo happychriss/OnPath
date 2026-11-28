@@ -20,31 +20,33 @@ import org.junit.runner.RunWith
 /**
  * „Orte merken“ (owner 2026-11-15, F-PLAN-14): a picked place's menu keeps it as a favourite with one tap (the menu shows
  * the new state), and the empty search then lists the place under „Favourites“ – kept on the phone (its own prefs, read
- * again by a new search). Zuhause is off for now (owner 2026-11-19, HOME_ROW_SHOWN = false): the menu offers no
- * „Set as home“ and the search shows no „Home“ row, while a stored home stays in the state.
+ * again by a new search). The app has no Zuhause (off 2026-11-19, removed 2026-11-28): the menu offers no „Set as home“,
+ * the search shows no „Home“ row, and a home kept by an older version comes back as a favourite – never lost.
  */
 @RunWith(AndroidJUnit4::class)
 class KeptPlacesE2ETest : E2EBase() {
 
-    @Test fun merkenShowsInTheSearchZuhauseHidden() {
+    @Test fun merkenShowsInTheSearchAnOldHomeIsAFavourite() {
         val ctx = InstrumentationRegistry.getInstrumentation().targetContext
-        launch(beforeLaunch = { ctx.getSharedPreferences("onpath-places", 0).edit().clear().commit() })
+        val oldHome = Place("home-1", "Mittelstraße 12", "address", MERAN_LAT + 0.01, MERAN_LON, source = Place.Source.MAP)
+        // an older version's store: a Zuhause kept
+        launch(beforeLaunch = { ctx.getSharedPreferences("onpath-places", 0).edit().clear()
+            .putString("home", com.onpath.app.search.SearchStore.encode(oldHome)).commit() })
         val cafe = Place("kept-1", "Café Kept", "cafe", MERAN_LAT, MERAN_LON)
         scenario.onActivity { vm(it).searchFlow.pickSearchResult(cafe) }
         waitUntil("the picked place's menu", 20_000) { read { it.placeMenus.poiMenu } != null }
 
         clickText(Txt.s(Res.string.place_favourite_add))
         assertNotNull("a tap keeps it: „Gemerkt“", findFresh(By.text(Txt.s(Res.string.place_favourite_on)), 5_000))
-        assertTrue("no „Set as home“ while Zuhause is off", goneFresh(By.text(Txt.s(Res.string.place_home_set)), 2_000))
+        assertTrue("no „Set as home“ in the app", goneFresh(By.text(Txt.s(Res.string.place_home_set)), 2_000))
         shot("kept-menu")
-        // a home stored before (or synced from the browser) stays – it is only not shown
-        scenario.onActivity { vm(it).let { vm -> vm.placeMenus.poiMenu?.let(vm.keptPlaces::toggleHomePlace) } }
 
         scenario.onActivity { vm(it).searchFlow.openSearch() }
         assertNotNull("the favourites' head", findFresh(By.text(Txt.s(Res.string.search_favourites)), 10_000))
-        assertTrue("no ⌂ Home row while Zuhause is off", goneFresh(By.text(Txt.s(Res.string.search_home)), 2_000))
-        assertEquals("the place once under the favourites", listOf("kept-1"), read { vm -> vm.search.ui.favourites.map { it.place.id } })
-        assertEquals("the stored home stays", "kept-1", read { vm -> vm.search.ui.home?.place?.id })
+        assertTrue("no ⌂ Home row in the app", goneFresh(By.text(Txt.s(Res.string.search_home)), 2_000))
+        assertEquals("the kept place first, the old home kept as a favourite", listOf("kept-1", "home-1"),
+            read { vm -> vm.search.ui.favourites.map { it.place.id } })
+        assertEquals("no home in the app", null, read { vm -> vm.search.ui.home })
         shot("kept-search")
     }
 
