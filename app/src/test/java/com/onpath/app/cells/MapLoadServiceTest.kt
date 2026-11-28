@@ -35,4 +35,13 @@ class MapLoadServiceTest {
         a.update(listOf(com.onpath.app.domain.ActionPercent.Item("cell:2", 10, 0.9)))
         assertEquals("cell:1 left: done", 1 to 2, a.areas())
     }
+
+    /** Routing data in Settings (captain 2026-11-28): real bytes of a known size – „12 of 40 MB“ – never a percent. */
+    @Test fun manualLoadSaysRealBytes() {
+        val mb = 1_048_576L
+        assertEquals("12 of 40 MB", com.onpath.app.ui.progress.BesideCount.bytes(12 * mb + 5, 40 * mb))
+        assertEquals("written: all of it", "40 of 40 MB", com.onpath.app.ui.progress.BesideCount.bytes(39 * mb, 40 * mb, writing = true))
+        assertEquals(null, com.onpath.app.ui.progress.BesideCount.bytes(5, 0))
+        assertEquals("1 of 7 map areas", com.onpath.app.ui.progress.BesideCount.line(1, 7))
+    }
 }

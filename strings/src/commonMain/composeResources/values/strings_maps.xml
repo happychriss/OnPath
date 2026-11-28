@@ -124,6 +124,7 @@
     <!-- Background downloads: chip and details -->
     <string name="maps_bg_chip_cd">Loading map: %1$s</string>
     <string name="maps_bg_areas_count">%1$d of %2$d map areas</string>
+    <string name="maps_bytes_count">%1$d of %2$d MB</string>
     <string name="maps_bg_chip_click">Show background downloads</string>
     <string name="maps_bg_dialog_title">Loading in the background</string>
     <string name="maps_bg_newer_ready">Newer map ready in about %1$d min.</string>
@@ -159,7 +160,6 @@
     <string name="wait_running_since">running for %1$s</string>
     <string name="wait_running_since_est">running for %1$s · %2$s</string>
     <string name="wait_step_map_loaded">Map loaded</string>
-    <string name="wait_loading_pct">loading %1$d %</string>
     <string name="maps_phase_done">done</string>
 
     <!-- Loading window (modal) -->

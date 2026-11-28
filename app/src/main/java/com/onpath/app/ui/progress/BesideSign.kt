@@ -107,4 +107,16 @@ object BesideCount {
 
     /** „3 von 7 Kartenbereichen“; null when none is counted. */
     fun line(done: Int, all: Int): String? = if (all <= 0) null else Txt.s(Res.string.maps_bg_areas_count, done.coerceIn(0, all), all)
+
+    /**
+     * Real bytes of a size known beforehand (routing data in Settings): „12 von 40 MB“ – whole MB, never more done than all;
+     * while the file is [writing] (downloaded, now written) all of it; null when the size is not known (no number then).
+     */
+    fun bytes(done: Long, total: Long, writing: Boolean = false): String? {
+        if (total <= 0) return null
+        val mb = 1_048_576L
+        val all = ((total + mb - 1) / mb).coerceAtLeast(1)
+        val d = if (writing) all else (done.coerceIn(0, total) / mb).coerceAtMost(all)
+        return Txt.s(Res.string.maps_bytes_count, d.toInt(), all.toInt())
+    }
 }

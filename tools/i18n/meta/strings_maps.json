@@ -1082,12 +1082,6 @@
     "priority": 2,
     "confidence": "sicher"
   },
-  "wait_loading_pct": {
-    "area": "Wait window / background loads",
-    "context": "One of the three progress texts everywhere (wird vorbereitet / lädt 34 % / fast fertig): notification, Offline maps",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "maps_phase_done": {
     "area": "Wait window / background loads",
     "context": "Background loads details: one load of the action is done",
@@ -1103,6 +1097,12 @@
   "maps_bg_areas_count": {
     "area": "Map loading",
     "context": "Background loading: the map areas counted – under the bar in the details, in the notification, read by TalkBack on the sign (owner / VISION 2026-11-27: facts, no percent). %1$d done, %2$d all",
+    "priority": 1,
+    "confidence": "sicher"
+  },
+  "maps_bytes_count": {
+    "area": "Map loading",
+    "context": "Settings: routing data loading – real bytes of a size known beforehand (captain / VISION 2026-11-27: facts, never an estimated percent). %1$d MB done, %2$d MB all",
     "priority": 1,
     "confidence": "sicher"
   }

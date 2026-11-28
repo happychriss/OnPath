@@ -387,8 +387,6 @@ class MapDataFlow(
     private var routingModal by mutableStateOf(false)
     /** Settings → "Download routing data" tapped: its progress shows in the data line. */
     private var manualRouting: String? = null
-    /** Its percent shown last (never back). */
-    private var manualHeld = 0
 
     /** Routing data for [points] (a point, a position, a route): missing tiles load; [wait] = in the modal. */
     private fun routingFor(points: List<GeoPoint>, wait: Boolean) = safeRouting("trigger") {
@@ -496,10 +494,10 @@ class MapDataFlow(
                 else sayError(Txt.s(Res.string.msg_routing_data_stopped), NoticePlace.SETTINGS)
             }
             s.phase == com.onpath.app.data.RoutingDataLoader.Phase.LOADING -> {
-                // form B's number (owner 2026-11-19): its download and the rewrite of its file by their shares, never back
-                val f = BackgroundProgress.routingItem(s, progressMemory.shares).fraction
-                manualHeld = maxOf(manualHeld, (f * 100).toInt().coerceIn(0, 99))
-                dataBusy = Txt.s(Res.string.wait_loading_pct, manualHeld)
+                // real bytes of a known size only (captain / VISION 2026-11-27: facts, never an estimated percent) –
+                // „12 von 40 MB“; the size not known yet: „wird vorbereitet“
+                dataBusy = com.onpath.app.ui.progress.BesideCount.bytes(s.doneBytes, s.totalBytes, s.writing)
+                    ?: Txt.s(Res.string.maps_notif_preparing)
             }
             else -> {
                 manualRouting = null; dataBusy = null
@@ -984,7 +982,7 @@ class MapDataFlow(
         }
         if (miss.isEmpty()) { sayInfo(Txt.s(Res.string.msg_routing_data_present), NoticePlace.SETTINGS); return }
         // the same loader as the automatic download (one writer per file); an explicit tap loads on mobile data too
-        manualRouting = miss.first(); manualHeld = 0
+        manualRouting = miss.first()
         dataBusy = Txt.s(Res.string.msg_routing_data_busy)
         safeRouting("manual") { routingData.ensure(miss, ignoreWifiOnly = true) }
     }
