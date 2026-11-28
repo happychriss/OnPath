@@ -32,9 +32,9 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Teilen: eigenes Untermenü (was Akku sparen; all of it on main, f1a3729a3) | donald | owner 15:11: one settings row „Teilen“ → own page with name · share · stop (when active); every „Teilen“ entry lands there (pattern `PairWindow.kt`) | picture → owner's yes → merge |
-| Blaues Dreieck (done: pocket lock 0c50fdd6d, FacingArrow b6851da27; Logcat on the Pixel still to come) | donald | – | **free** |
-| Rundtourkarten: Tippen sichtbar machen (was Stern; star on main 7945341b7) | donald | picture `vergleich-normal.png` A „⌄ mehr“ / B „⌄“ / C „⌄“ below – asked the owner; the planner cannot unfold at all (`suggest.ts:328`) | owner picks → build; HP parity |
+| Teilen: eigenes Untermenü | donald | `feat/share-page`: captain go, owner's yes 15:37 → merging | free after it |
+| Planer-Link öffnet App statt Browser (was Blaues Dreieck; fixes 0c50fdd6d, b6851da27) | donald | owner 15:40: plan.onpath.earth without a plan opens the app with an error (manifest :92–100, path „/“; the fragment cannot be filtered) – step 1: no plan code → hand the link to the browser; step 2: proposal own path for plan links (with HP) | merge after the owner's yes; step 2 is the owner's decision |
+| Rundtourkarten: Tippen sichtbar machen | donald | owner 15:36: variant A („⌄ mehr“, the text block unfolds the card) – building | merge on green gate; HP parity (planner cannot unfold) |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | queue: 1 „Ganz neu berechnen“ out (owner's card 14:53) + time-test limit · 2 tracker page in OnPath's colours (owner 15:13; picture first) · 3 star on the favourite rows of the planner search (parity) | deploy on green; parity acks after each donald merge |
 | Cloud (cloud-web) | – | website and help work: state in onpath.private `backlog.md` (not kept here) | – |
