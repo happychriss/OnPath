@@ -218,8 +218,8 @@
     <string name="web_kind_route">Route</string>
     <string name="web_phone_how_link">Wie funktioniert das?</string>
     <!-- ein neuer Punkt weit weg vom Plan (docs/design/web-planner.md §15) -->
-    <string name="web_too_long_title">Zu lang am Stück</string>
-    <string name="web_too_long_text">%1$s km am Stück. Setz ein Zwischenziel.</string>
+    <string name="web_too_far_title">Zu weit für eine Berechnung</string>
+    <string name="web_too_far_text">Plane zuerst ein kürzeres Stück und setz dann von dort das nächste Ziel.</string>
     <string name="web_far_title_named">%1$s ist ca. %2$s km weit weg</string>
     <string name="web_far_title_unnamed">Dein Punkt ist ca. %1$s km weit weg</string>
     <string name="web_far_calc">Berechnung %1$s.</string>

@@ -13,7 +13,7 @@ import { problem } from './diag';
 
 type LatLon = [number, number];
 interface Ask { ask: boolean; title?: string; text?: string; plan?: string; cancel?: string; notRouted?: string; again?: string;
-  /** The browser's long-leg question (RouteCost): the leg, its straight km, beyond the browser's memory (only „Zwischenziel“). */
+  /** The browser's long-leg question (RouteCost): the leg, its straight km, beyond the browser's memory (only „OK“). */
   leg?: number; km?: number; beyond?: boolean; /** RouteCost.words of the leg's estimate: „etwa 3–6 Minuten“ */ words?: string }
 
 const keyOf = (pts: LatLon[]) => pts.map(([a, b]) => `${a.toFixed(6)},${b.toFixed(6)}`).join(';');
@@ -57,7 +57,7 @@ export async function planAnyway(engine: EngineClient, points: LatLon[]) {
 const allowed = new Set<string>();
 
 /** Texts of the not-routed line after Cancel: "Route not calculated – very long plan." + "Plan anyway". */
-export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_anyway') };
+export let notRoutedTexts = { line: t('plan_not_routed_long'), button: t('plan_calculate') }; // no „Trotzdem planen“ (owner 2026-11-28)
 /** Whether the not-routed line is the long plan's (its button = "Plan anyway") rather than a stopped wait's. */
 let notRoutedLong = true;
 /** The not-routed line for another reason (the app's NotRouted.STOPPED after Cancel of the wait). */
@@ -148,10 +148,11 @@ function question(a: Ask): Promise<boolean> {
   return new Promise((resolve) => {
     const d = document.createElement('dialog');
     d.className = 'share longroute';
-    // a leg beyond the browser's memory: only „Zwischenziel setzen“ (the app's „Zu lang für das Handy“ in the browser's words)
-    const title = a.beyond ? t('web_too_long_title') : a.title ?? '';
-    const text = a.beyond ? t('web_too_long_text', String(Math.round(a.km ?? 0))) : a.text ?? '';
-    const plan = a.beyond ? '' : `<button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_anyway'))}</button>`;
+    // a leg beyond the browser's memory: only „OK“, which takes the point back (the app's „Zu weit für das Handy“ in the
+    // browser's words, owner 2026-11-28 – no „Zwischenziel“; the hint: a shorter stretch first, then the next goal)
+    const title = a.beyond ? t('web_too_far_title') : a.title ?? '';
+    const text = a.beyond ? t('web_too_far_text') : a.text ?? '';
+    const plan = a.beyond ? '' : `<button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_calculate'))}</button>`;
     d.innerHTML = `<h2>⚠ ${esc(title)}</h2><p>${esc(text)}</p>
       <div class="row"><button id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button>${plan}</div>`;
     document.body.append(d);

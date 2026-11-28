@@ -56,7 +56,7 @@ class WebImportTest {
         assertTrue(j, j.startsWith("{\"ask\":true"))
         assertTrue(j, j.contains("\"title\":\"This route is very long\""))
         assertTrue(j, j.contains("days on foot. Calculating and loading its maps takes long.\""))
-        assertTrue(j, j.contains("\"plan\":\"Plan anyway\",\"cancel\":\"Cancel\""))
+        assertTrue(j, j.contains("\"plan\":\"Calculate\",\"cancel\":\"Cancel\"")) // no „Trotzdem planen“ (owner 2026-11-28)
         assertEquals("{\"ask\":false}", WebPlanRules.longRoute("46.67,11.16;46.69,11.15", "HIKE"))
         // a multi-day tour (owner 2026-11-18): never asked – the day rows show a long day
         assertEquals("{\"ask\":false}", WebPlanRules.longRoute("46.67,11.16;52.05,11.16", "HIKE", multiDay = true))

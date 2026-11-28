@@ -8,8 +8,8 @@ import org.junit.Test
 
 /**
  * The planner's run head is the app's (PlanRecalcState.begin + RouteRun in WebPlanChain) with the browser's long-leg rule
- * (RouteCost, owner 2026-11-27): a leg the browser searches longer than 30 s is asked about first („Warten“ /
- * „Zwischenziel setzen“), a leg beyond its memory only offers „Zwischenziel setzen“, a multi-day tour is never asked; a yes
+ * (RouteCost, owner 2026-11-27/28, like the app): a leg whose search even at its low end takes longer than 30 s is asked
+ * about first („Abbrechen“ / „Berechnen“), a leg beyond its memory only offers „OK“, a multi-day tour is never asked; a yes
  * survives a fresh worker (historyExport → historyImport).
  */
 class WebRunHeadTest {
@@ -30,8 +30,9 @@ class WebRunHeadTest {
         assertEquals("ASK", what(ask))
         assertTrue(ask, ask.contains("\"title\":\"Long route: about"))
         assertTrue(ask, ask.contains("Hilden → Frankfurt, 250 km"))
-        assertTrue(ask, ask.contains("\"plan\":\"Wait\"") && ask.contains("\"cancel\":\"Add a stop\"") && ask.contains("\"again\":\"Calculate\""))
-        assertFalse(ask, ask.contains("Weiter warten") || ask.contains("Keep waiting"))
+        // like the app (owner 2026-11-28): „Abbrechen“ · „Berechnen“, no stop sentence, no „Zwischenziel setzen“
+        assertTrue(ask, ask.contains("\"plan\":\"Calculate\"") && ask.contains("\"cancel\":\"Cancel\"") && ask.contains("\"again\":\"Calculate\""))
+        assertFalse(ask, ask.contains("Weiter warten") || ask.contains("Keep waiting") || ask.contains("stop") || ask.contains("Wait\""))
     }
 
     /**
@@ -52,20 +53,23 @@ class WebRunHeadTest {
         assertFalse("no long estimate in the wait line for short pieces ($head)", head.contains("estimateS\":4") || head.contains("estimateS\":5"))
     }
 
-    @Test fun aLegBeyondTheBrowsersMemoryOnlyOffersAStop() {
+    /** Beyond the browser's memory (owner 2026-11-28): only „OK“, which takes the point back – no „Zwischenziel“, no wait. */
+    @Test fun aLegBeyondTheBrowsersMemoryOnlyOffersOk() {
         Engine.historyImport("")
         val beyond = Engine.runHead(long, "HIKE", 2, true)
         assertEquals("ASK", what(beyond))
-        assertTrue(beyond, beyond.contains("\"beyond\":true") && !beyond.contains("\"plan\""))
+        assertTrue(beyond, beyond.contains("\"beyond\":true") && !beyond.contains("\"plan\"") && beyond.contains("\"cancel\":\"OK\""))
+        assertFalse(beyond, beyond.contains("stop"))
         Engine.costSet(Engine.BROWSER_FACTOR, 600) // an 8 GB browser: 700 km
         val asked = Engine.runHead(long, "HIKE", 2, true)
-        assertTrue(asked, asked.contains("\"beyond\":false") && asked.contains("\"plan\":\"Wait\""))
+        assertTrue(asked, asked.contains("\"beyond\":false") && asked.contains("\"plan\":\"Calculate\""))
     }
 
     @Test fun aFasterBrowserIsNotAsked() {
         Engine.historyImport("")
-        Engine.costSet(0.5, Engine.BROWSER_MEMORY_MB) // bounded to RouteCost.MIN_FACTOR 2: 250 km ≈ 32 s – still asked
-        assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+        Engine.costSet(0.5, Engine.BROWSER_MEMORY_MB) // bounded to RouteCost.MIN_FACTOR 2: 250 km ≈ 32 s, its low end ≈ 22 s
+        // the app's rule (owner 2026-11-28, RouteCost lowEnd): asked only when even the range's low end is above 30 s
+        assertEquals("ROUTE", what(Engine.runHead(mid, "HIKE", 2, true)))
         Engine.historyImport("")
         assertEquals("200 km straight at factor 2 ≈ 21 s: at once", "ROUTE", what(Engine.runHead("46.67,11.16;48.47,11.16", "HIKE", 2, true)))
     }
@@ -123,7 +127,7 @@ class WebRunHeadTest {
         assertEquals("ROUTE", what(Engine.runHead(mid, "HIKE", 2, true)))
     }
 
-    /** The app's (owner 2026-11-27): after „Zwischenziel setzen“ the not-routed line's „Berechnen“ asks again – never a blind yes. */
+    /** The app's (owner 2026-11-27): after „Abbrechen“ the not-routed line's „Berechnen“ asks again – never a blind yes. */
     @Test fun addAStopLeavesItUnroutedAndCalculateAsksAgain() {
         Engine.historyImport("")
         assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
@@ -132,5 +136,12 @@ class WebRunHeadTest {
         Engine.historyImport(Engine.historyExport()) // why it is not routed travels too
         Engine.runPlanAnyway(mid)
         assertEquals("ASK", what(Engine.runHead(mid, "HIKE", 2, true)))
+    }
+
+    /** No „Trotzdem planen“ in the planner (owner 2026-11-28): the day rule's question says „Berechnen“ too. */
+    @Test fun noPlanAnywayAnywhere() {
+        val day = WebPlanRules.longAsk(30 * 3600.0, com.onpath.app.routing.Activity.HIKE)
+        assertFalse(day, day.contains("Plan anyway") || day.contains("Trotzdem"))
+        assertTrue(day, day.contains("\"plan\":\"Calculate\""))
     }
 }

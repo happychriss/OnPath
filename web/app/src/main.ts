@@ -1817,7 +1817,14 @@ async function changed() {
   if (head.what === 'ASK') {
     const answer = await longRouteOk(engine, head, state.points, state.activity, before, stale, state.meta.map((m) => m?.name));
     if (stale()) return;
-    if (answer === 'cancel') { await cancelLongRoute('LONG'); cancelLongRouteCamera(); return; }
+    // like the app's long-leg answer (owner 2026-11-28): „Abbrechen“ keeps the points without a route; „OK“ to a leg beyond
+    // the browser's memory takes the change back (the point is not set) and the map goes back to the plan
+    if (answer === 'cancel') {
+      if (!head.beyond) runCause = 'other';
+      await cancelLongRoute('LONG');
+      if (head.beyond) cancelLongRouteCamera();
+      return;
+    }
     if (answer !== 'plan') { await startFresh(answer.fresh); return; }
     head = await runHead(engine, state.points, state.activity, state.sac, multiDay, sharedPlan().pinned, namesText()); // „Warten“: not asked again
     if (stale()) return;

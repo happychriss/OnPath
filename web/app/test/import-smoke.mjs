@@ -57,18 +57,20 @@ await page.goto(url + 'index.html#p=' + far);
 await page.waitForSelector('dialog.longroute', { timeout: 30_000 });
 rd5Requests = 0; // only requests started while the question is open count (not the start view's prefetch)
 const q = await page.textContent('dialog.longroute');
-check((/Long route: about \d+–\d+ (minutes|seconds)/.test(q) && /598 km in one go/.test(q) && /Wait/.test(q) || /Too long in one go/.test(q))
-  && /Add a stop/.test(q) && !/Keep waiting|Plan anyway/.test(q), `long leg asked first with its estimate: "${q.replace(/\s+/g, ' ').trim()}"`);
+// like the app (owner 2026-11-28): Cancel · Calculate, no stop; beyond the browser's memory only OK with the hint
+check(((/Long route: about \d+–\d+ (minutes|seconds)/.test(q) && /598 km in one go/.test(q) && /Cancel/.test(q) && /Calculate/.test(q))
+  || (/Too far to calculate in one go/.test(q) && /shorter stretch first/.test(q) && /OK/.test(q)))
+  && !/Add a stop|stop on the way|Wait|Keep waiting|Plan anyway/.test(q), `long leg asked first with its estimate: "${q.replace(/\s+/g, ' ').trim()}"`);
 await page.waitForTimeout(1500);
 check(rd5Requests === 0, `no routing data fetched while the question is open (${rd5Requests} requests)`);
 await page.click('#lrCancel');
 await page.waitForSelector('#planAnyway');
 check((await page.textContent('#summary .subline')).includes('Route not calculated – very long plan.') && (await page.textContent('#planAnyway')).includes('Calculate'),
-  '„Add a stop“ (a loaded plan): points kept, "Route not calculated – very long plan." + Calculate');
+  '„Cancel“ (a loaded plan): points kept, "Route not calculated – very long plan." + Calculate');
 check(await pins() === 2, 'both points still there');
 // 1b. Calculate: asked again (never a blind yes), „Wait“ – the planner runs (no routing data up north here: its plain error)
 await page.click('#planAnyway');
-check(await page.waitForSelector('dialog.longroute #lrPlan', { timeout: 30_000 }).then(() => true, () => false), '„Calculate“ asks again with „Wait“');
+check(await page.waitForSelector('dialog.longroute #lrPlan', { timeout: 30_000 }).then(() => true, () => false), '„Calculate“ asks again (Cancel · Calculate)');
 await page.click('#lrPlan');
 await page.waitForFunction(() => !document.querySelector('dialog.longroute') && (/failed|could not|Planning/.test(document.getElementById('status').textContent) || !!document.querySelector('#summary .big')), null, { timeout: 120_000 });
 check(!(await page.$('dialog.longroute')), '„Wait“: routed without asking again');

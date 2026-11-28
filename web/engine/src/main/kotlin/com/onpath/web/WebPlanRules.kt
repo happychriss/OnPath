@@ -32,32 +32,34 @@ object WebPlanRules {
         return ",\"seconds\":" + Engine.num(s, 0) +
             ",\"title\":" + Engine.str(Txt.s(Res.string.nav_long_route_title)) +
             ",\"text\":" + Engine.str(LongRoute.text(s, act)) +
-            ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_plan_anyway)) +
+            // no „Trotzdem planen“ in the planner (owner 2026-11-28): „Berechnen“
+            ",\"plan\":" + Engine.str(Txt.s(Res.string.plan_calculate)) +
             ",\"cancel\":" + Engine.str(Txt.s(Res.string.common_cancel)) +
             ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.domain.NotRouted.LONG)) +
-            ",\"again\":" + Engine.str(PlanStatus.notRoutedAction(com.onpath.app.domain.NotRouted.LONG))
+            ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate)) // not the app's „Trotzdem planen“ (PlanStatus.kt:87, owner 2026-11-28)
     }
 
     /**
-     * The browser's long-leg question (the app's LongRouteDialog with a leg, owner 2026-11-27 – RouteCost): title + text of
-     * the slowest leg still to route ("Lange Strecke: etwa 3–6 Minuten", "Hilden → München, 475 km am Stück. …"), buttons
-     * „Warten“ ([plan]) · „Zwischenziel setzen“ ([cancel]); a leg beyond the browser's memory ([beyond]): no „Warten“, the page
-     * says it in its own words (no "plan in the browser" – it is the browser). The not-routed line after „Zwischenziel
-     * setzen“ offers „Berechnen“, which asks again (never a blind yes). [names]: plan index → name.
+     * The browser's long-leg question, the app's LongRouteDialog (owner 2026-11-28: app and planner alike): title + text of
+     * the slowest leg still to route ("Lange Strecke: etwa 3–6 Minuten", "Hilden → München, 475 km am Stück."), buttons
+     * „Abbrechen“ ([cancel]: the points stay without a route) · „Berechnen“ ([plan]) – no „Zwischenziel“ sentence or
+     * button. A leg beyond the browser's memory ([beyond]): only „OK“ ([cancel]), which takes the point back; the page says
+     * it in its own words (no "plan in the browser" – it is the browser). The not-routed line after „Abbrechen“ offers
+     * „Berechnen“, which asks again (never a blind yes). [names]: plan index → name.
      */
     fun longLeg(ask: com.onpath.app.routing.LongAsk, names: Map<Int, String>): String {
         fun name(i: Int) = names[i]?.takeIf { it.isNotBlank() }
         val km = Engine.num(ask.km, 0)
         val head = ",\"leg\":" + ask.leg + ",\"km\":" + km + ",\"beyond\":" + ask.beyond +
-            ",\"cancel\":" + Engine.str(Txt.s(Res.string.nav_add_stop)) +
+            ",\"cancel\":" + Engine.str(Txt.s(if (ask.beyond) Res.string.common_ok else Res.string.common_cancel)) +
             ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.domain.NotRouted.LONG)) +
             ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate))
         if (ask.beyond) return head
         return head + ",\"seconds\":" + Engine.num(ask.estimateS, 0) +
             ",\"words\":" + Engine.str(com.onpath.app.routing.RouteCost.words(ask.estimateS)) +
             ",\"title\":" + Engine.str(com.onpath.app.routing.RouteCost.askTitle(ask)) +
-            ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1))) +
-            ",\"plan\":" + Engine.str(Txt.s(Res.string.nav_wait))
+            ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1), stopHint = false)) +
+            ",\"plan\":" + Engine.str(Txt.s(Res.string.plan_calculate))
     }
 
     /**
