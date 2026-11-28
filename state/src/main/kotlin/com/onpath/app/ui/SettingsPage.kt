@@ -12,6 +12,9 @@ import org.jetbrains.compose.resources.StringResource
  *   Map → Offline maps, Navigation → Phone setup, About → Diagnostics, About → Legal & credits);
  * - an **alias** shows its [landing] page, which holds it as a section (Pace → Plan, Backup / Browser sync → Backup &
  *   browser, Updates → About); back from it returns to the list.
+ *
+ * [SYNC] is the pairing window „Mit Browser verbinden“ (owner 2026-11-28 10:54, A-018): its own page with only the browser
+ * part (app ui/PairWindow.kt); every pairing path opens it. Not on the start list yet (the topic row waits for the owner's pick).
  */
 enum class SettingsPage(private val titleRes: StringResource, val app: Boolean = false) {
     /** "Planen": your pace + how strongly routes follow marked trails. */
@@ -26,6 +29,7 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     /** "Sicherung & Browser": the GPX backup and the plan sync with the web planner (A-007). */
     BACKUP_SYNC(Res.string.settings_page_backup_sync),
     BACKUP(Res.string.settings_page_backup),
+    /** The pairing window „Mit Browser verbinden“ (A-018): only the browser part, opened by every pairing path. */
     SYNC(Res.string.settings_page_sync),
     PRIVACY(Res.string.settings_page_privacy, app = true),
     /** "Über OnPath": version (7 taps → developer tools), update check, Diagnostics row, links, credits, licences. */
@@ -41,7 +45,7 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     /** The page that is drawn for this one: itself, or – for an alias – the page that holds it as a section. */
     val landing: SettingsPage get() = when (this) {
         PACE -> PLAN
-        BACKUP, SYNC -> BACKUP_SYNC
+        BACKUP -> BACKUP_SYNC
         UPDATES -> ABOUT
         else -> this
     }
@@ -55,7 +59,10 @@ enum class SettingsPage(private val titleRes: StringResource, val app: Boolean =
     }
 
     /** One of the six on the start list. */
-    val top: Boolean get() = parent == null && landing == this
+    val top: Boolean get() = parent == null && landing == this && this != SYNC
+
+    /** This page shows the browser sync (the pairing window, or Backup & browser that still holds it as a section). */
+    val showsSync: Boolean get() = landing == SYNC || landing == BACKUP_SYNC
 
     /** Where back goes from this page: the parent page, or null = the list. */
     val up: SettingsPage? get() = landing.parent

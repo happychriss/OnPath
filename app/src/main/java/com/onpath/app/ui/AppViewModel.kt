@@ -1668,11 +1668,11 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         },
         host = object : com.onpath.app.ui.sync.SyncHost {
             override val screen = androidx.compose.runtime.snapshotFlow {
-                map.appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage?.landing == SettingsPage.BACKUP_SYNC)
+                map.appOnScreen to com.onpath.app.plansync.SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage?.showsSync == true)
             }
             override val shown = androidx.compose.runtime.snapshotFlow {
                 com.onpath.app.plansync.SyncPoll.shown(map.appOnScreen, routes.open, routes.tab == RoutesTab.PLANNED, settingsSlice.showSettings,
-                    settingsSlice.settingsPage?.landing == SettingsPage.BACKUP_SYNC)
+                    settingsSlice.settingsPage?.showsSync == true)
             }
             override fun ended() { notices.sayInfo(Txt.s(Res.string.sync_ended), NoticePlace.SETTINGS) }
             override fun placesChanged() { keptPlaces.savedPlaces = null }

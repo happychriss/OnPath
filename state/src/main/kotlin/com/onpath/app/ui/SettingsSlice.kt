@@ -74,7 +74,7 @@ class SettingsSlice(
     private var settingsShown by mutableStateOf(false)
     var showSettings: Boolean
         get() = settingsShown
-        set(v) { if (!v) { notices.settingsNote = null; settingsOnTheWay = false }; settingsShown = v } // the line lasts until Settings is left
+        set(v) { if (!v) { notices.settingsNote = null; settingsOnTheWay = false; openedAt = null }; settingsShown = v } // the line lasts until Settings is left
     /**
      * Settings opened from Navigate's ⚙ (owner 2026-11-07): the on-the-way list (Navigation page + the topics for the
      * way + "Alle Einstellungen"); the tour and the mode are not touched. False after "Alle Einstellungen" or closing.
@@ -90,7 +90,7 @@ class SettingsSlice(
             if (v != page) notices.settingsNote = null
             if (v == SettingsPage.DIAGNOSTICS || page == SettingsPage.DIAGNOSTICS) markDiagnosticsSeen()
             // "ended in the browser" seen: the ☰ item is no longer amber (the sync is a section of Backup & browser)
-            if (v?.landing == SettingsPage.BACKUP_SYNC && page?.landing != SettingsPage.BACKUP_SYNC) host.syncEndedSeen()
+            if (v?.showsSync == true && page?.showsSync != true) host.syncEndedSeen()
             if (v == SettingsPage.DIAGNOSTICS && v != page) loadRoutingInfo()
             page = v
         }
@@ -138,19 +138,31 @@ class SettingsSlice(
     }
 
     /** Opens Settings, at [page] if given (map credits → About). */
-    fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true }
+    fun openSettings(page: SettingsPage? = null) { settingsPage = page; showSettings = true; openedAt = page }
+
+    /**
+     * The page Settings was opened at from outside (☰, a link); null = the list. The pairing window opened that way is a
+     * window of its own (owner 2026-11-28, A-018): back closes it, to where the user was – not to the Settings list.
+     */
+    private var openedAt: SettingsPage? = null
 
     /** Navigate → ⚙ (owner 2026-11-07): Settings in the on-the-way list; back returns to Navigate, the tour runs on. */
     fun openSettingsOnTheWay() {
         Problems.trace("ui", "Navigate ⚙: settings on the way")
-        settingsPage = null; showSettings = true; settingsOnTheWay = true
+        settingsPage = null; showSettings = true; settingsOnTheWay = true; openedAt = null
     }
 
     /** On-the-way list → "Alle Einstellungen": the whole topic list (back from it closes Settings). */
     fun showAllSettings() { settingsOnTheWay = false; settingsPage = null }
 
-    /** Back in Settings: a sub page returns to its page ([SettingsPage.up]), a topic page to the list, the list closes Settings. */
-    fun settingsBack() { val p = settingsPage; if (p != null) settingsPage = p.up else showSettings = false }
+    /**
+     * Back in Settings: a sub page returns to its page ([SettingsPage.up]), a topic page to the list, the list closes
+     * Settings; the pairing window opened from outside ([openedAt]) closes Settings.
+     */
+    fun settingsBack() {
+        val p = settingsPage
+        if (p != null && !(p == SettingsPage.SYNC && openedAt == SettingsPage.SYNC)) settingsPage = p.up else showSettings = false
+    }
 
     /** Relief switched off by the app once / set by hand ([com.onpath.app.map.ReliefAuto]). */
     private var reliefAuto = store.reliefAuto

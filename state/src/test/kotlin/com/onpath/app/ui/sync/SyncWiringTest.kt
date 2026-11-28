@@ -82,9 +82,31 @@ class SyncWiringTest {
         assertTrue(driverHost.contains("override fun placesChanged() { keptPlaces.savedPlaces = null }"))
         assertTrue(driverHost.contains("override fun toursChanged(toRoute: List<Long>) { routesFlow.refreshTours(); syncedRouting.followSyncedSavedPlan(); syncedRouting.routeSyncedPlans(toRoute) }"))
         assertTrue(driverHost.contains("override fun newerData(tiles: List<String>) { refreshRoutingTiles(tiles, \"a plan from the browser was routed with newer data\") }"))
-        assertTrue(driverHost.contains("SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage?.landing == SettingsPage.BACKUP_SYNC)"))
+        assertTrue(driverHost.contains("SyncPoll.routesScreen(routes.open, settingsSlice.showSettings, settingsSlice.settingsPage?.showsSync == true)"))
         assertTrue(driverHost.contains("SyncPoll.shown(map.appOnScreen, routes.open, routes.tab == RoutesTab.PLANNED, settingsSlice.showSettings,"))
         assertTrue("the driver starts once, in its own init", vm.contains("init { syncDriver.start() }"))
+    }
+
+    /**
+     * The pairing window (owner 2026-11-28 10:54, A-018): every pairing path lands in it ([SettingsPage.SYNC], its own page),
+     * never on Backup & browser – ☰ while paired / a problem, no camera app, a `#pair=` link (scanned, shared, pasted: all
+     * through PlanLinkFlow → receivePairing), a broken pairing link (openSyncSettings). The ☰ first time keeps its box on the map.
+     */
+    @Test fun everyPairingPathLandsInThePairWindow() {
+        val flow = sourceFile("ui/PairingFlow.kt").readText()
+        val opens = Regex("screens\\.openSettings\\(([^)]*)\\)").findAll(flow).map { it.groupValues[1] }.toList()
+        assertEquals("☰ paired/problem, no camera, a pairing link", listOf("SettingsPage.SYNC", "SettingsPage.SYNC", "SettingsPage.SYNC"), opens)
+        assertTrue(flow.contains("PairEntry.Step.SETTINGS -> screens.openSettings(SettingsPage.SYNC)"))
+        assertTrue("first time: the box on the map", flow.contains("PairEntry.Step.HINT -> pairHint = true"))
+        assertTrue(vm.contains("override fun openSyncSettings() { settingsSlice.openSettings(SettingsPage.SYNC) }"))
+        val links = sourceFile("ui/sync/PlanLinkFlow.kt").readText()
+        assertTrue(links.contains("is PlanLinks.Found.Pairing -> { host.receivePairing(found.secret, via); return }"))
+        assertTrue(links.substringAfter("is PlanLinks.Found.BrokenPairing ->").substringBefore("return").contains("host.openSyncSettings()"))
+        assertTrue("pasted text goes the same way", links.substringAfter("fun pasted(").substringBefore("\n    }").contains("receive(found, \"pasted\")"))
+        // the window draws only the browser part, and ← there is the slice's back (it closes the window opened from outside)
+        val screen = sourceFile("ui/SettingsScreen.kt").readText()
+        assertTrue(screen.contains("SettingsPage.SYNC -> if (sync != null) pairWindow(sync, syncCb, now)"))
+        assertTrue(sourceFile("MainActivity.kt").readText().contains("onUp = vm.settingsSlice::settingsBack,"))
     }
 
     /** The slice file still carries the thread of the routing: the background dispatcher, then the interactive stores' io. */
