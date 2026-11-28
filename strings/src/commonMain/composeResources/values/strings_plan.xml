@@ -66,6 +66,7 @@
     <string name="plan_progress_km">%1$s of %2$s km · %3$s</string>
     <string name="plan_hint_first_point_question">Where to?</string>
     <string name="plan_hint_tap_hold">Hold to set a point here.</string>
+    <string name="plan_hold_pill">Hold to plan here</string>
     <string name="plan_offline_pill">Available offline</string>
     <string name="plan_offline_ready">Available offline: map, navigation, re-planning and a new route when you stray – around this route.</string>
     <string name="plan_offline_loading_mb">Map and ways for this route are loading (%1$s).</string>

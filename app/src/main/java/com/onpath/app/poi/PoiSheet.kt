@@ -55,7 +55,9 @@ import com.onpath.strings.*
 @Composable
 fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier,
                /** The map's symbol of the POI's kind (the sprite badge, owner 2026-11-17); the glyph when it is missing. */
-               symbol: PoiSymbol = rememberPoiSymbol(poi.kind)) {
+               symbol: PoiSymbol = rememberPoiSymbol(poi.kind),
+               /** Plan only: the hold menu's „Als Ziel“ for this place ([PoiButtons]); null = Google Maps alone. */
+               goal: PoiGoal? = null) {
     val context = LocalContext.current
     val kind = poi.kindInfo
     val color = Color(kind.group.argb)
@@ -125,20 +127,7 @@ fun PoiDetails(poi: Poi, onClose: () -> Unit, modifier: Modifier = Modifier,
         }
 
         Spacer(Modifier.size(16.dp))
-        Button(
-            onClick = { PoiIntents.openInGoogleMaps(context, poi) },
-            modifier = Modifier.fillMaxWidth().heightIn(min = 56.dp),
-            shape = com.onpath.app.ui.OnPathShapes.Pill,
-            colors = ButtonDefaults.buttonColors(),
-        ) {
-            // „Google Maps ↗“ (owner 2026-11-27): the one Google link, no line under it
-            Icon(Icons.Outlined.Map, contentDescription = null)
-            Spacer(Modifier.width(10.dp))
-            Text(str(Res.string.poi_open_google), style = MaterialTheme.typography.bodyLarge,
-                fontWeight = FontWeight.SemiBold)
-            Spacer(Modifier.width(8.dp))
-            Icon(Icons.AutoMirrored.Outlined.OpenInNew, contentDescription = null, modifier = Modifier.size(20.dp))
-        }
+        PoiButtons(goal, onGoogle = { PoiIntents.openInGoogleMaps(context, poi) }, Modifier.fillMaxWidth())
         Text(
             "© OpenStreetMap",
             style = MaterialTheme.typography.labelSmall,

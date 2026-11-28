@@ -38,6 +38,13 @@ class Prefs internal constructor(private val sp: SharedPreferences, filesDir: Fi
         get() = sp.getLong("updateCheck", 0)
         set(v) = sp.edit().putLong("updateCheck", v).apply()
 
+    /** Holds on the map that did something, up to [com.onpath.app.domain.HoldHint.LEARNED_HOLDS] (the „Halten“ pill stops then). */
+    var holdsDone: Int
+        get() = try { sp.getInt("holdsDone", 0) } catch (e: ClassCastException) {
+            Problems.warn("settings", "Setting holdsDone unreadable, counted from 0", e); 0
+        }
+        set(v) = sp.edit().putInt("holdsDone", v).apply()
+
     /** The newest crash already announced (Problems' time; the next one is said once). */
     var crashShownUntil: Long
         get() = sp.getLong("crashShownUntil", 0)
