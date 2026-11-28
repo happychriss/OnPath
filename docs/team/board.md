@@ -33,6 +33,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
 | Akku sparen unterwegs | donald | `feat/akku-sparen`: 30 s GPS in Sparen (owner 10:55/10:56), then owner's merge yes. Next: ⚙ during a route = V1 (owner 10:59, item settings-on-the-way) | captain go + owner's yes |
+| Blaues Dreieck in der Suche (was 0.18.12 vorbereiten) | donald | findings, no code: blue triangle over the search list (owner 15:10, screenshot); screen went black once while sharing a link (15:11, suspect: pocket / dark screen) | captain go → test → fix; owner decides on 0.18.13 |
 | Stern in der Favoritenliste (was Browser verbinden) | donald | owner 15:10: a star on each favourite row of the search, tap removes / keeps again (like My routes) | merge on green gate; HP: same in the planner search |
 | Suche: nahes Restaurant kommt zu spät (was Lange Strecken; `fix/no-plan-anyway` ready, waits for the owner's yes) | donald | owner 11:03 „olive“: for places that are no towns an exact name gets no tier over a whole-word match, distance decides; test first (captain go, corrected rule) | owner's yes → merge; HP mirrors |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
