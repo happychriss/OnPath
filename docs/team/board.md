@@ -19,7 +19,7 @@ stress test, §1 whom the owner talks to), `VISION.md` (rewritten today, last ch
 
 | Thread | Where | Now | Next |
 | --- | --- | --- | --- |
-| Akku sparen unterwegs | donald | built `feat/akku-sparen` de2d27369, captain go; owner asked: merge + is 3 s GPS ok / measure the saving first. Then picture: settings during a route (lesson 10:54: not tidy too much) | owner's yes |
+| Akku sparen unterwegs | donald | `feat/akku-sparen`: 30 s GPS in Sparen (owner 10:55/10:56), then owner's merge yes. Next: ⚙ during a route = V1 (owner 10:59, item settings-on-the-way) | captain go + owner's yes |
 | Browser verbinden: eigenes Fenster | donald | owner 10:54: A (own window) + own settings entry with status connected / not – build the window, picture for the entry; rebase after `feat/akku-sparen` (same settings file) | captain go + owner's yes |
 | Lange Strecken: Frage vereinheitlichen (was Flackern; fix on main 0252c2187) | donald | app: „Trotzdem planen“ out (item long-route-question 640d48016) | captain go + owner's yes |
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
