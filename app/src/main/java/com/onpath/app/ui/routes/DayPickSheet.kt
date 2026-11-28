@@ -37,6 +37,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
@@ -61,13 +62,14 @@ import com.onpath.strings.*
  * and the planner's day table ([DayTableView], owner 2026-11-27): pill „Tag 3“, „Koblenz → Mainz“ when the plan names both
  * ends, aligned columns km · Σ km · ↑ m · time, the night sign (open night / Übernachtung / Hotel; the goal flag at the
  * finish), ›, and the total row. One tap on a row loads that day ([onRide]), ›
- * opens its own overview ([onDetail]). The next open day has the filled pill, a day ridden to its goal says „✓ Tag 2 · gefahren
- * am 2. Dez.“, one whose recording stopped before the goal „Tag 2 · angefangen am 2. Dez.“ (MD-5 / MD-6, owner 2026-11-28).
+ * opens its own overview ([onDetail]). The next open day has the filled pill; under the day's row a day ridden to its goal says
+ * „✓ gefahren 2.12.“, one whose recording stopped before the goal „angefangen 2.12.“ (MD-5 / MD-6 / MD-9, owner 2026-11-28) –
+ * on a line of its own across the row that wraps between words, never cut with „…“ ([stateLaidOut]: the screenshot tests check it).
  * During a tour ([canRide] false) rows load nothing and a line says why.
  */
 @Composable
 fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, onRide: (Int) -> Unit, onDetail: (Int) -> Unit,
-                 onClose: () -> Unit, menu: @Composable () -> Unit) {
+                 onClose: () -> Unit, stateLaidOut: (TextLayoutResult) -> Unit = {}, menu: @Composable () -> Unit) {
     val t = ui.tour
     val muted = MaterialTheme.colorScheme.onSurfaceVariant
     Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
@@ -92,6 +94,7 @@ fun DayPickSheet(ui: DayPickUi, canRide: Boolean, snapshot: OverviewSnapshot?, o
                 val nextDesc = str(Res.string.daypick_next)
                 DayTableView(table, picked = { it == ui.next }, onTap = if (canRide) onRide else null, trailingWidth = 44.dp,
                     title = { l -> byN[l.n]?.let { r -> DayName(r, r.n == ui.next, nextDesc) } },
+                    below = { l -> byN[l.n]?.let { r -> DayState(r, stateLaidOut) } },
                     trailing = { l -> IconButton(onClick = { onDetail(l.n) }, modifier = Modifier.size(44.dp)) {
                         Icon(Icons.Filled.ChevronRight, str(Res.string.daypick_details, l.n.toString()), tint = muted)
                     } })
@@ -113,22 +116,26 @@ private fun factsLine(ui: DayPickUi): String {
 /** „Koblenz → Mainz“ when the plan names both ends of the day (the shared DayRowText); null otherwise (the row says „Tag 3“ only). */
 private fun places(r: DayPickRow): String? = DayRowText.places(r.from, r.to)
 
-/** „2. Dez.“ / „2 Dec“ – the app language's short day and month. */
+/** „2.12.“ / „2 Dec“ – the app language's short day and month. */
 private fun riddenDate(ms: Long): String =
     java.text.SimpleDateFormat(Txt.s(Res.string.daypick_date), Format.locale()).format(java.util.Date(ms))
 
-/**
- * The day's name in the table: „✓ Tag 2 · gefahren am 2. Dez.“ for a day done, „Tag 2 · angefangen am 2. Dez.“ for one begun,
- * else its pill (the next one filled).
- */
+/** The day's name in the table: its pill, the next open day's filled. */
 @Composable
 private fun DayName(r: DayPickRow, next: Boolean, nextDesc: String) {
-    if (r.riddenMs != null) Text(str(Res.string.daypick_ridden, r.n.toString(), riddenDate(r.riddenMs!!)), style = MaterialTheme.typography.bodySmall,
-        fontWeight = FontWeight.SemiBold, color = OnPathColors.Green, maxLines = 2, overflow = TextOverflow.Ellipsis)
-    else if (r.startedMs != null) Text(str(Res.string.daypick_started, r.n.toString(), riddenDate(r.startedMs!!)), style = MaterialTheme.typography.bodySmall,
-        fontWeight = FontWeight.SemiBold, color = OnPathColors.PlanAccent, maxLines = 2, overflow = TextOverflow.Ellipsis,
-        modifier = if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier)
-    else Box(if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier) { DayPill(r.n, next) }
+    Box(if (next) Modifier.semantics { contentDescription = nextDesc } else Modifier) { DayPill(r.n, next) }
+}
+
+/**
+ * Under the day's row, the row's full width: „✓ gefahren 2.12.“ for a day done, „angefangen 2.12.“ for one begun (the name
+ * column beside the numbers is too narrow for it – it was cut there); wraps between words, never cut.
+ */
+@Composable
+private fun DayState(r: DayPickRow, stateLaidOut: (TextLayoutResult) -> Unit) {
+    val state = r.riddenMs?.let { str(Res.string.daypick_ridden, riddenDate(it)) to OnPathColors.Green }
+        ?: r.startedMs?.let { str(Res.string.daypick_started, riddenDate(it)) to OnPathColors.PlanAccent } ?: return
+    Text(state.first, style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = state.second,
+        onTextLayout = stateLaidOut, modifier = Modifier.padding(top = 2.dp))
 }
 
 /** „Tag 3“: the next open day filled plan blue, the others a plan-blue outline. */
