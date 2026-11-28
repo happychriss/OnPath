@@ -291,7 +291,7 @@ const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>
 // wide screens: the search on top of the panel, the panel slides out with its tab (sheetpanel.ts, owner 2026-11-28);
 // slid in or out, the map shows the whole tour in the room it has now
 const sheetPanel = setupSheetPanel($('sheet'), $('searchbox'), $('topbar'), document.querySelector<HTMLElement>('#topbar .barsep')!, $('stage'),
-  () => setTimeout(() => { console.info(`[map] side panel ${sheetPanel.hidden ? 'out' : 'in'}: the whole route in the room left`); if (state.points.length) fitRoute(); }, 60));
+  () => setTimeout(() => { console.info(`[map] side panel ${sheetPanel.hidden ? 'out' : 'in'}: the whole route in the room left`); if (state.points.length) fitRoute(); }, 300));
 void sheetPanel;
 
 // ---- map ----
@@ -1611,6 +1611,8 @@ function fitPadding(): maplibregl.PaddingOptions {
   }
   // wide: the room beside the side panel, or – when the panel is short (small step) – the larger room below it
   const stage = $('stage').getBoundingClientRect(), w = stage.width, h = stage.height;
+  // the panel slid out (sheetpanel.ts): the whole map's room under the top bar
+  if (sheet.width === 0) return { top: topClear(90), bottom: Math.max(50, bpH + 30), left: 60, right: 90 };
   const beside = { top: topClear(90), bottom: Math.max(50, bpH + 30), left: sheet.right - stage.left + 50, right: 90 };
   const below = { top: sheet.bottom - stage.top + 40, bottom: Math.max(50, bpH + 30), left: 40, right: 90 };
   const room = (p: typeof beside) => Math.max(0, w - p.left - p.right) * Math.max(0, h - p.top - p.bottom);

@@ -206,7 +206,10 @@ const pp0 = await pstate();
 if (!(pp0.sheet && pp0.searchIn === 'sheet' && pp0.tab && pp0.expanded === 'true' && Math.abs(pp0.tabLeft - pp0.sheetRight) <= 14)) panelFails.push(`open: ${JSON.stringify(pp0)}`);
 await page.click('#sheetTab'); await page.waitForTimeout(1500);
 const pp1 = await pstate();
-if (!(!pp1.sheet && pp1.searchIn === 'topbar' && pp1.tab && pp1.tabLeft <= 2 && pp1.expanded === 'false' && pp1.n > 0 && pp1.out <= Math.max(3, pp1.n * 0.02) && pp1.z < pp0.z)) panelFails.push(`collapsed: ${JSON.stringify(pp1)}`);
+// the map took the whole-route view of the room it has now: the same camera „Show whole route“ gives (fitRoute)
+await page.click('#fitRoute'); await page.waitForTimeout(1500);
+const ppf = await pstate();
+if (!(!pp1.sheet && pp1.searchIn === 'topbar' && pp1.tab && pp1.tabLeft <= 2 && pp1.expanded === 'false' && pp1.n > 0 && Math.abs(pp1.z - ppf.z) < 0.1 && pp1.z < pp0.z)) panelFails.push(`collapsed: ${JSON.stringify(pp1)} (whole route: z ${ppf.z})`);
 await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => {}); await page.waitForTimeout(5000);
 const pp2 = await pstate();
 if (!(!pp2.sheet && pp2.tab && pp2.tabLeft <= 2)) panelFails.push(`after reload still collapsed: ${JSON.stringify(pp2)}`);
