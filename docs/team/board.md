@@ -22,7 +22,7 @@ backlog triggers. The table below is the evening state of 27.11. (history).
 immer gut“). (2) ~~multi-day head in the app~~ – **not built** (owner 06:31: the day is chosen in Meine Touren, the plan stays
 one single tour; today's app already fits). Open question to the owner: „< Alle Tage“ → the day list in Meine Touren?
 Backlog „Parity: multi-day panel like the planner“ rests. Mehrtagestouren thread free.
-Check against the concept done (`/mnt/project-files/mehrtage-konzept-pruefung.md`, 9 conflicts): app rebuild = queue (3)
+**Multi-day concept (owner 07:59) in `items/2026-11-28-multiday-concept.md` (MD-1…MD-7) – replaces the earlier „phone writes nothing“.** Check against the concept done (`/mnt/project-files/mehrtage-konzept-pruefung.md`, 9 conflicts): app rebuild = queue (3)
 after the tidy, **waits for the owner's yes**; app only (the planner keeps the whole-trip plan). Release notes: day-count
 line (DE l.16 / EN l.53) and the „falls Stufe 6“ placeholders out before the release – order to Wartefenster.
 
