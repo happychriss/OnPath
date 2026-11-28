@@ -57,3 +57,12 @@ auf dem Handy bekomme“). Only code and docs read on `main`; nothing built. „
 ## Open for the captain
 1. The grey line does not cover other rd5 dates for the plan's tiles – say it too, or keep it quiet as now?
 2. Should Save wait for the settling to finish (planner and app), so the stored plan is the one shown?
+
+## Decided (owner's card 2026-11-28 09:45)
+- **Points + the same computation:** only the points travel, the phone routes them itself (as today). Guarded by the weekly
+  JVM ⇄ Wasm same-route check (PR #27, `.github/workflows/same-route.yml`) and „Save waits for the stitching“ (HP).
+- **Different map data between planner and phone are accepted on purpose** (Chriss 2026-11-28 09:45: „Wie soll man
+  sicherstellen, dass die Karte im Browser und im Handy gleich ist? … und damit den Benutzer verrückt machen?“): no version
+  comparison, no notice to the user.
+- ☰ „Ganz neu berechnen“ goes from the app (F-PLAN-26); the full recalculation stays internal; the planner keeps its row
+  (`web/app/src/main.ts` menuRecalc) until the owner says otherwise.

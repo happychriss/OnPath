@@ -51,6 +51,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-POS-03 | Clear state when there is no fix: grey dot with "last known position, 4 min ago" or "Searching GPS". | Must |
 | F-POS-04 | Show current altitude (GPS corrected with barometer and elevation model when available). | Should |
 | F-POS-05 | Long-press anywhere shows coordinates and elevation of that point; copy or share them. **Not planned (2026-11-28, function verdict)** (a hold opens the point menu). | Should |
+| F-POS-06 | „Position auf der Route“ (Settings → Navigation) stays switchable (owner 2026-11-28 09:49, he took its removal back): two pieces of way lie close side by side (e.g. serpentines) and the snapping jumps to the wrong one; switched off, the map shows the raw position. Snapping is on by default and only moves the drawn dot – the recorded track stays raw. | Should |
 
 ### 3.3 Route planning
 
@@ -78,6 +79,7 @@ Each requirement has an ID and a priority: **Must** (v1 is not shippable without
 | F-PLAN-21 | MD-8 A day changed on the phone with the same start and goal (F-PLAN-19) goes back to the browser planner by sync like any saved route. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 | F-PLAN-22 | MD-11 Opening a day of a multi-day trip on the phone loads the maps of all days of the trip automatically (a night in a hut must not leave the next day without maps) – no separate question; the normal map loading window shows the line „Es werden alle Karten der Mehrtagestour geladen, damit du jederzeit offline loslegen kannst. Das kann einen Moment dauern.“ (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 | F-PLAN-23 | MD-12 In a day of a multi-day trip opened on the phone, activity and difficulty may change and the day stays part of the trip; only a changed start or goal saves it as its own tour (MD-4). (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
+| F-PLAN-26 | ☰ „Ganz neu berechnen“ (drop a stitched plan's detour points and route the visible points afresh): **Not planned – removed from the app (owner's card 2026-11-28 09:45: „Punkte + gleiche Rechnung“)**. The full recalculation stays an internal function (tests, the planner's own row). (F-PLAN-24 / 25 are taken by the hold-hint thread.) | Won't |
 
 ### 3.4 Smart routing by activity
 
