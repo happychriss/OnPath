@@ -460,6 +460,8 @@ async function run(lang, viewport, shotPrefix) {
   // (the imported GPX tracks are saved routes too – one day, no „N Tage“)
   const savedStats = await statsOf('#planList li.saved:not([data-zuletzt])');
   check(savedStats.filter((s) => daysRe(3).test(s)).length === 1 && savedStats.filter((s) => !daysRe(3).test(s)).every((s) => !/ (Tage|days)/.test(s)), `the saved multi-day route's row: „3 ${lang === 'de' ? 'Tage' : 'days'} · …“ (${savedStats.join(' | ')})`);
+  const badges = await page.$$eval('#planList li.saved:not([data-zuletzt]) .daysbadge', (b) => b.map((x) => x.textContent));
+  check(badges.length === 1 && daysRe(3).test(badges[0]), `the app's badge „3 ${lang === 'de' ? 'Tage' : 'days'}“ on the multi-day route's picture, none on the others (${badges.join(' | ')})`);
   if (viewport.width > 700) await shot('6-my-routes');
   await page.click('#closePlans');
   if (viewport.width <= 700) { // the overview is in the full sheet (step 11 left it small)

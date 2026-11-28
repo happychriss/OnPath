@@ -894,6 +894,9 @@ body.undo-crowded #pointsSection .pointshead { display: flex; min-height: 48px; 
   border-radius: var(--r-card); box-shadow: var(--shadow-low); }
 .planlist li.tourrow.current { box-shadow: var(--shadow-low), inset 0 0 0 1.5px var(--plan-edge); background: var(--card-paper); }
 .planlist .rowmain { display: flex; align-items: center; gap: 4px; min-width: 0; }
+/* the app's DaysBadge: a plan-blue pill top-left on a multi-day route's picture */
+.planlist .daysbadge { position: absolute; left: 3px; top: 3px; display: inline-flex; align-items: center; gap: 2px; padding: 1px 5px; border-radius: 999px; background: var(--plan); color: #fff; font: 700 10px/14px system-ui, sans-serif; white-space: nowrap; pointer-events: none; }
+.planlist .daysbadge .ic { fill: currentColor; }
 .planlist .tile { flex: none; position: relative; width: 52px; height: 52px; padding: 0; border: 0; background: none; cursor: pointer; border-radius: var(--r-small); }
 .planlist .tileface { position: absolute; left: 0; top: 0; width: 52px; height: 52px; border-radius: var(--r-small); background: var(--paper-dim);
   display: grid; place-items: center; overflow: hidden; }

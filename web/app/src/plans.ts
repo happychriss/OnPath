@@ -407,14 +407,16 @@ export async function myPlansDialog(sync: PlanSync, host: PlanHost, again = fals
     const thumbKeyOf = it.lineKey && it.segs ? thumbKey(it.lineKey, it.segs) : null;
     const pic = thumbKeyOf ? host.thumbs?.cached(thumbKeyOf) ?? null : null;
     // a round trip says so to the screen reader too (the app's ", Rundtour" in the row's label)
-    // a multi-day tour (app 73e83067, its TourCard): „6 Tage · 564 km · …“ – N from the plan code's tour part
+    // a multi-day tour (app 73e83067, its TourCard): „6 Tage · 564 km · …“ – N from the plan code's tour part; on the picture
+    // the app's DaysBadge (owner 2026-11-27): a plan-blue pill „📅 8 Tage“ top-left. A tap opens the tour with its day table –
+    // the planner's day pick (one click on a day = that day, its ›)
     const nDays = f?.days ?? 0;
     const tourDays = nDays > 0 ? tp('multiday_days_count', nDays, nDays) + (it.stats ? ' · ' : '') : '';
     const openLabel = t('routes_open_row', it.title) + (f?.roundTrip ? ', ' + t('plan_round_trip') : '');
     // the app's L1 row (21c0eac1): map tile, name, activity line („Wandern · T2 · ↻ Rundtour“), facts; ⋮ over the star
     const star = p && it.section === 'saved' ? starHtml(!!p.favourite, it.title) : '';
     li.innerHTML = `<div class="rowmain">
-      <button class="tile" tabindex="-1" aria-hidden="true">${tileHtml(it.segs, it.kind, it.section === 'draft', pic)}</button>
+      <button class="tile" tabindex="-1" aria-hidden="true">${tileHtml(it.segs, it.kind, it.section === 'draft', pic)}${nDays > 0 ? `<span class="daysbadge">${icon('calendar', 12)}${esc(tp('multiday_days_count', nDays, nDays))}</span>` : ''}</button>
       <button class="open" title="${esc(openLabel)}" aria-label="${esc(openLabel)}"><span class="txt"><span class="nameline"><span class="name">${esc(it.title)}</span>${tag}</span>
         ${f ? activityLineHtml(f.activity, f.sac, f.roundTrip, actRows()) : ''}${it.stats || tourDays ? `<span class="stats">${esc(tourDays + (it.stats ? statsText(it.stats) : ''))}</span>` : ''}${marked ? `<span class="justsavedline">${esc(t('routes_just_saved'))}</span>` : ''}</span></button>
       ${where}

@@ -14,3 +14,4 @@ against `VISION.md`. One line each: `Q … → A … (role, time)`.
 - Q chore/web-aufraeumen Hit.sub removal? → A merged as is – nothing reads hit.sub any more (the lodging check uses the kind in the engine) (laptop, ~00:20)
 - Q beside sign: ring fill without a percent? → A fill by areas ready / all (counted), no number on the sign, details „x von y Kartenbereichen“, server % stripped from the rows (laptop, 28.11. night)
 - Q plan sheet spacing: planner has no PLANEN tab → A +8 px above the activity row, +10 px before Umkehren/Rundtour (laptop, 28.11. night)
+- Q Meine Touren day pick: a separate day sheet like the app's DayPickSheet? → A no: the planner opens the tour and its panel already is the day table (one click on a day = that day, its view); only the app's badge „📅 N Tage“ on the picture is added – no second table (VISION: app and planner alike in function, one place for the days) (laptop, 28.11. night)
