@@ -18,6 +18,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -100,16 +102,30 @@ fun DrawScope.drawDayEnd(kind: DayEndKind?) {
 }
 
 /**
- * A followed day: "Tag 4 von 6" · "‹ Alle Tage" (back to the trip's day sheet in My routes, MD-2) and, when its start or goal
- * moved, the line „Start und Ziel geändert – wird als eigene Tour gespeichert“ before saving (MD-4).
+ * A followed day (proposal 2026-11-28, as the planner's „Nachher · ein Tag“): on top the big tonal button „‹ Alle Tage“ (back to
+ * the trip's day sheet in My routes, MD-2; only when no tour runs), under it „Tag 4 von 6“ with ‹ › – the trip's day before /
+ * after, loaded as a tap in the day sheet does ([onStep] -1 / +1; off at the first / last day) – and, when its start or goal
+ * moved, the line „Start und Ziel geändert – wird als eigene Tour gespeichert“ before saving (MD-4). Large font: wraps, never cut.
  */
 @Composable
-fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit) {
+fun DayHeadLine(head: DayHeadUi, onAllDays: () -> Unit, onStep: (Int) -> Unit = {}) {
     Column(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        if (head.canLeave) androidx.compose.material3.Surface(onClick = onAllDays, shape = OnPathShapes.Small, color = OnPathColors.EditTonal,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp), contentAlignment = Alignment.CenterStart) {
+                Text("‹ " + str(Res.string.multiday_all_days), style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold,
+                    color = OnPathColors.PlanAccent)
+            }
+        }
+        Row(Modifier.fillMaxWidth().padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(head.label, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-            if (head.canLeave) androidx.compose.material3.TextButton(colors = ActionButtons.editText(), onClick = onAllDays) {
-                Text("‹ " + str(Res.string.multiday_all_days))
+            androidx.compose.material3.IconButton(onClick = { onStep(-1) }, enabled = head.canPrev) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                    str(Res.string.multiday_prev_day), tint = if (head.canPrev) OnPathColors.PlanAccent else MaterialTheme.colorScheme.outline)
+            }
+            androidx.compose.material3.IconButton(onClick = { onStep(1) }, enabled = head.canNext) {
+                androidx.compose.material3.Icon(androidx.compose.material.icons.Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                    str(Res.string.daypick_next), tint = if (head.canNext) OnPathColors.PlanAccent else MaterialTheme.colorScheme.outline)
             }
         }
         if (head.leavesTrip) InfoLine(str(Res.string.multiday_own_tour))

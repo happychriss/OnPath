@@ -118,10 +118,31 @@ class DayPickSlice(
         val line = s.line
         close()
         Problems.trace("routes", "Day sheet: day $n of \"${s.tour.name}\" loaded as the plan")
-        job = scope.launchSafe("app", "dayPickRide") {
-            val day = multiDay.prepareDay(s.tour, line, n) ?: run { failed(s.tour, "day $n not worked out"); return@launchSafe }
-            flow.openTour(day.standIn, lineOf = listOf(day.dayLine.map { TrackPoint(it.lat, it.lon, it.ele) }), planned = { multiDay.followDay(day) })
+        job = scope.launchSafe("app", "dayPickRide") { load(s.tour, line, n) }
+    }
+
+    /**
+     * ‹ / › in the plan sheet's day head: the trip's day before ([delta] -1) / after (+1) the followed one, loaded exactly as a
+     * tap on it in the day sheet ([ride]: the plan on the map goes under Zuletzt when unsaved). Nothing at the first / last day
+     * or during a tour.
+     */
+    fun step(delta: Int) {
+        val (id, n) = multiDay.stepTarget(delta) ?: return
+        Problems.trace("plan", "Day head: day $n of route $id loaded as the plan (${if (delta < 0) "‹" else "›"})")
+        job?.cancel()
+        job = scope.launchSafe("app", "dayStep") {
+            val read = withContext(io) {
+                runCatching { store.getTour(id)?.takeIf { it.days != null && it.deletedMs == null }?.let { it to store.loadSegments(it.id) } }
+                    .onFailure { Problems.warn("routes", "Multi-day route $id not read – day $n not loaded", it) }.getOrNull()
+            } ?: run { problem(Txt.s(Res.string.daypick_days_failed)); return@launchSafe }
+            load(read.first, read.second.flatten().map { it.toGeo() }, n)
         }
+    }
+
+    /** Day [n] of [t] (its stored [line]) becomes the plan, followed as the trip's day. */
+    private suspend fun load(t: Tour, line: List<GeoPoint>, n: Int) {
+        val day = multiDay.prepareDay(t, line, n) ?: run { failed(t, "day $n not worked out"); return }
+        flow.openTour(day.standIn, lineOf = listOf(day.dayLine.map { TrackPoint(it.lat, it.lon, it.ele) }), planned = { multiDay.followDay(day) })
     }
 
     /** The stretch of the stored line day [row] covers (its own overview). */

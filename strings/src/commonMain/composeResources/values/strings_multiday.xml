@@ -8,6 +8,7 @@
     <string name="multiday_day_n">Day %1$s</string>
     <string name="multiday_day_of">Day %1$s of %2$s</string>
     <string name="multiday_all_days">All days</string>
+    <string name="multiday_prev_day">previous day</string>
     <string name="multiday_maps_missing">Maps missing</string>
     <string name="multiday_end_open">Night not decided</string>
     <string name="multiday_end_overnight">Overnight stay</string>

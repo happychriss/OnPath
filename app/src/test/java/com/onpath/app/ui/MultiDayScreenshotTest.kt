@@ -54,7 +54,7 @@ abstract class MultiDayScreenshotTest(private val locale: Locale, fontScale: Flo
 
     /** The day picked in My routes is the plan: „Tag 4 von 6 · ‹ Alle Tage“ (MD-2). */
     @Test fun dayFollowed() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.BIKE_TOURING,
-        size = PlanSize.MINI, savedName = "München – Venedig", dayHead = DayHeadUi(label, true)))
+        size = PlanSize.MINI, savedName = "München – Venedig", dayHead = DayHeadUi(label, true, canPrev = true, canNext = true)))
 
     /** The day's goal moved (MD-4): the line before saving. */
     @Test fun dayLeavesTheTrip() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.BIKE_TOURING,

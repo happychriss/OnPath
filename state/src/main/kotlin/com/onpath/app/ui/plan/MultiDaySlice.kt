@@ -323,7 +323,19 @@ class MultiDaySlice(
      * The followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" (not during a tour) and, when its start or
      * goal moved, MD-4's line before saving; null when no day is followed.
      */
-    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, leavesTrip()) }
+    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { label ->
+        DayHeadUi(label, !host.touring, leavesTrip(), canPrev = stepTarget(-1) != null, canNext = stepTarget(1) != null)
+    }
+
+    /**
+     * ‹ / › in the day head (DayPickSlice.step): the trip's id and the day [delta] away from the followed one; null at the first /
+     * last day, without a followed day or during a tour (the day sheet loads nothing then either).
+     */
+    fun stepTarget(delta: Int): Pair<Long, Int>? {
+        val c = flow.day?.takeIf { flow.following && !host.touring } ?: return null
+        val n = c.part.first + delta
+        return if (delta != 0 && n in 1..c.part.total) c.tour.id to n else null
+    }
 
     companion object {
         /**

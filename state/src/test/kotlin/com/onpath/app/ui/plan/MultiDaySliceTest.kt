@@ -497,7 +497,7 @@ class MultiDaySliceTest {
         assertEquals("the trip's night marks by value", hotel, app.multiDay.flow.nightOf(D))
         assertEquals("ABCDE", ids(app.multiDay.flow.day!!.whole.points))
         assertEquals(Txt.s(Res.string.multiday_day_of, "2", "3"), app.multiDay.dayLabel())
-        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), true, false), app.multiDay.dayHeadUi())
+        assertEquals(com.onpath.app.ui.DayHeadUi(Txt.s(Res.string.multiday_day_of, "2", "3"), true, false, canPrev = true, canNext = true), app.multiDay.dayHeadUi())
         assertEquals("u1" to 2, app.multiDay.followedDay())
         // kept: a restart follows it
         val again = App()
@@ -1016,6 +1016,27 @@ class MultiDaySliceTest {
         app.touringNow = false
         ui { app.plan.setSaved("Other", 99L, listOf(C, D)) }
         assertNull("no day, no head", app.multiDay.dayHeadUi())
+    }
+
+    /**
+     * ‹ › in the day head (proposal 2026-11-28, the planner's „Tag 2 von 3 ‹ ›“): the day before / after the followed one of the
+     * same trip – DayPickSlice.step loads it as a tap in the day sheet does. None before day 1, after the last day, during a tour.
+     */
+    @Test fun theDayHeadsArrowsStepToTheTripsDayBeforeAndAfterWithinItsDays() {
+        val app = App(); app.rideDay2()
+        assertEquals(tourId to 1, app.multiDay.stepTarget(-1))
+        assertEquals(tourId to 3, app.multiDay.stepTarget(1))
+        app.touringNow = true
+        assertNull(app.multiDay.stepTarget(-1)); assertNull(app.multiDay.stepTarget(1))
+        assertFalse(app.multiDay.dayHeadUi()!!.canPrev); assertFalse(app.multiDay.dayHeadUi()!!.canNext)
+        app.touringNow = false
+        val first = App(); first.rideDay(n = 1)
+        assertNull("no day before day 1", first.multiDay.stepTarget(-1))
+        assertEquals(tourId to 2, first.multiDay.stepTarget(1))
+        assertFalse(first.multiDay.dayHeadUi()!!.canPrev); assertTrue(first.multiDay.dayHeadUi()!!.canNext)
+        val last = App(); last.rideDay(n = 3)
+        assertNull("no day after the last", last.multiDay.stepTarget(1))
+        assertTrue(last.multiDay.dayHeadUi()!!.canPrev); assertFalse(last.multiDay.dayHeadUi()!!.canNext)
     }
 
     @Test fun aNormalPlanShowsNothingOfMultiDay() {
