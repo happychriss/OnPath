@@ -428,7 +428,8 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
         icon = { Icon(Icons.Outlined.Warning, null, tint = OnPathColors.Warn) },
         title = { Text(str(Res.string.nav_long_route_title)) },
         text = { DialogText(com.onpath.app.routing.LongRoute.text(seconds, activity)) },
-        confirmButton = { TextButton(colors = ActionButtons.editText(), onClick = onPlan) { Text(str(Res.string.nav_plan_anyway)) } },
+        // owner 2026-11-28: fits → Abbrechen / Berechnen, never „Trotzdem planen“ (this form too: a question without its leg)
+        confirmButton = { TextButton(onClick = onPlan) { Text(str(Res.string.plan_calculate)) } },
         dismissButton = { TextButton(onClick = onCancel) { Text(str(Res.string.common_cancel)) } },
         properties = LongRouteDialogRules.properties,
     )
@@ -436,7 +437,7 @@ fun LongRouteDialog(seconds: Double, activity: com.onpath.app.routing.Activity, 
 
 /**
  * Problem 9: a tap outside "This route is very long" or Back must not undo – the question stays until a button
- * (Plan anyway / Cancel) answers it.
+ * (Berechnen / Abbrechen) answers it.
  */
 internal object LongRouteDialogRules {
     val properties = androidx.compose.ui.window.DialogProperties(dismissOnBackPress = false, dismissOnClickOutside = false)
