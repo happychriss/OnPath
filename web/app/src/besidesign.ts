@@ -1,12 +1,18 @@
 // Form B (owner 2026-11-19: „ich kann weitermachen“ – „B: einfach nur Prozent, muss aber passen für die gesamte Aktion“):
 // the app's BesideSign / BesideDetails (ui/progress/BesideSign.kt, mirrored – web/parity.json). One small sign beside the
-// map that covers nothing – a ring and ONE percent over the whole action (every map area the server prepares in the
+// map that covers nothing – a ring over the whole action – no number since 2026-11-28 (facts, not guesses: the details count the areas) (every map area the server prepares in the
 // background together: the engine's WebSign on the app's ActionPercent), no names, no words. Tap → the details: the
 // title, the ONE bar, what loads (one line each), Cancel all (red) · Close. In the planner the background loads are the
 // map areas along a computed route and around the own position (areas.ts); the routing data fetched around the map view
 // ahead of a first plan stays silent (nobody waits for it, as before).
 import { t } from './i18n';
 import { signTick, signSeed } from './waitengine';
+
+/** Areas ready of all in the background action – counted from the lines ("id<TAB>state<TAB>…"). */
+function counted(lines: string): { ready: number; total: number } {
+  const ls = lines.split('\n').filter(Boolean);
+  return { ready: ls.filter((l) => l.split('\t')[1] === 'ready').length, total: ls.length };
+}
 
 export interface BesideAreas {
   /** "id<TAB>state<TAB>progress<TAB>eta" per area of the background action. */
@@ -23,6 +29,8 @@ export class BesideSign {
   private now: BesideAreas | null = null;
   private timer = 0;
   private percent = -1;
+  private ready = 0;
+  private total = 0;
 
   constructor(host: HTMLElement) {
     const b = document.createElement('button');
@@ -46,8 +54,8 @@ export class BesideSign {
     this.tick();
   }
 
-  /** The percent shown (−1 = no sign) – for the tests. */
-  get shown() { return this.el.hidden ? -1 : this.percent; }
+  /** The areas ready (−1 = no sign) – for the tests. */
+  get shown() { return this.el.hidden ? -1 : this.ready; }
 
   private tick() {
     const a = this.now;
@@ -57,15 +65,17 @@ export class BesideSign {
       this.el.hidden = true; this.percent = -1; this.close();
       return;
     }
-    // no engine for the number (it did not load): the sign without a number would say nothing – the ring alone turns
-    this.percent = Math.max(this.percent, p < 0 ? 0 : p);
+    // facts, not guesses (captain 2026-11-28, VISION): no number on the sign – the ring fills by the areas that are
+    // ready of all that load (counted), the details say „x von y Kartenbereichen“
+    const c = counted(a.lines);
+    this.ready = c.ready; this.total = c.total;
+    this.percent = Math.max(this.percent, c.total ? Math.round((100 * c.ready) / c.total) : 0);
     this.el.hidden = false;
     this.place();
-    const label = p < 0 ? '' : `${this.percent} %`;
-    this.el.querySelector('.pct')!.textContent = label;
-    this.el.classList.toggle('spin', p < 0);
+    this.el.querySelector('.pct')!.textContent = '';
+    this.el.classList.toggle('spin', c.ready === 0);
     this.el.style.setProperty('--p', String(this.percent / 100));
-    this.el.setAttribute('aria-label', t('maps_bg_chip_cd', label || '…'));
+    this.el.setAttribute('aria-label', t('maps_bg_chip_cd', t('web_bg_counted', c.ready, c.total)));
     this.el.title = t('maps_bg_chip_click');
     if (this.details) this.fill(this.details);
   }
@@ -102,9 +112,10 @@ export class BesideSign {
   private fill(d: HTMLElement) {
     d.querySelector('.bdtitle')!.textContent = t('maps_bg_dialog_title');
     d.querySelector<HTMLElement>('.bdbar i')!.style.width = `${Math.max(0, this.percent)}%`;
-    d.querySelector('.bdprog .pct')!.textContent = `${Math.max(0, this.percent)} %`;
+    d.querySelector('.bdprog .pct')!.textContent = t('web_bg_counted', this.ready, this.total);
     const ul = d.querySelector('.bdrows')!;
-    ul.replaceChildren(...(this.now?.rows ?? []).map((r) => Object.assign(document.createElement('li'), { textContent: r })));
+    // only counted values here (captain 2026-11-28): a row's server percent goes, its state and time stay
+    ul.replaceChildren(...(this.now?.rows ?? []).map((r) => Object.assign(document.createElement('li'), { textContent: r.replace(/ – \d{1,3} ?%/g, '') })));
     d.querySelector('.bdcancel')!.textContent = t('common_cancel_all');
     d.querySelector('.bdclose')!.textContent = t('common_close');
   }

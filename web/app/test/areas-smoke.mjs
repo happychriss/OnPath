@@ -361,8 +361,8 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
   for (let k = 0; k < 12; k++) { pcts.push(await page.evaluate(() => window.__wait.beside())); await page.waitForTimeout(1000); } // the page polls every 5 s at the most
   const sign = await page.evaluate(() => { const b = document.getElementById('besidesign'), r = b.getBoundingClientRect(), m = document.getElementById('map').getBoundingClientRect();
     return { text: b.textContent, label: b.getAttribute('aria-label'), w: r.width, h: r.height, inMap: r.left >= m.left && r.right <= m.right && r.top >= m.top && r.bottom <= m.bottom }; });
-  check(came && /^\d{1,3} %$/.test(sign.text) && sign.inMap, `the route's areas: the sign beside the map – a ring and one percent (${JSON.stringify(sign)})`);
-  check(pcts.every((v, i) => !i || v >= pcts[i - 1]) && pcts.at(-1) > pcts[0], `its percent moves on, never back (${pcts.join(' ')})`);
+  check(came && sign.text === '' && sign.inMap, `the route's areas: the sign beside the map – a ring, no number (${JSON.stringify(sign)})`);
+  check(pcts.every((v, i) => !i || v >= pcts[i - 1]), `the areas ready only grow (${pcts.join(' ')})`);
   check(!(await page.evaluate(() => !!document.getElementById('waitwin'))) && !(await strip(page)).includes('Preparing'), 'no window and no strip line for them (they load beside)');
   // a late answer about a spot the map has already left (CI 2026-11-21 on two cores): at zoom 11 the page asks whether
   // this spot has a detailed map; the view is back at zoom 9 before the answer comes. The old answer must not turn the
@@ -380,7 +380,7 @@ const magenta = ([r, g, b]) => r - g > 50 && b - g > 40;
     rows: [...x.querySelectorAll('.bdrows li')].map((l) => l.textContent), pct: x.querySelector('.pct').textContent,
     buttons: [...x.querySelectorAll('button')].map((b) => b.textContent) }; });
   if (process.env.SHOTS) await page.screenshot({ path: process.env.SHOTS + '-details.png' });
-  check(!!d && d.title === 'Loading in the background' && d.rows.length > 0 && /^\d+ %$/.test(d.pct) && d.buttons.join() === 'Cancel all,Close',
+  check(!!d && d.title === 'Loading in the background' && d.rows.length > 0 && d.rows.every((r) => !/%/.test(r)) && /^\d+ of \d+ map areas$/.test(d.pct) && d.buttons.join() === 'Cancel all,Close',
     `tap: the details – title, the bar, what loads, Cancel all · Close (${JSON.stringify(d)})`);
   await page.click('.besidedetails .bdcancel');
   check(await page.waitForFunction(() => window.__wait.beside() < 0 && !document.querySelector('.besidedetails'), null, { timeout: 5_000 }).then(() => true, () => false),
