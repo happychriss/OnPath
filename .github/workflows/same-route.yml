@@ -1,0 +1,103 @@
+# Same route on the phone and in the planner (owner 2026-11-28: „die Route, die ich im Planer sehe, wenn ich auf Speichern
+# drücke, ist die, die ich auf dem Handy bekomme“; docs/team/items/2026-11-28-saved-equals-followed.md, captain's variant b).
+# Weekly, on the CURRENT brouter.de tile E10_N45: SameRouteTest on the JVM (the app's router: warm editing device = cold
+# device for 4 Alpine tours with stitched points, MODE=run) makes fresh RouteHashes, then the planner's Wasm engine routes
+# every plan code cold and must hit the same hashes (web/app/test/same-route-wasm.mjs). The fixed hashes of 2026-10-25 in
+# core/src/test/resources/same-route stay a local test on donald (they hold only for that tile; nothing is uploaded).
+# A failed download is a red run with its own message – never skipped.
+name: Same route (JVM ⇄ Wasm)
+
+on:
+  schedule:
+    - cron: "17 1 * * 1" # Monday 01:17 UTC
+  # a change of this check itself runs it on its pull request
+  pull_request:
+    paths:
+      - ".github/workflows/same-route.yml"
+      - "web/app/test/same-route-wasm.mjs"
+      - "tools/routing/jvm-test/SameRouteTest.kt"
+  workflow_dispatch:
+    inputs:
+      tours:
+        description: "Only these tours (comma list, empty = all four – only a full run writes hashes)"
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: same-route
+  cancel-in-progress: false
+
+jobs:
+  same-route:
+    runs-on: ubuntu-latest
+    timeout-minutes: 340
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - uses: gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c # v5.0.2
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22"
+
+      - name: Routing data (current brouter.de E10_N45)
+        run: |
+          mkdir -p segments
+          url=https://brouter.de/brouter/segments4/E10_N45.rd5
+          if ! curl -fsS --retry 4 --retry-delay 30 -o segments/E10_N45.rd5 "$url" || [ ! -s segments/E10_N45.rd5 ]; then
+            echo "::error title=Routing data missing::E10_N45.rd5 could not be downloaded from $url – no same-route check this week (red on purpose, not skipped)"
+            exit 1
+          fi
+          ls -la segments
+          echo "Routing data: $(sha256sum segments/E10_N45.rd5 | cut -c1-64) ($(stat -c %s segments/E10_N45.rd5) bytes)" >> "$GITHUB_STEP_SUMMARY"
+
+      # the Wasm engine; this also puts the Gradle distribution in place, whose Kotlin compiler run.sh uses for the JVM part
+      - name: Build the Wasm engine (TeaVM)
+        run: ./gradlew -p web/engine --no-daemon generateWasmGC copyWasmGCRuntime
+
+      - name: JVM – SameRouteTest (fresh hashes on this tile)
+        env:
+          KTTEST: tools/routing/jvm-test/SameRouteTest.kt
+          EXTRA_KT: >-
+            core/src/main/kotlin/com/onpath/app/routing/PlanResult.kt
+            core/src/main/kotlin/com/onpath/app/domain/PlanGaps.kt
+            core/src/main/kotlin/com/onpath/app/routing/PlanReach.kt
+            core/src/main/kotlin/com/onpath/app/routing/ProfileData.kt
+            core/src/main/kotlin/com/onpath/app/routing/PlanDetour.kt
+          JAVA_XMX: 2g
+          MODE: run
+          SHA_DIR: ${{ runner.temp }}/same-route
+          TOURS: ${{ inputs.tours }}
+        run: |
+          [ -n "$TOURS" ] || unset TOURS
+          mkdir -p "$SHA_DIR"
+          tools/routing/jvm-test/run.sh "$GITHUB_WORKSPACE/segments" "$RUNNER_TEMP/jvm-work" | tee "$RUNNER_TEMP/jvm.log"
+          ls "$SHA_DIR"/*.sha >/dev/null 2>&1 || { echo "::error title=No hashes::the JVM run wrote no .sha files (only a full green run does) – see the log"; exit 1; }
+          printf 'Fresh hashes of the weekly CI run on the current brouter.de tile.\n\nsha256: %s\n' "$(sha256sum segments/E10_N45.rd5 | cut -c1-64)" > "$SHA_DIR/DATA.txt"
+          tail -20 "$RUNNER_TEMP/jvm.log" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Wasm – the planner's engine hits the same hashes
+        env:
+          SHA_DIR: ${{ runner.temp }}/same-route
+        run: |
+          node --max-old-space-size=4096 web/app/test/same-route-wasm.mjs "$GITHUB_WORKSPACE/segments" | tee "$RUNNER_TEMP/wasm.log"
+          tail -3 "$RUNNER_TEMP/wasm.log" >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: same-route-logs
+          path: |
+            ${{ runner.temp }}/jvm.log
+            ${{ runner.temp }}/wasm.log
+            ${{ runner.temp }}/same-route
+          if-no-files-found: ignore
