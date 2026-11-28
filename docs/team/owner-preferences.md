@@ -43,6 +43,10 @@ Shared by every session (donald, laptop, captain, cloud-web). Product rules (UX,
 - **Vision first** (owner 2026-11-27): before asking the owner, check whether `VISION.md` answers it. If it does, decide,
   name the line in the commit or reply, and go on. Ask only real choices of taste or product (pictures, words, numbers).
   The captain checks this.
+- **Build what was asked** (owner 2026-11-28, „mehr implementiert als angefordert … unnötig kompliziert“, case „Tag 3–4“):
+  build exactly what the owner asked. A scenario, edge case or idea beyond it is a question to him first – never built
+  on an assumption, and „Vision first“ never adds features, it only answers how. A design doc marks each row as the
+  owner's word (with his quote) or as a role's proposal; only his rows are requirements.
 One place: `docs/project-status.md` "Decisions" (no disappearing messages, the owner's chosen words stay, hold-only
 gestures, re-routing only after asking, core-feature bugs test first, public text tone, private material in
 `happychriss/onpath.private`).

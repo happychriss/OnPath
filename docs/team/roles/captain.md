@@ -29,6 +29,9 @@ questions, tells the owner what is new. It writes no product code and decides no
   owner through the project lead. The captain also proposes changes or additions to `VISION.md` it finds sensible;
   the owner decides, the captain writes only what he approved. A question to the owner that the vision already answers
   → tell the coordinator the line instead (owner-preferences „Vision first“). Keep the vision short.
+  **Second check (owner 2026-11-28): „asked for?“** – for every task and merge: which owner message asked for each part?
+  A part nobody asked for (a scenario, an extra mode, a „while we are at it“) gets no go; it goes to the owner as a
+  question, recommendation „weglassen“. Never recommend keeping an extra the owner did not ask for.
 - **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
   „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
