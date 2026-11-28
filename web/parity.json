@@ -142,11 +142,11 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/TourBar.kt",
-      "what": "LongRouteDialog (with a leg, RouteCost 2026-11-27: title/text RouteCost.askTitle/askText, „Zwischenziel setzen“ · „Warten“, beyond only „Zwischenziel setzen“ – the web's beyond words are its own, no „plan in the browser“; no outside dismiss; the app's beyond OK that takes the far point + pin back (995f7110f / bcfd76cc0) is phone-only – the browser's cap is hundreds of km, its beyond keeps „Zwischenziel setzen“); a far new point (owner 2026-11-27 variant C): one web question „… ist ca. N km weit weg“ · Berechnung etwa … · [Von hier starten] [Route berechnen] in its place (longroute.ts farQuestion) · 2026-11-27 checked: the app's long-leg question „Abbrechen / Berechnen“ asked only above the range's low end (lowEnd) is the app's – the planner keeps „Zwischenziel setzen · Warten“ and its far-point dialog (decided 2026-11-27, PhoneLongRule.lowEnd „the app's, not the planner's“)",
+      "what": "LongRouteDialog (with a leg, RouteCost): app and planner alike since 2026-11-28 (owner) – asked only above the range's low end (lowEnd), title/text RouteCost.askTitle/askText (no stop sentence), [Abbrechen] [Berechnen], beyond the device's memory only [OK] which takes the point back, no „Trotzdem planen“; no outside dismiss. Web-only: a far new point (owner 2026-11-27 variant C) – one question „… ist ca. N km weit weg“ · Berechnung etwa … · [Von hier starten] [Route berechnen] in its place (longroute.ts farQuestion)",
       "web": [
         "web/app/src/longroute.ts"
       ],
-      "blob": "a9000ef031b297fb7beb20cd1dcc16fc61351e79"
+      "blob": "52c80db3cb91f73e2b67a220e675c6863cbbd62a"
     },
     {
       "app": "state/src/main/kotlin/com/onpath/app/ui/routes/SaveState.kt",

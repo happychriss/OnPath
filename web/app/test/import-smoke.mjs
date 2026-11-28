@@ -59,7 +59,7 @@ rd5Requests = 0; // only requests started while the question is open count (not 
 const q = await page.textContent('dialog.longroute');
 // like the app (owner 2026-11-28): Cancel · Calculate, no stop; beyond the browser's memory only OK with the hint
 check(((/Long route: about \d+–\d+ (minutes|seconds)/.test(q) && /598 km in one go/.test(q) && /Cancel/.test(q) && /Calculate/.test(q))
-  || (/Route too long to calculate/.test(q) && /Pick a closer destination/.test(q) && /OK/.test(q)))
+  || (/Route too long to calculate/.test(q) && /Pick a closer destination\. Then plan on from there\./.test(q) && /OK/.test(q)))
   && !/Add a stop|stop on the way|Wait|Keep waiting|Plan anyway/.test(q), `long leg asked first with its estimate: "${q.replace(/\s+/g, ' ').trim()}"`);
 await page.waitForTimeout(1500);
 check(rd5Requests === 0, `no routing data fetched while the question is open (${rd5Requests} requests)`);
@@ -168,7 +168,7 @@ const farText = (await page.textContent('dialog.longroute')).replace(/\s+/g, ' '
 const order = await page.$$eval('dialog.longroute button', (b) => b.map((x) => x.id));
 // one question (owner 2026-11-27 variant C): „Hilden is about 700 km away“ · „Calculating takes about …“ (or too far for
 // the browser's memory: only „Set as start“) – [Set as start] [Calculate route], never a second question after it
-check(/is about \d+ km away/.test(farText) && (/Calculating takes about /.test(farText) || /Too far to calculate in one go\./.test(farText)) &&
+check(/is about \d+ km away/.test(farText) && (/Calculating takes about /.test(farText) || /Pick a closer destination\. Then plan on from there\./.test(farText)) &&
   (order.join() === 'lrFresh,lrPlan' || order.join() === 'lrFresh') && !/very long|Wait|Add a stop/.test(farText), `a single far point: "${farText}" (${order.join(' · ')})`);
 await page.locator('dialog.longroute').screenshot({ path: path.join(here, '../../engine/build/far-from-route.png') }).catch(() => {});
 await page.click('#lrFresh');

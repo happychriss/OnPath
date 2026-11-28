@@ -60,6 +60,9 @@ class WebRunHeadTest {
         assertEquals("ASK", what(beyond))
         assertTrue(beyond, beyond.contains("\"beyond\":true") && !beyond.contains("\"plan\"") && beyond.contains("\"cancel\":\"OK\""))
         assertFalse(beyond, beyond.contains("stop"))
+        // the app's words through the shared RouteCost (owner 2026-11-28 11:09) – one source for app and planner
+        assertTrue(beyond, beyond.contains("\"title\":\"Route too long to calculate\"") &&
+            beyond.contains("\"text\":\"Pick a closer destination. Then plan on from there.\""))
         Engine.costSet(Engine.BROWSER_FACTOR, 600) // an 8 GB browser: 700 km
         val asked = Engine.runHead(long, "HIKE", 2, true)
         assertTrue(asked, asked.contains("\"beyond\":false") && asked.contains("\"plan\":\"Calculate\""))

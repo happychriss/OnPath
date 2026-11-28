@@ -53,12 +53,13 @@ object WebPlanRules {
         val head = ",\"leg\":" + ask.leg + ",\"km\":" + km + ",\"beyond\":" + ask.beyond +
             ",\"cancel\":" + Engine.str(Txt.s(if (ask.beyond) Res.string.common_ok else Res.string.common_cancel)) +
             ",\"notRouted\":" + Engine.str(PlanStatus.notRoutedText(com.onpath.app.domain.NotRouted.LONG)) +
-            ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate))
+            ",\"again\":" + Engine.str(Txt.s(Res.string.plan_calculate)) +
+            // one source for app and planner (owner 2026-11-28 11:09): RouteCost.askTitle / askText, also beyond the memory
+            ",\"title\":" + Engine.str(com.onpath.app.routing.RouteCost.askTitle(ask)) +
+            ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1), stopHint = false))
         if (ask.beyond) return head
         return head + ",\"seconds\":" + Engine.num(ask.estimateS, 0) +
             ",\"words\":" + Engine.str(com.onpath.app.routing.RouteCost.words(ask.estimateS)) +
-            ",\"title\":" + Engine.str(com.onpath.app.routing.RouteCost.askTitle(ask)) +
-            ",\"text\":" + Engine.str(com.onpath.app.routing.RouteCost.askText(ask, name(ask.leg), name(ask.leg + 1), stopHint = false)) +
             ",\"plan\":" + Engine.str(Txt.s(Res.string.plan_calculate))
     }
 

@@ -111,7 +111,7 @@ function farPoint(a: Ask, points: LatLon[], before: Before, names: (string | und
   const n = String(km >= 100 ? Math.round(km / 10) * 10 : Math.max(1, Math.round(km)));
   const name = names[idx]?.trim();
   const title = name ? t('web_far_title_named', name, n) : t('web_far_title_unnamed', n);
-  const text = a.beyond ? t('web_far_too_far') : t('web_far_calc', a.words ?? '');
+  const text = a.beyond ? a.text ?? '' : t('web_far_calc', a.words ?? ''); // beyond: the shared RouteCost.askText (one source, owner 2026-11-28)
   return { point: p, title, text, beyond: !!a.beyond };
 }
 
@@ -148,10 +148,10 @@ function question(a: Ask): Promise<boolean> {
   return new Promise((resolve) => {
     const d = document.createElement('dialog');
     d.className = 'share longroute';
-    // a leg beyond the browser's memory: only „OK“, which takes the point back (the app's „Zu weit für das Handy“ in the
-    // browser's words, owner 2026-11-28 – no „Zwischenziel“; the hint: a shorter stretch first, then the next goal)
-    const title = a.beyond ? t('web_too_far_title') : a.title ?? '';
-    const text = a.beyond ? t('web_too_far_text') : a.text ?? '';
+    // a leg beyond the browser's memory: only „OK“, which takes the point back; title and text are the app's (the shared
+    // RouteCost.askTitle / askText: „Zu lange Route für die Berechnung“ – owner 2026-11-28 11:09)
+    const title = a.title ?? '';
+    const text = a.text ?? '';
     const plan = a.beyond ? '' : `<button class="primary" id="lrPlan">${esc(a.plan ?? t('plan_calculate'))}</button>`;
     d.innerHTML = `<h2>⚠ ${esc(title)}</h2><p>${esc(text)}</p>
       <div class="row"><button id="lrCancel">${esc(a.cancel ?? t('common_cancel'))}</button>${plan}</div>`;
