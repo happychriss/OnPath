@@ -370,16 +370,19 @@ fun SyncSection(ui: SyncUi, cb: SyncCallbacks, now: Long = System.currentTimeMil
                     }
                 }
                 !ui.paired -> {
-                    Text(str(Res.string.sync_intro), style = MaterialTheme.typography.bodyMedium)
-                    Text(str(Res.string.sync_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedButton(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                    // owner 2026-11-28 11:14: Kamera öffnen first (filled – it is harmless), then one short instruction,
+                    // the browser fallback and one quiet line – no long paragraphs
+                    Button(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                    Text(str(Res.string.sync_window_steps), style = MaterialTheme.typography.bodyMedium)
+                    Text(str(Res.string.sync_window_fallback), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(str(Res.string.sync_window_note), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 ui.unpairedInBrowser -> {
                     // the browser unpaired itself (owner 2026-10-31): a grey line, pair again (a scanned code joins this
                     // phone's mailbox, A-017), and the normal Unpair – no "Last synced" (no browser at the other end)
                     SyncStatusLine(str(Res.string.sync_menu_unpaired_browser) to NoticeKind.INFO)
-                    Text(str(Res.string.sync_steps), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    OutlinedButton(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                    Button(onClick = cb.onOpenCamera, Modifier.fillMaxWidth().heightIn(min = 48.dp)) { Text(str(Res.string.sync_open_camera)) }
+                    Text(str(Res.string.sync_window_steps), style = MaterialTheme.typography.bodyMedium)
                     ui.problem?.takeIf { it != SyncProblem.Offline }?.let { p -> SyncStatusLine(syncProblemText(p)) }
                     UnpairButton { askUnpair = true }
                 }

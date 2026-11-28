@@ -21,7 +21,7 @@ import org.junit.Test
 import java.util.Locale
 
 /**
- * The pairing window „Mit Browser verbinden“ (owner 2026-11-28 10:54, A-018) on a Pixel 8 (1080 × 2400, 420 dpi): not
+ * The pairing window „Mit Browser verbinden“ (owner 2026-11-28 10:54, F-PLAN-28) and its card on the Settings list on a Pixel 8 (1080 × 2400, 420 dpi): not
  * paired, a scanned code's check digits, paired. Every pairing path lands here, so its one action must be on the first
  * screen: „Kamera öffnen“ / „Verbinden“ is asserted to lie inside the screen – at the normal font and the large ones.
  */
@@ -59,6 +59,18 @@ abstract class PairWindowShots(private val locale: Locale, fontScale: Float) {
         assertNotNull("the browser part is drawn", c)
         assertTrue("the browser part with „$label“ lies on the first screen ($c in $screen)", c!!.bottom <= screen!!.bottom && c.top >= 0f)
     }
+
+    /** The Settings list with the browser's card on top (owner 2026-11-28, P1): its status, then „Sicherung“ as a topic. */
+    private fun list(sync: SyncUi) = paparazzi.snapshot {
+        OnPathTheme {
+            SettingsScreen(AppSettings(), {}, listOf(DataFiles.Check("base.pmtiles", true, "Base map")), "/x", "0.18.11", {},
+                sync = sync, now = now, update = AppViewModel.UpdateState.UpToDate, diagnostics = true,
+                backup = BackupUi("Documents/OnPath", now - 3 * 3_600_000, 28, null, custom = false))
+        }
+    }
+
+    @Test fun listNotPaired() = list(SyncUi())
+    @Test fun listPaired() = list(SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 3 * 86_400_000L))
 
     @Test fun notPaired() = window(SyncUi()) { Txt.s(Res.string.sync_open_camera) }
     @Test fun askCheck() = window(SyncUi(askCheck = "395 514")) { Txt.s(Res.string.sync_pair) }

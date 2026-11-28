@@ -166,18 +166,6 @@ object SettingsSummary {
     fun navigationPage(s: AppSettings, phoneChecks: List<com.onpath.app.setup.Check>?): Summary =
         phoneChecks?.let { phone(it) }?.takeIf { it.attention != Summary.Attention.NONE } ?: navigation(s)
 
-    /** Backup & browser: a backup or sync problem first (red / its colour), else "Gesichert heute 13:20 · Browser an". */
-    fun backupSync(b: BackupUi?, sync: SyncUi?, now: Long, zone: TimeZone = TimeZone.getDefault()): Summary {
-        val backup = b?.let { backup(it, now, zone) }
-        val synced = sync?.let { sync(it) }
-        listOfNotNull(backup, synced).firstOrNull { it.attention != Summary.Attention.NONE }?.let { return it }
-        // short, so the line fits once: "Gesichert heute 13:20 · Browser an"
-        val backed = b?.let { if (it.lastMs > 0) Txt.s(Res.string.settings_sum_backed_up, whenText(it.lastMs, now, zone)) else backup?.text }
-        return Summary(listOfNotNull(backed,
-            sync?.let { Txt.s(if (it.paired) Res.string.settings_sum_browser_on else Res.string.settings_sum_browser_off) })
-            .joinToString(" · "))
-    }
-
     /**
      * About OnPath: a serious problem not looked at yet (red, [diagnostics]) or update news ([updates]) first, else
      * "0.10.0 – aktuell · Quellen, Lizenz".

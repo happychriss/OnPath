@@ -106,6 +106,8 @@ class SyncWiringTest {
         // the window draws only the browser part, and ← there is the slice's back (it closes the window opened from outside)
         val screen = sourceFile("ui/SettingsScreen.kt").readText()
         assertTrue(screen.contains("SettingsPage.SYNC -> if (sync != null) pairWindow(sync, syncCb, now)"))
+        // and the card at the top of the Settings list (owner 2026-11-28, P1) opens it
+        assertTrue(screen.contains("PairTopicCard(sy, top = if (gi > 0) 20.dp else 4.dp) { onPage(SettingsPage.SYNC) }"))
         assertTrue(sourceFile("MainActivity.kt").readText().contains("onUp = vm.settingsSlice::settingsBack,"))
     }
 

@@ -183,10 +183,10 @@ class SettingsFlowTest {
         assertEquals(1, app.log.count { it == "sync ended seen" })
         app.slice.settingsPage = SettingsPage.MAP
         assertEquals("only entering the page counts", 1, app.log.count { it == "sync ended seen" })
-        app.slice.settingsPage = SettingsPage.BACKUP_SYNC // the page that holds the sync, opened from the list
+        app.slice.settingsPage = SettingsPage.BACKUP_SYNC // since 2026-11-28 the backup alone: no sync on it
+        assertEquals("the backup page does not count", 1, app.log.count { it == "sync ended seen" })
+        app.slice.settingsPage = SettingsPage.SYNC // the window again, from the card
         assertEquals(2, app.log.count { it == "sync ended seen" })
-        app.slice.settingsPage = SettingsPage.SYNC
-        assertEquals("from one page with the sync to the other: not again", 2, app.log.count { it == "sync ended seen" })
     }
 
     @Test fun navigatesSettingsOnTheWayAndBackToNavigate() {
