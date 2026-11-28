@@ -278,7 +278,7 @@ class MainActivity : ComponentActivity() {
                             onAllSettings = vm.settingsSlice::showAllSettings,
                             settings = vm.settingsSlice.settings,
                             onChange = vm.settingsSlice::updateSettings,
-                            activity = vm.planRoute.activity,
+                            activity = com.onpath.app.ui.tourActivity(vm.recState.collectAsState().value?.nav?.session?.activity, vm.planRoute.activity),
                             phoneChecks = com.onpath.app.setup.PhoneCheck.all(vm.setup.phone, vm.setup.vibrationUsed, vm.setup.phoneTaken, vm.setup.voiceUsed),
                             phone = vm.setup.phone,
                             onPhoneFix = vm.setup::openSetupStep,

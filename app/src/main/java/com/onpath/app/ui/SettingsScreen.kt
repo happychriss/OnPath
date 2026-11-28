@@ -225,9 +225,8 @@ fun SettingsScreen(
                 LazyColumn(contentPadding = PaddingValues(start = 12.dp, end = 12.dp, bottom = 24.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     item { LocalSettingsFirst.current?.invoke() // live sharing's rows ([LiveShareLayer]) – first on the way
-                        NavigationSection(settings, onChange, onPhoneSetup = { onPage(SettingsPage.PHONE) },
-                            onTestVibration = { onPhoneFix(com.onpath.app.setup.CheckId.VIBRATION) },
-                            onTestVoice = { onPhoneFix(com.onpath.app.setup.CheckId.VOICE) },
+                        // V1 (Chriss 2026-11-28 10:59, picture einstellungen-unterwegs): only what one changes on the way
+                        OnTheWaySection(settings, onChange, activity, onPhoneSetup = { onPage(SettingsPage.PHONE) },
                             phoneChecks = phoneChecks, phone = phone)
                     }
                     val more = SettingsSummary.onTheWay(available)
@@ -542,12 +541,7 @@ internal fun NavigationSection(settings: AppSettings, onChange: (AppSettings) ->
         // how the turns are told – either / or (owner 2026-11-01): off / vibration / voice; one test of the chosen kind
         SettingsGroupHeader(str(Res.string.settings_group_junctions))
         SettingsCard {
-            // a value row like every choice (owner 2026-11-27): Aus · Vibration · Stimme in its menu
-            ChoiceRow(str(Res.string.settings_nav_guide), null,
-                listOf(Choice(com.onpath.app.data.JunctionGuide.OFF, str(Res.string.settings_nav_guide_off)),
-                    Choice(com.onpath.app.data.JunctionGuide.VIBRATION, str(Res.string.settings_nav_guide_vibration)),
-                    Choice(com.onpath.app.data.JunctionGuide.VOICE, str(Res.string.settings_nav_guide_voice))),
-                settings.junctionGuide, onPick = { onChange(settings.copy(junctionGuide = it)) })
+            JunctionGuideRow(settings, onChange)
             when (SettingRows.testFor(settings.junctionGuide)) {
                 com.onpath.app.setup.CheckId.VIBRATION -> TestButton(str(Res.string.setup_nav_test_vibration), onTestVibration)
                 com.onpath.app.setup.CheckId.VOICE -> TestButton(str(Res.string.settings_nav_voice_test), onTestVoice)
@@ -621,7 +615,7 @@ private fun Modifier.holdSliderSemantics(title: String, value: String): Modifier
  * in the line under the title; in the sheet every option with its line.
  */
 @Composable
-private fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
+internal fun BikeScreenRow(settings: AppSettings, onChange: (AppSettings) -> Unit) {
 
     val options = listOf(
         Choice(com.onpath.app.data.BikeScreen.ALWAYS, str(Res.string.settings_nav_bike_screen_always), str(Res.string.settings_nav_bike_screen_always_sub)),
@@ -749,3 +743,12 @@ internal fun SettingsSwitch(checked: Boolean, enabled: Boolean = true) =
 internal fun settingsSliderColors() = androidx.compose.material3.SliderDefaults.colors(thumbColor = OnPathColors.Green,
     activeTrackColor = OnPathColors.Green, activeTickColor = androidx.compose.ui.graphics.Color.White,
     inactiveTrackColor = SettingsGround, inactiveTickColor = OnPathColors.Green)
+
+/** „Hinweise an Abzweigungen“ – a value row like every choice (owner 2026-11-27): Aus · Vibration · Stimme in its menu. */
+@Composable
+internal fun JunctionGuideRow(settings: AppSettings, onChange: (AppSettings) -> Unit) =
+    ChoiceRow(str(Res.string.settings_nav_guide), null,
+        listOf(Choice(com.onpath.app.data.JunctionGuide.OFF, str(Res.string.settings_nav_guide_off)),
+            Choice(com.onpath.app.data.JunctionGuide.VIBRATION, str(Res.string.settings_nav_guide_vibration)),
+            Choice(com.onpath.app.data.JunctionGuide.VOICE, str(Res.string.settings_nav_guide_voice))),
+        settings.junctionGuide, onPick = { onChange(settings.copy(junctionGuide = it)) })

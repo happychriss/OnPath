@@ -131,7 +131,7 @@ object SettingsSummary {
      * Navigate → ⚙ "on the way" (owner 2026-11-07): the Navigation page first, then only the topics that make sense
      * while riding, in this order – the rest behind "Alle Einstellungen". [available] = the topics this phone shows.
      */
-    val ON_THE_WAY = listOf(SettingsPage.MAP, SettingsPage.POI, SettingsPage.PACE, SettingsPage.OFFLINE_MAPS)
+    val ON_THE_WAY = listOf(SettingsPage.MAP, SettingsPage.POI) // V1 (Chriss 2026-11-28 10:59): Dein Tempo, Offline-Karten via „Alle Einstellungen“
 
     fun onTheWay(available: List<SettingsPage>): List<SettingsPage> = ON_THE_WAY.filter { it in available }
 

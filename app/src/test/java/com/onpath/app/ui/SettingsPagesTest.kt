@@ -133,12 +133,13 @@ class SettingsPagesTest {
      */
     @Test fun theWayTopicsInTheirOrderAndNothingElse() {
         val all = SettingsPage.entries.toList()
-        assertEquals(listOf(SettingsPage.MAP, SettingsPage.POI, SettingsPage.PACE, SettingsPage.OFFLINE_MAPS), SettingsSummary.onTheWay(all))
-        assertEquals(listOf(SettingsPage.MAP, SettingsPage.POI, SettingsPage.PACE), SettingsSummary.onTheWay(all.filter { it != SettingsPage.OFFLINE_MAPS }))
+        // V1 (Chriss 2026-11-28 10:59): Karte · Interessante Orte; Dein Tempo and Offline-Karten via „Alle Einstellungen“
+        assertEquals(listOf(SettingsPage.MAP, SettingsPage.POI), SettingsSummary.onTheWay(all))
+        assertEquals(listOf(SettingsPage.MAP), SettingsSummary.onTheWay(all.filter { it != SettingsPage.POI }))
         val way = SettingsSummary.onTheWay(all)
         assertFalse(SettingsPage.NAVIGATION in way) // it is the list itself
         listOf(SettingsPage.BACKUP, SettingsPage.SYNC, SettingsPage.UPDATES, SettingsPage.DIAGNOSTICS, SettingsPage.PRIVACY,
-            SettingsPage.ABOUT, SettingsPage.PHONE).forEach { assertFalse("$it", it in way) }
+            SettingsPage.ABOUT, SettingsPage.PHONE, SettingsPage.PACE, SettingsPage.OFFLINE_MAPS).forEach { assertFalse("$it", it in way) }
     }
 
     // ---- from SettingsSummaryTest.kt ----

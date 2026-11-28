@@ -123,6 +123,7 @@ These six profiles aim to cover about 70% of use cases. Road bike and gravel are
 | F-NAV-10 | MD-7 Later: the ridden day's GPX goes back to the browser planner. Today it does not. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Could |
 | F-NAV-11 | MD-9 A day stopped before its goal is not done; the recording stays tied to the day as „angefangen“. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Must |
 | F-NAV-12 | MD-10 A day ridden twice keeps its ✓; the newest finished recording counts, older ones stay in Meine Touren. (owner 2026-11-28, design: docs/design/multi-day-tours.md §0) | Should |
+| F-NAV-13 | ⚙ during a tour (Chriss 2026-11-28 10:59, picture einstellungen-unterwegs V1): without scrolling – the live sharing rows while it runs · „Handy einrichten“ on top only while something is missing · Akku sparen · Hinweise an Abzweigungen · the screen row of the current activity only · Warnung abseits der Route · Karte · Interessante Orte · Alle Einstellungen. No row merged, no text changed; everything else stays on the Navigation page / in its topic behind „Alle Einstellungen“. `ui/SettingsOnTheWay`. | Should |
 
 ### 3.6 GPX
 

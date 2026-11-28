@@ -30,6 +30,7 @@ abstract class SettingsLargeFontTest {
 
     @Test fun navigation() = shots.navigation()
     @Test fun onTheWay() = shots.onTheWay()
+    @Test fun onTheWayBike() = shots.onTheWayBike()
     @Test fun navigationPhoneMissing() = shots.navigationPhoneMissing()
     @Test fun navigationChoiceMenu() = shots.navigationChoiceMenu()
     @Test fun pace() = shots.pace()

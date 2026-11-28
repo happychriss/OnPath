@@ -49,7 +49,7 @@ class SettingsScreenshotTest {
         waiting = WaitingDownloads(2, 0, 60L * 1_048_576)), devTools: Boolean = false, seenMs: Long = now,
         demo: DemoUi? = null, sync: SyncUi = SyncUi(paired = true, peer = "Chrome on Linux", lastOkMs = now - 60_000, sinceMs = now - 3 * 86_400_000L),
         phone: com.onpath.app.setup.PhoneState? = null, licencesOpen: Boolean = false, problemsOpen: Boolean = false,
-        onTheWay: Boolean = false) = OnPathTheme {
+        onTheWay: Boolean = false, activity: com.onpath.app.routing.Activity = com.onpath.app.routing.Activity.HIKE) = OnPathTheme {
         SettingsScreen(
             AppSettings(hiddenPoiKinds = PoiKinds.defaultHidden, offRouteM = 40), {},
             listOf(DataFiles.Check("base.pmtiles", true, "Base map"), DataFiles.Check("pois.geojson", false, "Points of interest")),
@@ -77,11 +77,17 @@ class SettingsScreenshotTest {
             licencesOpen = licencesOpen,
             now = now,
             onTheWay = onTheWay,
+            activity = activity,
         )
     }
 
-    /** Navigate → ⚙ (owner 2026-11-07): the Navigation page, then Karte · POIs · Tempo · Offline-Karten, "Alle Einstellungen ›". */
+    /**
+     * Navigate → ⚙, V1 (Chriss 2026-11-28 10:59): Akku sparen · Hinweise an Abzweigungen · the screen row of the activity ·
+     * Warnung abseits der Route · Karte · Interessante Orte · „Alle Einstellungen ›“ – no scrolling.
+     */
     fun onTheWay() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true) }
+    /** The same by bike: „Bildschirm beim Radfahren“ instead of the hiking row. */
+    fun onTheWayBike() = paparazzi.snapshot { Screen(null, phone = phoneOk, onTheWay = true, activity = com.onpath.app.routing.Activity.BIKE_TOURING) }
     /** The on-the-way list with something first ([LocalSettingsFirst] – live sharing's card, [LiveShareScreenshotTest]). */
     fun onTheWayWith(first: @androidx.compose.runtime.Composable () -> Unit) = paparazzi.snapshot {
         androidx.compose.runtime.CompositionLocalProvider(LocalSettingsFirst provides first) { Screen(null, phone = phoneOk, onTheWay = true) }
