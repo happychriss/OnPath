@@ -1,5 +1,7 @@
 # Role: cloud-web – website and marketing
 
+**Read first: `docs/team/captains-guide.md`**, then `VISION.md`, then this sheet. Project sheet: [`../project.md`](../project.md).
+
 **Owns:** the website onpath.earth (repo `happychriss/onpath.earth`, Cloudflare Pages) and marketing (private repo
 `happychriss/onpath.private`: `marketing/`, `ideen/`, `inbox/`).
 **Computer:** none – cloud only.

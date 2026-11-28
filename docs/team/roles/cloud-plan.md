@@ -1,5 +1,7 @@
 # Role: cloud-plan – the browser planner and map cells
 
+**Read first: `docs/team/captains-guide.md`**, then `VISION.md`, then this sheet. Project sheet: [`../project.md`](../project.md).
+
 **Owns (the laptop unit, `docs/team/roles/start.md`):** `web/` on `main` (served at plan.onpath.earth), the data pipeline and map cells
 (`tools/cells/`, `tools/cloud/`, `tools/dev/`, `tools/build_*`, `tools/extract_*`).
 **Branch:** `main` for everything (one branch since 2026-11-06; `web-spike` is frozen). A red "Web planner" run on

@@ -1,12 +1,15 @@
 # Start – how a session on donald or the laptop works
 
+**Read first: `docs/team/captains-guide.md`** (roles, loop, the three checks, working with the owner), then
+`VISION.md`, then this sheet. Computers and who sits where: [`../project.md`](../project.md).
+
 The session on a computer is named after it: **donald** (Pixel, emulator), **laptop** (32 GB, map data). Since the
 one-branch merge (2026-11-06) both work on `main`; the laptop keeps the planner and map cells (`cloud-plan.md` – what
-it owns) and cloud-web works as before (`cloud-web.md`). The captain: `captain.md`. Since 2026-11-27 work comes from the captain through the project lead
-(`projektleiter.md`): the project lead talks with the owner, the captain splits and hands out, role threads are agents. Why it is built this way and what was tested:
-`multi-agent-lernen.md`.
+it owns) and cloud-web works as before (`cloud-web.md`). The captain: `captain.md`; the project lead:
+`projektleiter.md`. Why it is built this way and what was tested: `multi-agent-lernen.md`.
 
-**Start sentence** (the owner types it once): „Du bist die Einheit **donald** (OnPath). Lies `docs/team/roles/start.md`.“
+**Start sentence** (the owner types it once): „Du bist die Einheit **donald** (OnPath). Lies `docs/team/captains-guide.md`
+und `docs/team/roles/start.md`.“
 
 ## How it runs
 - The computer runs a **host**: `tools/dev/unit.sh run <name>` in the checkout (`claude remote-control`, spawn mode

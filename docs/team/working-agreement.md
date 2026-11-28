@@ -1,8 +1,11 @@
 # Working agreement: how the sessions work together
 
+**Read first: `docs/team/captains-guide.md`** (roles, loop, board). This file is the OnPath mechanics: claim, branches,
+hot spots, builds, E2E. Project sheet: [`project.md`](project.md).
+
 OnPath is built by several Claude Code sessions: **donald** (desktop, Pixel + emulator), **laptop** (planner and map
 cells, `[laptop]` / `[cloud-plan]`), the **captain** (cloud, overview) and **cloud-web** (website, marketing) – who
-works where: `docs/team/roles/README.md`. **GitHub `main` is the single source of truth**; anything that must last goes
+works where: `docs/team/project.md`. **GitHub `main` is the single source of truth**; anything that must last goes
 through the repository, never through another session's chat. Sessions do not message each other – the channels are
 the repo and the issues in `happychriss/onpath.private` (§5).
 
@@ -75,7 +78,7 @@ If a rebase gets messy: `git rebase --abort`, push your work to `feat/<topic>` i
   GitHub. A cloud session cannot push tags or create releases – always the push-to-`main` flow.
 
 ## 5. Roles and channels
-Who works where: `docs/team/roles/README.md`. Channel: the repo (backlog, handoffs, code). Questions to the owner go in
+Who works where: `docs/team/project.md`. Channel: the repo (backlog, handoffs, code). Questions to the owner go in
 the session's own chat; open ones under "Waiting for the owner" in the backlog; the owner's word to all is a line under
 "For the roles" (owner 2026-11-07: no more issues for this). **Sessions do not
 message each other**; only the captain can, with the owner's tap per call, for something urgent the owner asked for
