@@ -32,6 +32,10 @@ questions, tells the owner what is new. It writes no product code and decides no
   **Second check (owner 2026-11-28): „asked for?“** – for every task and merge: which owner message asked for each part?
   A part nobody asked for (a scenario, an extra mode, a „while we are at it“) gets no go; it goes to the owner as a
   question, recommendation „weglassen“. Never recommend keeping an extra the owner did not ask for.
+  **Third check (owner 2026-11-28, case „‹ Alle Tage“ 40 px decided 27.11., a smaller pill built): „built as decided?“** –
+  every order text lists the owner's decisions as numbered points with their values (size, words, place). A done report
+  ticks each point with proof (picture or test) or says „differs, because …“. The captain compares the report with the
+  list before the board says done – also for planner work that deploys without a go. A silent difference is a defect.
 - **Parity:** a task that changes UI on one side gets the other side's parity task named with it (owner 2026-11-27,
   „App and planner alike“ in `owner-preferences.md`); a done report without a parity line → ask the coordinator.
 - **When a thread reports done:** row out, its next item from the backlog's "Waiting for a trigger" named to the
