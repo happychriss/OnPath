@@ -58,17 +58,16 @@ class PlanActionsTest {
     }
 
     /**
-     * Owner 2026-11-25 (picture B): "Ganz neu berechnen" stands in the plan group right after "Neu planen", before "Nur aufzeichnen";
-     * a tap closes the menu and runs it; MapScreen hands the row over only through PlanEditState.recalcRow on the plan's own
-     * activity / SAC level (when it shows: PlanRecalcFromScratchTest).
+     * Owner's card 2026-11-28 09:45 („Punkte + gleiche Rechnung“, F-PLAN-26): no „Ganz neu berechnen“ in the app's ☰ – the
+     * full recalculation stays inside (PlanEditState.recalcFromScratch, the planner's own row); Neu planen, Nur aufzeichnen
+     * keep their order.
      */
-    @Test fun recalcRowStandsAfterNewPlanAndMapScreenGatesIt() {
+    @Test fun noRecalcRowInTheAppMenu() {
         val items = src("ui/PlanTopBar.kt").substringAfter("internal fun PlanMenuItems(").substringBefore("\n}\n")
-        val order = listOf("menu.onNewPlan", "menu.onRecalcFromScratch", "menu.onRecordWithoutPlan", "HorizontalDivider()\n    menu.onPairBrowser")
-            .map { items.indexOf(it) }
-        assertTrue("Neu planen, Ganz neu berechnen, Nur aufzeichnen $order", order.all { it >= 0 } && order == order.sorted())
-        assertTrue(items.contains("Icons.Outlined.Route, str(Res.string.plan_menu_recalc)) { close(); r() }"))
-        assertTrue(src("ui/MapScreen.kt").contains("onRecalcFromScratch = vm.planEdit.recalcRow(vm.planRoute.activity, vm.planRoute.sac)"))
+        assertFalse(items.contains("plan_menu_recalc"))
+        assertFalse(src("ui/MapScreen.kt").contains("recalcRow"))
+        val order = listOf("menu.onNewPlan", "menu.onRecordWithoutPlan", "HorizontalDivider()\n    menu.onPairBrowser").map { items.indexOf(it) }
+        assertTrue("Neu planen, Nur aufzeichnen $order", order.all { it >= 0 } && order == order.sorted())
     }
 
 }
