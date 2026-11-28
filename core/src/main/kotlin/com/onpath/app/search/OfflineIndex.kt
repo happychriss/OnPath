@@ -298,11 +298,17 @@ object SearchRanking {
         var score = sum / qTokens.size
         var tier = if (allPrefix) 2 else 1
         when {
-            e.fullNames.any { it == qFull } -> { score += 0.35; tier = 3 }
+            // only a town / village / peak named exactly like the query leads („Paris“); a shop / POI so named counts as a name
+            // that starts with it – the distance decides (owner's Pixel 8 2026-11-28: „Olive“ 11.6 km and cafés 487 km away
+            // came before „Restaurant Olive“ in 470 m)
+            e.place.kind in EXACT_NAME_LEADS && e.fullNames.any { it == qFull } -> { score += 0.35; tier = 3 }
             e.fullNames.any { it.startsWith(qFull) } -> { score += 0.15; tier = maxOf(tier, 2) }
         }
         return score to tier
     }
+
+    /** The kinds whose name equal to the query leads over every other hit ([textMatch]): places to go to, not shops. */
+    val EXACT_NAME_LEADS = setOf("place", "peak", "saddle")
 
     /** Distance penalty in score points: 0 next to you, ~18 at 5 km, ~30 at 20 km. */
     fun distancePenalty(m: Double) = 10.0 * ln(1.0 + m / 1000.0)

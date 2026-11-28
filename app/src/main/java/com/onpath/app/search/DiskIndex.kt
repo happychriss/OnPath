@@ -258,7 +258,8 @@ class DiskIndex internal constructor(
                 var score = sum / nq
                 tier = if (allPrefix) 2 else 1
                 when (fullNameMatch(w, i, nq, match, exactId)) {
-                    2 -> { score += 0.35; tier = 3 }
+                    // a shop / POI named exactly like the query counts as „starts with“ (SearchRanking.textMatch, owner's Pixel 8 2026-11-28)
+                    2 -> if (w.kinds[kc] in SearchRanking.EXACT_NAME_LEADS) { score += 0.35; tier = 3 } else { score += 0.15; tier = maxOf(tier, 2) }
                     1 -> { score += 0.15; tier = maxOf(tier, 2) }
                 }
                 text = score
