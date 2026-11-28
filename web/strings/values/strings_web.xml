@@ -286,5 +286,8 @@
     <string name="web_days_end_of_day">End of day %1$d of %2$d</string>
     <string name="web_activity_group_bike">Bike</string>
     <string name="web_days_chip_add_limit">+ Day limit</string>
+    <string name="web_day_of">Day %1$d of %2$d</string>
+    <string name="web_sheet_hide">Hide panel</string>
+    <string name="web_sheet_show">Show panel</string>
     <string name="web_bg_counted">%1$d of %2$d map areas</string>
 </resources>

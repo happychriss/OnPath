@@ -61,6 +61,7 @@ import { tourText, type Tour } from './tourtext';
 /** A track's segments as [lat, lon] lists (Meine Touren's line). */
 const trackSegs = (segs: [number, number, number | null][][]) => segs.map((g) => g.map(([la, lo]) => [la, lo] as [number, number]));
 import { plannerRouteZooms } from './routezooms';
+import { setupSheetPanel } from './sheetpanel';
 import './fonts/manrope.css';
 import './style.css';
 import manropeLicence from './fonts/manrope/OFL.txt?url';
@@ -287,6 +288,11 @@ saveEntry('empty'); // the header's Save: greyed until a route exists (renderSav
 /** A shared link's first route is loading on a phone: the peek shows the link's name, the wait is the load overlay. */
 let linkOpening = false;
 const sheetSteps = setupSheetSteps($('sheet'), $('handle'), $<HTMLButtonElement>('sheetStep'), $('summary'), () => {}, () => state.points.length);
+// wide screens: the search on top of the panel, the panel slides out with its tab (sheetpanel.ts, owner 2026-11-28);
+// slid in or out, the map shows the whole tour in the room it has now
+const sheetPanel = setupSheetPanel($('sheet'), $('searchbox'), $('topbar'), document.querySelector<HTMLElement>('#topbar .barsep')!, $('stage'),
+  () => setTimeout(() => { console.info(`[map] side panel ${sheetPanel.hidden ? 'out' : 'in'}: the whole route in the room left`); if (state.points.length) fitRoute(); }, 60));
+void sheetPanel;
 
 // ---- map ----
 maplibregl.setWorkerUrl(maplibreWorkerUrl); // the bundle moves maplibre's module worker; tell it where

@@ -267,5 +267,8 @@
     <!-- the activity list's switch Rad | Wandern (the app's activity_group_bike, variant C; until that key is on main) -->
     <string name="web_activity_group_bike">Rad</string>
     <string name="web_days_chip_add_limit">+ Tageslimit</string>
+    <string name="web_day_of">Tag %1$d von %2$d</string>
+    <string name="web_sheet_hide">Blatt ausblenden</string>
+    <string name="web_sheet_show">Blatt einblenden</string>
     <string name="web_bg_counted">%1$d von %2$d Kartenbereichen</string>
 </resources>

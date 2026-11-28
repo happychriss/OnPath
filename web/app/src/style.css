@@ -994,3 +994,26 @@ dialog.plans .actchip.on { padding: 0 6px 0 8px; }
 
 /* the server builds the map first: one sentence under the title (the app's WaitWindow note, owner 2026-11-27) */
 .waitwin .wwnote { font-size: 14px; color: var(--muted, #5f6368); margin: -2px 0 8px; }
+
+/* ---- the side panel on wide screens (sheetpanel.ts, owner 2026-11-28 „ok, so bauen“) ---- */
+/* the search on top of the panel: its hits in the panel's flow (Google Maps' side panel), the bar keeps the tools */
+#sheet > #searchbox { order: -1; flex: none; min-width: 0; align-self: stretch; }
+#sheet > #searchbox .searchrow { height: 44px; border-radius: 22px; background: var(--paper-deep); padding: 0 6px 0 14px; }
+#sheet > #searchbox #results { position: static; min-width: 0; margin-top: 8px; box-shadow: none; background: var(--card); max-height: 50vh; }
+body.search-in-sheet .topbar { width: auto; }
+body.search-in-sheet .topbar .barsep { display: none; }
+/* a multi-day tour (owner's mockup 2026-11-28): head + days first, then the route type row, then profile and way types */
+body.tourpanel #sheet > .sheethead, body.tourpanel #sheet > #planActions { order: 1; }
+body.tourpanel #sheet > #profTitle, body.tourpanel #sheet > #profile, body.tourpanel #sheet > #infoline, body.tourpanel #sheet > #changedLine,
+body.tourpanel #sheet > #breakdown, body.tourpanel #sheet > #status, body.tourpanel #sheet > #apphint { order: 2; }
+/* slid out: a tab „‹“ on the panel's right edge, collapsed a tab „›“ at the left edge; the map's room grows */
+.sheettab { position: absolute; z-index: 3; top: 50%; left: calc(12px + var(--sheet-w)); width: 24px; height: 56px; margin-top: -28px;
+  border: none; border-radius: 0 12px 12px 0; background: var(--map-ground); box-shadow: var(--float-shadow); color: var(--fg);
+  display: flex; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.sheettab svg { fill: currentColor; }
+.sheettab:hover { background: var(--paper-deep); }
+.sheettab[hidden] { display: none; }
+body.sheet-hidden #sheet { display: none; }
+body.sheet-hidden .sheettab { left: 0; }
+body.sheet-hidden { --sheet-w: 0px; }
+body.sheet-hidden .sheettab { left: 0; }

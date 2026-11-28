@@ -65,9 +65,11 @@ dialog.daysbox .row.end button.primary { background: var(--plan); color: #fff; }
 .touroverview .tohead { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .touroverview .toname { font: inherit; font-size: 16px; font-weight: 700; background: none; border: none; padding: 0; text-align: left; color: inherit; cursor: pointer; }
 /* the tour's settings as tonal chips (owner 2026-11-27 variant 2): a tap opens the days box at that field */
-.touroverview .tochips { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 8px; }
-.touroverview .tochip { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 12px; border-radius: 8px;
-  border: 1px solid var(--plan-edge); background: var(--plan-light); color: var(--plan-ink); font: inherit; font-size: 14px; cursor: pointer; }
+/* compact so „Planung · 12 Tage ✎ · 4,5 h / Tag · 1.500 m ↑ / Tag“ fits one row at 384 px (owner 2026-11-28 „in eine Zeile,
+   sparsam mit der Breite“); a large font wraps them – never cut */
+.touroverview .tochips { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 8px; }
+.touroverview .tochip { display: inline-flex; align-items: center; gap: 3px; min-height: 30px; padding: 3px 8px; border-radius: 8px; white-space: nowrap;
+  border: 1px solid var(--plan-edge); background: var(--plan-light); color: var(--plan-ink); font: inherit; font-size: 13px; cursor: pointer; }
 .touroverview .tochip:hover { background: var(--plan-edge); }
 .touroverview .tochip .ic, .touroverview .tochip svg { fill: currentColor; }
 .touroverview .tochip.add { background: none; border-style: dashed; color: var(--muted); }
@@ -99,14 +101,17 @@ dialog.daysbox .row.end button.primary { background: var(--plan); color: #fff; }
 body.tourtable #sheet > #pointsSection { display: none; }
 #sheet #points > li.offday { display: none; }
 /* one day open (owner 2026-11-27, mehrtage-tag-geoeffnet.png) */
-.touroverview .dvhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0; }
-.touroverview .dvall { display: inline-flex; align-items: center; gap: 4px; min-height: 40px; padding: 0 16px 0 10px; border-radius: 20px;
-  border: none; background: var(--plan-light); color: var(--plan-ink); font: inherit; font-weight: 600; cursor: pointer; }
+/* back to all days where the eye goes (owner 2026-11-28, iOS back with the parent's name): a full-width 44 px button
+   top-left, under it „Tag N von M“ with round ‹ › */
+.touroverview .dvall { display: flex; align-items: center; gap: 6px; width: 100%; height: 44px; padding: 0 12px; margin: 6px 0 8px; border-radius: 12px;
+  border: none; background: var(--plan-light); color: var(--plan-ink); font: inherit; font-size: 16px; font-weight: 600; cursor: pointer; text-align: left; }
+.touroverview .dvall:hover { background: var(--plan-edge); }
 .touroverview .dvall svg, .touroverview .dvnav svg { fill: currentColor; }
+.touroverview .dvhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 2px 0; }
 .touroverview .dvnav { display: inline-flex; align-items: center; gap: 4px; }
-.touroverview .dvpos { min-width: 3em; text-align: center; font-variant-numeric: tabular-nums; color: var(--muted); }
+.touroverview .dvnav .iconbtn { width: 36px; height: 36px; border-radius: 18px; border: 1px solid var(--plan-edge); color: var(--plan-ink); }
 .touroverview .dayview { display: flex; flex-direction: column; gap: 4px; }
-.touroverview .dvtitle { font-size: 22px; }
+.touroverview .dvtitle { font-size: 20px; }
 .touroverview .dvstats { display: flex; align-items: baseline; gap: 12px; }
 .touroverview .dvstats b { font-size: 18px; }
 .touroverview .dvover { display: flex; align-items: center; gap: 8px; padding: 8px 10px; border-radius: var(--r-small); background: var(--warn-bg); color: var(--warn); font-size: 13px; }
@@ -151,7 +156,7 @@ body.tourpanel #sheet .sheethead > #sheetStep { grid-column: 5; }
 /* the phone's small step: the facts only (as the plain plan's summary) – no title row, no save state */
 #sheet[data-step="small"] > #tourHead .thtop, #sheet[data-step="small"] > #tourHead .thstate, #sheet[data-step="small"] > #profTitle { display: none; }
 .touroverview .tochips { align-items: center; }
-.touroverview .tolabel { font-weight: 700; margin-right: 4px; }
+.touroverview .tolabel { font-weight: 700; margin-right: 1px; }
 .touroverview .dvstats .dvsep { align-self: stretch; width: 1px; background: var(--line); }
 .proftitle { font-weight: 700; margin: 10px 0 2px; }
 /* the big profile along the map (desktop, pinned) replaces the sheet's: its title goes with it */

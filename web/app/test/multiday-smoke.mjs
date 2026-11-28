@@ -288,12 +288,15 @@ async function run(lang, viewport, shotPrefix) {
   const range = await page.evaluate(() => window.__profileRange ?? null);
   check(await page.locator('#tourOverview .dayview[data-day="2"]').count() === 1, 'a day row opens that day (its part marked on the map and in the profile)');
   void range;
-  const dv = await page.evaluate(() => ({ all: document.getElementById('toAll')?.getBoundingClientRect().height ?? 0,
-    pos: document.querySelector('#tourOverview .dvpos')?.textContent ?? '', add: document.getElementById('toAdd')?.textContent ?? '',
+  const dv = await page.evaluate(() => { const a = document.getElementById('toAll')?.getBoundingClientRect(); const box = document.getElementById('tourOverview')?.getBoundingClientRect();
+    const title = document.querySelector('#tourOverview .dvtitle')?.getBoundingClientRect();
+    return { all: a?.height ?? 0, full: !!(a && box && a.width >= box.width - 2), above: !!(a && title && a.bottom <= title.top + 1),
+    pos: (document.querySelector('#tourOverview .dvtitle')?.textContent ?? '').replace(/\D+/g, '/').replace(/^\/|\/$/g, ''), add: document.getElementById('toAdd')?.textContent ?? '',
     pts: document.querySelectorAll('#points > li').length, shown: [...document.querySelectorAll('#points > li')].filter((li) => getComputedStyle(li).display !== 'none').length,
-    list: getComputedStyle(document.getElementById('pointsSection')).display !== 'none' }));
-  check(dv.all >= 40 && dv.pos.replace(/\s/g, '') === '2/3' && new RegExp(lang === 'de' ? 'Ort zu Tag 2 hinzufügen' : 'day 2').test(dv.add),
-    `the day view: a large „‹ ${lang === 'de' ? 'Alle Tage' : 'All days'}“, ‹ 2/3 ›, „add a place to day 2“ (${JSON.stringify(dv)})`);
+    list: getComputedStyle(document.getElementById('pointsSection')).display !== 'none' }; });
+  // owner 2026-11-28: „‹ Alle Tage“ full width, 44 px, on top where the eye goes; under it „Tag 2 von 3“ with ‹ ›
+  check(dv.all >= 44 && dv.full && dv.above && dv.pos === '2/3' && new RegExp(lang === 'de' ? 'Ort zu Tag 2 hinzufügen' : 'day 2').test(dv.add),
+    `the day view: a full-width 44 px „‹ ${lang === 'de' ? 'Alle Tage' : 'All days'}“ on top, „${lang === 'de' ? 'Tag 2 von 3' : 'Day 2 of 3'}“, „add a place to day 2“ (${JSON.stringify(dv)})`);
   check(dv.list && dv.shown >= 1 && dv.shown <= dv.pts, `the day's own points in the list (${dv.shown} of ${dv.pts})`);
   const dprof = await page.evaluate(() => ({ title: document.getElementById('profTitle')?.textContent ?? '', day: !!document.querySelector('#profile[data-day]'),
     axis: document.querySelector('#profile .axis span:last-child')?.textContent ?? '', borders: document.querySelectorAll('#profile .dayborder').length,
@@ -477,6 +480,20 @@ async function run(lang, viewport, shotPrefix) {
   await page.waitForSelector('#toHours', { timeout: 20_000 }).catch(() => {});
   const chips = await page.$$eval('.tochips .tochip', (cs) => cs.map((c) => c.textContent.trim()));
   check(chips.length === 3 && /^6 h \/ (Tag|day)$/.test(chips[1]) && /^1[.,]?000 m ↑ \/ (Tag|day)$/.test(chips[2]), `the limit chips (${chips.join(' | ')})`);
+  // owner 2026-11-28: „Planung“ and the chips in one row at the sheet's 384 px – even with long values („12 Tage … 1.500 m“)
+  const row = await page.evaluate(() => {
+    const tops = () => [...document.querySelectorAll('.tochips > *')].map((e) => { const r = e.getBoundingClientRect(); return Math.round((r.top + r.bottom) / 4) * 2; });
+    const now = tops();
+    const d = document.getElementById('toDays'), a = document.getElementById('toAscent');
+    const keep = [d?.firstChild?.textContent, a?.textContent];
+    if (d?.firstChild) d.firstChild.textContent = d.firstChild.textContent.replace(/^\d+/, '12');
+    if (a) a.textContent = a.textContent.replace(/^[\d.,]+/, '1.500');
+    const long = tops();
+    if (d?.firstChild) d.firstChild.textContent = keep[0]; if (a) a.textContent = keep[1];
+    return { now, long, w: Math.round(document.getElementById('sheet').getBoundingClientRect().width) };
+  });
+  if (viewport.width > 700) check(new Set(row.now).size === 1 && new Set(row.long).size === 1,
+    `„Planung“ + chips in one row at ${row.w} px, also with long values (${JSON.stringify(row)})`);
   await shot('3d-chips-limits');
   await page.click('#toAscent');
   await page.waitForSelector('dialog.daysbox[open]');

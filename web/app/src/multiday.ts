@@ -418,11 +418,13 @@ export class MultiDay {
    */
   private dayHtml(v: DaysView, r: DaysView['rows'][number]): string {
     const n = v.rows.length;
-    return `<div class="dvhead"><button class="dvall" id="toAll">${icon('chevronLeft', 20)}<span>${esc(t('multiday_all_days'))}</span></button>
+    // back where the eye goes (owner 2026-11-28, the platform's back with the parent's name): „‹ Alle Tage“ full width on
+    // top, under it „Tag N von M“ with round ‹ ›
+    return `<button class="dvall" id="toAll">${icon('chevronLeft', 20)}<span>${esc(t('multiday_all_days'))}</span></button>
+      <div class="dvhead"><b class="dvtitle">${esc(t('web_day_of', r.n, n))}</b>
         <span class="dvnav"><button class="iconbtn" id="toPrev" ${r.n <= 1 ? 'disabled' : ''} aria-label="${esc(t('multiday_day_n', Math.max(1, r.n - 1)))}">${icon('chevronLeft', 20)}</button>
-        <span class="dvpos">${r.n} / ${n}</span>
         <button class="iconbtn" id="toNext" ${r.n >= n ? 'disabled' : ''} aria-label="${esc(t('multiday_day_n', Math.min(n, r.n + 1)))}">${icon('chevronRight', 20)}</button></span></div>
-      <div class="dayview" data-day="${r.n}"><b class="dvtitle">${esc(r.day)}</b>${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}
+      <div class="dayview" data-day="${r.n}">${r.places ? `<span class="dpl muted small">${esc(r.places)}</span>` : ''}
         <div class="dvstats"><b>${esc(r.km)} · ${esc(r.time)}</b><span class="dvsep"></span><span>${esc(r.up)} · ${esc(r.down)}</span></div>
         ${r.overLine ? `<div class="dvover" id="toOver">${icon('clock', 16)}<span>${esc(r.time)} · ${esc(r.overLine)}</span></div>` : ''}
         <button class="dvadd" id="toAdd">${icon('search', 18)}<span>${esc(t('days_add_to_day', r.n))}</span></button></div>`;

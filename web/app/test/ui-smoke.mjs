@@ -190,6 +190,35 @@ const off3d = await page.evaluate(() => ({ terrain: window.__map.getTerrain(), p
 tcheck(!off3d.terrain && off3d.pitch === 0 && off3d.max === 0 && !off3d.note, `3D off: flat again ${JSON.stringify(off3d)}`);
 tcheck(await page.evaluate(() => window.__fly.status.state) === 'idle' && await page.locator('#flyBar').isHidden(), 'flyover: leaving 3D stops it and hides its buttons');
 if (terrainFails.length) errors.push('terrain view: ' + terrainFails.join('; '));
+// the side panel (owner 2026-11-28, proposal v2): search on top of the panel; the tab „‹“ slides it out, the map shows
+// the whole route in the freed room, the tab „›“ at the left edge brings it back; remembered over a reload; a phone has none
+const panelFails = [];
+const pstate = () => page.evaluate(() => {
+  const s = document.getElementById('sheet'), tab = document.getElementById('sheetTab');
+  const m = window.__map, b = m.getBounds();
+  const pts = m.getSource('planned-route')?.serialize().data.features.flatMap((f) => f.geometry.coordinates) ?? [];
+  return { sheet: getComputedStyle(s).display !== 'none', searchIn: document.getElementById('searchbox')?.parentElement?.id ?? '',
+    tab: !!tab && !tab.hidden && getComputedStyle(tab).display !== 'none', tabLeft: Math.round(tab?.getBoundingClientRect().left ?? -1),
+    expanded: tab?.getAttribute('aria-expanded'), inView: pts.length > 0 && pts.every(([lo, la]) => b.contains([lo, la])), n: pts.length, out: pts.filter(([lo, la]) => !b.contains([lo, la])).length, z: Math.round(m.getZoom() * 10) / 10, bp: !document.getElementById("bigProfile").hidden,
+    sheetRight: Math.round(s.getBoundingClientRect().right) };
+});
+const pp0 = await pstate();
+if (!(pp0.sheet && pp0.searchIn === 'sheet' && pp0.tab && pp0.expanded === 'true' && Math.abs(pp0.tabLeft - pp0.sheetRight) <= 14)) panelFails.push(`open: ${JSON.stringify(pp0)}`);
+await page.click('#sheetTab'); await page.waitForTimeout(1500);
+const pp1 = await pstate();
+if (!(!pp1.sheet && pp1.searchIn === 'topbar' && pp1.tab && pp1.tabLeft <= 2 && pp1.expanded === 'false' && pp1.n > 0 && pp1.out <= Math.max(3, pp1.n * 0.02) && pp1.z < pp0.z)) panelFails.push(`collapsed: ${JSON.stringify(pp1)}`);
+await page.reload({ waitUntil: "domcontentloaded", timeout: 60_000 }).catch(() => {}); await page.waitForTimeout(5000);
+const pp2 = await pstate();
+if (!(!pp2.sheet && pp2.tab && pp2.tabLeft <= 2)) panelFails.push(`after reload still collapsed: ${JSON.stringify(pp2)}`);
+await page.click('#sheetTab'); await page.waitForTimeout(800);
+const pp3 = await pstate();
+if (!(pp3.sheet && pp3.searchIn === 'sheet')) panelFails.push(`reopened: ${JSON.stringify(pp3)}`);
+await page.setViewportSize({ width: 390, height: 844 }); await page.waitForTimeout(800);
+const pp4 = await pstate();
+if (!(!pp4.tab && pp4.searchIn === 'topbar')) panelFails.push(`phone: no side tab, search in the bar: ${JSON.stringify(pp4)}`);
+await page.setViewportSize({ width: 1280, height: 800 }); await page.waitForTimeout(500);
+console.log('side panel:', panelFails.length ? 'FAIL' : 'ok', JSON.stringify({ pp0, pp1 }));
+if (panelFails.length) errors.push('side panel: ' + panelFails.join('; '));
 // colours (owner 2026-10-29, colour rule 2026-11-06): see below; text keeps WCAG AA (4.5:1; icons 3:1) on its background in light and dark
 const greens = () => page.evaluate(() => {
   const rgb = (c) => (c.match(/[\d.]+/g) ?? []).map(Number);
