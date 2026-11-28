@@ -218,30 +218,6 @@ fun ActivityDialog(
 ) = ActivityPickerSheet(current, onSelect, onDismiss, sac, onSac)
 
 /**
- * Hike's T1–T5 under its row (owner 2026-11-26 night: the picker closed on the tap, the description was never readable):
- * five rows, each „Bergwandern (T2)“ over one short line, so the words are read BEFORE the tap; one tap = Hike with that
- * level; [chosen] 0 = none marked. A row wraps at a large font, never cut.
- */
-@Composable
-internal fun SacChips(chosen: Int, onPick: (Int) -> Unit) {
-    androidx.compose.foundation.layout.Column(Modifier.fillMaxWidth().padding(start = 8.dp, end = 4.dp, bottom = 4.dp)) {
-        SacScale.levels.forEach { l ->
-            val sel = l.level == chosen
-            val desc = str(Res.string.routes_sac_button_desc, l.level, l.name)
-            Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clip(OnPathShapes.Small)
-                .background(if (sel) MaterialTheme.colorScheme.secondaryContainer else Color.Transparent)
-                .clickable(role = androidx.compose.ui.semantics.Role.Button) { onPick(l.level) }
-                .semantics(mergeDescendants = true) { contentDescription = desc; if (sel) this.selected = true }
-                .padding(horizontal = 12.dp, vertical = 6.dp), verticalArrangement = Arrangement.Center) {
-                Text(str(Res.string.routes_sac_row, l.name, l.level), style = MaterialTheme.typography.bodyLarge,
-                    fontWeight = if (sel) FontWeight.SemiBold else FontWeight.Normal)
-                Text(l.short, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-        }
-    }
-}
-
-/**
  * SAC hiking scale (Swiss Alpine Club), short official descriptions. Chosen in the activity picker with Hike: the
  * routing avoids paths above the chosen level.
  */

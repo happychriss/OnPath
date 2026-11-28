@@ -69,14 +69,13 @@ class ActivityPicker360LargeFontTest : ActivityPickerSizes(widthDp411 = false, f
 /** The rules behind the pictures: every level a row with its short line; a T tap does not close. */
 class SacLineRuleTest {
     /**
-     * Owner 2026-11-26 night: every level is a row with its name and one short line, readable before the tap (Navigate's
-     * activity sheet keeps [SacChips]); 2026-11-27 variant C: the picker's level cards show name + line too, and one tap
-     * chooses Hike with that level and closes – the words were read before it.
+     * Owner 2026-11-26 night: every level is a card with its name and one short line, readable before the tap – in the
+     * picker (2026-11-27 variant C: one tap chooses Hike with that level and closes) and in Navigate's activity switch
+     * sheet (its line shows the level's state when there is one, else the short line). The old T rows (SacChips) are gone.
      */
     @Test fun theLevelRowsShowTheirWordsBeforeTheTap() {
-        val src = File("src/main/java/com/onpath/app/ui/Screens.kt").readText()
-        val chips = src.substringAfter("internal fun SacChips(").substringBefore("\n}\n")
-        assertTrue(chips, chips.contains("Res.string.routes_sac_row") && chips.contains("Text(l.short"))
+        val switch = File("src/main/java/com/onpath/app/ui/ActivitySwitchSheet.kt").readText()
+        assertTrue(switch.contains("name = l.name, line = row?.let { activityRowStatus(it.state) }?.takeIf { it.isNotEmpty() } ?: l.short"))
         val picker = File("src/main/java/com/onpath/app/ui/ActivityPicker.kt").readText()
         assertTrue(picker.contains("name = l.name, line = l.short"))
         assertTrue(picker.contains("onSac = { level -> onSelect(Activity.HIKE); onSac(level); onDismiss() }"))
