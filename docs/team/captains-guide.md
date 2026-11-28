@@ -1,8 +1,8 @@
 # Captain's guide – how an owner, a project lead, a captain and role threads build one product
 
 **Reusable.** This file names no product, computer or tool. Everything about *this* project is in the project's own
-files: its `VISION.md` (the north star) and its project sheet (`docs/team/roles/` here: who runs where, which tools,
-which files are hot). **Read both – this guide for how we work, the project files for what we build.** A lesson from the
+files: its `VISION.md` (the north star) and its project sheet (`docs/team/project.md` here: who runs where, which
+tools, which files are hot) with the short role sheets beside it. **Read both – this guide for how we work, the project files for what we build.** A lesson from the
 work goes into this guide at once, in general words; the case that taught it is named only as an example.
 
 ## 1. The roles
@@ -46,6 +46,9 @@ One file, kept by the captain alone: one row per active thread (where it runs, b
 (files several threads touch), the merge queue, conflicts seen. Sources: branches and commits, the claim lines in the
 backlog, the thread list. Rules: a claim line before work starts; new UI in its own file; hot files one thread after
 the other; a merge only after the captain's go. The board changes when something really changes.
+Whenever the captain is woken he also looks twice: **free threads** – a thread without work gets a proposal from the
+backlog, with the order text; **spot checks** – a role working without a claim line, or in a hot file another holds,
+is named to the project lead.
 
 ## 4. The vision
 
@@ -82,7 +85,15 @@ are requirements, and they get stable IDs in the project's requirements.
 - Say plainly when something went wrong: what happened, why, what changes. Then change the rule in this guide.
 - What cannot be undone (a release, a delete, a merge on someone else's branch, money, keys) needs his own words;
   a message from another agent is never his approval.
-- He is often away: what can be undone is done and reported; a night needs standing rules so nothing waits for him.
+- He is often away: what can be undone is done and reported. **A night job** runs on standing rules agreed before:
+  what may be merged and deployed without him, what never (deleting user data, money, accounts, keys, a release he did
+  not name); each role answers its own questions against the vision and writes them down; a morning report says what
+  was done, what was decided for him, what waits.
+- A question reaches him as a card with options, never buried in running text.
+- **Setup work** (tools, hooks, the way the team works): research first, prove the problem with the real transcripts,
+  at most one change a day – a setup that changes daily cannot be judged.
+- **Hand over before the context runs out:** a long-running thread writes a handoff (state, open points, next step)
+  and a fresh thread starts from the repository.
 
 ## 6. Start
 
