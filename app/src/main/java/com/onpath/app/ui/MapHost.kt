@@ -80,6 +80,7 @@ fun MapHost(
     val touchSlopPx = remember(context) { android.view.ViewConfiguration.get(context).scaledTouchSlop.toFloat() }
     val holdAt = remember { mutableStateOf<Offset?>(null) }
     val holdBuzz = remember { mutableStateOf(MapGestures.Buzz.NONE) }
+    val holdPill = remember { HoldPillState() } // „Halten, um hier zu planen“ at a tap (HoldHint, Chriss 2026-11-28)
 
     DisposableEffect(lifecycle, mapView) {
         var started = false
@@ -263,6 +264,7 @@ fun MapHost(
                 // ~24 dp around the planned line counts as "on the line" (smart insertion into that leg).
                 val snap = c?.let { it.dpToPx(PlaceAddMenu.LINE_SNAP_DP.toFloat()) * it.metersPerPixel() } ?: 30.0
                 val p = GeoPoint(ll.latitude, ll.longitude)
+                fun count(a: MapGestures.Action) { if (com.onpath.app.domain.HoldHint.counts(press, a)) vm.prefs.holdsDone = com.onpath.app.domain.HoldHint.next(vm.prefs.holdsDone) }
                 fun run(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?): Boolean = when (a) {
                     is MapGestures.Action.PointMenu -> { vm.placeMenus.openPointMenu(a.index, dpOf(a.index)); true }
                     MapGestures.Action.PoiMenu -> { poi?.let { vm.placeMenus.openPoiMenu(it, snap) }; true }
@@ -279,6 +281,9 @@ fun MapHost(
                         if (MapGestures.tapShowsHoldHint(edit, press, MapGestures.Action.None, poi != null, marker, pts.isEmpty())) vm.showTapHoldHint()
                         // a short tap on the world map where there is no detailed map: ask to load it
                         if (press == MapGestures.Press.TAP && poi == null) vm.mapData.mapTapped(p)
+                        // an empty plan, where a tap did nothing: the pill at the spot until it is learned (HoldHint)
+                        if (com.onpath.app.domain.HoldHint.pillOnTap(edit, press, a, poi != null, marker, pts.isEmpty(),
+                                vm.mapData.loadAsk != null, vm.prefs.holdsDone)) holdPill.show(Offset(screen.x, screen.y))
                         edit
                     }
                 }
@@ -287,7 +292,7 @@ fun MapHost(
                 fun decide(hit: Boolean) = decideOn(hit, vm.plan.points.isEmpty())
                 fun word(a: MapGestures.Action) = a.toString().substringBefore('(')
                 fun runNoted(a: MapGestures.Action, poi: com.onpath.app.poi.Poi?, end: String): Boolean =
-                    run(a, poi).also { shownPois.pressEnded(note, end, word(a)) }
+                    run(a, poi).also { count(a); shownPois.pressEnded(note, end, word(a)) }
                 // a hold on a route point is the point's (its menu); a tap on a POI that is a route point shows the POI
                 if (marker >= 0 && press == MapGestures.Press.HOLD) return runNoted(decide(false), null, "routePoint")
                 (mark?.toPoi() ?: shownPois.at(map, screen.x, screen.y))?.let { return runNoted(decide(true), it, "listAtPress") }
@@ -302,7 +307,7 @@ fun MapHost(
                     if (a == null || vm.routePeek || vm.suggest.searching) {
                         note.action = "dropped"
                         Problems.trace("map", "Press dropped: the map's mode changed while it waited")
-                    } else { note.action = word(a); run(a, found) }
+                    } else { note.action = word(a); count(a); run(a, found) }
                 } ?: return runNoted(plain, null, "noStyleYet")
                 fun timedOut(waited: Long) {
                     shownPois.pressTimedOut(wait, waited)?.let { more -> mapView.postDelayed({ timedOut(waited + more) }, more) }
@@ -340,7 +345,7 @@ fun MapHost(
             var downLatLng: LatLng? = null
             @Suppress("ClickableViewAccessibility")
             mapView.setOnTouchListener { _, ev ->
-                if (ev.actionMasked == MotionEvent.ACTION_DOWN) vm.map.onMapTouch()
+                if (ev.actionMasked == MotionEvent.ACTION_DOWN) { vm.map.onMapTouch(); holdPill.hide() }
                 val wasPressing = hold.pressing
                 // the same slop as MapLibre's tap / long-press detector: a press that stays a hold here is one there too
                 hold.track(ev, slopPx = touchSlopPx)
@@ -424,6 +429,7 @@ fun MapHost(
 
     Box(modifier) {
         AndroidView(factory = { mapView }, modifier = Modifier.fillMaxSize())
+        HoldPill(holdPill)
         HoldRing(holdAt.value, onArmed = { armedHold.armed(); Haptics.play(mapView.context, holdBuzz.value, vm.settingsSlice.settings.planVibrate) })
     }
 }
