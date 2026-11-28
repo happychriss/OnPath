@@ -537,7 +537,6 @@ class TourFollowFlowTest {
         override fun tourTimes() = error("not used")
         override fun listTours(): List<Tour> = error("not used")
         override fun getTourPlan(id: Long) = error("not used")
-        override fun insertDraftPlanned(name: String, row: PlannedRow): Long = error("not used")
     }
 
     /**

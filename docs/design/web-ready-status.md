@@ -43,11 +43,11 @@ Slices:
 - `ui/routes/SaveDialog.kt` (50): none.
 - `ui/plan/KeptPlacesSlice.kt` (85): `PlacesStore` (4: saved, update, backupChanged, syncChanged), `KeptPlacesHost` (2: searchMark, isCandidate).
 - `ui/NoticeBoard.kt` (51): is the `Say` port itself; three lambdas (routesOpen, settingsOpen, mapShown).
-- `ui/MultiDayFlow.kt` (294): `MultiDayPrefs` (5 properties), lambda `linkedId`; uses `org.json`.
+- `ui/MultiDayFlow.kt` (294): `MultiDayPrefs` (3 properties), lambda `linkedId`; uses `org.json`.
 - `ui/plan/PlanRunSlice.kt` (121): `PlanRunHost` (6: points, clearRoute, noCorridor, loadDeferredMaps, recalc, cancelRun) and `Cancellable` (1: cancel) for its `routeJob` handle. It no longer names `kotlinx.coroutines.Job`: the app sets the handle with `JobHandle(job)` (in `PlanRecalcSlice.kt`), you set your own. The run itself (`recalc`) is in `PlanRecalcSlice` (coroutines): you write that part as the page's own code and call `routeEvent` / `perform`.
 
 State types: `NoticeTypes`, `ShownTrack`, `TrackThen`, `SyncNote`, `TimeDetailsUi`, `search/PlaceCardUi`, `MultiDayUi`, `SettingsPage`.
-Ports (`ui/Ports.kt`: `Say` 1, `Camera` 3, `Position` 1, `Clock` 2, `Cancellable` 1; `ui/MultiDayPorts.kt`: `MultiDayPrefs` 5 properties, `EndNamer` 1).
+Ports (`ui/Ports.kt`: `Say` 1, `Camera` 3, `Position` 1, `Clock` 2, `Cancellable` 1; `ui/MultiDayPorts.kt`: `MultiDayPrefs` 3 properties, `EndNamer` 1).
 Rules: `WholeRoute`, `LongRouteCancelCamera`, `ImportRules`, `LoadNames`, `PlanGps`, `PlanSize`, `ExpandGesture`, `MapControlsEnabled`, `MessagePlacement`, `MapDimens`, `MapSizes`, `OverviewPillPlace`, `SheetRise` (the last six are screen-layout rules of the Compose app: listed because they pass and `WholeRoute` needs `MapDimens`; you may leave them out).
 
 ## 4. What you / we do next

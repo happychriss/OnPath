@@ -94,21 +94,14 @@ class MultiDayWiringTest {
         )) assertTrue("the host says: $line", h.contains(line))
     }
 
-    /** The five preferences are the old keys: one property each, no key renamed, no value changed on the way. */
+    /** The three preferences are the old keys: one property each, no key renamed, no value changed on the way. */
     @Test fun thePrefsAdapterPassesEachPropertyThroughToTheOldPref() {
         val p = prefsAdapter.replace(Regex("\\s+"), " ")
-        for (name in listOf("planMultiDay", "planDayFollow", "multiDayMapsAsked", "multiDayMapCells", "multiDayWifiCells"))
+        for (name in listOf("planMultiDay", "planDayFollow", "multiDayMapCells"))
             assertTrue("$name", p.contains("get() = prefs.$name set(v) { prefs.$name = v }"))
-        assertEquals(5, count(p, "get() = prefs."))
+        assertEquals(3, count(p, "get() = prefs."))
     }
 
-    /** The draft write is TourDb's insertTour with every argument by name and the draft flag ([TourDbMirrorTest] pins the SQL columns). */
-    @Test fun theDraftInsertIsTheOldInsertTourCall() {
-        val s = store.replace(Regex("\\s+"), " ")
-        assertTrue(s, s.contains("override fun insertDraftPlanned(name: String, row: com.onpath.app.ui.routes.PlannedRow) = db.insertTour(kind = TourKind.PLANNED, name = name, " +
-            "activity = row.activity, sac = row.sac, distance = row.distanceM, ascent = row.ascentM, descent = row.descentM, duration = row.durationS, " +
-            "segments = row.segments, waypoints = row.stops, pinned = row.pins, difficulty = row.difficulty, draft = true, days = row.days, anchors = row.anchors)"))
-    }
 
     /** The slice and its state know no Android, no view model, no database, no preferences class and no dispatcher of their own. */
     @Test fun nothingOfTheAppIsInTheSliceOrItsFlow() {

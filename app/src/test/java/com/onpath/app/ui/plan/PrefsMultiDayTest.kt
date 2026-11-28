@@ -26,19 +26,16 @@ class PrefsMultiDayTest {
 
     @Test fun everyPropertyWritesItsOwnRawKeyAndReadsItBack() {
         adapter.planMultiDay = "tour-json"; adapter.planDayFollow = "day-json"
-        adapter.multiDayMapsAsked = setOf("u1"); adapter.multiDayMapCells = setOf("10-1-1", "10-1-2"); adapter.multiDayWifiCells = setOf("10-1-2")
+        adapter.multiDayMapCells = setOf("10-1-1", "10-1-2")
         assertEquals("tour-json", sp.getString("planMultiDay", null))
         assertEquals("day-json", sp.getString("planDayFollow", null))
-        assertEquals(setOf("u1"), sp.getStringSet("multiDayMapsAsked", null))
         assertEquals(setOf("10-1-1", "10-1-2"), sp.getStringSet("multiDayMapCells", null))
-        assertEquals(setOf("10-1-2"), sp.getStringSet("multiDayWifiCells", null))
     }
 
     @Test fun aRawWriteOfTheOldKeysIsReadThroughTheAdapter() {
-        sp.edit().putString("planMultiDay", "a").putString("planDayFollow", "b").putStringSet("multiDayMapsAsked", setOf("x"))
-            .putStringSet("multiDayMapCells", setOf("c1")).putStringSet("multiDayWifiCells", setOf("w1")).apply()
+        sp.edit().putString("planMultiDay", "a").putString("planDayFollow", "b").putStringSet("multiDayMapCells", setOf("c1")).apply()
         assertEquals("a", adapter.planMultiDay); assertEquals("b", adapter.planDayFollow)
-        assertEquals(setOf("x"), adapter.multiDayMapsAsked); assertEquals(setOf("c1"), adapter.multiDayMapCells); assertEquals(setOf("w1"), adapter.multiDayWifiCells)
+        assertEquals(setOf("c1"), adapter.multiDayMapCells)
     }
 
     @Test fun aFollowedDayKeptByTheOldCodeIsRestored() {
