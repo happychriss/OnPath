@@ -772,12 +772,6 @@
     "priority": 1,
     "confidence": "sicher"
   },
-  "plan_menu_check_updates": {
-    "area": "Top bar",
-    "context": "☰ menu item",
-    "priority": 2,
-    "confidence": "sicher"
-  },
   "plan_map_credits": {
     "area": "Map (Plan)",
     "context": "Accessibility: tapping \"© OpenStreetMap\"",

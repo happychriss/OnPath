@@ -56,7 +56,7 @@ class FileSizeRuleTest {
             "com/onpath/app/map/MapController.kt" to 1_157,
             "com/onpath/app/ui/Screens.kt" to 958,
             "com/onpath/app/ui/MapDataFlow.kt" to 987,
-            "com/onpath/app/ui/MapScreen.kt" to 896,
+            "com/onpath/app/ui/MapScreen.kt" to 894,
             "com/onpath/app/MainActivity.kt" to 914,
             "com/onpath/app/cells/CellStore.kt" to 806,
         )

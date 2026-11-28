@@ -15,7 +15,7 @@ class RouteRulesTest {
     @Test fun emptyPlanNothingSaved() {
         val m = RouteRules.menu(hasRoute = false, pointCount = 0, savedCount = 0, navigating = false, recording = false)
         assertEquals(RouteMenuState(load = false, save = false, startRecording = true), m)
-        assertTrue(m.manage && m.settings && m.updates)
+        assertTrue(m.manage && m.settings)
     }
 
     @Test fun routePlannedWithSavedRoutes() {

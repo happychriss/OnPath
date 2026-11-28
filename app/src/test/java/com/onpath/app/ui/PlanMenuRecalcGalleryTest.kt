@@ -32,7 +32,7 @@ abstract class PlanMenuRecalcGalleryTest(fontScale: Float, private val locale: L
     @Composable
     private fun Cell(row: Boolean) {
         val menu = PlanMenu(RouteRules.menu(hasRoute = true, pointCount = 3, savedCount = 3, navigating = false, recording = false),
-            onUpdates = {}, onPairBrowser = {}, onHelp = {}, onSaveRoute = {}, onNewPlan = {}, onRecordWithoutPlan = {},
+            onPairBrowser = {}, onHelp = {}, onSaveRoute = {}, onNewPlan = {}, onRecordWithoutPlan = {},
             onRecalcFromScratch = if (row) ({}) else null)
         OnPathTheme {
             Column(Modifier.fillMaxWidth()) {

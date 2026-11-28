@@ -36,7 +36,6 @@ import androidx.compose.material.icons.outlined.Route
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.outlined.Sync
-import androidx.compose.material.icons.outlined.SystemUpdate
 import androidx.compose.material.icons.outlined.WarningAmber
 import androidx.compose.material.icons.automirrored.outlined.HelpOutline
 import androidx.compose.material3.DropdownMenu
@@ -77,8 +76,6 @@ class PlanMenu(
     val onSettings: () -> Unit = {},
     /** Called when the menu opens (refresh the saved-routes count). */
     val onOpened: () -> Unit = {},
-    /** Null hides "Check for updates" (updates switched off / not available in this build). */
-    val onUpdates: (() -> Unit)? = null,
     /** "Pair with browser" / "Paired with browser ✓" (plan sync with the web planner); null hides it. */
     val onPairBrowser: (() -> Unit)? = null,
     /** What the sync item shows; a [SyncMenuUi.warning] also puts the amber dot on ☰ (owner 2026-10-30). */
@@ -223,7 +220,6 @@ internal fun PlanMenuItems(menu: PlanMenu, close: () -> Unit) {
     HorizontalDivider()
     menu.onPairBrowser?.let { p -> SyncMenuItem(menu.sync, enabled = st.settings) { close(); p() } }
     MenuItem(Icons.Outlined.Settings, str(Res.string.common_settings), enabled = st.settings) { close(); menu.onSettings() }
-    menu.onUpdates?.let { u -> MenuItem(Icons.Outlined.SystemUpdate, str(Res.string.plan_menu_check_updates), enabled = st.updates) { close(); u() } }
 }
 
 /**

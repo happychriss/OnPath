@@ -10,7 +10,6 @@ data class RouteMenuState(
     val manage: Boolean = true,
     val startRecording: Boolean,
     val settings: Boolean = true,
-    val updates: Boolean = true,
 )
 
 /**

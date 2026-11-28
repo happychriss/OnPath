@@ -378,8 +378,6 @@ private fun PlanMode(
                 onNewPlan = if (vm.plan.points.isNotEmpty()) vm.planEdit::clearPlan else null, onRecalcFromScratch = vm.planEdit.recalcRow(vm.planRoute.activity, vm.planRoute.sac),
                 onRecordWithoutPlan = if (rec == null) ({
                     vm.setup.openSetup(com.onpath.app.setup.Purpose.BEFORE_TOUR) { vm.tourSession.startNavigation(recordOnly = true) } }) else null,
-                // no "Check for updates" in the ☰ menu – Settings has the Updates section (owner)
-                onUpdates = null,
                 // owner 2026-11-08 (father's feedback): "? Hilfe" first – the website's help in the app language
                 onHelp = { OnPathLinks.open(helpContext, OnPathLinks.help()) },
             )

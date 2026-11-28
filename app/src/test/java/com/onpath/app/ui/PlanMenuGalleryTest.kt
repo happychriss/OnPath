@@ -48,7 +48,7 @@ abstract class PlanMenuGalleryTest {
     private fun MenuCell(state: RouteMenuState, phoneSetup: Boolean = false, sync: (() -> SyncMenuUi)? = null,
                           record: Boolean = true) {
         // [sync] is built inside the composition: its texts follow the test's language
-        val menu = PlanMenu(state, onUpdates = {}, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null, onHelp = {},
+        val menu = PlanMenu(state, onPairBrowser = {}, onPhoneSetup = if (phoneSetup) ({}) else null, onHelp = {},
             sync = sync?.invoke() ?: SyncMenuUi(), onSaveRoute = if (state.save) ({}) else null,
             onNewPlan = if (state.save) ({}) else null, onRecordWithoutPlan = if (record) ({}) else null)
         OnPathTheme {
