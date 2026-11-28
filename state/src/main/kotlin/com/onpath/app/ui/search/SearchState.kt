@@ -37,6 +37,11 @@ data class SearchUi(
     /** „★ Favoriten“: at most [SavedPlaces.SHOWN_FAVOURITES] until „Alle Favoriten ›“ ([moreFavourites] > 0). */
     val favourites: List<SearchHit> = emptyList(),
     val moreFavourites: Int = 0,
+    /**
+     * Favourites whose ★ was tapped off in this open search (owner 2026-11-28): their rows stay, the star empty, until
+     * the search is left; a second tap keeps them again ([SearchState.favouriteTapped]).
+     */
+    val unstarred: List<Place> = emptyList(),
     val hasRoute: Boolean = false,
     /**
      * The list on screen, kept by [SearchState]: ranked once per text ([shownFor]); later answers for the same text
@@ -50,6 +55,9 @@ data class SearchUi(
 
     /** Offline and online results as ONE list, best first. */
     val results: List<SearchHit> get() = shown ?: SearchRanking.mix(hits, online)
+
+    /** The row's ★ is filled: [p] was not tapped off in this open search. */
+    fun starred(p: Place): Boolean = unstarred.none { SavedPlaces.same(it, p) }
 }
 
 /** What [SearchState] asks of the app (the kept places and recent picks, the offline index): the app implements it, the planner too. */
@@ -135,12 +143,32 @@ abstract class SearchState(
     /** „Alle Favoriten ›“: every favourite place, until the search is opened again. */
     fun showAllFavourites() { allFavourites = true; ui = startLists(ui, context()) }
 
-    /** Zuhause, the favourites and „Zuletzt gesucht“ of the empty search ([SavedPlaces.start]). */
+    /**
+     * A favourite row's ★ tapped (owner 2026-11-28): [on] = kept again, false = no longer. Only the star changes – the row
+     * stays where it is until the search is left. The kept places themselves are changed by the caller (the app's
+     * `KeptPlacesSlice.setFavourite`, which also tombstones the item in the sync ledger).
+     */
+    fun favouriteTapped(p: Place, on: Boolean) {
+        val rest = ui.unstarred.filterNot { SavedPlaces.same(it, p) }
+        ui = ui.copy(unstarred = if (on) rest else rest + p)
+    }
+
+    /**
+     * Zuhause, the favourites and „Zuletzt gesucht“ of the empty search ([SavedPlaces.start]). Rows tapped off
+     * ([SearchUi.unstarred]) keep their place among the rows shown before; the driver clears them when the search opens.
+     */
     protected fun startLists(u: SearchUi, ctx: SearchContext): SearchUi {
-        val s = ports.saved().start(ports.recent(), allFavourites)
+        val saved = ports.saved()
+        val s = saved.start(ports.recent(), allFavourites)
         fun hit(p: Place) = SearchHit(p, 0.0, 0, Geo.distance(ctx.refLat, ctx.refLon, p.lat, p.lon), false)
-        return u.copy(home = s.home?.let(::hit), favourites = s.favourites.map(::hit), moreFavourites = s.moreFavourites,
-            recent = s.recent.map(::hit))
+        val off = u.unstarred
+        if (off.isEmpty()) return u.copy(home = s.home?.let(::hit), favourites = s.favourites.map(::hit),
+            moreFavourites = s.moreFavourites, recent = s.recent.map(::hit))
+        val before = u.favourites.map { it.place }.filter { p -> saved.isFavourite(p) || !u.starred(p) }
+        val favs = before + s.favourites.filter { f -> before.none { SavedPlaces.same(it, f) } }
+        return u.copy(home = s.home?.let(::hit), favourites = favs.map(::hit),
+            moreFavourites = (saved.favourites.size - favs.count(u::starred)).coerceAtLeast(0),
+            recent = s.recent.filter(u::starred).map(::hit))
     }
 
     /**
