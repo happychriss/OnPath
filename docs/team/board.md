@@ -26,6 +26,7 @@ question like the app ea91a29bb…0258aa157, deploy after the parity acks (HP ow
 **13:02:** E2E on main @ 43519bf4c 115/0 (run 46140796452), release_check GO, notes `release/0.18.12-notes` @ ba6a3d9aa; tour-only Sparen bf068e550 came after – E2E again before the release. Pill „Akku sparen an“: picture `akku-pille.png`, the owner decides. 13:48 planner online 2b1a3d64a (flaky multi-day test was a real bug, 3e336def6).
 **Rule (owner 28.11. 13:59):** the phone hangs on USB (adb sees it) → install over it, also while a recording runs; the captain's „not during a recording“ of this morning is void.
 **14:05:** Akku sparen = always one tour, [Sparen] opens ⚙, pill „Akku sparen an“ (variant A) – on main f1a3729a3. HP measures stitched vs fresh routes (owner 13:58) before „Ganz neu berechnen“ is decided.
+**Release 0.18.12: owner's word 28.11. 14:07 („baue ein Release, auch wenn noch nicht alles getestet ist“).** Thread „0.18.12 vorbereiten“ (donald): notes, E2E on the release commit, gate --full, release_check --go, then version + notes. **No other merge to main until the tag stands.** After it: cloud-web website PR #20, APK to the Pixel on USB.
 **For the owner when back:** „Ganz neu berechnen“ stays in the planner for now (HP 13:48: the only way to drop a stitched plan's detour points; the app has none since today) – keep there or out on both sides? · battery measurement (2 × 1 h, without / with Sparen) · website block „Sicherheit“ text A / B
 (onpath.private) · EN texts of today · the three new pairing sentences (`pair-built.png`) · release 0.18.12 (needs one
 really ridden day + his word).
@@ -38,7 +39,7 @@ really ridden day + his word).
 | Planer weiterentwickeln | HP | owns web parity + deploy (674db3668); long-route question like the app, Zwischenziel out, 2 text proposals for „passt nicht“ (640d48016) | texts → owner |
 | Cloud (cloud-web) | – | website block „Sicherheit“ (sharing + battery) drafted in onpath.private; owner picks the text | live only with the release that has „Akku sparen“; the help needs an „Akku sparen“ section then |
 
-**Release 0.18.12:** on hold. Needs the test build on the Pixel, one really ridden day of a trip (VISION), then the
+**Release 0.18.12:** ~~on hold~~ released on the owner's word of 14:07 (see above). Before: needed the test build on the Pixel, one really ridden day of a trip (VISION), then the
 owner's word. Notes on `release/0.18.12-notes`.
 
 **Decided today by the owner (all in the verdict item):** no „Runde von hier“ chip · hint pill + place info as the same
