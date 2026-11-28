@@ -47,7 +47,7 @@ interface MultiDayHost {
     val cells: MapCells
     /** The name of a plan point (stop name: the point's own, the search's); null = none. */
     fun placeNameOf(p: GeoPoint): String?
-    /** My routes opens with the day sheet of the multi-day route [id] (MD-2: „‹ Alle Tage“ leads back to the day list). */
+    /** My routes opens with the day sheet of the multi-day route [id] (a day whose state was lost, MD-2). */
     fun showDays(id: Long)
     /** My routes' list is read again. */
     fun reloadTourList()
@@ -72,7 +72,7 @@ interface MultiDayHost {
  * sheet is worked out along the trip's stored line ([prepareDay]) and, once My routes opened it as the plan, followed
  * ([followDay]) – its maps and those of every other day load at once (MD-11); every change of the day goes into the trip in
  * memory, Save writes the day into the trip while its start and goal stay (MD-3, [overwriteWhole]) – else Save makes a
- * standalone copy (MD-4, [leavesTrip] → SaveState); „‹ Alle Tage“ leads back to the day sheet ([allDays], MD-2); the recorded
+ * standalone copy (MD-4, [leavesTrip] → SaveState); another day comes from Meine Touren → the trip's day sheet (MD-2; no „‹ Alle Tage“ on the phone, owner 2026-11-28 10:20); the recorded
  * tour remembers the day while its start and goal stay ([followedDay], MD-5). The state itself is [flow] ([MultiDayFlow]: the
  * trip, night marks by value, the followed day – kept in the prefs).
  *
@@ -286,12 +286,6 @@ class MultiDaySlice(
         null -> null
     }
 
-    /** "‹ Alle Tage" (MD-2): My routes with the trip's day sheet – the day stays the plan until another day is picked. */
-    fun allDays() {
-        val c = flow.day?.takeIf { flow.following } ?: return
-        Problems.trace("plan", "Multi-day tour: back to the day sheet of \"${c.tour.name}\"")
-        host.showDays(c.tour.id)
-    }
 
     // ---- saving the whole tour while a day is the plan (#14) ------------------------------------------------------
 
@@ -351,10 +345,10 @@ class MultiDaySlice(
     // ---- what the screens show -------------------------------------------------------------------------------------
 
     /**
-     * The followed day's head line in the plan sheet: "Tag 4 von 6", "‹ Alle Tage" (not during a tour) and, when its start or
-     * goal moved, MD-4's line before saving; null when no day is followed.
+     * The followed day's head line in the plan sheet: „Tag 4 von 6“ and, when the day leaves its trip, the line saying why
+     * before saving (MD-4 / MD-12); null when no day is followed.
      */
-    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, !host.touring, leavesTrip(), leavesTripNote()) }
+    fun dayHeadUi(): DayHeadUi? = flow.dayLabel()?.let { DayHeadUi(it, leavesTrip(), leavesTripNote()) }
 
     companion object {
         /**

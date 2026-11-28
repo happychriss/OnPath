@@ -26,7 +26,7 @@ import com.onpath.strings.multiday_own_tour_activity
 
 /**
  * Multi-day tours on the phone (docs/design/multi-day-tours.md §0, owner 2026-11-28; symbols round 3 variant A): a followed
- * day's head („Tag 4 von 6 · ‹ Alle Tage“, MD-2), its line when start or goal moved (MD-4), the map loading window while the
+ * day's head („Tag 4 von 6“, MD-2 – no „‹ Alle Tage“ on the phone), its line when start or goal moved (MD-4), the map loading window while the
  * maps of all days load (MD-11), the day-end signs. German, at the normal and the largest font (2.0).
  */
 abstract class MultiDayScreenshotTest(private val locale: Locale, fontScale: Float = 1.0f) {
@@ -53,18 +53,18 @@ abstract class MultiDayScreenshotTest(private val locale: Locale, fontScale: Flo
         }
     }
 
-    /** The day picked in My routes is the plan: „Tag 4 von 6 · ‹ Alle Tage“ (MD-2). */
+    /** The day picked in My routes is the plan: „Tag 4 von 6“ (MD-2; another day via Meine Touren). */
     @Test fun dayFollowed() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.BIKE_TOURING,
-        size = PlanSize.MINI, savedName = "München – Venedig", dayHead = DayHeadUi(label, true)))
+        size = PlanSize.MINI, savedName = "München – Venedig", dayHead = DayHeadUi(label)))
 
     /** The day's goal moved (MD-4): the line before saving. */
     @Test fun dayLeavesTheTrip() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.BIKE_TOURING,
-        size = PlanSize.MINI, savedName = "München – Venedig", unsaved = true, dayHead = DayHeadUi(label, true, leavesTrip = true)))
+        size = PlanSize.MINI, savedName = "München – Venedig", unsaved = true, dayHead = DayHeadUi(label, leavesTrip = true)))
 
     /** The day's activity changed (MD-12, decision card 2026-11-28 09:37): the same line, saying why. */
     @Test fun dayLeavesTheTripActivity() = sheet(PlanUi(3, route, false, null, canUndo = false, canRedo = false, activity = Activity.MTB,
         size = PlanSize.MINI, savedName = "München – Venedig", unsaved = true,
-        dayHead = DayHeadUi(label, true, leavesTrip = true, leaveNote = com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour_activity))))
+        dayHead = DayHeadUi(label, leavesTrip = true, leaveNote = com.onpath.strings.Txt.s(com.onpath.strings.Res.string.multiday_own_tour_activity))))
 
     /** MD-11: the normal map loading window while the maps of all days load, with its multi-day line. */
     @Test fun allMapsLoading() = paparazzi.snapshot {

@@ -139,8 +139,6 @@ class PlanCallbacks(
     val onSearch: () -> Unit = {},
     /** The empty sheet's guide, "Meine Touren öffnen". */
     val onMyRoutes: () -> Unit = {},
-    /** A followed day of a multi-day tour: "‹ Alle Tage" – back to its day sheet in My routes (MD-2). */
-    val onAllDays: () -> Unit = {},
     /** The ☰ app menu in the card's top row (Daumen-Karte, owner 2026-11-26: it moved down from the top band). */
     val menu: PlanMenu = PlanMenu(),
     /** A tap on the PLANEN tab with a route: the offline state explained in one line. */
@@ -322,8 +320,8 @@ private fun ColumnScope.PlanBody(sheet: StepSheetScope, ui: PlanUi, cb: PlanCall
     // without a route, the calculation's state belongs to the summary step too – below it, the low sheet hid it behind
     // its foot (the navigation bar; Meran pictures D04)
     if (route == null && !(ui.routing && calcAsked != null)) Box(Modifier.fillMaxWidth().then(belowStep)) { SubLine(ui, route) }
-    // a followed day of a multi-day tour: "Tag 4 von 6 · ‹ Alle Tage" (MD-2; the plan sheet shows no whole trip, MD-1)
-    if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead, cb.onAllDays) }
+    // a followed day of a multi-day tour: „Tag 4 von 6“ (MD-2: another day via Meine Touren; no whole trip here, MD-1)
+    if (ui.dayHead != null) Box(Modifier.fillMaxWidth().then(belowStep)) { DayHeadLine(ui.dayHead) }
     if (ui.offlineInfo != null && ui.pointCount > 0)
         Box(Modifier.fillMaxWidth().padding(top = 6.dp).then(belowStep)) { OfflineInfoLine(ui.offlineInfo) }
     // the summary step ends under the summary lines
