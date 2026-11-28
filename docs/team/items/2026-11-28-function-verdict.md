@@ -8,7 +8,7 @@ browser = preparing. The owner's own wishes are judged like everything else. Not
 
 ## The numbers
 - 252 functions. **75 serve the way**, 114 only the preparation, 17 only the time after the tour, 13 are tester tools,
-  the rest is shared. The app says "on the way" and is, counted, mostly a preparation tool.
+  the rest is shared. **Corrected 08:49:** this count splits way / preparation; the owner's split is where you are / planning ahead – simple planning on the phone is wanted, so „mostly a preparation tool“ was the wrong reading. The count stands, the conclusion does not.
 - Origin: almost everything traces to a requirement or an owner word; only 10 rows have none. The growth did not come
   from roles inventing things – it came from wishes, each sensible alone. (The exception was the scenarios, e.g. "Tag 3–4".)
 - Size: Plan ~6,700 lines, Navigate + recording ~6,300, Meine Touren ~4,000.
@@ -30,7 +30,7 @@ map corridor, GPX in / out, search, the setup guide, pairing and plan sync with 
 ## Question – ranked by how clearly it misses the test and how much hangs on it
 | # | Function (size) | Verdict | Others | Recommendation |
 | --- | --- | --- | --- | --- |
-| 1 | **Rundtouren vorschlagen** – 7 functions, wish sheet ~525 lines + the suggestion engine and its map-data wait | Misses the test. It is discovering, not „your own plan from a destination“; pure preparation; the vision resists „catalogue features“. The largest block that is not about the way. | Komoot: this is its core business (discover). Google Maps: none. | Off the phone. If it stays in the product: in the browser planner (preparing). |
+| 1 | **Rundtouren vorschlagen** – 7 functions, wish sheet ~525 lines | **Corrected after the owner's word (08:49): fits.** „Ich bin irgendwo mit meinem Handy und möchte loslaufen, weiß aber nicht, wo lang“ – that is the phone's own case; the captain's test (way / preparing) was too narrow, the split is where you are / planning ahead. Open scenarios: is it quick enough for a spontaneous start (four wish fields), and is the entry findable (today only in hold menus)? | Komoot: discover from the catalogue. Google Maps: none. | Stays on the phone. Check taps from „I stand here“ to a proposed loop; one question to the owner on the entry. |
 | 2 | **After the tour: „Mehr“ sheet (planned vs needed, clock bar, rates ~305), „Fahrten bearbeiten“ with map + timeline (~182), pace line „schneller / langsamer als geplant“** | The vision says: „After the tour you save and put the phone away.“ The one-screen Rückblick fits (F-NAV-07); the second layer is analysis for enthusiasts. | Komoot / Strava: analysis is their hook. | Keep Rückblick and the ride question (keeps the track honest). „Mehr“ and the ride editor out. |
 | 3 | **Meine Touren: five list tools** – tabs, search, sort (5 orders), favourites chip + stars, activity filter (~4,000 lines area) | Clear and calm: five tools for one list. Search and the tabs have no request on record. | Komoot: filter + sort. Google Maps lists: none. | Tabs + sort stay. Search, favourites and activity filter: keep one, not three. |
 | 4 | **Settings: 27 rows** – e.g. „Position auf der Route“ (no request found), „Warnung abseits“ + „Warnen nach“ + „Vibrieren abseits“ (3 rows for one thing), hold-time slider, „Vibration beim Planen“ | Each switch is a decision the app passed on to the hiker. | Komoot ~10 navigation settings; Google Maps fewer. | Fix a default and remove: snap switch, hold slider (one fixed time), merge the off-route rows into one. |

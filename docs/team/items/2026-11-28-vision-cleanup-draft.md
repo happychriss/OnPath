@@ -13,6 +13,9 @@ scenarios → check → build or ask); tidy it with his past decisions in mind. 
 - Many questions of 27.11. were answerable by the vision („Vision first“) – the process part should say that too.
 
 ## Changes
+0. **Owner 08:49 (the freedom thought):** „Überall, wo ich bin, kann ich mit meinem Handy loslegen“ – the split is not
+   way / preparing but **where you are / planning ahead**; simple planning and a spontaneous loop belong on the phone.
+   The test sentence and the browser line say so; the process rules moved to the captain's guide (owner 08:41).
 1. **New last section „How the vision is used“** (process), and the two „aligns / resisted“ lines move into it.
 2. **Direction instead of detail:** these lines leave the vision; they already stand in `docs/project-status.md`
    „Decisions“ (nothing is lost): hold-only editing · exactly six activities · field bug test first · public text tone ·
@@ -35,7 +38,8 @@ It serves people who plan their own tours, on foot or by bike, from an after-wor
 From a destination, OnPath makes a checked route, guides you there and keeps the tour.
 In function it holds its own against established apps and goes beyond them where it matters on the way: re-planning offline, a recording that never breaks, multi-day tours.
 It owns exactly one thing: your own plan for today's outing, from the destination to the saved tour.
-The test for everything: does it help the person on the way to change their own plan and to arrive?
+Wherever you stand with your phone, you can set off: plan a simple outing in a moment, or let OnPath propose a loop from here.
+The test for everything: does it help someone who has only the phone to set off, to change the plan on the way and to arrive?
 When principles collide, this order decides: never lose a tour, then offline on the way, then clear and calm, then powerful.
 
 ## Never lose a tour
@@ -53,7 +57,7 @@ Planning, re-planning, search and navigation run on the phone in loaded areas, w
 The maps for a plan load by themselves while you plan; nobody has to manage regions.
 The network may help with downloads, online search and optional pairing, but the running tour never needs it.
 Offline is promised honestly: only for fully loaded areas.
-The phone is for the way, the browser planner for preparing: everything you need on the tour works on the phone; longer tours are best planned in the browser, so the phone stays simple – the planner adds what preparing needs, such as multi-day tours or 3D.
+The phone is for where you are, the browser planner for planning ahead: everything you need to set off and on the tour works on the phone, simply and quickly; long tours are best planned ahead in the browser, so the phone stays simple – the planner adds what planning ahead needs, such as multi-day tours or 3D.
 In the main controls, app and planner behave the same and look as alike as they can, unless something else was decided on purpose; the planner plans routes, so ridden tours and ridden days stay on the phone.
 
 ## No surprises
@@ -94,9 +98,7 @@ Android comes first; the iPhone comes only after the public launch, and until th
 
 ## How the vision is used
 
-A function that fits the vision is built.
-Building it raises scenarios: where it lives, where it is opened from, what follows each answer.
-Each scenario is checked against the vision as well: clearly covered → built without asking; not clearly covered → a question to the owner, recommendation first; nothing is built on an assumption.
+How a function and its scenarios are checked against this vision is described in `docs/team/captains-guide.md` §4 (reusable, not about this product).
 A change aligns when it makes the outing more reliable, the plan easier to change on the way or OnPath stronger than established apps in something hikers need on the way, works offline in loaded areas, and keeps the three steps as short and the screen as clear as they are.
 A change should be resisted when it could lose a point, surprises the user, needs an account or a server for the running tour, adds social or catalogue features, is technology for its own sake, or makes the way in longer.
 ```
