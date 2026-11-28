@@ -10,6 +10,7 @@
 // the folder that opened goes up at once, retried every tick until it is there (offline loses nothing).
 // Routes planned while no phone was paired belong to the next phone that is paired (§14.6 rule 2): they join its folder
 // and go up with that first round.
+import { linkPage } from './linkpage';
 import type { EngineClient } from './engine/client';
 import { t, locale } from './i18n';
 import { BIN_DAYS } from './recent';
@@ -445,7 +446,7 @@ export class PlanSync {
     await this.store.set('pending', JSON.stringify({ pair, ledger: '' } satisfies Pending));
     if (old) this.endMailbox(old.pair); // the code shown before is never used now
     await this.refresh();
-    return { link: page.split('#')[0] + '#pair=' + pair, check: k.check };
+    return { link: linkPage(page) + '#pair=' + pair, check: k.check }; // the own path /p/ (owner 2026-11-28)
   }
 
   /** Joins the pairing in [text] (a #pair= link opened in this browser); the phone's hello then opens its folder. */

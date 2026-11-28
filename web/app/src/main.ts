@@ -5,6 +5,7 @@
 // screen. The app's own code decides and plans (compiled to Wasm, in a Web Worker): Planner + BRouter, RouteTimes,
 // WaypointInsertion, PlanEdits, PlanPoints, PlanHistory (undo / redo), MapGestures (hold and point menus), PoiLinks
 // (Google Maps link-out), GpxWriter. The map is the app's style + the same map files, drawn by maplibre-gl JS.
+import { linkPage } from './linkpage';
 import * as maplibregl from 'maplibre-gl';
 import type { StyleSpecification, GeoJSONSource, MapGeoJSONFeature } from 'maplibre-gl';
 import type { FeatureCollection } from 'geojson';
@@ -3054,7 +3055,7 @@ const plansHost = {
     const shared = await engine.parse('p=' + p.plan);
     if (!shared) { status(t('web_plan_unreadable'), 'error'); return; }
     const title = shownTitle(p.title, '') || null;
-    shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode({ ...shared, title }), title, appHint);
+    shareDialog(linkPage() + '#p=' + await engine.encode({ ...shared, title }), title, appHint);
   },
   exportGpx: async (p: SavedPlan, folder: string) => {
     if (p.kind === 'track') { download(await sync.trackGpx(p), gpxName(shownTitle(p.title, t('web_route_default_name')), p.updatedAt)); return; }
@@ -3165,7 +3166,7 @@ const share = async () => {
   closeMenus();
   if (state.points.length < 2) { status(t('plan_err_set_start_dest')); return; }
   // Export GPX of the shown plan lives here since the sheet has no ⋯ (owner 2026-10-31); it needs the planned line
-  shareDialog(location.href.split('#')[0] + '#p=' + await engine.encode(sharedPlan()), state.title, appHint, state.plan ? exportGpx : undefined);
+  shareDialog(linkPage() + '#p=' + await engine.encode(sharedPlan()), state.title, appHint, state.plan ? exportGpx : undefined);
 };
 $('share').onclick = share;
 // Map content (toolbar): the app's POI and map settings in one large panel, applied live (mapcontent.ts)

@@ -25,6 +25,8 @@ export function serve({ dist, segments, mapDir = null, dataDir = null, extra = {
     if (maps && req.url.startsWith('/maps/')) { forward(maps, req, res); return; }
     if (live && req.url.startsWith('/live/v1/')) { forward(live, req, res); return; } // the live box (live-smoke.mjs)
     const url = decodeURIComponent(new URL(req.url, 'http://x').pathname);
+    // plan links under /p/ go to the page (web/host/src/index.js, owner 2026-11-28)
+    if (url === '/p' || url.startsWith('/p/')) { res.writeHead(302, { Location: '/' + (new URL(req.url, 'http://x').search) }).end(); return; }
     let file;
     if (url.startsWith('/segments/')) file = path.join(segments, path.basename(url));
     else if (url.startsWith('/map/') && mapDir) file = path.join(mapDir, path.basename(url));

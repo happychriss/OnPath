@@ -73,7 +73,9 @@ async function showCode(P, other = false) {
   await phoneWin(P);
   await P.click(other ? 'dialog.phone #pairOther' : 'dialog.phone #pairPhone');
   await P.waitForSelector('dialog.pair[open] #pairLink', { timeout: 30_000 });
-  return { code: (await P.inputValue('#pairLink')).split('#pair=')[1], check: await P.textContent('#checkDigits') };
+  const link = await P.inputValue('#pairLink');
+  check(new URL(link).pathname === '/p/', `pairing links have their own path /p/ (owner 2026-11-28): ${link.slice(0, 50)}`);
+  return { code: link.split('#pair=')[1], check: await P.textContent('#checkDigits') };
 }
 /** Save's name dialog (owner 2026-10-31: every Save asks): waits for it, types [name] (null = keep the proposal), Save. */
 async function answerSave(P, name) {

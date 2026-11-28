@@ -112,6 +112,16 @@ test("Android App Links: assetlinks.json, 200, JSON, no redirect (A-016)", async
   assert.equal((await handle(new Request(H + "/.well-known/other"), env)).status, 404);
 });
 
+test("plan links under /p/ (owner 2026-11-28): /p and /p/… go to the planner page, the query kept (the #fragment stays in the browser)", async () => {
+  for (const [path, to] of [["/p", "/"], ["/p/", "/"], ["/p/?lang=de", "/?lang=de"], ["/p/index.html", "/"]]) {
+    const r = await handle(new Request(H + path, { redirect: "manual" }), env);
+    assert.equal(r.status, 302, path);
+    assert.equal(new URL(r.headers.get("location")).pathname + new URL(r.headers.get("location")).search, to, path);
+  }
+  // other paths that start with p are not plan links
+  assert.notEqual((await handle(new Request(H + "/privacy"), env)).status, 302);
+});
+
 test("version.json (the deployed build, version.ts): never cached, an open tab sees a new planner", async () => {
   const r = await handle(new Request(H + "/version.json"), env);
   assert.equal(r.status, 200);

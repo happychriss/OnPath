@@ -72,6 +72,10 @@ async function route(request, env, fetchImpl) {
     const key = await ipHash(env, request.headers.get("cf-connecting-ip") ?? "?", new Date().toISOString().slice(0, 10));
     if (limit && !(await limit.limit({ key })).success) return tooMany();
   }
+  // plan and pairing links have their own path (owner 2026-11-28: https://plan.onpath.earth/p/#p=… – a new app opens /p/
+  // as its App Link): in a browser they go to the planner page; the #fragment (the plan, the pairing) is never sent to
+  // the server and the browser keeps it across the redirect
+  if (p === "/p" || p.startsWith("/p/")) return Response.redirect(url.origin + "/" + url.search, 302);
   if (p === "/.well-known/assetlinks.json") {
     return new Response(ASSET_LINKS, { headers: { "content-type": "application/json", "cache-control": "public, max-age=3600" } });
   }

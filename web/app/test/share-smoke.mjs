@@ -47,10 +47,20 @@ await page.click('#share');
 await page.waitForSelector('dialog.share[open] .qr svg');
 const link = await page.inputValue('#shareLink');
 check(link.endsWith(hash), 'link in the dialog carries the code of the address');
+check(link === new URL(url).origin + '/p/' + hash, `plan links have their own path /p/ (owner 2026-11-28): ${link.slice(0, 60)}`);
 check(await page.getAttribute('#share', 'title') === 'Share' && (await page.textContent('dialog.share .scanline')).includes('Scan with the OnPath app'), 'Share (icon next to ⋯) → "Scan with the OnPath app" above the QR code');
 check(await page.evaluate(() => document.querySelectorAll('dialog.share .qr svg rect, dialog.share .qr svg path').length) > 0, 'QR code drawn');
 await page.screenshot({ path: shot });
 await page.click('#closeShare');
+
+// 2b. the /p/ link opens the same plan (the page under / with the #fragment kept)
+{
+  const p2 = await browser.newPage({ viewport: { width: 1280, height: 800 } });
+  await p2.goto(link);
+  await p2.waitForFunction(() => window.__state?.points?.length >= 2, null, { timeout: 60_000 }).catch(() => {});
+  check(await p2.evaluate(() => location.pathname === '/' && location.hash.length > 3 && window.__state.points.length >= 2), `/p/#p=… opens the plan (${await p2.evaluate(() => location.pathname + ' ' + (window.__state?.points?.length ?? 0))})`);
+  await p2.close();
+}
 
 // 3. an edit changes the code; a reload brings the edited plan back
 const before = await page.evaluate(() => location.hash);
