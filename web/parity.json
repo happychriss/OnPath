@@ -14,13 +14,13 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapOverlays.kt",
-      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd) · 2026-11-27 checked 9ec1ea622 / d483cda8b: comments + the POI menu add icon by the row's kind – the planner's same change waits on chore/web-aufraeumen (cddcf03b7, icon via placePreview kind) · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still)",
+      "what": "stopLabel; FirstPointMenu / PointMenu / PoiMenu look (the likelier add row tinted – HoldMenuItem strong, menus.ts / style.css); the found place's name chip „Name ›“ and its menu at the pin (PinMenuOverlay, search.ts); PoiMenu FAVOURITE / HOME rows (☆ Merken / ★ Gemerkt gold, ⌂ Als Zuhause festlegen / Zuhause entfernen, a thin line before, the menu stays open – main.ts keepRows, menus.ts; HOME hidden while HOME_ROW_SHOWN is off since 2026-11-19 – shownMenuRows, pinmenu.ts); PinMenuOverlay moves the map once per opened menu (PanOnce, 074cb525 – the planner pans only for a first decision, search.ts showMenu); HoldAddOverlay / HoldAddMenu (the hold menu „Als Stopp“ / „Als Ziel“ beside a ring at the spot, no title, the likeliest first and tinted, groups Route · Ort · Entfernen with thin lines – MenuGroups, never over the spot – MapGestures.placeBeside via the engine; main.ts holdAddMenu, style.css .holdring / .holdadd) · 2026-11-27 checked 9ec1ea622 / d483cda8b: comments + the POI menu add icon by the row's kind – the planner's same change waits on chore/web-aufraeumen (cddcf03b7, icon via placePreview kind) · 2026-11-27 c3edfe3db „one motion while waiting“: the planner does the same since the cancel fix (only the wait window moves – run bar, sheet line, spinners still) · 2026-11-28 5e6d33829 Zuhause out of the app (function verdict): the app shows no Zuhause row / „Als Zuhause festlegen“ any more – the planner already hid both (HOME_ROW_SHOWN off since 2026-11-19); the planner keeps its stored home item (sync format unchanged, the app leaves it alone)",
       "web": [
         "web/app/src/main.ts",
         "web/app/src/menus.ts",
         "web/app/src/search.ts"
       ],
-      "blob": "b5fb709e917d84ce1348f47e2584ca61a5c8f536"
+      "blob": "93e05983bb42847e2451cfda5535e25a05ca466d"
     },
     {
       "app": "core/src/main/kotlin/com/onpath/app/domain/PlanStatus.kt",
@@ -361,14 +361,14 @@
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/search/SearchScreen.kt",
-      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead; HOME_ROW_SHOWN / shownMenuRows (Zuhause off since 2026-11-19: no Zuhause row, no „Als Zuhause festlegen“ in a place menu) – pinmenu.ts · 2026-11-27 checked: round coloured category signs + the category staying while typing (b2cfe13b6, d1a00154a) – NOT yet in the planner: next planner task „search signs like the app“ (owner's yes 2026-11-27, backlog [laptop])",
+      "what": "the empty search (recentSection, owner 2026-11-15 compact sketch): ⌂ Zuhause, ★ FAVORITEN + „Alle Favoriten ›“, ZULETZT GESUCHT + Löschen, one-line 48 px rows (CompactRow, compactLine – WebKept.start), SmallHead; HOME_ROW_SHOWN / shownMenuRows (Zuhause off since 2026-11-19: no Zuhause row, no „Als Zuhause festlegen“ in a place menu) – pinmenu.ts · 2026-11-27 checked: round coloured category signs + the category staying while typing (b2cfe13b6, d1a00154a) – NOT yet in the planner: next planner task „search signs like the app“ (owner's yes 2026-11-27, backlog [laptop]) · 2026-11-28 5e6d33829 Zuhause out of the app (function verdict): the app shows no Zuhause row / „Als Zuhause festlegen“ any more – the planner already hid both (HOME_ROW_SHOWN off since 2026-11-19); the planner keeps its stored home item (sync format unchanged, the app leaves it alone)",
       "web": [
         "web/app/src/pinmenu.ts",
         "web/app/src/search.ts",
         "web/app/src/style.css",
         "web/engine/src/main/kotlin/com/onpath/web/WebKept.kt"
       ],
-      "blob": "5e0cb389e3c1e1540b1bad8c35fc868b8d50549d"
+      "blob": "a09ede14bacd583d263d5df99416f796d0749776"
     },
     {
       "app": "app/src/main/java/com/onpath/app/ui/MapLoad.kt",
