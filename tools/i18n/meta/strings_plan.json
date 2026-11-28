@@ -1384,5 +1384,12 @@
     "context": "Estimated search time range; numbers low/high.",
     "priority": 1,
     "confidence": "sicher"
+  },
+  "plan_hold_pill": {
+    "area": "Map",
+    "context": "Quiet pill at a short tap on the empty map (Chriss 2026-11-28)",
+    "priority": 1,
+    "confidence": "sicher",
+    "max": 30
   }
 }

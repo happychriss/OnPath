@@ -338,9 +338,9 @@ fun MapScreen(
         activity = vm.planRoute.activity, stats = rec?.let { EndStats(it.distanceM, it.elapsedS, it.ascentM) })
     // Navigate → ⚙ opens Settings "on the way" (owner 2026-11-07) – MainActivity draws it like Plan's Settings
     vm.selectedPoi?.let { poi ->
-        // Read-only details (Navigate, or a shown track): no "add to route" here.
+        // the place info: read-only in Navigate / a shown track; in Plan the hold menu's „Als Ziel“ (poiGoal, Chriss 2026-11-28)
         androidx.compose.material3.ModalBottomSheet(onDismissRequest = { vm.selectedPoi = null }) {
-            com.onpath.app.poi.PoiDetails(poi = poi, onClose = { vm.selectedPoi = null })
+            com.onpath.app.poi.PoiDetails(poi = poi, onClose = { vm.selectedPoi = null }, goal = poiGoal(vm, poi, gps))
         }
     }
 }
