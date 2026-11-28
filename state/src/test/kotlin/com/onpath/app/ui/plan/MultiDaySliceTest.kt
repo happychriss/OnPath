@@ -929,7 +929,7 @@ class MultiDaySliceTest {
      * makes it a standalone tour with the new profile, the trip stays identical (points, line, activity, T level, days); the
      * recording no longer counts for the trip's day (as with MD-4).
      */
-    @Test fun aDayWithAnotherActivityAndTLevelStaysInTheTrip() {
+    @Test fun aDayWithAnotherActivityAndTLevelIsSavedAsItsOwnTourTheTripStays() {
         val app = App(); app.rideDay2()
         val before = db.getTour(tourId)!!; val lineBefore = app.storedLine()
         ui { app.planRoute.selectActivity(Activity.MTB) }; app.settle()
